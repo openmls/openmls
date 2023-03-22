@@ -370,7 +370,7 @@ impl PublicGroup {
             }
         }
 
-        // TODO: Remove this!
+        // TODO(#1330): Remove this when #1330 is finished.
         if !visited_psk_ids.is_empty() {
             return Err(ProposalValidationError::Psk(PskError::Unsupported));
         }

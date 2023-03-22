@@ -180,7 +180,7 @@ pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
         for proposal in epoch.proposals {
             let message = MlsMessageIn::try_from_bytes(&proposal.0).unwrap();
             debug!("Proposal: {message:?}");
-            // TODO(1330)
+            // TODO(#1330)
             if passive_client.process_message(message) == Err(ProcessResult::Skip) {
                 return;
             }
@@ -188,7 +188,7 @@ pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
 
         let message = MlsMessageIn::try_from_bytes(&epoch.commit).unwrap();
         debug!("Commit: {message:#?}");
-        // TODO(1330)
+        // TODO(#1330)
         if passive_client.process_message(message) == Err(ProcessResult::Skip) {
             return;
         }
@@ -215,7 +215,7 @@ fn test_write_vectors() {
         }
     }
 
-    // TODO
+    // TODO(#1279)
     write(TEST_VECTOR_PATH_WRITE[0], &tests);
 }
 
@@ -225,7 +225,7 @@ struct PassiveClient {
     group: Option<MlsGroup>,
 }
 
-// TODO(1330)
+// TODO(#1330)
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum ProcessResult {
     Skip,
@@ -333,7 +333,7 @@ impl PassiveClient {
             .unwrap()
             .process_message(&self.backend, message.into_protocol_message().unwrap());
 
-        // TODO(1330)
+        // TODO(#1330)
         let processed_message = match processed_message {
             error @ Err(ProcessMessageError::InvalidCommit(
                 StageCommitError::ProposalValidationError(ProposalValidationError::Psk(
