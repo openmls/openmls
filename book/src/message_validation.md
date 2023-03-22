@@ -98,9 +98,9 @@ The following is a list of the individual semantic validation steps performed by
 
 ### PSK Validation
 
-| ValidationStep | Description                                                                                                            | Implemented | Tested | Test File |
-|----------------|------------------------------------------------------------------------------------------------------------------------|-------------|--------|-----------|
-| `ValSem400`    | The application SHOULD specify an upper limit on the number of past epochs for which the resumption_psk may be stored. | No          | No     |           |
-| `ValSem401`    | The nonce of a PreSharedKeyID must have length KDF.Nh.                                                                 | Yes         | No     |           |
-| `ValSem402`    | PSK in proposal must be of type Resumption (with usage Application) or External.                                       | Yes         | No     |           |
-| `ValSem403`    | Proposal list must not contain  multiple PreSharedKey proposals that reference the same PreSharedKeyID.                | Yes         | No     |           |
+| ValidationStep | Description                                                                                                            | Implemented | Tested | Test File                                             |
+|----------------|------------------------------------------------------------------------------------------------------------------------|-------------|--------|-------------------------------------------------------|
+| `ValSem400`    | The application SHOULD specify an upper limit on the number of past epochs for which the resumption_psk may be stored. | No          | No     |                                                       |
+| `ValSem401`    | The nonce of a PreSharedKeyID must have length KDF.Nh.                                                                 | Yes         | Yes    | `openmls/src/group/tests/test_proposal_validation.rs` |
+| `ValSem402`    | PSK in proposal must be of type Resumption (with usage Application) or External.                                       | Yes         | Yes    | `openmls/src/group/tests/test_proposal_validation.rs` |
+| `ValSem403`    | Proposal list must not contain multiple PreSharedKey proposals that reference the same PreSharedKeyID.                 | Yes         | No     |                                                       |
