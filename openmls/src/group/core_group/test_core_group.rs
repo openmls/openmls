@@ -219,8 +219,12 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         )
         .expect("Could not create proposal.");
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, update_proposal_bob)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend,
+            update_proposal_bob,
+        )
+        .expect("Could not create QueuedProposal."),
     );
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
@@ -423,8 +427,12 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         )
         .expect("Could not create proposal.");
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, update_proposal_bob)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend,
+            update_proposal_bob,
+        )
+        .expect("Could not create QueuedProposal."),
     );
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
@@ -670,13 +678,21 @@ fn test_proposal_application_after_self_was_removed(
         .expect("Could not create proposal");
 
     let mut remove_add_proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, bob_remove_proposal)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend,
+            bob_remove_proposal,
+        )
+        .expect("Could not create QueuedProposal."),
     );
 
     remove_add_proposal_store.add(
-        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, charlie_add_proposal)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend,
+            charlie_add_proposal,
+        )
+        .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()

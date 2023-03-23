@@ -128,9 +128,9 @@ impl MlsGroup {
     ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<KeyStore::Error>> {
         match propose {
             Propose::Add(key_package) => match ref_or_value {
-                ProposalOrRefType::Proposal => self
-                    .propose_add_member_by_value(backend, signer, key_package)
-                    .map_err(|e| e.into()),
+                ProposalOrRefType::Proposal => {
+                    self.propose_add_member_by_value(backend, signer, key_package)
+                }
                 ProposalOrRefType::Reference => self
                     .propose_add_member(backend, signer, &key_package)
                     .map_err(|e| e.into()),
@@ -146,9 +146,11 @@ impl MlsGroup {
             },
 
             Propose::Remove(leaf_index) => match ref_or_value {
-                ProposalOrRefType::Proposal => self
-                    .propose_remove_member_by_value(backend, signer, LeafNodeIndex::new(leaf_index))
-                    .map_err(|e| e.into()),
+                ProposalOrRefType::Proposal => self.propose_remove_member_by_value(
+                    backend,
+                    signer,
+                    LeafNodeIndex::new(leaf_index),
+                ),
                 ProposalOrRefType::Reference => self
                     .propose_remove_member(backend, signer, LeafNodeIndex::new(leaf_index))
                     .map_err(|e| e.into()),
@@ -171,32 +173,24 @@ impl MlsGroup {
                         self.propose_external_psk(backend, signer, psk_id)
                     }
                 },
-                crate::schedule::Psk::Resumption(_) => {
-                    return Err(ProposalError::LibraryError(LibraryError::custom(
-                        "Invalid PSk argument",
-                    )))
-                }
+                crate::schedule::Psk::Resumption(_) => Err(ProposalError::LibraryError(
+                    LibraryError::custom("Invalid PSk argument"),
+                )),
             },
             Propose::ReInit {
                 group_id: _,
                 version: _,
                 ciphersuite: _,
                 extensions: _,
-            } => {
-                return Err(ProposalError::LibraryError(LibraryError::custom(
-                    "Unsupported proposal type ReInit",
-                )))
-            }
-            Propose::ExternalInit(_) => {
-                return Err(ProposalError::LibraryError(LibraryError::custom(
-                    "Unsupported proposal type ExternalInit",
-                )))
-            }
-            Propose::GroupContextExtensions(_) => {
-                return Err(ProposalError::LibraryError(LibraryError::custom(
-                    "Unsupported proposal type GroupContextExtensions",
-                )))
-            }
+            } => Err(ProposalError::LibraryError(LibraryError::custom(
+                "Unsupported proposal type ReInit",
+            ))),
+            Propose::ExternalInit(_) => Err(ProposalError::LibraryError(LibraryError::custom(
+                "Unsupported proposal type ExternalInit",
+            ))),
+            Propose::GroupContextExtensions(_) => Err(ProposalError::LibraryError(
+                LibraryError::custom("Unsupported proposal type GroupContextExtensions"),
+            )),
         }
     }
 

@@ -420,7 +420,9 @@ impl GroupContextExtensionProposal {
 )]
 #[repr(u8)]
 pub enum ProposalOrRefType {
+    /// A proposal by value
     Proposal = 1,
+    /// A proposal by reference
     Reference = 2,
 }
 

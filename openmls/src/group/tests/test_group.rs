@@ -167,8 +167,12 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, alice_update_proposal)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend,
+            alice_update_proposal,
+        )
+        .expect("Could not create QueuedProposal."),
     );
 
     // Only UpdateProposal
@@ -416,8 +420,12 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, update_proposal_bob)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend,
+            update_proposal_bob,
+        )
+        .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -479,8 +487,12 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, update_proposal_alice)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend,
+            update_proposal_alice,
+        )
+        .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -565,8 +577,12 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .expect("error merging own commits");
 
     proposal_store.add(
-        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, update_proposal_bob)
-            .expect("Could not create StagedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend,
+            update_proposal_bob,
+        )
+        .expect("Could not create StagedProposal."),
     );
 
     let (leaf_node, encryption_keypair) =
@@ -616,8 +632,12 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, add_charlie_proposal_bob)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend,
+            add_charlie_proposal_bob,
+        )
+        .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -757,8 +777,12 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, update_proposal_charlie)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend,
+            update_proposal_charlie,
+        )
+        .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()

@@ -482,8 +482,12 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, charlie_add_proposal)
-            .expect("Could not create staged proposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend,
+            charlie_add_proposal,
+        )
+        .expect("Could not create staged proposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -520,8 +524,12 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, bob_remove_proposal)
-            .expect("Could not create staged proposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend,
+            bob_remove_proposal,
+        )
+        .expect("Could not create staged proposal."),
     );
 
     let params = CreateCommitParams::builder()

@@ -118,12 +118,20 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
     .unwrap();
 
     let mut proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, mls_plaintext_add_alice1)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend,
+            mls_plaintext_add_alice1,
+        )
+        .expect("Could not create QueuedProposal."),
     );
     proposal_store.add(
-        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, mls_plaintext_add_alice2)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend,
+            mls_plaintext_add_alice2,
+        )
+        .expect("Could not create QueuedProposal."),
     );
 
     let (proposal_queue, own_update) = ProposalQueue::filter_proposals(
@@ -223,12 +231,20 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
     // This should set the order of the proposals.
     let mut proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, mls_plaintext_add_alice1)
-            .unwrap(),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend,
+            mls_plaintext_add_alice1,
+        )
+        .unwrap(),
     );
     proposal_store.add(
-        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, mls_plaintext_add_bob1)
-            .unwrap(),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend,
+            mls_plaintext_add_bob1,
+        )
+        .unwrap(),
     );
 
     let proposal_or_refs = vec![
