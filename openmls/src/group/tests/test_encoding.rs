@@ -292,11 +292,11 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
             .expect("Could not create proposal.");
 
         let mut proposal_store = ProposalStore::from_queued_proposal(
-            QueuedProposal::from_authenticated_content(group_state.ciphersuite(), backend, add)
+            QueuedProposal::from_authenticated_content_by_ref(group_state.ciphersuite(), backend, add)
                 .expect("Could not create QueuedProposal."),
         );
         proposal_store.add(
-            QueuedProposal::from_authenticated_content(group_state.ciphersuite(), backend, update)
+            QueuedProposal::from_authenticated_content_by_ref(group_state.ciphersuite(), backend, update)
                 .expect("Could not create QueuedProposal."),
         );
 
@@ -366,7 +366,7 @@ fn test_welcome_message_encoding(backend: &impl OpenMlsCryptoProvider) {
             .expect("Could not create proposal.");
 
         let proposal_store = ProposalStore::from_queued_proposal(
-            QueuedProposal::from_authenticated_content(group_state.ciphersuite(), backend, add)
+            QueuedProposal::from_authenticated_content_by_ref(group_state.ciphersuite(), backend, add)
                 .expect("Could not create QueuedProposal."),
         );
 

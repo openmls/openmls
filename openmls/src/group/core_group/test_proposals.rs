@@ -98,19 +98,19 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
     )
     .unwrap();
 
-    let proposal_reference_add_alice1 = ProposalRef::from_authenticated_content(
+    let proposal_reference_add_alice1 = ProposalRef::from_authenticated_content_by_ref(
         backend.crypto(),
         ciphersuite,
         &mls_plaintext_add_alice1,
     )
     .unwrap();
-    let proposal_reference_add_alice2 = ProposalRef::from_authenticated_content(
+    let proposal_reference_add_alice2 = ProposalRef::from_authenticated_content_by_ref(
         backend.crypto(),
         ciphersuite,
         &mls_plaintext_add_alice2,
     )
     .unwrap();
-    let proposal_reference_add_bob = ProposalRef::from_authenticated_content(
+    let proposal_reference_add_bob = ProposalRef::from_authenticated_content_by_ref(
         backend.crypto(),
         ciphersuite,
         &mls_plaintext_add_bob,
@@ -118,11 +118,11 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
     .unwrap();
 
     let mut proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, mls_plaintext_add_alice1)
+        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, mls_plaintext_add_alice1)
             .expect("Could not create QueuedProposal."),
     );
     proposal_store.add(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, mls_plaintext_add_alice2)
+        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, mls_plaintext_add_alice2)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -205,7 +205,7 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         &alice_signer,
     )
     .unwrap();
-    let proposal_reference_add_alice1 = ProposalRef::from_authenticated_content(
+    let proposal_reference_add_alice1 = ProposalRef::from_authenticated_content_by_ref(
         backend.crypto(),
         ciphersuite,
         &mls_plaintext_add_alice1,
@@ -223,11 +223,11 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
     // This should set the order of the proposals.
     let mut proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, mls_plaintext_add_alice1)
+        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, mls_plaintext_add_alice1)
             .unwrap(),
     );
     proposal_store.add(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, mls_plaintext_add_bob1)
+        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, mls_plaintext_add_bob1)
             .unwrap(),
     );
 
@@ -380,7 +380,7 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMl
         .expect("Could not create proposal");
 
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
     log::info!(" >>> Creating commit ...");
@@ -476,7 +476,7 @@ fn test_group_context_extension_proposal_fails(
         .expect("Could not create proposal");
 
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
     log::info!(" >>> Creating commit ...");
@@ -555,7 +555,7 @@ fn test_group_context_extension_proposal(
         .expect("Could not create proposal");
 
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
     log::info!(" >>> Creating commit ...");
@@ -602,7 +602,7 @@ fn test_group_context_extension_proposal(
         .expect("Error creating gce proposal.");
 
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, gce_proposal)
+        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, gce_proposal)
             .expect("Could not create QueuedProposal."),
     );
     log::info!(" >>> Creating commit ...");

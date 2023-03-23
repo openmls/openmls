@@ -38,6 +38,7 @@ impl ProposalStore {
         }
     }
     pub(crate) fn add(&mut self, queued_proposal: QueuedProposal) {
+        log::trace!("Adding proposal to queue: {queued_proposal:?}");
         self.queued_proposals.push(queued_proposal);
     }
     pub(crate) fn proposals(&self) -> impl Iterator<Item = &QueuedProposal> {
@@ -74,24 +75,56 @@ pub struct QueuedProposal {
 
 impl QueuedProposal {
     /// Creates a new [QueuedProposal] from an [PublicMessage]
+    pub(crate) fn from_authenticated_content_by_ref(
+        ciphersuite: Ciphersuite,
+        backend: &impl OpenMlsCryptoProvider,
+        public_message: AuthenticatedContent,
+    ) -> Result<Self, LibraryError> {
+        Self::from_authenticated_content(
+            ciphersuite,
+            backend,
+            public_message,
+            ProposalOrRefType::Reference,
+        )
+    }
+
+    /// Creates a new [QueuedProposal] from an [PublicMessage]
+    pub(crate) fn from_authenticated_content_by_value(
+        ciphersuite: Ciphersuite,
+        backend: &impl OpenMlsCryptoProvider,
+        public_message: AuthenticatedContent,
+    ) -> Result<Self, LibraryError> {
+        Self::from_authenticated_content(
+            ciphersuite,
+            backend,
+            public_message,
+            ProposalOrRefType::Proposal,
+        )
+    }
+
+    /// Creates a new [QueuedProposal] from an [PublicMessage]
     pub(crate) fn from_authenticated_content(
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         public_message: AuthenticatedContent,
+        proposal_or_ref_type: ProposalOrRefType,
     ) -> Result<Self, LibraryError> {
         let proposal = match public_message.content() {
             FramedContentBody::Proposal(p) => p,
             _ => return Err(LibraryError::custom("Wrong content type")),
         };
-        let proposal_reference =
-            ProposalRef::from_authenticated_content(backend.crypto(), ciphersuite, &public_message)
-                .map_err(|_| LibraryError::custom("Could not calculate `ProposalRef`."))?;
+        let proposal_reference = ProposalRef::from_authenticated_content_by_ref(
+            backend.crypto(),
+            ciphersuite,
+            &public_message,
+        )
+        .map_err(|_| LibraryError::custom("Could not calculate `ProposalRef`."))?;
 
         Ok(Self {
             proposal: proposal.clone(), // FIXME
             proposal_reference,
             sender: public_message.sender().clone(),
-            proposal_or_ref_type: ProposalOrRefType::Reference,
+            proposal_or_ref_type,
         })
     }
 
@@ -390,6 +423,7 @@ impl ProposalQueue {
                 .collect::<Result<Vec<QueuedProposal>, _>>()?
                 .into_iter(),
         );
+        log::trace!("proposal list: {:x?}", queued_proposal_list);
 
         // Parse proposals and build adds and member list
         for queued_proposal in queued_proposal_list {

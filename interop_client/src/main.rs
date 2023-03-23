@@ -464,6 +464,7 @@ impl MlsClient for MlsClientImpl {
             .map_err(into_status)?
             .tls_serialize_detached()
             .map_err(|_| Status::aborted("failed to serialize ciphertext"))?;
+        log::trace!("   Generated application message ciphertext.");
         Ok(Response::new(ProtectResponse { ciphertext }))
     }
 
@@ -767,6 +768,78 @@ impl MlsClient for MlsClientImpl {
 
         // Proposals by value. These proposals are inline proposals. They should be
         // converted into group operations.
+        for proposal in &commit_request.by_value {
+            let proposal_type = String::from_utf8_lossy(&proposal.proposal_type);
+            log::trace!("   handling {proposal_type} proposal by value");
+            // build the proposal from the raw values in proposal
+            let (proposal, _proposal_ref) = match proposal_type.to_string().as_str() {
+                "add" => {
+                    let key_package =
+                        MlsMessageIn::try_from_bytes(&mut proposal.key_package.clone())
+                            .map_err(|_| Status::invalid_argument("Invalid key package"))?;
+                    let key_package = key_package
+                        .into_keypackage()
+                        .ok_or(Status::invalid_argument("Message was not a key package"))?;
+
+                    interop_group
+                        .group
+                        .propose_add_member_by_value(
+                            &interop_group.crypto_provider,
+                            &interop_group.signature_keys,
+                            key_package,
+                        )
+                        .map_err(|_| Status::internal("Unable to generate proposal by value"))?
+                }
+                "remove" => {
+                    let removed_credential =
+                        Credential::new(proposal.removed_id.clone(), CredentialType::Basic)
+                            .unwrap();
+
+                    interop_group
+                        .group
+                        .propose_remove_member_by_credential_by_value(
+                            &interop_group.crypto_provider,
+                            &interop_group.signature_keys,
+                            &removed_credential,
+                        )
+                        .map_err(|_| Status::internal("Unable to generate proposal by value"))?
+                }
+                "externalPSK" => {
+                    let psk_id = PreSharedKeyId::new(
+                        interop_group.group.ciphersuite(),
+                        interop_group.crypto_provider.rand(),
+                        Psk::External(ExternalPsk::new(proposal.psk_id.clone())),
+                    )
+                    .map_err(|_| Status::internal("Unsupported proposal type (resumption PSK)"))?;
+
+                    interop_group
+                        .group
+                        .propose_external_psk_by_value(
+                            &interop_group.crypto_provider,
+                            &interop_group.signature_keys,
+                            psk_id,
+                        )
+                        .map_err(|_| Status::internal("Unable to generate proposal by value"))?
+                }
+                "resumptionPSK" => {
+                    return Err(Status::internal(
+                        "Unsupported proposal type (resumption PSK)",
+                    ))
+                }
+                "groupContextExtensions" => {
+                    return Err(Status::internal(
+                        "Unsupported proposal type (group context extension",
+                    ))
+                }
+                _ => return Err(Status::invalid_argument("Invalid proposal type")),
+            };
+
+            let message: MlsMessageIn = proposal.into();
+            if interop_group.messages_out.contains(&message) {
+                log::trace!("   skipping processing of own proposal");
+                continue;
+            }
+        }
 
         // TODO #692: The interop client cannot process these proposals yet.
 
@@ -1003,7 +1076,7 @@ impl MlsClient for MlsClientImpl {
         )
         .map_err(|_| Status::internal("unable to create PreSharedKeyId from raw psk_id"))?;
 
-        let proposal = interop_group
+        let (proposal, _proposal_ref) = interop_group
             .group
             .propose_external_psk(
                 &interop_group.crypto_provider,

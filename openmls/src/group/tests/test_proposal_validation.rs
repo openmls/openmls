@@ -1363,7 +1363,7 @@ fn test_valsem107(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             };
 
             ProposalOrRef::Reference(
-                ProposalRef::from_authenticated_content(
+                ProposalRef::from_authenticated_content_by_ref(
                     backend.crypto(),
                     ciphersuite,
                     &authenticated_content,

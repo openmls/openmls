@@ -243,7 +243,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         .unwrap();
 
     let mut proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(
+        QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
             &crypto,
             add_proposal_content.clone(),

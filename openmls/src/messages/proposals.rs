@@ -419,7 +419,7 @@ impl GroupContextExtensionProposal {
     PartialEq, Clone, Copy, Debug, TlsSerialize, TlsDeserialize, TlsSize, Serialize, Deserialize,
 )]
 #[repr(u8)]
-pub(crate) enum ProposalOrRefType {
+pub enum ProposalOrRefType {
     Proposal = 1,
     Reference = 2,
 }
@@ -444,7 +444,7 @@ pub(crate) enum ProposalRefError {
 }
 
 impl ProposalRef {
-    pub(crate) fn from_authenticated_content(
+    pub(crate) fn from_authenticated_content_by_ref(
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         authenticated_content: &AuthenticatedContent,

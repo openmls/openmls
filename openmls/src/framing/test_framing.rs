@@ -443,7 +443,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .expect("Could not create proposal.");
 
     let mut proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -482,7 +482,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, charlie_add_proposal)
+        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, charlie_add_proposal)
             .expect("Could not create staged proposal."),
     );
 
@@ -520,7 +520,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_remove_proposal)
+        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, bob_remove_proposal)
             .expect("Could not create staged proposal."),
     );
 
@@ -661,7 +661,7 @@ pub(crate) fn setup_alice_bob_group(
         .expect("Could not create proposal.");
 
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
 
