@@ -344,6 +344,9 @@ pub enum ProposalValidationError {
     /// The capabilities of the add proposal are insufficient for this group.
     #[error("The capabilities of the add proposal are insufficient for this group.")]
     InsufficientCapabilities,
+    /// See [`PskError`] for more details.
+    #[error(transparent)]
+    Psk(PskError),
 }
 
 /// External Commit validaton error

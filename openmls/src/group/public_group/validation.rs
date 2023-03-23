@@ -1,28 +1,29 @@
 //! This module contains validation functions for incoming messages
 //! as defined in <https://github.com/openmls/openmls/wiki/Message-validation>
 
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
 
+use super::PublicGroup;
+#[cfg(test)]
+use crate::treesync::errors::LeafNodeValidationError;
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     framing::{
         mls_auth_content_in::VerifiableAuthenticatedContentIn, ContentType, ProtocolMessage,
         Sender, WireFormat,
     },
-    group::errors::ExternalCommitValidationError,
     group::{
-        errors::{ProposalValidationError, ValidationError},
+        errors::{ExternalCommitValidationError, ProposalValidationError, ValidationError},
         past_secrets::MessageSecretsStore,
         Member, ProposalQueue,
     },
     messages::proposals::{Proposal, ProposalOrRefType, ProposalType},
+    schedule::{
+        errors::PskError,
+        psk::{Psk, ResumptionPskUsage},
+    },
     treesync::node::leaf_node::LeafNode,
 };
-
-#[cfg(test)]
-use crate::treesync::errors::LeafNodeValidationError;
-
-use super::PublicGroup;
 
 impl PublicGroup {
     // === Messages ===
@@ -306,6 +307,71 @@ impl PublicGroup {
             }
         }
         Ok(encryption_keys)
+    }
+
+    /// Validate PreSharedKey proposals.
+    ///
+    /// This method implements the following checks:
+    ///
+    /// * ValSem401
+    /// * ValSem402
+    /// * ValSem403
+    pub(crate) fn validate_pre_shared_key_proposals(
+        &self,
+        proposal_queue: &ProposalQueue,
+    ) -> Result<(), ProposalValidationError> {
+        // ValSem403 (1/2)
+        // TODO(#1335): Duplicate proposals are (likely) filtered.
+        //              Let's do this check here until we haven't made sure.
+        let mut visited_psk_ids = BTreeSet::new();
+
+        for proposal in proposal_queue.psk_proposals() {
+            let psk_id = proposal.psk_proposal().clone().into_psk_id();
+
+            // ValSem402
+            match psk_id.psk() {
+                Psk::Resumption(resumption_psk) => {
+                    if resumption_psk.usage != ResumptionPskUsage::Application {
+                        return Err(ProposalValidationError::Psk(PskError::UsageMismatch {
+                            allowed: vec![ResumptionPskUsage::Application],
+                            got: resumption_psk.usage,
+                        }));
+                    }
+                }
+                Psk::External(_) => {}
+            };
+
+            // ValSem401
+            {
+                let expected_nonce_length = self.ciphersuite().hash_length();
+                let got_nonce_length = psk_id.psk_nonce().len();
+
+                if expected_nonce_length != got_nonce_length {
+                    return Err(ProposalValidationError::Psk(
+                        PskError::NonceLengthMismatch {
+                            expected: expected_nonce_length,
+                            got: got_nonce_length,
+                        },
+                    ));
+                }
+            }
+
+            // ValSem403 (2/2)
+            if !visited_psk_ids.contains(&psk_id) {
+                visited_psk_ids.insert(psk_id);
+            } else {
+                return Err(ProposalValidationError::Psk(PskError::Duplicate {
+                    first: psk_id,
+                }));
+            }
+        }
+
+        // TODO(#1330): Remove this when #1330 is finished.
+        if !visited_psk_ids.is_empty() {
+            return Err(ProposalValidationError::Psk(PskError::Unsupported));
+        }
+
+        Ok(())
     }
 
     /// Validate the new key package in a path
