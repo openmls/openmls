@@ -52,6 +52,7 @@ use crate::{
 };
 
 pub(crate) mod codec;
+
 pub(crate) mod message_in;
 pub(crate) mod message_out;
 pub(crate) mod mls_auth_content;
@@ -65,14 +66,17 @@ pub(crate) mod public_message_in;
 pub(crate) mod sender;
 pub(crate) mod validation;
 pub(crate) use errors::*;
+
 #[cfg(test)]
 pub(crate) use mls_auth_content::*;
 #[cfg(test)]
 pub(crate) use mls_auth_content_in::*;
+
 #[cfg(test)]
 pub(crate) use mls_content::*;
 #[cfg(test)]
 pub(crate) use mls_content_in::*;
+
 // Crate
 pub(crate) use sender::*;
 
