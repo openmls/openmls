@@ -380,7 +380,7 @@ impl GroupSecrets {
         .map_err(|_| GroupSecretsError::DecryptionFailed)?;
 
         // Note: This also check that no extraneous data was encrypted.
-        let group_secrets = GroupSecrets::tls_deserialize_complete(group_secrets_plaintext)
+        let group_secrets = GroupSecrets::tls_deserialize_exact(group_secrets_plaintext)
             .map_err(|_| GroupSecretsError::Malformed)?
             // TODO(#1065)
             .config(ciphersuite, ProtocolVersion::Mls10);

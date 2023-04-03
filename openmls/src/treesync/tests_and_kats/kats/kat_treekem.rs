@@ -91,8 +91,7 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
     trace!("The tree has {} leaves.", test.leaves_private.len());
 
     let treesync = {
-        let ratchet_tree =
-            RatchetTreeExtension::tls_deserialize_complete(test.ratchet_tree).unwrap();
+        let ratchet_tree = RatchetTreeExtension::tls_deserialize_exact(test.ratchet_tree).unwrap();
 
         TreeSync::from_ratchet_tree(backend, ciphersuite, ratchet_tree.ratchet_tree().clone())
             .unwrap()
@@ -160,9 +159,8 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
     for path_test in test.update_paths.iter() {
         trace!("Processing update path sent from {}.", path_test.sender);
 
-        let update_path = UpdatePath::from(
-            UpdatePathIn::tls_deserialize_complete(&path_test.update_path).unwrap(),
-        );
+        let update_path =
+            UpdatePath::from(UpdatePathIn::tls_deserialize_exact(&path_test.update_path).unwrap());
 
         let mut diff = treesync.empty_diff();
         diff.apply_received_update_path(

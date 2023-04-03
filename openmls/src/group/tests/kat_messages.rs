@@ -404,7 +404,7 @@ fn write_test_vectors_msg() {
 pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
     // Welcome
     let tv_mls_welcome = tv.mls_welcome;
-    let my_mls_welcome = MlsMessageIn::tls_deserialize_complete(&tv_mls_welcome)
+    let my_mls_welcome = MlsMessageIn::tls_deserialize_exact(&tv_mls_welcome)
         .unwrap()
         .tls_serialize_detached()
         .unwrap();
@@ -420,7 +420,7 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
 
     // (Verifiable)GroupInfo
     let tv_mls_group_info = tv.mls_group_info;
-    let my_mls_group_info = MlsMessageIn::tls_deserialize_complete(&tv_mls_group_info)
+    let my_mls_group_info = MlsMessageIn::tls_deserialize_exact(&tv_mls_group_info)
         .unwrap()
         .tls_serialize_detached()
         .unwrap();
@@ -436,7 +436,7 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
 
     // KeyPackage
     let tv_mls_key_package = tv.mls_key_package;
-    let my_key_package = MlsMessageIn::tls_deserialize_complete(&tv_mls_key_package)
+    let my_key_package = MlsMessageIn::tls_deserialize_exact(&tv_mls_key_package)
         .unwrap()
         .tls_serialize_detached()
         .unwrap();
@@ -452,7 +452,7 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
 
     // RatchetTree
     let tv_ratchet_tree = tv.ratchet_tree;
-    let dec_ratchet_tree = Vec::<Option<Node>>::tls_deserialize_complete(&tv_ratchet_tree).unwrap();
+    let dec_ratchet_tree = Vec::<Option<Node>>::tls_deserialize_exact(&tv_ratchet_tree).unwrap();
     let my_ratchet_tree = dec_ratchet_tree.tls_serialize_detached().unwrap();
     if tv_ratchet_tree != my_ratchet_tree {
         log::error!("  RatchetTree encoding mismatch");
@@ -466,7 +466,7 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
 
     // GroupSecrets
     let tv_group_secrets = tv.group_secrets;
-    let gs = GroupSecrets::tls_deserialize_complete(&tv_group_secrets).unwrap();
+    let gs = GroupSecrets::tls_deserialize_exact(&tv_group_secrets).unwrap();
     let my_group_secrets =
         GroupSecrets::new_encoded(&gs.joiner_secret, gs.path_secret.as_ref(), &gs.psks).unwrap();
     if tv_group_secrets != my_group_secrets {
@@ -481,7 +481,7 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
 
     // AddProposal
     let tv_add_proposal = tv.add_proposal;
-    let my_add_proposal = AddProposalIn::tls_deserialize_complete(&tv_add_proposal)
+    let my_add_proposal = AddProposalIn::tls_deserialize_exact(&tv_add_proposal)
         .unwrap()
         .tls_serialize_detached()
         .unwrap();
@@ -498,7 +498,7 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
     //update_proposal: String,         /* serialized Update */
     // UpdateProposal
     let tv_update_proposal = tv.update_proposal;
-    let my_update_proposal = UpdateProposalIn::tls_deserialize_complete(&tv_update_proposal)
+    let my_update_proposal = UpdateProposalIn::tls_deserialize_exact(&tv_update_proposal)
         .unwrap()
         .tls_serialize_detached()
         .unwrap();
@@ -514,7 +514,7 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
     //remove_proposal: String,         /* serialized Remove */
     // RemoveProposal
     let tv_remove_proposal = tv.remove_proposal;
-    let my_remove_proposal = RemoveProposal::tls_deserialize_complete(&tv_remove_proposal)
+    let my_remove_proposal = RemoveProposal::tls_deserialize_exact(&tv_remove_proposal)
         .unwrap()
         .tls_serialize_detached()
         .unwrap();
@@ -531,7 +531,7 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
     // PreSharedKeyProposal
     let tv_pre_shared_key_proposal = tv.pre_shared_key_proposal;
     let my_pre_shared_key_proposal =
-        PreSharedKeyProposal::tls_deserialize_complete(&tv_pre_shared_key_proposal)
+        PreSharedKeyProposal::tls_deserialize_exact(&tv_pre_shared_key_proposal)
             .unwrap()
             .tls_serialize_detached()
             .unwrap();
@@ -549,7 +549,7 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
 
     // Commit
     let tv_commit = tv.commit;
-    let my_commit = CommitIn::tls_deserialize_complete(&tv_commit)
+    let my_commit = CommitIn::tls_deserialize_exact(&tv_commit)
         .unwrap()
         .tls_serialize_detached()
         .unwrap();
@@ -568,7 +568,7 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
     // // Fake the wire format so we can deserialize
     //tv_public_message_application[0] = WireFormat::PublicMessage as u8;
     let my_public_message_application =
-        MlsMessageIn::tls_deserialize_complete(&tv_public_message_application)
+        MlsMessageIn::tls_deserialize_exact(&tv_public_message_application)
             .unwrap()
             .tls_serialize_detached()
             .unwrap();
@@ -585,7 +585,7 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
     // PublicMessage(Proposal)
     let tv_public_message_proposal = tv.public_message_proposal;
     let my_public_message_proposal =
-        MlsMessageIn::tls_deserialize_complete(&tv_public_message_proposal)
+        MlsMessageIn::tls_deserialize_exact(&tv_public_message_proposal)
             .unwrap()
             .tls_serialize_detached()
             .unwrap();
@@ -601,11 +601,10 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
 
     // PublicMessage(Commit)
     let tv_public_message_commit = tv.public_message_commit;
-    let my_public_message_commit =
-        MlsMessageIn::tls_deserialize_complete(&tv_public_message_commit)
-            .unwrap()
-            .tls_serialize_detached()
-            .unwrap();
+    let my_public_message_commit = MlsMessageIn::tls_deserialize_exact(&tv_public_message_commit)
+        .unwrap()
+        .tls_serialize_detached()
+        .unwrap();
     if tv_public_message_commit != my_public_message_commit {
         log::error!("  PublicMessage(Commit) encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_public_message_commit);
@@ -618,7 +617,7 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
 
     // PrivateMessage
     let tv_private_message = tv.private_message;
-    let my_private_message = MlsMessageIn::tls_deserialize_complete(&tv_private_message)
+    let my_private_message = MlsMessageIn::tls_deserialize_exact(&tv_private_message)
         .unwrap()
         .tls_serialize_detached()
         .unwrap();

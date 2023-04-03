@@ -204,14 +204,14 @@ where
     ///
     /// Note: This function makes sure that the input is fully consumed, i.e., that there is no
     ///       trailing data.
-    fn tls_deserialize_complete(bytes: impl AsRef<[u8]>) -> Result<Self, TlsFromBytesError>;
+    fn tls_deserialize_exact(bytes: impl AsRef<[u8]>) -> Result<Self, TlsFromBytesError>;
 }
 
 impl<T> TlsFromBytes for T
 where
     T: tls_codec::Deserialize,
 {
-    fn tls_deserialize_complete(bytes: impl AsRef<[u8]>) -> Result<T, TlsFromBytesError> {
+    fn tls_deserialize_exact(bytes: impl AsRef<[u8]>) -> Result<T, TlsFromBytesError> {
         let mut input = bytes.as_ref();
         let out = Self::tls_deserialize(&mut input).map_err(TlsFromBytesError::Tls)?;
 

@@ -92,7 +92,7 @@ mod test {
 
         for expected in tests {
             let serialized = expected.tls_serialize_detached().unwrap();
-            let got = ExternalSender::tls_deserialize_complete(serialized).unwrap();
+            let got = ExternalSender::tls_deserialize_exact(serialized).unwrap();
             assert_eq!(expected, got);
         }
     }

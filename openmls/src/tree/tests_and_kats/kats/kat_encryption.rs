@@ -606,7 +606,7 @@ pub fn run_test_vector(
             // Setup group
             // We need to get the application message first to get the group id.
             let ctxt_bytes = hex_to_bytes(&application.ciphertext);
-            let mls_ciphertext_application = PrivateMessageIn::tls_deserialize_complete(ctxt_bytes)
+            let mls_ciphertext_application = PrivateMessageIn::tls_deserialize_exact(ctxt_bytes)
                 .expect("Error parsing PrivateMessage");
             let (mut group, _, _) = receiver_group(
                 ciphersuite,
@@ -650,7 +650,7 @@ pub fn run_test_vector(
                 FramedContentBodyIn::Application(_)
             ));
             let expected_plaintext = hex_to_bytes(&application.plaintext);
-            let exp = PublicMessageIn::tls_deserialize_complete(expected_plaintext).unwrap();
+            let exp = PublicMessageIn::tls_deserialize_exact(expected_plaintext).unwrap();
             if exp.content() != mls_plaintext_application.content() {
                 if cfg!(test) {
                     panic!("Decrypted application message mismatch");
@@ -690,9 +690,8 @@ pub fn run_test_vector(
 
             // Setup group
             let handshake_bytes = hex_to_bytes(&handshake.ciphertext);
-            let mls_ciphertext_handshake =
-                PrivateMessageIn::tls_deserialize_complete(handshake_bytes)
-                    .expect("Error parsing PrivateMessage");
+            let mls_ciphertext_handshake = PrivateMessageIn::tls_deserialize_exact(handshake_bytes)
+                .expect("Error parsing PrivateMessage");
             *group.message_secrets_test_mut().sender_data_secret_mut() =
                 SenderDataSecret::from_slice(
                     hex_to_bytes(&test_vector.sender_data_secret).as_slice(),
@@ -726,7 +725,7 @@ pub fn run_test_vector(
                 FramedContentBodyIn::Commit(_) | FramedContentBodyIn::Proposal(_)
             ));
             let expected_plaintext = hex_to_bytes(&handshake.plaintext);
-            let exp = PublicMessageIn::tls_deserialize_complete(expected_plaintext).unwrap();
+            let exp = PublicMessageIn::tls_deserialize_exact(expected_plaintext).unwrap();
 
             if exp.content() != mls_plaintext_handshake.content() {
                 if cfg!(test) {
@@ -761,9 +760,8 @@ pub fn run_test_vector(
 
             // Setup group
             let handshake_bytes = hex_to_bytes(&handshake.ciphertext);
-            let mls_ciphertext_handshake =
-                PrivateMessageIn::tls_deserialize_complete(handshake_bytes)
-                    .expect("Error parsing PrivateMessage");
+            let mls_ciphertext_handshake = PrivateMessageIn::tls_deserialize_exact(handshake_bytes)
+                .expect("Error parsing PrivateMessage");
             let (mut group, _, _) = receiver_group(
                 ciphersuite,
                 backend,
@@ -803,7 +801,7 @@ pub fn run_test_vector(
             ));
             let expected_plaintext = hex_to_bytes(&handshake.plaintext);
             let expected_plaintext =
-                PublicMessageIn::tls_deserialize_complete(expected_plaintext).unwrap();
+                PublicMessageIn::tls_deserialize_exact(expected_plaintext).unwrap();
 
             if expected_plaintext.content() != mls_plaintext_handshake.content() {
                 return Err(EncTestVectorError::DecryptedHandshakeMessageMismatch);

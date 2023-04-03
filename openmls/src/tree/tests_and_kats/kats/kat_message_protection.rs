@@ -325,11 +325,11 @@ pub fn run_test_vector(
 
     // Proposal
     {
-        let proposal = ProposalIn::tls_deserialize_complete(hex_to_bytes(&test.proposal)).unwrap();
+        let proposal = ProposalIn::tls_deserialize_exact(hex_to_bytes(&test.proposal)).unwrap();
         let proposal_pub =
-            MlsMessageIn::tls_deserialize_complete(hex_to_bytes(&test.proposal_pub)).unwrap();
+            MlsMessageIn::tls_deserialize_exact(hex_to_bytes(&test.proposal_pub)).unwrap();
         let proposal_priv =
-            MlsMessageIn::tls_deserialize_complete(hex_to_bytes(&test.proposal_priv)).unwrap();
+            MlsMessageIn::tls_deserialize_exact(hex_to_bytes(&test.proposal_priv)).unwrap();
 
         // Group stuff we need for openmls
         let sender_ratchet_config = SenderRatchetConfiguration::new(0, 0);
@@ -390,11 +390,11 @@ pub fn run_test_vector(
 
     // Commit
     {
-        let commit = CommitIn::tls_deserialize_complete(hex_to_bytes(&test.commit)).unwrap();
+        let commit = CommitIn::tls_deserialize_exact(hex_to_bytes(&test.commit)).unwrap();
         let commit_pub =
-            MlsMessageIn::tls_deserialize_complete(hex_to_bytes(&test.commit_pub)).unwrap();
+            MlsMessageIn::tls_deserialize_exact(hex_to_bytes(&test.commit_pub)).unwrap();
         let commit_priv =
-            MlsMessageIn::tls_deserialize_complete(hex_to_bytes(&test.commit_priv)).unwrap();
+            MlsMessageIn::tls_deserialize_exact(hex_to_bytes(&test.commit_priv)).unwrap();
 
         // Group stuff we need for openmls
         let sender_ratchet_config = SenderRatchetConfiguration::new(10, 10);
@@ -452,7 +452,7 @@ pub fn run_test_vector(
         eprintln!("application_priv: {}", test.application_priv);
         let application = hex_to_bytes(&test.application);
         let application_priv =
-            MlsMessageIn::tls_deserialize_complete(hex_to_bytes(&test.application_priv)).unwrap();
+            MlsMessageIn::tls_deserialize_exact(hex_to_bytes(&test.application_priv)).unwrap();
 
         // Group stuff we need for openmls
         let sender_ratchet_config = SenderRatchetConfiguration::new(0, 0);
