@@ -8,12 +8,12 @@ use openmls_traits::{
     types::{Ciphersuite, HpkeCiphertext},
     OpenMlsCryptoProvider,
 };
-// Private
-use proposals::*;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tls_codec::{Serialize as TlsSerializeTrait, *};
 
+#[cfg(test)]
+use crate::schedule::psk::{ExternalPsk, Psk};
 use crate::{
     ciphersuite::{hash_ref::KeyPackageRef, *},
     credentials::CredentialWithKey,
@@ -27,20 +27,15 @@ use crate::{
     versions::ProtocolVersion,
 };
 
-// Public
 pub mod external_proposals;
 pub mod group_info;
 pub mod proposals;
 pub mod proposals_in;
 
-// Tests
 #[cfg(test)]
 mod tests;
-use self::proposals_in::ProposalOrRefIn;
-#[cfg(test)]
-use crate::schedule::psk::{ExternalPsk, Psk};
 
-// Public types
+use self::{proposals::*, proposals_in::ProposalOrRefIn};
 
 /// Welcome message
 ///
