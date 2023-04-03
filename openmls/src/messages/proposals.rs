@@ -373,7 +373,7 @@ pub struct AppAckProposal {
 /// for the group.
 ///
 /// ```c
-/// // draft-ietf-mls-protocol-17
+/// // draft-ietf-mls-protocol-20
 /// struct {
 ///   Extension extensions<V>;
 /// } GroupContextExtensions;
@@ -421,6 +421,7 @@ impl GroupContextExtensionProposal {
 #[repr(u8)]
 pub(crate) enum ProposalOrRefType {
     Proposal = 1,
+    /// A proposal by reference.
     Reference = 2,
 }
 

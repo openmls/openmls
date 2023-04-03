@@ -240,6 +240,35 @@ pub type ExporterSecret = Vec<u8>;
 pub type KemOutput = Vec<u8>;
 
 /// MLS ciphersuites.
+///
+/// From draft-ietf-mls-protocol-20:
+///
+/// | Value           | Name                                                | R | Ref      |   |
+/// |-----------------|-----------------------------------------------------|---|----------|---|
+/// | 0x0000          | RESERVED                                            | - | RFC XXXX |   |
+/// | 0x0001          | MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519        | Y | RFC XXXX |   |
+/// | 0x0002          | MLS_128_DHKEMP256_AES128GCM_SHA256_P256             | Y | RFC XXXX |   |
+/// | 0x0003          | MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519 | Y | RFC XXXX |   |
+/// | 0x0004          | MLS_256_DHKEMX448_AES256GCM_SHA512_Ed448            | Y | RFC XXXX |   |
+/// | 0x0005          | MLS_256_DHKEMP521_AES256GCM_SHA512_P521             | Y | RFC XXXX |   |
+/// | 0x0006          | MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448     | Y | RFC XXXX |   |
+/// | 0x0007          | MLS_256_DHKEMP384_AES256GCM_SHA384_P384.            | Y | RFC XXXX |   |
+/// | 0x0A0A          | GREASE                                              | Y | RFC XXXX |   |
+/// | 0x1A1A          | GREASE                                              | Y | RFC XXXX |   |
+/// | 0x2A2A          | GREASE                                              | Y | RFC XXXX |   |
+/// | 0x3A3A          | GREASE                                              | Y | RFC XXXX |   |
+/// | 0x4A4A          | GREASE                                              | Y | RFC XXXX |   |
+/// | 0x5A5A          | GREASE                                              | Y | RFC XXXX |   |
+/// | 0x6A6A          | GREASE                                              | Y | RFC XXXX |   |
+/// | 0x7A7A          | GREASE                                              | Y | RFC XXXX |   |
+/// | 0x8A8A          | GREASE                                              | Y | RFC XXXX |   |
+/// | 0x9A9A          | GREASE                                              | Y | RFC XXXX |   |
+/// | 0xAAAA          | GREASE                                              | Y | RFC XXXX |   |
+/// | 0xBABA          | GREASE                                              | Y | RFC XXXX |   |
+/// | 0xCACA          | GREASE                                              | Y | RFC XXXX |   |
+/// | 0xDADA          | GREASE                                              | Y | RFC XXXX |   |
+/// | 0xEAEA          | GREASE                                              | Y | RFC XXXX |   |
+/// | 0xF000 - 0xFFFF | Reserved for Private Use                            | - | RFC XXXX |   |
 #[allow(non_camel_case_types)]
 #[allow(clippy::upper_case_acronyms)]
 #[derive(

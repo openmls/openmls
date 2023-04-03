@@ -181,6 +181,7 @@ pub(super) fn default_extensions() -> Vec<ExtensionType> {
 /// All proposals defined in the MLS spec are considered "default" by the spec.
 pub(super) fn default_proposals() -> Vec<ProposalType> {
     vec![
+        // TODO: Do not send these as default.
         ProposalType::Add,
         ProposalType::Update,
         ProposalType::Remove,

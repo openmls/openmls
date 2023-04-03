@@ -146,7 +146,7 @@ impl ExtensionType {
 /// See the individual extensions for more details on each extension.
 ///
 /// ```c
-/// // draft-ietf-mls-protocol-16
+/// // draft-ietf-mls-protocol-20
 /// struct {
 ///     ExtensionType extension_type;
 ///     opaque extension_data<V>;
