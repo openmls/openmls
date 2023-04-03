@@ -46,7 +46,7 @@ pub struct MlsGroupConfig {
     /// Maximum number of past epochs for which application messages
     /// can be decrypted. The default is 0.
     pub(crate) max_past_epochs: usize,
-    /// Number of resumtion secrets to keep
+    /// Maximum number of resumption PSKs to keep.
     pub(crate) number_of_resumption_psks: usize,
     /// Flag to indicate the Ratchet Tree Extension should be used
     pub(crate) use_ratchet_tree_extension: bool,
@@ -83,7 +83,7 @@ impl MlsGroupConfig {
         self.max_past_epochs
     }
 
-    /// Returns the [`MlsGroupConfig`] number of resumption psks.
+    /// Returns the [`MlsGroupConfig`] max resumption psks.
     pub fn number_of_resumption_psks(&self) -> usize {
         self.number_of_resumption_psks
     }
@@ -166,7 +166,7 @@ impl MlsGroupConfigBuilder {
         self
     }
 
-    /// Sets the `number_of_resumption_psks` property of the MlsGroupConfig.
+    /// Sets the `max_resumption_psks` property of the MlsGroupConfig.
     pub fn number_of_resumption_psks(mut self, number_of_resumption_psks: usize) -> Self {
         self.config.number_of_resumption_psks = number_of_resumption_psks;
         self

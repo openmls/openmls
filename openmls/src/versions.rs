@@ -11,7 +11,8 @@ use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 /// # Protocol Version
 ///
-/// ```text
+/// ```c
+/// // draft-ietf-mls-protocol-20
 /// enum {
 ///     reserved(0),
 ///     mls10(1),

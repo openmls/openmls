@@ -11,6 +11,18 @@ use crate::{
     versions::ProtocolVersion,
 };
 
+/// ```c
+/// // draft-ietf-mls-protocol-20
+/// struct {
+///     ProtocolVersion version = mls10;
+///     CipherSuite cipher_suite;
+///     opaque group_id<V>;
+///     uint64 epoch;
+///     opaque tree_hash<V>;
+///     opaque confirmed_transcript_hash<V>;
+///     Extension extensions<V>;
+/// } GroupContext;
+/// ```
 #[derive(
     Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]

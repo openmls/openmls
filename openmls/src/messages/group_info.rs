@@ -116,8 +116,7 @@ impl From<VerifiableGroupInfo> for GroupInfo {
 /// Note: The struct is split into a `GroupInfoTBS` payload and a signature.
 ///
 /// ```c
-/// // draft-ietf-mls-protocol-16
-///
+/// // draft-ietf-mls-protocol-20
 /// struct {
 ///     GroupContext group_context;
 ///     Extension extensions<V>;
@@ -186,8 +185,7 @@ impl From<GroupInfo> for GroupContext {
 /// GroupInfo (To Be Signed)
 ///
 /// ```c
-/// // draft-ietf-mls-protocol-16
-///
+/// // draft-ietf-mls-protocol-20
 /// struct {
 ///     GroupContext group_context;
 ///     Extension extensions<V>;

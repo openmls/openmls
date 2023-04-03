@@ -46,6 +46,11 @@ use openmls_traits::random::OpenMlsRand;
 pub use proposals::*;
 
 /// A group ID. The group ID is chosen by the creator of the group and should be globally unique.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-20
+/// opaque<V>;
+/// ```
 #[derive(
     Clone,
     Debug,
@@ -100,6 +105,11 @@ impl GroupId {
 
 /// Group epoch. Internally this is stored as a `u64`.
 /// The group epoch is incremented with every valid Commit that is merged into the group state.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-20
+/// uint64
+/// ```
 #[derive(
     Clone,
     Copy,

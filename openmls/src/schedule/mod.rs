@@ -295,6 +295,11 @@ impl InitSecret {
     }
 
     /// Create an `InitSecret` and the corresponding `kem_output` from a group info.
+    /// ```text
+    /// draft-20
+    /// kem_output, context = SetupBaseS(external_pub, "")
+    /// init_secret = context.export("MLS 1.0 external init secret", KDF.Nh)
+    /// ```
     pub(crate) fn from_group_context(
         backend: &impl OpenMlsCryptoProvider,
         group_context: &GroupContext,
@@ -318,6 +323,12 @@ impl InitSecret {
     }
 
     /// Create an `InitSecret` from a `kem_output`.
+    ///
+    /// ```text
+    /// draft-20
+    /// context = SetupBaseR(kem_output, external_priv, "")
+    /// init_secret = context.export("MLS 1.0 external init secret", KDF.Nh)
+    /// ```
     pub(crate) fn from_kem_output(
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,

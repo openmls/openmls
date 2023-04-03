@@ -2,7 +2,10 @@ use super::*;
 
 /// 7.1 Content Authentication
 ///
+/// ```c
+/// // draft-ietf-mls-protocol-20
 /// opaque MAC<V>;
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize)]
 pub(crate) struct Mac {
     pub(crate) mac_value: VLBytes,
