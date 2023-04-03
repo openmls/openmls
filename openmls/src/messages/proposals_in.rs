@@ -72,7 +72,7 @@ impl ProposalIn {
             ProposalIn::Add(_) => ProposalType::Add,
             ProposalIn::Update(_) => ProposalType::Update,
             ProposalIn::Remove(_) => ProposalType::Remove,
-            ProposalIn::PreSharedKey(_) => ProposalType::Presharedkey,
+            ProposalIn::PreSharedKey(_) => ProposalType::PreSharedKey,
             ProposalIn::ReInit(_) => ProposalType::Reinit,
             ProposalIn::ExternalInit(_) => ProposalType::ExternalInit,
             ProposalIn::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,

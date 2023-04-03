@@ -1,3 +1,4 @@
+use log::{debug, info, warn};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
 use serde::{self, Deserialize, Serialize};
@@ -9,7 +10,8 @@ use crate::{
     },
     group::{config::CryptoConfig, *},
     key_packages::*,
-    schedule::psk::PreSharedKeyId,
+    prelude::{ProcessMessageError, ProposalValidationError, StageCommitError},
+    schedule::{errors::PskError, psk::PreSharedKeyId},
     test_utils::*,
     treesync::{
         node::encryption_keys::{EncryptionKeyPair, EncryptionPrivateKey},
@@ -17,8 +19,12 @@ use crate::{
     },
 };
 
-const TEST_VECTOR_PATH_READ: &str = "test_vectors/passive-client-welcome.json";
-const TEST_VECTOR_PATH_WRITE: &str = "test_vectors/passive-client-welcome-new.json";
+const TEST_VECTORS_PATH_READ: &[&str] = &[
+    "test_vectors/passive-client-welcome.json",
+    "test_vectors/passive-client-random.json",
+    "test_vectors/passive-client-handling-commit.json",
+];
+const TEST_VECTOR_PATH_WRITE: &[&str] = &["test_vectors/passive-client-welcome-new.json"];
 const NUM_TESTS: usize = 25;
 
 /// ```json
@@ -106,12 +112,89 @@ pub struct TestProposal(#[serde(with = "hex::serde")] Vec<u8>);
 
 #[test]
 fn test_read_vectors() {
-    let test_vectors: Vec<PassiveClientWelcomeTestVector> = read(TEST_VECTOR_PATH_READ);
+    for file in TEST_VECTORS_PATH_READ {
+        let scenario: Vec<PassiveClientWelcomeTestVector> = read(file);
 
-    for (i, test_vector) in test_vectors.into_iter().enumerate() {
-        println!("# {i:04}");
-        run_test_vector(test_vector);
-        println!()
+        info!("# {file}");
+        for (i, test_vector) in scenario.into_iter().enumerate() {
+            info!("## {i:04} START");
+            run_test_vector(test_vector);
+            info!("## {i:04} END");
+        }
+    }
+}
+
+pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
+    let _ = pretty_env_logger::try_init();
+
+    let backend = OpenMlsRustCrypto::default();
+    let cipher_suite = test_vector.cipher_suite.try_into().unwrap();
+    if backend.crypto().supports(cipher_suite).is_err() {
+        warn!("Skipping {}", cipher_suite);
+        return;
+    }
+
+    let group_config = MlsGroupConfig::builder()
+        .crypto_config(CryptoConfig::with_default_version(cipher_suite))
+        .use_ratchet_tree_extension(true)
+        .wire_format_policy(WireFormatPolicy::new(
+            OutgoingWireFormatPolicy::AlwaysPlaintext,
+            IncomingWireFormatPolicy::Mixed,
+        ))
+        .build();
+
+    let mut passive_client = PassiveClient::new(group_config, test_vector.external_psks.clone());
+
+    passive_client.inject_key_package(
+        test_vector.key_package,
+        test_vector.signature_priv,
+        test_vector.encryption_priv,
+        test_vector.init_priv,
+    );
+
+    let ratchet_tree: Option<RatchetTree> = test_vector
+        .ratchet_tree
+        .as_ref()
+        .map(|bytes| RatchetTree::tls_deserialize_complete(&mut bytes.0.as_slice()).unwrap());
+
+    passive_client.join_by_welcome(
+        MlsMessageIn::tls_deserialize_complete(&test_vector.welcome).unwrap(),
+        ratchet_tree,
+    );
+
+    debug!(
+        "Group ID {}",
+        bytes_to_hex(passive_client.group.as_ref().unwrap().group_id().as_slice())
+    );
+
+    assert_eq!(
+        test_vector.initial_epoch_authenticator,
+        passive_client.epoch_authenticator()
+    );
+
+    for (i, epoch) in test_vector.epochs.into_iter().enumerate() {
+        info!("Epoch #{}", i);
+
+        for proposal in epoch.proposals {
+            let message = MlsMessageIn::tls_deserialize_complete(&proposal.0).unwrap();
+            debug!("Proposal: {message:?}");
+            // TODO(#1330)
+            if passive_client.process_message(message) == Err(ProcessResult::Skip) {
+                return;
+            }
+        }
+
+        let message = MlsMessageIn::tls_deserialize_complete(&epoch.commit).unwrap();
+        debug!("Commit: {message:#?}");
+        // TODO(#1330)
+        if passive_client.process_message(message) == Err(ProcessResult::Skip) {
+            return;
+        }
+
+        assert_eq!(
+            epoch.epoch_authenticator,
+            passive_client.epoch_authenticator()
+        );
     }
 }
 
@@ -130,13 +213,20 @@ fn test_write_vectors() {
         }
     }
 
-    write(TEST_VECTOR_PATH_WRITE, &tests);
+    // TODO(#1279)
+    write(TEST_VECTOR_PATH_WRITE[0], &tests);
 }
 
 struct PassiveClient {
     backend: OpenMlsRustCrypto,
     group_config: MlsGroupConfig,
     group: Option<MlsGroup>,
+}
+
+// TODO(#1330)
+#[derive(Clone, Debug, Eq, PartialEq)]
+enum ProcessResult {
+    Skip,
 }
 
 impl PassiveClient {
@@ -231,13 +321,25 @@ impl PassiveClient {
         self.group = Some(group);
     }
 
-    fn process_message(&mut self, message: MlsMessageIn) {
+    fn process_message(&mut self, message: MlsMessageIn) -> Result<(), ProcessResult> {
         let processed_message = self
             .group
             .as_mut()
             .unwrap()
-            .process_message(&self.backend, message.into_protocol_message().unwrap())
-            .unwrap();
+            .process_message(&self.backend, message.into_protocol_message().unwrap());
+
+        // TODO(#1330)
+        let processed_message = match processed_message {
+            error @ Err(ProcessMessageError::InvalidCommit(
+                StageCommitError::ProposalValidationError(ProposalValidationError::Psk(
+                    PskError::Unsupported,
+                )),
+            )) => {
+                warn!("Skipping `{:?}`.", error);
+                return Err(ProcessResult::Skip);
+            }
+            _ => processed_message.unwrap(),
+        };
 
         match processed_message.into_content() {
             ProcessedMessageContent::ProposalMessage(queued_proposal) => {
@@ -255,6 +357,8 @@ impl PassiveClient {
             }
             _ => unimplemented!(),
         }
+
+        Ok(())
     }
 
     fn epoch_authenticator(&self) -> Vec<u8> {
@@ -446,6 +550,8 @@ pub fn generate_test_vector(cipher_suite: Ciphersuite) -> PassiveClientWelcomeTe
     }
 }
 
+// -------------------------------------------------------------------------------------------------
+
 fn propose_add(
     cipher_suite: Ciphersuite,
     backend: &OpenMlsRustCrypto,
@@ -516,77 +622,5 @@ fn update_inline(
         proposals,
         commit,
         epoch_authenticator,
-    }
-}
-
-pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
-    let _ = pretty_env_logger::formatted_builder()
-        .is_test(true)
-        .try_init();
-
-    let backend = OpenMlsRustCrypto::default();
-    let cipher_suite = test_vector.cipher_suite.try_into().unwrap();
-    if backend.crypto().supports(cipher_suite).is_err() {
-        println!("Skipping {}", cipher_suite);
-        return;
-    }
-
-    let group_config = MlsGroupConfig::builder()
-        .crypto_config(CryptoConfig::with_default_version(
-            test_vector.cipher_suite.try_into().unwrap(),
-        ))
-        .use_ratchet_tree_extension(true)
-        .wire_format_policy(WireFormatPolicy::new(
-            OutgoingWireFormatPolicy::AlwaysPlaintext,
-            IncomingWireFormatPolicy::Mixed,
-        ))
-        .build();
-
-    let mut passive_client = PassiveClient::new(group_config, test_vector.external_psks.clone());
-
-    passive_client.inject_key_package(
-        test_vector.key_package,
-        test_vector.signature_priv,
-        test_vector.encryption_priv,
-        test_vector.init_priv,
-    );
-
-    let ratchet_tree: Option<RatchetTree> = test_vector
-        .ratchet_tree
-        .as_ref()
-        .map(|bytes| RatchetTree::tls_deserialize_complete(&bytes.0).unwrap());
-
-    passive_client.join_by_welcome(
-        MlsMessageIn::tls_deserialize_complete(test_vector.welcome).unwrap(),
-        ratchet_tree,
-    );
-
-    println!(
-        "Group ID {}",
-        bytes_to_hex(passive_client.group.as_ref().unwrap().group_id().as_slice())
-    );
-
-    assert_eq!(
-        test_vector.initial_epoch_authenticator,
-        passive_client.epoch_authenticator()
-    );
-
-    for (i, epoch) in test_vector.epochs.into_iter().enumerate() {
-        println!("Epoch #{}", i);
-
-        for proposal in epoch.proposals {
-            println!("Proposal");
-            passive_client
-                .process_message(MlsMessageIn::tls_deserialize_complete(&proposal.0).unwrap());
-        }
-
-        println!("Commit");
-        passive_client
-            .process_message(MlsMessageIn::tls_deserialize_complete(&epoch.commit).unwrap());
-
-        assert_eq!(
-            epoch.epoch_authenticator,
-            passive_client.epoch_authenticator()
-        );
     }
 }

@@ -184,7 +184,7 @@ pub(super) fn default_proposals() -> Vec<ProposalType> {
         ProposalType::Add,
         ProposalType::Update,
         ProposalType::Remove,
-        ProposalType::Presharedkey,
+        ProposalType::PreSharedKey,
         ProposalType::Reinit,
         ProposalType::GroupContextExtensions,
     ]

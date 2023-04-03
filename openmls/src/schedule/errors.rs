@@ -3,7 +3,10 @@
 use openmls_traits::types::CryptoError;
 use thiserror::Error;
 
-use crate::error::LibraryError;
+use crate::{
+    error::LibraryError,
+    schedule::psk::{PreSharedKeyId, PskType, ResumptionPskUsage},
+};
 
 /// PSK secret error
 #[derive(Error, Debug, PartialEq, Clone)]
@@ -20,6 +23,40 @@ pub enum PskError {
     /// Failed to write PSK into keystore.
     #[error("Failed to write PSK into keystore.")]
     KeyStore,
+    /// Type mismatch.
+    #[error("Type mismatch. Expected {allowed:?}, got {got:?}.")]
+    TypeMismatch {
+        /// Allowed PSK types.
+        allowed: Vec<PskType>,
+        /// Got PSK type.
+        got: PskType,
+    },
+    /// Usage mismatch.
+    #[error("Usage mismatch. Expected either of `{allowed:?}`, got `{got:?}`.")]
+    UsageMismatch {
+        /// Allowed PSK types.
+        allowed: Vec<ResumptionPskUsage>,
+        /// Got PSK type.
+        got: ResumptionPskUsage,
+    },
+    /// Nonce length mismatch.
+    #[error("Nonce length mismatch. Expected either of `{expected:?}`, got `{got:?}`.")]
+    NonceLengthMismatch {
+        /// Expected nonce length.
+        expected: usize,
+        /// Got nonce length.
+        got: usize,
+    },
+    /// Duplicate PSK ID.
+    #[error("Duplicate PSK ID. First detected duplicate is `{first:?}`.")]
+    Duplicate {
+        /// First detected duplicate.
+        first: PreSharedKeyId,
+    },
+    /// TODO(#1330): Remove this when #1330 is finished.
+    /// Unsupported.
+    #[error("Unsupported.")]
+    Unsupported,
 }
 
 // === Crate ===
