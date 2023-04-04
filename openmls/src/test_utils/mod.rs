@@ -15,7 +15,7 @@ pub use rstest::*;
 pub use rstest_reuse::{self, *};
 use serde::{self, de::DeserializeOwned, Serialize};
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-utils"))]
 use crate::group::tests::utils::CredentialWithKeyAndSigner;
 pub use crate::utils::*;
 use crate::{
@@ -85,8 +85,8 @@ pub fn hex_to_bytes_option(hex: Option<String>) -> Vec<u8> {
 
 // === Convenience functions ===
 
-#[cfg(test)]
-pub(crate) struct GroupCandidate {
+#[cfg(any(test, feature = "test-utils"))]
+pub struct GroupCandidate {
     pub identity: Vec<u8>,
     pub key_package: KeyPackage,
     pub encryption_keypair: EncryptionKeyPair,
@@ -95,8 +95,8 @@ pub(crate) struct GroupCandidate {
     pub credential_with_key_and_signer: CredentialWithKeyAndSigner,
 }
 
-#[cfg(test)]
-pub(crate) fn generate_group_candidate(
+#[cfg(any(test, feature = "test-utils"))]
+pub fn generate_group_candidate(
     identity: &[u8],
     ciphersuite: Ciphersuite,
     backend: Option<&impl OpenMlsCryptoProvider>,

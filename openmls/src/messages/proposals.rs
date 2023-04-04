@@ -301,7 +301,7 @@ impl RemoveProposal {
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 pub struct PreSharedKeyProposal {
-    psk: PreSharedKeyId,
+    pub(crate) psk: PreSharedKeyId,
 }
 
 impl PreSharedKeyProposal {
@@ -408,7 +408,6 @@ pub struct GroupContextExtensionProposal {
 
 impl GroupContextExtensionProposal {
     /// Create a new [`GroupContextExtensionProposal`].
-    #[cfg(test)]
     pub(crate) fn new(extensions: Extensions) -> Self {
         Self { extensions }
     }
@@ -440,7 +439,8 @@ impl GroupContextExtensionProposal {
     PartialEq, Clone, Copy, Debug, TlsSerialize, TlsDeserialize, TlsSize, Serialize, Deserialize,
 )]
 #[repr(u8)]
-pub(crate) enum ProposalOrRefType {
+pub enum ProposalOrRefType {
+    /// A proposal by value.
     Proposal = 1,
     Reference = 2,
 }

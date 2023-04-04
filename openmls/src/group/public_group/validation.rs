@@ -452,7 +452,6 @@ impl PublicGroup {
 
     /// Returns a [`LeafNodeValidationError`] if an [`ExtensionType`]
     /// in `extensions` is not supported by a leaf in this tree.
-    #[cfg(test)]
     pub(crate) fn check_extension_support(
         &self,
         extensions: &[crate::extensions::ExtensionType],

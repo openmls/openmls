@@ -139,7 +139,7 @@ impl From<HpkePublicKey> for EncryptionKey {
 
 #[derive(Debug, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
-pub(crate) struct EncryptionKeyPair {
+pub struct EncryptionKeyPair {
     public_key: EncryptionKey,
     private_key: EncryptionPrivateKey,
 }

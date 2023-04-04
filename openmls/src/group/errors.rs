@@ -387,7 +387,7 @@ pub enum ExternalCommitValidationError {
 
 /// Create add proposal error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub(crate) enum CreateAddProposalError {
+pub enum CreateAddProposalError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),

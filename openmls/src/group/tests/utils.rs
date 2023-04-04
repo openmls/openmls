@@ -320,9 +320,9 @@ fn test_setup(backend: &impl OpenMlsCryptoProvider) {
 }
 
 #[derive(Clone)]
-pub(crate) struct CredentialWithKeyAndSigner {
-    pub(crate) credential_with_key: CredentialWithKey,
-    pub(crate) signer: SignatureKeyPair,
+pub struct CredentialWithKeyAndSigner {
+    pub credential_with_key: CredentialWithKey,
+    pub signer: SignatureKeyPair,
 }
 
 // Helper function to generate a CredentialBundle

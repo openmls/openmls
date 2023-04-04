@@ -706,7 +706,7 @@ impl KeyPackageBundle {
     }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-utils"))]
 impl KeyPackageBundle {
     pub(crate) fn new(
         backend: &impl OpenMlsCryptoProvider,

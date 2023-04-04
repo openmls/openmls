@@ -240,7 +240,7 @@ impl fmt::Display for RatchetTree {
 /// merging a diff.
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq, Clone))]
-pub(crate) struct TreeSync {
+pub struct TreeSync {
     tree: MlsBinaryTree<TreeSyncLeafNode, TreeSyncParentNode>,
     tree_hash: Vec<u8>,
 }
@@ -312,7 +312,7 @@ impl TreeSync {
     /// A helper function that generates a [`TreeSync`] instance from the given
     /// slice of nodes. It verifies that the provided encryption key is present
     /// in the tree and that the invariants documented in [`TreeSync`] hold.
-    pub(crate) fn from_ratchet_tree(
+    pub fn from_ratchet_tree(
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
         ratchet_tree: RatchetTree,
@@ -507,7 +507,7 @@ impl TreeSync {
 
     /// Return a reference to the leaf at the given `LeafNodeIndex` or `None` if the
     /// leaf is blank.
-    pub(crate) fn leaf(&self, leaf_index: LeafNodeIndex) -> Option<&OpenMlsLeafNode> {
+    pub fn leaf(&self, leaf_index: LeafNodeIndex) -> Option<&OpenMlsLeafNode> {
         let tsn = self.tree.leaf(leaf_index);
         tsn.node().as_ref()
     }

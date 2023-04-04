@@ -28,7 +28,7 @@ mod test_proposal_validation;
 mod test_remove_operation;
 #[cfg(test)]
 mod test_wire_format_policy;
-#[cfg(test)]
-pub(crate) mod utils;
+#[cfg(any(test, feature = "test-utils"))]
+pub mod utils;
 
 pub(crate) mod tree_printing;

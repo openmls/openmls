@@ -152,7 +152,6 @@ impl MlsMessageIn {
         }
     }
 
-    #[cfg(any(feature = "test-utils", test))]
     pub fn into_verifiable_group_info(self) -> Option<VerifiableGroupInfo> {
         match self.body {
             MlsMessageInBody::GroupInfo(group_info) => Some(group_info),

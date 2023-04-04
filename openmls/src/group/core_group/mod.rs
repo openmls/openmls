@@ -401,7 +401,6 @@ impl CoreGroup {
     }
 
     /// Create a `GroupContextExtensions` proposal.
-    #[cfg(test)]
     pub(crate) fn create_group_context_ext_proposal(
         &self,
         framing_parameters: FramingParameters,

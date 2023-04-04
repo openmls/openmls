@@ -141,7 +141,7 @@ pub mod errors;
 
 // Crate
 pub(crate) mod message_secrets;
-pub(crate) mod psk;
+pub mod psk;
 
 // Private
 use errors::*;

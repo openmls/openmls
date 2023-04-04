@@ -70,21 +70,21 @@ impl VerifiableGroupInfo {
     /// Get (unverified) ciphersuite of the verifiable group info.
     ///
     /// Note: This method should only be used when necessary to verify the group info signature.
-    pub(crate) fn ciphersuite(&self) -> Ciphersuite {
+    pub fn ciphersuite(&self) -> Ciphersuite {
         self.payload.group_context.ciphersuite()
     }
 
     /// Get (unverified) signer of the verifiable group info.
     ///
     /// Note: This method should only be used when necessary to verify the group info signature.
-    pub(crate) fn signer(&self) -> LeafNodeIndex {
+    pub fn signer(&self) -> LeafNodeIndex {
         self.payload.signer
     }
 
     /// Get (unverified) extensions of the verifiable group info.
     ///
     /// Note: This method should only be used when necessary to verify the group info signature.
-    pub(crate) fn extensions(&self) -> &Extensions {
+    pub fn extensions(&self) -> &Extensions {
         &self.payload.extensions
     }
 }
@@ -196,7 +196,7 @@ impl From<GroupInfo> for GroupContext {
 /// } GroupInfoTBS;
 /// ```
 #[derive(Debug, PartialEq, Clone, TlsDeserialize, TlsSerialize, TlsSize)]
-pub(crate) struct GroupInfoTBS {
+pub struct GroupInfoTBS {
     group_context: GroupContext,
     extensions: Extensions,
     confirmation_tag: ConfirmationTag,
