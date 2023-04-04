@@ -6,7 +6,7 @@ use public_group::diff::{apply_proposals::ApplyProposalsValues, StagedPublicGrou
 
 use super::{super::errors::*, proposals::ProposalStore, *};
 use crate::{
-    framing::mls_auth_content::AuthenticatedContent,
+    framing::mls_auth_content::AuthenticatedContent, test_utils::bytes_to_hex,
     treesync::node::encryption_keys::EncryptionKeyPair,
 };
 
@@ -37,11 +37,11 @@ impl CoreGroup {
             apply_proposals_values.external_init_proposal_option
         {
             // Decrypt the content and derive the external init secret.
-            let external_priv = epoch_secrets
+            let external_keypair = epoch_secrets
                 .external_secret()
-                .derive_external_keypair(backend.crypto(), self.ciphersuite())
-                .private
-                .into();
+                .derive_external_keypair(backend.crypto(), self.ciphersuite());
+            let external_pub = external_keypair.public;
+            let external_priv = external_keypair.private.into();
             let init_secret = InitSecret::from_kem_output(
                 backend,
                 self.ciphersuite(),
@@ -49,37 +49,59 @@ impl CoreGroup {
                 &external_priv,
                 external_init_proposal.kem_output(),
             )?;
-            JoinerSecret::new(
-                backend,
-                commit_secret,
-                &init_secret,
-                serialized_provisional_group_context,
-            )
-            .map_err(LibraryError::unexpected_crypto_error)?
+            trace!(
+                "Using `external_secret` (`{:x?}`), (`external_priv` (`{:x?}`), `external_pub` (`{:x?}`)) and `kem_output` (`{:x?}`) to obtain (external) `init_secret` (`{:x?}`).",
+                epoch_secrets.external_secret().as_slice(),
+                external_priv.as_slice(),
+                external_pub.as_slice(),
+                external_init_proposal.kem_output(),
+                init_secret.as_slice()
+            );
+
+            let ctx = serialized_provisional_group_context;
+
+            let ct = commit_secret.as_slice().to_vec();
+
+            let joiner_secret = JoinerSecret::new(backend, commit_secret, &init_secret, ctx)
+                .map_err(LibraryError::unexpected_crypto_error)?;
+
+            trace!(
+                "Initializing key schedule with `commit_secret` (`{:x?}`), `init_secret` (`{:x?}`),  `ctx` (`{:x?}`), `joiner_secret` (`{}`)",
+                bytes_to_hex(&ct),
+                bytes_to_hex(init_secret.as_slice()),
+                bytes_to_hex(ctx),
+                bytes_to_hex(joiner_secret.as_slice())
+            );
+
+            // Create key schedule
+            let mut key_schedule =
+                KeySchedule::init(self.ciphersuite(), backend, &joiner_secret, psk_secret)?;
+
+            key_schedule
+                .add_context(backend, ctx)
+                .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
+
+            (joiner_secret, key_schedule)
         } else {
-            JoinerSecret::new(
+            let joiner_secret = JoinerSecret::new(
                 backend,
                 commit_secret,
                 epoch_secrets.init_secret(),
                 serialized_provisional_group_context,
             )
-            .map_err(LibraryError::unexpected_crypto_error)?
+            .map_err(LibraryError::unexpected_crypto_error)?;
+
+            // Create key schedule
+            let mut key_schedule =
+                KeySchedule::init(self.ciphersuite(), backend, &joiner_secret, psk_secret)?;
+
+            key_schedule
+                .add_context(backend, serialized_provisional_group_context)
+                .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
+
+            (joiner_secret, key_schedule)
         };
 
-        // Prepare the PskSecret
-        let psk_secret = PskSecret::new(
-            self.ciphersuite(),
-            backend,
-            &apply_proposals_values.presharedkeys,
-        )?;
-
-        // Create key schedule
-        let mut key_schedule =
-            KeySchedule::init(self.ciphersuite(), backend, &joiner_secret, psk_secret)?;
-
-        key_schedule
-            .add_context(backend, serialized_provisional_group_context)
-            .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
         Ok(key_schedule
             .epoch_secrets(backend)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?)
