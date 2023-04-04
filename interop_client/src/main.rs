@@ -1038,6 +1038,83 @@ impl MlsClient for MlsClientImpl {
             "Group context extension is not implemented yet",
         ))
     }
+
+    async fn re_init_commit(
+        &self,
+        _: Request<CommitRequest>,
+    ) -> Result<Response<CommitResponse>, Status> {
+        todo!()
+    }
+
+    async fn handle_pending_re_init_commit(
+        &self,
+        _: Request<HandlePendingCommitRequest>,
+    ) -> Result<Response<HandleReInitCommitResponse>, Status> {
+        todo!()
+    }
+
+    async fn handle_re_init_commit(
+        &self,
+        _: Request<HandleCommitRequest>,
+    ) -> Result<Response<HandleReInitCommitResponse>, Status> {
+        todo!()
+    }
+
+    async fn re_init_welcome(
+        &self,
+        _: Request<ReInitWelcomeRequest>,
+    ) -> Result<Response<CreateSubgroupResponse>, Status> {
+        todo!()
+    }
+
+    async fn handle_re_init_welcome(
+        &self,
+        _: Request<HandleReInitWelcomeRequest>,
+    ) -> Result<Response<JoinGroupResponse>, Status> {
+        todo!()
+    }
+
+    async fn create_branch(
+        &self,
+        _: Request<CreateBranchRequest>,
+    ) -> Result<Response<CreateSubgroupResponse>, Status> {
+        todo!()
+    }
+
+    async fn handle_branch(
+        &self,
+        _: Request<HandleBranchRequest>,
+    ) -> Result<Response<HandleBranchResponse>, Status> {
+        todo!()
+    }
+
+    async fn new_member_add_proposal(
+        &self,
+        _: Request<NewMemberAddProposalRequest>,
+    ) -> Result<Response<NewMemberAddProposalResponse>, Status> {
+        todo!()
+    }
+
+    async fn create_external_signer(
+        &self,
+        _: Request<CreateExternalSignerRequest>,
+    ) -> Result<Response<CreateExternalSignerResponse>, Status> {
+        todo!()
+    }
+
+    async fn add_external_signer(
+        &self,
+        _: Request<AddExternalSignerRequest>,
+    ) -> Result<Response<ProposalResponse>, Status> {
+        todo!()
+    }
+
+    async fn external_signer_proposal(
+        &self,
+        _: Request<ExternalSignerProposalRequest>,
+    ) -> Result<Response<ProposalResponse>, Status> {
+        todo!()
+    }
 }
 
 #[derive(Parser)]
