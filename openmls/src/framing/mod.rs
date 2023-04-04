@@ -40,15 +40,19 @@
 //!  - [`MlsMessageIn`]/[`MlsMessageOut`]: Unified message type for incoming & outgoing MLS messages
 //!  - [`ApplicationMessage`]: Application message received through a [`ProcessedMessage`]
 
-use crate::ciphersuite::*;
-use crate::credentials::*;
-use crate::group::*;
-use crate::messages::{proposals::*, *};
-use crate::schedule::{message_secrets::*, *};
 use serde::{Deserialize, Serialize};
 use tls_codec::*;
 
+use crate::{
+    ciphersuite::*,
+    credentials::*,
+    group::*,
+    messages::{proposals::*, *},
+    schedule::{message_secrets::*, *},
+};
+
 pub(crate) mod codec;
+
 pub(crate) mod message_in;
 pub(crate) mod message_out;
 pub(crate) mod mls_auth_content;
@@ -200,14 +204,14 @@ where
     ///
     /// Note: This function makes sure that the input is fully consumed, i.e., that there is no
     ///       trailing data.
-    fn try_from_bytes(bytes: impl AsRef<[u8]>) -> Result<Self, TlsFromBytesError>;
+    fn tls_deserialize_exact(bytes: impl AsRef<[u8]>) -> Result<Self, TlsFromBytesError>;
 }
 
 impl<T> TlsFromBytes for T
 where
     T: tls_codec::Deserialize,
 {
-    fn try_from_bytes(bytes: impl AsRef<[u8]>) -> Result<T, TlsFromBytesError> {
+    fn tls_deserialize_exact(bytes: impl AsRef<[u8]>) -> Result<T, TlsFromBytesError> {
         let mut input = bytes.as_ref();
         let out = Self::tls_deserialize(&mut input).map_err(TlsFromBytesError::Tls)?;
 

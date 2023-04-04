@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
-use crate::ciphersuite::SignaturePublicKey;
-use crate::credentials::Credential;
+use crate::{ciphersuite::SignaturePublicKey, credentials::Credential};
 
 /// ExternalSender
 ///
@@ -68,11 +67,10 @@ impl SenderExtensionIndex {
 mod test {
     use openmls_basic_credential::SignatureKeyPair;
     use openmls_traits::types::SignatureScheme;
-    use tls_codec::{Deserialize, Serialize};
-
-    use crate::credentials::CredentialType;
+    use tls_codec::Serialize;
 
     use super::*;
+    use crate::{credentials::CredentialType, framing::TlsFromBytes};
 
     #[test]
     fn test_serialize_deserialize() {
@@ -94,11 +92,7 @@ mod test {
 
         for expected in tests {
             let serialized = expected.tls_serialize_detached().unwrap();
-            let serialized = &mut serialized.as_slice();
-
-            let got = ExternalSender::tls_deserialize(serialized).unwrap();
-
-            assert!(serialized.is_empty());
+            let got = ExternalSender::tls_deserialize_exact(serialized).unwrap();
             assert_eq!(expected, got);
         }
     }

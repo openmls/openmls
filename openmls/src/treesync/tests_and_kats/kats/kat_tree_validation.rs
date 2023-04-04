@@ -62,10 +62,10 @@ use std::collections::HashSet;
 
 use ::serde::Deserialize;
 use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsCryptoProvider};
-use tls_codec::Deserialize as TlsDeserialize;
 
 use crate::{
     binary_tree::array_representation::TreeNodeIndex,
+    framing::TlsFromBytes,
     test_utils::*,
     treesync::{RatchetTree, TreeSync},
 };
@@ -97,7 +97,7 @@ fn run_test_vector(test: TestElement, backend: &impl OpenMlsCryptoProvider) -> R
         return Ok(());
     }
 
-    let ratchet_tree = RatchetTree::tls_deserialize(&mut test.tree.as_slice()).unwrap();
+    let ratchet_tree = RatchetTree::tls_deserialize_exact(test.tree).unwrap();
 
     let treesync = TreeSync::from_ratchet_tree(backend, ciphersuite, ratchet_tree.clone())
         .map_err(|e| format!("Error while creating tree sync: {e:?}"))?;

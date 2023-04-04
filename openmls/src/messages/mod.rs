@@ -3,17 +3,6 @@
 //! This module contains the types and implementations for Commit & Welcome messages,
 //! as well as Proposals & the group info used for External Commits.
 
-use crate::{
-    ciphersuite::{hash_ref::KeyPackageRef, *},
-    credentials::CredentialWithKey,
-    error::LibraryError,
-    schedule::{psk::PreSharedKeyId, JoinerSecret},
-    treesync::{
-        node::encryption_keys::{EncryptionKey, EncryptionKeyPair, EncryptionPrivateKey},
-        treekem::{UpdatePath, UpdatePathIn},
-    },
-    versions::ProtocolVersion,
-};
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     types::{Ciphersuite, HpkeCiphertext},
@@ -21,26 +10,32 @@ use openmls_traits::{
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use tls_codec::{Serialize as TlsSerializeTrait, *};
 
-// Private
-use proposals::*;
-use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerializeTrait, *};
+#[cfg(test)]
+use crate::schedule::psk::{ExternalPsk, Psk};
+use crate::{
+    ciphersuite::{hash_ref::KeyPackageRef, *},
+    credentials::CredentialWithKey,
+    error::LibraryError,
+    framing::TlsFromBytes,
+    schedule::{psk::PreSharedKeyId, JoinerSecret},
+    treesync::{
+        node::encryption_keys::{EncryptionKey, EncryptionKeyPair, EncryptionPrivateKey},
+        treekem::{UpdatePath, UpdatePathIn},
+    },
+    versions::ProtocolVersion,
+};
 
-// Public
 pub mod external_proposals;
 pub mod group_info;
 pub mod proposals;
 pub mod proposals_in;
 
-// Tests
 #[cfg(test)]
 mod tests;
-#[cfg(test)]
-use crate::schedule::psk::{ExternalPsk, Psk};
 
-use self::proposals_in::ProposalOrRefIn;
-
-// Public types
+use self::{proposals::*, proposals_in::ProposalOrRefIn};
 
 /// Welcome message
 ///
@@ -379,17 +374,11 @@ impl GroupSecrets {
         )
         .map_err(|_| GroupSecretsError::DecryptionFailed)?;
 
-        let mut group_secrets_plaintext_slice = &mut group_secrets_plaintext.as_slice();
-
-        let group_secrets = GroupSecrets::tls_deserialize(&mut group_secrets_plaintext_slice)
+        // Note: This also checks that no extraneous data was encrypted.
+        let group_secrets = GroupSecrets::tls_deserialize_exact(group_secrets_plaintext)
             .map_err(|_| GroupSecretsError::Malformed)?
             // TODO(#1065)
             .config(ciphersuite, ProtocolVersion::Mls10);
-
-        // Check that no extraneous data was encrypted.
-        if !group_secrets_plaintext_slice.is_empty() {
-            return Err(GroupSecretsError::Malformed);
-        }
 
         Ok(group_secrets)
     }
