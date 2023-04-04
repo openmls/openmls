@@ -1364,7 +1364,7 @@ fn test_valsem107(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             };
 
             ProposalOrRef::Reference(
-                ProposalRef::from_authenticated_content(
+                ProposalRef::from_authenticated_content_by_ref(
                     backend.crypto(),
                     ciphersuite,
                     &authenticated_content,
@@ -2004,7 +2004,7 @@ fn test_valsem401_valsem402(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
                 .write_to_key_store(&bob_backend, ciphersuite, b"irrelevant")
                 .unwrap();
 
-            let psk_proposal = alice_group
+            let (psk_proposal, _) = alice_group
                 .propose_external_psk(
                     &alice_backend,
                     &alice_credential_with_key_and_signer.signer,

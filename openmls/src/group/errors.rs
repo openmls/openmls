@@ -346,7 +346,7 @@ pub enum ProposalValidationError {
     InsufficientCapabilities,
     /// See [`PskError`] for more details.
     #[error(transparent)]
-    Psk(PskError),
+    Psk(#[from] PskError),
 }
 
 /// External Commit validaton error

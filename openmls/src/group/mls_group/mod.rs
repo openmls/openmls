@@ -2,6 +2,10 @@
 //!
 //! This module contains [`MlsGroup`] and its submodules.
 
+use std::io::{Error, Read, Write};
+
+use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider};
+
 use super::proposals::{ProposalStore, QueuedProposal};
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
@@ -18,19 +22,15 @@ use crate::{
         RatchetTree,
     },
 };
-use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider};
-use std::io::{Error, Read, Write};
 
 // Private
 mod application;
 mod creation;
 mod exporting;
-mod resumption;
 mod updates;
 
 use config::*;
 use errors::*;
-use resumption::*;
 use ser::*;
 
 // Crate
@@ -38,7 +38,7 @@ pub(crate) mod config;
 pub(crate) mod errors;
 pub(crate) mod membership;
 pub(crate) mod processing;
-pub(crate) mod psk;
+pub(crate) mod proposal;
 pub(crate) mod ser;
 
 // Tests
@@ -170,8 +170,6 @@ pub struct MlsGroup {
     // The AAD that is used for all outgoing handshake messages. The AAD can be set through
     // `set_aad()`.
     aad: Vec<u8>,
-    // Resumption psk store. This is where the resumption psks are kept in a rollover list.
-    resumption_psk_store: ResumptionPskStore,
     // A variable that indicates the state of the group. See [`MlsGroupState`]
     // for more information.
     group_state: MlsGroupState,

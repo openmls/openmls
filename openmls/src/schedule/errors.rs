@@ -53,10 +53,6 @@ pub enum PskError {
         /// First detected duplicate.
         first: PreSharedKeyId,
     },
-    /// TODO(#1330): Remove this when #1330 is finished.
-    /// Unsupported.
-    #[error("Unsupported.")]
-    Unsupported,
 }
 
 // === Crate ===

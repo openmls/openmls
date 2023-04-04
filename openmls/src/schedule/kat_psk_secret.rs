@@ -36,7 +36,10 @@ use openmls_traits::crypto::OpenMlsCrypto;
 use serde::Deserialize;
 
 use super::psk::{ExternalPsk, PreSharedKeyId, Psk, PskSecret};
-use crate::test_utils::*;
+use crate::{
+    schedule::psk::{load_psks, ResumptionPskStore},
+    test_utils::*,
+};
 
 #[derive(Deserialize)]
 struct PskElement {
@@ -84,7 +87,15 @@ fn run_test_vector(test: TestElement, backend: &impl OpenMlsCryptoProvider) -> R
         })
         .collect::<Vec<_>>();
 
-    let psk_secret = PskSecret::new(ciphersuite, backend, &psk_ids).unwrap();
+    // Prepare the PskSecret
+    let psk_secret = {
+        // TODO
+        let resumption_psk_store = ResumptionPskStore::new(1024);
+
+        let psks = load_psks(backend.key_store(), &resumption_psk_store, &psk_ids).unwrap();
+
+        PskSecret::new(backend, ciphersuite, psks).unwrap()
+    };
 
     if psk_secret.secret().as_slice() == test.psk_secret {
         Ok(())

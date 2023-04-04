@@ -38,6 +38,12 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
             .unwrap();
     }
 
-    let _psk_secret =
-        PskSecret::new(ciphersuite, backend, &psk_ids).expect("Could not calculate PSK secret.");
+    let _psk_secret = {
+        // TODO
+        let resumption_psk_store = ResumptionPskStore::new(1024);
+
+        let psks = load_psks(backend.key_store(), &resumption_psk_store, &psk_ids).unwrap();
+
+        PskSecret::new(backend, ciphersuite, psks).unwrap()
+    };
 }

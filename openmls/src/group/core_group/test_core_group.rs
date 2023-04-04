@@ -177,8 +177,15 @@ fn test_failed_groupinfo_decryption(
     // Now build the welcome message.
     let broken_welcome = Welcome::new(ciphersuite, broken_secrets, encrypted_group_info);
 
-    let error = CoreGroup::new_from_welcome(broken_welcome, None, key_package_bundle, backend)
-        .expect_err("Creation of core group from a broken Welcome was successful.");
+    let error = CoreGroup::new_from_welcome(
+        broken_welcome,
+        None,
+        key_package_bundle,
+        backend,
+        // TODO
+        ResumptionPskStore::new(1024),
+    )
+    .expect_err("Creation of core group from a broken Welcome was successful.");
 
     assert_eq!(
         error,
@@ -219,8 +226,12 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         )
         .expect("Could not create proposal.");
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, update_proposal_bob)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend,
+            update_proposal_bob,
+        )
+        .expect("Could not create QueuedProposal."),
     );
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
@@ -341,9 +352,8 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let preshared_key_id =
         PreSharedKeyId::new(ciphersuite, backend.rand(), Psk::External(external_psk))
             .expect("An unexpected error occured.");
-    let psk_bundle = PskBundle::new(secret).expect("Could not create PskBundle.");
     preshared_key_id
-        .write_to_key_store(backend, ciphersuite, psk_bundle.secret().as_slice())
+        .write_to_key_store(backend, ciphersuite, secret.as_slice())
         .unwrap();
     let mut alice_group = CoreGroup::builder(
         GroupId::random(backend),
@@ -370,11 +380,11 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         .expect("Could not create proposal");
 
     let mut proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
     proposal_store.add(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, psk_proposal)
+        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, psk_proposal)
             .expect("Could not create QueuedProposal."),
     );
     log::info!(" >>> Creating commit ...");
@@ -401,6 +411,8 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         Some(ratchet_tree),
         bob_key_package_bundle,
         backend,
+        // TODO
+        ResumptionPskStore::new(1024),
     )
     .expect("Could not create new group from Welcome");
 
@@ -423,8 +435,12 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         )
         .expect("Could not create proposal.");
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, update_proposal_bob)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend,
+            update_proposal_bob,
+        )
+        .expect("Could not create QueuedProposal."),
     );
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
@@ -464,7 +480,7 @@ fn test_staged_commit_creation(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         )
         .expect("Could not create proposal.");
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
     let params = CreateCommitParams::builder()
@@ -489,6 +505,8 @@ fn test_staged_commit_creation(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         Some(alice_group.public_group().export_ratchet_tree()),
         bob_key_package_bundle,
         backend,
+        // TODO
+        ResumptionPskStore::new(1024),
     )
     .expect("An unexpected error occurred.");
 
@@ -615,7 +633,7 @@ fn test_proposal_application_after_self_was_removed(
         .expect("Could not create proposal");
 
     let bob_add_proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -641,6 +659,8 @@ fn test_proposal_application_after_self_was_removed(
         Some(ratchet_tree),
         bob_kpb,
         backend,
+        // TODO
+        ResumptionPskStore::new(1024),
     )
     .expect("Error joining group.");
 
@@ -670,13 +690,21 @@ fn test_proposal_application_after_self_was_removed(
         .expect("Could not create proposal");
 
     let mut remove_add_proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_remove_proposal)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend,
+            bob_remove_proposal,
+        )
+        .expect("Could not create QueuedProposal."),
     );
 
     remove_add_proposal_store.add(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, charlie_add_proposal)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend,
+            charlie_add_proposal,
+        )
+        .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -712,6 +740,8 @@ fn test_proposal_application_after_self_was_removed(
         Some(ratchet_tree),
         charlie_kpb,
         backend,
+        // TODO
+        ResumptionPskStore::new(1024),
     )
     .expect("Error joining group.");
 

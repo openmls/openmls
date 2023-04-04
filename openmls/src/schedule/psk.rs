@@ -1,5 +1,6 @@
 //! # Preshared keys.
 
+use log::trace;
 use openmls_traits::{
     key_store::{MlsEntity, MlsEntityId, OpenMlsKeyStore},
     random::OpenMlsRand,
@@ -90,21 +91,6 @@ impl ExternalPsk {
 #[derive(Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize)]
 pub(crate) struct PskBundle {
     secret: Secret,
-}
-
-impl PskBundle {
-    /// Return the secret
-    pub(crate) fn secret(&self) -> &Secret {
-        &self.secret
-    }
-}
-
-#[cfg(test)]
-impl PskBundle {
-    /// Create a new bundle
-    pub(crate) fn new(secret: Secret) -> Result<Self, CryptoError> {
-        Ok(Self { secret })
-    }
 }
 
 impl MlsEntity for PskBundle {
@@ -284,6 +270,8 @@ impl PreSharedKeyId {
         self.psk_nonce.as_slice()
     }
 
+    // ----- Key Store -----------------------------------------------------------------------------
+
     /// Save this `PreSharedKeyId` in the keystore.
     ///
     /// Note: The nonce is not saved as it must be unique for each time it's being applied.
@@ -321,6 +309,38 @@ impl PreSharedKeyId {
         psk_id_with_empty_nonce
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)
+    }
+
+    // ----- Validation ----------------------------------------------------------------------------
+
+    pub(crate) fn validate_in_proposal(self, ciphersuite: Ciphersuite) -> Result<Self, PskError> {
+        // ValSem402
+        match self.psk() {
+            Psk::Resumption(resumption_psk) => {
+                if resumption_psk.usage != ResumptionPskUsage::Application {
+                    return Err(PskError::UsageMismatch {
+                        allowed: vec![ResumptionPskUsage::Application],
+                        got: resumption_psk.usage,
+                    });
+                }
+            }
+            Psk::External(_) => {}
+        };
+
+        // ValSem401
+        {
+            let expected_nonce_length = ciphersuite.hash_length();
+            let got_nonce_length = self.psk_nonce().len();
+
+            if expected_nonce_length != got_nonce_length {
+                return Err(PskError::NonceLengthMismatch {
+                    expected: expected_nonce_length,
+                    got: got_nonce_length,
+                });
+            }
+        }
+
+        Ok(self)
     }
 }
 
@@ -377,28 +397,13 @@ impl PskSecret {
     /// psk_secret_[i] = KDF.Extract(psk_input[i-1], psk_secret_[i-1])
     /// psk_secret     = psk_secret[n]
     /// ```
-    pub fn new(
-        ciphersuite: Ciphersuite,
+    pub(crate) fn new(
         backend: &impl OpenMlsCryptoProvider,
-        psk_ids: &[PreSharedKeyId],
+        ciphersuite: Ciphersuite,
+        psks: Vec<(&PreSharedKeyId, Secret)>,
     ) -> Result<Self, PskError> {
         // Check that we don't have too many PSKs
-        let num_psks = psk_ids.len();
-        if num_psks > u16::MAX as usize {
-            return Err(PskError::TooManyKeys);
-        }
-        let num_psks = num_psks as u16;
-
-        // Fetch the PskBundles from the key store and make sure we have all of them
-        let mut psk_bundles: Vec<PskBundle> = Vec::new();
-        for psk_id in psk_ids {
-            if let Some(psk_bundle) = backend.key_store().read(&psk_id.keystore_id()?) {
-                psk_bundles.push(psk_bundle);
-            } else {
-                debug_assert!(false, "PSK not found in the key store.");
-                return Err(PskError::KeyNotFound);
-            }
-        }
+        let num_psks = u16::try_from(psks.len()).map_err(|_| PskError::TooManyKeys)?;
 
         let mls_version = ProtocolVersion::default();
 
@@ -407,12 +412,12 @@ impl PskSecret {
         // psk_secret_[0] = 0
         let mut psk_secret = Secret::zero(ciphersuite, mls_version);
 
-        for ((index, psk_bundle), psk_id) in psk_bundles.iter().enumerate().zip(psk_ids) {
+        for (index, (psk_id, psk)) in psks.into_iter().enumerate() {
             // psk_extracted_[i] = KDF.Extract(0, psk_[i])
             let psk_extracted = {
                 let zero_secret = Secret::zero(ciphersuite, mls_version);
                 zero_secret
-                    .hkdf_extract(backend, psk_bundle.secret())
+                    .hkdf_extract(backend, &psk)
                     .map_err(LibraryError::unexpected_crypto_error)?
             };
 
@@ -456,5 +461,86 @@ impl PskSecret {
 impl From<Secret> for PskSecret {
     fn from(secret: Secret) -> Self {
         Self { secret }
+    }
+}
+
+pub(crate) fn load_psks<'p>(
+    key_store: &impl OpenMlsKeyStore,
+    resumption_psk_store: &ResumptionPskStore,
+    psk_ids: &'p [PreSharedKeyId],
+) -> Result<Vec<(&'p PreSharedKeyId, Secret)>, PskError> {
+    let mut psk_bundles = Vec::new();
+
+    for psk_id in psk_ids.iter() {
+        trace!("Trying to load PSK {:?}", psk_id);
+        log_crypto!(trace, "PSK store {:?}", resumption_psk_store);
+
+        match &psk_id.psk {
+            Psk::Resumption(resumption) => {
+                if let Some(psk_bundle) = resumption_psk_store.get(resumption.psk_epoch()) {
+                    // TODO
+                    psk_bundles.push((psk_id, psk_bundle.secret.clone()));
+                } else {
+                    return Err(PskError::KeyNotFound);
+                }
+            }
+            Psk::External(_) => {
+                if let Some(psk_bundle) = key_store.read::<PskBundle>(&psk_id.keystore_id()?) {
+                    psk_bundles.push((psk_id, psk_bundle.secret));
+                } else {
+                    return Err(PskError::KeyNotFound);
+                }
+            }
+        }
+    }
+
+    Ok(psk_bundles)
+}
+
+// ----- ResumptionPskStore ------------------------------------------------------------------------
+
+/// Resumption psks store. This is where the resumption psks are kept in a
+/// rollover list.
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(test, derive(PartialEq))]
+pub(crate) struct ResumptionPskStore {
+    max_number_of_secrets: usize,
+    resumption_psk: Vec<(GroupEpoch, ResumptionPskSecret)>,
+    cursor: usize,
+}
+
+impl ResumptionPskStore {
+    /// Creates a new store with a given maximum size of `number_of_secrets`.
+    pub(crate) fn new(max_number_of_secrets: usize) -> Self {
+        Self {
+            max_number_of_secrets,
+            resumption_psk: vec![],
+            cursor: 0,
+        }
+    }
+
+    /// Adds a new entry to the store.
+    pub(crate) fn add(&mut self, epoch: GroupEpoch, resumption_psk: ResumptionPskSecret) {
+        if self.max_number_of_secrets == 0 {
+            return;
+        }
+        let item = (epoch, resumption_psk);
+        if self.resumption_psk.len() < self.max_number_of_secrets {
+            self.resumption_psk.push(item);
+            self.cursor += 1;
+        } else {
+            self.cursor += 1;
+            self.cursor %= self.resumption_psk.len();
+            self.resumption_psk[self.cursor] = item;
+        }
+    }
+
+    /// Searches an entry for a given epoch number and if found, returns the
+    /// corresponding resumption psk.
+    pub(crate) fn get(&self, epoch: GroupEpoch) -> Option<&ResumptionPskSecret> {
+        self.resumption_psk
+            .iter()
+            .find(|&(e, _s)| e == &epoch)
+            .map(|(_e, s)| s)
     }
 }

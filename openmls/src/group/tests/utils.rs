@@ -8,15 +8,19 @@ use std::{cell::RefCell, collections::HashMap};
 
 use config::CryptoConfig;
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_traits::{
-    key_store::OpenMlsKeyStore, signatures::Signer, types::SignatureScheme, OpenMlsCryptoProvider,
-};
+use openmls_traits::{key_store::OpenMlsKeyStore, types::SignatureScheme, OpenMlsCryptoProvider};
 use rand::{rngs::OsRng, RngCore};
-use tls_codec::Serialize;
 
 use crate::{
-    ciphersuite::signable::Signable, credentials::*, framing::*, group::*, key_packages::*,
-    messages::ConfirmationTag, test_utils::*, versions::ProtocolVersion, *,
+    ciphersuite::signature::OpenMlsSignaturePublicKey,
+    credentials::*,
+    framing::*,
+    group::{core_group::create_commit_params::CreateCommitParams, *},
+    key_packages::*,
+    schedule::psk::ResumptionPskStore,
+    test_utils::*,
+    versions::ProtocolVersion,
+    *,
 };
 
 /// Configuration of a client meant to be used in a test setup.
@@ -188,7 +192,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
             let mut proposal_store = ProposalStore::new();
             for proposal in proposal_list {
                 proposal_store.add(
-                    QueuedProposal::from_authenticated_content(
+                    QueuedProposal::from_authenticated_content_by_ref(
                         group_config.ciphersuite,
                         backend,
                         proposal,
@@ -261,6 +265,8 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
                     Some(core_group.public_group().export_ratchet_tree()),
                     key_package_bundle,
                     backend,
+                    // TODO
+                    ResumptionPskStore::new(1024),
                 ) {
                     Ok(group) => group,
                     Err(err) => panic!("Error creating new group from Welcome: {err:?}"),

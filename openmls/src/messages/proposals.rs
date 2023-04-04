@@ -465,7 +465,7 @@ pub(crate) enum ProposalRefError {
 }
 
 impl ProposalRef {
-    pub(crate) fn from_authenticated_content(
+    pub(crate) fn from_authenticated_content_by_ref(
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         authenticated_content: &AuthenticatedContent,

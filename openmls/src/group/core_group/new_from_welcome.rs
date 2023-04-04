@@ -4,6 +4,7 @@ use openmls_traits::key_store::OpenMlsKeyStore;
 use crate::{
     ciphersuite::hash_ref::HashReference,
     group::{core_group::*, errors::WelcomeError},
+    schedule::psk::ResumptionPskStore,
     treesync::{
         errors::{DerivePathError, PublicTreeError},
         node::encryption_keys::EncryptionKeyPair,
@@ -17,6 +18,7 @@ impl CoreGroup {
         ratchet_tree: Option<RatchetTree>,
         key_package_bundle: KeyPackageBundle,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        resumption_psk_store: ResumptionPskStore,
     ) -> Result<Self, WelcomeError<KeyStore::Error>> {
         log::debug!("CoreGroup::new_from_welcome_internal");
 
@@ -60,7 +62,15 @@ impl CoreGroup {
         )?;
 
         // Prepare the PskSecret
-        let psk_secret = PskSecret::new(ciphersuite, backend, &group_secrets.psks)?;
+        let psk_secret = {
+            let psks = load_psks(
+                backend.key_store(),
+                &resumption_psk_store,
+                &group_secrets.psks,
+            )?;
+
+            PskSecret::new(backend, ciphersuite, psks)?
+        };
 
         // Create key schedule
         let mut key_schedule = KeySchedule::init(
@@ -226,6 +236,7 @@ impl CoreGroup {
             own_leaf_index,
             use_ratchet_tree_extension: enable_ratchet_tree_extension,
             message_secrets_store,
+            resumption_psk_store,
         };
         group
             .store_epoch_keypairs(backend, group_keypairs.as_slice())

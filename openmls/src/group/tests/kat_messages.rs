@@ -243,7 +243,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         .unwrap();
 
     let mut proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(
+        QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
             &crypto,
             add_proposal_content.clone(),
@@ -282,6 +282,8 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         Some(alice_group.public_group().export_ratchet_tree()),
         bob_key_package_bundle,
         &crypto,
+        // TODO
+        ResumptionPskStore::new(1024),
     )
     .expect("Error creating receiver group.");
 

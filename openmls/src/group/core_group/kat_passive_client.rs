@@ -141,6 +141,7 @@ pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
             OutgoingWireFormatPolicy::AlwaysPlaintext,
             IncomingWireFormatPolicy::Mixed,
         ))
+        .number_of_resumption_psks(16)
         .build();
 
     let mut passive_client = PassiveClient::new(group_config, test_vector.external_psks.clone());
@@ -178,18 +179,12 @@ pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
         for proposal in epoch.proposals {
             let message = MlsMessageIn::try_from_bytes(&proposal.0).unwrap();
             debug!("Proposal: {message:?}");
-            // TODO(#1330)
-            if passive_client.process_message(message) == Err(ProcessResult::Skip) {
-                return;
-            }
+            passive_client.process_message(message);
         }
 
         let message = MlsMessageIn::try_from_bytes(&epoch.commit).unwrap();
         debug!("Commit: {message:#?}");
-        // TODO(#1330)
-        if passive_client.process_message(message) == Err(ProcessResult::Skip) {
-            return;
-        }
+        passive_client.process_message(message);
 
         assert_eq!(
             epoch.epoch_authenticator,
@@ -221,12 +216,6 @@ struct PassiveClient {
     backend: OpenMlsRustCrypto,
     group_config: MlsGroupConfig,
     group: Option<MlsGroup>,
-}
-
-// TODO(#1330)
-#[derive(Clone, Debug, Eq, PartialEq)]
-enum ProcessResult {
-    Skip,
 }
 
 impl PassiveClient {
@@ -324,25 +313,13 @@ impl PassiveClient {
         self.group = Some(group);
     }
 
-    fn process_message(&mut self, message: MlsMessageIn) -> Result<(), ProcessResult> {
+    fn process_message(&mut self, message: MlsMessageIn) {
         let processed_message = self
             .group
             .as_mut()
             .unwrap()
-            .process_message(&self.backend, message.into_protocol_message().unwrap());
-
-        // TODO(#1330)
-        let processed_message = match processed_message {
-            error @ Err(ProcessMessageError::InvalidCommit(
-                StageCommitError::ProposalValidationError(ProposalValidationError::Psk(
-                    PskError::Unsupported,
-                )),
-            )) => {
-                warn!("Skipping `{:?}`.", error);
-                return Err(ProcessResult::Skip);
-            }
-            _ => processed_message.unwrap(),
-        };
+            .process_message(&self.backend, message.into_protocol_message().unwrap())
+            .unwrap();
 
         match processed_message.into_content() {
             ProcessedMessageContent::ProposalMessage(queued_proposal) => {
@@ -360,8 +337,6 @@ impl PassiveClient {
             }
             _ => unimplemented!(),
         }
-
-        Ok(())
     }
 
     fn epoch_authenticator(&self) -> Vec<u8> {

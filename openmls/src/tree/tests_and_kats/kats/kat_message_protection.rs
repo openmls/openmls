@@ -274,8 +274,12 @@ pub fn run_test_vector(
             .expect("Could not create proposal.");
 
         let proposal_store = ProposalStore::from_queued_proposal(
-            QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
-                .expect("Could not create QueuedProposal."),
+            QueuedProposal::from_authenticated_content_by_ref(
+                ciphersuite,
+                backend,
+                bob_add_proposal,
+            )
+            .expect("Could not create QueuedProposal."),
         );
 
         let params = CreateCommitParams::builder()

@@ -21,7 +21,19 @@ impl CoreGroup {
     ) -> Result<EpochSecrets, StageCommitError> {
         // Check if we need to include the init secret from an external commit
         // we applied earlier or if we use the one from the previous epoch.
-        let joiner_secret = if let Some(ref external_init_proposal) =
+
+        // Prepare the PskSecret
+        let psk_secret = {
+            let psks = load_psks(
+                backend.key_store(),
+                &self.resumption_psk_store,
+                &apply_proposals_values.presharedkeys,
+            )?;
+
+            PskSecret::new(backend, self.ciphersuite(), psks)?
+        };
+
+        let (joiner_secret, mut key_schedule) = if let Some(ref external_init_proposal) =
             apply_proposals_values.external_init_proposal_option
         {
             // Decrypt the content and derive the external init secret.
