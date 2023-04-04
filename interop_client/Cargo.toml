@@ -6,6 +6,10 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+# Forward feature to openmls.
+crypto-debug = ["openmls/crypto-debug"]
+
 [dependencies]
 openmls = { path = "../openmls", features = ["test-utils"]}
 openmls_rust_crypto = { path = "../openmls_rust_crypto" }
