@@ -155,7 +155,7 @@ pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
     let ratchet_tree: Option<RatchetTree> = test_vector
         .ratchet_tree
         .as_ref()
-        .map(|bytes| RatchetTree::tls_deserialize_exact(&mut bytes.0.as_slice()).unwrap());
+        .map(|bytes| RatchetTree::tls_deserialize_exact(bytes.0.as_slice()).unwrap());
 
     passive_client.join_by_welcome(
         MlsMessageIn::tls_deserialize_exact(&test_vector.welcome).unwrap(),
