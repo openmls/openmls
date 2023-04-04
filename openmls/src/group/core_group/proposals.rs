@@ -47,7 +47,7 @@ impl ProposalStore {
         self.queued_proposals.is_empty()
     }
     pub(crate) fn empty(&mut self) {
-        self.queued_proposals = Vec::new();
+        self.queued_proposals.clear();
     }
 
     /// Removes a proposal from the store using its reference. It will return None if it wasn't
