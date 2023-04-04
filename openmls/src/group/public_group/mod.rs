@@ -14,6 +14,7 @@
 #[cfg(test)]
 use std::collections::HashSet;
 
+use log::trace;
 use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 
@@ -35,6 +36,7 @@ use crate::{
         ConfirmationTag, PathSecret,
     },
     schedule::CommitSecret,
+    test_utils::bytes_to_hex,
     treesync::{
         errors::DerivePathError,
         node::{
@@ -113,6 +115,12 @@ impl PublicGroup {
                 .signature_key()
                 .clone()
                 .into_signature_public_key_enriched(ciphersuite.signature_algorithm());
+
+            trace!(
+                "Verifying group info signature. signer_public_key=`{:02x?}`, payload=`{:02x?}`",
+                bytes_to_hex(signer_signature_key.as_slice()),
+                bytes_to_hex(verifiable_group_info.unsigned_payload().unwrap().as_slice()),
+            );
 
             verifiable_group_info
                 .verify(backend.crypto(), &signer_signature_key)

@@ -252,6 +252,11 @@ impl CoreGroup {
             log::error!("Confirmation tag mismatch");
             log_crypto!(trace, "  Got:      {:x?}", received_confirmation_tag);
             log_crypto!(trace, "  Expected: {:x?}", own_confirmation_tag);
+            log_crypto!(
+                trace,
+                "  Used `confirmation_key`: {:x?}",
+                provisional_message_secrets.confirmation_key().as_slice()
+            );
             // TODO: We have tests expecting this error.
             //       They need to be rewritten.
             // debug_assert!(false, "Confirmation tag mismatch");

@@ -536,11 +536,30 @@ impl CoreGroup {
             };
 
             let external_pub_extension = || {
-                let external_pub = self
-                    .group_epoch_secrets()
-                    .external_secret()
+                let external_secret = self.group_epoch_secrets().external_secret();
+                let external_priv = external_secret
+                    .derive_external_keypair(backend.crypto(), self.ciphersuite())
+                    .private;
+                let external_pub = external_secret
                     .derive_external_keypair(backend.crypto(), self.ciphersuite())
                     .public;
+
+                log_crypto!(
+                    trace,
+                    "Using `external_secret`: {:x?}",
+                    external_secret.as_slice()
+                );
+                log_crypto!(
+                    trace,
+                    "Using `external_priv`: {:x?}",
+                    external_priv.as_slice()
+                );
+                log_crypto!(
+                    trace,
+                    "Using `external_pub`: {:x?}",
+                    external_pub.as_slice()
+                );
+
                 Extension::ExternalPub(ExternalPubExtension::new(HpkePublicKey::from(external_pub)))
             };
 

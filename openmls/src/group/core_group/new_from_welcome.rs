@@ -208,6 +208,12 @@ impl CoreGroup {
             log::error!("Confirmation tag mismatch");
             log_crypto!(trace, "  Got:      {:x?}", confirmation_tag);
             log_crypto!(trace, "  Expected: {:x?}", public_group.confirmation_tag());
+            log_crypto!(
+                trace,
+                "  Used `confirmation_key`: {:x?}",
+                message_secrets.confirmation_key().as_slice()
+            );
+
             debug_assert!(false, "Confirmation tag mismatch");
             return Err(WelcomeError::ConfirmationTagMismatch);
         }

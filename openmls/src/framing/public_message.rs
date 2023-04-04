@@ -3,6 +3,7 @@
 //! A PublicMessage is a framing structure for MLS messages. It can contain
 //! Proposals, Commits and application messages.
 
+use log::trace;
 use std::{convert::TryFrom, io::Write};
 
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
@@ -199,6 +200,12 @@ impl<'a> ConfirmedTranscriptHashInput<'a> {
         let serialized: Vec<u8> = self
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;
+
+        trace!(
+            "calculate_confirmed_transcript_hash(): content: {:02x?}, interim: {:02x?}",
+            serialized.as_slice(),
+            interim_transcript_hash
+        );
 
         crypto
             .hash(

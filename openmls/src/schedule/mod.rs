@@ -813,7 +813,11 @@ impl ConfirmationKey {
     ) -> Result<ConfirmationTag, CryptoError> {
         log::debug!("Computing confirmation tag.");
         log_crypto!(trace, "  confirmation key {:x?}", self.secret.as_slice());
-        log_crypto!(trace, "  transcript hash  {:x?}", confirmed_transcript_hash);
+        log_crypto!(
+            trace,
+            "  confirmed transcript hash  {:x?}",
+            confirmed_transcript_hash
+        );
         Ok(ConfirmationTag(Mac::new(
             backend,
             &self.secret,
