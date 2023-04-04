@@ -8,6 +8,7 @@ use tls_codec::{
     Serialize as TlsSerializeTrait, Size, TlsDeserialize, TlsSerialize, TlsSize, VLBytes,
 };
 
+use super::encryption_keys::{EncryptionKey, EncryptionKeyPair};
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::{
@@ -24,8 +25,6 @@ use crate::{
     treesync::errors::{LeafNodeValidationError, LifetimeError},
     versions::ProtocolVersion,
 };
-
-use super::encryption_keys::{EncryptionKey, EncryptionKeyPair};
 
 mod capabilities;
 mod codec;
@@ -806,6 +805,8 @@ impl OpenMlsLeafNode {
             leaf_node_tbs.payload.credential = leaf_node.credential().clone();
             leaf_node_tbs.payload.encryption_key = leaf_node.encryption_key().clone();
         } else if let Some(new_encryption_key) = new_encryption_key.into() {
+            leaf_node_tbs.payload.leaf_node_source = LeafNodeSource::Update;
+
             // If there's no new leaf, the encryption key must be provided
             // explicitly.
             leaf_node_tbs.payload.encryption_key = new_encryption_key;
