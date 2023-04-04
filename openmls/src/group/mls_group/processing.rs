@@ -3,15 +3,14 @@
 use std::mem;
 
 use core_group::staged_commit::StagedCommit;
+use log::trace;
 use openmls_traits::signatures::Signer;
 
-use crate::{
-    group::core_group::create_commit_params::CreateCommitParams, messages::group_info::GroupInfo,
-};
-
-use crate::group::errors::MergeCommitError;
-
 use super::{errors::ProcessMessageError, *};
+use crate::{
+    group::{core_group::create_commit_params::CreateCommitParams, errors::MergeCommitError},
+    messages::group_info::GroupInfo,
+};
 
 impl MlsGroup {
     /// Parses incoming messages from the DS. Checks for syntactic errors and
@@ -141,7 +140,13 @@ impl MlsGroup {
 
         // Extract and store the resumption psk for the current epoch
         let resumption_psk = self.group.group_epoch_secrets().resumption_psk();
-        self.resumption_psk_store
+        trace!(
+            "Adding resumption PSK to store after commit. epoch={:?}, psk={:?}",
+            self.group.context().epoch(),
+            resumption_psk
+        );
+        self.group
+            .resumption_psk_store
             .add(self.group.context().epoch(), resumption_psk.clone());
 
         // Delete own KeyPackageBundles
