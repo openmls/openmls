@@ -74,10 +74,6 @@
 <a href="#74" id="74">74</a>
 <a href="#75" id="75">75</a>
 <a href="#76" id="76">76</a>
-<a href="#77" id="77">77</a>
-<a href="#78" id="78">78</a>
-<a href="#79" id="79">79</a>
-<a href="#80" id="80">80</a>
 </pre><pre class="rust"><code><span class="kw">use </span>tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 <span class="kw">use super</span>::{Deserialize, Serialize};
@@ -112,10 +108,10 @@
 </span><span class="kw">mod </span>test {
     <span class="kw">use </span>openmls_rust_crypto::OpenMlsRustCrypto;
     <span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
-    <span class="kw">use </span>tls_codec::{Deserialize, Serialize};
+    <span class="kw">use </span>tls_codec::Serialize;
 
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use crate</span>::{prelude_test::Secret, versions::ProtocolVersion};
+    <span class="kw">use crate</span>::{framing::TlsFromBytes, prelude_test::Secret, versions::ProtocolVersion};
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_serialize_deserialize() {
@@ -149,11 +145,7 @@
 
         <span class="kw">for </span>expected <span class="kw">in </span>tests {
             <span class="kw">let </span>serialized = expected.tls_serialize_detached().unwrap();
-            <span class="kw">let </span>serialized = <span class="kw-2">&amp;mut </span>serialized.as_slice();
-
-            <span class="kw">let </span>got = ExternalPubExtension::tls_deserialize(serialized).unwrap();
-
-            <span class="macro">assert!</span>(serialized.is_empty());
+            <span class="kw">let </span>got = ExternalPubExtension::tls_deserialize_exact(serialized).unwrap();
             <span class="macro">assert_eq!</span>(expected, got);
         }
     }

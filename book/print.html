@@ -525,7 +525,8 @@ If the Commit message also covers Add Proposals previously received in the epoch
 <p>Processing of incoming messages happens in different phases:</p>
 <h2 id="deserializing-messages"><a class="header" href="#deserializing-messages">Deserializing messages</a></h2>
 <p>Incoming messages can be deserialized from byte slices into an <code>MlsMessageIn</code>:</p>
-<pre><code class="language-rust no_run noplayground">    let mls_message = MlsMessageIn::try_from_bytes(bytes).expect(&quot;Could not deserialize message.&quot;);</code></pre>
+<pre><code class="language-rust no_run noplayground">    let mls_message =
+        MlsMessageIn::tls_deserialize_exact(bytes).expect(&quot;Could not deserialize message.&quot;);</code></pre>
 <p>If the message is malformed, the function will fail with an error.</p>
 <h2 id="processing-messages"><a class="header" href="#processing-messages">Processing messages</a></h2>
 <p>In the next step, the message needs to be processed. If the message was

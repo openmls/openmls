@@ -227,6 +227,10 @@
 <a href="#227" id="227">227</a>
 <a href="#228" id="228">228</a>
 <a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Message framing
 //!
 //! This module contains framing-related operations for MLS messages, including validation operations.
@@ -269,15 +273,19 @@
 //!  - [`MlsMessageIn`]/[`MlsMessageOut`]: Unified message type for incoming &amp; outgoing MLS messages
 //!  - [`ApplicationMessage`]: Application message received through a [`ProcessedMessage`]
 
-</span><span class="kw">use </span><span class="kw">crate</span>::ciphersuite::<span class="kw-2">*</span>;
-<span class="kw">use </span><span class="kw">crate</span>::credentials::<span class="kw-2">*</span>;
-<span class="kw">use </span><span class="kw">crate</span>::group::<span class="kw-2">*</span>;
-<span class="kw">use </span><span class="kw">crate</span>::messages::{proposals::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
-<span class="kw">use </span><span class="kw">crate</span>::schedule::{message_secrets::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
-<span class="kw">use </span>serde::{Deserialize, Serialize};
+</span><span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>tls_codec::<span class="kw-2">*</span>;
 
+<span class="kw">use crate</span>::{
+    ciphersuite::<span class="kw-2">*</span>,
+    credentials::<span class="kw-2">*</span>,
+    group::<span class="kw-2">*</span>,
+    messages::{proposals::<span class="kw-2">*</span>, <span class="kw-2">*</span>},
+    schedule::{message_secrets::<span class="kw-2">*</span>, <span class="kw-2">*</span>},
+};
+
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>codec;
+
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>message_in;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>message_out;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>mls_auth_content;
@@ -429,14 +437,14 @@
     ///
     /// Note: This function makes sure that the input is fully consumed, i.e., that there is no
     ///       trailing data.
-    </span><span class="kw">fn </span>try_from_bytes(bytes: <span class="kw">impl </span>AsRef&lt;[u8]&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, TlsFromBytesError&gt;;
+    </span><span class="kw">fn </span>tls_deserialize_exact(bytes: <span class="kw">impl </span>AsRef&lt;[u8]&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, TlsFromBytesError&gt;;
 }
 
 <span class="kw">impl</span>&lt;T&gt; TlsFromBytes <span class="kw">for </span>T
 <span class="kw">where
     </span>T: tls_codec::Deserialize,
 {
-    <span class="kw">fn </span>try_from_bytes(bytes: <span class="kw">impl </span>AsRef&lt;[u8]&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;T, TlsFromBytesError&gt; {
+    <span class="kw">fn </span>tls_deserialize_exact(bytes: <span class="kw">impl </span>AsRef&lt;[u8]&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;T, TlsFromBytesError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>input = bytes.as_ref();
         <span class="kw">let </span>out = <span class="self">Self</span>::tls_deserialize(<span class="kw-2">&amp;mut </span>input).map_err(TlsFromBytesError::Tls)<span class="question-mark">?</span>;
 
