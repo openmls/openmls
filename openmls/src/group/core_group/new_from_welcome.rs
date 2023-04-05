@@ -18,6 +18,8 @@ impl CoreGroup {
         key_package_bundle: KeyPackageBundle,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
     ) -> Result<Self, WelcomeError<KeyStore::Error>> {
+        let crypto = backend.crypto();
+
         log::debug!("CoreGroup::new_from_welcome_internal");
 
         // Read the encryption key pair from the key store and delete it there.
@@ -36,9 +38,7 @@ impl CoreGroup {
 
         // Find key_package in welcome secrets
         let egs = if let Some(egs) = Self::find_key_package_from_welcome_secrets(
-            key_package_bundle
-                .key_package()
-                .hash_ref(backend.crypto())?,
+            key_package_bundle.key_package().hash_ref(crypto)?,
             welcome.secrets(),
         ) {
             egs
@@ -56,7 +56,7 @@ impl CoreGroup {
             egs.encrypted_group_secrets(),
             welcome.encrypted_group_info(),
             ciphersuite,
-            backend.crypto(),
+            crypto,
         )?;
 
         // Prepare the PskSecret
@@ -65,16 +65,16 @@ impl CoreGroup {
         // Create key schedule
         let mut key_schedule = KeySchedule::init(
             ciphersuite,
-            backend,
+            crypto,
             &group_secrets.joiner_secret,
             psk_secret,
         )?;
 
         // Derive welcome key & nonce from the key schedule
         let (welcome_key, welcome_nonce) = key_schedule
-            .welcome(backend)
+            .welcome(crypto)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?
-            .derive_welcome_key_nonce(backend)
+            .derive_welcome_key_nonce(crypto)
             .map_err(LibraryError::unexpected_crypto_error)?;
 
         let verifiable_group_info = VerifiableGroupInfo::try_from_ciphertext(
@@ -82,7 +82,7 @@ impl CoreGroup {
             &welcome_nonce,
             welcome.encrypted_group_info(),
             &[],
-            backend,
+            crypto,
         )?;
 
         // Make sure that we can support the required capabilities in the group info.
@@ -122,7 +122,7 @@ impl CoreGroup {
         // Since there is currently only the external pub extension, there is no
         // group info extension of interest here.
         let (public_group, _group_info_extensions) = PublicGroup::from_external(
-            backend,
+            crypto,
             ratchet_tree,
             verifiable_group_info,
             ProposalStore::new(),
@@ -153,7 +153,7 @@ impl CoreGroup {
         let group_keypairs = if let Some(path_secret) = path_secret_option {
             let (path_keypairs, _commit_secret) = public_group
                 .derive_path_secrets(
-                    backend,
+                    crypto,
                     ciphersuite,
                     path_secret,
                     welcome_sender_index,
@@ -181,11 +181,11 @@ impl CoreGroup {
 
             // TODO #751: Implement PSK
             key_schedule
-                .add_context(backend, &serialized_group_context)
+                .add_context(crypto, &serialized_group_context)
                 .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 
             let epoch_secrets = key_schedule
-                .epoch_secrets(backend)
+                .epoch_secrets(crypto)
                 .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 
             epoch_secrets.split_secrets(
@@ -198,7 +198,7 @@ impl CoreGroup {
         let confirmation_tag = message_secrets
             .confirmation_key()
             .tag(
-                backend,
+                crypto,
                 public_group.group_context().confirmed_transcript_hash(),
             )
             .map_err(LibraryError::unexpected_crypto_error)?;

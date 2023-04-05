@@ -128,8 +128,10 @@ pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
     let _ = pretty_env_logger::try_init();
 
     let backend = OpenMlsRustCrypto::default();
+    let crypto = backend.crypto();
+
     let cipher_suite = test_vector.cipher_suite.try_into().unwrap();
-    if backend.crypto().supports(cipher_suite).is_err() {
+    if crypto.supports(cipher_suite).is_err() {
         warn!("Skipping {}", cipher_suite);
         return;
     }
@@ -200,14 +202,13 @@ pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
 
 #[test]
 fn test_write_vectors() {
+    let backend = OpenMlsRustCrypto::default();
+    let crypto = backend.crypto();
+
     let mut tests = Vec::new();
 
     for _ in 0..NUM_TESTS {
-        for &ciphersuite in OpenMlsRustCrypto::default()
-            .crypto()
-            .supported_ciphersuites()
-            .iter()
-        {
+        for &ciphersuite in crypto.supported_ciphersuites().iter() {
             let test = generate_test_vector(ciphersuite);
             tests.push(test);
         }
@@ -371,12 +372,13 @@ impl PassiveClient {
 }
 
 pub fn generate_test_vector(cipher_suite: Ciphersuite) -> PassiveClientWelcomeTestVector {
+    let creator_backend = OpenMlsRustCrypto::default();
+    let crypto = creator_backend.crypto();
+
     let group_config = MlsGroupConfig::builder()
         .crypto_config(CryptoConfig::with_default_version(cipher_suite))
         .use_ratchet_tree_extension(true)
         .build();
-
-    let creator_backend = OpenMlsRustCrypto::default();
 
     let creator =
         generate_group_candidate(b"Alice (Creator)", cipher_suite, Some(&creator_backend));
@@ -436,7 +438,7 @@ pub fn generate_test_vector(cipher_suite: Ciphersuite) -> PassiveClientWelcomeTe
 
     let epoch3 = {
         let proposals = vec![propose_remove(
-            &creator_backend,
+            crypto,
             &creator,
             &mut creator_group,
             b"Charlie",
@@ -484,7 +486,7 @@ pub fn generate_test_vector(cipher_suite: Ciphersuite) -> PassiveClientWelcomeTe
 
     let epoch5 = {
         let proposals = vec![
-            propose_remove(&creator_backend, &creator, &mut creator_group, b"Daniel"),
+            propose_remove(crypto, &creator, &mut creator_group, b"Daniel"),
             propose_add(
                 cipher_suite,
                 &creator_backend,
@@ -507,8 +509,8 @@ pub fn generate_test_vector(cipher_suite: Ciphersuite) -> PassiveClientWelcomeTe
 
     let epoch6 = {
         let proposals = vec![
-            propose_remove(&creator_backend, &creator, &mut creator_group, b"Fardi"),
-            propose_remove(&creator_backend, &creator, &mut creator_group, b"Evelin"),
+            propose_remove(crypto, &creator, &mut creator_group, b"Fardi"),
+            propose_remove(crypto, &creator, &mut creator_group, b"Evelin"),
         ];
 
         let commit = commit(&creator_backend, &creator, &mut creator_group);
@@ -553,17 +555,19 @@ pub fn generate_test_vector(cipher_suite: Ciphersuite) -> PassiveClientWelcomeTe
 
 fn propose_add(
     cipher_suite: Ciphersuite,
-    backend: &OpenMlsRustCrypto,
+    backend: &impl OpenMlsCryptoProvider,
     candidate: &GroupCandidate,
     group: &mut MlsGroup,
     add_identity: &[u8],
 ) -> TestProposal {
+    let crypto = backend.crypto();
+
     let add_candidate =
         generate_group_candidate(add_identity, cipher_suite, None::<&OpenMlsRustCrypto>);
 
     let mls_message_out_proposal = group
         .propose_add_member(
-            backend,
+            crypto,
             &candidate.signature_keypair,
             &add_candidate.key_package,
         )
@@ -574,7 +578,7 @@ fn propose_add(
 }
 
 fn propose_remove(
-    backend: &OpenMlsRustCrypto,
+    crypto: &impl OpenMlsCrypto,
     candidate: &GroupCandidate,
     group: &mut MlsGroup,
     remove_identity: &[u8],
@@ -586,7 +590,7 @@ fn propose_remove(
         .index;
 
     let mls_message_out_proposal = group
-        .propose_remove_member(backend, &candidate.signature_keypair, remove)
+        .propose_remove_member(crypto, &candidate.signature_keypair, remove)
         .unwrap();
 
     TestProposal(mls_message_out_proposal.tls_serialize_detached().unwrap())

@@ -27,6 +27,9 @@ use crate::{
 /// This tests serializing/deserializing PublicMessage
 #[apply(ciphersuites_and_backends)]
 fn codec_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+    let rand = backend.rand();
+
     let (_credential, signature_keys) = test_utils::new_credential(
         backend,
         b"Creator",
@@ -36,7 +39,7 @@ fn codec_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     let sender = Sender::build_member(LeafNodeIndex::new(987543210));
     let group_context = GroupContext::new(
         ciphersuite,
-        GroupId::random(backend),
+        GroupId::random(rand),
         1,
         vec![],
         vec![],
@@ -48,7 +51,7 @@ fn codec_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         .expect("An unexpected error occurred.");
     let signature_input = FramedContentTbs::new(
         WireFormat::PublicMessage,
-        GroupId::random(backend),
+        GroupId::random(rand),
         1,
         sender,
         vec![1, 2, 3].into(),
@@ -61,10 +64,9 @@ fn codec_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         .into();
 
     let membership_key = MembershipKey::from_secret(
-        Secret::random(ciphersuite, backend, None /* MLS version */)
-            .expect("Not enough randomness."),
+        Secret::random(ciphersuite, None /* MLS version */).expect("Not enough randomness."),
     );
-    orig.set_membership_tag(backend, &membership_key, &serialized_context)
+    orig.set_membership_tag(crypto, &membership_key, &serialized_context)
         .expect("Error setting membership tag.");
 
     let enc = orig
@@ -79,6 +81,9 @@ fn codec_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 /// This tests serializing/deserializing PrivateMessage
 #[apply(ciphersuites_and_backends)]
 fn codec_ciphertext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+    let rand = backend.rand();
+
     let (_credential, signature_keys) = test_utils::new_credential(
         backend,
         b"Creator",
@@ -100,7 +105,7 @@ fn codec_ciphertext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .expect("An unexpected error occurred.");
     let signature_input = FramedContentTbs::new(
         WireFormat::PrivateMessage,
-        GroupId::random(backend),
+        GroupId::random(rand),
         1,
         sender,
         vec![1, 2, 3].into(),
@@ -113,8 +118,8 @@ fn codec_ciphertext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     let mut key_schedule = KeySchedule::init(
         ciphersuite,
-        backend,
-        &JoinerSecret::random(ciphersuite, backend, ProtocolVersion::default()),
+        crypto,
+        &JoinerSecret::random(ciphersuite, ProtocolVersion::default()),
         PskSecret::from(Secret::zero(ciphersuite, ProtocolVersion::Mls10)),
     )
     .expect("Could not create KeySchedule.");
@@ -124,15 +129,15 @@ fn codec_ciphertext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .expect("Could not serialize group context.");
 
     key_schedule
-        .add_context(backend, &serialized_group_context)
+        .add_context(crypto, &serialized_group_context)
         .expect("Could not add context to key schedule");
 
-    let mut message_secrets = MessageSecrets::random(ciphersuite, backend, LeafNodeIndex::new(0));
+    let mut message_secrets = MessageSecrets::random(ciphersuite, rand, LeafNodeIndex::new(0));
 
     let orig = PrivateMessage::encrypt_with_different_header(
         &plaintext,
         ciphersuite,
-        backend,
+        crypto,
         MlsMessageHeader {
             group_id: group_context.group_id().clone(),
             epoch: group_context.epoch(),
@@ -156,11 +161,14 @@ fn codec_ciphertext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 /// This tests the correctness of wire format checks
 #[apply(ciphersuites_and_backends)]
 fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+    let rand = backend.rand();
+
     let configuration = &SenderRatchetConfiguration::default();
     let (plaintext, _credential, _keys) =
         create_content(ciphersuite, WireFormat::PrivateMessage, backend);
 
-    let mut message_secrets = MessageSecrets::random(ciphersuite, backend, LeafNodeIndex::new(0));
+    let mut message_secrets = MessageSecrets::random(ciphersuite, rand, LeafNodeIndex::new(0));
     let encryption_secret_bytes = backend
         .rand()
         .random_vec(ciphersuite.hash_length())
@@ -192,7 +200,7 @@ fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
     let ciphertext: PrivateMessageIn = PrivateMessage::encrypt_with_different_header(
         &plaintext,
         ciphersuite,
-        backend,
+        crypto,
         MlsMessageHeader {
             group_id: plaintext.group_id().clone(),
             epoch: plaintext.epoch(),
@@ -209,12 +217,12 @@ fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
     let sender_secret_tree = message_secrets.replace_secret_tree(receiver_secret_tree);
 
     let sender_data = ciphertext
-        .sender_data(&message_secrets, backend, ciphersuite)
+        .sender_data(&message_secrets, crypto, ciphersuite)
         .expect("Could not decrypt sender data.");
     let verifiable_plaintext = ciphertext
         .to_verifiable_content(
             ciphersuite,
-            backend,
+            crypto,
             &mut message_secrets,
             sender_index,
             configuration,
@@ -241,7 +249,7 @@ fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
     let ciphertext: PrivateMessageIn = PrivateMessage::encrypt_without_check(
         &plaintext,
         ciphersuite,
-        backend,
+        crypto,
         &mut message_secrets,
         0,
     )
@@ -252,12 +260,12 @@ fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
     let sender_secret_tree = message_secrets.replace_secret_tree(receiver_secret_tree);
 
     let sender_data = ciphertext
-        .sender_data(&message_secrets, backend, ciphersuite)
+        .sender_data(&message_secrets, crypto, ciphersuite)
         .expect("Could not decrypt sender data.");
     let verifiable_plaintext = ciphertext
         .to_verifiable_content(
             ciphersuite,
-            backend,
+            crypto,
             &mut message_secrets,
             sender_index,
             configuration,
@@ -267,7 +275,7 @@ fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
 
     // We expect the signature to fail since the original content was signed with a different wire format.
     let result: Result<AuthenticatedContentIn, SignatureError> =
-        verifiable_plaintext.verify(backend.crypto(), &pk);
+        verifiable_plaintext.verify(crypto, &pk);
 
     assert_eq!(
         result.expect_err("Verification successful despite wrong wire format."),
@@ -281,7 +289,7 @@ fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
         PrivateMessage::try_from_authenticated_content(
             &plaintext,
             ciphersuite,
-            backend,
+            crypto,
             &mut message_secrets,
             0,
         )
@@ -295,6 +303,8 @@ fn create_content(
     wire_format: WireFormat,
     backend: &impl OpenMlsCryptoProvider,
 ) -> (AuthenticatedContent, CredentialWithKey, SignatureKeyPair) {
+    let rand = backend.rand();
+
     let (credential, signature_keys) = test_utils::new_credential(
         backend,
         b"Creator",
@@ -315,7 +325,7 @@ fn create_content(
         .expect("An unexpected error occurred.");
     let signature_input = FramedContentTbs::new(
         wire_format,
-        GroupId::random(backend),
+        GroupId::random(rand),
         1,
         sender,
         vec![1, 2, 3].into(),
@@ -331,6 +341,9 @@ fn create_content(
 
 #[apply(ciphersuites_and_backends)]
 fn membership_tag(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+    let rand = backend.rand();
+
     let (_credential, signature_keys) = test_utils::new_credential(
         backend,
         b"Creator",
@@ -339,15 +352,14 @@ fn membership_tag(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     );
     let group_context = GroupContext::new(
         ciphersuite,
-        GroupId::random(backend),
+        GroupId::random(rand),
         1,
         vec![],
         vec![],
         Extensions::empty(),
     );
     let membership_key = MembershipKey::from_secret(
-        Secret::random(ciphersuite, backend, None /* MLS version */)
-            .expect("Not enough randomness."),
+        Secret::random(ciphersuite, None).expect("Not enough randomness."),
     );
     let public_message: PublicMessage = AuthenticatedContent::new_application(
         LeafNodeIndex::new(987543210),
@@ -363,17 +375,17 @@ fn membership_tag(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     let serialized_context = group_context.tls_serialize_detached().unwrap();
     public_message
-        .set_membership_tag(backend, &membership_key, &serialized_context)
+        .set_membership_tag(crypto, &membership_key, &serialized_context)
         .expect("Error setting membership tag.");
 
     println!(
         "Membership tag error: {:?}",
-        public_message.verify_membership(backend, &membership_key, &serialized_context)
+        public_message.verify_membership(crypto, &membership_key, &serialized_context)
     );
 
     // Verify signature & membership tag
     assert!(public_message
-        .verify_membership(backend, &membership_key, &serialized_context)
+        .verify_membership(crypto, &membership_key, &serialized_context)
         .is_ok());
 
     // Change the content of the plaintext message
@@ -381,12 +393,15 @@ fn membership_tag(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Expect the signature & membership tag verification to fail
     assert!(public_message
-        .verify_membership(backend, &membership_key, &serialized_context)
+        .verify_membership(crypto, &membership_key, &serialized_context)
         .is_err());
 }
 
 #[apply(ciphersuites_and_backends)]
 fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+    let rand = backend.rand();
+
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
     let configuration = &SenderRatchetConfiguration::default();
@@ -426,7 +441,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Alice creates a group
     let mut group_alice = CoreGroup::builder(
-        GroupId::random(backend),
+        GroupId::random(rand),
         config::CryptoConfig::with_default_version(ciphersuite),
         alice_credential,
     )
@@ -443,7 +458,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .expect("Could not create proposal.");
 
     let mut proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, crypto, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -482,7 +497,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, charlie_add_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, crypto, charlie_add_proposal)
             .expect("Could not create staged proposal."),
     );
 
@@ -520,7 +535,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_remove_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, crypto, bob_remove_proposal)
             .expect("Could not create staged proposal."),
     );
 
@@ -561,7 +576,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let enc_message = PrivateMessage::encrypt_with_different_header(
         &bogus_sender_message,
         ciphersuite,
-        backend,
+        crypto,
         MlsMessageHeader {
             group_id: group_alice.group_id().clone(),
             epoch: group_alice.context().epoch(),
@@ -572,7 +587,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     )
     .expect("Encryption error");
 
-    let received_message = group_charlie.decrypt(&enc_message.into(), backend, configuration);
+    let received_message = group_charlie.decrypt(&enc_message.into(), crypto, configuration);
     assert_eq!(
         received_message.unwrap_err(),
         MessageDecryptionError::SenderError(SenderError::UnknownSender)
@@ -616,6 +631,9 @@ pub(crate) fn setup_alice_bob_group(
     SignatureKeyPair,
     CredentialWithKey,
 ) {
+    let crypto = backend.crypto();
+    let rand = backend.rand();
+
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
@@ -644,7 +662,7 @@ pub(crate) fn setup_alice_bob_group(
 
     // Alice creates a group
     let mut group_alice = CoreGroup::builder(
-        GroupId::random(backend),
+        GroupId::random(rand),
         config::CryptoConfig::with_default_version(ciphersuite),
         alice_credential,
     )
@@ -661,7 +679,7 @@ pub(crate) fn setup_alice_bob_group(
         .expect("Could not create proposal.");
 
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, crypto, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
 

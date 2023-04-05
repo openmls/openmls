@@ -34,6 +34,8 @@ pub(crate) fn key_package(
 
 #[apply(ciphersuites_and_backends)]
 fn generate_key_package(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     let (key_package, _credential, signature_keys) = key_package(ciphersuite, backend);
 
     let pk = OpenMlsSignaturePublicKey::new(
@@ -41,9 +43,9 @@ fn generate_key_package(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         ciphersuite.signature_algorithm(),
     )
     .unwrap();
-    assert!(key_package.verify_no_out(backend.crypto(), &pk).is_ok());
+    assert!(key_package.verify_no_out(crypto, &pk).is_ok());
     // TODO[FK]: #819 #133 replace with `validate`
-    assert!(KeyPackage::verify(&key_package, backend.crypto()).is_ok());
+    assert!(KeyPackage::verify(&key_package, crypto).is_ok());
 }
 
 #[apply(ciphersuites_and_backends)]
@@ -61,6 +63,8 @@ fn serialization(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider)
 
 #[apply(ciphersuites_and_backends)]
 fn application_id_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     let credential = Credential::new(b"Sasha".to_vec(), CredentialType::Basic)
         .expect("An unexpected error occurred.");
     let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
@@ -90,9 +94,9 @@ fn application_id_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
         )
         .expect("An unexpected error occurred.");
 
-    assert!(key_package.verify_no_out(backend.crypto(), &pk).is_ok());
+    assert!(key_package.verify_no_out(crypto, &pk).is_ok());
     // TODO[FK]: #819 #133 replace with `validate`
-    assert!(KeyPackage::verify(&key_package, backend.crypto()).is_ok());
+    assert!(KeyPackage::verify(&key_package, crypto).is_ok());
 
     // Check ID
     assert_eq!(

@@ -27,11 +27,13 @@ impl MlsGroup {
         mls_group_config: &MlsGroupConfig,
         credential_with_key: CredentialWithKey,
     ) -> Result<Self, NewGroupError<KeyStore::Error>> {
+        let rand = backend.rand();
+
         Self::new_with_group_id(
             backend,
             signer,
             mls_group_config,
-            GroupId::random(backend),
+            GroupId::random(rand),
             credential_with_key,
         )
     }

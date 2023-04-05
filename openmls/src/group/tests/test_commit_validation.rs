@@ -116,6 +116,8 @@ fn validation_test_setup(
 // ValSem200: Commit must not cover inline self Remove proposal
 #[apply(ciphersuites_and_backends)]
 fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     // Test with PublicMessage
     let CommitValidationTestSetup {
         mut alice_group,
@@ -129,7 +131,7 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // commit manually.
     let serialized_proposal_message = alice_group
         .propose_remove_member(
-            backend,
+            crypto,
             &alice_credential.signer,
             alice_group.own_leaf_index(),
         )
@@ -207,7 +209,7 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     signed_plaintext
         .set_membership_tag(
-            backend,
+            crypto,
             membership_key,
             alice_group.group().message_secrets().serialized_context(),
         )
@@ -234,6 +236,8 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 // ValSem201: Path must be present, if at least one proposal requires a path
 #[apply(ciphersuites_and_backends)]
 fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     let wire_format_policy = PURE_PLAINTEXT_WIRE_FORMAT_POLICY;
     // Test with PublicMessage
     let CommitValidationTestSetup {
@@ -247,7 +251,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let queued = |proposal: Proposal| {
         QueuedProposal::from_proposal_and_sender(
             ciphersuite,
-            backend,
+            crypto,
             proposal,
             &Sender::Member(alice_group.own_leaf_index()),
         )
@@ -275,7 +279,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     //         .unwrap();
     //     let psk_id = PreSharedKeyId::new(
     //         ciphersuite,
-    //         backend.rand(),
+    //         rand,
     //         Psk::External(ExternalPsk::new(rand)),
     //     )
     //     .unwrap();
@@ -361,7 +365,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         let membership_key = alice_group.group().message_secrets().membership_key();
         commit
             .set_membership_tag(
-                backend,
+                crypto,
                 membership_key,
                 alice_group.group().message_secrets().serialized_context(),
             )
@@ -568,6 +572,8 @@ fn test_valsem203(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 // ValSem204: Public keys from Path must be verified and match the private keys from the direct path
 #[apply(ciphersuites_and_backends)]
 fn test_valsem204(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     // Test with PublicMessage
     let CommitValidationTestSetup {
         mut alice_group,
@@ -629,7 +635,7 @@ fn test_valsem204(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .map(|upn| {
                 PlainUpdatePathNode::new(
                     upn.encryption_key().clone(),
-                    Secret::random(ciphersuite, backend, ProtocolVersion::default())
+                    Secret::random(ciphersuite, ProtocolVersion::default())
                         .unwrap()
                         .into(),
                 )
@@ -639,7 +645,7 @@ fn test_valsem204(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .group()
             .public_group()
             .encrypt_path(
-                backend,
+                crypto,
                 ciphersuite,
                 &new_plain_path,
                 &encryption_context.tls_serialize_detached().unwrap(),
@@ -687,6 +693,8 @@ fn test_valsem204(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 // ValSem205: Confirmation tag must be successfully verified
 #[apply(ciphersuites_and_backends)]
 fn test_valsem205(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     // Test with PublicMessage
     let CommitValidationTestSetup {
         mut alice_group,
@@ -727,7 +735,7 @@ fn test_valsem205(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     plaintext
         .set_membership_tag(
-            backend,
+            crypto,
             membership_key,
             alice_group.group().message_secrets().serialized_context(),
         )
@@ -753,6 +761,8 @@ fn test_valsem205(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 // this ensures that a member can process commits not containing all the stored proposals
 #[apply(ciphersuites_and_backends)]
 fn test_partial_proposal_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     // Test with PublicMessage
     let CommitValidationTestSetup {
         mut alice_group,
@@ -769,7 +779,7 @@ fn test_partial_proposal_commit(ciphersuite: Ciphersuite, backend: &impl OpenMls
 
     // Create first proposal in Alice's group
     let proposal_1 = alice_group
-        .propose_remove_member(backend, &alice_credential.signer, charlie_index)
+        .propose_remove_member(crypto, &alice_credential.signer, charlie_index)
         .map(|(out, _)| MlsMessageIn::from(out))
         .unwrap();
     let proposal_1 = bob_group.process_message(backend, proposal_1).unwrap();

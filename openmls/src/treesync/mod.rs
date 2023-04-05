@@ -23,9 +23,9 @@ use std::fmt;
 use std::io::Read;
 
 use openmls_traits::{
+    crypto::OpenMlsCrypto,
     signatures::Signer,
     types::{Ciphersuite, CryptoError},
-    OpenMlsCryptoProvider,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -251,7 +251,7 @@ impl TreeSync {
     /// Returns the resulting [`TreeSync`] instance, as well as the
     /// corresponding [`CommitSecret`].
     pub(crate) fn new(
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         signer: &impl Signer,
         config: CryptoConfig,
         credential_with_key: CredentialWithKey,
@@ -263,7 +263,7 @@ impl TreeSync {
             config,
             // Creation of a group is considered to be from a key package.
             LeafNodeSource::KeyPackage(life_time),
-            backend,
+            crypto,
             signer,
             credential_with_key,
             capabilities,
@@ -271,11 +271,11 @@ impl TreeSync {
         )?;
 
         let node = Node::LeafNode(leaf);
-        let path_secret: PathSecret = Secret::random(config.ciphersuite, backend, None)
+        let path_secret: PathSecret = Secret::random(config.ciphersuite, None)
             .map_err(LibraryError::unexpected_crypto_error)?
             .into();
         let commit_secret: CommitSecret = path_secret
-            .derive_path_secret(backend, config.ciphersuite)?
+            .derive_path_secret(crypto, config.ciphersuite)?
             .into();
         let nodes = vec![TreeSyncNode::from(node).into()];
         let tree = MlsBinaryTree::new(nodes)
@@ -285,7 +285,7 @@ impl TreeSync {
             tree_hash: vec![],
         };
         // Populate tree hash caches.
-        tree_sync.populate_parent_hashes(backend, config.ciphersuite)?;
+        tree_sync.populate_parent_hashes(crypto, config.ciphersuite)?;
 
         Ok((tree_sync, commit_secret, encryption_key_pair))
     }
@@ -313,7 +313,7 @@ impl TreeSync {
     /// slice of nodes. It verifies that the provided encryption key is present
     /// in the tree and that the invariants documented in [`TreeSync`] hold.
     pub(crate) fn from_ratchet_tree(
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         ratchet_tree: RatchetTree,
     ) -> Result<Self, TreeSyncFromNodesError> {
@@ -349,7 +349,7 @@ impl TreeSync {
         };
         // Verify all parent hashes.
         tree_sync
-            .verify_parent_hashes(backend, ciphersuite)
+            .verify_parent_hashes(crypto, ciphersuite)
             .map_err(|e| match e {
                 TreeSyncParentHashError::LibraryError(e) => e.into(),
                 TreeSyncParentHashError::InvalidParentHash => {
@@ -357,7 +357,7 @@ impl TreeSync {
                 }
             })?;
         // Populate tree hash caches.
-        tree_sync.populate_parent_hashes(backend, ciphersuite)?;
+        tree_sync.populate_parent_hashes(crypto, ciphersuite)?;
         Ok(tree_sync)
     }
 
@@ -373,13 +373,13 @@ impl TreeSync {
     /// Populate the parent hash caches of all nodes in the tree.
     fn populate_parent_hashes(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -> Result<(), LibraryError> {
         let diff = self.empty_diff();
         // Make the diff into a staged diff. This implicitly computes the
         // tree hashes and poulates the tree hash caches.
-        let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
+        let staged_diff = diff.into_staged_diff(crypto, ciphersuite)?;
         // Merge the diff.
         self.merge_diff(staged_diff);
         Ok(())
@@ -391,7 +391,7 @@ impl TreeSync {
     /// parent hash.
     fn verify_parent_hashes(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -> Result<(), TreeSyncParentHashError> {
         // The ability to verify parent hashes is required both for diffs and
@@ -409,7 +409,7 @@ impl TreeSync {
         // should reconsider and choose the alternative sketched above
         let diff = self.empty_diff();
         // No need to merge the diff, since we didn't actually modify any state.
-        diff.verify_parent_hashes(backend, ciphersuite)
+        diff.verify_parent_hashes(crypto, ciphersuite)
     }
 
     /// Returns the tree size
@@ -542,7 +542,7 @@ impl TreeSync {
     /// in the tree.
     pub(crate) fn derive_path_secrets(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         mut path_secret: PathSecret,
         sender_index: LeafNodeIndex,
@@ -560,7 +560,7 @@ impl TreeSync {
                 // If our own leaf index is not in the list of unmerged leaves
                 // then we should have the secret for this node.
                 if !parent_node.unmerged_leaves().contains(&leaf_index) {
-                    let keypair = path_secret.derive_key_pair(backend, ciphersuite)?;
+                    let keypair = path_secret.derive_key_pair(crypto, ciphersuite)?;
                     // The derived public key should match the one in the node.
                     // If not, the tree is corrupt.
                     if parent_node.encryption_key() != keypair.public_key() {
@@ -569,7 +569,7 @@ impl TreeSync {
                         // If everything is ok, set the private key and derive
                         // the next path secret.
                         keypairs.push(keypair);
-                        path_secret = path_secret.derive_path_secret(backend, ciphersuite)?;
+                        path_secret = path_secret.derive_path_secret(crypto, ciphersuite)?;
                     }
                 };
                 // If the leaf is blank or our index is in the list of unmerged

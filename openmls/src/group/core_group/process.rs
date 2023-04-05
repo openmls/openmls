@@ -47,10 +47,12 @@ impl CoreGroup {
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<ProcessedMessage, ProcessMessageError> {
+        let crypto = backend.crypto();
+
         // Checks the following semantic validation:
         //  - ValSem010
         //  - ValSem246 (as part of ValSem010)
-        let (content, credential) = unverified_message.verify(backend)?;
+        let (content, credential) = unverified_message.verify(crypto)?;
 
         match content.sender() {
             Sender::Member(_) | Sender::NewMemberCommit | Sender::NewMemberProposal => {
@@ -66,7 +68,7 @@ impl CoreGroup {
                     FramedContentBody::Proposal(_) => {
                         let proposal = Box::new(QueuedProposal::from_authenticated_content(
                             self.ciphersuite(),
-                            backend,
+                            crypto,
                             content,
                         )?);
                         if matches!(sender, Sender::NewMemberProposal) {
@@ -107,7 +109,7 @@ impl CoreGroup {
                         let content = ProcessedMessageContent::ProposalMessage(Box::new(
                             QueuedProposal::from_authenticated_content(
                                 self.ciphersuite(),
-                                backend,
+                                crypto,
                                 content,
                             )?,
                         ));
@@ -174,6 +176,8 @@ impl CoreGroup {
         proposal_store: &ProposalStore,
         own_leaf_nodes: &[OpenMlsLeafNode],
     ) -> Result<ProcessedMessage, ProcessMessageError> {
+        let crypto = backend.crypto();
+
         let message: ProtocolMessage = message.into();
 
         // Checks the following semantic validation:
@@ -182,7 +186,7 @@ impl CoreGroup {
         //  - ValSem006
         //  - ValSem007 MembershipTag presence
         let decrypted_message =
-            self.decrypt_message(backend, message, sender_ratchet_configuration)?;
+            self.decrypt_message(crypto, message, sender_ratchet_configuration)?;
 
         let unverified_message = self
             .public_group
@@ -218,7 +222,7 @@ impl CoreGroup {
     ///  - ValSem007 MembershipTag presence
     pub(crate) fn decrypt_message(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         message: ProtocolMessage,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
     ) -> Result<DecryptedMessage, ValidationError> {
@@ -247,14 +251,14 @@ impl CoreGroup {
                     public_message,
                     message_secrets,
                     message_secrets.serialized_context().to_vec(),
-                    backend,
+                    crypto,
                 )
             }
             ProtocolMessage::PrivateMessage(ciphertext) => {
                 // If the message is older than the current epoch, we need to fetch the correct secret tree first
                 DecryptedMessage::from_inbound_ciphertext(
                     ciphertext,
-                    backend,
+                    crypto,
                     self,
                     sender_ratchet_configuration,
                 )

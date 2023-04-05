@@ -25,6 +25,8 @@ pub(crate) fn setup_alice_group(
     SignatureKeyPair,
     OpenMlsSignaturePublicKey,
 ) {
+    let rand = backend.rand();
+
     // Create credentials and keys
     let (alice_credential_with_key, alice_signature_keys) = test_utils::new_credential(
         backend,
@@ -40,7 +42,7 @@ pub(crate) fn setup_alice_group(
 
     // Alice creates a group
     let group = CoreGroup::builder(
-        GroupId::random(backend),
+        GroupId::random(rand),
         config::CryptoConfig::with_default_version(ciphersuite),
         alice_credential_with_key.clone(),
     )
@@ -82,8 +84,11 @@ fn test_failed_groupinfo_decryption(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
+    let crypto = backend.crypto();
+    let rand = backend.rand();
+
     let epoch = 123;
-    let group_id = GroupId::random(backend);
+    let group_id = GroupId::random(rand);
     let tree_hash = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
     let confirmed_transcript_hash = vec![1, 1, 1];
     let extensions = Extensions::empty();
@@ -125,13 +130,13 @@ fn test_failed_groupinfo_decryption(
     };
 
     // Generate key and nonce for the symmetric cipher.
-    let welcome_key = AeadKey::random(ciphersuite, backend.rand());
-    let welcome_nonce = AeadNonce::random(backend);
+    let welcome_key = AeadKey::random(ciphersuite, rand);
+    let welcome_nonce = AeadNonce::random(rand);
 
     // Generate receiver key pair.
-    let receiver_key_pair = backend.crypto().derive_hpke_keypair(
+    let receiver_key_pair = crypto.derive_hpke_keypair(
         ciphersuite.hpke_config(),
-        Secret::random(ciphersuite, backend, None)
+        Secret::random(ciphersuite, None)
             .expect("Not enough randomness.")
             .as_slice(),
     );
@@ -143,7 +148,7 @@ fn test_failed_groupinfo_decryption(
         hpke_context,
         group_secrets,
         ciphersuite,
-        backend.crypto(),
+        crypto,
     )
     .unwrap();
 
@@ -157,7 +162,7 @@ fn test_failed_groupinfo_decryption(
     let broken_secrets = vec![EncryptedGroupSecrets::new(
         key_package_bundle
             .key_package
-            .hash_ref(backend.crypto())
+            .hash_ref(crypto)
             .expect("Could not hash KeyPackage."),
         encrypted_group_secrets,
     )];
@@ -165,7 +170,7 @@ fn test_failed_groupinfo_decryption(
     // Encrypt the group info.
     let encrypted_group_info = welcome_key
         .aead_seal(
-            backend,
+            crypto,
             &group_info
                 .tls_serialize_detached()
                 .expect("An unexpected error occurred."),
@@ -190,6 +195,8 @@ fn test_failed_groupinfo_decryption(
 /// is broken.
 #[apply(ciphersuites_and_backends)]
 fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     // === Alice creates a group with her and Bob ===
     let (
         framing_parameters,
@@ -219,7 +226,7 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         )
         .expect("Could not create proposal.");
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, update_proposal_bob)
+        QueuedProposal::from_authenticated_content(ciphersuite, crypto, update_proposal_bob)
             .expect("Could not create QueuedProposal."),
     );
     let params = CreateCommitParams::builder()
@@ -321,6 +328,9 @@ fn setup_alice_bob(
 // Test several scenarios when PSKs are used in a group
 #[apply(ciphersuites_and_backends)]
 fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+    let rand = backend.rand();
+
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -335,18 +345,17 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // === Alice creates a group with a PSK ===
     let psk_id = vec![1u8, 2, 3];
 
-    let secret = Secret::random(ciphersuite, backend, None /* MLS version */)
-        .expect("Not enough randomness.");
+    let secret =
+        Secret::random(ciphersuite, None /* MLS version */).expect("Not enough randomness.");
     let external_psk = ExternalPsk::new(psk_id);
-    let preshared_key_id =
-        PreSharedKeyId::new(ciphersuite, backend.rand(), Psk::External(external_psk))
-            .expect("An unexpected error occured.");
+    let preshared_key_id = PreSharedKeyId::new(ciphersuite, rand, Psk::External(external_psk))
+        .expect("An unexpected error occured.");
     let psk_bundle = PskBundle::new(secret).expect("Could not create PskBundle.");
     preshared_key_id
         .write_to_key_store(backend, ciphersuite, psk_bundle.secret().as_slice())
         .unwrap();
     let mut alice_group = CoreGroup::builder(
-        GroupId::random(backend),
+        GroupId::random(rand),
         config::CryptoConfig::with_default_version(ciphersuite),
         alice_credential_with_key,
     )
@@ -370,11 +379,11 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         .expect("Could not create proposal");
 
     let mut proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, crypto, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
     proposal_store.add(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, psk_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, crypto, psk_proposal)
             .expect("Could not create QueuedProposal."),
     );
     log::info!(" >>> Creating commit ...");
@@ -423,7 +432,7 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         )
         .expect("Could not create proposal.");
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, update_proposal_bob)
+        QueuedProposal::from_authenticated_content(ciphersuite, crypto, update_proposal_bob)
             .expect("Could not create QueuedProposal."),
     );
     let params = CreateCommitParams::builder()
@@ -439,6 +448,9 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
 // Test several scenarios when PSKs are used in a group
 #[apply(ciphersuites_and_backends)]
 fn test_staged_commit_creation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+    let rand = backend.rand();
+
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -448,7 +460,7 @@ fn test_staged_commit_creation(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
 
     // === Alice creates a group ===
     let mut alice_group = CoreGroup::builder(
-        GroupId::random(backend),
+        GroupId::random(rand),
         config::CryptoConfig::with_default_version(ciphersuite),
         alice_credential_with_key,
     )
@@ -464,7 +476,7 @@ fn test_staged_commit_creation(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         )
         .expect("Could not create proposal.");
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, crypto, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
     let params = CreateCommitParams::builder()
@@ -494,8 +506,8 @@ fn test_staged_commit_creation(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
 
     // Let's make sure we end up in the same group state.
     assert_eq!(
-        group_bob.export_secret(backend, "", b"test", ciphersuite.hash_length()),
-        alice_group.export_secret(backend, "", b"test", ciphersuite.hash_length())
+        group_bob.export_secret(crypto, "", b"test", ciphersuite.hash_length()),
+        alice_group.export_secret(crypto, "", b"test", ciphersuite.hash_length())
     );
     assert_eq!(
         group_bob.public_group().export_ratchet_tree(),
@@ -506,6 +518,8 @@ fn test_staged_commit_creation(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
 // Test processing of own commits
 #[apply(ciphersuites_and_backends)]
 fn test_own_commit_processing(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let rand = backend.rand();
+
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -520,7 +534,7 @@ fn test_own_commit_processing(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
 
     // === Alice creates a group ===
     let alice_group = CoreGroup::builder(
-        GroupId::random(backend),
+        GroupId::random(rand),
         config::CryptoConfig::with_default_version(ciphersuite),
         alice_credential_with_key,
     )
@@ -582,6 +596,9 @@ fn test_proposal_application_after_self_was_removed(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
+    let crypto = backend.crypto();
+    let rand = backend.rand();
+
     // We're going to test if proposals are still applied, even after a client
     // notices that it was removed from a group.  We do so by having Alice
     // create a group, add Bob and then create a commit where Bob is removed and
@@ -598,7 +615,7 @@ fn test_proposal_application_after_self_was_removed(
     let (_, charlie_kpb, _, _) = setup_client("Charlie", ciphersuite, backend);
 
     let mut alice_group = CoreGroup::builder(
-        GroupId::random(backend),
+        GroupId::random(rand),
         config::CryptoConfig::with_default_version(ciphersuite),
         alice_credential_with_key,
     )
@@ -615,7 +632,7 @@ fn test_proposal_application_after_self_was_removed(
         .expect("Could not create proposal");
 
     let bob_add_proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, crypto, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -670,12 +687,12 @@ fn test_proposal_application_after_self_was_removed(
         .expect("Could not create proposal");
 
     let mut remove_add_proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_remove_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, crypto, bob_remove_proposal)
             .expect("Could not create QueuedProposal."),
     );
 
     remove_add_proposal_store.add(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, charlie_add_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, crypto, charlie_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
 

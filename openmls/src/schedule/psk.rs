@@ -382,6 +382,8 @@ impl PskSecret {
         backend: &impl OpenMlsCryptoProvider,
         psk_ids: &[PreSharedKeyId],
     ) -> Result<Self, PskError> {
+        let crypto = backend.crypto();
+
         // Check that we don't have too many PSKs
         let num_psks = psk_ids.len();
         if num_psks > u16::MAX as usize {
@@ -412,7 +414,7 @@ impl PskSecret {
             let psk_extracted = {
                 let zero_secret = Secret::zero(ciphersuite, mls_version);
                 zero_secret
-                    .hkdf_extract(backend, psk_bundle.secret())
+                    .hkdf_extract(crypto, psk_bundle.secret())
                     .map_err(LibraryError::unexpected_crypto_error)?
             };
 
@@ -423,18 +425,13 @@ impl PskSecret {
                     .map_err(LibraryError::missing_bound_check)?;
 
                 psk_extracted
-                    .kdf_expand_label(
-                        backend,
-                        "derived psk",
-                        &psk_label,
-                        ciphersuite.hash_length(),
-                    )
+                    .kdf_expand_label(crypto, "derived psk", &psk_label, ciphersuite.hash_length())
                     .map_err(LibraryError::unexpected_crypto_error)?
             };
 
             // psk_secret_[i] = KDF.Extract(psk_input_[i-1], psk_secret_[i-1])
             psk_secret = psk_input
-                .hkdf_extract(backend, &psk_secret)
+                .hkdf_extract(crypto, &psk_secret)
                 .map_err(LibraryError::unexpected_crypto_error)?;
         }
 

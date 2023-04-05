@@ -319,7 +319,7 @@ async fn test_group() {
     let client2_message = b"Thanks for adding me Client1.";
     let signer_2 = signers.remove(0);
     let out_messages = group_on_client2
-        .create_message(crypto, &signer_2, client2_message)
+        .create_message(crypto.crypto(), &signer_2, client2_message)
         .unwrap();
 
     // Send private_message to the group

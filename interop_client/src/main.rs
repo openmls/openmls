@@ -427,7 +427,7 @@ impl MlsClient for MlsClientImpl {
         let exported_secret = interop_group
             .group
             .export_secret(
-                &interop_group.crypto_provider,
+                interop_group.crypto_provider.crypto(),
                 &export_request.label,
                 &export_request.context,
                 export_request.key_length as usize,
@@ -457,7 +457,7 @@ impl MlsClient for MlsClientImpl {
         let ciphertext = interop_group
             .group
             .create_message(
-                &interop_group.crypto_provider,
+                interop_group.crypto_provider.crypto(),
                 &interop_group.signature_keys,
                 &protect_request.plaintext,
             )
@@ -608,7 +608,7 @@ impl MlsClient for MlsClientImpl {
         let (proposal, _) = interop_group
             .group
             .propose_add_member(
-                &interop_group.crypto_provider,
+                interop_group.crypto_provider.crypto(),
                 &interop_group.signature_keys,
                 &key_package,
             )
@@ -697,7 +697,7 @@ impl MlsClient for MlsClientImpl {
         let (proposal, _) = interop_group
             .group
             .propose_remove_member_by_credential(
-                &interop_group.crypto_provider,
+                interop_group.crypto_provider.crypto(),
                 &interop_group.signature_keys,
                 &removed_credential,
             )
@@ -951,7 +951,7 @@ impl MlsClient for MlsClientImpl {
         let group_info = interop_group
             .group
             .export_group_info(
-                &interop_group.crypto_provider,
+                interop_group.crypto_provider.crypto(),
                 &interop_group.signature_keys,
                 !obj.external_tree,
             )
@@ -1006,7 +1006,7 @@ impl MlsClient for MlsClientImpl {
         let proposal = interop_group
             .group
             .propose_external_psk(
-                &interop_group.crypto_provider,
+                interop_group.crypto_provider.crypto(),
                 &interop_group.signature_keys,
                 psk_id,
             )

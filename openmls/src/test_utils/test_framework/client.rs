@@ -40,7 +40,7 @@ pub struct Client {
     pub identity: Vec<u8>,
     /// Ciphersuites supported by the client.
     pub credentials: HashMap<Ciphersuite, CredentialWithKey>,
-    pub crypto: OpenMlsRustCrypto,
+    pub backend: OpenMlsRustCrypto,
     pub groups: RwLock<HashMap<GroupId, MlsGroup>>,
 }
 
@@ -57,7 +57,7 @@ impl Client {
             .get(&ciphersuite)
             .ok_or(ClientError::CiphersuiteNotSupported)?;
         let keys = SignatureKeyPair::read(
-            self.crypto.key_store(),
+            self.backend.key_store(),
             credential_with_key.signature_key.as_slice(),
             ciphersuite.signature_algorithm(),
         )
@@ -69,7 +69,7 @@ impl Client {
                     ciphersuite,
                     version: ProtocolVersion::default(),
                 },
-                &self.crypto,
+                &self.backend,
                 &keys,
                 credential_with_key.clone(),
             )
@@ -92,14 +92,14 @@ impl Client {
             .get(&ciphersuite)
             .ok_or(ClientError::CiphersuiteNotSupported)?;
         let signer = SignatureKeyPair::read(
-            self.crypto.key_store(),
+            self.backend.key_store(),
             credential_with_key.signature_key.as_slice(),
             ciphersuite.signature_algorithm(),
         )
         .unwrap();
 
         let group_state = MlsGroup::new(
-            &self.crypto,
+            &self.backend,
             &signer,
             &mls_group_config,
             credential_with_key.clone(),
@@ -123,7 +123,7 @@ impl Client {
         ratchet_tree: Option<RatchetTree>,
     ) -> Result<(), ClientError> {
         let new_group: MlsGroup =
-            MlsGroup::new_from_welcome(&self.crypto, &mls_group_config, welcome, ratchet_tree)?;
+            MlsGroup::new_from_welcome(&self.backend, &mls_group_config, welcome, ratchet_tree)?;
         self.groups
             .write()
             .expect("An unexpected error occurred.")
@@ -145,14 +145,14 @@ impl Client {
             .get_mut(group_id)
             .ok_or(ClientError::NoMatchingGroup)?;
         if sender_id == self.identity && message.content_type() == ContentType::Commit {
-            group_state.merge_pending_commit(&self.crypto)?
+            group_state.merge_pending_commit(&self.backend)?
         } else {
             if message.content_type() == ContentType::Commit {
                 // Clear any potential pending commits.
                 group_state.clear_pending_commit();
             }
             // Process the message.
-            let processed_message = group_state.process_message(&self.crypto, message.clone())?;
+            let processed_message = group_state.process_message(&self.backend, message.clone())?;
 
             match processed_message.into_content() {
                 ProcessedMessageContent::ApplicationMessage(_) => {}
@@ -163,7 +163,7 @@ impl Client {
                     group_state.store_pending_proposal(*staged_proposal);
                 }
                 ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
-                    group_state.merge_staged_commit(&self.crypto, *staged_commit)?;
+                    group_state.merge_staged_commit(&self.backend, *staged_commit)?;
                 }
             }
         }
@@ -201,16 +201,16 @@ impl Client {
         // key store.
         let signature_pk = group.own_leaf().unwrap().signature_key();
         let signer = SignatureKeyPair::read(
-            self.crypto.key_store(),
+            self.backend.key_store(),
             signature_pk.as_slice(),
             group.ciphersuite().signature_algorithm(),
         )
         .unwrap();
         let (msg, welcome_option, group_info) = match action_type {
-            ActionType::Commit => group.self_update(&self.crypto, &signer)?,
+            ActionType::Commit => group.self_update(&self.backend, &signer)?,
             ActionType::Proposal => (
                 group
-                    .propose_self_update(&self.crypto, &signer, leaf_node)
+                    .propose_self_update(&self.backend, &signer, leaf_node)
                     .map(|(out, _)| out)?,
                 None,
                 None,
@@ -243,7 +243,7 @@ impl Client {
         // key store.
         let signature_pk = group.own_leaf().unwrap().signature_key();
         let signer = SignatureKeyPair::read(
-            self.crypto.key_store(),
+            self.backend.key_store(),
             signature_pk.as_slice(),
             group.ciphersuite().signature_algorithm(),
         )
@@ -251,7 +251,7 @@ impl Client {
         let action_results = match action_type {
             ActionType::Commit => {
                 let (messages, welcome_message, group_info) =
-                    group.add_members(&self.crypto, &signer, key_packages)?;
+                    group.add_members(&self.backend, &signer, key_packages)?;
                 (
                     vec![messages],
                     Some(
@@ -266,7 +266,7 @@ impl Client {
                 let mut messages = Vec::new();
                 for key_package in key_packages {
                     let message = group
-                        .propose_add_member(&self.crypto, &signer, key_package)
+                        .propose_add_member(self.backend.crypto(), &signer, key_package)
                         .map(|(out, _)| out)?;
                     messages.push(message);
                 }
@@ -296,7 +296,7 @@ impl Client {
         // key store.
         let signature_pk = group.own_leaf().unwrap().signature_key();
         let signer = SignatureKeyPair::read(
-            self.crypto.key_store(),
+            self.backend.key_store(),
             signature_pk.as_slice(),
             group.ciphersuite().signature_algorithm(),
         )
@@ -304,7 +304,7 @@ impl Client {
         let action_results = match action_type {
             ActionType::Commit => {
                 let (message, welcome_option, group_info) =
-                    group.remove_members(&self.crypto, &signer, targets)?;
+                    group.remove_members(&self.backend, &signer, targets)?;
                 (
                     vec![message],
                     welcome_option.map(|w| w.into_welcome().expect("Unexpected message type.")),
@@ -315,7 +315,7 @@ impl Client {
                 let mut messages = Vec::new();
                 for target in targets {
                     let message = group
-                        .propose_remove_member(&self.crypto, &signer, *target)
+                        .propose_remove_member(self.backend.crypto(), &signer, *target)
                         .map(|(out, _)| out)?;
                     messages.push(message);
                 }

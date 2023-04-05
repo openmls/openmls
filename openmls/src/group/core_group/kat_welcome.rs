@@ -107,6 +107,7 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
         .try_init();
 
     let backend = OpenMlsRustCrypto::default();
+    let crypto = backend.crypto();
 
     // ---------------------------------------------------------------------------------------------
 
@@ -147,11 +148,7 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
     // ---------------------------------------------------------------------------------------------
 
     // TODO(#1259)
-    if !backend
-        .crypto()
-        .supported_ciphersuites()
-        .contains(&cipher_suite)
-    {
+    if !crypto.supported_ciphersuites().contains(&cipher_suite) {
         println!("Unsupported ciphersuite.");
         return Ok(());
     }
@@ -166,7 +163,7 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
     backend
         .key_store()
         .store(
-            key_package.hash_ref(backend.crypto()).unwrap().as_slice(),
+            key_package.hash_ref(crypto).unwrap().as_slice(),
             &key_package,
         )
         .unwrap();
@@ -183,10 +180,7 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
     // * Decrypt the Welcome message:
     //  * Identify the entry in `welcome.secrets` corresponding to `key_package`
     let encrypted_group_secrets = CoreGroup::find_key_package_from_welcome_secrets(
-        key_package_bundle
-            .key_package()
-            .hash_ref(backend.crypto())
-            .unwrap(),
+        key_package_bundle.key_package().hash_ref(crypto).unwrap(),
         welcome.secrets(),
     )
     .unwrap();
@@ -198,7 +192,7 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
         encrypted_group_secrets.encrypted_group_secrets(),
         welcome.encrypted_group_info(),
         welcome.ciphersuite(),
-        backend.crypto(),
+        crypto,
     )
     .unwrap();
     println!("{group_secrets:?}");
@@ -206,7 +200,7 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
     // // //  * Decrypt the encrypted group info
     let mut key_schedule = KeySchedule::init(
         welcome.ciphersuite(),
-        &backend,
+        crypto,
         &group_secrets.joiner_secret,
         PskSecret::new(cipher_suite, &backend, &[]).unwrap(),
     )
@@ -215,9 +209,9 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
     let group_info: GroupInfo = {
         let verifiable_group_info: VerifiableGroupInfo = {
             let (welcome_key, welcome_nonce) = key_schedule
-                .welcome(&backend)
+                .welcome(crypto)
                 .unwrap()
-                .derive_welcome_key_nonce(&backend)
+                .derive_welcome_key_nonce(crypto)
                 .unwrap();
 
             VerifiableGroupInfo::try_from_ciphertext(
@@ -225,15 +219,13 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
                 &welcome_nonce,
                 welcome.encrypted_group_info(),
                 &[],
-                &backend,
+                crypto,
             )
             .unwrap()
         };
         println!("{verifiable_group_info:?}");
 
-        verifiable_group_info
-            .verify(backend.crypto(), &signer_pub)
-            .unwrap()
+        verifiable_group_info.verify(crypto, &signer_pub).unwrap()
     };
     println!("{group_info:?}");
 
@@ -246,11 +238,11 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
     let serialized_group_context = group_context.tls_serialize_detached().unwrap();
 
     key_schedule
-        .add_context(&backend, &serialized_group_context)
+        .add_context(crypto, &serialized_group_context)
         .unwrap();
 
     let (_group_epoch_secrets, message_secrets) = {
-        let epoch_secrets = key_schedule.epoch_secrets(&backend).unwrap();
+        let epoch_secrets = key_schedule.epoch_secrets(crypto).unwrap();
 
         epoch_secrets.split_secrets(
             serialized_group_context.to_vec(),
@@ -261,7 +253,7 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
 
     let confirmation_tag = message_secrets
         .confirmation_key()
-        .tag(&backend, group_context.confirmed_transcript_hash())
+        .tag(crypto, group_context.confirmed_transcript_hash())
         .unwrap();
 
     assert_eq!(&confirmation_tag, group_info.confirmation_tag());

@@ -1,4 +1,4 @@
-use openmls_traits::signatures::Signer;
+use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer};
 
 use super::{errors::CreateMessageError, *};
 
@@ -13,7 +13,7 @@ impl MlsGroup {
     /// and incoming messages from the DS must be processed afterwards.
     pub fn create_message(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         signer: &impl Signer,
         message: &[u8],
     ) -> Result<MlsMessageOut, CreateMessageError> {
@@ -34,7 +34,7 @@ impl MlsGroup {
                 &self.aad,
                 message,
                 self.configuration().padding_size(),
-                backend,
+                crypto,
                 signer,
             )
             // We know the application message is wellformed and we have the key material of the current epoch

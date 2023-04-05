@@ -78,6 +78,8 @@ struct LeafNodeInfoTest {
 }
 
 pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     // Skip unsupported cipher suites (for now).
     let ciphersuite = Ciphersuite::try_from(test.cipher_suite).unwrap();
 
@@ -93,7 +95,7 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
     let treesync = {
         let ratchet_tree = RatchetTreeExtension::tls_deserialize_exact(test.ratchet_tree).unwrap();
 
-        TreeSync::from_ratchet_tree(backend, ciphersuite, ratchet_tree.ratchet_tree().clone())
+        TreeSync::from_ratchet_tree(crypto, ciphersuite, ratchet_tree.ratchet_tree().clone())
             .unwrap()
     };
 
@@ -129,9 +131,7 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
                     ProtocolVersion::Mls10,
                     ciphersuite,
                 ));
-                let keypair = my_path_secret
-                    .derive_key_pair(backend, ciphersuite)
-                    .unwrap();
+                let keypair = my_path_secret.derive_key_pair(crypto, ciphersuite).unwrap();
 
                 // Check that the public key matches the key in the tree.
                 assert_eq!(
@@ -164,7 +164,7 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
 
         let mut diff = treesync.empty_diff();
         diff.apply_received_update_path(
-            backend,
+            crypto,
             ciphersuite,
             LeafNodeIndex::new(path_test.sender),
             &update_path,
@@ -172,10 +172,10 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
         .unwrap();
 
         // Check the parent hash in the diff is correct.
-        assert!(diff.verify_parent_hashes(backend, ciphersuite).is_ok());
+        assert!(diff.verify_parent_hashes(crypto, ciphersuite).is_ok());
 
         // Merge the diff into a new tree.
-        let staged_diff = diff.into_staged_diff(backend, ciphersuite).unwrap();
+        let staged_diff = diff.into_staged_diff(crypto, ciphersuite).unwrap();
         let mut tree_after_kat = treesync.clone();
         tree_after_kat.merge_diff(staged_diff);
 
@@ -247,7 +247,7 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
             // TODO(#1279): Update own leaf.
             let (vec_plain_update_path_nodes, _, commit_secret) = diff_after_kat
                 .apply_own_update_path(
-                    backend,
+                    crypto,
                     &signer,
                     ciphersuite,
                     group_context.group_id().clone(),
@@ -261,7 +261,7 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
             // Encrypt path to according recipients.
             let encrypted_path = diff_after_kat
                 .encrypt_path(
-                    backend,
+                    crypto,
                     ciphersuite,
                     &vec_plain_update_path_nodes,
                     &serialized_group_context,
@@ -305,7 +305,7 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
             let (_encryption_keys, commit_secret_inner) = tree_after_kat
                 .empty_diff()
                 .decrypt_path(
-                    backend,
+                    crypto,
                     ciphersuite,
                     params,
                     &leaf_i.encryption_keys.iter().collect::<Vec<_>>(),
@@ -331,6 +331,8 @@ fn apply_update_path(
     group_context: &GroupContext,
     leaf_node_info_test: &LeafNodeInfoTest,
 ) -> CommitSecret {
+    let crypto = backend.crypto();
+
     let params = DecryptPathParams {
         version: ProtocolVersion::Mls10,
         update_path: update_path.nodes(),
@@ -342,7 +344,7 @@ fn apply_update_path(
     let (encryption_keys, commit_secret) = treesync
         .empty_diff()
         .decrypt_path(
-            backend,
+            crypto,
             ciphersuite,
             params,
             &leaf_node_info_test
@@ -368,7 +370,7 @@ fn apply_update_path(
             ciphersuite,
         ));
 
-        path_secret.derive_key_pair(backend, ciphersuite).unwrap()
+        path_secret.derive_key_pair(crypto, ciphersuite).unwrap()
     };
 
     assert_eq!(encryption_keys[0], expected_keypair);

@@ -1,4 +1,4 @@
-use openmls_traits::signatures::Signer;
+use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer};
 
 use crate::{group::errors::ExporterError, schedule::EpochAuthenticator};
 
@@ -14,7 +14,7 @@ impl MlsGroup {
     /// if the group is not active.
     pub fn export_secret(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         label: &str,
         context: &[u8],
         key_length: usize,
@@ -22,7 +22,7 @@ impl MlsGroup {
         if self.is_active() {
             Ok(self
                 .group
-                .export_secret(backend, label, context, key_length)
+                .export_secret(crypto, label, context, key_length)
                 .map_err(|e| match e {
                     ExporterError::LibraryError(e) => e.into(),
                     ExporterError::KeyLengthTooLong => ExportSecretError::KeyLengthTooLong,
@@ -53,13 +53,13 @@ impl MlsGroup {
     /// Export a group info object for this group.
     pub fn export_group_info(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         signer: &impl Signer,
         with_ratchet_tree: bool,
     ) -> Result<MlsMessageOut, ExportGroupInfoError> {
         Ok(self
             .group
-            .export_group_info(backend, signer, with_ratchet_tree)?
+            .export_group_info(crypto, signer, with_ratchet_tree)?
             .into())
     }
 }

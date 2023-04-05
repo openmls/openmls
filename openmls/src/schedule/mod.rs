@@ -121,7 +121,7 @@
 // | `resumption_psk`        | "resumption"    |
 // ```
 
-use openmls_traits::{crypto::OpenMlsCrypto, types::*, OpenMlsCryptoProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, types::*};
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
@@ -169,11 +169,8 @@ pub struct ResumptionPskSecret {
 
 impl ResumptionPskSecret {
     /// Derive an `ResumptionPsk` from an `EpochSecret`.
-    fn new(
-        backend: &impl OpenMlsCryptoProvider,
-        epoch_secret: &EpochSecret,
-    ) -> Result<Self, CryptoError> {
-        let secret = epoch_secret.secret.derive_secret(backend, "resumption")?;
+    fn new(crypto: &impl OpenMlsCrypto, epoch_secret: &EpochSecret) -> Result<Self, CryptoError> {
+        let secret = epoch_secret.secret.derive_secret(crypto, "resumption")?;
         Ok(Self { secret })
     }
 
@@ -193,13 +190,10 @@ pub struct EpochAuthenticator {
 
 impl EpochAuthenticator {
     /// Derive an `EpochAuthenticator` from an `EpochSecret`.
-    fn new(
-        backend: &impl OpenMlsCryptoProvider,
-        epoch_secret: &EpochSecret,
-    ) -> Result<Self, CryptoError> {
+    fn new(crypto: &impl OpenMlsCrypto, epoch_secret: &EpochSecret) -> Result<Self, CryptoError> {
         let secret = epoch_secret
             .secret
-            .derive_secret(backend, "authentication")?;
+            .derive_secret(crypto, "authentication")?;
         Ok(Self { secret })
     }
 
@@ -236,9 +230,9 @@ impl CommitSecret {
     }
 
     #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn random(ciphersuite: Ciphersuite, rng: &impl OpenMlsCryptoProvider) -> Self {
+    pub(crate) fn random(ciphersuite: Ciphersuite) -> Self {
         Self {
-            secret: Secret::random(ciphersuite, rng, None /* MLS version */)
+            secret: Secret::random(ciphersuite, None /* MLS version */)
                 .expect("Not enough randomness."),
         }
     }
@@ -274,11 +268,8 @@ fn hpke_info_from_version(version: ProtocolVersion) -> &'static str {
 
 impl InitSecret {
     /// Derive an `InitSecret` from an `EpochSecret`.
-    fn new(
-        backend: &impl OpenMlsCryptoProvider,
-        epoch_secret: EpochSecret,
-    ) -> Result<Self, CryptoError> {
-        let secret = epoch_secret.secret.derive_secret(backend, "init")?;
+    fn new(crypto: &impl OpenMlsCrypto, epoch_secret: EpochSecret) -> Result<Self, CryptoError> {
+        let secret = epoch_secret.secret.derive_secret(crypto, "init")?;
         log_crypto!(trace, "Init secret: {:x?}", secret);
         Ok(InitSecret { secret })
     }
@@ -286,23 +277,22 @@ impl InitSecret {
     /// Sample a fresh, random `InitSecret` for the creation of a new group.
     pub(crate) fn random(
         ciphersuite: Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
         version: ProtocolVersion,
     ) -> Result<Self, CryptoError> {
         Ok(InitSecret {
-            secret: Secret::random(ciphersuite, backend, version)?,
+            secret: Secret::random(ciphersuite, version)?,
         })
     }
 
     /// Create an `InitSecret` and the corresponding `kem_output` from a group info.
     pub(crate) fn from_group_context(
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         group_context: &GroupContext,
         external_pub: &[u8],
     ) -> Result<(Self, Vec<u8>), KeyScheduleError> {
         let ciphersuite = group_context.ciphersuite();
         let version = group_context.protocol_version();
-        let (kem_output, raw_init_secret) = backend.crypto().hpke_setup_sender_and_export(
+        let (kem_output, raw_init_secret) = crypto.hpke_setup_sender_and_export(
             ciphersuite.hpke_config(),
             external_pub,
             &[],
@@ -319,14 +309,13 @@ impl InitSecret {
 
     /// Create an `InitSecret` from a `kem_output`.
     pub(crate) fn from_kem_output(
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         version: ProtocolVersion,
         external_priv: &HpkePrivateKey,
         kem_output: &[u8],
     ) -> Result<Self, LibraryError> {
-        let raw_init_secret = backend
-            .crypto()
+        let raw_init_secret = crypto
             .hpke_setup_receiver_and_export(
                 ciphersuite.hpke_config(),
                 kem_output,
@@ -365,17 +354,17 @@ impl JoinerSecret {
     /// `CommitSecret` needs to be present if the current commit is not a
     /// partial commit.
     pub(crate) fn new(
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         commit_secret_option: impl Into<Option<CommitSecret>>,
         init_secret: &InitSecret,
         serialized_group_context: &[u8],
     ) -> Result<Self, CryptoError> {
         let intermediate_secret = init_secret.secret.hkdf_extract(
-            backend,
+            crypto,
             commit_secret_option.into().as_ref().map(|cs| &cs.secret),
         )?;
         let secret = intermediate_secret.kdf_expand_label(
-            backend,
+            crypto,
             "joiner",
             serialized_group_context,
             intermediate_secret.ciphersuite().hash_length(),
@@ -395,13 +384,9 @@ impl JoinerSecret {
     }
 
     #[cfg(test)]
-    pub(crate) fn random(
-        ciphersuite: Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
-        version: ProtocolVersion,
-    ) -> Self {
+    pub(crate) fn random(ciphersuite: Ciphersuite, version: ProtocolVersion) -> Self {
         Self {
-            secret: Secret::random(ciphersuite, backend, version).expect("Not enough randomness."),
+            secret: Secret::random(ciphersuite, version).expect("Not enough randomness."),
         }
     }
 }
@@ -425,7 +410,7 @@ impl KeySchedule {
     /// Initialize the key schedule and return it.
     pub(crate) fn init(
         ciphersuite: Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         joiner_secret: &JoinerSecret,
         psk: PskSecret,
     ) -> Result<Self, LibraryError> {
@@ -435,7 +420,7 @@ impl KeySchedule {
             "  joiner_secret: {:x?}",
             joiner_secret.secret.as_slice()
         );
-        let intermediate_secret = IntermediateSecret::new(backend, joiner_secret, psk)
+        let intermediate_secret = IntermediateSecret::new(crypto, joiner_secret, psk)
             .map_err(LibraryError::unexpected_crypto_error)?;
         Ok(Self {
             ciphersuite,
@@ -449,7 +434,7 @@ impl KeySchedule {
     /// Note that this has to be called before the context is added.
     pub(crate) fn welcome(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
     ) -> Result<WelcomeSecret, KeyScheduleError> {
         if self.state != State::Initial || self.intermediate_secret.is_none() {
             log::error!("Trying to derive a welcome secret while not in the initial state.");
@@ -462,13 +447,13 @@ impl KeySchedule {
             .as_ref()
             .ok_or_else(|| LibraryError::custom("state machine error"))?;
 
-        Ok(WelcomeSecret::new(backend, intermediate_secret)?)
+        Ok(WelcomeSecret::new(crypto, intermediate_secret)?)
     }
 
     /// Add the group context to the key schedule.
     pub(crate) fn add_context(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         serialized_group_context: &[u8],
     ) -> Result<(), KeyScheduleError> {
         log::trace!(
@@ -497,7 +482,7 @@ impl KeySchedule {
 
         self.epoch_secret = Some(EpochSecret::new(
             self.ciphersuite,
-            backend,
+            crypto,
             intermediate_secret,
             serialized_group_context,
         )?);
@@ -510,7 +495,7 @@ impl KeySchedule {
     /// part of the `EpochSecrets`. Otherwise not.
     pub(crate) fn epoch_secrets(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
     ) -> Result<EpochSecrets, KeyScheduleError> {
         if self.state != State::Context || self.epoch_secret.is_none() {
             log::error!("Trying to derive the epoch secrets while not in the right state.");
@@ -524,7 +509,7 @@ impl KeySchedule {
             None => return Err(LibraryError::custom("state machine error").into()),
         };
 
-        Ok(EpochSecrets::new(backend, epoch_secret)?)
+        Ok(EpochSecrets::new(crypto, epoch_secret)?)
     }
 }
 
@@ -538,12 +523,12 @@ impl IntermediateSecret {
     /// Derive an `IntermediateSecret` from a `JoinerSecret` and an optional
     /// PSK.
     fn new(
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         joiner_secret: &JoinerSecret,
         psk: PskSecret,
     ) -> Result<Self, CryptoError> {
         log_crypto!(trace, "PSK input: {:x?}", psk.as_slice());
-        let secret = joiner_secret.secret.hkdf_extract(backend, psk.secret())?;
+        let secret = joiner_secret.secret.hkdf_extract(crypto, psk.secret())?;
         log_crypto!(trace, "Intermediate secret: {:x?}", secret);
         Ok(Self { secret })
     }
@@ -556,12 +541,12 @@ pub(crate) struct WelcomeSecret {
 impl WelcomeSecret {
     /// Derive a `WelcomeSecret` from to decrypt a `Welcome` message.
     fn new(
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         intermediate_secret: &IntermediateSecret,
     ) -> Result<Self, CryptoError> {
         let secret = intermediate_secret
             .secret
-            .derive_secret(backend, "welcome")?;
+            .derive_secret(crypto, "welcome")?;
         log_crypto!(trace, "Welcome secret: {:x?}", secret);
         Ok(WelcomeSecret { secret })
     }
@@ -570,24 +555,21 @@ impl WelcomeSecret {
     /// consuming it in the process.
     pub(crate) fn derive_welcome_key_nonce(
         self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
     ) -> Result<(AeadKey, AeadNonce), CryptoError> {
-        let welcome_nonce = self.derive_aead_nonce(backend)?;
-        let welcome_key = self.derive_aead_key(backend)?;
+        let welcome_nonce = self.derive_aead_nonce(crypto)?;
+        let welcome_key = self.derive_aead_key(crypto)?;
         Ok((welcome_key, welcome_nonce))
     }
 
     /// Derive a new AEAD key from a `WelcomeSecret`.
-    fn derive_aead_key(
-        &self,
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<AeadKey, CryptoError> {
+    fn derive_aead_key(&self, crypto: &impl OpenMlsCrypto) -> Result<AeadKey, CryptoError> {
         log::trace!(
             "WelcomeSecret.derive_aead_key with {}",
             self.secret.ciphersuite()
         );
         let aead_secret = self.secret.kdf_expand_label(
-            backend,
+            crypto,
             "key",
             b"",
             self.secret.ciphersuite().aead_key_length(),
@@ -596,12 +578,9 @@ impl WelcomeSecret {
     }
 
     /// Derive a new AEAD nonce from a `WelcomeSecret`.
-    fn derive_aead_nonce(
-        &self,
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<AeadNonce, CryptoError> {
+    fn derive_aead_nonce(&self, crypto: &impl OpenMlsCrypto) -> Result<AeadNonce, CryptoError> {
         let nonce_secret = self.secret.kdf_expand_label(
-            backend,
+            crypto,
             "nonce",
             b"",
             self.secret.ciphersuite().aead_nonce_length(),
@@ -626,12 +605,12 @@ impl EpochSecret {
     /// Derive an `EpochSecret` from a `JoinerSecret`
     fn new(
         ciphersuite: Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         intermediate_secret: IntermediateSecret,
         serialized_group_context: &[u8],
     ) -> Result<Self, CryptoError> {
         let secret = intermediate_secret.secret.kdf_expand_label(
-            backend,
+            crypto,
             "epoch",
             serialized_group_context,
             ciphersuite.hash_length(),
@@ -648,12 +627,9 @@ pub(crate) struct EncryptionSecret {
 
 impl EncryptionSecret {
     /// Derive an encryption secret from a reference to an `EpochSecret`.
-    fn new(
-        backend: &impl OpenMlsCryptoProvider,
-        epoch_secret: &EpochSecret,
-    ) -> Result<Self, CryptoError> {
+    fn new(crypto: &impl OpenMlsCrypto, epoch_secret: &EpochSecret) -> Result<Self, CryptoError> {
         Ok(EncryptionSecret {
-            secret: epoch_secret.secret.derive_secret(backend, "encryption")?,
+            secret: epoch_secret.secret.derive_secret(crypto, "encryption")?,
         })
     }
 
@@ -673,9 +649,9 @@ impl EncryptionSecret {
 
     /// Create a random `EncryptionSecret`. For testing purposes only.
     #[cfg(test)]
-    pub(crate) fn random(ciphersuite: Ciphersuite, rng: &impl OpenMlsCryptoProvider) -> Self {
+    pub(crate) fn random(ciphersuite: Ciphersuite) -> Self {
         EncryptionSecret {
-            secret: Secret::random(ciphersuite, rng, None /* MLS version */)
+            secret: Secret::random(ciphersuite, None /* MLS version */)
                 .expect("Not enough randomness."),
         }
     }
@@ -707,11 +683,8 @@ pub(crate) struct ExporterSecret {
 
 impl ExporterSecret {
     /// Derive an `ExporterSecret` from an `EpochSecret`.
-    fn new(
-        backend: &impl OpenMlsCryptoProvider,
-        epoch_secret: &EpochSecret,
-    ) -> Result<Self, CryptoError> {
-        let secret = epoch_secret.secret.derive_secret(backend, "exporter")?;
+    fn new(crypto: &impl OpenMlsCrypto, epoch_secret: &EpochSecret) -> Result<Self, CryptoError> {
+        let secret = epoch_secret.secret.derive_secret(crypto, "exporter")?;
         Ok(ExporterSecret { secret })
     }
 
@@ -726,18 +699,17 @@ impl ExporterSecret {
     pub(crate) fn derive_exported_secret(
         &self,
         ciphersuite: Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         label: &str,
         context: &[u8],
         key_length: usize,
     ) -> Result<Vec<u8>, CryptoError> {
-        let context_hash = &backend
-            .crypto()
-            .hash(ciphersuite.hash_algorithm(), context)?;
+        let context_hash = crypto.hash(ciphersuite.hash_algorithm(), context)?;
+
         Ok(self
             .secret
-            .derive_secret(backend, label)?
-            .kdf_expand_label(backend, "exported", context_hash, key_length)?
+            .derive_secret(crypto, label)?
+            .kdf_expand_label(crypto, "exported", &context_hash, key_length)?
             .as_slice()
             .to_vec())
     }
@@ -752,11 +724,8 @@ pub(crate) struct ExternalSecret {
 
 impl ExternalSecret {
     /// Derive an `ExternalSecret` from an `EpochSecret`.
-    fn new(
-        backend: &impl OpenMlsCryptoProvider,
-        epoch_secret: &EpochSecret,
-    ) -> Result<Self, CryptoError> {
-        let secret = epoch_secret.secret.derive_secret(backend, "external")?;
+    fn new(crypto: &impl OpenMlsCrypto, epoch_secret: &EpochSecret) -> Result<Self, CryptoError> {
+        let secret = epoch_secret.secret.derive_secret(crypto, "external")?;
         Ok(Self { secret })
     }
 
@@ -784,17 +753,14 @@ pub(crate) struct ConfirmationKey {
 
 impl ConfirmationKey {
     /// Derive an `ConfirmationKey` from an `EpochSecret`.
-    fn new(
-        backend: &impl OpenMlsCryptoProvider,
-        epoch_secret: &EpochSecret,
-    ) -> Result<Self, CryptoError> {
+    fn new(crypto: &impl OpenMlsCrypto, epoch_secret: &EpochSecret) -> Result<Self, CryptoError> {
         log::debug!("Computing confirmation key.");
         log_crypto!(
             trace,
             "  epoch_secret {:x?}",
             epoch_secret.secret.as_slice()
         );
-        let secret = epoch_secret.secret.derive_secret(backend, "confirm")?;
+        let secret = epoch_secret.secret.derive_secret(crypto, "confirm")?;
         Ok(Self { secret })
     }
 
@@ -808,14 +774,14 @@ impl ConfirmationKey {
     /// ```
     pub(crate) fn tag(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         confirmed_transcript_hash: &[u8],
     ) -> Result<ConfirmationTag, CryptoError> {
         log::debug!("Computing confirmation tag.");
         log_crypto!(trace, "  confirmation key {:x?}", self.secret.as_slice());
         log_crypto!(trace, "  transcript hash  {:x?}", confirmed_transcript_hash);
         Ok(ConfirmationTag(Mac::new(
-            backend,
+            crypto,
             &self.secret,
             confirmed_transcript_hash,
         )?))
@@ -831,9 +797,9 @@ impl ConfirmationKey {
 
 #[cfg(any(feature = "test-utils", test))]
 impl ConfirmationKey {
-    pub(crate) fn random(ciphersuite: Ciphersuite, rng: &impl OpenMlsCryptoProvider) -> Self {
+    pub(crate) fn random(ciphersuite: Ciphersuite) -> Self {
         Self {
-            secret: Secret::random(ciphersuite, rng, None /* MLS version */)
+            secret: Secret::random(ciphersuite, None /* MLS version */)
                 .expect("Not enough randomness."),
         }
     }
@@ -852,11 +818,8 @@ pub(crate) struct MembershipKey {
 
 impl MembershipKey {
     /// Derive an `MembershipKey` from an `EpochSecret`.
-    fn new(
-        backend: &impl OpenMlsCryptoProvider,
-        epoch_secret: &EpochSecret,
-    ) -> Result<Self, CryptoError> {
-        let secret = epoch_secret.secret.derive_secret(backend, "membership")?;
+    fn new(crypto: &impl OpenMlsCrypto, epoch_secret: &EpochSecret) -> Result<Self, CryptoError> {
+        let secret = epoch_secret.secret.derive_secret(crypto, "membership")?;
         Ok(Self { secret })
     }
 
@@ -869,12 +832,12 @@ impl MembershipKey {
     /// ```
     pub(crate) fn tag_message(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         tbm_payload: AuthenticatedContentTbm,
     ) -> Result<MembershipTag, LibraryError> {
         Ok(MembershipTag(
             Mac::new(
-                backend,
+                crypto,
                 &self.secret,
                 &tbm_payload
                     .into_bytes()
@@ -895,9 +858,9 @@ impl MembershipKey {
     }
 
     #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn random(ciphersuite: Ciphersuite, rng: &impl OpenMlsCryptoProvider) -> Self {
+    pub(crate) fn random(ciphersuite: Ciphersuite) -> Self {
         Self {
-            secret: Secret::random(ciphersuite, rng, None /* MLS version */)
+            secret: Secret::random(ciphersuite, None /* MLS version */)
                 .expect("Not enough randomness."),
         }
     }
@@ -924,18 +887,15 @@ pub(crate) struct SenderDataSecret {
 
 impl SenderDataSecret {
     /// Derive an `ExporterSecret` from an `EpochSecret`.
-    fn new(
-        backend: &impl OpenMlsCryptoProvider,
-        epoch_secret: &EpochSecret,
-    ) -> Result<Self, CryptoError> {
-        let secret = epoch_secret.secret.derive_secret(backend, "sender data")?;
+    fn new(crypto: &impl OpenMlsCrypto, epoch_secret: &EpochSecret) -> Result<Self, CryptoError> {
+        let secret = epoch_secret.secret.derive_secret(crypto, "sender data")?;
         Ok(SenderDataSecret { secret })
     }
 
     /// Derive a new AEAD key from a `SenderDataSecret`.
     pub(crate) fn derive_aead_key(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphertext: &[u8],
     ) -> Result<AeadKey, CryptoError> {
         let ciphertext_sample = ciphertext_sample(self.secret.ciphersuite(), ciphertext);
@@ -944,7 +904,7 @@ impl SenderDataSecret {
             ciphertext_sample
         );
         let secret = self.secret.kdf_expand_label(
-            backend,
+            crypto,
             "key",
             ciphertext_sample,
             self.secret.ciphersuite().aead_key_length(),
@@ -956,7 +916,7 @@ impl SenderDataSecret {
     pub(crate) fn derive_aead_nonce(
         &self,
         ciphersuite: Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphertext: &[u8],
     ) -> Result<AeadNonce, CryptoError> {
         let ciphertext_sample = ciphertext_sample(ciphersuite, ciphertext);
@@ -965,7 +925,7 @@ impl SenderDataSecret {
             ciphertext_sample
         );
         let nonce_secret = self.secret.kdf_expand_label(
-            backend,
+            crypto,
             "nonce",
             ciphertext_sample,
             ciphersuite.aead_nonce_length(),
@@ -974,9 +934,9 @@ impl SenderDataSecret {
     }
 
     #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn random(ciphersuite: Ciphersuite, rng: &impl OpenMlsCryptoProvider) -> Self {
+    pub(crate) fn random(ciphersuite: Ciphersuite) -> Self {
         Self {
-            secret: Secret::random(ciphersuite, rng, None /* MLS version */)
+            secret: Secret::random(ciphersuite, None /* MLS version */)
                 .expect("Not enough randomness."),
         }
     }
@@ -1109,10 +1069,7 @@ impl EpochSecrets {
     /// Derive `EpochSecrets` from an `EpochSecret`.
     /// If the `with_init_secret` argument is `true`, the init secret is derived and
     /// part of the `EpochSecrets`. Otherwise not.
-    fn new(
-        backend: &impl OpenMlsCryptoProvider,
-        epoch_secret: EpochSecret,
-    ) -> Result<Self, CryptoError> {
+    fn new(crypto: &impl OpenMlsCrypto, epoch_secret: EpochSecret) -> Result<Self, CryptoError> {
         log::debug!(
             "Computing EpochSecrets from epoch secret with {}",
             epoch_secret.secret.ciphersuite()
@@ -1122,17 +1079,17 @@ impl EpochSecrets {
             "  epoch_secret: {:x?}",
             epoch_secret.secret.as_slice()
         );
-        let sender_data_secret = SenderDataSecret::new(backend, &epoch_secret)?;
-        let encryption_secret = EncryptionSecret::new(backend, &epoch_secret)?;
-        let exporter_secret = ExporterSecret::new(backend, &epoch_secret)?;
-        let epoch_authenticator = EpochAuthenticator::new(backend, &epoch_secret)?;
-        let external_secret = ExternalSecret::new(backend, &epoch_secret)?;
-        let confirmation_key = ConfirmationKey::new(backend, &epoch_secret)?;
-        let membership_key = MembershipKey::new(backend, &epoch_secret)?;
-        let resumption_psk = ResumptionPskSecret::new(backend, &epoch_secret)?;
+        let sender_data_secret = SenderDataSecret::new(crypto, &epoch_secret)?;
+        let encryption_secret = EncryptionSecret::new(crypto, &epoch_secret)?;
+        let exporter_secret = ExporterSecret::new(crypto, &epoch_secret)?;
+        let epoch_authenticator = EpochAuthenticator::new(crypto, &epoch_secret)?;
+        let external_secret = ExternalSecret::new(crypto, &epoch_secret)?;
+        let confirmation_key = ConfirmationKey::new(crypto, &epoch_secret)?;
+        let membership_key = MembershipKey::new(crypto, &epoch_secret)?;
+        let resumption_psk = ResumptionPskSecret::new(crypto, &epoch_secret)?;
 
         log::trace!("  Computing init secret.");
-        let init_secret = InitSecret::new(backend, epoch_secret)?;
+        let init_secret = InitSecret::new(crypto, epoch_secret)?;
 
         Ok(EpochSecrets {
             init_secret,
@@ -1152,7 +1109,7 @@ impl EpochSecrets {
     /// with the given `InitSecret`. This is meant to be used in the case of an
     /// external init.
     pub(crate) fn with_init_secret(
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         init_secret: InitSecret,
     ) -> Result<Self, CryptoError> {
         let epoch_secret = EpochSecret {
@@ -1161,7 +1118,7 @@ impl EpochSecrets {
                 init_secret.secret.version(),
             ),
         };
-        let mut epoch_secrets = Self::new(backend, epoch_secret)?;
+        let mut epoch_secrets = Self::new(crypto, epoch_secret)?;
         epoch_secrets.init_secret = init_secret;
         Ok(epoch_secrets)
     }

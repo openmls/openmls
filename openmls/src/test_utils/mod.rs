@@ -162,11 +162,13 @@ pub(crate) fn generate_group_candidate(
             None => {
                 // We don't want to store anything. So...
                 let backend = OpenMlsRustCrypto::default();
+                let crypto = backend.crypto();
 
                 let key_package_creation_result = builder
-                    .build_without_key_storage(
+                    // TODO(#XXXX)
+                    .build_without_key_storage::<<OpenMlsRustCrypto as OpenMlsCryptoProvider>::KeyStoreProvider>(
                         CryptoConfig::with_default_version(ciphersuite),
-                        &backend,
+                        crypto,
                         &credential_with_key_and_signer.signer,
                         credential_with_key_and_signer.credential_with_key.clone(),
                     )

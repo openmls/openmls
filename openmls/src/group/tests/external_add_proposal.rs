@@ -261,6 +261,8 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
+    let crypto = backend.crypto();
+
     let ProposalValidationTestSetup {
         alice_group,
         bob_group,
@@ -308,7 +310,7 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
 
     // Remove proposal cannot have a 'new_member_proposal' sender
     let remove_proposal = alice_group
-        .propose_remove_member(backend, &alice_signer, LeafNodeIndex::new(1))
+        .propose_remove_member(crypto, &alice_signer, LeafNodeIndex::new(1))
         .map(|(out, _)| MlsMessageIn::from(out))
         .unwrap();
     if let MlsMessageInBody::PublicMessage(mut plaintext) = remove_proposal.body {

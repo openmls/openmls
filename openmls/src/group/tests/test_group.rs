@@ -15,6 +15,9 @@ use tests::utils::{generate_credential_bundle, generate_key_package};
 
 #[apply(ciphersuites_and_backends)]
 fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+    let rand = backend.rand();
+
     let group_aad = b"Alice's test group";
     // Framing parameters
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -38,7 +41,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
 
     // Alice creates a group
     let mut group_alice = CoreGroup::builder(
-        GroupId::random(backend),
+        GroupId::random(rand),
         CryptoConfig::with_default_version(ciphersuite),
         alice_credential_with_keys.credential_with_key,
     )
@@ -57,7 +60,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         .expect("Could not create proposal.");
 
     let mut proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, crypto, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -93,7 +96,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, crypto, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -167,7 +170,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, alice_update_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, crypto, alice_update_proposal)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -196,6 +199,9 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
 
 #[apply(ciphersuites_and_backends)]
 fn basic_group_setup(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+    let rand = backend.rand();
+
     let group_aad = b"Alice's test group";
     // Framing parameters
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -219,7 +225,7 @@ fn basic_group_setup(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvi
 
     // Alice creates a group
     let group_alice = CoreGroup::builder(
-        GroupId::random(backend),
+        GroupId::random(rand),
         CryptoConfig::with_default_version(ciphersuite),
         alice_credential_with_keys.credential_with_key,
     )
@@ -236,7 +242,7 @@ fn basic_group_setup(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvi
         .expect("Could not create proposal.");
 
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, crypto, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -268,6 +274,9 @@ fn basic_group_setup(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvi
 ///  - Charlie removes Bob
 #[apply(ciphersuites_and_backends)]
 fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+    let rand = backend.rand();
+
     let group_aad = b"Alice's test group";
     // Framing parameters
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -293,7 +302,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     // === Alice creates a group ===
     let mut group_alice = CoreGroup::builder(
-        GroupId::random(backend),
+        GroupId::random(rand),
         CryptoConfig::with_default_version(ciphersuite),
         alice_credential_with_keys.credential_with_key.clone(),
     )
@@ -310,7 +319,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .expect("Could not create proposal.");
 
     let mut proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, crypto, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -365,23 +374,19 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
             &[],
             &message_alice,
             0,
-            backend,
+            crypto,
             &alice_credential_with_keys.signer,
         )
         .expect("An unexpected error occurred.")
         .into();
 
     let verifiable_plaintext = group_bob
-        .decrypt(
-            &mls_ciphertext_alice,
-            backend,
-            &sender_ratchet_configuration,
-        )
+        .decrypt(&mls_ciphertext_alice, crypto, &sender_ratchet_configuration)
         .expect("An unexpected error occurred.");
 
     let mls_plaintext_bob: AuthenticatedContentIn = verifiable_plaintext
         .verify(
-            backend.crypto(),
+            crypto,
             &OpenMlsSignaturePublicKey::new(
                 alice_credential_with_keys.signer.to_public_vec().into(),
                 ciphersuite.signature_algorithm(),
@@ -416,7 +421,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, update_proposal_bob)
+        QueuedProposal::from_authenticated_content(ciphersuite, crypto, update_proposal_bob)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -479,7 +484,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, update_proposal_alice)
+        QueuedProposal::from_authenticated_content(ciphersuite, crypto, update_proposal_alice)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -540,7 +545,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     proposal_store.add(
         QueuedProposal::from_authenticated_content(
             ciphersuite,
-            backend,
+            crypto,
             update_proposal_bob.clone(),
         )
         .expect("Could not create QueuedProposal."),
@@ -565,7 +570,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .expect("error merging own commits");
 
     proposal_store.add(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, update_proposal_bob)
+        QueuedProposal::from_authenticated_content(ciphersuite, crypto, update_proposal_bob)
             .expect("Could not create StagedProposal."),
     );
 
@@ -616,7 +621,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, add_charlie_proposal_bob)
+        QueuedProposal::from_authenticated_content(ciphersuite, crypto, add_charlie_proposal_bob)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -681,7 +686,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
             &[],
             &message_charlie,
             0,
-            backend,
+            crypto,
             &charlie_credential_with_keys.signer,
         )
         .expect("An unexpected error occurred.")
@@ -691,14 +696,14 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     let verifiable_plaintext = group_alice
         .decrypt(
             &mls_ciphertext_charlie.clone(),
-            backend,
+            crypto,
             &sender_ratchet_configuration,
         )
         .expect("An unexpected error occurred.");
 
     let mls_plaintext_alice: AuthenticatedContentIn = verifiable_plaintext
         .verify(
-            backend.crypto(),
+            crypto,
             &OpenMlsSignaturePublicKey::new(
                 charlie_credential_with_keys.signer.to_public_vec().into(),
                 ciphersuite.signature_algorithm(),
@@ -715,7 +720,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     let verifiable_plaintext = group_bob
         .decrypt(
             &mls_ciphertext_charlie,
-            backend,
+            crypto,
             &sender_ratchet_configuration,
         )
         .expect("An unexpected error occurred.");
@@ -757,7 +762,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, update_proposal_charlie)
+        QueuedProposal::from_authenticated_content(ciphersuite, crypto, update_proposal_charlie)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -818,7 +823,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     proposal_store.add(
         QueuedProposal::from_authenticated_content(
             ciphersuite,
-            backend,
+            crypto,
             remove_bob_proposal_charlie,
         )
         .expect("Could not create QueuedProposal."),
@@ -866,16 +871,16 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     // Make sure all groups export the same key
     let alice_exporter = group_alice
-        .export_secret(backend, "export test", &[], 32)
+        .export_secret(crypto, "export test", &[], 32)
         .expect("An unexpected error occurred.");
     let charlie_exporter = group_charlie
-        .export_secret(backend, "export test", &[], 32)
+        .export_secret(crypto, "export test", &[], 32)
         .expect("An unexpected error occurred.");
     assert_eq!(alice_exporter, charlie_exporter);
 
     // Now alice tries to derive an exporter with too large of a key length.
     let exporter_length: usize = u16::MAX.into();
     let exporter_length = exporter_length + 1;
-    let alice_exporter = group_alice.export_secret(backend, "export test", &[], exporter_length);
+    let alice_exporter = group_alice.export_secret(crypto, "export test", &[], exporter_length);
     assert!(alice_exporter.is_err())
 }

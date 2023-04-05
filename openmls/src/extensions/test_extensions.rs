@@ -33,6 +33,9 @@ fn application_id() {
 // in-band
 #[apply(ciphersuites_and_backends)]
 fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+    let rand = backend.rand();
+
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -66,7 +69,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
 
     // === Alice creates a group with the ratchet tree extension ===
     let mut alice_group = CoreGroup::builder(
-        GroupId::random(backend),
+        GroupId::random(rand),
         config::CryptoConfig::with_default_version(ciphersuite),
         alice_credential_with_key.clone(),
     )
@@ -84,7 +87,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
         .expect("Could not create proposal.");
 
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, crypto, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -139,7 +142,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
     };
 
     let mut alice_group = CoreGroup::builder(
-        GroupId::random(backend),
+        GroupId::random(rand),
         config::CryptoConfig::with_default_version(ciphersuite),
         alice_credential_with_key,
     )
@@ -157,7 +160,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
         .expect("Could not create proposal.");
 
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, crypto, bob_add_proposal)
             .expect("Could not create staged proposal."),
     );
 

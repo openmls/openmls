@@ -88,6 +88,8 @@ impl MlsGroup {
         (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
         CommitToPendingProposalsError<KeyStore::Error>,
     > {
+        let crypto = backend.crypto();
+
         self.is_operational()?;
 
         // Create Commit over all pending proposals
@@ -100,7 +102,7 @@ impl MlsGroup {
 
         // Convert PublicMessage messages to MLSMessage and encrypt them if required by
         // the configuration
-        let mls_message = self.content_to_mls_message(create_commit_result.commit, backend)?;
+        let mls_message = self.content_to_mls_message(create_commit_result.commit, crypto)?;
 
         // Set the current group state to [`MlsGroupState::PendingCommit`],
         // storing the current [`StagedCommit`] from the commit results

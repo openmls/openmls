@@ -29,6 +29,9 @@ use crate::{
 /// `filtered_queued_proposals` returns only proposals of a certain type
 #[apply(ciphersuites_and_backends)]
 fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+    let rand = backend.rand();
+
     // Framing parameters
     let framing_parameters = FramingParameters::new(&[], WireFormat::PublicMessage);
     // Define identities
@@ -41,11 +44,11 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
     let alice_update_key_package_bundle =
         KeyPackageBundle::new(backend, &alice_signer, ciphersuite, alice_credential);
     let alice_update_key_package = alice_update_key_package_bundle.key_package();
-    assert!(alice_update_key_package.verify(backend.crypto()).is_ok());
+    assert!(alice_update_key_package.verify(crypto).is_ok());
 
     let group_context = GroupContext::new(
         ciphersuite,
-        GroupId::random(backend),
+        GroupId::random(rand),
         0,
         vec![],
         vec![],
@@ -98,37 +101,28 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
     )
     .unwrap();
 
-    let proposal_reference_add_alice1 = ProposalRef::from_authenticated_content(
-        backend.crypto(),
-        ciphersuite,
-        &mls_plaintext_add_alice1,
-    )
-    .unwrap();
-    let proposal_reference_add_alice2 = ProposalRef::from_authenticated_content(
-        backend.crypto(),
-        ciphersuite,
-        &mls_plaintext_add_alice2,
-    )
-    .unwrap();
-    let proposal_reference_add_bob = ProposalRef::from_authenticated_content(
-        backend.crypto(),
-        ciphersuite,
-        &mls_plaintext_add_bob,
-    )
-    .unwrap();
+    let proposal_reference_add_alice1 =
+        ProposalRef::from_authenticated_content(crypto, ciphersuite, &mls_plaintext_add_alice1)
+            .unwrap();
+    let proposal_reference_add_alice2 =
+        ProposalRef::from_authenticated_content(crypto, ciphersuite, &mls_plaintext_add_alice2)
+            .unwrap();
+    let proposal_reference_add_bob =
+        ProposalRef::from_authenticated_content(crypto, ciphersuite, &mls_plaintext_add_bob)
+            .unwrap();
 
     let mut proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, mls_plaintext_add_alice1)
+        QueuedProposal::from_authenticated_content(ciphersuite, crypto, mls_plaintext_add_alice1)
             .expect("Could not create QueuedProposal."),
     );
     proposal_store.add(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, mls_plaintext_add_alice2)
+        QueuedProposal::from_authenticated_content(ciphersuite, crypto, mls_plaintext_add_alice2)
             .expect("Could not create QueuedProposal."),
     );
 
     let (proposal_queue, own_update) = ProposalQueue::filter_proposals(
         ciphersuite,
-        backend,
+        crypto,
         Sender::build_member(LeafNodeIndex::new(1)),
         &proposal_store,
         &[],
@@ -162,6 +156,9 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
 /// Test, that we QueuedProposalQueue is iterated in the right order.
 #[apply(ciphersuites_and_backends)]
 fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+    let rand = backend.rand();
+
     // Framing parameters
     let framing_parameters = FramingParameters::new(&[], WireFormat::PublicMessage);
     // Define identities
@@ -174,11 +171,11 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     let alice_update_key_package_bundle =
         KeyPackageBundle::new(backend, &alice_signer, ciphersuite, alice_credential);
     let alice_update_key_package = alice_update_key_package_bundle.key_package();
-    assert!(alice_update_key_package.verify(backend.crypto()).is_ok());
+    assert!(alice_update_key_package.verify(crypto).is_ok());
 
     let group_context = GroupContext::new(
         ciphersuite,
-        GroupId::random(backend),
+        GroupId::random(rand),
         0,
         vec![],
         vec![],
@@ -205,12 +202,9 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         &alice_signer,
     )
     .unwrap();
-    let proposal_reference_add_alice1 = ProposalRef::from_authenticated_content(
-        backend.crypto(),
-        ciphersuite,
-        &mls_plaintext_add_alice1,
-    )
-    .unwrap();
+    let proposal_reference_add_alice1 =
+        ProposalRef::from_authenticated_content(crypto, ciphersuite, &mls_plaintext_add_alice1)
+            .unwrap();
 
     let mls_plaintext_add_bob1 = AuthenticatedContent::member_proposal(
         framing_parameters,
@@ -223,11 +217,11 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
     // This should set the order of the proposals.
     let mut proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, mls_plaintext_add_alice1)
+        QueuedProposal::from_authenticated_content(ciphersuite, crypto, mls_plaintext_add_alice1)
             .unwrap(),
     );
     proposal_store.add(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, mls_plaintext_add_bob1)
+        QueuedProposal::from_authenticated_content(ciphersuite, crypto, mls_plaintext_add_bob1)
             .unwrap(),
     );
 
@@ -243,7 +237,7 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     // as ProposalOrRefs.
     let proposal_queue = ProposalQueue::from_committed_proposals(
         ciphersuite,
-        backend,
+        crypto,
         proposal_or_refs,
         &proposal_store,
         &sender,
@@ -262,6 +256,8 @@ fn test_required_unsupported_proposals(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
+    let rand = backend.rand();
+
     let (alice_credential, _, alice_signer, _alice_pk) =
         setup_client("Alice", ciphersuite, backend);
 
@@ -274,7 +270,7 @@ fn test_required_unsupported_proposals(
 
     // This must fail because we don't actually support AppAck proposals
     let e = CoreGroup::builder(
-        GroupId::random(backend),
+        GroupId::random(rand),
         CryptoConfig::with_default_version(ciphersuite),
         alice_credential,
     )
@@ -294,6 +290,8 @@ fn test_required_extension_key_package_mismatch(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
+    let rand = backend.rand();
+
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -320,7 +318,7 @@ fn test_required_extension_key_package_mismatch(
         RequiredCapabilitiesExtension::new(extensions, proposals, credentials);
 
     let alice_group = CoreGroup::builder(
-        GroupId::random(backend),
+        GroupId::random(rand),
         CryptoConfig::with_default_version(ciphersuite),
         alice_credential,
     )
@@ -343,6 +341,9 @@ fn test_required_extension_key_package_mismatch(
 
 #[apply(ciphersuites_and_backends)]
 fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+    let rand = backend.rand();
+
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -367,7 +368,7 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMl
         RequiredCapabilitiesExtension::new(extensions, proposals, credentials);
 
     let mut alice_group = CoreGroup::builder(
-        GroupId::random(backend),
+        GroupId::random(rand),
         CryptoConfig::with_default_version(ciphersuite),
         alice_credential,
     )
@@ -380,7 +381,7 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMl
         .expect("Could not create proposal");
 
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, crypto, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
     log::info!(" >>> Creating commit ...");
@@ -418,6 +419,9 @@ fn test_group_context_extension_proposal_fails(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
+    let crypto = backend.crypto();
+    let rand = backend.rand();
+
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -440,7 +444,7 @@ fn test_group_context_extension_proposal_fails(
     let required_capabilities = RequiredCapabilitiesExtension::new(&[], proposals, credentials);
 
     let mut alice_group = CoreGroup::builder(
-        GroupId::random(backend),
+        GroupId::random(rand),
         CryptoConfig::with_default_version(ciphersuite),
         alice_credential,
     )
@@ -476,7 +480,7 @@ fn test_group_context_extension_proposal_fails(
         .expect("Could not create proposal");
 
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, crypto, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
     log::info!(" >>> Creating commit ...");
@@ -530,6 +534,9 @@ fn test_group_context_extension_proposal(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
+    let crypto = backend.crypto();
+    let rand = backend.rand();
+
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -542,7 +549,7 @@ fn test_group_context_extension_proposal(
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let mut alice_group = CoreGroup::builder(
-        GroupId::random(backend),
+        GroupId::random(rand),
         CryptoConfig::with_default_version(ciphersuite),
         alice_credential,
     )
@@ -555,7 +562,7 @@ fn test_group_context_extension_proposal(
         .expect("Could not create proposal");
 
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, crypto, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
     log::info!(" >>> Creating commit ...");
@@ -602,7 +609,7 @@ fn test_group_context_extension_proposal(
         .expect("Error creating gce proposal.");
 
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, gce_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, crypto, gce_proposal)
             .expect("Could not create QueuedProposal."),
     );
     log::info!(" >>> Creating commit ...");
@@ -630,10 +637,10 @@ fn test_group_context_extension_proposal(
 
     assert_eq!(
         alice_group
-            .export_secret(backend, "label", b"gce test", 32)
+            .export_secret(crypto, "label", b"gce test", 32)
             .expect("Error exporting secret."),
         bob_group
-            .export_secret(backend, "label", b"gce test", 32)
+            .export_secret(crypto, "label", b"gce test", 32)
             .expect("Error exporting secret.")
     )
 }

@@ -1,4 +1,4 @@
-use openmls_traits::{signatures::Signer, OpenMlsCryptoProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer};
 
 use super::{errors::ProposeAddMemberError, MlsGroup};
 use crate::{framing::MlsMessageOut, group::QueuedProposal, schedule::PreSharedKeyId};
@@ -9,7 +9,7 @@ impl MlsGroup {
     /// Returns an error if there is a pending commit.
     pub fn propose_external_psk(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         signer: &impl Signer,
         psk_id: PreSharedKeyId,
     ) -> Result<MlsMessageOut, ProposeAddMemberError> {
@@ -22,11 +22,11 @@ impl MlsGroup {
         self.proposal_store
             .add(QueuedProposal::from_authenticated_content(
                 self.ciphersuite(),
-                backend,
+                crypto,
                 add_proposal.clone(),
             )?);
 
-        let mls_message = self.content_to_mls_message(add_proposal, backend)?;
+        let mls_message = self.content_to_mls_message(add_proposal, crypto)?;
 
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();

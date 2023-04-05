@@ -37,6 +37,8 @@ impl MlsGroup {
         key_packages: &[KeyPackage],
     ) -> Result<(MlsMessageOut, MlsMessageOut, Option<GroupInfo>), AddMembersError<KeyStore::Error>>
     {
+        let crypto = backend.crypto();
+
         self.is_operational()?;
 
         if key_packages.is_empty() {
@@ -71,7 +73,7 @@ impl MlsGroup {
 
         // Convert PublicMessage messages to MLSMessage and encrypt them if required by
         // the configuration
-        let mls_messages = self.content_to_mls_message(create_commit_result.commit, backend)?;
+        let mls_messages = self.content_to_mls_message(create_commit_result.commit, crypto)?;
 
         // Set the current group state to [`MlsGroupState::PendingCommit`],
         // storing the current [`StagedCommit`] from the commit results
@@ -121,6 +123,8 @@ impl MlsGroup {
         (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
         RemoveMembersError<KeyStore::Error>,
     > {
+        let crypto = backend.crypto();
+
         self.is_operational()?;
 
         if members.is_empty() {
@@ -146,7 +150,7 @@ impl MlsGroup {
 
         // Convert PublicMessage messages to MLSMessage and encrypt them if required by
         // the configuration
-        let mls_message = self.content_to_mls_message(create_commit_result.commit, backend)?;
+        let mls_message = self.content_to_mls_message(create_commit_result.commit, crypto)?;
 
         // Set the current group state to [`MlsGroupState::PendingCommit`],
         // storing the current [`StagedCommit`] from the commit results
@@ -171,7 +175,7 @@ impl MlsGroup {
     /// Returns an error if there is a pending commit.
     pub fn propose_add_member(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         signer: &impl Signer,
         key_package: &KeyPackage,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeAddMemberError> {
@@ -189,13 +193,13 @@ impl MlsGroup {
 
         let proposal = QueuedProposal::from_authenticated_content(
             self.ciphersuite(),
-            backend,
+            crypto,
             add_proposal.clone(),
         )?;
         let proposal_ref = proposal.proposal_reference();
         self.proposal_store.add(proposal);
 
-        let mls_message = self.content_to_mls_message(add_proposal, backend)?;
+        let mls_message = self.content_to_mls_message(add_proposal, crypto)?;
 
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();
@@ -209,7 +213,7 @@ impl MlsGroup {
     /// Returns an error if there is a pending commit.
     pub fn propose_remove_member(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         signer: &impl Signer,
         member: LeafNodeIndex,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeRemoveMemberError> {
@@ -222,13 +226,13 @@ impl MlsGroup {
 
         let proposal = QueuedProposal::from_authenticated_content(
             self.ciphersuite(),
-            backend,
+            crypto,
             remove_proposal.clone(),
         )?;
         let proposal_ref = proposal.proposal_reference();
         self.proposal_store.add(proposal);
 
-        let mls_message = self.content_to_mls_message(remove_proposal, backend)?;
+        let mls_message = self.content_to_mls_message(remove_proposal, crypto)?;
 
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();
@@ -242,7 +246,7 @@ impl MlsGroup {
     /// Returns an error if there is a pending commit.
     pub fn propose_remove_member_by_credential(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         signer: &impl Signer,
         member: &Credential,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeRemoveMemberError> {
@@ -255,7 +259,7 @@ impl MlsGroup {
             .map(|m| m.index);
 
         if let Some(member_index) = member_index {
-            self.propose_remove_member(backend, signer, member_index)
+            self.propose_remove_member(crypto, signer, member_index)
         } else {
             Err(ProposeRemoveMemberError::UnknownMember)
         }
@@ -269,7 +273,7 @@ impl MlsGroup {
     /// Returns an error if there is a pending commit.
     pub fn leave_group(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         signer: &impl Signer,
     ) -> Result<MlsMessageOut, LeaveGroupError> {
         self.is_operational()?;
@@ -283,11 +287,11 @@ impl MlsGroup {
         self.proposal_store
             .add(QueuedProposal::from_authenticated_content(
                 self.ciphersuite(),
-                backend,
+                crypto,
                 remove_proposal.clone(),
             )?);
 
-        Ok(self.content_to_mls_message(remove_proposal, backend)?)
+        Ok(self.content_to_mls_message(remove_proposal, crypto)?)
     }
 
     /// Returns a list of [`Member`]s in the group.

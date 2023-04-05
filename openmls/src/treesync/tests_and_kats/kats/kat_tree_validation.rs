@@ -86,6 +86,8 @@ struct TestElement {
 }
 
 fn run_test_vector(test: TestElement, backend: &impl OpenMlsCryptoProvider) -> Result<(), String> {
+    let crypto = backend.crypto();
+
     let ciphersuite = Ciphersuite::try_from(test.cipher_suite).unwrap();
     // Skip unsupported ciphersuites.
     if !backend
@@ -99,7 +101,7 @@ fn run_test_vector(test: TestElement, backend: &impl OpenMlsCryptoProvider) -> R
 
     let ratchet_tree = RatchetTree::tls_deserialize_exact(test.tree).unwrap();
 
-    let treesync = TreeSync::from_ratchet_tree(backend, ciphersuite, ratchet_tree.clone())
+    let treesync = TreeSync::from_ratchet_tree(crypto, ciphersuite, ratchet_tree.clone())
         .map_err(|e| format!("Error while creating tree sync: {e:?}"))?;
 
     let diff = treesync.empty_diff();
@@ -116,7 +118,7 @@ fn run_test_vector(test: TestElement, backend: &impl OpenMlsCryptoProvider) -> R
         assert_eq!(resolution, test.resolutions[index]);
 
         let tree_hash = diff
-            .compute_tree_hash(backend, ciphersuite, tree_node_index, &HashSet::new())
+            .compute_tree_hash(crypto, ciphersuite, tree_node_index, &HashSet::new())
             .unwrap();
 
         // Verify tree hash

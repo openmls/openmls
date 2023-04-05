@@ -100,6 +100,8 @@ fn generate_key_package(
 ///  - Test saving the group state
 #[apply(ciphersuites_and_backends)]
 fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     // Generate credential bundles
     let (alice_credential, alice_signature_keys) = generate_credential(
         "Alice".into(),
@@ -247,7 +249,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // ANCHOR: alice_exports_group_info
     let verifiable_group_info = alice_group
-        .export_group_info(backend, &alice_signature_keys, true)
+        .export_group_info(crypto, &alice_signature_keys, true)
         .expect("Cannot export group info")
         .into_verifiable_group_info()
         .expect("Could not get group info");
@@ -282,7 +284,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // ANCHOR: create_application_message
     let message_alice = b"Hi, I'm Alice!";
     let mls_message_out = alice_group
-        .create_message(backend, &alice_signature_keys, message_alice)
+        .create_message(crypto, &alice_signature_keys, message_alice)
         .expect("Error creating application message.");
     // ANCHOR_END: create_application_message
 
@@ -354,8 +356,8 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // Check that both groups have the same state
     assert_eq!(
-        alice_group.export_secret(backend, "", &[], 32),
-        bob_group.export_secret(backend, "", &[], 32)
+        alice_group.export_secret(crypto, "", &[], 32),
+        bob_group.export_secret(crypto, "", &[], 32)
     );
 
     // Make sure that both groups have the same public tree
@@ -445,8 +447,8 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // Check that both groups have the same state
     assert_eq!(
-        alice_group.export_secret(backend, "", &[], 32),
-        bob_group.export_secret(backend, "", &[], 32)
+        alice_group.export_secret(crypto, "", &[], 32),
+        bob_group.export_secret(crypto, "", &[], 32)
     );
 
     // Make sure that both groups have the same public tree
@@ -519,7 +521,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // === Charlie sends a message to the group ===
     let message_charlie = b"Hi, I'm Charlie!";
     let queued_message = charlie_group
-        .create_message(backend, &charlie_signature_keys, message_charlie)
+        .create_message(crypto, &charlie_signature_keys, message_charlie)
         .expect("Error creating application message");
 
     let _alice_processed_message = alice_group
@@ -593,12 +595,12 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // Check that all groups have the same state
     assert_eq!(
-        alice_group.export_secret(backend, "", &[], 32),
-        bob_group.export_secret(backend, "", &[], 32)
+        alice_group.export_secret(crypto, "", &[], 32),
+        bob_group.export_secret(crypto, "", &[], 32)
     );
     assert_eq!(
-        alice_group.export_secret(backend, "", &[], 32),
-        charlie_group.export_secret(backend, "", &[], 32)
+        alice_group.export_secret(crypto, "", &[], 32),
+        charlie_group.export_secret(crypto, "", &[], 32)
     );
 
     // Make sure that all groups have the same public tree
@@ -773,7 +775,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // Check that Bob can no longer send messages
     assert!(bob_group
-        .create_message(backend, &bob_signature_keys, b"Should not go through")
+        .create_message(crypto, &bob_signature_keys, b"Should not go through")
         .is_err());
 
     // === Alice removes Charlie and re-adds Bob ===
@@ -791,7 +793,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // ANCHOR: propose_remove
     let (mls_message_out, _proposal_ref) = alice_group
         .propose_remove_member(
-            backend,
+            crypto,
             &alice_signature_keys,
             charlie_group.own_leaf_index(),
         )
@@ -832,7 +834,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // Create AddProposal and remove it
     // ANCHOR: rollback_proposal_by_ref
     let (_mls_message_out, proposal_ref) = alice_group
-        .propose_add_member(backend, &alice_signature_keys, &bob_key_package)
+        .propose_add_member(crypto, &alice_signature_keys, &bob_key_package)
         .expect("Could not create proposal to add Bob");
     alice_group
         .remove_pending_proposal(proposal_ref)
@@ -842,7 +844,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // Create AddProposal and process it
     // ANCHOR: propose_add
     let (mls_message_out, _proposal_ref) = alice_group
-        .propose_add_member(backend, &alice_signature_keys, &bob_key_package)
+        .propose_add_member(crypto, &alice_signature_keys, &bob_key_package)
         .expect("Could not create proposal to add Bob");
     // ANCHOR_END: propose_add
 
@@ -953,7 +955,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // === Alice sends a message to the group ===
     let message_alice = b"Hi, I'm Alice!";
     let queued_message = alice_group
-        .create_message(backend, &alice_signature_keys, message_alice)
+        .create_message(crypto, &alice_signature_keys, message_alice)
         .expect("Error creating application message");
 
     let bob_processed_message = bob_group
@@ -1002,7 +1004,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // ANCHOR: leaving
     let queued_message = bob_group
-        .leave_group(backend, &bob_signature_keys)
+        .leave_group(crypto, &bob_signature_keys)
         .expect("Could not leave group");
     // ANCHOR_END: leaving
 
@@ -1247,8 +1249,8 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     .expect("Could not create group from Welcome");
 
     assert_eq!(
-        alice_group.export_secret(backend, "before load", &[], 32),
-        bob_group.export_secret(backend, "before load", &[], 32)
+        alice_group.export_secret(crypto, "before load", &[], 32),
+        bob_group.export_secret(crypto, "before load", &[], 32)
     );
 
     // Check that the state flag gets reset when saving
@@ -1279,8 +1281,8 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // Make sure the state is still the same
     assert_eq!(
-        alice_group.export_secret(backend, "after load", &[], 32),
-        bob_group.export_secret(backend, "after load", &[], 32)
+        alice_group.export_secret(crypto, "after load", &[], 32),
+        bob_group.export_secret(crypto, "after load", &[], 32)
     );
 }
 

@@ -1,6 +1,7 @@
 //! This module contains the [`LeafNode`] struct and its implementation.
 use openmls_traits::{
-    key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite, OpenMlsCryptoProvider,
+    crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite,
+    OpenMlsCryptoProvider,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -84,11 +85,11 @@ impl LeafNode {
         leaf_node_source: LeafNodeSource,
         capabilities: Capabilities,
         extensions: Extensions,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         signer: &impl Signer,
     ) -> Result<(Self, EncryptionKeyPair), LibraryError> {
         // Create a new encryption key pair.
-        let encryption_key_pair = EncryptionKeyPair::random(backend, config)?;
+        let encryption_key_pair = EncryptionKeyPair::random(crypto, config)?;
 
         let leaf_node = Self::new_with_key(
             encryption_key_pair.public_key().clone(),
@@ -167,6 +168,8 @@ impl LeafNode {
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
     ) -> Result<Self, LeafNodeGenerationError<KeyStore::Error>> {
+        let crypto = backend.crypto();
+
         // Note that this function is supposed to be used in the public API only
         // because it is interacting with the key store.
 
@@ -176,7 +179,7 @@ impl LeafNode {
             LeafNodeSource::Update,
             capabilities,
             extensions,
-            backend,
+            crypto,
             signer,
         )?;
 
@@ -756,7 +759,7 @@ impl OpenMlsLeafNode {
     pub(crate) fn new(
         config: CryptoConfig,
         leaf_node_source: LeafNodeSource,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
         capabilities: Capabilities,
@@ -768,7 +771,7 @@ impl OpenMlsLeafNode {
             leaf_node_source,
             capabilities,
             extensions,
-            backend,
+            crypto,
             signer,
         )?;
 
@@ -828,7 +831,7 @@ impl OpenMlsLeafNode {
         group_id: &GroupId,
         ciphersuite: Ciphersuite,
         protocol_version: ProtocolVersion,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         signer: &impl Signer,
     ) -> Result<EncryptionKeyPair, PublicTreeError> {
         if !self
@@ -856,7 +859,7 @@ impl OpenMlsLeafNode {
             .into());
         }
         let key_pair = EncryptionKeyPair::random(
-            backend,
+            crypto,
             CryptoConfig {
                 ciphersuite,
                 version: protocol_version,

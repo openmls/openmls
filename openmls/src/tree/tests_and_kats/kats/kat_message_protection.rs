@@ -131,6 +131,8 @@ fn group(
 ) -> (CoreGroup, CredentialWithKey, SignatureKeyPair) {
     use crate::group::config::CryptoConfig;
 
+    let rand = backend.rand();
+
     let (credential_with_key, signer) = generate_credential(
         "Kreator".into(),
         CredentialType::Basic,
@@ -139,7 +141,7 @@ fn group(
     );
 
     let group = CoreGroup::builder(
-        GroupId::random(backend),
+        GroupId::random(rand),
         CryptoConfig::with_default_version(ciphersuite),
         credential_with_key.clone(),
     )
@@ -191,6 +193,8 @@ pub fn run_test_vector(
         prelude::KeyPackageBundle,
         prelude_test::Secret,
     };
+
+    let crypto = backend.crypto();
 
     let ciphersuite = test.cipher_suite.try_into().unwrap();
     if !backend
@@ -272,7 +276,7 @@ pub fn run_test_vector(
             .expect("Could not create proposal.");
 
         let proposal_store = ProposalStore::from_queued_proposal(
-            QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
+            QueuedProposal::from_authenticated_content(ciphersuite, crypto, bob_add_proposal)
                 .expect("Could not create QueuedProposal."),
         );
 
@@ -341,7 +345,7 @@ pub fn run_test_vector(
         // check that the proposal in proposal_pub == proposal
         let decrypted_message = group
             .decrypt_message(
-                backend,
+                crypto,
                 proposal_pub.into_protocol_message().unwrap(),
                 &sender_ratchet_config,
             )
@@ -352,7 +356,7 @@ pub fn run_test_vector(
             .parse_message(decrypted_message, group.message_secrets_store())
             .unwrap();
         let processed_message: AuthenticatedContent =
-            processed_unverified_message.verify(backend).unwrap().0;
+            processed_unverified_message.verify(crypto).unwrap().0;
         match processed_message.content().to_owned() {
             FramedContentBody::Proposal(p) => assert_eq!(proposal, p.into()),
             _ => panic!("Wrong processed message content"),
@@ -405,7 +409,7 @@ pub fn run_test_vector(
         // check that the proposal in proposal_pub == proposal
         let decrypted_message = group
             .decrypt_message(
-                backend,
+                crypto,
                 commit_pub.into_protocol_message().unwrap(),
                 &sender_ratchet_config,
             )
@@ -416,7 +420,7 @@ pub fn run_test_vector(
             .parse_message(decrypted_message, group.message_secrets_store())
             .unwrap();
         let processed_message: AuthenticatedContent =
-            processed_unverified_message.verify(backend).unwrap().0;
+            processed_unverified_message.verify(crypto).unwrap().0;
         match processed_message.content().to_owned() {
             FramedContentBody::Commit(c) => {
                 assert_eq!(commit, CommitIn::from(c))
@@ -427,7 +431,7 @@ pub fn run_test_vector(
         // check that the proposal in proposal_priv == proposal
         let decrypted_message = group
             .decrypt_message(
-                backend,
+                crypto,
                 commit_priv.into_protocol_message().unwrap(),
                 &sender_ratchet_config,
             )
@@ -438,7 +442,7 @@ pub fn run_test_vector(
             .parse_message(decrypted_message, group.message_secrets_store())
             .unwrap();
         let processed_message: AuthenticatedContent =
-            processed_unverified_message.verify(backend).unwrap().0;
+            processed_unverified_message.verify(crypto).unwrap().0;
         match processed_message.content().to_owned() {
             FramedContentBody::Commit(c) => {
                 assert_eq!(commit, CommitIn::from(c))

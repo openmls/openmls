@@ -120,6 +120,8 @@ impl PublicGroup {
         backend: &impl OpenMlsCryptoProvider,
         message: impl Into<ProtocolMessage>,
     ) -> Result<ProcessedMessage, ProcessMessageError> {
+        let crypto = backend.crypto();
+
         let protocol_message = message.into();
         // Checks the following semantic validation:
         //  - ValSem002
@@ -137,7 +139,7 @@ impl PublicGroup {
                     self.group_context()
                         .tls_serialize_detached()
                         .map_err(LibraryError::missing_bound_check)?,
-                    backend,
+                    crypto,
                 )?
             }
         };
@@ -183,10 +185,12 @@ impl PublicGroup {
         proposal_store: &ProposalStore,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<ProcessedMessage, ProcessMessageError> {
+        let crypto = backend.crypto();
+
         // Checks the following semantic validation:
         //  - ValSem010
         //  - ValSem246 (as part of ValSem010)
-        let (content, credential) = unverified_message.verify(backend)?;
+        let (content, credential) = unverified_message.verify(crypto)?;
 
         match content.sender() {
             Sender::Member(_) | Sender::NewMemberCommit | Sender::NewMemberProposal => {
@@ -202,7 +206,7 @@ impl PublicGroup {
                     FramedContentBody::Proposal(_) => {
                         let proposal = Box::new(QueuedProposal::from_authenticated_content(
                             self.ciphersuite(),
-                            backend,
+                            crypto,
                             content,
                         )?);
                         if matches!(sender, Sender::NewMemberProposal) {
@@ -212,7 +216,7 @@ impl PublicGroup {
                         }
                     }
                     FramedContentBody::Commit(_) => {
-                        let staged_commit = self.stage_commit(&content, proposal_store, backend)?;
+                        let staged_commit = self.stage_commit(&content, proposal_store, crypto)?;
                         ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))
                     }
                 };
@@ -237,7 +241,7 @@ impl PublicGroup {
                         let content = ProcessedMessageContent::ProposalMessage(Box::new(
                             QueuedProposal::from_authenticated_content(
                                 self.ciphersuite(),
-                                backend,
+                                crypto,
                                 content,
                             )?,
                         ));

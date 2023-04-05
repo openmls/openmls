@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 
-use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
 use tls_codec::VLByteSlice;
 
@@ -90,13 +90,13 @@ impl TreeSyncLeafNode {
     /// field.
     pub(in crate::treesync) fn compute_tree_hash(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         leaf_index: LeafNodeIndex,
     ) -> Result<Vec<u8>, LibraryError> {
         let hash_input =
             TreeHashInput::new_leaf(&leaf_index, self.node.as_ref().map(|node| &node.leaf_node));
-        let hash = hash_input.hash(backend, ciphersuite)?;
+        let hash = hash_input.hash(crypto, ciphersuite)?;
 
         Ok(hash)
     }
@@ -143,7 +143,7 @@ impl TreeSyncParentNode {
     /// are filtered out.
     pub(in crate::treesync) fn compute_tree_hash(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         left_hash: Vec<u8>,
         right_hash: Vec<u8>,
@@ -156,7 +156,7 @@ impl TreeSyncParentNode {
                 VLByteSlice(&left_hash),
                 VLByteSlice(&right_hash),
             )
-            .hash(backend, ciphersuite)?
+            .hash(crypto, ciphersuite)?
         } else if let Some(parent_node) = self.node.as_ref() {
             // If the exclusion list is not empty, we need to create a new
             // parent node without the excluded indices in the unmerged leaves.
@@ -173,11 +173,11 @@ impl TreeSyncParentNode {
                 VLByteSlice(&left_hash),
                 VLByteSlice(&right_hash),
             )
-            .hash(backend, ciphersuite)?
+            .hash(crypto, ciphersuite)?
         } else {
             // If the node is blank
             TreeHashInput::new_parent(None, VLByteSlice(&left_hash), VLByteSlice(&right_hash))
-                .hash(backend, ciphersuite)?
+                .hash(crypto, ciphersuite)?
         };
 
         Ok(hash)

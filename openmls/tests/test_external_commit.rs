@@ -34,13 +34,15 @@ fn create_alice_group(
 
 #[apply(ciphersuites_and_backends)]
 fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     // Alice creates a new group ...
     let (alice_group, _, alice_signer) = create_alice_group(ciphersuite, backend, false);
 
     // ... and exports a group info (with ratchet_tree).
     let verifiable_group_info = {
         let group_info = alice_group
-            .export_group_info(backend, &alice_signer, true)
+            .export_group_info(crypto, &alice_signer, true)
             .unwrap();
 
         let serialized_group_info = group_info.tls_serialize_detached().unwrap();
@@ -53,7 +55,7 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
     let verifiable_group_info_broken = {
         let group_info = alice_group
-            .export_group_info(backend, &alice_signer, true)
+            .export_group_info(crypto, &alice_signer, true)
             .unwrap();
 
         let serialized_group_info = {
@@ -130,6 +132,8 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
 #[apply(ciphersuites_and_backends)]
 fn test_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     // Alice creates a new group ...
     let (mut alice_group, _, alice_signer) = create_alice_group(ciphersuite, backend, true);
 
@@ -179,7 +183,7 @@ fn test_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // bob sends a message to alice
     let message: MlsMessageIn = bob_group
-        .create_message(backend, &bob_signature_keys, b"Hello Alice")
+        .create_message(crypto, &bob_signature_keys, b"Hello Alice")
         .unwrap()
         .into();
 

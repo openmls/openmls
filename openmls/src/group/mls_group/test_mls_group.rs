@@ -16,6 +16,8 @@ use crate::{
 
 #[apply(ciphersuites_and_backends)]
 fn test_mls_group_persistence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
@@ -50,11 +52,11 @@ fn test_mls_group_persistence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
     assert_eq!(
         (
             alice_group.export_ratchet_tree(),
-            alice_group.export_secret(backend, "test", &[], 32)
+            alice_group.export_secret(crypto, "test", &[], 32)
         ),
         (
             alice_group_deserialized.export_ratchet_tree(),
-            alice_group_deserialized.export_secret(backend, "test", &[], 32)
+            alice_group_deserialized.export_secret(crypto, "test", &[], 32)
         )
     );
 }
@@ -63,6 +65,8 @@ fn test_mls_group_persistence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
 // issues a RemoveProposal and another members issues the next Commit.
 #[apply(ciphersuites_and_backends)]
 fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
@@ -141,7 +145,7 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // === Alice removes Bob & Charlie commits ===
 
     let (queued_messages, _) = alice_group
-        .propose_remove_member(backend, &alice_signer, LeafNodeIndex::new(1))
+        .propose_remove_member(crypto, &alice_signer, LeafNodeIndex::new(1))
         .expect("Could not propose removal");
 
     let charlie_processed_message = charlie_group
@@ -203,6 +207,8 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
 
 #[apply(ciphersuites_and_backends)]
 fn export_secret(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
@@ -223,24 +229,26 @@ fn export_secret(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider)
 
     assert!(
         alice_group
-            .export_secret(backend, "test1", &[], ciphersuite.hash_length())
+            .export_secret(crypto, "test1", &[], ciphersuite.hash_length())
             .expect("An unexpected error occurred.")
             != alice_group
-                .export_secret(backend, "test2", &[], ciphersuite.hash_length())
+                .export_secret(crypto, "test2", &[], ciphersuite.hash_length())
                 .expect("An unexpected error occurred.")
     );
     assert!(
         alice_group
-            .export_secret(backend, "test", &[0u8], ciphersuite.hash_length())
+            .export_secret(crypto, "test", &[0u8], ciphersuite.hash_length())
             .expect("An unexpected error occurred.")
             != alice_group
-                .export_secret(backend, "test", &[1u8], ciphersuite.hash_length())
+                .export_secret(crypto, "test", &[1u8], ciphersuite.hash_length())
                 .expect("An unexpected error occurred.")
     )
 }
 
 #[apply(ciphersuites_and_backends)]
 fn test_invalid_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     // Some basic setup functions for the MlsGroup.
     let mls_group_config = MlsGroupConfig::test_default(ciphersuite);
 
@@ -296,7 +304,7 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
         MlsMessageOutBody::PublicMessage(pt) => {
             pt.set_sender(random_sender);
             pt.set_membership_tag(
-                backend,
+                crypto,
                 membership_key,
                 client_group.group().message_secrets().serialized_context(),
             )
@@ -338,6 +346,8 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
 
 #[apply(ciphersuites_and_backends)]
 fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
@@ -364,7 +374,7 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
 
     // Let's add bob
     let (proposal, _) = alice_group
-        .propose_add_member(backend, &alice_signer, bob_key_package)
+        .propose_add_member(crypto, &alice_signer, bob_key_package)
         .expect("error creating self-update proposal");
 
     let alice_processed_message = alice_group
@@ -402,7 +412,7 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
         AddMembersError::GroupStateError(MlsGroupStateError::PendingCommit)
     );
     let error = alice_group
-        .propose_add_member(backend, &alice_signer, bob_key_package)
+        .propose_add_member(crypto, &alice_signer, bob_key_package)
         .expect_err("no error creating a proposal while a commit is pending");
     assert_eq!(
         error,
@@ -416,7 +426,7 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
         RemoveMembersError::GroupStateError(MlsGroupStateError::PendingCommit)
     );
     let error = alice_group
-        .propose_remove_member(backend, &alice_signer, LeafNodeIndex::new(1))
+        .propose_remove_member(crypto, &alice_signer, LeafNodeIndex::new(1))
         .expect_err("no error creating a proposal while a commit is pending");
     assert_eq!(
         error,
@@ -476,8 +486,8 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
         alice_group.export_ratchet_tree()
     );
     assert_eq!(
-        bob_group.export_secret(backend, "test", &[], ciphersuite.hash_length()),
-        alice_group.export_secret(backend, "test", &[], ciphersuite.hash_length())
+        bob_group.export_secret(crypto, "test", &[], ciphersuite.hash_length()),
+        alice_group.export_secret(crypto, "test", &[], ciphersuite.hash_length())
     );
 
     // While a commit is pending, merging Bob's commit should clear the pending commit.
@@ -510,6 +520,8 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
 // creating a new group for a welcome message.
 #[apply(ciphersuites_and_backends)]
 fn key_package_deletion(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
@@ -560,12 +572,7 @@ fn key_package_deletion(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     assert!(
         backend
             .key_store()
-            .read::<KeyPackage>(
-                bob_key_package
-                    .hash_ref(backend.crypto())
-                    .unwrap()
-                    .as_slice()
-            )
+            .read::<KeyPackage>(bob_key_package.hash_ref(crypto).unwrap().as_slice())
             .is_none(),
         "The key package is still in the key store after creating a new group from it."
     );
@@ -573,6 +580,8 @@ fn key_package_deletion(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
 #[apply(ciphersuites_and_backends)]
 fn remove_prosposal_by_ref(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
@@ -613,7 +622,7 @@ fn remove_prosposal_by_ref(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypt
     .unwrap();
     // alice proposes to add charlie
     let (_, reference) = alice_group
-        .propose_add_member(backend, &alice_signer, charlie_key_package)
+        .propose_add_member(crypto, &alice_signer, charlie_key_package)
         .unwrap();
 
     assert_eq!(alice_group.proposal_store.proposals().count(), 1);

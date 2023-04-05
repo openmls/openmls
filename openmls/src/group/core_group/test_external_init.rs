@@ -19,6 +19,8 @@ use super::{proposals::ProposalStore, CoreGroup};
 
 #[apply(ciphersuites_and_backends)]
 fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     let (
         framing_parameters,
         mut group_alice,
@@ -34,7 +36,7 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
 
     // Have Alice export everything that Charly needs.
     let verifiable_group_info = group_alice
-        .export_group_info(backend, &alice_signer, true)
+        .export_group_info(crypto, &alice_signer, true)
         .unwrap()
         .into_verifiable_group_info();
 
@@ -76,8 +78,8 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
         .expect("error merging own external commit");
 
     assert_eq!(
-        group_charly.export_secret(backend, "", &[], ciphersuite.hash_length()),
-        group_bob.export_secret(backend, "", &[], ciphersuite.hash_length())
+        group_charly.export_secret(crypto, "", &[], ciphersuite.hash_length()),
+        group_bob.export_secret(crypto, "", &[], ciphersuite.hash_length())
     );
 
     assert_eq!(
@@ -111,7 +113,7 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
 
     // Have Alice export everything that Bob needs.
     let verifiable_group_info = group_alice
-        .export_group_info(backend, &alice_signer, false)
+        .export_group_info(crypto, &alice_signer, false)
         .unwrap()
         .into_verifiable_group_info();
     let ratchet_tree = group_alice.public_group().export_ratchet_tree();
@@ -170,8 +172,8 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
         .expect("error merging own external commit");
 
     assert_eq!(
-        group_charly.export_secret(backend, "", &[], ciphersuite.hash_length()),
-        new_group_bob.export_secret(backend, "", &[], ciphersuite.hash_length())
+        group_charly.export_secret(crypto, "", &[], ciphersuite.hash_length()),
+        new_group_bob.export_secret(crypto, "", &[], ciphersuite.hash_length())
     );
 
     assert_eq!(
@@ -185,6 +187,8 @@ fn test_external_init_single_member_group(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
+    let crypto = backend.crypto();
+
     let (mut group_alice, _alice_credential_with_key, alice_signer, _alice_pk) =
         setup_alice_group(ciphersuite, backend);
 
@@ -198,7 +202,7 @@ fn test_external_init_single_member_group(
 
     // Have Alice export everything that Charly needs.
     let verifiable_group_info = group_alice
-        .export_group_info(backend, &alice_signer, false)
+        .export_group_info(crypto, &alice_signer, false)
         .unwrap()
         .into_verifiable_group_info();
     let nodes_option = group_alice.public_group().export_ratchet_tree();
@@ -232,8 +236,8 @@ fn test_external_init_single_member_group(
         .expect("error merging own external commit");
 
     assert_eq!(
-        group_charly.export_secret(backend, "", &[], ciphersuite.hash_length()),
-        group_alice.export_secret(backend, "", &[], ciphersuite.hash_length())
+        group_charly.export_secret(crypto, "", &[], ciphersuite.hash_length()),
+        group_alice.export_secret(crypto, "", &[], ciphersuite.hash_length())
     );
 
     assert_eq!(
@@ -247,6 +251,8 @@ fn test_external_init_broken_signature(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
+    let crypto = backend.crypto();
+
     let (
         framing_parameters,
         group_alice,
@@ -262,7 +268,7 @@ fn test_external_init_broken_signature(
 
     let verifiable_group_info = {
         let mut verifiable_group_info = group_alice
-            .export_group_info(backend, &alice_signer, true)
+            .export_group_info(crypto, &alice_signer, true)
             .unwrap()
             .into_verifiable_group_info();
         verifiable_group_info.break_signature();

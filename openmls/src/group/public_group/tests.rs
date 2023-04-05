@@ -20,6 +20,8 @@ use super::PublicGroup;
 
 #[apply(ciphersuites_and_backends)]
 fn public_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
@@ -47,13 +49,13 @@ fn public_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) 
 
     // === Create a public group that tracks the changes throughout this test ===
     let verifiable_group_info = alice_group
-        .export_group_info(backend, &alice_signer, false)
+        .export_group_info(crypto, &alice_signer, false)
         .unwrap()
         .into_verifiable_group_info()
         .unwrap();
     let nodes = alice_group.export_ratchet_tree();
     let (mut public_group, _extensions) =
-        PublicGroup::from_external(backend, nodes, verifiable_group_info, ProposalStore::new())
+        PublicGroup::from_external(crypto, nodes, verifiable_group_info, ProposalStore::new())
             .unwrap();
 
     // === Alice adds Bob ===
@@ -143,7 +145,7 @@ fn public_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) 
     // === Alice removes Bob & Charlie commits ===
 
     let (queued_messages, _) = alice_group
-        .propose_remove_member(backend, &alice_signer, LeafNodeIndex::new(1))
+        .propose_remove_member(crypto, &alice_signer, LeafNodeIndex::new(1))
         .expect("Could not propose removal");
 
     let charlie_processed_message = charlie_group

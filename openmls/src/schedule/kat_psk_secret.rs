@@ -57,13 +57,11 @@ struct TestElement {
 }
 
 fn run_test_vector(test: TestElement, backend: &impl OpenMlsCryptoProvider) -> Result<(), String> {
+    let crypto = backend.crypto();
+
     let ciphersuite = Ciphersuite::try_from(test.cipher_suite).unwrap();
     // Skip unsupported ciphersuites.
-    if !backend
-        .crypto()
-        .supported_ciphersuites()
-        .contains(&ciphersuite)
-    {
+    if !crypto.supported_ciphersuites().contains(&ciphersuite) {
         log::debug!("Unsupported ciphersuite {0:?} ...", test.cipher_suite);
         return Ok(());
     }

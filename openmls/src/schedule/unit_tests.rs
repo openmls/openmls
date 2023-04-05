@@ -9,24 +9,20 @@ use crate::{ciphersuite::Secret, schedule::psk::*, test_utils::*, versions::Prot
 #[apply(ciphersuites_and_backends)]
 fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Create a new PSK secret from multiple PSKs.
-    let prng = backend.rand();
+    let rand = backend.rand();
 
     let psk_ids = (0..33)
         .map(|_| {
-            let id = prng.random_vec(12).expect("An unexpected error occurred.");
-            PreSharedKeyId::new(
-                ciphersuite,
-                backend.rand(),
-                Psk::External(ExternalPsk::new(id)),
-            )
-            .expect("An unexpected error occurred.")
+            let id = rand.random_vec(12).expect("An unexpected error occurred.");
+            PreSharedKeyId::new(ciphersuite, rand, Psk::External(ExternalPsk::new(id)))
+                .expect("An unexpected error occurred.")
         })
         .collect::<Vec<PreSharedKeyId>>();
 
     for (secret, psk_id) in (0..33)
         .map(|_| {
             Secret::from_slice(
-                &prng.random_vec(55).expect("An unexpected error occurred."),
+                &rand.random_vec(55).expect("An unexpected error occurred."),
                 ProtocolVersion::Mls10,
                 ciphersuite,
             )

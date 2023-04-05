@@ -7,7 +7,7 @@
 
 use std::convert::TryFrom;
 
-use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tls_codec::{Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
@@ -471,7 +471,7 @@ impl ProposalRef {
     ///       we calculate it from the raw value in some places that do not interact with the outside world.
     pub(crate) fn from_raw_proposal(
         ciphersuite: Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         proposal: &Proposal,
     ) -> Result<Self, LibraryError> {
         // This is used for hash domain separation.
@@ -483,8 +483,7 @@ impl ProposalRef {
 
         data.append(&mut encoded);
 
-        make_proposal_ref(&data, ciphersuite, backend.crypto())
-            .map_err(LibraryError::unexpected_crypto_error)
+        make_proposal_ref(&data, ciphersuite, crypto).map_err(LibraryError::unexpected_crypto_error)
     }
 }
 

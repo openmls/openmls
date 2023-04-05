@@ -49,7 +49,7 @@ impl EncryptionKey {
     /// Encrypt to this HPKE public key.
     pub(crate) fn encrypt(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         context: &[u8],
         plaintext: &[u8],
@@ -60,7 +60,7 @@ impl EncryptionKey {
             context,
             plaintext,
             ciphersuite,
-            backend.crypto(),
+            crypto,
         )
         .map_err(|_| LibraryError::custom("Encryption failed. A serialization issue really"))
     }
@@ -105,7 +105,7 @@ impl EncryptionPrivateKey {
     /// unsuccessful.
     pub(crate) fn decrypt(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         version: ProtocolVersion,
         ciphertext: &HpkeCiphertext,
@@ -118,7 +118,7 @@ impl EncryptionPrivateKey {
             group_context,
             ciphertext,
             ciphersuite,
-            backend.crypto(),
+            crypto,
         )
         .map(|secret_bytes| Secret::from_slice(&secret_bytes, version, ciphersuite))
     }
@@ -198,13 +198,13 @@ impl EncryptionKeyPair {
     }
 
     pub(crate) fn random(
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         config: CryptoConfig,
     ) -> Result<Self, LibraryError> {
-        let ikm = Secret::random(config.ciphersuite, backend, config.version)
+        let ikm = Secret::random(config.ciphersuite, config.version)
             .map_err(LibraryError::unexpected_crypto_error)?;
-        Ok(backend
-            .crypto()
+
+        Ok(crypto
             .derive_hpke_keypair(config.ciphersuite.hpke_config(), ikm.as_slice())
             .into())
     }

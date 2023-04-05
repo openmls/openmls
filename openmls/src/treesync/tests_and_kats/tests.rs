@@ -20,7 +20,8 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
-    let _ = backend; // get rid of warning
+    let crypto = backend.crypto();
+
     let crypto_config = CryptoConfig::with_default_version(ciphersuite);
     let mls_group_config = MlsGroupConfig::builder()
         .crypto_config(crypto_config)
@@ -156,7 +157,7 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
 
     charlie_group
         .create_message(
-            &charlie.backend,
+            crypto,
             &charlie.credential_with_key_and_signer.signer,
             b"Hello, World!".as_slice(),
         )

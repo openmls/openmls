@@ -1,4 +1,4 @@
-use openmls_traits::{signatures::Signer, OpenMlsCryptoProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer};
 
 use crate::{
     credentials::CredentialWithKey,
@@ -57,7 +57,7 @@ impl TempBuilderPG1 {
 
     pub(crate) fn get_secrets(
         self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         signer: &impl Signer,
     ) -> Result<(TempBuilderPG2, CommitSecret, EncryptionKeyPair), PublicGroupBuildError> {
         let capabilities = self
@@ -65,7 +65,7 @@ impl TempBuilderPG1 {
             .as_ref()
             .map(|re| re.extension_types());
         let (treesync, commit_secret, leaf_keypair) = TreeSync::new(
-            backend,
+            crypto,
             signer,
             self.crypto_config,
             self.credential_with_key,

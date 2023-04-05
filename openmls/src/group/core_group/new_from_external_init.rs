@@ -31,6 +31,8 @@ impl CoreGroup {
         ratchet_tree: Option<RatchetTree>,
         verifiable_group_info: VerifiableGroupInfo,
     ) -> Result<ExternalCommitResult, ExternalCommitError> {
+        let crypto = backend.crypto();
+
         // Build the ratchet tree
 
         // Set nodes either from the extension or from the `nodes_option`.
@@ -47,7 +49,7 @@ impl CoreGroup {
             };
 
         let (public_group, group_info) = PublicGroup::from_external(
-            backend,
+            crypto,
             ratchet_tree,
             verifiable_group_info,
             // Existing proposals are discarded when joining by external commit.
@@ -63,13 +65,13 @@ impl CoreGroup {
             .external_pub();
 
         let (init_secret, kem_output) =
-            InitSecret::from_group_context(backend, group_context, external_pub.as_slice())
+            InitSecret::from_group_context(crypto, group_context, external_pub.as_slice())
                 .map_err(|_| ExternalCommitError::UnsupportedCiphersuite)?;
 
         // The `EpochSecrets` we create here are essentially zero, with the
         // exception of the `InitSecret`, which is all we need here for the
         // external commit.
-        let epoch_secrets = EpochSecrets::with_init_secret(backend, init_secret)
+        let epoch_secrets = EpochSecrets::with_init_secret(crypto, init_secret)
             .map_err(LibraryError::unexpected_crypto_error)?;
         let (group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
             group_context

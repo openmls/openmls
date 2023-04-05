@@ -14,6 +14,8 @@ use crate::{
 
 #[apply(ciphersuites_and_backends)]
 fn test_past_secrets_in_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     // Test this for different parameters
     for max_epochs in (0..10usize).step_by(2) {
         let group_id = GroupId::from_slice(b"Test Group");
@@ -80,7 +82,7 @@ fn test_past_secrets_in_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
 
         for _ in 0..max_epochs {
             let application_message = alice_group
-                .create_message(backend, &alice_credential_with_keys.signer, &[1, 2, 3])
+                .create_message(crypto, &alice_credential_with_keys.signer, &[1, 2, 3])
                 .expect("An unexpected error occurred.");
 
             application_messages.push(application_message.into_protocol_message().unwrap());

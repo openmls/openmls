@@ -8,9 +8,11 @@ use crate::{
 // Test the maximum forward ratcheting
 #[apply(ciphersuites_and_backends)]
 fn test_max_forward_distance(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     let configuration = &SenderRatchetConfiguration::default();
-    let secret = Secret::random(ciphersuite, backend, ProtocolVersion::Mls10)
-        .expect("Not enough randomness.");
+    let secret =
+        Secret::random(ciphersuite, ProtocolVersion::Mls10).expect("Not enough randomness.");
     let mut ratchet1 = DecryptionRatchet::new(secret.clone());
     let mut ratchet2 = DecryptionRatchet::new(secret);
 
@@ -18,7 +20,7 @@ fn test_max_forward_distance(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
     let _secret = ratchet1
         .secret_for_decryption(
             ciphersuite,
-            backend,
+            crypto,
             configuration.maximum_forward_distance(),
             configuration,
         )
@@ -28,7 +30,7 @@ fn test_max_forward_distance(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
     let err = ratchet2
         .secret_for_decryption(
             ciphersuite,
-            backend,
+            crypto,
             configuration.maximum_forward_distance() + 1,
             configuration,
         )
@@ -39,22 +41,24 @@ fn test_max_forward_distance(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
     // Test if there's an overflow in the maximum forward distance check.
     ratchet1.ratchet_secret_mut().set_generation(u32::MAX - 5);
     ratchet1
-        .secret_for_decryption(ciphersuite, backend, u32::MAX - 1, configuration)
+        .secret_for_decryption(ciphersuite, crypto, u32::MAX - 1, configuration)
         .expect("Error ratcheting to very high generation");
 }
 
 // Test out-of-order generations
 #[apply(ciphersuites_and_backends)]
 fn test_out_of_order_generations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     let configuration = &SenderRatchetConfiguration::default();
-    let secret = Secret::random(ciphersuite, backend, ProtocolVersion::Mls10)
-        .expect("Not enough randomness.");
+    let secret =
+        Secret::random(ciphersuite, ProtocolVersion::Mls10).expect("Not enough randomness.");
     let mut ratchet1 = DecryptionRatchet::new(secret);
 
     // Ratchet forward twice the size of the window
     for i in 0..configuration.out_of_order_tolerance() * 2 {
         let _secret = ratchet1
-            .secret_for_decryption(ciphersuite, backend, i, configuration)
+            .secret_for_decryption(ciphersuite, crypto, i, configuration)
             .expect("Expected decryption secret.");
     }
 
@@ -62,7 +66,7 @@ fn test_out_of_order_generations(ciphersuite: Ciphersuite, backend: &impl OpenMl
     let err = ratchet1
         .secret_for_decryption(
             ciphersuite,
-            backend,
+            crypto,
             configuration.out_of_order_tolerance() - 1,
             configuration,
         )
@@ -74,7 +78,7 @@ fn test_out_of_order_generations(ciphersuite: Ciphersuite, backend: &impl OpenMl
     for i in configuration.out_of_order_tolerance()..configuration.out_of_order_tolerance() * 2 {
         assert_eq!(
             ratchet1
-                .secret_for_decryption(ciphersuite, backend, i, configuration)
+                .secret_for_decryption(ciphersuite, crypto, i, configuration)
                 .expect_err("Expected decryption secret."),
             SecretTreeError::SecretReuseError
         );
@@ -84,16 +88,18 @@ fn test_out_of_order_generations(ciphersuite: Ciphersuite, backend: &impl OpenMl
 // Test forward secrecy
 #[apply(ciphersuites_and_backends)]
 fn test_forward_secrecy(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     // Encryption Ratchets are forward-secret by default, since they don't store
     // any keys. Thus, we can only test FS on Decryption Ratchets.
     let configuration = &SenderRatchetConfiguration::default();
-    let secret = Secret::random(ciphersuite, backend, ProtocolVersion::Mls10)
-        .expect("Not enough randomness.");
+    let secret =
+        Secret::random(ciphersuite, ProtocolVersion::Mls10).expect("Not enough randomness.");
     let mut ratchet = DecryptionRatchet::new(secret);
 
     // Let's ratchet once and see if the ratchet keeps any keys around.
     let _ratchet_secrets = ratchet
-        .secret_for_decryption(ciphersuite, backend, 0, configuration)
+        .secret_for_decryption(ciphersuite, crypto, 0, configuration)
         .expect("Error ratcheting forward.");
 
     // The generation should have increased.
@@ -101,28 +107,28 @@ fn test_forward_secrecy(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
     // And we should get an error for generation 0.
     let err = ratchet
-        .secret_for_decryption(ciphersuite, backend, 0, configuration)
+        .secret_for_decryption(ciphersuite, crypto, 0, configuration)
         .expect_err("No error when trying to retrieve key outside of tolerance window.");
     assert_eq!(err, SecretTreeError::SecretReuseError);
 
     // Let's ratchet forward a few times, making the ratchet keep the secrets round for out-of-order decryption.
     let _ratchet_secrets = ratchet
-        .secret_for_decryption(ciphersuite, backend, 10, configuration)
+        .secret_for_decryption(ciphersuite, crypto, 10, configuration)
         .expect("Error ratcheting forward.");
 
     // First, let's make sure that the window works.
     let err = ratchet
-        .secret_for_decryption(ciphersuite, backend, 5, configuration)
+        .secret_for_decryption(ciphersuite, crypto, 5, configuration)
         .expect_err("No error when trying to retrieve key outside of tolerance window.");
     assert_eq!(err, SecretTreeError::TooDistantInThePast);
 
     // Now let's get a few keys. The first time we're trying to get the key of a given generation, it should work. The second time, we should get a SecretReuseError.
     for generation in 10 - configuration.out_of_order_tolerance() + 1..10 {
-        let keys = ratchet.secret_for_decryption(ciphersuite, backend, generation, configuration);
+        let keys = ratchet.secret_for_decryption(ciphersuite, crypto, generation, configuration);
         assert!(keys.is_ok());
 
         let err = ratchet
-            .secret_for_decryption(ciphersuite, backend, generation, configuration)
+            .secret_for_decryption(ciphersuite, crypto, generation, configuration)
             .expect_err("No error when trying to retrieve deleted key.");
         assert_eq!(err, SecretTreeError::SecretReuseError);
     }
@@ -132,16 +138,18 @@ fn test_forward_secrecy(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 #[test]
 fn sender_ratchet_generation_overflow() {
     let backend = OpenMlsRustCrypto::default();
+    let crypto = backend.crypto();
+
     let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
-    let secret = Secret::random(ciphersuite, &backend, ProtocolVersion::Mls10)
-        .expect("Not enough randomness.");
+    let secret =
+        Secret::random(ciphersuite, ProtocolVersion::Mls10).expect("Not enough randomness.");
     let mut ratchet = RatchetSecret::initial_ratchet_secret(secret);
     ratchet.set_generation(u32::MAX - 1);
     let _ = ratchet
-        .ratchet_forward(&backend, ciphersuite)
+        .ratchet_forward(crypto, ciphersuite)
         .expect("error ratcheting forward");
     let err = ratchet
-        .ratchet_forward(&backend, ciphersuite)
+        .ratchet_forward(crypto, ciphersuite)
         .expect_err("no error exceeding generation u32::MAX");
     assert_eq!(err, SecretTreeError::RatchetTooLong)
 }

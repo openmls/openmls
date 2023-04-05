@@ -184,6 +184,8 @@ fn insert_proposal_and_resign(
     committer_group: &MlsGroup,
     signer: &impl Signer,
 ) -> PublicMessage {
+    let crypto = backend.crypto();
+
     let mut commit_content = if let FramedContentBody::Commit(commit) = plaintext.content() {
         commit.clone()
     } else {
@@ -206,7 +208,7 @@ fn insert_proposal_and_resign(
 
     signed_plaintext
         .set_membership_tag(
-            backend,
+            crypto,
             membership_key,
             committer_group
                 .group()
@@ -553,6 +555,8 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 /// members
 #[apply(ciphersuites_and_backends)]
 fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     for alice_and_bob_share_keys in [
         KeyUniqueness::NegativeSameKey,
         KeyUniqueness::PositiveDifferentKey,
@@ -660,7 +664,7 @@ fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                     })
                     .unwrap();
                 alice_group
-                    .propose_remove_member(backend, &alice_credential_bundle.signer, bob_index)
+                    .propose_remove_member(crypto, &alice_credential_bundle.signer, bob_index)
                     .unwrap();
                 alice_group
                     .add_members(backend, &alice_credential_bundle.signer, &[target_key_package])
@@ -989,6 +993,8 @@ enum ProposalInclusion {
 /// Required capabilities
 #[apply(ciphersuites_and_backends)]
 fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     let _ = pretty_env_logger::try_init();
 
     // Required capabilities validation includes two types of checks on the
@@ -1112,7 +1118,7 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                 ProposalInclusion::ByReference => {
                     let _proposal = alice_group
                         .propose_add_member(
-                            backend,
+                            crypto,
                             &alice_credential_with_key_and_signer.signer,
                             &test_kp,
                         )
@@ -1198,7 +1204,7 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             let proposal_or_ref = match proposal_inclusion {
                 ProposalInclusion::ByValue => ProposalOrRef::Proposal(add_proposal.clone()),
                 ProposalInclusion::ByReference => ProposalOrRef::Reference(
-                    ProposalRef::from_raw_proposal(ciphersuite, backend, &add_proposal).unwrap(),
+                    ProposalRef::from_raw_proposal(ciphersuite, crypto, &add_proposal).unwrap(),
                 ),
             };
             // Artificially add the proposal.
@@ -1219,7 +1225,7 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                 bob_group.store_pending_proposal(
                     QueuedProposal::from_proposal_and_sender(
                         ciphersuite,
-                        backend,
+                        crypto,
                         add_proposal.clone(),
                         &Sender::build_member(alice_group.own_leaf_index()),
                     )
@@ -1266,6 +1272,8 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 /// Removed member must be unique among proposals
 #[apply(ciphersuites_and_backends)]
 fn test_valsem107(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     // Helper function to unwrap a commit with a single proposal from an mls message.
     fn unwrap_specific_commit(commit_ref_remove: MlsMessageOut) -> Commit {
         let serialized_message = commit_ref_remove.tls_serialize_detached().unwrap();
@@ -1309,7 +1317,7 @@ fn test_valsem107(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         // We first go the manual route
         let (ref_propose1, _) = alice_group
             .propose_remove_member(
-                backend,
+                crypto,
                 &alice_credential_with_key_and_signer.signer,
                 bob_leaf_index,
             )
@@ -1317,7 +1325,7 @@ fn test_valsem107(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
         let (ref_propose2, _) = alice_group
             .propose_remove_member(
-                backend,
+                crypto,
                 &alice_credential_with_key_and_signer.signer,
                 bob_leaf_index,
             )
@@ -1413,6 +1421,8 @@ fn test_valsem107(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 /// Removed member must be an existing group member
 #[apply(ciphersuites_and_backends)]
 fn test_valsem108(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     // Before we can test creation or reception of (invalid) proposals, we set
     // up a new group with Alice and Bob.
     let ProposalValidationTestSetup {
@@ -1433,7 +1443,7 @@ fn test_valsem108(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // We first go the manual route
     let _remove_proposal1 = alice_group
         .propose_remove_member(
-            backend,
+            crypto,
             &alice_credential_with_key_and_signer.signer,
             fake_leaf_index,
         )
@@ -1447,7 +1457,7 @@ fn test_valsem108(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Creating the proposal should fail already because the member is not known.
     let err = alice_group
         .propose_remove_member(
-            backend,
+            crypto,
             &alice_credential_with_key_and_signer.signer,
             fake_leaf_index,
         )
@@ -1678,6 +1688,8 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 /// The sender of a full Commit must not include own update proposals
 #[apply(ciphersuites_and_backends)]
 fn test_valsem111(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     // Before we can test creation or reception of (invalid) proposals, we set
     // up a new group with Alice and Bob.
     let ProposalValidationTestSetup {
@@ -1773,7 +1785,7 @@ fn test_valsem111(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     bob_group.store_pending_proposal(
         QueuedProposal::from_proposal_and_sender(
             ciphersuite,
-            backend,
+            crypto,
             update_proposal.clone(),
             &Sender::build_member(alice_group.own_leaf_index()),
         )
@@ -1807,7 +1819,7 @@ fn test_valsem111(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let verifiable_plaintext = insert_proposal_and_resign(
         backend,
         vec![ProposalOrRef::Reference(
-            ProposalRef::from_raw_proposal(ciphersuite, backend, &update_proposal)
+            ProposalRef::from_raw_proposal(ciphersuite, crypto, &update_proposal)
                 .expect("error creating hash reference"),
         )],
         plaintext,
@@ -1908,6 +1920,8 @@ fn test_valsem112(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
 #[apply(ciphersuites_and_backends)]
 fn test_valsem401_valsem402(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     let ProposalValidationTestSetup {
         mut alice_group,
         alice_credential_with_key_and_signer,
@@ -2005,11 +2019,7 @@ fn test_valsem401_valsem402(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
                 .unwrap();
 
             let psk_proposal = alice_group
-                .propose_external_psk(
-                    &alice_backend,
-                    &alice_credential_with_key_and_signer.signer,
-                    psk_id,
-                )
+                .propose_external_psk(crypto, &alice_credential_with_key_and_signer.signer, psk_id)
                 .unwrap();
 
             proposals.push(psk_proposal);

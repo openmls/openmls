@@ -27,7 +27,7 @@ use crate::{
     extensions::ExternalSendersExtension, group::errors::ValidationError, treesync::TreeSync,
 };
 use core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::crypto::OpenMlsCrypto;
 
 use crate::{
     ciphersuite::signable::Verifiable, error::LibraryError,
@@ -60,7 +60,7 @@ impl DecryptedMessage {
         public_message: PublicMessageIn,
         message_secrets_option: impl Into<Option<&'a MessageSecrets>>,
         serialized_context: Vec<u8>,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
     ) -> Result<Self, ValidationError> {
         if public_message.sender().is_member() {
             // ValSem007 Membership tag presence
@@ -73,7 +73,7 @@ impl DecryptedMessage {
                 // it is implicit for PrivateMessage messages (because the encryption can only be known by members).
                 // ValSem008
                 public_message.verify_membership(
-                    backend,
+                    crypto,
                     message_secrets.membership_key(),
                     message_secrets.serialized_context(),
                 )?;
@@ -89,7 +89,7 @@ impl DecryptedMessage {
     /// to a [VerifiableAuthenticatedContent] first.
     pub(crate) fn from_inbound_ciphertext(
         ciphertext: PrivateMessageIn,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         group: &mut CoreGroup,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
     ) -> Result<Self, ValidationError> {
@@ -100,13 +100,13 @@ impl DecryptedMessage {
         let (message_secrets, _old_leaves) = group
             .message_secrets_and_leaves_mut(ciphertext.epoch())
             .map_err(|_| MessageDecryptionError::AeadError)?;
-        let sender_data = ciphertext.sender_data(message_secrets, backend, ciphersuite)?;
+        let sender_data = ciphertext.sender_data(message_secrets, crypto, ciphersuite)?;
         let message_secrets = group
             .message_secrets_mut(ciphertext.epoch())
             .map_err(|_| MessageDecryptionError::AeadError)?;
         let verifiable_content = ciphertext.to_verifiable_content(
             ciphersuite,
-            backend,
+            crypto,
             message_secrets,
             sender_data.leaf_index,
             sender_ratchet_configuration,
@@ -253,11 +253,11 @@ impl UnverifiedMessage {
     /// and the internal [`Credential`].
     pub(crate) fn verify(
         self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
     ) -> Result<(AuthenticatedContent, Credential), ProcessMessageError> {
         let content: AuthenticatedContentIn = self
             .verifiable_content
-            .verify(backend.crypto(), &self.sender_pk)
+            .verify(crypto, &self.sender_pk)
             .map_err(|_| ProcessMessageError::InvalidSignature)?;
         // TODO #1186: This should be verified
         let content = content.into();

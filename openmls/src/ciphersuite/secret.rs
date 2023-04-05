@@ -1,5 +1,7 @@
 use std::fmt::{Debug, Formatter};
 
+use openmls_rust_crypto::OpenMlsRustCrypto;
+
 use super::{kdf_label::KdfLabel, *};
 
 /// A struct to contain secrets. This is to provide better visibility into where
@@ -73,7 +75,6 @@ impl Secret {
     /// The function can return a [`CryptoError`] if there is insufficient randomness.
     pub(crate) fn random(
         ciphersuite: Ciphersuite,
-        crypto: &impl OpenMlsCryptoProvider,
         version: impl Into<Option<ProtocolVersion>>,
     ) -> Result<Self, CryptoError> {
         let mls_version = version.into().unwrap_or_default();
@@ -82,8 +83,12 @@ impl Secret {
             ciphersuite,
             mls_version
         );
+
+        // TODO(#XXXX)
+        let backend = OpenMlsRustCrypto::default();
+
         Ok(Secret {
-            value: crypto
+            value: backend
                 .rand()
                 .random_vec(ciphersuite.hash_length())
                 .map_err(|_| CryptoError::InsufficientRandomness)?,
@@ -117,7 +122,7 @@ impl Secret {
     /// HKDF extract where `self` is `salt`.
     pub(crate) fn hkdf_extract<'a>(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ikm_option: impl Into<Option<&'a Secret>>,
     ) -> Result<Self, CryptoError> {
         log::trace!("HKDF extract with {:?}", self.ciphersuite);
@@ -143,7 +148,7 @@ impl Secret {
         );
 
         Ok(Self {
-            value: backend.crypto().hkdf_extract(
+            value: crypto.hkdf_extract(
                 self.ciphersuite.hash_algorithm(),
                 self.value.as_slice(),
                 ikm.value.as_slice(),
@@ -156,12 +161,11 @@ impl Secret {
     /// HKDF expand where `self` is `prk`.
     pub(crate) fn hkdf_expand(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         info: &[u8],
         okm_len: usize,
     ) -> Result<Self, CryptoError> {
-        let key = backend
-            .crypto()
+        let key = crypto
             .hkdf_expand(
                 self.ciphersuite.hash_algorithm(),
                 &self.value,
@@ -183,7 +187,7 @@ impl Secret {
     /// `label` and a `context`.
     pub(crate) fn kdf_expand_label(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         label: &str,
         context: &[u8],
         length: usize,
@@ -198,14 +202,14 @@ impl Secret {
         let info = KdfLabel::serialized_label(context, full_label, length)?;
         log::trace!("  serialized info: {:x?}", info);
         log_crypto!(trace, "  secret: {:x?}", self.value);
-        self.hkdf_expand(backend, &info, length)
+        self.hkdf_expand(crypto, &info, length)
     }
 
     /// Derive a new `Secret` from the this one by expanding it with the given
     /// `label` and an empty `context`.
     pub(crate) fn derive_secret(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         label: &str,
     ) -> Result<Secret, CryptoError> {
         log_crypto!(
@@ -215,7 +219,7 @@ impl Secret {
             label,
             self.ciphersuite
         );
-        self.kdf_expand_label(backend, label, &[], self.ciphersuite.hash_length())
+        self.kdf_expand_label(crypto, label, &[], self.ciphersuite.hash_length())
     }
 
     /// Update the ciphersuite and MLS version of this secret.

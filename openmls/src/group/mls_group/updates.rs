@@ -29,6 +29,8 @@ impl MlsGroup {
         (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
         SelfUpdateError<KeyStore::Error>,
     > {
+        let crypto = backend.crypto();
+
         self.is_operational()?;
 
         let params = CreateCommitParams::builder()
@@ -41,7 +43,7 @@ impl MlsGroup {
 
         // Convert PublicMessage messages to MLSMessage and encrypt them if required by
         // the configuration
-        let mls_message = self.content_to_mls_message(create_commit_result.commit, backend)?;
+        let mls_message = self.content_to_mls_message(create_commit_result.commit, crypto)?;
 
         // Set the current group state to [`MlsGroupState::PendingCommit`],
         // storing the current [`StagedCommit`] from the commit results
@@ -68,6 +70,8 @@ impl MlsGroup {
         signer: &impl Signer,
         leaf_node: Option<LeafNode>,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<KeyStore::Error>> {
+        let crypto = backend.crypto();
+
         self.is_operational()?;
 
         // Here we clone our own leaf to rekey it such that we don't change the
@@ -87,7 +91,7 @@ impl MlsGroup {
                 self.group_id(),
                 self.ciphersuite(),
                 ProtocolVersion::default(), // XXX: openmls/openmls#1065
-                backend,
+                crypto,
                 signer,
             )?;
             // TODO #1207: Move to the top of the function.
@@ -105,13 +109,13 @@ impl MlsGroup {
         self.own_leaf_nodes.push(own_leaf);
         let proposal = QueuedProposal::from_authenticated_content(
             self.ciphersuite(),
-            backend,
+            crypto,
             update_proposal.clone(),
         )?;
         let proposal_ref = proposal.proposal_reference();
         self.proposal_store.add(proposal);
 
-        let mls_message = self.content_to_mls_message(update_proposal, backend)?;
+        let mls_message = self.content_to_mls_message(update_proposal, crypto)?;
 
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();

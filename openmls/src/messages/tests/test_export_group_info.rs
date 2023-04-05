@@ -13,11 +13,13 @@ use crate::{
 /// Tests the creation of an [UnverifiedGroupInfo] and verifies it was correctly signed.
 #[apply(ciphersuites_and_backends)]
 fn export_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     // Alice creates a group
     let (group_alice, _, signer, pk) = setup_alice_group(ciphersuite, backend);
 
     let group_info: GroupInfo = group_alice
-        .export_group_info(backend, &signer, true)
+        .export_group_info(crypto, &signer, true)
         .unwrap();
 
     let verifiable_group_info = {

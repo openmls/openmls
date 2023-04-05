@@ -15,6 +15,8 @@ use crate::{
 /// decoded values are the same as the original
 #[apply(ciphersuites_and_backends)]
 fn proposals_codec(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     // Proposal
 
     let remove_proposal = RemoveProposal {
@@ -32,7 +34,7 @@ fn proposals_codec(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // Reference
 
-    let reference = ProposalRef::from_raw_proposal(ciphersuite, backend, &proposal)
+    let reference = ProposalRef::from_raw_proposal(ciphersuite, crypto, &proposal)
         .expect("An unexpected error occurred.");
     let proposal_or_ref = ProposalOrRef::Reference(reference);
     let encoded = proposal_or_ref

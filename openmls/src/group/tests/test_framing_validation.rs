@@ -247,6 +247,8 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 // ValSem004 Sender: Member: check the member exists
 #[apply(ciphersuites_and_backends)]
 fn test_valsem004(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -277,7 +279,7 @@ fn test_valsem004(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // The membership tag is checked before the sender, so we need to re-calculate it and set it
     plaintext
         .set_membership_tag(
-            backend,
+            crypto,
             alice_group.group().message_secrets().membership_key(),
             alice_group.group().message_secrets().serialized_context(),
         )
@@ -303,6 +305,8 @@ fn test_valsem004(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 // ValSem005 Application messages must use ciphertext
 #[apply(ciphersuites_and_backends)]
 fn test_valsem005(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -332,7 +336,7 @@ fn test_valsem005(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // The membership tag is checked before verifying content encryption, so we need to re-calculate it and set it
     plaintext
         .set_membership_tag(
-            backend,
+            crypto,
             alice_group.group().message_secrets().membership_key(),
             alice_group.group().message_secrets().serialized_context(),
         )
@@ -358,6 +362,8 @@ fn test_valsem005(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 // ValSem006 Ciphertext: decryption needs to work
 #[apply(ciphersuites_and_backends)]
 fn test_valsem006(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -368,7 +374,7 @@ fn test_valsem006(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     } = validation_test_setup(PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     let message = alice_group
-        .create_message(backend, &_alice_credential.signer, &[1, 2, 3])
+        .create_message(crypto, &_alice_credential.signer, &[1, 2, 3])
         .expect("An unexpected error occurred.");
 
     let serialized_message = message
@@ -452,6 +458,8 @@ fn test_valsem007(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 // ValSem008 Membership tag verification
 #[apply(ciphersuites_and_backends)]
 fn test_valsem008(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -478,7 +486,7 @@ fn test_valsem008(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let original_message = plaintext.clone();
 
     plaintext.set_membership_tag_test(MembershipTag(
-        Mac::new(backend, &Secret::default(), &[1, 2, 3])
+        Mac::new(crypto, &Secret::default(), &[1, 2, 3])
             .expect("Could not compute membership tag."),
     ));
 
@@ -502,6 +510,8 @@ fn test_valsem008(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 // ValSem009 Confirmation tag presence
 #[apply(ciphersuites_and_backends)]
 fn test_valsem009(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -531,7 +541,7 @@ fn test_valsem009(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // The membership tag covers the confirmation tag, so we need to re-calculate it and set it
     plaintext
         .set_membership_tag(
-            backend,
+            crypto,
             alice_group.group().message_secrets().membership_key(),
             alice_group.group().message_secrets().serialized_context(),
         )
@@ -557,6 +567,8 @@ fn test_valsem009(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 // ValSem010 Signature verification
 #[apply(ciphersuites_and_backends)]
 fn test_valsem010(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -588,7 +600,7 @@ fn test_valsem010(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // The membership tag covers the signature, so we need to re-calculate it and set it
     plaintext
         .set_membership_tag(
-            backend,
+            crypto,
             alice_group.group().message_secrets().membership_key(),
             alice_group.group().message_secrets().serialized_context(),
         )

@@ -117,7 +117,11 @@ impl User {
         let message_out = group
             .mls_group
             .borrow_mut()
-            .create_message(&self.crypto, &self.identity.borrow().signer, msg.as_bytes())
+            .create_message(
+                self.crypto.crypto(),
+                &self.identity.borrow().signer,
+                msg.as_bytes(),
+            )
             .map_err(|e| format!("{e}"))?;
 
         let msg = GroupMessage::new(message_out.into(), &self.recipients(group));

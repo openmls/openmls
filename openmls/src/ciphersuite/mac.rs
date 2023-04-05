@@ -20,14 +20,14 @@ impl Mac {
     /// HMAC that is also used in HKDF.
     /// Compute the HMAC on `salt` with key `ikm`.
     pub(crate) fn new(
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         salt: &Secret,
         ikm: &[u8],
     ) -> Result<Self, CryptoError> {
         Ok(Mac {
             mac_value: salt
                 .hkdf_extract(
-                    backend,
+                    crypto,
                     &Secret::from_slice(ikm, salt.mls_version, salt.ciphersuite),
                 )?
                 .value

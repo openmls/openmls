@@ -4,7 +4,7 @@
 //! [`StagedPublicGroupDiff`] and associated functions and types.
 use std::collections::HashSet;
 
-use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
 use tls_codec::Serialize as TlsSerialize;
 
@@ -54,10 +54,10 @@ impl<'a> PublicGroupDiff<'a> {
     /// freezing it until it is merged with the original [`PublicGroup`].
     pub(crate) fn into_staged_diff(
         self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -> Result<StagedPublicGroupDiff, LibraryError> {
-        let staged_diff = self.diff.into_staged_diff(backend, ciphersuite)?;
+        let staged_diff = self.diff.into_staged_diff(crypto, ciphersuite)?;
         Ok(StagedPublicGroupDiff {
             staged_diff,
             group_context: self.group_context,
@@ -83,7 +83,7 @@ impl<'a> PublicGroupDiff<'a> {
         plain_path_option: Option<&[PlainUpdatePathNode]>,
         presharedkeys: &[PreSharedKeyId],
         encrypted_group_info: &[u8],
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         leaf_index: LeafNodeIndex,
     ) -> Result<Vec<EncryptedGroupSecrets>, LibraryError> {
         self.diff.encrypt_group_secrets(
@@ -92,7 +92,7 @@ impl<'a> PublicGroupDiff<'a> {
             plain_path_option,
             presharedkeys,
             encrypted_group_info,
-            backend,
+            crypto,
             leaf_index,
         )
     }
@@ -121,7 +121,7 @@ impl<'a> PublicGroupDiff<'a> {
     /// TODO #804
     pub(crate) fn decrypt_path(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         owned_keys: &[&EncryptionKeyPair],
         own_leaf_index: LeafNodeIndex,
         sender_leaf_index: LeafNodeIndex,
@@ -139,7 +139,7 @@ impl<'a> PublicGroupDiff<'a> {
                 .map_err(LibraryError::missing_bound_check)?,
         };
         self.diff.decrypt_path(
-            backend,
+            crypto,
             self.group_context().ciphersuite(),
             params,
             owned_keys,
@@ -160,13 +160,13 @@ impl<'a> PublicGroupDiff<'a> {
     /// TODO #804
     pub(crate) fn apply_received_update_path(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         sender_leaf_index: LeafNodeIndex,
         update_path: &UpdatePath,
     ) -> Result<(), ApplyUpdatePathError> {
         self.diff
-            .apply_received_update_path(backend, ciphersuite, sender_leaf_index, update_path)
+            .apply_received_update_path(crypto, ciphersuite, sender_leaf_index, update_path)
     }
 
     /// Update the interim transcript hash of the diff and store the
@@ -175,14 +175,14 @@ impl<'a> PublicGroupDiff<'a> {
     pub(crate) fn update_interim_transcript_hash(
         &mut self,
         ciphersuite: Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         confirmation_tag: ConfirmationTag,
     ) -> Result<(), LibraryError> {
         let interim_transcript_hash = {
             let input = InterimTranscriptHashInput::from(&confirmation_tag);
 
             input.calculate_interim_transcript_hash(
-                backend.crypto(),
+                crypto,
                 ciphersuite,
                 self.group_context.confirmed_transcript_hash(),
             )?
@@ -199,12 +199,12 @@ impl<'a> PublicGroupDiff<'a> {
     /// confirmed transcript hash.
     pub(crate) fn update_group_context(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
     ) -> Result<(), LibraryError> {
         // Calculate tree hash
         let new_tree_hash = self
             .diff
-            .compute_tree_hashes(backend, self.group_context().ciphersuite())?;
+            .compute_tree_hashes(crypto, self.group_context().ciphersuite())?;
         self.group_context.update_tree_hash(new_tree_hash);
         self.group_context.increment_epoch();
         Ok(())
@@ -215,11 +215,11 @@ impl<'a> PublicGroupDiff<'a> {
     /// `commit_content`.
     pub(crate) fn update_confirmed_transcript_hash(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         commit_content: &AuthenticatedContent,
     ) -> Result<(), LibraryError> {
         self.group_context.update_confirmed_transcript_hash(
-            backend,
+            crypto,
             &self.interim_transcript_hash,
             commit_content,
         )

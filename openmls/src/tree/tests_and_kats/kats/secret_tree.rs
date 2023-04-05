@@ -93,6 +93,8 @@ pub fn run_test_vector(
         versions::ProtocolVersion,
     };
 
+    let crypto = backend.crypto();
+
     let ciphersuite = Ciphersuite::try_from(test.cipher_suite).unwrap();
     // Skip unsupported ciphersuites.
     if !backend
@@ -114,11 +116,11 @@ pub fn run_test_vector(
     let sender_data_nonce = hex_to_bytes(&test.sender_data.nonce);
 
     let my_sender_data_key = sender_data_secret
-        .derive_aead_key(backend, &sender_data_ciphertext)
+        .derive_aead_key(crypto, &sender_data_ciphertext)
         .unwrap();
     assert_eq!(&sender_data_key, my_sender_data_key.as_slice());
     let my_sender_data_nonce = sender_data_secret
-        .derive_aead_nonce(ciphersuite, backend, &sender_data_ciphertext)
+        .derive_aead_nonce(ciphersuite, crypto, &sender_data_ciphertext)
         .unwrap();
     assert_eq!(&sender_data_nonce, my_sender_data_nonce.as_slice());
 
@@ -150,7 +152,7 @@ pub fn run_test_vector(
                 let handshake = secret_tree
                     .secret_for_encryption(
                         ciphersuite,
-                        backend,
+                        crypto,
                         LeafNodeIndex::new(leaf_index as u32),
                         SecretType::HandshakeSecret,
                     )
@@ -158,7 +160,7 @@ pub fn run_test_vector(
                 let application = secret_tree
                     .secret_for_encryption(
                         ciphersuite,
-                        backend,
+                        crypto,
                         LeafNodeIndex::new(leaf_index as u32),
                         SecretType::ApplicationSecret,
                     )

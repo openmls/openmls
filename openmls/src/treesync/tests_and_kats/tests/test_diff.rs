@@ -12,6 +12,8 @@ use crate::{
 // Verifies that when we add a leaf to a tree with blank leaf nodes, the leaf will be added at the leftmost free leaf index
 #[apply(ciphersuites_and_backends)]
 fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     let (c_0, sk_0) = new_credential(
         backend,
         b"leaf0",
@@ -45,7 +47,7 @@ fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
     ]);
 
     // Get the encryption key pair from the leaf.
-    let tree = TreeSync::from_ratchet_tree(backend, ciphersuite, ratchet_tree)
+    let tree = TreeSync::from_ratchet_tree(crypto, ciphersuite, ratchet_tree)
         .expect("error generating tree");
 
     // Create and add a new leaf. It should go to leaf index 1

@@ -9,7 +9,7 @@ use std::{cell::RefCell, collections::HashMap};
 use config::CryptoConfig;
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::{
-    key_store::OpenMlsKeyStore, signatures::Signer, types::SignatureScheme, OpenMlsCryptoProvider,
+    crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, signatures::Signer, types::SignatureScheme,
 };
 use rand::{rngs::OsRng, RngCore};
 use tls_codec::Serialize;
@@ -53,14 +53,12 @@ impl TestClient {
     pub(crate) fn find_key_package_bundle(
         &self,
         key_package: &KeyPackage,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
     ) -> Option<KeyPackageBundle> {
         let mut key_package_bundles = self.key_package_bundles.borrow_mut();
         key_package_bundles
             .iter()
-            .position(|x| {
-                x.key_package().hash_ref(backend.crypto()) == key_package.hash_ref(backend.crypto())
-            })
+            .position(|x| x.key_package().hash_ref(crypto) == key_package.hash_ref(crypto))
             .map(|index| key_package_bundles.remove(index))
     }
 }
@@ -80,6 +78,8 @@ const KEY_PACKAGE_COUNT: usize = 10;
 
 /// The setup function creates a set of groups and clients.
 pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvider) -> TestSetup {
+    let crypto = backend.crypto();
+
     let mut test_clients: HashMap<&'static str, RefCell<TestClient>> = HashMap::new();
     let mut key_store: HashMap<(&'static str, Ciphersuite), Vec<KeyPackage>> = HashMap::new();
     // Initialize the clients for which we have configurations.
@@ -190,7 +190,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
                 proposal_store.add(
                     QueuedProposal::from_authenticated_content(
                         group_config.ciphersuite,
-                        backend,
+                        crypto,
                         proposal,
                     )
                     .expect("Could not create staged proposal."),
@@ -233,7 +233,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
                             .iter()
                             .any(|y| {
                                 y.key_package()
-                                    .hash_ref(backend.crypto())
+                                    .hash_ref(crypto)
                                     .expect("Could not hash KeyPackage.")
                                     == x.new_member()
                             })
@@ -245,7 +245,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
                     .iter()
                     .position(|y| {
                         y.key_package()
-                            .hash_ref(backend.crypto())
+                            .hash_ref(crypto)
                             .expect("Could not hash KeyPackage.")
                             == member_secret.new_member()
                     })
@@ -379,6 +379,8 @@ pub(crate) fn resign_message(
     backend: &impl OpenMlsCryptoProvider,
     signer: &impl Signer,
 ) -> PublicMessage {
+    let crypto = backend.crypto();
+
     let serialized_context = alice_group
         .export_group_context()
         .tls_serialize_detached()
@@ -405,7 +407,7 @@ pub(crate) fn resign_message(
 
     signed_plaintext
         .set_membership_tag(
-            backend,
+            crypto,
             membership_key,
             alice_group.group().message_secrets().serialized_context(),
         )

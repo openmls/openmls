@@ -12,6 +12,8 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 // Tests the different variants of the RemoveOperation enum.
 #[apply(ciphersuites_and_backends)]
 fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     let _ = backend;
     let alice_backend = OpenMlsRustCrypto::default();
     let bob_backend = OpenMlsRustCrypto::default();
@@ -125,7 +127,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
             TestCase::Leave => {
                 // Bob leaves the group
                 let message = bob_group
-                    .leave_group(&bob_backend, &bob_credential_with_key_and_signer.signer)
+                    .leave_group(crypto, &bob_credential_with_key_and_signer.signer)
                     .expect("Could not leave group.");
 
                 // Alice & Charlie store the pending proposal

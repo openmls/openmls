@@ -67,13 +67,9 @@ impl GroupId {
     /// Create a new (random) group ID.
     ///
     /// Group IDs should be random and not be misused as, e.g., a group name.
-    pub fn random(backend: &impl OpenMlsCryptoProvider) -> Self {
+    pub fn random(rand: &impl OpenMlsRand) -> Self {
         Self {
-            value: backend
-                .rand()
-                .random_vec(16)
-                .expect("Not enough randomness.")
-                .into(),
+            value: rand.random_vec(16).expect("Not enough randomness.").into(),
         }
     }
 

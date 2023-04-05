@@ -215,13 +215,11 @@ pub fn run_test_vector(
         versions::ProtocolVersion,
     };
 
+    let crypto = backend.crypto();
+
     let ciphersuite = Ciphersuite::try_from(test.cipher_suite).unwrap();
     // Skip unsupported ciphersuites.
-    if !backend
-        .crypto()
-        .supported_ciphersuites()
-        .contains(&ciphersuite)
-    {
+    if !crypto.supported_ciphersuites().contains(&ciphersuite) {
         log::debug!("Unsupported ciphersuite {ciphersuite:?} ...");
         return Ok(());
     }
@@ -232,8 +230,7 @@ pub fn run_test_vector(
         let label = test.ref_hash.label;
         let value = hex_to_bytes(&test.ref_hash.value);
         let out =
-            hash_ref::HashReference::new(&value, ciphersuite, backend.crypto(), label.as_bytes())
-                .unwrap();
+            hash_ref::HashReference::new(&value, ciphersuite, crypto, label.as_bytes()).unwrap();
 
         assert_eq!(&hex_to_bytes(&test.ref_hash.out), out.as_slice());
     }
@@ -245,7 +242,7 @@ pub fn run_test_vector(
         let context = hex_to_bytes(&test.expand_with_label.context);
         let length = test.expand_with_label.length;
         let out = Secret::from_slice(&secret, ProtocolVersion::default(), ciphersuite)
-            .kdf_expand_label(backend, &label, &context, length.into())
+            .kdf_expand_label(crypto, &label, &context, length.into())
             .unwrap();
 
         assert_eq!(&hex_to_bytes(&test.expand_with_label.out), out.as_slice());
@@ -256,7 +253,7 @@ pub fn run_test_vector(
         let label = test.derive_secret.label;
         let secret = hex_to_bytes(&test.derive_secret.secret);
         let out = Secret::from_slice(&secret, ProtocolVersion::default(), ciphersuite)
-            .derive_secret(backend, &label)
+            .derive_secret(crypto, &label)
             .unwrap();
 
         assert_eq!(&hex_to_bytes(&test.derive_secret.out), out.as_slice());
@@ -300,7 +297,7 @@ pub fn run_test_vector(
 
         // verify signature
         let verification = parsed.verify_no_out(
-            backend.crypto(),
+            crypto,
             &OpenMlsSignaturePublicKey::new(
                 public.clone().into(),
                 ciphersuite.signature_algorithm(),
@@ -312,7 +309,7 @@ pub fn run_test_vector(
         // verify own signature
         parsed.signature = my_signature.0;
         let verification = parsed.verify_no_out(
-            backend.crypto(),
+            crypto,
             &OpenMlsSignaturePublicKey::new(public.into(), ciphersuite.signature_algorithm())
                 .unwrap(),
         );
@@ -339,28 +336,22 @@ pub fn run_test_vector(
                 ciphertext: ciphertext.into(),
             },
             ciphersuite,
-            backend.crypto(),
+            crypto,
         )
         .unwrap();
         assert_eq!(plaintext, decrypted_plaintext);
 
         // Check that encryption works.
-        let my_ciphertext = hpke::encrypt_with_label(
-            &public,
-            &label,
-            &context,
-            &plaintext,
-            ciphersuite,
-            backend.crypto(),
-        )
-        .unwrap();
+        let my_ciphertext =
+            hpke::encrypt_with_label(&public, &label, &context, &plaintext, ciphersuite, crypto)
+                .unwrap();
         let decrypted_plaintext = hpke::decrypt_with_label(
             &private,
             &label,
             &context,
             &my_ciphertext,
             ciphersuite,
-            backend.crypto(),
+            crypto,
         )
         .unwrap();
         assert_eq!(plaintext, decrypted_plaintext);
@@ -379,7 +370,7 @@ pub fn run_test_vector(
             &label,
             generation,
             length.into(),
-            backend,
+            crypto,
         )
         .unwrap();
 

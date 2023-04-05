@@ -162,6 +162,8 @@ fn test_valsem241(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 // ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
 #[apply(ciphersuites_and_backends)]
 fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     // Test with PublicMessage
     let ECValidationTestSetup {
         mut alice_group,
@@ -187,7 +189,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     alice_group.merge_pending_commit(backend).unwrap();
 
     let verifiable_group_info = alice_group
-        .export_group_info(backend, &alice_credential.signer, true)
+        .export_group_info(crypto, &alice_credential.signer, true)
         .unwrap()
         .into_verifiable_group_info()
         .unwrap();
@@ -322,6 +324,8 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 // ValSem243: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed leaf are identical to the ones in the path KeyPackage.
 #[apply(ciphersuites_and_backends)]
 fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     let ECValidationTestSetup {
         mut alice_group,
         alice_credential,
@@ -349,7 +353,7 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Have Alice export everything that bob needs.
     let verifiable_group_info = alice_group
-        .export_group_info(backend, &alice_credential.signer, false)
+        .export_group_info(crypto, &alice_credential.signer, false)
         .unwrap()
         .into_verifiable_group_info()
         .unwrap();
@@ -456,6 +460,8 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 // ValSem244: External Commit must not include any proposals by reference
 #[apply(ciphersuites_and_backends)]
 fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     // Test with PublicMessage
     let ECValidationTestSetup {
         mut alice_group,
@@ -486,7 +492,7 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         });
 
         let proposal_ref =
-            ProposalRef::from_raw_proposal(ciphersuite, backend, &add_proposal).unwrap();
+            ProposalRef::from_raw_proposal(ciphersuite, crypto, &add_proposal).unwrap();
 
         // Add an Add proposal to the external commit.
         let add_proposal_ref = ProposalOrRef::Reference(proposal_ref);
@@ -589,6 +595,8 @@ fn test_valsem245(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 // ValSem246: External Commit: The signature of the PublicMessage MUST be verified with the credential of the KeyPackage in the included `path`.
 #[apply(ciphersuites_and_backends)]
 fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     // Test with PublicMessage
     let ECValidationTestSetup {
         mut alice_group,
@@ -677,7 +685,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .message_secrets()
             .serialized_context()
             .to_vec(),
-        backend,
+        crypto,
     )
     .unwrap();
     let verification_result: Result<AuthenticatedContentIn, _> =
@@ -701,6 +709,8 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 // External Commit should work when group use ciphertext WireFormat
 #[apply(ciphersuites_and_backends)]
 fn test_pure_ciphertest(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let crypto = backend.crypto();
+
     // Test with PrivateMessage
     let ECValidationTestSetup {
         mut alice_group,
@@ -713,7 +723,7 @@ fn test_pure_ciphertest(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
     // Have Alice export everything that bob needs.
     let verifiable_group_info = alice_group
-        .export_group_info(backend, &alice_credential.signer, true)
+        .export_group_info(crypto, &alice_credential.signer, true)
         .unwrap()
         .into_verifiable_group_info()
         .unwrap();
@@ -764,6 +774,8 @@ mod utils {
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
     ) -> ECValidationTestSetup {
+        let crypto = backend.crypto();
+
         // Generate credential bundles
         let alice_credential =
             generate_credential_bundle("Alice".into(), ciphersuite.signature_algorithm(), backend);
@@ -790,7 +802,7 @@ mod utils {
 
         // Have Alice export everything that bob needs.
         let verifiable_group_info = alice_group
-            .export_group_info(backend, &alice_credential.signer, false)
+            .export_group_info(crypto, &alice_credential.signer, false)
             .unwrap()
             .into_verifiable_group_info()
             .unwrap();

@@ -13,6 +13,8 @@ use crate::{
 /// other PSK-related structs
 #[apply(backends)]
 fn test_pre_shared_key_proposal_codec(backend: &impl OpenMlsCryptoProvider) {
+    let rand = backend.rand();
+
     // External
     let psk = PreSharedKeyId {
         psk: Psk::External(ExternalPsk::new(vec![1, 2, 3])),
@@ -30,7 +32,7 @@ fn test_pre_shared_key_proposal_codec(backend: &impl OpenMlsCryptoProvider) {
     let psk = PreSharedKeyId {
         psk: Psk::Resumption(ResumptionPsk::new(
             ResumptionPskUsage::Application,
-            GroupId::random(backend),
+            GroupId::random(rand),
             1234.into(),
         )),
         psk_nonce: vec![1, 2, 3].into(),
@@ -47,7 +49,7 @@ fn test_pre_shared_key_proposal_codec(backend: &impl OpenMlsCryptoProvider) {
     let psk = PreSharedKeyId {
         psk: Psk::Resumption(ResumptionPsk::new(
             ResumptionPskUsage::Reinit,
-            GroupId::random(backend),
+            GroupId::random(rand),
             1234.into(),
         )),
         psk_nonce: vec![1, 2, 3].into(),
@@ -64,7 +66,7 @@ fn test_pre_shared_key_proposal_codec(backend: &impl OpenMlsCryptoProvider) {
     let psk = PreSharedKeyId {
         psk: Psk::Resumption(ResumptionPsk::new(
             ResumptionPskUsage::Branch,
-            GroupId::random(backend),
+            GroupId::random(rand),
             1234.into(),
         )),
         psk_nonce: vec![1, 2, 3].into(),
@@ -81,8 +83,10 @@ fn test_pre_shared_key_proposal_codec(backend: &impl OpenMlsCryptoProvider) {
 /// other PSK-related structs
 #[apply(ciphersuites_and_backends)]
 fn test_reinit_proposal_codec(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let rand = backend.rand();
+
     let orig = ReInitProposal {
-        group_id: GroupId::random(backend),
+        group_id: GroupId::random(rand),
         version: ProtocolVersion::default(),
         ciphersuite,
         extensions: Extensions::empty(),

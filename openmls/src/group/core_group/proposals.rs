@@ -1,6 +1,6 @@
 use std::collections::{hash_map::Entry, HashMap, HashSet};
 
-use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -76,7 +76,7 @@ impl QueuedProposal {
     /// Creates a new [QueuedProposal] from an [PublicMessage]
     pub(crate) fn from_authenticated_content(
         ciphersuite: Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         public_message: AuthenticatedContent,
     ) -> Result<Self, LibraryError> {
         let proposal = match public_message.content() {
@@ -84,7 +84,7 @@ impl QueuedProposal {
             _ => return Err(LibraryError::custom("Wrong content type")),
         };
         let proposal_reference =
-            ProposalRef::from_authenticated_content(backend.crypto(), ciphersuite, &public_message)
+            ProposalRef::from_authenticated_content(crypto, ciphersuite, &public_message)
                 .map_err(|_| LibraryError::custom("Could not calculate `ProposalRef`."))?;
 
         Ok(Self {
@@ -101,11 +101,11 @@ impl QueuedProposal {
     /// this here without major refactoring. Thus, we use an internal `from_raw_proposal` hash.
     pub(crate) fn from_proposal_and_sender(
         ciphersuite: Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         proposal: Proposal,
         sender: &Sender,
     ) -> Result<Self, LibraryError> {
-        let proposal_reference = ProposalRef::from_raw_proposal(ciphersuite, backend, &proposal)?;
+        let proposal_reference = ProposalRef::from_raw_proposal(ciphersuite, crypto, &proposal)?;
         Ok(Self {
             proposal,
             proposal_reference,
@@ -158,7 +158,7 @@ impl ProposalQueue {
     ///  - ValSem200
     pub(crate) fn from_committed_proposals(
         ciphersuite: Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         committed_proposals: Vec<ProposalOrRef>,
         proposal_store: &ProposalStore,
         sender: &Sender,
@@ -192,12 +192,7 @@ impl ProposalQueue {
                         }
                     }
 
-                    QueuedProposal::from_proposal_and_sender(
-                        ciphersuite,
-                        backend,
-                        proposal,
-                        sender,
-                    )?
+                    QueuedProposal::from_proposal_and_sender(ciphersuite, crypto, proposal, sender)?
                 }
                 ProposalOrRef::Reference(ref proposal_reference) => {
                     match proposals_by_reference_queue.get(proposal_reference) {
@@ -353,7 +348,7 @@ impl ProposalQueue {
     /// own node were included
     pub(crate) fn filter_proposals<'a>(
         ciphersuite: Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         sender: Sender,
         proposal_store: &'a ProposalStore,
         inline_proposals: &'a [Proposal],
@@ -382,7 +377,7 @@ impl ProposalQueue {
                 .map(|p| {
                     QueuedProposal::from_proposal_and_sender(
                         ciphersuite,
-                        backend,
+                        crypto,
                         p.clone(),
                         &sender,
                     )
