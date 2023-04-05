@@ -265,9 +265,6 @@ impl PublicGroup {
             return Err(StageCommitError::RequiredPathNotFound);
         };
 
-        // Update group context
-        diff.update_group_context(backend)?;
-
         // Update the confirmed transcript hash before we compute the confirmation tag.
         diff.update_confirmed_transcript_hash(backend, mls_content)?;
 
@@ -282,6 +279,9 @@ impl PublicGroup {
             backend,
             received_confirmation_tag.clone(),
         )?;
+
+        // Update group context
+        diff.update_group_context(backend)?;
 
         let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
 

@@ -13,7 +13,7 @@ use crate::{
     error::LibraryError,
     extensions::Extensions,
     framing::InterimTranscriptHashInput,
-    group::{GroupContext, GroupEpoch},
+    group::GroupContext,
     messages::ConfirmationTag,
 };
 
@@ -154,10 +154,6 @@ impl GroupInfo {
         &self,
         crypto: &impl OpenMlsCrypto,
     ) -> Result<Vec<u8>, LibraryError> {
-        if self.group_context().epoch() == GroupEpoch::from(0) {
-            return Ok(vec![]);
-        }
-
         let input = InterimTranscriptHashInput::from(self.confirmation_tag());
 
         input.calculate_interim_transcript_hash(

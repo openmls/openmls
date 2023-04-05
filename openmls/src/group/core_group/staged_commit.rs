@@ -206,6 +206,16 @@ impl CoreGroup {
                 )
             };
 
+        diff.update_interim_transcript_hash(
+            ciphersuite,
+            backend,
+            self.message_secrets_store
+                .message_secrets()
+                .confirmation_key()
+                .tag(backend, self.context().confirmed_transcript_hash())
+                .map_err(LibraryError::unexpected_crypto_error)?,
+        )?;
+
         // Update the confirmed transcript hash before we compute the confirmation tag.
         diff.update_confirmed_transcript_hash(backend, mls_content)?;
 
