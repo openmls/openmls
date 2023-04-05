@@ -5,7 +5,7 @@
 //! To find out if a specific proposal type is supported,
 //! [`ProposalType::is_supported()`] can be used.
 
-use std::convert::TryFrom;
+use std::io::{Read, Write};
 
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
@@ -53,75 +53,96 @@ use crate::{
 /// | Value  | Name    | Recommended | Path Required | Reference | Notes                        |
 /// |:=======|:========|:============|:==============|:==========|:=============================|
 /// | 0x0008 | app_ack | Y           | Y             | RFC XXXX  | draft-ietf-mls-extensions-00 |
-#[derive(
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Clone,
-    Copy,
-    Debug,
-    TlsSerialize,
-    TlsDeserialize,
-    TlsSize,
-    Serialize,
-    Deserialize,
-)]
-#[repr(u16)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Serialize, Deserialize)]
 #[allow(missing_docs)]
 pub enum ProposalType {
-    Add = 1,
-    Update = 2,
-    Remove = 3,
-    PreSharedKey = 4,
-    Reinit = 5,
-    ExternalInit = 6,
-    GroupContextExtensions = 7,
-    AppAck = 8,
+    Add,
+    Update,
+    Remove,
+    PreSharedKey,
+    Reinit,
+    ExternalInit,
+    GroupContextExtensions,
+    AppAck,
+    Unknown(u16),
+}
+
+impl tls_codec::Size for ProposalType {
+    fn tls_serialized_len(&self) -> usize {
+        2
+    }
+}
+
+impl tls_codec::Deserialize for ProposalType {
+    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error>
+    where
+        Self: Sized,
+    {
+        let mut proposal_type = [0u8; 2];
+        bytes.read_exact(&mut proposal_type)?;
+
+        Ok(ProposalType::from(u16::from_be_bytes(proposal_type)))
+    }
+}
+
+impl tls_codec::Serialize for ProposalType {
+    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+        writer.write_all(&u16::from(*self).to_be_bytes())?;
+
+        Ok(2)
+    }
 }
 
 impl ProposalType {
     /// Check whether a proposal type is supported or not. Returns `true`
     /// if a proposal is supported and `false` otherwise.
     pub fn is_supported(&self) -> bool {
-        match self {
+        matches!(
+            self,
             ProposalType::Add
-            | ProposalType::Update
-            | ProposalType::Remove
-            | ProposalType::PreSharedKey
-            | ProposalType::Reinit
-            | ProposalType::ExternalInit
-            | ProposalType::GroupContextExtensions => true,
-            ProposalType::AppAck => false,
-        }
+                | ProposalType::Update
+                | ProposalType::Remove
+                | ProposalType::PreSharedKey
+                | ProposalType::Reinit
+                | ProposalType::ExternalInit
+                | ProposalType::GroupContextExtensions
+        )
     }
 
     /// Returns `true` if the proposal type requires a path and `false`
     pub fn is_path_required(&self) -> bool {
-        match self {
-            Self::Add
-            | Self::PreSharedKey
-            | Self::Reinit
-            | Self::AppAck
-            | Self::GroupContextExtensions => false,
-            Self::Update | Self::Remove | Self::ExternalInit => true,
+        matches!(self, Self::Update | Self::Remove | Self::ExternalInit)
+    }
+}
+
+impl From<u16> for ProposalType {
+    fn from(value: u16) -> Self {
+        match value {
+            1 => ProposalType::Add,
+            2 => ProposalType::Update,
+            3 => ProposalType::Remove,
+            4 => ProposalType::PreSharedKey,
+            5 => ProposalType::Reinit,
+            6 => ProposalType::ExternalInit,
+            7 => ProposalType::GroupContextExtensions,
+            8 => ProposalType::AppAck,
+            unknown => ProposalType::Unknown(unknown),
         }
     }
 }
 
-impl TryFrom<u16> for ProposalType {
-    type Error = &'static str;
-    fn try_from(value: u16) -> Result<Self, Self::Error> {
+impl From<ProposalType> for u16 {
+    fn from(value: ProposalType) -> Self {
         match value {
-            1 => Ok(ProposalType::Add),
-            2 => Ok(ProposalType::Update),
-            3 => Ok(ProposalType::Remove),
-            4 => Ok(ProposalType::PreSharedKey),
-            5 => Ok(ProposalType::Reinit),
-            6 => Ok(ProposalType::ExternalInit),
-            7 => Ok(ProposalType::GroupContextExtensions),
-            8 => Ok(ProposalType::AppAck),
-            _ => Err("Unknown proposal type."),
+            ProposalType::Add => 1,
+            ProposalType::Update => 2,
+            ProposalType::Remove => 3,
+            ProposalType::PreSharedKey => 4,
+            ProposalType::Reinit => 5,
+            ProposalType::ExternalInit => 6,
+            ProposalType::GroupContextExtensions => 7,
+            ProposalType::AppAck => 8,
+            ProposalType::Unknown(unknown) => unknown,
         }
     }
 }

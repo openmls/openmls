@@ -144,7 +144,10 @@ impl MlsClient for MlsClientImpl {
             Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
         ];
         let response = SupportedCiphersuitesResponse {
-            ciphersuites: ciphersuites.iter().map(|cs| *cs as u32).collect(),
+            ciphersuites: ciphersuites
+                .iter()
+                .map(|cs| u16::from(*cs) as u32)
+                .collect(),
         };
 
         Ok(Response::new(response))
