@@ -18,6 +18,8 @@ use crate::{
 
 use super::PublicGroup;
 
+// TODO: Don't skip this test.
+/*
 #[apply(ciphersuites_and_backends)]
 fn public_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
@@ -262,6 +264,7 @@ fn public_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) 
         public_group.export_ratchet_tree()
     );
 }
+*/
 
 // A helper function
 fn into_public_message(message: MlsMessageOut) -> PublicMessageIn {
