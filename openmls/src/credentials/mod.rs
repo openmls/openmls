@@ -22,8 +22,12 @@
 //! There are multiple [`CredentialType`]s, although OpenMLS currently only
 //! supports the [`BasicCredential`].
 
+use std::{
+    convert::TryFrom,
+    io::{Read, Write},
+};
+
 use serde::{Deserialize, Serialize};
-use std::convert::TryFrom;
 #[cfg(test)]
 use tls_codec::Serialize as TlsSerializeTrait;
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
@@ -56,36 +60,58 @@ pub mod errors;
 /// | 0x0001           | basic                    | Y           | RFC XXXX  |
 /// | 0x0002           | x509                     | Y           | RFC XXXX  |
 /// | 0xf000  - 0xffff | Reserved for Private Use | N/A         | RFC XXXX  |
-#[derive(
-    Copy,
-    Clone,
-    Debug,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Serialize,
-    Deserialize,
-    TlsDeserialize,
-    TlsSerialize,
-    TlsSize,
-)]
-#[repr(u16)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum CredentialType {
     /// A [`BasicCredential`]
-    Basic = 1,
+    Basic,
     /// An X.509 [`Certificate`]
-    X509 = 2,
+    X509,
+    /// A currently unknown credential.
+    Unknown(u16),
 }
 
-impl TryFrom<u16> for CredentialType {
-    type Error = &'static str;
+impl tls_codec::Size for CredentialType {
+    fn tls_serialized_len(&self) -> usize {
+        2
+    }
+}
 
-    fn try_from(value: u16) -> Result<Self, Self::Error> {
+impl tls_codec::Deserialize for CredentialType {
+    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error>
+    where
+        Self: Sized,
+    {
+        let mut extension_type = [0u8; 2];
+        bytes.read_exact(&mut extension_type)?;
+
+        Ok(CredentialType::from(u16::from_be_bytes(extension_type)))
+    }
+}
+
+impl tls_codec::Serialize for CredentialType {
+    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+        writer.write_all(&u16::from(*self).to_be_bytes())?;
+
+        Ok(2)
+    }
+}
+
+impl From<u16> for CredentialType {
+    fn from(value: u16) -> Self {
         match value {
-            1 => Ok(CredentialType::Basic),
-            2 => Ok(CredentialType::X509),
-            _ => Err("Undefined CredentialType"),
+            1 => CredentialType::Basic,
+            2 => CredentialType::X509,
+            unknown => CredentialType::Unknown(unknown),
+        }
+    }
+}
+
+impl From<CredentialType> for u16 {
+    fn from(value: CredentialType) -> Self {
+        match value {
+            CredentialType::Basic => 1,
+            CredentialType::X509 => 2,
+            CredentialType::Unknown(unknown) => unknown,
         }
     }
 }

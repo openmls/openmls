@@ -2,7 +2,10 @@
 //!
 //! This module holds a number of types that are needed by the traits.
 
-use std::convert::TryFrom;
+use std::{
+    convert::TryFrom,
+    io::{Read, Write},
+};
 
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
@@ -242,44 +245,57 @@ pub type KemOutput = Vec<u8>;
 /// MLS ciphersuites.
 #[allow(non_camel_case_types)]
 #[allow(clippy::upper_case_acronyms)]
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    Serialize,
-    Deserialize,
-    TlsDeserialize,
-    TlsSerialize,
-    TlsSize,
-)]
-#[repr(u16)]
-#[allow(missing_docs)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum Ciphersuite {
     /// DH KEM x25519 | AES-GCM 128 | SHA2-256 | Ed25519
-    MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519 = 0x0001,
+    MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
 
     /// DH KEM P256 | AES-GCM 128 | SHA2-256 | EcDSA P256
-    MLS_128_DHKEMP256_AES128GCM_SHA256_P256 = 0x0002,
+    MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
 
     /// DH KEM x25519 | Chacha20Poly1305 | SHA2-256 | Ed25519
-    MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519 = 0x0003,
+    MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
 
     /// DH KEM x448 | AES-GCM 256 | SHA2-512 | Ed448
-    MLS_256_DHKEMX448_AES256GCM_SHA512_Ed448 = 0x0004,
+    MLS_256_DHKEMX448_AES256GCM_SHA512_Ed448,
 
     /// DH KEM P521 | AES-GCM 256 | SHA2-512 | EcDSA P521
-    MLS_256_DHKEMP521_AES256GCM_SHA512_P521 = 0x0005,
+    MLS_256_DHKEMP521_AES256GCM_SHA512_P521,
 
     /// DH KEM x448 | Chacha20Poly1305 | SHA2-512 | Ed448
-    MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 = 0x0006,
+    MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448,
 
     /// DH KEM P384 | AES-GCM 256 | SHA2-384 | EcDSA P384
-    MLS_256_DHKEMP384_AES256GCM_SHA384_P384 = 0x0007,
+    MLS_256_DHKEMP384_AES256GCM_SHA384_P384,
+
+    /// A currently unknown ciphersuite.
+    UNKNOWN(u16),
+}
+
+impl tls_codec::Size for Ciphersuite {
+    fn tls_serialized_len(&self) -> usize {
+        2
+    }
+}
+
+impl tls_codec::Deserialize for Ciphersuite {
+    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error>
+    where
+        Self: Sized,
+    {
+        let mut ciphersuite = [0u8; 2];
+        bytes.read_exact(&mut ciphersuite)?;
+
+        Ok(Ciphersuite::from(u16::from_be_bytes(ciphersuite)))
+    }
+}
+
+impl tls_codec::Serialize for Ciphersuite {
+    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+        writer.write_all(&u16::from(*self).to_be_bytes())?;
+
+        Ok(2)
+    }
 }
 
 impl core::fmt::Display for Ciphersuite {
@@ -291,33 +307,31 @@ impl core::fmt::Display for Ciphersuite {
 impl From<Ciphersuite> for u16 {
     #[inline(always)]
     fn from(s: Ciphersuite) -> u16 {
-        s as u16
+        match s {
+            Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519 => 0x0001,
+            Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256 => 0x0002,
+            Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519 => 0x0003,
+            Ciphersuite::MLS_256_DHKEMX448_AES256GCM_SHA512_Ed448 => 0x0004,
+            Ciphersuite::MLS_256_DHKEMP521_AES256GCM_SHA512_P521 => 0x0005,
+            Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 => 0x0006,
+            Ciphersuite::MLS_256_DHKEMP384_AES256GCM_SHA384_P384 => 0x0007,
+            Ciphersuite::UNKNOWN(unknown) => unknown,
+        }
     }
 }
 
-impl From<&Ciphersuite> for u16 {
+impl From<u16> for Ciphersuite {
     #[inline(always)]
-    fn from(s: &Ciphersuite) -> u16 {
-        *s as u16
-    }
-}
-
-impl TryFrom<u16> for Ciphersuite {
-    type Error = tls_codec::Error;
-
-    #[inline(always)]
-    fn try_from(v: u16) -> Result<Self, Self::Error> {
+    fn from(v: u16) -> Self {
         match v {
-            0x0001 => Ok(Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519),
-            0x0002 => Ok(Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256),
-            0x0003 => Ok(Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519),
-            0x0004 => Ok(Ciphersuite::MLS_256_DHKEMX448_AES256GCM_SHA512_Ed448),
-            0x0005 => Ok(Ciphersuite::MLS_256_DHKEMP521_AES256GCM_SHA512_P521),
-            0x0006 => Ok(Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448),
-            0x0007 => Ok(Ciphersuite::MLS_256_DHKEMP384_AES256GCM_SHA384_P384),
-            _ => Err(Self::Error::DecodingError(format!(
-                "{v} is not a valid ciphersuite value"
-            ))),
+            0x0001 => Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+            0x0002 => Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
+            0x0003 => Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+            0x0004 => Ciphersuite::MLS_256_DHKEMX448_AES256GCM_SHA512_Ed448,
+            0x0005 => Ciphersuite::MLS_256_DHKEMP521_AES256GCM_SHA512_P521,
+            0x0006 => Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448,
+            0x0007 => Ciphersuite::MLS_256_DHKEMP384_AES256GCM_SHA384_P384,
+            unknown => Ciphersuite::UNKNOWN(unknown),
         }
     }
 }
@@ -378,6 +392,8 @@ impl Ciphersuite {
             Ciphersuite::MLS_256_DHKEMX448_AES256GCM_SHA512_Ed448
             | Ciphersuite::MLS_256_DHKEMP521_AES256GCM_SHA512_P521
             | Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 => HashType::Sha2_512,
+            // TODO
+            Ciphersuite::UNKNOWN(_) => panic!("This should not be called."),
         }
     }
 
@@ -402,6 +418,8 @@ impl Ciphersuite {
             Ciphersuite::MLS_256_DHKEMP384_AES256GCM_SHA384_P384 => {
                 SignatureScheme::ECDSA_SECP384R1_SHA384
             }
+            // TODO
+            Ciphersuite::UNKNOWN(_) => panic!("This should not be called."),
         }
     }
 
@@ -418,6 +436,8 @@ impl Ciphersuite {
             Ciphersuite::MLS_256_DHKEMX448_AES256GCM_SHA512_Ed448
             | Ciphersuite::MLS_256_DHKEMP521_AES256GCM_SHA512_P521
             | Ciphersuite::MLS_256_DHKEMP384_AES256GCM_SHA384_P384 => AeadType::Aes256Gcm,
+            // TODO
+            Ciphersuite::UNKNOWN(_) => panic!("This should not be called."),
         }
     }
 
@@ -436,6 +456,8 @@ impl Ciphersuite {
             | Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 => {
                 HpkeKdfType::HkdfSha512
             }
+            // TODO
+            Ciphersuite::UNKNOWN(_) => panic!("This should not be called."),
         }
     }
 
@@ -452,6 +474,8 @@ impl Ciphersuite {
             | Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 => HpkeKemType::DhKem448,
             Ciphersuite::MLS_256_DHKEMP384_AES256GCM_SHA384_P384 => HpkeKemType::DhKemP384,
             Ciphersuite::MLS_256_DHKEMP521_AES256GCM_SHA512_P521 => HpkeKemType::DhKemP521,
+            // TODO
+            Ciphersuite::UNKNOWN(_) => panic!("This should not be called."),
         }
     }
 
@@ -470,6 +494,8 @@ impl Ciphersuite {
             Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 => {
                 HpkeAeadType::ChaCha20Poly1305
             }
+            // TODO
+            Ciphersuite::UNKNOWN(_) => panic!("This should not be called."),
         }
     }
 

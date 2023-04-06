@@ -252,7 +252,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
     };
 
     TranscriptTestVector {
-        cipher_suite: (&ciphersuite).into(),
+        cipher_suite: u16::from(ciphersuite),
 
         confirmation_key: confirmation_key.as_slice().to_vec(),
         authenticated_content: authenticated_content.tls_serialize_detached().unwrap(),
