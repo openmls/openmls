@@ -482,7 +482,7 @@ pub fn run_test_vector(
     test_vector: EncryptionTestVector,
     backend: &impl OpenMlsCryptoProvider,
 ) -> Result<(), EncTestVectorError> {
-    use tls_codec::Serialize;
+    use tls_codec::{Deserialize, Serialize};
 
     use crate::{
         binary_tree::array_representation::TreeSize,

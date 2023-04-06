@@ -22,12 +22,12 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
 use serde::{self, Deserialize, Serialize};
-use tls_codec::Serialize as TlsSerialize;
+use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize};
 
 use crate::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
     ciphersuite::signable::Verifiable,
-    framing::{MlsMessageIn, MlsMessageInBody, TlsFromBytes},
+    framing::{MlsMessageIn, MlsMessageInBody},
     group::*,
     key_packages::*,
     messages::*,

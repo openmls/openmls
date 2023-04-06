@@ -10,7 +10,7 @@ use openmls_traits::{
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use tls_codec::{Serialize as TlsSerializeTrait, *};
+use tls_codec::{Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, *};
 
 #[cfg(test)]
 use crate::schedule::psk::{ExternalPsk, Psk};
@@ -18,7 +18,6 @@ use crate::{
     ciphersuite::{hash_ref::KeyPackageRef, *},
     credentials::CredentialWithKey,
     error::LibraryError,
-    framing::TlsFromBytes,
     schedule::{psk::PreSharedKeyId, JoinerSecret},
     treesync::{
         node::encryption_keys::{EncryptionKey, EncryptionKeyPair, EncryptionPrivateKey},

@@ -67,10 +67,10 @@ impl SenderExtensionIndex {
 mod test {
     use openmls_basic_credential::SignatureKeyPair;
     use openmls_traits::types::SignatureScheme;
-    use tls_codec::Serialize;
+    use tls_codec::{Deserialize, Serialize};
 
     use super::*;
-    use crate::{credentials::CredentialType, framing::TlsFromBytes};
+    use crate::credentials::CredentialType;
 
     #[test]
     fn test_serialize_deserialize() {
