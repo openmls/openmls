@@ -118,9 +118,6 @@ impl tls_codec::Serialize for ExtensionType {
 }
 
 impl From<u16> for ExtensionType {
-    /// Get the [`ExtensionType`] from a u16.
-    /// Returns an error if the extension type is not known.
-    /// Note that this returns a [`tls_codec::Error`](`tls_codec::Error`).
     fn from(a: u16) -> Self {
         match a {
             1 => ExtensionType::ApplicationId,
