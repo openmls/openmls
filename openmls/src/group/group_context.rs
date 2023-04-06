@@ -65,14 +65,8 @@ impl GroupContext {
         tree_hash: Vec<u8>,
         extensions: Extensions,
     ) -> Self {
-        Self::new(
-            ciphersuite,
-            group_id,
-            0,
-            tree_hash,
-            zero(ciphersuite.hash_length()),
-            extensions,
-        )
+        // Note: Confirmed transcript hash is "The zero-length octet string."
+        Self::new(ciphersuite, group_id, 0, tree_hash, vec![], extensions)
     }
 
     /// Increment the current [`GroupEpoch`] by one.
