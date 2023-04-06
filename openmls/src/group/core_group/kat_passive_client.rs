@@ -2,12 +2,10 @@ use log::{debug, info, warn};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
 use serde::{self, Deserialize, Serialize};
-use tls_codec::Serialize as TlsSerialize;
+use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize};
 
 use crate::{
-    framing::{
-        MlsMessageIn, MlsMessageInBody, MlsMessageOut, ProcessedMessageContent, TlsFromBytes,
-    },
+    framing::{MlsMessageIn, MlsMessageInBody, MlsMessageOut, ProcessedMessageContent},
     group::{config::CryptoConfig, *},
     key_packages::*,
     prelude::{ProcessMessageError, ProposalValidationError, StageCommitError},

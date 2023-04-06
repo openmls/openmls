@@ -9,7 +9,7 @@ use openmls_traits::{random::OpenMlsRand, types::SignatureScheme, OpenMlsCryptoP
 use rand::{rngs::OsRng, RngCore};
 use serde::{self, Deserialize, Serialize};
 use thiserror::Error;
-use tls_codec::Serialize as TlsSerialize;
+use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize};
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,

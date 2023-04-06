@@ -181,7 +181,7 @@ pub fn run_test_vector(
     backend: &impl OpenMlsCryptoProvider,
 ) -> Result<(), String> {
     use openmls_traits::crypto::OpenMlsCrypto;
-    use tls_codec::Serialize;
+    use tls_codec::{Deserialize, Serialize};
 
     use crate::{
         binary_tree::array_representation::TreeSize,

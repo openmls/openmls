@@ -8,7 +8,7 @@ use std::convert::TryFrom;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{crypto::OpenMlsCrypto, random::OpenMlsRand, OpenMlsCryptoProvider};
 use serde::{self, Deserialize, Serialize};
-use tls_codec::Serialize as TlsSerializeTrait;
+use tls_codec::{Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait};
 
 #[cfg(test)]
 use crate::test_utils::{read, write};
