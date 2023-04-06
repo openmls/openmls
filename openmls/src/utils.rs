@@ -20,6 +20,7 @@ pub fn random_u8() -> u8 {
     b[0]
 }
 
+#[cfg(test)]
 pub(crate) fn zero(length: usize) -> Vec<u8> {
     vec![0u8; length]
 }

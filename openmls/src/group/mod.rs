@@ -7,6 +7,7 @@ mod group_context;
 #[cfg(test)]
 use crate::ciphersuite::*;
 use crate::extensions::*;
+#[cfg(test)]
 use crate::utils::*;
 
 use openmls_traits::OpenMlsCryptoProvider;
