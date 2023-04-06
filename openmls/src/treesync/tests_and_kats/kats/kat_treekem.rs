@@ -5,12 +5,11 @@ use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
-use tls_codec::Serialize as TlsSerializeTrait;
+use tls_codec::{Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait};
 
 use crate::{
     binary_tree::{array_representation::ParentNodeIndex, LeafNodeIndex},
     extensions::{Extensions, RatchetTreeExtension},
-    framing::TlsFromBytes,
     group::{GroupContext, GroupEpoch, GroupId},
     messages::PathSecret,
     prelude_test::Secret,

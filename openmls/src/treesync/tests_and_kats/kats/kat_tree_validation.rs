@@ -62,10 +62,10 @@ use std::collections::HashSet;
 
 use ::serde::Deserialize;
 use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsCryptoProvider};
+use tls_codec::Deserialize as TlsDeserializeTrait;
 
 use crate::{
     binary_tree::array_representation::TreeNodeIndex,
-    framing::TlsFromBytes,
     test_utils::*,
     treesync::{RatchetTree, TreeSync},
 };

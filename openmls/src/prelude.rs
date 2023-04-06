@@ -22,9 +22,7 @@ pub use crate::versions::*;
 pub use crate::extensions::{errors::*, *};
 
 // Framing
-pub use crate::framing::{
-    message_in::*, message_out::*, sender::*, validation::*, TlsFromBytes, *,
-};
+pub use crate::framing::{message_in::*, message_out::*, sender::*, validation::*, *};
 
 // Key packages
 pub use crate::key_packages::{errors::*, *};

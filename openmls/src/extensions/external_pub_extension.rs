@@ -32,10 +32,10 @@ impl ExternalPubExtension {
 mod test {
     use openmls_rust_crypto::OpenMlsRustCrypto;
     use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
-    use tls_codec::Serialize;
+    use tls_codec::{Deserialize, Serialize};
 
     use super::*;
-    use crate::{framing::TlsFromBytes, prelude_test::Secret, versions::ProtocolVersion};
+    use crate::{prelude_test::Secret, versions::ProtocolVersion};
 
     #[test]
     fn test_serialize_deserialize() {
