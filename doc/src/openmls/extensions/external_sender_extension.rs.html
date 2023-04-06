@@ -166,10 +166,10 @@
 </span><span class="kw">mod </span>test {
     <span class="kw">use </span>openmls_basic_credential::SignatureKeyPair;
     <span class="kw">use </span>openmls_traits::types::SignatureScheme;
-    <span class="kw">use </span>tls_codec::Serialize;
+    <span class="kw">use </span>tls_codec::{Deserialize, Serialize};
 
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use crate</span>::{credentials::CredentialType, framing::TlsFromBytes};
+    <span class="kw">use </span><span class="kw">crate</span>::credentials::CredentialType;
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_serialize_deserialize() {

@@ -108,10 +108,10 @@
 </span><span class="kw">mod </span>test {
     <span class="kw">use </span>openmls_rust_crypto::OpenMlsRustCrypto;
     <span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
-    <span class="kw">use </span>tls_codec::Serialize;
+    <span class="kw">use </span>tls_codec::{Deserialize, Serialize};
 
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use crate</span>::{framing::TlsFromBytes, prelude_test::Secret, versions::ProtocolVersion};
+    <span class="kw">use crate</span>::{prelude_test::Secret, versions::ProtocolVersion};
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_serialize_deserialize() {

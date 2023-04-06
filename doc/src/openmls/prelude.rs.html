@@ -60,8 +60,6 @@
 <a href="#60" id="60">60</a>
 <a href="#61" id="61">61</a>
 <a href="#62" id="62">62</a>
-<a href="#63" id="63">63</a>
-<a href="#64" id="64">64</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Prelude for OpenMLS.
 //! Include this to get access to all the public functions of OpenMLS.
 
@@ -86,9 +84,7 @@
 </span><span class="kw">pub use </span><span class="kw">crate</span>::extensions::{errors::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 
 <span class="comment">// Framing
-</span><span class="kw">pub use </span><span class="kw">crate</span>::framing::{
-    message_in::<span class="kw-2">*</span>, message_out::<span class="kw-2">*</span>, sender::<span class="kw-2">*</span>, validation::<span class="kw-2">*</span>, TlsFromBytes, <span class="kw-2">*</span>,
-};
+</span><span class="kw">pub use </span><span class="kw">crate</span>::framing::{message_in::<span class="kw-2">*</span>, message_out::<span class="kw-2">*</span>, sender::<span class="kw-2">*</span>, validation::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 
 <span class="comment">// Key packages
 </span><span class="kw">pub use </span><span class="kw">crate</span>::key_packages::{errors::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
