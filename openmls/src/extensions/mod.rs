@@ -195,6 +195,7 @@ pub enum Extension {
     Unknown(u16, UnknownExtension),
 }
 
+/// A unknown/unparsed extension represented by raw bytes.
 #[derive(PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub struct UnknownExtension(pub Vec<u8>);
 
@@ -287,8 +288,7 @@ impl Extensions {
     pub fn contains(&self, extension_type: ExtensionType) -> bool {
         self.unique
             .iter()
-            .find(|ext| ext.extension_type() == extension_type)
-            .is_some()
+            .any(|ext| ext.extension_type() == extension_type)
     }
 }
 
@@ -301,8 +301,7 @@ impl TryFrom<Vec<Extension>> for Extensions {
         for extension in candidate.into_iter() {
             if unique
                 .iter()
-                .find(|ext| ext.extension_type() == extension.extension_type())
-                .is_some()
+                .any(|ext| ext.extension_type() == extension.extension_type())
             {
                 return Err(InvalidExtensionError::Duplicate);
             } else {
