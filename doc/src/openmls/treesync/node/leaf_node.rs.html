@@ -1059,6 +1059,7 @@
 <a href="#1059" id="1059">1059</a>
 <a href="#1060" id="1060">1060</a>
 <a href="#1061" id="1061">1061</a>
+<a href="#1062" id="1062">1062</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the [`LeafNode`] struct and its implementation.
 </span><span class="kw">use </span>openmls_traits::{
     key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite, OpenMlsCryptoProvider,
@@ -1069,6 +1070,7 @@
     Serialize <span class="kw">as </span>TlsSerializeTrait, Size, TlsDeserialize, TlsSerialize, TlsSize, VLBytes,
 };
 
+<span class="kw">use </span><span class="kw">super</span>::encryption_keys::{EncryptionKey, EncryptionKeyPair};
 <span class="kw">use crate</span>::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::{
@@ -1085,8 +1087,6 @@
     treesync::errors::{LeafNodeValidationError, LifetimeError},
     versions::ProtocolVersion,
 };
-
-<span class="kw">use </span><span class="kw">super</span>::encryption_keys::{EncryptionKey, EncryptionKeyPair};
 
 <span class="kw">mod </span>capabilities;
 <span class="kw">mod </span>codec;
@@ -1867,6 +1867,8 @@
             leaf_node_tbs.payload.credential = leaf_node.credential().clone();
             leaf_node_tbs.payload.encryption_key = leaf_node.encryption_key().clone();
         } <span class="kw">else if let </span><span class="prelude-val">Some</span>(new_encryption_key) = new_encryption_key.into() {
+            leaf_node_tbs.payload.leaf_node_source = LeafNodeSource::Update;
+
             <span class="comment">// If there&#39;s no new leaf, the encryption key must be provided
             // explicitly.
             </span>leaf_node_tbs.payload.encryption_key = new_encryption_key;

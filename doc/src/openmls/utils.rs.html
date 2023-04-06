@@ -57,6 +57,7 @@
 <a href="#57" id="57">57</a>
 <a href="#58" id="58">58</a>
 <a href="#59" id="59">59</a>
+<a href="#60" id="60">60</a>
 </pre><pre class="rust"><code><span class="comment">// === The folowing functions aren&#39;t necessarily cryptographically secure!
 
 </span><span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
@@ -79,7 +80,8 @@
     b[<span class="number">0</span>]
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>zero(length: usize) -&gt; Vec&lt;u8&gt; {
+<span class="attr">#[cfg(test)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>zero(length: usize) -&gt; Vec&lt;u8&gt; {
     <span class="macro">vec!</span>[<span class="number">0u8</span>; length]
 }
 

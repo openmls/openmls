@@ -1526,8 +1526,8 @@
 /// proposal. TODO: #628.
 </span><span class="kw">fn </span>hpke_info_from_version(version: ProtocolVersion) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str {
     <span class="kw">match </span>version {
-        ProtocolVersion::Mls10 =&gt; <span class="string">&quot;MLS 1.0 external init&quot;</span>,
-        ProtocolVersion::Mls10Draft11 =&gt; <span class="string">&quot;MLS 1.0 Draft 11 external init&quot;</span>,
+        ProtocolVersion::Mls10 =&gt; <span class="string">&quot;MLS 1.0 external init secret&quot;</span>,
+        ProtocolVersion::Mls10Draft11 =&gt; <span class="string">&quot;&lt;OpenMLS reserved; Don&#39;t use this.&gt;&quot;</span>,
     }
 }
 

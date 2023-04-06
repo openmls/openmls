@@ -143,12 +143,6 @@
 <a href="#143" id="143">143</a>
 <a href="#144" id="144">144</a>
 <a href="#145" id="145">145</a>
-<a href="#146" id="146">146</a>
-<a href="#147" id="147">147</a>
-<a href="#148" id="148">148</a>
-<a href="#149" id="149">149</a>
-<a href="#150" id="150">150</a>
-<a href="#151" id="151">151</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Group Context
 //!
 //! TODO: #779
@@ -216,14 +210,8 @@
         tree_hash: Vec&lt;u8&gt;,
         extensions: Extensions,
     ) -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>::new(
-            ciphersuite,
-            group_id,
-            <span class="number">0</span>,
-            tree_hash,
-            zero(ciphersuite.hash_length()),
-            extensions,
-        )
+        <span class="comment">// Note: Confirmed transcript hash is &quot;The zero-length octet string.&quot;
+        </span><span class="self">Self</span>::new(ciphersuite, group_id, <span class="number">0</span>, tree_hash, <span class="macro">vec!</span>[], extensions)
     }
 
     <span class="doccomment">/// Increment the current [`GroupEpoch`] by one.
