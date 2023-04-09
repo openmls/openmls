@@ -18,7 +18,7 @@ use crate::{
         test_core_group::setup_client,
         CreateCommitParams, GroupContext, GroupId,
     },
-    key_packages::KeyPackageBundle,
+    key_packages::{KeyPackageBundle, KeyPackageIn},
     messages::proposals::{AddProposal, Proposal, ProposalOrRef, ProposalType},
     test_utils::*,
     treesync::errors::LeafNodeValidationError,
@@ -41,7 +41,8 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
     let alice_update_key_package_bundle =
         KeyPackageBundle::new(backend, &alice_signer, ciphersuite, alice_credential);
     let alice_update_key_package = alice_update_key_package_bundle.key_package();
-    assert!(alice_update_key_package.verify(backend.crypto()).is_ok());
+    let kpi = KeyPackageIn::from(alice_update_key_package.clone());
+    assert!(kpi.into_validated(backend.crypto()).is_ok());
 
     let group_context = GroupContext::new(
         ciphersuite,
@@ -174,7 +175,8 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     let alice_update_key_package_bundle =
         KeyPackageBundle::new(backend, &alice_signer, ciphersuite, alice_credential);
     let alice_update_key_package = alice_update_key_package_bundle.key_package();
-    assert!(alice_update_key_package.verify(backend.crypto()).is_ok());
+    let kpi = KeyPackageIn::from(alice_update_key_package.clone());
+    assert!(kpi.into_validated(backend.crypto()).is_ok());
 
     let group_context = GroupContext::new(
         ciphersuite,

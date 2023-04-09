@@ -6,16 +6,17 @@
 //! [`ProposalType::is_supported()`] can be used.
 
 use crate::{
-    ciphersuite::hash_ref::ProposalRef, credentials::CredentialWithKey, key_packages::*,
-    prelude::LeafNode,
+    ciphersuite::hash_ref::ProposalRef, credentials::CredentialWithKey,
+    group::errors::ValidationError, key_packages::*, prelude::LeafNode,
 };
 
+use openmls_traits::crypto::OpenMlsCrypto;
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 use super::proposals::{
-    AppAckProposal, ExternalInitProposal, GroupContextExtensionProposal, PreSharedKeyProposal,
-    ProposalType, ReInitProposal, RemoveProposal,
+    AddProposal, AppAckProposal, ExternalInitProposal, GroupContextExtensionProposal,
+    PreSharedKeyProposal, Proposal, ProposalOrRef, ProposalType, ReInitProposal, RemoveProposal,
 };
 
 /// Proposal.
@@ -84,6 +85,25 @@ impl ProposalIn {
     pub fn is_path_required(&self) -> bool {
         self.proposal_type().is_path_required()
     }
+
+    /// Returns a [`Proposal`] after successful validation.
+    pub(crate) fn into_validated(
+        self,
+        crypto: &impl OpenMlsCrypto,
+    ) -> Result<Proposal, ValidationError> {
+        Ok(match self {
+            ProposalIn::Add(add) => Proposal::Add(add.into_validated(crypto)?),
+            ProposalIn::Update(update) => Proposal::Update(update.into()),
+            ProposalIn::Remove(remove) => Proposal::Remove(remove),
+            ProposalIn::PreSharedKey(psk) => Proposal::PreSharedKey(psk),
+            ProposalIn::ReInit(reinit) => Proposal::ReInit(reinit),
+            ProposalIn::ExternalInit(external_init) => Proposal::ExternalInit(external_init),
+            ProposalIn::GroupContextExtensions(group_context_extension) => {
+                Proposal::GroupContextExtensions(group_context_extension)
+            }
+            ProposalIn::AppAck(app_ack) => Proposal::AppAck(app_ack),
+        })
+    }
 }
 
 /// Add Proposal.
@@ -100,17 +120,21 @@ impl ProposalIn {
     Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
 pub struct AddProposalIn {
-    key_package: KeyPackage,
+    key_package: KeyPackageIn,
 }
 
 impl AddProposalIn {
     pub(crate) fn unverified_credential(&self) -> CredentialWithKey {
-        let credential = self.key_package.leaf_node().credential().clone();
-        let signature_key = self.key_package.leaf_node().signature_key().clone();
-        CredentialWithKey {
-            credential,
-            signature_key,
-        }
+        self.key_package.unverified_credential()
+    }
+
+    /// Returns a [`AddProposal`] after successful validation.
+    pub(crate) fn into_validated(
+        self,
+        crypto: &impl OpenMlsCrypto,
+    ) -> Result<AddProposal, ValidationError> {
+        let key_package = self.key_package.into_validated(crypto)?;
+        Ok(AddProposal { key_package })
     }
 }
 
@@ -147,13 +171,29 @@ pub(crate) enum ProposalOrRefIn {
     Reference(ProposalRef),
 }
 
+impl ProposalOrRefIn {
+    /// Returns a [`ProposalOrRef`] after successful validation.
+    pub(crate) fn into_validated(
+        self,
+        crypto: &impl OpenMlsCrypto,
+    ) -> Result<ProposalOrRef, ValidationError> {
+        Ok(match self {
+            ProposalOrRefIn::Proposal(proposal_in) => {
+                ProposalOrRef::Proposal(proposal_in.into_validated(crypto)?)
+            }
+            ProposalOrRefIn::Reference(reference) => ProposalOrRef::Reference(reference),
+        })
+    }
+}
+
 // TODO #1186: The follwoing should be removed once the validation refactoring
 // is complete.
 
+#[cfg(any(feature = "test-utils", test))]
 impl From<AddProposalIn> for crate::messages::proposals::AddProposal {
     fn from(value: AddProposalIn) -> Self {
         Self {
-            key_package: value.key_package,
+            key_package: value.key_package.into(),
         }
     }
 }
@@ -161,7 +201,7 @@ impl From<AddProposalIn> for crate::messages::proposals::AddProposal {
 impl From<crate::messages::proposals::AddProposal> for AddProposalIn {
     fn from(value: crate::messages::proposals::AddProposal) -> Self {
         Self {
-            key_package: value.key_package,
+            key_package: value.key_package.into(),
         }
     }
 }
@@ -182,6 +222,7 @@ impl From<crate::messages::proposals::UpdateProposal> for UpdateProposalIn {
     }
 }
 
+#[cfg(any(feature = "test-utils", test))]
 impl From<ProposalIn> for crate::messages::proposals::Proposal {
     fn from(proposal: ProposalIn) -> Self {
         match proposal {
@@ -201,8 +242,6 @@ impl From<ProposalIn> for crate::messages::proposals::Proposal {
 
 impl From<crate::messages::proposals::Proposal> for ProposalIn {
     fn from(proposal: crate::messages::proposals::Proposal) -> Self {
-        use crate::messages::proposals::Proposal;
-
         match proposal {
             Proposal::Add(add) => Self::Add(add.into()),
             Proposal::Update(update) => Self::Update(update.into()),
@@ -218,6 +257,7 @@ impl From<crate::messages::proposals::Proposal> for ProposalIn {
     }
 }
 
+#[cfg(any(feature = "test-utils", test))]
 impl From<ProposalOrRefIn> for crate::messages::proposals::ProposalOrRef {
     fn from(proposal: ProposalOrRefIn) -> Self {
         match proposal {

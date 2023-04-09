@@ -298,6 +298,7 @@ impl TlsSerializeTrait for PublicMessageIn {
 // NOT be made available outside of tests or "test-utils".
 
 // TODO #1186: Re-enable this #[cfg(any(feature = "test-utils", test))]
+#[cfg(any(feature = "test-utils", test))]
 impl From<PublicMessageIn> for PublicMessage {
     fn from(v: PublicMessageIn) -> Self {
         PublicMessage {

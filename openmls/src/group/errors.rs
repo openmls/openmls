@@ -11,6 +11,7 @@ use crate::{
     error::LibraryError,
     extensions::errors::{ExtensionError, InvalidExtensionError},
     framing::errors::{MessageDecryptionError, SenderError},
+    key_packages::errors::KeyPackageVerifyError,
     key_packages::errors::{KeyPackageExtensionSupportError, KeyPackageNewError},
     messages::{group_info::GroupInfoError, GroupSecretsError},
     schedule::errors::PskError,
@@ -285,9 +286,12 @@ pub enum ValidationError {
     /// The provided external sender is not authorized to send external proposals
     #[error("The provided external sender is not authorized to send external proposals")]
     UnauthorizedExternalSender,
-    /// The group doesn't contain external senders extension
+    /// The group doesn't contain external senders extension.
     #[error("The group doesn't contain external senders extension")]
     NoExternalSendersExtension,
+    /// The KeyPackage could not be validated.
+    #[error(transparent)]
+    KeyPackageVerifyError(#[from] KeyPackageVerifyError),
 }
 
 /// Proposal validation error

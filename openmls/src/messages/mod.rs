@@ -18,6 +18,7 @@ use crate::{
     ciphersuite::{hash_ref::KeyPackageRef, *},
     credentials::CredentialWithKey,
     error::LibraryError,
+    group::errors::ValidationError,
     schedule::{psk::PreSharedKeyId, JoinerSecret},
     treesync::{
         node::encryption_keys::{EncryptionKey, EncryptionKeyPair, EncryptionPrivateKey},
@@ -181,11 +182,27 @@ impl CommitIn {
             }
         })
     }
+
+    /// Returns a [`FramedCommitContentBody`] after successful validation.
+    pub(crate) fn into_validated(
+        self,
+        crypto: &impl OpenMlsCrypto,
+    ) -> Result<Commit, ValidationError> {
+        Ok(Commit {
+            proposals: self
+                .proposals
+                .into_iter()
+                .map(|p| p.into_validated(crypto))
+                .collect::<Result<Vec<_>, _>>()?,
+            path: self.path.map(Into::into),
+        })
+    }
 }
 
 // TODO #1186: The following must be removed once the validation refactoring is
 // complete.
 
+#[cfg(any(feature = "test-utils", test))]
 impl From<CommitIn> for Commit {
     fn from(commit: CommitIn) -> Self {
         Self {

@@ -18,8 +18,11 @@ fn criterion_kp_bundle(c: &mut Criterion, backend: &impl OpenMlsCryptoProvider) 
                     || {
                         let credential =
                             Credential::new(vec![1, 2, 3], CredentialType::Basic).unwrap();
-                        let signer =
-                            SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+                        let signer = SignatureKeyPair::new(
+                            backend.crypto(),
+                            ciphersuite.signature_algorithm(),
+                        )
+                        .unwrap();
                         let credential_with_key = CredentialWithKey {
                             credential,
                             signature_key: signer.to_public_vec().into(),

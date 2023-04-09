@@ -513,6 +513,30 @@ impl LeafNode {
     pub(crate) fn set_credential(&mut self, credential: Credential) {
         self.payload.credential = credential;
     }
+
+    /// Replace the signature key in the KeyPackage.
+    pub(crate) fn set_signature_key(&mut self, signature_key: SignaturePublicKey) {
+        self.payload.signature_key = signature_key;
+    }
+
+    /// Resign the node
+    pub(crate) fn resign(&mut self, signer: &impl Signer, credential_with_key: CredentialWithKey) {
+        let leaf_node_tbs = LeafNodeTbs::new(
+            self.payload.encryption_key.clone(),
+            credential_with_key,
+            self.payload.capabilities.clone(),
+            self.payload.leaf_node_source.clone(),
+            self.payload.extensions.clone(),
+        )
+        .unwrap();
+
+        let leaf_node = leaf_node_tbs
+            .sign(signer)
+            .map_err(|_| LibraryError::custom("Signing failed"))
+            .unwrap();
+        self.payload = leaf_node.payload;
+        self.signature = leaf_node.signature;
+    }
 }
 
 impl From<OpenMlsLeafNode> for LeafNode {

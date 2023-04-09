@@ -260,7 +260,7 @@ impl PassiveClient {
             let mls_message_key_package = MlsMessageIn::tls_deserialize_exact(key_package).unwrap();
 
             match mls_message_key_package.body {
-                MlsMessageInBody::KeyPackage(key_package) => key_package,
+                MlsMessageInBody::KeyPackage(key_package) => key_package.into(),
                 _ => panic!(),
             }
         };
@@ -377,7 +377,7 @@ pub fn generate_test_vector(cipher_suite: Ciphersuite) -> PassiveClientWelcomeTe
     let creator_backend = OpenMlsRustCrypto::default();
 
     let creator =
-        generate_group_candidate(b"Alice (Creator)", cipher_suite, Some(&creator_backend));
+        generate_group_candidate(b"Alice (Creator)", cipher_suite, &creator_backend, true);
 
     let mut creator_group = MlsGroup::new(
         &creator_backend,
@@ -393,7 +393,8 @@ pub fn generate_test_vector(cipher_suite: Ciphersuite) -> PassiveClientWelcomeTe
     let passive = generate_group_candidate(
         b"Bob (Passive Client)",
         cipher_suite,
-        None::<&OpenMlsRustCrypto>,
+        &OpenMlsRustCrypto::default(),
+        false,
     );
 
     let (_, mls_message_welcome, _) = creator_group
@@ -556,8 +557,12 @@ fn propose_add(
     group: &mut MlsGroup,
     add_identity: &[u8],
 ) -> TestProposal {
-    let add_candidate =
-        generate_group_candidate(add_identity, cipher_suite, None::<&OpenMlsRustCrypto>);
+    let add_candidate = generate_group_candidate(
+        add_identity,
+        cipher_suite,
+        &OpenMlsRustCrypto::default(),
+        false,
+    );
 
     let mls_message_out_proposal = group
         .propose_add_member(

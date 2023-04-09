@@ -260,7 +260,7 @@ impl UnverifiedMessage {
             .verify(backend.crypto(), &self.sender_pk)
             .map_err(|_| ProcessMessageError::InvalidSignature)?;
         // TODO #1186: This should be verified
-        let content = content.into();
+        let content = content.into_validated(backend.crypto())?;
         Ok((content, self.credential))
     }
 

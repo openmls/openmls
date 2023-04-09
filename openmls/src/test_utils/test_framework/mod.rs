@@ -146,7 +146,8 @@ impl MlsGroupTestSetup {
             for ciphersuite in crypto.crypto().supported_ciphersuites().iter() {
                 let credential = Credential::new(identity.clone(), CredentialType::Basic).unwrap();
                 let signature_keys =
-                    SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+                    SignatureKeyPair::new(crypto.crypto(), ciphersuite.signature_algorithm())
+                        .unwrap();
                 signature_keys.store(crypto.key_store()).unwrap();
                 let signature_key = OpenMlsSignaturePublicKey::new(
                     signature_keys.public().into(),

@@ -50,7 +50,7 @@ fn generate_credential(
     let credential = Credential::new(identity, credential_type).unwrap();
     // ANCHOR_END: create_basic_credential
     // ANCHOR: create_credential_keys
-    let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
+    let signature_keys = SignatureKeyPair::new(backend.crypto(), signature_algorithm).unwrap();
     signature_keys.store(backend.key_store()).unwrap();
     // ANCHOR_END: create_credential_keys
 

@@ -9,23 +9,24 @@
 //! - A **protocol version** and ciphersuite that the client supports
 //! - A **public key** that others can use for key agreement
 //! - A **credential** authenticating the client's application-layer identity
-//! - A list of **extensions** for the key package (see [Extensions](`mod@crate::extensions`) for details)
+//! - A list of **extensions** for the key package (see
+//!   [Extensions](`mod@crate::extensions`) for details)
 //!
 //! Key packages are intended to be used only once and SHOULD NOT be reused
-//! except in case of last resort, i.e. if there's no other key package available.
-//! Clients MAY generate and publish multiple KeyPackages to support multiple
-//! ciphersuites.
+//! except in case of last resort, i.e. if there's no other key package
+//! available. Clients MAY generate and publish multiple KeyPackages to support
+//! multiple ciphersuites.
 //!
 //! The value for HPKE init key MUST be a public key for the asymmetric
 //! encryption scheme defined by ciphersuite, and it MUST be unique among the
-//! set of key packages created by this client.
-//! The whole structure is signed using the client's signature key.
-//! A key package object with an invalid signature field is considered malformed.
+//! set of key packages created by this client. The whole structure is signed
+//! using the client's signature key. A key package object with an invalid
+//! signature field is considered malformed.
 //!
 //! ## Creating key package bundles
 //!
-//! Key package bundles are key packages including their private key.
-//! A key package bundle can be created as follows:
+//! Key package bundles are key packages including their private key. A key
+//! package bundle can be created as follows:
 //!
 //! ```
 //! use openmls::prelude::*;
@@ -37,7 +38,7 @@
 //!
 //! let credential = Credential::new("identity".into(), CredentialType::Basic).unwrap();
 //! let signer =
-//!     SignatureKeyPair::new(ciphersuite.signature_algorithm())
+//!     SignatureKeyPair::new(backend.crypto(), ciphersuite.signature_algorithm())
 //!         .expect("Error generating a signature key pair.");
 //! let credential_with_key = CredentialWithKey {
 //!     credential,
@@ -68,15 +69,25 @@
 //! use openmls::test_utils::hex_to_bytes;
 //! use openmls_rust_crypto::OpenMlsRustCrypto;
 //!
+//! let backend = OpenMlsRustCrypto::default();
+//!
 //! let key_package_bytes = hex_to_bytes(
-//!         "0100010020687A9693D4FADC951B999E6EDD80B80F11747DE30620C75ED0A5F41E32\
-//!          CB064C00010008000000000000000208070020AEF756C7D75DE1BEACA7D2DD17FA7A\
-//!          C36F56B9BA1F7DF019BCB49A4138CEBCCB000000360002000000100000000061A0B6\
-//!          2D000000006B086B9D00010000001A0201C8020001060001000200030C0001000200\
-//!          030004000500080040961F9EC3D3F1BFCE673FEF39AB8BE6A8FF4D0BA40B3AA8A0DC\
-//!          50CDE22482DC30A594EDDEC398F0966C3AFD67135007A6875F9873F4B521DF28827F\
-//!          6A4EFF1704");
-//! let key_package = KeyPackage::try_from(key_package_bytes.as_slice());
+//!         "00010003205D1DEB647BB5BDBB417022D1161076275ED861BD427B10DD07AC0233ED\
+//!         D1D54F20428F4A2DAE538BD64154892A1A2C85D0F6888CE9977E09AC53DCB3471DECD\
+//!         F6120DFC735AD28400BD79EFC8043B326D90A75A7B66F2A36EEDE79E3620A885E1825\
+//!         0001055361736861020001060001000200030200010C0001000200030004000500070\
+//!         200010100000000643170770000000064A03C87004040033B4FCBCC85D1AFE86241E8\
+//!         5CECB2B496C9D7F8CE98BEDDBDFFC02EB2CA54BC881A84CA800345005BB2622EDC377\
+//!         B54F223E160BFC872D5FEA2287E16A44703004040D33B9F1DA0F86C78855036B5FADD\
+//!         35983E14188A0798B455211654E594E3955026CD1AD275D284CA8FBEA5356A0BA4C6F\
+//!         799707C0046C05FBF52FF1FC1E9640A");
+//!
+//! let key_package_in = KeyPackageIn::tls_deserialize(&mut key_package_bytes.as_slice())
+//!     .expect("Could not deserialize KeyPackage");
+//!
+//! let key_package = key_package_in
+//!     .into_validated(backend.crypto())
+//!     .expect("Invalid KeyPackage");
 //! ```
 //!
 //! See [`KeyPackage`] for more details on how to use key packages.
@@ -109,25 +120,24 @@ use openmls_traits::{
     OpenMlsCryptoProvider,
 };
 use serde::{Deserialize, Serialize};
-use tls_codec::{
-    Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, TlsSerialize, TlsSize,
-};
+use tls_codec::{Serialize as TlsSerializeTrait, TlsSerialize, TlsSize};
 
 #[cfg(test)]
 use crate::treesync::node::encryption_keys::EncryptionKey;
 
 // Private
-mod codec;
 use errors::*;
 
 // Public
 pub mod errors;
+pub mod key_package_in;
 
 // Tests
 #[cfg(test)]
 mod test_key_packages;
 
 // Public types
+pub use key_package_in::KeyPackageIn;
 
 /// The unsigned payload of a key package.
 /// Any modification must happen on this unsigned struct. Use `sign` to get a
@@ -170,18 +180,10 @@ impl From<KeyPackage> for KeyPackageTBS {
 }
 
 /// The key package struct.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TlsSize, TlsSerialize)]
 pub struct KeyPackage {
     payload: KeyPackageTBS,
     signature: Signature,
-}
-
-impl TryFrom<&[u8]> for KeyPackage {
-    type Error = tls_codec::Error;
-
-    fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
-        Self::tls_deserialize(&mut &*bytes)
-    }
 }
 
 impl PartialEq for KeyPackage {
@@ -199,20 +201,6 @@ impl SignedStruct<KeyPackageTBS> for KeyPackage {
 }
 
 const SIGNATURE_KEY_PACKAGE_LABEL: &str = "KeyPackageTBS";
-
-impl Verifiable for KeyPackage {
-    fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
-        self.payload.tls_serialize_detached()
-    }
-
-    fn signature(&self) -> &Signature {
-        &self.signature
-    }
-
-    fn label(&self) -> &str {
-        SIGNATURE_KEY_PACKAGE_LABEL
-    }
-}
 
 impl MlsEntity for KeyPackage {
     const ID: MlsEntityId = MlsEntityId::KeyPackage;
@@ -304,7 +292,7 @@ impl KeyPackage {
             signer,
         )?;
 
-        let key_package = KeyPackageTBS {
+        let key_package_tbs = KeyPackageTBS {
             protocol_version: config.version,
             ciphersuite: config.ciphersuite,
             init_key: init_key.into(),
@@ -312,7 +300,7 @@ impl KeyPackage {
             extensions,
         };
 
-        let key_package = key_package.sign(signer)?;
+        let key_package = key_package_tbs.sign(signer)?;
 
         Ok((key_package, encryption_key_pair))
     }
@@ -328,46 +316,6 @@ impl KeyPackage {
         backend
             .key_store()
             .delete::<HpkePrivateKey>(self.hpke_init_key().as_slice())
-    }
-
-    /// Verify that this key package is valid:
-    /// * verify that the signature on this key package is valid
-    /// * verify that all extensions are supported by the leaf node
-    /// * make sure that the lifetime is valid
-    /// Returns `Ok(())` if all checks succeed and `KeyPackageError` otherwise
-    pub fn verify(&self, crypto: &impl OpenMlsCrypto) -> Result<(), KeyPackageVerifyError> {
-        // Extension included in the extensions or leaf_node.extensions fields
-        // MUST be included in the leaf_node.capabilities field.
-        for extension in self.payload.extensions.iter() {
-            if !self
-                .payload
-                .leaf_node
-                .supports_extension(&extension.extension_type())
-            {
-                return Err(KeyPackageVerifyError::UnsupportedExtension);
-            }
-        }
-
-        // Ensure validity of the life time extension in the leaf node.
-        if let Some(life_time) = self.payload.leaf_node.life_time() {
-            if !life_time.is_valid() {
-                return Err(KeyPackageVerifyError::InvalidLifetime);
-            }
-        } else {
-            // This assumes that we only verify key packages with leaf nodes
-            // that were created for the key package.
-            return Err(KeyPackageVerifyError::MissingLifetime);
-        }
-
-        // Verify the signature on this key package.
-        let pk = OpenMlsSignaturePublicKey::from_signature_key(
-            self.leaf_node().signature_key().clone(),
-            self.ciphersuite().signature_algorithm(),
-        );
-        <Self as Verifiable>::verify_no_out(self, crypto, &pk).map_err(|_| {
-            log::error!("Key package signature is invalid.");
-            KeyPackageVerifyError::InvalidSignature
-        })
     }
 
     /// Get a reference to the extensions of this key package.
@@ -540,7 +488,7 @@ impl KeyPackage {
         signer: &impl Signer,
         init_key: Vec<u8>,
     ) -> Result<Self, SignatureError> {
-        let key_package = KeyPackageTBS {
+        let key_package_tbs = KeyPackageTBS {
             protocol_version: config.version,
             ciphersuite: config.ciphersuite,
             init_key: init_key.into(),
@@ -548,13 +496,20 @@ impl KeyPackage {
             extensions: self.extensions().clone(),
         };
 
-        let key_package = key_package.sign(signer)?;
-        Ok(key_package)
+        key_package_tbs.sign(signer)
     }
 
     /// Resign this key package with another credential.
-    pub fn resign(mut self, signer: &impl Signer, credential: Credential) -> Self {
-        self.payload.leaf_node.set_credential(credential);
+    pub fn resign(mut self, signer: &impl Signer, credential_with_key: CredentialWithKey) -> Self {
+        self.payload
+            .leaf_node
+            .set_credential(credential_with_key.credential.clone());
+        self.payload
+            .leaf_node
+            .set_signature_key(credential_with_key.signature_key.clone());
+
+        self.payload.leaf_node.resign(signer, credential_with_key);
+
         self.payload.sign(signer).unwrap()
     }
 

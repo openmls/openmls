@@ -301,7 +301,7 @@ impl User {
             .add_members(
                 &self.crypto,
                 &self.identity.borrow().signer,
-                &[joiner_key_package],
+                &[joiner_key_package.into()],
             )
             .map_err(|e| format!("Failed to add member to group - {e}"))?;
 
