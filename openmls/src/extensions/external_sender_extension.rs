@@ -66,14 +66,14 @@ impl SenderExtensionIndex {
 #[cfg(test)]
 mod test {
     use openmls_basic_credential::SignatureKeyPair;
-    use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
+    use openmls_traits::types::Ciphersuite;
     use tls_codec::{Deserialize, Serialize};
 
     use super::*;
     use crate::{credentials::CredentialType, test_utils::*};
 
-    #[apply(ciphersuites_and_backends)]
-    fn test_serialize_deserialize(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    #[apply(ciphersuites)]
+    fn test_serialize_deserialize(ciphersuite: Ciphersuite) {
         let tests = {
             let mut external_sender_extensions = Vec::new();
 
