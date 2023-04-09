@@ -37,12 +37,6 @@ pub(crate) fn key_package(
 fn generate_key_package(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let (key_package, _credential, _signature_keys) = key_package(ciphersuite, backend);
 
-    let serialized = key_package.tls_serialize_detached().unwrap();
-
-    use openmls::test_utils::bytes_to_hex;
-
-    println!("{}", bytes_to_hex(&serialized));
-
     let kpi = KeyPackageIn::from(key_package);
     assert!(kpi.into_validated(backend.crypto()).is_ok());
 }
