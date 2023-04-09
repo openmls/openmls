@@ -80,8 +80,7 @@ mod test {
             for _ in 0..8 {
                 let credential = Credential::new(b"Alice".to_vec(), CredentialType::Basic).unwrap();
                 let signature_keys =
-                    SignatureKeyPair::new(backend.crypto(), ciphersuite.signature_algorithm())
-                        .unwrap();
+                    SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
                 external_sender_extensions.push(ExternalSender {
                     signature_key: signature_keys.to_public_vec().into(),

@@ -559,11 +559,8 @@ fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     ] {
         // 0. Initialize Alice and Bob
         let new_kp = || {
-            openmls_basic_credential::SignatureKeyPair::new(
-                backend.crypto(),
-                ciphersuite.signature_algorithm(),
-            )
-            .unwrap()
+            openmls_basic_credential::SignatureKeyPair::new(ciphersuite.signature_algorithm())
+                .unwrap()
         };
         let shared_signature_keypair = new_kp();
         let [alice_credential_bundle, bob_credential_bundle, target_credential_bundle] =

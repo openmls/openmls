@@ -333,7 +333,7 @@ pub(crate) fn generate_credential_bundle(
 ) -> CredentialWithKeyAndSigner {
     let (credential, signer) = {
         let credential = Credential::new(identity, CredentialType::Basic).unwrap();
-        let signature_keys = SignatureKeyPair::new(backend.crypto(), signature_scheme).unwrap();
+        let signature_keys = SignatureKeyPair::new(signature_scheme).unwrap();
         signature_keys.store(backend.key_store()).unwrap();
 
         (credential, signature_keys)

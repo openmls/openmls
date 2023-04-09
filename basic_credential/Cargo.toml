@@ -11,7 +11,6 @@ readme = "README.md"
 
 [dependencies]
 openmls_traits = { version = "0.1.0", path = "../traits" }
-openmls_rust_crypto = { version = "0.1.0", path = "../openmls_rust_crypto" }
 tls_codec = { workspace = true }
 serde = "1.0"
 

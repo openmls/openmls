@@ -161,9 +161,7 @@ impl MlsClient for MlsClientImpl {
         let ciphersuite = Ciphersuite::try_from(create_group_request.cipher_suite as u16).unwrap();
         let credential =
             Credential::new(create_group_request.identity.clone(), CredentialType::Basic).unwrap();
-        let signature_keys =
-            SignatureKeyPair::new(crypto_provider.crypto(), ciphersuite.signature_algorithm())
-                .unwrap();
+        let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
         signature_keys.store(crypto_provider.key_store()).unwrap();
         log::trace!("   for {:x?}", create_group_request.identity);
 
@@ -211,9 +209,7 @@ impl MlsClient for MlsClientImpl {
         let ciphersuite = *to_ciphersuite(create_kp_request.cipher_suite)?;
         let credential =
             Credential::new(create_kp_request.identity.clone(), CredentialType::Basic).unwrap();
-        let signature_keys =
-            SignatureKeyPair::new(crypto_provider.crypto(), ciphersuite.signature_algorithm())
-                .unwrap();
+        let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
         log::trace!(
             "   for {:x?}",
             String::from_utf8_lossy(&create_kp_request.identity)

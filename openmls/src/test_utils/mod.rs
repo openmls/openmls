@@ -105,8 +105,7 @@ pub(crate) fn generate_group_candidate(
     let credential_with_key_and_signer = {
         let credential = Credential::new(identity.to_vec(), CredentialType::Basic).unwrap();
 
-        let signature_keypair =
-            SignatureKeyPair::new(backend.crypto(), ciphersuite.signature_algorithm()).unwrap();
+        let signature_keypair = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
         // Store if there is a key store.
         if use_store {

@@ -11,8 +11,7 @@ pub(crate) fn key_package(
     backend: &impl OpenMlsCryptoProvider,
 ) -> (KeyPackage, Credential, SignatureKeyPair) {
     let credential = Credential::new(b"Sasha".to_vec(), CredentialType::Basic).unwrap();
-    let signer =
-        SignatureKeyPair::new(backend.crypto(), ciphersuite.signature_algorithm()).unwrap();
+    let signer = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
     // Generate a valid KeyPackage.
     let key_package = KeyPackage::builder()
@@ -60,8 +59,7 @@ fn serialization(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider)
 fn application_id_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let credential = Credential::new(b"Sasha".to_vec(), CredentialType::Basic)
         .expect("An unexpected error occurred.");
-    let signature_keys =
-        SignatureKeyPair::new(backend.crypto(), ciphersuite.signature_algorithm()).unwrap();
+    let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
     // Generate a valid KeyPackage.
     let id = b"application id" as &[u8];

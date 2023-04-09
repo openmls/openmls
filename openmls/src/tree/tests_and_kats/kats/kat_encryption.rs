@@ -146,7 +146,7 @@ fn generate_credential(
     backend: &impl OpenMlsCryptoProvider,
 ) -> (CredentialWithKey, SignatureKeyPair) {
     let credential = Credential::new(identity, credential_type).unwrap();
-    let signature_keys = SignatureKeyPair::new(backend.crypto(), signature_algorithm).unwrap();
+    let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
     signature_keys.store(backend.key_store()).unwrap();
 
     (

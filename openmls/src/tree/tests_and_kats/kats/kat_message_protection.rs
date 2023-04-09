@@ -112,7 +112,7 @@ fn generate_credential(
     backend: &impl OpenMlsCryptoProvider,
 ) -> (CredentialWithKey, SignatureKeyPair) {
     let credential = Credential::new(identity, credential_type).unwrap();
-    let signature_keys = SignatureKeyPair::new(backend.crypto(), signature_algorithm).unwrap();
+    let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
     signature_keys.store(backend.key_store()).unwrap();
 
     (
@@ -234,7 +234,7 @@ pub fn run_test_vector(
         _ => unimplemented!(),
     };
     let random_own_signature_key =
-        SignatureKeyPair::new(backend.crypto(), ciphersuite.signature_algorithm()).unwrap();
+        SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
     let random_own_signature_key = random_own_signature_key.public();
     let signer = SignatureKeyPair::from_raw(
         ciphersuite.signature_algorithm(),
@@ -255,8 +255,7 @@ pub fn run_test_vector(
     // Make the group think it has two members.
     {
         let credential = Credential::new("Fake user".into(), CredentialType::Basic).unwrap();
-        let signature_keys =
-            SignatureKeyPair::new(backend.crypto(), ciphersuite.signature_algorithm()).unwrap();
+        let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
         let bob_key_package_bundle = KeyPackageBundle::new(
             backend,
             &signature_keys,

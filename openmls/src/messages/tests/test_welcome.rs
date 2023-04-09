@@ -210,8 +210,7 @@ fn test_welcome_message(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     };
 
     // We need a signer
-    let signer =
-        SignatureKeyPair::new(backend.crypto(), ciphersuite.signature_algorithm()).unwrap();
+    let signer = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
     let group_info = group_info_tbs
         .sign(&signer)
