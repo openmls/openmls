@@ -126,14 +126,10 @@ impl ProposalType {
 
     /// Returns `true` if the proposal type requires a path and `false`
     pub fn is_path_required(&self) -> bool {
-        match self {
-            Self::Add
-            | Self::PreSharedKey
-            | Self::Reinit
-            | Self::AppAck
-            | Self::GroupContextExtensions => false,
-            Self::Update | Self::Remove | Self::ExternalInit => true,
-        }
+        matches!(
+            self,
+            Self::Update | Self::Remove | Self::ExternalInit | Self::GroupContextExtensions
+        )
     }
 }
 
