@@ -530,6 +530,51 @@
 <a href="#530" id="530">530</a>
 <a href="#531" id="531">531</a>
 <a href="#532" id="532">532</a>
+<a href="#533" id="533">533</a>
+<a href="#534" id="534">534</a>
+<a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
+<a href="#539" id="539">539</a>
+<a href="#540" id="540">540</a>
+<a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
+<a href="#544" id="544">544</a>
+<a href="#545" id="545">545</a>
+<a href="#546" id="546">546</a>
+<a href="#547" id="547">547</a>
+<a href="#548" id="548">548</a>
+<a href="#549" id="549">549</a>
+<a href="#550" id="550">550</a>
+<a href="#551" id="551">551</a>
+<a href="#552" id="552">552</a>
+<a href="#553" id="553">553</a>
+<a href="#554" id="554">554</a>
+<a href="#555" id="555">555</a>
+<a href="#556" id="556">556</a>
+<a href="#557" id="557">557</a>
+<a href="#558" id="558">558</a>
+<a href="#559" id="559">559</a>
+<a href="#560" id="560">560</a>
+<a href="#561" id="561">561</a>
+<a href="#562" id="562">562</a>
+<a href="#563" id="563">563</a>
+<a href="#564" id="564">564</a>
+<a href="#565" id="565">565</a>
+<a href="#566" id="566">566</a>
+<a href="#567" id="567">567</a>
+<a href="#568" id="568">568</a>
+<a href="#569" id="569">569</a>
+<a href="#570" id="570">570</a>
+<a href="#571" id="571">571</a>
+<a href="#572" id="572">572</a>
+<a href="#573" id="573">573</a>
+<a href="#574" id="574">574</a>
+<a href="#575" id="575">575</a>
+<a href="#576" id="576">576</a>
+<a href="#577" id="577">577</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Extensions
 //!
 //! In MLS, extensions appear in the following places:
@@ -552,13 +597,11 @@
 //! - [`ExternalPubExtension`] (GroupInfo extension)
 
 </span><span class="kw">use </span>std::{
-    collections::{btree_map::Entry, BTreeMap},
     fmt::Debug,
     io::{Read, Write},
 };
 
 <span class="kw">use </span>serde::{Deserialize, Serialize};
-<span class="kw">use </span>tls_codec::<span class="kw-2">*</span>;
 
 <span class="comment">// Private
 </span><span class="kw">mod </span>application_id_extension;
@@ -599,60 +642,80 @@
 /// | 0xff00  - 0xffff | Reserved for Private Use | N/A        | N/A         | RFC XXXX  |
 ///
 /// Note: OpenMLS does not provide a `Reserved` variant in [ExtensionType].
-</span><span class="attr">#[derive(
-    Debug,
-    Copy,
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-    Serialize,
-    Deserialize,
-    Ord,
-    PartialOrd,
-    TlsSerialize,
-    TlsDeserialize,
-    TlsSize,
-)]
-#[repr(u16)]
+</span><span class="attr">#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Ord, PartialOrd)]
 </span><span class="kw">pub enum </span>ExtensionType {
     <span class="doccomment">/// The application id extension allows applications to add an explicit,
     /// application-defined identifier to a KeyPackage.
-    </span>ApplicationId = <span class="number">1</span>,
+    </span>ApplicationId,
 
     <span class="doccomment">/// The ratchet tree extensions provides the whole public state of the ratchet
     /// tree.
-    </span>RatchetTree = <span class="number">2</span>,
+    </span>RatchetTree,
 
     <span class="doccomment">/// The required capabilities extension defines the configuration of a group
     /// that imposes certain requirements on clients in the group.
-    </span>RequiredCapabilities = <span class="number">3</span>,
+    </span>RequiredCapabilities,
 
     <span class="doccomment">/// To join a group via an External Commit, a new member needs a GroupInfo
     /// with an ExternalPub extension present in its extensions field.
-    </span>ExternalPub = <span class="number">4</span>,
+    </span>ExternalPub,
 
     <span class="doccomment">/// Group context extension that contains the credentials and signature keys
     /// of senders that are permitted to send external proposals to the group.
-    </span>ExternalSenders = <span class="number">5</span>,
+    </span>ExternalSenders,
+
+    <span class="doccomment">/// A currently unknown extension type.
+    </span>Unknown(u16),
 }
 
-<span class="kw">impl </span>TryFrom&lt;u16&gt; <span class="kw">for </span>ExtensionType {
-    <span class="kw">type </span>Error = tls_codec::Error;
+<span class="kw">impl </span>tls_codec::Size <span class="kw">for </span>ExtensionType {
+    <span class="kw">fn </span>tls_serialized_len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="number">2
+    </span>}
+}
 
-    <span class="doccomment">/// Get the [`ExtensionType`] from a u16.
-    /// Returns an error if the extension type is not known.
-    /// Note that this returns a [`tls_codec::Error`](`tls_codec::Error`).
-    </span><span class="kw">fn </span>try_from(a: u16) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
+<span class="kw">impl </span>tls_codec::Deserialize <span class="kw">for </span>ExtensionType {
+    <span class="kw">fn </span>tls_deserialize&lt;R: Read&gt;(bytes: <span class="kw-2">&amp;mut </span>R) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, tls_codec::Error&gt;
+    <span class="kw">where
+        </span><span class="self">Self</span>: Sized,
+    {
+        <span class="kw">let </span><span class="kw-2">mut </span>extension_type = [<span class="number">0u8</span>; <span class="number">2</span>];
+        bytes.read_exact(<span class="kw-2">&amp;mut </span>extension_type)<span class="question-mark">?</span>;
+
+        <span class="prelude-val">Ok</span>(ExtensionType::from(u16::from_be_bytes(extension_type)))
+    }
+}
+
+<span class="kw">impl </span>tls_codec::Serialize <span class="kw">for </span>ExtensionType {
+    <span class="kw">fn </span>tls_serialize&lt;W: Write&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, writer: <span class="kw-2">&amp;mut </span>W) -&gt; <span class="prelude-ty">Result</span>&lt;usize, tls_codec::Error&gt; {
+        writer.write_all(<span class="kw-2">&amp;</span>u16::from(<span class="kw-2">*</span><span class="self">self</span>).to_be_bytes())<span class="question-mark">?</span>;
+
+        <span class="prelude-val">Ok</span>(<span class="number">2</span>)
+    }
+}
+
+<span class="kw">impl </span>From&lt;u16&gt; <span class="kw">for </span>ExtensionType {
+    <span class="kw">fn </span>from(a: u16) -&gt; <span class="self">Self </span>{
         <span class="kw">match </span>a {
-            <span class="number">1 </span>=&gt; <span class="prelude-val">Ok</span>(ExtensionType::ApplicationId),
-            <span class="number">2 </span>=&gt; <span class="prelude-val">Ok</span>(ExtensionType::RatchetTree),
-            <span class="number">3 </span>=&gt; <span class="prelude-val">Ok</span>(ExtensionType::RequiredCapabilities),
-            <span class="number">4 </span>=&gt; <span class="prelude-val">Ok</span>(ExtensionType::ExternalPub),
-            <span class="number">5 </span>=&gt; <span class="prelude-val">Ok</span>(ExtensionType::ExternalSenders),
-            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(tls_codec::Error::DecodingError(<span class="macro">format!</span>(
-                <span class="string">&quot;{a} is an unkown extension type&quot;
-            </span>))),
+            <span class="number">1 </span>=&gt; ExtensionType::ApplicationId,
+            <span class="number">2 </span>=&gt; ExtensionType::RatchetTree,
+            <span class="number">3 </span>=&gt; ExtensionType::RequiredCapabilities,
+            <span class="number">4 </span>=&gt; ExtensionType::ExternalPub,
+            <span class="number">5 </span>=&gt; ExtensionType::ExternalSenders,
+            unknown =&gt; ExtensionType::Unknown(unknown),
+        }
+    }
+}
+
+<span class="kw">impl </span>From&lt;ExtensionType&gt; <span class="kw">for </span>u16 {
+    <span class="kw">fn </span>from(value: ExtensionType) -&gt; <span class="self">Self </span>{
+        <span class="kw">match </span>value {
+            ExtensionType::ApplicationId =&gt; <span class="number">1</span>,
+            ExtensionType::RatchetTree =&gt; <span class="number">2</span>,
+            ExtensionType::RequiredCapabilities =&gt; <span class="number">3</span>,
+            ExtensionType::ExternalPub =&gt; <span class="number">4</span>,
+            ExtensionType::ExternalSenders =&gt; <span class="number">5</span>,
+            ExtensionType::Unknown(unknown) =&gt; unknown,
         }
     }
 }
@@ -660,13 +723,14 @@
 <span class="kw">impl </span>ExtensionType {
     <span class="doccomment">/// Check whether an [`ExtensionType`] is supported or not.
     </span><span class="kw">pub fn </span>is_supported(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="kw">match </span><span class="self">self </span>{
+        <span class="macro">matches!</span>(
+            <span class="self">self</span>,
             ExtensionType::ApplicationId
-            | ExtensionType::RatchetTree
-            | ExtensionType::RequiredCapabilities
-            | ExtensionType::ExternalPub
-            | ExtensionType::ExternalSenders =&gt; <span class="bool-val">true</span>,
-        }
+                | ExtensionType::RatchetTree
+                | ExtensionType::RequiredCapabilities
+                | ExtensionType::ExternalPub
+                | ExtensionType::ExternalSenders
+        )
     }
 }
 
@@ -684,7 +748,7 @@
 ///     opaque extension_data&lt;V&gt;;
 /// } Extension;
 /// ```
-</span><span class="attr">#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+</span><span class="attr">#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 </span><span class="kw">pub enum </span>Extension {
     <span class="doccomment">/// An [`ApplicationIdExtension`]
     </span>ApplicationId(ApplicationIdExtension),
@@ -700,25 +764,24 @@
 
     <span class="doccomment">/// A [`ExternalPubExtension`]
     </span>ExternalSenders(ExternalSendersExtension),
+
+    <span class="doccomment">/// A currently unknown extension.
+    </span>Unknown(u16, UnknownExtension),
 }
+
+<span class="doccomment">/// A unknown/unparsed extension represented by raw bytes.
+</span><span class="attr">#[derive(PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>UnknownExtension(<span class="kw">pub </span>Vec&lt;u8&gt;);
 
 <span class="doccomment">/// A list of extensions with unique extension types.
-</span><span class="attr">#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+</span><span class="attr">#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize, tls_codec::TlsSize)]
 </span><span class="kw">pub struct </span>Extensions {
-    map: BTreeMap&lt;ExtensionType, Extension&gt;,
-}
-
-<span class="kw">impl </span>Size <span class="kw">for </span>Extensions {
-    <span class="kw">fn </span>tls_serialized_len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
-        <span class="kw">let </span>out: Vec&lt;<span class="kw-2">&amp;</span>Extension&gt; = <span class="self">self</span>.map.values().collect();
-        out.tls_serialized_len()
-    }
+    unique: Vec&lt;Extension&gt;,
 }
 
 <span class="kw">impl </span>tls_codec::Serialize <span class="kw">for </span>Extensions {
     <span class="kw">fn </span>tls_serialize&lt;W: Write&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, writer: <span class="kw-2">&amp;mut </span>W) -&gt; <span class="prelude-ty">Result</span>&lt;usize, tls_codec::Error&gt; {
-        <span class="kw">let </span>out: Vec&lt;<span class="kw-2">&amp;</span>Extension&gt; = <span class="self">self</span>.map.values().collect();
-        out.tls_serialize(writer)
+        <span class="self">self</span>.unique.tls_serialize(writer)
     }
 }
 
@@ -736,15 +799,13 @@
 <span class="kw">impl </span>Extensions {
     <span class="doccomment">/// Create an empty extension list.
     </span><span class="kw">pub fn </span>empty() -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            map: BTreeMap::new(),
-        }
+        <span class="self">Self </span>{ unique: <span class="macro">vec!</span>[] }
     }
 
     <span class="doccomment">/// Create an extension list with a single extension.
     </span><span class="kw">pub fn </span>single(extension: Extension) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            map: BTreeMap::from([(extension.extension_type(), extension)]),
+            unique: <span class="macro">vec!</span>[extension],
         }
     }
 
@@ -757,51 +818,51 @@
 
     <span class="doccomment">/// Returns an iterator over the extension list.
     </span><span class="kw">pub fn </span>iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>Extension&gt; {
-        <span class="self">self</span>.map.values()
+        <span class="self">self</span>.unique.iter()
     }
 
     <span class="doccomment">/// Add an extension to the extension list.
     ///
     /// Returns an error when there already is an extension with the same extension type.
     </span><span class="kw">pub fn </span>add(<span class="kw-2">&amp;mut </span><span class="self">self</span>, extension: Extension) -&gt; <span class="prelude-ty">Result</span>&lt;(), InvalidExtensionError&gt; {
-        <span class="kw">if let </span>Entry::Vacant(e) = <span class="self">self</span>.map.entry(extension.extension_type()) {
-            e.insert(extension);
-            <span class="prelude-val">Ok</span>(())
-        } <span class="kw">else </span>{
-            <span class="prelude-val">Err</span>(InvalidExtensionError::Duplicate)
+        <span class="kw">if </span><span class="self">self</span>.contains(extension.extension_type()) {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(InvalidExtensionError::Duplicate);
         }
+
+        <span class="self">self</span>.unique.push(extension);
+
+        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Add an extension to the extension list (or replace an existing one.)
     ///
     /// Returns the replaced extension (if any).
     </span><span class="kw">pub fn </span>add_or_replace(<span class="kw-2">&amp;mut </span><span class="self">self</span>, extension: Extension) -&gt; <span class="prelude-ty">Option</span>&lt;Extension&gt; {
-        <span class="self">self</span>.map.insert(extension.extension_type(), extension)
+        <span class="kw">let </span>replaced = <span class="self">self</span>.remove(extension.extension_type());
+        <span class="self">self</span>.unique.push(extension);
+        replaced
     }
 
     <span class="doccomment">/// Remove an extension from the extension list.
     ///
     /// Returns the removed extension or `None` when there is no extension with the given extension type.
     </span><span class="kw">pub fn </span>remove(<span class="kw-2">&amp;mut </span><span class="self">self</span>, extension_type: ExtensionType) -&gt; <span class="prelude-ty">Option</span>&lt;Extension&gt; {
-        <span class="self">self</span>.map.remove(<span class="kw-2">&amp;</span>extension_type)
-    }
-
-    <span class="doccomment">/// Replace an extension in the extension list.
-    ///
-    /// Returns the replaced extension or an error when there is no extension with the given extension type.
-    </span><span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
-    </span><span class="kw">pub fn </span>replace(<span class="kw-2">&amp;mut </span><span class="self">self</span>, extension: Extension) -&gt; <span class="prelude-ty">Result</span>&lt;Extension, InvalidExtensionError&gt; {
-        <span class="kw">let </span>got = <span class="self">self</span>.map.remove(<span class="kw-2">&amp;</span>extension.extension_type());
-
-        <span class="kw">match </span>got {
-            <span class="prelude-val">Some</span>(extension) =&gt; <span class="prelude-val">Ok</span>(extension),
-            <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(InvalidExtensionError::NotFound),
-        }
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(pos) = <span class="self">self
+            </span>.unique
+            .iter()
+            .position(|ext| ext.extension_type() == extension_type)
+        {
+            <span class="prelude-val">Some</span>(<span class="self">self</span>.unique.remove(pos))
+        } <span class="kw">else </span>{
+            <span class="prelude-val">None
+        </span>}
     }
 
     <span class="doccomment">/// Returns `true` iff the extension list contains an extension with the given extension type.
     </span><span class="kw">pub fn </span>contains(<span class="kw-2">&amp;</span><span class="self">self</span>, extension_type: ExtensionType) -&gt; bool {
-        <span class="self">self</span>.map.contains_key(<span class="kw-2">&amp;</span>extension_type)
+        <span class="self">self</span>.unique
+            .iter()
+            .any(|ext| ext.extension_type() == extension_type)
     }
 }
 
@@ -809,23 +870,33 @@
     <span class="kw">type </span>Error = InvalidExtensionError;
 
     <span class="kw">fn </span>try_from(candidate: Vec&lt;Extension&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>map = BTreeMap::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>unique: Vec&lt;Extension&gt; = Vec::new();
 
         <span class="kw">for </span>extension <span class="kw">in </span>candidate.into_iter() {
-            <span class="kw">if </span>map.insert(extension.extension_type(), extension).is_some() {
+            <span class="kw">if </span>unique
+                .iter()
+                .any(|ext| ext.extension_type() == extension.extension_type())
+            {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(InvalidExtensionError::Duplicate);
+            } <span class="kw">else </span>{
+                unique.push(extension);
             }
         }
 
-        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{ map })
+        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{ unique })
     }
 }
 
 <span class="kw">impl </span>Extensions {
+    <span class="kw">fn </span>find_by_type(<span class="kw-2">&amp;</span><span class="self">self</span>, extension_type: ExtensionType) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Extension&gt; {
+        <span class="self">self</span>.unique
+            .iter()
+            .find(|ext| ext.extension_type() == extension_type)
+    }
+
     <span class="doccomment">/// Get a reference to the [`ApplicationIdExtension`] if there is any.
     </span><span class="kw">pub fn </span>application_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>ApplicationIdExtension&gt; {
-        <span class="self">self</span>.map
-            .get(<span class="kw-2">&amp;</span>ExtensionType::ApplicationId)
+        <span class="self">self</span>.find_by_type(ExtensionType::ApplicationId)
             .and_then(|e| <span class="kw">match </span>e {
                 Extension::ApplicationId(e) =&gt; <span class="prelude-val">Some</span>(e),
                 <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
@@ -834,8 +905,7 @@
 
     <span class="doccomment">/// Get a reference to the [`RatchetTreeExtension`] if there is any.
     </span><span class="kw">pub fn </span>ratchet_tree(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>RatchetTreeExtension&gt; {
-        <span class="self">self</span>.map
-            .get(<span class="kw-2">&amp;</span>ExtensionType::RatchetTree)
+        <span class="self">self</span>.find_by_type(ExtensionType::RatchetTree)
             .and_then(|e| <span class="kw">match </span>e {
                 Extension::RatchetTree(e) =&gt; <span class="prelude-val">Some</span>(e),
                 <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
@@ -844,8 +914,7 @@
 
     <span class="doccomment">/// Get a reference to the [`RequiredCapabilitiesExtension`] if there is any.
     </span><span class="kw">pub fn </span>required_capabilities(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>RequiredCapabilitiesExtension&gt; {
-        <span class="self">self</span>.map
-            .get(<span class="kw-2">&amp;</span>ExtensionType::RequiredCapabilities)
+        <span class="self">self</span>.find_by_type(ExtensionType::RequiredCapabilities)
             .and_then(|e| <span class="kw">match </span>e {
                 Extension::RequiredCapabilities(e) =&gt; <span class="prelude-val">Some</span>(e),
                 <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
@@ -854,8 +923,7 @@
 
     <span class="doccomment">/// Get a reference to the [`ExternalPubExtension`] if there is any.
     </span><span class="kw">pub fn </span>external_pub(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>ExternalPubExtension&gt; {
-        <span class="self">self</span>.map
-            .get(<span class="kw-2">&amp;</span>ExtensionType::ExternalPub)
+        <span class="self">self</span>.find_by_type(ExtensionType::ExternalPub)
             .and_then(|e| <span class="kw">match </span>e {
                 Extension::ExternalPub(e) =&gt; <span class="prelude-val">Some</span>(e),
                 <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
@@ -864,8 +932,7 @@
 
     <span class="doccomment">/// Get a reference to the [`ExternalSendersExtension`] if there is any.
     </span><span class="kw">pub fn </span>external_senders(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>ExternalSendersExtension&gt; {
-        <span class="self">self</span>.map
-            .get(<span class="kw-2">&amp;</span>ExtensionType::ExternalSenders)
+        <span class="self">self</span>.find_by_type(ExtensionType::ExternalSenders)
             .and_then(|e| <span class="kw">match </span>e {
                 Extension::ExternalSenders(e) =&gt; <span class="prelude-val">Some</span>(e),
                 <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
@@ -947,28 +1014,15 @@
             Extension::RequiredCapabilities(<span class="kw">_</span>) =&gt; ExtensionType::RequiredCapabilities,
             Extension::ExternalPub(<span class="kw">_</span>) =&gt; ExtensionType::ExternalPub,
             Extension::ExternalSenders(<span class="kw">_</span>) =&gt; ExtensionType::ExternalSenders,
+            Extension::Unknown(kind, <span class="kw">_</span>) =&gt; ExtensionType::Unknown(<span class="kw-2">*</span>kind),
         }
-    }
-}
-
-<span class="kw">impl </span>Eq <span class="kw">for </span>Extension {}
-
-<span class="kw">impl </span>PartialOrd <span class="kw">for </span>Extension {
-    <span class="kw">fn </span>partial_cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;std::cmp::Ordering&gt; {
-        <span class="self">self</span>.extension_type().partial_cmp(<span class="kw-2">&amp;</span>other.extension_type())
-    }
-}
-
-<span class="kw">impl </span>Ord <span class="kw">for </span>Extension {
-    <span class="kw">fn </span>cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; std::cmp::Ordering {
-        <span class="self">self</span>.extension_type().cmp(<span class="kw-2">&amp;</span>other.extension_type())
     }
 }
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test {
     <span class="kw">use </span>itertools::Itertools;
-    <span class="kw">use </span>tls_codec::{Deserialize, Serialize};
+    <span class="kw">use </span>tls_codec::{Deserialize, Serialize, VLBytes};
 
     <span class="kw">use crate</span>::{ciphersuite::HpkePublicKey, extensions::<span class="kw-2">*</span>};
 
@@ -1059,6 +1113,42 @@
             <span class="kw">let </span>bytes = candidate.tls_serialize_detached().unwrap();
             <span class="kw">let </span>got = Extensions::tls_deserialize(<span class="kw-2">&amp;mut </span>bytes.as_slice()).unwrap();
             <span class="macro">assert_eq!</span>(candidate, got);
+        }
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>that_unknown_extensions_are_de_serialized_correctly() {
+        <span class="kw">let </span>extension_types = [<span class="number">0x0000u16</span>, <span class="number">0x0A0A</span>, <span class="number">0x7A7A</span>, <span class="number">0xF000</span>, <span class="number">0xFFFF</span>];
+        <span class="kw">let </span>extension_datas = [<span class="macro">vec!</span>[], <span class="macro">vec!</span>[<span class="number">0</span>], <span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]];
+
+        <span class="kw">for </span>extension_type <span class="kw">in </span>extension_types.into_iter() {
+            <span class="kw">for </span>extension_data <span class="kw">in </span>extension_datas.iter() {
+                <span class="comment">// Construct an unknown extension manually.
+                </span><span class="kw">let </span>test = {
+                    <span class="kw">let </span><span class="kw-2">mut </span>buf = extension_type.to_be_bytes().to_vec();
+                    buf.append(
+                        <span class="kw-2">&amp;mut </span>VLBytes::new(extension_data.clone())
+                            .tls_serialize_detached()
+                            .unwrap(),
+                    );
+                    buf
+                };
+
+                <span class="comment">// Test deserialization.
+                </span><span class="kw">let </span>got = Extension::tls_deserialize_exact(<span class="kw-2">&amp;</span>test).unwrap();
+
+                <span class="kw">match </span>got {
+                    Extension::Unknown(got_extension_type, <span class="kw-2">ref </span>got_extension_data) =&gt; {
+                        <span class="macro">assert_eq!</span>(extension_type, got_extension_type);
+                        <span class="macro">assert_eq!</span>(extension_data, <span class="kw-2">&amp;</span>got_extension_data.<span class="number">0</span>);
+                    }
+                    other =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Expected `Extension::Unknown`, got {:?}&quot;</span>, other),
+                }
+
+                <span class="comment">// Test serialization.
+                </span><span class="kw">let </span>got_serialized = got.tls_serialize_detached().unwrap();
+                <span class="macro">assert_eq!</span>(test, got_serialized);
+            }
         }
     }
 }

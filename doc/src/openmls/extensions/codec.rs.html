@@ -117,7 +117,6 @@
 <a href="#117" id="117">117</a>
 <a href="#118" id="118">118</a>
 <a href="#119" id="119">119</a>
-<a href="#120" id="120">120</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::io::{Read, Write};
 
 <span class="kw">use </span>tls_codec::{Deserialize, Serialize, Size, VLBytes};
@@ -125,6 +124,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::extensions::{
     ApplicationIdExtension, Extension, ExtensionType, ExternalPubExtension,
     ExternalSendersExtension, RatchetTreeExtension, RequiredCapabilitiesExtension,
+    UnknownExtension,
 };
 
 <span class="kw">fn </span>vlbytes_len_len(length: usize) -&gt; usize {
@@ -142,32 +142,23 @@
 <span class="kw">impl </span>Size <span class="kw">for </span>Extension {
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>tls_serialized_len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
-        <span class="number">2 </span>+ <span class="comment">/* extension type len */
-        </span><span class="kw">match </span><span class="self">self </span>{
-                <span class="comment">// We truncate here and don&#39;t catch errors for anything that&#39;s
-                // too long.
-                // This will be caught when (de)serializing.
-                </span>Extension::ApplicationId(e) =&gt; {
-                    <span class="kw">let </span>len = e.tls_serialized_len();
-                    len + vlbytes_len_len(len)
-                },
-                Extension::RatchetTree(e) =&gt; {
-                    <span class="kw">let </span>len = e.tls_serialized_len();
-                    len + vlbytes_len_len(len)
-                },
-                Extension::RequiredCapabilities(e) =&gt; {
-                    <span class="kw">let </span>len = e.tls_serialized_len();
-                    len + vlbytes_len_len(len)
-                },
-                Extension::ExternalPub(e) =&gt; {
-                    <span class="kw">let </span>len = e.tls_serialized_len();
-                    len + vlbytes_len_len(len)
-                },
-                Extension::ExternalSenders(e) =&gt; {
-                    <span class="kw">let </span>len = e.tls_serialized_len();
-                    len + vlbytes_len_len(len)
-                },
-            }
+        <span class="kw">let </span>extension_type_length = <span class="number">2</span>;
+
+        <span class="comment">// We truncate here and don&#39;t catch errors for anything that&#39;s
+        // too long.
+        // This will be caught when (de)serializing.
+        </span><span class="kw">let </span>extension_data_len = <span class="kw">match </span><span class="self">self </span>{
+            Extension::ApplicationId(e) =&gt; e.tls_serialized_len(),
+            Extension::RatchetTree(e) =&gt; e.tls_serialized_len(),
+            Extension::RequiredCapabilities(e) =&gt; e.tls_serialized_len(),
+            Extension::ExternalPub(e) =&gt; e.tls_serialized_len(),
+            Extension::ExternalSenders(e) =&gt; e.tls_serialized_len(),
+            Extension::Unknown(<span class="kw">_</span>, e) =&gt; e.<span class="number">0</span>.len(),
+        };
+
+        <span class="kw">let </span>vlbytes_len_len = vlbytes_len_len(extension_data_len);
+
+        extension_type_length + vlbytes_len_len + extension_data_len
     }
 }
 
@@ -193,6 +184,10 @@
             Extension::RequiredCapabilities(e) =&gt; e.tls_serialize(<span class="kw-2">&amp;mut </span>extension_data),
             Extension::ExternalPub(e) =&gt; e.tls_serialize(<span class="kw-2">&amp;mut </span>extension_data),
             Extension::ExternalSenders(e) =&gt; e.tls_serialize(<span class="kw-2">&amp;mut </span>extension_data),
+            Extension::Unknown(<span class="kw">_</span>, e) =&gt; extension_data
+                .write_all(e.<span class="number">0</span>.as_slice())
+                .map(|<span class="kw">_</span>| e.<span class="number">0</span>.len())
+                .map_err(|<span class="kw">_</span>| tls_codec::Error::EndOfStream),
         }<span class="question-mark">?</span>;
         <span class="macro">debug_assert_eq!</span>(
             extension_data_written,
@@ -235,6 +230,9 @@
             ExtensionType::ExternalSenders =&gt; Extension::ExternalSenders(
                 ExternalSendersExtension::tls_deserialize(<span class="kw-2">&amp;mut </span>extension_data)<span class="question-mark">?</span>,
             ),
+            ExtensionType::Unknown(unknown) =&gt; {
+                Extension::Unknown(unknown, UnknownExtension(extension_data.to_vec()))
+            }
         })
     }
 }
