@@ -30,7 +30,7 @@ fn that_unknown_credential_types_are_de_serialized_correctly() {
     let credential_types = [0x0000u16, 0x0A0A, 0x7A7A, 0xF000, 0xFFFF];
 
     for credential_type in credential_types.into_iter() {
-        // Construct an unknown proposal type.
+        // Construct an unknown credential type.
         let test = credential_type.to_be_bytes().to_vec();
 
         // Test deserialization.
