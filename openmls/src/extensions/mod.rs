@@ -445,7 +445,7 @@ impl Extension {
 #[cfg(test)]
 mod test {
     use itertools::Itertools;
-    use tls_codec::{Deserialize, Serialize};
+    use tls_codec::{Deserialize, Serialize, VLBytes};
 
     use crate::{ciphersuite::HpkePublicKey, extensions::*};
 
@@ -536,6 +536,42 @@ mod test {
             let bytes = candidate.tls_serialize_detached().unwrap();
             let got = Extensions::tls_deserialize(&mut bytes.as_slice()).unwrap();
             assert_eq!(candidate, got);
+        }
+    }
+
+    #[test]
+    fn that_unknown_extensions_are_de_serialized_correctly() {
+        let extension_types = [0x0000u16, 0x0A0A, 0x7A7A, 0xF000, 0xFFFF];
+        let extension_datas = [vec![], vec![0], vec![1, 2, 3]];
+
+        for extension_type in extension_types.into_iter() {
+            for extension_data in extension_datas.iter() {
+                // Construct an unknown extension manually.
+                let test = {
+                    let mut buf = extension_type.to_be_bytes().to_vec();
+                    buf.append(
+                        &mut VLBytes::new(extension_data.clone())
+                            .tls_serialize_detached()
+                            .unwrap(),
+                    );
+                    buf
+                };
+
+                // Test deserialization.
+                let got = Extension::tls_deserialize_exact(&test).unwrap();
+
+                match got {
+                    Extension::Unknown(got_extension_type, ref got_extension_data) => {
+                        assert_eq!(extension_type, got_extension_type);
+                        assert_eq!(extension_data, &got_extension_data.0);
+                    }
+                    other => panic!("Expected `Extension::Unknown`, got {:?}", other),
+                }
+
+                // Test serialization.
+                let got_serialized = got.tls_serialize_detached().unwrap();
+                assert_eq!(test, got_serialized);
+            }
         }
     }
 }
