@@ -2,16 +2,14 @@
 //!
 //! TODO: #779
 
-use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
-use tls_codec::Serialize;
+use openmls_traits::types::Ciphersuite;
 
+use super::*;
 use crate::{
     error::LibraryError,
     framing::{mls_auth_content::AuthenticatedContent, ConfirmedTranscriptHashInput},
     versions::ProtocolVersion,
 };
-
-use super::*;
 
 #[derive(
     Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
@@ -67,14 +65,8 @@ impl GroupContext {
         tree_hash: Vec<u8>,
         extensions: Extensions,
     ) -> Self {
-        Self::new(
-            ciphersuite,
-            group_id,
-            0,
-            tree_hash,
-            zero(ciphersuite.hash_length()),
-            extensions,
-        )
+        // Note: Confirmed transcript hash is "The zero-length octet string."
+        Self::new(ciphersuite, group_id, 0, tree_hash, vec![], extensions)
     }
 
     /// Increment the current [`GroupEpoch`] by one.
@@ -93,23 +85,21 @@ impl GroupContext {
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         interim_transcript_hash: &[u8],
-        commit_content: &AuthenticatedContent,
+        authenticated_content: &AuthenticatedContent,
     ) -> Result<(), LibraryError> {
-        // Calculate the confirmed transcript hash
-        let mls_plaintext_commit_content: &ConfirmedTranscriptHashInput =
-            &ConfirmedTranscriptHashInput::try_from(commit_content)
+        let confirmed_transcript_hash = {
+            let input = ConfirmedTranscriptHashInput::try_from(authenticated_content)
                 .map_err(|_| LibraryError::custom("PublicMessage did not contain a commit"))?;
-        let commit_content_bytes: Vec<u8> = mls_plaintext_commit_content
-            .tls_serialize_detached()
-            .map_err(LibraryError::missing_bound_check)?;
-        self.confirmed_transcript_hash = backend
-            .crypto()
-            .hash(
-                self.ciphersuite.hash_algorithm(),
-                &[interim_transcript_hash, &commit_content_bytes].concat(),
-            )
-            .map_err(LibraryError::unexpected_crypto_error)?
-            .into();
+
+            input.calculate_confirmed_transcript_hash(
+                backend.crypto(),
+                self.ciphersuite,
+                interim_transcript_hash,
+            )?
+        };
+
+        self.confirmed_transcript_hash = confirmed_transcript_hash.into();
+
         Ok(())
     }
 

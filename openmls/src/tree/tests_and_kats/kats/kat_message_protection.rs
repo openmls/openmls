@@ -61,24 +61,21 @@
 //!     unprotects with the secret tree, `sender_data_secret`, and `signature_pub`
 //!     * When protecting the Commit message, add the supplied confirmation tag
 
-use crate::credentials::{Credential, CredentialWithKey};
+use openmls_basic_credential::SignatureKeyPair;
+use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::{types::SignatureScheme, OpenMlsCryptoProvider};
+use serde::{self, Deserialize, Serialize};
+
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
-    credentials::CredentialType,
+    credentials::{Credential, CredentialType, CredentialWithKey},
     framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, *},
     group::*,
-    messages::proposals::Proposal,
     schedule::{EncryptionSecret, SenderDataSecret},
     test_utils::*,
     tree::{secret_tree::SecretTree, sender_ratchet::SenderRatchetConfiguration},
     versions::ProtocolVersion,
 };
-
-use openmls_basic_credential::SignatureKeyPair;
-use openmls_traits::{types::SignatureScheme, OpenMlsCryptoProvider};
-
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use serde::{self, Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct MessageProtectionTest {
@@ -187,8 +184,11 @@ pub fn run_test_vector(
     use tls_codec::{Deserialize, Serialize};
 
     use crate::{
-        binary_tree::array_representation::TreeSize, extensions::Extensions,
-        group::config::CryptoConfig, messages::Commit, prelude::KeyPackageBundle,
+        binary_tree::array_representation::TreeSize,
+        extensions::Extensions,
+        group::config::CryptoConfig,
+        messages::{proposals_in::ProposalIn, CommitIn},
+        prelude::KeyPackageBundle,
         prelude_test::Secret,
     };
 
@@ -323,14 +323,11 @@ pub fn run_test_vector(
 
     // Proposal
     {
-        let proposal =
-            Proposal::tls_deserialize(&mut hex_to_bytes(&test.proposal).as_slice()).unwrap();
+        let proposal = ProposalIn::tls_deserialize_exact(hex_to_bytes(&test.proposal)).unwrap();
         let proposal_pub =
-            MlsMessageIn::tls_deserialize(&mut hex_to_bytes(&test.proposal_pub).as_slice())
-                .unwrap();
+            MlsMessageIn::tls_deserialize_exact(hex_to_bytes(&test.proposal_pub)).unwrap();
         let proposal_priv =
-            MlsMessageIn::tls_deserialize(&mut hex_to_bytes(&test.proposal_priv).as_slice())
-                .unwrap();
+            MlsMessageIn::tls_deserialize_exact(hex_to_bytes(&test.proposal_priv)).unwrap();
 
         // Group stuff we need for openmls
         let sender_ratchet_config = SenderRatchetConfiguration::new(0, 0);
@@ -354,8 +351,8 @@ pub fn run_test_vector(
             .unwrap();
         let processed_message: AuthenticatedContent =
             processed_unverified_message.verify(backend).unwrap().0;
-        match processed_message.content() {
-            FramedContentBody::Proposal(p) => assert_eq!(&proposal, p),
+        match processed_message.content().to_owned() {
+            FramedContentBody::Proposal(p) => assert_eq!(proposal, p.into()),
             _ => panic!("Wrong processed message content"),
         }
 
@@ -371,8 +368,10 @@ pub fn run_test_vector(
             .unwrap();
 
         // check that proposal == processed_message
-        match processed_message.content() {
-            ProcessedMessageContent::ProposalMessage(p) => assert_eq!(&proposal, p.proposal()),
+        match processed_message.content().to_owned() {
+            ProcessedMessageContent::ProposalMessage(p) => {
+                assert_eq!(proposal, p.proposal().to_owned().into())
+            }
             _ => panic!("Wrong processed message content"),
         }
     }
@@ -389,11 +388,11 @@ pub fn run_test_vector(
 
     // Commit
     {
-        let commit = Commit::tls_deserialize(&mut hex_to_bytes(&test.commit).as_slice()).unwrap();
+        let commit = CommitIn::tls_deserialize_exact(hex_to_bytes(&test.commit)).unwrap();
         let commit_pub =
-            MlsMessageIn::tls_deserialize(&mut hex_to_bytes(&test.commit_pub).as_slice()).unwrap();
+            MlsMessageIn::tls_deserialize_exact(hex_to_bytes(&test.commit_pub)).unwrap();
         let commit_priv =
-            MlsMessageIn::tls_deserialize(&mut hex_to_bytes(&test.commit_priv).as_slice()).unwrap();
+            MlsMessageIn::tls_deserialize_exact(hex_to_bytes(&test.commit_priv)).unwrap();
 
         // Group stuff we need for openmls
         let sender_ratchet_config = SenderRatchetConfiguration::new(10, 10);
@@ -416,9 +415,9 @@ pub fn run_test_vector(
             .unwrap();
         let processed_message: AuthenticatedContent =
             processed_unverified_message.verify(backend).unwrap().0;
-        match processed_message.content() {
+        match processed_message.content().to_owned() {
             FramedContentBody::Commit(c) => {
-                assert_eq!(&commit, c)
+                assert_eq!(commit, CommitIn::from(c))
             }
             _ => panic!("Wrong processed message content"),
         }
@@ -438,9 +437,9 @@ pub fn run_test_vector(
             .unwrap();
         let processed_message: AuthenticatedContent =
             processed_unverified_message.verify(backend).unwrap().0;
-        match processed_message.content() {
+        match processed_message.content().to_owned() {
             FramedContentBody::Commit(c) => {
-                assert_eq!(&commit, c)
+                assert_eq!(commit, CommitIn::from(c))
             }
             _ => panic!("Wrong processed message content"),
         }
@@ -451,8 +450,7 @@ pub fn run_test_vector(
         eprintln!("application_priv: {}", test.application_priv);
         let application = hex_to_bytes(&test.application);
         let application_priv =
-            MlsMessageIn::tls_deserialize(&mut hex_to_bytes(&test.application_priv).as_slice())
-                .unwrap();
+            MlsMessageIn::tls_deserialize_exact(hex_to_bytes(&test.application_priv)).unwrap();
 
         // Group stuff we need for openmls
         let sender_ratchet_config = SenderRatchetConfiguration::new(0, 0);

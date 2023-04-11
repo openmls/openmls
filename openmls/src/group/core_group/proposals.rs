@@ -1,3 +1,8 @@
+use std::collections::{hash_map::Entry, HashMap, HashSet};
+
+use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
+use serde::{Deserialize, Serialize};
+
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::hash_ref::ProposalRef,
@@ -11,10 +16,6 @@ use crate::{
         ProposalType, RemoveProposal, UpdateProposal,
     },
 };
-
-use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
-use serde::{Deserialize, Serialize};
-use std::collections::{hash_map::Entry, HashMap, HashSet};
 
 /// A [ProposalStore] can store the standalone proposals that are received from the DS
 /// in between two commit messages.
@@ -46,7 +47,18 @@ impl ProposalStore {
         self.queued_proposals.is_empty()
     }
     pub(crate) fn empty(&mut self) {
-        self.queued_proposals = Vec::new();
+        self.queued_proposals.clear();
+    }
+
+    /// Removes a proposal from the store using its reference. It will return None if it wasn't
+    /// found in the store.
+    pub(crate) fn remove(&mut self, proposal_ref: ProposalRef) -> Option<()> {
+        let index = self
+            .queued_proposals
+            .iter()
+            .position(|p| p.proposal_reference() == proposal_ref)?;
+        self.queued_proposals.remove(index);
+        Some(())
     }
 }
 
@@ -71,7 +83,10 @@ impl QueuedProposal {
             FramedContentBody::Proposal(p) => p,
             _ => return Err(LibraryError::custom("Wrong content type")),
         };
-        let proposal_reference = ProposalRef::from_proposal(ciphersuite, backend, proposal)?;
+        let proposal_reference =
+            ProposalRef::from_authenticated_content(backend.crypto(), ciphersuite, &public_message)
+                .map_err(|_| LibraryError::custom("Could not calculate `ProposalRef`."))?;
+
         Ok(Self {
             proposal: proposal.clone(), // FIXME
             proposal_reference,
@@ -81,13 +96,16 @@ impl QueuedProposal {
     }
 
     /// Creates a new [QueuedProposal] from a [Proposal] and [Sender]
+    ///
+    /// Note: We should calculate the proposal ref by hashing the authenticated content but can't do
+    /// this here without major refactoring. Thus, we use an internal `from_raw_proposal` hash.
     pub(crate) fn from_proposal_and_sender(
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         proposal: Proposal,
         sender: &Sender,
     ) -> Result<Self, LibraryError> {
-        let proposal_reference = ProposalRef::from_proposal(ciphersuite, backend, &proposal)?;
+        let proposal_reference = ProposalRef::from_raw_proposal(ciphersuite, backend, &proposal)?;
         Ok(Self {
             proposal,
             proposal_reference,
@@ -95,6 +113,7 @@ impl QueuedProposal {
             proposal_or_ref_type: ProposalOrRefType::Proposal,
         })
     }
+
     /// Returns the `Proposal` as a reference
     pub fn proposal(&self) -> &Proposal {
         &self.proposal
@@ -144,6 +163,7 @@ impl ProposalQueue {
         proposal_store: &ProposalStore,
         sender: &Sender,
     ) -> Result<Self, FromCommittedProposalsError> {
+        log::debug!("from_committed_proposals");
         // Feed the `proposals_by_reference` in a `HashMap` so that we can easily
         // extract then by reference later
         let mut proposals_by_reference_queue: HashMap<ProposalRef, QueuedProposal> = HashMap::new();
@@ -153,11 +173,14 @@ impl ProposalQueue {
                 queued_proposal.clone(),
             );
         }
+        log::trace!("   known proposals:\n{:#?}", proposals_by_reference_queue);
         // Build the actual queue
         let mut proposal_queue = ProposalQueue::default();
 
         // Iterate over the committed proposals and insert the proposals in the queue
+        log::trace!("   committed proposals ...");
         for proposal_or_ref in committed_proposals.into_iter() {
+            log::trace!("       proposal_or_ref:\n{:#?}", proposal_or_ref);
             let queued_proposal = match proposal_or_ref {
                 ProposalOrRef::Proposal(proposal) => {
                     // ValSem200
@@ -202,7 +225,7 @@ impl ProposalQueue {
     }
 
     /// Returns proposal for a given proposal ID
-    pub(crate) fn get(&self, proposal_reference: &ProposalRef) -> Option<&QueuedProposal> {
+    pub fn get(&self, proposal_reference: &ProposalRef) -> Option<&QueuedProposal> {
         self.queued_proposals.get(proposal_reference)
     }
 

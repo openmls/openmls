@@ -5,6 +5,7 @@
 use super::proposals::{ProposalStore, QueuedProposal};
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
+    ciphersuite::hash_ref::ProposalRef,
     credentials::Credential,
     error::LibraryError,
     framing::{mls_auth_content::AuthenticatedContent, *},
@@ -37,6 +38,7 @@ pub(crate) mod config;
 pub(crate) mod errors;
 pub(crate) mod membership;
 pub(crate) mod processing;
+pub(crate) mod psk;
 pub(crate) mod ser;
 
 // Tests
@@ -421,6 +423,16 @@ impl MlsGroup {
     #[cfg(test)]
     pub(crate) fn clear_pending_proposals(&mut self) {
         self.proposal_store.empty()
+    }
+
+    /// Removes a specific proposal from the store.
+    pub fn remove_pending_proposal(
+        &mut self,
+        proposal_ref: ProposalRef,
+    ) -> Result<(), MlsGroupStateError> {
+        self.proposal_store
+            .remove(proposal_ref)
+            .ok_or(MlsGroupStateError::PendingProposalNotFound)
     }
 }
 

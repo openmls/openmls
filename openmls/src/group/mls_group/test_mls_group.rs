@@ -140,7 +140,7 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
 
     // === Alice removes Bob & Charlie commits ===
 
-    let queued_messages = alice_group
+    let (queued_messages, _) = alice_group
         .propose_remove_member(backend, &alice_signer, LeafNodeIndex::new(1))
         .expect("Could not propose removal");
 
@@ -363,7 +363,7 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
     let bob_key_package = bob_kpb.key_package();
 
     // Let's add bob
-    let proposal = alice_group
+    let (proposal, _) = alice_group
         .propose_add_member(backend, &alice_signer, bob_key_package)
         .expect("error creating self-update proposal");
 
@@ -569,4 +569,80 @@ fn key_package_deletion(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             .is_none(),
         "The key package is still in the key store after creating a new group from it."
     );
+}
+
+#[apply(ciphersuites_and_backends)]
+fn remove_prosposal_by_ref(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let group_id = GroupId::from_slice(b"Test Group");
+
+    let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
+        setup_client("Alice", ciphersuite, backend);
+    let (_bob_credential_with_key, bob_kpb, _bob_signer, _bob_pk) =
+        setup_client("Bob", ciphersuite, backend);
+    let bob_key_package = bob_kpb.key_package().clone();
+    let (_charlie_credential_with_key, charlie_kpb, _charlie_signer, _charlie_pk) =
+        setup_client("Charlie", ciphersuite, backend);
+    let charlie_key_package = charlie_kpb.key_package();
+
+    // Define the MlsGroup configuration
+    let mls_group_config = MlsGroupConfigBuilder::new()
+        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .build();
+
+    // === Alice creates a group ===
+    let mut alice_group = MlsGroup::new_with_group_id(
+        backend,
+        &alice_signer,
+        &mls_group_config,
+        group_id,
+        alice_credential_with_key,
+    )
+    .expect("An unexpected error occurred.");
+
+    // alice adds bob and bob processes the welcome
+    let (_, welcome, _) = alice_group
+        .add_members(backend, &alice_signer, &[bob_key_package])
+        .unwrap();
+    alice_group.merge_pending_commit(backend).unwrap();
+    let mut bob_group = MlsGroup::new_from_welcome(
+        backend,
+        &mls_group_config,
+        welcome.into_welcome().unwrap(),
+        Some(alice_group.export_ratchet_tree()),
+    )
+    .unwrap();
+    // alice proposes to add charlie
+    let (_, reference) = alice_group
+        .propose_add_member(backend, &alice_signer, charlie_key_package)
+        .unwrap();
+
+    assert_eq!(alice_group.proposal_store.proposals().count(), 1);
+    // clearing the proposal by reference
+    alice_group
+        .remove_pending_proposal(reference.clone())
+        .unwrap();
+    assert!(alice_group.proposal_store.is_empty());
+
+    // the proposal should not be stored anymore
+    let err = alice_group.remove_pending_proposal(reference).unwrap_err();
+    assert_eq!(err, MlsGroupStateError::PendingProposalNotFound);
+
+    // the commit should have no proposal
+    let (commit, _, _) = alice_group
+        .commit_to_pending_proposals(backend, &alice_signer)
+        .unwrap();
+    let msg = bob_group
+        .process_message(backend, MlsMessageIn::from(commit))
+        .unwrap();
+    match msg.into_content() {
+        ProcessedMessageContent::StagedCommitMessage(commit) => {
+            // assert that no proposal was commited
+            assert!(commit.add_proposals().next().is_none());
+            assert!(commit.update_proposals().next().is_none());
+            assert!(commit.remove_proposals().next().is_none());
+            assert!(commit.psk_proposals().next().is_none());
+            assert_eq!(alice_group.members().count(), 2);
+        }
+        _ => unreachable!("Expected a StagedCommit."),
+    }
 }

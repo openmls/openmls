@@ -2,6 +2,10 @@
 //!
 //! This module contains errors that originate at lower levels and are partially re-exported in errors thrown by functions of the `MlsGroup` API.
 
+use thiserror::Error;
+
+pub use super::mls_group::errors::*;
+use super::public_group::errors::{CreationFromExternalError, PublicGroupBuildError};
 use crate::{
     ciphersuite::signable::SignatureError,
     error::LibraryError,
@@ -12,12 +16,6 @@ use crate::{
     schedule::errors::PskError,
     treesync::errors::*,
 };
-use thiserror::Error;
-
-// === Public errors ===
-
-pub use super::mls_group::errors::*;
-use super::public_group::errors::{CreationFromExternalError, PublicGroupBuildError};
 
 /// Welcome error
 #[derive(Error, Debug, PartialEq, Clone)]
@@ -67,12 +65,9 @@ pub enum WelcomeError<KeyStoreError> {
     /// Unsupported extensions found in the KeyPackage of another member.
     #[error("Unsupported extensions found in the KeyPackage of another member.")]
     UnsupportedExtensions,
-    /// More than 2^16 PSKs were provided.
-    #[error("More than 2^16 PSKs were provided.")]
-    PskTooManyKeys,
-    /// The PSK could not be found in the key store.
-    #[error("The PSK could not be found in the key store.")]
-    PskNotFound,
+    /// See [`PskError`] for more details.
+    #[error(transparent)]
+    Psk(#[from] PskError),
     /// No matching encryption key was found in the key store.
     #[error("No matching encryption key was found in the key store.")]
     NoMatchingEncryptionKey,
@@ -349,6 +344,9 @@ pub enum ProposalValidationError {
     /// The capabilities of the add proposal are insufficient for this group.
     #[error("The capabilities of the add proposal are insufficient for this group.")]
     InsufficientCapabilities,
+    /// See [`PskError`] for more details.
+    #[error(transparent)]
+    Psk(PskError),
 }
 
 /// External Commit validaton error

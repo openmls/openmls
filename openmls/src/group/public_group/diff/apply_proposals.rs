@@ -130,7 +130,7 @@ impl<'a> PublicGroupDiff<'a> {
 
         // Process PSK proposals
         let presharedkeys: Vec<PreSharedKeyId> = proposal_queue
-            .filtered_by_type(ProposalType::Presharedkey)
+            .filtered_by_type(ProposalType::PreSharedKey)
             .filter_map(|queued_proposal| {
                 if let Proposal::PreSharedKey(psk_proposal) = queued_proposal.proposal() {
                     Some(psk_proposal.clone().into_psk_id())

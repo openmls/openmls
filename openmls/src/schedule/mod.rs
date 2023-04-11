@@ -146,7 +146,7 @@ pub(crate) mod psk;
 // Private
 use errors::*;
 use message_secrets::MessageSecrets;
-use psk::*;
+use psk::PskSecret;
 
 // Tests
 #[cfg(any(feature = "test-utils", test))]
@@ -157,6 +157,7 @@ pub mod kat_psk_secret;
 mod unit_tests;
 
 // Public types
+pub use psk::{ExternalPsk, PreSharedKeyId, Psk};
 
 /// A group secret that can be used among members to prove that a member was
 /// part of a group in a given epoch.
@@ -266,8 +267,8 @@ impl From<Secret> for InitSecret {
 /// proposal. TODO: #628.
 fn hpke_info_from_version(version: ProtocolVersion) -> &'static str {
     match version {
-        ProtocolVersion::Mls10 => "MLS 1.0 external init",
-        ProtocolVersion::Mls10Draft11 => "MLS 1.0 Draft 11 external init",
+        ProtocolVersion::Mls10 => "MLS 1.0 external init secret",
+        ProtocolVersion::Mls10Draft11 => "<OpenMLS reserved; Don't use this.>",
     }
 }
 
@@ -819,24 +820,26 @@ impl ConfirmationKey {
             confirmed_transcript_hash,
         )?))
     }
+}
 
-    // XXX[KAT]: #1051 Only used in KATs. Remove if unused.
-    #[cfg(test)]
-    pub(crate) fn _from_secret(secret: Secret) -> Self {
+#[cfg(test)]
+impl ConfirmationKey {
+    pub(crate) fn from_secret(secret: Secret) -> Self {
         Self { secret }
     }
+}
 
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn as_slice(&self) -> &[u8] {
-        self.secret.as_slice()
-    }
-
-    #[cfg(any(feature = "test-utils", test))]
+#[cfg(any(feature = "test-utils", test))]
+impl ConfirmationKey {
     pub(crate) fn random(ciphersuite: Ciphersuite, rng: &impl OpenMlsCryptoProvider) -> Self {
         Self {
             secret: Secret::random(ciphersuite, rng, None /* MLS version */)
                 .expect("Not enough randomness."),
         }
+    }
+
+    pub(crate) fn as_slice(&self) -> &[u8] {
+        self.secret.as_slice()
     }
 }
 
@@ -864,7 +867,7 @@ impl MembershipKey {
     /// ```text
     /// membership_tag = MAC(membership_key, MLSPlaintextTBM);
     /// ```
-    pub(crate) fn tag(
+    pub(crate) fn tag_message(
         &self,
         backend: &impl OpenMlsCryptoProvider,
         tbm_payload: AuthenticatedContentTbm,

@@ -7,7 +7,7 @@ use super::{
 };
 
 use ds_lib::*;
-use openmls::{prelude::*, prelude_test::MlsMessageOut};
+use openmls::prelude::*;
 
 pub struct Backend {
     ds_url: Url,

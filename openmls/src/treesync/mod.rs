@@ -33,11 +33,15 @@ use tls_codec::{TlsSerialize, TlsSize};
 
 use self::{
     diff::{StagedTreeSyncDiff, TreeSyncDiff},
-    node::{
-        encryption_keys::{EncryptionKey, EncryptionKeyPair},
-        leaf_node::{Capabilities, LeafNodeSource, Lifetime, OpenMlsLeafNode},
-    },
+    node::leaf_node::{Capabilities, LeafNodeSource, Lifetime, OpenMlsLeafNode},
     treesync_node::{TreeSyncLeafNode, TreeSyncNode, TreeSyncParentNode},
+};
+#[cfg(test)]
+use crate::binary_tree::array_representation::ParentNodeIndex;
+#[cfg(any(feature = "test-utils", test))]
+use crate::{
+    binary_tree::array_representation::level, group::tests::tree_printing::root,
+    test_utils::bytes_to_hex,
 };
 use crate::{
     binary_tree::{
@@ -54,12 +58,6 @@ use crate::{
     schedule::CommitSecret,
 };
 
-#[cfg(any(feature = "test-utils", test))]
-use crate::{
-    binary_tree::array_representation::level, group::tests::tree_printing::root,
-    test_utils::bytes_to_hex,
-};
-
 // Private
 mod hashes;
 use errors::*;
@@ -70,8 +68,13 @@ pub(crate) mod node;
 pub(crate) mod treekem;
 pub(crate) mod treesync_node;
 
+use node::encryption_keys::EncryptionKeyPair;
+
 // Public
 pub mod errors;
+#[cfg(feature = "test-utils")]
+pub use node::encryption_keys::test_utils;
+pub use node::encryption_keys::EncryptionKey;
 
 // Public re-exports
 pub use node::{leaf_node::LeafNode, parent_node::ParentNode, Node};
@@ -236,7 +239,7 @@ impl fmt::Display for RatchetTree {
 /// creating a new instance from an imported set of nodes, as well as when
 /// merging a diff.
 #[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(test, derive(PartialEq, Clone))]
 pub(crate) struct TreeSync {
     tree: MlsBinaryTree<TreeSyncLeafNode, TreeSyncParentNode>,
     tree_hash: Vec<u8>,
@@ -574,6 +577,20 @@ impl TreeSync {
             }
         }
         Ok((keypairs, path_secret.into()))
+    }
+}
+
+#[cfg(test)]
+impl TreeSync {
+    pub(crate) fn leaf_count(&self) -> u32 {
+        self.tree.leaf_count()
+    }
+
+    /// Return a reference to the parent node at the given `ParentNodeIndex` or
+    /// `None` if the node is blank.
+    pub(crate) fn parent(&self, node_index: ParentNodeIndex) -> Option<&ParentNode> {
+        let tsn = self.tree.parent(node_index);
+        tsn.node().as_ref()
     }
 }
 

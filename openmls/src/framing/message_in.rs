@@ -13,10 +13,7 @@
 //! If an [`MlsMessageIn`] contains a [`PublicMessage`] or [`PrivateMessage`],
 //! can be used to determine which group can be used to process the message.
 
-use tls_codec::Deserialize;
-
-use super::{mls_content::ContentType, *};
-
+use super::*;
 use crate::{
     key_packages::KeyPackage, messages::group_info::VerifiableGroupInfo, versions::ProtocolVersion,
 };
@@ -75,11 +72,11 @@ pub struct MlsMessageIn {
 pub enum MlsMessageInBody {
     /// Plaintext message
     #[tls_codec(discriminant = 1)]
-    PublicMessage(PublicMessage),
+    PublicMessage(PublicMessageIn),
 
     /// Ciphertext message
     #[tls_codec(discriminant = 2)]
-    PrivateMessage(PrivateMessage),
+    PrivateMessage(PrivateMessageIn),
 
     /// Welcome message
     #[tls_codec(discriminant = 3)]
@@ -112,28 +109,33 @@ impl MlsMessageIn {
         self.body
     }
 
-    /// Tries to deserialize from a byte slice. Returns [`MlsMessageError::UnableToDecode`] on failure.
-    pub fn try_from_bytes(mut bytes: &[u8]) -> Result<Self, MlsMessageError> {
-        MlsMessageIn::tls_deserialize(&mut bytes).map_err(|_| MlsMessageError::UnableToDecode)
-    }
-
-    #[cfg(test)]
-    pub(crate) fn into_plaintext(self) -> Option<PublicMessage> {
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn into_keypackage(self) -> Option<KeyPackage> {
         match self.body {
-            MlsMessageInBody::PublicMessage(m) => Some(m),
+            MlsMessageInBody::KeyPackage(kp) => Some(kp),
             _ => None,
         }
     }
 
     #[cfg(test)]
-    pub(crate) fn into_ciphertext(self) -> Option<PrivateMessage> {
+    pub(crate) fn into_plaintext(self) -> Option<PublicMessage> {
+        match self.body {
+            MlsMessageInBody::PublicMessage(m) => Some(m.into()),
+            _ => None,
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn into_ciphertext(self) -> Option<PrivateMessageIn> {
         match self.body {
             MlsMessageInBody::PrivateMessage(m) => Some(m),
             _ => None,
         }
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    /// Convert this message into a [`Welcome`].
+    ///
+    /// Returns `None` if this message is not a welcome message.
     pub fn into_welcome(self) -> Option<Welcome> {
         match self.body {
             MlsMessageInBody::Welcome(w) => Some(w),
@@ -149,6 +151,14 @@ impl MlsMessageIn {
             _ => None,
         }
     }
+
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn into_verifiable_group_info(self) -> Option<VerifiableGroupInfo> {
+        match self.body {
+            MlsMessageInBody::GroupInfo(group_info) => Some(group_info),
+            _ => None,
+        }
+    }
 }
 
 /// Enum containing a message for use with `process_message` and an
@@ -157,9 +167,9 @@ impl MlsMessageIn {
 #[derive(Debug, Clone)]
 pub enum ProtocolMessage {
     /// A [`ProtocolMessage`] containing a [`PrivateMessage`].
-    PrivateMessage(PrivateMessage),
+    PrivateMessage(PrivateMessageIn),
     /// A [`ProtocolMessage`] containing a [`PublicMessage`].
-    PublicMessage(PublicMessage),
+    PublicMessage(PublicMessageIn),
 }
 
 impl ProtocolMessage {
@@ -215,14 +225,14 @@ impl ProtocolMessage {
     }
 }
 
-impl From<PrivateMessage> for ProtocolMessage {
-    fn from(private_message: PrivateMessage) -> Self {
+impl From<PrivateMessageIn> for ProtocolMessage {
+    fn from(private_message: PrivateMessageIn) -> Self {
         ProtocolMessage::PrivateMessage(private_message)
     }
 }
 
-impl From<PublicMessage> for ProtocolMessage {
-    fn from(public_message: PublicMessage) -> Self {
+impl From<PublicMessageIn> for ProtocolMessage {
+    fn from(public_message: PublicMessageIn) -> Self {
         ProtocolMessage::PublicMessage(public_message)
     }
 }
@@ -235,5 +245,12 @@ impl From<MlsMessageIn> for ProtocolMessage {
             MlsMessageInBody::PrivateMessage(m) => ProtocolMessage::PrivateMessage(m),
             _ => panic!("Wrong message type"),
         }
+    }
+}
+
+#[cfg(any(feature = "test-utils", test))]
+impl From<PublicMessage> for ProtocolMessage {
+    fn from(msg: PublicMessage) -> Self {
+        ProtocolMessage::PublicMessage(msg.into())
     }
 }

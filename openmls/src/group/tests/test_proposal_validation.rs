@@ -5,31 +5,31 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
     key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite, OpenMlsCryptoProvider,
 };
-
 use rstest::*;
 use rstest_reuse::{self, *};
 use tls_codec::{Deserialize, Serialize};
 
+use super::utils::{
+    generate_credential_bundle, generate_key_package, resign_message, CredentialWithKeyAndSigner,
+};
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::hash_ref::ProposalRef,
     credentials::*,
     framing::{
-        mls_content::FramedContentBody, validation::ProcessedMessageContent, MlsMessageIn,
-        ProtocolMessage, PublicMessage, Sender,
+        mls_content::FramedContentBody, validation::ProcessedMessageContent, AuthenticatedContent,
+        FramedContent, MlsMessageIn, MlsMessageOut, ProtocolMessage, PublicMessage, Sender,
     },
     group::{config::CryptoConfig, errors::*, *},
     key_packages::*,
     messages::{
         proposals::{AddProposal, Proposal, ProposalOrRef, RemoveProposal, UpdateProposal},
-        Welcome,
+        Commit, Welcome,
     },
+    prelude::MlsMessageInBody,
+    schedule::{errors::PskError, psk::ResumptionPskUsage, PreSharedKeyId},
     treesync::{errors::ApplyUpdatePathError, node::leaf_node::Capabilities},
     versions::ProtocolVersion,
-};
-
-use super::utils::{
-    generate_credential_bundle, generate_key_package, resign_message, CredentialWithKeyAndSigner,
 };
 
 /// Helper function to generate and output CredentialBundle and KeyPackage
@@ -150,11 +150,9 @@ fn validation_test_setup(
             &alice_credential_with_key_and_signer.signer,
             &[bob_key_package],
         )
-        .expect("error adding Bob to group");
+        .unwrap();
 
-    alice_group
-        .merge_pending_commit(backend)
-        .expect("error merging pending commit");
+    alice_group.merge_pending_commit(backend).unwrap();
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::builder()
@@ -165,10 +163,10 @@ fn validation_test_setup(
     let bob_group = MlsGroup::new_from_welcome(
         backend,
         &mls_group_config,
-        welcome.into_welcome().expect("Unexpected message type."),
+        welcome.into_welcome().unwrap(),
         Some(alice_group.export_ratchet_tree()),
     )
-    .expect("error creating group from welcome");
+    .unwrap();
 
     ProposalValidationTestSetup {
         alice_group,
@@ -991,13 +989,7 @@ enum ProposalInclusion {
 /// Required capabilities
 #[apply(ciphersuites_and_backends)]
 fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    // Let's set up a group with Alice and Bob as members.
-    let ProposalValidationTestSetup {
-        mut alice_group,
-        alice_credential_with_key_and_signer,
-        mut bob_group,
-        ..
-    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+    let _ = pretty_env_logger::try_init();
 
     // Required capabilities validation includes two types of checks on the
     // capabilities of the `KeyPackage` in the Add proposal: One against the
@@ -1027,6 +1019,14 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         KeyPackageTestVersion::UnsupportedCiphersuite,
         KeyPackageTestVersion::ValidTestCase,
     ] {
+        // Let's set up a group with Alice and Bob as members.
+        let ProposalValidationTestSetup {
+            mut alice_group,
+            alice_credential_with_key_and_signer,
+            mut bob_group,
+            ..
+        } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+
         let (charlie_credential_bundle, mut charlie_key_package) =
             generate_credential_bundle_and_key_package("Charlie".into(), ciphersuite, backend);
 
@@ -1065,6 +1065,47 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                 .clone(),
         );
 
+        let test_kp_2 = {
+            let (charlie_credential_bundle, mut charlie_key_package) =
+                generate_credential_bundle_and_key_package("Charlie".into(), ciphersuite, backend);
+
+            // Let's just pick a ciphersuite that's not the one we're testing right now.
+            let wrong_ciphersuite = match ciphersuite {
+                Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519 => {
+                    Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256
+                }
+                _ => Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+            };
+            match key_package_version {
+                KeyPackageTestVersion::WrongCiphersuite => {
+                    charlie_key_package.set_ciphersuite(wrong_ciphersuite)
+                }
+                KeyPackageTestVersion::UnsupportedVersion => {
+                    let mut new_leaf_node = charlie_key_package.leaf_node().clone();
+                    new_leaf_node
+                        .capabilities_mut()
+                        .set_versions(vec![ProtocolVersion::Mls10Draft11]);
+                    charlie_key_package.set_leaf_node(new_leaf_node);
+                }
+                KeyPackageTestVersion::UnsupportedCiphersuite => {
+                    let mut new_leaf_node = charlie_key_package.leaf_node().clone();
+                    new_leaf_node.capabilities_mut().set_ciphersuites(vec![
+                        Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448,
+                    ]);
+                    charlie_key_package.set_leaf_node(new_leaf_node);
+                }
+                KeyPackageTestVersion::ValidTestCase => (),
+            };
+
+            charlie_key_package.resign(
+                &charlie_credential_bundle.signer,
+                charlie_credential_bundle
+                    .credential_with_key
+                    .credential
+                    .clone(),
+            )
+        };
+
         // Try to have Alice commit an Add with the test KeyPackage.
         for proposal_inclusion in [ProposalInclusion::ByReference, ProposalInclusion::ByValue] {
             match proposal_inclusion {
@@ -1075,7 +1116,7 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                             &alice_credential_with_key_and_signer.signer,
                             &test_kp,
                         )
-                        .expect("error proposing test add");
+                        .unwrap();
 
                     let result = alice_group.commit_to_pending_proposals(
                         backend,
@@ -1085,7 +1126,7 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                     // The error types differ, so we have to check the error inside the `match`.
                     match key_package_version {
                         KeyPackageTestVersion::ValidTestCase => {
-                            assert!(result.is_ok())
+                            result.unwrap();
                         }
                         _ => {
                             assert_eq!(
@@ -1105,12 +1146,12 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                     let result = alice_group.add_members(
                         backend,
                         &alice_credential_with_key_and_signer.signer,
-                        &[test_kp.clone()],
+                        &[test_kp_2.clone()],
                     );
 
                     match key_package_version {
                         KeyPackageTestVersion::ValidTestCase => {
-                            assert!(result.is_ok())
+                            result.unwrap();
                         }
                         _ => {
                             assert_eq!(
@@ -1136,14 +1177,14 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         // Create the Commit.
         let serialized_update = alice_group
             .self_update(backend, &alice_credential_with_key_and_signer.signer)
-            .expect("Error creating self-update")
+            .unwrap()
             .tls_serialize_detached()
-            .expect("Could not serialize message.");
+            .unwrap();
 
         let plaintext = MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
-            .expect("Could not deserialize message.")
+            .unwrap()
             .into_plaintext()
-            .expect("Message was not a plaintext.");
+            .unwrap();
 
         // Keep the original plaintext for positive test later.
         let original_plaintext = plaintext.clone();
@@ -1157,8 +1198,7 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             let proposal_or_ref = match proposal_inclusion {
                 ProposalInclusion::ByValue => ProposalOrRef::Proposal(add_proposal.clone()),
                 ProposalInclusion::ByReference => ProposalOrRef::Reference(
-                    ProposalRef::from_proposal(ciphersuite, backend, &add_proposal)
-                        .expect("error creating hash reference"),
+                    ProposalRef::from_raw_proposal(ciphersuite, backend, &add_proposal).unwrap(),
                 ),
             };
             // Artificially add the proposal.
@@ -1183,7 +1223,7 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                         add_proposal.clone(),
                         &Sender::build_member(alice_group.own_leaf_index()),
                     )
-                    .expect("error creating queued proposal"),
+                    .unwrap(),
                 )
             }
 
@@ -1214,7 +1254,7 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             // Positive case
             bob_group
                 .process_message(backend, original_update_plaintext)
-                .expect("Unexpected error.");
+                .unwrap();
         }
 
         alice_group.clear_pending_commit();
@@ -1226,6 +1266,26 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 /// Removed member must be unique among proposals
 #[apply(ciphersuites_and_backends)]
 fn test_valsem107(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    // Helper function to unwrap a commit with a single proposal from an mls message.
+    fn unwrap_specific_commit(commit_ref_remove: MlsMessageOut) -> Commit {
+        let serialized_message = commit_ref_remove.tls_serialize_detached().unwrap();
+
+        let plaintext = MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())
+            .unwrap()
+            .into_plaintext()
+            .unwrap();
+
+        let commit_content = if let FramedContentBody::Commit(commit) = plaintext.content() {
+            commit.clone()
+        } else {
+            panic!("Unexpected content type.");
+        };
+
+        // The commit should contain only one proposal.
+        assert_eq!(commit_content.proposals.len(), 1);
+        commit_content
+    }
+
     // Before we can test creation of (invalid) proposals, we set up a new group
     // with Alice and Bob.
     let ProposalValidationTestSetup {
@@ -1245,31 +1305,40 @@ fn test_valsem107(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // expected.
     let bob_leaf_index = bob_group.own_leaf_index();
 
-    // We first go the manual route
-    let _remove_proposal1 = alice_group
-        .propose_remove_member(
-            backend,
-            &alice_credential_with_key_and_signer.signer,
-            bob_leaf_index,
-        )
-        .expect("error while creating remove proposal");
-    let _remove_proposal2 = alice_group
-        .propose_remove_member(
-            backend,
-            &alice_credential_with_key_and_signer.signer,
-            bob_leaf_index,
-        )
-        .expect("error while creating remove proposal");
+    let ref_propose = {
+        // We first go the manual route
+        let (ref_propose1, _) = alice_group
+            .propose_remove_member(
+                backend,
+                &alice_credential_with_key_and_signer.signer,
+                bob_leaf_index,
+            )
+            .unwrap();
+
+        let (ref_propose2, _) = alice_group
+            .propose_remove_member(
+                backend,
+                &alice_credential_with_key_and_signer.signer,
+                bob_leaf_index,
+            )
+            .unwrap();
+
+        assert_eq!(ref_propose1, ref_propose2);
+
+        ref_propose1
+    };
+
     // While this shouldn't fail, it should produce a valid commit, i.e. one
     // that contains only one remove proposal.
-    let (manual_commit, _welcome, _group_info) = alice_group
+    let (commit_ref_remove, _welcome, _group_info) = alice_group
         .commit_to_pending_proposals(backend, &alice_credential_with_key_and_signer.signer)
         .expect("error while trying to commit to colliding remove proposals");
 
     // Clear commit to try another way of committing two identical removes.
     alice_group.clear_pending_commit();
 
-    let (combined_commit, _welcome, _group_info) = alice_group
+    // Now let's verify that both commits only contain one proposal.
+    let (commit_inline_remove, _welcome, _group_info) = alice_group
         .remove_members(
             backend,
             &alice_credential_with_key_and_signer.signer,
@@ -1277,50 +1346,61 @@ fn test_valsem107(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         )
         .expect("error while trying to remove the same member twice");
 
-    // Now let's verify that both commits only contain one proposal.
-    for commit in [manual_commit, combined_commit] {
-        let serialized_message = commit
-            .tls_serialize_detached()
-            .expect("error serializing plaintext");
-
-        let plaintext = MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())
-            .expect("Could not deserialize message.")
-            .into_plaintext()
-            .expect("Message was not a plaintext.");
-
-        let commit_content = if let FramedContentBody::Commit(commit) = plaintext.content() {
-            commit.clone()
-        } else {
-            panic!("Unexpected content type.");
-        };
-
-        // The commit should contain only one proposal.
-        assert_eq!(commit_content.proposals.len(), 1);
+    // Check commit with referenced remove proposals.
+    {
+        let commit_content = unwrap_specific_commit(commit_ref_remove);
 
         // And it should be the proposal to remove bob.
-        // Depending on the commit, the proposal is either inline or it's a
-        // reference.
-        let expected_inline_proposal = Proposal::Remove(RemoveProposal {
-            removed: bob_leaf_index,
-        });
-        let expected_reference_proposal =
-            ProposalRef::from_proposal(ciphersuite, backend, &expected_inline_proposal)
-                .expect("error creating hash reference");
-        let committed_proposal = commit_content
+        let expected = {
+            let mls_message_in = MlsMessageIn::from(ref_propose);
+
+            let authenticated_content = match mls_message_in.body {
+                MlsMessageInBody::PublicMessage(ref public) => AuthenticatedContent::new(
+                    mls_message_in.wire_format(),
+                    FramedContent::from(public.content.clone()),
+                    public.auth.clone(),
+                ),
+                _ => panic!(),
+            };
+
+            ProposalOrRef::Reference(
+                ProposalRef::from_authenticated_content(
+                    backend.crypto(),
+                    ciphersuite,
+                    &authenticated_content,
+                )
+                .unwrap(),
+            )
+        };
+
+        let got = commit_content
             .proposals
             .as_slice()
             .last()
             .expect("expected remove proposal");
-        match committed_proposal {
-            ProposalOrRef::Proposal(inline_proposal) => {
-                assert_eq!(&expected_inline_proposal, inline_proposal)
-            }
-            ProposalOrRef::Reference(reference_proposal) => {
-                assert_eq!(&expected_reference_proposal, reference_proposal)
-            }
-        }
+
+        assert_eq!(expected, *got);
     }
 
+    // Check commit with inline remove proposals.
+    {
+        let commit_content = unwrap_specific_commit(commit_inline_remove);
+
+        // And it should be the proposal to remove bob.
+        let expected = ProposalOrRef::Proposal(Proposal::Remove(RemoveProposal {
+            removed: bob_leaf_index,
+        }));
+
+        let got = commit_content
+            .proposals
+            .as_slice()
+            .last()
+            .expect("expected remove proposal");
+
+        assert_eq!(expected, *got);
+    }
+
+    // TODO(#1335)
     // It remains to verify this behaviour on the receiver side. However, this
     // is not really possible, since the `ProposalQueue` logic on the receiver
     // side automatically de-duplicates proposals with the same Proposal
@@ -1504,8 +1584,8 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             &bob_credential_with_key_and_signer.signer,
             Some(update_leaf_node.clone().into()),
         )
-        .expect("error while creating remove proposal")
-        .into();
+        .map(|(out, _)| MlsMessageIn::from(out))
+        .expect("error while creating remove proposal");
 
     // Have Alice process this proposal.
     if let ProcessedMessageContent::ProposalMessage(proposal) = alice_group
@@ -1727,7 +1807,7 @@ fn test_valsem111(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let verifiable_plaintext = insert_proposal_and_resign(
         backend,
         vec![ProposalOrRef::Reference(
-            ProposalRef::from_proposal(ciphersuite, backend, &update_proposal)
+            ProposalRef::from_raw_proposal(ciphersuite, backend, &update_proposal)
                 .expect("error creating hash reference"),
         )],
         plaintext,
@@ -1822,4 +1902,150 @@ fn test_valsem112(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     bob_group
         .process_message(backend, ProtocolMessage::from(original_plaintext))
         .expect("Unexpected error.");
+}
+
+// --- PreSharedKey Proposals ---
+
+#[apply(ciphersuites_and_backends)]
+fn test_valsem401_valsem402(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let ProposalValidationTestSetup {
+        mut alice_group,
+        alice_credential_with_key_and_signer,
+        mut bob_group,
+        ..
+    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+
+    let alice_backend = OpenMlsRustCrypto::default();
+    let bob_backend = OpenMlsRustCrypto::default();
+
+    let bad_psks = [
+        // ValSem401
+        (
+            vec![PreSharedKeyId::external(
+                b"irrelevant".to_vec(),
+                zero(ciphersuite.hash_length() + 1),
+            )],
+            ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
+                ProposalValidationError::Psk(PskError::NonceLengthMismatch {
+                    expected: ciphersuite.hash_length(),
+                    got: ciphersuite.hash_length() + 1,
+                }),
+            )),
+        ),
+        // ValSem401
+        (
+            vec![PreSharedKeyId::external(
+                b"irrelevant".to_vec(),
+                zero(ciphersuite.hash_length() - 1),
+            )],
+            ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
+                ProposalValidationError::Psk(PskError::NonceLengthMismatch {
+                    expected: ciphersuite.hash_length(),
+                    got: ciphersuite.hash_length() - 1,
+                }),
+            )),
+        ),
+        // ValSem402
+        (
+            vec![PreSharedKeyId::resumption(
+                ResumptionPskUsage::Reinit,
+                alice_group.group_id().clone(),
+                alice_group.epoch(),
+                zero(ciphersuite.hash_length()),
+            )],
+            ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
+                ProposalValidationError::Psk(PskError::UsageMismatch {
+                    allowed: vec![ResumptionPskUsage::Application],
+                    got: ResumptionPskUsage::Reinit,
+                }),
+            )),
+        ),
+        // ValSem402
+        (
+            vec![PreSharedKeyId::resumption(
+                ResumptionPskUsage::Branch,
+                alice_group.group_id().clone(),
+                alice_group.epoch(),
+                zero(ciphersuite.hash_length()),
+            )],
+            ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
+                ProposalValidationError::Psk(PskError::UsageMismatch {
+                    allowed: vec![ResumptionPskUsage::Application],
+                    got: ResumptionPskUsage::Branch,
+                }),
+            )),
+        ),
+        // TODO(#1335): We could remove this test after #1335 is closed because it would cover it.
+        // ValSem403
+        // (
+        //     vec![
+        //         PreSharedKeyId::external(b"irrelevant".to_vec(), zero(ciphersuite.hash_length())),
+        //         PreSharedKeyId::external(b"irrelevant".to_vec(), zero(ciphersuite.hash_length())),
+        //     ],
+        //     ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
+        //         ProposalValidationError::Psk(PskError::Duplicate {
+        //             first: PreSharedKeyId::external(
+        //                 b"irrelevant".to_vec(),
+        //                 zero(ciphersuite.hash_length()),
+        //             ),
+        //         }),
+        //     )),
+        // ),
+    ];
+
+    for (psk_ids, expected_error) in bad_psks.into_iter() {
+        let mut proposals = Vec::new();
+
+        for psk_id in psk_ids {
+            psk_id
+                .write_to_key_store(&alice_backend, ciphersuite, b"irrelevant")
+                .unwrap();
+            psk_id
+                .write_to_key_store(&bob_backend, ciphersuite, b"irrelevant")
+                .unwrap();
+
+            let psk_proposal = alice_group
+                .propose_external_psk(
+                    &alice_backend,
+                    &alice_credential_with_key_and_signer.signer,
+                    psk_id,
+                )
+                .unwrap();
+
+            proposals.push(psk_proposal);
+        }
+
+        let (commit, _, _) = alice_group
+            .commit_to_pending_proposals(
+                &alice_backend,
+                &alice_credential_with_key_and_signer.signer,
+            )
+            .unwrap();
+
+        alice_group.clear_pending_proposals();
+        alice_group.clear_pending_commit();
+
+        for psk_proposal in proposals.into_iter() {
+            let processed_message = bob_group
+                .process_message(&bob_backend, psk_proposal.into_protocol_message().unwrap())
+                .unwrap();
+
+            match processed_message.into_content() {
+                ProcessedMessageContent::ProposalMessage(queued_proposal) => {
+                    bob_group.store_pending_proposal(*queued_proposal);
+                }
+                _ => unreachable!(),
+            }
+        }
+
+        assert_eq!(
+            expected_error,
+            bob_group
+                .process_message(&bob_backend, commit.into_protocol_message().unwrap())
+                .unwrap_err(),
+        );
+
+        bob_group.clear_pending_proposals();
+        bob_group.clear_pending_commit();
+    }
 }

@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use super::{super::errors::*, *};
 use crate::{
     ciphersuite::signable::Verifiable,
@@ -12,7 +14,6 @@ use crate::{
     messages::{proposals::ProposalOrRef, Commit},
     treesync::node::leaf_node::{LeafNodeTbs, TreeInfoTbs, VerifiableLeafNode},
 };
-use std::collections::HashSet;
 
 impl PublicGroup {
     pub(crate) fn validate_commit<'a>(
@@ -62,10 +63,13 @@ impl PublicGroup {
             proposal_store,
             sender,
         )
-        .map_err(|e| match e {
-            FromCommittedProposalsError::LibraryError(e) => StageCommitError::LibraryError(e),
-            FromCommittedProposalsError::ProposalNotFound => StageCommitError::MissingProposal,
-            FromCommittedProposalsError::SelfRemoval => StageCommitError::AttemptedSelfRemoval,
+        .map_err(|e| {
+            log::error!("Error building the proposal queue for the commit ({e:?})");
+            match e {
+                FromCommittedProposalsError::LibraryError(e) => StageCommitError::LibraryError(e),
+                FromCommittedProposalsError::ProposalNotFound => StageCommitError::MissingProposal,
+                FromCommittedProposalsError::SelfRemoval => StageCommitError::AttemptedSelfRemoval,
+            }
         })?;
 
         let commit_update_leaf_node = commit
@@ -83,6 +87,10 @@ impl PublicGroup {
         // ValSem107
         // ValSem108
         self.validate_remove_proposals(&proposal_queue)?;
+        // ValSem401
+        // ValSem402
+        // ValSem403
+        self.validate_pre_shared_key_proposals(&proposal_queue)?;
 
         let public_key_set = match sender {
             Sender::Member(leaf_index) => {

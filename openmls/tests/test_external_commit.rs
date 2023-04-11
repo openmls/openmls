@@ -45,10 +45,10 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
         let serialized_group_info = group_info.tls_serialize_detached().unwrap();
 
-        let mls_message_out =
-            MlsMessageOut::tls_deserialize(&mut serialized_group_info.as_slice()).unwrap();
+        let mls_message_in =
+            MlsMessageIn::tls_deserialize(&mut serialized_group_info.as_slice()).unwrap();
 
-        mls_message_out.into_group_info().unwrap()
+        mls_message_in.into_verifiable_group_info().unwrap()
     };
 
     let verifiable_group_info_broken = {
@@ -66,10 +66,10 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             tmp
         };
 
-        let mls_message_out =
-            MlsMessageOut::tls_deserialize(&mut serialized_group_info.as_slice()).unwrap();
+        let mls_message_in =
+            MlsMessageIn::tls_deserialize(&mut serialized_group_info.as_slice()).unwrap();
 
-        mls_message_out.into_group_info().unwrap()
+        mls_message_in.into_verifiable_group_info().unwrap()
     };
 
     // ---------------------------------------------------------------------------------------------

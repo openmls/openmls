@@ -309,8 +309,9 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
     // Remove proposal cannot have a 'new_member_proposal' sender
     let remove_proposal = alice_group
         .propose_remove_member(backend, &alice_signer, LeafNodeIndex::new(1))
+        .map(|(out, _)| MlsMessageIn::from(out))
         .unwrap();
-    if let MlsMessageOutBody::PublicMessage(mut plaintext) = remove_proposal.body {
+    if let MlsMessageInBody::PublicMessage(mut plaintext) = remove_proposal.body {
         plaintext.set_sender(Sender::NewMemberProposal);
         assert!(matches!(
             bob_group.process_message(backend, plaintext).unwrap_err(),
@@ -324,8 +325,9 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
     // Update proposal cannot have a 'new_member_proposal' sender
     let update_proposal = alice_group
         .propose_self_update(backend, &alice_signer, None)
+        .map(|(out, _)| MlsMessageIn::from(out))
         .unwrap();
-    if let MlsMessageOutBody::PublicMessage(mut plaintext) = update_proposal.body {
+    if let MlsMessageInBody::PublicMessage(mut plaintext) = update_proposal.body {
         plaintext.set_sender(Sender::NewMemberProposal);
         assert!(matches!(
             bob_group.process_message(backend, plaintext).unwrap_err(),

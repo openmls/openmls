@@ -18,6 +18,8 @@ pub(crate) mod staged_commit;
 
 // Tests
 #[cfg(test)]
+pub(crate) mod kat_passive_client;
+#[cfg(test)]
 pub(crate) mod kat_welcome;
 #[cfg(test)]
 pub(crate) mod test_core_group;
@@ -381,7 +383,6 @@ impl CoreGroup {
     //     PreSharedKeyID psk;
     // } PreSharedKey;
     // TODO: #751
-    #[cfg(test)]
     pub(crate) fn create_presharedkey_proposal(
         &self,
         framing_parameters: FramingParameters,
@@ -475,10 +476,10 @@ impl CoreGroup {
     #[cfg(test)]
     pub(crate) fn decrypt(
         &mut self,
-        private_message: &PrivateMessage,
+        private_message: &PrivateMessageIn,
         backend: &impl OpenMlsCryptoProvider,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
-    ) -> Result<VerifiableAuthenticatedContent, MessageDecryptionError> {
+    ) -> Result<VerifiableAuthenticatedContentIn, MessageDecryptionError> {
         let ciphersuite = self.ciphersuite();
         let message_secrets = self
             .message_secrets_mut(private_message.epoch())

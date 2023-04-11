@@ -5,6 +5,7 @@ use tls_codec::{Deserialize, Serialize, Size, VLBytes};
 use crate::extensions::{
     ApplicationIdExtension, Extension, ExtensionType, ExternalPubExtension,
     ExternalSendersExtension, RatchetTreeExtension, RequiredCapabilitiesExtension,
+    UnknownExtension,
 };
 
 fn vlbytes_len_len(length: usize) -> usize {
@@ -22,32 +23,23 @@ fn vlbytes_len_len(length: usize) -> usize {
 impl Size for Extension {
     #[inline]
     fn tls_serialized_len(&self) -> usize {
-        2 + /* extension type len */
-        match self {
-                // We truncate here and don't catch errors for anything that's
-                // too long.
-                // This will be caught when (de)serializing.
-                Extension::ApplicationId(e) => {
-                    let len = e.tls_serialized_len();
-                    len + vlbytes_len_len(len)
-                },
-                Extension::RatchetTree(e) => {
-                    let len = e.tls_serialized_len();
-                    len + vlbytes_len_len(len)
-                },
-                Extension::RequiredCapabilities(e) => {
-                    let len = e.tls_serialized_len();
-                    len + vlbytes_len_len(len)
-                },
-                Extension::ExternalPub(e) => {
-                    let len = e.tls_serialized_len();
-                    len + vlbytes_len_len(len)
-                },
-                Extension::ExternalSenders(e) => {
-                    let len = e.tls_serialized_len();
-                    len + vlbytes_len_len(len)
-                },
-            }
+        let extension_type_length = 2;
+
+        // We truncate here and don't catch errors for anything that's
+        // too long.
+        // This will be caught when (de)serializing.
+        let extension_data_len = match self {
+            Extension::ApplicationId(e) => e.tls_serialized_len(),
+            Extension::RatchetTree(e) => e.tls_serialized_len(),
+            Extension::RequiredCapabilities(e) => e.tls_serialized_len(),
+            Extension::ExternalPub(e) => e.tls_serialized_len(),
+            Extension::ExternalSenders(e) => e.tls_serialized_len(),
+            Extension::Unknown(_, e) => e.0.len(),
+        };
+
+        let vlbytes_len_len = vlbytes_len_len(extension_data_len);
+
+        extension_type_length + vlbytes_len_len + extension_data_len
     }
 }
 
@@ -73,6 +65,10 @@ impl Serialize for Extension {
             Extension::RequiredCapabilities(e) => e.tls_serialize(&mut extension_data),
             Extension::ExternalPub(e) => e.tls_serialize(&mut extension_data),
             Extension::ExternalSenders(e) => e.tls_serialize(&mut extension_data),
+            Extension::Unknown(_, e) => extension_data
+                .write_all(e.0.as_slice())
+                .map(|_| e.0.len())
+                .map_err(|_| tls_codec::Error::EndOfStream),
         }?;
         debug_assert_eq!(
             extension_data_written,
@@ -115,6 +111,9 @@ impl Deserialize for Extension {
             ExtensionType::ExternalSenders => Extension::ExternalSenders(
                 ExternalSendersExtension::tls_deserialize(&mut extension_data)?,
             ),
+            ExtensionType::Unknown(unknown) => {
+                Extension::Unknown(unknown, UnknownExtension(extension_data.to_vec()))
+            }
         })
     }
 }

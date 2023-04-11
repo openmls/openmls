@@ -3,16 +3,6 @@
 //! This module contains the types and implementations for Commit & Welcome messages,
 //! as well as Proposals & the group info used for External Commits.
 
-use crate::{
-    ciphersuite::{hash_ref::KeyPackageRef, *},
-    error::LibraryError,
-    schedule::{psk::PreSharedKeyId, JoinerSecret},
-    treesync::{
-        node::encryption_keys::{EncryptionKey, EncryptionKeyPair, EncryptionPrivateKey},
-        treekem::UpdatePath,
-    },
-    versions::ProtocolVersion,
-};
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     types::{Ciphersuite, HpkeCiphertext},
@@ -20,23 +10,31 @@ use openmls_traits::{
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use tls_codec::{Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, *};
 
-// Private
-use proposals::*;
-use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerializeTrait, *};
+#[cfg(test)]
+use crate::schedule::psk::{ExternalPsk, Psk};
+use crate::{
+    ciphersuite::{hash_ref::KeyPackageRef, *},
+    credentials::CredentialWithKey,
+    error::LibraryError,
+    schedule::{psk::PreSharedKeyId, JoinerSecret},
+    treesync::{
+        node::encryption_keys::{EncryptionKey, EncryptionKeyPair, EncryptionPrivateKey},
+        treekem::{UpdatePath, UpdatePathIn},
+    },
+    versions::ProtocolVersion,
+};
 
-// Public
 pub mod external_proposals;
 pub mod group_info;
 pub mod proposals;
+pub mod proposals_in;
 
-// Tests
 #[cfg(test)]
 mod tests;
-#[cfg(test)]
-use crate::schedule::psk::{ExternalPsk, Psk};
 
-// Public types
+use self::{proposals::*, proposals_in::ProposalOrRefIn};
 
 /// Welcome message
 ///
@@ -145,9 +143,7 @@ impl EncryptedGroupSecrets {
 ///     optional<UpdatePath> path;
 /// } Commit;
 /// ```
-#[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
-)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsSize)]
 pub(crate) struct Commit {
     pub(crate) proposals: Vec<ProposalOrRef>,
     pub(crate) path: Option<UpdatePath>,
@@ -163,6 +159,48 @@ impl Commit {
     /// Returns the update path of the Commit if it has one.
     pub(crate) fn path(&self) -> &Option<UpdatePath> {
         &self.path
+    }
+}
+
+#[derive(
+    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
+pub(crate) struct CommitIn {
+    proposals: Vec<ProposalOrRefIn>,
+    path: Option<UpdatePathIn>,
+}
+
+impl CommitIn {
+    pub(crate) fn unverified_credential(&self) -> Option<CredentialWithKey> {
+        self.path.as_ref().map(|p| {
+            let credential = p.leaf_node().credential().clone();
+            let pk = p.leaf_node().signature_key().clone();
+            CredentialWithKey {
+                credential,
+                signature_key: pk,
+            }
+        })
+    }
+}
+
+// TODO #1186: The following must be removed once the validation refactoring is
+// complete.
+
+impl From<CommitIn> for Commit {
+    fn from(commit: CommitIn) -> Self {
+        Self {
+            proposals: commit.proposals.into_iter().map(Into::into).collect(),
+            path: commit.path.map(Into::into),
+        }
+    }
+}
+
+impl From<Commit> for CommitIn {
+    fn from(commit: Commit) -> Self {
+        Self {
+            proposals: commit.proposals.into_iter().map(Into::into).collect(),
+            path: commit.path.map(Into::into),
+        }
     }
 }
 
@@ -335,17 +373,11 @@ impl GroupSecrets {
         )
         .map_err(|_| GroupSecretsError::DecryptionFailed)?;
 
-        let mut group_secrets_plaintext_slice = &mut group_secrets_plaintext.as_slice();
-
-        let group_secrets = GroupSecrets::tls_deserialize(&mut group_secrets_plaintext_slice)
+        // Note: This also checks that no extraneous data was encrypted.
+        let group_secrets = GroupSecrets::tls_deserialize_exact(group_secrets_plaintext)
             .map_err(|_| GroupSecretsError::Malformed)?
             // TODO(#1065)
             .config(ciphersuite, ProtocolVersion::Mls10);
-
-        // Check that no extraneous data was encrypted.
-        if !group_secrets_plaintext_slice.is_empty() {
-            return Err(GroupSecretsError::Malformed);
-        }
 
         Ok(group_secrets)
     }

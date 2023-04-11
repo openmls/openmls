@@ -95,7 +95,7 @@ pub fn run_test_vector(
     log::trace!("ratchet tree before: {}", test_vector.ratchet_tree_before);
     let ratchet_tree_before_bytes = hex_to_bytes(&test_vector.ratchet_tree_before);
     let ratchet_tree_before =
-        TlsVecU32::<Option<Node>>::tls_deserialize(&mut ratchet_tree_before_bytes.as_slice())
+        TlsVecU32::<Option<Node>>::tls_deserialize_complete(ratchet_tree_before_bytes)
             .expect("Error decoding ratchet tree");
 
     let my_leaf_secret = Secret::from_slice(
@@ -105,7 +105,7 @@ pub fn run_test_vector(
     );
 
     let my_key_package =
-        KeyPackage::tls_deserialize(&mut hex_to_bytes(&test_vector.my_key_package).as_slice())
+        KeyPackage::tls_deserialize_complete(hex_to_bytes(&test_vector.my_key_package))
             .expect("failed to decode my_key_package from test vector.");
 
     // We clone the leaf secret here, because we need it later to re-create the
@@ -188,7 +188,7 @@ pub fn run_test_vector(
     }
 
     let update_path =
-        UpdatePath::tls_deserialize(&mut hex_to_bytes(&test_vector.update_path).as_slice())
+        UpdatePath::tls_deserialize_complete(hex_to_bytes(&test_vector.update_path))
             .expect("error deserializing");
     let group_context = hex_to_bytes(&test_vector.update_group_context);
 
@@ -259,7 +259,7 @@ pub fn run_test_vector(
 
     let ratchet_tree_after_bytes = hex_to_bytes(&test_vector.ratchet_tree_after);
     let ratchet_tree_after =
-        TlsVecU32::<Option<Node>>::tls_deserialize(&mut ratchet_tree_after_bytes.as_slice())
+        TlsVecU32::<Option<Node>>::tls_deserialize_complete(ratchet_tree_after_bytes)
             .expect("Error decoding ratchet tree");
 
     // Verify that the tree now matches tree_after

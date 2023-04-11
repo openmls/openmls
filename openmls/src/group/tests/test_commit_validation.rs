@@ -2,27 +2,24 @@
 //! https://openmls.tech/book/message_validation.html#commit-message-validation
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite};
-use tls_codec::{Deserialize, Serialize};
-
+use openmls_traits::{signatures::Signer, types::Ciphersuite};
 use rstest::*;
 use rstest_reuse::{self, *};
+use tls_codec::{Deserialize, Serialize};
 
+use super::utils::{
+    generate_credential_bundle, generate_key_package, resign_message, CredentialWithKeyAndSigner,
+};
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::signable::Signable,
     framing::*,
     group::{config::CryptoConfig, errors::*, *},
     messages::proposals::*,
-    schedule::psk::*,
     treesync::{
         errors::ApplyUpdatePathError, node::parent_node::PlainUpdatePathNode, treekem::UpdatePath,
     },
     versions::ProtocolVersion,
-};
-
-use super::utils::{
-    generate_credential_bundle, generate_key_package, resign_message, CredentialWithKeyAndSigner,
 };
 
 struct CommitValidationTestSetup {
@@ -268,23 +265,25 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         }))
     };
 
-    let psk_proposal = || {
-        let secret = Secret::random(ciphersuite, backend, None).unwrap();
-        let psk_bundle = PskBundle::new(secret).unwrap();
-        let rand = backend
-            .rand()
-            .random_vec(ciphersuite.hash_length())
-            .unwrap();
-        let psk_id = PreSharedKeyId::new(
-            ciphersuite,
-            backend.rand(),
-            Psk::External(ExternalPsk::new(rand)),
-        )
-        .unwrap();
-        let psk_key = psk_id.tls_serialize_detached().unwrap();
-        backend.key_store().store(&psk_key, &psk_bundle).unwrap();
-        queued(Proposal::PreSharedKey(PreSharedKeyProposal::new(psk_id)))
-    };
+    // TODO(#1330): We can't use PreSharedKey proposals here for now because they will lead to an
+    //              `PskError::Unsupported`. As soon as #1330 is finished, we can enable this again.
+    // let psk_proposal = || {
+    //     let secret = Secret::random(ciphersuite, backend, None).unwrap();
+    //     let rand = backend
+    //         .rand()
+    //         .random_vec(ciphersuite.hash_length())
+    //         .unwrap();
+    //     let psk_id = PreSharedKeyId::new(
+    //         ciphersuite,
+    //         backend.rand(),
+    //         Psk::External(ExternalPsk::new(rand)),
+    //     )
+    //     .unwrap();
+    //     psk_id
+    //         .write_to_key_store(backend, ciphersuite, secret.as_slice())
+    //         .unwrap();
+    //     queued(Proposal::PreSharedKey(PreSharedKeyProposal::new(psk_id)))
+    // };
 
     let update_proposal = queued(Proposal::Update(UpdateProposal {
         leaf_node: alice_group
@@ -315,12 +314,16 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // in [CoreGroup::apply_proposals()]
     let cases = vec![
         (vec![add_proposal()], false),
-        (vec![psk_proposal()], false),
+        // TODO(#1330): We can't use PreSharedKey proposals here for now because they will lead to an
+        //              `PskError::Unsupported`. As soon as #1330 is finished, we can enable this again.
+        //(vec![psk_proposal()], false),
         (vec![update_proposal.clone()], true),
         (vec![remove_proposal()], true),
         (vec![gce_proposal()], true),
         // !path_required + !path_required = !path_required
-        (vec![add_proposal(), psk_proposal()], false),
+        // TODO(#1330): We can't use PreSharedKey proposals here for now because they will lead to an
+        //              `PskError::Unsupported`. As soon as #1330 is finished, we can enable this again.
+        //(vec![add_proposal(), psk_proposal()], false),
         // path_required + !path_required = path_required
         (vec![remove_proposal(), add_proposal()], true),
         // path_required + path_required = path_required
@@ -765,10 +768,10 @@ fn test_partial_proposal_commit(ciphersuite: Ciphersuite, backend: &impl OpenMls
         .index;
 
     // Create first proposal in Alice's group
-    let proposal_1: MlsMessageIn = alice_group
+    let proposal_1 = alice_group
         .propose_remove_member(backend, &alice_credential.signer, charlie_index)
-        .unwrap()
-        .into();
+        .map(|(out, _)| MlsMessageIn::from(out))
+        .unwrap();
     let proposal_1 = bob_group.process_message(backend, proposal_1).unwrap();
     match proposal_1.into_content() {
         ProcessedMessageContent::ProposalMessage(p) => bob_group.store_pending_proposal(*p),
@@ -776,10 +779,10 @@ fn test_partial_proposal_commit(ciphersuite: Ciphersuite, backend: &impl OpenMls
     }
 
     // Create second proposal in Alice's group
-    let proposal_2: MlsMessageIn = alice_group
+    let proposal_2 = alice_group
         .propose_self_update(backend, &alice_credential.signer, None)
-        .unwrap()
-        .into();
+        .map(|(out, _)| MlsMessageIn::from(out))
+        .unwrap();
     let proposal_2 = bob_group.process_message(backend, proposal_2).unwrap();
     match proposal_2.into_content() {
         ProcessedMessageContent::ProposalMessage(p) => bob_group.store_pending_proposal(*p),

@@ -1,14 +1,14 @@
+use std::fs::File;
+
+use lazy_static::lazy_static;
 use openmls::{
     prelude::{config::CryptoConfig, *},
     test_utils::*,
     *,
 };
-
-use lazy_static::lazy_static;
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{signatures::Signer, types::SignatureScheme, OpenMlsCryptoProvider};
-use std::fs::File;
 
 lazy_static! {
     static ref TEMP_DIR: tempfile::TempDir =
@@ -249,7 +249,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     let verifiable_group_info = alice_group
         .export_group_info(backend, &alice_signature_keys, true)
         .expect("Cannot export group info")
-        .into_group_info()
+        .into_verifiable_group_info()
         .expect("Could not get group info");
     // ANCHOR_END: alice_exports_group_info
 
@@ -293,7 +293,8 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         .expect("Could not serialize message.");
 
     // ANCHOR: mls_message_in_from_bytes
-    let mls_message = MlsMessageIn::try_from_bytes(&bytes).expect("Could not deserialize message.");
+    let mls_message =
+        MlsMessageIn::tls_deserialize_exact(bytes).expect("Could not deserialize message.");
     // ANCHOR_END: mls_message_in_from_bytes
 
     // ANCHOR: process_message
@@ -365,7 +366,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // === Alice updates and commits ===
     // ANCHOR: propose_self_update
-    let mls_message_out = alice_group
+    let (mls_message_out, _proposal_ref) = alice_group
         .propose_self_update(
             backend,
             &alice_signature_keys,
@@ -788,7 +789,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // Create RemoveProposal and process it
     // ANCHOR: propose_remove
-    let mls_message_out = alice_group
+    let (mls_message_out, _proposal_ref) = alice_group
         .propose_remove_member(
             backend,
             &alice_signature_keys,
@@ -828,9 +829,19 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         unreachable!("Expected a QueuedProposal.");
     }
 
+    // Create AddProposal and remove it
+    // ANCHOR: rollback_proposal_by_ref
+    let (_mls_message_out, proposal_ref) = alice_group
+        .propose_add_member(backend, &alice_signature_keys, &bob_key_package)
+        .expect("Could not create proposal to add Bob");
+    alice_group
+        .remove_pending_proposal(proposal_ref)
+        .expect("The proposal was not found");
+    // ANCHOR_END: rollback_proposal_by_ref
+
     // Create AddProposal and process it
     // ANCHOR: propose_add
-    let mls_message_out = alice_group
+    let (mls_message_out, _proposal_ref) = alice_group
         .propose_add_member(backend, &alice_signature_keys, &bob_key_package)
         .expect("Could not create proposal to add Bob");
     // ANCHOR_END: propose_add

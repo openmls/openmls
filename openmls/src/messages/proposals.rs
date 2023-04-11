@@ -5,11 +5,21 @@
 //! To find out if a specific proposal type is supported,
 //! [`ProposalType::is_supported()`] can be used.
 
+use std::io::{Read, Write};
+
+use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
+use tls_codec::{Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
+
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::hash_ref::{make_proposal_ref, KeyPackageRef, ProposalRef},
     error::LibraryError,
     extensions::Extensions,
+    framing::{
+        mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, ContentType,
+    },
     group::GroupId,
     key_packages::*,
     prelude::LeafNode,
@@ -17,96 +27,140 @@ use crate::{
     versions::ProtocolVersion,
 };
 
-use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
-use serde::{Deserialize, Serialize};
-use std::convert::TryFrom;
-use tls_codec::{Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
-
-// Public types
-
 /// ## MLS Proposal Types
 ///
 ///
 /// ```c
-/// // draft-ietf-mls-protocol-17
+/// // draft-ietf-mls-protocol-20
 /// // See IANA registry for registered values
 /// uint16 ProposalType;
 /// ```
 ///
-/// | Value           | Name                     | Recommended | Path Required | Reference |
-/// |:================|:=========================|:============|:==============|:==========|
-/// | 0x0000          | RESERVED                 | N/A         | N/A           | RFC XXXX  |
-/// | 0x0001          | add                      | Y           | N             | RFC XXXX  |
-/// | 0x0002          | update                   | Y           | Y             | RFC XXXX  |
-/// | 0x0003          | remove                   | Y           | Y             | RFC XXXX  |
-/// | 0x0004          | psk                      | Y           | N             | RFC XXXX  |
-/// | 0x0005          | reinit                   | Y           | N             | RFC XXXX  |
-/// | 0x0006          | external_init            | Y           | Y             | RFC XXXX  |
-/// | 0x0007          | group_context_extensions | Y           | Y             | RFC XXXX  |
-/// | 0xf000 - 0xffff | Reserved for Private Use | N/A         | N/A           | RFC XXXX  |
+/// | Value           | Name                     | R | Ext | Path | Ref      |
+/// |-----------------|--------------------------|---|-----|------|----------|
+/// | 0x0000          | RESERVED                 | - | -   | -    | RFC XXXX |
+/// | 0x0001          | add                      | Y | Y   | N    | RFC XXXX |
+/// | 0x0002          | update                   | Y | N   | Y    | RFC XXXX |
+/// | 0x0003          | remove                   | Y | Y   | Y    | RFC XXXX |
+/// | 0x0004          | psk                      | Y | Y   | N    | RFC XXXX |
+/// | 0x0005          | reinit                   | Y | Y   | N    | RFC XXXX |
+/// | 0x0006          | external_init            | Y | N   | Y    | RFC XXXX |
+/// | 0x0007          | group_context_extensions | Y | Y   | Y    | RFC XXXX |
+/// | 0x0A0A          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0x1A1A          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0x2A2A          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0x3A3A          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0x4A4A          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0x5A5A          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0x6A6A          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0x7A7A          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0x8A8A          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0x9A9A          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0xAAAA          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0xBABA          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0xCACA          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0xDADA          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0xEAEA          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0xF000 - 0xFFFF | Reserved for Private Use | - | -   | -    | RFC XXXX |
 ///
 /// # Extensions
 ///
 /// | Value  | Name    | Recommended | Path Required | Reference | Notes                        |
 /// |:=======|:========|:============|:==============|:==========|:=============================|
 /// | 0x0008 | app_ack | Y           | Y             | RFC XXXX  | draft-ietf-mls-extensions-00 |
-#[derive(
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Clone,
-    Copy,
-    Debug,
-    TlsSerialize,
-    TlsDeserialize,
-    TlsSize,
-    Serialize,
-    Deserialize,
-)]
-#[repr(u16)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Serialize, Deserialize)]
 #[allow(missing_docs)]
 pub enum ProposalType {
-    Add = 1,
-    Update = 2,
-    Remove = 3,
-    Presharedkey = 4,
-    Reinit = 5,
-    ExternalInit = 6,
-    GroupContextExtensions = 7,
-    AppAck = 8,
+    Add,
+    Update,
+    Remove,
+    PreSharedKey,
+    Reinit,
+    ExternalInit,
+    GroupContextExtensions,
+    AppAck,
+    Unknown(u16),
+}
+
+impl tls_codec::Size for ProposalType {
+    fn tls_serialized_len(&self) -> usize {
+        2
+    }
+}
+
+impl tls_codec::Deserialize for ProposalType {
+    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error>
+    where
+        Self: Sized,
+    {
+        let mut proposal_type = [0u8; 2];
+        bytes.read_exact(&mut proposal_type)?;
+
+        Ok(ProposalType::from(u16::from_be_bytes(proposal_type)))
+    }
+}
+
+impl tls_codec::Serialize for ProposalType {
+    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+        writer.write_all(&u16::from(*self).to_be_bytes())?;
+
+        Ok(2)
+    }
 }
 
 impl ProposalType {
     /// Check whether a proposal type is supported or not. Returns `true`
     /// if a proposal is supported and `false` otherwise.
     pub fn is_supported(&self) -> bool {
-        match self {
+        matches!(
+            self,
             ProposalType::Add
-            | ProposalType::Update
-            | ProposalType::Remove
-            | ProposalType::Presharedkey
-            | ProposalType::Reinit
-            | ProposalType::ExternalInit
-            | ProposalType::GroupContextExtensions => true,
-            ProposalType::AppAck => false,
+                | ProposalType::Update
+                | ProposalType::Remove
+                | ProposalType::PreSharedKey
+                | ProposalType::Reinit
+                | ProposalType::ExternalInit
+                | ProposalType::GroupContextExtensions
+        )
+    }
+
+    /// Returns `true` if the proposal type requires a path and `false`
+    pub fn is_path_required(&self) -> bool {
+        matches!(
+            self,
+            Self::Update | Self::Remove | Self::ExternalInit | Self::GroupContextExtensions
+        )
+    }
+}
+
+impl From<u16> for ProposalType {
+    fn from(value: u16) -> Self {
+        match value {
+            1 => ProposalType::Add,
+            2 => ProposalType::Update,
+            3 => ProposalType::Remove,
+            4 => ProposalType::PreSharedKey,
+            5 => ProposalType::Reinit,
+            6 => ProposalType::ExternalInit,
+            7 => ProposalType::GroupContextExtensions,
+            8 => ProposalType::AppAck,
+            unknown => ProposalType::Unknown(unknown),
         }
     }
 }
 
-impl TryFrom<u16> for ProposalType {
-    type Error = &'static str;
-    fn try_from(value: u16) -> Result<Self, Self::Error> {
+impl From<ProposalType> for u16 {
+    fn from(value: ProposalType) -> Self {
         match value {
-            1 => Ok(ProposalType::Add),
-            2 => Ok(ProposalType::Update),
-            3 => Ok(ProposalType::Remove),
-            4 => Ok(ProposalType::Presharedkey),
-            5 => Ok(ProposalType::Reinit),
-            6 => Ok(ProposalType::ExternalInit),
-            7 => Ok(ProposalType::GroupContextExtensions),
-            8 => Ok(ProposalType::AppAck),
-            _ => Err("Unknown proposal type."),
+            ProposalType::Add => 1,
+            ProposalType::Update => 2,
+            ProposalType::Remove => 3,
+            ProposalType::PreSharedKey => 4,
+            ProposalType::Reinit => 5,
+            ProposalType::ExternalInit => 6,
+            ProposalType::GroupContextExtensions => 7,
+            ProposalType::AppAck => 8,
+            ProposalType::Unknown(unknown) => unknown,
         }
     }
 }
@@ -131,9 +185,7 @@ impl TryFrom<u16> for ProposalType {
 /// } Proposal;
 /// ```
 #[allow(clippy::large_enum_variant)]
-#[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSize, TlsSerialize, TlsDeserialize,
-)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TlsSize, TlsSerialize)]
 #[allow(missing_docs)]
 #[repr(u16)]
 pub enum Proposal {
@@ -159,16 +211,17 @@ pub enum Proposal {
 }
 
 impl Proposal {
-    pub(crate) fn proposal_type(&self) -> ProposalType {
+    /// Returns the proposal type.
+    pub fn proposal_type(&self) -> ProposalType {
         match self {
-            Self::Add(ref _a) => ProposalType::Add,
-            Self::Update(ref _u) => ProposalType::Update,
-            Self::Remove(ref _r) => ProposalType::Remove,
-            Self::PreSharedKey(ref _p) => ProposalType::Presharedkey,
-            Self::ReInit(ref _r) => ProposalType::Reinit,
-            Self::ExternalInit(ref _r) => ProposalType::ExternalInit,
-            Self::AppAck(ref _r) => ProposalType::AppAck,
-            Self::GroupContextExtensions(ref _r) => ProposalType::GroupContextExtensions,
+            Proposal::Add(_) => ProposalType::Add,
+            Proposal::Update(_) => ProposalType::Update,
+            Proposal::Remove(_) => ProposalType::Remove,
+            Proposal::PreSharedKey(_) => ProposalType::PreSharedKey,
+            Proposal::ReInit(_) => ProposalType::Reinit,
+            Proposal::ExternalInit(_) => ProposalType::ExternalInit,
+            Proposal::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,
+            Proposal::AppAck(_) => ProposalType::AppAck,
         }
     }
 
@@ -178,13 +231,7 @@ impl Proposal {
 
     /// Indicates whether a Commit containing this [Proposal] requires a path.
     pub fn is_path_required(&self) -> bool {
-        match self {
-            Self::Add(_) | Self::PreSharedKey(_) | Self::ReInit(_) | Self::AppAck(_) => false,
-            Self::Update(_)
-            | Self::Remove(_)
-            | Self::ExternalInit(_)
-            | Self::GroupContextExtensions(_) => true,
-        }
+        self.proposal_type().is_path_required()
     }
 }
 
@@ -198,9 +245,7 @@ impl Proposal {
 ///     KeyPackage key_package;
 /// } Add;
 /// ```
-#[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
-)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsSize)]
 pub struct AddProposal {
     pub(crate) key_package: KeyPackage,
 }
@@ -223,9 +268,7 @@ impl AddProposal {
 ///     LeafNode leaf_node;
 /// } Update;
 /// ```
-#[derive(
-    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
-)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsSize)]
 pub struct UpdateProposal {
     pub(crate) leaf_node: LeafNode,
 }
@@ -280,20 +323,16 @@ pub struct PreSharedKeyProposal {
 }
 
 impl PreSharedKeyProposal {
-    /// Create a new PSK proposal
-    #[cfg(test)]
-    pub(crate) fn new(psk: PreSharedKeyId) -> Self {
-        Self { psk }
-    }
-
-    /// Returns a reference to the [`PreSharedKeyId`] in this proposal.
-    pub(crate) fn _psk(&self) -> &PreSharedKeyId {
-        &self.psk
-    }
-
     /// Returns the [`PreSharedKeyId`] and consume this proposal.
     pub(crate) fn into_psk_id(self) -> PreSharedKeyId {
         self.psk
+    }
+}
+
+impl PreSharedKeyProposal {
+    /// Create a new PSK proposal
+    pub(crate) fn new(psk: PreSharedKeyId) -> Self {
+        Self { psk }
     }
 }
 
@@ -425,9 +464,7 @@ pub(crate) enum ProposalOrRefType {
 }
 
 /// Type of Proposal, either by value or by reference.
-#[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
-)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsSize)]
 #[repr(u8)]
 #[allow(missing_docs)]
 #[allow(clippy::large_enum_variant)]
@@ -437,17 +474,55 @@ pub(crate) enum ProposalOrRef {
     Reference(ProposalRef),
 }
 
+#[derive(Error, Debug)]
+pub(crate) enum ProposalRefError {
+    #[error("Expected `Proposal`, got `{wrong:?}`.")]
+    AuthenticatedContentHasWrongType { wrong: ContentType },
+    #[error(transparent)]
+    Other(#[from] LibraryError),
+}
+
 impl ProposalRef {
-    pub(crate) fn from_proposal(
+    pub(crate) fn from_authenticated_content(
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+        authenticated_content: &AuthenticatedContent,
+    ) -> Result<Self, ProposalRefError> {
+        if !matches!(
+            authenticated_content.content(),
+            FramedContentBody::Proposal(_)
+        ) {
+            return Err(ProposalRefError::AuthenticatedContentHasWrongType {
+                wrong: authenticated_content.content().content_type(),
+            });
+        };
+
+        let encoded = authenticated_content
+            .tls_serialize_detached()
+            .map_err(|error| ProposalRefError::Other(LibraryError::missing_bound_check(error)))?;
+
+        make_proposal_ref(&encoded, ciphersuite, crypto)
+            .map_err(|error| ProposalRefError::Other(LibraryError::unexpected_crypto_error(error)))
+    }
+
+    /// Note: A [`ProposalRef`] should be calculated by using TLS-serialized [`AuthenticatedContent`]
+    ///       as value input and not the TLS-serialized proposal. However, to spare us a major refactoring,
+    ///       we calculate it from the raw value in some places that do not interact with the outside world.
+    pub(crate) fn from_raw_proposal(
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         proposal: &Proposal,
     ) -> Result<Self, LibraryError> {
-        let encoded = proposal
+        // This is used for hash domain separation.
+        let mut data = b"Internal OpenMLS ProposalRef Label".to_vec();
+
+        let mut encoded = proposal
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;
 
-        make_proposal_ref(&encoded, ciphersuite, backend.crypto())
+        data.append(&mut encoded);
+
+        make_proposal_ref(&data, ciphersuite, backend.crypto())
             .map_err(LibraryError::unexpected_crypto_error)
     }
 }
@@ -467,4 +542,35 @@ pub(crate) struct MessageRange {
     sender: KeyPackageRef,
     first_generation: u32,
     last_generation: u32,
+}
+
+#[cfg(test)]
+mod tests {
+    use tls_codec::{Deserialize, Serialize};
+
+    use super::ProposalType;
+
+    #[test]
+    fn that_unknown_proposal_types_are_de_serialized_correctly() {
+        let proposal_types = [0x0000u16, 0x0A0A, 0x7A7A, 0xF000, 0xFFFF];
+
+        for proposal_type in proposal_types.into_iter() {
+            // Construct an unknown proposal type.
+            let test = proposal_type.to_be_bytes().to_vec();
+
+            // Test deserialization.
+            let got = ProposalType::tls_deserialize_exact(&test).unwrap();
+
+            match got {
+                ProposalType::Unknown(got_proposal_type) => {
+                    assert_eq!(proposal_type, got_proposal_type);
+                }
+                other => panic!("Expected `ProposalType::Unknown`, got `{:?}`.", other),
+            }
+
+            // Test serialization.
+            let got_serialized = got.tls_serialize_detached().unwrap();
+            assert_eq!(test, got_serialized);
+        }
+    }
 }

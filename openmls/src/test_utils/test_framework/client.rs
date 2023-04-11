@@ -17,7 +17,7 @@ use crate::{
     ciphersuite::hash_ref::KeyPackageRef,
     credentials::*,
     extensions::*,
-    framing::{mls_content::ContentType, ProtocolMessage, *},
+    framing::*,
     group::{config::CryptoConfig, *},
     key_packages::*,
     messages::{group_info::GroupInfo, *},
@@ -209,7 +209,9 @@ impl Client {
         let (msg, welcome_option, group_info) = match action_type {
             ActionType::Commit => group.self_update(&self.crypto, &signer)?,
             ActionType::Proposal => (
-                group.propose_self_update(&self.crypto, &signer, leaf_node)?,
+                group
+                    .propose_self_update(&self.crypto, &signer, leaf_node)
+                    .map(|(out, _)| out)?,
                 None,
                 None,
             ),
@@ -263,7 +265,9 @@ impl Client {
             ActionType::Proposal => {
                 let mut messages = Vec::new();
                 for key_package in key_packages {
-                    let message = group.propose_add_member(&self.crypto, &signer, key_package)?;
+                    let message = group
+                        .propose_add_member(&self.crypto, &signer, key_package)
+                        .map(|(out, _)| out)?;
                     messages.push(message);
                 }
                 (messages, None, None)
@@ -310,7 +314,9 @@ impl Client {
             ActionType::Proposal => {
                 let mut messages = Vec::new();
                 for target in targets {
-                    let message = group.propose_remove_member(&self.crypto, &signer, *target)?;
+                    let message = group
+                        .propose_remove_member(&self.crypto, &signer, *target)
+                        .map(|(out, _)| out)?;
                     messages.push(message);
                 }
                 (messages, None, None)

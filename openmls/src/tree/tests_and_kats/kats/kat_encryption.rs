@@ -79,14 +79,24 @@
 //! Keys](https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md#encryption-keys)
 //! section of the specification.
 
-use crate::credentials::{Credential, CredentialWithKey};
-use crate::messages::proposals::RemoveProposal;
+use std::convert::TryFrom;
+
+use itertools::izip;
+use openmls_basic_credential::SignatureKeyPair;
+use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::{signatures::Signer, types::SignatureScheme, OpenMlsCryptoProvider};
+use serde::{self, Deserialize, Serialize};
+use thiserror::Error;
+
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
-    credentials::CredentialType,
-    framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, *},
+    credentials::{Credential, CredentialType, CredentialWithKey},
+    framing::{
+        mls_auth_content::AuthenticatedContent, mls_auth_content_in::AuthenticatedContentIn,
+        mls_content_in::FramedContentBodyIn, *,
+    },
     group::*,
-    messages::proposals::Proposal,
+    messages::proposals::{Proposal, RemoveProposal},
     schedule::{EncryptionSecret, SenderDataSecret},
     test_utils::*,
     tree::{
@@ -96,15 +106,6 @@ use crate::{
     utils::random_u64,
     versions::ProtocolVersion,
 };
-
-use openmls_basic_credential::SignatureKeyPair;
-use openmls_traits::{signatures::Signer, types::SignatureScheme, OpenMlsCryptoProvider};
-
-use itertools::izip;
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use serde::{self, Deserialize, Serialize};
-use std::convert::TryFrom;
-use thiserror::Error;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 struct SenderDataInfo {
@@ -227,16 +228,19 @@ fn build_handshake_messages(
         Secret::random(group.ciphersuite(), backend, None /* MLS version */)
             .expect("Not enough randomness."),
     );
-    let content = AuthenticatedContent::member_proposal(
-        framing_parameters,
-        sender_index,
-        Proposal::Remove(RemoveProposal {
-            removed: LeafNodeIndex::new(7),
-        }), // XXX: use random removed
-        group.context(),
-        signer,
-    )
-    .expect("An unexpected error occurred.");
+    let content = AuthenticatedContentIn::from(
+        AuthenticatedContent::member_proposal(
+            framing_parameters,
+            sender_index,
+            Proposal::Remove(RemoveProposal {
+                removed: LeafNodeIndex::new(7),
+            }), // XXX: use random removed
+            group.context(),
+            signer,
+        )
+        .expect("An unexpected error occurred."),
+    );
+    let content = AuthenticatedContent::from(content);
     let mut plaintext: PublicMessage = content.clone().into();
     plaintext
         .set_membership_tag(
@@ -602,9 +606,8 @@ pub fn run_test_vector(
             // Setup group
             // We need to get the application message first to get the group id.
             let ctxt_bytes = hex_to_bytes(&application.ciphertext);
-            let mls_ciphertext_application =
-                PrivateMessage::tls_deserialize(&mut ctxt_bytes.as_slice())
-                    .expect("Error parsing PrivateMessage");
+            let mls_ciphertext_application = PrivateMessageIn::tls_deserialize_exact(ctxt_bytes)
+                .expect("Error parsing PrivateMessage");
             let (mut group, _, _) = receiver_group(
                 ciphersuite,
                 backend,
@@ -631,7 +634,7 @@ pub fn run_test_vector(
             let sender_data = mls_ciphertext_application
                 .sender_data(group.message_secrets_test_mut(), backend, ciphersuite)
                 .expect("Unable to get sender data");
-            let mls_plaintext_application: AuthenticatedContent = mls_ciphertext_application
+            let mls_plaintext_application: AuthenticatedContentIn = mls_ciphertext_application
                 .to_verifiable_content(
                     ciphersuite,
                     backend,
@@ -644,10 +647,10 @@ pub fn run_test_vector(
                 .into();
             assert!(matches!(
                 mls_plaintext_application.content(),
-                FramedContentBody::Application(_)
+                FramedContentBodyIn::Application(_)
             ));
             let expected_plaintext = hex_to_bytes(&application.plaintext);
-            let exp = PublicMessage::tls_deserialize(&mut expected_plaintext.as_slice()).unwrap();
+            let exp = PublicMessageIn::tls_deserialize_exact(expected_plaintext).unwrap();
             if exp.content() != mls_plaintext_application.content() {
                 if cfg!(test) {
                     panic!("Decrypted application message mismatch");
@@ -687,9 +690,8 @@ pub fn run_test_vector(
 
             // Setup group
             let handshake_bytes = hex_to_bytes(&handshake.ciphertext);
-            let mls_ciphertext_handshake =
-                PrivateMessage::tls_deserialize(&mut handshake_bytes.as_slice())
-                    .expect("Error parsing PrivateMessage");
+            let mls_ciphertext_handshake = PrivateMessageIn::tls_deserialize_exact(handshake_bytes)
+                .expect("Error parsing PrivateMessage");
             *group.message_secrets_test_mut().sender_data_secret_mut() =
                 SenderDataSecret::from_slice(
                     hex_to_bytes(&test_vector.sender_data_secret).as_slice(),
@@ -706,7 +708,7 @@ pub fn run_test_vector(
             let sender_data = mls_ciphertext_handshake
                 .sender_data(group.message_secrets_test_mut(), backend, ciphersuite)
                 .expect("Unable to get sender data");
-            let mls_plaintext_handshake: AuthenticatedContent = mls_ciphertext_handshake
+            let mls_plaintext_handshake: AuthenticatedContentIn = mls_ciphertext_handshake
                 .to_verifiable_content(
                     ciphersuite,
                     backend,
@@ -720,10 +722,10 @@ pub fn run_test_vector(
 
             assert!(matches!(
                 mls_plaintext_handshake.content(),
-                FramedContentBody::Commit(_) | FramedContentBody::Proposal(_)
+                FramedContentBodyIn::Commit(_) | FramedContentBodyIn::Proposal(_)
             ));
             let expected_plaintext = hex_to_bytes(&handshake.plaintext);
-            let exp = PublicMessage::tls_deserialize(&mut expected_plaintext.as_slice()).unwrap();
+            let exp = PublicMessageIn::tls_deserialize_exact(expected_plaintext).unwrap();
 
             if exp.content() != mls_plaintext_handshake.content() {
                 if cfg!(test) {
@@ -758,9 +760,8 @@ pub fn run_test_vector(
 
             // Setup group
             let handshake_bytes = hex_to_bytes(&handshake.ciphertext);
-            let mls_ciphertext_handshake =
-                PrivateMessage::tls_deserialize(&mut handshake_bytes.as_slice())
-                    .expect("Error parsing PrivateMessage");
+            let mls_ciphertext_handshake = PrivateMessageIn::tls_deserialize_exact(handshake_bytes)
+                .expect("Error parsing PrivateMessage");
             let (mut group, _, _) = receiver_group(
                 ciphersuite,
                 backend,
@@ -782,7 +783,7 @@ pub fn run_test_vector(
             let sender_data = mls_ciphertext_handshake
                 .sender_data(group.message_secrets_test_mut(), backend, ciphersuite)
                 .expect("Unable to get sender data");
-            let mls_plaintext_handshake: AuthenticatedContent = mls_ciphertext_handshake
+            let mls_plaintext_handshake: AuthenticatedContentIn = mls_ciphertext_handshake
                 .to_verifiable_content(
                     ciphersuite,
                     backend,
@@ -796,11 +797,11 @@ pub fn run_test_vector(
 
             assert!(matches!(
                 mls_plaintext_handshake.content(),
-                FramedContentBody::Commit(_) | FramedContentBody::Proposal(_)
+                FramedContentBodyIn::Commit(_) | FramedContentBodyIn::Proposal(_)
             ));
             let expected_plaintext = hex_to_bytes(&handshake.plaintext);
             let expected_plaintext =
-                PublicMessage::tls_deserialize(&mut expected_plaintext.as_slice()).unwrap();
+                PublicMessageIn::tls_deserialize_exact(expected_plaintext).unwrap();
 
             if expected_plaintext.content() != mls_plaintext_handshake.content() {
                 return Err(EncTestVectorError::DecryptedHandshakeMessageMismatch);

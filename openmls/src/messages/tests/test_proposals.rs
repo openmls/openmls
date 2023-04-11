@@ -4,7 +4,10 @@ use tls_codec::{Deserialize, Serialize};
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::hash_ref::ProposalRef,
-    messages::proposals::{Proposal, ProposalOrRef, RemoveProposal},
+    messages::{
+        proposals::{Proposal, ProposalOrRef, RemoveProposal},
+        proposals_in::ProposalOrRefIn,
+    },
     test_utils::*,
 };
 
@@ -22,21 +25,21 @@ fn proposals_codec(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     let encoded = proposal_or_ref
         .tls_serialize_detached()
         .expect("An unexpected error occurred.");
-    let decoded = ProposalOrRef::tls_deserialize(&mut encoded.as_slice())
+    let decoded = ProposalOrRefIn::tls_deserialize(&mut encoded.as_slice())
         .expect("An unexpected error occurred.");
 
-    assert_eq!(proposal_or_ref, decoded);
+    assert_eq!(proposal_or_ref, decoded.into());
 
     // Reference
 
-    let reference = ProposalRef::from_proposal(ciphersuite, backend, &proposal)
+    let reference = ProposalRef::from_raw_proposal(ciphersuite, backend, &proposal)
         .expect("An unexpected error occurred.");
     let proposal_or_ref = ProposalOrRef::Reference(reference);
     let encoded = proposal_or_ref
         .tls_serialize_detached()
         .expect("An unexpected error occurred.");
-    let decoded = ProposalOrRef::tls_deserialize(&mut encoded.as_slice())
+    let decoded = ProposalOrRefIn::tls_deserialize(&mut encoded.as_slice())
         .expect("An unexpected error occurred.");
 
-    assert_eq!(proposal_or_ref, decoded);
+    assert_eq!(proposal_or_ref, decoded.into());
 }

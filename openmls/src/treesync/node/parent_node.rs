@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::*;
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
 
+use super::encryption_keys::{EncryptionKey, EncryptionKeyPair};
 use crate::{
     binary_tree::array_representation::{LeafNodeIndex, ParentNodeIndex},
     ciphersuite::HpkePublicKey,
@@ -18,7 +19,6 @@ use crate::{
     treesync::{hashes::ParentHashInput, treekem::UpdatePathNode},
 };
 
-use super::encryption_keys::{EncryptionKey, EncryptionKeyPair};
 #[cfg(not(target_family = "wasm"))]
 use rayon::prelude::*;
 
@@ -45,6 +45,7 @@ impl From<EncryptionKey> for ParentNode {
 }
 
 /// Helper struct for the encryption of a [`ParentNode`].
+#[cfg_attr(test, derive(Clone))]
 #[derive(Debug)]
 pub(crate) struct PlainUpdatePathNode {
     public_key: EncryptionKey,

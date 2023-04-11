@@ -1,16 +1,10 @@
 //! Key Schedule Unit Tests
 
-use crate::test_utils::*;
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::key_store::OpenMlsKeyStore;
 use openmls_traits::{random::OpenMlsRand, OpenMlsCryptoProvider};
-use tls_codec::Serialize;
-
-use crate::{
-    ciphersuite::Secret, schedule::psk::PskBundle, schedule::psk::*, versions::ProtocolVersion,
-};
 
 use super::PskSecret;
+use crate::{ciphersuite::Secret, schedule::psk::*, test_utils::*, versions::ProtocolVersion};
 
 #[apply(ciphersuites_and_backends)]
 fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
@@ -39,16 +33,9 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         })
         .zip(psk_ids.clone())
     {
-        let psk_bundle = PskBundle::new(secret).expect("Could not create PskBundle.");
-        backend
-            .key_store()
-            .store(
-                &psk_id
-                    .tls_serialize_detached()
-                    .expect("Error serializing signature key."),
-                &psk_bundle,
-            )
-            .expect("An unexpected error occured.");
+        psk_id
+            .write_to_key_store(backend, ciphersuite, secret.as_slice())
+            .unwrap();
     }
 
     let _psk_secret =

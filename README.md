@@ -11,7 +11,7 @@
 [![Book][book-release-badge]][book-release-link]
 ![Rust Version][rustc-image]
 
-*OpenMLS* is a Rust implementation of [Messaging Layer Security](https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md) based on draft 12+.
+*OpenMLS* is a Rust implementation of [Messaging Layer Security](https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md).
 <!-- The introduction of the book imports the lines up until here (line 14), excluding the headline and separately the lines below (starting from line 20). If the line numbers change here, please modify the imported lines in the book.-->
 
 It is a software library that can serve as a building block in applications that require end-to-end encryption of messages.
@@ -64,6 +64,10 @@ For more details when working on OpenMLS itself please see the [Developer.md].
 ## Maintenance & Support
 OpenMLS is maintained and developed by [Phoenix R&D] and [Cryspen].
 
+## Acknowledgements
+
+[Zulip] graciously provides the OpenMLS community with a "Zulip Cloud Standard" tier [Zulip instance][chat-link].
+
 [chat-image]: https://img.shields.io/badge/zulip-join_chat-blue.svg?style=for-the-badge&logo=zulip
 [chat-link]: https://openmls.zulipchat.com
 [list-image]: https://img.shields.io/badge/mailing-list-blue.svg?style=for-the-badge
@@ -80,3 +84,5 @@ OpenMLS is maintained and developed by [Phoenix R&D] and [Cryspen].
 [Developer.md]: https://github.com/openmls/openmls/blob/main/Developer.md
 [Phoenix R&D]: https://phnx.im
 [Cryspen]: https://cryspen.com
+[Zulip]: https://zulip.com/
+

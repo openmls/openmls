@@ -29,7 +29,7 @@
 use openmls_traits::{crypto::OpenMlsCrypto, types::CryptoError};
 use serde::{Deserialize, Serialize};
 use tls_codec::{
-    Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize, TlsSliceU8, VLBytes,
+    Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize, VLByteSlice, VLBytes,
 };
 
 use super::Ciphersuite;
@@ -65,7 +65,7 @@ pub type ProposalRef = HashReference;
 
 #[derive(TlsSerialize, TlsSize)]
 struct HashReferenceInput<'a> {
-    label: TlsSliceU8<'a, u8>,
+    label: VLByteSlice<'a>,
     value: VLBytes,
 }
 
@@ -96,7 +96,7 @@ impl HashReference {
         label: &[u8],
     ) -> Result<Self, CryptoError> {
         let input = HashReferenceInput {
-            label: TlsSliceU8(label),
+            label: VLByteSlice(label),
             value: VLBytes::new(value.to_vec()),
         };
         let payload = input

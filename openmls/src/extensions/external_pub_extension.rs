@@ -69,11 +69,7 @@ mod test {
 
         for expected in tests {
             let serialized = expected.tls_serialize_detached().unwrap();
-            let serialized = &mut serialized.as_slice();
-
-            let got = ExternalPubExtension::tls_deserialize(serialized).unwrap();
-
-            assert!(serialized.is_empty());
+            let got = ExternalPubExtension::tls_deserialize_exact(serialized).unwrap();
             assert_eq!(expected, got);
         }
     }

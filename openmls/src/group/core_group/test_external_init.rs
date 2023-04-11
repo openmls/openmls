@@ -1,5 +1,7 @@
 use crate::{
-    framing::{FramingParameters, WireFormat},
+    framing::{
+        test_framing::setup_alice_bob_group, FramedContentBody, FramingParameters, WireFormat,
+    },
     group::{
         errors::ExternalCommitError,
         public_group::errors::CreationFromExternalError,
@@ -7,7 +9,6 @@ use crate::{
         CreateCommitParams,
     },
     messages::proposals::{ProposalOrRef, ProposalType},
-    prelude_test::test_framing::setup_alice_bob_group,
     test_utils::*,
 };
 
@@ -132,14 +133,16 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
 
     // Let's make sure there's a remove in the commit.
     let contains_remove = match create_commit_result.commit.content() {
-        crate::prelude_test::mls_content::FramedContentBody::Commit(commit) => commit
-            .proposals
-            .as_slice()
-            .iter()
-            .find(|&proposal| match proposal {
-                ProposalOrRef::Proposal(proposal) => proposal.is_type(ProposalType::Remove),
-                _ => false,
-            }),
+        FramedContentBody::Commit(commit) => {
+            commit
+                .proposals
+                .as_slice()
+                .iter()
+                .find(|&proposal| match proposal {
+                    ProposalOrRef::Proposal(proposal) => proposal.is_type(ProposalType::Remove),
+                    _ => false,
+                })
+        }
         _ => panic!("Wrong content type."),
     }
     .is_some();

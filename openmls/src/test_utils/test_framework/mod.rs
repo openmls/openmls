@@ -25,7 +25,7 @@ use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::{hash_ref::KeyPackageRef, *},
     credentials::*,
-    framing::{mls_content::ContentType, *},
+    framing::*,
     group::*,
     key_packages::*,
     messages::*,

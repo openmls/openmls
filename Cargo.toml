@@ -5,7 +5,7 @@ members = [
     "openmls_rust_crypto",
     "fuzz",
     "cli",
-    # "interop_client",
+    "interop_client",
     "memory_keystore",
     "evercrypt_backend",
     "delivery-service/ds",
@@ -16,7 +16,7 @@ resolver = "2"
 
 # Patching unreleased crates
 [workspace.dependencies]
-tls_codec = { version = "0.3.0-pre.1", features = ["derive", "serde", "mls"] }
+tls_codec = { version = "0.3.0-pre.2", features = ["derive", "serde", "mls"] }
 
 [patch.crates-io.hpke-rs]
 git = "https://github.com/franziskuskiefer/hpke-rs.git"

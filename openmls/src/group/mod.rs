@@ -7,6 +7,7 @@ mod group_context;
 #[cfg(test)]
 use crate::ciphersuite::*;
 use crate::extensions::*;
+#[cfg(test)]
 use crate::utils::*;
 
 use openmls_traits::OpenMlsCryptoProvider;
@@ -46,7 +47,18 @@ pub use proposals::*;
 
 /// A group ID. The group ID is chosen by the creator of the group and should be globally unique.
 #[derive(
-    Hash, Eq, Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Deserialize,
+    Serialize,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
 )]
 pub struct GroupId {
     value: VLBytes,
@@ -89,14 +101,16 @@ impl GroupId {
 /// Group epoch. Internally this is stored as a `u64`.
 /// The group epoch is incremented with every valid Commit that is merged into the group state.
 #[derive(
+    Clone,
+    Copy,
     Debug,
     PartialEq,
     Eq,
-    Copy,
-    Clone,
+    PartialOrd,
+    Ord,
     Hash,
-    Serialize,
     Deserialize,
+    Serialize,
     TlsDeserialize,
     TlsSerialize,
     TlsSize,
@@ -112,12 +126,6 @@ impl GroupEpoch {
     /// Returns the group epoch as a `u64`.
     pub fn as_u64(&self) -> u64 {
         self.0
-    }
-}
-
-impl PartialOrd for GroupEpoch {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.0.partial_cmp(&other.0)
     }
 }
 
