@@ -504,6 +504,76 @@
 <a href="#504" id="504">504</a>
 <a href="#505" id="505">505</a>
 <a href="#506" id="506">506</a>
+<a href="#507" id="507">507</a>
+<a href="#508" id="508">508</a>
+<a href="#509" id="509">509</a>
+<a href="#510" id="510">510</a>
+<a href="#511" id="511">511</a>
+<a href="#512" id="512">512</a>
+<a href="#513" id="513">513</a>
+<a href="#514" id="514">514</a>
+<a href="#515" id="515">515</a>
+<a href="#516" id="516">516</a>
+<a href="#517" id="517">517</a>
+<a href="#518" id="518">518</a>
+<a href="#519" id="519">519</a>
+<a href="#520" id="520">520</a>
+<a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
+<a href="#524" id="524">524</a>
+<a href="#525" id="525">525</a>
+<a href="#526" id="526">526</a>
+<a href="#527" id="527">527</a>
+<a href="#528" id="528">528</a>
+<a href="#529" id="529">529</a>
+<a href="#530" id="530">530</a>
+<a href="#531" id="531">531</a>
+<a href="#532" id="532">532</a>
+<a href="#533" id="533">533</a>
+<a href="#534" id="534">534</a>
+<a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
+<a href="#539" id="539">539</a>
+<a href="#540" id="540">540</a>
+<a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
+<a href="#544" id="544">544</a>
+<a href="#545" id="545">545</a>
+<a href="#546" id="546">546</a>
+<a href="#547" id="547">547</a>
+<a href="#548" id="548">548</a>
+<a href="#549" id="549">549</a>
+<a href="#550" id="550">550</a>
+<a href="#551" id="551">551</a>
+<a href="#552" id="552">552</a>
+<a href="#553" id="553">553</a>
+<a href="#554" id="554">554</a>
+<a href="#555" id="555">555</a>
+<a href="#556" id="556">556</a>
+<a href="#557" id="557">557</a>
+<a href="#558" id="558">558</a>
+<a href="#559" id="559">559</a>
+<a href="#560" id="560">560</a>
+<a href="#561" id="561">561</a>
+<a href="#562" id="562">562</a>
+<a href="#563" id="563">563</a>
+<a href="#564" id="564">564</a>
+<a href="#565" id="565">565</a>
+<a href="#566" id="566">566</a>
+<a href="#567" id="567">567</a>
+<a href="#568" id="568">568</a>
+<a href="#569" id="569">569</a>
+<a href="#570" id="570">570</a>
+<a href="#571" id="571">571</a>
+<a href="#572" id="572">572</a>
+<a href="#573" id="573">573</a>
+<a href="#574" id="574">574</a>
+<a href="#575" id="575">575</a>
+<a href="#576" id="576">576</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Proposals
 //!
 //! This module defines all the different types of Proposals.
@@ -511,7 +581,7 @@
 //! To find out if a specific proposal type is supported,
 //! [`ProposalType::is_supported()`] can be used.
 
-</span><span class="kw">use </span>std::convert::TryFrom;
+</span><span class="kw">use </span>std::io::{Read, Write};
 
 <span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -537,97 +607,136 @@
 ///
 ///
 /// ```c
-/// // draft-ietf-mls-protocol-17
+/// // draft-ietf-mls-protocol-20
 /// // See IANA registry for registered values
 /// uint16 ProposalType;
 /// ```
 ///
-/// | Value           | Name                     | Recommended | Path Required | Reference |
-/// |:================|:=========================|:============|:==============|:==========|
-/// | 0x0000          | RESERVED                 | N/A         | N/A           | RFC XXXX  |
-/// | 0x0001          | add                      | Y           | N             | RFC XXXX  |
-/// | 0x0002          | update                   | Y           | Y             | RFC XXXX  |
-/// | 0x0003          | remove                   | Y           | Y             | RFC XXXX  |
-/// | 0x0004          | psk                      | Y           | N             | RFC XXXX  |
-/// | 0x0005          | reinit                   | Y           | N             | RFC XXXX  |
-/// | 0x0006          | external_init            | Y           | Y             | RFC XXXX  |
-/// | 0x0007          | group_context_extensions | Y           | Y             | RFC XXXX  |
-/// | 0xf000 - 0xffff | Reserved for Private Use | N/A         | N/A           | RFC XXXX  |
+/// | Value           | Name                     | R | Ext | Path | Ref      |
+/// |-----------------|--------------------------|---|-----|------|----------|
+/// | 0x0000          | RESERVED                 | - | -   | -    | RFC XXXX |
+/// | 0x0001          | add                      | Y | Y   | N    | RFC XXXX |
+/// | 0x0002          | update                   | Y | N   | Y    | RFC XXXX |
+/// | 0x0003          | remove                   | Y | Y   | Y    | RFC XXXX |
+/// | 0x0004          | psk                      | Y | Y   | N    | RFC XXXX |
+/// | 0x0005          | reinit                   | Y | Y   | N    | RFC XXXX |
+/// | 0x0006          | external_init            | Y | N   | Y    | RFC XXXX |
+/// | 0x0007          | group_context_extensions | Y | Y   | Y    | RFC XXXX |
+/// | 0x0A0A          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0x1A1A          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0x2A2A          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0x3A3A          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0x4A4A          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0x5A5A          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0x6A6A          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0x7A7A          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0x8A8A          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0x9A9A          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0xAAAA          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0xBABA          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0xCACA          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0xDADA          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0xEAEA          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0xF000 - 0xFFFF | Reserved for Private Use | - | -   | -    | RFC XXXX |
 ///
 /// # Extensions
 ///
 /// | Value  | Name    | Recommended | Path Required | Reference | Notes                        |
 /// |:=======|:========|:============|:==============|:==========|:=============================|
 /// | 0x0008 | app_ack | Y           | Y             | RFC XXXX  | draft-ietf-mls-extensions-00 |
-</span><span class="attr">#[derive(
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Clone,
-    Copy,
-    Debug,
-    TlsSerialize,
-    TlsDeserialize,
-    TlsSize,
-    Serialize,
-    Deserialize,
-)]
-#[repr(u16)]
+</span><span class="attr">#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Serialize, Deserialize)]
 #[allow(missing_docs)]
 </span><span class="kw">pub enum </span>ProposalType {
-    Add = <span class="number">1</span>,
-    Update = <span class="number">2</span>,
-    Remove = <span class="number">3</span>,
-    PreSharedKey = <span class="number">4</span>,
-    Reinit = <span class="number">5</span>,
-    ExternalInit = <span class="number">6</span>,
-    GroupContextExtensions = <span class="number">7</span>,
-    AppAck = <span class="number">8</span>,
+    Add,
+    Update,
+    Remove,
+    PreSharedKey,
+    Reinit,
+    ExternalInit,
+    GroupContextExtensions,
+    AppAck,
+    Unknown(u16),
+}
+
+<span class="kw">impl </span>tls_codec::Size <span class="kw">for </span>ProposalType {
+    <span class="kw">fn </span>tls_serialized_len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="number">2
+    </span>}
+}
+
+<span class="kw">impl </span>tls_codec::Deserialize <span class="kw">for </span>ProposalType {
+    <span class="kw">fn </span>tls_deserialize&lt;R: Read&gt;(bytes: <span class="kw-2">&amp;mut </span>R) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, tls_codec::Error&gt;
+    <span class="kw">where
+        </span><span class="self">Self</span>: Sized,
+    {
+        <span class="kw">let </span><span class="kw-2">mut </span>proposal_type = [<span class="number">0u8</span>; <span class="number">2</span>];
+        bytes.read_exact(<span class="kw-2">&amp;mut </span>proposal_type)<span class="question-mark">?</span>;
+
+        <span class="prelude-val">Ok</span>(ProposalType::from(u16::from_be_bytes(proposal_type)))
+    }
+}
+
+<span class="kw">impl </span>tls_codec::Serialize <span class="kw">for </span>ProposalType {
+    <span class="kw">fn </span>tls_serialize&lt;W: Write&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, writer: <span class="kw-2">&amp;mut </span>W) -&gt; <span class="prelude-ty">Result</span>&lt;usize, tls_codec::Error&gt; {
+        writer.write_all(<span class="kw-2">&amp;</span>u16::from(<span class="kw-2">*</span><span class="self">self</span>).to_be_bytes())<span class="question-mark">?</span>;
+
+        <span class="prelude-val">Ok</span>(<span class="number">2</span>)
+    }
 }
 
 <span class="kw">impl </span>ProposalType {
     <span class="doccomment">/// Check whether a proposal type is supported or not. Returns `true`
     /// if a proposal is supported and `false` otherwise.
     </span><span class="kw">pub fn </span>is_supported(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="kw">match </span><span class="self">self </span>{
+        <span class="macro">matches!</span>(
+            <span class="self">self</span>,
             ProposalType::Add
-            | ProposalType::Update
-            | ProposalType::Remove
-            | ProposalType::PreSharedKey
-            | ProposalType::Reinit
-            | ProposalType::ExternalInit
-            | ProposalType::GroupContextExtensions =&gt; <span class="bool-val">true</span>,
-            ProposalType::AppAck =&gt; <span class="bool-val">false</span>,
-        }
+                | ProposalType::Update
+                | ProposalType::Remove
+                | ProposalType::PreSharedKey
+                | ProposalType::Reinit
+                | ProposalType::ExternalInit
+                | ProposalType::GroupContextExtensions
+        )
     }
 
     <span class="doccomment">/// Returns `true` if the proposal type requires a path and `false`
     </span><span class="kw">pub fn </span>is_path_required(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="kw">match </span><span class="self">self </span>{
-            <span class="self">Self</span>::Add
-            | <span class="self">Self</span>::PreSharedKey
-            | <span class="self">Self</span>::Reinit
-            | <span class="self">Self</span>::AppAck
-            | <span class="self">Self</span>::GroupContextExtensions =&gt; <span class="bool-val">false</span>,
-            <span class="self">Self</span>::Update | <span class="self">Self</span>::Remove | <span class="self">Self</span>::ExternalInit =&gt; <span class="bool-val">true</span>,
+        <span class="macro">matches!</span>(
+            <span class="self">self</span>,
+            <span class="self">Self</span>::Update | <span class="self">Self</span>::Remove | <span class="self">Self</span>::ExternalInit | <span class="self">Self</span>::GroupContextExtensions
+        )
+    }
+}
+
+<span class="kw">impl </span>From&lt;u16&gt; <span class="kw">for </span>ProposalType {
+    <span class="kw">fn </span>from(value: u16) -&gt; <span class="self">Self </span>{
+        <span class="kw">match </span>value {
+            <span class="number">1 </span>=&gt; ProposalType::Add,
+            <span class="number">2 </span>=&gt; ProposalType::Update,
+            <span class="number">3 </span>=&gt; ProposalType::Remove,
+            <span class="number">4 </span>=&gt; ProposalType::PreSharedKey,
+            <span class="number">5 </span>=&gt; ProposalType::Reinit,
+            <span class="number">6 </span>=&gt; ProposalType::ExternalInit,
+            <span class="number">7 </span>=&gt; ProposalType::GroupContextExtensions,
+            <span class="number">8 </span>=&gt; ProposalType::AppAck,
+            unknown =&gt; ProposalType::Unknown(unknown),
         }
     }
 }
 
-<span class="kw">impl </span>TryFrom&lt;u16&gt; <span class="kw">for </span>ProposalType {
-    <span class="kw">type </span>Error = <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str;
-    <span class="kw">fn </span>try_from(value: u16) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
+<span class="kw">impl </span>From&lt;ProposalType&gt; <span class="kw">for </span>u16 {
+    <span class="kw">fn </span>from(value: ProposalType) -&gt; <span class="self">Self </span>{
         <span class="kw">match </span>value {
-            <span class="number">1 </span>=&gt; <span class="prelude-val">Ok</span>(ProposalType::Add),
-            <span class="number">2 </span>=&gt; <span class="prelude-val">Ok</span>(ProposalType::Update),
-            <span class="number">3 </span>=&gt; <span class="prelude-val">Ok</span>(ProposalType::Remove),
-            <span class="number">4 </span>=&gt; <span class="prelude-val">Ok</span>(ProposalType::PreSharedKey),
-            <span class="number">5 </span>=&gt; <span class="prelude-val">Ok</span>(ProposalType::Reinit),
-            <span class="number">6 </span>=&gt; <span class="prelude-val">Ok</span>(ProposalType::ExternalInit),
-            <span class="number">7 </span>=&gt; <span class="prelude-val">Ok</span>(ProposalType::GroupContextExtensions),
-            <span class="number">8 </span>=&gt; <span class="prelude-val">Ok</span>(ProposalType::AppAck),
-            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(<span class="string">&quot;Unknown proposal type.&quot;</span>),
+            ProposalType::Add =&gt; <span class="number">1</span>,
+            ProposalType::Update =&gt; <span class="number">2</span>,
+            ProposalType::Remove =&gt; <span class="number">3</span>,
+            ProposalType::PreSharedKey =&gt; <span class="number">4</span>,
+            ProposalType::Reinit =&gt; <span class="number">5</span>,
+            ProposalType::ExternalInit =&gt; <span class="number">6</span>,
+            ProposalType::GroupContextExtensions =&gt; <span class="number">7</span>,
+            ProposalType::AppAck =&gt; <span class="number">8</span>,
+            ProposalType::Unknown(unknown) =&gt; unknown,
         }
     }
 }
@@ -1009,6 +1118,37 @@
     sender: KeyPackageRef,
     first_generation: u32,
     last_generation: u32,
+}
+
+<span class="attr">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use </span>tls_codec::{Deserialize, Serialize};
+
+    <span class="kw">use </span><span class="kw">super</span>::ProposalType;
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>that_unknown_proposal_types_are_de_serialized_correctly() {
+        <span class="kw">let </span>proposal_types = [<span class="number">0x0000u16</span>, <span class="number">0x0A0A</span>, <span class="number">0x7A7A</span>, <span class="number">0xF000</span>, <span class="number">0xFFFF</span>];
+
+        <span class="kw">for </span>proposal_type <span class="kw">in </span>proposal_types.into_iter() {
+            <span class="comment">// Construct an unknown proposal type.
+            </span><span class="kw">let </span>test = proposal_type.to_be_bytes().to_vec();
+
+            <span class="comment">// Test deserialization.
+            </span><span class="kw">let </span>got = ProposalType::tls_deserialize_exact(<span class="kw-2">&amp;</span>test).unwrap();
+
+            <span class="kw">match </span>got {
+                ProposalType::Unknown(got_proposal_type) =&gt; {
+                    <span class="macro">assert_eq!</span>(proposal_type, got_proposal_type);
+                }
+                other =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Expected `ProposalType::Unknown`, got `{:?}`.&quot;</span>, other),
+            }
+
+            <span class="comment">// Test serialization.
+            </span><span class="kw">let </span>got_serialized = got.tls_serialize_detached().unwrap();
+            <span class="macro">assert_eq!</span>(test, got_serialized);
+        }
+    }
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.2 (9eb3afe9e 2023-03-27)" data-search-js="search-98d53477a794af0b.js" data-settings-js="settings-c3c521c753752a1a.js" data-settings-css="settings-08ddfdda51b8ee2e.css" ></div></body></html>
