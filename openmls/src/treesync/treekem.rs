@@ -10,7 +10,6 @@ use openmls_traits::{
     types::{Ciphersuite, HpkeCiphertext},
     OpenMlsCryptoProvider,
 };
-use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
