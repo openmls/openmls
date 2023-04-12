@@ -3,25 +3,28 @@
 //!
 //! It is based on the Mock client in that repository.
 
+use std::{collections::HashMap, convert::TryFrom, fmt::Display, fs::File, io::Write, sync::Mutex};
+
 use clap::Parser;
 use clap_derive::*;
-use openmls::prelude::*;
-
-use openmls::prelude::config::CryptoConfig;
-use openmls::schedule::{ExternalPsk, PreSharedKeyId, Psk};
-use openmls::treesync::test_utils::{read_keys_from_key_store, write_keys_from_key_store};
+use mls_client::{
+    mls_client_server::{MlsClient, MlsClientServer},
+    *,
+};
+use mls_interop_proto::mls_client;
+use openmls::{
+    prelude::{config::CryptoConfig, *},
+    schedule::{ExternalPsk, PreSharedKeyId, Psk},
+    treesync::{
+        test_utils::{read_keys_from_key_store, write_keys_from_key_store},
+        RatchetTree,
+    },
+};
 use openmls_basic_credential::SignatureKeyPair;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::OpenMlsCryptoProvider;
 use serde::{self, Serialize};
-use std::{collections::HashMap, convert::TryFrom, fmt::Display, fs::File, io::Write, sync::Mutex};
 use tonic::{transport::Server, Request, Response, Status};
-
-use openmls_rust_crypto::OpenMlsRustCrypto;
-
-use mls_client::mls_client_server::{MlsClient, MlsClientServer};
-use mls_client::*;
-
-use mls_interop_proto::mls_client;
 
 const IMPLEMENTATION_NAME: &str = "OpenMLS";
 
@@ -341,8 +344,16 @@ impl MlsClient for MlsClientImpl {
         let welcome = welcome_msg.into_welcome().ok_or(Status::invalid_argument(
             "unable to get Welcome from MlsMessage",
         ))?;
-        let group = MlsGroup::new_from_welcome(&crypto_provider, &mls_group_config, welcome, None)
-            .map_err(into_status)?;
+
+        let ratchet_tree = if join_group_request.ratchet_tree.is_empty() {
+            None
+        } else {
+            Some(RatchetTree::tls_deserialize_exact(&join_group_request.ratchet_tree).unwrap())
+        };
+
+        let group =
+            MlsGroup::new_from_welcome(&crypto_provider, &mls_group_config, welcome, ratchet_tree)
+                .map_err(into_status)?;
 
         let interop_group = InteropGroup {
             wire_format_policy,
