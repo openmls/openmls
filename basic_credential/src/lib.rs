@@ -53,12 +53,22 @@ impl Signer for SignatureKeyPair {
                 Ok(signature.to_der().to_bytes().into())
             }
             SignatureScheme::ED25519 => {
-                let k = ed25519_dalek::SigningKey::from_bytes(
-                    self.private
-                        .as_slice()
-                        .try_into()
-                        .map_err(|_| Error::SigningError)?,
-                );
+                let k = match self.private().len() {
+                    ed25519_dalek::SECRET_KEY_LENGTH => ed25519_dalek::SigningKey::from_bytes(
+                        self.private
+                            .as_slice()
+                            .try_into()
+                            .map_err(|_| Error::SigningError)?,
+                    ),
+                    ed25519_dalek::KEYPAIR_LENGTH => ed25519_dalek::SigningKey::from_keypair_bytes(
+                        self.private
+                            .as_slice()
+                            .try_into()
+                            .map_err(|_| Error::SigningError)?,
+                    )
+                    .map_err(|_| Error::SigningError)?,
+                    _ => return Err(Error::SigningError),
+                };
                 let signature = k.sign(payload);
                 Ok(signature.to_bytes().into())
             }
