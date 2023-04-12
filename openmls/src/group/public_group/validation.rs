@@ -3,6 +3,8 @@
 
 use std::collections::{BTreeSet, HashSet};
 
+use openmls_traits::types::VerifiableCiphersuite;
+
 use super::PublicGroup;
 #[cfg(test)]
 use crate::treesync::errors::LeafNodeValidationError;
@@ -193,7 +195,9 @@ impl PublicGroup {
                 .key_package()
                 .leaf_node()
                 .capabilities();
-            if !capabilities.ciphersuites().contains(&self.ciphersuite())
+            if !capabilities
+                .ciphersuites()
+                .contains(&VerifiableCiphersuite::from(self.ciphersuite()))
                 || !capabilities.versions().contains(&self.version())
             {
                 log::error!("Tried to commit an Add proposal, where either the group's `Ciphersuite` or the group's `ProtocolVersion` is not in the `KeyPackage`'s `Capabilities`.");
