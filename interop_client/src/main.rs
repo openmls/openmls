@@ -24,7 +24,7 @@ use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::OpenMlsCryptoProvider;
 use serde::{self, Serialize};
-use tonic::{async_trait, transport::Server, Request, Response, Status, Code};
+use tonic::{async_trait, transport::Server, Code, Request, Response, Status};
 
 const IMPLEMENTATION_NAME: &str = "OpenMLS";
 
