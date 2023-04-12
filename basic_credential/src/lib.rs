@@ -45,6 +45,7 @@ impl Debug for SignatureKeyPair {
 
 impl Signer for SignatureKeyPair {
     fn sign(&self, payload: &[u8]) -> Result<Vec<u8>, Error> {
+        println!("{}", self.private.len());
         match self.signature_scheme {
             SignatureScheme::ECDSA_SECP256R1_SHA256 => {
                 let k = SigningKey::from_bytes(&self.private).map_err(|_| Error::SigningError)?;
@@ -52,13 +53,12 @@ impl Signer for SignatureKeyPair {
                 Ok(signature.to_der().to_bytes().into())
             }
             SignatureScheme::ED25519 => {
-                let k = ed25519_dalek::SigningKey::from_keypair_bytes(
+                let k = ed25519_dalek::SigningKey::from_bytes(
                     self.private
                         .as_slice()
                         .try_into()
                         .map_err(|_| Error::SigningError)?,
-                )
-                .map_err(|_| Error::SigningError)?;
+                );
                 let signature = k.sign(payload);
                 Ok(signature.to_bytes().into())
             }
