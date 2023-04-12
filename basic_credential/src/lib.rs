@@ -45,7 +45,6 @@ impl Debug for SignatureKeyPair {
 
 impl Signer for SignatureKeyPair {
     fn sign(&self, payload: &[u8]) -> Result<Vec<u8>, Error> {
-        println!("{}", self.private.len());
         match self.signature_scheme {
             SignatureScheme::ECDSA_SECP256R1_SHA256 => {
                 let k = SigningKey::from_bytes(&self.private).map_err(|_| Error::SigningError)?;
