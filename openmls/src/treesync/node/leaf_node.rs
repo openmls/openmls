@@ -1000,7 +1000,7 @@ impl OpenMlsLeafNode {
 
     /// Get a list of supported cipher suites.
     pub fn ciphersuites(&self) -> &[VerifiableCiphersuite] {
-        &self.leaf_node.payload.capabilities.ciphersuites()
+        self.leaf_node.payload.capabilities.ciphersuites()
     }
 }
 

@@ -52,7 +52,7 @@ impl Capabilities {
             },
             ciphersuites: match ciphersuites {
                 Some(c) => c
-                    .into_iter()
+                    .iter()
                     .map(|c| VerifiableCiphersuite::from(*c))
                     .collect(),
                 None => default_ciphersuites()
@@ -161,7 +161,7 @@ impl Default for Capabilities {
             versions: default_versions(),
             ciphersuites: default_ciphersuites()
                 .into_iter()
-                .map(|cs| VerifiableCiphersuite::from(cs))
+                .map(VerifiableCiphersuite::from)
                 .collect(),
             extensions: default_extensions(),
             proposals: default_proposals(),
