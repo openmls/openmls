@@ -1,6 +1,9 @@
 //! This module contains the [`LeafNode`] struct and its implementation.
 use openmls_traits::{
-    key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite, OpenMlsCryptoProvider,
+    key_store::OpenMlsKeyStore,
+    signatures::Signer,
+    types::{Ciphersuite, VerifiableCiphersuite},
+    OpenMlsCryptoProvider,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -837,7 +840,7 @@ impl OpenMlsLeafNode {
             .payload
             .capabilities
             .ciphersuites
-            .contains(&ciphersuite)
+            .contains(&VerifiableCiphersuite::from(ciphersuite))
             || !self
                 .leaf_node
                 .payload
@@ -996,8 +999,8 @@ impl OpenMlsLeafNode {
     }
 
     /// Get a list of supported cipher suites.
-    pub fn ciphersuites(&self) -> &[Ciphersuite] {
-        &self.leaf_node.payload.capabilities.ciphersuites
+    pub fn ciphersuites(&self) -> &[VerifiableCiphersuite] {
+        &self.leaf_node.payload.capabilities.ciphersuites()
     }
 }
 

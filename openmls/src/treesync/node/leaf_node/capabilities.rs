@@ -1,4 +1,4 @@
-use openmls_traits::types::Ciphersuite;
+use openmls_traits::types::{Ciphersuite, VerifiableCiphersuite};
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
@@ -27,7 +27,7 @@ use crate::{
 )]
 pub struct Capabilities {
     pub(super) versions: Vec<ProtocolVersion>,
-    pub(super) ciphersuites: Vec<Ciphersuite>,
+    pub(super) ciphersuites: Vec<VerifiableCiphersuite>,
     pub(super) extensions: Vec<ExtensionType>,
     pub(super) proposals: Vec<ProposalType>,
     pub(super) credentials: Vec<CredentialType>,
@@ -51,8 +51,14 @@ impl Capabilities {
                 None => default_versions(),
             },
             ciphersuites: match ciphersuites {
-                Some(c) => c.into(),
-                None => default_ciphersuites(),
+                Some(c) => c
+                    .into_iter()
+                    .map(|c| VerifiableCiphersuite::from(*c))
+                    .collect(),
+                None => default_ciphersuites()
+                    .into_iter()
+                    .map(VerifiableCiphersuite::from)
+                    .collect(),
             },
             extensions: match extensions {
                 Some(e) => e.into(),
@@ -88,7 +94,7 @@ impl Capabilities {
     }
 
     /// Get a reference to the list of ciphersuites in this extension.
-    pub fn ciphersuites(&self) -> &[Ciphersuite] {
+    pub fn ciphersuites(&self) -> &[VerifiableCiphersuite] {
         &self.ciphersuites
     }
 
@@ -144,7 +150,7 @@ impl Capabilities {
     }
 
     /// Set the ciphersuites list.
-    pub fn set_ciphersuites(&mut self, ciphersuites: Vec<Ciphersuite>) {
+    pub fn set_ciphersuites(&mut self, ciphersuites: Vec<VerifiableCiphersuite>) {
         self.ciphersuites = ciphersuites;
     }
 }
@@ -153,7 +159,10 @@ impl Default for Capabilities {
     fn default() -> Self {
         Capabilities {
             versions: default_versions(),
-            ciphersuites: default_ciphersuites(),
+            ciphersuites: default_ciphersuites()
+                .into_iter()
+                .map(|cs| VerifiableCiphersuite::from(cs))
+                .collect(),
             extensions: default_extensions(),
             proposals: default_proposals(),
             credentials: default_credentials(),
