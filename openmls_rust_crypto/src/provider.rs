@@ -216,32 +216,6 @@ impl OpenMlsCrypto for RustCrypto {
         }
     }
 
-    fn signature_key_gen(
-        &self,
-        alg: openmls_traits::types::SignatureScheme,
-    ) -> Result<(Vec<u8>, Vec<u8>), openmls_traits::types::CryptoError> {
-        match alg {
-            SignatureScheme::ECDSA_SECP256R1_SHA256 => {
-                let mut rng = self
-                    .rng
-                    .write()
-                    .map_err(|_| CryptoError::InsufficientRandomness)?;
-                let k = SigningKey::random(&mut *rng);
-                let pk = k.verifying_key().to_encoded_point(false).as_bytes().into();
-                Ok((k.to_bytes().as_slice().into(), pk))
-            }
-            SignatureScheme::ED25519 => {
-                // XXX: We can't use our RNG here
-                let k = ed25519_dalek::Keypair::generate(&mut rand_07::rngs::OsRng).to_bytes();
-                let pk = k[ed25519_dalek::SECRET_KEY_LENGTH..].to_vec();
-                // full key here because we need it to sign...
-                let sk_pk = k.into();
-                Ok((sk_pk, pk))
-            }
-            _ => Err(CryptoError::UnsupportedSignatureScheme),
-        }
-    }
-
     fn verify_signature(
         &self,
         alg: openmls_traits::types::SignatureScheme,
@@ -271,28 +245,6 @@ impl OpenMlsCrypto for RustCrypto {
                 sig.clone_from_slice(signature);
                 k.verify_strict(data, &ed25519_dalek::Signature::from(sig))
                     .map_err(|_| CryptoError::InvalidSignature)
-            }
-            _ => Err(CryptoError::UnsupportedSignatureScheme),
-        }
-    }
-
-    fn sign(
-        &self,
-        alg: openmls_traits::types::SignatureScheme,
-        data: &[u8],
-        key: &[u8],
-    ) -> Result<Vec<u8>, openmls_traits::types::CryptoError> {
-        match alg {
-            SignatureScheme::ECDSA_SECP256R1_SHA256 => {
-                let k = SigningKey::from_bytes(key).map_err(|_| CryptoError::CryptoLibraryError)?;
-                let signature = k.sign(data);
-                Ok(signature.to_der().to_bytes().into())
-            }
-            SignatureScheme::ED25519 => {
-                let k = ed25519_dalek::Keypair::from_bytes(key)
-                    .map_err(|_| CryptoError::CryptoLibraryError)?;
-                let signature = k.sign(data);
-                Ok(signature.to_bytes().into())
             }
             _ => Err(CryptoError::UnsupportedSignatureScheme),
         }

@@ -1,0 +1,17 @@
+[package]
+name = "openmls_libcrux"
+authors = ["OpenMLS Authors"]
+version = "0.1.0"
+edition = "2018"
+description = "A crypto backend for OpenMLS implementing openmls_traits using libcrux."
+license = "MIT"
+documentation = "https://docs.rs/openmls_libcrux"
+repository = "https://github.com/openmls/openmls/tree/main/libcrux_backend"
+readme = "README.md"
+
+[dependencies]
+openmls_traits = { version = "0.1.0", path = "../traits" }
+libcrux = { version = "0.0.1-dev.2", features = ["rand"] }
+openmls_memory_keystore = { version = "0.1.0", path = "../memory_keystore", package = "openmls_memory_keystore" }
+log = { workspace = true }
+thiserror = { workspace = true }

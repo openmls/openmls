@@ -1,16 +1,18 @@
-//! # Evercrypt Crypto Provider
+//! # libcrux Crypto Provider
 //!
-//! Use evercrypt for all crypto operations.
+//! Use libcrux for all crypto operations.
 
 use std::{
     io::{Read, Write},
     sync::RwLock,
 };
 
-use evercrypt::prelude::*;
-use hpke::Hpke;
-use hpke_rs_crypto::types as hpke_types;
-use hpke_rs_evercrypt::HpkeEvercrypt;
+use libcrux::{
+    aead, digest,
+    drbg::Drbg,
+    hkdf, hpke,
+    signature::{self},
+};
 use log::error;
 use openmls_traits::{
     crypto::OpenMlsCrypto,
@@ -20,27 +22,28 @@ use openmls_traits::{
         HpkeConfig, HpkeKdfType, HpkeKemType, HpkeKeyPair, KemOutput, SignatureScheme,
     },
 };
-use rand::{RngCore, SeedableRng};
 
-/// The Evercrypt crypto provider.
+/// The libcrux crypto provider.
 #[derive(Debug)]
-pub struct EvercryptProvider {
-    rng: RwLock<rand_chacha::ChaCha20Rng>,
+pub struct LibcruxProvider {
+    rng: RwLock<Drbg>,
 }
 
-impl Default for EvercryptProvider {
+impl Default for LibcruxProvider {
     fn default() -> Self {
         Self {
-            rng: RwLock::new(rand_chacha::ChaCha20Rng::from_entropy()),
+            rng: RwLock::new(Drbg::new(digest::Algorithm::Sha256)),
         }
     }
 }
 
 #[inline(always)]
-fn signature_mode(signature_scheme: SignatureScheme) -> Result<SignatureMode, &'static str> {
+fn signature_mode(signature_scheme: SignatureScheme) -> Result<signature::Algorithm, &'static str> {
     match signature_scheme {
-        SignatureScheme::ED25519 => Ok(SignatureMode::Ed25519),
-        SignatureScheme::ECDSA_SECP256R1_SHA256 => Ok(SignatureMode::P256),
+        SignatureScheme::ED25519 => Ok(signature::Algorithm::Ed25519),
+        SignatureScheme::ECDSA_SECP256R1_SHA256 => {
+            Ok(signature::Algorithm::EcDsaP256(digest::Algorithm::Sha256))
+        }
         SignatureScheme::ED448 => Err("SignatureScheme ed448 is not supported."),
         SignatureScheme::ECDSA_SECP521R1_SHA512 => {
             Err("SignatureScheme ecdsa_secp521r1 is not supported.")
@@ -52,11 +55,13 @@ fn signature_mode(signature_scheme: SignatureScheme) -> Result<SignatureMode, &'
 }
 
 #[inline(always)]
-fn hash_from_signature(signature_scheme: SignatureScheme) -> Result<DigestMode, &'static str> {
+fn hash_from_signature(
+    signature_scheme: SignatureScheme,
+) -> Result<digest::Algorithm, &'static str> {
     match signature_scheme {
         // The digest mode for ed25519 is not really used
-        SignatureScheme::ED25519 => Ok(DigestMode::Sha256),
-        SignatureScheme::ECDSA_SECP256R1_SHA256 => Ok(DigestMode::Sha256),
+        SignatureScheme::ED25519 => Ok(digest::Algorithm::Sha256),
+        SignatureScheme::ECDSA_SECP256R1_SHA256 => Ok(digest::Algorithm::Sha256),
         SignatureScheme::ED448 => Err("SignatureScheme ed448 is not supported."),
         SignatureScheme::ECDSA_SECP521R1_SHA512 => {
             Err("SignatureScheme ecdsa_secp521r1 is not supported.")
@@ -68,33 +73,35 @@ fn hash_from_signature(signature_scheme: SignatureScheme) -> Result<DigestMode, 
 }
 
 #[inline(always)]
-fn hash_from_algorithm(hash_type: HashType) -> DigestMode {
+fn hash_from_algorithm(hash_type: HashType) -> digest::Algorithm {
     match hash_type {
-        HashType::Sha2_256 => DigestMode::Sha256,
-        HashType::Sha2_384 => DigestMode::Sha384,
-        HashType::Sha2_512 => DigestMode::Sha512,
+        HashType::Sha2_256 => digest::Algorithm::Sha256,
+        HashType::Sha2_384 => digest::Algorithm::Sha384,
+        HashType::Sha2_512 => digest::Algorithm::Sha512,
     }
 }
 
 #[inline(always)]
-fn aead_from_algorithm(alg: AeadType) -> AeadMode {
+fn aead_from_algorithm(alg: AeadType) -> aead::Algorithm {
     match alg {
-        AeadType::Aes128Gcm => AeadMode::Aes128Gcm,
-        AeadType::Aes256Gcm => AeadMode::Aes256Gcm,
-        AeadType::ChaCha20Poly1305 => AeadMode::Chacha20Poly1305,
+        AeadType::Aes128Gcm => aead::Algorithm::Aes128Gcm,
+        AeadType::Aes256Gcm => aead::Algorithm::Aes256Gcm,
+        AeadType::ChaCha20Poly1305 => aead::Algorithm::Chacha20Poly1305,
     }
 }
 
 #[inline(always)]
-fn hmac_from_hash(hash_type: HashType) -> HmacMode {
+fn hmac_from_hash(hash_type: HashType) -> digest::Algorithm {
     match hash_type {
-        HashType::Sha2_256 => HmacMode::Sha256,
-        HashType::Sha2_384 => HmacMode::Sha384,
-        HashType::Sha2_512 => HmacMode::Sha512,
+        HashType::Sha2_256 => digest::Algorithm::Sha256,
+        HashType::Sha2_384 => digest::Algorithm::Sha384,
+        HashType::Sha2_512 => digest::Algorithm::Sha512,
     }
 }
 
-impl OpenMlsCrypto for EvercryptProvider {
+const MAX_DATA_LEN: usize = 0x10000000;
+
+impl OpenMlsCrypto for LibcruxProvider {
     fn supports(&self, ciphersuite: Ciphersuite) -> Result<(), CryptoError> {
         match ciphersuite {
             Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
@@ -140,7 +147,7 @@ impl OpenMlsCrypto for EvercryptProvider {
     /// Returns the hash of `data` or an error if the hash algorithm isn't supported.
     fn hash(&self, hash_type: HashType, data: &[u8]) -> Result<Vec<u8>, CryptoError> {
         let alg = hash_from_algorithm(hash_type);
-        Ok(evercrypt::digest::hash(alg, data))
+        Ok(digest::hash(alg, data))
     }
 
     /// Returns the cipher text, tag (concatenated) or an error if the AEAD scheme
@@ -153,9 +160,14 @@ impl OpenMlsCrypto for EvercryptProvider {
         nonce: &[u8],
         aad: &[u8],
     ) -> Result<Vec<u8>, CryptoError> {
+        if data.len() > MAX_DATA_LEN {
+            return Err(CryptoError::TooMuchData);
+        }
         let alg = aead_from_algorithm(alg);
-        aead::encrypt_combined(alg, key, data, nonce, aad)
-            .map_err(|_| CryptoError::CryptoLibraryError)
+        let key =
+            aead::Key::from_bytes(alg, key.to_vec()).map_err(|_| CryptoError::InvalidAeadKey)?;
+        let mut data = data.to_vec();
+        aead::encrypt(&key, &mut data, nonce, aad).map_err(|_| CryptoError::CryptoLibraryError)
     }
 
     /// Returns the decryption of the provided cipher text or an error if the AEAD
@@ -168,25 +180,15 @@ impl OpenMlsCrypto for EvercryptProvider {
         nonce: &[u8],
         aad: &[u8],
     ) -> Result<Vec<u8>, CryptoError> {
-        let alg = aead_from_algorithm(alg);
-        aead_decrypt_combined(alg, key, ct_tag, nonce, aad)
-            .map_err(|_| CryptoError::CryptoLibraryError)
-    }
-
-    /// Returns `(sk, pk)` or an error if the signature scheme is not supported or
-    /// the key generation fails.
-    fn signature_key_gen(&self, alg: SignatureScheme) -> Result<(Vec<u8>, Vec<u8>), CryptoError> {
-        let signature_mode = match signature_mode(alg) {
-            Ok(signature_mode) => signature_mode,
-            Err(_) => return Err(CryptoError::UnsupportedSignatureScheme),
-        };
-        match signature::key_gen(signature_mode) {
-            Ok((sk, pk)) => Ok((sk, pk)),
-            Err(e) => {
-                error!("Key generation really shouldn't fail. {:?}", e);
-                Err(CryptoError::CryptoLibraryError)
-            }
+        if ct_tag.len() > MAX_DATA_LEN {
+            return Err(CryptoError::TooMuchData);
         }
+        let alg = aead_from_algorithm(alg);
+        let key =
+            aead::Key::from_bytes(alg, key.to_vec()).map_err(|_| CryptoError::InvalidAeadKey)?;
+        let mut data = ct_tag[..ct_tag.len() - 16].to_vec();
+        aead::decrypt(&key, &mut data, nonce, aad, &ct_tag[ct_tag.len() - 16..])
+            .map_err(|_| CryptoError::CryptoLibraryError)
     }
 
     /// Returns an error if the signature verification fails or the requested scheme
@@ -202,55 +204,31 @@ impl OpenMlsCrypto for EvercryptProvider {
             Ok(signature_mode) => signature_mode,
             Err(_) => return Err(CryptoError::UnsupportedSignatureScheme),
         };
-        let digest_mode = match hash_from_signature(alg) {
-            Ok(dm) => dm,
-            Err(_) => return Err(CryptoError::UnsupportedSignatureScheme),
-        };
-        let valid = if signature_mode == SignatureMode::P256 {
-            verify(
-                signature_mode,
-                digest_mode,
-                pk,
-                &der_decode(signature)?,
-                data,
-            )
+        // let digest_mode = match hash_from_signature(alg) {
+        //     Ok(dm) => dm,
+        //     Err(_) => return Err(CryptoError::UnsupportedSignatureScheme),
+        // };
+        let signature = if matches!(
+            signature_mode,
+            signature::Algorithm::EcDsaP256(digest::Algorithm::Sha256)
+        ) {
+            der_decode(signature)?
         } else {
-            verify(signature_mode, digest_mode, pk, signature, data)
-        }
-        .map_err(|_| CryptoError::InvalidSignature)?;
-
-        if valid {
-            Ok(())
-        } else {
-            Err(CryptoError::InvalidSignature)
-        }
-    }
-
-    /// Returns the signature or an error if the signature scheme is not supported
-    /// or signing fails.
-    fn sign(&self, alg: SignatureScheme, data: &[u8], key: &[u8]) -> Result<Vec<u8>, CryptoError> {
-        let signature_mode = match signature_mode(alg) {
-            Ok(signature_mode) => signature_mode,
-            Err(_) => return Err(CryptoError::UnsupportedSignatureScheme),
+            signature
         };
-        let (hash, nonce) = match signature_mode {
-            SignatureMode::Ed25519 => (None, None),
-            SignatureMode::P256 => {
-                let digest =
-                    hash_from_signature(alg).map_err(|_| CryptoError::UnsupportedHashAlgorithm)?;
-                let nonce =
-                    p256_ecdsa_random_nonce().map_err(|_| CryptoError::CryptoLibraryError)?;
-                (Some(digest), Some(nonce))
-            }
-        };
-        let signature = evercrypt::signature::sign(signature_mode, hash, key, data, nonce.as_ref())
-            .map_err(|_| CryptoError::CryptoLibraryError)?;
+        // if signature_mode == SignatureMode::P256 {
+        //     verify(
+        //         signature_mode,
+        //         digest_mode,
+        //         pk,
+        //         &der_decode(signature)?,
+        //         data,
+        //     )
+        // } else {
+        //     verify(signature_mode, digest_mode, pk, signature, data)
+        // }
 
-        if signature_mode == SignatureMode::P256 {
-            der_encode(&signature)
-        } else {
-            Ok(signature)
-        }
+        signature::verify(data, signature, pk).map_err(|_| CryptoError::InvalidSignature)
     }
 
     fn hpke_seal(
@@ -343,9 +321,9 @@ impl OpenMlsCrypto for EvercryptProvider {
     }
 }
 
-fn hpke_from_config(config: HpkeConfig) -> Hpke<HpkeEvercrypt> {
-    Hpke::<HpkeEvercrypt>::new(
-        hpke::Mode::Base,
+fn hpke_from_config(config: HpkeConfig) -> hpke::HPKEConfig {
+    hpke::HPKEConfig(
+        hpke::Mode::mode_base,
         kem_mode(config.0),
         kdf_mode(config.1),
         aead_mode(config.2),
@@ -353,37 +331,37 @@ fn hpke_from_config(config: HpkeConfig) -> Hpke<HpkeEvercrypt> {
 }
 
 #[inline(always)]
-fn kem_mode(kem: HpkeKemType) -> hpke_types::KemAlgorithm {
+fn kem_mode(kem: HpkeKemType) -> hpke::kem::KEM {
     match kem {
-        HpkeKemType::DhKemP256 => hpke_types::KemAlgorithm::DhKemP256,
-        HpkeKemType::DhKemP384 => hpke_types::KemAlgorithm::DhKemP384,
-        HpkeKemType::DhKemP521 => hpke_types::KemAlgorithm::DhKemP521,
-        HpkeKemType::DhKem25519 => hpke_types::KemAlgorithm::DhKem25519,
-        HpkeKemType::DhKem448 => hpke_types::KemAlgorithm::DhKem448,
+        HpkeKemType::DhKemP256 => hpke::kem::KEM::DHKEM_P256_HKDF_SHA256,
+        HpkeKemType::DhKemP384 => hpke::kem::KEM::DHKEM_P384_HKDF_SHA384,
+        HpkeKemType::DhKemP521 => hpke::kem::KEM::DHKEM_P521_HKDF_SHA512,
+        HpkeKemType::DhKem25519 => hpke::kem::KEM::DHKEM_X25519_HKDF_SHA256,
+        HpkeKemType::DhKem448 => hpke::kem::KEM::DHKEM_X448_HKDF_SHA512,
     }
 }
 
 #[inline(always)]
-fn kdf_mode(kdf: HpkeKdfType) -> hpke_types::KdfAlgorithm {
+fn kdf_mode(kdf: HpkeKdfType) -> hpke::kdf::KDF {
     match kdf {
-        HpkeKdfType::HkdfSha256 => hpke_types::KdfAlgorithm::HkdfSha256,
-        HpkeKdfType::HkdfSha384 => hpke_types::KdfAlgorithm::HkdfSha384,
-        HpkeKdfType::HkdfSha512 => hpke_types::KdfAlgorithm::HkdfSha512,
+        HpkeKdfType::HkdfSha256 => hpke::kdf::KDF::HKDF_SHA256,
+        HpkeKdfType::HkdfSha384 => hpke::kdf::KDF::HKDF_SHA384,
+        HpkeKdfType::HkdfSha512 => hpke::kdf::KDF::HKDF_SHA512,
     }
 }
 
 #[inline(always)]
-fn aead_mode(aead: HpkeAeadType) -> hpke_types::AeadAlgorithm {
+fn aead_mode(aead: HpkeAeadType) -> hpke::aead::AEAD {
     match aead {
-        HpkeAeadType::AesGcm128 => hpke_types::AeadAlgorithm::Aes128Gcm,
-        HpkeAeadType::AesGcm256 => hpke_types::AeadAlgorithm::Aes256Gcm,
-        HpkeAeadType::ChaCha20Poly1305 => hpke_types::AeadAlgorithm::ChaCha20Poly1305,
-        HpkeAeadType::Export => hpke_types::AeadAlgorithm::HpkeExport,
+        HpkeAeadType::AesGcm128 => hpke::aead::AEAD::AES_128_GCM,
+        HpkeAeadType::AesGcm256 => hpke::aead::AEAD::AES_256_GCM,
+        HpkeAeadType::ChaCha20Poly1305 => hpke::aead::AEAD::ChaCha20Poly1305,
+        HpkeAeadType::Export => hpke::aead::AEAD::Export_only,
     }
 }
 
 // The length of the individual scalars. Since we only support ECDSA with P256,
-// this is 32. It would be great if evercrypt were able to return the scalar
+// this is 32. It would be great if libcrux were able to return the scalar
 // size of a given curve.
 const P256_SCALAR_LENGTH: usize = 32;
 
@@ -651,12 +629,12 @@ fn der_decode(mut signature_bytes: &[u8]) -> Result<Vec<u8>, CryptoError> {
 
 #[test]
 fn test_der_codec() {
-    let evercrypt = EvercryptProvider::default();
+    let libcrux = LibcruxProvider::default();
     let payload = vec![0u8];
     let signature_scheme = SignatureScheme::ECDSA_SECP256R1_SHA256;
     let (sk, pk) = signature_key_gen(signature_mode(signature_scheme).unwrap())
         .expect("error generating sig keypair");
-    let signature = evercrypt
+    let signature = libcrux
         .sign(signature_scheme, &payload, &sk)
         .expect("error creating signature");
 
@@ -679,19 +657,19 @@ fn test_der_codec() {
     assert_eq!(re_encoded_signature, signature);
 
     // Make sure that the signature still verifies.
-    evercrypt
+    libcrux
         .verify_signature(signature_scheme, &payload, &pk, &signature)
         .expect("error verifying signature");
 }
 
 #[test]
 fn test_der_decoding() {
-    let evercrypt = EvercryptProvider::default();
+    let libcrux = LibcruxProvider::default();
     let payload = vec![0u8];
     let signature_scheme = SignatureScheme::ECDSA_SECP256R1_SHA256;
     let (sk, _) = signature_key_gen(signature_mode(signature_scheme).unwrap())
         .expect("error generating sig keypair");
-    let signature = evercrypt
+    let signature = libcrux
         .sign(signature_scheme, &payload, &sk)
         .expect("error creating signature");
 
@@ -784,12 +762,12 @@ fn test_der_decoding() {
 
 #[test]
 fn test_der_encoding() {
-    let evercrypt = EvercryptProvider::default();
+    let libcrux = LibcruxProvider::default();
     let payload = vec![0u8];
     let signature_scheme = SignatureScheme::ECDSA_SECP256R1_SHA256;
     let (sk, _) = signature_key_gen(signature_mode(signature_scheme).unwrap())
         .expect("error generating sig keypair");
-    let signature = evercrypt
+    let signature = libcrux
         .sign(signature_scheme, &payload, &sk)
         .expect("error creating signature");
 
@@ -823,7 +801,7 @@ fn test_der_encoding() {
     );
 }
 
-impl OpenMlsRand for EvercryptProvider {
+impl OpenMlsRand for LibcruxProvider {
     type Error = RandError;
 
     fn random_array<const N: usize>(&self) -> Result<[u8; N], Self::Error> {

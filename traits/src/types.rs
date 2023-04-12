@@ -146,6 +146,8 @@ pub enum CryptoError {
     ExporterError,
     UnsupportedCiphersuite,
     TlsSerializationError,
+    InvalidAeadKey,
+    TooMuchData,
 }
 
 impl std::fmt::Display for CryptoError {

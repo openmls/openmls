@@ -69,12 +69,6 @@ pub trait OpenMlsCrypto {
         aad: &[u8],
     ) -> Result<Vec<u8>, CryptoError>;
 
-    /// Generate a signature key.
-    ///
-    /// Returns an error if the [`SignatureScheme`] is not supported or the key
-    /// generation fails.
-    fn signature_key_gen(&self, alg: SignatureScheme) -> Result<(Vec<u8>, Vec<u8>), CryptoError>;
-
     /// Verify the signature
     ///
     /// Returns an error if the [`SignatureScheme`] is not supported or the
@@ -86,12 +80,6 @@ pub trait OpenMlsCrypto {
         pk: &[u8],
         signature: &[u8],
     ) -> Result<(), CryptoError>;
-
-    /// Sign with the given parameters.
-    ///
-    /// Returns an error if the [`SignatureScheme`] is not supported or an error
-    /// occurs during signature generation.
-    fn sign(&self, alg: SignatureScheme, data: &[u8], key: &[u8]) -> Result<Vec<u8>, CryptoError>;
 
     // === HPKE === //
 

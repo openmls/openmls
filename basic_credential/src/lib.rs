@@ -46,7 +46,7 @@ impl Signer for SignatureKeyPair {
     fn sign(&self, payload: &[u8]) -> Result<Vec<u8>, Error> {
         match self.signature_scheme {
             SignatureScheme::ECDSA_SECP256R1_SHA256 => {
-                let k = SigningKey::from_bytes(&self.private).map_err(|_| Error::SigningError)?;
+                let k = SigningKey::from_slice(&self.private).map_err(|_| Error::SigningError)?;
                 let signature = k.sign(payload);
                 Ok(signature.to_der().to_bytes().into())
             }

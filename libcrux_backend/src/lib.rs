@@ -5,14 +5,14 @@ mod provider;
 pub use provider::*;
 
 #[derive(Default, Debug)]
-pub struct OpenMlsEvercrypt {
-    crypto: EvercryptProvider,
+pub struct OpenMlsLibcrux {
+    crypto: LibcruxProvider,
     key_store: MemoryKeyStore,
 }
 
-impl OpenMlsCryptoProvider for OpenMlsEvercrypt {
-    type CryptoProvider = EvercryptProvider;
-    type RandProvider = EvercryptProvider;
+impl OpenMlsCryptoProvider for OpenMlsLibcrux {
+    type CryptoProvider = LibcruxProvider;
+    type RandProvider = LibcruxProvider;
     type KeyStoreProvider = MemoryKeyStore;
 
     fn crypto(&self) -> &Self::CryptoProvider {
