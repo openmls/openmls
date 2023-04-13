@@ -3,25 +3,28 @@
 //!
 //! It is based on the Mock client in that repository.
 
+use std::{collections::HashMap, convert::TryFrom, fmt::Display, fs::File, io::Write, sync::Mutex};
+
 use clap::Parser;
 use clap_derive::*;
-use openmls::prelude::*;
-
-use openmls::prelude::config::CryptoConfig;
-use openmls::schedule::{ExternalPsk, PreSharedKeyId, Psk};
-use openmls::treesync::test_utils::{read_keys_from_key_store, write_keys_from_key_store};
+use mls_client::{
+    mls_client_server::{MlsClient, MlsClientServer},
+    *,
+};
+use mls_interop_proto::mls_client;
+use openmls::{
+    prelude::{config::CryptoConfig, *},
+    schedule::{ExternalPsk, PreSharedKeyId, Psk},
+    treesync::{
+        test_utils::{read_keys_from_key_store, write_keys_from_key_store},
+        RatchetTree,
+    },
+};
 use openmls_basic_credential::SignatureKeyPair;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::OpenMlsCryptoProvider;
 use serde::{self, Serialize};
-use std::{collections::HashMap, convert::TryFrom, fmt::Display, fs::File, io::Write, sync::Mutex};
-use tonic::{transport::Server, Request, Response, Status};
-
-use openmls_rust_crypto::OpenMlsRustCrypto;
-
-use mls_client::mls_client_server::{MlsClient, MlsClientServer};
-use mls_client::*;
-
-use mls_interop_proto::mls_client;
+use tonic::{async_trait, transport::Server, Code, Request, Response, Status};
 
 const IMPLEMENTATION_NAME: &str = "OpenMLS";
 
@@ -69,15 +72,15 @@ impl MlsClientImpl {
 fn into_status<E: Display>(e: E) -> Status {
     let message = "mls group error ".to_string() + &e.to_string();
     log::error!("{message}");
-    tonic::Status::new(tonic::Code::Aborted, message)
+    Status::new(Code::Aborted, message)
 }
 
 fn to_ciphersuite(cs: u32) -> Result<&'static Ciphersuite, Status> {
     let cs_name = match Ciphersuite::try_from(cs as u16) {
         Ok(cs_name) => cs_name,
         Err(_) => {
-            return Err(tonic::Status::new(
-                tonic::Code::InvalidArgument,
+            return Err(Status::new(
+                Code::InvalidArgument,
                 "ciphersuite not supported by OpenMLS",
             ));
         }
@@ -89,8 +92,8 @@ fn to_ciphersuite(cs: u32) -> Result<&'static Ciphersuite, Status> {
     ];
     match ciphersuites.iter().find(|&&cs| cs == cs_name) {
         Some(ciphersuite) => Ok(ciphersuite),
-        None => Err(tonic::Status::new(
-            tonic::Code::InvalidArgument,
+        None => Err(Status::new(
+            Code::InvalidArgument,
             "ciphersuite not supported by this configuration of OpenMLS",
         )),
     }
@@ -120,7 +123,7 @@ pub fn wire_format_policy(encrypt: bool) -> WireFormatPolicy {
     }
 }
 
-#[tonic::async_trait]
+#[async_trait]
 impl MlsClient for MlsClientImpl {
     async fn name(&self, _request: Request<NameRequest>) -> Result<Response<NameResponse>, Status> {
         log::debug!("Got Name request");
@@ -133,8 +136,8 @@ impl MlsClient for MlsClientImpl {
 
     async fn supported_ciphersuites(
         &self,
-        _request: tonic::Request<SupportedCiphersuitesRequest>,
-    ) -> Result<tonic::Response<SupportedCiphersuitesResponse>, tonic::Status> {
+        _request: Request<SupportedCiphersuitesRequest>,
+    ) -> Result<Response<SupportedCiphersuitesResponse>, Status> {
         log::trace!("Got SupportedCiphersuites request");
 
         // TODO: read from backend
@@ -152,8 +155,8 @@ impl MlsClient for MlsClientImpl {
 
     async fn create_group(
         &self,
-        request: tonic::Request<CreateGroupRequest>,
-    ) -> Result<tonic::Response<CreateGroupResponse>, tonic::Status> {
+        request: Request<CreateGroupRequest>,
+    ) -> Result<Response<CreateGroupResponse>, Status> {
         log::debug!("Creating a new group.");
         let create_group_request = request.get_ref();
         let crypto_provider = OpenMlsRustCrypto::default();
@@ -200,8 +203,8 @@ impl MlsClient for MlsClientImpl {
 
     async fn create_key_package(
         &self,
-        request: tonic::Request<CreateKeyPackageRequest>,
-    ) -> Result<tonic::Response<CreateKeyPackageResponse>, tonic::Status> {
+        request: Request<CreateKeyPackageRequest>,
+    ) -> Result<Response<CreateKeyPackageResponse>, Status> {
         log::debug!("Creating a new key package");
         let create_kp_request = request.get_ref();
         let crypto_provider = OpenMlsRustCrypto::default();
@@ -276,8 +279,8 @@ impl MlsClient for MlsClientImpl {
 
     async fn join_group(
         &self,
-        request: tonic::Request<JoinGroupRequest>,
-    ) -> Result<tonic::Response<JoinGroupResponse>, tonic::Status> {
+        request: Request<JoinGroupRequest>,
+    ) -> Result<Response<JoinGroupResponse>, Status> {
         log::debug!("Joining a group");
         let join_group_request = request.get_ref();
         log::trace!(
@@ -341,8 +344,16 @@ impl MlsClient for MlsClientImpl {
         let welcome = welcome_msg.into_welcome().ok_or(Status::invalid_argument(
             "unable to get Welcome from MlsMessage",
         ))?;
-        let group = MlsGroup::new_from_welcome(&crypto_provider, &mls_group_config, welcome, None)
-            .map_err(into_status)?;
+
+        let ratchet_tree = if join_group_request.ratchet_tree.is_empty() {
+            None
+        } else {
+            Some(RatchetTree::tls_deserialize_exact(&join_group_request.ratchet_tree).unwrap())
+        };
+
+        let group =
+            MlsGroup::new_from_welcome(&crypto_provider, &mls_group_config, welcome, ratchet_tree)
+                .map_err(into_status)?;
 
         let interop_group = InteropGroup {
             wire_format_policy,
@@ -375,25 +386,25 @@ impl MlsClient for MlsClientImpl {
 
     async fn external_join(
         &self,
-        _request: tonic::Request<ExternalJoinRequest>,
-    ) -> Result<tonic::Response<ExternalJoinResponse>, tonic::Status> {
-        Err(tonic::Status::new(
-            tonic::Code::Unimplemented,
+        _request: Request<ExternalJoinRequest>,
+    ) -> Result<Response<ExternalJoinResponse>, Status> {
+        Err(Status::new(
+            Code::Unimplemented,
             "external join is not yet supported by OpenMLS",
         ))
     }
 
     async fn state_auth(
         &self,
-        request: tonic::Request<StateAuthRequest>,
-    ) -> Result<tonic::Response<StateAuthResponse>, tonic::Status> {
+        request: Request<StateAuthRequest>,
+    ) -> Result<Response<StateAuthResponse>, Status> {
         log::debug!("Generating state authenticator secret");
         let state_auth_request = request.get_ref();
 
         let groups = self.groups.lock().unwrap();
         let interop_group = groups
             .get(state_auth_request.state_id as usize)
-            .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
+            .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
         log::trace!("   in epoch {:?}", interop_group.group.epoch());
         log::trace!(
             "   actor {:x?}",
@@ -409,15 +420,15 @@ impl MlsClient for MlsClientImpl {
 
     async fn export(
         &self,
-        request: tonic::Request<ExportRequest>,
-    ) -> Result<tonic::Response<ExportResponse>, tonic::Status> {
+        request: Request<ExportRequest>,
+    ) -> Result<Response<ExportResponse>, Status> {
         log::debug!("Exporting a secret");
         let export_request = request.get_ref();
 
         let groups = self.groups.lock().unwrap();
         let interop_group = groups
             .get(export_request.state_id as usize)
-            .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
+            .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
         log::trace!("   in epoch {:?}", interop_group.group.epoch());
         log::trace!(
             "   actor {:x?}",
@@ -439,15 +450,15 @@ impl MlsClient for MlsClientImpl {
 
     async fn protect(
         &self,
-        request: tonic::Request<ProtectRequest>,
-    ) -> Result<tonic::Response<ProtectResponse>, tonic::Status> {
+        request: Request<ProtectRequest>,
+    ) -> Result<Response<ProtectResponse>, Status> {
         log::debug!("Encrypting message (protect)");
         let protect_request = request.get_ref();
 
         let mut groups = self.groups.lock().unwrap();
         let interop_group = groups
             .get_mut(protect_request.state_id as usize)
-            .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
+            .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
         log::trace!("   in epoch {:?}", interop_group.group.epoch());
         log::trace!(
             "   actor {:x?}",
@@ -469,15 +480,15 @@ impl MlsClient for MlsClientImpl {
 
     async fn unprotect(
         &self,
-        request: tonic::Request<UnprotectRequest>,
-    ) -> Result<tonic::Response<UnprotectResponse>, tonic::Status> {
+        request: Request<UnprotectRequest>,
+    ) -> Result<Response<UnprotectResponse>, Status> {
         log::debug!("Decrypting message (unprotect)");
         let unprotect_request = request.get_ref();
 
         let mut groups = self.groups.lock().unwrap();
         let interop_group = groups
             .get_mut(unprotect_request.state_id as usize)
-            .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
+            .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
         log::trace!("   in epoch {:?}", interop_group.group.epoch());
         log::trace!(
             "   actor {:x?}",
@@ -508,8 +519,8 @@ impl MlsClient for MlsClientImpl {
 
     async fn store_psk(
         &self,
-        request: tonic::Request<StorePskRequest>,
-    ) -> Result<tonic::Response<StorePskResponse>, tonic::Status> {
+        request: Request<StorePskRequest>,
+    ) -> Result<Response<StorePskResponse>, Status> {
         log::debug!("Store PSK");
         let store_proposal = request.get_ref();
 
@@ -522,12 +533,12 @@ impl MlsClient for MlsClientImpl {
             crypto_provider: &OpenMlsRustCrypto,
             external_psk: Psk,
             secret: &[u8],
-        ) -> Result<(), tonic::Status> {
+        ) -> Result<(), Status> {
             let psk_id = PreSharedKeyId::new(ciphersuite, crypto_provider.rand(), external_psk)
                 .map_err(|_| Status::internal("unable to create PreSharedKeyId from raw psk_id"))?;
             psk_id
                 .write_to_key_store(crypto_provider, ciphersuite, secret)
-                .map_err(|_| tonic::Status::new(tonic::Code::Internal, "unable to store PSK"))?;
+                .map_err(|_| Status::new(Code::Internal, "unable to store PSK"))?;
             Ok(())
         }
 
@@ -552,9 +563,7 @@ impl MlsClient for MlsClientImpl {
             let mut groups = self.groups.lock().unwrap();
             let interop_group = groups
                 .get_mut(store_proposal.state_or_transaction_id as usize)
-                .ok_or_else(|| {
-                    tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id")
-                })?;
+                .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
             log::trace!("   in epoch {:?}", interop_group.group.epoch());
             log::trace!(
                 "   actor {:x?}",
@@ -574,15 +583,15 @@ impl MlsClient for MlsClientImpl {
 
     async fn add_proposal(
         &self,
-        request: tonic::Request<AddProposalRequest>,
-    ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
+        request: Request<AddProposalRequest>,
+    ) -> Result<Response<ProposalResponse>, Status> {
         log::debug!("Create add proposal");
         let add_proposal_request = request.get_ref();
 
         let mut groups = self.groups.lock().unwrap();
         let interop_group = groups
             .get_mut(add_proposal_request.state_id as usize)
-            .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
+            .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
         log::trace!("   in epoch {:?}", interop_group.group.epoch());
         log::trace!(
             "   actor {:x?}",
@@ -625,15 +634,15 @@ impl MlsClient for MlsClientImpl {
 
     async fn update_proposal(
         &self,
-        request: tonic::Request<UpdateProposalRequest>,
-    ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
+        request: Request<UpdateProposalRequest>,
+    ) -> Result<Response<ProposalResponse>, Status> {
         log::debug!("Creating update proposal");
         let update_proposal_request = request.get_ref();
 
         let mut groups = self.groups.lock().unwrap();
         let interop_group = groups
             .get_mut(update_proposal_request.state_id as usize)
-            .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
+            .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
         log::trace!("   in epoch {:?}", interop_group.group.epoch());
         log::trace!(
             "   actor {:x?}",
@@ -666,8 +675,8 @@ impl MlsClient for MlsClientImpl {
 
     async fn remove_proposal(
         &self,
-        request: tonic::Request<RemoveProposalRequest>,
-    ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
+        request: Request<RemoveProposalRequest>,
+    ) -> Result<Response<ProposalResponse>, Status> {
         log::debug!("Generate remove proposal");
         let remove_proposal_request = request.get_ref();
         let removed_credential = Credential::new(
@@ -680,7 +689,7 @@ impl MlsClient for MlsClientImpl {
         let mut groups = self.groups.lock().unwrap();
         let interop_group = groups
             .get_mut(remove_proposal_request.state_id as usize)
-            .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
+            .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
         log::trace!("   in epoch {:?}", interop_group.group.epoch());
         log::trace!(
             "   actor {:x?}",
@@ -714,22 +723,22 @@ impl MlsClient for MlsClientImpl {
 
     async fn re_init_proposal(
         &self,
-        _request: tonic::Request<ReInitProposalRequest>,
-    ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
-        Err(tonic::Status::unimplemented("Re-init is not implemented"))
+        _request: Request<ReInitProposalRequest>,
+    ) -> Result<Response<ProposalResponse>, Status> {
+        Err(Status::unimplemented("Re-init is not implemented"))
     }
 
     async fn commit(
         &self,
-        request: tonic::Request<CommitRequest>,
-    ) -> Result<tonic::Response<CommitResponse>, tonic::Status> {
+        request: Request<CommitRequest>,
+    ) -> Result<Response<CommitResponse>, Status> {
         log::debug!("Create a commit");
         let commit_request = request.get_ref();
 
         let mut groups = self.groups.lock().unwrap();
         let interop_group = groups
             .get_mut(commit_request.state_id as usize)
-            .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
+            .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
         log::trace!("   in epoch {:?}", interop_group.group.epoch());
         log::trace!(
             "   actor {:x?}",
@@ -816,15 +825,15 @@ impl MlsClient for MlsClientImpl {
 
     async fn handle_commit(
         &self,
-        request: tonic::Request<HandleCommitRequest>,
-    ) -> Result<tonic::Response<HandleCommitResponse>, tonic::Status> {
+        request: Request<HandleCommitRequest>,
+    ) -> Result<Response<HandleCommitResponse>, Status> {
         log::debug!("Handling incoming commit");
         let handle_commit_request = request.get_ref();
 
         let mut groups = self.groups.lock().unwrap();
         let interop_group = groups
             .get_mut(handle_commit_request.state_id as usize)
-            .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
+            .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
         log::trace!("   in epoch {:?}", interop_group.group.epoch());
         log::trace!(
             "   actor {:x?}",
@@ -895,15 +904,15 @@ impl MlsClient for MlsClientImpl {
 
     async fn handle_pending_commit(
         &self,
-        request: tonic::Request<HandlePendingCommitRequest>,
-    ) -> Result<tonic::Response<HandleCommitResponse>, tonic::Status> {
+        request: Request<HandlePendingCommitRequest>,
+    ) -> Result<Response<HandleCommitResponse>, Status> {
         log::debug!("Handling pending commit");
         let obj = request.get_ref();
 
         let mut groups = self.groups.lock().unwrap();
         let interop_group = groups
             .get_mut(obj.state_id as usize)
-            .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
+            .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
         log::trace!("   in epoch {:?}", interop_group.group.epoch());
         log::trace!(
             "   actor {:x?}",
@@ -933,15 +942,15 @@ impl MlsClient for MlsClientImpl {
 
     async fn group_info(
         &self,
-        request: tonic::Request<GroupInfoRequest>,
-    ) -> Result<tonic::Response<GroupInfoResponse>, tonic::Status> {
+        request: Request<GroupInfoRequest>,
+    ) -> Result<Response<GroupInfoResponse>, Status> {
         log::debug!("Getting group info");
         let obj = request.get_ref();
 
         let mut groups = self.groups.lock().unwrap();
         let interop_group = groups
             .get_mut(obj.state_id as usize)
-            .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
+            .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
         log::trace!("   in epoch {:?}", interop_group.group.epoch());
         log::trace!(
             "   actor {:x?}",
@@ -955,16 +964,16 @@ impl MlsClient for MlsClientImpl {
                 &interop_group.signature_keys,
                 !obj.external_tree,
             )
-            .map_err(|_| tonic::Status::internal("Unable to export group info from the group"))?
+            .map_err(|_| Status::internal("Unable to export group info from the group"))?
             .tls_serialize_detached()
-            .map_err(|_| tonic::Status::internal("Unable to serialize group info message."))?;
+            .map_err(|_| Status::internal("Unable to serialize group info message."))?;
 
         let ratchet_tree = if obj.external_tree {
             interop_group
                 .group
                 .export_ratchet_tree()
                 .tls_serialize_detached()
-                .map_err(|_| tonic::Status::internal("Unable to serialize ratchet tree."))?
+                .map_err(|_| Status::internal("Unable to serialize ratchet tree."))?
         } else {
             vec![]
         };
@@ -977,15 +986,15 @@ impl MlsClient for MlsClientImpl {
 
     async fn external_psk_proposal(
         &self,
-        request: tonic::Request<ExternalPskProposalRequest>,
-    ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
+        request: Request<ExternalPskProposalRequest>,
+    ) -> Result<Response<ProposalResponse>, Status> {
         log::debug!("Create external PSK proposal");
         let psk_proposal_request = request.get_ref();
 
         let mut groups = self.groups.lock().unwrap();
         let interop_group = groups
             .get_mut(psk_proposal_request.state_id as usize)
-            .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
+            .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
         log::trace!("   in epoch {:?}", interop_group.group.epoch());
         log::trace!(
             "   actor {:x?}",
