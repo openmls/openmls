@@ -183,7 +183,10 @@ impl MlsClient for MlsClientImpl {
             Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
         ];
         let response = SupportedCiphersuitesResponse {
-            ciphersuites: ciphersuites.iter().map(|cs| *cs as u32).collect(),
+            ciphersuites: ciphersuites
+                .iter()
+                .map(|cs| u16::from(*cs) as u32)
+                .collect(),
         };
 
         info!(?response, "Response");
@@ -208,6 +211,10 @@ impl MlsClient for MlsClientImpl {
         let wire_format_policy = wire_format_policy(request.encrypt_handshake);
         let mls_group_config = MlsGroupConfig::builder()
             .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+            .max_past_epochs(32)
+            .number_of_resumption_psks(32)
+            .sender_ratchet_configuration(SenderRatchetConfiguration::default())
+            .use_ratchet_tree_extension(true)
             .wire_format_policy(wire_format_policy)
             .build();
         let group = MlsGroup::new_with_group_id(
@@ -335,8 +342,11 @@ impl MlsClient for MlsClientImpl {
 
         let wire_format_policy = wire_format_policy(request.encrypt_handshake);
         let mls_group_config = MlsGroupConfig::builder()
-            .wire_format_policy(wire_format_policy)
+            .max_past_epochs(32)
+            .number_of_resumption_psks(32)
+            .sender_ratchet_configuration(SenderRatchetConfiguration::default())
             .use_ratchet_tree_extension(true)
+            .wire_format_policy(wire_format_policy)
             .build();
 
         let mut pending_key_packages = self.pending_state.lock().unwrap();
@@ -515,6 +525,8 @@ impl MlsClient for MlsClientImpl {
             .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
         trace!(actor=String::from_utf8_lossy(interop_group.group.own_identity().unwrap()).to_string(), epoch=?interop_group.group.epoch(), "Protecting.");
 
+        interop_group.group.set_aad(&request.authenticated_data);
+
         let ciphertext = interop_group
             .group
             .create_message(
@@ -677,6 +689,8 @@ impl MlsClient for MlsClientImpl {
         );
         let mls_group_config = MlsGroupConfig::builder()
             .use_ratchet_tree_extension(true)
+            .max_past_epochs(32)
+            .number_of_resumption_psks(32)
             .wire_format_policy(interop_group.wire_format_policy)
             .build();
         interop_group.group.set_configuration(&mls_group_config);
@@ -720,6 +734,8 @@ impl MlsClient for MlsClientImpl {
         );
 
         let mls_group_config = MlsGroupConfig::builder()
+            .max_past_epochs(32)
+            .number_of_resumption_psks(32)
             .use_ratchet_tree_extension(true)
             .wire_format_policy(interop_group.wire_format_policy)
             .build();
@@ -769,6 +785,8 @@ impl MlsClient for MlsClientImpl {
         );
 
         let mls_group_config = MlsGroupConfig::builder()
+            .max_past_epochs(32)
+            .number_of_resumption_psks(32)
             .use_ratchet_tree_extension(true)
             .wire_format_policy(interop_group.wire_format_policy)
             .build();
