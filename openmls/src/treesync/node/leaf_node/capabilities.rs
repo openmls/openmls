@@ -255,7 +255,7 @@ mod tests {
 
         let test_serialized = expected.tls_serialize_detached().unwrap();
 
-        let got = Capabilities::tls_deserialize_exact(&test_serialized).unwrap();
+        let got = Capabilities::tls_deserialize_exact(test_serialized).unwrap();
 
         assert_eq!(expected, got);
     }
