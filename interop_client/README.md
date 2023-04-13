@@ -16,6 +16,12 @@ OPTIONS:
     -p, --port <PORT>    [default: 50051]
 ```
 
+Quickstart:
+
+```sh
+RUST_LOG=interop=trace cargo run
+```
+
 See [here](https://github.com/mlswg/mls-implementations) for more information on
 MLS interop and the test harness.
 
