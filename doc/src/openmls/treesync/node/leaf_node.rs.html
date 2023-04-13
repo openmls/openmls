@@ -1060,9 +1060,15 @@
 <a href="#1060" id="1060">1060</a>
 <a href="#1061" id="1061">1061</a>
 <a href="#1062" id="1062">1062</a>
+<a href="#1063" id="1063">1063</a>
+<a href="#1064" id="1064">1064</a>
+<a href="#1065" id="1065">1065</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the [`LeafNode`] struct and its implementation.
 </span><span class="kw">use </span>openmls_traits::{
-    key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite, OpenMlsCryptoProvider,
+    key_store::OpenMlsKeyStore,
+    signatures::Signer,
+    types::{Ciphersuite, VerifiableCiphersuite},
+    OpenMlsCryptoProvider,
 };
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>thiserror::Error;
@@ -1899,7 +1905,7 @@
             .payload
             .capabilities
             .ciphersuites
-            .contains(<span class="kw-2">&amp;</span>ciphersuite)
+            .contains(<span class="kw-2">&amp;</span>VerifiableCiphersuite::from(ciphersuite))
             || !<span class="self">self
                 </span>.leaf_node
                 .payload
@@ -2058,8 +2064,8 @@
     }
 
     <span class="doccomment">/// Get a list of supported cipher suites.
-    </span><span class="kw">pub fn </span>ciphersuites(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[Ciphersuite] {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.leaf_node.payload.capabilities.ciphersuites
+    </span><span class="kw">pub fn </span>ciphersuites(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[VerifiableCiphersuite] {
+        <span class="self">self</span>.leaf_node.payload.capabilities.ciphersuites()
     }
 }
 

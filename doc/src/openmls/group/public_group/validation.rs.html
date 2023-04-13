@@ -463,10 +463,16 @@
 <a href="#463" id="463">463</a>
 <a href="#464" id="464">464</a>
 <a href="#465" id="465">465</a>
+<a href="#466" id="466">466</a>
+<a href="#467" id="467">467</a>
+<a href="#468" id="468">468</a>
+<a href="#469" id="469">469</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains validation functions for incoming messages
 //! as defined in &lt;https://github.com/openmls/openmls/wiki/Message-validation&gt;
 
 </span><span class="kw">use </span>std::collections::{BTreeSet, HashSet};
+
+<span class="kw">use </span>openmls_traits::types::VerifiableCiphersuite;
 
 <span class="kw">use </span><span class="kw">super</span>::PublicGroup;
 <span class="attr">#[cfg(test)]
@@ -658,7 +664,9 @@
                 .key_package()
                 .leaf_node()
                 .capabilities();
-            <span class="kw">if </span>!capabilities.ciphersuites().contains(<span class="kw-2">&amp;</span><span class="self">self</span>.ciphersuite())
+            <span class="kw">if </span>!capabilities
+                .ciphersuites()
+                .contains(<span class="kw-2">&amp;</span>VerifiableCiphersuite::from(<span class="self">self</span>.ciphersuite()))
                 || !capabilities.versions().contains(<span class="kw-2">&amp;</span><span class="self">self</span>.version())
             {
                 <span class="macro">log::error!</span>(<span class="string">&quot;Tried to commit an Add proposal, where either the group&#39;s `Ciphersuite` or the group&#39;s `ProtocolVersion` is not in the `KeyPackage`&#39;s `Capabilities`.&quot;</span>);
