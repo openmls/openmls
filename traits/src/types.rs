@@ -247,6 +247,12 @@ pub type KemOutput = Vec<u8>;
 )]
 pub struct VerifiableCiphersuite(u16);
 
+impl VerifiableCiphersuite {
+    pub fn new(value: u16) -> Self {
+        Self(value)
+    }
+}
+
 impl From<Ciphersuite> for VerifiableCiphersuite {
     fn from(value: Ciphersuite) -> Self {
         Self(value as u16)
