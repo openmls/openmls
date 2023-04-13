@@ -13,6 +13,7 @@ use mls_client::{
 };
 use mls_interop_proto::mls_client;
 use openmls::{
+    messages::group_info::GroupInfo,
     prelude::{config::CryptoConfig, *},
     schedule::{ExternalPsk, PreSharedKeyId, Psk},
     treesync::{
@@ -441,12 +442,122 @@ impl MlsClient for MlsClientImpl {
     #[instrument(skip_all, fields(actor))]
     async fn external_join(
         &self,
-        _request: Request<ExternalJoinRequest>,
+        request: Request<ExternalJoinRequest>,
     ) -> Result<Response<ExternalJoinResponse>, Status> {
-        Err(Status::new(
-            Code::Unimplemented,
-            "external join is not yet supported by OpenMLS",
-        ))
+        let request = request.get_ref();
+        info!(?request, "Request");
+
+        Span::current().record("actor", bytes_to_string(&request.identity));
+
+        let (interop_group, commit) = {
+            debug!("Deserializing `MlsMessageIn` (to obtain group info).");
+            let verifiable_group_info = {
+                let msg =
+                    MlsMessageIn::tls_deserialize(&mut request.group_info.as_slice()).unwrap();
+
+                match msg.extract() {
+                    MlsMessageInBody::GroupInfo(verifiable_group_info) => verifiable_group_info,
+                    other => panic!("Expected `MlsMessageInBody::GroupInfo`, got {other:?}."),
+                }
+            };
+            debug!("Got `VerifiableGroupInfo`.");
+            trace!(?verifiable_group_info);
+
+            let ciphersuite = verifiable_group_info.ciphersuite();
+            let ratchet_tree = ratchet_tree_from_config(request.ratchet_tree.clone());
+
+            let backend = OpenMlsRustCrypto::default();
+
+            let (credential_with_key, signer) = {
+                let credential =
+                    Credential::new(request.identity.to_vec(), CredentialType::Basic).unwrap();
+
+                let signature_keypair =
+                    SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+
+                signature_keypair.store(backend.key_store()).unwrap();
+
+                let signature_pkey = OpenMlsSignaturePublicKey::new(
+                    signature_keypair.to_public_vec().into(),
+                    ciphersuite.signature_algorithm(),
+                )
+                .unwrap();
+
+                (
+                    CredentialWithKey {
+                        credential,
+                        signature_key: signature_pkey.into(),
+                    },
+                    signature_keypair,
+                )
+            };
+
+            let key_package = KeyPackageBuilder::new()
+                .build(
+                    CryptoConfig::with_default_version(ciphersuite),
+                    &backend,
+                    &signer,
+                    credential_with_key.clone(),
+                )
+                .unwrap();
+
+            let mls_group_config = {
+                let wire_format_policy = wire_format_policy(request.encrypt_handshake);
+
+                MlsGroupConfig::builder()
+                    .max_past_epochs(32)
+                    .number_of_resumption_psks(32)
+                    .sender_ratchet_configuration(SenderRatchetConfiguration::default())
+                    .use_ratchet_tree_extension(true)
+                    .wire_format_policy(wire_format_policy)
+                    .build()
+            };
+
+            let (mut group, commit, _group_info) = MlsGroup::join_by_external_commit(
+                &backend,
+                &signer,
+                ratchet_tree,
+                verifiable_group_info,
+                &mls_group_config,
+                b"",
+                credential_with_key,
+            )
+            .unwrap();
+
+            trace!(?commit, "Commit created.");
+            debug!(commit=?group.pending_commit(), "Merging pending commit.");
+            group.merge_pending_commit(&backend).unwrap();
+
+            (
+                InteropGroup {
+                    wire_format_policy: mls_group_config.wire_format_policy(),
+                    group,
+                    signature_keys: signer,
+                    messages_out: Vec::new(),
+                    crypto_provider: backend,
+                },
+                commit,
+            )
+        };
+
+        let epoch_authenticator = interop_group
+            .group
+            .epoch_authenticator()
+            .as_slice()
+            .to_vec();
+
+        let mut groups = self.groups.lock().unwrap();
+        let state_id = groups.len() as u32;
+        groups.push(interop_group);
+
+        let response = ExternalJoinResponse {
+            state_id,
+            commit: commit.tls_serialize_detached().unwrap(),
+            epoch_authenticator,
+        };
+
+        info!(?response, "Response");
+        Ok(Response::new(response))
     }
 
     #[instrument(skip_all)]
