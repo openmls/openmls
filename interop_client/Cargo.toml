@@ -26,4 +26,4 @@ serde_json = "^1.0"
 tls_codec = { workspace = true }
 openmls_basic_credential = { version = "0.1.0", path = "../basic_credential" }
 tracing = "0.1"
-tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
