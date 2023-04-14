@@ -60,7 +60,7 @@ impl PlainUpdatePathNode {
         group_context: &[u8],
     ) -> Result<UpdatePathNode, LibraryError> {
         public_keys
-            .par_iter()
+            .iter()
             .map(|pk| {
                 self.path_secret
                     .encrypt(backend, ciphersuite, pk, group_context)
@@ -125,7 +125,7 @@ impl ParentNode {
 
         // Iterate over the path secrets and derive a key pair
         let (path_with_keypairs, update_path_nodes): PathDerivationResults = path_secrets
-            .into_par_iter()
+            .into_iter()
             .zip(path_indices)
             .map(|(path_secret, index)| {
                 // Derive a key pair from the path secret. This includes the

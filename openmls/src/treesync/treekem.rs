@@ -68,8 +68,8 @@ impl<'a> TreeSyncDiff<'a> {
         debug_assert_eq!(copath_resolutions.len(), path.len());
 
         // Encrypt the secrets
-        path.par_iter()
-            .zip(copath_resolutions.par_iter())
+        path.iter()
+            .zip(copath_resolutions.iter())
             .map(|(node, resolution)| node.encrypt(backend, ciphersuite, resolution, group_context))
             .collect::<Result<Vec<UpdatePathNode>, LibraryError>>()
     }

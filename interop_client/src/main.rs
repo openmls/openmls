@@ -383,6 +383,50 @@ impl MlsClient for MlsClientImpl {
         ))
     }
 
+    async fn group_info(
+        &self,
+        request: tonic::Request<GroupInfoRequest>,
+    ) -> Result<tonic::Response<GroupInfoResponse>, tonic::Status> {
+        log::debug!("Getting group info");
+        let obj = request.get_ref();
+
+        let mut groups = self.groups.lock().unwrap();
+        let interop_group = groups
+            .get_mut(obj.state_id as usize)
+            .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
+        log::trace!("   in epoch {:?}", interop_group.group.epoch());
+        log::trace!(
+            "   actor {:x?}",
+            String::from_utf8_lossy(interop_group.group.own_identity().unwrap())
+        );
+
+        let group_info = interop_group
+            .group
+            .export_group_info(
+                &interop_group.crypto_provider,
+                &interop_group.signature_keys,
+                !obj.external_tree,
+            )
+            .map_err(|_| tonic::Status::internal("Unable to export group info from the group"))?
+            .tls_serialize_detached()
+            .map_err(|_| tonic::Status::internal("Unable to serialize group info message."))?;
+
+        let ratchet_tree = if obj.external_tree {
+            interop_group
+                .group
+                .export_ratchet_tree()
+                .tls_serialize_detached()
+                .map_err(|_| tonic::Status::internal("Unable to serialize ratchet tree."))?
+        } else {
+            vec![]
+        };
+
+        Ok(Response::new(GroupInfoResponse {
+            group_info,
+            ratchet_tree,
+        }))
+    }
+
     async fn state_auth(
         &self,
         request: tonic::Request<StateAuthRequest>,
@@ -712,11 +756,68 @@ impl MlsClient for MlsClientImpl {
         Ok(Response::new(ProposalResponse { proposal }))
     }
 
-    async fn re_init_proposal(
+    async fn external_psk_proposal(
         &self,
-        _request: tonic::Request<ReInitProposalRequest>,
+        request: tonic::Request<ExternalPskProposalRequest>,
     ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
-        Err(tonic::Status::unimplemented("Re-init is not implemented"))
+        log::debug!("Create external PSK proposal");
+        let psk_proposal_request = request.get_ref();
+
+        let mut groups = self.groups.lock().unwrap();
+        let interop_group = groups
+            .get_mut(psk_proposal_request.state_id as usize)
+            .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
+        log::trace!("   in epoch {:?}", interop_group.group.epoch());
+        log::trace!(
+            "   actor {:x?}",
+            String::from_utf8_lossy(interop_group.group.own_identity().unwrap())
+        );
+
+        let raw_psk_id = psk_proposal_request.psk_id.clone();
+        log::trace!("   psk_id {:x?}", raw_psk_id);
+        let external_psk = Psk::External(ExternalPsk::new(raw_psk_id));
+
+        let psk_id = PreSharedKeyId::new(
+            interop_group.group.ciphersuite(),
+            interop_group.crypto_provider.rand(),
+            external_psk,
+        )
+        .map_err(|_| Status::internal("unable to create PreSharedKeyId from raw psk_id"))?;
+
+        let proposal = interop_group
+            .group
+            .propose_external_psk(
+                &interop_group.crypto_provider,
+                &interop_group.signature_keys,
+                psk_id,
+            )
+            .map_err(|_| tonic::Status::internal("failed to generate psk proposal"))?;
+
+        // Store the proposal for potential future use.
+        interop_group.messages_out.push(proposal.clone().into());
+
+        // log::trace!("   proposal: {proposal:#x?}");
+        let proposal = proposal.to_bytes().unwrap();
+
+        Ok(Response::new(ProposalResponse { proposal }))
+    }
+
+    async fn resumption_psk_proposal(
+        &self,
+        _request: tonic::Request<ResumptionPskProposalRequest>,
+    ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
+        Err(tonic::Status::unimplemented(
+            "Resumption PSK is not implemented",
+        ))
+    }
+
+    async fn group_context_extensions_proposal(
+        &self,
+        _request: tonic::Request<GroupContextExtensionsProposalRequest>,
+    ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
+        Err(tonic::Status::unimplemented(
+            "Group context extension is not implemented yet",
+        ))
     }
 
     async fn commit(
@@ -931,112 +1032,11 @@ impl MlsClient for MlsClientImpl {
         Ok(Response::new(response))
     }
 
-    async fn group_info(
+    async fn re_init_proposal(
         &self,
-        request: tonic::Request<GroupInfoRequest>,
-    ) -> Result<tonic::Response<GroupInfoResponse>, tonic::Status> {
-        log::debug!("Getting group info");
-        let obj = request.get_ref();
-
-        let mut groups = self.groups.lock().unwrap();
-        let interop_group = groups
-            .get_mut(obj.state_id as usize)
-            .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
-        log::trace!("   in epoch {:?}", interop_group.group.epoch());
-        log::trace!(
-            "   actor {:x?}",
-            String::from_utf8_lossy(interop_group.group.own_identity().unwrap())
-        );
-
-        let group_info = interop_group
-            .group
-            .export_group_info(
-                &interop_group.crypto_provider,
-                &interop_group.signature_keys,
-                !obj.external_tree,
-            )
-            .map_err(|_| tonic::Status::internal("Unable to export group info from the group"))?
-            .tls_serialize_detached()
-            .map_err(|_| tonic::Status::internal("Unable to serialize group info message."))?;
-
-        let ratchet_tree = if obj.external_tree {
-            interop_group
-                .group
-                .export_ratchet_tree()
-                .tls_serialize_detached()
-                .map_err(|_| tonic::Status::internal("Unable to serialize ratchet tree."))?
-        } else {
-            vec![]
-        };
-
-        Ok(Response::new(GroupInfoResponse {
-            group_info,
-            ratchet_tree,
-        }))
-    }
-
-    async fn external_psk_proposal(
-        &self,
-        request: tonic::Request<ExternalPskProposalRequest>,
+        _request: tonic::Request<ReInitProposalRequest>,
     ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
-        log::debug!("Create external PSK proposal");
-        let psk_proposal_request = request.get_ref();
-
-        let mut groups = self.groups.lock().unwrap();
-        let interop_group = groups
-            .get_mut(psk_proposal_request.state_id as usize)
-            .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
-        log::trace!("   in epoch {:?}", interop_group.group.epoch());
-        log::trace!(
-            "   actor {:x?}",
-            String::from_utf8_lossy(interop_group.group.own_identity().unwrap())
-        );
-
-        let raw_psk_id = psk_proposal_request.psk_id.clone();
-        log::trace!("   psk_id {:x?}", raw_psk_id);
-        let external_psk = Psk::External(ExternalPsk::new(raw_psk_id));
-
-        let psk_id = PreSharedKeyId::new(
-            interop_group.group.ciphersuite(),
-            interop_group.crypto_provider.rand(),
-            external_psk,
-        )
-        .map_err(|_| Status::internal("unable to create PreSharedKeyId from raw psk_id"))?;
-
-        let proposal = interop_group
-            .group
-            .propose_external_psk(
-                &interop_group.crypto_provider,
-                &interop_group.signature_keys,
-                psk_id,
-            )
-            .map_err(|_| tonic::Status::internal("failed to generate psk proposal"))?;
-
-        // Store the proposal for potential future use.
-        interop_group.messages_out.push(proposal.clone().into());
-
-        // log::trace!("   proposal: {proposal:#x?}");
-        let proposal = proposal.to_bytes().unwrap();
-
-        Ok(Response::new(ProposalResponse { proposal }))
-    }
-
-    async fn resumption_psk_proposal(
-        &self,
-        _request: tonic::Request<ResumptionPskProposalRequest>,
-    ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
-        Err(tonic::Status::unimplemented(
-            "Resumption PSK is not implemented",
-        ))
-    }
-
-    async fn group_context_extensions_proposal(
-        &self,
-        _request: tonic::Request<GroupContextExtensionsProposalRequest>,
-    ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
-        Err(tonic::Status::unimplemented(
-            "Group context extension is not implemented yet",
-        ))
+        Err(tonic::Status::unimplemented("Re-init is not implemented"))
     }
 
     async fn re_init_commit(
@@ -1113,6 +1113,10 @@ impl MlsClient for MlsClientImpl {
         &self,
         _: Request<ExternalSignerProposalRequest>,
     ) -> Result<Response<ProposalResponse>, Status> {
+        todo!()
+    }
+
+    async fn free(&self, _: Request<FreeRequest>) -> Result<Response<FreeResponse>, Status> {
         todo!()
     }
 }

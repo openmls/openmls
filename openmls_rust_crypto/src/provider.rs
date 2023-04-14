@@ -5,9 +5,6 @@ use aes_gcm::{
     Aes128Gcm, Aes256Gcm, NewAead,
 };
 use chacha20poly1305::ChaCha20Poly1305;
-// See https://github.com/rust-analyzer/rust-analyzer/issues/7243
-// for the rust-analyzer issue with the following line.
-use ed25519_dalek::Signer as DalekSigner;
 use hkdf::Hkdf;
 use hpke::Hpke;
 use hpke_rs_crypto::types as hpke_types;
@@ -21,7 +18,7 @@ use openmls_traits::{
     },
 };
 use p256::{
-    ecdsa::{signature::Verifier, Signature, SigningKey, VerifyingKey},
+    ecdsa::{signature::Verifier, Signature, VerifyingKey},
     EncodedPoint,
 };
 use rand::{RngCore, SeedableRng};
