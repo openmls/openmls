@@ -15,8 +15,8 @@ use libcrux::{
     signature::{self, EcDsaP256Signature, Ed25519Signature},
 };
 
-#[cfg(test)]
-use libcrux::hmac;
+// #[cfg(test)]
+// use libcrux::hmac;
 
 use log::error;
 use openmls_traits::{
@@ -59,24 +59,24 @@ fn signature_mode(signature_scheme: SignatureScheme) -> Result<signature::Algori
     }
 }
 
-#[cfg(test)]
-#[inline(always)]
-fn hash_from_signature(
-    signature_scheme: SignatureScheme,
-) -> Result<digest::Algorithm, &'static str> {
-    match signature_scheme {
-        // The digest mode for ed25519 is not really used
-        SignatureScheme::ED25519 => Ok(digest::Algorithm::Sha256),
-        SignatureScheme::ECDSA_SECP256R1_SHA256 => Ok(digest::Algorithm::Sha256),
-        SignatureScheme::ED448 => Err("SignatureScheme ed448 is not supported."),
-        SignatureScheme::ECDSA_SECP521R1_SHA512 => {
-            Err("SignatureScheme ecdsa_secp521r1 is not supported.")
-        }
-        SignatureScheme::ECDSA_SECP384R1_SHA384 => {
-            Err("SignatureScheme ecdsa_secp384r1 is not supported.")
-        }
-    }
-}
+// #[cfg(test)]
+// #[inline(always)]
+// fn hash_from_signature(
+//     signature_scheme: SignatureScheme,
+// ) -> Result<digest::Algorithm, &'static str> {
+//     match signature_scheme {
+//         // The digest mode for ed25519 is not really used
+//         SignatureScheme::ED25519 => Ok(digest::Algorithm::Sha256),
+//         SignatureScheme::ECDSA_SECP256R1_SHA256 => Ok(digest::Algorithm::Sha256),
+//         SignatureScheme::ED448 => Err("SignatureScheme ed448 is not supported."),
+//         SignatureScheme::ECDSA_SECP521R1_SHA512 => {
+//             Err("SignatureScheme ecdsa_secp521r1 is not supported.")
+//         }
+//         SignatureScheme::ECDSA_SECP384R1_SHA384 => {
+//             Err("SignatureScheme ecdsa_secp384r1 is not supported.")
+//         }
+//     }
+// }
 
 #[inline(always)]
 fn hash_from_algorithm(hash_type: HashType) -> digest::Algorithm {
@@ -96,15 +96,15 @@ fn aead_from_algorithm(alg: AeadType) -> aead::Algorithm {
     }
 }
 
-#[cfg(test)]
-#[inline(always)]
-fn hmac_from_hash(hash_type: HashType) -> hmac::Algorithm {
-    match hash_type {
-        HashType::Sha2_256 => hmac::Algorithm::Sha256,
-        HashType::Sha2_384 => hmac::Algorithm::Sha384,
-        HashType::Sha2_512 => hmac::Algorithm::Sha512,
-    }
-}
+// #[cfg(test)]
+// #[inline(always)]
+// fn hmac_from_hash(hash_type: HashType) -> hmac::Algorithm {
+//     match hash_type {
+//         HashType::Sha2_256 => hmac::Algorithm::Sha256,
+//         HashType::Sha2_384 => hmac::Algorithm::Sha384,
+//         HashType::Sha2_512 => hmac::Algorithm::Sha512,
+//     }
+// }
 
 #[inline(always)]
 fn hkdf_from_hash(hash_type: HashType) -> hkdf::Algorithm {
