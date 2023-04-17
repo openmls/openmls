@@ -52,18 +52,18 @@ fn kp_bundle_rust_crypto(c: &mut Criterion) {
     criterion_kp_bundle(c, backend);
 }
 
-#[cfg(feature = "evercrypt")]
-fn kp_bundle_evercrypt(c: &mut Criterion) {
-    use openmls_evercrypt::OpenMlsEvercrypt;
-    let backend = &OpenMlsEvercrypt::default();
-    println!("Backend: Evercrypt");
+#[cfg(feature = "libcrux")]
+fn kp_bundle_libcrux(c: &mut Criterion) {
+    use openmls_libcrux::OpenMlsLibcrux;
+    let backend = &OpenMlsLibcrux::default();
+    println!("Backend: libcrux");
     criterion_kp_bundle(c, backend);
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
     kp_bundle_rust_crypto(c);
-    #[cfg(feature = "evercrypt")]
-    kp_bundle_evercrypt(c);
+    #[cfg(feature = "libcrux")]
+    kp_bundle_libcrux(c);
 }
 
 criterion_group!(benches, criterion_benchmark);

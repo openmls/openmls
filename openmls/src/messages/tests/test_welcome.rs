@@ -114,7 +114,7 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, backend: &impl OpenMl
 
     let group_info_bytes = welcome_key
         .aead_open(backend, welcome.encrypted_group_info(), &[], &welcome_nonce)
-        .expect("Could not decrypt GroupInfo.");
+        .expect("Could not decrypt GroupInfo");
     let mut verifiable_group_info =
         VerifiableGroupInfo::tls_deserialize(&mut group_info_bytes.as_slice()).unwrap();
 

@@ -83,10 +83,8 @@ impl Secret {
             mls_version
         );
         Ok(Secret {
-            value: crypto
-                .rand()
-                .random_vec(ciphersuite.hash_length())
-                .map_err(|_| CryptoError::InsufficientRandomness)?,
+            value: crypto.rand().random_vec(ciphersuite.hash_length()).unwrap(),
+            // .map_err(|_| CryptoError::InsufficientRandomness)?,
             mls_version,
             ciphersuite,
         })

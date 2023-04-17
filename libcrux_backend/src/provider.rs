@@ -182,15 +182,19 @@ impl OpenMlsCrypto for LibcruxProvider {
         if nonce.len() != 12 {
             return Err(CryptoError::InvalidLength);
         }
+        let mut data = data.to_vec();
+        let iv = aead::Iv::new(nonce).unwrap();
+
         let alg = aead_from_algorithm(alg);
         let key =
             aead::Key::from_bytes(alg, key.to_vec()).map_err(|_| CryptoError::InvalidAeadKey)?;
-        let mut data = data.to_vec();
-        let mut iv = [0u8; 12];
-        iv.copy_from_slice(nonce);
-        aead::encrypt(&key, &mut data, aead::Iv(iv), aad)
+
+        aead::encrypt(&key, &mut data, iv, aad)
             .map_err(|_| CryptoError::CryptoLibraryError)
-            .map(|r| r.as_ref().to_vec())
+            .map(|t| {
+                data.extend_from_slice(t.as_ref());
+                data
+            })
     }
 
     /// Returns the decryption of the provided cipher text or an error if the AEAD
@@ -209,13 +213,15 @@ impl OpenMlsCrypto for LibcruxProvider {
         if nonce.len() != 12 || ct_tag.len() < 16 {
             return Err(CryptoError::InvalidLength);
         }
-        let alg = aead_from_algorithm(alg);
-        let key =
-            aead::Key::from_bytes(alg, key.to_vec()).map_err(|_| CryptoError::InvalidAeadKey)?;
         let mut data = ct_tag[..ct_tag.len() - 16].to_vec();
         let iv = aead::Iv::new(nonce).map_err(|_| CryptoError::CryptoLibraryError)?;
         let tag = aead::Tag::from_slice(&ct_tag[ct_tag.len() - 16..])
             .map_err(|_| CryptoError::CryptoLibraryError)?;
+
+        let alg = aead_from_algorithm(alg);
+        let key =
+            aead::Key::from_bytes(alg, key.to_vec()).map_err(|_| CryptoError::InvalidAeadKey)?;
+
         aead::decrypt(&key, &mut data, iv, aad, &tag)
             .map_err(|_| CryptoError::CryptoLibraryError)?;
         Ok(data.to_vec())
@@ -234,10 +240,6 @@ impl OpenMlsCrypto for LibcruxProvider {
             Ok(signature_mode) => signature_mode,
             Err(_) => return Err(CryptoError::UnsupportedSignatureScheme),
         };
-        // let digest_mode = match hash_from_signature(alg) {
-        //     Ok(dm) => dm,
-        //     Err(_) => return Err(CryptoError::UnsupportedSignatureScheme),
-        // };
         let signature = if matches!(
             signature_mode,
             signature::Algorithm::EcDsaP256(signature::DigestAlgorithm::Sha256)
@@ -253,12 +255,13 @@ impl OpenMlsCrypto for LibcruxProvider {
                 signature::Algorithm::EcDsaP256(signature::DigestAlgorithm::Sha256),
             ))
         } else {
-            if signature.len() != 32 {
+            if signature.len() != 64 {
                 return Err(CryptoError::InvalidSignature);
             }
-            let mut bytes = [0u8; 32];
-            bytes.clone_from_slice(signature);
-            signature::Signature::Ed25519(Ed25519Signature::from_bytes(bytes))
+            signature::Signature::Ed25519(
+                Ed25519Signature::from_slice(signature)
+                    .map_err(|_| CryptoError::InvalidSignature)?,
+            )
         };
 
         signature::verify(data, &signature, pk).map_err(|_| CryptoError::InvalidSignature)
@@ -748,6 +751,7 @@ impl OpenMlsRand for LibcruxProvider {
     type Error = RandError;
 
     fn random_array<const N: usize>(&self) -> Result<[u8; N], Self::Error> {
+        // eprintln!("Getting {N} bytes from the DRBG");
         let mut rng = self.rng.write().map_err(|_| Self::Error::LockPoisoned)?;
         let mut out = [0u8; N];
         rng.try_fill_bytes(&mut out)
@@ -756,10 +760,13 @@ impl OpenMlsRand for LibcruxProvider {
     }
 
     fn random_vec(&self, len: usize) -> Result<Vec<u8>, Self::Error> {
+        // eprintln!("Getting {len} bytes from the DRBG");
         let mut rng = self.rng.write().map_err(|_| Self::Error::LockPoisoned)?;
         let mut out = vec![0u8; len];
-        rng.try_fill_bytes(&mut out)
-            .map_err(|_| Self::Error::NotEnoughRandomness)?;
+        rng.try_fill_bytes(&mut out).map_err(|e| {
+            eprintln!("Error: {e:?}");
+            Self::Error::NotEnoughRandomness
+        })?;
         Ok(out)
     }
 }
