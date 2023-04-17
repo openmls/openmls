@@ -174,7 +174,6 @@ impl MlsClient for MlsClientImpl {
         request: Request<SupportedCiphersuitesRequest>,
     ) -> Result<Response<SupportedCiphersuitesResponse>, Status> {
         let request = request.get_ref();
-        info!(?request, "Request");
 
         // TODO: read from backend
         let ciphersuites = &[
@@ -189,7 +188,6 @@ impl MlsClient for MlsClientImpl {
                 .collect(),
         };
 
-        info!(?response, "Response");
         Ok(Response::new(response))
     }
 
@@ -209,6 +207,9 @@ impl MlsClient for MlsClientImpl {
         signature_keys.store(backend.key_store()).unwrap();
 
         let wire_format_policy = wire_format_policy(request.encrypt_handshake);
+        // Note: We just use some values here that make live testing work.
+        //       There is nothing special about the used numbers and they
+        //       can be increased (or decreased) depending on the available scenarios.
         let mls_group_config = MlsGroupConfig::builder()
             .crypto_config(CryptoConfig::with_default_version(ciphersuite))
             .max_past_epochs(32)
@@ -341,6 +342,9 @@ impl MlsClient for MlsClientImpl {
         trace!(identity = String::from_utf8_lossy(&request.identity).to_string());
 
         let wire_format_policy = wire_format_policy(request.encrypt_handshake);
+        // Note: We just use some values here that make live testing work.
+        //       There is nothing special about the used numbers and they
+        //       can be increased (or decreased) depending on the available scenarios.
         let mls_group_config = MlsGroupConfig::builder()
             .max_past_epochs(32)
             .number_of_resumption_psks(32)
@@ -687,6 +691,9 @@ impl MlsClient for MlsClientImpl {
                 .hash_ref(interop_group.crypto_provider.crypto())
                 .unwrap()
         );
+        // Note: We just use some values here that make live testing work.
+        //       There is nothing special about the used numbers and they
+        //       can be increased (or decreased) depending on the available scenarios.
         let mls_group_config = MlsGroupConfig::builder()
             .use_ratchet_tree_extension(true)
             .max_past_epochs(32)
@@ -706,7 +713,6 @@ impl MlsClient for MlsClientImpl {
         // Store the proposal for potential future use.
         interop_group.messages_out.push(proposal.clone().into());
 
-        // trace!("   proposal: {proposal:#x?}");
         let proposal = proposal.to_bytes().unwrap();
 
         let response = ProposalResponse { proposal };
@@ -733,6 +739,9 @@ impl MlsClient for MlsClientImpl {
             String::from_utf8_lossy(interop_group.group.own_identity().unwrap())
         );
 
+        // Note: We just use some values here that make live testing work.
+        //       There is nothing special about the used numbers and they
+        //       can be increased (or decreased) depending on the available scenarios.
         let mls_group_config = MlsGroupConfig::builder()
             .max_past_epochs(32)
             .number_of_resumption_psks(32)
@@ -784,6 +793,9 @@ impl MlsClient for MlsClientImpl {
             String::from_utf8_lossy(interop_group.group.own_identity().unwrap())
         );
 
+        // Note: We just use some values here that make live testing work.
+        //       There is nothing special about the used numbers and they
+        //       can be increased (or decreased) depending on the available scenarios.
         let mls_group_config = MlsGroupConfig::builder()
             .max_past_epochs(32)
             .number_of_resumption_psks(32)
