@@ -1,4 +1,4 @@
-use openmls_traits::types::Ciphersuite;
+use openmls_traits::types::{Ciphersuite, VerifiableCiphersuite};
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
@@ -27,7 +27,7 @@ use crate::{
 )]
 pub struct Capabilities {
     pub(super) versions: Vec<ProtocolVersion>,
-    pub(super) ciphersuites: Vec<Ciphersuite>,
+    pub(super) ciphersuites: Vec<VerifiableCiphersuite>,
     pub(super) extensions: Vec<ExtensionType>,
     pub(super) proposals: Vec<ProposalType>,
     pub(super) credentials: Vec<CredentialType>,
@@ -51,8 +51,11 @@ impl Capabilities {
                 None => default_versions(),
             },
             ciphersuites: match ciphersuites {
-                Some(c) => c.into(),
-                None => default_ciphersuites(),
+                Some(c) => c.iter().map(|c| VerifiableCiphersuite::from(*c)).collect(),
+                None => default_ciphersuites()
+                    .into_iter()
+                    .map(VerifiableCiphersuite::from)
+                    .collect(),
             },
             extensions: match extensions {
                 Some(e) => e.into(),
@@ -88,7 +91,7 @@ impl Capabilities {
     }
 
     /// Get a reference to the list of ciphersuites in this extension.
-    pub fn ciphersuites(&self) -> &[Ciphersuite] {
+    pub fn ciphersuites(&self) -> &[VerifiableCiphersuite] {
         &self.ciphersuites
     }
 
@@ -144,7 +147,7 @@ impl Capabilities {
     }
 
     /// Set the ciphersuites list.
-    pub fn set_ciphersuites(&mut self, ciphersuites: Vec<Ciphersuite>) {
+    pub fn set_ciphersuites(&mut self, ciphersuites: Vec<VerifiableCiphersuite>) {
         self.ciphersuites = ciphersuites;
     }
 }
@@ -153,7 +156,10 @@ impl Default for Capabilities {
     fn default() -> Self {
         Capabilities {
             versions: default_versions(),
-            ciphersuites: default_ciphersuites(),
+            ciphersuites: default_ciphersuites()
+                .into_iter()
+                .map(VerifiableCiphersuite::from)
+                .collect(),
             extensions: default_extensions(),
             proposals: default_proposals(),
             credentials: default_credentials(),
@@ -193,4 +199,64 @@ pub(super) fn default_proposals() -> Vec<ProposalType> {
 // TODO(#1231)
 pub(super) fn default_credentials() -> Vec<CredentialType> {
     vec![CredentialType::Basic]
+}
+
+#[cfg(test)]
+mod tests {
+    use openmls_traits::types::{Ciphersuite, VerifiableCiphersuite};
+    use tls_codec::{Deserialize, Serialize};
+
+    use super::Capabilities;
+    use crate::{
+        credentials::CredentialType, messages::proposals::ProposalType, prelude::ExtensionType,
+        versions::ProtocolVersion,
+    };
+
+    #[test]
+    fn that_unknown_capabilities_are_de_serialized_correctly() {
+        let versions = vec![ProtocolVersion::Mls10, ProtocolVersion::Mls10Draft11];
+        let ciphersuites = vec![
+            Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519.into(),
+            Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256.into(),
+            Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519.into(),
+            Ciphersuite::MLS_256_DHKEMX448_AES256GCM_SHA512_Ed448.into(),
+            Ciphersuite::MLS_256_DHKEMP521_AES256GCM_SHA512_P521.into(),
+            Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448.into(),
+            Ciphersuite::MLS_256_DHKEMP384_AES256GCM_SHA384_P384.into(),
+            VerifiableCiphersuite::new(0x0000),
+            VerifiableCiphersuite::new(0x0A0A),
+            VerifiableCiphersuite::new(0x7A7A),
+            VerifiableCiphersuite::new(0xF000),
+            VerifiableCiphersuite::new(0xFFFF),
+        ];
+
+        let extensions = vec![
+            ExtensionType::Unknown(0x0000),
+            ExtensionType::Unknown(0xFAFA),
+        ];
+
+        let proposals = vec![ProposalType::Unknown(0x7A7A)];
+
+        let credentials = vec![
+            CredentialType::Basic,
+            CredentialType::X509,
+            CredentialType::Unknown(0x0000),
+            CredentialType::Unknown(0x7A7A),
+            CredentialType::Unknown(0xFFFF),
+        ];
+
+        let expected = Capabilities {
+            versions,
+            ciphersuites,
+            extensions,
+            proposals,
+            credentials,
+        };
+
+        let test_serialized = expected.tls_serialize_detached().unwrap();
+
+        let got = Capabilities::tls_deserialize_exact(test_serialized).unwrap();
+
+        assert_eq!(expected, got);
+    }
 }

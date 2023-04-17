@@ -241,6 +241,26 @@ pub struct HpkeKeyPair {
 pub type ExporterSecret = Vec<u8>;
 pub type KemOutput = Vec<u8>;
 
+/// A currently unknown ciphersuite.
+///
+/// Used to accept unknown values, e.g., in [`Capabilities`].
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]
+pub struct VerifiableCiphersuite(u16);
+
+impl VerifiableCiphersuite {
+    pub fn new(value: u16) -> Self {
+        Self(value)
+    }
+}
+
+impl From<Ciphersuite> for VerifiableCiphersuite {
+    fn from(value: Ciphersuite) -> Self {
+        Self(value as u16)
+    }
+}
+
 /// MLS ciphersuites.
 #[allow(non_camel_case_types)]
 #[allow(clippy::upper_case_acronyms)]
@@ -260,7 +280,6 @@ pub type KemOutput = Vec<u8>;
     TlsSize,
 )]
 #[repr(u16)]
-#[allow(missing_docs)]
 pub enum Ciphersuite {
     /// DH KEM x25519 | AES-GCM 128 | SHA2-256 | Ed25519
     MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519 = 0x0001,
