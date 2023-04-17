@@ -1124,6 +1124,7 @@ impl MlsClient for MlsClientImpl {
     ) -> Result<Response<ProposalResponse>, Status> {
         todo!()
     }
+
     async fn free(&self, _request: Request<FreeRequest>) -> Result<Response<FreeResponse>, Status> {
         log::debug!("Got Free request");
         let response = FreeResponse {};
