@@ -7,7 +7,7 @@ on:
   pull_request:
   workflow_dispatch:
 
-concurrency: 
+concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
@@ -39,4 +39,6 @@ jobs:
         with:
           crate: cargo-fuzz
           version: latest
+      - uses: ./.github/actions/setup
+
       - run: cargo fuzz run ${{ matrix.tests }} -- -runs=${{ matrix.runs }}

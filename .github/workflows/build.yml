@@ -1,6 +1,6 @@
 name: Build
 
-concurrency: 
+concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
@@ -54,6 +54,7 @@ jobs:
         with:
           target: ${{ matrix.arch }}
       - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/setup
 
       - run: |
           if [ ${{ matrix.mode }} == debug ]; then

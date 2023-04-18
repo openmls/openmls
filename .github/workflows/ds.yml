@@ -7,7 +7,7 @@ on:
   pull_request:
   workflow_dispatch:
 
-concurrency: 
+concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
@@ -30,6 +30,8 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/setup
+
       - name: Test DS lib
         run: cargo test --verbose -p ds-lib
       - name: Test DS

@@ -16,4 +16,6 @@ jobs:
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/setup
+
       - run: cargo clippy -p openmls --tests -- -D warnings

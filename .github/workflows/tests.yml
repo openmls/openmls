@@ -35,6 +35,7 @@ jobs:
         with:
           targets: i686-pc-windows-msvc, i686-unknown-linux-gnu
       - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/setup
 
       - name: Toggle rustc mode
         if: matrix.os != 'windows-latest'

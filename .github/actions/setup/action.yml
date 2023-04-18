@@ -1,0 +1,23 @@
+name: setup
+description: ⚙️ Setup
+runs:
+  using: composite
+  steps:
+    - name: Update & Install Dependencies (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install ninja-build
+
+    - name: Update & Install Dependencies (MacOS)
+      if: matrix.os == 'macos-latest'
+      shell: bash
+      run: |
+        brew update
+        brew install ninja
+
+    - name: Update & Install Dependencies (Windows)
+      if: matrix.os == 'windows-latest'
+      shell: bash
+      run: choco install ninja
