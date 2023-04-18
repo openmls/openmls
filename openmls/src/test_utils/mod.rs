@@ -273,11 +273,8 @@ pub fn ciphersuites(ciphersuite: Ciphersuite) {}
 // === Ciphersuites & backends ===
 
 #[cfg(any(
-    all(
-        not(target_arch = "x86_64"),
-        not(feature = "libcrux"),
-        target_os = "macos"
-    ),
+    all(not(target_arch = "x86_64"), target_os = "macos"),
+    not(feature = "libcrux"),
     target_family = "wasm",
 ))]
 #[template]
