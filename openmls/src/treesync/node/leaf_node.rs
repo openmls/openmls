@@ -296,7 +296,7 @@ impl LeafNode {
             .payload
             .capabilities
             .ciphersuites
-            .contains(&ciphersuite)
+            .contains(&ciphersuite.into())
             || !self.capabilities().versions.contains(&protocol_version)
         {
             debug_assert!(

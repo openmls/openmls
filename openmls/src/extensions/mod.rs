@@ -20,13 +20,11 @@
 //! - [`ExternalPubExtension`] (GroupInfo extension)
 
 use std::{
-    collections::{btree_map::Entry, BTreeMap},
     fmt::Debug,
     io::{Read, Write},
 };
 
 use serde::{Deserialize, Serialize};
-use tls_codec::*;
 
 // Private
 mod application_id_extension;
@@ -67,60 +65,80 @@ mod test_extensions;
 /// | 0xff00  - 0xffff | Reserved for Private Use | N/A        | N/A         | RFC XXXX  |
 ///
 /// Note: OpenMLS does not provide a `Reserved` variant in [ExtensionType].
-#[derive(
-    Debug,
-    Copy,
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-    Serialize,
-    Deserialize,
-    Ord,
-    PartialOrd,
-    TlsSerialize,
-    TlsDeserialize,
-    TlsSize,
-)]
-#[repr(u16)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Ord, PartialOrd)]
 pub enum ExtensionType {
     /// The application id extension allows applications to add an explicit,
     /// application-defined identifier to a KeyPackage.
-    ApplicationId = 1,
+    ApplicationId,
 
     /// The ratchet tree extensions provides the whole public state of the ratchet
     /// tree.
-    RatchetTree = 2,
+    RatchetTree,
 
     /// The required capabilities extension defines the configuration of a group
     /// that imposes certain requirements on clients in the group.
-    RequiredCapabilities = 3,
+    RequiredCapabilities,
 
     /// To join a group via an External Commit, a new member needs a GroupInfo
     /// with an ExternalPub extension present in its extensions field.
-    ExternalPub = 4,
+    ExternalPub,
 
     /// Group context extension that contains the credentials and signature keys
     /// of senders that are permitted to send external proposals to the group.
-    ExternalSenders = 5,
+    ExternalSenders,
+
+    /// A currently unknown extension type.
+    Unknown(u16),
 }
 
-impl TryFrom<u16> for ExtensionType {
-    type Error = tls_codec::Error;
+impl tls_codec::Size for ExtensionType {
+    fn tls_serialized_len(&self) -> usize {
+        2
+    }
+}
 
-    /// Get the [`ExtensionType`] from a u16.
-    /// Returns an error if the extension type is not known.
-    /// Note that this returns a [`tls_codec::Error`](`tls_codec::Error`).
-    fn try_from(a: u16) -> Result<Self, Self::Error> {
+impl tls_codec::Deserialize for ExtensionType {
+    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error>
+    where
+        Self: Sized,
+    {
+        let mut extension_type = [0u8; 2];
+        bytes.read_exact(&mut extension_type)?;
+
+        Ok(ExtensionType::from(u16::from_be_bytes(extension_type)))
+    }
+}
+
+impl tls_codec::Serialize for ExtensionType {
+    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+        writer.write_all(&u16::from(*self).to_be_bytes())?;
+
+        Ok(2)
+    }
+}
+
+impl From<u16> for ExtensionType {
+    fn from(a: u16) -> Self {
         match a {
-            1 => Ok(ExtensionType::ApplicationId),
-            2 => Ok(ExtensionType::RatchetTree),
-            3 => Ok(ExtensionType::RequiredCapabilities),
-            4 => Ok(ExtensionType::ExternalPub),
-            5 => Ok(ExtensionType::ExternalSenders),
-            _ => Err(tls_codec::Error::DecodingError(format!(
-                "{a} is an unkown extension type"
-            ))),
+            1 => ExtensionType::ApplicationId,
+            2 => ExtensionType::RatchetTree,
+            3 => ExtensionType::RequiredCapabilities,
+            4 => ExtensionType::ExternalPub,
+            5 => ExtensionType::ExternalSenders,
+            unknown => ExtensionType::Unknown(unknown),
+        }
+    }
+}
+
+impl From<ExtensionType> for u16 {
+    fn from(value: ExtensionType) -> Self {
+        match value {
+            ExtensionType::ApplicationId => 1,
+            ExtensionType::RatchetTree => 2,
+            ExtensionType::RequiredCapabilities => 3,
+            ExtensionType::ExternalPub => 4,
+            ExtensionType::ExternalSenders => 5,
+            ExtensionType::Unknown(unknown) => unknown,
         }
     }
 }
@@ -128,13 +146,14 @@ impl TryFrom<u16> for ExtensionType {
 impl ExtensionType {
     /// Check whether an [`ExtensionType`] is supported or not.
     pub fn is_supported(&self) -> bool {
-        match self {
+        matches!(
+            self,
             ExtensionType::ApplicationId
-            | ExtensionType::RatchetTree
-            | ExtensionType::RequiredCapabilities
-            | ExtensionType::ExternalPub
-            | ExtensionType::ExternalSenders => true,
-        }
+                | ExtensionType::RatchetTree
+                | ExtensionType::RequiredCapabilities
+                | ExtensionType::ExternalPub
+                | ExtensionType::ExternalSenders
+        )
     }
 }
 
@@ -152,7 +171,7 @@ impl ExtensionType {
 ///     opaque extension_data<V>;
 /// } Extension;
 /// ```
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Extension {
     /// An [`ApplicationIdExtension`]
     ApplicationId(ApplicationIdExtension),
@@ -168,25 +187,24 @@ pub enum Extension {
 
     /// A [`ExternalPubExtension`]
     ExternalSenders(ExternalSendersExtension),
+
+    /// A currently unknown extension.
+    Unknown(u16, UnknownExtension),
 }
+
+/// A unknown/unparsed extension represented by raw bytes.
+#[derive(PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
+pub struct UnknownExtension(pub Vec<u8>);
 
 /// A list of extensions with unique extension types.
-#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize, tls_codec::TlsSize)]
 pub struct Extensions {
-    map: BTreeMap<ExtensionType, Extension>,
-}
-
-impl Size for Extensions {
-    fn tls_serialized_len(&self) -> usize {
-        let out: Vec<&Extension> = self.map.values().collect();
-        out.tls_serialized_len()
-    }
+    unique: Vec<Extension>,
 }
 
 impl tls_codec::Serialize for Extensions {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
-        let out: Vec<&Extension> = self.map.values().collect();
-        out.tls_serialize(writer)
+        self.unique.tls_serialize(writer)
     }
 }
 
@@ -204,15 +222,13 @@ impl tls_codec::Deserialize for Extensions {
 impl Extensions {
     /// Create an empty extension list.
     pub fn empty() -> Self {
-        Self {
-            map: BTreeMap::new(),
-        }
+        Self { unique: vec![] }
     }
 
     /// Create an extension list with a single extension.
     pub fn single(extension: Extension) -> Self {
         Self {
-            map: BTreeMap::from([(extension.extension_type(), extension)]),
+            unique: vec![extension],
         }
     }
 
@@ -225,51 +241,51 @@ impl Extensions {
 
     /// Returns an iterator over the extension list.
     pub fn iter(&self) -> impl Iterator<Item = &Extension> {
-        self.map.values()
+        self.unique.iter()
     }
 
     /// Add an extension to the extension list.
     ///
     /// Returns an error when there already is an extension with the same extension type.
     pub fn add(&mut self, extension: Extension) -> Result<(), InvalidExtensionError> {
-        if let Entry::Vacant(e) = self.map.entry(extension.extension_type()) {
-            e.insert(extension);
-            Ok(())
-        } else {
-            Err(InvalidExtensionError::Duplicate)
+        if self.contains(extension.extension_type()) {
+            return Err(InvalidExtensionError::Duplicate);
         }
+
+        self.unique.push(extension);
+
+        Ok(())
     }
 
     /// Add an extension to the extension list (or replace an existing one.)
     ///
     /// Returns the replaced extension (if any).
     pub fn add_or_replace(&mut self, extension: Extension) -> Option<Extension> {
-        self.map.insert(extension.extension_type(), extension)
+        let replaced = self.remove(extension.extension_type());
+        self.unique.push(extension);
+        replaced
     }
 
     /// Remove an extension from the extension list.
     ///
     /// Returns the removed extension or `None` when there is no extension with the given extension type.
     pub fn remove(&mut self, extension_type: ExtensionType) -> Option<Extension> {
-        self.map.remove(&extension_type)
-    }
-
-    /// Replace an extension in the extension list.
-    ///
-    /// Returns the replaced extension or an error when there is no extension with the given extension type.
-    #[cfg(any(feature = "test-utils", test))]
-    pub fn replace(&mut self, extension: Extension) -> Result<Extension, InvalidExtensionError> {
-        let got = self.map.remove(&extension.extension_type());
-
-        match got {
-            Some(extension) => Ok(extension),
-            None => Err(InvalidExtensionError::NotFound),
+        if let Some(pos) = self
+            .unique
+            .iter()
+            .position(|ext| ext.extension_type() == extension_type)
+        {
+            Some(self.unique.remove(pos))
+        } else {
+            None
         }
     }
 
     /// Returns `true` iff the extension list contains an extension with the given extension type.
     pub fn contains(&self, extension_type: ExtensionType) -> bool {
-        self.map.contains_key(&extension_type)
+        self.unique
+            .iter()
+            .any(|ext| ext.extension_type() == extension_type)
     }
 }
 
@@ -277,23 +293,33 @@ impl TryFrom<Vec<Extension>> for Extensions {
     type Error = InvalidExtensionError;
 
     fn try_from(candidate: Vec<Extension>) -> Result<Self, Self::Error> {
-        let mut map = BTreeMap::new();
+        let mut unique: Vec<Extension> = Vec::new();
 
         for extension in candidate.into_iter() {
-            if map.insert(extension.extension_type(), extension).is_some() {
+            if unique
+                .iter()
+                .any(|ext| ext.extension_type() == extension.extension_type())
+            {
                 return Err(InvalidExtensionError::Duplicate);
+            } else {
+                unique.push(extension);
             }
         }
 
-        Ok(Self { map })
+        Ok(Self { unique })
     }
 }
 
 impl Extensions {
+    fn find_by_type(&self, extension_type: ExtensionType) -> Option<&Extension> {
+        self.unique
+            .iter()
+            .find(|ext| ext.extension_type() == extension_type)
+    }
+
     /// Get a reference to the [`ApplicationIdExtension`] if there is any.
     pub fn application_id(&self) -> Option<&ApplicationIdExtension> {
-        self.map
-            .get(&ExtensionType::ApplicationId)
+        self.find_by_type(ExtensionType::ApplicationId)
             .and_then(|e| match e {
                 Extension::ApplicationId(e) => Some(e),
                 _ => None,
@@ -302,8 +328,7 @@ impl Extensions {
 
     /// Get a reference to the [`RatchetTreeExtension`] if there is any.
     pub fn ratchet_tree(&self) -> Option<&RatchetTreeExtension> {
-        self.map
-            .get(&ExtensionType::RatchetTree)
+        self.find_by_type(ExtensionType::RatchetTree)
             .and_then(|e| match e {
                 Extension::RatchetTree(e) => Some(e),
                 _ => None,
@@ -312,8 +337,7 @@ impl Extensions {
 
     /// Get a reference to the [`RequiredCapabilitiesExtension`] if there is any.
     pub fn required_capabilities(&self) -> Option<&RequiredCapabilitiesExtension> {
-        self.map
-            .get(&ExtensionType::RequiredCapabilities)
+        self.find_by_type(ExtensionType::RequiredCapabilities)
             .and_then(|e| match e {
                 Extension::RequiredCapabilities(e) => Some(e),
                 _ => None,
@@ -322,8 +346,7 @@ impl Extensions {
 
     /// Get a reference to the [`ExternalPubExtension`] if there is any.
     pub fn external_pub(&self) -> Option<&ExternalPubExtension> {
-        self.map
-            .get(&ExtensionType::ExternalPub)
+        self.find_by_type(ExtensionType::ExternalPub)
             .and_then(|e| match e {
                 Extension::ExternalPub(e) => Some(e),
                 _ => None,
@@ -332,8 +355,7 @@ impl Extensions {
 
     /// Get a reference to the [`ExternalSendersExtension`] if there is any.
     pub fn external_senders(&self) -> Option<&ExternalSendersExtension> {
-        self.map
-            .get(&ExtensionType::ExternalSenders)
+        self.find_by_type(ExtensionType::ExternalSenders)
             .and_then(|e| match e {
                 Extension::ExternalSenders(e) => Some(e),
                 _ => None,
@@ -415,28 +437,15 @@ impl Extension {
             Extension::RequiredCapabilities(_) => ExtensionType::RequiredCapabilities,
             Extension::ExternalPub(_) => ExtensionType::ExternalPub,
             Extension::ExternalSenders(_) => ExtensionType::ExternalSenders,
+            Extension::Unknown(kind, _) => ExtensionType::Unknown(*kind),
         }
-    }
-}
-
-impl Eq for Extension {}
-
-impl PartialOrd for Extension {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.extension_type().partial_cmp(&other.extension_type())
-    }
-}
-
-impl Ord for Extension {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.extension_type().cmp(&other.extension_type())
     }
 }
 
 #[cfg(test)]
 mod test {
     use itertools::Itertools;
-    use tls_codec::{Deserialize, Serialize};
+    use tls_codec::{Deserialize, Serialize, VLBytes};
 
     use crate::{ciphersuite::HpkePublicKey, extensions::*};
 
@@ -527,6 +536,42 @@ mod test {
             let bytes = candidate.tls_serialize_detached().unwrap();
             let got = Extensions::tls_deserialize(&mut bytes.as_slice()).unwrap();
             assert_eq!(candidate, got);
+        }
+    }
+
+    #[test]
+    fn that_unknown_extensions_are_de_serialized_correctly() {
+        let extension_types = [0x0000u16, 0x0A0A, 0x7A7A, 0xF000, 0xFFFF];
+        let extension_datas = [vec![], vec![0], vec![1, 2, 3]];
+
+        for extension_type in extension_types.into_iter() {
+            for extension_data in extension_datas.iter() {
+                // Construct an unknown extension manually.
+                let test = {
+                    let mut buf = extension_type.to_be_bytes().to_vec();
+                    buf.append(
+                        &mut VLBytes::new(extension_data.clone())
+                            .tls_serialize_detached()
+                            .unwrap(),
+                    );
+                    buf
+                };
+
+                // Test deserialization.
+                let got = Extension::tls_deserialize_exact(&test).unwrap();
+
+                match got {
+                    Extension::Unknown(got_extension_type, ref got_extension_data) => {
+                        assert_eq!(extension_type, got_extension_type);
+                        assert_eq!(extension_data, &got_extension_data.0);
+                    }
+                    other => panic!("Expected `Extension::Unknown`, got {:?}", other),
+                }
+
+                // Test serialization.
+                let got_serialized = got.tls_serialize_detached().unwrap();
+                assert_eq!(test, got_serialized);
+            }
         }
     }
 }

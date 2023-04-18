@@ -1053,7 +1053,7 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             KeyPackageTestVersion::UnsupportedCiphersuite => {
                 let mut new_leaf_node = charlie_key_package.leaf_node().clone();
                 new_leaf_node.capabilities_mut().set_ciphersuites(vec![
-                    Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448,
+                    Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448.into(),
                 ]);
                 charlie_key_package.set_leaf_node(new_leaf_node);
             }
@@ -1090,7 +1090,7 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                 KeyPackageTestVersion::UnsupportedCiphersuite => {
                     let mut new_leaf_node = charlie_key_package.leaf_node().clone();
                     new_leaf_node.capabilities_mut().set_ciphersuites(vec![
-                        Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448,
+                        Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448.into(),
                     ]);
                     charlie_key_package.set_leaf_node(new_leaf_node);
                 }

@@ -5,7 +5,7 @@
 //! To find out if a specific proposal type is supported,
 //! [`ProposalType::is_supported()`] can be used.
 
-use std::convert::TryFrom;
+use std::io::{Read, Write};
 
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
@@ -31,97 +31,136 @@ use crate::{
 ///
 ///
 /// ```c
-/// // draft-ietf-mls-protocol-17
+/// // draft-ietf-mls-protocol-20
 /// // See IANA registry for registered values
 /// uint16 ProposalType;
 /// ```
 ///
-/// | Value           | Name                     | Recommended | Path Required | Reference |
-/// |:================|:=========================|:============|:==============|:==========|
-/// | 0x0000          | RESERVED                 | N/A         | N/A           | RFC XXXX  |
-/// | 0x0001          | add                      | Y           | N             | RFC XXXX  |
-/// | 0x0002          | update                   | Y           | Y             | RFC XXXX  |
-/// | 0x0003          | remove                   | Y           | Y             | RFC XXXX  |
-/// | 0x0004          | psk                      | Y           | N             | RFC XXXX  |
-/// | 0x0005          | reinit                   | Y           | N             | RFC XXXX  |
-/// | 0x0006          | external_init            | Y           | Y             | RFC XXXX  |
-/// | 0x0007          | group_context_extensions | Y           | Y             | RFC XXXX  |
-/// | 0xf000 - 0xffff | Reserved for Private Use | N/A         | N/A           | RFC XXXX  |
+/// | Value           | Name                     | R | Ext | Path | Ref      |
+/// |-----------------|--------------------------|---|-----|------|----------|
+/// | 0x0000          | RESERVED                 | - | -   | -    | RFC XXXX |
+/// | 0x0001          | add                      | Y | Y   | N    | RFC XXXX |
+/// | 0x0002          | update                   | Y | N   | Y    | RFC XXXX |
+/// | 0x0003          | remove                   | Y | Y   | Y    | RFC XXXX |
+/// | 0x0004          | psk                      | Y | Y   | N    | RFC XXXX |
+/// | 0x0005          | reinit                   | Y | Y   | N    | RFC XXXX |
+/// | 0x0006          | external_init            | Y | N   | Y    | RFC XXXX |
+/// | 0x0007          | group_context_extensions | Y | Y   | Y    | RFC XXXX |
+/// | 0x0A0A          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0x1A1A          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0x2A2A          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0x3A3A          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0x4A4A          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0x5A5A          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0x6A6A          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0x7A7A          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0x8A8A          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0x9A9A          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0xAAAA          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0xBABA          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0xCACA          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0xDADA          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0xEAEA          | GREASE                   | Y | -   | -    | RFC XXXX |
+/// | 0xF000 - 0xFFFF | Reserved for Private Use | - | -   | -    | RFC XXXX |
 ///
 /// # Extensions
 ///
 /// | Value  | Name    | Recommended | Path Required | Reference | Notes                        |
 /// |:=======|:========|:============|:==============|:==========|:=============================|
 /// | 0x0008 | app_ack | Y           | Y             | RFC XXXX  | draft-ietf-mls-extensions-00 |
-#[derive(
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Clone,
-    Copy,
-    Debug,
-    TlsSerialize,
-    TlsDeserialize,
-    TlsSize,
-    Serialize,
-    Deserialize,
-)]
-#[repr(u16)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Serialize, Deserialize)]
 #[allow(missing_docs)]
 pub enum ProposalType {
-    Add = 1,
-    Update = 2,
-    Remove = 3,
-    PreSharedKey = 4,
-    Reinit = 5,
-    ExternalInit = 6,
-    GroupContextExtensions = 7,
-    AppAck = 8,
+    Add,
+    Update,
+    Remove,
+    PreSharedKey,
+    Reinit,
+    ExternalInit,
+    GroupContextExtensions,
+    AppAck,
+    Unknown(u16),
+}
+
+impl tls_codec::Size for ProposalType {
+    fn tls_serialized_len(&self) -> usize {
+        2
+    }
+}
+
+impl tls_codec::Deserialize for ProposalType {
+    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error>
+    where
+        Self: Sized,
+    {
+        let mut proposal_type = [0u8; 2];
+        bytes.read_exact(&mut proposal_type)?;
+
+        Ok(ProposalType::from(u16::from_be_bytes(proposal_type)))
+    }
+}
+
+impl tls_codec::Serialize for ProposalType {
+    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+        writer.write_all(&u16::from(*self).to_be_bytes())?;
+
+        Ok(2)
+    }
 }
 
 impl ProposalType {
     /// Check whether a proposal type is supported or not. Returns `true`
     /// if a proposal is supported and `false` otherwise.
     pub fn is_supported(&self) -> bool {
-        match self {
+        matches!(
+            self,
             ProposalType::Add
-            | ProposalType::Update
-            | ProposalType::Remove
-            | ProposalType::PreSharedKey
-            | ProposalType::Reinit
-            | ProposalType::ExternalInit
-            | ProposalType::GroupContextExtensions => true,
-            ProposalType::AppAck => false,
-        }
+                | ProposalType::Update
+                | ProposalType::Remove
+                | ProposalType::PreSharedKey
+                | ProposalType::Reinit
+                | ProposalType::ExternalInit
+                | ProposalType::GroupContextExtensions
+        )
     }
 
     /// Returns `true` if the proposal type requires a path and `false`
     pub fn is_path_required(&self) -> bool {
-        match self {
-            Self::Add
-            | Self::PreSharedKey
-            | Self::Reinit
-            | Self::AppAck
-            | Self::GroupContextExtensions => false,
-            Self::Update | Self::Remove | Self::ExternalInit => true,
+        matches!(
+            self,
+            Self::Update | Self::Remove | Self::ExternalInit | Self::GroupContextExtensions
+        )
+    }
+}
+
+impl From<u16> for ProposalType {
+    fn from(value: u16) -> Self {
+        match value {
+            1 => ProposalType::Add,
+            2 => ProposalType::Update,
+            3 => ProposalType::Remove,
+            4 => ProposalType::PreSharedKey,
+            5 => ProposalType::Reinit,
+            6 => ProposalType::ExternalInit,
+            7 => ProposalType::GroupContextExtensions,
+            8 => ProposalType::AppAck,
+            unknown => ProposalType::Unknown(unknown),
         }
     }
 }
 
-impl TryFrom<u16> for ProposalType {
-    type Error = &'static str;
-    fn try_from(value: u16) -> Result<Self, Self::Error> {
+impl From<ProposalType> for u16 {
+    fn from(value: ProposalType) -> Self {
         match value {
-            1 => Ok(ProposalType::Add),
-            2 => Ok(ProposalType::Update),
-            3 => Ok(ProposalType::Remove),
-            4 => Ok(ProposalType::PreSharedKey),
-            5 => Ok(ProposalType::Reinit),
-            6 => Ok(ProposalType::ExternalInit),
-            7 => Ok(ProposalType::GroupContextExtensions),
-            8 => Ok(ProposalType::AppAck),
-            _ => Err("Unknown proposal type."),
+            ProposalType::Add => 1,
+            ProposalType::Update => 2,
+            ProposalType::Remove => 3,
+            ProposalType::PreSharedKey => 4,
+            ProposalType::Reinit => 5,
+            ProposalType::ExternalInit => 6,
+            ProposalType::GroupContextExtensions => 7,
+            ProposalType::AppAck => 8,
+            ProposalType::Unknown(unknown) => unknown,
         }
     }
 }
@@ -503,4 +542,35 @@ pub(crate) struct MessageRange {
     sender: KeyPackageRef,
     first_generation: u32,
     last_generation: u32,
+}
+
+#[cfg(test)]
+mod tests {
+    use tls_codec::{Deserialize, Serialize};
+
+    use super::ProposalType;
+
+    #[test]
+    fn that_unknown_proposal_types_are_de_serialized_correctly() {
+        let proposal_types = [0x0000u16, 0x0A0A, 0x7A7A, 0xF000, 0xFFFF];
+
+        for proposal_type in proposal_types.into_iter() {
+            // Construct an unknown proposal type.
+            let test = proposal_type.to_be_bytes().to_vec();
+
+            // Test deserialization.
+            let got = ProposalType::tls_deserialize_exact(&test).unwrap();
+
+            match got {
+                ProposalType::Unknown(got_proposal_type) => {
+                    assert_eq!(proposal_type, got_proposal_type);
+                }
+                other => panic!("Expected `ProposalType::Unknown`, got `{:?}`.", other),
+            }
+
+            // Test serialization.
+            let got_serialized = got.tls_serialize_detached().unwrap();
+            assert_eq!(test, got_serialized);
+        }
+    }
 }
