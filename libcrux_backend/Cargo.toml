@@ -11,7 +11,7 @@ readme = "README.md"
 
 [dependencies]
 openmls_traits = { version = "0.1.0", path = "../traits" }
-libcrux = { version = "0.0.1-dev.2", features = ["rand"] }
+libcrux = { version = "0.0.1-dev.3", features = ["rand"] }
 openmls_memory_keystore = { version = "0.1.0", path = "../memory_keystore", package = "openmls_memory_keystore" }
 log = { workspace = true }
 thiserror = { workspace = true }
