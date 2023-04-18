@@ -171,11 +171,8 @@ impl MlsClient for MlsClientImpl {
     #[instrument(skip_all)]
     async fn supported_ciphersuites(
         &self,
-        request: Request<SupportedCiphersuitesRequest>,
+        _request: Request<SupportedCiphersuitesRequest>,
     ) -> Result<Response<SupportedCiphersuitesResponse>, Status> {
-        let request = request.get_ref();
-        info!(?request, "Request");
-
         // TODO: read from backend
         let ciphersuites = &[
             Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
