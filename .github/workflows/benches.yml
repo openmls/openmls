@@ -30,7 +30,11 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - uses: ./.github/actions/setup
+
+      - name: Setup
+        uses: ./.github/actions/setup
+        with:
+          os: ${{ matrix.os }}
 
       - name: Benchmarks
         run: cargo bench -p openmls --verbose

@@ -54,7 +54,11 @@ jobs:
         with:
           target: ${{ matrix.arch }}
       - uses: Swatinem/rust-cache@v2
-      - uses: ./.github/actions/setup
+
+      - name: Setup
+        uses: ./.github/actions/setup
+        with:
+          os: ubuntu-latest
 
       - run: |
           if [ ${{ matrix.mode }} == debug ]; then

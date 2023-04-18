@@ -22,7 +22,11 @@ jobs:
         uses: peaceiris/actions-mdbook@v1
         with:
           mdbook-version: "latest"
-      - uses: ./.github/actions/setup
+
+      - name: Setup
+        uses: ./.github/actions/setup
+        with:
+          os: ubuntu-latest
 
       - name: Build docs
         run: |

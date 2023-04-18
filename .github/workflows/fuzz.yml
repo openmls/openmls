@@ -39,6 +39,10 @@ jobs:
         with:
           crate: cargo-fuzz
           version: latest
-      - uses: ./.github/actions/setup
+
+      - name: Setup
+        uses: ./.github/actions/setup
+        with:
+          os: ${{ matrix.os }}
 
       - run: cargo fuzz run ${{ matrix.tests }} -- -runs=${{ matrix.runs }}

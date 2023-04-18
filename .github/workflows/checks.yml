@@ -24,7 +24,11 @@ jobs:
         with:
           components: rustfmt
       - uses: Swatinem/rust-cache@v2
-      - uses: ./.github/actions/setup
+
+      - name: Setup
+        uses: ./.github/actions/setup
+        with:
+          os: ubuntu-latest
 
       - name: Cargo fmt
         run: cargo fmt -- --check
