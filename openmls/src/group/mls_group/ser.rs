@@ -18,7 +18,7 @@ pub struct SerializedMlsGroup {
     mls_group_config: MlsGroupConfig,
     group: CoreGroup,
     proposal_store: ProposalStore,
-    own_leaf_nodes: Vec<OpenMlsLeafNode>,
+    own_leaf_nodes: Vec<LeafNode>,
     aad: Vec<u8>,
     resumption_psk_store: ResumptionPskStore,
     group_state: MlsGroupState,

@@ -186,6 +186,9 @@ pub enum StageCommitError {
     /// Missing decryption key.
     #[error("Missing decryption key.")]
     MissingDecryptionKey,
+    /// See [`UpdatePathError`] for more details.
+    #[error(transparent)]
+    VerifiedUpdatePathError(#[from] UpdatePathError),
 }
 
 /// Create commit error
@@ -292,6 +295,21 @@ pub enum ValidationError {
     /// The KeyPackage could not be validated.
     #[error(transparent)]
     KeyPackageVerifyError(#[from] KeyPackageVerifyError),
+    /// The UpdatePath could not be validated.
+    #[error(transparent)]
+    UpdatePathError(#[from] UpdatePathError),
+    /// Invalid LeafNode signature.
+    #[error("Invalid LeafNode signature.")]
+    InvalidLeafNodeSignature,
+    /// Invalid LeafNode source type
+    #[error("Invalid LeafNode source type")]
+    InvalidLeafNodeSourceType,
+    /// Invalid sender type.
+    #[error("Invalid sender type")]
+    InvalidSenderType,
+    /// The Commit includes update proposals from the committer.
+    #[error("The Commit includes update proposals from the committer.")]
+    CommitterIncludedOwnUpdate,
 }
 
 /// Proposal validation error

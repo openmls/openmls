@@ -61,7 +61,9 @@ impl MlsGroup {
         ))
     }
 
-    /// Creates a proposal to update the own leaf node.
+    /// Creates a proposal to update the own leaf node. Optionally, a
+    /// [`LeafNode`] can be provided to update the leaf node. Note that its
+    /// private key must be manually added to the key store.
     pub fn propose_self_update<KeyStore: OpenMlsKeyStore>(
         &mut self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
@@ -81,10 +83,17 @@ impl MlsGroup {
             .ok_or_else(|| LibraryError::custom("The tree is broken. Couldn't find own leaf."))?
             .clone();
         if let Some(leaf) = leaf_node {
-            own_leaf.update_and_re_sign(None, leaf, self.group_id().clone(), signer)?
+            own_leaf.update_and_re_sign(
+                None,
+                leaf,
+                self.group_id().clone(),
+                self.own_leaf_index(),
+                signer,
+            )?
         } else {
             let keypair = own_leaf.rekey(
                 self.group_id(),
+                self.own_leaf_index(),
                 self.ciphersuite(),
                 ProtocolVersion::default(), // XXX: openmls/openmls#1065
                 backend,
@@ -98,7 +107,7 @@ impl MlsGroup {
 
         let update_proposal = self.group.create_update_proposal(
             self.framing_parameters(),
-            own_leaf.leaf_node().clone(),
+            own_leaf.clone(),
             signer,
         )?;
 

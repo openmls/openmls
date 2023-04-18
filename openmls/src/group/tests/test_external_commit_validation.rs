@@ -25,7 +25,7 @@ use crate::{
     },
     messages::proposals::{
         AddProposal, ExternalInitProposal, GroupContextExtensionProposal, Proposal, ProposalOrRef,
-        ProposalType, ReInitProposal, RemoveProposal, UpdateProposal,
+        ProposalType, ReInitProposal, RemoveProposal,
     },
 };
 
@@ -239,18 +239,6 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             }))
         };
 
-        let update_proposal = {
-            let bob_key_package = generate_key_package(
-                ciphersuite,
-                Extensions::empty(),
-                backend,
-                bob_credential.clone(),
-            );
-            ProposalOrRef::Proposal(Proposal::Update(UpdateProposal {
-                leaf_node: bob_key_package.leaf_node().clone(),
-            }))
-        };
-
         let reinit_proposal = {
             ProposalOrRef::Proposal(Proposal::ReInit(ReInitProposal {
                 group_id: alice_group.group_id().clone(),
@@ -268,7 +256,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             ))
         };
 
-        vec![update_proposal, add_proposal, reinit_proposal, gce_proposal]
+        vec![add_proposal, reinit_proposal, gce_proposal]
     };
 
     for proposal in deny_list {
@@ -319,7 +307,8 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     }
 }
 
-// ValSem243: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed leaf are identical to the ones in the path KeyPackage.
+// ValSem243: External Commit, inline Remove Proposal: The identity of the
+// removed leaf are identical to the ones in the path KeyPackage.
 #[apply(ciphersuites_and_backends)]
 fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let ECValidationTestSetup {
@@ -359,7 +348,7 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let (_, public_message_commit, _) = MlsGroup::join_by_external_commit(
         backend,
         &bob_credential.signer,
-        Some(ratchet_tree.clone()),
+        Some(ratchet_tree.clone().into()),
         verifiable_group_info.clone(),
         alice_group.configuration(),
         &[],
@@ -401,6 +390,21 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
             commit.proposals.push(remove_proposal);
 
+            // Resign the leaf node in the update path of the commit with
+            // Alice's leaf index. If we don't do this, we will fail on an
+            // invalid signature instead of an invalid remove proposal.
+            let mut leaf_node = commit.path.as_ref().unwrap().leaf_node().clone();
+
+            leaf_node.resign_with_position(
+                alice_group.own_leaf_index(),
+                alice_group.group_id().clone(),
+                &bob_credential.signer,
+            );
+
+            if let Some(path) = commit.path.as_mut() {
+                path.set_leaf_node(leaf_node)
+            }
+
             commit
         };
 
@@ -439,7 +443,7 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let alice_new_group = MlsGroup::join_by_external_commit(
         backend,
         &alice_credential.signer,
-        Some(ratchet_tree),
+        Some(ratchet_tree.into()),
         verifiable_group_info,
         alice_group.configuration(),
         &[],
@@ -799,7 +803,7 @@ mod utils {
         let (_, public_message_commit, _) = MlsGroup::join_by_external_commit(
             backend,
             &bob_credential.signer,
-            Some(tree_option),
+            Some(tree_option.into()),
             verifiable_group_info,
             alice_group.configuration(),
             &[],

@@ -13,7 +13,7 @@ use crate::{
     test_utils::*,
     treesync::{
         node::encryption_keys::{EncryptionKeyPair, EncryptionPrivateKey},
-        RatchetTree,
+        RatchetTreeIn,
     },
 };
 
@@ -150,10 +150,10 @@ pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
         test_vector.init_priv,
     );
 
-    let ratchet_tree: Option<RatchetTree> = test_vector
+    let ratchet_tree: Option<RatchetTreeIn> = test_vector
         .ratchet_tree
         .as_ref()
-        .map(|bytes| RatchetTree::tls_deserialize_exact(bytes.0.as_slice()).unwrap());
+        .map(|bytes| RatchetTreeIn::tls_deserialize_exact(bytes.0.as_slice()).unwrap());
 
     passive_client.join_by_welcome(
         MlsMessageIn::tls_deserialize_exact(&test_vector.welcome).unwrap(),
@@ -305,7 +305,7 @@ impl PassiveClient {
     fn join_by_welcome(
         &mut self,
         mls_message_welcome: MlsMessageIn,
-        ratchet_tree: Option<RatchetTree>,
+        ratchet_tree: Option<RatchetTreeIn>,
     ) {
         let group = MlsGroup::new_from_welcome(
             &self.backend,

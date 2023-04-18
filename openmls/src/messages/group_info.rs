@@ -13,7 +13,7 @@ use crate::{
     error::LibraryError,
     extensions::Extensions,
     framing::InterimTranscriptHashInput,
-    group::{GroupContext, GroupEpoch},
+    group::{GroupContext, GroupEpoch, GroupId},
     messages::ConfirmationTag,
 };
 
@@ -86,6 +86,14 @@ impl VerifiableGroupInfo {
     /// Note: This method should only be used when necessary to verify the group info signature.
     pub(crate) fn extensions(&self) -> &Extensions {
         &self.payload.extensions
+    }
+
+    /// Get (unverified) group ID of the verifiable group info.
+    ///
+    /// Note: This method should only be used when necessary to verify the group
+    /// info signature.
+    pub(crate) fn group_id(&self) -> &GroupId {
+        self.payload.group_context.group_id()
     }
 }
 

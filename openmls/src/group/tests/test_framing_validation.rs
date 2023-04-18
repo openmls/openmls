@@ -90,7 +90,7 @@ fn validation_test_setup(
         backend,
         &mls_group_config,
         welcome.into_welcome().expect("Unexpected message type."),
-        Some(alice_group.export_ratchet_tree()),
+        Some(alice_group.export_ratchet_tree().into()),
     )
     .expect("error creating bob's group from welcome");
 

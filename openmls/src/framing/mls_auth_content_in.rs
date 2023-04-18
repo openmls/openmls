@@ -9,7 +9,7 @@
 
 use std::io::Read;
 
-use openmls_traits::crypto::OpenMlsCrypto;
+use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 use tls_codec::Serialize as TlsSerializeTrait;
 
 use super::{mls_auth_content::*, mls_content_in::*, *};
@@ -52,11 +52,15 @@ impl AuthenticatedContentIn {
     /// Returns a [`AuthenticatedContent`] after successful validation.
     pub(crate) fn into_validated(
         self,
+        ciphersuite: Ciphersuite,
         crypto: &impl OpenMlsCrypto,
+        sender_context: Option<SenderContext>,
     ) -> Result<AuthenticatedContent, ValidationError> {
         Ok(AuthenticatedContent {
             wire_format: self.wire_format,
-            content: self.content.into_validated(crypto)?,
+            content: self
+                .content
+                .into_validated(ciphersuite, crypto, sender_context)?,
             auth: self.auth,
         })
     }
@@ -226,10 +230,8 @@ impl SignedStruct<FramedContentTbsIn> for AuthenticatedContentIn {
     }
 }
 
-// The following two `From` implementations break abstraction layers and MUST
+// The following `From` implementation( breaks abstraction layers and MUST
 // NOT be made available outside of tests or "test-utils".
-// TODO #1186: Re-enable #[cfg(any(feature = "test-utils", test))]
-
 #[cfg(any(feature = "test-utils", test))]
 impl From<AuthenticatedContentIn> for AuthenticatedContent {
     fn from(v: AuthenticatedContentIn) -> Self {

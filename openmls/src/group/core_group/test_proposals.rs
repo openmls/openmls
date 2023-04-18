@@ -42,7 +42,7 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
         KeyPackageBundle::new(backend, &alice_signer, ciphersuite, alice_credential);
     let alice_update_key_package = alice_update_key_package_bundle.key_package();
     let kpi = KeyPackageIn::from(alice_update_key_package.clone());
-    assert!(kpi.into_validated(backend.crypto()).is_ok());
+    assert!(kpi.into_validated(backend.crypto(), ciphersuite).is_ok());
 
     let group_context = GroupContext::new(
         ciphersuite,
@@ -176,7 +176,7 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         KeyPackageBundle::new(backend, &alice_signer, ciphersuite, alice_credential);
     let alice_update_key_package = alice_update_key_package_bundle.key_package();
     let kpi = KeyPackageIn::from(alice_update_key_package.clone());
-    assert!(kpi.into_validated(backend.crypto()).is_ok());
+    assert!(kpi.into_validated(backend.crypto(), ciphersuite).is_ok());
 
     let group_context = GroupContext::new(
         ciphersuite,
@@ -408,7 +408,7 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMl
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
-        Some(ratchet_tree),
+        Some(ratchet_tree.into()),
         bob_key_package_bundle,
         backend,
     )
@@ -502,7 +502,7 @@ fn test_group_context_extension_proposal_fails(
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
-        Some(ratchet_tree),
+        Some(ratchet_tree.into()),
         bob_key_package_bundle,
         backend,
     )
@@ -582,7 +582,7 @@ fn test_group_context_extension_proposal(
         create_commit_results
             .welcome_option
             .expect("An unexpected error occurred."),
-        Some(ratchet_tree),
+        Some(ratchet_tree.into()),
         bob_key_package_bundle,
         backend,
     )

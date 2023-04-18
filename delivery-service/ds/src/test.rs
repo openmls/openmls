@@ -306,7 +306,7 @@ async fn test_group() {
         welcome_msg
             .into_welcome()
             .expect("Unexpected message type."),
-        Some(group.export_ratchet_tree()), // delivered out of band
+        Some(group.export_ratchet_tree().into()), // delivered out of band
     )
     .expect("Error creating group from Welcome");
 

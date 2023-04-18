@@ -164,7 +164,7 @@ fn validation_test_setup(
         backend,
         &mls_group_config,
         welcome.into_welcome().unwrap(),
-        Some(alice_group.export_ratchet_tree()),
+        Some(alice_group.export_ratchet_tree().into()),
     )
     .unwrap();
 
@@ -1030,7 +1030,7 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             generate_credential_bundle_and_key_package("Charlie".into(), ciphersuite, backend);
 
         let kpi = KeyPackageIn::from(charlie_key_package.clone());
-        kpi.into_validated(backend.crypto()).unwrap();
+        kpi.into_validated(backend.crypto(), ciphersuite).unwrap();
 
         // Let's just pick a ciphersuite that's not the one we're testing right now.
         let wrong_ciphersuite = match ciphersuite {
@@ -1592,6 +1592,7 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             alice_encryption_key.clone(),
             None,
             bob_group.group_id().clone(),
+            LeafNodeIndex::new(1),
             &bob_credential_with_key_and_signer.signer,
         )
         .unwrap();
@@ -1601,7 +1602,7 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .propose_self_update(
             backend,
             &bob_credential_with_key_and_signer.signer,
-            Some(update_leaf_node.clone().into()),
+            Some(update_leaf_node.clone()),
         )
         .map(|(out, _)| MlsMessageIn::from(out))
         .expect("error while creating remove proposal");
@@ -1654,7 +1655,7 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let original_plaintext = plaintext.clone();
 
     let update_proposal = Proposal::Update(UpdateProposal {
-        leaf_node: update_leaf_node.into(),
+        leaf_node: update_leaf_node,
     });
 
     // Artificially add the proposal.
@@ -1686,9 +1687,7 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     assert_eq!(
         err,
-        ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
-            ProposalValidationError::CommitterIncludedOwnUpdate
-        ))
+        ProcessMessageError::ValidationError(ValidationError::CommitterIncludedOwnUpdate)
     );
 }
 
@@ -1782,9 +1781,7 @@ fn test_valsem111(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     assert_eq!(
         err,
-        ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
-            ProposalValidationError::CommitterIncludedOwnUpdate
-        ))
+        ProcessMessageError::ValidationError(ValidationError::CommitterIncludedOwnUpdate)
     );
 
     // Now we insert the proposal into Bob's proposal store so we can include it

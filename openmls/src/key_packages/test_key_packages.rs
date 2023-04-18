@@ -37,7 +37,7 @@ fn generate_key_package(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     let (key_package, _credential, _signature_keys) = key_package(ciphersuite, backend);
 
     let kpi = KeyPackageIn::from(key_package);
-    assert!(kpi.into_validated(backend.crypto()).is_ok());
+    assert!(kpi.into_validated(backend.crypto(), ciphersuite).is_ok());
 }
 
 #[apply(ciphersuites_and_backends)]
@@ -82,7 +82,7 @@ fn application_id_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
         .expect("An unexpected error occurred.");
 
     let kpi = KeyPackageIn::from(key_package.clone());
-    assert!(kpi.into_validated(backend.crypto()).is_ok());
+    assert!(kpi.into_validated(backend.crypto(), ciphersuite).is_ok());
 
     // Check ID
     assert_eq!(

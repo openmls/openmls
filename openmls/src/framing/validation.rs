@@ -23,15 +23,19 @@
 //! ```
 // TODO #106/#151: Update the above diagram
 
-use crate::{
-    extensions::ExternalSendersExtension, group::errors::ValidationError, treesync::TreeSync,
-};
-use core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
 
 use crate::{
-    ciphersuite::signable::Verifiable, error::LibraryError,
+    binary_tree::LeafNodeIndex,
+    ciphersuite::signable::Verifiable,
+    error::LibraryError,
+    extensions::ExternalSendersExtension,
+    group::{
+        core_group::{proposals::QueuedProposal, staged_commit::StagedCommit},
+        errors::ValidationError,
+    },
     tree::sender_ratchet::SenderRatchetConfiguration,
+    treesync::TreeSync,
 };
 
 use self::mls_group::errors::ProcessMessageError;
@@ -223,6 +227,14 @@ impl DecryptedMessage {
     }
 }
 
+/// Context that is needed to verify the signature of a the leaf node of an
+/// UpdatePath or an update proposal.
+#[derive(Debug, Clone)]
+pub(crate) enum SenderContext {
+    Member((GroupId, LeafNodeIndex)),
+    ExternalCommit((GroupId, LeafNodeIndex)),
+}
+
 /// Partially checked and potentially decrypted message (if it was originally encrypted).
 /// Use this to inspect the [`Credential`] of the message sender
 /// and the optional `aad` if the original message was encrypted.
@@ -233,6 +245,7 @@ pub(crate) struct UnverifiedMessage {
     verifiable_content: VerifiableAuthenticatedContentIn,
     credential: Credential,
     sender_pk: OpenMlsSignaturePublicKey,
+    sender_context: Option<SenderContext>,
 }
 
 impl UnverifiedMessage {
@@ -241,11 +254,13 @@ impl UnverifiedMessage {
         decrypted_message: DecryptedMessage,
         credential: Credential,
         sender_pk: OpenMlsSignaturePublicKey,
+        sender_context: Option<SenderContext>,
     ) -> Self {
         UnverifiedMessage {
             verifiable_content: decrypted_message.verifiable_content,
             credential,
             sender_pk,
+            sender_context,
         }
     }
 
@@ -253,14 +268,14 @@ impl UnverifiedMessage {
     /// and the internal [`Credential`].
     pub(crate) fn verify(
         self,
-        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: Ciphersuite,
+        crypto: &impl OpenMlsCrypto,
     ) -> Result<(AuthenticatedContent, Credential), ProcessMessageError> {
         let content: AuthenticatedContentIn = self
             .verifiable_content
-            .verify(backend.crypto(), &self.sender_pk)
+            .verify(crypto, &self.sender_pk)
             .map_err(|_| ProcessMessageError::InvalidSignature)?;
-        // TODO #1186: This should be verified
-        let content = content.into_validated(backend.crypto())?;
+        let content = content.into_validated(ciphersuite, crypto, self.sender_context)?;
         Ok((content, self.credential))
     }
 

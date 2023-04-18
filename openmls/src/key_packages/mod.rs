@@ -70,6 +70,7 @@
 //! use openmls_rust_crypto::OpenMlsRustCrypto;
 //!
 //! let backend = OpenMlsRustCrypto::default();
+//! let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
 //!
 //! let key_package_bytes = hex_to_bytes(
 //!         "00010003205D1DEB647BB5BDBB417022D1161076275ED861BD427B10DD07AC0233ED\
@@ -86,7 +87,7 @@
 //!     .expect("Could not deserialize KeyPackage");
 //!
 //! let key_package = key_package_in
-//!     .into_validated(backend.crypto())
+//!     .into_validated(backend.crypto(), ciphersuite)
 //!     .expect("Invalid KeyPackage");
 //! ```
 //!
@@ -106,7 +107,7 @@ use crate::{
     treesync::{
         node::{
             encryption_keys::EncryptionKeyPair,
-            leaf_node::{Capabilities, LeafNodeSource, Lifetime},
+            leaf_node::{Capabilities, LeafNodeSource, Lifetime, NewLeafNodeParams, TreeInfoTbs},
         },
         LeafNode,
     },
@@ -276,21 +277,24 @@ impl KeyPackage {
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
         extensions: Extensions,
-        leaf_node_capabilities: Capabilities,
+        capabilities: Capabilities,
         leaf_node_extensions: Extensions,
         init_key: Vec<u8>,
     ) -> Result<(Self, EncryptionKeyPair), KeyPackageNewError<KeyStore::Error>> {
         // We don't need the private key here. It's stored in the key store for
         // use later when creating a group with this key package.
-        let (leaf_node, encryption_key_pair) = LeafNode::new(
+
+        let new_leaf_node_params = NewLeafNodeParams {
             config,
+            leaf_node_source: LeafNodeSource::KeyPackage(Lifetime::default()),
             credential_with_key,
-            LeafNodeSource::KeyPackage(Lifetime::default()),
-            leaf_node_capabilities,
-            leaf_node_extensions,
-            backend,
-            signer,
-        )?;
+            capabilities,
+            extensions: leaf_node_extensions,
+            tree_info_tbs: TreeInfoTbs::KeyPackage,
+        };
+
+        let (leaf_node, encryption_key_pair) =
+            LeafNode::new(backend, signer, new_leaf_node_params)?;
 
         let key_package_tbs = KeyPackageTBS {
             protocol_version: config.version,
@@ -455,6 +459,7 @@ impl KeyPackage {
             LeafNodeSource::KeyPackage(Lifetime::default()),
             leaf_node_capabilities,
             leaf_node_extensions,
+            TreeInfoTbs::KeyPackage,
             signer,
         )
         .unwrap();
@@ -508,7 +513,9 @@ impl KeyPackage {
             .leaf_node
             .set_signature_key(credential_with_key.signature_key.clone());
 
-        self.payload.leaf_node.resign(signer, credential_with_key);
+        self.payload
+            .leaf_node
+            .resign(signer, credential_with_key, TreeInfoTbs::KeyPackage);
 
         self.payload.sign(signer).unwrap()
     }

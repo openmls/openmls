@@ -6,17 +6,22 @@
 //! [`ProposalType::is_supported()`] can be used.
 
 use crate::{
-    ciphersuite::hash_ref::ProposalRef, credentials::CredentialWithKey,
-    group::errors::ValidationError, key_packages::*, prelude::LeafNode,
+    ciphersuite::{hash_ref::ProposalRef, signable::Verifiable},
+    credentials::CredentialWithKey,
+    framing::SenderContext,
+    group::errors::ValidationError,
+    key_packages::*,
+    treesync::node::leaf_node::{LeafNodeIn, TreePosition, VerifiableLeafNode},
 };
 
-use openmls_traits::crypto::OpenMlsCrypto;
+use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 use super::proposals::{
     AddProposal, AppAckProposal, ExternalInitProposal, GroupContextExtensionProposal,
     PreSharedKeyProposal, Proposal, ProposalOrRef, ProposalType, ReInitProposal, RemoveProposal,
+    UpdateProposal,
 };
 
 /// Proposal.
@@ -90,10 +95,16 @@ impl ProposalIn {
     pub(crate) fn into_validated(
         self,
         crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+        sender_context: Option<SenderContext>,
     ) -> Result<Proposal, ValidationError> {
         Ok(match self {
-            ProposalIn::Add(add) => Proposal::Add(add.into_validated(crypto)?),
-            ProposalIn::Update(update) => Proposal::Update(update.into()),
+            ProposalIn::Add(add) => Proposal::Add(add.into_validated(crypto, ciphersuite)?),
+            ProposalIn::Update(update) => {
+                let sender_context =
+                    sender_context.ok_or(ValidationError::CommitterIncludedOwnUpdate)?;
+                Proposal::Update(update.into_validated(crypto, ciphersuite, sender_context)?)
+            }
             ProposalIn::Remove(remove) => Proposal::Remove(remove),
             ProposalIn::PreSharedKey(psk) => Proposal::PreSharedKey(psk),
             ProposalIn::ReInit(reinit) => Proposal::ReInit(reinit),
@@ -132,8 +143,9 @@ impl AddProposalIn {
     pub(crate) fn into_validated(
         self,
         crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
     ) -> Result<AddProposal, ValidationError> {
-        let key_package = self.key_package.into_validated(crypto)?;
+        let key_package = self.key_package.into_validated(crypto, ciphersuite)?;
         Ok(AddProposal { key_package })
     }
 }
@@ -141,7 +153,7 @@ impl AddProposalIn {
 /// Update Proposal.
 ///
 /// An Update proposal is a similar mechanism to [`AddProposalIn`] with the distinction that it
-/// replaces the sender's [`LeafNode`] in the tree instead of adding a new leaf to the tree.
+/// replaces the sender's LeafNodeIn in the tree instead of adding a new leaf to the tree.
 ///
 /// ```c
 /// // draft-ietf-mls-protocol-17
@@ -153,7 +165,40 @@ impl AddProposalIn {
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 pub struct UpdateProposalIn {
-    leaf_node: LeafNode,
+    leaf_node: LeafNodeIn,
+}
+
+impl UpdateProposalIn {
+    /// Returns a [`UpdateProposal`] after successful validation.
+    pub(crate) fn into_validated(
+        self,
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+        sender_context: SenderContext,
+    ) -> Result<UpdateProposal, ValidationError> {
+        let leaf_node = match self.leaf_node.into_verifiable_leaf_node() {
+            VerifiableLeafNode::Update(mut leaf_node) => {
+                let tree_position = match sender_context {
+                    SenderContext::Member((group_id, leaf_index)) => {
+                        TreePosition::new(group_id, leaf_index)
+                    }
+                    _ => return Err(ValidationError::InvalidSenderType),
+                };
+                leaf_node.add_tree_position(tree_position);
+                let pk = &leaf_node
+                    .signature_key()
+                    .clone()
+                    .into_signature_public_key_enriched(ciphersuite.signature_algorithm());
+
+                leaf_node
+                    .verify(crypto, pk)
+                    .map_err(|_| ValidationError::InvalidLeafNodeSignature)?
+            }
+            _ => return Err(ValidationError::InvalidLeafNodeSourceType),
+        };
+
+        Ok(UpdateProposal { leaf_node })
+    }
 }
 
 // Crate-only types
@@ -176,19 +221,19 @@ impl ProposalOrRefIn {
     pub(crate) fn into_validated(
         self,
         crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
     ) -> Result<ProposalOrRef, ValidationError> {
         Ok(match self {
             ProposalOrRefIn::Proposal(proposal_in) => {
-                ProposalOrRef::Proposal(proposal_in.into_validated(crypto)?)
+                ProposalOrRef::Proposal(proposal_in.into_validated(crypto, ciphersuite, None)?)
             }
             ProposalOrRefIn::Reference(reference) => ProposalOrRef::Reference(reference),
         })
     }
 }
 
-// TODO #1186: The follwoing should be removed once the validation refactoring
-// is complete.
-
+// The following `From` implementation( breaks abstraction layers and MUST
+// NOT be made available outside of tests or "test-utils".
 #[cfg(any(feature = "test-utils", test))]
 impl From<AddProposalIn> for crate::messages::proposals::AddProposal {
     fn from(value: AddProposalIn) -> Self {
@@ -206,10 +251,13 @@ impl From<crate::messages::proposals::AddProposal> for AddProposalIn {
     }
 }
 
+// The following `From` implementation( breaks abstraction layers and MUST
+// NOT be made available outside of tests or "test-utils".
+#[cfg(any(feature = "test-utils", test))]
 impl From<UpdateProposalIn> for crate::messages::proposals::UpdateProposal {
     fn from(value: UpdateProposalIn) -> Self {
         Self {
-            leaf_node: value.leaf_node,
+            leaf_node: value.leaf_node.into(),
         }
     }
 }
@@ -217,7 +265,7 @@ impl From<UpdateProposalIn> for crate::messages::proposals::UpdateProposal {
 impl From<crate::messages::proposals::UpdateProposal> for UpdateProposalIn {
     fn from(value: crate::messages::proposals::UpdateProposal) -> Self {
         Self {
-            leaf_node: value.leaf_node,
+            leaf_node: value.leaf_node.into(),
         }
     }
 }
