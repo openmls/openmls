@@ -32,6 +32,6 @@ git = "https://github.com/franziskuskiefer/hpke-rs.git"
 [patch.crates-io.libcrux]
 path = "../libcrux"
 
-[patch.crates-io]
+# [patch.crates-io]
 # hacl = { git = "https://github.com/cryspen/hacl-packages" }
-hacl = { path = "../hacl-packages/rust" }
+# hacl = { path = "../hacl-packages/rust" }

@@ -27,14 +27,14 @@ fn create_backend_rust_crypto() {
     let _backend = backend;
 }
 
-#[cfg(feature = "evercrypt")]
+#[cfg(feature = "libcrux")]
 #[test]
-fn create_backend_evercrypt() {
-    // ANCHOR: create_backend_evercrypt
-    use openmls_evercrypt::OpenMlsEvercrypt;
+fn create_backend_libcrux() {
+    // ANCHOR: create_backend_libcrux
+    use openmls_libcrux::OpenMlsLibcrux;
 
-    let backend = OpenMlsEvercrypt::default();
-    // ANCHOR_END: create_backend_evercrypt
+    let backend = OpenMlsLibcrux::default();
+    // ANCHOR_END: create_backend_libcrux
 
     // Suppress warning.
     let _backend = backend;
