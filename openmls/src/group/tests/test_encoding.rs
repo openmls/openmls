@@ -1,11 +1,12 @@
-use super::utils::*;
-use crate::{
-    binary_tree::LeafNodeIndex, framing::*, group::*, key_packages::*, messages::*, test_utils::*,
-    *,
-};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::crypto::OpenMlsCrypto;
 use tls_codec::{Deserialize, Serialize};
+
+use super::utils::*;
+use crate::{
+    binary_tree::LeafNodeIndex, framing::*, group::*, key_packages::*, messages::*,
+    schedule::psk::ResumptionPskStore, test_utils::*, *,
+};
 
 /// Creates a simple test setup for various encoding tests.
 fn create_encoding_test_setup(backend: &impl OpenMlsCryptoProvider) -> TestSetup {
@@ -292,12 +293,20 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
             .expect("Could not create proposal.");
 
         let mut proposal_store = ProposalStore::from_queued_proposal(
-            QueuedProposal::from_authenticated_content(group_state.ciphersuite(), backend, add)
-                .expect("Could not create QueuedProposal."),
+            QueuedProposal::from_authenticated_content_by_ref(
+                group_state.ciphersuite(),
+                backend,
+                add,
+            )
+            .expect("Could not create QueuedProposal."),
         );
         proposal_store.add(
-            QueuedProposal::from_authenticated_content(group_state.ciphersuite(), backend, update)
-                .expect("Could not create QueuedProposal."),
+            QueuedProposal::from_authenticated_content_by_ref(
+                group_state.ciphersuite(),
+                backend,
+                update,
+            )
+            .expect("Could not create QueuedProposal."),
         );
 
         let params = CreateCommitParams::builder()
@@ -366,8 +375,12 @@ fn test_welcome_message_encoding(backend: &impl OpenMlsCryptoProvider) {
             .expect("Could not create proposal.");
 
         let proposal_store = ProposalStore::from_queued_proposal(
-            QueuedProposal::from_authenticated_content(group_state.ciphersuite(), backend, add)
-                .expect("Could not create QueuedProposal."),
+            QueuedProposal::from_authenticated_content_by_ref(
+                group_state.ciphersuite(),
+                backend,
+                add,
+            )
+            .expect("Could not create QueuedProposal."),
         );
 
         let params = CreateCommitParams::builder()
@@ -413,7 +426,8 @@ fn test_welcome_message_encoding(backend: &impl OpenMlsCryptoProvider) {
             welcome,
             Some(group_state.public_group().export_ratchet_tree()),
             charlie_key_package_bundle,
-            backend
+            backend,
+            ResumptionPskStore::new(1024),
         )
         .is_ok());
     }

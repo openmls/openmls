@@ -141,7 +141,8 @@ impl MlsGroup {
 
         // Extract and store the resumption psk for the current epoch
         let resumption_psk = self.group.group_epoch_secrets().resumption_psk();
-        self.resumption_psk_store
+        self.group
+            .resumption_psk_store
             .add(self.group.context().epoch(), resumption_psk.clone());
 
         // Delete own KeyPackageBundles

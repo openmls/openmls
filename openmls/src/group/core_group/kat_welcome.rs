@@ -32,7 +32,10 @@ use crate::{
     key_packages::*,
     messages::*,
     prelude::group_info::{GroupInfo, VerifiableGroupInfo},
-    schedule::{psk::PskSecret, KeySchedule},
+    schedule::{
+        psk::{load_psks, PskSecret, ResumptionPskStore},
+        KeySchedule,
+    },
     test_utils::*,
 };
 
@@ -204,11 +207,19 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
     println!("{group_secrets:?}");
 
     // // //  * Decrypt the encrypted group info
+    let psk_secret = {
+        let resumption_psk_store = ResumptionPskStore::new(1024);
+
+        let psks = load_psks(backend.key_store(), &resumption_psk_store, &[]).unwrap();
+
+        PskSecret::new(&backend, cipher_suite, psks).unwrap()
+    };
+
     let mut key_schedule = KeySchedule::init(
         welcome.ciphersuite(),
         &backend,
         &group_secrets.joiner_secret,
-        PskSecret::new(cipher_suite, &backend, &[]).unwrap(),
+        psk_secret,
     )
     .unwrap();
 

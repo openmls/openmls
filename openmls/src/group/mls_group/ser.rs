@@ -2,6 +2,7 @@
 #![allow(deprecated)]
 
 use super::*;
+use crate::schedule::psk::ResumptionPskStore;
 
 use serde::{
     ser::{SerializeStruct, Serializer},
@@ -33,7 +34,6 @@ impl SerializedMlsGroup {
             proposal_store: self.proposal_store,
             own_leaf_nodes: self.own_leaf_nodes,
             aad: self.aad,
-            resumption_psk_store: self.resumption_psk_store,
             group_state: self.group_state,
             state_changed: InnerState::Persisted,
         }
@@ -51,7 +51,7 @@ impl Serialize for MlsGroup {
         state.serialize_field("proposal_store", &self.proposal_store)?;
         state.serialize_field("own_leaf_nodes", &self.own_leaf_nodes)?;
         state.serialize_field("aad", &self.aad)?;
-        state.serialize_field("resumption_psk_store", &self.resumption_psk_store)?;
+        state.serialize_field("resumption_psk_store", &self.group.resumption_psk_store)?;
         state.serialize_field("group_state", &self.group_state)?;
         state.end()
     }

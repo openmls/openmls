@@ -10,7 +10,11 @@ use thiserror::Error;
 use crate::{
     error::LibraryError,
     extensions::errors::InvalidExtensionError,
-    group::errors::{CreateCommitError, MergeCommitError, StageCommitError, ValidationError},
+    group::errors::{
+        CreateAddProposalError, CreateCommitError, MergeCommitError, StageCommitError,
+        ValidationError,
+    },
+    schedule::errors::PskError,
     treesync::errors::{LeafNodeValidationError, PublicTreeError},
 };
 
@@ -305,4 +309,44 @@ pub enum ExportSecretError {
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
+}
+
+/// Propose PSK error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum ProposePskError {
+    /// See [`PskError`] for more details.
+    #[error(transparent)]
+    Psk(#[from] PskError),
+    /// See [`MlsGroupStateError`] for more details.
+    #[error(transparent)]
+    GroupStateError(#[from] MlsGroupStateError),
+    /// See [`LibraryError`] for more details.
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+}
+
+/// Export secret error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum ProposalError<KeyStoreError> {
+    /// See [`LibraryError`] for more details.
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    /// See [`ProposeAddMemberError`] for more details.
+    #[error(transparent)]
+    ProposeAddMemberError(#[from] ProposeAddMemberError),
+    /// See [`CreateAddProposalError`] for more details.
+    #[error(transparent)]
+    CreateAddProposalError(#[from] CreateAddProposalError),
+    /// See [`ProposeSelfUpdateError`] for more details.
+    #[error(transparent)]
+    ProposeSelfUpdateError(#[from] ProposeSelfUpdateError<KeyStoreError>),
+    /// See [`ProposeRemoveMemberError`] for more details.
+    #[error(transparent)]
+    ProposeRemoveMemberError(#[from] ProposeRemoveMemberError),
+    /// See [`MlsGroupStateError`] for more details.
+    #[error(transparent)]
+    GroupStateError(#[from] MlsGroupStateError),
+    /// See [`ValidationError`] for more details.
+    #[error(transparent)]
+    ValidationError(#[from] ValidationError),
 }

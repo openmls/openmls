@@ -135,6 +135,8 @@ pub(crate) struct CoreGroup {
     /// able to decrypt application messages from previous epochs, the size of
     /// the store must be increased through [`max_past_epochs()`].
     message_secrets_store: MessageSecretsStore,
+    // Resumption psk store. This is where the resumption psks are kept in a rollover list.
+    pub(crate) resumption_psk_store: ResumptionPskStore,
 }
 
 /// Builder for [`CoreGroup`].
@@ -242,8 +244,15 @@ impl CoreGroupBuilder {
         )
         .map_err(LibraryError::unexpected_crypto_error)?;
 
+        // TODO
+        let resumption_psk_store = ResumptionPskStore::new(32);
+
         // Prepare the PskSecret
-        let psk_secret = PskSecret::new(ciphersuite, backend, &self.psk_ids)?;
+        let psk_secret = {
+            let psks = load_psks(backend.key_store(), &resumption_psk_store, &self.psk_ids)?;
+
+            PskSecret::new(backend, ciphersuite, psks)?
+        };
 
         let mut key_schedule = KeySchedule::init(ciphersuite, backend, &joiner_secret, psk_secret)?;
         key_schedule
@@ -278,6 +287,7 @@ impl CoreGroupBuilder {
             use_ratchet_tree_extension: config.add_ratchet_tree_extension,
             message_secrets_store,
             own_leaf_index: LeafNodeIndex::new(0),
+            resumption_psk_store,
         };
 
         // Store the private key of the own leaf in the key store as an epoch keypair.
@@ -833,6 +843,8 @@ impl CoreGroup {
         // ValSem108
         self.public_group
             .validate_remove_proposals(&proposal_queue)?;
+        self.public_group
+            .validate_pre_shared_key_proposals(&proposal_queue)?;
         // Validate update proposals for member commits
         if let Sender::Member(sender_index) = &sender {
             // ValSem110
@@ -908,8 +920,15 @@ impl CoreGroup {
         .map_err(LibraryError::unexpected_crypto_error)?;
 
         // Prepare the PskSecret
-        let psk_secret =
-            PskSecret::new(ciphersuite, backend, &apply_proposals_values.presharedkeys)?;
+        let psk_secret = {
+            let psks = load_psks(
+                backend.key_store(),
+                &self.resumption_psk_store,
+                &apply_proposals_values.presharedkeys,
+            )?;
+
+            PskSecret::new(backend, ciphersuite, psks)?
+        };
 
         // Create key schedule
         let mut key_schedule = KeySchedule::init(ciphersuite, backend, &joiner_secret, psk_secret)?;

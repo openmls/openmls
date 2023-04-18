@@ -1,5 +1,6 @@
 use openmls_traits::signatures::Signer;
 
+use super::*;
 use crate::{
     ciphersuite::HpkePrivateKey,
     credentials::CredentialWithKey,
@@ -9,10 +10,9 @@ use crate::{
         public_group::errors::PublicGroupBuildError,
     },
     messages::group_info::{GroupInfo, VerifiableGroupInfo},
+    schedule::psk::ResumptionPskStore,
     treesync::RatchetTree,
 };
-
-use super::*;
 
 impl MlsGroup {
     // === Group creation ===
@@ -49,7 +49,7 @@ impl MlsGroup {
             add_ratchet_tree_extension: mls_group_config.use_ratchet_tree_extension,
         };
 
-        let group = CoreGroup::builder(
+        let mut group = CoreGroup::builder(
             group_id,
             mls_group_config.crypto_config,
             credential_with_key,
@@ -80,8 +80,11 @@ impl MlsGroup {
             },
         })?;
 
-        let resumption_psk_store =
-            ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
+        // We already add a resumption PSK for epoch 0 to make things more unified.
+        let resumption_psk = group.group_epoch_secrets().resumption_psk();
+        group
+            .resumption_psk_store
+            .add(group.context().epoch(), resumption_psk.clone());
 
         let mls_group = MlsGroup {
             mls_group_config: mls_group_config.clone(),
@@ -89,7 +92,6 @@ impl MlsGroup {
             proposal_store: ProposalStore::new(),
             own_leaf_nodes: vec![],
             aad: vec![],
-            resumption_psk_store,
             group_state: MlsGroupState::Operational,
             state_changed: InnerState::Changed,
         };
@@ -138,8 +140,13 @@ impl MlsGroup {
             .delete(backend)
             .map_err(WelcomeError::KeyStoreError)?;
 
-        let mut group =
-            CoreGroup::new_from_welcome(welcome, ratchet_tree, key_package_bundle, backend)?;
+        let mut group = CoreGroup::new_from_welcome(
+            welcome,
+            ratchet_tree,
+            key_package_bundle,
+            backend,
+            resumption_psk_store,
+        )?;
         group.set_max_past_epochs(mls_group_config.max_past_epochs);
 
         let mls_group = MlsGroup {
@@ -148,7 +155,6 @@ impl MlsGroup {
             proposal_store: ProposalStore::new(),
             own_leaf_nodes: vec![],
             aad: vec![],
-            resumption_psk_store,
             group_state: MlsGroupState::Operational,
             state_changed: InnerState::Changed,
         };
@@ -179,9 +185,6 @@ impl MlsGroup {
         aad: &[u8],
         credential_with_key: CredentialWithKey,
     ) -> Result<(Self, MlsMessageOut, Option<GroupInfo>), ExternalCommitError> {
-        let resumption_psk_store =
-            ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
-
         // Prepare the commit parameters
         let framing_parameters = FramingParameters::new(aad, WireFormat::PublicMessage);
 
@@ -206,7 +209,6 @@ impl MlsGroup {
             proposal_store: ProposalStore::new(),
             own_leaf_nodes: vec![],
             aad: vec![],
-            resumption_psk_store,
             group_state: MlsGroupState::PendingCommit(Box::new(PendingCommitState::External(
                 create_commit_result.staged_commit,
             ))),
