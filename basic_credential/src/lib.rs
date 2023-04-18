@@ -25,7 +25,7 @@ use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 /// This can be used as keys to implement the MLS basic credential. It is a simple
 /// private and public key pair with corresponding signature scheme.
 #[derive(TlsSerialize, TlsSize, TlsDeserialize, serde::Serialize, serde::Deserialize)]
-#[cfg_attr(feature = "clonable", derive(Clone))]
+#[cfg_attr(feature = "cloneable", derive(Clone))]
 pub struct SignatureKeyPair {
     private: Vec<u8>,
     public: Vec<u8>,

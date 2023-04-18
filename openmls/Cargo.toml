@@ -38,7 +38,7 @@ test-utils = [
     "rstest",
     "rstest_reuse",
     "openmls_basic_credential",
-    "openmls_basic_credential/clonable",
+    "openmls_basic_credential/cloneable",
     "openmls_basic_credential/test-utils",
 ]
 evercrypt = ["openmls_evercrypt"] # Evercrypt needs to be enabled individually
