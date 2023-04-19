@@ -65,9 +65,7 @@ fn create_group_with_members<KeyStore: OpenMlsKeyStore>(
             .crypto_config(CryptoConfig::with_default_version(ciphersuite))
             .build(),
         GroupId::from_slice(b"Alice's Friends"),
-        alice_credential_with_key_and_signer
-            .credential_with_key
-            .clone(),
+        &alice_credential_with_key_and_signer.credential_with_key,
     )
     .expect("An unexpected error occurred.");
 
@@ -117,7 +115,7 @@ fn new_test_group(
             &credential_with_key_and_signer.signer,
             &mls_group_config,
             group_id,
-            credential_with_key_and_signer.credential_with_key.clone(),
+            &credential_with_key_and_signer.credential_with_key,
         )
         .unwrap(),
         credential_with_key_and_signer,

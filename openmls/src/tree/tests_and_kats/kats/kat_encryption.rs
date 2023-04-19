@@ -84,13 +84,16 @@ use std::convert::TryFrom;
 use itertools::izip;
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{signatures::Signer, types::SignatureScheme, OpenMlsCryptoProvider};
+use openmls_traits::{
+    signatures::Signer,
+    types::{credential::CredentialType, SignatureScheme},
+    OpenMlsCryptoProvider,
+};
 use serde::{self, Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
-    credentials::{Credential, CredentialType, CredentialWithKey},
     framing::{
         mls_auth_content::AuthenticatedContent, mls_auth_content_in::AuthenticatedContentIn,
         mls_content_in::FramedContentBodyIn, *,
@@ -141,31 +144,24 @@ pub struct EncryptionTestVector {
 
 fn generate_credential(
     identity: Vec<u8>,
-    credential_type: CredentialType,
+    _credential_type: CredentialType,
     signature_algorithm: SignatureScheme,
     backend: &impl OpenMlsCryptoProvider,
-) -> (CredentialWithKey, SignatureKeyPair) {
-    let credential = Credential::new(identity, credential_type).unwrap();
-    let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
+) -> SignatureKeyPair {
+    let signature_keys = SignatureKeyPair::new(signature_algorithm, identity).unwrap();
     signature_keys.store(backend.key_store()).unwrap();
 
-    (
-        CredentialWithKey {
-            credential,
-            signature_key: signature_keys.to_public_vec().into(),
-        },
-        signature_keys,
-    )
+    signature_keys
 }
 
 #[cfg(any(feature = "test-utils", test))]
 fn group(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
-) -> (CoreGroup, CredentialWithKey, SignatureKeyPair) {
+) -> (CoreGroup, SignatureKeyPair) {
     use crate::group::config::CryptoConfig;
 
-    let (credential_with_key, signer) = generate_credential(
+    let credential_with_key = generate_credential(
         "Kreator".into(),
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
@@ -175,12 +171,11 @@ fn group(
     let group = CoreGroup::builder(
         GroupId::random(backend),
         CryptoConfig::with_default_version(ciphersuite),
-        credential_with_key.clone(),
     )
-    .build(backend, &signer)
+    .build(backend, &credential_with_key, &credential_with_key)
     .unwrap();
 
-    (group, credential_with_key, signer)
+    (group, credential_with_key)
 }
 
 #[cfg(any(feature = "test-utils", test))]
@@ -188,25 +183,21 @@ fn receiver_group(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
     group_id: GroupId,
-) -> (CoreGroup, CredentialWithKey, SignatureKeyPair) {
+) -> (CoreGroup, SignatureKeyPair) {
     use crate::group::config::CryptoConfig;
 
-    let (credential_with_key, signer) = generate_credential(
+    let credential_with_key = generate_credential(
         "Receiver".into(),
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
         backend,
     );
 
-    let group = CoreGroup::builder(
-        group_id,
-        CryptoConfig::with_default_version(ciphersuite),
-        credential_with_key.clone(),
-    )
-    .build(backend, &signer)
-    .unwrap();
+    let group = CoreGroup::builder(group_id, CryptoConfig::with_default_version(ciphersuite))
+        .build(backend, &credential_with_key, &credential_with_key)
+        .unwrap();
 
-    (group, credential_with_key, signer)
+    (group, credential_with_key)
 }
 
 // XXX: we could be more creative in generating these messages.
@@ -357,7 +348,7 @@ pub fn generate_test_vector(
         nonce: bytes_to_hex(sender_data_nonce.as_slice()),
     };
 
-    let (mut group, _, signer) = group(ciphersuite, &crypto);
+    let (mut group, signer) = group(ciphersuite, &crypto);
     *group.message_secrets_test_mut().sender_data_secret_mut() = SenderDataSecret::from_slice(
         sender_data_secret_bytes,
         ProtocolVersion::default(),
@@ -608,7 +599,7 @@ pub fn run_test_vector(
             let ctxt_bytes = hex_to_bytes(&application.ciphertext);
             let mls_ciphertext_application = PrivateMessageIn::tls_deserialize_exact(ctxt_bytes)
                 .expect("Error parsing PrivateMessage");
-            let (mut group, _, _) = receiver_group(
+            let (mut group, _) = receiver_group(
                 ciphersuite,
                 backend,
                 mls_ciphertext_application.group_id().clone(),
@@ -762,7 +753,7 @@ pub fn run_test_vector(
             let handshake_bytes = hex_to_bytes(&handshake.ciphertext);
             let mls_ciphertext_handshake = PrivateMessageIn::tls_deserialize_exact(handshake_bytes)
                 .expect("Error parsing PrivateMessage");
-            let (mut group, _, _) = receiver_group(
+            let (mut group, _) = receiver_group(
                 ciphersuite,
                 backend,
                 mls_ciphertext_handshake.group_id().clone(),

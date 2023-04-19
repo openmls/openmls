@@ -27,6 +27,7 @@ impl CoreGroup {
     pub(crate) fn join_by_external_commit(
         backend: &impl OpenMlsCryptoProvider,
         signer: &impl Signer,
+        credential: &dyn OpenMlsCredential,
         mut params: CreateCommitParams,
         ratchet_tree: Option<RatchetTree>,
         verifiable_group_info: VerifiableGroupInfo,
@@ -89,12 +90,10 @@ impl CoreGroup {
 
         // If there is a group member in the group with the same identity as us,
         // commit a remove proposal.
-        let params_credential_with_key = params
-            .take_credential_with_key()
-            .ok_or(ExternalCommitError::MissingCredential)?;
-        if let Some(us) = public_group.members().find(|member| {
-            member.signature_key == params_credential_with_key.signature_key.as_slice()
-        }) {
+        if let Some(us) = public_group
+            .members()
+            .find(|member| member.signature_key == credential.public_key())
+        {
             let remove_proposal = Proposal::Remove(RemoveProposal { removed: us.index });
             inline_proposals.push(remove_proposal);
         };
@@ -115,11 +114,10 @@ impl CoreGroup {
             .proposal_store(params.proposal_store())
             .inline_proposals(inline_proposals)
             .commit_type(CommitType::External)
-            .credential_with_key(params_credential_with_key)
             .build();
 
         // Immediately create the commit to add ourselves to the group.
-        let create_commit_result = group.create_commit(params, backend, signer);
+        let create_commit_result = group.create_commit(params, backend, signer, Some(credential));
         debug_assert!(
             create_commit_result.is_ok(),
             "Error creating commit {create_commit_result:?}"

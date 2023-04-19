@@ -1,7 +1,8 @@
+use openmls_traits::types::credential::Credential;
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
-use crate::{ciphersuite::SignaturePublicKey, credentials::Credential};
+use crate::ciphersuite::SignaturePublicKey;
 
 /// ExternalSender
 ///
@@ -66,7 +67,10 @@ impl SenderExtensionIndex {
 #[cfg(test)]
 mod test {
     use openmls_basic_credential::SignatureKeyPair;
-    use openmls_traits::types::SignatureScheme;
+    use openmls_traits::{
+        credential::OpenMlsCredential,
+        types::{credential::BasicCredential, SignatureScheme},
+    };
     use tls_codec::{Deserialize, Serialize};
 
     use super::*;
@@ -78,12 +82,12 @@ mod test {
             let mut external_sender_extensions = Vec::new();
 
             for _ in 0..8 {
-                let credential = Credential::new(b"Alice".to_vec(), CredentialType::Basic).unwrap();
-                let signature_keys = SignatureKeyPair::new(SignatureScheme::ED25519).unwrap();
+                let signature_keys =
+                    SignatureKeyPair::new(SignatureScheme::ED25519, b"Alice").unwrap();
 
                 external_sender_extensions.push(ExternalSender {
                     signature_key: signature_keys.to_public_vec().into(),
-                    credential,
+                    credential: signature_keys.credential(),
                 });
             }
 

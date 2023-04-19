@@ -1,6 +1,7 @@
+use openmls_traits::types::credential::CredentialType;
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
-use crate::{credentials::CredentialType, messages::proposals::ProposalType};
+use crate::messages::proposals::ProposalType;
 
 use super::{Deserialize, ExtensionError, ExtensionType, Serialize};
 

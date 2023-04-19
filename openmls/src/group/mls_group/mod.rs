@@ -6,7 +6,6 @@ use super::proposals::{ProposalStore, QueuedProposal};
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::hash_ref::ProposalRef,
-    credentials::Credential,
     error::LibraryError,
     framing::{mls_auth_content::AuthenticatedContent, *},
     group::*,
@@ -18,7 +17,11 @@ use crate::{
         RatchetTree,
     },
 };
-use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{
+    key_store::OpenMlsKeyStore,
+    types::{credential::Credential, Ciphersuite},
+    OpenMlsCryptoProvider,
+};
 use std::io::{Error, Read, Write};
 
 // Private

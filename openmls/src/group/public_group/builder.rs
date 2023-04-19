@@ -1,7 +1,6 @@
-use openmls_traits::{signatures::Signer, OpenMlsCryptoProvider};
+use openmls_traits::{credential::OpenMlsCredential, signatures::Signer, OpenMlsCryptoProvider};
 
 use crate::{
-    credentials::CredentialWithKey,
     error::LibraryError,
     extensions::{
         errors::ExtensionError, Extension, Extensions, ExternalSendersExtension,
@@ -24,7 +23,6 @@ use super::{errors::PublicGroupBuildError, PublicGroup};
 pub(crate) struct TempBuilderPG1 {
     group_id: GroupId,
     crypto_config: CryptoConfig,
-    credential_with_key: CredentialWithKey,
     lifetime: Option<Lifetime>,
     required_capabilities: Option<RequiredCapabilitiesExtension>,
     external_senders: Option<ExternalSendersExtension>,
@@ -59,6 +57,7 @@ impl TempBuilderPG1 {
         self,
         backend: &impl OpenMlsCryptoProvider,
         signer: &impl Signer,
+        credential_with_key: &dyn OpenMlsCredential,
     ) -> Result<(TempBuilderPG2, CommitSecret, EncryptionKeyPair), PublicGroupBuildError> {
         let capabilities = self
             .required_capabilities
@@ -68,7 +67,7 @@ impl TempBuilderPG1 {
             backend,
             signer,
             self.crypto_config,
-            self.credential_with_key,
+            credential_with_key,
             self.lifetime.unwrap_or_default(),
             Capabilities::new(
                 Some(&[self.crypto_config.version]), // TODO: Allow more versions
@@ -157,15 +156,10 @@ impl PublicGroupBuilder {
 
 impl PublicGroup {
     /// Create a new [`PublicGroupBuilder`].
-    pub(crate) fn builder(
-        group_id: GroupId,
-        crypto_config: CryptoConfig,
-        credential_with_key: CredentialWithKey,
-    ) -> TempBuilderPG1 {
+    pub(crate) fn builder(group_id: GroupId, crypto_config: CryptoConfig) -> TempBuilderPG1 {
         TempBuilderPG1 {
             group_id,
             crypto_config,
-            credential_with_key,
             lifetime: None,
             required_capabilities: None,
             external_senders: None,

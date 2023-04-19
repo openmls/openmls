@@ -15,7 +15,6 @@ use tls_codec::Serialize;
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::hash_ref::KeyPackageRef,
-    credentials::*,
     extensions::*,
     framing::*,
     group::{config::CryptoConfig, *},
@@ -39,7 +38,7 @@ pub struct Client {
     /// Name of the client.
     pub identity: Vec<u8>,
     /// Ciphersuites supported by the client.
-    pub credentials: HashMap<Ciphersuite, CredentialWithKey>,
+    pub credentials: HashMap<Ciphersuite, SignatureKeyPair>,
     pub crypto: OpenMlsRustCrypto,
     pub groups: RwLock<HashMap<GroupId, MlsGroup>>,
 }
@@ -52,16 +51,10 @@ impl Client {
         &self,
         ciphersuite: Ciphersuite,
     ) -> Result<KeyPackage, ClientError> {
-        let credential_with_key = self
+        let credential = self
             .credentials
             .get(&ciphersuite)
             .ok_or(ClientError::CiphersuiteNotSupported)?;
-        let keys = SignatureKeyPair::read(
-            self.crypto.key_store(),
-            credential_with_key.signature_key.as_slice(),
-            ciphersuite.signature_algorithm(),
-        )
-        .unwrap();
 
         let key_package = KeyPackage::builder()
             .build(
@@ -70,8 +63,8 @@ impl Client {
                     version: ProtocolVersion::default(),
                 },
                 &self.crypto,
-                &keys,
-                credential_with_key.clone(),
+                credential,
+                credential,
             )
             .unwrap();
 
@@ -91,18 +84,12 @@ impl Client {
             .credentials
             .get(&ciphersuite)
             .ok_or(ClientError::CiphersuiteNotSupported)?;
-        let signer = SignatureKeyPair::read(
-            self.crypto.key_store(),
-            credential_with_key.signature_key.as_slice(),
-            ciphersuite.signature_algorithm(),
-        )
-        .unwrap();
 
         let group_state = MlsGroup::new(
             &self.crypto,
-            &signer,
+            credential_with_key,
             &mls_group_config,
-            credential_with_key.clone(),
+            credential_with_key,
         )?;
         let group_id = group_state.group_id().clone();
         self.groups

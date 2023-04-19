@@ -24,7 +24,6 @@
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::{hash_ref::KeyPackageRef, *},
-    credentials::*,
     framing::*,
     group::*,
     key_packages::*,
@@ -144,9 +143,9 @@ impl MlsGroupTestSetup {
             let crypto = OpenMlsRustCrypto::default();
             let mut credentials = HashMap::new();
             for ciphersuite in crypto.crypto().supported_ciphersuites().iter() {
-                let credential = Credential::new(identity.clone(), CredentialType::Basic).unwrap();
                 let signature_keys =
-                    SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+                    SignatureKeyPair::new(ciphersuite.signature_algorithm(), identity.clone())
+                        .unwrap();
                 signature_keys.store(crypto.key_store()).unwrap();
                 let signature_key = OpenMlsSignaturePublicKey::new(
                     signature_keys.public().into(),
@@ -154,13 +153,7 @@ impl MlsGroupTestSetup {
                 )
                 .unwrap();
 
-                credentials.insert(
-                    *ciphersuite,
-                    CredentialWithKey {
-                        credential,
-                        signature_key: signature_key.into(),
-                    },
-                );
+                credentials.insert(*ciphersuite, signature_keys);
             }
             let client = Client {
                 identity: identity.clone(),

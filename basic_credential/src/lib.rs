@@ -7,9 +7,13 @@
 use std::fmt::Debug;
 
 use openmls_traits::{
+    credential::OpenMlsCredential,
     key_store::{MlsEntity, MlsEntityId, OpenMlsKeyStore},
     signatures::Signer,
-    types::{CryptoError, Error, SignatureScheme},
+    types::{
+        credential::{BasicCredential, Credential, MlsCredentialType},
+        CryptoError, Error, SignatureScheme,
+    },
 };
 
 use p256::ecdsa::SigningKey;
@@ -30,6 +34,7 @@ pub struct SignatureKeyPair {
     private: Vec<u8>,
     public: Vec<u8>,
     signature_scheme: SignatureScheme,
+    identity: Vec<u8>,
 }
 
 impl Debug for SignatureKeyPair {
@@ -65,6 +70,22 @@ impl Signer for SignatureKeyPair {
     }
 }
 
+impl OpenMlsCredential for SignatureKeyPair {
+    fn identity(&self) -> &[u8] {
+        &self.identity
+    }
+
+    fn public_key(&self) -> &[u8] {
+        &self.public
+    }
+
+    fn credential(&self) -> Credential {
+        let credential =
+            MlsCredentialType::Basic(BasicCredential::new(self.identity.clone().into()));
+        Credential::new(credential)
+    }
+}
+
 /// Compute the ID for a [`Signature`] in the key store.
 fn id(public_key: &[u8], signature_scheme: SignatureScheme) -> Vec<u8> {
     const LABEL: &[u8; 22] = b"RustCryptoSignatureKey";
@@ -81,7 +102,7 @@ impl MlsEntity for SignatureKeyPair {
 
 impl SignatureKeyPair {
     /// Generates a fresh signature keypair using the [`SignatureScheme`].
-    pub fn new(signature_scheme: SignatureScheme) -> Result<Self, CryptoError> {
+    pub fn new(signature_scheme: SignatureScheme, identity: Vec<u8>) -> Result<Self, CryptoError> {
         let (private, public) = match signature_scheme {
             SignatureScheme::ECDSA_SECP256R1_SHA256 => {
                 let k = SigningKey::random(&mut OsRng);
@@ -102,15 +123,22 @@ impl SignatureKeyPair {
             private,
             public,
             signature_scheme,
+            identity,
         })
     }
 
     /// Create a new signature key pair from the raw keys.
-    pub fn from_raw(signature_scheme: SignatureScheme, private: Vec<u8>, public: Vec<u8>) -> Self {
+    pub fn from_raw(
+        signature_scheme: SignatureScheme,
+        private: Vec<u8>,
+        public: Vec<u8>,
+        identity: Vec<u8>,
+    ) -> Self {
         Self {
             private,
             public,
             signature_scheme,
+            identity,
         }
     }
 

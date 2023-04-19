@@ -6,10 +6,11 @@
 //! [`ProposalType::is_supported()`] can be used.
 
 use crate::{
-    ciphersuite::hash_ref::ProposalRef, credentials::CredentialWithKey, key_packages::*,
-    prelude::LeafNode,
+    ciphersuite::hash_ref::ProposalRef, key_packages::*, prelude::LeafNode,
+    prelude_test::SignaturePublicKey,
 };
 
+use openmls_traits::types::credential::Credential;
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
@@ -104,13 +105,10 @@ pub struct AddProposalIn {
 }
 
 impl AddProposalIn {
-    pub(crate) fn unverified_credential(&self) -> CredentialWithKey {
+    pub(crate) fn unverified_credential(&self) -> (Credential, SignaturePublicKey) {
         let credential = self.key_package.leaf_node().credential().clone();
         let signature_key = self.key_package.leaf_node().signature_key().clone();
-        CredentialWithKey {
-            credential,
-            signature_key,
-        }
+        (credential, signature_key)
     }
 }
 

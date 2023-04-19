@@ -2,7 +2,7 @@
 //!
 //! This module holds a number of types that are needed by the traits.
 
-use std::convert::TryFrom;
+pub mod credential;
 
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};

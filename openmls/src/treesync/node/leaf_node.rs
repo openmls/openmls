@@ -1,8 +1,12 @@
 //! This module contains the [`LeafNode`] struct and its implementation.
 use openmls_traits::{
+    credential::OpenMlsCredential,
     key_store::OpenMlsKeyStore,
     signatures::Signer,
-    types::{Ciphersuite, VerifiableCiphersuite},
+    types::{
+        credential::{Credential, CredentialType},
+        Ciphersuite, VerifiableCiphersuite,
+    },
     OpenMlsCryptoProvider,
 };
 use serde::{Deserialize, Serialize};
@@ -18,7 +22,6 @@ use crate::{
         signable::{Signable, SignedStruct, Verifiable},
         HpkePublicKey, Signature, SignaturePublicKey,
     },
-    credentials::{Credential, CredentialType, CredentialWithKey},
     error::LibraryError,
     extensions::{Extension, ExtensionType, Extensions, RequiredCapabilitiesExtension},
     group::{config::CryptoConfig, GroupId},
@@ -82,7 +85,7 @@ impl LeafNode {
     /// The caller is responsible for storing the private key.
     pub(crate) fn new(
         config: CryptoConfig,
-        credential_with_key: CredentialWithKey,
+        credential_with_key: &dyn OpenMlsCredential,
         leaf_node_source: LeafNodeSource,
         capabilities: Capabilities,
         extensions: Extensions,
@@ -108,7 +111,7 @@ impl LeafNode {
     /// The key pair must be stored in the key store by the caller.
     fn new_with_key(
         encryption_key: EncryptionKey,
-        credential_with_key: CredentialWithKey,
+        credential_with_key: &dyn OpenMlsCredential,
         leaf_node_source: LeafNodeSource,
         capabilities: Capabilities,
         extensions: Extensions,
@@ -163,7 +166,7 @@ impl LeafNode {
     /// a leaf node should be generated as part of a new [`KeyPackage`].
     pub fn generate_update<KeyStore: OpenMlsKeyStore>(
         config: CryptoConfig,
-        credential_with_key: CredentialWithKey,
+        credential_with_key: &dyn OpenMlsCredential,
         capabilities: Capabilities,
         extensions: Extensions,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
@@ -466,7 +469,7 @@ impl LeafNode {
     /// Expose [`new_with_key`] for tests.
     pub(crate) fn create_new_with_key(
         encryption_key: EncryptionKey,
-        credential_with_key: CredentialWithKey,
+        credential_with_key: &dyn OpenMlsCredential,
         leaf_node_source: LeafNodeSource,
         capabilities: Capabilities,
         extensions: Extensions,
@@ -568,7 +571,12 @@ impl LeafNodePayload {
         Self {
             encryption_key: EncryptionKey::from(HpkePublicKey::new(vec![])),
             signature_key: SignaturePublicKey::from(vec![]),
-            credential: Credential::new(vec![], CredentialType::Basic).unwrap(),
+            credential: Credential::new(
+                openmls_traits::types::credential::MlsCredentialType::Basic(BasicCredential::new(
+                    "identity".into(),
+                )),
+            )
+            .unwrap(),
             capabilities: Capabilities::default(),
             leaf_node_source: LeafNodeSource::Update,
             extensions: Extensions::empty(),
@@ -636,15 +644,15 @@ impl LeafNodeTbs {
     /// To get the [`LeafNode`] call [`LeafNode::sign`].
     pub(crate) fn new(
         encryption_key: EncryptionKey,
-        credential_with_key: CredentialWithKey,
+        credential_with_key: &dyn OpenMlsCredential,
         capabilities: Capabilities,
         leaf_node_source: LeafNodeSource,
         extensions: Extensions,
     ) -> Result<Self, LibraryError> {
         let payload = LeafNodePayload {
             encryption_key,
-            signature_key: credential_with_key.signature_key,
-            credential: credential_with_key.credential,
+            signature_key: credential_with_key.public_key().into(),
+            credential: credential_with_key.credential(),
             capabilities,
             leaf_node_source,
             extensions,
@@ -760,7 +768,7 @@ impl OpenMlsLeafNode {
         leaf_node_source: LeafNodeSource,
         backend: &impl OpenMlsCryptoProvider,
         signer: &impl Signer,
-        credential_with_key: CredentialWithKey,
+        credential_with_key: &dyn OpenMlsCredential,
         capabilities: Capabilities,
         extensions: Extensions,
     ) -> Result<(Self, EncryptionKeyPair), LibraryError> {

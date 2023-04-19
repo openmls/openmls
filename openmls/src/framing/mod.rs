@@ -45,7 +45,6 @@ use tls_codec::*;
 
 use crate::{
     ciphersuite::*,
-    credentials::*,
     group::*,
     messages::{proposals::*, *},
     schedule::{message_secrets::*, *},

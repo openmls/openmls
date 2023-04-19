@@ -3,7 +3,6 @@ use tls_codec::Serialize;
 
 use crate::{
     ciphersuite::OpenMlsSignaturePublicKey,
-    credentials::CredentialWithKey,
     error::LibraryError,
     framing::{
         mls_content::FramedContentBody, ApplicationMessage, DecryptedMessage, ProcessedMessage,
@@ -58,10 +57,7 @@ impl PublicGroup {
         //  - Prepares ValSem246 by setting the right credential. The remainder
         //    of ValSem246 is validated as part of ValSem010.
         // External senders are not supported yet #106/#151.
-        let CredentialWithKey {
-            credential,
-            signature_key,
-        } = decrypted_message.credential(
+        let (credential, signature_key) = decrypted_message.credential(
             self.treesync(),
             message_secrets_store_option
                 .map(|store| store.leaves_for_epoch(decrypted_message.verifiable_content().epoch()))

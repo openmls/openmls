@@ -5,7 +5,7 @@
 
 use openmls_traits::{
     crypto::OpenMlsCrypto,
-    types::{Ciphersuite, HpkeCiphertext},
+    types::{credential::Credential, Ciphersuite, HpkeCiphertext},
     OpenMlsCryptoProvider,
 };
 use serde::{Deserialize, Serialize};
@@ -16,7 +16,6 @@ use tls_codec::{Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTra
 use crate::schedule::psk::{ExternalPsk, Psk};
 use crate::{
     ciphersuite::{hash_ref::KeyPackageRef, *},
-    credentials::CredentialWithKey,
     error::LibraryError,
     schedule::{psk::PreSharedKeyId, JoinerSecret},
     treesync::{
@@ -171,14 +170,11 @@ pub(crate) struct CommitIn {
 }
 
 impl CommitIn {
-    pub(crate) fn unverified_credential(&self) -> Option<CredentialWithKey> {
+    pub(crate) fn unverified_credential(&self) -> Option<(Credential, SignaturePublicKey)> {
         self.path.as_ref().map(|p| {
             let credential = p.leaf_node().credential().clone();
             let pk = p.leaf_node().signature_key().clone();
-            CredentialWithKey {
-                credential,
-                signature_key: pk,
-            }
+            (credential, pk)
         })
     }
 }

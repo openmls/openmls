@@ -1,11 +1,9 @@
 //! Builder for [CreateCommitParams] that is used in [CoreGroup::create_commit()]
 
+use openmls_traits::credential::OpenMlsCredential;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    credentials::CredentialWithKey, framing::FramingParameters, group::ProposalStore,
-    messages::proposals::Proposal,
-};
+use crate::{framing::FramingParameters, group::ProposalStore, messages::proposals::Proposal};
 
 #[cfg(doc)]
 use super::CoreGroup;
@@ -18,12 +16,11 @@ pub(crate) enum CommitType {
 }
 
 pub(crate) struct CreateCommitParams<'a> {
-    framing_parameters: FramingParameters<'a>,      // Mandatory
-    proposal_store: &'a ProposalStore,              // Mandatory
-    inline_proposals: Vec<Proposal>,                // Optional
-    force_self_update: bool,                        // Optional
-    commit_type: CommitType,                        // Optional (default is `Member`)
-    credential_with_key: Option<CredentialWithKey>, // Mandatory for external commits
+    framing_parameters: FramingParameters<'a>, // Mandatory
+    proposal_store: &'a ProposalStore,         // Mandatory
+    inline_proposals: Vec<Proposal>,           // Optional
+    force_self_update: bool,                   // Optional
+    commit_type: CommitType,                   // Optional (default is `Member`)
 }
 
 pub(crate) struct TempBuilderCCPM0 {}
@@ -57,7 +54,6 @@ impl<'a> TempBuilderCCPM1<'a> {
                 inline_proposals: vec![],
                 force_self_update: true,
                 commit_type: CommitType::Member,
-                credential_with_key: None,
             },
         }
     }
@@ -75,10 +71,6 @@ impl<'a> CreateCommitParamsBuilder<'a> {
     }
     pub(crate) fn commit_type(mut self, commit_type: CommitType) -> Self {
         self.ccp.commit_type = commit_type;
-        self
-    }
-    pub(crate) fn credential_with_key(mut self, credential_with_key: CredentialWithKey) -> Self {
-        self.ccp.credential_with_key = Some(credential_with_key);
         self
     }
     pub(crate) fn build(self) -> CreateCommitParams<'a> {
@@ -104,8 +96,5 @@ impl<'a> CreateCommitParams<'a> {
     }
     pub(crate) fn commit_type(&self) -> CommitType {
         self.commit_type
-    }
-    pub(crate) fn take_credential_with_key(&mut self) -> Option<CredentialWithKey> {
-        self.credential_with_key.take()
     }
 }

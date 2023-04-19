@@ -9,7 +9,11 @@ use std::{cell::RefCell, collections::HashMap};
 use config::CryptoConfig;
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::{
-    key_store::OpenMlsKeyStore, signatures::Signer, types::SignatureScheme, OpenMlsCryptoProvider,
+    credential::OpenMlsCredential,
+    key_store::OpenMlsKeyStore,
+    signatures::Signer,
+    types::{credential::Credential, SignatureScheme},
+    OpenMlsCryptoProvider,
 };
 use rand::{rngs::OsRng, RngCore};
 use tls_codec::Serialize;
@@ -141,10 +145,13 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
         let core_group = CoreGroup::builder(
             GroupId::from_slice(&group_id.to_be_bytes()),
             CryptoConfig::with_default_version(group_config.ciphersuite),
-            credential_with_key_and_signer.credential_with_key.clone(),
         )
         .with_config(group_config.config)
-        .build(backend, &credential_with_key_and_signer.signer)
+        .build(
+            backend,
+            &credential_with_key_and_signer.signer,
+            credential_with_key_and_signer.credential_with_key.0,
+        )
         .expect("Error creating new CoreGroup");
         let mut proposal_list = Vec::new();
         let group_aad = b"";
@@ -201,7 +208,12 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
                 .proposal_store(&proposal_store)
                 .build();
             let create_commit_result = core_group
-                .create_commit(params, backend, &credential_with_key_and_signer.signer)
+                .create_commit(
+                    params,
+                    backend,
+                    &credential_with_key_and_signer.signer,
+                    None,
+                )
                 .expect("An unexpected error occurred.");
             let welcome = create_commit_result
                 .welcome_option
@@ -321,7 +333,7 @@ fn test_setup(backend: &impl OpenMlsCryptoProvider) {
 
 #[derive(Clone)]
 pub(crate) struct CredentialWithKeyAndSigner {
-    pub(crate) credential_with_key: CredentialWithKey,
+    pub(crate) credential_with_key: SignatureKeyPair,
     pub(crate) signer: SignatureKeyPair,
 }
 
@@ -331,21 +343,14 @@ pub(crate) fn generate_credential_bundle(
     signature_scheme: SignatureScheme,
     backend: &impl OpenMlsCryptoProvider,
 ) -> CredentialWithKeyAndSigner {
-    let (credential, signer) = {
-        let credential = Credential::new(identity, CredentialType::Basic).unwrap();
-        let signature_keys = SignatureKeyPair::new(signature_scheme).unwrap();
-        signature_keys.store(backend.key_store()).unwrap();
-
-        (credential, signature_keys)
-    };
+    let credential = SignatureKeyPair::new(signature_scheme, identity).unwrap();
+    credential.store(backend.key_store()).unwrap();
     let signature_key =
-        OpenMlsSignaturePublicKey::new(signer.to_public_vec().into(), signature_scheme).unwrap();
+        OpenMlsSignaturePublicKey::new(credential.to_public_vec().into(), signature_scheme)
+            .unwrap();
 
     CredentialWithKeyAndSigner {
-        credential_with_key: CredentialWithKey {
-            credential,
-            signature_key: signature_key.into(),
-        },
+        credential_with_key: credential,
         signer,
     }
 }
@@ -366,7 +371,7 @@ pub(crate) fn generate_key_package<KeyStore: OpenMlsKeyStore>(
             },
             backend,
             &credential_with_keys.signer,
-            credential_with_keys.credential_with_key,
+            &credential_with_keys.credential_with_key,
         )
         .unwrap()
 }

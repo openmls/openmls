@@ -87,7 +87,6 @@ use crate::{
         signable::*,
         *,
     },
-    credentials::*,
     error::LibraryError,
     extensions::ExtensionType,
     extensions::Extensions,
@@ -102,10 +101,11 @@ use crate::{
     versions::ProtocolVersion,
 };
 use openmls_traits::{
+    credential::OpenMlsCredential,
     crypto::OpenMlsCrypto,
     key_store::{MlsEntity, MlsEntityId, OpenMlsKeyStore},
     signatures::Signer,
-    types::Ciphersuite,
+    types::{credential::Credential, Ciphersuite},
     OpenMlsCryptoProvider,
 };
 use serde::{Deserialize, Serialize};
@@ -239,7 +239,7 @@ impl KeyPackage {
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
-        credential_with_key: CredentialWithKey,
+        credential_with_key: &dyn OpenMlsCredential,
         extensions: Extensions,
         leaf_node_capabilities: Capabilities,
         leaf_node_extensions: Extensions,
@@ -286,7 +286,7 @@ impl KeyPackage {
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
-        credential_with_key: CredentialWithKey,
+        credential_with_key: &dyn OpenMlsCredential,
         extensions: Extensions,
         leaf_node_capabilities: Capabilities,
         leaf_node_extensions: Extensions,
@@ -437,7 +437,7 @@ impl KeyPackage {
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
-        credential_with_key: CredentialWithKey,
+        credential_with_key: &dyn OpenMlsCredential,
         extensions: Extensions,
         leaf_node_capabilities: Capabilities,
         leaf_node_extensions: Extensions,
@@ -620,7 +620,7 @@ impl KeyPackageBuilder {
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
-        credential_with_key: CredentialWithKey,
+        credential_with_key: &dyn OpenMlsCredential,
     ) -> Result<KeyPackageCreationResult, KeyPackageNewError<KeyStore::Error>> {
         KeyPackage::create(
             config,
@@ -639,7 +639,7 @@ impl KeyPackageBuilder {
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
-        credential_with_key: CredentialWithKey,
+        credential_with_key: &dyn OpenMlsCredential,
     ) -> Result<KeyPackage, KeyPackageNewError<KeyStore::Error>> {
         let KeyPackageCreationResult {
             key_package,

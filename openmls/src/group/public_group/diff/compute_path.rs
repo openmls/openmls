@@ -1,11 +1,13 @@
 use std::collections::HashSet;
 
-use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, OpenMlsCryptoProvider};
+use openmls_traits::{
+    credential::OpenMlsCredential, key_store::OpenMlsKeyStore, signatures::Signer,
+    OpenMlsCryptoProvider,
+};
 use tls_codec::Serialize;
 
 use crate::{
     binary_tree::LeafNodeIndex,
-    credentials::CredentialWithKey,
     error::LibraryError,
     group::{
         config::CryptoConfig, core_group::create_commit_params::CommitType,
@@ -42,7 +44,7 @@ impl<'a> PublicGroupDiff<'a> {
         exclusion_list: HashSet<&LeafNodeIndex>,
         commit_type: CommitType,
         signer: &impl Signer,
-        credential_with_key: Option<CredentialWithKey>,
+        credential_with_key: Option<&dyn OpenMlsCredential>,
     ) -> Result<PathComputationResult, CreateCommitError<KeyStore::Error>> {
         let version = self.group_context().protocol_version();
         let ciphersuite = self.group_context().ciphersuite();

@@ -12,9 +12,6 @@ pub use crate::ciphersuite::{hash_ref::KeyPackageRef, signable::*, signature::*,
 // Messages
 pub use crate::messages::{external_proposals::*, proposals::*, proposals_in::*, *};
 
-// Credentials
-pub use crate::credentials::{errors::*, *};
-
 // MLS Versions
 pub use crate::versions::*;
 
@@ -57,6 +54,10 @@ pub use crate::error::*;
 
 // OpenMLS traits
 pub use openmls_traits::{
-    crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, random::OpenMlsRand, types::*,
+    credential::OpenMlsCredential,
+    crypto::OpenMlsCrypto,
+    key_store::OpenMlsKeyStore,
+    random::OpenMlsRand,
+    types::{credential::*, *},
     OpenMlsCryptoProvider,
 };

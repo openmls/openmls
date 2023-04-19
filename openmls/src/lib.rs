@@ -168,7 +168,6 @@ pub mod error;
 
 // Public
 pub mod ciphersuite;
-pub mod credentials;
 pub mod extensions;
 pub mod framing;
 pub mod group;

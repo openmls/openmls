@@ -23,6 +23,7 @@ use std::fmt;
 use std::io::Read;
 
 use openmls_traits::{
+    credential::OpenMlsCredential,
     signatures::Signer,
     types::{Ciphersuite, CryptoError},
     OpenMlsCryptoProvider,
@@ -49,7 +50,6 @@ use crate::{
         MlsBinaryTree, MlsBinaryTreeError,
     },
     ciphersuite::Secret,
-    credentials::CredentialWithKey,
     error::LibraryError,
     extensions::Extensions,
     framing::SenderError,
@@ -254,7 +254,7 @@ impl TreeSync {
         backend: &impl OpenMlsCryptoProvider,
         signer: &impl Signer,
         config: CryptoConfig,
-        credential_with_key: CredentialWithKey,
+        credential_with_key: &dyn OpenMlsCredential,
         life_time: Lifetime,
         capabilities: Capabilities,
         extensions: Extensions,

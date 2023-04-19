@@ -1,11 +1,10 @@
-use openmls_traits::types::{Ciphersuite, VerifiableCiphersuite};
+use openmls_traits::types::{Ciphersuite, VerifiableCiphersuite, credential::CredentialType};
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 #[cfg(doc)]
 use super::LeafNode;
 use crate::{
-    credentials::CredentialType,
     extensions::{ExtensionType, RequiredCapabilitiesExtension},
     messages::proposals::ProposalType,
     versions::ProtocolVersion,

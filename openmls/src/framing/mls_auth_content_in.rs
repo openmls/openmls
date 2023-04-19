@@ -9,12 +9,12 @@
 
 use std::io::Read;
 
+use openmls_traits::types::credential::Credential;
 use tls_codec::Serialize as TlsSerializeTrait;
 
 use super::{mls_auth_content::*, mls_content_in::*, *};
 use crate::{
     ciphersuite::signable::{SignedStruct, Verifiable, VerifiedStruct},
-    credentials::CredentialWithKey,
     group::errors::ValidationError,
     messages::proposals_in::ProposalIn,
     versions::ProtocolVersion,
@@ -130,7 +130,9 @@ impl VerifiableAuthenticatedContentIn {
     /// * the sender type is not one of the above,
     /// * the content type doesn't match the sender type, or
     /// * if it's a NewMemberCommit and the Commit doesn't contain a `path`.
-    pub(crate) fn new_member_credential(&self) -> Result<CredentialWithKey, ValidationError> {
+    pub(crate) fn new_member_credential(
+        &self,
+    ) -> Result<(Credential, SignaturePublicKey), ValidationError> {
         match self.tbs.content.sender {
             Sender::NewMemberCommit => {
                 // only external commits can have a sender type `NewMemberCommit`

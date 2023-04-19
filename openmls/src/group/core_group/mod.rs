@@ -45,6 +45,8 @@ use crate::binary_tree::array_representation::TreeSize;
 use std::io::{Error, Read, Write};
 
 use log::{debug, trace};
+use openmls_traits::credential::OpenMlsCredential;
+use openmls_traits::types::credential::{Credential, CredentialType};
 use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
 use tls_codec::Serialize as TlsSerializeTrait;
@@ -58,7 +60,6 @@ use super::{
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::{signable::Signable, HpkePublicKey, SignaturePublicKey},
-    credentials::*,
     error::LibraryError,
     framing::{mls_auth_content::AuthenticatedContent, *},
     group::{config::CryptoConfig, *},
@@ -147,13 +148,8 @@ pub(crate) struct CoreGroupBuilder {
 
 impl CoreGroupBuilder {
     /// Create a new [`CoreGroupBuilder`].
-    pub(crate) fn new(
-        group_id: GroupId,
-        crypto_config: CryptoConfig,
-        credential_with_key: CredentialWithKey,
-    ) -> Self {
-        let public_group_builder =
-            PublicGroup::builder(group_id, crypto_config, credential_with_key);
+    pub(crate) fn new(group_id: GroupId, crypto_config: CryptoConfig) -> Self {
+        let public_group_builder = PublicGroup::builder(group_id, crypto_config);
         Self {
             config: None,
             psk_ids: vec![],
@@ -215,9 +211,11 @@ impl CoreGroupBuilder {
         self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
+        credential_with_key: &dyn OpenMlsCredential,
     ) -> Result<CoreGroup, CoreGroupBuildError<KeyStore::Error>> {
-        let (public_group_builder, commit_secret, leaf_keypair) =
-            self.public_group_builder.get_secrets(backend, signer)?;
+        let (public_group_builder, commit_secret, leaf_keypair) = self
+            .public_group_builder
+            .get_secrets(backend, signer, credential_with_key)?;
 
         let ciphersuite = public_group_builder.crypto_config().ciphersuite;
         let config = self.config.unwrap_or_default();
@@ -292,12 +290,8 @@ impl CoreGroupBuilder {
 /// Public [`CoreGroup`] functions.
 impl CoreGroup {
     /// Get a builder for [`CoreGroup`].
-    pub(crate) fn builder(
-        group_id: GroupId,
-        crypto_config: CryptoConfig,
-        credential_with_key: CredentialWithKey,
-    ) -> CoreGroupBuilder {
-        CoreGroupBuilder::new(group_id, crypto_config, credential_with_key)
+    pub(crate) fn builder(group_id: GroupId, crypto_config: CryptoConfig) -> CoreGroupBuilder {
+        CoreGroupBuilder::new(group_id, crypto_config)
     }
 
     // === Create handshake messages ===
@@ -786,6 +780,7 @@ impl CoreGroup {
         mut params: CreateCommitParams,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
+        credential: Option<&dyn OpenMlsCredential>,
     ) -> Result<CreateCommitResult, CreateCommitError<KeyStore::Error>> {
         let ciphersuite = self.ciphersuite();
 
@@ -867,7 +862,7 @@ impl CoreGroup {
                     apply_proposals_values.exclusion_list(),
                     params.commit_type(),
                     signer,
-                    params.take_credential_with_key()
+                    credential
                 )?
             } else {
                 // If path is not needed, update the group context and return

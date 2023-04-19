@@ -27,7 +27,7 @@ use crate::{
     extensions::ExternalSendersExtension, group::errors::ValidationError, treesync::TreeSync,
 };
 use core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::{types::credential::Credential, OpenMlsCryptoProvider};
 
 use crate::{
     ciphersuite::signable::Verifiable, error::LibraryError,
@@ -153,7 +153,7 @@ impl DecryptedMessage {
         treesync: &TreeSync,
         old_leaves: &[Member],
         external_senders: Option<&ExternalSendersExtension>,
-    ) -> Result<CredentialWithKey, ValidationError> {
+    ) -> Result<(Credential, SignaturePublicKey), ValidationError> {
         let sender = self.sender();
         match sender {
             Sender::Member(leaf_index) => {
@@ -161,10 +161,7 @@ impl DecryptedMessage {
                     Some(sender_leaf) => {
                         let credential = sender_leaf.credential().clone();
                         let pk = sender_leaf.signature_key().clone();
-                        Ok(CredentialWithKey {
-                            credential,
-                            signature_key: pk,
-                        })
+                        Ok((credential, pk))
                     }
                     None => {
                         // This might not actually be an error but the sender's
@@ -182,10 +179,7 @@ impl DecryptedMessage {
                                 Some(node) => {
                                     let credential = node.credential().clone();
                                     let signature_key = node.signature_key().clone();
-                                    Ok(CredentialWithKey {
-                                        credential,
-                                        signature_key,
-                                    })
+                                    Ok((credential, signature_key))
                                 }
                                 None => Err(ValidationError::UnknownMember),
                             }
@@ -200,10 +194,7 @@ impl DecryptedMessage {
                     .ok_or(ValidationError::NoExternalSendersExtension)?
                     .get(index.index())
                     .ok_or(ValidationError::UnauthorizedExternalSender)?;
-                Ok(CredentialWithKey {
-                    credential: sender.credential().clone(),
-                    signature_key: sender.signature_key().clone(),
-                })
+                Ok((sender.credential().clone(), sender.signature_key().clone()))
             }
             Sender::NewMemberCommit | Sender::NewMemberProposal => {
                 // Fetch the credential from the message itself.

@@ -20,7 +20,6 @@ use crate::group::tests::utils::CredentialWithKeyAndSigner;
 pub use crate::utils::*;
 use crate::{
     ciphersuite::{HpkePrivateKey, OpenMlsSignaturePublicKey},
-    credentials::{Credential, CredentialType, CredentialWithKey},
     key_packages::KeyPackage,
     prelude::{CryptoConfig, KeyPackageBuilder},
     treesync::node::encryption_keys::{EncryptionKeyPair, EncryptionPrivateKey},
@@ -102,9 +101,8 @@ pub(crate) fn generate_group_candidate(
     backend: Option<&impl OpenMlsCryptoProvider>,
 ) -> GroupCandidate {
     let credential_with_key_and_signer = {
-        let credential = Credential::new(identity.to_vec(), CredentialType::Basic).unwrap();
-
-        let signature_keypair = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+        let signature_keypair =
+            SignatureKeyPair::new(ciphersuite.signature_algorithm(), identity.to_vec()).unwrap();
 
         // Store if there is a key store.
         if let Some(backend) = backend {
@@ -136,7 +134,7 @@ pub(crate) fn generate_group_candidate(
                         CryptoConfig::with_default_version(ciphersuite),
                         backend,
                         &credential_with_key_and_signer.signer,
-                        credential_with_key_and_signer.credential_with_key.clone(),
+                        &credential_with_key_and_signer.credential_with_key,
                     )
                     .unwrap();
 
@@ -168,7 +166,7 @@ pub(crate) fn generate_group_candidate(
                         CryptoConfig::with_default_version(ciphersuite),
                         &backend,
                         &credential_with_key_and_signer.signer,
-                        credential_with_key_and_signer.credential_with_key.clone(),
+                        &credential_with_key_and_signer.credential_with_key,
                     )
                     .unwrap();
 
