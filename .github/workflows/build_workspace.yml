@@ -1,4 +1,4 @@
-name: Cli Build
+name: Build workspace
 
 on:
   push:
@@ -16,18 +16,11 @@ env:
 
 jobs:
   tests:
-    strategy:
-      fail-fast: false
-      matrix:
-        os:
-          - macos-latest
-          - ubuntu-latest
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - name: Build cli
-        run: cargo build --verbose -p cli
+      - name: Build workspace
+        run: cargo build --workspace --all-targets
+
