@@ -27,7 +27,7 @@ use crate::{
         *,
     },
     prelude::{CredentialType, LeafNode},
-    schedule::psk::*,
+    schedule::psk::{store::ResumptionPskStore, *},
     test_utils::*,
     tree::sender_ratchet::*,
     treesync::node::{leaf_node::Capabilities, Node},

@@ -11,7 +11,7 @@ use crate::{
     group::{config::CryptoConfig, errors::*, *},
     key_packages::*,
     messages::{group_info::GroupInfoTBS, *},
-    schedule::psk::*,
+    schedule::psk::{store::ResumptionPskStore, ExternalPsk, PreSharedKeyId, Psk},
     test_utils::*,
     treesync::errors::ApplyUpdatePathError,
 };

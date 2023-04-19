@@ -19,7 +19,7 @@ use crate::{
         CreateCommitParams,
     },
     key_packages::KeyPackageBundle,
-    schedule::psk::{PskSecret, ResumptionPskStore},
+    schedule::psk::{store::ResumptionPskStore, PskSecret},
     tree::{secret_tree::SecretTree, sender_ratchet::SenderRatchetConfiguration},
     versions::ProtocolVersion,
 };

@@ -16,7 +16,7 @@ use tls_codec::Serialize;
 
 use crate::{
     ciphersuite::signable::Signable, credentials::*, framing::*, group::*, key_packages::*,
-    messages::ConfirmationTag, schedule::psk::ResumptionPskStore, test_utils::*,
+    messages::ConfirmationTag, schedule::psk::store::ResumptionPskStore, test_utils::*,
     versions::ProtocolVersion, *,
 };
 

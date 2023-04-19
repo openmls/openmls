@@ -37,7 +37,7 @@ use serde::Deserialize;
 
 use super::psk::{ExternalPsk, PreSharedKeyId, Psk, PskSecret};
 use crate::{
-    schedule::psk::{load_psks, ResumptionPskStore},
+    schedule::psk::{load_psks, store::ResumptionPskStore},
     test_utils::*,
 };
 

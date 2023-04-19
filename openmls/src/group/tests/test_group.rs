@@ -8,7 +8,7 @@ use crate::{
     framing::*,
     group::{config::CryptoConfig, *},
     key_packages::*,
-    schedule::psk::ResumptionPskStore,
+    schedule::psk::store::ResumptionPskStore,
     test_utils::*,
     tree::sender_ratchet::SenderRatchetConfiguration,
     treesync::node::leaf_node::OpenMlsLeafNode,

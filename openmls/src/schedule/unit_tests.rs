@@ -4,7 +4,12 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{random::OpenMlsRand, OpenMlsCryptoProvider};
 
 use super::PskSecret;
-use crate::{ciphersuite::Secret, schedule::psk::*, test_utils::*, versions::ProtocolVersion};
+use crate::{
+    ciphersuite::Secret,
+    schedule::psk::{store::ResumptionPskStore, *},
+    test_utils::*,
+    versions::ProtocolVersion,
+};
 
 #[apply(ciphersuites_and_backends)]
 fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {

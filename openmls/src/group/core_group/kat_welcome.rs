@@ -33,7 +33,7 @@ use crate::{
     messages::*,
     prelude::group_info::{GroupInfo, VerifiableGroupInfo},
     schedule::{
-        psk::{load_psks, PskSecret, ResumptionPskStore},
+        psk::{load_psks, store::ResumptionPskStore, PskSecret},
         KeySchedule,
     },
     test_utils::*,

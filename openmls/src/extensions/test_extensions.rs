@@ -12,7 +12,7 @@ use crate::{
     group::{errors::*, *},
     key_packages::*,
     messages::proposals::ProposalType,
-    schedule::psk::ResumptionPskStore,
+    schedule::psk::store::ResumptionPskStore,
     test_utils::*,
 };
 

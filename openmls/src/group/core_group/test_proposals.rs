@@ -20,7 +20,7 @@ use crate::{
     },
     key_packages::KeyPackageBundle,
     messages::proposals::{AddProposal, Proposal, ProposalOrRef, ProposalType},
-    schedule::psk::ResumptionPskStore,
+    schedule::psk::store::ResumptionPskStore,
     test_utils::*,
     treesync::errors::LeafNodeValidationError,
 };

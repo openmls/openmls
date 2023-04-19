@@ -23,7 +23,7 @@ use crate::{
     },
     prelude::HpkePrivateKey,
     schedule::{
-        psk::{load_psks, PskSecret, ResumptionPskStore},
+        psk::{load_psks, store::ResumptionPskStore, PskSecret},
         KeySchedule,
     },
     treesync::node::encryption_keys::EncryptionKeyPair,
