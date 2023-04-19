@@ -217,8 +217,11 @@ pub use openmls_rust_crypto::OpenMlsRustCrypto;
 // === Backends ===
 
 #[cfg(any(
-    not(target_arch = "x86_64"),
-    target_os = "macos",
+    all(
+        not(target_arch = "x86_64"),
+        target_os = "macos",
+        not(feature = "libcrux")
+    ),
     target_family = "wasm",
     not(feature = "libcrux")
 ))]
@@ -233,12 +236,7 @@ pub fn backends(backend: &impl OpenMlsCryptoProvider) {}
 
 // For now we only use libcrux on specific platforms and only if the feature was enabled
 
-#[cfg(all(
-    target_arch = "x86_64",
-    not(target_os = "macos"),
-    not(target_family = "wasm"),
-    feature = "libcrux",
-))]
+#[cfg(all(not(target_family = "wasm"), feature = "libcrux",))]
 #[template]
 #[export]
 #[rstest(backend,
@@ -273,7 +271,11 @@ pub fn ciphersuites(ciphersuite: Ciphersuite) {}
 // === Ciphersuites & backends ===
 
 #[cfg(any(
-    all(not(target_arch = "x86_64"), target_os = "macos"),
+    all(
+        not(target_arch = "x86_64"),
+        target_os = "macos",
+        not(feature = "libcrux")
+    ),
     not(feature = "libcrux"),
     target_family = "wasm",
 ))]

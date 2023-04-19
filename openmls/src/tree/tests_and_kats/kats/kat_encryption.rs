@@ -482,6 +482,7 @@ pub fn run_test_vector(
     test_vector: EncryptionTestVector,
     backend: &impl OpenMlsCryptoProvider,
 ) -> Result<(), EncTestVectorError> {
+    use openmls_traits::crypto::OpenMlsCrypto;
     use tls_codec::{Deserialize, Serialize};
 
     use crate::{
@@ -495,6 +496,14 @@ pub fn run_test_vector(
     }
     let size = TreeSize::from_leaf_count(n_leaves);
     let ciphersuite = Ciphersuite::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
+    if !backend
+        .crypto()
+        .supported_ciphersuites()
+        .contains(&ciphersuite)
+    {
+        log::debug!("Skipping unsupported ciphersuite {:?}", ciphersuite);
+        return Ok(());
+    }
     log::debug!("Running test vector with {:?}", ciphersuite);
 
     let sender_data_secret = SenderDataSecret::from_slice(

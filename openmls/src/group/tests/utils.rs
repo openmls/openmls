@@ -9,7 +9,8 @@ use std::{cell::RefCell, collections::HashMap};
 use config::CryptoConfig;
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::{
-    key_store::OpenMlsKeyStore, signatures::Signer, types::SignatureScheme, OpenMlsCryptoProvider,
+    crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, signatures::Signer, types::SignatureScheme,
+    OpenMlsCryptoProvider,
 };
 use rand::{rngs::OsRng, RngCore};
 use tls_codec::Serialize;
@@ -90,6 +91,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
         // This currently creates a credential bundle per ciphersuite, (not per
         // signature scheme), as well as 10 KeyPackages per ciphersuite.
         for ciphersuite in client.ciphersuites {
+            eprintln!("{ciphersuite:?}");
             // Create a credential_bundle for the given ciphersuite.
             let credentia_with_key_and_signer = generate_credential_bundle(
                 client.name.as_bytes().to_vec(),
@@ -298,17 +300,26 @@ fn test_random() {
 
 #[apply(backends)]
 fn test_setup(backend: &impl OpenMlsCryptoProvider) {
+    let ciphersuite = if backend
+        .crypto()
+        .supports(Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519)
+        .is_ok()
+    {
+        Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
+    } else {
+        Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519
+    };
     let test_client_config_a = TestClientConfig {
         name: "TestClientConfigA",
-        ciphersuites: vec![Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519],
+        ciphersuites: vec![ciphersuite],
     };
     let test_client_config_b = TestClientConfig {
         name: "TestClientConfigB",
-        ciphersuites: vec![Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519],
+        ciphersuites: vec![ciphersuite],
     };
     let group_config = CoreGroupConfig::default();
     let test_group_config = TestGroupConfig {
-        ciphersuite: Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+        ciphersuite: ciphersuite,
         config: group_config,
         members: vec![test_client_config_a.clone(), test_client_config_b.clone()],
     };

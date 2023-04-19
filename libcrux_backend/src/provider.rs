@@ -119,20 +119,31 @@ const MAX_DATA_LEN: usize = 0x10000000;
 
 impl OpenMlsCrypto for LibcruxProvider {
     fn supports(&self, ciphersuite: Ciphersuite) -> Result<(), CryptoError> {
-        match ciphersuite {
-            Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
-            | Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519
-            | Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256 => Ok(()),
-            _ => Err(CryptoError::UnsupportedCiphersuite),
+        if cfg!(target_arch = "x86_64") {
+            match ciphersuite {
+                Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
+                | Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519
+                | Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256 => Ok(()),
+                _ => Err(CryptoError::UnsupportedCiphersuite),
+            }
+        } else {
+            match ciphersuite {
+                Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519 => Ok(()),
+                _ => Err(CryptoError::UnsupportedCiphersuite),
+            }
         }
     }
 
     fn supported_ciphersuites(&self) -> Vec<Ciphersuite> {
-        vec![
-            Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
-            Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-            Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
-        ]
+        if cfg!(target_arch = "x86_64") {
+            vec![
+                Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+                Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+                Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
+            ]
+        } else {
+            vec![Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519]
+        }
     }
 
     /// Returns `HKDF::extract` with the given parameters or an error if the HKDF
@@ -387,10 +398,11 @@ impl OpenMlsCrypto for LibcruxProvider {
         config: HpkeConfig,
         ikm: &[u8],
     ) -> openmls_traits::types::HpkeKeyPair {
-        let kp = hpke::kem::DeriveKeyPair(hpke_from_config(config).1, ikm).unwrap(); //XXX: return error
+        let hpke_config = hpke_from_config(config);
+        let kp = hpke::kem::DeriveKeyPair(hpke_config.1, ikm).unwrap(); //XXX: return error
         HpkeKeyPair {
             private: kp.0,
-            public: kp.1,
+            public: hpke::kem::SerializePublicKey(hpke_config.1, kp.1),
         }
     }
 }
