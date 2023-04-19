@@ -499,6 +499,7 @@ pub(crate) fn load_psks<'p>(
     Ok(psk_bundles)
 }
 
+/// This module contains a store that can hold a rollover list of resumption PSKs.
 pub mod store {
     use serde::{Deserialize, Serialize};
 
