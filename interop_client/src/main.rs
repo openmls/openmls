@@ -171,10 +171,8 @@ impl MlsClient for MlsClientImpl {
     #[instrument(skip_all)]
     async fn supported_ciphersuites(
         &self,
-        request: Request<SupportedCiphersuitesRequest>,
+        _request: Request<SupportedCiphersuitesRequest>,
     ) -> Result<Response<SupportedCiphersuitesResponse>, Status> {
-        let request = request.get_ref();
-
         // TODO: read from backend
         let ciphersuites = &[
             Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
@@ -1242,7 +1240,7 @@ impl MlsClient for MlsClientImpl {
     }
 
     async fn free(&self, _request: Request<FreeRequest>) -> Result<Response<FreeResponse>, Status> {
-        log::debug!("Got Free request");
+        debug!("Got Free request");
         let response = FreeResponse {};
         Ok(Response::new(response))
     }
