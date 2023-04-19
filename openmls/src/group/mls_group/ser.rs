@@ -2,7 +2,7 @@
 #![allow(deprecated)]
 
 use super::*;
-use crate::schedule::psk::ResumptionPskStore;
+use crate::schedule::psk::store::ResumptionPskStore;
 
 use serde::{
     ser::{SerializeStruct, Serializer},

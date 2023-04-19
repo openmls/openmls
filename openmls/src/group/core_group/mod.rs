@@ -68,7 +68,11 @@ use crate::{
         proposals::*,
         *,
     },
-    schedule::{message_secrets::*, psk::*, *},
+    schedule::{
+        message_secrets::*,
+        psk::{load_psks, store::ResumptionPskStore, PskSecret},
+        *,
+    },
     tree::{secret_tree::SecretTreeError, sender_ratchet::SenderRatchetConfiguration},
     treesync::{
         node::{
@@ -244,7 +248,7 @@ impl CoreGroupBuilder {
         )
         .map_err(LibraryError::unexpected_crypto_error)?;
 
-        // TODO
+        // TODO(#1357)
         let resumption_psk_store = ResumptionPskStore::new(32);
 
         // Prepare the PskSecret

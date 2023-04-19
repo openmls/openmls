@@ -9,7 +9,10 @@ use serde::{Deserialize, Serialize};
 use tls_codec::{Serialize as TlsSerializeTrait, VLBytes};
 
 use super::*;
-use crate::group::{GroupEpoch, GroupId};
+use crate::{
+    group::{GroupEpoch, GroupId},
+    schedule::psk::store::ResumptionPskStore,
+};
 
 /// Resumption PSK usage.
 ///
@@ -478,7 +481,6 @@ pub(crate) fn load_psks<'p>(
         match &psk_id.psk {
             Psk::Resumption(resumption) => {
                 if let Some(psk_bundle) = resumption_psk_store.get(resumption.psk_epoch()) {
-                    // TODO
                     psk_bundles.push((psk_id, psk_bundle.secret.clone()));
                 } else {
                     return Err(PskError::KeyNotFound);
@@ -497,50 +499,55 @@ pub(crate) fn load_psks<'p>(
     Ok(psk_bundles)
 }
 
-// ----- ResumptionPskStore ------------------------------------------------------------------------
+pub mod store {
+    use serde::{Deserialize, Serialize};
 
-/// Resumption psks store. This is where the resumption psks are kept in a
-/// rollover list.
-#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
-pub(crate) struct ResumptionPskStore {
-    max_number_of_secrets: usize,
-    resumption_psk: Vec<(GroupEpoch, ResumptionPskSecret)>,
-    cursor: usize,
-}
+    use crate::{group::GroupEpoch, schedule::ResumptionPskSecret};
 
-impl ResumptionPskStore {
-    /// Creates a new store with a given maximum size of `number_of_secrets`.
-    pub(crate) fn new(max_number_of_secrets: usize) -> Self {
-        Self {
-            max_number_of_secrets,
-            resumption_psk: vec![],
-            cursor: 0,
-        }
+    /// Resumption PSK store.
+    ///
+    /// This is where the resumption PSKs are kept in a rollover list.
+    #[derive(Debug, Serialize, Deserialize)]
+    #[cfg_attr(test, derive(PartialEq))]
+    pub(crate) struct ResumptionPskStore {
+        max_number_of_secrets: usize,
+        resumption_psk: Vec<(GroupEpoch, ResumptionPskSecret)>,
+        cursor: usize,
     }
 
-    /// Adds a new entry to the store.
-    pub(crate) fn add(&mut self, epoch: GroupEpoch, resumption_psk: ResumptionPskSecret) {
-        if self.max_number_of_secrets == 0 {
-            return;
+    impl ResumptionPskStore {
+        /// Creates a new store with a given maximum size of `number_of_secrets`.
+        pub(crate) fn new(max_number_of_secrets: usize) -> Self {
+            Self {
+                max_number_of_secrets,
+                resumption_psk: vec![],
+                cursor: 0,
+            }
         }
-        let item = (epoch, resumption_psk);
-        if self.resumption_psk.len() < self.max_number_of_secrets {
-            self.resumption_psk.push(item);
-            self.cursor += 1;
-        } else {
-            self.cursor += 1;
-            self.cursor %= self.resumption_psk.len();
-            self.resumption_psk[self.cursor] = item;
-        }
-    }
 
-    /// Searches an entry for a given epoch number and if found, returns the
-    /// corresponding resumption psk.
-    pub(crate) fn get(&self, epoch: GroupEpoch) -> Option<&ResumptionPskSecret> {
-        self.resumption_psk
-            .iter()
-            .find(|&(e, _s)| e == &epoch)
-            .map(|(_e, s)| s)
+        /// Adds a new entry to the store.
+        pub(crate) fn add(&mut self, epoch: GroupEpoch, resumption_psk: ResumptionPskSecret) {
+            if self.max_number_of_secrets == 0 {
+                return;
+            }
+            let item = (epoch, resumption_psk);
+            if self.resumption_psk.len() < self.max_number_of_secrets {
+                self.resumption_psk.push(item);
+                self.cursor += 1;
+            } else {
+                self.cursor += 1;
+                self.cursor %= self.resumption_psk.len();
+                self.resumption_psk[self.cursor] = item;
+            }
+        }
+
+        /// Searches an entry for a given epoch number and if found, returns the
+        /// corresponding resumption psk.
+        pub(crate) fn get(&self, epoch: GroupEpoch) -> Option<&ResumptionPskSecret> {
+            self.resumption_psk
+                .iter()
+                .find(|&(e, _s)| e == &epoch)
+                .map(|(_e, s)| s)
+        }
     }
 }

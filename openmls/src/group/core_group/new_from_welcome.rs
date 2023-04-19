@@ -4,7 +4,7 @@ use openmls_traits::key_store::OpenMlsKeyStore;
 use crate::{
     ciphersuite::hash_ref::HashReference,
     group::{core_group::*, errors::WelcomeError},
-    schedule::psk::ResumptionPskStore,
+    schedule::psk::store::ResumptionPskStore,
     treesync::{
         errors::{DerivePathError, PublicTreeError},
         node::encryption_keys::EncryptionKeyPair,

@@ -1918,8 +1918,8 @@ fn test_valsem401_valsem402(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
     let alice_backend = OpenMlsRustCrypto::default();
     let bob_backend = OpenMlsRustCrypto::default();
 
+    // TODO(#1354): This is currently not tested because we can't easily create invalid commits.
     let bad_psks: [(Vec<PreSharedKeyId>, ProcessMessageError); 0] = [
-        // TODO: This is currently not tested because we can't easily create invalid commits.
         // // ValSem401
         // (
         //     vec![PreSharedKeyId::external(

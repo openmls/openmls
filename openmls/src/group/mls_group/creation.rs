@@ -10,7 +10,7 @@ use crate::{
         public_group::errors::PublicGroupBuildError,
     },
     messages::group_info::{GroupInfo, VerifiableGroupInfo},
-    schedule::psk::ResumptionPskStore,
+    schedule::psk::store::ResumptionPskStore,
     treesync::RatchetTree,
 };
 
