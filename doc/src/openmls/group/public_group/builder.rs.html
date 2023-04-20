@@ -173,8 +173,13 @@
 <a href="#173" id="173">173</a>
 <a href="#174" id="174">174</a>
 <a href="#175" id="175">175</a>
-</pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::{signatures::Signer, OpenMlsCryptoProvider};
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+</pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer, OpenMlsCryptoProvider};
 
+<span class="kw">use super</span>::{errors::PublicGroupBuildError, PublicGroup};
 <span class="kw">use crate</span>::{
     credentials::CredentialWithKey,
     error::LibraryError,
@@ -193,8 +198,6 @@
         TreeSync,
     },
 };
-
-<span class="kw">use super</span>::{errors::PublicGroupBuildError, PublicGroup};
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>TempBuilderPG1 {
     group_id: GroupId,
@@ -325,8 +328,13 @@
 }
 
 <span class="kw">impl </span>PublicGroupBuilder {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>build(<span class="self">self</span>) -&gt; PublicGroup {
-        PublicGroup::new(<span class="self">self</span>.treesync, <span class="self">self</span>.group_context, <span class="self">self</span>.confirmation_tag)
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>build(<span class="self">self</span>, crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto) -&gt; <span class="prelude-ty">Result</span>&lt;PublicGroup, LibraryError&gt; {
+        PublicGroup::new(
+            crypto,
+            <span class="self">self</span>.treesync,
+            <span class="self">self</span>.group_context,
+            <span class="self">self</span>.confirmation_tag,
+        )
     }
 }
 

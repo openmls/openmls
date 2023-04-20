@@ -1167,6 +1167,7 @@
 <a href="#1167" id="1167">1167</a>
 <a href="#1168" id="1168">1168</a>
 <a href="#1169" id="1169">1169</a>
+<a href="#1170" id="1170">1170</a>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -1201,15 +1202,6 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test_proposals;
 
-<span class="kw">use </span><span class="kw">super</span>::builder::TempBuilderPG1;
-<span class="kw">use </span><span class="kw">super</span>::errors::CreateCommitError;
-
-<span class="kw">use </span><span class="self">self</span>::create_commit_params::{CommitType, CreateCommitParams};
-<span class="attr">#[cfg(test)]
-</span><span class="kw">use </span><span class="kw">super</span>::errors::CreateGroupContextExtProposalError;
-<span class="kw">use </span><span class="kw">super</span>::public_group::diff::compute_path::PathComputationResult;
-<span class="kw">use </span><span class="kw">super</span>::public_group::PublicGroup;
-<span class="kw">use </span><span class="kw">crate</span>::binary_tree::array_representation::TreeSize;
 <span class="attr">#[cfg(test)]
 </span><span class="kw">use </span>std::io::{Error, Read, Write};
 
@@ -1218,14 +1210,24 @@
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>tls_codec::Serialize <span class="kw">as </span>TlsSerializeTrait;
 
-<span class="kw">use </span><span class="self">self</span>::staged_commit::{MemberStagedCommitState, StagedCommitState};
-<span class="kw">use </span><span class="self">self</span>::{past_secrets::MessageSecretsStore, staged_commit::StagedCommit};
+<span class="kw">use </span><span class="self">self</span>::{
+    create_commit_params::{CommitType, CreateCommitParams},
+    past_secrets::MessageSecretsStore,
+    staged_commit::{MemberStagedCommitState, StagedCommit, StagedCommitState},
+};
+<span class="attr">#[cfg(test)]
+</span><span class="kw">use </span><span class="kw">super</span>::errors::CreateGroupContextExtProposalError;
 <span class="kw">use super</span>::{
-    errors::{CoreGroupBuildError, CreateAddProposalError, ExporterError, ValidationError},
+    builder::TempBuilderPG1,
+    errors::{
+        CoreGroupBuildError, CreateAddProposalError, CreateCommitError, ExporterError,
+        ValidationError,
+    },
     group_context::<span class="kw-2">*</span>,
+    public_group::{diff::compute_path::PathComputationResult, PublicGroup},
 };
 <span class="kw">use crate</span>::{
-    binary_tree::array_representation::LeafNodeIndex,
+    binary_tree::array_representation::{LeafNodeIndex, TreeSize},
     ciphersuite::{signable::Signable, HpkePublicKey, SignaturePublicKey},
     credentials::<span class="kw-2">*</span>,
     error::LibraryError,
@@ -1452,7 +1454,7 @@
 
         <span class="kw">let </span>public_group = public_group_builder
             .with_confirmation_tag(initial_confirmation_tag)
-            .build();
+            .build(backend.crypto())<span class="question-mark">?</span>;
 
         <span class="kw">let </span>group = CoreGroup {
             public_group,
