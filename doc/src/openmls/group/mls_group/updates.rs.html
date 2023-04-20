@@ -119,6 +119,41 @@
 <a href="#119" id="119">119</a>
 <a href="#120" id="120">120</a>
 <a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
 </pre><pre class="rust"><code><span class="kw">use </span>core_group::create_commit_params::CreateCommitParams;
 <span class="kw">use </span>openmls_traits::signatures::Signer;
 
@@ -182,13 +217,12 @@
         ))
     }
 
-    <span class="doccomment">/// Creates a proposal to update the own leaf node.
-    </span><span class="kw">pub fn </span>propose_self_update&lt;KeyStore: OpenMlsKeyStore&gt;(
+    <span class="kw">fn </span>_propose_self_udpate&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         leaf_node: <span class="prelude-ty">Option</span>&lt;LeafNode&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposeSelfUpdateError&lt;KeyStore::Error&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;AuthenticatedContent, ProposeSelfUpdateError&lt;KeyStore::Error&gt;&gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
         <span class="comment">// Here we clone our own leaf to rekey it such that we don&#39;t change the
@@ -224,7 +258,43 @@
         )<span class="question-mark">?</span>;
 
         <span class="self">self</span>.own_leaf_nodes.push(own_leaf);
-        <span class="kw">let </span>proposal = QueuedProposal::from_authenticated_content(
+
+        <span class="prelude-val">Ok</span>(update_proposal)
+    }
+
+    <span class="doccomment">/// Creates a proposal to update the own leaf node.
+    </span><span class="kw">pub fn </span>propose_self_update&lt;KeyStore: OpenMlsKeyStore&gt;(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
+        leaf_node: <span class="prelude-ty">Option</span>&lt;LeafNode&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposeSelfUpdateError&lt;KeyStore::Error&gt;&gt; {
+        <span class="kw">let </span>update_proposal = <span class="self">self</span>._propose_self_udpate(backend, signer, leaf_node)<span class="question-mark">?</span>;
+        <span class="kw">let </span>proposal = QueuedProposal::from_authenticated_content_by_ref(
+            <span class="self">self</span>.ciphersuite(),
+            backend,
+            update_proposal.clone(),
+        )<span class="question-mark">?</span>;
+        <span class="kw">let </span>proposal_ref = proposal.proposal_reference();
+        <span class="self">self</span>.proposal_store.add(proposal);
+
+        <span class="kw">let </span>mls_message = <span class="self">self</span>.content_to_mls_message(update_proposal, backend)<span class="question-mark">?</span>;
+
+        <span class="comment">// Since the state of the group might be changed, arm the state flag
+        </span><span class="self">self</span>.flag_state_change();
+
+        <span class="prelude-val">Ok</span>((mls_message, proposal_ref))
+    }
+
+    <span class="doccomment">/// Creates a proposal to update the own leaf node.
+    </span><span class="kw">pub fn </span>propose_self_update_by_value&lt;KeyStore: OpenMlsKeyStore&gt;(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
+        leaf_node: <span class="prelude-ty">Option</span>&lt;LeafNode&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposeSelfUpdateError&lt;KeyStore::Error&gt;&gt; {
+        <span class="kw">let </span>update_proposal = <span class="self">self</span>._propose_self_udpate(backend, signer, leaf_node)<span class="question-mark">?</span>;
+        <span class="kw">let </span>proposal = QueuedProposal::from_authenticated_content_by_value(
             <span class="self">self</span>.ciphersuite(),
             backend,
             update_proposal.clone(),

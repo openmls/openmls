@@ -574,6 +574,8 @@
 <a href="#574" id="574">574</a>
 <a href="#575" id="575">575</a>
 <a href="#576" id="576">576</a>
+<a href="#577" id="577">577</a>
+<a href="#578" id="578">578</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Proposals
 //!
 //! This module defines all the different types of Proposals.
@@ -1034,9 +1036,11 @@
     PartialEq, Clone, Copy, Debug, TlsSerialize, TlsDeserialize, TlsSize, Serialize, Deserialize,
 )]
 #[repr(u8)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>ProposalOrRefType {
-    Proposal = <span class="number">1</span>,
-    Reference = <span class="number">2</span>,
+</span><span class="kw">pub enum </span>ProposalOrRefType {
+    <span class="doccomment">/// Proposal by value.
+    </span>Proposal = <span class="number">1</span>,
+    <span class="doccomment">/// Proposal by reference
+    </span>Reference = <span class="number">2</span>,
 }
 
 <span class="doccomment">/// Type of Proposal, either by value or by reference.
@@ -1059,7 +1063,7 @@
 }
 
 <span class="kw">impl </span>ProposalRef {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_authenticated_content(
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_authenticated_content_by_ref(
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         authenticated_content: <span class="kw-2">&amp;</span>AuthenticatedContent,

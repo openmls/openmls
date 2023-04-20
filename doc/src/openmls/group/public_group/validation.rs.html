@@ -433,40 +433,6 @@
 <a href="#433" id="433">433</a>
 <a href="#434" id="434">434</a>
 <a href="#435" id="435">435</a>
-<a href="#436" id="436">436</a>
-<a href="#437" id="437">437</a>
-<a href="#438" id="438">438</a>
-<a href="#439" id="439">439</a>
-<a href="#440" id="440">440</a>
-<a href="#441" id="441">441</a>
-<a href="#442" id="442">442</a>
-<a href="#443" id="443">443</a>
-<a href="#444" id="444">444</a>
-<a href="#445" id="445">445</a>
-<a href="#446" id="446">446</a>
-<a href="#447" id="447">447</a>
-<a href="#448" id="448">448</a>
-<a href="#449" id="449">449</a>
-<a href="#450" id="450">450</a>
-<a href="#451" id="451">451</a>
-<a href="#452" id="452">452</a>
-<a href="#453" id="453">453</a>
-<a href="#454" id="454">454</a>
-<a href="#455" id="455">455</a>
-<a href="#456" id="456">456</a>
-<a href="#457" id="457">457</a>
-<a href="#458" id="458">458</a>
-<a href="#459" id="459">459</a>
-<a href="#460" id="460">460</a>
-<a href="#461" id="461">461</a>
-<a href="#462" id="462">462</a>
-<a href="#463" id="463">463</a>
-<a href="#464" id="464">464</a>
-<a href="#465" id="465">465</a>
-<a href="#466" id="466">466</a>
-<a href="#467" id="467">467</a>
-<a href="#468" id="468">468</a>
-<a href="#469" id="469">469</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains validation functions for incoming messages
 //! as defined in &lt;https://github.com/openmls/openmls/wiki/Message-validation&gt;
 
@@ -489,10 +455,7 @@
         Member, ProposalQueue,
     },
     messages::proposals::{Proposal, ProposalOrRefType, ProposalType},
-    schedule::{
-        errors::PskError,
-        psk::{Psk, ResumptionPskUsage},
-    },
+    schedule::errors::PskError,
     treesync::node::leaf_node::LeafNode,
 };
 
@@ -801,47 +764,16 @@
         <span class="kw">for </span>proposal <span class="kw">in </span>proposal_queue.psk_proposals() {
             <span class="kw">let </span>psk_id = proposal.psk_proposal().clone().into_psk_id();
 
-            <span class="comment">// ValSem402
-            </span><span class="kw">match </span>psk_id.psk() {
-                Psk::Resumption(resumption_psk) =&gt; {
-                    <span class="kw">if </span>resumption_psk.usage != ResumptionPskUsage::Application {
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::Psk(PskError::UsageMismatch {
-                            allowed: <span class="macro">vec!</span>[ResumptionPskUsage::Application],
-                            got: resumption_psk.usage,
-                        }));
-                    }
-                }
-                Psk::External(<span class="kw">_</span>) =&gt; {}
-            };
-
             <span class="comment">// ValSem401
-            </span>{
-                <span class="kw">let </span>expected_nonce_length = <span class="self">self</span>.ciphersuite().hash_length();
-                <span class="kw">let </span>got_nonce_length = psk_id.psk_nonce().len();
-
-                <span class="kw">if </span>expected_nonce_length != got_nonce_length {
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::Psk(
-                        PskError::NonceLengthMismatch {
-                            expected: expected_nonce_length,
-                            got: got_nonce_length,
-                        },
-                    ));
-                }
-            }
+            // ValSem402
+            </span><span class="kw">let </span>psk_id = psk_id.validate_in_proposal(<span class="self">self</span>.ciphersuite())<span class="question-mark">?</span>;
 
             <span class="comment">// ValSem403 (2/2)
             </span><span class="kw">if </span>!visited_psk_ids.contains(<span class="kw-2">&amp;</span>psk_id) {
                 visited_psk_ids.insert(psk_id);
             } <span class="kw">else </span>{
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::Psk(PskError::Duplicate {
-                    first: psk_id,
-                }));
+                <span class="kw">return </span><span class="prelude-val">Err</span>(PskError::Duplicate { first: psk_id }.into());
             }
-        }
-
-        <span class="comment">// TODO(#1330): Remove this when #1330 is finished.
-        </span><span class="kw">if </span>!visited_psk_ids.is_empty() {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::Psk(PskError::Unsupported));
         }
 
         <span class="prelude-val">Ok</span>(())

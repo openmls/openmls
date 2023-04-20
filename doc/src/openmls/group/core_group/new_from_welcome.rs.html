@@ -242,12 +242,28 @@
 <a href="#242" id="242">242</a>
 <a href="#243" id="243">243</a>
 <a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
 </pre><pre class="rust"><code><span class="kw">use </span>log::debug;
 <span class="kw">use </span>openmls_traits::key_store::OpenMlsKeyStore;
 
 <span class="kw">use crate</span>::{
     ciphersuite::hash_ref::HashReference,
     group::{core_group::<span class="kw-2">*</span>, errors::WelcomeError},
+    schedule::psk::store::ResumptionPskStore,
     treesync::{
         errors::{DerivePathError, PublicTreeError},
         node::encryption_keys::EncryptionKeyPair,
@@ -261,6 +277,7 @@
         ratchet_tree: <span class="prelude-ty">Option</span>&lt;RatchetTree&gt;,
         key_package_bundle: KeyPackageBundle,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        <span class="kw-2">mut </span>resumption_psk_store: ResumptionPskStore,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, WelcomeError&lt;KeyStore::Error&gt;&gt; {
         <span class="macro">log::debug!</span>(<span class="string">&quot;CoreGroup::new_from_welcome_internal&quot;</span>);
 
@@ -304,7 +321,15 @@
         )<span class="question-mark">?</span>;
 
         <span class="comment">// Prepare the PskSecret
-        </span><span class="kw">let </span>psk_secret = PskSecret::new(ciphersuite, backend, <span class="kw-2">&amp;</span>group_secrets.psks)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>psk_secret = {
+            <span class="kw">let </span>psks = load_psks(
+                backend.key_store(),
+                <span class="kw-2">&amp;</span>resumption_psk_store,
+                <span class="kw-2">&amp;</span>group_secrets.psks,
+            )<span class="question-mark">?</span>;
+
+            PskSecret::new(backend, ciphersuite, psks)<span class="question-mark">?
+        </span>};
 
         <span class="comment">// Create key schedule
         </span><span class="kw">let </span><span class="kw-2">mut </span>key_schedule = KeySchedule::init(
@@ -458,12 +483,17 @@
 
         <span class="kw">let </span>message_secrets_store = MessageSecretsStore::new_with_secret(<span class="number">0</span>, message_secrets);
 
+        <span class="comment">// Extract and store the resumption PSK for the current epoch.
+        </span><span class="kw">let </span>resumption_psk = group_epoch_secrets.resumption_psk();
+        resumption_psk_store.add(public_group.group_context().epoch(), resumption_psk.clone());
+
         <span class="kw">let </span>group = CoreGroup {
             public_group,
             group_epoch_secrets,
             own_leaf_index,
             use_ratchet_tree_extension: enable_ratchet_tree_extension,
             message_secrets_store,
+            resumption_psk_store,
         };
         group
             .store_epoch_keypairs(backend, group_keypairs.as_slice())

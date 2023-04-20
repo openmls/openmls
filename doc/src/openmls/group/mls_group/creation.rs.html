@@ -222,8 +222,11 @@
 <a href="#222" id="222">222</a>
 <a href="#223" id="223">223</a>
 <a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
 </pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::signatures::Signer;
 
+<span class="kw">use super</span>::<span class="kw-2">*</span>;
 <span class="kw">use crate</span>::{
     ciphersuite::HpkePrivateKey,
     credentials::CredentialWithKey,
@@ -233,10 +236,9 @@
         public_group::errors::PublicGroupBuildError,
     },
     messages::group_info::{GroupInfo, VerifiableGroupInfo},
+    schedule::psk::store::ResumptionPskStore,
     treesync::RatchetTree,
 };
-
-<span class="kw">use super</span>::<span class="kw-2">*</span>;
 
 <span class="kw">impl </span>MlsGroup {
     <span class="comment">// === Group creation ===
@@ -273,7 +275,7 @@
             add_ratchet_tree_extension: mls_group_config.use_ratchet_tree_extension,
         };
 
-        <span class="kw">let </span>group = CoreGroup::builder(
+        <span class="kw">let </span><span class="kw-2">mut </span>group = CoreGroup::builder(
             group_id,
             mls_group_config.crypto_config,
             credential_with_key,
@@ -304,8 +306,11 @@
             },
         })<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>resumption_psk_store =
-            ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
+        <span class="comment">// We already add a resumption PSK for epoch 0 to make things more unified.
+        </span><span class="kw">let </span>resumption_psk = group.group_epoch_secrets().resumption_psk();
+        group
+            .resumption_psk_store
+            .add(group.context().epoch(), resumption_psk.clone());
 
         <span class="kw">let </span>mls_group = MlsGroup {
             mls_group_config: mls_group_config.clone(),
@@ -313,7 +318,6 @@
             proposal_store: ProposalStore::new(),
             own_leaf_nodes: <span class="macro">vec!</span>[],
             aad: <span class="macro">vec!</span>[],
-            resumption_psk_store,
             group_state: MlsGroupState::Operational,
             state_changed: InnerState::Changed,
         };
@@ -362,8 +366,13 @@
             .delete(backend)
             .map_err(WelcomeError::KeyStoreError)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span><span class="kw-2">mut </span>group =
-            CoreGroup::new_from_welcome(welcome, ratchet_tree, key_package_bundle, backend)<span class="question-mark">?</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>group = CoreGroup::new_from_welcome(
+            welcome,
+            ratchet_tree,
+            key_package_bundle,
+            backend,
+            resumption_psk_store,
+        )<span class="question-mark">?</span>;
         group.set_max_past_epochs(mls_group_config.max_past_epochs);
 
         <span class="kw">let </span>mls_group = MlsGroup {
@@ -372,7 +381,6 @@
             proposal_store: ProposalStore::new(),
             own_leaf_nodes: <span class="macro">vec!</span>[],
             aad: <span class="macro">vec!</span>[],
-            resumption_psk_store,
             group_state: MlsGroupState::Operational,
             state_changed: InnerState::Changed,
         };
@@ -403,9 +411,6 @@
         aad: <span class="kw-2">&amp;</span>[u8],
         credential_with_key: CredentialWithKey,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, MlsMessageOut, <span class="prelude-ty">Option</span>&lt;GroupInfo&gt;), ExternalCommitError&gt; {
-        <span class="kw">let </span>resumption_psk_store =
-            ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
-
         <span class="comment">// Prepare the commit parameters
         </span><span class="kw">let </span>framing_parameters = FramingParameters::new(aad, WireFormat::PublicMessage);
 
@@ -430,7 +435,6 @@
             proposal_store: ProposalStore::new(),
             own_leaf_nodes: <span class="macro">vec!</span>[],
             aad: <span class="macro">vec!</span>[],
-            resumption_psk_store,
             group_state: MlsGroupState::PendingCommit(Box::new(PendingCommitState::External(
                 create_commit_result.staged_commit,
             ))),

@@ -172,6 +172,7 @@
 <a href="#172" id="172">172</a>
 <a href="#173" id="173">173</a>
 <a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Processing functions of an [`MlsGroup`] for incoming messages.
 
 </span><span class="kw">use </span>std::mem;
@@ -315,7 +316,8 @@
 
         <span class="comment">// Extract and store the resumption psk for the current epoch
         </span><span class="kw">let </span>resumption_psk = <span class="self">self</span>.group.group_epoch_secrets().resumption_psk();
-        <span class="self">self</span>.resumption_psk_store
+        <span class="self">self</span>.group
+            .resumption_psk_store
             .add(<span class="self">self</span>.group.context().epoch(), resumption_psk.clone());
 
         <span class="comment">// Delete own KeyPackageBundles

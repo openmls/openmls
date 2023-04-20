@@ -445,6 +445,10 @@
 <a href="#445" id="445">445</a>
 <a href="#446" id="446">446</a>
 <a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
 </pre><pre class="rust"><code><span class="kw">use </span>core::fmt::Debug;
 <span class="kw">use </span>std::mem;
 
@@ -502,11 +506,15 @@
         </span>};
 
         <span class="comment">// Prepare the PskSecret
-        </span><span class="kw">let </span>psk_secret = PskSecret::new(
-            <span class="self">self</span>.ciphersuite(),
-            backend,
-            <span class="kw-2">&amp;</span>apply_proposals_values.presharedkeys,
-        )<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>psk_secret = {
+            <span class="kw">let </span>psks = load_psks(
+                backend.key_store(),
+                <span class="kw-2">&amp;</span><span class="self">self</span>.resumption_psk_store,
+                <span class="kw-2">&amp;</span>apply_proposals_values.presharedkeys,
+            )<span class="question-mark">?</span>;
+
+            PskSecret::new(backend, <span class="self">self</span>.ciphersuite(), psks)<span class="question-mark">?
+        </span>};
 
         <span class="comment">// Create key schedule
         </span><span class="kw">let </span><span class="kw-2">mut </span>key_schedule =

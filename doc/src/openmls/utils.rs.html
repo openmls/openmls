@@ -53,11 +53,6 @@
 <a href="#53" id="53">53</a>
 <a href="#54" id="54">54</a>
 <a href="#55" id="55">55</a>
-<a href="#56" id="56">56</a>
-<a href="#57" id="57">57</a>
-<a href="#58" id="58">58</a>
-<a href="#59" id="59">59</a>
-<a href="#60" id="60">60</a>
 </pre><pre class="rust"><code><span class="comment">// === The folowing functions aren&#39;t necessarily cryptographically secure!
 
 </span><span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
@@ -78,11 +73,6 @@
     <span class="kw">let </span><span class="kw-2">mut </span>b = [<span class="number">0u8</span>; <span class="number">1</span>];
     OsRng.fill_bytes(<span class="kw-2">&amp;mut </span>b);
     b[<span class="number">0</span>]
-}
-
-<span class="attr">#[cfg(test)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>zero(length: usize) -&gt; Vec&lt;u8&gt; {
-    <span class="macro">vec!</span>[<span class="number">0u8</span>; length]
 }
 
 <span class="comment">// With the crypto-debug feature enabled sensitive crypto parts can be logged.

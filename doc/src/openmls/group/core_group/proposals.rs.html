@@ -582,6 +582,38 @@
 <a href="#582" id="582">582</a>
 <a href="#583" id="583">583</a>
 <a href="#584" id="584">584</a>
+<a href="#585" id="585">585</a>
+<a href="#586" id="586">586</a>
+<a href="#587" id="587">587</a>
+<a href="#588" id="588">588</a>
+<a href="#589" id="589">589</a>
+<a href="#590" id="590">590</a>
+<a href="#591" id="591">591</a>
+<a href="#592" id="592">592</a>
+<a href="#593" id="593">593</a>
+<a href="#594" id="594">594</a>
+<a href="#595" id="595">595</a>
+<a href="#596" id="596">596</a>
+<a href="#597" id="597">597</a>
+<a href="#598" id="598">598</a>
+<a href="#599" id="599">599</a>
+<a href="#600" id="600">600</a>
+<a href="#601" id="601">601</a>
+<a href="#602" id="602">602</a>
+<a href="#603" id="603">603</a>
+<a href="#604" id="604">604</a>
+<a href="#605" id="605">605</a>
+<a href="#606" id="606">606</a>
+<a href="#607" id="607">607</a>
+<a href="#608" id="608">608</a>
+<a href="#609" id="609">609</a>
+<a href="#610" id="610">610</a>
+<a href="#611" id="611">611</a>
+<a href="#612" id="612">612</a>
+<a href="#613" id="613">613</a>
+<a href="#614" id="614">614</a>
+<a href="#615" id="615">615</a>
+<a href="#616" id="616">616</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::{hash_map::Entry, HashMap, HashSet};
 
 <span class="kw">use </span>openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
@@ -658,24 +690,56 @@
 
 <span class="kw">impl </span>QueuedProposal {
     <span class="doccomment">/// Creates a new [QueuedProposal] from an [PublicMessage]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_authenticated_content_by_ref(
+        ciphersuite: Ciphersuite,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        public_message: AuthenticatedContent,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
+        <span class="self">Self</span>::from_authenticated_content(
+            ciphersuite,
+            backend,
+            public_message,
+            ProposalOrRefType::Reference,
+        )
+    }
+
+    <span class="doccomment">/// Creates a new [QueuedProposal] from an [PublicMessage]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_authenticated_content_by_value(
+        ciphersuite: Ciphersuite,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        public_message: AuthenticatedContent,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
+        <span class="self">Self</span>::from_authenticated_content(
+            ciphersuite,
+            backend,
+            public_message,
+            ProposalOrRefType::Proposal,
+        )
+    }
+
+    <span class="doccomment">/// Creates a new [QueuedProposal] from an [PublicMessage]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_authenticated_content(
         ciphersuite: Ciphersuite,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         public_message: AuthenticatedContent,
+        proposal_or_ref_type: ProposalOrRefType,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
         <span class="kw">let </span>proposal = <span class="kw">match </span>public_message.content() {
             FramedContentBody::Proposal(p) =&gt; p,
             <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(LibraryError::custom(<span class="string">&quot;Wrong content type&quot;</span>)),
         };
-        <span class="kw">let </span>proposal_reference =
-            ProposalRef::from_authenticated_content(backend.crypto(), ciphersuite, <span class="kw-2">&amp;</span>public_message)
-                .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Could not calculate `ProposalRef`.&quot;</span>))<span class="question-mark">?</span>;
+        <span class="kw">let </span>proposal_reference = ProposalRef::from_authenticated_content_by_ref(
+            backend.crypto(),
+            ciphersuite,
+            <span class="kw-2">&amp;</span>public_message,
+        )
+        .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Could not calculate `ProposalRef`.&quot;</span>))<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
             proposal: proposal.clone(), <span class="comment">// FIXME
             </span>proposal_reference,
             sender: public_message.sender().clone(),
-            proposal_or_ref_type: ProposalOrRefType::Reference,
+            proposal_or_ref_type,
         })
     }
 

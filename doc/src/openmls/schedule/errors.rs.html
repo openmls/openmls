@@ -129,10 +129,6 @@
 <a href="#129" id="129">129</a>
 <a href="#130" id="130">130</a>
 <a href="#131" id="131">131</a>
-<a href="#132" id="132">132</a>
-<a href="#133" id="133">133</a>
-<a href="#134" id="134">134</a>
-<a href="#135" id="135">135</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Key schedule errors.
 
 </span><span class="kw">use </span>openmls_traits::types::CryptoError;
@@ -188,10 +184,6 @@
         <span class="doccomment">/// First detected duplicate.
         </span>first: PreSharedKeyId,
     },
-    <span class="doccomment">/// TODO(#1330): Remove this when #1330 is finished.
-    /// Unsupported.
-    </span><span class="attr">#[error(<span class="string">&quot;Unsupported.&quot;</span>)]
-    </span>Unsupported,
 }
 
 <span class="comment">// === Crate ===

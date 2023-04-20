@@ -331,6 +331,17 @@
 <a href="#331" id="331">331</a>
 <a href="#332" id="332">332</a>
 <a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Public Groups
 //!
 //! There are a few use-cases that require the tracking of an MLS group based on
@@ -362,6 +373,8 @@
     ciphersuite::signable::Verifiable,
     error::LibraryError,
     extensions::RequiredCapabilitiesExtension,
+    framing::InterimTranscriptHashInput,
+    group::GroupEpoch,
     messages::{
         group_info::{GroupInfo, VerifiableGroupInfo},
         proposals::{Proposal, ProposalType},
@@ -460,10 +473,19 @@
             <span class="kw">return </span><span class="prelude-val">Err</span>(CreationFromExternalError::UnsupportedMlsVersion);
         }
 
-        <span class="kw">let </span>interim_transcript_hash =
-            group_info.calculate_interim_transcript_hash(backend.crypto())<span class="question-mark">?</span>;
-
         <span class="kw">let </span>group_context = GroupContext::from(group_info.clone());
+
+        <span class="kw">let </span>interim_transcript_hash = <span class="kw">if </span>group_context.epoch() == GroupEpoch::from(<span class="number">0</span>) {
+            <span class="macro">vec!</span>[]
+        } <span class="kw">else </span>{
+            <span class="kw">let </span>input = InterimTranscriptHashInput::from(group_info.confirmation_tag());
+
+            input.calculate_interim_transcript_hash(
+                backend.crypto(),
+                group_context.ciphersuite(),
+                group_context.confirmed_transcript_hash(),
+            )<span class="question-mark">?
+        </span>};
 
         <span class="prelude-val">Ok</span>((
             <span class="self">Self </span>{

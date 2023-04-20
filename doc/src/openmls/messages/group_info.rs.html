@@ -261,28 +261,9 @@
 <a href="#261" id="261">261</a>
 <a href="#262" id="262">262</a>
 <a href="#263" id="263">263</a>
-<a href="#264" id="264">264</a>
-<a href="#265" id="265">265</a>
-<a href="#266" id="266">266</a>
-<a href="#267" id="267">267</a>
-<a href="#268" id="268">268</a>
-<a href="#269" id="269">269</a>
-<a href="#270" id="270">270</a>
-<a href="#271" id="271">271</a>
-<a href="#272" id="272">272</a>
-<a href="#273" id="273">273</a>
-<a href="#274" id="274">274</a>
-<a href="#275" id="275">275</a>
-<a href="#276" id="276">276</a>
-<a href="#277" id="277">277</a>
-<a href="#278" id="278">278</a>
-<a href="#279" id="279">279</a>
-<a href="#280" id="280">280</a>
-<a href="#281" id="281">281</a>
-<a href="#282" id="282">282</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains all types related to group info handling.
 
-</span><span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
+</span><span class="kw">use </span>openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 <span class="kw">use </span>thiserror::Error;
 <span class="kw">use </span>tls_codec::{Deserialize, Serialize, TlsDeserialize, TlsSerialize, TlsSize};
 
@@ -292,10 +273,8 @@
         signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
         AeadKey, AeadNonce, Signature,
     },
-    error::LibraryError,
     extensions::Extensions,
-    framing::InterimTranscriptHashInput,
-    group::{GroupContext, GroupEpoch},
+    group::GroupContext,
     messages::ConfirmationTag,
 };
 
@@ -352,7 +331,7 @@
     <span class="doccomment">/// Get (unverified) ciphersuite of the verifiable group info.
     ///
     /// Note: This method should only be used when necessary to verify the group info signature.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>ciphersuite(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Ciphersuite {
+    </span><span class="kw">pub fn </span>ciphersuite(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Ciphersuite {
         <span class="self">self</span>.payload.group_context.ciphersuite()
     }
 
@@ -430,23 +409,6 @@
     <span class="doccomment">/// Returns the confirmation tag.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>confirmation_tag(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ConfirmationTag {
         <span class="kw-2">&amp;</span><span class="self">self</span>.payload.confirmation_tag
-    }
-
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>calculate_interim_transcript_hash(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, LibraryError&gt; {
-        <span class="kw">if </span><span class="self">self</span>.group_context().epoch() == GroupEpoch::from(<span class="number">0</span>) {
-            <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="macro">vec!</span>[]);
-        }
-
-        <span class="kw">let </span>input = InterimTranscriptHashInput::from(<span class="self">self</span>.confirmation_tag());
-
-        input.calculate_interim_transcript_hash(
-            crypto,
-            <span class="self">self</span>.group_context().ciphersuite(),
-            <span class="self">self</span>.group_context().confirmed_transcript_hash(),
-        )
     }
 
     <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]

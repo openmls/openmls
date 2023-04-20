@@ -862,7 +862,7 @@
     </span>InsufficientCapabilities,
     <span class="doccomment">/// See [`PskError`] for more details.
     </span><span class="attr">#[error(transparent)]
-    </span>Psk(PskError),
+    </span>Psk(<span class="attr">#[from] </span>PskError),
 }
 
 <span class="doccomment">/// External Commit validaton error
@@ -899,11 +899,9 @@
     </span>ReferencedProposal,
 }
 
-<span class="comment">// === Crate errors ===
-
-</span><span class="doccomment">/// Create add proposal error
+<span class="doccomment">/// Create add proposal error
 </span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>CreateAddProposalError {
+</span><span class="kw">pub enum </span>CreateAddProposalError {
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
@@ -912,7 +910,9 @@
     </span>LeafNodeValidation(<span class="attr">#[from] </span>LeafNodeValidationError),
 }
 
-<span class="doccomment">/// Exporter error
+<span class="comment">// === Crate errors ===
+
+</span><span class="doccomment">/// Exporter error
 </span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>ExporterError {
     <span class="doccomment">/// See [`LibraryError`] for more details.
