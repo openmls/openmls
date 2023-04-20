@@ -25,7 +25,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Install dependencies
+        if: matrix.os == 'ubuntu-latest'
         run: apt-get -y install protobuf-compiler
+      - name: Install dependencies
+        if: matrix.os == 'macos-latest'
+        run: brew install protobuf
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
