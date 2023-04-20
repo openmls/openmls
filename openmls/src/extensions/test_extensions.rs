@@ -2,15 +2,18 @@
 //! Some basic unit tests for extensions
 //! Proper testing is done through the public APIs.
 
-use crate::test_utils::*;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::{Deserialize, Serialize};
 
 use super::*;
-
 use crate::{
-    credentials::*, framing::*, group::errors::*, group::*, key_packages::*,
+    credentials::*,
+    framing::*,
+    group::{errors::*, *},
+    key_packages::*,
     messages::proposals::ProposalType,
+    schedule::psk::store::ResumptionPskStore,
+    test_utils::*,
 };
 
 #[test]
@@ -84,7 +87,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
         .expect("Could not create proposal.");
 
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -108,6 +111,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
         None,
         bob_key_package_bundle,
         backend,
+        ResumptionPskStore::new(1024),
     ) {
         Ok(g) => g,
         Err(e) => panic!("Could not join group with ratchet tree extension {e}"),
@@ -157,7 +161,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
         .expect("Could not create proposal.");
 
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create staged proposal."),
     );
 
@@ -181,6 +185,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
         None,
         bob_key_package_bundle,
         backend,
+        ResumptionPskStore::new(1024),
     )
     .err();
 

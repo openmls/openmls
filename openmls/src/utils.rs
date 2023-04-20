@@ -20,11 +20,6 @@ pub fn random_u8() -> u8 {
     b[0]
 }
 
-#[cfg(test)]
-pub(crate) fn zero(length: usize) -> Vec<u8> {
-    vec![0u8; length]
-}
-
 // With the crypto-debug feature enabled sensitive crypto parts can be logged.
 #[cfg(feature = "crypto-debug")]
 macro_rules! log_crypto {

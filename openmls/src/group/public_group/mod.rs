@@ -29,6 +29,8 @@ use crate::{
     ciphersuite::signable::Verifiable,
     error::LibraryError,
     extensions::RequiredCapabilitiesExtension,
+    framing::InterimTranscriptHashInput,
+    group::GroupEpoch,
     messages::{
         group_info::{GroupInfo, VerifiableGroupInfo},
         proposals::{Proposal, ProposalType},
@@ -127,10 +129,19 @@ impl PublicGroup {
             return Err(CreationFromExternalError::UnsupportedMlsVersion);
         }
 
-        let interim_transcript_hash =
-            group_info.calculate_interim_transcript_hash(backend.crypto())?;
-
         let group_context = GroupContext::from(group_info.clone());
+
+        let interim_transcript_hash = if group_context.epoch() == GroupEpoch::from(0) {
+            vec![]
+        } else {
+            let input = InterimTranscriptHashInput::from(group_info.confirmation_tag());
+
+            input.calculate_interim_transcript_hash(
+                backend.crypto(),
+                group_context.ciphersuite(),
+                group_context.confirmed_transcript_hash(),
+            )?
+        };
 
         Ok((
             Self {

@@ -346,7 +346,7 @@ pub enum ProposalValidationError {
     InsufficientCapabilities,
     /// See [`PskError`] for more details.
     #[error(transparent)]
-    Psk(PskError),
+    Psk(#[from] PskError),
 }
 
 /// External Commit validaton error
@@ -383,11 +383,9 @@ pub enum ExternalCommitValidationError {
     ReferencedProposal,
 }
 
-// === Crate errors ===
-
 /// Create add proposal error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub(crate) enum CreateAddProposalError {
+pub enum CreateAddProposalError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -395,6 +393,8 @@ pub(crate) enum CreateAddProposalError {
     #[error(transparent)]
     LeafNodeValidation(#[from] LeafNodeValidationError),
 }
+
+// === Crate errors ===
 
 /// Exporter error
 #[derive(Error, Debug, PartialEq, Clone)]
