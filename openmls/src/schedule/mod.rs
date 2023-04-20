@@ -138,10 +138,10 @@ use crate::{
 
 // Public
 pub mod errors;
+pub mod psk;
 
 // Crate
 pub(crate) mod message_secrets;
-pub(crate) mod psk;
 
 // Private
 use errors::*;

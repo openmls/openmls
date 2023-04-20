@@ -13,17 +13,31 @@ use mls_client::{
 };
 use mls_interop_proto::mls_client;
 use openmls::{
-    prelude::{config::CryptoConfig, *},
-    schedule::{ExternalPsk, PreSharedKeyId, Psk},
+    ciphersuite::HpkePrivateKey,
+    credentials::{Credential, CredentialType, CredentialWithKey},
+    framing::{MlsMessageIn, MlsMessageInBody, MlsMessageOut, ProcessedMessageContent},
+    group::{
+        GroupEpoch, GroupId, MlsGroup, MlsGroupConfig, WireFormatPolicy,
+        PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+    },
+    key_packages::KeyPackage,
+    prelude::{config::CryptoConfig, Capabilities, SenderRatchetConfiguration},
+    schedule::{psk::ResumptionPskUsage, ExternalPsk, PreSharedKeyId, Psk},
     treesync::{
         test_utils::{read_keys_from_key_store, write_keys_from_key_store},
         RatchetTree,
     },
+    versions::ProtocolVersion,
 };
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::OpenMlsCryptoProvider;
-use serde::{self, Serialize};
+use openmls_traits::{
+    key_store::OpenMlsKeyStore,
+    random::OpenMlsRand,
+    types::{Ciphersuite, HpkeKeyPair},
+    OpenMlsCryptoProvider,
+};
+use tls_codec::{Deserialize, Serialize};
 use tonic::{async_trait, transport::Server, Code, Request, Response, Status};
 use tracing::{debug, error, info, instrument, trace, Span};
 use tracing_subscriber::EnvFilter;
@@ -101,7 +115,7 @@ fn to_ciphersuite(cs: u32) -> Result<&'static Ciphersuite, Status> {
     }
 }
 
-fn _into_bytes(obj: impl Serialize) -> Vec<u8> {
+fn _into_bytes(obj: impl serde::Serialize) -> Vec<u8> {
     serde_json::to_string_pretty(&obj)
         .expect("Error serializing test vectors")
         .as_bytes()
@@ -128,7 +142,7 @@ pub fn wire_format_policy(encrypt: bool) -> WireFormatPolicy {
 fn ratchet_tree_from_config(bytes: Vec<u8>) -> Option<RatchetTree> {
     debug!("Deserializing `RatchetTree`.");
     if !bytes.is_empty() {
-        let ratchet_tree = RatchetTree::tls_deserialize(&mut bytes.as_slice()).unwrap();
+        let ratchet_tree = RatchetTree::tls_deserialize_exact(bytes.as_slice()).unwrap();
         debug!("Got `RatchetTree`.");
         trace!(?ratchet_tree);
         Some(ratchet_tree)
@@ -443,12 +457,106 @@ impl MlsClient for MlsClientImpl {
     #[instrument(skip_all, fields(actor))]
     async fn external_join(
         &self,
-        _request: Request<ExternalJoinRequest>,
+        request: Request<ExternalJoinRequest>,
     ) -> Result<Response<ExternalJoinResponse>, Status> {
-        Err(Status::new(
-            Code::Unimplemented,
-            "external join is not yet supported by OpenMLS",
-        ))
+        let request = request.get_ref();
+        info!(?request, "Request");
+
+        Span::current().record("actor", bytes_to_string(&request.identity));
+
+        let (interop_group, commit) = {
+            debug!("Deserializing `MlsMessageIn` (to obtain group info).");
+            let verifiable_group_info = {
+                let msg =
+                    MlsMessageIn::tls_deserialize(&mut request.group_info.as_slice()).unwrap();
+
+                match msg.extract() {
+                    MlsMessageInBody::GroupInfo(verifiable_group_info) => verifiable_group_info,
+                    other => panic!("Expected `MlsMessageInBody::GroupInfo`, got {other:?}."),
+                }
+            };
+            debug!("Got `VerifiableGroupInfo`.");
+            trace!(?verifiable_group_info);
+
+            let ratchet_tree = ratchet_tree_from_config(request.ratchet_tree.clone());
+
+            let backend = OpenMlsRustCrypto::default();
+            let ciphersuite = verifiable_group_info.ciphersuite();
+
+            let (credential_with_key, signer) = {
+                let credential =
+                    Credential::new(request.identity.to_vec(), CredentialType::Basic).unwrap();
+
+                let signature_keypair =
+                    SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+
+                signature_keypair.store(backend.key_store()).unwrap();
+
+                let credential_with_key = CredentialWithKey {
+                    credential,
+                    signature_key: signature_keypair.public().into(),
+                };
+
+                (credential_with_key, signature_keypair)
+            };
+
+            let mls_group_config = {
+                let wire_format_policy = wire_format_policy(request.encrypt_handshake);
+
+                MlsGroupConfig::builder()
+                    .max_past_epochs(32)
+                    .number_of_resumption_psks(32)
+                    .sender_ratchet_configuration(SenderRatchetConfiguration::default())
+                    .use_ratchet_tree_extension(true)
+                    .wire_format_policy(wire_format_policy)
+                    .build()
+            };
+
+            let (mut group, commit, _group_info) = MlsGroup::join_by_external_commit(
+                &backend,
+                &signer,
+                ratchet_tree,
+                verifiable_group_info,
+                &mls_group_config,
+                b"",
+                credential_with_key,
+            )
+            .unwrap();
+
+            trace!(?commit, "Commit created.");
+            debug!(commit=?group.pending_commit(), "Merging pending commit.");
+            group.merge_pending_commit(&backend).unwrap();
+
+            (
+                InteropGroup {
+                    wire_format_policy: mls_group_config.wire_format_policy(),
+                    group,
+                    signature_keys: signer,
+                    messages_out: Vec::new(),
+                    crypto_provider: backend,
+                },
+                commit,
+            )
+        };
+
+        let epoch_authenticator = interop_group
+            .group
+            .epoch_authenticator()
+            .as_slice()
+            .to_vec();
+
+        let mut groups = self.groups.lock().unwrap();
+        let state_id = groups.len() as u32;
+        groups.push(interop_group);
+
+        let response = ExternalJoinResponse {
+            state_id,
+            commit: commit.tls_serialize_detached().unwrap(),
+            epoch_authenticator,
+        };
+
+        info!(?response, "Response");
+        Ok(Response::new(response))
     }
 
     #[instrument(skip_all)]
@@ -884,6 +992,93 @@ impl MlsClient for MlsClientImpl {
 
         // Proposals by value. These proposals are inline proposals. They should be
         // converted into group operations.
+        for proposal in &request.by_value {
+            let proposal_type = String::from_utf8_lossy(&proposal.proposal_type).to_string();
+            trace!(r#type = proposal_type, "Handling proposal by value.");
+
+            // build the proposal from the raw values in proposal
+            let (proposal, _proposal_ref) = match proposal_type.as_ref() {
+                "add" => {
+                    let key_package =
+                        MlsMessageIn::tls_deserialize_exact(&mut proposal.key_package.clone())
+                            .map_err(|_| Status::invalid_argument("Invalid key package"))?;
+                    let key_package = key_package
+                        .into_keypackage()
+                        .ok_or(Status::invalid_argument("Message was not a key package"))?;
+
+                    group
+                        .propose_add_member_by_value(
+                            &interop_group.crypto_provider,
+                            &interop_group.signature_keys,
+                            key_package,
+                        )
+                        .map_err(|_| Status::internal("Unable to generate proposal by value"))?
+                }
+                "remove" => {
+                    let removed_credential =
+                        Credential::new(proposal.removed_id.clone(), CredentialType::Basic)
+                            .unwrap();
+
+                    group
+                        .propose_remove_member_by_credential_by_value(
+                            &interop_group.crypto_provider,
+                            &interop_group.signature_keys,
+                            &removed_credential,
+                        )
+                        .map_err(|_| Status::internal("Unable to generate proposal by value"))?
+                }
+                "externalPSK" => {
+                    let psk_id = PreSharedKeyId::new(
+                        group.ciphersuite(),
+                        interop_group.crypto_provider.rand(),
+                        Psk::External(ExternalPsk::new(proposal.psk_id.clone())),
+                    )
+                    .map_err(|_| Status::internal("Unsupported proposal type (resumption PSK)"))?;
+
+                    group
+                        .propose_external_psk_by_value(
+                            &interop_group.crypto_provider,
+                            &interop_group.signature_keys,
+                            psk_id,
+                        )
+                        .map_err(|_| Status::internal("Unable to generate proposal by value"))?
+                }
+                "resumptionPSK" => {
+                    let psk_id = PreSharedKeyId::resumption(
+                        ResumptionPskUsage::Application,
+                        group.group_id().clone(),
+                        GroupEpoch::from(proposal.epoch_id),
+                        "B".repeat(group.ciphersuite().hash_length()).into_bytes(),
+                    );
+
+                    // TODO: epoch_id vs epoch?
+                    let (msg_out, proposal_ref) = group
+                        .propose_external_psk_by_value(
+                            &interop_group.crypto_provider,
+                            &interop_group.signature_keys,
+                            psk_id,
+                        )
+                        .unwrap();
+                    debug!("Resumption PSK proposal created.");
+                    trace!(proposal = ?msg_out);
+                    trace!(proposal_ref = ?proposal_ref);
+
+                    (msg_out, proposal_ref)
+                }
+                "groupContextExtensions" => {
+                    return Err(Status::internal(
+                        "Unsupported proposal type (group context extension)",
+                    ))
+                }
+                _ => return Err(Status::invalid_argument("Invalid proposal type")),
+            };
+
+            let message: MlsMessageIn = proposal.into();
+            if interop_group.messages_out.contains(&message) {
+                trace!("   skipping processing of own proposal");
+                continue;
+            }
+        }
 
         // TODO #692: The interop client cannot process these proposals yet.
 
@@ -1123,7 +1318,7 @@ impl MlsClient for MlsClientImpl {
         )
         .map_err(|_| Status::internal("unable to create PreSharedKeyId from raw psk_id"))?;
 
-        let proposal = interop_group
+        let (proposal, _proposal_ref) = interop_group
             .group
             .propose_external_psk(
                 &interop_group.crypto_provider,
@@ -1147,9 +1342,43 @@ impl MlsClient for MlsClientImpl {
     #[instrument(skip_all, fields(actor))]
     async fn resumption_psk_proposal(
         &self,
-        _request: Request<ResumptionPskProposalRequest>,
+        request: Request<ResumptionPskProposalRequest>,
     ) -> Result<Response<ProposalResponse>, Status> {
-        Err(Status::unimplemented("Resumption PSK is not implemented"))
+        let request = request.get_ref();
+        info!(?request, "Request");
+
+        let mut groups = self.groups.lock().unwrap();
+        let interop_group = groups
+            .get_mut(request.state_id as usize)
+            .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
+        let group = &mut interop_group.group;
+
+        Span::current().record("actor", bytes_to_string(group.own_identity().unwrap()));
+
+        let psk_id = PreSharedKeyId::resumption(
+            ResumptionPskUsage::Application,
+            group.group_id().clone(),
+            GroupEpoch::from(request.epoch_id),
+            "A".repeat(group.ciphersuite().hash_length()).into_bytes(),
+        );
+
+        let (msg_out, _proposal_ref) = interop_group
+            .group
+            .propose_external_psk(
+                &interop_group.crypto_provider,
+                &interop_group.signature_keys,
+                psk_id,
+            )
+            .unwrap();
+        debug!("Resumption PSK proposal created.");
+        trace!(proposal = ?msg_out);
+
+        let response = ProposalResponse {
+            proposal: msg_out.tls_serialize_detached().unwrap(),
+        };
+
+        info!(?response, "Response");
+        Ok(Response::new(response))
     }
 
     #[instrument(skip_all, fields(actor))]

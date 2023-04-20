@@ -1,17 +1,19 @@
+use framing::mls_content_in::FramedContentBodyIn;
+use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::key_store::OpenMlsKeyStore;
+use tests::utils::{generate_credential_bundle, generate_key_package};
+
 use crate::{
     ciphersuite::signable::Verifiable,
     framing::*,
     group::{config::CryptoConfig, *},
     key_packages::*,
+    schedule::psk::store::ResumptionPskStore,
     test_utils::*,
     tree::sender_ratchet::SenderRatchetConfiguration,
     treesync::node::leaf_node::OpenMlsLeafNode,
     *,
 };
-use framing::mls_content_in::FramedContentBodyIn;
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::key_store::OpenMlsKeyStore;
-use tests::utils::{generate_credential_bundle, generate_key_package};
 
 #[apply(ciphersuites_and_backends)]
 fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
@@ -57,7 +59,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         .expect("Could not create proposal.");
 
     let mut proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -93,7 +95,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -136,6 +138,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         Some(ratchet_tree),
         bob_key_package_bundle,
         backend,
+        ResumptionPskStore::new(1024),
     ) {
         Ok(group) => group,
         Err(e) => panic!("Error creating group from Welcome: {e:?}"),
@@ -167,8 +170,12 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, alice_update_proposal)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend,
+            alice_update_proposal,
+        )
+        .expect("Could not create QueuedProposal."),
     );
 
     // Only UpdateProposal
@@ -236,7 +243,7 @@ fn basic_group_setup(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvi
         .expect("Could not create proposal.");
 
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -310,7 +317,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .expect("Could not create proposal.");
 
     let mut proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -342,6 +349,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         Some(ratchet_tree),
         bob_key_package_bundle,
         backend,
+        ResumptionPskStore::new(1024),
     ) {
         Ok(group) => group,
         Err(e) => panic!("Error creating group from Welcome: {e:?}"),
@@ -416,8 +424,12 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, update_proposal_bob)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend,
+            update_proposal_bob,
+        )
+        .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -479,8 +491,12 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, update_proposal_alice)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend,
+            update_proposal_alice,
+        )
+        .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -538,7 +554,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_authenticated_content(
+        QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
             backend,
             update_proposal_bob.clone(),
@@ -565,8 +581,12 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .expect("error merging own commits");
 
     proposal_store.add(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, update_proposal_bob)
-            .expect("Could not create StagedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend,
+            update_proposal_bob,
+        )
+        .expect("Could not create StagedProposal."),
     );
 
     let (leaf_node, encryption_keypair) =
@@ -616,8 +636,12 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, add_charlie_proposal_bob)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend,
+            add_charlie_proposal_bob,
+        )
+        .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -659,6 +683,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         Some(ratchet_tree),
         charlie_key_package_bundle,
         backend,
+        ResumptionPskStore::new(1024),
     ) {
         Ok(group) => group,
         Err(e) => panic!("Error creating group from Welcome: {e:?}"),
@@ -757,8 +782,12 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, update_proposal_charlie)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend,
+            update_proposal_charlie,
+        )
+        .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -816,7 +845,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_authenticated_content(
+        QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
             backend,
             remove_bob_proposal_charlie,
