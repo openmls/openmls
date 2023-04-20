@@ -1,5 +1,6 @@
-use openmls_traits::{signatures::Signer, OpenMlsCryptoProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer, OpenMlsCryptoProvider};
 
+use super::{errors::PublicGroupBuildError, PublicGroup};
 use crate::{
     credentials::CredentialWithKey,
     error::LibraryError,
@@ -18,8 +19,6 @@ use crate::{
         TreeSync,
     },
 };
-
-use super::{errors::PublicGroupBuildError, PublicGroup};
 
 pub(crate) struct TempBuilderPG1 {
     group_id: GroupId,
@@ -150,8 +149,13 @@ pub(crate) struct PublicGroupBuilder {
 }
 
 impl PublicGroupBuilder {
-    pub(crate) fn build(self) -> PublicGroup {
-        PublicGroup::new(self.treesync, self.group_context, self.confirmation_tag)
+    pub(crate) fn build(self, crypto: &impl OpenMlsCrypto) -> Result<PublicGroup, LibraryError> {
+        PublicGroup::new(
+            crypto,
+            self.treesync,
+            self.group_context,
+            self.confirmation_tag,
+        )
     }
 }
 

@@ -32,15 +32,6 @@ mod test_past_secrets;
 #[cfg(test)]
 mod test_proposals;
 
-use super::builder::TempBuilderPG1;
-use super::errors::CreateCommitError;
-
-use self::create_commit_params::{CommitType, CreateCommitParams};
-#[cfg(test)]
-use super::errors::CreateGroupContextExtProposalError;
-use super::public_group::diff::compute_path::PathComputationResult;
-use super::public_group::PublicGroup;
-use crate::binary_tree::array_representation::TreeSize;
 #[cfg(test)]
 use std::io::{Error, Read, Write};
 
@@ -49,14 +40,24 @@ use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, types::Ciph
 use serde::{Deserialize, Serialize};
 use tls_codec::Serialize as TlsSerializeTrait;
 
-use self::staged_commit::{MemberStagedCommitState, StagedCommitState};
-use self::{past_secrets::MessageSecretsStore, staged_commit::StagedCommit};
+use self::{
+    create_commit_params::{CommitType, CreateCommitParams},
+    past_secrets::MessageSecretsStore,
+    staged_commit::{MemberStagedCommitState, StagedCommit, StagedCommitState},
+};
+#[cfg(test)]
+use super::errors::CreateGroupContextExtProposalError;
 use super::{
-    errors::{CoreGroupBuildError, CreateAddProposalError, ExporterError, ValidationError},
+    builder::TempBuilderPG1,
+    errors::{
+        CoreGroupBuildError, CreateAddProposalError, CreateCommitError, ExporterError,
+        ValidationError,
+    },
     group_context::*,
+    public_group::{diff::compute_path::PathComputationResult, PublicGroup},
 };
 use crate::{
-    binary_tree::array_representation::LeafNodeIndex,
+    binary_tree::array_representation::{LeafNodeIndex, TreeSize},
     ciphersuite::{signable::Signable, HpkePublicKey, SignaturePublicKey},
     credentials::*,
     error::LibraryError,
@@ -283,7 +284,7 @@ impl CoreGroupBuilder {
 
         let public_group = public_group_builder
             .with_confirmation_tag(initial_confirmation_tag)
-            .build();
+            .build(backend.crypto())?;
 
         let group = CoreGroup {
             public_group,
