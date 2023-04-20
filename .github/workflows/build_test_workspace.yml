@@ -1,4 +1,4 @@
-name: Build workspace
+name: Build & test workspace
 
 on:
   push:
