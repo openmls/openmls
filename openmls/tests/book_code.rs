@@ -42,30 +42,20 @@ fn create_backend_evercrypt() {
 
 fn generate_credential(
     identity: Vec<u8>,
-    credential_type: CredentialType,
     signature_algorithm: SignatureScheme,
     backend: &impl OpenMlsCryptoProvider,
-) -> (CredentialWithKey, SignatureKeyPair) {
+) -> SignatureKeyPair {
     // ANCHOR: create_basic_credential
-    let credential = Credential::new(identity, credential_type).unwrap();
+    let credential = SignatureKeyPair::new(signature_algorithm, identity).unwrap();
+    credential.store(backend.key_store()).unwrap();
     // ANCHOR_END: create_basic_credential
-    // ANCHOR: create_credential_keys
-    let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
-    signature_keys.store(backend.key_store()).unwrap();
-    // ANCHOR_END: create_credential_keys
 
-    (
-        CredentialWithKey {
-            credential,
-            signature_key: signature_keys.to_public_vec().into(),
-        },
-        signature_keys,
-    )
+    credential
 }
 
 fn generate_key_package(
     ciphersuite: Ciphersuite,
-    credential_with_key: CredentialWithKey,
+    credential: &SignatureKeyPair,
     extensions: Extensions,
     backend: &impl OpenMlsCryptoProvider,
     signer: &impl Signer,
@@ -78,7 +68,7 @@ fn generate_key_package(
             CryptoConfig::with_default_version(ciphersuite),
             backend,
             signer,
-            credential_with_key,
+            credential,
         )
         .unwrap()
     // ANCHOR_END: create_key_package
@@ -101,33 +91,17 @@ fn generate_key_package(
 #[apply(ciphersuites_and_backends)]
 fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Generate credential bundles
-    let (alice_credential, alice_signature_keys) = generate_credential(
-        "Alice".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-        backend,
-    );
+    let alice_credential =
+        generate_credential("Alice".into(), ciphersuite.signature_algorithm(), backend);
 
-    let (bob_credential, bob_signature_keys) = generate_credential(
-        "Bob".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-        backend,
-    );
+    let bob_credential =
+        generate_credential("Bob".into(), ciphersuite.signature_algorithm(), backend);
 
-    let (charlie_credential, charlie_signature_keys) = generate_credential(
-        "Charlie".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-        backend,
-    );
+    let charlie_credential =
+        generate_credential("Charlie".into(), ciphersuite.signature_algorithm(), backend);
 
-    let (dave_credential, dave_signature_keys) = generate_credential(
-        "Dave".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-        backend,
-    );
+    let dave_credential =
+        generate_credential("Dave".into(), ciphersuite.signature_algorithm(), backend);
 
     // Generate KeyPackages
     let bob_key_package = generate_key_package(
@@ -140,9 +114,8 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // Define the MlsGroup configuration
     // delivery service credentials
-    let (ds_credential_bundle, ds_signature_keys) = generate_credential(
+    let ds_credential_bundle = generate_credential(
         "delivery-service".into(),
-        CredentialType::Basic,
         ciphersuite.signature_algorithm(),
         backend,
     );
@@ -261,7 +234,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         verifiable_group_info,
         &mls_group_config,
         &[],
-        dave_credential,
+        &dave_credential,
     )
     .expect("Error joining from external commit");
     dave_group

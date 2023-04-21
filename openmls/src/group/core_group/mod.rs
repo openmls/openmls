@@ -792,10 +792,10 @@ impl CoreGroup {
 
     pub(crate) fn create_commit<KeyStore: OpenMlsKeyStore>(
         &self,
-        mut params: CreateCommitParams,
+        params: CreateCommitParams,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
-        credential: Option<&dyn OpenMlsCredential>,
+        credential: Option<&dyn OpenMlsCredential>, // FIXME: remove
     ) -> Result<CreateCommitResult, CreateCommitError<KeyStore::Error>> {
         let ciphersuite = self.ciphersuite();
 

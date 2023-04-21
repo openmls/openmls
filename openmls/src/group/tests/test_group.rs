@@ -1,7 +1,7 @@
 use framing::mls_content_in::FramedContentBodyIn;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::key_store::OpenMlsKeyStore;
-use tests::utils::{generate_credential_bundle, generate_key_package};
+use tests::utils::{credential, generate_key_package};
 
 use crate::{
     ciphersuite::signable::Verifiable,
@@ -22,13 +22,13 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
     // Define identities
-    let alice_credential_with_keys = generate_credential_bundle(
+    let alice_credential_with_keys = credential(
         b"Alice".to_vec(),
         ciphersuite.signature_algorithm(),
         backend,
     );
     let bob_credential_with_keys =
-        generate_credential_bundle(b"Bob".to_vec(), ciphersuite.signature_algorithm(), backend);
+        credential(b"Bob".to_vec(), ciphersuite.signature_algorithm(), backend);
 
     // Generate Bob's KeyPackage
     let bob_key_package = generate_key_package(
@@ -208,13 +208,13 @@ fn basic_group_setup(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvi
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
     // Define credential bundles
-    let alice_credential_with_keys = generate_credential_bundle(
+    let alice_credential_with_keys = credential(
         b"Alice".to_vec(),
         ciphersuite.signature_algorithm(),
         backend,
     );
     let bob_credential_with_keys =
-        generate_credential_bundle(b"Bob".to_vec(), ciphersuite.signature_algorithm(), backend);
+        credential(b"Bob".to_vec(), ciphersuite.signature_algorithm(), backend);
 
     // Generate KeyPackages
     let bob_key_package = generate_key_package(
@@ -281,13 +281,13 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     let sender_ratchet_configuration = SenderRatchetConfiguration::default();
 
     // Define credential bundles
-    let alice_credential_with_keys = generate_credential_bundle(
+    let alice_credential_with_keys = credential(
         b"Alice".to_vec(),
         ciphersuite.signature_algorithm(),
         backend,
     );
     let bob_credential_with_keys =
-        generate_credential_bundle(b"Bob".to_vec(), ciphersuite.signature_algorithm(), backend);
+        credential(b"Bob".to_vec(), ciphersuite.signature_algorithm(), backend);
 
     // Generate KeyPackages
     let bob_key_package_bundle = KeyPackageBundle::new(
@@ -612,7 +612,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     );
 
     // === Bob adds Charlie ===
-    let charlie_credential_with_keys = generate_credential_bundle(
+    let charlie_credential_with_keys = credential(
         b"Charlie".to_vec(),
         ciphersuite.signature_algorithm(),
         backend,

@@ -185,8 +185,7 @@ fn test_external_init_single_member_group(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
-    let (mut group_alice, _alice_credential_with_key, alice_signer, _alice_pk) =
-        setup_alice_group(ciphersuite, backend);
+    let (mut group_alice, alice_signer, _alice_pk) = setup_alice_group(ciphersuite, backend);
 
     // Framing parameters
     let group_aad = b"Alice's test group";
@@ -257,7 +256,7 @@ fn test_external_init_broken_signature(
     ) = setup_alice_bob_group(ciphersuite, backend);
 
     // Now set up charly and try to init externally.
-    let (_charlie_credential, _charlie_kpb, charlie_signer, _charlie_pk) =
+    let (_charlie_credential, charlie_credential, _charlie_pk) =
         setup_client("Charlie", ciphersuite, backend);
 
     let verifiable_group_info = {
@@ -278,7 +277,8 @@ fn test_external_init_broken_signature(
         ExternalCommitError::PublicGroupError(CreationFromExternalError::InvalidGroupInfoSignature),
         CoreGroup::join_by_external_commit(
             backend,
-            &charlie_signer,
+            &charlie_credential,
+            &charlie_credential,
             params,
             None,
             verifiable_group_info

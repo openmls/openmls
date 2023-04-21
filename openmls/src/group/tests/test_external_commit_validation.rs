@@ -19,7 +19,7 @@ use crate::{
         errors::{
             ExternalCommitValidationError, ProcessMessageError, StageCommitError, ValidationError,
         },
-        tests::utils::{generate_credential_bundle, generate_key_package, resign_external_commit},
+        tests::utils::{credential, generate_key_package, resign_external_commit},
         Extensions, MlsGroup, OpenMlsSignaturePublicKey, PURE_CIPHERTEXT_WIRE_FORMAT_POLICY,
         PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
@@ -744,7 +744,7 @@ mod utils {
         framing::{MlsMessageIn, PublicMessage, Sender},
         group::{
             config::CryptoConfig,
-            tests::utils::{generate_credential_bundle, CredentialWithKeyAndSigner},
+            tests::utils::{credential, CredentialWithKeyAndSigner},
             MlsGroup, MlsGroupConfig, WireFormatPolicy,
         },
     };
@@ -766,10 +766,10 @@ mod utils {
     ) -> ECValidationTestSetup {
         // Generate credential bundles
         let alice_credential =
-            generate_credential_bundle("Alice".into(), ciphersuite.signature_algorithm(), backend);
+            credential("Alice".into(), ciphersuite.signature_algorithm(), backend);
 
         let bob_credential =
-            generate_credential_bundle("Bob".into(), ciphersuite.signature_algorithm(), backend);
+            credential("Bob".into(), ciphersuite.signature_algorithm(), backend);
 
         // Define the MlsGroup configuration
         let mls_group_config = MlsGroupConfig::builder()

@@ -1,46 +1,39 @@
-use openmls::{
-    credentials::test_utils::new_credential, messages::group_info::VerifiableGroupInfo, prelude::*,
-    test_utils::*, *,
-};
+use openmls::{messages::group_info::VerifiableGroupInfo, prelude::*, test_utils::*, *};
 use openmls_basic_credential::SignatureKeyPair;
 
 fn create_alice_group(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
     use_ratchet_tree_extension: bool,
-) -> (MlsGroup, CredentialWithKey, SignatureKeyPair) {
+) -> (MlsGroup, SignatureKeyPair) {
     let group_config = MlsGroupConfigBuilder::new()
         .use_ratchet_tree_extension(use_ratchet_tree_extension)
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 
-    let (credential_with_key, signature_keys) = new_credential(
-        backend,
-        b"Alice",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
+    let credential = SignatureKeyPair::new(ciphersuite.into(), b"Alice".to_vec()).unwrap();
+    credential.store(backend.key_store()).unwrap();
 
     let group = MlsGroup::new(
         backend,
-        &signature_keys,
+        &credential,
         &group_config,
         credential_with_key.clone(),
     )
     .expect("An unexpected error occurred.");
 
-    (group, credential_with_key, signature_keys)
+    (group, credential)
 }
 
 #[apply(ciphersuites_and_backends)]
 fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Alice creates a new group ...
-    let (alice_group, _, alice_signer) = create_alice_group(ciphersuite, backend, false);
+    let (alice_group, alice_credential) = create_alice_group(ciphersuite, backend, false);
 
     // ... and exports a group info (with ratchet_tree).
     let verifiable_group_info = {
         let group_info = alice_group
-            .export_group_info(backend, &alice_signer, true)
+            .export_group_info(backend, &alice_credential, true)
             .unwrap();
 
         let serialized_group_info = group_info.tls_serialize_detached().unwrap();
@@ -53,7 +46,7 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
     let verifiable_group_info_broken = {
         let group_info = alice_group
-            .export_group_info(backend, &alice_signer, true)
+            .export_group_info(backend, &alice_credential, true)
             .unwrap();
 
         let serialized_group_info = {
@@ -76,12 +69,8 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
     // Now, Bob wants to join Alice' group by an external commit. (Positive case.)
     {
-        let (bob_credential, bob_signature_keys) = new_credential(
-            backend,
-            b"Bob",
-            CredentialType::Basic,
-            ciphersuite.signature_algorithm(),
-        );
+        let bob_credential = SignatureKeyPair::new(ciphersuite.into(), b"Bob".to_vec()).unwrap();
+        bob_credential.store(backend.key_store()).unwrap();
 
         let (_bob_group, _, _) = MlsGroup::join_by_external_commit(
             backend,
@@ -92,19 +81,15 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
                 .crypto_config(CryptoConfig::with_default_version(ciphersuite))
                 .build(),
             b"",
-            bob_credential,
+            &bob_credential,
         )
         .unwrap();
     }
 
     // Now, Bob wants to join Alice' group by an external commit. (Negative case, broken signature.)
     {
-        let (bob_credential, bob_signature_keys) = new_credential(
-            backend,
-            b"Bob",
-            CredentialType::Basic,
-            ciphersuite.signature_algorithm(),
-        );
+        let bob_credential = SignatureKeyPair::new(ciphersuite.into(), b"Bob".to_vec()).unwrap();
+        bob_credential.store(backend.key_store()).unwrap();
 
         let got_error = MlsGroup::join_by_external_commit(
             backend,
@@ -115,7 +100,7 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
                 .crypto_config(CryptoConfig::with_default_version(ciphersuite))
                 .build(),
             b"",
-            bob_credential,
+            &bob_credential,
         )
         .unwrap_err();
 
@@ -131,19 +116,15 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 #[apply(ciphersuites_and_backends)]
 fn test_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Alice creates a new group ...
-    let (mut alice_group, _, alice_signer) = create_alice_group(ciphersuite, backend, true);
+    let (mut alice_group, alice_credential) = create_alice_group(ciphersuite, backend, true);
 
     // Self update Alice's to get a group info from a commit
-    let (.., group_info) = alice_group.self_update(backend, &alice_signer).unwrap();
+    let (.., group_info) = alice_group.self_update(backend, &alice_credential).unwrap();
     alice_group.merge_pending_commit(backend).unwrap();
 
     // Bob wants to join
-    let (bob_credential, bob_signature_keys) = new_credential(
-        backend,
-        b"Bob",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
+    let bob_credential = SignatureKeyPair::new(ciphersuite.into(), b"Bob".to_vec()).unwrap();
+    bob_credential.store(backend.key_store()).unwrap();
 
     let verifiable_group_info = {
         let serialized_group_info = group_info.unwrap().tls_serialize_detached().unwrap();
@@ -159,7 +140,7 @@ fn test_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
             .crypto_config(CryptoConfig::with_default_version(ciphersuite))
             .build(),
         b"",
-        bob_credential,
+        &bob_credential,
     )
     .map(|(group, msg, group_info)| (group, MlsMessageIn::from(msg), group_info))
     .unwrap();
@@ -221,10 +202,10 @@ fn test_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 #[apply(ciphersuites_and_backends)]
 fn test_not_present_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Alice creates a new group ...
-    let (mut alice_group, _, alice_signer) = create_alice_group(ciphersuite, backend, false);
+    let (mut alice_group, alice_credential) = create_alice_group(ciphersuite, backend, false);
 
     // Self update Alice's to get a group info from a commit
-    let (.., group_info) = alice_group.self_update(backend, &alice_signer).unwrap();
+    let (.., group_info) = alice_group.self_update(backend, &alice_credential).unwrap();
     alice_group.merge_pending_commit(backend).unwrap();
 
     assert!(group_info.is_none());

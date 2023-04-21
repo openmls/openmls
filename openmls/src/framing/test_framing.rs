@@ -20,6 +20,7 @@ use crate::{
     },
     key_packages::KeyPackageBundle,
     schedule::psk::{store::ResumptionPskStore, PskSecret},
+    test_utils::{credential, key_package},
     tree::{secret_tree::SecretTree, sender_ratchet::SenderRatchetConfiguration},
     versions::ProtocolVersion,
 };
@@ -27,12 +28,7 @@ use crate::{
 /// This tests serializing/deserializing PublicMessage
 #[apply(ciphersuites_and_backends)]
 fn codec_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    let (_credential, signature_keys) = test_utils::new_credential(
-        backend,
-        b"Creator",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
+    let credential = credential(b"Creator", ciphersuite.into(), backend);
     let sender = Sender::build_member(LeafNodeIndex::new(987543210));
     let group_context = GroupContext::new(
         ciphersuite,
@@ -79,12 +75,7 @@ fn codec_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 /// This tests serializing/deserializing PrivateMessage
 #[apply(ciphersuites_and_backends)]
 fn codec_ciphertext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    let (_credential, signature_keys) = test_utils::new_credential(
-        backend,
-        b"Creator",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
+    let credential = credential(b"Creator", ciphersuite.into(), backend);
     let sender = Sender::build_member(LeafNodeIndex::new(0));
     let group_context = GroupContext::new(
         ciphersuite,
@@ -294,13 +285,8 @@ fn create_content(
     ciphersuite: Ciphersuite,
     wire_format: WireFormat,
     backend: &impl OpenMlsCryptoProvider,
-) -> (AuthenticatedContent, CredentialWithKey, SignatureKeyPair) {
-    let (credential, signature_keys) = test_utils::new_credential(
-        backend,
-        b"Creator",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
+) -> (AuthenticatedContent, SignatureKeyPair) {
+    let credential = credential(b"Creator", ciphersuite.into(), backend);
     let sender = Sender::build_member(LeafNodeIndex::new(0));
     let group_context = GroupContext::new(
         ciphersuite,
@@ -326,17 +312,13 @@ fn create_content(
     let content = signature_input
         .sign(&signature_keys)
         .expect("Signing failed.");
-    (content, credential, signature_keys)
+
+    (content, credential)
 }
 
 #[apply(ciphersuites_and_backends)]
 fn membership_tag(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    let (_credential, signature_keys) = test_utils::new_credential(
-        backend,
-        b"Creator",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
+    let credential = credential(b"Creator", ciphersuite.into(), backend);
     let group_context = GroupContext::new(
         ciphersuite,
         GroupId::random(backend),
@@ -392,29 +374,12 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let configuration = &SenderRatchetConfiguration::default();
 
     // Define credential bundles
-    let (alice_credential, alice_signature_keys) = test_utils::new_credential(
-        backend,
-        b"Alice",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
-    let (bob_credential, bob_signature_keys) = test_utils::new_credential(
-        backend,
-        b"Bob",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
-    let (charlie_credential, charlie_signature_keys) = test_utils::new_credential(
-        backend,
-        b"Charlie",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
+    let alice_credential = credential(b"Alice", ciphersuite.into(), backend);
+    let bob_credential = credential(b"Bob", ciphersuite.into(), backend);
+    let charlie_credential = credential(b"Charlie", ciphersuite.into(), backend);
 
     // Generate KeyPackages
-    let bob_key_package_bundle =
-        KeyPackageBundle::new(backend, &bob_signature_keys, ciphersuite, bob_credential);
-    let bob_key_package = bob_key_package_bundle.key_package();
+    let bob_key_package_bundle = key_package(backend, &bob_credential, ciphersuite);
 
     let charlie_key_package_bundle = KeyPackageBundle::new(
         backend,
@@ -624,41 +589,23 @@ pub(crate) fn setup_alice_bob_group(
     SignatureKeyPair,
     CoreGroup,
     SignatureKeyPair,
-    CredentialWithKey,
 ) {
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
     // Create credentials and keys
-    let (alice_credential, alice_signature_keys) = test_utils::new_credential(
-        backend,
-        b"Alice",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
-    let (bob_credential, bob_signature_keys) = test_utils::new_credential(
-        backend,
-        b"Bob",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
+    let alice_credential = credential(b"Alice", ciphersuite.into(), backend);
+    let bob_credential = credential(b"Bob", ciphersuite.into(), backend);
 
     // Generate KeyPackages
-    let bob_key_package_bundle = KeyPackageBundle::new(
-        backend,
-        &bob_signature_keys,
-        ciphersuite,
-        bob_credential.clone(),
-    );
-    let bob_key_package = bob_key_package_bundle.key_package();
+    let bob_key_package = key_package(backend, &bob_credential, ciphersuite);
 
     // Alice creates a group
     let mut group_alice = CoreGroup::builder(
         GroupId::random(backend),
         config::CryptoConfig::with_default_version(ciphersuite),
-        alice_credential,
     )
-    .build(backend, &alice_signature_keys)
+    .build(backend, &alice_credential, &alice_credential)
     .expect("Error creating group.");
 
     // Alice adds Bob
@@ -682,7 +629,7 @@ pub(crate) fn setup_alice_bob_group(
         .build();
 
     let create_commit_result = group_alice
-        .create_commit(params, backend, &alice_signature_keys)
+        .create_commit(params, backend, &alice_credential, &alice_credential)
         .expect("Error creating Commit");
 
     let commit = match create_commit_result.commit.content() {
@@ -713,9 +660,8 @@ pub(crate) fn setup_alice_bob_group(
     (
         framing_parameters,
         group_alice,
-        alice_signature_keys,
+        alice_credential,
         group_bob,
-        bob_signature_keys,
         bob_credential,
     )
 }

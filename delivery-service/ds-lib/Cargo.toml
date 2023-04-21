@@ -8,7 +8,7 @@ description = "Types to interact with the OpenMLS DS."
 [dependencies]
 tls_codec = { workspace = true }
 openmls = { path = "../../openmls", features = ["test-utils"] }
-openmls_traits = { path = "../../traits" }
+openmls_traits = { workspace = true }
 openmls_rust_crypto = { path = "../../openmls_rust_crypto" }
 openmls_memory_keystore = { path = "../../memory_keystore" }
 openmls_basic_credential = { path = "../../basic_credential" }

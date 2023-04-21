@@ -1,5 +1,8 @@
 use openmls_traits::{
-    key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite, OpenMlsCryptoProvider,
+    key_store::OpenMlsKeyStore,
+    signatures::Signer,
+    types::{credential::Credential, Ciphersuite},
+    OpenMlsCryptoProvider,
 };
 
 use super::{
@@ -9,7 +12,6 @@ use super::{
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::hash_ref::ProposalRef,
-    credentials::Credential,
     extensions::Extensions,
     framing::MlsMessageOut,
     group::{errors::CreateAddProposalError, GroupId, QueuedProposal},

@@ -1,5 +1,6 @@
 //! This module tests the different values for `WireFormatPolicy`
 
+use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsCryptoProvider};
 
@@ -9,9 +10,10 @@ use rstest_reuse::{self, *};
 use crate::{
     framing::*,
     group::{config::CryptoConfig, errors::*, *},
+    prelude_test::KeyPackage,
 };
 
-use super::utils::{generate_credential_bundle, generate_key_package, CredentialWithKeyAndSigner};
+use super::utils::{credential, CredentialWithKeyAndSigner};
 
 // Creates a group with one member
 fn create_group(
@@ -23,7 +25,7 @@ fn create_group(
 
     // Generate credential bundles
     let credential_with_key_and_signer =
-        generate_credential_bundle("Alice".into(), ciphersuite.signature_algorithm(), backend);
+        credential("Alice".into(), ciphersuite.signature_algorithm(), backend);
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::builder()
@@ -52,17 +54,24 @@ fn receive_message(
     alice_group: &mut MlsGroup,
     alice_signer: &impl Signer,
 ) -> MlsMessageIn {
-    // Generate credential bundles
-    let bob_credential_with_key_and_signer =
-        generate_credential_bundle("Bob".into(), ciphersuite.signature_algorithm(), backend);
+    // Generate credential
+    let credential =
+        SignatureKeyPair::new(ciphersuite.signature_algorithm(), "Bob".into()).unwrap();
+    credential.store(backend.key_store()).unwrap();
 
-    // Generate KeyPackages
-    let bob_key_package = generate_key_package(
-        ciphersuite,
-        Extensions::empty(),
-        backend,
-        bob_credential_with_key_and_signer.clone(),
-    );
+    // Generate KeyPackage
+    let bob_key_package = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .build(
+            CryptoConfig {
+                ciphersuite,
+                version: ProtocolVersion::default(),
+            },
+            backend,
+            &bob_credential_with_key_and_signer,
+            &bob_credential_with_key_and_signer,
+        )
+        .unwrap();
 
     let (_message, welcome, _group_info) = alice_group
         .add_members(backend, alice_signer, &[bob_key_package])

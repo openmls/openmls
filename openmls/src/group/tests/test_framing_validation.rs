@@ -15,7 +15,7 @@ use crate::{
     key_packages::*,
 };
 
-use super::utils::{generate_credential_bundle, generate_key_package, CredentialWithKeyAndSigner};
+use super::utils::{credential, generate_key_package, CredentialWithKeyAndSigner};
 
 // Test setup values
 struct ValidationTestSetup {
@@ -37,10 +37,10 @@ fn validation_test_setup(
 
     // Generate credential bundles
     let alice_credential =
-        generate_credential_bundle("Alice".into(), ciphersuite.signature_algorithm(), backend);
+        credential("Alice".into(), ciphersuite.signature_algorithm(), backend);
 
     let bob_credential =
-        generate_credential_bundle("Bob".into(), ciphersuite.signature_algorithm(), backend);
+        credential("Bob".into(), ciphersuite.signature_algorithm(), backend);
 
     // Generate KeyPackages
     let alice_key_package = generate_key_package(

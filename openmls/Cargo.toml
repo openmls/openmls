@@ -10,7 +10,7 @@ repository = "https://github.com/openmls/openmls/"
 readme = "../README.md"
 
 [dependencies]
-openmls_traits = { version = "0.1.0", path = "../traits" }
+openmls_traits = { workspace = true }
 serde = { version = "^1.0", features = ["derive"] }
 serde_json = "^1.0"
 log = { version = "0.4", features = ["std"] }
@@ -18,34 +18,25 @@ tls_codec = { workspace = true }
 rayon = "^1.5.0"
 thiserror = "^1.0"
 backtrace = "0.3"
-# Only required for tests.
-rand = { version = "0.8", optional = true }
-# Crypto backends required for KAT and testing - "test-utils" feature
-itertools = { version = "0.10", optional = true }
-openmls_rust_crypto = { version = "0.1.0", path = "../openmls_rust_crypto", optional = true }
-openmls_evercrypt = { version = "0.1.0", path = "../evercrypt_backend", optional = true }
-openmls_basic_credential = { version = "0.1.0", path = "../basic_credential", optional = true }
-rstest = { version = "^0.16", optional = true }
-rstest_reuse = { version = "0.4", optional = true }
 
 [features]
 default = []
 crypto-subtle = [] # Enable subtle crypto APIs that have to be used with care.
-test-utils = [
-    "itertools",
-    "openmls_rust_crypto",
-    "rand",
-    "rstest",
-    "rstest_reuse",
-    "openmls_basic_credential",
-    "openmls_basic_credential/cloneable",
-    "openmls_basic_credential/test-utils",
-]
-evercrypt = ["openmls_evercrypt"] # Evercrypt needs to be enabled individually
-crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
+test-utils = []
+evercrypt = []     # Evercrypt needs to be enabled individually (testing only)
+crypto-debug = []  # ☣️ Enable logging of sensitive cryptographic information
 content-debug = [] # ☣️ Enable logging of sensitive message content
 
 [dev-dependencies]
+rstest = { version = "0.16" }
+rstest_reuse = { version = "0.4" }
+rand = { version = "0.8" }
+openmls_rust_crypto = { version = "0.1.0", path = "../openmls_rust_crypto" }
+openmls_evercrypt = { version = "0.1.0", path = "../evercrypt_backend" }
+openmls_basic_credential = { version = "0.1.0", path = "../basic_credential", features = [
+    "cloneable",
+    "test-utils",
+] }
 backtrace = "0.3"
 criterion = "^0.4"
 hex = { version = "0.4", features = ["serde"] }
@@ -53,8 +44,6 @@ itertools = "0.10"
 lazy_static = "1.4"
 openmls = { path = ".", features = ["test-utils"] }
 pretty_env_logger = "0.4"
-rstest = "^0.16"
-rstest_reuse = "0.4"
 tempfile = "3"
 
 # x64 targets get evercrypt compiled into dev-dependencies.

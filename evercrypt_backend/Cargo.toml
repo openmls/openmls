@@ -10,7 +10,7 @@ repository = "https://github.com/openmls/openmls/tree/main/evercrypt_backend"
 readme = "README.md"
 
 [dependencies]
-openmls_traits = { version = "0.1.0", path = "../traits" }
+openmls_traits = { workspace = true }
 evercrypt = { version = "0.0.11", features = ["serialization"] }
 openmls_memory_keystore = { version = "0.1.0", path = "../memory_keystore", package = "openmls_memory_keystore" }
 rand = "0.8"

@@ -6,7 +6,7 @@ use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use rstest::*;
 use rstest_reuse::{self, *};
 
-use super::utils::{generate_credential_bundle, generate_key_package};
+use super::utils::{credential, generate_key_package};
 use crate::{
     framing::{MessageDecryptionError, ProcessedMessageContent},
     group::{config::CryptoConfig, errors::*, *},

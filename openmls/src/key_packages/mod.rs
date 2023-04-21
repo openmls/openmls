@@ -239,7 +239,7 @@ impl KeyPackage {
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
-        credential_with_key: &dyn OpenMlsCredential,
+        credential_with_key: &dyn openmls_traits::credential::OpenMlsCredential,
         extensions: Extensions,
         leaf_node_capabilities: Capabilities,
         leaf_node_extensions: Extensions,

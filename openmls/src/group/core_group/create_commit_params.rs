@@ -1,6 +1,5 @@
 //! Builder for [CreateCommitParams] that is used in [CoreGroup::create_commit()]
 
-use openmls_traits::credential::OpenMlsCredential;
 use serde::{Deserialize, Serialize};
 
 use crate::{framing::FramingParameters, group::ProposalStore, messages::proposals::Proposal};

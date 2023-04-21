@@ -19,19 +19,12 @@ use crate::{
 pub(crate) fn setup_alice_group(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
-) -> (
-    CoreGroup,
-    CredentialWithKey,
-    SignatureKeyPair,
-    OpenMlsSignaturePublicKey,
-) {
+) -> (CoreGroup, SignatureKeyPair, OpenMlsSignaturePublicKey) {
     // Create credentials and keys
-    let (alice_credential_with_key, alice_signature_keys) = test_utils::new_credential(
-        backend,
-        b"Alice",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
+    let alice_credential =
+        SignatureKeyPair::new(ciphersuite.signature_algorithm(), b"Alice".into()).unwrap();
+    alice_credential.store(backend.key_store());
+
     let pk = OpenMlsSignaturePublicKey::new(
         alice_signature_keys.to_public_vec().into(),
         ciphersuite.signature_algorithm(),
@@ -42,16 +35,15 @@ pub(crate) fn setup_alice_group(
     let group = CoreGroup::builder(
         GroupId::random(backend),
         config::CryptoConfig::with_default_version(ciphersuite),
-        alice_credential_with_key.clone(),
     )
-    .build(backend, &alice_signature_keys)
+    .build(backend, &alice_credential, &alice_credential)
     .expect("Error creating group.");
-    (group, alice_credential_with_key, alice_signature_keys, pk)
+    (group, alice_credential, pk)
 }
 
 #[apply(ciphersuites_and_backends)]
 fn test_core_group_persistence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    let (alice_group, _, _, _) = setup_alice_group(ciphersuite, backend);
+    let (alice_group, _, _) = setup_alice_group(ciphersuite, backend);
 
     let mut file_out = tempfile::NamedTempFile::new().expect("Could not create file");
     alice_group
@@ -303,18 +295,12 @@ fn setup_alice_bob(
     SignatureKeyPair,
 ) {
     // Create credentials and keys
-    let (alice_credential_with_key, alice_signer) = test_utils::new_credential(
-        backend,
-        b"Alice",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
-    let (bob_credential_with_key, bob_signer) = test_utils::new_credential(
-        backend,
-        b"Bob",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
+    let alice_credential =
+        SignatureKeyPair::new(ciphersuite.signature_algorithm(), b"Alice".into()).unwrap();
+    alice_credential.store(backend.key_store());
+    let alice_credential =
+        SignatureKeyPair::new(ciphersuite.signature_algorithm(), b"Bob".into()).unwrap();
+    alice_credential.store(backend.key_store());
 
     // Generate Bob's KeyPackage
     let bob_key_package_bundle =
@@ -526,12 +512,9 @@ fn test_own_commit_processing(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
     // Create credentials and keys
-    let (alice_credential_with_key, alice_signature_keys) = test_utils::new_credential(
-        backend,
-        b"Alice",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
+    let alice_credential =
+        SignatureKeyPair::new(ciphersuite.signature_algorithm(), b"Alice".into()).unwrap();
+    alice_credential.store(backend.key_store());
 
     // === Alice creates a group ===
     let alice_group = CoreGroup::builder(
@@ -564,32 +547,33 @@ pub(crate) fn setup_client(
     id: &str,
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
-) -> (
-    CredentialWithKey,
-    KeyPackageBundle,
-    SignatureKeyPair,
-    OpenMlsSignaturePublicKey,
-) {
-    let (credential_with_key, signature_keys) = test_utils::new_credential(
-        backend,
-        id.as_bytes(),
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
-    let pk = OpenMlsSignaturePublicKey::new(
-        signature_keys.to_public_vec().into(),
-        ciphersuite.signature_algorithm(),
-    )
-    .unwrap();
+) -> (KeyPackageBundle, SignatureKeyPair) {
+    let credential =
+        SignatureKeyPair::new(ciphersuite.signature_algorithm(), id.as_bytes().into()).unwrap();
+    credential.store(backend.key_store());
 
     // Generate the KeyPackage
-    let key_package_bundle = KeyPackageBundle::new(
-        backend,
-        &signature_keys,
-        ciphersuite,
-        credential_with_key.clone(),
-    );
-    (credential_with_key, key_package_bundle, signature_keys, pk)
+    let key_package = KeyPackage::builder()
+        .build(
+            CryptoConfig {
+                ciphersuite,
+                version: ProtocolVersion::default(),
+            },
+            backend,
+            &credential,
+            &credential,
+        )
+        .unwrap();
+    let private_key = backend
+        .key_store()
+        .read::<HpkePrivateKey>(key_package.hpke_init_key().as_slice())
+        .unwrap();
+    let key_package_bundle = KeyPackageBundle {
+        key_package,
+        private_key,
+    };
+
+    (key_package_bundle, credential, pk)
 }
 
 #[apply(ciphersuites_and_backends)]

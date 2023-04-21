@@ -28,7 +28,7 @@ impl CoreGroup {
         backend: &impl OpenMlsCryptoProvider,
         signer: &impl Signer,
         credential: &dyn OpenMlsCredential,
-        mut params: CreateCommitParams,
+        params: CreateCommitParams,
         ratchet_tree: Option<RatchetTree>,
         verifiable_group_info: VerifiableGroupInfo,
     ) -> Result<ExternalCommitResult, ExternalCommitError> {

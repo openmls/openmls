@@ -1,37 +1,17 @@
 use openmls::{
-    prelude::{config::CryptoConfig, test_utils::new_credential, *},
+    prelude::{config::CryptoConfig, *},
     test_utils::*,
     *,
 };
 
 use lazy_static::lazy_static;
+use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, OpenMlsCryptoProvider};
 use std::fs::File;
 
 lazy_static! {
     static ref TEMP_DIR: tempfile::TempDir =
         tempfile::tempdir().expect("Error creating temp directory");
-}
-
-fn generate_key_package<KeyStore: OpenMlsKeyStore>(
-    ciphersuite: Ciphersuite,
-    extensions: Extensions,
-    backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-    credential_with_key: CredentialWithKey,
-    signer: &impl Signer,
-) -> KeyPackage {
-    KeyPackage::builder()
-        .key_package_extensions(extensions)
-        .build(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
-            backend,
-            signer,
-            credential_with_key,
-        )
-        .unwrap()
 }
 
 /// This test simulates various group operations like Add, Update, Remove in a
@@ -54,35 +34,12 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         let group_id = GroupId::from_slice(b"Test Group");
 
         // Generate credential bundles
-        let (alice_credential, alice_signer) = new_credential(
-            backend,
-            b"Alice",
-            CredentialType::Basic,
-            ciphersuite.signature_algorithm(),
-        );
-
-        let (bob_credential, bob_signer) = new_credential(
-            backend,
-            b"Bob",
-            CredentialType::Basic,
-            ciphersuite.signature_algorithm(),
-        );
-
-        let (charlie_credential, charlie_signer) = new_credential(
-            backend,
-            b"Charlie",
-            CredentialType::Basic,
-            ciphersuite.signature_algorithm(),
-        );
+        let alice_credential = credential("Alice", ciphersuite.into(), backend);
+        let bob_credential = credential("Bob", ciphersuite.into(), backend);
+        let charlie_credential = credential("Charlie", ciphersuite.into(), backend);
 
         // Generate KeyPackages
-        let bob_key_package = generate_key_package(
-            ciphersuite,
-            Extensions::empty(),
-            backend,
-            bob_credential.clone(),
-            &bob_signer,
-        );
+        let bob_key_package = key_package(backend, &bob_credential, ciphersuite);
 
         // Define the MlsGroup configuration
 
@@ -318,13 +275,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         );
 
         // === Bob adds Charlie ===
-        let charlie_key_package = generate_key_package(
-            ciphersuite,
-            Extensions::empty(),
-            backend,
-            charlie_credential,
-            &charlie_signer,
-        );
+        let charlie_key_package = key_package(backend, ciphersuite, &charlie_credential);
 
         let (queued_message, welcome, _group_info) = bob_group
             .add_members(backend, &bob_signer, &[charlie_key_package])
@@ -579,13 +530,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         // === Alice removes Charlie and re-adds Bob ===
 
         // Create a new KeyPackageBundle for Bob
-        let bob_key_package = generate_key_package(
-            ciphersuite,
-            Extensions::empty(),
-            backend,
-            bob_credential.clone(),
-            &bob_signer,
-        );
+        let bob_key_package = key_package(backend, ciphersuite, &bob_credential);
 
         // Create RemoveProposal and process it
         let (queued_message, _) = alice_group
@@ -870,13 +815,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         // === Save the group state ===
 
         // Create a new KeyPackageBundle for Bob
-        let bob_key_package = generate_key_package(
-            ciphersuite,
-            Extensions::empty(),
-            backend,
-            bob_credential,
-            &bob_signer,
-        );
+        let bob_key_package = key_package(backend, ciphersuite, &bob_credential);
 
         // Add Bob to the group
         let (_queued_message, welcome, _group_info) = alice_group
@@ -939,13 +878,8 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 fn test_empty_input_errors(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
-    // Generate credential bundles
-    let (alice_credential, alice_signer) = new_credential(
-        backend,
-        b"Alice",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
+    // Generate credentials
+    let alice_credential = credential("Alice", ciphersuite.into(), backend);
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::test_default(ciphersuite);
@@ -956,7 +890,7 @@ fn test_empty_input_errors(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypt
         &alice_signer,
         &mls_group_config,
         group_id,
-        alice_credential,
+        &alice_credential,
     )
     .expect("An unexpected error occurred.");
 
@@ -987,29 +921,10 @@ fn mls_group_ratchet_tree_extension(
 
         // === Positive case: using the ratchet tree extension ===
 
-        // Generate credentials
-        let (alice_credential, alice_signer) = new_credential(
-            backend,
-            b"Alice",
-            CredentialType::Basic,
-            ciphersuite.signature_algorithm(),
-        );
-
-        let (bob_credential, bob_signer) = new_credential(
-            backend,
-            b"Bob",
-            CredentialType::Basic,
-            ciphersuite.signature_algorithm(),
-        );
-
-        // Generate KeyPackages
-        let bob_key_package = generate_key_package(
-            ciphersuite,
-            Extensions::empty(),
-            backend,
-            bob_credential,
-            &bob_signer,
-        );
+        // Generate credentials and key packages
+        let alice_credential = credential("Alice", ciphersuite.into(), backend);
+        let bob_credential = credential("Bob", ciphersuite.into(), backend);
+        let bob_key_package = key_package(backend, &bob_credential, ciphersuite);
 
         let mls_group_config = MlsGroupConfig::builder()
             .wire_format_policy(*wire_format_policy)
@@ -1059,13 +974,7 @@ fn mls_group_ratchet_tree_extension(
         );
 
         // Generate KeyPackages
-        let bob_key_package = generate_key_package(
-            ciphersuite,
-            Extensions::empty(),
-            backend,
-            bob_credential,
-            &bob_signer,
-        );
+        let bob_key_package = key_package(backend, ciphersuite, &bob_credential);
 
         let mls_group_config = MlsGroupConfig::test_default(ciphersuite);
 

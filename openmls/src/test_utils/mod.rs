@@ -9,7 +9,10 @@ use std::{
 };
 
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_traits::{key_store::OpenMlsKeyStore, types::HpkeKeyPair};
+use openmls_traits::{
+    key_store::OpenMlsKeyStore,
+    types::{HpkeKeyPair, SignatureScheme},
+};
 pub use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 pub use rstest::*;
 pub use rstest_reuse::{self, *};
@@ -20,9 +23,11 @@ use crate::group::tests::utils::CredentialWithKeyAndSigner;
 pub use crate::utils::*;
 use crate::{
     ciphersuite::{HpkePrivateKey, OpenMlsSignaturePublicKey},
+    extensions::Extensions,
     key_packages::KeyPackage,
     prelude::{CryptoConfig, KeyPackageBuilder},
     treesync::node::encryption_keys::{EncryptionKeyPair, EncryptionPrivateKey},
+    versions::ProtocolVersion,
 };
 
 pub mod test_framework;
@@ -82,6 +87,48 @@ pub fn hex_to_bytes_option(hex: Option<String>) -> Vec<u8> {
     }
 }
 
+/// Helper function to generate and store a Credential
+pub(crate) fn credential(
+    identity: &[u8],
+    signature_scheme: SignatureScheme,
+    backend: &impl OpenMlsCryptoProvider,
+) -> SignatureKeyPair {
+    let credential = SignatureKeyPair::new(signature_scheme, identity.to_vec()).unwrap();
+    credential.store(backend.key_store()).unwrap();
+    credential
+}
+
+/// Generate a key package with extensions
+pub(crate) fn key_package_with_extensions<KeyStore: OpenMlsKeyStore>(
+    backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+    credential: &SignatureKeyPair,
+    ciphersuite: Ciphersuite,
+    extensions: Extensions,
+) -> KeyPackage {
+    debug_assert!(ciphersuite.signature_algorithm() == credential.signature_scheme());
+    KeyPackage::builder()
+        .key_package_extensions(extensions)
+        .build(
+            CryptoConfig {
+                ciphersuite,
+                version: ProtocolVersion::default(),
+            },
+            backend,
+            credential,
+            credential,
+        )
+        .unwrap()
+}
+
+/// Generate a key package.
+pub(crate) fn key_package<KeyStore: OpenMlsKeyStore>(
+    backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+    credential: &SignatureKeyPair,
+    ciphersuite: Ciphersuite,
+) -> KeyPackage {
+    key_package_with_extensions(backend, credential, ciphersuite, Extensions::empty())
+}
+
 // === Convenience functions ===
 
 #[cfg(test)]
@@ -100,29 +147,19 @@ pub(crate) fn generate_group_candidate(
     ciphersuite: Ciphersuite,
     backend: Option<&impl OpenMlsCryptoProvider>,
 ) -> GroupCandidate {
-    let credential_with_key_and_signer = {
-        let signature_keypair =
-            SignatureKeyPair::new(ciphersuite.signature_algorithm(), identity.to_vec()).unwrap();
+    let credential =
+        SignatureKeyPair::new(ciphersuite.signature_algorithm(), identity.to_vec()).unwrap();
 
-        // Store if there is a key store.
-        if let Some(backend) = backend {
-            signature_keypair.store(backend.key_store()).unwrap();
-        }
+    // Store if there is a key store.
+    if let Some(backend) = backend {
+        credential.store(backend.key_store()).unwrap();
+    }
 
-        let signature_pkey = OpenMlsSignaturePublicKey::new(
-            signature_keypair.to_public_vec().into(),
-            ciphersuite.signature_algorithm(),
-        )
-        .unwrap();
-
-        CredentialWithKeyAndSigner {
-            credential_with_key: CredentialWithKey {
-                credential,
-                signature_key: signature_pkey.into(),
-            },
-            signer: signature_keypair,
-        }
-    };
+    let signature_pkey = OpenMlsSignaturePublicKey::new(
+        credential.to_public_vec().into(),
+        ciphersuite.signature_algorithm(),
+    )
+    .unwrap();
 
     let (key_package, encryption_keypair, init_keypair) = {
         let builder = KeyPackageBuilder::new();
@@ -133,8 +170,8 @@ pub(crate) fn generate_group_candidate(
                     .build(
                         CryptoConfig::with_default_version(ciphersuite),
                         backend,
-                        &credential_with_key_and_signer.signer,
-                        &credential_with_key_and_signer.credential_with_key,
+                        &credential,
+                        &credential,
                     )
                     .unwrap();
 

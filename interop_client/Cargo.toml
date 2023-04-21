@@ -13,7 +13,7 @@ crypto-debug = ["openmls/crypto-debug"]
 [dependencies]
 openmls = { path = "../openmls", features = ["test-utils"]}
 openmls_rust_crypto = { path = "../openmls_rust_crypto" }
-openmls_traits = { path = "../traits" }
+openmls_traits = { workspace = true }
 
 mls_interop_proto = { git = "https://github.com/mlswg/mls-implementations/" }
 

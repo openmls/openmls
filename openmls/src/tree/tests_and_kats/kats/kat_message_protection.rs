@@ -110,18 +110,11 @@ fn generate_credential(
     credential_type: CredentialType,
     signature_algorithm: SignatureScheme,
     backend: &impl OpenMlsCryptoProvider,
-) -> (CredentialWithKey, SignatureKeyPair) {
-    let credential = Credential::new(identity, credential_type).unwrap();
-    let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
-    signature_keys.store(backend.key_store()).unwrap();
+) -> SignatureKeyPair {
+    let credential = SignatureKeyPair::new(signature_algorithm, identity).unwrap();
+    credential.store(backend.key_store()).unwrap();
 
-    (
-        CredentialWithKey {
-            credential,
-            signature_key: signature_keys.to_public_vec().into(),
-        },
-        signature_keys,
-    )
+    credential
 }
 
 #[cfg(any(feature = "test-utils", test))]
@@ -131,7 +124,7 @@ fn group(
 ) -> (CoreGroup, CredentialWithKey, SignatureKeyPair) {
     use crate::group::config::CryptoConfig;
 
-    let (credential_with_key, signer) = generate_credential(
+    let credential = generate_credential(
         "Kreator".into(),
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
@@ -141,9 +134,8 @@ fn group(
     let group = CoreGroup::builder(
         GroupId::random(backend),
         CryptoConfig::with_default_version(ciphersuite),
-        credential_with_key.clone(),
     )
-    .build(backend, &signer)
+    .build(backend, &credential, &credential)
     .unwrap();
 
     (group, credential_with_key, signer)
@@ -157,22 +149,18 @@ fn receiver_group(
 ) -> (CoreGroup, CredentialWithKey, SignatureKeyPair) {
     use crate::group::config::CryptoConfig;
 
-    let (credential_with_key, signer) = generate_credential(
+    let credential = generate_credential(
         "Receiver".into(),
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
         backend,
     );
 
-    let group = CoreGroup::builder(
-        group_id,
-        CryptoConfig::with_default_version(ciphersuite),
-        credential_with_key.clone(),
-    )
-    .build(backend, &signer)
-    .unwrap();
+    let group = CoreGroup::builder(group_id, CryptoConfig::with_default_version(ciphersuite))
+        .build(backend, &credential, &credential)
+        .unwrap();
 
-    (group, credential_with_key, signer)
+    (group, credential, signer)
 }
 
 #[cfg(test)]
@@ -221,8 +209,6 @@ pub fn run_test_vector(
     let secret_tree = SecretTree::new(encryption_secret, TreeSize::new(2), own_index);
 
     // Set up the group, unfortunately we can't do without.
-    let credential =
-        Credential::new(b"This is not needed".to_vec(), CredentialType::Basic).unwrap();
     let signature_private_key = match ciphersuite {
         Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
         | Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519 => {
@@ -233,32 +219,32 @@ pub fn run_test_vector(
         Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256 => hex_to_bytes(&test.signature_priv),
         _ => unimplemented!(),
     };
-    let random_own_signature_key =
-        SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
-    let random_own_signature_key = random_own_signature_key.public();
-    let signer = SignatureKeyPair::from_raw(
+
+    //
+    let random_own_credential =
+        SignatureKeyPair::new(ciphersuite.signature_algorithm(), "KeyOwner".into()).unwrap();
+    let random_own_signature_key = random_own_credential.public();
+    let credential = SignatureKeyPair::from_raw(
         ciphersuite.signature_algorithm(),
         signature_private_key,
         random_own_signature_key.to_vec(),
+        "KeyOwner with tv private key".into(),
     );
+
     let mut group = CoreGroup::builder(
         group_context.group_id().clone(),
         CryptoConfig::with_default_version(ciphersuite),
-        CredentialWithKey {
-            credential,
-            signature_key: random_own_signature_key.into(),
-        },
     )
-    .build(backend, &signer)
+    .build(backend, &credential, &credential)
     .unwrap();
 
     // Make the group think it has two members.
     {
-        let credential = Credential::new("Fake user".into(), CredentialType::Basic).unwrap();
-        let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+        let credential =
+            SignatureKeyPair::new(ciphersuite.signature_algorithm(), "Fake user".into()).unwrap();
         let bob_key_package_bundle = KeyPackageBundle::new(
             backend,
-            &signature_keys,
+            &credential,
             ciphersuite,
             CredentialWithKey {
                 credential,
@@ -286,7 +272,7 @@ pub fn run_test_vector(
             .force_self_update(false)
             .build();
         let create_commit_result = group
-            .create_commit(params, backend, &signer)
+            .create_commit(params, backend, &credential, None)
             .expect("Error creating Commit");
 
         group

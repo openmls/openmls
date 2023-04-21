@@ -117,7 +117,7 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         // This will be set later.
         let calculated_padding_length;
 
-        let alice_credential_with_keys = generate_credential_bundle(
+        let alice_credential_with_keys = credential(
             b"Alice".to_vec(),
             ciphersuite.signature_algorithm(),
             backend,

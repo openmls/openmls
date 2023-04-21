@@ -10,7 +10,7 @@ use rstest_reuse::{self, *};
 use tls_codec::{Deserialize, Serialize};
 
 use super::utils::{
-    generate_credential_bundle, generate_key_package, resign_message, CredentialWithKeyAndSigner,
+    credential, generate_key_package, resign_message, CredentialWithKeyAndSigner,
 };
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -39,7 +39,7 @@ fn generate_credential_bundle_and_key_package(
     backend: &impl OpenMlsCryptoProvider,
 ) -> (CredentialWithKeyAndSigner, KeyPackage) {
     let credential_with_key_and_signer =
-        generate_credential_bundle(identity, ciphersuite.signature_algorithm(), backend);
+        credential(identity, ciphersuite.signature_algorithm(), backend);
 
     let key_package = generate_key_package(
         ciphersuite,
@@ -101,7 +101,7 @@ fn new_test_group(
 
     // Generate credential bundles
     let credential_with_key_and_signer =
-        generate_credential_bundle(identity.into(), ciphersuite.signature_algorithm(), backend);
+        credential(identity.into(), ciphersuite.signature_algorithm(), backend);
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::builder()
@@ -133,7 +133,7 @@ fn validation_test_setup(
         new_test_group("Alice", wire_format_policy, ciphersuite, backend);
 
     let bob_credential_with_key_and_signer =
-        generate_credential_bundle("Bob".into(), ciphersuite.signature_algorithm(), backend);
+        credential("Bob".into(), ciphersuite.signature_algorithm(), backend);
 
     let bob_key_package = generate_key_package(
         ciphersuite,

@@ -24,7 +24,7 @@ fn new_test_group(
 
     // Generate credential bundles
     let credential_with_keys =
-        generate_credential_bundle(identity.into(), ciphersuite.signature_algorithm(), backend);
+        credential(identity.into(), ciphersuite.signature_algorithm(), backend);
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::builder()
@@ -63,7 +63,7 @@ fn validation_test_setup(
     );
 
     let bob_credential_bundle =
-        generate_credential_bundle("Bob".into(), ciphersuite.signature_algorithm(), backend);
+        credential("Bob".into(), ciphersuite.signature_algorithm(), backend);
 
     let bob_key_package = generate_key_package(
         ciphersuite,

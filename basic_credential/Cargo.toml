@@ -10,7 +10,7 @@ repository = "https://github.com/openmls/openmls/tree/main/basic_credential"
 readme = "README.md"
 
 [dependencies]
-openmls_traits = { version = "0.1.0", path = "../traits" }
+openmls_traits = { workspace = true }
 tls_codec = { workspace = true }
 serde = "1.0"
 

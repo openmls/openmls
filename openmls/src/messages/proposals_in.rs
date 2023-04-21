@@ -6,8 +6,9 @@
 //! [`ProposalType::is_supported()`] can be used.
 
 use crate::{
-    ciphersuite::hash_ref::ProposalRef, key_packages::*, prelude::LeafNode,
-    prelude_test::SignaturePublicKey,
+    ciphersuite::{hash_ref::ProposalRef, SignaturePublicKey},
+    key_packages::*,
+    prelude::LeafNode,
 };
 
 use openmls_traits::types::credential::Credential;

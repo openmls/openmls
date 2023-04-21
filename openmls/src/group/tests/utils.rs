@@ -96,8 +96,8 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
         // signature scheme), as well as 10 KeyPackages per ciphersuite.
         for ciphersuite in client.ciphersuites {
             // Create a credential_bundle for the given ciphersuite.
-            let credentia_with_key_and_signer = generate_credential_bundle(
-                client.name.as_bytes().to_vec(),
+            let credentia_with_key_and_signer = credential(
+                client.name.as_bytes(),
                 ciphersuite.signature_algorithm(),
                 backend,
             );
@@ -333,50 +333,6 @@ fn test_setup(backend: &impl OpenMlsCryptoProvider) {
     let _test_setup = setup(test_setup_config, backend);
 }
 
-#[derive(Clone)]
-pub(crate) struct CredentialWithKeyAndSigner {
-    pub(crate) credential_with_key: SignatureKeyPair,
-    pub(crate) signer: SignatureKeyPair,
-}
-
-// Helper function to generate a CredentialBundle
-pub(crate) fn generate_credential_bundle(
-    identity: Vec<u8>,
-    signature_scheme: SignatureScheme,
-    backend: &impl OpenMlsCryptoProvider,
-) -> CredentialWithKeyAndSigner {
-    let credential = SignatureKeyPair::new(signature_scheme, identity).unwrap();
-    credential.store(backend.key_store()).unwrap();
-    let signature_key =
-        OpenMlsSignaturePublicKey::new(credential.to_public_vec().into(), signature_scheme)
-            .unwrap();
-
-    CredentialWithKeyAndSigner {
-        credential_with_key: credential,
-        signer,
-    }
-}
-
-// Helper function to generate a KeyPackageBundle
-pub(crate) fn generate_key_package<KeyStore: OpenMlsKeyStore>(
-    ciphersuite: Ciphersuite,
-    extensions: Extensions,
-    backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-    credential_with_keys: CredentialWithKeyAndSigner,
-) -> KeyPackage {
-    KeyPackage::builder()
-        .key_package_extensions(extensions)
-        .build(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
-            backend,
-            &credential_with_keys.signer,
-            &credential_with_keys.credential_with_key,
-        )
-        .unwrap()
-}
 
 #[cfg(test)]
 pub(crate) fn resign_message(

@@ -8,7 +8,7 @@ use rstest_reuse::{self, *};
 use tls_codec::{Deserialize, Serialize};
 
 use super::utils::{
-    generate_credential_bundle, generate_key_package, resign_message, CredentialWithKeyAndSigner,
+    credential, generate_key_package, resign_message, CredentialWithKeyAndSigner,
 };
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -40,13 +40,13 @@ fn validation_test_setup(
 
     // Generate credential bundles
     let alice_credential =
-        generate_credential_bundle("Alice".into(), ciphersuite.signature_algorithm(), backend);
+        credential("Alice".into(), ciphersuite.signature_algorithm(), backend);
 
     let bob_credential =
-        generate_credential_bundle("Bob".into(), ciphersuite.signature_algorithm(), backend);
+        credential("Bob".into(), ciphersuite.signature_algorithm(), backend);
 
     let charlie_credential =
-        generate_credential_bundle("Charlie".into(), ciphersuite.signature_algorithm(), backend);
+        credential("Charlie".into(), ciphersuite.signature_algorithm(), backend);
 
     // Generate KeyPackages
     let bob_key_package =

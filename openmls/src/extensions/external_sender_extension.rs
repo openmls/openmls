@@ -82,12 +82,12 @@ mod test {
             let mut external_sender_extensions = Vec::new();
 
             for _ in 0..8 {
-                let signature_keys =
-                    SignatureKeyPair::new(SignatureScheme::ED25519, b"Alice").unwrap();
+                let credential =
+                    SignatureKeyPair::new(SignatureScheme::ED25519, b"Alice".into()).unwrap();
 
                 external_sender_extensions.push(ExternalSender {
-                    signature_key: signature_keys.to_public_vec().into(),
-                    credential: signature_keys.credential(),
+                    signature_key: credential.to_public_vec().into(),
+                    credential: credential.credential(),
                 });
             }
 

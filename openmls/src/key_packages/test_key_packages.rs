@@ -10,8 +10,8 @@ pub(crate) fn key_package(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) -> (KeyPackage, Credential, SignatureKeyPair) {
-    let credential = Credential::new(b"Sasha".to_vec(), CredentialType::Basic).unwrap();
-    let signer = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+    let credential =
+        SignatureKeyPair::new(ciphersuite.signature_algorithm(), b"Sasha".to_vec()).unwrap();
 
     // Generate a valid KeyPackage.
     let key_package = KeyPackage::builder()
@@ -21,15 +21,12 @@ pub(crate) fn key_package(
                 version: ProtocolVersion::default(),
             },
             backend,
-            &signer,
-            CredentialWithKey {
-                credential: credential.clone(),
-                signature_key: signer.to_public_vec().into(),
-            },
+            &credential,
+            &credential,
         )
         .expect("An unexpected error occurred.");
 
-    (key_package, credential, signer)
+    (key_package, credential, credential)
 }
 
 #[apply(ciphersuites_and_backends)]
@@ -61,11 +58,10 @@ fn serialization(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider)
 
 #[apply(ciphersuites_and_backends)]
 fn application_id_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    let credential = Credential::new(b"Sasha".to_vec(), CredentialType::Basic)
-        .expect("An unexpected error occurred.");
-    let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+    let credential =
+        SignatureKeyPair::new(ciphersuite.signature_algorithm(), b"Sasha".to_vec()).unwrap();
     let pk = OpenMlsSignaturePublicKey::new(
-        signature_keys.public().into(),
+        credential.public().into(),
         ciphersuite.signature_algorithm(),
     )
     .unwrap();
@@ -82,11 +78,8 @@ fn application_id_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
                 version: ProtocolVersion::default(),
             },
             backend,
-            &signature_keys,
-            CredentialWithKey {
-                signature_key: signature_keys.to_public_vec().into(),
-                credential,
-            },
+            &credential,
+            &credential,
         )
         .expect("An unexpected error occurred.");
 

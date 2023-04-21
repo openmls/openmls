@@ -10,7 +10,7 @@ repository = "https://github.com/openmls/openmls/tree/main/openmls_rust_crypto"
 readme = "README.md"
 
 [dependencies]
-openmls_traits = { version = "0.1.0", path = "../traits" }
+openmls_traits = { workspace = true }
 openmls_memory_keystore = { version = "0.1.0", path = "../memory_keystore" }
 openmls_basic_credential = { version = "0.1.0", path = "../basic_credential" }
 # Rust Crypto dependencies
@@ -19,12 +19,15 @@ aes-gcm = { version = "0.9" }
 chacha20poly1305 = { version = "0.9" }
 hmac = { version = "0.12" }
 ed25519-dalek = { version = "1.0" }
-rand-07 = {version = "0.7", package = "rand" } # only needed because of ed25519-dalek
+rand-07 = { version = "0.7", package = "rand" } # only needed because of ed25519-dalek
 p256 = { version = "0.11" }
 hkdf = { version = "0.12" }
 rand = "0.8"
 rand_chacha = { version = "0.3" }
-hpke = { version = "0.1.0", package = "hpke-rs", default-features = false, features = ["hazmat", "serialization"] }
+hpke = { version = "0.1.0", package = "hpke-rs", default-features = false, features = [
+    "hazmat",
+    "serialization",
+] }
 hpke-rs-crypto = { version = "0.1.1" }
 hpke-rs-rust-crypto = { version = "0.1.1" }
 tls_codec = { workspace = true }
