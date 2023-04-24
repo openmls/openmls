@@ -1,4 +1,4 @@
-use openmls_basic_credential::SignatureKeyPair;
+use openmls_basic_credential::OpenMlsBasicCredential;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
     crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider,
@@ -218,7 +218,7 @@ fn test_welcome_message(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     };
 
     // We need a signer
-    let signer = SignatureKeyPair::new(ciphersuite.signature_algorithm(), vec![]).unwrap();
+    let signer = OpenMlsBasicCredential::new(ciphersuite.signature_algorithm(), vec![]).unwrap();
 
     let group_info = group_info_tbs
         .sign(&signer)

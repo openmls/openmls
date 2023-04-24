@@ -66,7 +66,7 @@ impl SenderExtensionIndex {
 
 #[cfg(test)]
 mod test {
-    use openmls_basic_credential::SignatureKeyPair;
+    use openmls_basic_credential::OpenMlsBasicCredential;
     use openmls_traits::{credential::OpenMlsCredential, types::SignatureScheme};
     use tls_codec::{Deserialize, Serialize};
 
@@ -79,7 +79,7 @@ mod test {
 
             for _ in 0..8 {
                 let credential =
-                    SignatureKeyPair::new(SignatureScheme::ED25519, "Alice".into()).unwrap();
+                    OpenMlsBasicCredential::new(SignatureScheme::ED25519, "Alice".into()).unwrap();
 
                 external_sender_extensions.push(ExternalSender {
                     signature_key: credential.to_public_vec().into(),

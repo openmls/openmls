@@ -76,7 +76,7 @@ use crate::prelude_test::{
 #[cfg(test)]
 use crate::test_utils::*;
 
-use openmls_basic_credential::SignatureKeyPair;
+use openmls_basic_credential::OpenMlsBasicCredential;
 use serde::{self, Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -128,14 +128,14 @@ pub struct EncryptWithLabel {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct ParsedSignWithLabel {
-    key: SignatureKeyPair,
+    key: OpenMlsBasicCredential,
     content: Vec<u8>,
     label: String,
     signature: Signature,
 }
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct SignWithLabelTest {
-    key: SignatureKeyPair,
+    key: OpenMlsBasicCredential,
     content: Vec<u8>,
     label: String,
 }
@@ -271,7 +271,7 @@ pub fn run_test_vector(
         let signature = hex_to_bytes(&test.sign_with_label.signature).into();
 
         let mut parsed = ParsedSignWithLabel {
-            key: SignatureKeyPair::from_raw(
+            key: OpenMlsBasicCredential::from_raw(
                 ciphersuite.signature_algorithm(),
                 {
                     if matches!(

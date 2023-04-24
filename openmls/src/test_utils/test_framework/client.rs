@@ -3,7 +3,7 @@
 //! that client perform certain MLS operations.
 use std::{collections::HashMap, sync::RwLock};
 
-use openmls_basic_credential::SignatureKeyPair;
+use openmls_basic_credential::OpenMlsBasicCredential;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
     key_store::OpenMlsKeyStore,
@@ -38,7 +38,7 @@ pub struct Client {
     /// Name of the client.
     pub identity: Vec<u8>,
     /// Ciphersuites supported by the client.
-    pub credentials: HashMap<Ciphersuite, SignatureKeyPair>,
+    pub credentials: HashMap<Ciphersuite, OpenMlsBasicCredential>,
     pub crypto: OpenMlsRustCrypto,
     pub groups: RwLock<HashMap<GroupId, MlsGroup>>,
 }
@@ -187,7 +187,7 @@ impl Client {
         // Get the signature public key to read the signer from the
         // key store.
         let signature_pk = group.own_leaf().unwrap().signature_key();
-        let signer = SignatureKeyPair::read(
+        let signer = OpenMlsBasicCredential::read(
             self.crypto.key_store(),
             signature_pk.as_slice(),
             group.ciphersuite().signature_algorithm(),
@@ -229,7 +229,7 @@ impl Client {
         // Get the signature public key to read the signer from the
         // key store.
         let signature_pk = group.own_leaf().unwrap().signature_key();
-        let signer = SignatureKeyPair::read(
+        let signer = OpenMlsBasicCredential::read(
             self.crypto.key_store(),
             signature_pk.as_slice(),
             group.ciphersuite().signature_algorithm(),
@@ -282,7 +282,7 @@ impl Client {
         // Get the signature public key to read the signer from the
         // key store.
         let signature_pk = group.own_leaf().unwrap().signature_key();
-        let signer = SignatureKeyPair::read(
+        let signer = OpenMlsBasicCredential::read(
             self.crypto.key_store(),
             signature_pk.as_slice(),
             group.ciphersuite().signature_algorithm(),

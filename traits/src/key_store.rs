@@ -2,7 +2,7 @@
 
 /// Sealed list of struct openmls manages (create/read/delete) through [OpenMlsKeyStore]
 pub enum MlsEntityId {
-    SignatureKeyPair,
+    OpenMlsBasicCredential,
     HpkePrivateKey,
     KeyPackage,
     PskBundle,

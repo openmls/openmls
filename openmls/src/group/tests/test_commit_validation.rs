@@ -1,7 +1,7 @@
 //! This module tests the validation of commits as defined in
 //! https://openmls.tech/book/message_validation.html#commit-message-validation
 
-use openmls_basic_credential::SignatureKeyPair;
+use openmls_basic_credential::OpenMlsBasicCredential;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{signatures::Signer, types::Ciphersuite};
 use rstest::*;
@@ -25,7 +25,7 @@ use crate::{
 
 struct CommitValidationTestSetup {
     alice_group: MlsGroup,
-    alice_credential: SignatureKeyPair,
+    alice_credential: OpenMlsBasicCredential,
     bob_group: MlsGroup,
     charlie_group: MlsGroup,
 }

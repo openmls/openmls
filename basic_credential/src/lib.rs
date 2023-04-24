@@ -50,21 +50,21 @@ impl VerificationCredential {
 /// private and public key pair with corresponding signature scheme.
 #[derive(TlsSerialize, TlsSize, TlsDeserialize, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "cloneable", derive(Clone))]
-pub struct SignatureKeyPair {
+pub struct OpenMlsBasicCredential {
     private: Vec<u8>,
     public_credential: VerificationCredential,
 }
 
-impl Debug for SignatureKeyPair {
+impl Debug for OpenMlsBasicCredential {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("SignatureKeyPair")
+        f.debug_struct("OpenMlsBasicCredential")
             .field("private", &"***".to_string())
             .field("public_credential", &self.public_credential)
             .finish()
     }
 }
 
-impl Signer for SignatureKeyPair {
+impl Signer for OpenMlsBasicCredential {
     fn sign(&self, payload: &[u8]) -> Result<Vec<u8>, Error> {
         match self.public_credential.signature_scheme {
             SignatureScheme::ECDSA_SECP256R1_SHA256 => {
@@ -87,7 +87,7 @@ impl Signer for SignatureKeyPair {
     }
 }
 
-impl OpenMlsCredential for SignatureKeyPair {
+impl OpenMlsCredential for OpenMlsBasicCredential {
     fn identity(&self) -> &[u8] {
         &self.public_credential.identity
     }
@@ -114,11 +114,11 @@ fn id(public_key: &[u8], signature_scheme: SignatureScheme) -> Vec<u8> {
     id
 }
 
-impl MlsEntity for SignatureKeyPair {
-    const ID: MlsEntityId = MlsEntityId::SignatureKeyPair;
+impl MlsEntity for OpenMlsBasicCredential {
+    const ID: MlsEntityId = MlsEntityId::OpenMlsBasicCredential;
 }
 
-impl SignatureKeyPair {
+impl OpenMlsBasicCredential {
     /// Generates a fresh signature keypair using the [`SignatureScheme`].
     pub fn new(signature_scheme: SignatureScheme, identity: Vec<u8>) -> Result<Self, CryptoError> {
         let (private, public_key) = match signature_scheme {
@@ -226,7 +226,7 @@ impl OpenMlsCredential for VerificationCredential {
 }
 
 #[cfg(feature = "test-utils")]
-impl SignatureKeyPair {
+impl OpenMlsBasicCredential {
     /// Get the private key as byte slice.
     pub fn private(&self) -> &[u8] {
         &self.private

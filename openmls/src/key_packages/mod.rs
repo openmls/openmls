@@ -30,13 +30,13 @@
 //! ```
 //! use openmls::prelude::*;
 //! use openmls_rust_crypto::OpenMlsRustCrypto;
-//! use openmls_basic_credential::SignatureKeyPair;
+//! use openmls_basic_credential::OpenMlsBasicCredential;
 //!
 //! let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
 //! let backend = OpenMlsRustCrypto::default();
 //!
 //! let credential =
-//!     SignatureKeyPair::new(ciphersuite.signature_algorithm(), "identity".into())
+//!     OpenMlsBasicCredential::new(ciphersuite.signature_algorithm(), "identity".into())
 //!         .expect("Error generating a signature key pair.");
 //! let key_package = KeyPackage::builder()
 //!     .build(

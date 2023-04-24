@@ -1,4 +1,4 @@
-use openmls_basic_credential::SignatureKeyPair;
+use openmls_basic_credential::OpenMlsBasicCredential;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use rstest::*;
 use rstest_reuse::{self, *};
@@ -19,7 +19,7 @@ fn new_test_group(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
     external_senders: ExternalSendersExtension,
-) -> (MlsGroup, SignatureKeyPair) {
+) -> (MlsGroup, OpenMlsBasicCredential) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Generate credential bundles
@@ -55,7 +55,7 @@ fn validation_test_setup(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
     external_senders: ExternalSendersExtension,
-) -> (MlsGroup, SignatureKeyPair) {
+) -> (MlsGroup, OpenMlsBasicCredential) {
     // === Alice creates a group ===
     let (mut alice_group, alice_signer_when_keys) = new_test_group(
         "Alice",

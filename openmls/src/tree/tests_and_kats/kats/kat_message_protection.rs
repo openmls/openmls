@@ -61,7 +61,7 @@
 //!     unprotects with the secret tree, `sender_data_secret`, and `signature_pub`
 //!     * When protecting the Commit message, add the supplied confirmation tag
 
-use openmls_basic_credential::SignatureKeyPair;
+use openmls_basic_credential::OpenMlsBasicCredential;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::OpenMlsCryptoProvider;
 use serde::{self, Deserialize, Serialize};
@@ -162,9 +162,9 @@ pub fn run_test_vector(
     };
 
     let random_own_credential =
-        SignatureKeyPair::new(ciphersuite.signature_algorithm(), "KeyOwner".into()).unwrap();
+        OpenMlsBasicCredential::new(ciphersuite.signature_algorithm(), "KeyOwner".into()).unwrap();
     let random_own_signature_key = random_own_credential.public();
-    let credential = SignatureKeyPair::from_raw(
+    let credential = OpenMlsBasicCredential::from_raw(
         ciphersuite.signature_algorithm(),
         signature_private_key,
         random_own_signature_key.to_vec(),
@@ -181,7 +181,7 @@ pub fn run_test_vector(
     // Make the group think it has two members.
     {
         let mut credential =
-            SignatureKeyPair::new(ciphersuite.signature_algorithm(), "Fake user".into()).unwrap();
+            OpenMlsBasicCredential::new(ciphersuite.signature_algorithm(), "Fake user".into()).unwrap();
         // inject the public key from the tv.
         credential.set_public_key(hex_to_bytes(&test.signature_pub));
 

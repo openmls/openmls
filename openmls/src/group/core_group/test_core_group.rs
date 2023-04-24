@@ -1,4 +1,4 @@
-use openmls_basic_credential::SignatureKeyPair;
+use openmls_basic_credential::OpenMlsBasicCredential;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
     crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, types::HpkeCiphertext, OpenMlsCryptoProvider,
@@ -21,10 +21,10 @@ use crate::{
 pub(crate) fn setup_alice_group(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
-) -> (CoreGroup, SignatureKeyPair, OpenMlsSignaturePublicKey) {
+) -> (CoreGroup, OpenMlsBasicCredential, OpenMlsSignaturePublicKey) {
     // Create credentials and keys
     let alice_credential =
-        SignatureKeyPair::new(ciphersuite.signature_algorithm(), b"Alice".to_vec()).unwrap();
+        OpenMlsBasicCredential::new(ciphersuite.signature_algorithm(), b"Alice".to_vec()).unwrap();
     alice_credential.store(backend.key_store()).unwrap();
 
     let pk = OpenMlsSignaturePublicKey::new(
@@ -271,13 +271,13 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 fn setup_alice_bob(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
-) -> (SignatureKeyPair, KeyPackageBundle, SignatureKeyPair) {
+) -> (OpenMlsBasicCredential, KeyPackageBundle, OpenMlsBasicCredential) {
     // Create credentials and keys
     let alice_credential =
-        SignatureKeyPair::new(ciphersuite.signature_algorithm(), b"Alice".to_vec()).unwrap();
+        OpenMlsBasicCredential::new(ciphersuite.signature_algorithm(), b"Alice".to_vec()).unwrap();
     alice_credential.store(backend.key_store()).unwrap();
     let bob_credential =
-        SignatureKeyPair::new(ciphersuite.signature_algorithm(), b"Bob".to_vec()).unwrap();
+        OpenMlsBasicCredential::new(ciphersuite.signature_algorithm(), b"Bob".to_vec()).unwrap();
     bob_credential.store(backend.key_store()).unwrap();
 
     // Generate Bob's KeyPackage
@@ -492,7 +492,7 @@ fn test_own_commit_processing(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
 
     // Create credentials and keys
     let alice_credential =
-        SignatureKeyPair::new(ciphersuite.signature_algorithm(), b"Alice".to_vec()).unwrap();
+        OpenMlsBasicCredential::new(ciphersuite.signature_algorithm(), b"Alice".to_vec()).unwrap();
     alice_credential.store(backend.key_store()).unwrap();
 
     // === Alice creates a group ===
@@ -525,9 +525,9 @@ pub(crate) fn setup_client(
     id: &str,
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
-) -> (KeyPackageBundle, SignatureKeyPair) {
+) -> (KeyPackageBundle, OpenMlsBasicCredential) {
     let credential =
-        SignatureKeyPair::new(ciphersuite.signature_algorithm(), id.as_bytes().into()).unwrap();
+        OpenMlsBasicCredential::new(ciphersuite.signature_algorithm(), id.as_bytes().into()).unwrap();
     credential.store(backend.key_store()).unwrap();
 
     // Generate the KeyPackage

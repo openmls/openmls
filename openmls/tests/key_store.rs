@@ -1,12 +1,12 @@
 //! A couple of simple tests on how to interact with the key store.
 use openmls::{prelude::*, test_utils::*, *};
-use openmls_basic_credential::SignatureKeyPair;
+use openmls_basic_credential::OpenMlsBasicCredential;
 
 #[apply(ciphersuites_and_backends)]
 fn test_store_key_package(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // ANCHOR: key_store_store
     // First we generate a credential and key package for our user.
-    let credential = SignatureKeyPair::new(ciphersuite.into(), "User ID".into()).unwrap();
+    let credential = OpenMlsBasicCredential::new(ciphersuite.into(), "User ID".into()).unwrap();
 
     let key_package = KeyPackage::builder()
         .build(

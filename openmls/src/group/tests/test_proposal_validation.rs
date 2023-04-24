@@ -1,7 +1,7 @@
 //! This module tests the validation of proposals as defined in
 //! https://openmls.tech/book/message_validation.html#semantic-validation-of-proposals-covered-by-a-commit
 
-use openmls_basic_credential::SignatureKeyPair;
+use openmls_basic_credential::OpenMlsBasicCredential;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
     credential::OpenMlsCredential, key_store::OpenMlsKeyStore, signatures::Signer,
@@ -37,7 +37,7 @@ fn credential_and_key_package(
     identity: Vec<u8>,
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
-) -> (SignatureKeyPair, KeyPackage) {
+) -> (OpenMlsBasicCredential, KeyPackage) {
     let credential = credential(&identity, ciphersuite.signature_algorithm(), backend);
     let key_package = key_package(backend, &credential, ciphersuite);
 
@@ -47,7 +47,7 @@ fn credential_and_key_package(
 /// Helper function to create a group and try to add `members` to it.
 fn create_group_with_members<KeyStore: OpenMlsKeyStore>(
     ciphersuite: Ciphersuite,
-    alice_credential: &SignatureKeyPair,
+    alice_credential: &OpenMlsBasicCredential,
     member_key_packages: &[KeyPackage],
     backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
 ) -> Result<(MlsMessageIn, Welcome), AddMembersError<KeyStore::Error>> {
@@ -74,9 +74,9 @@ fn create_group_with_members<KeyStore: OpenMlsKeyStore>(
 
 struct ProposalValidationTestSetup {
     alice_group: MlsGroup,
-    alice_credential: SignatureKeyPair,
+    alice_credential: OpenMlsBasicCredential,
     bob_group: MlsGroup,
-    bob_credential: SignatureKeyPair,
+    bob_credential: OpenMlsBasicCredential,
 }
 
 // Creates a standalone group
@@ -85,7 +85,7 @@ fn new_test_group(
     wire_format_policy: WireFormatPolicy,
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
-) -> (MlsGroup, SignatureKeyPair) {
+) -> (MlsGroup, OpenMlsBasicCredential) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Generate credential bundles
@@ -507,27 +507,27 @@ fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     ] {
         // 0. Initialize Alice and Bob
         // let new_kp =
-        //     || SignatureKeyPair::new(ciphersuite.signature_algorithm(), b"Alice".to_vec()).unwrap();
+        //     || OpenMlsBasicCredential::new(ciphersuite.signature_algorithm(), b"Alice".to_vec()).unwrap();
         let shared_signature_keypair =
-            SignatureKeyPair::new(ciphersuite.signature_algorithm(), b"Alice".to_vec()).unwrap();
+            OpenMlsBasicCredential::new(ciphersuite.signature_algorithm(), b"Alice".to_vec()).unwrap();
         let [alice_credential_bundle, bob_credential_bundle, target_credential_bundle] =
             match alice_and_bob_share_keys {
                 KeyUniqueness::NegativeSameKey => [
                     shared_signature_keypair.new_with_new_identity("Alice"),
-                    SignatureKeyPair::new(ciphersuite.signature_algorithm(), b"Bob".to_vec())
+                    OpenMlsBasicCredential::new(ciphersuite.signature_algorithm(), b"Bob".to_vec())
                         .unwrap(),
                     shared_signature_keypair.new_with_new_identity("Charlie"),
                 ],
                 KeyUniqueness::PositiveDifferentKey => [
-                    SignatureKeyPair::new(ciphersuite.signature_algorithm(), b"Alice".to_vec())
+                    OpenMlsBasicCredential::new(ciphersuite.signature_algorithm(), b"Alice".to_vec())
                         .unwrap(),
-                    SignatureKeyPair::new(ciphersuite.signature_algorithm(), b"Bob".to_vec())
+                    OpenMlsBasicCredential::new(ciphersuite.signature_algorithm(), b"Bob".to_vec())
                         .unwrap(),
-                    SignatureKeyPair::new(ciphersuite.signature_algorithm(), b"Charlie".to_vec())
+                    OpenMlsBasicCredential::new(ciphersuite.signature_algorithm(), b"Charlie".to_vec())
                         .unwrap(),
                 ],
                 KeyUniqueness::PositiveSameKeyWithRemove => [
-                    SignatureKeyPair::new(ciphersuite.signature_algorithm(), b"Alice".to_vec())
+                    OpenMlsBasicCredential::new(ciphersuite.signature_algorithm(), b"Alice".to_vec())
                         .unwrap(),
                     shared_signature_keypair.new_with_new_identity("Bob"),
                     shared_signature_keypair.new_with_new_identity("Charlie"),

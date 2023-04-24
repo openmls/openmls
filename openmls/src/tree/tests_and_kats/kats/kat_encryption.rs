@@ -82,7 +82,7 @@
 use std::convert::TryFrom;
 
 use itertools::izip;
-use openmls_basic_credential::SignatureKeyPair;
+use openmls_basic_credential::OpenMlsBasicCredential;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
     signatures::Signer,
@@ -147,8 +147,8 @@ fn generate_credential(
     _credential_type: CredentialType,
     signature_algorithm: SignatureScheme,
     backend: &impl OpenMlsCryptoProvider,
-) -> SignatureKeyPair {
-    let signature_keys = SignatureKeyPair::new(signature_algorithm, identity).unwrap();
+) -> OpenMlsBasicCredential {
+    let signature_keys = OpenMlsBasicCredential::new(signature_algorithm, identity).unwrap();
     signature_keys.store(backend.key_store()).unwrap();
 
     signature_keys
@@ -158,7 +158,7 @@ fn generate_credential(
 fn group(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
-) -> (CoreGroup, SignatureKeyPair) {
+) -> (CoreGroup, OpenMlsBasicCredential) {
     use crate::group::config::CryptoConfig;
 
     let credential_with_key = generate_credential(
@@ -183,7 +183,7 @@ fn receiver_group(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
     group_id: GroupId,
-) -> (CoreGroup, SignatureKeyPair) {
+) -> (CoreGroup, OpenMlsBasicCredential) {
     use crate::group::config::CryptoConfig;
 
     let credential_with_key = generate_credential(

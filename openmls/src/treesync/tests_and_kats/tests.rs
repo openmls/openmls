@@ -1,4 +1,4 @@
-use openmls_basic_credential::SignatureKeyPair;
+use openmls_basic_credential::OpenMlsBasicCredential;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 
 use crate::{
@@ -27,7 +27,7 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
 
     struct Member {
         id: Vec<u8>,
-        credential: SignatureKeyPair,
+        credential: OpenMlsBasicCredential,
         key_package: KeyPackage,
         // FIXME: the own_leaf_index from the group is beeing computed incorrectly, so we can't use
         // the backend from the function parameter. #1221

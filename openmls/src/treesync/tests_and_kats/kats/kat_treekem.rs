@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use log::{debug, trace};
-use openmls_basic_credential::SignatureKeyPair;
+use openmls_basic_credential::OpenMlsBasicCredential;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
@@ -73,7 +73,7 @@ pub struct TreeKemTest {
 struct LeafNodeInfoTest {
     index: LeafNodeIndex,
     encryption_keys: Vec<EncryptionKeyPair>,
-    signature_keypair: SignatureKeyPair,
+    signature_keypair: OpenMlsBasicCredential,
 }
 
 pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) {
@@ -109,7 +109,7 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
             if ciphersuite != Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256 {
                 private_key.append(&mut signature_key.as_slice().to_vec());
             }
-            let signature_keypair = SignatureKeyPair::from_raw(
+            let signature_keypair = OpenMlsBasicCredential::from_raw(
                 ciphersuite.signature_algorithm(),
                 private_key,
                 signature_key.as_slice().to_vec(),
@@ -237,7 +237,7 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
                     .find(|node| node.index == LeafNodeIndex::new(path_test.sender))
                     .unwrap();
 
-                SignatureKeyPair::from_raw(
+                OpenMlsBasicCredential::from_raw(
                     ciphersuite.signature_algorithm(),
                     full_leaf.signature_keypair.private().to_vec(),
                     full_leaf.signature_keypair.to_public_vec(),

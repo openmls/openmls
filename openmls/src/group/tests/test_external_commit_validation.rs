@@ -701,7 +701,7 @@ fn test_pure_ciphertest(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 }
 
 mod utils {
-    use openmls_basic_credential::SignatureKeyPair;
+    use openmls_basic_credential::OpenMlsBasicCredential;
     use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
     use tls_codec::{Deserialize, Serialize};
 
@@ -714,9 +714,9 @@ mod utils {
     // Test setup values
     pub(super) struct ECValidationTestSetup {
         pub alice_group: MlsGroup,
-        // We only allow [`SignatureKeyPair`] here for new.
-        pub alice_credential: SignatureKeyPair,
-        pub bob_credential: SignatureKeyPair,
+        // We only allow [`OpenMlsBasicCredential`] here for new.
+        pub alice_credential: OpenMlsBasicCredential,
+        pub bob_credential: OpenMlsBasicCredential,
         pub public_message_commit: PublicMessage,
     }
 

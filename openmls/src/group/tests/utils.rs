@@ -7,7 +7,7 @@
 use std::{cell::RefCell, collections::HashMap};
 
 use config::CryptoConfig;
-use openmls_basic_credential::SignatureKeyPair;
+use openmls_basic_credential::OpenMlsBasicCredential;
 use openmls_traits::{signatures::Signer, OpenMlsCryptoProvider};
 use rand::{rngs::OsRng, RngCore};
 use tls_codec::Serialize;
@@ -42,7 +42,7 @@ pub(crate) struct TestSetupConfig {
 
 /// A client in a test setup.
 pub(crate) struct TestClient {
-    pub(crate) credentials: HashMap<Ciphersuite, SignatureKeyPair>,
+    pub(crate) credentials: HashMap<Ciphersuite, OpenMlsBasicCredential>,
     pub(crate) key_package_bundles: RefCell<Vec<KeyPackageBundle>>,
     pub(crate) group_states: RefCell<HashMap<GroupId, CoreGroup>>,
 }

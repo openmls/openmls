@@ -1,7 +1,7 @@
 //! This module tests the validation of message framing as defined in
 //! https://openmls.tech/book/message_validation.html#semantic-validation-of-message-framing
 
-use openmls_basic_credential::SignatureKeyPair;
+use openmls_basic_credential::OpenMlsBasicCredential;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use tls_codec::{Deserialize, Serialize};
@@ -21,8 +21,8 @@ use crate::{
 struct ValidationTestSetup {
     alice_group: MlsGroup,
     bob_group: MlsGroup,
-    _alice_credential: SignatureKeyPair,
-    _bob_credential: SignatureKeyPair,
+    _alice_credential: OpenMlsBasicCredential,
+    _bob_credential: OpenMlsBasicCredential,
     _alice_key_package: KeyPackage,
     _bob_key_package: KeyPackage,
 }

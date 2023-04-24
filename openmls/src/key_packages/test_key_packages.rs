@@ -1,5 +1,5 @@
 use crate::test_utils::*;
-use openmls_basic_credential::SignatureKeyPair;
+use openmls_basic_credential::OpenMlsBasicCredential;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::Deserialize;
 
@@ -9,9 +9,9 @@ use crate::{extensions::*, key_packages::*};
 pub(crate) fn key_package(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
-) -> (KeyPackage, SignatureKeyPair) {
+) -> (KeyPackage, OpenMlsBasicCredential) {
     let credential =
-        SignatureKeyPair::new(ciphersuite.signature_algorithm(), b"Sasha".to_vec()).unwrap();
+        OpenMlsBasicCredential::new(ciphersuite.signature_algorithm(), b"Sasha".to_vec()).unwrap();
 
     // Generate a valid KeyPackage.
     let key_package = KeyPackage::builder()
@@ -59,7 +59,7 @@ fn serialization(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider)
 #[apply(ciphersuites_and_backends)]
 fn application_id_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let credential =
-        SignatureKeyPair::new(ciphersuite.signature_algorithm(), b"Sasha".to_vec()).unwrap();
+        OpenMlsBasicCredential::new(ciphersuite.signature_algorithm(), b"Sasha".to_vec()).unwrap();
     let pk = OpenMlsSignaturePublicKey::new(
         credential.public().into(),
         ciphersuite.signature_algorithm(),

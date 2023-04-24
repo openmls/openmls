@@ -8,7 +8,7 @@ use std::{
     io::{BufReader, Write},
 };
 
-use openmls_basic_credential::SignatureKeyPair;
+use openmls_basic_credential::OpenMlsBasicCredential;
 use openmls_traits::{
     key_store::OpenMlsKeyStore,
     types::{HpkeKeyPair, SignatureScheme},
@@ -90,8 +90,8 @@ pub fn credential(
     identity: &[u8],
     signature_scheme: SignatureScheme,
     backend: &impl OpenMlsCryptoProvider,
-) -> SignatureKeyPair {
-    let credential = SignatureKeyPair::new(signature_scheme, identity.to_vec()).unwrap();
+) -> OpenMlsBasicCredential {
+    let credential = OpenMlsBasicCredential::new(signature_scheme, identity.to_vec()).unwrap();
     credential.store(backend.key_store()).unwrap();
     credential
 }
@@ -99,7 +99,7 @@ pub fn credential(
 /// Generate a key package with extensions
 pub fn key_package_with_extensions<KeyStore: OpenMlsKeyStore>(
     backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-    credential: &SignatureKeyPair,
+    credential: &OpenMlsBasicCredential,
     ciphersuite: Ciphersuite,
     extensions: Extensions,
 ) -> KeyPackage {
@@ -121,7 +121,7 @@ pub fn key_package_with_extensions<KeyStore: OpenMlsKeyStore>(
 /// Generate a key package.
 pub fn key_package<KeyStore: OpenMlsKeyStore>(
     backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-    credential: &SignatureKeyPair,
+    credential: &OpenMlsBasicCredential,
     ciphersuite: Ciphersuite,
 ) -> KeyPackage {
     key_package_with_extensions(backend, credential, ciphersuite, Extensions::empty())
@@ -135,7 +135,7 @@ pub(crate) struct GroupCandidate {
     pub key_package: KeyPackage,
     pub encryption_keypair: EncryptionKeyPair,
     pub init_keypair: HpkeKeyPair,
-    pub credential: SignatureKeyPair,
+    pub credential: OpenMlsBasicCredential,
 }
 
 #[cfg(test)]
@@ -145,7 +145,7 @@ pub(crate) fn generate_group_candidate(
     backend: Option<&impl OpenMlsCryptoProvider>,
 ) -> GroupCandidate {
     let credential =
-        SignatureKeyPair::new(ciphersuite.signature_algorithm(), identity.to_vec()).unwrap();
+        OpenMlsBasicCredential::new(ciphersuite.signature_algorithm(), identity.to_vec()).unwrap();
 
     // Store if there is a key store.
     if let Some(backend) = backend {

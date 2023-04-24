@@ -6,7 +6,7 @@
 //! ```
 //! use openmls::prelude::{*, config::CryptoConfig};
 //! use openmls_rust_crypto::{OpenMlsRustCrypto};
-//! use openmls_basic_credential::SignatureKeyPair;
+//! use openmls_basic_credential::OpenMlsBasicCredential;
 //!
 //! // Define ciphersuite ...
 //! let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
@@ -20,9 +20,9 @@
 //!     identity: Vec<u8>,
 //!     signature_algorithm: SignatureScheme,
 //!     backend: &impl OpenMlsCryptoProvider,
-//! ) -> SignatureKeyPair {
+//! ) -> OpenMlsBasicCredential {
 //!     let credential =
-//!         SignatureKeyPair::new(signature_algorithm, identity)
+//!         OpenMlsBasicCredential::new(signature_algorithm, identity)
 //!             .expect("Error generating a signature key pair.");
 //!
 //!     // Store the credential bundle into the key store so OpenMLS has access
@@ -38,8 +38,8 @@
 //! fn generate_key_package(
 //!     ciphersuite: Ciphersuite,
 //!     backend: &impl OpenMlsCryptoProvider,
-//!     signer: &SignatureKeyPair,
-//!     credential_with_key: &SignatureKeyPair,
+//!     signer: &OpenMlsBasicCredential,
+//!     credential_with_key: &OpenMlsBasicCredential,
 //! ) -> KeyPackage {
 //!     // Create the key package
 //!     KeyPackage::builder()

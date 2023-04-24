@@ -1,4 +1,4 @@
-use openmls_basic_credential::SignatureKeyPair;
+use openmls_basic_credential::OpenMlsBasicCredential;
 use openmls_traits::{
     credential::OpenMlsCredential, random::OpenMlsRand, types::Ciphersuite, OpenMlsCryptoProvider,
 };
@@ -283,7 +283,7 @@ fn create_content(
     ciphersuite: Ciphersuite,
     wire_format: WireFormat,
     backend: &impl OpenMlsCryptoProvider,
-) -> (AuthenticatedContent, SignatureKeyPair) {
+) -> (AuthenticatedContent, OpenMlsBasicCredential) {
     let credential = credential(b"Creator", ciphersuite.into(), backend);
     let sender = Sender::build_member(LeafNodeIndex::new(0));
     let group_context = GroupContext::new(
@@ -579,9 +579,9 @@ pub(crate) fn setup_alice_bob_group(
 ) -> (
     FramingParameters,
     CoreGroup,
-    SignatureKeyPair,
+    OpenMlsBasicCredential,
     CoreGroup,
-    SignatureKeyPair,
+    OpenMlsBasicCredential,
 ) {
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);

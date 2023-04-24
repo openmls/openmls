@@ -1,6 +1,6 @@
 //! This module tests the different values for `WireFormatPolicy`
 
-use openmls_basic_credential::SignatureKeyPair;
+use openmls_basic_credential::OpenMlsBasicCredential;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsCryptoProvider};
 
@@ -20,7 +20,7 @@ fn create_group(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
     wire_format_policy: WireFormatPolicy,
-) -> (MlsGroup, SignatureKeyPair) {
+) -> (MlsGroup, OpenMlsBasicCredential) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Generate credential bundles
@@ -55,7 +55,7 @@ fn receive_message(
 ) -> MlsMessageIn {
     // Generate credential
     let credential =
-        SignatureKeyPair::new(ciphersuite.signature_algorithm(), "Bob".into()).unwrap();
+        OpenMlsBasicCredential::new(ciphersuite.signature_algorithm(), "Bob".into()).unwrap();
     credential.store(backend.key_store()).unwrap();
 
     // Generate KeyPackage

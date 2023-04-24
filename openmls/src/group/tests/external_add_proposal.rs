@@ -1,4 +1,4 @@
-use openmls_basic_credential::SignatureKeyPair;
+use openmls_basic_credential::OpenMlsBasicCredential;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use rstest::*;
 use rstest_reuse::{self, *};
@@ -17,8 +17,8 @@ use crate::{
 use openmls_traits::types::Ciphersuite;
 
 struct ProposalValidationTestSetup {
-    alice_group: (MlsGroup, SignatureKeyPair),
-    bob_group: (MlsGroup, SignatureKeyPair),
+    alice_group: (MlsGroup, OpenMlsBasicCredential),
+    bob_group: (MlsGroup, OpenMlsBasicCredential),
 }
 
 // Creates a standalone group
@@ -27,7 +27,7 @@ fn new_test_group(
     wire_format_policy: WireFormatPolicy,
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
-) -> (MlsGroup, SignatureKeyPair) {
+) -> (MlsGroup, OpenMlsBasicCredential) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Generate credential bundles

@@ -6,7 +6,7 @@ use openmls::{
     test_utils::*,
     *,
 };
-use openmls_basic_credential::SignatureKeyPair;
+use openmls_basic_credential::OpenMlsBasicCredential;
 use openmls_traits::{signatures::Signer, types::SignatureScheme, OpenMlsCryptoProvider};
 
 lazy_static! {
@@ -43,9 +43,9 @@ fn generate_credential(
     identity: Vec<u8>,
     signature_algorithm: SignatureScheme,
     backend: &impl OpenMlsCryptoProvider,
-) -> SignatureKeyPair {
+) -> OpenMlsBasicCredential {
     // ANCHOR: create_basic_credential
-    let credential = SignatureKeyPair::new(signature_algorithm, identity).unwrap();
+    let credential = OpenMlsBasicCredential::new(signature_algorithm, identity).unwrap();
     credential.store(backend.key_store()).unwrap();
     // ANCHOR_END: create_basic_credential
 
@@ -54,7 +54,7 @@ fn generate_credential(
 
 fn generate_key_package(
     ciphersuite: Ciphersuite,
-    credential: &SignatureKeyPair,
+    credential: &OpenMlsBasicCredential,
     extensions: Extensions,
     backend: &impl OpenMlsCryptoProvider,
     signer: &impl Signer,
