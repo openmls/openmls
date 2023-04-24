@@ -142,77 +142,83 @@ pub(crate) struct GroupCandidate {
 pub(crate) fn generate_group_candidate(
     identity: &[u8],
     ciphersuite: Ciphersuite,
-    backend: Option<&impl OpenMlsCryptoProvider>,
+    backend: &impl OpenMlsCryptoProvider,
+    use_store: bool,
 ) -> GroupCandidate {
+    use openmls_traits::credential::OpenMlsCredential;
+
     let credential =
         OpenMlsBasicCredential::new(ciphersuite.signature_algorithm(), identity.to_vec()).unwrap();
 
     // Store if there is a key store.
-    if let Some(backend) = backend {
+    if use_store {
         credential.store(backend.key_store()).unwrap();
     }
+
+    let signature_pkey = OpenMlsSignaturePublicKey::new(
+        credential.public_key().into(),
+        ciphersuite.signature_algorithm(),
+    )
+    .unwrap();
 
     let (key_package, encryption_keypair, init_keypair) = {
         let builder = KeyPackageBuilder::new();
 
-        match backend {
-            Some(backend) => {
-                let key_package = builder
-                    .build(
-                        CryptoConfig::with_default_version(ciphersuite),
-                        backend,
-                        &credential,
-                        &credential,
-                    )
-                    .unwrap();
-
-                let encryption_keypair = EncryptionKeyPair::read_from_key_store(
+        if use_store {
+            let key_package = builder
+                .build(
+                    CryptoConfig::with_default_version(ciphersuite),
                     backend,
-                    key_package.leaf_node().encryption_key(),
+                    &credential,
+                    &credential,
                 )
                 .unwrap();
-                let init_keypair = {
-                    let private = backend
-                        .key_store()
-                        .read::<HpkePrivateKey>(key_package.hpke_init_key().as_slice())
-                        .unwrap();
 
-                    HpkeKeyPair {
-                        private: private.as_slice().to_vec(),
-                        public: key_package.hpke_init_key().as_slice().to_vec(),
-                    }
-                };
-
-                (key_package, encryption_keypair, init_keypair)
-            }
-            None => {
-                // We don't want to store anything. So...
-                let backend = OpenMlsRustCrypto::default();
-
-                let key_package_creation_result = builder
-                    .build_without_key_storage(
-                        CryptoConfig::with_default_version(ciphersuite),
-                        &backend,
-                        &credential,
-                        &credential,
-                    )
+            let encryption_keypair = EncryptionKeyPair::read_from_key_store(
+                backend,
+                key_package.leaf_node().encryption_key(),
+            )
+            .unwrap();
+            let init_keypair = {
+                let private = backend
+                    .key_store()
+                    .read::<HpkePrivateKey>(key_package.hpke_init_key().as_slice())
                     .unwrap();
 
-                let init_keypair = HpkeKeyPair {
-                    private: key_package_creation_result.init_private_key,
-                    public: key_package_creation_result
-                        .key_package
-                        .hpke_init_key()
-                        .as_slice()
-                        .to_vec(),
-                };
+                HpkeKeyPair {
+                    private: private.as_slice().to_vec(),
+                    public: key_package.hpke_init_key().as_slice().to_vec(),
+                }
+            };
 
-                (
-                    key_package_creation_result.key_package,
-                    key_package_creation_result.encryption_keypair,
-                    init_keypair,
+            (key_package, encryption_keypair, init_keypair)
+        } else {
+            // We don't want to store anything. So...
+            let backend = OpenMlsRustCrypto::default();
+
+            let key_package_creation_result = builder
+                .build_without_key_storage(
+                    CryptoConfig::with_default_version(ciphersuite),
+                    &backend,
+                    &credential,
+                    &credential,
                 )
-            }
+                .unwrap();
+
+            let init_keypair = HpkeKeyPair {
+                private: key_package_creation_result.init_private_key,
+                public: key_package_creation_result
+                    .key_package
+                    .hpke_init_key()
+                    .as_slice()
+                    .to_vec(),
+            };
+
+            (
+                key_package_creation_result.key_package,
+                key_package_creation_result.encryption_keypair,
+                init_keypair,
+            )
         }
     };
 

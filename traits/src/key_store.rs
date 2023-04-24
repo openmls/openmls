@@ -10,9 +10,7 @@ pub enum MlsEntityId {
 }
 
 /// To implement by any struct owned by openmls aiming to be persisted in [OpenMlsKeyStore]
-pub trait MlsEntity:
-    serde::Serialize + serde::de::DeserializeOwned + tls_codec::Serialize + tls_codec::Deserialize
-{
+pub trait MlsEntity: serde::Serialize + serde::de::DeserializeOwned {
     /// Identifier used to downcast the actual entity within an [OpenMlsKeyStore] method.
     /// In case for example you need to select a SQL table depending on the entity type
     const ID: MlsEntityId;

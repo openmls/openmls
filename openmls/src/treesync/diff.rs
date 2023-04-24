@@ -27,13 +27,12 @@ use super::{
     errors::*,
     node::{
         encryption_keys::{EncryptionKey, EncryptionKeyPair, EncryptionPrivateKey},
-        leaf_node::OpenMlsLeafNode,
         parent_node::{ParentNode, PathDerivationResult, PlainUpdatePathNode},
         Node, NodeReference,
     },
     treekem::UpdatePath,
     treesync_node::{TreeSyncLeafNode, TreeSyncParentNode},
-    TreeSync, TreeSyncParentHashError,
+    LeafNode, TreeSync, TreeSyncParentHashError,
 };
 use crate::{
     binary_tree::{
@@ -189,7 +188,7 @@ impl<'a> TreeSyncDiff<'a> {
     /// direct path.
     ///
     /// Returns an error if the target leaf is blank or outside of the tree.
-    pub(crate) fn update_leaf(&mut self, leaf_node: OpenMlsLeafNode, leaf_index: LeafNodeIndex) {
+    pub(crate) fn update_leaf(&mut self, leaf_node: LeafNode, leaf_index: LeafNodeIndex) {
         self.diff.replace_leaf(leaf_index, leaf_node.into());
         // This effectively wipes the tree hashes in the direct path.
         self.diff
@@ -221,7 +220,7 @@ impl<'a> TreeSyncDiff<'a> {
     /// Returns the LeafNodeIndex of the new leaf.
     pub(crate) fn add_leaf(
         &mut self,
-        leaf_node: OpenMlsLeafNode,
+        leaf_node: LeafNode,
     ) -> Result<LeafNodeIndex, TreeSyncAddLeaf> {
         // Find a free leaf and fill it with the new key package.
         let leaf_index = self.free_leaf_index();
@@ -280,10 +279,10 @@ impl<'a> TreeSyncDiff<'a> {
         ParentNode::derive_path(backend, ciphersuite, path_secret, path_indices)
     }
 
-    /// Given a new [`OpenMlsLeafNode`], use it to create a new path starting
+    /// Given a new [`LeafNode`], use it to create a new path starting
     /// from `leaf_index` and apply it to this diff. The given
     /// [`CredentialBundle`] reference is used to sign the target
-    /// [`OpenMlsLeafNode`] after updating its parent hash.
+    /// [`LeafNode`] after updating its parent hash.
     ///
     /// Returns the [`CommitSecret`] and the path resulting from the path
     /// derivation, as well as the newly derived [`EncryptionKeyPair`]s.
@@ -309,7 +308,7 @@ impl<'a> TreeSyncDiff<'a> {
 
         self.leaf_mut(leaf_index)
             .ok_or_else(|| LibraryError::custom("Didn't find own leaf in diff."))?
-            .update_parent_hash(&parent_hash, group_id, signer)?;
+            .update_parent_hash(&parent_hash, group_id, leaf_index, signer)?;
 
         Ok((update_path_nodes, keypairs, commit_secret))
     }
@@ -335,12 +334,12 @@ impl<'a> TreeSyncDiff<'a> {
         if self.diff.leaf(sender_leaf_index).node().is_none()
             || sender_leaf_index.u32() >= self.leaf_count()
         {
-            let new_leaf_index = self
-                .add_leaf(update_path.leaf_node().clone().into())
-                .map_err(|e| match e {
-                    TreeSyncAddLeaf::LibraryError(e) => ApplyUpdatePathError::LibraryError(e),
-                    TreeSyncAddLeaf::TreeFull => ApplyUpdatePathError::TreeFull,
-                })?;
+            let new_leaf_index =
+                self.add_leaf(update_path.leaf_node().clone())
+                    .map_err(|e| match e {
+                        TreeSyncAddLeaf::LibraryError(e) => ApplyUpdatePathError::LibraryError(e),
+                        TreeSyncAddLeaf::TreeFull => ApplyUpdatePathError::TreeFull,
+                    })?;
             // The new member should have the same index as the claimed sender index.
             if sender_leaf_index != new_leaf_index {
                 return Err(ApplyUpdatePathError::InconsistentSenderIndex);
@@ -372,8 +371,7 @@ impl<'a> TreeSyncDiff<'a> {
         };
 
         // Update the `encryption_key` in the leaf.
-        let mut leaf: OpenMlsLeafNode = update_path.leaf_node().clone().into();
-        leaf.set_leaf_index(sender_leaf_index);
+        let leaf: LeafNode = update_path.leaf_node().clone();
         self.diff.replace_leaf(sender_leaf_index, leaf.into());
         Ok(())
     }
@@ -643,7 +641,6 @@ impl<'a> TreeSyncDiff<'a> {
                 // Find parent hash in the left resolution.
                 let left_descendant = left_resolution.iter().find(|(_, node)| match node {
                     NodeReference::Leaf(leaf) => leaf
-                        .leaf_node
                         .parent_hash()
                         .map(|parent_hash| parent_hash == parent_hash_left)
                         .unwrap_or(false),
@@ -653,7 +650,6 @@ impl<'a> TreeSyncDiff<'a> {
                 // Find parent hash in the right resolution.
                 let right_descendant = right_resolution.iter().find(|(_, node)| match node {
                     NodeReference::Leaf(leaf) => leaf
-                        .leaf_node
                         .parent_hash()
                         .map(|parent_hash| parent_hash == parent_hash_right)
                         .unwrap_or(false),
@@ -724,12 +720,12 @@ impl<'a> TreeSyncDiff<'a> {
     }
 
     /// Return a reference to the leaf with the given index.
-    pub(crate) fn leaf(&self, index: LeafNodeIndex) -> Option<&OpenMlsLeafNode> {
+    pub(crate) fn leaf(&self, index: LeafNodeIndex) -> Option<&LeafNode> {
         self.diff.leaf(index).node().as_ref()
     }
 
     /// Return a mutable reference to the leaf with the given index.
-    pub(crate) fn leaf_mut(&mut self, index: LeafNodeIndex) -> Option<&mut OpenMlsLeafNode> {
+    pub(crate) fn leaf_mut(&mut self, index: LeafNodeIndex) -> Option<&mut LeafNode> {
         self.diff.leaf_mut(index).node_mut().as_mut()
     }
 

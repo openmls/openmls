@@ -33,14 +33,8 @@ pub(crate) fn key_package(
 fn generate_key_package(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let (key_package, credential) = key_package(ciphersuite, backend);
 
-    let pk = OpenMlsSignaturePublicKey::new(
-        credential.public().into(),
-        ciphersuite.signature_algorithm(),
-    )
-    .unwrap();
-    assert!(key_package.verify_no_out(backend.crypto(), &pk).is_ok());
-    // TODO[FK]: #819 #133 replace with `validate`
-    assert!(KeyPackage::verify(&key_package, backend.crypto()).is_ok());
+    let kpi = KeyPackageIn::from(key_package);
+    assert!(kpi.validate(backend.crypto()).is_ok());
 }
 
 #[apply(ciphersuites_and_backends)]
@@ -51,8 +45,10 @@ fn serialization(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider)
         .tls_serialize_detached()
         .expect("An unexpected error occurred.");
 
-    let decoded_key_package = KeyPackage::tls_deserialize(&mut encoded.as_slice())
-        .expect("An unexpected error occurred.");
+    let decoded_key_package = KeyPackage::from(
+        KeyPackageIn::tls_deserialize(&mut encoded.as_slice())
+            .expect("An unexpected error occurred."),
+    );
     assert_eq!(key_package, decoded_key_package);
 }
 
@@ -83,9 +79,8 @@ fn application_id_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
         )
         .expect("An unexpected error occurred.");
 
-    assert!(key_package.verify_no_out(backend.crypto(), &pk).is_ok());
-    // TODO[FK]: #819 #133 replace with `validate`
-    assert!(KeyPackage::verify(&key_package, backend.crypto()).is_ok());
+    let kpi = KeyPackageIn::from(key_package.clone());
+    assert!(kpi.validate(backend.crypto()).is_ok());
 
     // Check ID
     assert_eq!(

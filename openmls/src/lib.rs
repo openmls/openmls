@@ -118,7 +118,7 @@
 //!     welcome,
 //!     // The public tree is need and transferred out of band.
 //!     // It is also possible to use the [`RatchetTreeExtension`]
-//!     Some(sasha_group.export_ratchet_tree()),
+//!     Some(sasha_group.export_ratchet_tree().into()),
 //!  )
 //!  .expect("Error joining group from Welcome");
 //! ```

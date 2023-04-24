@@ -1,4 +1,4 @@
-use openmls_traits::types::credential::Credential;
+use openmls_traits::types::{credential::Credential, Ciphersuite};
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
@@ -66,14 +66,15 @@ impl SenderExtensionIndex {
 
 #[cfg(test)]
 mod test {
+    use crate::test_utils::*;
     use openmls_basic_credential::OpenMlsBasicCredential;
     use openmls_traits::{credential::OpenMlsCredential, types::SignatureScheme};
     use tls_codec::{Deserialize, Serialize};
 
     use super::*;
 
-    #[test]
-    fn test_serialize_deserialize() {
+    #[apply(ciphersuites)]
+    fn test_serialize_deserialize(ciphersuite: Ciphersuite) {
         let tests = {
             let mut external_sender_extensions = Vec::new();
 

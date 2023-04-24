@@ -36,6 +36,7 @@ pub use crate::treesync::{
     node::leaf_node::{Capabilities, LeafNode},
     node::parent_node::ParentNode,
     node::Node,
+    RatchetTreeIn,
 };
 
 // PSKs

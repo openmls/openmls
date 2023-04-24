@@ -6,7 +6,7 @@ use crate::{
     error::LibraryError,
     framing::{
         mls_content::FramedContentBody, ApplicationMessage, DecryptedMessage, ProcessedMessage,
-        ProcessedMessageContent, ProtocolMessage, Sender, UnverifiedMessage,
+        ProcessedMessageContent, ProtocolMessage, Sender, SenderContext, UnverifiedMessage,
     },
     group::{
         core_group::proposals::{ProposalStore, QueuedProposal},
@@ -64,15 +64,30 @@ impl PublicGroup {
                 .unwrap_or_default(),
             self.group_context().extensions().external_senders(),
         )?;
-        let pk = OpenMlsSignaturePublicKey::from_signature_key(
+        let signature_public_key = OpenMlsSignaturePublicKey::from_signature_key(
             signature_key,
             self.ciphersuite().signature_algorithm(),
         );
 
+        // For commit messages, we need to check if the sender is a member or a
+        // new member and set the tree position accordingly.
+        let sender_context = match decrypted_message.sender() {
+            Sender::Member(leaf_index) => Some(SenderContext::Member((
+                self.group_id().clone(),
+                *leaf_index,
+            ))),
+            Sender::NewMemberCommit => Some(SenderContext::ExternalCommit((
+                self.group_id().clone(),
+                self.treesync().free_leaf_index(),
+            ))),
+            Sender::External(_) | Sender::NewMemberProposal => None,
+        };
+
         Ok(UnverifiedMessage::from_decrypted_message(
             decrypted_message,
             credential,
-            pk,
+            signature_public_key,
+            sender_context,
         ))
     }
 
@@ -141,7 +156,7 @@ impl PublicGroup {
         let unverified_message = self
             .parse_message(decrypted_message, None)
             .map_err(ProcessMessageError::from)?;
-        self.process_unverified_message(unverified_message, &self.proposal_store, backend)
+        self.process_unverified_message(backend, unverified_message, &self.proposal_store)
     }
 }
 
@@ -175,14 +190,15 @@ impl PublicGroup {
     ///  - ValSem246 (as part of ValSem010)
     pub(crate) fn process_unverified_message(
         &self,
+        backend: &impl OpenMlsCryptoProvider,
         unverified_message: UnverifiedMessage,
         proposal_store: &ProposalStore,
-        backend: &impl OpenMlsCryptoProvider,
     ) -> Result<ProcessedMessage, ProcessMessageError> {
         // Checks the following semantic validation:
         //  - ValSem010
         //  - ValSem246 (as part of ValSem010)
-        let (content, credential) = unverified_message.verify(backend)?;
+        let (content, credential) =
+            unverified_message.verify(self.ciphersuite(), backend.crypto())?;
 
         match content.sender() {
             Sender::Member(_) | Sender::NewMemberCommit | Sender::NewMemberProposal => {

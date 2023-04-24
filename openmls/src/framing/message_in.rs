@@ -7,15 +7,17 @@
 //!
 //! The [`MlsMessageIn`] struct is meant to be deserialized upon receiving it
 //! from the DS. After deserialization, its content (either a [`PublicMessage`],
-//! [`PrivateMessage`], [`KeyPackage`], [`Welcome`] or [`GroupInfo`](crate::messages::group_info::GroupInfo)) can be
-//! extracted via [`MlsMessageIn::extract()`] for use with the [`MlsGroup`] API.
+//! [`PrivateMessage`], [`KeyPackageIn`], [`Welcome`] or
+//! [`GroupInfo`](crate::messages::group_info::GroupInfo)) can be extracted via
+//! [`MlsMessageIn::extract()`] for use with the [`MlsGroup`] API.
 //!
 //! If an [`MlsMessageIn`] contains a [`PublicMessage`] or [`PrivateMessage`],
 //! can be used to determine which group can be used to process the message.
 
 use super::*;
 use crate::{
-    key_packages::KeyPackage, messages::group_info::VerifiableGroupInfo, versions::ProtocolVersion,
+    key_packages::KeyPackageIn, messages::group_info::VerifiableGroupInfo,
+    versions::ProtocolVersion,
 };
 
 /// Before use with the [`MlsGroup`] API, the message has to be unpacked via
@@ -88,7 +90,7 @@ pub enum MlsMessageInBody {
 
     /// KeyPackage
     #[tls_codec(discriminant = 5)]
-    KeyPackage(KeyPackage),
+    KeyPackage(KeyPackageIn),
 }
 
 impl MlsMessageIn {
@@ -110,9 +112,9 @@ impl MlsMessageIn {
     }
 
     #[cfg(any(test, feature = "test-utils"))]
-    pub fn into_keypackage(self) -> Option<KeyPackage> {
+    pub fn into_keypackage(self) -> Option<crate::key_packages::KeyPackage> {
         match self.body {
-            MlsMessageInBody::KeyPackage(kp) => Some(kp),
+            MlsMessageInBody::KeyPackage(kp) => Some(kp.into()),
             _ => None,
         }
     }

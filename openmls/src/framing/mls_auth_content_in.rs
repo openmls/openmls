@@ -9,7 +9,7 @@
 
 use std::io::Read;
 
-use openmls_traits::types::credential::Credential;
+use openmls_traits::{types::{credential::Credential, Ciphersuite}, crypto::OpenMlsCrypto};
 use tls_codec::Serialize as TlsSerializeTrait;
 
 use super::{mls_auth_content::*, mls_content_in::*, *};
@@ -47,7 +47,23 @@ pub(crate) struct AuthenticatedContentIn {
     pub(super) auth: FramedContentAuthData,
 }
 
-#[cfg(test)]
+impl AuthenticatedContentIn {
+    /// Returns a [`AuthenticatedContent`] after successful validation.
+    pub(crate) fn validate(
+        self,
+        ciphersuite: Ciphersuite,
+        crypto: &impl OpenMlsCrypto,
+        sender_context: Option<SenderContext>,
+    ) -> Result<AuthenticatedContent, ValidationError> {
+        Ok(AuthenticatedContent {
+            wire_format: self.wire_format,
+            content: self.content.validate(ciphersuite, crypto, sender_context)?,
+            auth: self.auth,
+        })
+    }
+}
+
+#[cfg(any(feature = "test-utils", test))]
 impl AuthenticatedContentIn {
     /// Get the content body of the message.
     pub(crate) fn content(&self) -> &FramedContentBodyIn {
@@ -213,9 +229,9 @@ impl SignedStruct<FramedContentTbsIn> for AuthenticatedContentIn {
     }
 }
 
-// The following two `From` implementations break abstraction layers and MUST
+// The following `From` implementation( breaks abstraction layers and MUST
 // NOT be made available outside of tests or "test-utils".
-// TODO #1186: Re-enable #[cfg(any(feature = "test-utils", test))]
+#[cfg(any(feature = "test-utils", test))]
 impl From<AuthenticatedContentIn> for AuthenticatedContent {
     fn from(v: AuthenticatedContentIn) -> Self {
         AuthenticatedContent {

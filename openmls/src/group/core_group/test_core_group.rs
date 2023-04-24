@@ -14,7 +14,7 @@ use crate::{
     messages::{group_info::GroupInfoTBS, *},
     schedule::psk::{store::ResumptionPskStore, ExternalPsk, PreSharedKeyId, Psk},
     test_utils::*,
-    treesync::errors::ApplyUpdatePathError,
+    treesync::{errors::ApplyUpdatePathError, node::leaf_node::TreeInfoTbs},
     versions::ProtocolVersion,
 };
 
@@ -188,9 +188,9 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     // === Bob updates and commits ===
     let bob_old_leaf = group_bob.own_leaf_node().unwrap();
     let bob_update_leaf_node = bob_old_leaf
-        .leaf_node()
         .updated(
             CryptoConfig::with_default_version(ciphersuite),
+            TreeInfoTbs::Update(group_bob.own_tree_position()),
             backend,
             &bob_credential,
         )
@@ -378,7 +378,7 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
-        Some(ratchet_tree),
+        Some(ratchet_tree.into()),
         bob_key_package_bundle,
         backend,
         ResumptionPskStore::new(1024),
@@ -388,9 +388,9 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // === Bob updates and commits ===
     let bob_old_leaf = group_bob.own_leaf_node().unwrap();
     let bob_update_leaf_node = bob_old_leaf
-        .leaf_node()
         .updated(
             CryptoConfig::with_default_version(ciphersuite),
+            TreeInfoTbs::Update(group_bob.own_tree_position()),
             backend,
             &bob_credential,
         )
@@ -465,7 +465,7 @@ fn test_staged_commit_creation(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
-        Some(alice_group.public_group().export_ratchet_tree()),
+        Some(alice_group.public_group().export_ratchet_tree().into()),
         bob_key_package_bundle,
         backend,
         ResumptionPskStore::new(1024),
@@ -607,7 +607,7 @@ fn test_proposal_application_after_self_was_removed(
         add_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
-        Some(ratchet_tree),
+        Some(ratchet_tree.into()),
         bob_kpb,
         backend,
         ResumptionPskStore::new(1024),
@@ -687,7 +687,7 @@ fn test_proposal_application_after_self_was_removed(
         remove_add_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
-        Some(ratchet_tree),
+        Some(ratchet_tree.into()),
         charlie_kpb,
         backend,
         ResumptionPskStore::new(1024),

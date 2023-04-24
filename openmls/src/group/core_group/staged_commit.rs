@@ -351,7 +351,7 @@ impl CoreGroup {
         &self,
         mls_content: &AuthenticatedContent,
         proposal_store: &ProposalStore,
-        own_leaf_nodes: &[OpenMlsLeafNode],
+        own_leaf_nodes: &[LeafNode],
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<StagedCommit, StageCommitError> {
         let (old_epoch_keypairs, leaf_node_keypairs) =

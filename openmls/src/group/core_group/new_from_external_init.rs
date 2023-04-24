@@ -29,7 +29,7 @@ impl CoreGroup {
         signer: &impl Signer,
         credential: &dyn OpenMlsCredential,
         params: CreateCommitParams,
-        ratchet_tree: Option<RatchetTree>,
+        ratchet_tree: Option<RatchetTreeIn>,
         verifiable_group_info: VerifiableGroupInfo,
     ) -> Result<ExternalCommitResult, ExternalCommitError> {
         // Build the ratchet tree

@@ -28,25 +28,22 @@ pub struct ClientInfo {
 /// where the first value is the key package hash (output of `KeyPackage::hash`)
 /// and the second value is the corresponding key package.
 #[derive(Debug, Default, Clone, PartialEq, TlsSerialize, TlsDeserialize, TlsSize)]
-pub struct ClientKeyPackages(pub TlsVecU32<(TlsByteVecU8, KeyPackage)>);
+pub struct ClientKeyPackages(pub TlsVecU32<(TlsByteVecU8, KeyPackageIn)>);
 
 impl ClientInfo {
     /// Create a new `ClientInfo` struct for a given client name and vector of
     /// key packages with corresponding hashes.
-    pub fn new(client_name: String, mut key_packages: Vec<(Vec<u8>, KeyPackage)>) -> Self {
+    pub fn new(client_name: String, mut key_packages: Vec<(Vec<u8>, KeyPackageIn)>) -> Self {
+        let key_package = KeyPackage::from(key_packages[0].1.clone());
+        let id = key_package.leaf_node().credential().identity().to_vec();
         Self {
             client_name,
-            id: key_packages[0]
-                .1
-                .leaf_node()
-                .credential()
-                .identity()
-                .to_vec(),
+            id,
             key_packages: ClientKeyPackages(
                 key_packages
                     .drain(..)
                     .map(|(e1, e2)| (e1.into(), e2))
-                    .collect::<Vec<(TlsByteVecU8, KeyPackage)>>()
+                    .collect::<Vec<(TlsByteVecU8, KeyPackageIn)>>()
                     .into(),
             ),
             msgs: Vec::new(),
@@ -103,8 +100,8 @@ impl tls_codec::Deserialize for ClientInfo {
     fn tls_deserialize<R: std::io::Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
         let client_name =
             String::from_utf8_lossy(TlsByteVecU16::tls_deserialize(bytes)?.as_slice()).into();
-        let mut key_packages: Vec<(TlsByteVecU8, KeyPackage)> =
-            TlsVecU32::<(TlsByteVecU8, KeyPackage)>::tls_deserialize(bytes)?.into();
+        let mut key_packages: Vec<(TlsByteVecU8, KeyPackageIn)> =
+            TlsVecU32::<(TlsByteVecU8, KeyPackageIn)>::tls_deserialize(bytes)?.into();
         let key_packages = key_packages
             .drain(..)
             .map(|(e1, e2)| (e1.into(), e2))

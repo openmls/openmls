@@ -76,7 +76,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
             &bob_backend,
             &mls_group_config,
             welcome.clone(),
-            Some(alice_group.export_ratchet_tree()),
+            Some(alice_group.export_ratchet_tree().into()),
         )
         .expect("Error creating group from Welcome");
 
@@ -84,7 +84,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
             &charlie_backend,
             &mls_group_config,
             welcome,
-            Some(alice_group.export_ratchet_tree()),
+            Some(alice_group.export_ratchet_tree().into()),
         )
         .expect("Error creating group from Welcome");
 

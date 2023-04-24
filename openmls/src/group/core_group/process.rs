@@ -6,7 +6,6 @@ use crate::{
         errors::{MergeCommitError, StageCommitError, ValidationError},
         mls_group::errors::ProcessMessageError,
     },
-    treesync::node::leaf_node::OpenMlsLeafNode,
 };
 
 use super::{proposals::ProposalStore, *};
@@ -41,16 +40,17 @@ impl CoreGroup {
     ///  - ValSem246 (as part of ValSem010)
     pub(crate) fn process_unverified_message(
         &self,
+        backend: &impl OpenMlsCryptoProvider,
         unverified_message: UnverifiedMessage,
         proposal_store: &ProposalStore,
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
-        backend: &impl OpenMlsCryptoProvider,
     ) -> Result<ProcessedMessage, ProcessMessageError> {
         // Checks the following semantic validation:
         //  - ValSem010
         //  - ValSem246 (as part of ValSem010)
-        let (content, credential) = unverified_message.verify(backend)?;
+        let (content, credential) =
+            unverified_message.verify(self.ciphersuite(), backend.crypto())?;
 
         match content.sender() {
             Sender::Member(_) | Sender::NewMemberCommit | Sender::NewMemberProposal => {
@@ -172,7 +172,7 @@ impl CoreGroup {
         message: impl Into<ProtocolMessage>,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
         proposal_store: &ProposalStore,
-        own_leaf_nodes: &[OpenMlsLeafNode],
+        own_leaf_nodes: &[LeafNode],
     ) -> Result<ProcessedMessage, ProcessMessageError> {
         let message: ProtocolMessage = message.into();
 
@@ -198,11 +198,11 @@ impl CoreGroup {
             };
 
         self.process_unverified_message(
+            backend,
             unverified_message,
             proposal_store,
             old_epoch_keypairs,
             leaf_node_keypairs,
-            backend,
         )
     }
 
@@ -266,7 +266,7 @@ impl CoreGroup {
     pub(super) fn read_decryption_keypairs(
         &self,
         backend: &impl OpenMlsCryptoProvider,
-        own_leaf_nodes: &[OpenMlsLeafNode],
+        own_leaf_nodes: &[LeafNode],
     ) -> Result<(Vec<EncryptionKeyPair>, Vec<EncryptionKeyPair>), StageCommitError> {
         // All keys from the previous epoch are potential decryption keypairs.
         let old_epoch_keypairs = self.read_epoch_keypairs(backend);

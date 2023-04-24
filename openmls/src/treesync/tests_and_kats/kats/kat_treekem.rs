@@ -92,8 +92,13 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
     let treesync = {
         let ratchet_tree = RatchetTreeExtension::tls_deserialize_exact(test.ratchet_tree).unwrap();
 
-        TreeSync::from_ratchet_tree(backend, ciphersuite, ratchet_tree.ratchet_tree().clone())
-            .unwrap()
+        TreeSync::from_ratchet_tree(
+            backend,
+            ciphersuite,
+            ratchet_tree.ratchet_tree().clone(),
+            &GroupId::from_slice(test.group_id.as_slice()),
+        )
+        .unwrap()
     };
 
     let full_leaf_nodes = {
@@ -276,7 +281,6 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
                     diff_after_kat
                         .leaf(LeafNodeIndex::new(path_test.sender))
                         .unwrap()
-                        .leaf_node
                         .clone(),
                     encrypted_path,
                 ),

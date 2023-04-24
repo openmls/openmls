@@ -49,10 +49,14 @@ fn public_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) 
         .unwrap()
         .into_verifiable_group_info()
         .unwrap();
-    let nodes = alice_group.export_ratchet_tree();
-    let (mut public_group, _extensions) =
-        PublicGroup::from_external(backend, nodes, verifiable_group_info, ProposalStore::new())
-            .unwrap();
+    let ratchet_tree = alice_group.export_ratchet_tree();
+    let (mut public_group, _extensions) = PublicGroup::from_external(
+        backend,
+        ratchet_tree.into(),
+        verifiable_group_info,
+        ProposalStore::new(),
+    )
+    .unwrap();
 
     // === Alice adds Bob ===
     let (message, welcome, _group_info) = alice_group
@@ -90,7 +94,7 @@ fn public_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) 
         backend,
         &mls_group_config,
         welcome.into_welcome().expect("Unexpected message type."),
-        Some(alice_group.export_ratchet_tree()),
+        Some(alice_group.export_ratchet_tree().into()),
     )
     .expect("Error creating group from Welcome");
 
@@ -138,7 +142,7 @@ fn public_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) 
         backend,
         &mls_group_config,
         welcome.into_welcome().expect("Unexpected message type."),
-        Some(bob_group.export_ratchet_tree()),
+        Some(bob_group.export_ratchet_tree().into()),
     )
     .expect("Error creating group from Welcome");
 

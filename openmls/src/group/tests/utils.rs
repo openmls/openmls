@@ -247,7 +247,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
                 // Welcome.
                 let new_group = match CoreGroup::new_from_welcome(
                     welcome.clone(),
-                    Some(core_group.public_group().export_ratchet_tree()),
+                    Some(core_group.public_group().export_ratchet_tree().into()),
                     key_package_bundle,
                     backend,
                     ResumptionPskStore::new(1024),

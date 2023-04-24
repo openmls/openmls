@@ -10,7 +10,7 @@ use crate::{
     schedule::psk::store::ResumptionPskStore,
     test_utils::*,
     tree::sender_ratchet::SenderRatchetConfiguration,
-    treesync::node::leaf_node::OpenMlsLeafNode,
+    treesync::node::leaf_node::TreeInfoTbs,
     *,
 };
 
@@ -124,7 +124,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
-        Some(ratchet_tree),
+        Some(ratchet_tree.into()),
         bob_key_package_bundle,
         backend,
         ResumptionPskStore::new(1024),
@@ -142,9 +142,9 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
     let alice_new_leaf_node = group_alice
         .own_leaf_node()
         .unwrap()
-        .leaf_node()
         .updated(
             CryptoConfig::with_default_version(ciphersuite),
+            TreeInfoTbs::Update(group_alice.own_tree_position()),
             backend,
             &alice_credential,
         )
@@ -307,7 +307,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
-        Some(ratchet_tree),
+        Some(ratchet_tree.into()),
         bob_key_package_bundle,
         backend,
         ResumptionPskStore::new(1024),
@@ -361,9 +361,9 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     let bob_new_leaf_node = group_bob
         .own_leaf_node()
         .unwrap()
-        .leaf_node()
         .updated(
             CryptoConfig::with_default_version(ciphersuite),
+            TreeInfoTbs::Update(group_bob.own_tree_position()),
             backend,
             &alice_credential,
         )
@@ -424,9 +424,9 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     let alice_new_leaf_node = group_alice
         .own_leaf_node()
         .unwrap()
-        .leaf_node()
         .updated(
             CryptoConfig::with_default_version(ciphersuite),
+            TreeInfoTbs::Update(group_alice.own_tree_position()),
             backend,
             &alice_credential,
         )
@@ -484,9 +484,9 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     let bob_new_leaf_node = group_bob
         .own_leaf_node()
         .unwrap()
-        .leaf_node()
         .updated(
             CryptoConfig::with_default_version(ciphersuite),
+            TreeInfoTbs::Update(group_bob.own_tree_position()),
             backend,
             &bob_credential,
         )
@@ -537,15 +537,11 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .expect("Could not create StagedProposal."),
     );
 
-    let (leaf_node, encryption_keypair) =
-        OpenMlsLeafNode::from_leaf_node(backend, group_bob.own_leaf_index(), bob_new_leaf_node);
-    encryption_keypair.write_to_key_store(backend).unwrap();
-
     let staged_commit = group_bob
         .read_keys_and_stage_commit(
             &create_commit_result.commit,
             &proposal_store,
-            &[leaf_node],
+            &[bob_new_leaf_node],
             backend,
         )
         .expect("Error applying commit (Bob)");
@@ -621,7 +617,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
-        Some(ratchet_tree),
+        Some(ratchet_tree.into()),
         charlie_key_package_bundle,
         backend,
         ResumptionPskStore::new(1024),
@@ -705,9 +701,9 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     let charlie_new_leaf_node = group_charlie
         .own_leaf_node()
         .unwrap()
-        .leaf_node()
         .updated(
             CryptoConfig::with_default_version(ciphersuite),
+            TreeInfoTbs::Update(group_charlie.own_tree_position()),
             backend,
             &charlie_credential_with_keys,
         )

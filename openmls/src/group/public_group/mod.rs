@@ -40,9 +40,9 @@ use crate::{
         errors::DerivePathError,
         node::{
             encryption_keys::{EncryptionKey, EncryptionKeyPair},
-            leaf_node::OpenMlsLeafNode,
+            leaf_node::LeafNode,
         },
-        RatchetTree, TreeSync,
+        RatchetTree, RatchetTreeIn, TreeSync,
     },
     versions::ProtocolVersion,
 };
@@ -105,7 +105,7 @@ impl PublicGroup {
     /// details.
     pub fn from_external(
         backend: &impl OpenMlsCryptoProvider,
-        ratchet_tree: RatchetTree,
+        ratchet_tree: RatchetTreeIn,
         verifiable_group_info: VerifiableGroupInfo,
         proposal_store: ProposalStore,
     ) -> Result<(Self, GroupInfo), CreationFromExternalError> {
@@ -114,7 +114,12 @@ impl PublicGroup {
         // Create a RatchetTree from the given nodes. We have to do this before
         // verifying the group info, since we need to find the Credential to verify the
         // signature against.
-        let treesync = TreeSync::from_ratchet_tree(backend, ciphersuite, ratchet_tree)?;
+        let treesync = TreeSync::from_ratchet_tree(
+            backend,
+            ciphersuite,
+            ratchet_tree,
+            verifiable_group_info.group_id(),
+        )?;
 
         let group_info: GroupInfo = {
             let signer_signature_key = treesync
@@ -183,6 +188,7 @@ impl PublicGroup {
         let leaf_index = if let Some(remove_proposal) = remove_proposal_option {
             if let Proposal::Remove(remove_proposal) = remove_proposal {
                 let removed_index = remove_proposal.removed();
+                // The committer should always be in the left-most leaf.
                 if removed_index < free_leaf_index {
                     removed_index
                 } else {
@@ -296,7 +302,7 @@ impl PublicGroup {
 
     /// Return a reference to the leaf at the given `LeafNodeIndex` or `None` if the
     /// leaf is blank.
-    pub fn leaf(&self, leaf_index: LeafNodeIndex) -> Option<&OpenMlsLeafNode> {
+    pub fn leaf(&self, leaf_index: LeafNodeIndex) -> Option<&LeafNode> {
         self.treesync().leaf(leaf_index)
     }
 
