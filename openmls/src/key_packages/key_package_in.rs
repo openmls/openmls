@@ -62,7 +62,8 @@ impl KeyPackageIn {
     /// * verify that the signature on this key package is valid
     /// * verify that the signature on the leaf node is valid
     /// * verify that all extensions are supported by the leaf node
-    /// * make sure that the lifetime is valid Returns a [`KeyPackage`] after
+    /// * make sure that the lifetime is valid
+    /// Returns a [`KeyPackage`] after
     /// having verified the signature or a [`KeyPackageVerifyError`] otherwise.
     pub fn into_validated(
         self,

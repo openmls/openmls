@@ -18,6 +18,12 @@
 // Finally, this module contains the [`treekem`] module, which allows the
 // encryption and decryption of updates to the tree.
 
+#[cfg(test)]
+use openmls_rust_crypto::OpenMlsRustCrypto;
+#[cfg(test)]
+use rstest::*;
+#[cfg(test)]
+use rstest_reuse::apply;
 #[cfg(any(feature = "test-utils", test))]
 use std::fmt;
 
@@ -697,6 +703,43 @@ mod test {
     /// This should only panic in debug-builds.
     fn test_ratchet_tree_internal_empty_after_trim() {
         RatchetTree::trimmed(vec![None]);
+    }
+
+    #[apply(ciphersuites_and_backends)]
+    fn test_ratchet_tree_trailing_blank_nodes(
+        ciphersuite: Ciphersuite,
+        backend: &impl OpenMlsCryptoProvider,
+    ) {
+        let (key_package, _, _) =
+            crate::key_packages::test_key_packages::key_package(ciphersuite, backend);
+        let node_in = NodeIn::from(Node::LeafNode(LeafNode::from(key_package)));
+        let tests = [
+            (vec![], false),
+            (vec![None], false),
+            (vec![None, None], false),
+            (vec![None, None, None], false),
+            (vec![Some(node_in.clone())], true),
+            (vec![Some(node_in.clone()), None], false),
+            (
+                vec![Some(node_in.clone()), None, Some(node_in.clone())],
+                true,
+            ),
+            (
+                vec![Some(node_in.clone()), None, Some(node_in), None],
+                false,
+            ),
+        ];
+
+        for (test, expected) in tests.into_iter() {
+            let got = RatchetTree::try_from_nodes(
+                ciphersuite,
+                backend.crypto(),
+                test,
+                &GroupId::random(backend),
+            )
+            .is_ok();
+            assert_eq!(got, expected);
+        }
     }
 
     #[cfg(not(debug_assertions))]

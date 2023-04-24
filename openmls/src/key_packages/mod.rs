@@ -135,7 +135,7 @@ pub mod key_package_in;
 
 // Tests
 #[cfg(test)]
-mod test_key_packages;
+pub(crate) mod test_key_packages;
 
 // Public types
 pub use key_package_in::KeyPackageIn;

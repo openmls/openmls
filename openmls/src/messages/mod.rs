@@ -187,7 +187,7 @@ impl CommitIn {
         })
     }
 
-    /// Returns a [`FramedCommitContentBody`] after successful validation.
+    /// Returns a [`Commit`] after successful validation.
     pub(crate) fn into_validated(
         self,
         ciphersuite: Ciphersuite,
