@@ -4,7 +4,9 @@
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
-use self::{leaf_node::OpenMlsLeafNode, parent_node::ParentNode};
+use self::{leaf_node::LeafNodeIn, parent_node::ParentNode};
+
+use super::LeafNode;
 
 mod codec;
 pub(crate) mod encryption_keys;
@@ -23,37 +25,49 @@ pub(crate) mod parent_node;
 ///     };
 /// } Node;
 /// ```
-#[derive(
-    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSize, TlsDeserialize, TlsSerialize,
-)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSize, TlsSerialize)]
 #[repr(u8)]
 pub enum Node {
     /// A leaf node.
     #[tls_codec(discriminant = 1)]
-    LeafNode(OpenMlsLeafNode),
+    LeafNode(LeafNode),
     /// A parent node.
     #[tls_codec(discriminant = 2)]
     ParentNode(ParentNode),
 }
 
-#[cfg(test)]
-impl Node {
-    /// Create a dummy [`Node`] for testing.
-    pub(crate) fn dummy() -> Self {
-        Node::LeafNode(OpenMlsLeafNode::dummy())
+#[derive(
+    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSize, TlsDeserialize, TlsSerialize,
+)]
+#[repr(u8)]
+pub enum NodeIn {
+    /// A leaf node.
+    #[tls_codec(discriminant = 1)]
+    LeafNode(LeafNodeIn),
+    /// A parent node.
+    #[tls_codec(discriminant = 2)]
+    ParentNode(ParentNode),
+}
+
+impl From<Node> for NodeIn {
+    fn from(node: Node) -> Self {
+        match node {
+            Node::LeafNode(leaf_node) => NodeIn::LeafNode(leaf_node.into()),
+            Node::ParentNode(parent_node) => NodeIn::ParentNode(parent_node),
+        }
     }
 }
 
 /// Container enum with reference to a node in a tree.
 pub(crate) enum NodeReference<'a> {
-    Leaf(&'a OpenMlsLeafNode),
+    Leaf(&'a LeafNode),
     Parent(&'a ParentNode),
 }
 
 #[cfg(test)]
 impl Node {
     #[allow(unused)]
-    pub(crate) fn into_leaf(self) -> OpenMlsLeafNode {
+    pub(crate) fn into_leaf(self) -> LeafNode {
         match self {
             Node::LeafNode(l) => l,
             Node::ParentNode(_) => panic!("Tried to convert parent node into leaf node."),

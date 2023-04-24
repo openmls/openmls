@@ -94,7 +94,7 @@ fn validation_test_setup(
         backend,
         &mls_group_config,
         welcome.clone(),
-        Some(alice_group.export_ratchet_tree()),
+        Some(alice_group.export_ratchet_tree().into()),
     )
     .expect("error creating group from welcome");
 
@@ -102,7 +102,7 @@ fn validation_test_setup(
         backend,
         &mls_group_config,
         welcome,
-        Some(alice_group.export_ratchet_tree()),
+        Some(alice_group.export_ratchet_tree().into()),
     )
     .expect("error creating group from welcome");
 

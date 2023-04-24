@@ -90,10 +90,7 @@ impl MlsGroup {
 
     /// Returns a reference to the own [`LeafNode`].
     pub fn own_leaf(&self) -> Option<&LeafNode> {
-        self.group
-            .public_group()
-            .leaf(self.group.own_leaf_index())
-            .map(|l| l.leaf_node())
+        self.group.public_group().leaf(self.group.own_leaf_index())
     }
 
     /// Removes members from the group.

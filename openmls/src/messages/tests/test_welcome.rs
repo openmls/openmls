@@ -154,7 +154,7 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, backend: &impl OpenMl
         backend,
         &mls_group_config,
         welcome,
-        Some(alice_group.export_ratchet_tree()),
+        Some(alice_group.export_ratchet_tree().into()),
     )
     .expect_err("Created a group from an invalid Welcome.");
 
@@ -185,7 +185,7 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, backend: &impl OpenMl
         backend,
         &mls_group_config,
         original_welcome,
-        Some(alice_group.export_ratchet_tree()),
+        Some(alice_group.export_ratchet_tree().into()),
     )
     .expect("Error creating group from a valid Welcome.");
 }

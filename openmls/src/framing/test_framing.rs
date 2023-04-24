@@ -464,7 +464,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
-        Some(group_alice.public_group().export_ratchet_tree()),
+        Some(group_alice.public_group().export_ratchet_tree().into()),
         bob_key_package_bundle,
         backend,
         ResumptionPskStore::new(1024),
@@ -508,7 +508,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
-        Some(group_alice.public_group().export_ratchet_tree()),
+        Some(group_alice.public_group().export_ratchet_tree().into()),
         charlie_key_package_bundle,
         backend,
         ResumptionPskStore::new(1024),
@@ -703,7 +703,7 @@ pub(crate) fn setup_alice_bob_group(
         create_commit_result
             .welcome_option
             .expect("commit didn't return a welcome as expected"),
-        Some(group_alice.public_group().export_ratchet_tree()),
+        Some(group_alice.public_group().export_ratchet_tree().into()),
         bob_key_package_bundle,
         backend,
         ResumptionPskStore::new(1024),

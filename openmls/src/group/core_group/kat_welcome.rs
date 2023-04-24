@@ -129,7 +129,7 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
             MlsMessageIn::tls_deserialize_exact(test_vector.key_package).unwrap();
 
         match mls_message_key_package.body {
-            MlsMessageInBody::KeyPackage(key_package) => key_package,
+            MlsMessageInBody::KeyPackage(key_package) => key_package.into(),
             _ => return Err("Expected MLSMessage.wire_format == mls_key_package."),
         }
     };

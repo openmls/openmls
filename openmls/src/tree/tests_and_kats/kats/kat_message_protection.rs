@@ -355,8 +355,10 @@ pub fn run_test_vector(
             .public_group()
             .parse_message(decrypted_message, group.message_secrets_store())
             .unwrap();
-        let processed_message: AuthenticatedContent =
-            processed_unverified_message.verify(backend).unwrap().0;
+        let processed_message: AuthenticatedContent = processed_unverified_message
+            .verify(ciphersuite, backend.crypto())
+            .unwrap()
+            .0;
         match processed_message.content().to_owned() {
             FramedContentBody::Proposal(p) => assert_eq!(proposal, p.into()),
             _ => panic!("Wrong processed message content"),
@@ -419,8 +421,10 @@ pub fn run_test_vector(
             .public_group()
             .parse_message(decrypted_message, group.message_secrets_store())
             .unwrap();
-        let processed_message: AuthenticatedContent =
-            processed_unverified_message.verify(backend).unwrap().0;
+        let processed_message: AuthenticatedContent = processed_unverified_message
+            .verify(ciphersuite, backend.crypto())
+            .unwrap()
+            .0;
         match processed_message.content().to_owned() {
             FramedContentBody::Commit(c) => {
                 assert_eq!(commit, CommitIn::from(c))
@@ -441,8 +445,10 @@ pub fn run_test_vector(
             .public_group()
             .parse_message(decrypted_message, group.message_secrets_store())
             .unwrap();
-        let processed_message: AuthenticatedContent =
-            processed_unverified_message.verify(backend).unwrap().0;
+        let processed_message: AuthenticatedContent = processed_unverified_message
+            .verify(ciphersuite, backend.crypto())
+            .unwrap()
+            .0;
         match processed_message.content().to_owned() {
             FramedContentBody::Commit(c) => {
                 assert_eq!(commit, CommitIn::from(c))

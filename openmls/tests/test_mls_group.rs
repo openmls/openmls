@@ -142,7 +142,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             backend,
             &mls_group_config,
             welcome.into_welcome().expect("Unexpected message type."),
-            Some(alice_group.export_ratchet_tree()),
+            Some(alice_group.export_ratchet_tree().into()),
         )
         .expect("Error creating group from Welcome");
 
@@ -358,7 +358,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             backend,
             &mls_group_config,
             welcome.into_welcome().expect("Unexpected message type."),
-            Some(bob_group.export_ratchet_tree()),
+            Some(bob_group.export_ratchet_tree().into()),
         )
         .expect("Error creating group from Welcome");
 
@@ -711,7 +711,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
                 .expect("Welcome was not returned")
                 .into_welcome()
                 .expect("Unexpected message type."),
-            Some(alice_group.export_ratchet_tree()),
+            Some(alice_group.export_ratchet_tree().into()),
         )
         .expect("Error creating group from Welcome");
 
@@ -892,7 +892,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             backend,
             &mls_group_config,
             welcome.into_welcome().expect("Unexpected message type."),
-            Some(alice_group.export_ratchet_tree()),
+            Some(alice_group.export_ratchet_tree().into()),
         )
         .expect("Could not create group from Welcome");
 

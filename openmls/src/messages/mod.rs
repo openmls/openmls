@@ -18,9 +18,14 @@ use crate::{
     ciphersuite::{hash_ref::KeyPackageRef, *},
     credentials::CredentialWithKey,
     error::LibraryError,
+    framing::SenderContext,
+    group::errors::ValidationError,
     schedule::{psk::PreSharedKeyId, JoinerSecret},
     treesync::{
-        node::encryption_keys::{EncryptionKey, EncryptionKeyPair, EncryptionPrivateKey},
+        node::{
+            encryption_keys::{EncryptionKey, EncryptionKeyPair, EncryptionPrivateKey},
+            leaf_node::TreePosition,
+        },
         treekem::{UpdatePath, UpdatePathIn},
     },
     versions::ProtocolVersion,
@@ -181,11 +186,62 @@ impl CommitIn {
             }
         })
     }
+
+    /// Returns a [`Commit`] after successful validation.
+    pub(crate) fn validate(
+        self,
+        ciphersuite: Ciphersuite,
+        crypto: &impl OpenMlsCrypto,
+        sender_context: SenderContext,
+    ) -> Result<Commit, ValidationError> {
+        let proposals = self
+            .proposals
+            .into_iter()
+            .map(|p| p.validate(crypto, ciphersuite))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let path = if let Some(path) = self.path {
+            let tree_position = match sender_context {
+                SenderContext::Member((group_id, leaf_index)) => {
+                    TreePosition::new(group_id, leaf_index)
+                }
+                SenderContext::ExternalCommit((group_id, free_leaf_index)) => {
+                    // We need to determine if it is a a resync or a join.
+                    // Find the first remove proposal and extract the leaf index.
+                    let new_leaf_index = proposals
+                        .iter()
+                        .find_map(|p| match p {
+                            ProposalOrRef::Proposal(p) => match p {
+                                Proposal::Remove(r) => Some(r.removed()),
+                                _ => None,
+                            },
+                            ProposalOrRef::Reference(_) => None,
+                        })
+                        // The committer should always be in the left-most leaf.
+                        .map(|removed_index| {
+                            if removed_index < free_leaf_index {
+                                removed_index
+                            } else {
+                                free_leaf_index
+                            }
+                        })
+                        // If there is none, the External Commit was not a resync
+                        .unwrap_or(free_leaf_index);
+
+                    TreePosition::new(group_id, new_leaf_index)
+                }
+            };
+            Some(path.into_verified(ciphersuite, crypto, tree_position)?)
+        } else {
+            None
+        };
+        Ok(Commit { proposals, path })
+    }
 }
 
-// TODO #1186: The following must be removed once the validation refactoring is
-// complete.
-
+// The following `From` implementation( breaks abstraction layers and MUST
+// NOT be made available outside of tests or "test-utils".
+#[cfg(any(feature = "test-utils", test))]
 impl From<CommitIn> for Commit {
     fn from(commit: CommitIn) -> Self {
         Self {

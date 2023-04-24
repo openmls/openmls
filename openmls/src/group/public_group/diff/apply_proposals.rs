@@ -39,7 +39,7 @@ impl ApplyProposalsValues {
 /// Applies a list of proposals from a Commit to the tree.
 /// `proposal_queue` is the queue of proposals received or sent in the
 /// current epoch `updates_key_package_bundles` is the list of own
-/// [`OpenMlsLeafNode`]s corresponding to updates or commits sent in the
+/// [`LeafNode`]s corresponding to updates or commits sent in the
 /// current epoch.
 ///
 /// If an `own_leaf_index` is provided, `self_removed` in the returned
@@ -83,7 +83,7 @@ impl<'a> PublicGroupDiff<'a> {
                     // This should not happen with validated proposals
                     _ => return Err(LibraryError::custom("Update proposal from non-member")),
                 };
-                let leaf_node = update_proposal.leaf_node().clone().into();
+                let leaf_node = update_proposal.leaf_node().clone();
                 self.diff.update_leaf(leaf_node, sender_index);
             }
         }
@@ -122,7 +122,7 @@ impl<'a> PublicGroupDiff<'a> {
             let leaf_node = add_proposal.key_package.leaf_node();
             let leaf_index = self
                 .diff
-                .add_leaf(leaf_node.clone().into())
+                .add_leaf(leaf_node.clone())
                 // TODO #810
                 .map_err(|_| LibraryError::custom("Tree full: cannot add more members"))?;
             invitation_list.push((leaf_index, add_proposal.clone()))

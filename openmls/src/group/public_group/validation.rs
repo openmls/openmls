@@ -277,7 +277,7 @@ impl PublicGroup {
         for leaf in self.treesync().full_leaves() {
             // 8.3. Leaf Node Validation
             // encryption key must be unique
-            encryption_keys.insert(leaf.public_key().as_slice().to_vec());
+            encryption_keys.insert(leaf.encryption_key().as_slice().to_vec());
         }
 
         // Check the update proposals from the proposal queue first
@@ -428,7 +428,7 @@ impl PublicGroup {
         extensions: &[crate::extensions::ExtensionType],
     ) -> Result<(), LeafNodeValidationError> {
         for leaf in self.treesync().full_leaves() {
-            leaf.leaf_node().check_extension_support(extensions)?;
+            leaf.check_extension_support(extensions)?;
         }
         Ok(())
     }
