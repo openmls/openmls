@@ -16,30 +16,22 @@
 //! // Now let's create two participants.
 //!
 //! // A helper to create and store credentials.
-//! fn generate_credential_bundle(
+//! fn generate_credential(
 //!     identity: Vec<u8>,
-//!     credential_type: CredentialType,
 //!     signature_algorithm: SignatureScheme,
 //!     backend: &impl OpenMlsCryptoProvider,
-//! ) -> (CredentialWithKey, SignatureKeyPair) {
-//!     let credential = Credential::new(identity, credential_type).unwrap();
-//!     let signature_keys =
-//!         SignatureKeyPair::new(signature_algorithm)
+//! ) -> SignatureKeyPair {
+//!     let credential =
+//!         SignatureKeyPair::new(signature_algorithm, identity)
 //!             .expect("Error generating a signature key pair.");
 //!
 //!     // Store the credential bundle into the key store so OpenMLS has access
 //!     // to it.
-//!     signature_keys
+//!     credential
 //!         .store(backend.key_store())
 //!         .expect("Error storing signature keys in key store.");
 //!     
-//!     (
-//!         CredentialWithKey {
-//!             credential,
-//!             signature_key: signature_keys.public().into(),
-//!         },
-//!         signature_keys,
-//!     )
+//!     credential
 //! }
 //!
 //! // A helper to create key package bundles.
@@ -47,7 +39,7 @@
 //!     ciphersuite: Ciphersuite,
 //!     backend: &impl OpenMlsCryptoProvider,
 //!     signer: &SignatureKeyPair,
-//!     credential_with_key: CredentialWithKey,
+//!     credential_with_key: &SignatureKeyPair,
 //! ) -> KeyPackage {
 //!     // Create the key package
 //!     KeyPackage::builder()
@@ -64,16 +56,14 @@
 //! }
 //!
 //! // First they need credentials to identify them
-//! let (sasha_credential_with_key, sasha_signer) = generate_credential_bundle(
+//! let sasha_credential = generate_credential(
 //!     "Sasha".into(),
-//!     CredentialType::Basic,
 //!     ciphersuite.signature_algorithm(),
 //!     backend,
 //! );
 //!
-//! let (maxim_credential_with_key, maxim_signer) = generate_credential_bundle(
+//! let maxim_credential = generate_credential(
 //!     "Maxim".into(),
-//!     CredentialType::Basic,
 //!     ciphersuite.signature_algorithm(),
 //!     backend,
 //! );
@@ -82,14 +72,14 @@
 //! // in MLS
 //!
 //! // Generate KeyPackages
-//! let maxim_key_package = generate_key_package(ciphersuite, backend, &maxim_signer, maxim_credential_with_key);
+//! let maxim_key_package = generate_key_package(ciphersuite, backend, &maxim_credential, &maxim_credential);
 //!
 //! // Now Sasha starts a new group ...
 //! let mut sasha_group = MlsGroup::new(
 //!     backend,
-//!     &sasha_signer,
+//!     &sasha_credential,
 //!     &MlsGroupConfig::default(),
-//!     sasha_credential_with_key,
+//!     &sasha_credential,
 //! )
 //! .expect("An unexpected error occurred.");
 //!
@@ -97,7 +87,7 @@
 //! // The key package has to be retrieved from Maxim in some way. Most likely
 //! // via a server storing key packages for users.
 //! let (mls_message_out, welcome_out, group_info) = sasha_group
-//!     .add_members(backend, &sasha_signer, &[maxim_key_package])
+//!     .add_members(backend, &sasha_credential, &[maxim_key_package])
 //!     .expect("Could not add members.");
 //!
 //! // Sasha merges the pending commit that adds Maxim.

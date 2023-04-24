@@ -1,4 +1,6 @@
-use openmls_traits::{credential::OpenMlsCredential, crypto::OpenMlsCrypto, signatures::Signer, OpenMlsCryptoProvider};
+use openmls_traits::{
+    credential::OpenMlsCredential, crypto::OpenMlsCrypto, signatures::Signer, OpenMlsCryptoProvider,
+};
 
 use super::{errors::PublicGroupBuildError, PublicGroup};
 use crate::{

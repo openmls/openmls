@@ -241,7 +241,7 @@ pub type KemOutput = Vec<u8>;
 
 /// A currently unknown ciphersuite.
 ///
-/// Used to accept unknown values, e.g., in [`Capabilities`].
+/// Used to accept unknown values, e.g., in `Capabilities`.
 #[derive(
     Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
