@@ -275,7 +275,7 @@ impl UnverifiedMessage {
             .verifiable_content
             .verify(crypto, &self.sender_pk)
             .map_err(|_| ProcessMessageError::InvalidSignature)?;
-        let content = content.into_validated(ciphersuite, crypto, self.sender_context)?;
+        let content = content.validate(ciphersuite, crypto, self.sender_context)?;
         Ok((content, self.credential))
     }
 

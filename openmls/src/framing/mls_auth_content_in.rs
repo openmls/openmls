@@ -50,7 +50,7 @@ pub(crate) struct AuthenticatedContentIn {
 
 impl AuthenticatedContentIn {
     /// Returns a [`AuthenticatedContent`] after successful validation.
-    pub(crate) fn into_validated(
+    pub(crate) fn validate(
         self,
         ciphersuite: Ciphersuite,
         crypto: &impl OpenMlsCrypto,
@@ -58,9 +58,7 @@ impl AuthenticatedContentIn {
     ) -> Result<AuthenticatedContent, ValidationError> {
         Ok(AuthenticatedContent {
             wire_format: self.wire_format,
-            content: self
-                .content
-                .into_validated(ciphersuite, crypto, sender_context)?,
+            content: self.content.validate(ciphersuite, crypto, sender_context)?,
             auth: self.auth,
         })
     }

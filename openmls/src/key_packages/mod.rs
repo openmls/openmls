@@ -87,7 +87,7 @@
 //!     .expect("Could not deserialize KeyPackage");
 //!
 //! let key_package = key_package_in
-//!     .into_validated(backend.crypto(), ciphersuite)
+//!     .validate(backend.crypto())
 //!     .expect("Invalid KeyPackage");
 //! ```
 //!
@@ -154,7 +154,7 @@ pub use key_package_in::KeyPackageIn;
 /// } KeyPackageTBS;
 /// ```
 #[derive(Debug, Clone, PartialEq, TlsSize, TlsSerialize, Serialize, Deserialize)]
-struct KeyPackageTBS {
+struct KeyPackageTbs {
     protocol_version: ProtocolVersion,
     ciphersuite: Ciphersuite,
     init_key: HpkePublicKey,
@@ -162,7 +162,7 @@ struct KeyPackageTBS {
     extensions: Extensions,
 }
 
-impl Signable for KeyPackageTBS {
+impl Signable for KeyPackageTbs {
     type SignedOutput = KeyPackage;
 
     fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
@@ -174,7 +174,7 @@ impl Signable for KeyPackageTBS {
     }
 }
 
-impl From<KeyPackage> for KeyPackageTBS {
+impl From<KeyPackage> for KeyPackageTbs {
     fn from(kp: KeyPackage) -> Self {
         kp.payload
     }
@@ -183,7 +183,7 @@ impl From<KeyPackage> for KeyPackageTBS {
 /// The key package struct.
 #[derive(Debug, Clone, Serialize, Deserialize, TlsSize, TlsSerialize)]
 pub struct KeyPackage {
-    payload: KeyPackageTBS,
+    payload: KeyPackageTbs,
     signature: Signature,
 }
 
@@ -195,8 +195,8 @@ impl PartialEq for KeyPackage {
     }
 }
 
-impl SignedStruct<KeyPackageTBS> for KeyPackage {
-    fn from_payload(payload: KeyPackageTBS, signature: Signature) -> Self {
+impl SignedStruct<KeyPackageTbs> for KeyPackage {
+    fn from_payload(payload: KeyPackageTbs, signature: Signature) -> Self {
         Self { payload, signature }
     }
 }
@@ -296,7 +296,7 @@ impl KeyPackage {
         let (leaf_node, encryption_key_pair) =
             LeafNode::new(backend, signer, new_leaf_node_params)?;
 
-        let key_package_tbs = KeyPackageTBS {
+        let key_package_tbs = KeyPackageTbs {
             protocol_version: config.version,
             ciphersuite: config.ciphersuite,
             init_key: init_key.into(),
@@ -464,7 +464,7 @@ impl KeyPackage {
         )
         .unwrap();
 
-        let key_package = KeyPackageTBS {
+        let key_package = KeyPackageTbs {
             protocol_version: config.version,
             ciphersuite: config.ciphersuite,
             init_key: init_key.public.into(),
@@ -493,7 +493,7 @@ impl KeyPackage {
         signer: &impl Signer,
         init_key: Vec<u8>,
     ) -> Result<Self, SignatureError> {
-        let key_package_tbs = KeyPackageTBS {
+        let key_package_tbs = KeyPackageTbs {
             protocol_version: config.version,
             ciphersuite: config.ciphersuite,
             init_key: init_key.into(),

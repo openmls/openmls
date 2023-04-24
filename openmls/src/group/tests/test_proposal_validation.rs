@@ -1030,7 +1030,7 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             generate_credential_bundle_and_key_package("Charlie".into(), ciphersuite, backend);
 
         let kpi = KeyPackageIn::from(charlie_key_package.clone());
-        kpi.into_validated(backend.crypto(), ciphersuite).unwrap();
+        kpi.validate(backend.crypto()).unwrap();
 
         // Let's just pick a ciphersuite that's not the one we're testing right now.
         let wrong_ciphersuite = match ciphersuite {
@@ -1251,7 +1251,7 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                     );
                     let expected_error_2 = ProcessMessageError::ValidationError(
                         ValidationError::KeyPackageVerifyError(
-                            KeyPackageVerifyError::InvalidSignature,
+                            KeyPackageVerifyError::InvalidLeafNodeSignature,
                         ),
                     );
                     assert!(err == expected_error_1 || err == expected_error_2);

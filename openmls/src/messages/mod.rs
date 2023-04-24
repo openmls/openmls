@@ -188,7 +188,7 @@ impl CommitIn {
     }
 
     /// Returns a [`Commit`] after successful validation.
-    pub(crate) fn into_validated(
+    pub(crate) fn validate(
         self,
         ciphersuite: Ciphersuite,
         crypto: &impl OpenMlsCrypto,
@@ -197,7 +197,7 @@ impl CommitIn {
         let proposals = self
             .proposals
             .into_iter()
-            .map(|p| p.into_validated(crypto, ciphersuite))
+            .map(|p| p.validate(crypto, ciphersuite))
             .collect::<Result<Vec<_>, _>>()?;
 
         let path = if let Some(path) = self.path {

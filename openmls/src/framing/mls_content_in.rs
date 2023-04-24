@@ -49,7 +49,7 @@ pub(crate) struct FramedContentIn {
 
 impl FramedContentIn {
     /// Returns a [`FramedContent`] after successful validation.
-    pub(crate) fn into_validated(
+    pub(crate) fn validate(
         self,
         ciphersuite: Ciphersuite,
         crypto: &impl OpenMlsCrypto,
@@ -60,9 +60,7 @@ impl FramedContentIn {
             epoch: self.epoch,
             sender: self.sender,
             authenticated_data: self.authenticated_data,
-            body: self
-                .body
-                .into_validated(ciphersuite, crypto, sender_context)?,
+            body: self.body.validate(ciphersuite, crypto, sender_context)?,
         })
     }
 }
@@ -128,7 +126,7 @@ impl FramedContentBodyIn {
     }
 
     /// Returns a [`FramedContentBody`] after successful validation.
-    pub(crate) fn into_validated(
+    pub(crate) fn validate(
         self,
         ciphersuite: Ciphersuite,
         crypto: &impl OpenMlsCrypto,
@@ -137,12 +135,12 @@ impl FramedContentBodyIn {
         Ok(match self {
             FramedContentBodyIn::Application(bytes) => FramedContentBody::Application(bytes),
             FramedContentBodyIn::Proposal(proposal_in) => FramedContentBody::Proposal(
-                proposal_in.into_validated(crypto, ciphersuite, sender_context)?,
+                proposal_in.validate(crypto, ciphersuite, sender_context)?,
             ),
             FramedContentBodyIn::Commit(commit_in) => {
                 let sender_context = sender_context
                     .ok_or(LibraryError::custom("Forgot the commit sender context"))?;
-                FramedContentBody::Commit(commit_in.into_validated(
+                FramedContentBody::Commit(commit_in.validate(
                     ciphersuite,
                     crypto,
                     sender_context,

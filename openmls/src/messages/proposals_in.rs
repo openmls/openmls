@@ -92,18 +92,18 @@ impl ProposalIn {
     }
 
     /// Returns a [`Proposal`] after successful validation.
-    pub(crate) fn into_validated(
+    pub(crate) fn validate(
         self,
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         sender_context: Option<SenderContext>,
     ) -> Result<Proposal, ValidationError> {
         Ok(match self {
-            ProposalIn::Add(add) => Proposal::Add(add.into_validated(crypto, ciphersuite)?),
+            ProposalIn::Add(add) => Proposal::Add(add.validate(crypto)?),
             ProposalIn::Update(update) => {
                 let sender_context =
                     sender_context.ok_or(ValidationError::CommitterIncludedOwnUpdate)?;
-                Proposal::Update(update.into_validated(crypto, ciphersuite, sender_context)?)
+                Proposal::Update(update.validate(crypto, ciphersuite, sender_context)?)
             }
             ProposalIn::Remove(remove) => Proposal::Remove(remove),
             ProposalIn::PreSharedKey(psk) => Proposal::PreSharedKey(psk),
@@ -140,12 +140,11 @@ impl AddProposalIn {
     }
 
     /// Returns a [`AddProposal`] after successful validation.
-    pub(crate) fn into_validated(
+    pub(crate) fn validate(
         self,
         crypto: &impl OpenMlsCrypto,
-        ciphersuite: Ciphersuite,
     ) -> Result<AddProposal, ValidationError> {
-        let key_package = self.key_package.into_validated(crypto, ciphersuite)?;
+        let key_package = self.key_package.validate(crypto)?;
         Ok(AddProposal { key_package })
     }
 }
@@ -170,7 +169,7 @@ pub struct UpdateProposalIn {
 
 impl UpdateProposalIn {
     /// Returns a [`UpdateProposal`] after successful validation.
-    pub(crate) fn into_validated(
+    pub(crate) fn validate(
         self,
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
@@ -218,14 +217,14 @@ pub(crate) enum ProposalOrRefIn {
 
 impl ProposalOrRefIn {
     /// Returns a [`ProposalOrRef`] after successful validation.
-    pub(crate) fn into_validated(
+    pub(crate) fn validate(
         self,
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -> Result<ProposalOrRef, ValidationError> {
         Ok(match self {
             ProposalOrRefIn::Proposal(proposal_in) => {
-                ProposalOrRef::Proposal(proposal_in.into_validated(crypto, ciphersuite, None)?)
+                ProposalOrRef::Proposal(proposal_in.validate(crypto, ciphersuite, None)?)
             }
             ProposalOrRefIn::Reference(reference) => ProposalOrRef::Reference(reference),
         })

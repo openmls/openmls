@@ -13,8 +13,50 @@ use serde::{Deserialize, Serialize};
 use tls_codec::{Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize};
 
 use super::{
-    errors::KeyPackageVerifyError, KeyPackage, KeyPackageTBS, SIGNATURE_KEY_PACKAGE_LABEL,
+    errors::KeyPackageVerifyError, KeyPackage, KeyPackageTbs, SIGNATURE_KEY_PACKAGE_LABEL,
 };
+
+/// Intermediary struct for deserialization of a [`KeyPackageIn`].
+struct VerifiableKeyPackage {
+    payload: KeyPackageTbs,
+    signature: Signature,
+}
+
+impl VerifiableKeyPackage {
+    fn new(payload: KeyPackageTbs, signature: Signature) -> Self {
+        Self { payload, signature }
+    }
+}
+
+impl Verifiable for VerifiableKeyPackage {
+    fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
+        self.payload.tls_serialize_detached()
+    }
+
+    fn signature(&self) -> &Signature {
+        &self.signature
+    }
+
+    fn label(&self) -> &str {
+        SIGNATURE_KEY_PACKAGE_LABEL
+    }
+}
+
+impl VerifiedStruct<VerifiableKeyPackage> for KeyPackage {
+    type SealingType = private_mod::Seal;
+
+    fn from_verifiable(verifiable: VerifiableKeyPackage, _seal: Self::SealingType) -> Self {
+        Self {
+            payload: verifiable.payload,
+            signature: verifiable.signature,
+        }
+    }
+}
+
+mod private_mod {
+    #[derive(Default)]
+    pub struct Seal;
+}
 
 /// The unsigned payload of a key package.
 ///
@@ -65,46 +107,37 @@ impl KeyPackageIn {
     /// * make sure that the lifetime is valid
     /// Returns a [`KeyPackage`] after
     /// having verified the signature or a [`KeyPackageVerifyError`] otherwise.
-    pub fn into_validated(
+    pub fn validate(
         self,
         crypto: &impl OpenMlsCrypto,
-        ciphersuite: Ciphersuite,
     ) -> Result<KeyPackage, KeyPackageVerifyError> {
-        // Verify the signature of the KeyPackage
-        let signature_key = OpenMlsSignaturePublicKey::from_signature_key(
+        // We first need to verify the LeafNode inside the KeyPackage
+        let leaf_node = self.payload.leaf_node.clone().into_verifiable_leaf_node();
+
+        let signature_key = &OpenMlsSignaturePublicKey::from_signature_key(
             self.payload.leaf_node.signature_key().clone(),
             self.payload.ciphersuite.signature_algorithm(),
         );
-        self.verify_no_out(crypto, &signature_key)
-            .map_err(|_| KeyPackageVerifyError::InvalidSignature)?;
-
-        // We need to verify the LeafNode inside the KeyPackage
-        let leaf_node = self.payload.leaf_node.into_verifiable_leaf_node();
 
         let leaf_node = match leaf_node {
-            VerifiableLeafNode::KeyPackage(leaf_node) => {
-                let pk = &leaf_node
-                    .signature_key()
-                    .clone()
-                    .into_signature_public_key_enriched(ciphersuite.signature_algorithm());
-
-                leaf_node
-                    .verify(crypto, pk)
-                    .map_err(|_| KeyPackageVerifyError::InvalidLeafNodeSignature)?
-            }
+            VerifiableLeafNode::KeyPackage(leaf_node) => leaf_node
+                .verify(crypto, signature_key)
+                .map_err(|_| KeyPackageVerifyError::InvalidLeafNodeSignature)?,
             _ => return Err(KeyPackageVerifyError::InvalidLeafNodeSourceType),
         };
 
-        let key_package = KeyPackage {
-            payload: KeyPackageTBS {
-                protocol_version: self.payload.protocol_version,
-                ciphersuite: self.payload.ciphersuite,
-                init_key: self.payload.init_key,
-                leaf_node,
-                extensions: self.payload.extensions,
-            },
-            signature: self.signature,
+        let key_package_tbs = KeyPackageTbs {
+            protocol_version: self.payload.protocol_version,
+            ciphersuite: self.payload.ciphersuite,
+            init_key: self.payload.init_key,
+            leaf_node,
+            extensions: self.payload.extensions,
         };
+
+        // Verify the KeyPackage signature
+        let key_package = VerifiableKeyPackage::new(key_package_tbs, self.signature)
+            .verify::<KeyPackage>(crypto, signature_key)
+            .map_err(|_| KeyPackageVerifyError::InvalidSignature)?;
 
         // Extension included in the extensions or leaf_node.extensions fields
         // MUST be included in the leaf_node.capabilities field.
@@ -133,29 +166,10 @@ impl KeyPackageIn {
     }
 }
 
-mod private_mod {
-    #[derive(Default)]
-    pub struct Seal;
-}
-
-impl Verifiable for KeyPackageIn {
-    fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
-        self.payload.tls_serialize_detached()
-    }
-
-    fn signature(&self) -> &Signature {
-        &self.signature
-    }
-
-    fn label(&self) -> &str {
-        SIGNATURE_KEY_PACKAGE_LABEL
-    }
-}
-
 #[cfg(any(feature = "test-utils", test))]
-impl From<KeyPackageTbsIn> for KeyPackageTBS {
+impl From<KeyPackageTbsIn> for KeyPackageTbs {
     fn from(value: KeyPackageTbsIn) -> Self {
-        KeyPackageTBS {
+        KeyPackageTbs {
             protocol_version: value.protocol_version,
             ciphersuite: value.ciphersuite,
             init_key: value.init_key,
@@ -165,8 +179,8 @@ impl From<KeyPackageTbsIn> for KeyPackageTBS {
     }
 }
 
-impl From<KeyPackageTBS> for KeyPackageTbsIn {
-    fn from(value: KeyPackageTBS) -> Self {
+impl From<KeyPackageTbs> for KeyPackageTbsIn {
+    fn from(value: KeyPackageTbs) -> Self {
         Self {
             protocol_version: value.protocol_version,
             ciphersuite: value.ciphersuite,
