@@ -9,7 +9,7 @@ use crate::{extensions::*, key_packages::*};
 pub(crate) fn key_package(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
-) -> (KeyPackage, Credential, SignatureKeyPair) {
+) -> (KeyPackage, SignatureKeyPair) {
     let credential =
         SignatureKeyPair::new(ciphersuite.signature_algorithm(), b"Sasha".to_vec()).unwrap();
 
@@ -26,15 +26,15 @@ pub(crate) fn key_package(
         )
         .expect("An unexpected error occurred.");
 
-    (key_package, credential, credential)
+    (key_package, credential)
 }
 
 #[apply(ciphersuites_and_backends)]
 fn generate_key_package(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    let (key_package, _credential, signature_keys) = key_package(ciphersuite, backend);
+    let (key_package, credential) = key_package(ciphersuite, backend);
 
     let pk = OpenMlsSignaturePublicKey::new(
-        signature_keys.public().into(),
+        credential.public().into(),
         ciphersuite.signature_algorithm(),
     )
     .unwrap();
@@ -45,7 +45,7 @@ fn generate_key_package(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
 #[apply(ciphersuites_and_backends)]
 fn serialization(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    let (key_package, _, _) = key_package(ciphersuite, backend);
+    let (key_package, _) = key_package(ciphersuite, backend);
 
     let encoded = key_package
         .tls_serialize_detached()

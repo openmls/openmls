@@ -12,7 +12,6 @@ readme = "README.md"
 [dependencies]
 openmls_traits = { workspace = true }
 openmls_memory_keystore = { version = "0.1.0", path = "../memory_keystore" }
-openmls_basic_credential = { version = "0.1.0", path = "../basic_credential" }
 # Rust Crypto dependencies
 sha2 = { version = "0.10" }
 aes-gcm = { version = "0.9" }

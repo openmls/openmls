@@ -1,6 +1,5 @@
 //! This module tests the classification of remove operations with RemoveOperation
 
-use super::utils::{credential, generate_key_package};
 use crate::{
     framing::*,
     group::{config::CryptoConfig, *},
@@ -28,37 +27,20 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
         let group_id = GroupId::from_slice(b"Test Group");
 
         // Generate credential bundles
-        let alice_credential_with_key_and_signer = credential(
-            "Alice".into(),
-            ciphersuite.signature_algorithm(),
-            &alice_backend,
-        );
+        let alice_credential =
+            credential(b"Alice", ciphersuite.signature_algorithm(), &alice_backend);
 
-        let bob_credential_with_key_and_signer = credential(
-            "Bob".into(),
-            ciphersuite.signature_algorithm(),
-            &bob_backend,
-        );
+        let bob_credential = credential(b"Bob", ciphersuite.signature_algorithm(), &bob_backend);
 
-        let charlie_credential_with_key_and_signer = credential(
-            "Charlie".into(),
+        let charlie_credential = credential(
+            b"Charlie",
             ciphersuite.signature_algorithm(),
             &charlie_backend,
         );
 
         // Generate KeyPackages
-        let bob_key_package = generate_key_package(
-            ciphersuite,
-            Extensions::empty(),
-            &bob_backend,
-            bob_credential_with_key_and_signer.clone(),
-        );
-        let charlie_key_package = generate_key_package(
-            ciphersuite,
-            Extensions::empty(),
-            &charlie_backend,
-            charlie_credential_with_key_and_signer,
-        );
+        let bob_key_package = key_package(&bob_backend, &bob_credential, ciphersuite);
+        let charlie_key_package = key_package(&charlie_backend, &charlie_credential, ciphersuite);
 
         // Define the MlsGroup configuration
         let mls_group_config = MlsGroupConfigBuilder::new()
@@ -68,10 +50,10 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
         // === Alice creates a group ===
         let mut alice_group = MlsGroup::new_with_group_id(
             &alice_backend,
-            &alice_credential_with_key_and_signer.signer,
+            &alice_credential,
             &mls_group_config,
             group_id,
-            alice_credential_with_key_and_signer.credential_with_key,
+            &alice_credential,
         )
         .expect("An unexpected error occurred.");
 
@@ -80,7 +62,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
         let (_message, welcome, _group_info) = alice_group
             .add_members(
                 &alice_backend,
-                &alice_credential_with_key_and_signer.signer,
+                &alice_credential,
                 &[bob_key_package, charlie_key_package],
             )
             .expect("An unexpected error occurred.");
@@ -115,17 +97,13 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
         let (message, _welcome, _group_info) = match test_case {
             // Alice removes Bob
             TestCase::Remove => alice_group
-                .remove_members(
-                    &alice_backend,
-                    &alice_credential_with_key_and_signer.signer,
-                    &[bob_index],
-                )
+                .remove_members(&alice_backend, &alice_credential, &[bob_index])
                 .expect("Could not remove members."),
             // Bob leaves
             TestCase::Leave => {
                 // Bob leaves the group
                 let message = bob_group
-                    .leave_group(&bob_backend, &bob_credential_with_key_and_signer.signer)
+                    .leave_group(&bob_backend, &bob_credential)
                     .expect("Could not leave group.");
 
                 // Alice & Charlie store the pending proposal
@@ -147,10 +125,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
 
                 // Alice commits to Bob's proposal
                 alice_group
-                    .commit_to_pending_proposals(
-                        &alice_backend,
-                        &alice_credential_with_key_and_signer.signer,
-                    )
+                    .commit_to_pending_proposals(&alice_backend, &alice_credential)
                     .expect("An unexpected error occurred.")
             }
         };

@@ -113,6 +113,7 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
                 ciphersuite.signature_algorithm(),
                 private_key,
                 signature_key.as_slice().to_vec(),
+                vec![],
             );
 
             // Collect all path key pairs
@@ -240,6 +241,7 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
                     ciphersuite.signature_algorithm(),
                     full_leaf.signature_keypair.private().to_vec(),
                     full_leaf.signature_keypair.to_public_vec(),
+                    vec![],
                 )
             };
 

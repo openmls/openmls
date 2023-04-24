@@ -24,6 +24,24 @@ use ed25519_dalek::Signer as DalekSigner;
 use rand::rngs::OsRng;
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
+/// A credential for verification.
+pub struct VerificationCredential {
+    public_key: Vec<u8>,
+    signature_scheme: SignatureScheme,
+    identity: Vec<u8>,
+}
+
+impl VerificationCredential {
+    /// Generate a new credential for verification.
+    pub fn new(public_key: Vec<u8>, signature_scheme: SignatureScheme, identity: Vec<u8>) -> Self {
+        Self {
+            public_key,
+            signature_scheme,
+            identity,
+        }
+    }
+}
+
 /// A signature key pair for the basic credential.
 ///
 /// This can be used as keys to implement the MLS basic credential. It is a simple
@@ -177,9 +195,43 @@ impl SignatureKeyPair {
     pub fn signature_scheme(&self) -> SignatureScheme {
         self.signature_scheme
     }
+}
 
-    #[cfg(feature = "test-utils")]
+impl OpenMlsCredential for VerificationCredential {
+    fn identity(&self) -> &[u8] {
+        &self.identity
+    }
+
+    fn public_key(&self) -> &[u8] {
+        &self.public_key
+    }
+
+    fn credential(&self) -> Credential {
+        let credential =
+            MlsCredentialType::Basic(BasicCredential::new(self.identity.clone().into()));
+        Credential::new(credential)
+    }
+}
+
+#[cfg(feature = "test-utils")]
+impl SignatureKeyPair {
+    /// Get the private key as byte slice.
     pub fn private(&self) -> &[u8] {
         &self.private
+    }
+
+    /// Replace the public key with `public_key`.
+    pub fn set_public_key(&mut self, public_key: Vec<u8>) {
+        self.public = public_key
+    }
+
+    /// Get the same keys with a new identity
+    pub fn new_with_new_identity(&self, id: &str) -> Self {
+        Self {
+            private: self.private.clone(),
+            public: self.public.clone(),
+            signature_scheme: self.signature_scheme,
+            identity: id.as_bytes().to_vec(),
+        }
     }
 }

@@ -18,8 +18,6 @@ pub use rstest::*;
 pub use rstest_reuse::{self, *};
 use serde::{self, de::DeserializeOwned, Serialize};
 
-#[cfg(test)]
-use crate::group::tests::utils::CredentialWithKeyAndSigner;
 pub use crate::utils::*;
 use crate::{
     ciphersuite::{HpkePrivateKey, OpenMlsSignaturePublicKey},
@@ -88,7 +86,7 @@ pub fn hex_to_bytes_option(hex: Option<String>) -> Vec<u8> {
 }
 
 /// Helper function to generate and store a Credential
-pub(crate) fn credential(
+pub fn credential(
     identity: &[u8],
     signature_scheme: SignatureScheme,
     backend: &impl OpenMlsCryptoProvider,
@@ -99,7 +97,7 @@ pub(crate) fn credential(
 }
 
 /// Generate a key package with extensions
-pub(crate) fn key_package_with_extensions<KeyStore: OpenMlsKeyStore>(
+pub fn key_package_with_extensions<KeyStore: OpenMlsKeyStore>(
     backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
     credential: &SignatureKeyPair,
     ciphersuite: Ciphersuite,
@@ -121,7 +119,7 @@ pub(crate) fn key_package_with_extensions<KeyStore: OpenMlsKeyStore>(
 }
 
 /// Generate a key package.
-pub(crate) fn key_package<KeyStore: OpenMlsKeyStore>(
+pub fn key_package<KeyStore: OpenMlsKeyStore>(
     backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
     credential: &SignatureKeyPair,
     ciphersuite: Ciphersuite,
@@ -137,8 +135,7 @@ pub(crate) struct GroupCandidate {
     pub key_package: KeyPackage,
     pub encryption_keypair: EncryptionKeyPair,
     pub init_keypair: HpkeKeyPair,
-    pub signature_keypair: SignatureKeyPair,
-    pub credential_with_key_and_signer: CredentialWithKeyAndSigner,
+    pub credential: SignatureKeyPair,
 }
 
 #[cfg(test)]
@@ -154,12 +151,6 @@ pub(crate) fn generate_group_candidate(
     if let Some(backend) = backend {
         credential.store(backend.key_store()).unwrap();
     }
-
-    let signature_pkey = OpenMlsSignaturePublicKey::new(
-        credential.to_public_vec().into(),
-        ciphersuite.signature_algorithm(),
-    )
-    .unwrap();
 
     let (key_package, encryption_keypair, init_keypair) = {
         let builder = KeyPackageBuilder::new();
@@ -202,8 +193,8 @@ pub(crate) fn generate_group_candidate(
                     .build_without_key_storage(
                         CryptoConfig::with_default_version(ciphersuite),
                         &backend,
-                        &credential_with_key_and_signer.signer,
-                        &credential_with_key_and_signer.credential_with_key,
+                        &credential,
+                        &credential,
                     )
                     .unwrap();
 
@@ -230,8 +221,7 @@ pub(crate) fn generate_group_candidate(
         key_package,
         encryption_keypair,
         init_keypair,
-        signature_keypair: credential_with_key_and_signer.signer.clone(),
-        credential_with_key_and_signer,
+        credential,
     }
 }
 

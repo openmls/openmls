@@ -65,8 +65,8 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_key_package, alice_credential) = setup_client("Alice", ciphersuite, backend);
-    let (_, bob_credential) = setup_client("Bob", ciphersuite, backend);
-    let (_, charlie_credential) = setup_client("Charly", ciphersuite, backend);
+    let (bob_kpb, bob_credential) = setup_client("Bob", ciphersuite, backend);
+    let (charlie_kpb, charlie_credential) = setup_client("Charly", ciphersuite, backend);
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfigBuilder::new()
@@ -485,7 +485,7 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
         .expect("error creating self-update commit");
 
     let (msg, _welcome_option, _group_info) = bob_group
-        .self_update(backend, &bob_signer)
+        .self_update(backend, &bob_credential)
         .expect("error creating self-update commit");
 
     let alice_processed_message = alice_group
@@ -513,7 +513,7 @@ fn key_package_deletion(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
     let (bob_key_package, alice_credential) = setup_client("Alice", ciphersuite, backend);
     let (bob_key_package, bob_credential) = setup_client("Bob", ciphersuite, backend);
-    let bob_key_package = bob_credential.key_package();
+    let bob_key_package = bob_key_package.key_package();
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfigBuilder::new()

@@ -22,11 +22,9 @@ use super::PublicGroup;
 fn public_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
-    let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
-        setup_client("Alice", ciphersuite, backend);
-    let (_bob_credential, bob_kpb, bob_signer, _bob_pk) = setup_client("Bob", ciphersuite, backend);
-    let (_charlie_credential, charlie_kpb, charlie_signer, _charlie_pk) =
-        setup_client("Charly", ciphersuite, backend);
+    let (_alice_kpb, alice_credential) = setup_client("Alice", ciphersuite, backend);
+    let (bob_kpb, bob_credential) = setup_client("Bob", ciphersuite, backend);
+    let (charlie_kpb, charlie_credential) = setup_client("Charly", ciphersuite, backend);
 
     // Define the MlsGroup configuration
     // Set plaintext wire format policy s.t. the public group can track changes.
@@ -38,16 +36,16 @@ fn public_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) 
     // === Alice creates a group ===
     let mut alice_group = MlsGroup::new_with_group_id(
         backend,
-        &alice_signer,
+        &alice_credential,
         &mls_group_config,
         group_id,
-        alice_credential_with_key,
+        &alice_credential,
     )
     .expect("An unexpected error occurred.");
 
     // === Create a public group that tracks the changes throughout this test ===
     let verifiable_group_info = alice_group
-        .export_group_info(backend, &alice_signer, false)
+        .export_group_info(backend, &alice_credential, false)
         .unwrap()
         .into_verifiable_group_info()
         .unwrap();
@@ -58,7 +56,7 @@ fn public_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) 
 
     // === Alice adds Bob ===
     let (message, welcome, _group_info) = alice_group
-        .add_members(backend, &alice_signer, &[bob_kpb.key_package().clone()])
+        .add_members(backend, &alice_credential, &[bob_kpb.key_package().clone()])
         .expect("Could not add member to group.");
 
     alice_group
@@ -98,7 +96,11 @@ fn public_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) 
 
     // === Bob adds Charlie ===
     let (queued_messages, welcome, _group_info) = bob_group
-        .add_members(backend, &bob_signer, &[charlie_kpb.key_package().clone()])
+        .add_members(
+            backend,
+            &bob_credential,
+            &[charlie_kpb.key_package().clone()],
+        )
         .unwrap();
 
     // Alice processes
@@ -143,7 +145,7 @@ fn public_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) 
     // === Alice removes Bob & Charlie commits ===
 
     let (queued_messages, _) = alice_group
-        .propose_remove_member(backend, &alice_signer, LeafNodeIndex::new(1))
+        .propose_remove_member(backend, &alice_credential, LeafNodeIndex::new(1))
         .expect("Could not propose removal");
 
     let charlie_processed_message = charlie_group
@@ -198,7 +200,7 @@ fn public_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) 
 
     // Charlie commits
     let (queued_messages, _welcome, _group_info) = charlie_group
-        .commit_to_pending_proposals(backend, &charlie_signer)
+        .commit_to_pending_proposals(backend, &charlie_credential)
         .expect("Could not commit proposal");
 
     // The public group processes

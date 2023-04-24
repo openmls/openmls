@@ -2,10 +2,7 @@ use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 
 use crate::{
-    group::{
-        tests::utils::{credential, CredentialWithKeyAndSigner},
-        MlsGroup, MlsGroupConfig,
-    },
+    group::{MlsGroup, MlsGroupConfig},
     key_packages::KeyPackage,
     prelude::*,
     test_utils::*,
@@ -88,7 +85,7 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
         &alice.backend,
         &alice.credential,
         &mls_group_config,
-        alice.credential.credential_with_key.clone(),
+        &alice.credential,
     )
     .unwrap();
     alice_group.print_ratchet_tree("Alice (after new)");

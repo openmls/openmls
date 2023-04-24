@@ -1,9 +1,9 @@
 //! This module contains all tests regarding the validation of incoming external
 //! commit messages as defined in
-//! https://github.com/openmls/openmls/wiki/Message-validation
+//! <https://openmls.tech/book/message_validation.html>
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{credential::OpenMlsCredential, types::Ciphersuite, OpenMlsCryptoProvider};
 use rstest::rstest;
 use rstest_reuse::apply;
 use tls_codec::{Deserialize, Serialize};
@@ -19,14 +19,15 @@ use crate::{
         errors::{
             ExternalCommitValidationError, ProcessMessageError, StageCommitError, ValidationError,
         },
-        tests::utils::{credential, generate_key_package, resign_external_commit},
-        Extensions, MlsGroup, OpenMlsSignaturePublicKey, PURE_CIPHERTEXT_WIRE_FORMAT_POLICY,
+        tests::utils::resign_external_commit,
+        MlsGroup, OpenMlsSignaturePublicKey, PURE_CIPHERTEXT_WIRE_FORMAT_POLICY,
         PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     messages::proposals::{
         AddProposal, ExternalInitProposal, GroupContextExtensionProposal, Proposal, ProposalOrRef,
         ProposalType, ReInitProposal, RemoveProposal, UpdateProposal,
     },
+    test_utils::{credential, key_package},
 };
 
 // ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
@@ -67,7 +68,7 @@ fn test_valsem240(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         let mut public_message_commit_bad = public_message_commit.clone();
         public_message_commit_bad.set_content(FramedContentBody::Commit(commit_bad));
         resign_external_commit(
-            &bob_credential.signer,
+            &bob_credential,
             public_message_commit_bad,
             public_message_commit.confirmation_tag().unwrap().clone(),
             alice_group
@@ -130,7 +131,7 @@ fn test_valsem241(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
         // We have to re-sign, since we changed the content.
         resign_external_commit(
-            &bob_credential.signer,
+            &bob_credential,
             public_message_commit_bad,
             public_message_commit.confirmation_tag().unwrap().clone(),
             alice_group
@@ -174,32 +175,27 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // an Update proposal that comes from a leaf that's actually inside of the
     // tree. If that is not the case, we'll get a general proposal validation
     // error before we get the external commit specific one.
-    let bob_key_package = generate_key_package(
-        ciphersuite,
-        Extensions::empty(),
-        backend,
-        bob_credential.clone(),
-    );
+    let bob_key_package = key_package(backend, &bob_credential, ciphersuite);
 
     alice_group
-        .add_members(backend, &alice_credential.signer, &[bob_key_package])
+        .add_members(backend, &alice_credential, &[bob_key_package])
         .unwrap();
     alice_group.merge_pending_commit(backend).unwrap();
 
     let verifiable_group_info = alice_group
-        .export_group_info(backend, &alice_credential.signer, true)
+        .export_group_info(backend, &alice_credential, true)
         .unwrap()
         .into_verifiable_group_info()
         .unwrap();
 
     let (_, public_message_commit, _) = MlsGroup::join_by_external_commit(
         backend,
-        &bob_credential.signer,
+        &bob_credential,
         None,
         verifiable_group_info,
         alice_group.configuration(),
         &[],
-        bob_credential.credential_with_key.clone(),
+        &bob_credential,
     )
     .unwrap();
 
@@ -222,17 +218,9 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     let deny_list = {
         let add_proposal = {
-            let charlie_credential = generate_credential_bundle(
-                "Charlie".into(),
-                ciphersuite.signature_algorithm(),
-                backend,
-            );
-            let charlie_key_package = generate_key_package(
-                ciphersuite,
-                Extensions::empty(),
-                backend,
-                charlie_credential,
-            );
+            let charlie_credential =
+                credential(b"Charlie", ciphersuite.signature_algorithm(), backend);
+            let charlie_key_package = key_package(backend, &charlie_credential, ciphersuite);
 
             ProposalOrRef::Proposal(Proposal::Add(AddProposal {
                 key_package: charlie_key_package,
@@ -240,12 +228,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         };
 
         let update_proposal = {
-            let bob_key_package = generate_key_package(
-                ciphersuite,
-                Extensions::empty(),
-                backend,
-                bob_credential.clone(),
-            );
+            let bob_key_package = key_package(backend, &bob_credential, ciphersuite);
             ProposalOrRef::Proposal(Proposal::Update(UpdateProposal {
                 leaf_node: bob_key_package.leaf_node().clone(),
             }))
@@ -290,7 +273,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
             // We have to re-sign, since we changed the content.
             resign_external_commit(
-                &bob_credential.signer,
+                &bob_credential,
                 public_message_commit_bad,
                 public_message_commit.confirmation_tag().unwrap().clone(),
                 alice_group
@@ -332,15 +315,10 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Alice has to add Bob first, so that Bob actually creates a remove
     // proposal to remove his former self.
 
-    let bob_key_package = generate_key_package(
-        ciphersuite,
-        Extensions::empty(),
-        backend,
-        bob_credential.clone(),
-    );
+    let bob_key_package = key_package(backend, &bob_credential, ciphersuite);
 
     alice_group
-        .add_members(backend, &alice_credential.signer, &[bob_key_package])
+        .add_members(backend, &alice_credential, &[bob_key_package])
         .unwrap();
 
     alice_group.merge_pending_commit(backend).unwrap();
@@ -349,7 +327,7 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Have Alice export everything that bob needs.
     let verifiable_group_info = alice_group
-        .export_group_info(backend, &alice_credential.signer, false)
+        .export_group_info(backend, &alice_credential, false)
         .unwrap()
         .into_verifiable_group_info()
         .unwrap();
@@ -358,12 +336,12 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Note: This will create a remove proposal because Bob is already a member of the group.
     let (_, public_message_commit, _) = MlsGroup::join_by_external_commit(
         backend,
-        &bob_credential.signer,
+        &bob_credential,
         Some(ratchet_tree.clone()),
         verifiable_group_info.clone(),
         alice_group.configuration(),
         &[],
-        bob_credential.credential_with_key,
+        &bob_credential,
     )
     .unwrap();
 
@@ -410,7 +388,7 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
         // We have to re-sign, since we changed the content.
         resign_external_commit(
-            &bob_credential.signer,
+            &bob_credential,
             public_message_commit_bad,
             public_message_commit.confirmation_tag().unwrap().clone(),
             alice_group
@@ -438,12 +416,12 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Alice, as the creator of the group, should also be able to rejoin the group
     let alice_new_group = MlsGroup::join_by_external_commit(
         backend,
-        &alice_credential.signer,
+        &alice_credential,
         Some(ratchet_tree),
         verifiable_group_info,
         alice_group.configuration(),
         &[],
-        alice_credential.credential_with_key,
+        &alice_credential,
     );
     assert!(alice_new_group.is_ok());
 
@@ -474,12 +452,7 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             };
 
         // Add an Add proposal by reference
-        let bob_key_package = generate_key_package(
-            ciphersuite,
-            Extensions::empty(),
-            backend,
-            bob_credential.clone(),
-        );
+        let bob_key_package = key_package(backend, &bob_credential, ciphersuite);
 
         let add_proposal = Proposal::Add(AddProposal {
             key_package: bob_key_package,
@@ -499,7 +472,7 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
         // We have to re-sign, since we changed the content.
         resign_external_commit(
-            &bob_credential.signer,
+            &bob_credential,
             public_message_commit_bad,
             public_message_commit.confirmation_tag().unwrap().clone(),
             alice_group
@@ -559,7 +532,7 @@ fn test_valsem245(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
         // We have to re-sign, since we changed the content.
         resign_external_commit(
-            &bob_credential.signer,
+            &bob_credential,
             public_message_commit_bad,
             public_message_commit.confirmation_tag().unwrap().clone(),
             alice_group
@@ -609,16 +582,10 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         // We test that the message is verified using the credential contained in
         // the path by generating a new credential for bob, putting it in the path
         // and then re-signing the message with his original credential.
-        let bob_new_credential =
-            generate_credential_bundle("Bob".into(), ciphersuite.signature_algorithm(), backend);
+        let bob_new_credential = credential(b"Bob", ciphersuite.signature_algorithm(), backend);
 
         // Generate KeyPackage
-        let bob_new_key_package = generate_key_package(
-            ciphersuite,
-            Extensions::empty(),
-            backend,
-            bob_new_credential,
-        );
+        let bob_new_key_package = key_package(backend, &bob_new_credential, ciphersuite);
 
         if let Some(ref mut path) = commit_bad.path {
             path.set_leaf_node(bob_new_key_package.leaf_node().clone())
@@ -630,7 +597,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
         // We have to re-sign (with the original credential), since we changed the content.
         resign_external_commit(
-            &bob_credential.signer,
+            &bob_credential,
             public_message_commit_bad,
             public_message_commit.confirmation_tag().unwrap().clone(),
             alice_group
@@ -663,10 +630,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .expect("no path in external commit")
         .leaf_node()
         .credential();
-    assert_eq!(
-        path_credential,
-        &bob_credential.credential_with_key.credential
-    );
+    assert_eq!(path_credential, &bob_credential.credential());
 
     // This shows that the message is actually signed using this credential.
     let decrypted_message = DecryptedMessage::from_inbound_public_message(
@@ -684,7 +648,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         decrypted_message.verifiable_content().clone().verify(
             backend.crypto(),
             &OpenMlsSignaturePublicKey::from_signature_key(
-                bob_credential.credential_with_key.signature_key,
+                bob_credential.public_key().into(),
                 ciphersuite.signature_algorithm(),
             ),
         );
@@ -713,19 +677,19 @@ fn test_pure_ciphertest(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
     // Have Alice export everything that bob needs.
     let verifiable_group_info = alice_group
-        .export_group_info(backend, &alice_credential.signer, true)
+        .export_group_info(backend, &alice_credential, true)
         .unwrap()
         .into_verifiable_group_info()
         .unwrap();
 
     let (_bob_group, message, _) = MlsGroup::join_by_external_commit(
         backend,
-        &bob_credential.signer,
+        &bob_credential,
         None,
         verifiable_group_info,
         alice_group.configuration(),
         &[],
-        bob_credential.credential_with_key.clone(),
+        &bob_credential,
     )
     .expect("Error initializing group externally.");
 
@@ -737,24 +701,22 @@ fn test_pure_ciphertest(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 }
 
 mod utils {
+    use openmls_basic_credential::SignatureKeyPair;
     use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
     use tls_codec::{Deserialize, Serialize};
 
     use crate::{
         framing::{MlsMessageIn, PublicMessage, Sender},
-        group::{
-            config::CryptoConfig,
-            tests::utils::{credential, CredentialWithKeyAndSigner},
-            MlsGroup, MlsGroupConfig, WireFormatPolicy,
-        },
+        group::{config::CryptoConfig, MlsGroup, MlsGroupConfig, WireFormatPolicy},
+        test_utils::credential,
     };
 
     // Test setup values
     pub(super) struct ECValidationTestSetup {
         pub alice_group: MlsGroup,
-        // We only allow [`CredentialWithKeyAndSigner`] here for new.
-        pub alice_credential: CredentialWithKeyAndSigner,
-        pub bob_credential: CredentialWithKeyAndSigner,
+        // We only allow [`SignatureKeyPair`] here for new.
+        pub alice_credential: SignatureKeyPair,
+        pub bob_credential: SignatureKeyPair,
         pub public_message_commit: PublicMessage,
     }
 
@@ -765,11 +727,9 @@ mod utils {
         backend: &impl OpenMlsCryptoProvider,
     ) -> ECValidationTestSetup {
         // Generate credential bundles
-        let alice_credential =
-            credential("Alice".into(), ciphersuite.signature_algorithm(), backend);
+        let alice_credential = credential(b"Alice", ciphersuite.signature_algorithm(), backend);
 
-        let bob_credential =
-            credential("Bob".into(), ciphersuite.signature_algorithm(), backend);
+        let bob_credential = credential(b"Bob", ciphersuite.signature_algorithm(), backend);
 
         // Define the MlsGroup configuration
         let mls_group_config = MlsGroupConfig::builder()
@@ -780,9 +740,9 @@ mod utils {
         // Alice creates a group
         let alice_group = MlsGroup::new(
             backend,
-            &alice_credential.signer,
+            &alice_credential,
             &mls_group_config,
-            alice_credential.credential_with_key.clone(),
+            &alice_credential,
         )
         .unwrap();
 
@@ -790,7 +750,7 @@ mod utils {
 
         // Have Alice export everything that bob needs.
         let verifiable_group_info = alice_group
-            .export_group_info(backend, &alice_credential.signer, false)
+            .export_group_info(backend, &alice_credential, false)
             .unwrap()
             .into_verifiable_group_info()
             .unwrap();
@@ -798,12 +758,12 @@ mod utils {
 
         let (_, public_message_commit, _) = MlsGroup::join_by_external_commit(
             backend,
-            &bob_credential.signer,
+            &bob_credential,
             Some(tree_option),
             verifiable_group_info,
             alice_group.configuration(),
             &[],
-            bob_credential.credential_with_key.clone(),
+            &bob_credential,
         )
         .unwrap();
 

@@ -52,9 +52,9 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, backend: &impl OpenMl
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 
-    let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_signature_key) =
+    let (alice_kpb, alice_credential) =
         crate::group::test_core_group::setup_client("Alice", ciphersuite, backend);
-    let (_bob_credential, bob_kpb, _bob_signer, _bob_signature_key) =
+    let (bob_kpb, bob_credential) =
         crate::group::test_core_group::setup_client("Bob", ciphersuite, backend);
 
     let bob_kp = bob_kpb.key_package();
@@ -63,15 +63,15 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, backend: &impl OpenMl
     // === Alice creates a group  and adds Bob ===
     let mut alice_group = MlsGroup::new_with_group_id(
         backend,
-        &alice_signer,
+        &alice_credential,
         &mls_group_config,
         group_id,
-        alice_credential_with_key,
+        &alice_credential,
     )
     .expect("An unexpected error occurred.");
 
     let (_queued_message, welcome, _group_info) = alice_group
-        .add_members(backend, &alice_signer, &[bob_kp.clone()])
+        .add_members(backend, &alice_credential, &[bob_kp.clone()])
         .expect("Could not add member to group.");
 
     alice_group

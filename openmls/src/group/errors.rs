@@ -87,6 +87,9 @@ pub enum WelcomeError<KeyStoreError> {
     /// This error indicates the leaf node is invalid. See [`LeafNodeValidationError`] for more details.
     #[error(transparent)]
     LeafNodeValidation(#[from] LeafNodeValidationError),
+    /// See [`KeyPackageNewError`] for more details.
+    #[error(transparent)]
+    KeyPackageError(#[from] KeyPackageNewError<KeyStoreError>),
 }
 
 /// External Commit error

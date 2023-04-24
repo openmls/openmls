@@ -480,7 +480,7 @@ impl KeyPackage {
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
-        credential_with_key: CredentialWithKey,
+        credential: &dyn OpenMlsCredential,
         extensions: Extensions,
         leaf_node_capabilities: Capabilities,
         leaf_node_extensions: Extensions,
@@ -503,7 +503,7 @@ impl KeyPackage {
         // use later when creating a group with this key package.
         let leaf_node = LeafNode::create_new_with_key(
             encryption_key,
-            credential_with_key,
+            credential,
             LeafNodeSource::KeyPackage(Lifetime::default()),
             leaf_node_capabilities,
             leaf_node_extensions,
@@ -693,6 +693,12 @@ pub(crate) struct KeyPackageBundle {
     pub(crate) private_key: HpkePrivateKey,
 }
 
+#[allow(dead_code)]
+pub(crate) enum ReadMode {
+    DeleteKeys,
+    KeepKeys,
+}
+
 // Public `KeyPackageBundle` functions.
 impl KeyPackageBundle {
     /// Get a reference to the public part of this bundle, i.e. the [`KeyPackage`].
@@ -704,6 +710,32 @@ impl KeyPackageBundle {
     pub fn private_key(&self) -> &HpkePrivateKey {
         &self.private_key
     }
+
+    /// Generate a new bundle from the key package and the private key in the
+    /// key store.
+    pub(crate) fn from_init_key<KeyStore: OpenMlsKeyStore>(
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        key_package: KeyPackage,
+        delete: ReadMode,
+    ) -> Result<Self, KeyPackageNewError<KeyStore::Error>> {
+        let private_key = backend
+            .key_store()
+            .read::<HpkePrivateKey>(key_package.hpke_init_key().as_slice())
+            .ok_or(KeyPackageNewError::MissingPrivateKey)?;
+
+        if matches!(delete, ReadMode::DeleteKeys) {
+            // Delete the [`KeyPackage`] and the corresponding private key from the
+            // key store
+            key_package
+                .delete(backend)
+                .map_err(|e| KeyPackageNewError::KeyStoreError(e))?;
+        }
+
+        Ok(Self {
+            key_package,
+            private_key,
+        })
+    }
 }
 
 #[cfg(test)]
@@ -712,7 +744,7 @@ impl KeyPackageBundle {
         backend: &impl OpenMlsCryptoProvider,
         signer: &impl Signer,
         ciphersuite: Ciphersuite,
-        credential_with_key: CredentialWithKey,
+        credential: &dyn OpenMlsCredential,
     ) -> Self {
         let key_package = KeyPackage::builder()
             .build(
@@ -722,7 +754,7 @@ impl KeyPackageBundle {
                 },
                 backend,
                 signer,
-                credential_with_key,
+                credential,
             )
             .unwrap();
         let private_key = backend

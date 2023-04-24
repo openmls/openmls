@@ -63,12 +63,11 @@
 
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{types::SignatureScheme, OpenMlsCryptoProvider};
+use openmls_traits::OpenMlsCryptoProvider;
 use serde::{self, Deserialize, Serialize};
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
-    credentials::{Credential, CredentialType, CredentialWithKey},
     framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, *},
     group::*,
     schedule::{EncryptionSecret, SenderDataSecret},
@@ -103,64 +102,6 @@ pub struct MessageProtectionTest {
 
     application: String,
     application_priv: String,
-}
-
-fn generate_credential(
-    identity: Vec<u8>,
-    credential_type: CredentialType,
-    signature_algorithm: SignatureScheme,
-    backend: &impl OpenMlsCryptoProvider,
-) -> SignatureKeyPair {
-    let credential = SignatureKeyPair::new(signature_algorithm, identity).unwrap();
-    credential.store(backend.key_store()).unwrap();
-
-    credential
-}
-
-#[cfg(any(feature = "test-utils", test))]
-fn group(
-    ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
-) -> (CoreGroup, CredentialWithKey, SignatureKeyPair) {
-    use crate::group::config::CryptoConfig;
-
-    let credential = generate_credential(
-        "Kreator".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-        backend,
-    );
-
-    let group = CoreGroup::builder(
-        GroupId::random(backend),
-        CryptoConfig::with_default_version(ciphersuite),
-    )
-    .build(backend, &credential, &credential)
-    .unwrap();
-
-    (group, credential_with_key, signer)
-}
-
-#[cfg(any(feature = "test-utils", test))]
-fn receiver_group(
-    ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
-    group_id: GroupId,
-) -> (CoreGroup, CredentialWithKey, SignatureKeyPair) {
-    use crate::group::config::CryptoConfig;
-
-    let credential = generate_credential(
-        "Receiver".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-        backend,
-    );
-
-    let group = CoreGroup::builder(group_id, CryptoConfig::with_default_version(ciphersuite))
-        .build(backend, &credential, &credential)
-        .unwrap();
-
-    (group, credential, signer)
 }
 
 #[cfg(test)]
@@ -220,7 +161,6 @@ pub fn run_test_vector(
         _ => unimplemented!(),
     };
 
-    //
     let random_own_credential =
         SignatureKeyPair::new(ciphersuite.signature_algorithm(), "KeyOwner".into()).unwrap();
     let random_own_signature_key = random_own_credential.public();
@@ -240,21 +180,17 @@ pub fn run_test_vector(
 
     // Make the group think it has two members.
     {
-        let credential =
+        let mut credential =
             SignatureKeyPair::new(ciphersuite.signature_algorithm(), "Fake user".into()).unwrap();
-        let bob_key_package_bundle = KeyPackageBundle::new(
-            backend,
-            &credential,
-            ciphersuite,
-            CredentialWithKey {
-                credential,
-                signature_key: hex_to_bytes(&test.signature_pub).into(),
-            },
-        );
+        // inject the public key from the tv.
+        credential.set_public_key(hex_to_bytes(&test.signature_pub));
+
+        let bob_key_package_bundle =
+            KeyPackageBundle::new(backend, &credential, ciphersuite, &credential);
         let bob_key_package = bob_key_package_bundle.key_package();
         let framing_parameters = FramingParameters::new(&[], WireFormat::PublicMessage);
         let bob_add_proposal = group
-            .create_add_proposal(framing_parameters, bob_key_package.clone(), &signer)
+            .create_add_proposal(framing_parameters, bob_key_package.clone(), &credential)
             .expect("Could not create proposal.");
 
         let proposal_store = ProposalStore::from_queued_proposal(

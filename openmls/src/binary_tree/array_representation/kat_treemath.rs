@@ -52,7 +52,7 @@ pub struct TreeMathTestVector {
     sibling: Vec<Option<u32>>,
 }
 
-#[cfg(any(feature = "test-utils", test))]
+#[cfg(test)]
 pub fn generate_test_vector(n_leaves: u32) -> TreeMathTestVector {
     let n_nodes = TreeSize::new(node_width(n_leaves as usize) as u32);
     let mut test_vector = TreeMathTestVector {
@@ -125,7 +125,7 @@ fn write_test_vectors() {
     write("test_vectors/tree-math-new.json", &tests);
 }
 
-#[cfg(any(feature = "test-utils", test))]
+#[cfg(test)]
 pub fn run_test_vector(test_vector: TreeMathTestVector) -> Result<(), TmTestVectorError> {
     let n_leaves = test_vector.n_leaves as usize;
     let n_nodes = TreeSize::new(node_width(n_leaves) as u32);
@@ -195,7 +195,7 @@ fn read_test_vectors_tm() {
     }
 }
 
-#[cfg(any(feature = "test-utils", test))]
+#[cfg(test)]
 /// TreeMath test vector error
 #[derive(Error, Debug, PartialEq, Eq, Clone)]
 pub enum TmTestVectorError {

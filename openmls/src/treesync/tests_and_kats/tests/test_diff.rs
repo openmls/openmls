@@ -4,30 +4,19 @@ use rstest::*;
 use rstest_reuse::apply;
 
 use crate::{
-    credentials::{test_utils::new_credential, CredentialType},
     key_packages::KeyPackageBundle,
+    test_utils::credential,
     treesync::{node::Node, RatchetTree, TreeSync},
 };
 
 // Verifies that when we add a leaf to a tree with blank leaf nodes, the leaf will be added at the leftmost free leaf index
 #[apply(ciphersuites_and_backends)]
 fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    let (c_0, sk_0) = new_credential(
-        backend,
-        b"leaf0",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
+    let credential_0 = credential(b"leaf0", ciphersuite.signature_algorithm(), backend);
+    let kpb_0 = KeyPackageBundle::new(backend, &credential_0, ciphersuite, &credential_0);
 
-    let kpb_0 = KeyPackageBundle::new(backend, &sk_0, ciphersuite, c_0);
-
-    let (c_3, sk_3) = new_credential(
-        backend,
-        b"leaf3",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
-    let kpb_3 = KeyPackageBundle::new(backend, &sk_3, ciphersuite, c_3);
+    let credential_3 = credential(b"leaf3", ciphersuite.signature_algorithm(), backend);
+    let kpb_3 = KeyPackageBundle::new(backend, &credential_3, ciphersuite, &credential_3);
 
     // Build a rudimentary tree with two populated and two empty leaf nodes.
     let ratchet_tree = RatchetTree::trimmed(vec![
@@ -50,13 +39,8 @@ fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
 
     // Create and add a new leaf. It should go to leaf index 1
 
-    let (c_2, signer_2) = new_credential(
-        backend,
-        b"leaf2",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
-    let kpb_2 = KeyPackageBundle::new(backend, &signer_2, ciphersuite, c_2);
+    let credential_2 = credential(b"leaf2", ciphersuite.signature_algorithm(), backend);
+    let kpb_2 = KeyPackageBundle::new(backend, &credential_2, ciphersuite, &credential_2);
 
     let mut diff = tree.empty_diff();
     let free_leaf_index = diff.free_leaf_index();

@@ -72,13 +72,7 @@ fn padding(backend: &impl OpenMlsCryptoProvider) {
                 let message = randombytes(random_usize() % 1000);
                 let aad = randombytes(random_usize() % 1000);
                 let private_message = group_state
-                    .create_application_message(
-                        &aad,
-                        &message,
-                        padding_size,
-                        backend,
-                        &credential.signer,
-                    )
+                    .create_application_message(&aad, &message, padding_size, backend, credential)
                     .expect("An unexpected error occurred.");
                 let ciphertext = private_message.ciphertext();
                 let length = ciphertext.len();
@@ -117,11 +111,8 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         // This will be set later.
         let calculated_padding_length;
 
-        let alice_credential_with_keys = credential(
-            b"Alice".to_vec(),
-            ciphersuite.signature_algorithm(),
-            backend,
-        );
+        let alice_credential_with_keys =
+            credential(b"Alice", ciphersuite.signature_algorithm(), backend);
 
         let sender = Sender::build_member(LeafNodeIndex::new(654));
 
@@ -145,9 +136,7 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
             )
             .with_context(vec![7, 8, 9]);
 
-            plaintext_tbs
-                .sign(&alice_credential_with_keys.signer)
-                .unwrap()
+            plaintext_tbs.sign(&alice_credential_with_keys).unwrap()
         };
 
         let mut message_secrets =

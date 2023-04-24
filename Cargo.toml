@@ -4,12 +4,12 @@ members = [
     "traits",
     "openmls_rust_crypto",
     "fuzz",
-    "cli",
-    "interop_client",
+    # "cli",
+    # "interop_client",
     "memory_keystore",
-    "evercrypt_backend",
-    "delivery-service/ds",
-    "delivery-service/ds-lib",
+    # "evercrypt_backend",
+    # "delivery-service/ds",
+    # "delivery-service/ds-lib",
     "basic_credential",
 ]
 resolver = "2"

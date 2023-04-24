@@ -11,11 +11,10 @@ use crate::{
         external_proposals::*,
         proposals::{AddProposal, Proposal, ProposalType},
     },
+    test_utils::{credential, key_package},
 };
 
 use openmls_traits::types::Ciphersuite;
-
-use super::utils::*;
 
 struct ProposalValidationTestSetup {
     alice_group: (MlsGroup, SignatureKeyPair),
@@ -28,12 +27,15 @@ fn new_test_group(
     wire_format_policy: WireFormatPolicy,
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
-) -> (MlsGroup, CredentialWithKeyAndSigner) {
+) -> (MlsGroup, SignatureKeyPair) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Generate credential bundles
-    let credential_with_keys =
-        credential(identity.into(), ciphersuite.signature_algorithm(), backend);
+    let credential = credential(
+        identity.as_bytes(),
+        ciphersuite.signature_algorithm(),
+        backend,
+    );
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::builder()
@@ -44,13 +46,13 @@ fn new_test_group(
     (
         MlsGroup::new_with_group_id(
             backend,
-            &credential_with_keys.signer,
+            &credential,
             &mls_group_config,
             group_id,
-            credential_with_keys.credential_with_key.clone(),
+            &credential,
         )
         .unwrap(),
-        credential_with_keys,
+        credential,
     )
 }
 
@@ -65,17 +67,12 @@ fn validation_test_setup(
         new_test_group("Alice", wire_format_policy, ciphersuite, backend);
 
     let bob_credential_bundle =
-        credential("Bob".into(), ciphersuite.signature_algorithm(), backend);
+        credential("Bob".as_bytes(), ciphersuite.signature_algorithm(), backend);
 
-    let bob_key_package = generate_key_package(
-        ciphersuite,
-        Extensions::empty(),
-        backend,
-        bob_credential_bundle.clone(),
-    );
+    let bob_key_package = key_package(backend, &bob_credential_bundle, ciphersuite);
 
     let (_message, welcome, _group_info) = alice_group
-        .add_members(backend, &alice_signer_with_keys.signer, &[bob_key_package])
+        .add_members(backend, &alice_signer_with_keys, &[bob_key_package])
         .expect("error adding Bob to group");
 
     alice_group
@@ -97,8 +94,8 @@ fn validation_test_setup(
     .expect("error creating group from welcome");
 
     ProposalValidationTestSetup {
-        alice_group: (alice_group, alice_signer_with_keys.signer),
-        bob_group: (bob_group, bob_credential_bundle.signer),
+        alice_group: (alice_group, alice_signer_with_keys),
+        bob_group: (bob_group, bob_credential_bundle),
     }
 }
 
@@ -119,24 +116,14 @@ fn external_add_proposal_should_succeed(
         assert_eq!(bob_group.members().count(), 2);
 
         // A new client, Charlie, will now ask joining with an external Add proposal
-        let charlie_credential = generate_credential_bundle(
-            "Charlie".into(),
-            ciphersuite.signature_algorithm(),
-            backend,
-        );
-
-        let charlie_kp = generate_key_package(
-            ciphersuite,
-            Extensions::empty(),
-            backend,
-            charlie_credential.clone(),
-        );
+        let charlie_credential = credential(b"Charlie", ciphersuite.signature_algorithm(), backend);
+        let charlie_kp = key_package(backend, &charlie_credential, ciphersuite);
 
         let proposal = JoinProposal::new(
             charlie_kp.clone(),
             alice_group.group_id().clone(),
             alice_group.epoch(),
-            &charlie_credential.signer,
+            &charlie_credential,
         )
         .unwrap();
 
@@ -221,28 +208,17 @@ fn external_add_proposal_should_be_signed_by_key_package_it_references(
         validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
     let (mut alice_group, _alice_signer) = alice_group;
 
-    let attacker_credential = generate_credential_bundle(
-        "Attacker".into(),
-        ciphersuite.signature_algorithm(),
-        backend,
-    );
+    let attacker_credential = credential(b"Attacker", ciphersuite.signature_algorithm(), backend);
 
     // A new client, Charlie, will now ask joining with an external Add proposal
-    let charlie_credential =
-        generate_credential_bundle("Charlie".into(), ciphersuite.signature_algorithm(), backend);
-
-    let charlie_kp = generate_key_package(
-        ciphersuite,
-        Extensions::empty(),
-        backend,
-        attacker_credential,
-    );
+    let charlie_credential = credential(b"Charlie", ciphersuite.signature_algorithm(), backend);
+    let charlie_kp = key_package(backend, &attacker_credential, ciphersuite);
 
     let invalid_proposal = JoinProposal::new(
         charlie_kp,
         alice_group.group_id().clone(),
         alice_group.epoch(),
-        &charlie_credential.signer,
+        &charlie_credential,
     )
     .unwrap();
 
@@ -269,21 +245,14 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
     let (mut bob_group, _bob_signer) = bob_group;
 
     // Add proposal can have a 'new_member_proposal' sender
-    let any_credential =
-        generate_credential_bundle("Any".into(), ciphersuite.signature_algorithm(), backend);
-
-    let any_kp = generate_key_package(
-        ciphersuite,
-        Extensions::empty(),
-        backend,
-        any_credential.clone(),
-    );
+    let any_credential = credential(b"Any", ciphersuite.signature_algorithm(), backend);
+    let any_kp = key_package(backend, &any_credential, ciphersuite);
 
     let join_proposal = JoinProposal::new(
         any_kp,
         alice_group.group_id().clone(),
         alice_group.epoch(),
-        &any_credential.signer,
+        &any_credential,
     )
     .unwrap();
 

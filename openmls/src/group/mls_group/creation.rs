@@ -2,12 +2,12 @@ use openmls_traits::{credential::OpenMlsCredential, signatures::Signer};
 
 use super::*;
 use crate::{
-    ciphersuite::HpkePrivateKey,
     group::{
         core_group::create_commit_params::CreateCommitParams,
         errors::{CoreGroupBuildError, ExternalCommitError, WelcomeError},
         public_group::errors::PublicGroupBuildError,
     },
+    key_packages,
     messages::group_info::{GroupInfo, VerifiableGroupInfo},
     schedule::psk::store::ResumptionPskStore,
     treesync::RatchetTree,
@@ -121,21 +121,11 @@ impl MlsGroup {
             .ok_or(WelcomeError::NoMatchingKeyPackage)?;
 
         // TODO #751
-        let private_key = backend
-            .key_store()
-            .read::<HpkePrivateKey>(key_package.hpke_init_key().as_slice())
-            .ok_or(WelcomeError::NoMatchingKeyPackage)?;
-        let key_package_bundle = KeyPackageBundle {
+        let key_package_bundle = KeyPackageBundle::from_init_key(
+            backend,
             key_package,
-            private_key,
-        };
-
-        // Delete the [`KeyPackage`] and the corresponding private key from the
-        // key store
-        key_package_bundle
-            .key_package
-            .delete(backend)
-            .map_err(WelcomeError::KeyStoreError)?;
+            key_packages::ReadMode::DeleteKeys,
+        )?;
 
         let mut group = CoreGroup::new_from_welcome(
             welcome,

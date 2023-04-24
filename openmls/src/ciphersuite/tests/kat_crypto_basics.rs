@@ -289,6 +289,7 @@ pub fn run_test_vector(
                     }
                 },
                 public.clone(),
+                vec![],
             ),
             content,
             label,

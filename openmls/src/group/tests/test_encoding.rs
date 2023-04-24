@@ -62,7 +62,7 @@ fn test_application_message_encoding(backend: &impl OpenMlsCryptoProvider) {
 
     // Create a message in each group and test the padding.
     for group_state in alice.group_states.borrow_mut().values_mut() {
-        let credential_with_key_and_signer = alice
+        let credential = alice
             .credentials
             .get(&group_state.ciphersuite())
             .expect("An unexpected error occurred.");
@@ -71,13 +71,7 @@ fn test_application_message_encoding(backend: &impl OpenMlsCryptoProvider) {
             let message = randombytes(random_usize() % 1000);
             let aad = randombytes(random_usize() % 1000);
             let encrypted_message = group_state
-                .create_application_message(
-                    &aad,
-                    &message,
-                    0,
-                    backend,
-                    &credential_with_key_and_signer.signer,
-                )
+                .create_application_message(&aad, &message, 0, backend, credential)
                 .expect("An unexpected error occurred.");
             let encrypted_message_bytes = encrypted_message
                 .tls_serialize_detached()
@@ -105,23 +99,19 @@ fn test_update_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
     let framing_parameters = FramingParameters::new(&[], WireFormat::PublicMessage);
 
     for group_state in alice.group_states.borrow_mut().values_mut() {
-        let credential_with_key_and_signer = alice
+        let credential = alice
             .credentials
             .get(&group_state.ciphersuite())
             .expect("An unexpected error occurred.");
 
-        let key_package_bundle = KeyPackageBundle::new(
-            backend,
-            &credential_with_key_and_signer.signer,
-            group_state.ciphersuite(),
-            credential_with_key_and_signer.credential_with_key.clone(),
-        );
+        let key_package_bundle =
+            KeyPackageBundle::new(backend, credential, group_state.ciphersuite(), credential);
 
         let mut update: PublicMessage = group_state
             .create_update_proposal(
                 framing_parameters,
                 key_package_bundle.key_package().leaf_node().clone(),
-                &credential_with_key_and_signer.signer,
+                credential,
             )
             .expect("Could not create proposal.")
             .into();
@@ -158,24 +148,20 @@ fn test_add_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
     let framing_parameters = FramingParameters::new(&[], WireFormat::PublicMessage);
 
     for group_state in alice.group_states.borrow_mut().values_mut() {
-        let credential_with_key_and_signer = alice
+        let credential = alice
             .credentials
             .get(&group_state.ciphersuite())
             .expect("An unexpected error occurred.");
 
-        let key_package_bundle = KeyPackageBundle::new(
-            backend,
-            &credential_with_key_and_signer.signer,
-            group_state.ciphersuite(),
-            credential_with_key_and_signer.credential_with_key.clone(),
-        );
+        let key_package_bundle =
+            KeyPackageBundle::new(backend, credential, group_state.ciphersuite(), credential);
 
         // Adds
         let mut add: PublicMessage = group_state
             .create_add_proposal(
                 framing_parameters,
                 key_package_bundle.key_package().clone(),
-                &credential_with_key_and_signer.signer,
+                credential,
             )
             .expect("Could not create proposal.")
             .into();
@@ -208,17 +194,13 @@ fn test_remove_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
     let framing_parameters = FramingParameters::new(&[], WireFormat::PublicMessage);
 
     for group_state in alice.group_states.borrow_mut().values_mut() {
-        let credential_with_key_and_signer = alice
+        let credential = alice
             .credentials
             .get(&group_state.ciphersuite())
             .expect("An unexpected error occurred.");
 
         let mut remove: PublicMessage = group_state
-            .create_remove_proposal(
-                framing_parameters,
-                LeafNodeIndex::new(1),
-                &credential_with_key_and_signer.signer,
-            )
+            .create_remove_proposal(framing_parameters, LeafNodeIndex::new(1), credential)
             .expect("Could not create proposal.")
             .into();
         remove
@@ -251,18 +233,16 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
     let framing_parameters = FramingParameters::new(&[], WireFormat::PublicMessage);
 
     for group_state in alice.group_states.borrow_mut().values_mut() {
-        let alice_credential_with_key_and_signer = alice
+        let alice_credential = alice
             .credentials
             .get(&group_state.ciphersuite())
             .expect("An unexpected error occurred.");
 
         let alice_key_package_bundle = KeyPackageBundle::new(
             backend,
-            &alice_credential_with_key_and_signer.signer,
+            alice_credential,
             group_state.ciphersuite(),
-            alice_credential_with_key_and_signer
-                .credential_with_key
-                .clone(),
+            alice_credential,
         );
 
         // Create a few proposals to put into the commit
@@ -272,7 +252,7 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
             .create_update_proposal(
                 framing_parameters,
                 alice_key_package_bundle.key_package().leaf_node().clone(),
-                &alice_credential_with_key_and_signer.signer,
+                alice_credential,
             )
             .expect("Could not create proposal.");
 
@@ -288,7 +268,7 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
             .create_add_proposal(
                 framing_parameters,
                 charlie_key_package.clone(),
-                &alice_credential_with_key_and_signer.signer,
+                alice_credential,
             )
             .expect("Could not create proposal.");
 
@@ -314,11 +294,7 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
             .proposal_store(&proposal_store)
             .build();
         let create_commit_result = group_state
-            .create_commit(
-                params,
-                backend,
-                &alice_credential_with_key_and_signer.signer,
-            )
+            .create_commit(params, backend, alice_credential, None)
             .expect("An unexpected error occurred.");
         let mut commit: PublicMessage = create_commit_result.commit.into();
         commit
@@ -351,7 +327,7 @@ fn test_welcome_message_encoding(backend: &impl OpenMlsCryptoProvider) {
     let framing_parameters = FramingParameters::new(&[], WireFormat::PublicMessage);
 
     for group_state in alice.group_states.borrow_mut().values_mut() {
-        let credential_with_key_and_signer = alice
+        let credential = alice
             .credentials
             .get(&group_state.ciphersuite())
             .expect("An unexpected error occurred.");
@@ -367,11 +343,7 @@ fn test_welcome_message_encoding(backend: &impl OpenMlsCryptoProvider) {
             .pop()
             .expect("An unexpected error occurred.");
         let add = group_state
-            .create_add_proposal(
-                framing_parameters,
-                charlie_key_package.clone(),
-                &credential_with_key_and_signer.signer,
-            )
+            .create_add_proposal(framing_parameters, charlie_key_package.clone(), credential)
             .expect("Could not create proposal.");
 
         let proposal_store = ProposalStore::from_queued_proposal(
@@ -388,7 +360,7 @@ fn test_welcome_message_encoding(backend: &impl OpenMlsCryptoProvider) {
             .proposal_store(&proposal_store)
             .build();
         let create_commit_result = group_state
-            .create_commit(params, backend, &credential_with_key_and_signer.signer)
+            .create_commit(params, backend, credential, None)
             .expect("An unexpected error occurred.");
         // Alice applies the commit
         group_state

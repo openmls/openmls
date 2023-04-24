@@ -1,3 +1,4 @@
+use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use rstest::*;
 use rstest_reuse::{self, *};
@@ -6,11 +7,10 @@ use crate::{
     framing::*,
     group::{config::CryptoConfig, errors::*, *},
     messages::external_proposals::*,
+    test_utils::{credential, key_package},
 };
 
-use openmls_traits::types::Ciphersuite;
-
-use super::utils::*;
+use openmls_traits::{credential::OpenMlsCredential, types::Ciphersuite};
 
 // Creates a standalone group
 fn new_test_group(
@@ -19,12 +19,15 @@ fn new_test_group(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
     external_senders: ExternalSendersExtension,
-) -> (MlsGroup, CredentialWithKeyAndSigner) {
+) -> (MlsGroup, SignatureKeyPair) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Generate credential bundles
-    let credential_with_keys =
-        credential(identity.into(), ciphersuite.signature_algorithm(), backend);
+    let credential = credential(
+        identity.as_bytes(),
+        ciphersuite.signature_algorithm(),
+        backend,
+    );
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::builder()
@@ -36,13 +39,13 @@ fn new_test_group(
     (
         MlsGroup::new_with_group_id(
             backend,
-            &credential_with_keys.signer,
+            &credential,
             &mls_group_config,
             group_id,
-            credential_with_keys.credential_with_key.clone(),
+            &credential,
         )
         .unwrap(),
-        credential_with_keys,
+        credential,
     )
 }
 
@@ -52,7 +55,7 @@ fn validation_test_setup(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
     external_senders: ExternalSendersExtension,
-) -> (MlsGroup, CredentialWithKeyAndSigner) {
+) -> (MlsGroup, SignatureKeyPair) {
     // === Alice creates a group ===
     let (mut alice_group, alice_signer_when_keys) = new_test_group(
         "Alice",
@@ -62,18 +65,11 @@ fn validation_test_setup(
         external_senders,
     );
 
-    let bob_credential_bundle =
-        credential("Bob".into(), ciphersuite.signature_algorithm(), backend);
-
-    let bob_key_package = generate_key_package(
-        ciphersuite,
-        Extensions::empty(),
-        backend,
-        bob_credential_bundle,
-    );
+    let bob_credential = credential(b"Bob", ciphersuite.signature_algorithm(), backend);
+    let bob_key_package = key_package(backend, &bob_credential, ciphersuite);
 
     alice_group
-        .add_members(backend, &alice_signer_when_keys.signer, &[bob_key_package])
+        .add_members(backend, &alice_signer_when_keys, &[bob_key_package])
         .expect("error adding Bob to group");
 
     alice_group
@@ -90,8 +86,8 @@ fn external_remove_proposal_should_remove_member(
     backend: &impl OpenMlsCryptoProvider,
 ) {
     // delivery service credentials. DS will craft an external remove proposal
-    let ds_credential_bundle = generate_credential_bundle(
-        "delivery-service".into(),
+    let ds_credential_bundle = credential(
+        b"delivery-service",
         ciphersuite.signature_algorithm(),
         backend,
     );
@@ -101,11 +97,8 @@ fn external_remove_proposal_should_remove_member(
         ciphersuite,
         backend,
         vec![ExternalSender::new(
-            ds_credential_bundle
-                .credential_with_key
-                .signature_key
-                .clone(),
-            ds_credential_bundle.credential_with_key.credential.clone(),
+            ds_credential_bundle.public_key().into(),
+            ds_credential_bundle.credential(),
         )],
     );
 
@@ -114,7 +107,7 @@ fn external_remove_proposal_should_remove_member(
          .group()
          .group_context_extensions()
          .iter()
-         .any(|e| matches!(e, Extension::ExternalSenders(senders) if senders.iter().any(|s| s.credential() == &ds_credential_bundle.credential_with_key.credential) )));
+         .any(|e| matches!(e, Extension::ExternalSenders(senders) if senders.iter().any(|s| s.credential() == &ds_credential_bundle.credential()) )));
 
     // get Bob's index
     let bob_index = alice_group
@@ -127,7 +120,7 @@ fn external_remove_proposal_should_remove_member(
         bob_index,
         alice_group.group_id().clone(),
         alice_group.epoch(),
-        &ds_credential_bundle.signer,
+        &ds_credential_bundle,
         SenderExtensionIndex::new(0),
     )
     .unwrap()
@@ -141,7 +134,7 @@ fn external_remove_proposal_should_remove_member(
     let ProcessedMessageContent::ProposalMessage(remove_proposal) = processed_message.into_content() else { panic!("Not a remove proposal");};
     alice_group.store_pending_proposal(*remove_proposal);
     alice_group
-        .commit_to_pending_proposals(backend, &alice_credential.signer)
+        .commit_to_pending_proposals(backend, &alice_credential)
         .unwrap();
     alice_group.merge_pending_commit(backend).unwrap();
 
@@ -151,7 +144,7 @@ fn external_remove_proposal_should_remove_member(
         bob_index,
         alice_group.group_id().clone(),
         alice_group.epoch(),
-        &ds_credential_bundle.signer,
+        &ds_credential_bundle,
         SenderExtensionIndex::new(0),
     )
     .unwrap()
@@ -164,7 +157,7 @@ fn external_remove_proposal_should_remove_member(
     alice_group.store_pending_proposal(*remove_proposal);
     assert_eq!(
         alice_group
-            .commit_to_pending_proposals(backend, &alice_credential.signer)
+            .commit_to_pending_proposals(backend, &alice_credential)
             .unwrap_err(),
         CommitToPendingProposalsError::CreateCommitError(
             CreateCommitError::ProposalValidationError(
@@ -180,8 +173,8 @@ fn external_remove_proposal_should_fail_when_invalid_external_senders_index(
     backend: &impl OpenMlsCryptoProvider,
 ) {
     // delivery service credentials. DS will craft an external remove proposal
-    let ds_credential_bundle = generate_credential_bundle(
-        "delivery-service".into(),
+    let ds_credential_bundle = credential(
+        b"delivery-service",
         ciphersuite.signature_algorithm(),
         backend,
     );
@@ -191,11 +184,8 @@ fn external_remove_proposal_should_fail_when_invalid_external_senders_index(
         ciphersuite,
         backend,
         vec![ExternalSender::new(
-            ds_credential_bundle
-                .credential_with_key
-                .signature_key
-                .clone(),
-            ds_credential_bundle.credential_with_key.credential.clone(),
+            ds_credential_bundle.public_key().into(),
+            ds_credential_bundle.credential(),
         )],
     );
 
@@ -210,7 +200,7 @@ fn external_remove_proposal_should_fail_when_invalid_external_senders_index(
         bob_index,
         alice_group.group_id().clone(),
         alice_group.epoch(),
-        &ds_credential_bundle.signer,
+        &ds_credential_bundle,
         SenderExtensionIndex::new(10), // invalid sender index
     )
     .unwrap()
@@ -232,8 +222,8 @@ fn external_remove_proposal_should_fail_when_invalid_signature(
     backend: &impl OpenMlsCryptoProvider,
 ) {
     // delivery service credentials. DS will craft an external remove proposal
-    let ds_credential_bundle = generate_credential_bundle(
-        "delivery-service".into(),
+    let ds_credential_bundle = credential(
+        b"delivery-service",
         ciphersuite.signature_algorithm(),
         backend,
     );
@@ -243,16 +233,13 @@ fn external_remove_proposal_should_fail_when_invalid_signature(
         ciphersuite,
         backend,
         vec![ExternalSender::new(
-            ds_credential_bundle
-                .credential_with_key
-                .signature_key
-                .clone(),
-            ds_credential_bundle.credential_with_key.credential,
+            ds_credential_bundle.public_key().into(),
+            ds_credential_bundle.credential(),
         )],
     );
 
-    let ds_invalid_credential_bundle = generate_credential_bundle(
-        "delivery-service-invalid".into(),
+    let ds_invalid_credential_bundle = credential(
+        b"delivery-service-invalid",
         ciphersuite.signature_algorithm(),
         backend,
     );
@@ -268,7 +255,7 @@ fn external_remove_proposal_should_fail_when_invalid_signature(
         bob_index,
         alice_group.group_id().clone(),
         alice_group.epoch(),
-        &ds_invalid_credential_bundle.signer,
+        &ds_invalid_credential_bundle,
         SenderExtensionIndex::new(0),
     )
     .unwrap()
@@ -293,8 +280,8 @@ fn external_remove_proposal_should_fail_when_no_external_senders(
         vec![],
     );
     // delivery service credentials. DS will craft an external remove proposal
-    let ds_credential_bundle = generate_credential_bundle(
-        "delivery-service".into(),
+    let ds_credential_bundle = credential(
+        b"delivery-service",
         ciphersuite.signature_algorithm(),
         backend,
     );
@@ -310,7 +297,7 @@ fn external_remove_proposal_should_fail_when_no_external_senders(
         bob_index,
         alice_group.group_id().clone(),
         alice_group.epoch(),
-        &ds_credential_bundle.signer,
+        &ds_credential_bundle,
         SenderExtensionIndex::new(1), // invalid sender index
     )
     .unwrap()

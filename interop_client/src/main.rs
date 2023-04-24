@@ -14,7 +14,6 @@ use mls_client::{
 use mls_interop_proto::mls_client;
 use openmls::{
     ciphersuite::HpkePrivateKey,
-    credentials::{Credential, CredentialType, CredentialWithKey},
     framing::{MlsMessageIn, MlsMessageInBody, MlsMessageOut, ProcessedMessageContent},
     group::{
         GroupEpoch, GroupId, MlsGroup, MlsGroupConfig, WireFormatPolicy,

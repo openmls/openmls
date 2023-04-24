@@ -15,11 +15,7 @@ use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::Mac,
     framing::*,
-    group::{
-        config::CryptoConfig,
-        tests::utils::{credential, generate_key_package, randombytes},
-        *,
-    },
+    group::{config::CryptoConfig, tests::utils::randombytes, *},
     key_packages::*,
     messages::{
         proposals::*,
@@ -134,7 +130,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     let alice_ratchet_tree = alice_group.public_group().export_ratchet_tree();
 
     let alice_group_info = alice_group
-        .export_group_info(&backend, &alice_credential.signer, true)
+        .export_group_info(&backend, &alice_credential, true)
         .unwrap();
 
     let alice_leaf_node = {
@@ -155,11 +151,11 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
                 ciphersuite,
                 version: ProtocolVersion::Mls10,
             },
-            alice_credential.credential_with_key.clone(),
+            &alice_credential,
             capabilities,
             Extensions::default(),
             &backend,
-            &alice_credential.signer.clone(),
+            &alice_credential.clone(),
         )
         .unwrap()
     };
@@ -174,9 +170,9 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
 
     let bob_key_package_bundle = KeyPackageBundle::new(
         &backend,
-        &bob_credential_with_key_and_signer.signer,
+        &bob_credential_with_key_and_signer,
         ciphersuite,
-        bob_credential_with_key_and_signer.credential_with_key,
+        &bob_credential_with_key_and_signer,
     );
 
     let add_proposal = AddProposal {
@@ -225,7 +221,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         .create_add_proposal(
             framing_parameters,
             bob_key_package_bundle.key_package.clone(),
-            &alice_credential.signer.clone(),
+            &alice_credential.clone(),
         )
         .unwrap();
 
@@ -242,7 +238,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         .proposal_store(&proposal_store)
         .build();
     let create_commit_result = alice_group
-        .create_commit(params, &backend, &alice_credential.signer, None)
+        .create_commit(params, &backend, &alice_credential, None)
         .unwrap();
     alice_group
         .merge_staged_commit(
@@ -276,7 +272,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
             b"msg",
             random_u8() as usize,
             &backend,
-            &alice_credential.signer,
+            &alice_credential,
         )
         .unwrap();
     // Replace the secret tree

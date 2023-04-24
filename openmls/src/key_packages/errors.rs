@@ -46,6 +46,12 @@ pub enum KeyPackageNewError<KeyStoreError> {
     /// Accessing the key store failed.
     #[error("Accessing the key store failed.")]
     KeyStoreError(KeyStoreError),
+    /// Unable to find the private key in the key store corresponding to the
+    /// provided public key.
+    #[error(
+        "Unable to find the private key in the key store corresponding to the provided public key."
+    )]
+    MissingPrivateKey,
     /// See [`SignatureError`] for more details.
     #[error(transparent)]
     SignatureError(#[from] SignatureError),

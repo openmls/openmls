@@ -343,12 +343,9 @@ pub fn generate_test_vector(cipher_suite: Ciphersuite) -> PassiveClientWelcomeTe
 
     let mut creator_group = MlsGroup::new(
         &creator_backend,
-        &creator.signature_keypair,
+        &creator.credential,
         &group_config,
-        creator
-            .credential_with_key_and_signer
-            .credential_with_key
-            .clone(),
+        &creator.credential,
     )
     .unwrap();
 
@@ -361,7 +358,7 @@ pub fn generate_test_vector(cipher_suite: Ciphersuite) -> PassiveClientWelcomeTe
     let (_, mls_message_welcome, _) = creator_group
         .add_members(
             &creator_backend,
-            &creator.signature_keypair,
+            &creator.credential,
             &[passive.key_package.clone()],
         )
         .unwrap();
@@ -492,7 +489,7 @@ pub fn generate_test_vector(cipher_suite: Ciphersuite) -> PassiveClientWelcomeTe
             .tls_serialize_detached()
             .unwrap(),
 
-        signature_priv: passive.signature_keypair.private().to_vec(),
+        signature_priv: passive.credential.private().to_vec(),
         encryption_priv: passive
             .encryption_keypair
             .private_key()
@@ -522,11 +519,7 @@ fn propose_add(
         generate_group_candidate(add_identity, cipher_suite, None::<&OpenMlsRustCrypto>);
 
     let mls_message_out_proposal = group
-        .propose_add_member(
-            backend,
-            &candidate.signature_keypair,
-            &add_candidate.key_package,
-        )
+        .propose_add_member(backend, &candidate.credential, &add_candidate.key_package)
         .unwrap();
     group.merge_pending_commit(backend).unwrap();
 
@@ -546,7 +539,7 @@ fn propose_remove(
         .index;
 
     let mls_message_out_proposal = group
-        .propose_remove_member(backend, &candidate.signature_keypair, remove)
+        .propose_remove_member(backend, &candidate.credential, remove)
         .unwrap();
 
     TestProposal(mls_message_out_proposal.tls_serialize_detached().unwrap())
@@ -554,7 +547,7 @@ fn propose_remove(
 
 fn commit(backend: &OpenMlsRustCrypto, creator: &GroupCandidate, group: &mut MlsGroup) -> Vec<u8> {
     let (mls_message_out_commit, _, _) = group
-        .commit_to_pending_proposals(backend, &creator.signature_keypair)
+        .commit_to_pending_proposals(backend, &creator.credential)
         .unwrap();
     group.merge_pending_commit(backend).unwrap();
 
@@ -566,9 +559,7 @@ fn update_inline(
     candidate: &GroupCandidate,
     group: &mut MlsGroup,
 ) -> TestEpoch {
-    let (mls_message_out_commit, _, _) = group
-        .self_update(backend, &candidate.signature_keypair)
-        .unwrap();
+    let (mls_message_out_commit, _, _) = group.self_update(backend, &candidate.credential).unwrap();
     group.merge_pending_commit(backend).unwrap();
 
     let proposals = vec![];

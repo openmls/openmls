@@ -149,7 +149,7 @@ use message_secrets::MessageSecrets;
 use psk::PskSecret;
 
 // Tests
-#[cfg(any(feature = "test-utils", test))]
+#[cfg(test)]
 pub mod kat_key_schedule;
 #[cfg(test)]
 pub mod kat_psk_secret;

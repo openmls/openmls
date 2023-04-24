@@ -1,4 +1,8 @@
-use openmls::{messages::group_info::VerifiableGroupInfo, prelude::*, test_utils::*, *};
+use openmls::{
+    prelude::{group_info::VerifiableGroupInfo, *},
+    test_utils::*,
+    *,
+};
 use openmls_basic_credential::SignatureKeyPair;
 
 fn create_alice_group(
@@ -14,13 +18,8 @@ fn create_alice_group(
     let credential = SignatureKeyPair::new(ciphersuite.into(), b"Alice".to_vec()).unwrap();
     credential.store(backend.key_store()).unwrap();
 
-    let group = MlsGroup::new(
-        backend,
-        &credential,
-        &group_config,
-        credential_with_key.clone(),
-    )
-    .expect("An unexpected error occurred.");
+    let group = MlsGroup::new(backend, &credential, &group_config, &credential)
+        .expect("An unexpected error occurred.");
 
     (group, credential)
 }
@@ -74,7 +73,7 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
         let (_bob_group, _, _) = MlsGroup::join_by_external_commit(
             backend,
-            &bob_signature_keys,
+            &bob_credential,
             None,
             verifiable_group_info,
             &MlsGroupConfigBuilder::new()
@@ -93,7 +92,7 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
         let got_error = MlsGroup::join_by_external_commit(
             backend,
-            &bob_signature_keys,
+            &bob_credential,
             None,
             verifiable_group_info_broken,
             &MlsGroupConfigBuilder::new()
@@ -133,7 +132,7 @@ fn test_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     };
     let (mut bob_group, msg, group_info) = MlsGroup::join_by_external_commit(
         backend,
-        &bob_signature_keys,
+        &bob_credential,
         None,
         verifiable_group_info,
         &MlsGroupConfigBuilder::new()
@@ -160,7 +159,7 @@ fn test_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // bob sends a message to alice
     let message: MlsMessageIn = bob_group
-        .create_message(backend, &bob_signature_keys, b"Hello Alice")
+        .create_message(backend, &bob_credential, b"Hello Alice")
         .unwrap()
         .into();
 
@@ -173,12 +172,8 @@ fn test_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // check that the returned group info from the external join is valid
     // Bob wants to join with another client
-    let (bob_credential, bob_signature_keys) = new_credential(
-        backend,
-        b"Bob 2",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
+    let bob_credential =
+        test_utils::credential(b"Bob 2", ciphersuite.signature_algorithm(), backend);
     let verifiable_group_info = {
         let serialized_group_info = group_info.unwrap().tls_serialize_detached().unwrap();
 
@@ -186,14 +181,14 @@ fn test_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     };
     let (mut bob_group, ..) = MlsGroup::join_by_external_commit(
         backend,
-        &bob_signature_keys,
+        &bob_credential,
         None,
         verifiable_group_info,
         &MlsGroupConfigBuilder::new()
             .crypto_config(CryptoConfig::with_default_version(ciphersuite))
             .build(),
         b"",
-        bob_credential,
+        &bob_credential,
     )
     .unwrap();
     bob_group.merge_pending_commit(backend).unwrap();

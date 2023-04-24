@@ -1,4 +1,4 @@
-use openmls_traits::types::{Ciphersuite, VerifiableCiphersuite, credential::CredentialType};
+use openmls_traits::types::{credential::CredentialType, Ciphersuite, VerifiableCiphersuite};
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
@@ -202,13 +202,12 @@ pub(super) fn default_credentials() -> Vec<CredentialType> {
 
 #[cfg(test)]
 mod tests {
-    use openmls_traits::types::{Ciphersuite, VerifiableCiphersuite};
+    use openmls_traits::types::{credential::CredentialType, Ciphersuite, VerifiableCiphersuite};
     use tls_codec::{Deserialize, Serialize};
 
     use super::Capabilities;
     use crate::{
-        credentials::CredentialType, messages::proposals::ProposalType, prelude::ExtensionType,
-        versions::ProtocolVersion,
+        messages::proposals::ProposalType, prelude::ExtensionType, versions::ProtocolVersion,
     };
 
     #[test]

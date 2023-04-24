@@ -15,10 +15,7 @@ use crate::test_utils::{read, write};
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     framing::{mls_auth_content::AuthenticatedContent, *},
-    group::{
-        tests::utils::{credential, randombytes},
-        *,
-    },
+    group::{tests::utils::randombytes, *},
     messages::*,
     schedule::*,
     test_utils::*,
@@ -202,18 +199,16 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
             )
         };
 
-        let signer = {
-            let credential_with_key_and_signer = credential(
-                b"Alice".to_vec(),
-                ciphersuite.signature_algorithm(),
-                &backend,
-            );
+        let credential = credential(b"Alice", ciphersuite.signature_algorithm(), &backend);
 
-            credential_with_key_and_signer.signer
-        };
-
-        AuthenticatedContent::commit(framing_parameters, sender, commit, &group_context, &signer)
-            .unwrap()
+        AuthenticatedContent::commit(
+            framing_parameters,
+            sender,
+            commit,
+            &group_context,
+            &credential,
+        )
+        .unwrap()
     };
 
     // Now, calculate `confirmed_transcript_hash_after` ...

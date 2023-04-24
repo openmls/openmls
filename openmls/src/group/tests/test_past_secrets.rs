@@ -6,10 +6,10 @@ use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use rstest::*;
 use rstest_reuse::{self, *};
 
-use super::utils::{credential, generate_key_package};
 use crate::{
     framing::{MessageDecryptionError, ProcessedMessageContent},
     group::{config::CryptoConfig, errors::*, *},
+    test_utils::{credential, key_package},
 };
 
 #[apply(ciphersuites_and_backends)]
@@ -19,21 +19,13 @@ fn test_past_secrets_in_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
         let group_id = GroupId::from_slice(b"Test Group");
 
         // Generate credentials
-        let alice_credential_with_keys = generate_credential_bundle(
-            b"Alice".to_vec(),
-            ciphersuite.signature_algorithm(),
-            backend,
-        );
+        let alice_credential_with_keys =
+            credential(b"Alice", ciphersuite.signature_algorithm(), backend);
         let bob_credential_with_keys =
-            generate_credential_bundle(b"Bob".to_vec(), ciphersuite.signature_algorithm(), backend);
+            credential(b"Bob", ciphersuite.signature_algorithm(), backend);
 
         // Generate KeyPackages
-        let bob_key_package = generate_key_package(
-            ciphersuite,
-            Extensions::empty(),
-            backend,
-            bob_credential_with_keys,
-        );
+        let bob_key_package = key_package(backend, &bob_credential_with_keys, ciphersuite);
 
         // Define the MlsGroup configuration
 
@@ -45,20 +37,16 @@ fn test_past_secrets_in_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
         // === Alice creates a group ===
         let mut alice_group = MlsGroup::new_with_group_id(
             backend,
-            &alice_credential_with_keys.signer,
+            &alice_credential_with_keys,
             &mls_group_config,
             group_id.clone(),
-            alice_credential_with_keys.credential_with_key.clone(),
+            &alice_credential_with_keys,
         )
         .expect("An unexpected error occurred.");
 
         // Alice adds Bob
         let (_message, welcome, _group_info) = alice_group
-            .add_members(
-                backend,
-                &alice_credential_with_keys.signer,
-                &[bob_key_package],
-            )
+            .add_members(backend, &alice_credential_with_keys, &[bob_key_package])
             .expect("An unexpected error occurred.");
 
         alice_group
@@ -80,13 +68,13 @@ fn test_past_secrets_in_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
 
         for _ in 0..max_epochs {
             let application_message = alice_group
-                .create_message(backend, &alice_credential_with_keys.signer, &[1, 2, 3])
+                .create_message(backend, &alice_credential_with_keys, &[1, 2, 3])
                 .expect("An unexpected error occurred.");
 
             application_messages.push(application_message.into_protocol_message().unwrap());
 
             let (message, _welcome, _group_info) = alice_group
-                .self_update(backend, &alice_credential_with_keys.signer)
+                .self_update(backend, &alice_credential_with_keys)
                 .expect("An unexpected error occurred.");
 
             update_commits.push(message.clone());

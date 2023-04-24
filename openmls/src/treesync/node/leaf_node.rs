@@ -4,7 +4,7 @@ use openmls_traits::{
     key_store::OpenMlsKeyStore,
     signatures::Signer,
     types::{
-        credential::{Credential, CredentialType},
+        credential::{BasicCredential, Credential, CredentialType},
         Ciphersuite, VerifiableCiphersuite,
     },
     OpenMlsCryptoProvider,
@@ -142,14 +142,18 @@ impl LeafNode {
         &self,
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-        signer: &impl Signer,
+        signer: &(impl Signer + OpenMlsCredential),
     ) -> Result<Self, LeafNodeGenerationError<KeyStore::Error>> {
+        use openmls_basic_credential::VerificationCredential;
+
+        let credential = VerificationCredential::new(
+            self.payload.signature_key.as_slice().to_vec(),
+            signer.signature_scheme(),
+            signer.identity().to_vec(),
+        );
         Self::generate_update(
             config,
-            CredentialWithKey {
-                credential: self.payload.credential.clone(),
-                signature_key: self.payload.signature_key.clone(),
-            },
+            &credential,
             self.payload.capabilities.clone(),
             self.payload.extensions.clone(),
             backend,
@@ -166,7 +170,7 @@ impl LeafNode {
     /// a leaf node should be generated as part of a new [`KeyPackage`].
     pub fn generate_update<KeyStore: OpenMlsKeyStore>(
         config: CryptoConfig,
-        credential_with_key: &dyn OpenMlsCredential,
+        credential: &dyn OpenMlsCredential,
         capabilities: Capabilities,
         extensions: Extensions,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
@@ -177,7 +181,7 @@ impl LeafNode {
 
         let (leaf_node, encryption_key_pair) = Self::new(
             config,
-            credential_with_key,
+            credential,
             LeafNodeSource::Update,
             capabilities,
             extensions,
@@ -469,7 +473,7 @@ impl LeafNode {
     /// Expose [`new_with_key`] for tests.
     pub(crate) fn create_new_with_key(
         encryption_key: EncryptionKey,
-        credential_with_key: &dyn OpenMlsCredential,
+        credential: &dyn OpenMlsCredential,
         leaf_node_source: LeafNodeSource,
         capabilities: Capabilities,
         extensions: Extensions,
@@ -477,7 +481,7 @@ impl LeafNode {
     ) -> Result<Self, LibraryError> {
         Self::new_with_key(
             encryption_key,
-            credential_with_key,
+            credential,
             leaf_node_source,
             capabilities,
             extensions,
@@ -573,10 +577,9 @@ impl LeafNodePayload {
             signature_key: SignaturePublicKey::from(vec![]),
             credential: Credential::new(
                 openmls_traits::types::credential::MlsCredentialType::Basic(BasicCredential::new(
-                    "identity".into(),
+                    b"identity".into(),
                 )),
-            )
-            .unwrap(),
+            ),
             capabilities: Capabilities::default(),
             leaf_node_source: LeafNodeSource::Update,
             extensions: Extensions::empty(),
