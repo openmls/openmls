@@ -92,13 +92,15 @@ fn supported_ciphersuites() {
 
     for ciphersuite in SUPPORTED_CIPHERSUITE_NAMES {
         // Create signature keypair
-        let _signature_keypair = OpenMlsBasicCredential::new(ciphersuite.signature_algorithm(), vec![])
-            .expect("Could not create signature keypair.");
+        let _signature_keypair =
+            OpenMlsBasicCredential::new(ciphersuite.signature_algorithm(), vec![])
+                .expect("Could not create signature keypair.");
     }
 
     for ciphersuite in UNSUPPORTED_CIPHERSUITE_NAMES {
         // Create signature keypair
-        let _signature_keypair = OpenMlsBasicCredential::new(SignatureScheme::from(*ciphersuite), vec![])
-            .expect_err("Could create signature keypair with unsupported ciphersuite.");
+        let _signature_keypair =
+            OpenMlsBasicCredential::new(SignatureScheme::from(*ciphersuite), vec![])
+                .expect_err("Could create signature keypair with unsupported ciphersuite.");
     }
 }

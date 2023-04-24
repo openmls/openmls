@@ -4,8 +4,7 @@
 use openmls_basic_credential::OpenMlsBasicCredential;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
-    credential::OpenMlsCredential, key_store::OpenMlsKeyStore, signatures::Signer,
-    types::Ciphersuite, OpenMlsCryptoProvider,
+    key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite, OpenMlsCryptoProvider,
 };
 use rstest::*;
 use rstest_reuse::{self, *};

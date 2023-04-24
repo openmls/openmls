@@ -10,7 +10,6 @@ use crate::{
     framing::validation::SenderContext,
     group::errors::ValidationError,
     key_packages::*,
-    prelude::LeafNode,
     treesync::node::leaf_node::{LeafNodeIn, TreePosition, VerifiableLeafNode},
 };
 

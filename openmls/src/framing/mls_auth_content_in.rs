@@ -9,7 +9,10 @@
 
 use std::io::Read;
 
-use openmls_traits::{types::{credential::Credential, Ciphersuite}, crypto::OpenMlsCrypto};
+use openmls_traits::{
+    crypto::OpenMlsCrypto,
+    types::{credential::Credential, Ciphersuite},
+};
 use tls_codec::Serialize as TlsSerializeTrait;
 
 use super::{mls_auth_content::*, mls_content_in::*, *};
@@ -63,7 +66,7 @@ impl AuthenticatedContentIn {
     }
 }
 
-#[cfg(any(feature = "test-utils", test))]
+#[cfg(test)]
 impl AuthenticatedContentIn {
     /// Get the content body of the message.
     pub(crate) fn content(&self) -> &FramedContentBodyIn {

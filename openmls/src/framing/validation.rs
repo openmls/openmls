@@ -23,7 +23,10 @@
 //! ```
 // TODO #106/#151: Update the above diagram
 
-use openmls_traits::{types::credential::Credential, {crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider}};
+use openmls_traits::{
+    types::credential::Credential,
+    {crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider},
+};
 
 use crate::{
     binary_tree::LeafNodeIndex,

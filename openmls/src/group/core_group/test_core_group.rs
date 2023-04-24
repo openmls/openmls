@@ -271,7 +271,11 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 fn setup_alice_bob(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
-) -> (OpenMlsBasicCredential, KeyPackageBundle, OpenMlsBasicCredential) {
+) -> (
+    OpenMlsBasicCredential,
+    KeyPackageBundle,
+    OpenMlsBasicCredential,
+) {
     // Create credentials and keys
     let alice_credential =
         OpenMlsBasicCredential::new(ciphersuite.signature_algorithm(), b"Alice".to_vec()).unwrap();
@@ -527,7 +531,8 @@ pub(crate) fn setup_client(
     backend: &impl OpenMlsCryptoProvider,
 ) -> (KeyPackageBundle, OpenMlsBasicCredential) {
     let credential =
-        OpenMlsBasicCredential::new(ciphersuite.signature_algorithm(), id.as_bytes().into()).unwrap();
+        OpenMlsBasicCredential::new(ciphersuite.signature_algorithm(), id.as_bytes().into())
+            .unwrap();
     credential.store(backend.key_store()).unwrap();
 
     // Generate the KeyPackage

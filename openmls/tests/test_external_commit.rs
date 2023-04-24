@@ -68,7 +68,8 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
     // Now, Bob wants to join Alice' group by an external commit. (Positive case.)
     {
-        let bob_credential = OpenMlsBasicCredential::new(ciphersuite.into(), b"Bob".to_vec()).unwrap();
+        let bob_credential =
+            OpenMlsBasicCredential::new(ciphersuite.into(), b"Bob".to_vec()).unwrap();
         bob_credential.store(backend.key_store()).unwrap();
 
         let (_bob_group, _, _) = MlsGroup::join_by_external_commit(
@@ -87,7 +88,8 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
     // Now, Bob wants to join Alice' group by an external commit. (Negative case, broken signature.)
     {
-        let bob_credential = OpenMlsBasicCredential::new(ciphersuite.into(), b"Bob".to_vec()).unwrap();
+        let bob_credential =
+            OpenMlsBasicCredential::new(ciphersuite.into(), b"Bob".to_vec()).unwrap();
         bob_credential.store(backend.key_store()).unwrap();
 
         let got_error = MlsGroup::join_by_external_commit(

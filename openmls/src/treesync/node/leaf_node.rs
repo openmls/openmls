@@ -28,7 +28,6 @@ use crate::{
     group::{config::CryptoConfig, GroupId},
     key_packages::KeyPackage,
     messages::proposals::ProposalType,
-    prelude_test::HpkePublicKey,
     treesync::errors::{LeafNodeValidationError, LifetimeError, PublicTreeError},
     versions::ProtocolVersion,
 };
@@ -743,25 +742,6 @@ struct LeafNodePayload {
     capabilities: Capabilities,
     leaf_node_source: LeafNodeSource,
     extensions: Extensions,
-}
-
-#[cfg(test)]
-impl LeafNodePayload {
-    /// Create a dummy [`LeafNodePayload`] for testing.
-    pub(crate) fn dummy() -> Self {
-        Self {
-            encryption_key: EncryptionKey::from(HpkePublicKey::new(vec![])),
-            signature_key: SignaturePublicKey::from(vec![]),
-            credential: Credential::new(
-                openmls_traits::types::credential::MlsCredentialType::Basic(
-                    openmls_traits::types::credential::BasicCredential::new(b"identity".into()),
-                ),
-            ),
-            capabilities: Capabilities::default(),
-            leaf_node_source: LeafNodeSource::Update,
-            extensions: Extensions::empty(),
-        }
-    }
 }
 
 #[derive(

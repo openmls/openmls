@@ -181,7 +181,8 @@ pub fn run_test_vector(
     // Make the group think it has two members.
     {
         let mut credential =
-            OpenMlsBasicCredential::new(ciphersuite.signature_algorithm(), "Fake user".into()).unwrap();
+            OpenMlsBasicCredential::new(ciphersuite.signature_algorithm(), "Fake user".into())
+                .unwrap();
         // inject the public key from the tv.
         credential.set_public_key(hex_to_bytes(&test.signature_pub));
 

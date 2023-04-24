@@ -155,12 +155,6 @@ pub(crate) fn generate_group_candidate(
         credential.store(backend.key_store()).unwrap();
     }
 
-    let signature_pkey = OpenMlsSignaturePublicKey::new(
-        credential.public_key().into(),
-        ciphersuite.signature_algorithm(),
-    )
-    .unwrap();
-
     let (key_package, encryption_keypair, init_keypair) = {
         let builder = KeyPackageBuilder::new();
 

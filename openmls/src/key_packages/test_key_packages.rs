@@ -31,7 +31,7 @@ pub(crate) fn key_package(
 
 #[apply(ciphersuites_and_backends)]
 fn generate_key_package(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    let (key_package, credential) = key_package(ciphersuite, backend);
+    let (key_package, _credential) = key_package(ciphersuite, backend);
 
     let kpi = KeyPackageIn::from(key_package);
     assert!(kpi.validate(backend.crypto()).is_ok());
@@ -56,11 +56,6 @@ fn serialization(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider)
 fn application_id_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let credential =
         OpenMlsBasicCredential::new(ciphersuite.signature_algorithm(), b"Sasha".to_vec()).unwrap();
-    let pk = OpenMlsSignaturePublicKey::new(
-        credential.public().into(),
-        ciphersuite.signature_algorithm(),
-    )
-    .unwrap();
 
     // Generate a valid KeyPackage.
     let id = b"application id" as &[u8];
