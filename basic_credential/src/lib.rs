@@ -25,6 +25,8 @@ use rand::rngs::OsRng;
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 /// A credential for verification.
+#[derive(TlsSerialize, TlsSize, TlsDeserialize, serde::Serialize, serde::Deserialize, Debug)]
+#[cfg_attr(feature = "cloneable", derive(Clone))]
 pub struct VerificationCredential {
     public_key: Vec<u8>,
     signature_scheme: SignatureScheme,
@@ -50,24 +52,21 @@ impl VerificationCredential {
 #[cfg_attr(feature = "cloneable", derive(Clone))]
 pub struct SignatureKeyPair {
     private: Vec<u8>,
-    public: Vec<u8>,
-    signature_scheme: SignatureScheme,
-    identity: Vec<u8>,
+    public_credential: VerificationCredential,
 }
 
 impl Debug for SignatureKeyPair {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SignatureKeyPair")
             .field("private", &"***".to_string())
-            .field("public", &self.public)
-            .field("signature_scheme", &self.signature_scheme)
+            .field("public_credential", &self.public_credential)
             .finish()
     }
 }
 
 impl Signer for SignatureKeyPair {
     fn sign(&self, payload: &[u8]) -> Result<Vec<u8>, Error> {
-        match self.signature_scheme {
+        match self.public_credential.signature_scheme {
             SignatureScheme::ECDSA_SECP256R1_SHA256 => {
                 let k = SigningKey::from_bytes(&self.private).map_err(|_| Error::SigningError)?;
                 let signature = k.sign(payload);
@@ -84,22 +83,23 @@ impl Signer for SignatureKeyPair {
     }
 
     fn signature_scheme(&self) -> SignatureScheme {
-        self.signature_scheme
+        self.public_credential.signature_scheme
     }
 }
 
 impl OpenMlsCredential for SignatureKeyPair {
     fn identity(&self) -> &[u8] {
-        &self.identity
+        &self.public_credential.identity
     }
 
     fn public_key(&self) -> &[u8] {
-        &self.public
+        &self.public_credential.public_key
     }
 
     fn credential(&self) -> Credential {
-        let credential =
-            MlsCredentialType::Basic(BasicCredential::new(self.identity.clone().into()));
+        let credential = MlsCredentialType::Basic(BasicCredential::new(
+            self.public_credential.identity.clone().into(),
+        ));
         Credential::new(credential)
     }
 }
@@ -121,7 +121,7 @@ impl MlsEntity for SignatureKeyPair {
 impl SignatureKeyPair {
     /// Generates a fresh signature keypair using the [`SignatureScheme`].
     pub fn new(signature_scheme: SignatureScheme, identity: Vec<u8>) -> Result<Self, CryptoError> {
-        let (private, public) = match signature_scheme {
+        let (private, public_key) = match signature_scheme {
             SignatureScheme::ECDSA_SECP256R1_SHA256 => {
                 let k = SigningKey::random(&mut OsRng);
                 let pk = k.verifying_key().to_encoded_point(false).as_bytes().into();
@@ -139,9 +139,11 @@ impl SignatureKeyPair {
 
         Ok(Self {
             private,
-            public,
-            signature_scheme,
-            identity,
+            public_credential: VerificationCredential {
+                public_key,
+                signature_scheme,
+                identity,
+            },
         })
     }
 
@@ -149,19 +151,24 @@ impl SignatureKeyPair {
     pub fn from_raw(
         signature_scheme: SignatureScheme,
         private: Vec<u8>,
-        public: Vec<u8>,
+        public_key: Vec<u8>,
         identity: Vec<u8>,
     ) -> Self {
         Self {
             private,
-            public,
-            signature_scheme,
-            identity,
+            public_credential: VerificationCredential {
+                public_key,
+                signature_scheme,
+                identity,
+            },
         }
     }
 
     fn id(&self) -> Vec<u8> {
-        id(&self.public, self.signature_scheme)
+        id(
+            &self.public_credential.public_key,
+            self.public_credential.signature_scheme,
+        )
     }
 
     /// Store this signature key pair in the key store.
@@ -183,17 +190,22 @@ impl SignatureKeyPair {
 
     /// Get the public key as byte slice.
     pub fn public(&self) -> &[u8] {
-        self.public.as_ref()
+        self.public_credential.public_key.as_ref()
     }
 
     /// Get the public key as byte vector.
     pub fn to_public_vec(&self) -> Vec<u8> {
-        self.public.clone()
+        self.public_credential.public_key.clone()
     }
 
     /// Get the [`SignatureScheme`] of this signature key.
     pub fn signature_scheme(&self) -> SignatureScheme {
-        self.signature_scheme
+        self.public_credential.signature_scheme
+    }
+
+    /// Verification credential that implements [`OpenMlsCredential`].
+    pub fn public_credential(&self) -> &VerificationCredential {
+        &self.public_credential
     }
 }
 
@@ -222,16 +234,18 @@ impl SignatureKeyPair {
 
     /// Replace the public key with `public_key`.
     pub fn set_public_key(&mut self, public_key: Vec<u8>) {
-        self.public = public_key
+        self.public_credential.public_key = public_key
     }
 
     /// Get the same keys with a new identity
     pub fn new_with_new_identity(&self, id: &str) -> Self {
         Self {
             private: self.private.clone(),
-            public: self.public.clone(),
-            signature_scheme: self.signature_scheme,
-            identity: id.as_bytes().to_vec(),
+            public_credential: VerificationCredential {
+                public_key: self.public_credential.public_key.clone(),
+                signature_scheme: self.public_credential.signature_scheme,
+                identity: id.as_bytes().to_vec(),
+            },
         }
     }
 }
