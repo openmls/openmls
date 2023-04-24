@@ -11,14 +11,12 @@ fn test_client_info() {
     let client_name = "Client1";
     let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
 
-    let credential =
-        Credential::new(client_name.as_bytes().to_vec(), CredentialType::Basic).unwrap();
-    let signature_keys = OpenMlsBasicCredential::new(ciphersuite.signature_algorithm()).unwrap();
-    let credential_with_key = CredentialWithKey {
-        credential,
-        signature_key: signature_keys.to_public_vec().into(),
-    };
-    signature_keys.store(crypto.key_store()).unwrap();
+    let credential = OpenMlsBasicCredential::new(
+        ciphersuite.signature_algorithm(),
+        client_name.as_bytes().into(),
+    )
+    .unwrap();
+    credential.store(crypto.key_store()).unwrap();
 
     let client_key_package = KeyPackage::builder()
         .build(
@@ -27,8 +25,8 @@ fn test_client_info() {
                 version: ProtocolVersion::default(),
             },
             crypto,
-            &signature_keys,
-            credential_with_key,
+            &credential,
+            &credential,
         )
         .unwrap();
 

@@ -20,7 +20,10 @@ use openmls::{
         PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     key_packages::KeyPackage,
-    prelude::{config::CryptoConfig, Capabilities, SenderRatchetConfiguration},
+    prelude::{
+        config::CryptoConfig, BasicCredential, Capabilities, Credential, MlsCredentialType,
+        SenderRatchetConfiguration,
+    },
     schedule::{psk::ResumptionPskUsage, ExternalPsk, PreSharedKeyId, Psk},
     treesync::{
         test_utils::{read_keys_from_key_store, write_keys_from_key_store},
@@ -49,7 +52,7 @@ const IMPLEMENTATION_NAME: &str = "OpenMLS";
 pub struct InteropGroup {
     group: MlsGroup,
     wire_format_policy: WireFormatPolicy,
-    signature_keys: OpenMlsBasicCredential,
+    credential: OpenMlsBasicCredential,
     messages_out: Vec<MlsMessageIn>,
     crypto_provider: OpenMlsRustCrypto,
 }
@@ -58,7 +61,6 @@ type PendingState = (
     KeyPackage,
     HpkePrivateKey,
     HpkeKeyPair,
-    Credential,
     OpenMlsBasicCredential,
     OpenMlsRustCrypto,
 );
@@ -213,9 +215,12 @@ impl MlsClient for MlsClientImpl {
         let backend = OpenMlsRustCrypto::default();
 
         let ciphersuite = Ciphersuite::try_from(request.cipher_suite as u16).unwrap();
-        let credential = Credential::new(request.identity.clone(), CredentialType::Basic).unwrap();
-        let signature_keys = OpenMlsBasicCredential::new(ciphersuite.signature_algorithm()).unwrap();
-        signature_keys.store(backend.key_store()).unwrap();
+        let credential = OpenMlsBasicCredential::new(
+            ciphersuite.signature_algorithm(),
+            request.identity.clone(),
+        )
+        .unwrap();
+        credential.store(backend.key_store()).unwrap();
 
         let wire_format_policy = wire_format_policy(request.encrypt_handshake);
         // Note: We just use some values here that make live testing work.
@@ -231,13 +236,10 @@ impl MlsClient for MlsClientImpl {
             .build();
         let group = MlsGroup::new_with_group_id(
             &backend,
-            &signature_keys,
+            &credential,
             &mls_group_config,
             GroupId::from_slice(&request.group_id),
-            CredentialWithKey {
-                credential,
-                signature_key: signature_keys.public().into(),
-            },
+            &credential,
         )
         .map_err(into_status)?;
 
@@ -247,7 +249,7 @@ impl MlsClient for MlsClientImpl {
         let interop_group = InteropGroup {
             group,
             wire_format_policy,
-            signature_keys,
+            credential,
             messages_out: Vec::new(),
             crypto_provider: backend,
         };
@@ -279,8 +281,8 @@ impl MlsClient for MlsClientImpl {
             "Creating key package."
         );
 
-        let credential = Credential::new(identity, CredentialType::Basic).unwrap();
-        let signature_keys = OpenMlsBasicCredential::new(ciphersuite.signature_algorithm()).unwrap();
+        let credential =
+            OpenMlsBasicCredential::new(ciphersuite.signature_algorithm(), identity).unwrap();
 
         let key_package = KeyPackage::builder()
             .leaf_node_capabilities(Capabilities::default())
@@ -290,11 +292,8 @@ impl MlsClient for MlsClientImpl {
                     version: ProtocolVersion::default(),
                 },
                 &crypto_provider,
-                &signature_keys,
-                CredentialWithKey {
-                    credential: credential.clone(),
-                    signature_key: signature_keys.public().into(),
-                },
+                &credential,
+                &credential,
             )
             .unwrap();
         let private_key = crypto_provider
@@ -319,7 +318,7 @@ impl MlsClient for MlsClientImpl {
                 .tls_serialize_detached()
                 .unwrap(),
             init_priv: private_key.tls_serialize_detached().unwrap(),
-            signature_priv: signature_keys.private().to_vec(),
+            signature_priv: credential.private().to_vec(),
         };
 
         self.transaction_id_map
@@ -333,7 +332,6 @@ impl MlsClient for MlsClientImpl {
                 private_key,
                 encryption_key_pair,
                 credential,
-                signature_keys,
                 crypto_provider,
             ),
         );
@@ -365,19 +363,13 @@ impl MlsClient for MlsClientImpl {
             .build();
 
         let mut pending_key_packages = self.pending_state.lock().unwrap();
-        let (
-            my_key_package,
-            private_key,
-            encryption_keypair,
-            _my_credential,
-            my_signature_keys,
-            crypto_provider,
-        ) = pending_key_packages
-            .remove(&request.identity)
-            .ok_or(Status::aborted(format!(
-                "failed to find key package for identity {:x?}",
-                request.identity
-            )))?;
+        let (my_key_package, private_key, encryption_keypair, my_credential, crypto_provider) =
+            pending_key_packages
+                .remove(&request.identity)
+                .ok_or(Status::aborted(format!(
+                    "failed to find key package for identity {:x?}",
+                    request.identity
+                )))?;
 
         // Store keys so OpenMLS can find them.
         crypto_provider
@@ -424,7 +416,7 @@ impl MlsClient for MlsClientImpl {
         let interop_group = InteropGroup {
             wire_format_policy,
             group,
-            signature_keys: my_signature_keys,
+            credential: my_credential,
             messages_out: Vec::new(),
             crypto_provider,
         };
@@ -482,21 +474,16 @@ impl MlsClient for MlsClientImpl {
             let backend = OpenMlsRustCrypto::default();
             let ciphersuite = verifiable_group_info.ciphersuite();
 
-            let (credential_with_key, signer) = {
-                let credential =
-                    Credential::new(request.identity.to_vec(), CredentialType::Basic).unwrap();
+            let credential = {
+                let credential = OpenMlsBasicCredential::new(
+                    ciphersuite.signature_algorithm(),
+                    request.identity.to_vec(),
+                )
+                .unwrap();
 
-                let signature_keypair =
-                    OpenMlsBasicCredential::new(ciphersuite.signature_algorithm()).unwrap();
+                credential.store(backend.key_store()).unwrap();
 
-                signature_keypair.store(backend.key_store()).unwrap();
-
-                let credential_with_key = CredentialWithKey {
-                    credential,
-                    signature_key: signature_keypair.public().into(),
-                };
-
-                (credential_with_key, signature_keypair)
+                credential
             };
 
             let mls_group_config = {
@@ -513,12 +500,12 @@ impl MlsClient for MlsClientImpl {
 
             let (mut group, commit, _group_info) = MlsGroup::join_by_external_commit(
                 &backend,
-                &signer,
+                &credential,
                 ratchet_tree,
                 verifiable_group_info,
                 &mls_group_config,
                 b"",
-                credential_with_key,
+                &credential,
             )
             .unwrap();
 
@@ -530,7 +517,7 @@ impl MlsClient for MlsClientImpl {
                 InteropGroup {
                     wire_format_policy: mls_group_config.wire_format_policy(),
                     group,
-                    signature_keys: signer,
+                    credential,
                     messages_out: Vec::new(),
                     crypto_provider: backend,
                 },
@@ -640,7 +627,7 @@ impl MlsClient for MlsClientImpl {
             .group
             .create_message(
                 &interop_group.crypto_provider,
-                &interop_group.signature_keys,
+                &interop_group.credential,
                 &request.plaintext,
             )
             .map_err(into_status)?
@@ -738,7 +725,7 @@ impl MlsClient for MlsClientImpl {
 
             store(
                 pending_state.0.ciphersuite(),
-                &pending_state.5,
+                &pending_state.4,
                 external_psk,
                 &request.psk_secret,
             )?;
@@ -810,7 +797,7 @@ impl MlsClient for MlsClientImpl {
             .group
             .propose_add_member(
                 &interop_group.crypto_provider,
-                &interop_group.signature_keys,
+                &interop_group.credential,
                 &key_package,
             )
             .map_err(into_status)?;
@@ -858,7 +845,7 @@ impl MlsClient for MlsClientImpl {
             .group
             .propose_self_update(
                 &interop_group.crypto_provider,
-                &interop_group.signature_keys,
+                &interop_group.credential,
                 None,
             )
             .map_err(into_status)?;
@@ -884,8 +871,9 @@ impl MlsClient for MlsClientImpl {
         let request = request.get_ref();
         info!(?request, "Request");
 
-        let removed_credential =
-            Credential::new(request.removed_id.clone(), CredentialType::Basic).unwrap();
+        let removed_credential = Credential::new(MlsCredentialType::Basic(BasicCredential::new(
+            request.removed_id.clone().into(),
+        )));
         trace!("   for credential: {removed_credential:x?}");
 
         let mut groups = self.groups.lock().unwrap();
@@ -914,7 +902,7 @@ impl MlsClient for MlsClientImpl {
             .group
             .propose_remove_member_by_credential(
                 &interop_group.crypto_provider,
-                &interop_group.signature_keys,
+                &interop_group.credential,
                 &removed_credential,
             )
             .map_err(into_status)?;
@@ -1008,20 +996,20 @@ impl MlsClient for MlsClientImpl {
                     group
                         .propose_add_member_by_value(
                             &interop_group.crypto_provider,
-                            &interop_group.signature_keys,
+                            &interop_group.credential,
                             key_package,
                         )
                         .map_err(|_| Status::internal("Unable to generate proposal by value"))?
                 }
                 "remove" => {
-                    let removed_credential =
-                        Credential::new(proposal.removed_id.clone(), CredentialType::Basic)
-                            .unwrap();
+                    let removed_credential = Credential::new(MlsCredentialType::Basic(
+                        BasicCredential::new(proposal.removed_id.clone().into()),
+                    ));
 
                     group
                         .propose_remove_member_by_credential_by_value(
                             &interop_group.crypto_provider,
-                            &interop_group.signature_keys,
+                            &interop_group.credential,
                             &removed_credential,
                         )
                         .map_err(|_| Status::internal("Unable to generate proposal by value"))?
@@ -1037,7 +1025,7 @@ impl MlsClient for MlsClientImpl {
                     group
                         .propose_external_psk_by_value(
                             &interop_group.crypto_provider,
-                            &interop_group.signature_keys,
+                            &interop_group.credential,
                             psk_id,
                         )
                         .map_err(|_| Status::internal("Unable to generate proposal by value"))?
@@ -1054,7 +1042,7 @@ impl MlsClient for MlsClientImpl {
                     let (msg_out, proposal_ref) = group
                         .propose_external_psk_by_value(
                             &interop_group.crypto_provider,
-                            &interop_group.signature_keys,
+                            &interop_group.credential,
                             psk_id,
                         )
                         .unwrap();
@@ -1082,10 +1070,7 @@ impl MlsClient for MlsClientImpl {
         // TODO #692: The interop client cannot process these proposals yet.
 
         let (commit, welcome_option, _group_info) = group
-            .commit_to_pending_proposals(
-                &interop_group.crypto_provider,
-                &interop_group.signature_keys,
-            )
+            .commit_to_pending_proposals(&interop_group.crypto_provider, &interop_group.credential)
             .map_err(into_status)?;
 
         let commit = commit.to_bytes().unwrap();
@@ -1263,7 +1248,7 @@ impl MlsClient for MlsClientImpl {
         let group_info = group
             .export_group_info(
                 &interop_group.crypto_provider,
-                &interop_group.signature_keys,
+                &interop_group.credential,
                 !request.external_tree,
             )
             .unwrap();
@@ -1321,7 +1306,7 @@ impl MlsClient for MlsClientImpl {
             .group
             .propose_external_psk(
                 &interop_group.crypto_provider,
-                &interop_group.signature_keys,
+                &interop_group.credential,
                 psk_id,
             )
             .map_err(|_| Status::internal("failed to generate psk proposal"))?;
@@ -1365,7 +1350,7 @@ impl MlsClient for MlsClientImpl {
             .group
             .propose_external_psk(
                 &interop_group.crypto_provider,
-                &interop_group.signature_keys,
+                &interop_group.credential,
                 psk_id,
             )
             .unwrap();
