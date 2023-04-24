@@ -108,6 +108,8 @@ impl CoreGroup {
             group_epoch_secrets,
             message_secrets_store,
             own_leaf_index,
+            // TODO(#1357)
+            resumption_psk_store: ResumptionPskStore::new(32),
         };
 
         let params = CreateCommitParams::builder()

@@ -64,12 +64,12 @@ impl MlsGroup {
     /// Creates a proposal to update the own leaf node. Optionally, a
     /// [`LeafNode`] can be provided to update the leaf node. Note that its
     /// private key must be manually added to the key store.
-    pub fn propose_self_update<KeyStore: OpenMlsKeyStore>(
+    fn _propose_self_udpate<KeyStore: OpenMlsKeyStore>(
         &mut self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         leaf_node: Option<LeafNode>,
-    ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<KeyStore::Error>> {
+    ) -> Result<AuthenticatedContent, ProposeSelfUpdateError<KeyStore::Error>> {
         self.is_operational()?;
 
         // Here we clone our own leaf to rekey it such that we don't change the
@@ -112,7 +112,43 @@ impl MlsGroup {
         )?;
 
         self.own_leaf_nodes.push(own_leaf);
-        let proposal = QueuedProposal::from_authenticated_content(
+
+        Ok(update_proposal)
+    }
+
+    /// Creates a proposal to update the own leaf node.
+    pub fn propose_self_update<KeyStore: OpenMlsKeyStore>(
+        &mut self,
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        signer: &impl Signer,
+        leaf_node: Option<LeafNode>,
+    ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<KeyStore::Error>> {
+        let update_proposal = self._propose_self_udpate(backend, signer, leaf_node)?;
+        let proposal = QueuedProposal::from_authenticated_content_by_ref(
+            self.ciphersuite(),
+            backend,
+            update_proposal.clone(),
+        )?;
+        let proposal_ref = proposal.proposal_reference();
+        self.proposal_store.add(proposal);
+
+        let mls_message = self.content_to_mls_message(update_proposal, backend)?;
+
+        // Since the state of the group might be changed, arm the state flag
+        self.flag_state_change();
+
+        Ok((mls_message, proposal_ref))
+    }
+
+    /// Creates a proposal to update the own leaf node.
+    pub fn propose_self_update_by_value<KeyStore: OpenMlsKeyStore>(
+        &mut self,
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        signer: &impl Signer,
+        leaf_node: Option<LeafNode>,
+    ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<KeyStore::Error>> {
+        let update_proposal = self._propose_self_udpate(backend, signer, leaf_node)?;
+        let proposal = QueuedProposal::from_authenticated_content_by_value(
             self.ciphersuite(),
             backend,
             update_proposal.clone(),

@@ -55,11 +55,15 @@ impl CoreGroup {
         };
 
         // Prepare the PskSecret
-        let psk_secret = PskSecret::new(
-            self.ciphersuite(),
-            backend,
-            &apply_proposals_values.presharedkeys,
-        )?;
+        let psk_secret = {
+            let psks = load_psks(
+                backend.key_store(),
+                &self.resumption_psk_store,
+                &apply_proposals_values.presharedkeys,
+            )?;
+
+            PskSecret::new(backend, self.ciphersuite(), psks)?
+        };
 
         // Create key schedule
         let mut key_schedule =

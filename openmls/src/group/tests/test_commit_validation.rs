@@ -16,6 +16,7 @@ use crate::{
     framing::*,
     group::{config::CryptoConfig, errors::*, *},
     messages::proposals::*,
+    schedule::{ExternalPsk, PreSharedKeyId, Psk},
     treesync::{
         errors::ApplyUpdatePathError, node::parent_node::PlainUpdatePathNode, treekem::UpdatePath,
     },
@@ -265,25 +266,23 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         }))
     };
 
-    // TODO(#1330): We can't use PreSharedKey proposals here for now because they will lead to an
-    //              `PskError::Unsupported`. As soon as #1330 is finished, we can enable this again.
-    // let psk_proposal = || {
-    //     let secret = Secret::random(ciphersuite, backend, None).unwrap();
-    //     let rand = backend
-    //         .rand()
-    //         .random_vec(ciphersuite.hash_length())
-    //         .unwrap();
-    //     let psk_id = PreSharedKeyId::new(
-    //         ciphersuite,
-    //         backend.rand(),
-    //         Psk::External(ExternalPsk::new(rand)),
-    //     )
-    //     .unwrap();
-    //     psk_id
-    //         .write_to_key_store(backend, ciphersuite, secret.as_slice())
-    //         .unwrap();
-    //     queued(Proposal::PreSharedKey(PreSharedKeyProposal::new(psk_id)))
-    // };
+    let psk_proposal = || {
+        let secret = Secret::random(ciphersuite, backend, None).unwrap();
+        let rand = backend
+            .rand()
+            .random_vec(ciphersuite.hash_length())
+            .unwrap();
+        let psk_id = PreSharedKeyId::new(
+            ciphersuite,
+            backend.rand(),
+            Psk::External(ExternalPsk::new(rand)),
+        )
+        .unwrap();
+        psk_id
+            .write_to_key_store(backend, ciphersuite, secret.as_slice())
+            .unwrap();
+        queued(Proposal::PreSharedKey(PreSharedKeyProposal::new(psk_id)))
+    };
 
     let update_proposal = queued(Proposal::Update(UpdateProposal {
         leaf_node: alice_group
@@ -314,16 +313,12 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // in [CoreGroup::apply_proposals()]
     let cases = vec![
         (vec![add_proposal()], false),
-        // TODO(#1330): We can't use PreSharedKey proposals here for now because they will lead to an
-        //              `PskError::Unsupported`. As soon as #1330 is finished, we can enable this again.
-        //(vec![psk_proposal()], false),
+        (vec![psk_proposal()], false),
         (vec![update_proposal.clone()], true),
         (vec![remove_proposal()], true),
         (vec![gce_proposal()], true),
         // !path_required + !path_required = !path_required
-        // TODO(#1330): We can't use PreSharedKey proposals here for now because they will lead to an
-        //              `PskError::Unsupported`. As soon as #1330 is finished, we can enable this again.
-        //(vec![add_proposal(), psk_proposal()], false),
+        (vec![add_proposal(), psk_proposal()], false),
         // path_required + !path_required = path_required
         (vec![remove_proposal(), add_proposal()], true),
         // path_required + path_required = path_required

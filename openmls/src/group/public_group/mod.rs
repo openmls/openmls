@@ -14,7 +14,7 @@
 #[cfg(test)]
 use std::collections::HashSet;
 
-use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 
 use self::{
@@ -29,6 +29,7 @@ use crate::{
     ciphersuite::signable::Verifiable,
     error::LibraryError,
     extensions::RequiredCapabilitiesExtension,
+    framing::InterimTranscriptHashInput,
     messages::{
         group_info::{GroupInfo, VerifiableGroupInfo},
         proposals::{Proposal, ProposalType},
@@ -73,19 +74,28 @@ impl PublicGroup {
     /// Create a new PublicGroup from a [`TreeSync`] instance and a
     /// [`GroupInfo`].
     fn new(
+        crypto: &impl OpenMlsCrypto,
         treesync: TreeSync,
         group_context: GroupContext,
         initial_confirmation_tag: ConfirmationTag,
-    ) -> Self {
-        let interim_transcript_hash = vec![];
+    ) -> Result<Self, LibraryError> {
+        let interim_transcript_hash = {
+            let input = InterimTranscriptHashInput::from(&initial_confirmation_tag);
 
-        PublicGroup {
+            input.calculate_interim_transcript_hash(
+                crypto,
+                group_context.ciphersuite(),
+                group_context.confirmed_transcript_hash(),
+            )?
+        };
+
+        Ok(PublicGroup {
             treesync,
             proposal_store: ProposalStore::new(),
             group_context,
             interim_transcript_hash,
             confirmation_tag: initial_confirmation_tag,
-        }
+        })
     }
 
     /// Create a [`PublicGroup`] instance to start tracking an existing MLS group.
@@ -132,10 +142,17 @@ impl PublicGroup {
             return Err(CreationFromExternalError::UnsupportedMlsVersion);
         }
 
-        let interim_transcript_hash =
-            group_info.calculate_interim_transcript_hash(backend.crypto())?;
-
         let group_context = GroupContext::from(group_info.clone());
+
+        let interim_transcript_hash = {
+            let input = InterimTranscriptHashInput::from(group_info.confirmation_tag());
+
+            input.calculate_interim_transcript_hash(
+                backend.crypto(),
+                group_context.ciphersuite(),
+                group_context.confirmed_transcript_hash(),
+            )?
+        };
 
         Ok((
             Self {

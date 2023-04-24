@@ -1,31 +1,34 @@
+use openmls_basic_credential::SignatureKeyPair;
+use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::{
+    crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider,
+};
+use rstest::*;
+use rstest_reuse::{self, *};
+use tls_codec::{Deserialize, Serialize};
+
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::{
         hash_ref::KeyPackageRef, hpke, signable::Signable, AeadKey, AeadNonce, Mac, Secret,
     },
     extensions::Extensions,
-    group::{config::CryptoConfig, errors::WelcomeError, GroupId, MlsGroup, MlsGroupConfigBuilder},
+    group::{
+        config::CryptoConfig, errors::WelcomeError, GroupContext, GroupId, MlsGroup,
+        MlsGroupConfigBuilder,
+    },
     messages::{
         group_info::{GroupInfoTBS, VerifiableGroupInfo},
-        ConfirmationTag, EncryptedGroupSecrets, GroupSecrets, Welcome,
+        ConfirmationTag, EncryptedGroupSecrets, GroupSecrets, GroupSecretsError, Welcome,
     },
-    schedule::{psk::PskSecret, KeySchedule},
+    prelude::HpkePrivateKey,
+    schedule::{
+        psk::{load_psks, store::ResumptionPskStore, PskSecret},
+        KeySchedule,
+    },
     treesync::node::encryption_keys::EncryptionKeyPair,
     versions::ProtocolVersion,
 };
-
-use openmls_basic_credential::SignatureKeyPair;
-use rstest::*;
-use rstest_reuse::{self, *};
-
-use crate::group::GroupContext;
-use crate::messages::GroupSecretsError;
-use crate::prelude::HpkePrivateKey;
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{
-    crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider,
-};
-use tls_codec::{Deserialize, Serialize};
 
 /// This test detects if the decryption of the encrypted group secrets fails due to a change in
 /// the encrypted group info. As the group info is part of the decryption context of the encrypted
@@ -98,8 +101,13 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, backend: &impl OpenMl
     let joiner_secret = group_secrets.joiner_secret;
 
     // Prepare the PskSecret
-    let psk_secret = PskSecret::new(ciphersuite, backend, &group_secrets.psks)
-        .expect("Could not create PskSecret.");
+    let psk_secret = {
+        let resumption_psk_store = ResumptionPskStore::new(1024);
+
+        let psks = load_psks(backend.key_store(), &resumption_psk_store, &[]).unwrap();
+
+        PskSecret::new(backend, ciphersuite, psks).unwrap()
+    };
 
     // Create key schedule
     let key_schedule = KeySchedule::init(ciphersuite, backend, &joiner_secret, psk_secret)

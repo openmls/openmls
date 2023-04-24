@@ -216,7 +216,7 @@ impl PublicGroup {
                         ))
                     }
                     FramedContentBody::Proposal(_) => {
-                        let proposal = Box::new(QueuedProposal::from_authenticated_content(
+                        let proposal = Box::new(QueuedProposal::from_authenticated_content_by_ref(
                             self.ciphersuite(),
                             backend,
                             content,
@@ -251,7 +251,7 @@ impl PublicGroup {
                     }
                     FramedContentBody::Proposal(Proposal::Remove(_)) => {
                         let content = ProcessedMessageContent::ProposalMessage(Box::new(
-                            QueuedProposal::from_authenticated_content(
+                            QueuedProposal::from_authenticated_content_by_ref(
                                 self.ciphersuite(),
                                 backend,
                                 content,
