@@ -153,7 +153,7 @@ impl AddProposalIn {
 /// Update Proposal.
 ///
 /// An Update proposal is a similar mechanism to [`AddProposalIn`] with the distinction that it
-/// replaces the sender's LeafNodeIn in the tree instead of adding a new leaf to the tree.
+/// replaces the sender's leaf node instead of adding a new leaf to the tree.
 ///
 /// ```c
 /// // draft-ietf-mls-protocol-17
