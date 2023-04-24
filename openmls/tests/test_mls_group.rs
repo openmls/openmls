@@ -5,8 +5,8 @@ use openmls::{
 };
 
 use lazy_static::lazy_static;
-use openmls_basic_credential::SignatureKeyPair;
-use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, OpenMlsCryptoProvider};
+
+use openmls_traits::OpenMlsCryptoProvider;
 use std::fs::File;
 
 lazy_static! {

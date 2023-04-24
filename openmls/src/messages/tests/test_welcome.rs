@@ -52,9 +52,9 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, backend: &impl OpenMl
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 
-    let (alice_kpb, alice_credential) =
+    let (_alice_kpb, alice_credential) =
         crate::group::test_core_group::setup_client("Alice", ciphersuite, backend);
-    let (bob_kpb, bob_credential) =
+    let (bob_kpb, _bob_credential) =
         crate::group::test_core_group::setup_client("Bob", ciphersuite, backend);
 
     let bob_kp = bob_kpb.key_package();

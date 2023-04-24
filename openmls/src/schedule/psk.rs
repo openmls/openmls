@@ -455,13 +455,13 @@ impl PskSecret {
         &self.secret
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
 }
 
-#[cfg(any(feature = "test-utils", test))]
+#[cfg(test)]
 impl From<Secret> for PskSecret {
     fn from(secret: Secret) -> Self {
         Self { secret }

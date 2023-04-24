@@ -29,5 +29,5 @@ pub(crate) use treemath::level;
 mod treemath;
 
 // Tests
-#[cfg(any(feature = "test-utils", test))]
+#[cfg(test)]
 pub mod kat_treemath;

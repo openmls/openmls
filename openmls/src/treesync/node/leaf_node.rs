@@ -4,7 +4,7 @@ use openmls_traits::{
     key_store::OpenMlsKeyStore,
     signatures::Signer,
     types::{
-        credential::{BasicCredential, Credential, CredentialType},
+        credential::{Credential, CredentialType},
         Ciphersuite, VerifiableCiphersuite,
     },
     OpenMlsCryptoProvider,
@@ -576,9 +576,9 @@ impl LeafNodePayload {
             encryption_key: EncryptionKey::from(HpkePublicKey::new(vec![])),
             signature_key: SignaturePublicKey::from(vec![]),
             credential: Credential::new(
-                openmls_traits::types::credential::MlsCredentialType::Basic(BasicCredential::new(
-                    b"identity".into(),
-                )),
+                openmls_traits::types::credential::MlsCredentialType::Basic(
+                    openmls_traits::types::credential::BasicCredential::new(b"identity".into()),
+                ),
             ),
             capabilities: Capabilities::default(),
             leaf_node_source: LeafNodeSource::Update,

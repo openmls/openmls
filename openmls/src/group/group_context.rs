@@ -24,7 +24,7 @@ pub struct GroupContext {
     extensions: Extensions,
 }
 
-#[cfg(any(feature = "test-utils", test))]
+#[cfg(test)]
 impl GroupContext {
     pub(crate) fn set_epoch(&mut self, epoch: GroupEpoch) {
         self.epoch = epoch;

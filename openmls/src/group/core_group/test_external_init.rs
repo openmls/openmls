@@ -23,7 +23,7 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
         setup_alice_bob_group(ciphersuite, backend);
 
     // Now set up Charlie and try to init externally.
-    let (charlie_kpb, charlie_credential) = setup_client("Charlie", ciphersuite, backend);
+    let (_charlie_kpb, charlie_credential) = setup_client("Charlie", ciphersuite, backend);
 
     // Have Alice export everything that Charly needs.
     let verifiable_group_info = group_alice
@@ -185,7 +185,7 @@ fn test_external_init_single_member_group(
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
     // Now set up charly and try to init externally.
-    let (charly_kpb, charly_credential) = setup_client("Charly", ciphersuite, backend);
+    let (_charly_kpb, charly_credential) = setup_client("Charly", ciphersuite, backend);
 
     // Have Alice export everything that Charly needs.
     let verifiable_group_info = group_alice

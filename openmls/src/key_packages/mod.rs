@@ -100,7 +100,7 @@ use openmls_traits::{
     crypto::OpenMlsCrypto,
     key_store::{MlsEntity, MlsEntityId, OpenMlsKeyStore},
     signatures::Signer,
-    types::{credential::Credential, Ciphersuite},
+    types::Ciphersuite,
     OpenMlsCryptoProvider,
 };
 use serde::{Deserialize, Serialize};
@@ -548,7 +548,11 @@ impl KeyPackage {
     }
 
     /// Resign this key package with another credential.
-    pub fn resign(mut self, signer: &impl Signer, credential: Credential) -> Self {
+    pub fn resign(
+        mut self,
+        signer: &impl Signer,
+        credential: openmls_traits::types::credential::Credential,
+    ) -> Self {
         self.payload.leaf_node.set_credential(credential);
         self.payload.sign(signer).unwrap()
     }

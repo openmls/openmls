@@ -1131,7 +1131,7 @@ impl EpochKeypairId {
     }
 }
 
-#[cfg(any(feature = "test-utils", test))]
+#[cfg(test)]
 impl CoreGroup {
     pub(crate) fn context_mut(&mut self) -> &mut GroupContext {
         self.public_group.context_mut()

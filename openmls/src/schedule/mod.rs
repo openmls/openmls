@@ -235,7 +235,7 @@ impl CommitSecret {
         }
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn random(ciphersuite: Ciphersuite, rng: &impl OpenMlsCryptoProvider) -> Self {
         Self {
             secret: Secret::random(ciphersuite, rng, None /* MLS version */)
@@ -243,7 +243,7 @@ impl CommitSecret {
         }
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
@@ -341,14 +341,14 @@ impl InitSecret {
         })
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn clone(&self) -> Self {
         Self {
             secret: self.secret.clone(),
         }
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
@@ -389,7 +389,7 @@ impl JoinerSecret {
         self.secret.config(ciphersuite, mls_version);
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
@@ -609,7 +609,7 @@ impl WelcomeSecret {
         Ok(AeadNonce::from_secret(nonce_secret))
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
@@ -680,12 +680,12 @@ impl EncryptionSecret {
         }
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     /// Create a new secret from a byte vector.
     pub(crate) fn from_slice(
         bytes: &[u8],
@@ -715,7 +715,7 @@ impl ExporterSecret {
         Ok(ExporterSecret { secret })
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
@@ -769,7 +769,7 @@ impl ExternalSecret {
         crypto.derive_hpke_keypair(ciphersuite.hpke_config(), self.secret.as_slice())
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
@@ -829,7 +829,7 @@ impl ConfirmationKey {
     }
 }
 
-#[cfg(any(feature = "test-utils", test))]
+#[cfg(test)]
 impl ConfirmationKey {
     pub(crate) fn random(ciphersuite: Ciphersuite, rng: &impl OpenMlsCryptoProvider) -> Self {
         Self {
@@ -884,17 +884,17 @@ impl MembershipKey {
         ))
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn from_secret(secret: Secret) -> Self {
         Self { secret }
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn random(ciphersuite: Ciphersuite, rng: &impl OpenMlsCryptoProvider) -> Self {
         Self {
             secret: Secret::random(ciphersuite, rng, None /* MLS version */)
@@ -973,7 +973,7 @@ impl SenderDataSecret {
         Ok(AeadNonce::from_secret(nonce_secret))
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn random(ciphersuite: Ciphersuite, rng: &impl OpenMlsCryptoProvider) -> Self {
         Self {
             secret: Secret::random(ciphersuite, rng, None /* MLS version */)
@@ -981,12 +981,12 @@ impl SenderDataSecret {
         }
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     /// Create a new secret from a byte vector.
     pub(crate) fn from_slice(
         bytes: &[u8],
@@ -1055,7 +1055,7 @@ impl PartialEq for EpochSecrets {
 
 impl EpochSecrets {
     /// Get the sender_data secret.
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn sender_data_secret(&self) -> &SenderDataSecret {
         &self.sender_data_secret
     }
@@ -1066,19 +1066,19 @@ impl EpochSecrets {
     }
 
     /// Epoch authenticator
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn epoch_authenticator(&self) -> &EpochAuthenticator {
         &self.epoch_authenticator
     }
 
     /// Exporter secret
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn exporter_secret(&self) -> &ExporterSecret {
         &self.exporter_secret
     }
 
     /// Membership key
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn membership_key(&self) -> &MembershipKey {
         &self.membership_key
     }
@@ -1089,19 +1089,19 @@ impl EpochSecrets {
     }
 
     /// External secret
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn resumption_psk(&self) -> &ResumptionPskSecret {
         &self.resumption_psk
     }
 
     /// Init secret
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn init_secret(&self) -> &InitSecret {
         &self.init_secret
     }
 
     /// Encryption secret
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn encryption_secret(&self) -> &EncryptionSecret {
         &self.encryption_secret
     }

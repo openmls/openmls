@@ -25,7 +25,7 @@ pub(crate) fn setup_alice_group(
     // Create credentials and keys
     let alice_credential =
         SignatureKeyPair::new(ciphersuite.signature_algorithm(), b"Alice".to_vec()).unwrap();
-    alice_credential.store(backend.key_store());
+    alice_credential.store(backend.key_store()).unwrap();
 
     let pk = OpenMlsSignaturePublicKey::new(
         alice_credential.to_public_vec().into(),
@@ -275,10 +275,10 @@ fn setup_alice_bob(
     // Create credentials and keys
     let alice_credential =
         SignatureKeyPair::new(ciphersuite.signature_algorithm(), b"Alice".to_vec()).unwrap();
-    alice_credential.store(backend.key_store());
+    alice_credential.store(backend.key_store()).unwrap();
     let bob_credential =
         SignatureKeyPair::new(ciphersuite.signature_algorithm(), b"Bob".to_vec()).unwrap();
-    bob_credential.store(backend.key_store());
+    bob_credential.store(backend.key_store()).unwrap();
 
     // Generate Bob's KeyPackage
     let bob_key_package = KeyPackage::builder()
@@ -493,7 +493,7 @@ fn test_own_commit_processing(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
     // Create credentials and keys
     let alice_credential =
         SignatureKeyPair::new(ciphersuite.signature_algorithm(), b"Alice".to_vec()).unwrap();
-    alice_credential.store(backend.key_store());
+    alice_credential.store(backend.key_store()).unwrap();
 
     // === Alice creates a group ===
     let alice_group = CoreGroup::builder(
@@ -528,7 +528,7 @@ pub(crate) fn setup_client(
 ) -> (KeyPackageBundle, SignatureKeyPair) {
     let credential =
         SignatureKeyPair::new(ciphersuite.signature_algorithm(), id.as_bytes().into()).unwrap();
-    credential.store(backend.key_store());
+    credential.store(backend.key_store()).unwrap();
 
     // Generate the KeyPackage
     let key_package = KeyPackage::builder()
@@ -563,7 +563,7 @@ fn test_proposal_application_after_self_was_removed(
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
-    let (alice_key_package_bundle, alice_credential) = setup_client("Alice", ciphersuite, backend);
+    let (_alice_key_package_bundle, alice_credential) = setup_client("Alice", ciphersuite, backend);
     let (bob_kpb, _) = setup_client("Bob", ciphersuite, backend);
     let (charlie_kpb, _) = setup_client("Charlie", ciphersuite, backend);
 

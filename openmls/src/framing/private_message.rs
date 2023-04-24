@@ -92,7 +92,7 @@ impl PrivateMessage {
         )
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn encrypt_without_check(
         public_message: &AuthenticatedContent,
         ciphersuite: Ciphersuite,

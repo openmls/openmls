@@ -47,7 +47,7 @@ pub(crate) struct AuthenticatedContentIn {
     pub(super) auth: FramedContentAuthData,
 }
 
-#[cfg(any(feature = "test-utils", test))]
+#[cfg(test)]
 impl AuthenticatedContentIn {
     /// Get the content body of the message.
     pub(crate) fn content(&self) -> &FramedContentBodyIn {

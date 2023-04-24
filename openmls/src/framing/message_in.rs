@@ -248,7 +248,7 @@ impl From<MlsMessageIn> for ProtocolMessage {
     }
 }
 
-#[cfg(any(feature = "test-utils", test))]
+#[cfg(test)]
 impl From<PublicMessage> for ProtocolMessage {
     fn from(msg: PublicMessage) -> Self {
         ProtocolMessage::PublicMessage(msg.into())

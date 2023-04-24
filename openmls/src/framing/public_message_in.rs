@@ -43,7 +43,7 @@ pub struct PublicMessageIn {
     pub(crate) membership_tag: Option<MembershipTag>,
 }
 
-#[cfg(any(test, feature = "test-utils"))]
+#[cfg(test)]
 impl PublicMessageIn {
     pub(crate) fn content(&self) -> &crate::framing::mls_content_in::FramedContentBodyIn {
         &self.content.body

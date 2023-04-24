@@ -92,7 +92,7 @@ impl ParentNodeIndex {
     }
 }
 
-#[cfg(any(feature = "test-utils", test))]
+#[cfg(test)]
 impl ParentNodeIndex {
     /// Re-exported for testing.
     pub(crate) fn test_to_tree_index(self) -> u32 {
@@ -130,7 +130,7 @@ impl TreeNodeIndex {
     }
 
     /// Re-exported for testing.
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn test_new(index: u32) -> Self {
         Self::new(index)
     }
@@ -144,19 +144,19 @@ impl TreeNodeIndex {
     }
 
     /// Re-exported for testing.
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn test_u32(&self) -> u32 {
         self.u32()
     }
 
     /// Return the inner value as `usize`.
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     fn usize(&self) -> usize {
         self.u32() as usize
     }
 
     /// Re-exported for testing.
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn test_usize(&self) -> usize {
         self.usize()
     }
@@ -187,7 +187,7 @@ impl TreeSize {
     }
 
     /// Creates a new `TreeSize` from a specific leaf count
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn from_leaf_count(leaf_count: u32) -> Self {
         TreeSize::new(leaf_count * 2)
     }
@@ -321,7 +321,7 @@ fn parent(x: TreeNodeIndex) -> ParentNodeIndex {
 }
 
 /// Re-exported for testing.
-#[cfg(any(feature = "test-utils", test))]
+#[cfg(test)]
 pub(crate) fn test_parent(index: TreeNodeIndex) -> ParentNodeIndex {
     parent(index)
 }
@@ -336,7 +336,7 @@ fn sibling(index: TreeNodeIndex) -> TreeNodeIndex {
 }
 
 /// Re-exported for testing.
-#[cfg(any(feature = "test-utils", test))]
+#[cfg(test)]
 pub(crate) fn test_sibling(index: TreeNodeIndex) -> TreeNodeIndex {
     sibling(index)
 }
@@ -425,7 +425,7 @@ pub(crate) fn common_direct_path(
     common_path
 }
 
-#[cfg(any(feature = "test-utils", test))]
+#[cfg(test)]
 pub(crate) fn node_width(n: usize) -> usize {
     if n == 0 {
         0

@@ -18,7 +18,7 @@ use crate::{
 fn test_mls_group_persistence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
-    let (alice_key_package, alice_credential) = setup_client("Alice", ciphersuite, backend);
+    let (_alice_key_package, alice_credential) = setup_client("Alice", ciphersuite, backend);
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::test_default(ciphersuite);
@@ -64,7 +64,7 @@ fn test_mls_group_persistence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
 fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
-    let (alice_key_package, alice_credential) = setup_client("Alice", ciphersuite, backend);
+    let (_alice_key_package, alice_credential) = setup_client("Alice", ciphersuite, backend);
     let (bob_kpb, bob_credential) = setup_client("Bob", ciphersuite, backend);
     let (charlie_kpb, charlie_credential) = setup_client("Charly", ciphersuite, backend);
 
@@ -206,7 +206,7 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
 fn export_secret(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
-    let (alice_key_package, alice_credential) = setup_client("Alice", ciphersuite, backend);
+    let (_alice_key_package, alice_credential) = setup_client("Alice", ciphersuite, backend);
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::test_default(ciphersuite);
@@ -340,7 +340,7 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
 fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
-    let (alice_key_package, alice_credential) = setup_client("Alice", ciphersuite, backend);
+    let (_alice_key_package, alice_credential) = setup_client("Alice", ciphersuite, backend);
     let (bob_key_package, bob_credential) = setup_client("Bob", ciphersuite, backend);
 
     // Define the MlsGroup configuration
@@ -511,8 +511,8 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
 fn key_package_deletion(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
-    let (bob_key_package, alice_credential) = setup_client("Alice", ciphersuite, backend);
-    let (bob_key_package, bob_credential) = setup_client("Bob", ciphersuite, backend);
+    let (_bob_key_package, alice_credential) = setup_client("Alice", ciphersuite, backend);
+    let (bob_key_package, _bob_credential) = setup_client("Bob", ciphersuite, backend);
     let bob_key_package = bob_key_package.key_package();
 
     // Define the MlsGroup configuration
@@ -572,10 +572,10 @@ fn key_package_deletion(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 fn remove_prosposal_by_ref(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
-    let (alice_key_package, alice_credential) = setup_client("Alice", ciphersuite, backend);
-    let (bob_key_package, bob_credential) = setup_client("Bob", ciphersuite, backend);
+    let (_alice_key_package, alice_credential) = setup_client("Alice", ciphersuite, backend);
+    let (bob_key_package, _bob_credential) = setup_client("Bob", ciphersuite, backend);
     let bob_key_package = bob_key_package.key_package().clone();
-    let (charlie_key_package, charlie_credential) = setup_client("Charlie", ciphersuite, backend);
+    let (charlie_key_package, _charlie_credential) = setup_client("Charlie", ciphersuite, backend);
     let charlie_key_package = charlie_key_package.key_package();
 
     // Define the MlsGroup configuration
