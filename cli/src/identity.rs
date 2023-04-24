@@ -5,7 +5,7 @@ use openmls_traits::OpenMlsCryptoProvider;
 
 pub struct Identity {
     pub(crate) kp: KeyPackage,
-    pub(crate) signer: OpenMlsBasicCredential,
+    pub(crate) credential: OpenMlsBasicCredential,
 }
 
 impl Identity {
@@ -28,12 +28,12 @@ impl Identity {
 
         Self {
             kp: key_package,
-            signer: credential,
+            credential,
         }
     }
 
     /// Get the plain identity as byte vector.
     pub fn identity(&self) -> &[u8] {
-        self.credential_with_key.credential.identity()
+        self.credential.identity()
     }
 }

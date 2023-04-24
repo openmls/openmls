@@ -79,13 +79,7 @@ impl User {
             ..
         } in mls_group.members()
         {
-            if self
-                .identity
-                .borrow()
-                .credential_with_key
-                .signature_key
-                .as_slice()
-                != signature_key.as_slice()
+            if self.identity.borrow().credential.public_key() != signature_key.as_slice()
             {
                 let contact = match self.contacts.get(&signature_key) {
                     Some(c) => c.id.clone(),
@@ -117,7 +111,11 @@ impl User {
         let message_out = group
             .mls_group
             .borrow_mut()
-            .create_message(&self.crypto, &self.identity.borrow().signer, msg.as_bytes())
+            .create_message(
+                &self.crypto,
+                &self.identity.borrow().credential,
+                msg.as_bytes(),
+            )
             .map_err(|e| format!("{e}"))?;
 
         let msg = GroupMessage::new(message_out.into(), &self.recipients(group));
@@ -248,10 +246,10 @@ impl User {
 
         let mut mls_group = MlsGroup::new_with_group_id(
             &self.crypto,
-            &self.identity.borrow().signer,
+            &self.identity.borrow().credential,
             &group_config,
             GroupId::from_slice(group_id),
-            self.identity.borrow().credential_with_key.clone(),
+            &self.identity.borrow().credential,
         )
         .expect("Failed to create MlsGroup");
         mls_group.set_aad(group_aad.as_slice());
@@ -300,7 +298,7 @@ impl User {
             .borrow_mut()
             .add_members(
                 &self.crypto,
-                &self.identity.borrow().signer,
+                &self.identity.borrow().credential,
                 &[joiner_key_package.into()],
             )
             .map_err(|e| format!("Failed to add member to group - {e}"))?;
