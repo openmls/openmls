@@ -1,6 +1,6 @@
 use ds_lib::{self, *};
 use openmls::prelude::{config::CryptoConfig, *};
-use openmls_basic_credential::SignatureKeyPair;
+use openmls_basic_credential::OpenMlsBasicCredential;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::OpenMlsCryptoProvider;
 use tls_codec::{Deserialize, Serialize};
@@ -13,7 +13,7 @@ fn test_client_info() {
 
     let credential =
         Credential::new(client_name.as_bytes().to_vec(), CredentialType::Basic).unwrap();
-    let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+    let signature_keys = OpenMlsBasicCredential::new(ciphersuite.signature_algorithm()).unwrap();
     let credential_with_key = CredentialWithKey {
         credential,
         signature_key: signature_keys.to_public_vec().into(),

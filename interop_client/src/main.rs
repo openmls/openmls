@@ -28,7 +28,7 @@ use openmls::{
     },
     versions::ProtocolVersion,
 };
-use openmls_basic_credential::SignatureKeyPair;
+use openmls_basic_credential::OpenMlsBasicCredential;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
     key_store::OpenMlsKeyStore,
@@ -49,7 +49,7 @@ const IMPLEMENTATION_NAME: &str = "OpenMLS";
 pub struct InteropGroup {
     group: MlsGroup,
     wire_format_policy: WireFormatPolicy,
-    signature_keys: SignatureKeyPair,
+    signature_keys: OpenMlsBasicCredential,
     messages_out: Vec<MlsMessageIn>,
     crypto_provider: OpenMlsRustCrypto,
 }
@@ -59,7 +59,7 @@ type PendingState = (
     HpkePrivateKey,
     HpkeKeyPair,
     Credential,
-    SignatureKeyPair,
+    OpenMlsBasicCredential,
     OpenMlsRustCrypto,
 );
 
@@ -214,7 +214,7 @@ impl MlsClient for MlsClientImpl {
 
         let ciphersuite = Ciphersuite::try_from(request.cipher_suite as u16).unwrap();
         let credential = Credential::new(request.identity.clone(), CredentialType::Basic).unwrap();
-        let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+        let signature_keys = OpenMlsBasicCredential::new(ciphersuite.signature_algorithm()).unwrap();
         signature_keys.store(backend.key_store()).unwrap();
 
         let wire_format_policy = wire_format_policy(request.encrypt_handshake);
@@ -280,7 +280,7 @@ impl MlsClient for MlsClientImpl {
         );
 
         let credential = Credential::new(identity, CredentialType::Basic).unwrap();
-        let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+        let signature_keys = OpenMlsBasicCredential::new(ciphersuite.signature_algorithm()).unwrap();
 
         let key_package = KeyPackage::builder()
             .leaf_node_capabilities(Capabilities::default())
@@ -487,7 +487,7 @@ impl MlsClient for MlsClientImpl {
                     Credential::new(request.identity.to_vec(), CredentialType::Basic).unwrap();
 
                 let signature_keypair =
-                    SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+                    OpenMlsBasicCredential::new(ciphersuite.signature_algorithm()).unwrap();
 
                 signature_keypair.store(backend.key_store()).unwrap();
 

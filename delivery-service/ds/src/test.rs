@@ -1,7 +1,7 @@
 use super::*;
 use actix_web::{dev::Body, http::StatusCode, test, web, web::Bytes, App};
 use openmls::prelude::config::CryptoConfig;
-use openmls_basic_credential::SignatureKeyPair;
+use openmls_basic_credential::OpenMlsBasicCredential;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::types::SignatureScheme;
 use openmls_traits::OpenMlsCryptoProvider;
@@ -10,9 +10,9 @@ use tls_codec::{TlsByteVecU8, TlsVecU16};
 fn generate_credential(
     identity: Vec<u8>,
     signature_scheme: SignatureScheme,
-) -> (CredentialWithKey, SignatureKeyPair) {
+) -> (CredentialWithKey, OpenMlsBasicCredential) {
     let credential = Credential::new(identity, CredentialType::Basic).unwrap();
-    let signature_keys = SignatureKeyPair::new(signature_scheme).unwrap();
+    let signature_keys = OpenMlsBasicCredential::new(signature_scheme).unwrap();
     let credential_with_key = CredentialWithKey {
         credential,
         signature_key: signature_keys.to_public_vec().into(),
@@ -26,7 +26,7 @@ fn generate_key_package(
     credential_with_key: CredentialWithKey,
     extensions: Extensions,
     crypto_backend: &impl OpenMlsCryptoProvider,
-    signer: &SignatureKeyPair,
+    signer: &OpenMlsBasicCredential,
 ) -> KeyPackage {
     KeyPackage::builder()
         .key_package_extensions(extensions)
