@@ -15,6 +15,11 @@ use mls_interop_proto::mls_client;
 use openmls::{
     ciphersuite::HpkePrivateKey,
     credentials::{Credential, CredentialType, CredentialWithKey},
+    extensions::{
+        ApplicationIdExtension, Extension, ExtensionType, Extensions, ExternalPubExtension,
+        ExternalSendersExtension, RatchetTreeExtension, RequiredCapabilitiesExtension,
+        UnknownExtension,
+    },
     framing::{MlsMessageIn, MlsMessageInBody, MlsMessageOut, ProcessedMessageContent},
     group::{
         GroupEpoch, GroupId, MlsGroup, MlsGroupConfig, WireFormatPolicy,
@@ -150,6 +155,49 @@ fn ratchet_tree_from_config(bytes: Vec<u8>) -> Option<RatchetTree> {
         debug!("Skipping deserialization due to empty bytes.");
         None
     }
+}
+
+fn convert_to_extensions(
+    rpc_extensions: &[mls_interop_proto::mls_client::Extension],
+) -> Extensions {
+    let mut extensions = Vec::new();
+
+    for ext in rpc_extensions.iter() {
+        let kind = ExtensionType::try_from(u16::try_from(ext.extension_type).unwrap()).unwrap();
+
+        let extension = match kind {
+            ExtensionType::ApplicationId => Extension::ApplicationId(
+                ApplicationIdExtension::tls_deserialize_exact(&ext.extension_data).unwrap(),
+            ),
+            ExtensionType::RatchetTree => Extension::RatchetTree(
+                RatchetTreeExtension::tls_deserialize_exact(&ext.extension_data)
+                    .unwrap()
+                    .into(),
+            ),
+            ExtensionType::RequiredCapabilities => Extension::RequiredCapabilities(
+                RequiredCapabilitiesExtension::tls_deserialize_exact(&ext.extension_data)
+                    .unwrap()
+                    .into(),
+            ),
+            ExtensionType::ExternalPub => Extension::ExternalPub(
+                ExternalPubExtension::tls_deserialize_exact(&ext.extension_data)
+                    .unwrap()
+                    .into(),
+            ),
+            ExtensionType::ExternalSenders => Extension::ExternalSenders(
+                ExternalSendersExtension::tls_deserialize_exact(&ext.extension_data)
+                    .unwrap()
+                    .into(),
+            ),
+            ExtensionType::Unknown(unknown) => {
+                Extension::Unknown(unknown, UnknownExtension(vec![0, 1, 2, 3, 255]))
+            }
+        };
+
+        extensions.push(extension);
+    }
+
+    Extensions::try_from(extensions).unwrap()
 }
 
 fn bytes_to_string<B>(bytes: B) -> String
@@ -1066,9 +1114,19 @@ impl MlsClient for MlsClientImpl {
                     (msg_out, proposal_ref)
                 }
                 "groupContextExtensions" => {
-                    return Err(Status::internal(
-                        "Unsupported proposal type (group context extension)",
-                    ))
+                    let (msg_out, proposal_ref) = group
+                        .propose_extensions(
+                            &interop_group.crypto_provider,
+                            &interop_group.signature_keys,
+                            convert_to_extensions(&proposal.extensions),
+                        )
+                        .map_err(|_| Status::internal("Unable to generate proposal by value"))?;
+
+                    debug!("GroupContextExtensions proposal created.");
+                    trace!(proposal = ?msg_out);
+                    trace!(proposal_ref = ?proposal_ref);
+
+                    (msg_out, proposal_ref)
                 }
                 _ => return Err(Status::invalid_argument("Invalid proposal type")),
             };
@@ -1381,14 +1439,42 @@ impl MlsClient for MlsClientImpl {
         Ok(Response::new(response))
     }
 
-    #[instrument(skip_all, fields(actor))]
+    #[instrument(skip_all)]
     async fn group_context_extensions_proposal(
         &self,
-        _request: Request<GroupContextExtensionsProposalRequest>,
+        request: Request<GroupContextExtensionsProposalRequest>,
     ) -> Result<Response<ProposalResponse>, Status> {
-        Err(Status::unimplemented(
-            "Group context extension is not implemented yet",
-        ))
+        let request = request.get_ref();
+        info!(?request, "Request");
+
+        let mut groups = self.groups.lock().unwrap();
+        let interop_group = groups
+            .get_mut(request.state_id as usize)
+            .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
+        let group = &mut interop_group.group;
+
+        let extensions = convert_to_extensions(&request.extensions);
+
+        debug!("Created extensions.");
+        trace!(?extensions);
+
+        let (msg_out, _) = group
+            .propose_extensions(
+                &interop_group.crypto_provider,
+                &interop_group.signature_keys,
+                extensions,
+            )
+            .unwrap();
+
+        // Store the proposal for potential future use.
+        interop_group.messages_out.push(msg_out.clone().into());
+
+        let response = ProposalResponse {
+            proposal: msg_out.tls_serialize_detached().unwrap(),
+        };
+
+        info!(?response, "Response");
+        Ok(Response::new(response))
     }
 
     async fn re_init_commit(
