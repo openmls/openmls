@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":[["CreationFromExternalError","Public group creation from external error."],["PublicGroupBuildError","Public group builder error."]]};
+window.SIDEBAR_ITEMS = {"enum":["CreationFromExternalError","PublicGroupBuildError"]};

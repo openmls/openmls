@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":[["ProtocolVersion","Protocol Version"],["VersionError","Version Error"]]};
+window.SIDEBAR_ITEMS = {"enum":["ProtocolVersion","VersionError"]};
