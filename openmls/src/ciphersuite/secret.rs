@@ -8,10 +8,12 @@ use super::{kdf_label::KdfLabel, *};
 ///
 /// Note: This has a hand-written `Debug` implementation.
 ///       Please update as well when changing this struct.
-#[derive(Clone, Serialize, Deserialize, Eq)]
+#[derive(Clone, Serialize, Deserialize, Eq, zeroize::ZeroizeOnDrop)]
 pub(crate) struct Secret {
+    #[zeroize(skip)]
     pub(in crate::ciphersuite) ciphersuite: Ciphersuite,
     pub(in crate::ciphersuite) value: Vec<u8>,
+    #[zeroize(skip)]
     pub(in crate::ciphersuite) mls_version: ProtocolVersion,
 }
 

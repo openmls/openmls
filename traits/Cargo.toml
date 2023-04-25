@@ -12,6 +12,11 @@ readme = "README.md"
 [lib]
 path = "src/traits.rs"
 
+[features]
+default = []
+test-utils = []
+
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 tls_codec = { workspace = true }
+zeroize = { version = "1.0", features = ["zeroize_derive"] }

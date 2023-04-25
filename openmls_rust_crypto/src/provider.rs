@@ -16,8 +16,8 @@ use openmls_traits::{
     crypto::OpenMlsCrypto,
     random::OpenMlsRand,
     types::{
-        self, AeadType, Ciphersuite, CryptoError, HashType, HpkeAeadType, HpkeCiphertext,
-        HpkeConfig, HpkeKdfType, HpkeKemType, HpkeKeyPair, SignatureScheme,
+        self, AeadType, Ciphersuite, CryptoError, ExporterSecret, HashType, HpkeAeadType,
+        HpkeCiphertext, HpkeConfig, HpkeKdfType, HpkeKemType, HpkeKeyPair, SignatureScheme,
     },
 };
 use p256::{
@@ -344,14 +344,14 @@ impl OpenMlsCrypto for RustCrypto {
         info: &[u8],
         exporter_context: &[u8],
         exporter_length: usize,
-    ) -> Result<(Vec<u8>, Vec<u8>), CryptoError> {
+    ) -> Result<(Vec<u8>, ExporterSecret), CryptoError> {
         let (kem_output, context) = hpke_from_config(config)
             .setup_sender(&pk_r.into(), info, None, None, None)
             .map_err(|_| CryptoError::SenderSetupError)?;
         let exported_secret = context
             .export(exporter_context, exporter_length)
             .map_err(|_| CryptoError::ExporterError)?;
-        Ok((kem_output, exported_secret))
+        Ok((kem_output, exported_secret.into()))
     }
 
     fn hpke_setup_receiver_and_export(
@@ -362,14 +362,14 @@ impl OpenMlsCrypto for RustCrypto {
         info: &[u8],
         exporter_context: &[u8],
         exporter_length: usize,
-    ) -> Result<Vec<u8>, CryptoError> {
+    ) -> Result<ExporterSecret, CryptoError> {
         let context = hpke_from_config(config)
             .setup_receiver(enc, &sk_r.into(), info, None, None, None)
             .map_err(|_| CryptoError::ReceiverSetupError)?;
         let exported_secret = context
             .export(exporter_context, exporter_length)
             .map_err(|_| CryptoError::ExporterError)?;
-        Ok(exported_secret)
+        Ok(exported_secret.into())
     }
 
     fn derive_hpke_keypair(&self, config: HpkeConfig, ikm: &[u8]) -> types::HpkeKeyPair {

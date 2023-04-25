@@ -2,10 +2,13 @@
 //!
 //! This module holds a number of types that are needed by the traits.
 
-use std::convert::TryFrom;
+use std::{convert::TryFrom, ops::Deref};
 
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
+use zeroize::ZeroizeOnDrop;
+
+use crate::key_store::{MlsEntity, MlsEntityId};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
 #[repr(u16)]
@@ -229,15 +232,69 @@ pub struct HpkeCiphertext {
     pub ciphertext: VLBytes,
 }
 
+/// A simple type for HPKE private keys.
+#[derive(
+    Debug,
+    Clone,
+    serde::Serialize,
+    serde::Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsSize,
+    ZeroizeOnDrop,
+)]
+#[cfg_attr(feature = "test-utils", derive(PartialEq, Eq))]
+#[serde(transparent)]
+pub struct HpkePrivateKey(Vec<u8>);
+
+impl From<Vec<u8>> for HpkePrivateKey {
+    fn from(bytes: Vec<u8>) -> Self {
+        Self(bytes)
+    }
+}
+
+impl From<&[u8]> for HpkePrivateKey {
+    fn from(bytes: &[u8]) -> Self {
+        Self(bytes.into())
+    }
+}
+
+impl std::ops::Deref for HpkePrivateKey {
+    type Target = [u8];
+
+    fn deref(&self) -> &Self::Target {
+        self.0.as_slice()
+    }
+}
+
+impl MlsEntity for HpkePrivateKey {
+    const ID: MlsEntityId = MlsEntityId::HpkePrivateKey;
+}
+
 /// Helper holding a (private, public) key pair as byte vectors.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HpkeKeyPair {
-    pub private: Vec<u8>,
+    pub private: HpkePrivateKey,
     pub public: Vec<u8>,
 }
 
-pub type ExporterSecret = Vec<u8>;
 pub type KemOutput = Vec<u8>;
+#[derive(Clone, Debug, ZeroizeOnDrop)]
+pub struct ExporterSecret(Vec<u8>);
+
+impl Deref for ExporterSecret {
+    type Target = [u8];
+
+    fn deref(&self) -> &Self::Target {
+        self.0.as_slice()
+    }
+}
+
+impl From<Vec<u8>> for ExporterSecret {
+    fn from(secret: Vec<u8>) -> Self {
+        Self(secret)
+    }
+}
 
 /// A currently unknown ciphersuite.
 ///

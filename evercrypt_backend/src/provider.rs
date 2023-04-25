@@ -306,7 +306,7 @@ impl OpenMlsCrypto for EvercryptProvider {
         let exported_secret = context
             .export(exporter_context, exporter_length)
             .map_err(|_| CryptoError::ExporterError)?;
-        Ok((kem_output, exported_secret))
+        Ok((kem_output, exported_secret.into()))
     }
 
     fn hpke_setup_receiver_and_export(
@@ -324,7 +324,7 @@ impl OpenMlsCrypto for EvercryptProvider {
         let exported_secret = context
             .export(exporter_context, exporter_length)
             .map_err(|_| CryptoError::ExporterError)?;
-        Ok(exported_secret)
+        Ok(exported_secret.into())
     }
 
     fn derive_hpke_keypair(

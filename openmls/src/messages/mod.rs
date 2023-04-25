@@ -5,7 +5,7 @@
 
 use openmls_traits::{
     crypto::OpenMlsCrypto,
-    types::{Ciphersuite, HpkeCiphertext},
+    types::{Ciphersuite, HpkeCiphertext, HpkeKeyPair},
     OpenMlsCryptoProvider,
 };
 use serde::{Deserialize, Serialize};
@@ -299,15 +299,11 @@ impl PathSecret {
             .path_secret
             .kdf_expand_label(backend, "node", &[], ciphersuite.hash_length())
             .map_err(LibraryError::unexpected_crypto_error)?;
-        let key_pair = backend
+        let HpkeKeyPair { public, private } = backend
             .crypto()
             .derive_hpke_keypair(ciphersuite.hpke_config(), node_secret.as_slice());
 
-        Ok((
-            HpkePublicKey::from(key_pair.public),
-            HpkePrivateKey::from(key_pair.private),
-        )
-            .into())
+        Ok((HpkePublicKey::from(public), private).into())
     }
 
     /// Derives a path secret.
@@ -419,15 +415,9 @@ impl GroupSecrets {
         ciphersuite: Ciphersuite,
         crypto: &impl OpenMlsCrypto,
     ) -> Result<Self, GroupSecretsError> {
-        let group_secrets_plaintext = hpke::decrypt_with_label(
-            skey.as_slice(),
-            "Welcome",
-            context,
-            ciphertext,
-            ciphersuite,
-            crypto,
-        )
-        .map_err(|_| GroupSecretsError::DecryptionFailed)?;
+        let group_secrets_plaintext =
+            hpke::decrypt_with_label(skey, "Welcome", context, ciphertext, ciphersuite, crypto)
+                .map_err(|_| GroupSecretsError::DecryptionFailed)?;
 
         // Note: This also checks that no extraneous data was encrypted.
         let group_secrets = GroupSecrets::tls_deserialize_exact(group_secrets_plaintext)
