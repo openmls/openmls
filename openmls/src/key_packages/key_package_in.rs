@@ -92,7 +92,7 @@ pub struct KeyPackageIn {
 }
 
 impl KeyPackageIn {
-    /// Returns a [`CredentialWithKey`] from the unverified payload
+    /// Returns a [`Credential`], [`SignaturePublicKey`] tuple from the unverified payload
     pub fn unverified_credential(&self) -> (Credential, SignaturePublicKey) {
         let credential = self.payload.leaf_node.credential().clone();
         let signature_key = self.payload.leaf_node.signature_key().clone();
