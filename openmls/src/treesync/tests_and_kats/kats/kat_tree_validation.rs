@@ -97,15 +97,14 @@ fn run_test_vector(test: TestElement, backend: &impl OpenMlsCryptoProvider) -> R
         return Ok(());
     }
 
-    let ratchet_tree = RatchetTreeIn::tls_deserialize_exact(test.tree).unwrap();
+    let group_id = &GroupId::from_slice(test.group_id.as_slice());
+    let ratchet_tree = RatchetTreeIn::tls_deserialize_exact(test.tree)
+        .unwrap()
+        .into_verified(ciphersuite, backend.crypto(), group_id)
+        .unwrap();
 
-    let treesync = TreeSync::from_ratchet_tree(
-        backend,
-        ciphersuite,
-        ratchet_tree.clone(),
-        &GroupId::from_slice(test.group_id.as_slice()),
-    )
-    .map_err(|e| format!("Error while creating tree sync: {e:?}"))?;
+    let treesync = TreeSync::from_ratchet_tree(backend, ciphersuite, ratchet_tree.clone())
+        .map_err(|e| format!("Error while creating tree sync: {e:?}"))?;
 
     let diff = treesync.empty_diff();
 
