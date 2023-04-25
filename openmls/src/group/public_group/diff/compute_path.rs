@@ -44,7 +44,7 @@ impl<'a> PublicGroupDiff<'a> {
         exclusion_list: HashSet<&LeafNodeIndex>,
         commit_type: CommitType,
         signer: &impl Signer,
-        credential_with_key: Option<&Box<&dyn OpenMlsCredential>>,
+        credential: Option<&dyn OpenMlsCredential>,
     ) -> Result<PathComputationResult, CreateCommitError<KeyStore::Error>> {
         let version = self.group_context().protocol_version();
         let ciphersuite = self.group_context().ciphersuite();
@@ -67,7 +67,7 @@ impl<'a> PublicGroupDiff<'a> {
                 },
                 backend,
                 signer,
-                **credential_with_key.ok_or(CreateCommitError::MissingCredential)?,
+                credential.ok_or(CreateCommitError::MissingCredential)?,
             )?;
 
             let leaf_node: LeafNode = key_package.into();

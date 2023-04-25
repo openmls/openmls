@@ -195,6 +195,7 @@ fn read_test_vectors_tm() {
     }
 }
 
+#[allow(clippy::enum_variant_names)]
 #[cfg(test)]
 /// TreeMath test vector error
 #[derive(Error, Debug, PartialEq, Eq, Clone)]

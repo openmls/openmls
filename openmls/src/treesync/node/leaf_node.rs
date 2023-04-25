@@ -47,7 +47,7 @@ mod private_mod {
 
 pub(crate) struct NewLeafNodeParams<'a> {
     pub(crate) config: CryptoConfig,
-    pub(crate) credential: Box<&'a dyn OpenMlsCredential>,
+    pub(crate) credential: &'a dyn OpenMlsCredential,
     pub(crate) leaf_node_source: LeafNodeSource,
     pub(crate) capabilities: Capabilities,
     pub(crate) extensions: Extensions,
@@ -115,7 +115,7 @@ impl LeafNode {
 
         let leaf_node = Self::new_with_key(
             encryption_key_pair.public_key().clone(),
-            *credential,
+            credential,
             leaf_node_source,
             capabilities,
             extensions,
@@ -233,7 +233,7 @@ impl LeafNode {
 
         let new_leaf_node_params = NewLeafNodeParams {
             config,
-            credential: Box::new(credential),
+            credential,
             leaf_node_source: LeafNodeSource::Update,
             capabilities,
             extensions,
@@ -703,21 +703,6 @@ impl LeafNode {
         self.payload = leaf_node.payload;
         self.signature = leaf_node.signature;
     }
-
-    /// Re-signs a leaf node with a specific tree position.
-    #[cfg(test)]
-    pub(crate) fn resign_with_position(
-        &mut self,
-        leaf_index: LeafNodeIndex,
-        group_id: GroupId,
-        signer: &impl Signer,
-    ) {
-        let tree_info_tbs = TreeInfoTbs::commit(group_id, leaf_index);
-        let leaf_node_tbs = LeafNodeTbs::from(self.clone(), tree_info_tbs);
-        let leaf_node = leaf_node_tbs.sign(signer).unwrap();
-        self.payload = leaf_node.payload;
-        self.signature = leaf_node.signature;
-    }
 }
 
 /// The payload of a [`LeafNode`]
@@ -865,16 +850,6 @@ pub(crate) enum TreeInfoTbs {
     KeyPackage,
     Update(TreePosition),
     Commit(TreePosition),
-}
-
-impl TreeInfoTbs {
-    #[cfg(test)]
-    pub(crate) fn commit(group_id: GroupId, leaf_index: LeafNodeIndex) -> Self {
-        Self::Commit(TreePosition {
-            group_id,
-            leaf_index,
-        })
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, TlsSerialize, TlsSize)]

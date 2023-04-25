@@ -16,12 +16,12 @@ pub(crate) enum CommitType {
 }
 
 pub(crate) struct CreateCommitParams<'a> {
-    framing_parameters: FramingParameters<'a>, // Mandatory
-    proposal_store: &'a ProposalStore,         // Mandatory
-    inline_proposals: Vec<Proposal>,           // Optional
-    force_self_update: bool,                   // Optional
-    commit_type: CommitType,                   // Optional (default is `Member`)
-    credential: Option<Box<&'a dyn OpenMlsCredential>>, // Mandatory for external commits
+    framing_parameters: FramingParameters<'a>,     // Mandatory
+    proposal_store: &'a ProposalStore,             // Mandatory
+    inline_proposals: Vec<Proposal>,               // Optional
+    force_self_update: bool,                       // Optional
+    commit_type: CommitType,                       // Optional (default is `Member`)
+    credential: Option<&'a dyn OpenMlsCredential>, // Mandatory for external commits
 }
 
 pub(crate) struct TempBuilderCCPM0 {}
@@ -72,7 +72,7 @@ impl<'a> CreateCommitParamsBuilder<'a> {
         self
     }
     pub(crate) fn credential(mut self, credential: &'a dyn OpenMlsCredential) -> Self {
-        self.ccp.credential = Some(Box::new(credential));
+        self.ccp.credential = Some(credential);
         self
     }
     pub(crate) fn build(self) -> CreateCommitParams<'a> {
@@ -99,8 +99,8 @@ impl<'a> CreateCommitParams<'a> {
     pub(crate) fn commit_type(&self) -> CommitType {
         self.commit_type
     }
-    pub(crate) fn credential(&self) -> Option<&Box<&dyn OpenMlsCredential>> {
-        self.credential.as_ref()
+    pub(crate) fn credential(&self) -> Option<&dyn OpenMlsCredential> {
+        self.credential
     }
     pub(crate) fn set_commit_type(&mut self, commit_type: CommitType) {
         self.commit_type = commit_type;

@@ -282,7 +282,7 @@ impl KeyPackage {
         let new_leaf_node_params = NewLeafNodeParams {
             config,
             leaf_node_source: LeafNodeSource::KeyPackage(Lifetime::default()),
-            credential: Box::new(credential),
+            credential,
             capabilities,
             extensions: leaf_node_extensions,
             tree_info_tbs: TreeInfoTbs::KeyPackage,
@@ -685,7 +685,7 @@ impl KeyPackageBundle {
             // key store
             key_package
                 .delete(backend)
-                .map_err(|e| KeyPackageNewError::KeyStoreError(e))?;
+                .map_err(KeyPackageNewError::KeyStoreError)?;
         }
 
         Ok(Self {

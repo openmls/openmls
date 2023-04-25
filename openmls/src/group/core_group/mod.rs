@@ -682,8 +682,7 @@ impl CoreGroup {
     {
         self.public_group()
             .leaf(self.own_leaf_index)
-            .map(|node| node.full_credential(self.ciphersuite()).ok())
-            .flatten()
+            .and_then(|node| node.full_credential(self.ciphersuite()).ok())
     }
 
     /// Get a reference to the group epoch secrets from the group

@@ -366,14 +366,14 @@ impl TreeSync {
         backend: &impl OpenMlsCryptoProvider,
         signer: &impl Signer,
         config: CryptoConfig,
-        credential_with_key: &dyn OpenMlsCredential,
+        credential: &dyn OpenMlsCredential,
         life_time: Lifetime,
         capabilities: Capabilities,
         extensions: Extensions,
     ) -> Result<(Self, CommitSecret, EncryptionKeyPair), LibraryError> {
         let new_leaf_node_params = NewLeafNodeParams {
             config,
-            credential: Box::new(credential_with_key),
+            credential,
             // Creation of a group is considered to be from a key package.
             leaf_node_source: LeafNodeSource::KeyPackage(life_time),
             capabilities,
