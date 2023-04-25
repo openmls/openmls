@@ -240,11 +240,31 @@ impl RatchetTreeIn {
             .collect();
         Self(nodes)
     }
+
+    #[cfg(test)]
+    pub(crate) fn from_nodes(nodes: Vec<Option<NodeIn>>) -> Self {
+        Self(nodes)
+    }
 }
 
 impl From<RatchetTree> for RatchetTreeIn {
     fn from(ratchet_tree: RatchetTree) -> Self {
         RatchetTreeIn::from_ratchet_tree(ratchet_tree)
+    }
+}
+
+// The following `From` implementation breaks abstraction layers and MUST
+// NOT be made available outside of tests or "test-utils".
+#[cfg(any(feature = "test-utils", test))]
+impl From<RatchetTreeIn> for RatchetTree {
+    fn from(ratchet_tree_in: RatchetTreeIn) -> Self {
+        Self(
+            ratchet_tree_in
+                .0
+                .into_iter()
+                .map(|node| node.map(Node::from))
+                .collect(),
+        )
     }
 }
 
@@ -407,14 +427,11 @@ impl TreeSync {
     pub(crate) fn from_ratchet_tree(
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
-        ratchet_tree: RatchetTreeIn,
-        group_id: &GroupId,
+        ratchet_tree: RatchetTree,
     ) -> Result<Self, TreeSyncFromNodesError> {
         // TODO #800: Unmerged leaves should be checked
         let mut ts_nodes: Vec<TreeNode<TreeSyncLeafNode, TreeSyncParentNode>> =
             Vec::with_capacity(ratchet_tree.0.len());
-
-        let ratchet_tree = ratchet_tree.into_verified(ciphersuite, backend.crypto(), group_id)?;
 
         // Set the leaf indices in all the leaves and convert the node types.
         for (node_index, node_option) in ratchet_tree.0.into_iter().enumerate() {
