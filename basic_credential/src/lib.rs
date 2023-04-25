@@ -258,23 +258,6 @@ impl OpenMlsCredential for VerificationCredential {
     }
 }
 
-// impl TryFrom<(Credential, Vec<u8>, SignatureScheme)> for VerificationCredential {
-//     type Error = Error;
-
-//     fn try_from(value: (Credential, Vec<u8>, SignatureScheme)) -> Result<Self, Self::Error> {
-//         let identity = match value.0.credential() {
-//             MlsCredentialType::Basic(c) => c.identity().as_slice().to_vec(),
-//             MlsCredentialType::X509(_) => return Err(Error::InvalidCredentialType),
-//         };
-
-//         Ok(Self {
-//             public_key: value.1,
-//             signature_scheme: value.2,
-//             identity,
-//         })
-//     }
-// }
-
 #[cfg(feature = "test-utils")]
 impl OpenMlsBasicCredential {
     /// Get the private key as byte slice.

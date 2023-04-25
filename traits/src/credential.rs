@@ -9,8 +9,7 @@
 
 use crate::types::{credential::Credential, Error, SignatureScheme};
 
-pub trait OpenMlsCredential // TryFrom<(Credential, Vec<u8>, SignatureScheme), Error = Error>
-{
+pub trait OpenMlsCredential {
     fn try_from(
         credential: Credential,
         public_key: Vec<u8>,
