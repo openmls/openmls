@@ -537,6 +537,12 @@ impl ProposalQueue {
             })
             .collect::<Vec<ProposalOrRef>>()
     }
+
+    /// New empty queue
+    #[cfg(test)]
+    pub(crate) fn new() -> Self {
+        Self::default()
+    }
 }
 
 /// A queued Add proposal

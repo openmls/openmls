@@ -5,7 +5,6 @@ use rstest_reuse::apply;
 
 use crate::{
     credentials::{test_utils::new_credential, CredentialType},
-    group::GroupId,
     key_packages::KeyPackageBundle,
     treesync::{node::Node, RatchetTree, TreeSync},
 };
@@ -42,13 +41,8 @@ fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
     ]);
 
     // Get the encryption key pair from the leaf.
-    let tree = TreeSync::from_ratchet_tree(
-        backend,
-        ciphersuite,
-        ratchet_tree.into(),
-        &GroupId::random(backend),
-    )
-    .expect("error generating tree");
+    let tree = TreeSync::from_ratchet_tree(backend, ciphersuite, ratchet_tree)
+        .expect("error generating tree");
 
     // Create and add a new leaf. It should go to leaf index 1
 
