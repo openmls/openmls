@@ -354,6 +354,10 @@
 <a href="#354" id="354">354</a>
 <a href="#355" id="355">355</a>
 <a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
+<a href="#359" id="359">359</a>
+<a href="#360" id="360">360</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Public Groups
 //!
 //! There are a few use-cases that require the tracking of an MLS group based on
@@ -393,7 +397,7 @@
     },
     schedule::CommitSecret,
     treesync::{
-        errors::DerivePathError,
+        errors::{DerivePathError, TreeSyncFromNodesError},
         node::{
             encryption_keys::{EncryptionKey, EncryptionKeyPair},
             leaf_node::LeafNode,
@@ -429,7 +433,7 @@
 <span class="kw">impl </span>PublicGroup {
     <span class="doccomment">/// Create a new PublicGroup from a [`TreeSync`] instance and a
     /// [`GroupInfo`].
-    </span><span class="kw">fn </span>new(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         treesync: TreeSync,
         group_context: GroupContext,
@@ -467,15 +471,19 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, GroupInfo), CreationFromExternalError&gt; {
         <span class="kw">let </span>ciphersuite = verifiable_group_info.ciphersuite();
 
+        <span class="kw">let </span>group_id = verifiable_group_info.group_id();
+        <span class="kw">let </span>ratchet_tree = ratchet_tree
+            .into_verified(ciphersuite, backend.crypto(), group_id)
+            .map_err(|e| {
+                CreationFromExternalError::TreeSyncError(TreeSyncFromNodesError::RatchetTreeError(
+                    e,
+                ))
+            })<span class="question-mark">?</span>;
+
         <span class="comment">// Create a RatchetTree from the given nodes. We have to do this before
         // verifying the group info, since we need to find the Credential to verify the
         // signature against.
-        </span><span class="kw">let </span>treesync = TreeSync::from_ratchet_tree(
-            backend,
-            ciphersuite,
-            ratchet_tree,
-            verifiable_group_info.group_id(),
-        )<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>treesync = TreeSync::from_ratchet_tree(backend, ciphersuite, ratchet_tree)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>group_info: GroupInfo = {
             <span class="kw">let </span>signer_signature_key = treesync

@@ -756,6 +756,23 @@
 <a href="#756" id="756">756</a>
 <a href="#757" id="757">757</a>
 <a href="#758" id="758">758</a>
+<a href="#759" id="759">759</a>
+<a href="#760" id="760">760</a>
+<a href="#761" id="761">761</a>
+<a href="#762" id="762">762</a>
+<a href="#763" id="763">763</a>
+<a href="#764" id="764">764</a>
+<a href="#765" id="765">765</a>
+<a href="#766" id="766">766</a>
+<a href="#767" id="767">767</a>
+<a href="#768" id="768">768</a>
+<a href="#769" id="769">769</a>
+<a href="#770" id="770">770</a>
+<a href="#771" id="771">771</a>
+<a href="#772" id="772">772</a>
+<a href="#773" id="773">773</a>
+<a href="#774" id="774">774</a>
+<a href="#775" id="775">775</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the ratchet tree component of MLS.
 //!
 //! It exposes the [`Node`] enum that can contain either a [`LeafNode`] or a [`ParentNode`].
@@ -998,11 +1015,31 @@
             .collect();
         <span class="self">Self</span>(nodes)
     }
+
+    <span class="attr">#[cfg(test)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_nodes(nodes: Vec&lt;<span class="prelude-ty">Option</span>&lt;NodeIn&gt;&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>(nodes)
+    }
 }
 
 <span class="kw">impl </span>From&lt;RatchetTree&gt; <span class="kw">for </span>RatchetTreeIn {
     <span class="kw">fn </span>from(ratchet_tree: RatchetTree) -&gt; <span class="self">Self </span>{
         RatchetTreeIn::from_ratchet_tree(ratchet_tree)
+    }
+}
+
+<span class="comment">// The following `From` implementation breaks abstraction layers and MUST
+// NOT be made available outside of tests or &quot;test-utils&quot;.
+</span><span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+</span><span class="kw">impl </span>From&lt;RatchetTreeIn&gt; <span class="kw">for </span>RatchetTree {
+    <span class="kw">fn </span>from(ratchet_tree_in: RatchetTreeIn) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>(
+            ratchet_tree_in
+                .<span class="number">0
+                </span>.into_iter()
+                .map(|node| node.map(Node::from))
+                .collect(),
+        )
     }
 }
 
@@ -1165,14 +1202,11 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_ratchet_tree(
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
-        ratchet_tree: RatchetTreeIn,
-        group_id: <span class="kw-2">&amp;</span>GroupId,
+        ratchet_tree: RatchetTree,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, TreeSyncFromNodesError&gt; {
         <span class="comment">// TODO #800: Unmerged leaves should be checked
         </span><span class="kw">let </span><span class="kw-2">mut </span>ts_nodes: Vec&lt;TreeNode&lt;TreeSyncLeafNode, TreeSyncParentNode&gt;&gt; =
             Vec::with_capacity(ratchet_tree.<span class="number">0</span>.len());
-
-        <span class="kw">let </span>ratchet_tree = ratchet_tree.into_verified(ciphersuite, backend.crypto(), group_id)<span class="question-mark">?</span>;
 
         <span class="comment">// Set the leaf indices in all the leaves and convert the node types.
         </span><span class="kw">for </span>(node_index, node_option) <span class="kw">in </span>ratchet_tree.<span class="number">0</span>.into_iter().enumerate() {
