@@ -2,15 +2,22 @@ FROM ubuntu:latest
 
 RUN apt-get -y update
 RUN apt-get -y install git make cmake clang curl zip pkg-config
+
+RUN useradd -m user
+USER user
+WORKDIR /home/user
+
 RUN git clone https://github.com/Microsoft/vcpkg.git
-RUN ./vcpkg/bootstrap-vcpkg.sh
-ENV VCPKG_INSTALLATION_ROOT=/vcpkg
-RUN git clone --depth 1 https://github.com/cisco/mlspp.git
-WORKDIR /mlspp
-RUN $VCPKG_INSTALLATION_ROOT/vcpkg install
-RUN cmake -DCMAKE_TOOLCHAIN_FILE=$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake
+ENV VCPKG=/home/user/vcpkg
+RUN $VCPKG/bootstrap-vcpkg.sh -disableMetrics
+
+RUN git clone https://github.com/cisco/mlspp.git
+WORKDIR mlspp
+RUN git checkout 623acd0839d1117e8665b6bd52eecad1ce05438d
+RUN $VCPKG/vcpkg install
+RUN cmake . -DCMAKE_TOOLCHAIN_FILE=$VCPKG/scripts/buildsystems/vcpkg.cmake
 RUN make
-WORKDIR /mlspp/cmd/interop
-RUN $VCPKG_INSTALLATION_ROOT/vcpkg install
-RUN cmake -DCMAKE_TOOLCHAIN_FILE=$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake
+WORKDIR cmd/interop
+RUN $VCPKG/vcpkg install
+RUN cmake . -DCMAKE_TOOLCHAIN_FILE=$VCPKG/scripts/buildsystems/vcpkg.cmake
 RUN make
