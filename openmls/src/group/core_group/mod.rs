@@ -660,11 +660,11 @@ impl CoreGroup {
         self.own_leaf_index
     }
 
-    /// Get the identity of the client's [`Credential`] owning this group.
-    pub(crate) fn own_identity(&self) -> Option<&[u8]> {
+    /// Get the client's own [`Credential`] owning this group.
+    pub(crate) fn own_credential(&self) -> Option<&Credential> {
         self.public_group()
             .leaf(self.own_leaf_index)
-            .map(|node| node.credential().identity())
+            .map(|node| node.credential())
     }
 
     /// Get a reference to the group epoch secrets from the group

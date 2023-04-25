@@ -36,7 +36,7 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     key_store::OpenMlsKeyStore,
-    types::{Ciphersuite, HpkeKeyPair, SignatureScheme},
+    types::{Ciphersuite, HpkeKeyPair, SignatureScheme, credential::Credential},
     OpenMlsCryptoProvider,
 };
 use rayon::prelude::*;
@@ -195,7 +195,7 @@ impl MlsGroupTestSetup {
     }
 
     /// Convert an index in the tree into the corresponding identity.
-    pub fn identity_by_index(&self, index: usize, group: &Group) -> Option<Vec<u8>> {
+    pub fn credential_by_index(&self, index: usize, group: &Group) -> Option<&Credential> {
         let (_, id) = group
             .members
             .iter()
@@ -207,7 +207,7 @@ impl MlsGroupTestSetup {
             .expect("An unexpected error occurred.")
             .read()
             .expect("An unexpected error occurred.");
-        client.identity(&group.group_id)
+        client.credential(&group.group_id)
     }
 
     /// Convert an identity in the tree into the corresponding key package reference.
@@ -223,7 +223,7 @@ impl MlsGroupTestSetup {
             .expect("An unexpected error occurred.")
             .read()
             .expect("An unexpected error occurred.");
-        client.identity(&group.group_id)
+        client.credential(&group.group_id)
     }
 
     /// Deliver a Welcome message to the intended recipients. It uses the given

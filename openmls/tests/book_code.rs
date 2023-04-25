@@ -602,7 +602,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     assert_eq!(
         bob_member.credential.identity(),
         bob_group
-            .own_identity()
+            .own_credential()
             .expect("An unexpected error occurred.")
     );
 

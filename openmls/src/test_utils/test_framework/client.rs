@@ -7,7 +7,7 @@ use openmls_basic_credential::OpenMlsBasicCredential;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
     key_store::OpenMlsKeyStore,
-    types::{Ciphersuite, HpkeKeyPair, SignatureScheme},
+    types::{credential::Credential, Ciphersuite, HpkeKeyPair, SignatureScheme},
     OpenMlsCryptoProvider,
 };
 use tls_codec::Serialize;
@@ -313,9 +313,9 @@ impl Client {
     }
 
     /// Get the identity of this client in the given group.
-    pub fn identity(&self, group_id: &GroupId) -> Option<Vec<u8>> {
+    pub fn credential(&self, group_id: &GroupId) -> Option<&Credential> {
         let groups = self.groups.read().unwrap();
         let group = groups.get(group_id).unwrap();
-        group.own_identity().map(|s| s.to_vec())
+        group.own_credential()
     }
 }
