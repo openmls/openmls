@@ -233,7 +233,7 @@ impl ProposalOrRefIn {
     }
 }
 
-// The following `From` implementation( breaks abstraction layers and MUST
+// The following `From` implementation breaks abstraction layers and MUST
 // NOT be made available outside of tests or "test-utils".
 #[cfg(any(feature = "test-utils", test))]
 impl From<AddProposalIn> for crate::messages::proposals::AddProposal {

@@ -58,6 +58,18 @@ impl From<Node> for NodeIn {
     }
 }
 
+// The following `From` implementation breaks abstraction layers and MUST
+// NOT be made available outside of tests or "test-utils".
+#[cfg(any(feature = "test-utils", test))]
+impl From<NodeIn> for Node {
+    fn from(node: NodeIn) -> Self {
+        match node {
+            NodeIn::LeafNode(leaf_node) => Node::LeafNode(leaf_node.into()),
+            NodeIn::ParentNode(parent_node) => Node::ParentNode(parent_node),
+        }
+    }
+}
+
 /// Container enum with reference to a node in a tree.
 pub(crate) enum NodeReference<'a> {
     Leaf(&'a LeafNode),

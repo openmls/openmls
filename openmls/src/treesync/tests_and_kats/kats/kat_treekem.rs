@@ -90,15 +90,15 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
     trace!("The tree has {} leaves.", test.leaves_private.len());
 
     let treesync = {
-        let ratchet_tree = RatchetTreeExtension::tls_deserialize_exact(test.ratchet_tree).unwrap();
+        let group_id = &GroupId::from_slice(test.group_id.as_slice());
+        let ratchet_tree = RatchetTreeExtension::tls_deserialize_exact(test.ratchet_tree)
+            .unwrap()
+            .ratchet_tree()
+            .clone()
+            .into_verified(ciphersuite, backend.crypto(), group_id)
+            .unwrap();
 
-        TreeSync::from_ratchet_tree(
-            backend,
-            ciphersuite,
-            ratchet_tree.ratchet_tree().clone(),
-            &GroupId::from_slice(test.group_id.as_slice()),
-        )
-        .unwrap()
+        TreeSync::from_ratchet_tree(backend, ciphersuite, ratchet_tree).unwrap()
     };
 
     let full_leaf_nodes = {

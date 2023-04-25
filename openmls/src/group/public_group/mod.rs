@@ -37,7 +37,7 @@ use crate::{
     },
     schedule::CommitSecret,
     treesync::{
-        errors::DerivePathError,
+        errors::{DerivePathError, TreeSyncFromNodesError},
         node::{
             encryption_keys::{EncryptionKey, EncryptionKeyPair},
             leaf_node::LeafNode,
@@ -73,7 +73,7 @@ pub struct PublicGroup {
 impl PublicGroup {
     /// Create a new PublicGroup from a [`TreeSync`] instance and a
     /// [`GroupInfo`].
-    fn new(
+    pub(crate) fn new(
         crypto: &impl OpenMlsCrypto,
         treesync: TreeSync,
         group_context: GroupContext,
@@ -111,15 +111,19 @@ impl PublicGroup {
     ) -> Result<(Self, GroupInfo), CreationFromExternalError> {
         let ciphersuite = verifiable_group_info.ciphersuite();
 
+        let group_id = verifiable_group_info.group_id();
+        let ratchet_tree = ratchet_tree
+            .into_verified(ciphersuite, backend.crypto(), group_id)
+            .map_err(|e| {
+                CreationFromExternalError::TreeSyncError(TreeSyncFromNodesError::RatchetTreeError(
+                    e,
+                ))
+            })?;
+
         // Create a RatchetTree from the given nodes. We have to do this before
         // verifying the group info, since we need to find the Credential to verify the
         // signature against.
-        let treesync = TreeSync::from_ratchet_tree(
-            backend,
-            ciphersuite,
-            ratchet_tree,
-            verifiable_group_info.group_id(),
-        )?;
+        let treesync = TreeSync::from_ratchet_tree(backend, ciphersuite, ratchet_tree)?;
 
         let group_info: GroupInfo = {
             let signer_signature_key = treesync
