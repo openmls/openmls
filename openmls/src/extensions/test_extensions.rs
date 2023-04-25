@@ -89,7 +89,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
         .force_self_update(false)
         .build();
     let create_commit_result = alice_group
-        .create_commit(params, backend, &alice_credential, None)
+        .create_commit(params, backend, &alice_credential)
         .expect("Error creating commit");
 
     alice_group
@@ -158,7 +158,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
         .force_self_update(false)
         .build();
     let create_commit_result = alice_group
-        .create_commit(params, backend, &alice_credential, None)
+        .create_commit(params, backend, &alice_credential)
         .expect("Error creating commit");
 
     alice_group

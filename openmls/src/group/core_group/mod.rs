@@ -799,7 +799,6 @@ impl CoreGroup {
         params: CreateCommitParams,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
-        credential: Option<&dyn OpenMlsCredential>, // FIXME: remove
     ) -> Result<CreateCommitResult, CreateCommitError<KeyStore::Error>> {
         let ciphersuite = self.ciphersuite();
 
@@ -883,7 +882,7 @@ impl CoreGroup {
                     apply_proposals_values.exclusion_list(),
                     params.commit_type(),
                     signer,
-                    credential
+                    params.credential()
                 )?
             } else {
                 // If path is not needed, update the group context and return

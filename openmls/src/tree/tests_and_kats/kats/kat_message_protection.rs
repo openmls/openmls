@@ -209,7 +209,7 @@ pub fn run_test_vector(
             .force_self_update(false)
             .build();
         let create_commit_result = group
-            .create_commit(params, backend, &credential, None)
+            .create_commit(params, backend, &credential)
             .expect("Error creating Commit");
 
         group

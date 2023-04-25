@@ -505,7 +505,6 @@ impl MlsClient for MlsClientImpl {
                 verifiable_group_info,
                 &mls_group_config,
                 b"",
-                &credential,
             )
             .unwrap();
 

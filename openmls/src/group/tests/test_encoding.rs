@@ -294,7 +294,7 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
             .proposal_store(&proposal_store)
             .build();
         let create_commit_result = group_state
-            .create_commit(params, backend, alice_credential, None)
+            .create_commit(params, backend, alice_credential)
             .expect("An unexpected error occurred.");
         let mut commit: PublicMessage = create_commit_result.commit.into();
         commit
@@ -360,7 +360,7 @@ fn test_welcome_message_encoding(backend: &impl OpenMlsCryptoProvider) {
             .proposal_store(&proposal_store)
             .build();
         let create_commit_result = group_state
-            .create_commit(params, backend, credential, None)
+            .create_commit(params, backend, credential)
             .expect("An unexpected error occurred.");
         // Alice applies the commit
         group_state

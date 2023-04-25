@@ -213,7 +213,7 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .force_self_update(false)
         .build();
     let create_commit_result = group_bob
-        .create_commit(params, backend, &bob_credential, None)
+        .create_commit(params, backend, &bob_credential)
         .expect("An unexpected error occurred.");
 
     // Now we break Alice's HPKE ciphertext in Bob's commit by breaking
@@ -368,7 +368,7 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         .force_self_update(false)
         .build();
     let create_commit_result = alice_group
-        .create_commit(params, backend, &alice_credential, None)
+        .create_commit(params, backend, &alice_credential)
         .expect("Error creating commit");
 
     log::info!(" >>> Staging & merging commit ...");
@@ -417,7 +417,7 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         .force_self_update(false)
         .build();
     let _create_commit_result = group_bob
-        .create_commit(params, backend, &bob_credential, None)
+        .create_commit(params, backend, &bob_credential)
         .expect("An unexpected error occurred.");
 }
 
@@ -456,7 +456,7 @@ fn test_staged_commit_creation(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         .force_self_update(false)
         .build();
     let create_commit_result = alice_group
-        .create_commit(params, backend, &alice_credential, None)
+        .create_commit(params, backend, &alice_credential)
         .expect("Error creating commit");
 
     // === Alice merges her own commit ===
@@ -515,7 +515,7 @@ fn test_own_commit_processing(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
         .force_self_update(true)
         .build();
     let create_commit_result = alice_group
-        .create_commit(params, backend, &alice_credential, None)
+        .create_commit(params, backend, &alice_credential)
         .expect("error creating commit");
 
     // Alice attempts to process her own commit
@@ -599,7 +599,7 @@ fn test_proposal_application_after_self_was_removed(
         .force_self_update(false)
         .build();
     let add_commit_result = alice_group
-        .create_commit(params, backend, &alice_credential, None)
+        .create_commit(params, backend, &alice_credential)
         .expect("Error creating commit");
 
     alice_group
@@ -667,7 +667,7 @@ fn test_proposal_application_after_self_was_removed(
         .proposal_store(&remove_add_proposal_store)
         .build();
     let remove_add_commit_result = alice_group
-        .create_commit(params, backend, &alice_credential, None)
+        .create_commit(params, backend, &alice_credential)
         .expect("Error creating commit");
 
     let staged_commit = bob_group

@@ -59,7 +59,6 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         params, /* No PSK fetcher */
         backend,
         &alice_credential,
-        None,
     ) {
         Ok(c) => c,
         Err(e) => panic!("Error creating commit: {e:?}"),
@@ -93,11 +92,10 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let create_commit_result =
-        match group_alice.create_commit(params, backend, &alice_credential, None) {
-            Ok(c) => c,
-            Err(e) => panic!("Error creating commit: {e:?}"),
-        };
+    let create_commit_result = match group_alice.create_commit(params, backend, &alice_credential) {
+        Ok(c) => c,
+        Err(e) => panic!("Error creating commit: {e:?}"),
+    };
     let commit = match create_commit_result.commit.content() {
         FramedContentBody::Commit(commit) => commit,
         _ => panic!(),
@@ -169,11 +167,10 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let create_commit_result =
-        match group_alice.create_commit(params, backend, &alice_credential, None) {
-            Ok(c) => c,
-            Err(e) => panic!("Error creating commit: {e:?}"),
-        };
+    let create_commit_result = match group_alice.create_commit(params, backend, &alice_credential) {
+        Ok(c) => c,
+        Err(e) => panic!("Error creating commit: {e:?}"),
+    };
     let commit = match create_commit_result.commit.content() {
         FramedContentBody::Commit(commit) => commit,
         _ => panic!(),
@@ -221,15 +218,11 @@ fn basic_group_setup(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvi
         .framing_parameters(framing_parameters)
         .proposal_store(&proposal_store)
         .build();
-    let _commit = match group_alice.create_commit(
-        params, /* PSK fetcher */
-        backend,
-        &alice_credential,
-        None,
-    ) {
-        Ok(c) => c,
-        Err(e) => panic!("Error creating commit: {e:?}"),
-    };
+    let _commit =
+        match group_alice.create_commit(params /* PSK fetcher */, backend, &alice_credential) {
+            Ok(c) => c,
+            Err(e) => panic!("Error creating commit: {e:?}"),
+        };
 }
 
 /// This test simulates various group operations like Add, Update, Remove in a
@@ -288,7 +281,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .force_self_update(false)
         .build();
     let create_commit_result = group_alice
-        .create_commit(params, backend, &alice_credential, None)
+        .create_commit(params, backend, &alice_credential)
         .expect("Error creating commit");
     let commit = match create_commit_result.commit.content() {
         FramedContentBody::Commit(commit) => commit,
@@ -388,8 +381,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let create_commit_result = match group_bob.create_commit(params, backend, &bob_credential, None)
-    {
+    let create_commit_result = match group_bob.create_commit(params, backend, &bob_credential) {
         Ok(c) => c,
         Err(e) => panic!("Error creating commit: {e:?}"),
     };
@@ -451,15 +443,11 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let create_commit_result = match group_alice.create_commit(
-        params, /* PSK fetcher */
-        backend,
-        &alice_credential,
-        None,
-    ) {
-        Ok(c) => c,
-        Err(e) => panic!("Error creating commit: {e:?}"),
-    };
+    let create_commit_result =
+        match group_alice.create_commit(params /* PSK fetcher */, backend, &alice_credential) {
+            Ok(c) => c,
+            Err(e) => panic!("Error creating commit: {e:?}"),
+        };
 
     // Check that there is a path
     assert!(commit.has_path());
@@ -515,11 +503,10 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let create_commit_result =
-        match group_alice.create_commit(params, backend, &alice_credential, None) {
-            Ok(c) => c,
-            Err(e) => panic!("Error creating commit: {e:?}"),
-        };
+    let create_commit_result = match group_alice.create_commit(params, backend, &alice_credential) {
+        Ok(c) => c,
+        Err(e) => panic!("Error creating commit: {e:?}"),
+    };
 
     // Check that there is a path
     assert!(commit.has_path());
@@ -586,8 +573,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let create_commit_result = match group_bob.create_commit(params, backend, &bob_credential, None)
-    {
+    let create_commit_result = match group_bob.create_commit(params, backend, &bob_credential) {
         Ok(c) => c,
         Err(e) => panic!("Error creating commit: {e:?}"),
     };
@@ -733,7 +719,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .force_self_update(false)
         .build();
     let create_commit_result =
-        match group_charlie.create_commit(params, backend, &charlie_credential_with_keys, None) {
+        match group_charlie.create_commit(params, backend, &charlie_credential_with_keys) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {e:?}"),
         };
@@ -799,7 +785,6 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         params, /* PSK fetcher */
         backend,
         &charlie_credential_with_keys,
-        None,
     ) {
         Ok(c) => c,
         Err(e) => panic!("Error creating commit: {e:?}"),

@@ -190,7 +190,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
                 .proposal_store(&proposal_store)
                 .build();
             let create_commit_result = core_group
-                .create_commit(params, backend, credential, None)
+                .create_commit(params, backend, credential)
                 .expect("An unexpected error occurred.");
             let welcome = create_commit_result
                 .welcome_option

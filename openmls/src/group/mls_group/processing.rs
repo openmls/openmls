@@ -96,7 +96,7 @@ impl MlsGroup {
             .framing_parameters(self.framing_parameters())
             .proposal_store(&self.proposal_store)
             .build();
-        let create_commit_result = self.group.create_commit(params, backend, signer, None)?;
+        let create_commit_result = self.group.create_commit(params, backend, signer)?;
 
         // Convert PublicMessage messages to MLSMessage and encrypt them if required by
         // the configuration

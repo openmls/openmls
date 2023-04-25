@@ -403,7 +403,7 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMl
         .force_self_update(false)
         .build();
     let create_commit_result = alice_group
-        .create_commit(params, backend, &alice_credential, None)
+        .create_commit(params, backend, &alice_credential)
         .expect("Error creating commit");
 
     log::info!(" >>> Staging & merging commit ...");
@@ -501,7 +501,7 @@ fn test_group_context_extension_proposal_fails(
         .force_self_update(false)
         .build();
     let create_commit_result = alice_group
-        .create_commit(params, backend, &alice_credential, None)
+        .create_commit(params, backend, &alice_credential)
         .expect("Error creating commit");
 
     log::info!(" >>> Staging & merging commit ...");
@@ -582,7 +582,7 @@ fn test_group_context_extension_proposal(
         .force_self_update(false)
         .build();
     let create_commit_results = alice_group
-        .create_commit(params, backend, &alice_credential, None)
+        .create_commit(params, backend, &alice_credential)
         .expect("Error creating commit");
 
     log::info!(" >>> Staging & merging commit ...");
@@ -630,7 +630,7 @@ fn test_group_context_extension_proposal(
         .force_self_update(false)
         .build();
     let create_commit_result = alice_group
-        .create_commit(params, backend, &alice_credential, None)
+        .create_commit(params, backend, &alice_credential)
         .expect("Error creating commit");
 
     log::info!(" >>> Staging & merging commit ...");

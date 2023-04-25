@@ -170,7 +170,7 @@ impl MlsGroup {
         verifiable_group_info: VerifiableGroupInfo,
         mls_group_config: &MlsGroupConfig,
         aad: &[u8],
-        credential_with_key: &dyn OpenMlsCredential,
+        credential: &dyn OpenMlsCredential,
     ) -> Result<(Self, MlsMessageOut, Option<GroupInfo>), ExternalCommitError> {
         // Prepare the commit parameters
         let framing_parameters = FramingParameters::new(aad, WireFormat::PublicMessage);
@@ -179,11 +179,11 @@ impl MlsGroup {
         let params = CreateCommitParams::builder()
             .framing_parameters(framing_parameters)
             .proposal_store(&proposal_store)
+            .credential(credential)
             .build();
         let (mut group, create_commit_result) = CoreGroup::join_by_external_commit(
             backend,
             signer,
-            credential_with_key,
             params,
             ratchet_tree,
             verifiable_group_info,

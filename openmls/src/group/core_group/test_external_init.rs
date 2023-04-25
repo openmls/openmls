@@ -35,10 +35,10 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
         .proposal_store(&proposal_store)
+        .credential(&charlie_credential)
         .build();
     let (mut group_charly, create_commit_result) = CoreGroup::join_by_external_commit(
         backend,
-        &charlie_credential,
         &charlie_credential,
         params,
         None,
@@ -85,7 +85,7 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
         .proposal_store(&proposal_store)
         .build();
     let create_commit_result = group_charly
-        .create_commit(params, backend, &charlie_credential, None)
+        .create_commit(params, backend, &charlie_credential)
         .expect("Error creating commit");
 
     let staged_commit = group_alice
@@ -113,10 +113,10 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
         .proposal_store(&proposal_store)
+        .credential(&bob_credential)
         .build();
     let (mut new_group_bob, create_commit_result) = CoreGroup::join_by_external_commit(
         backend,
-        &bob_credential,
         &bob_credential,
         params,
         Some(ratchet_tree.into()),
@@ -198,10 +198,10 @@ fn test_external_init_single_member_group(
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
         .proposal_store(&proposal_store)
+        .credential(&charly_credential)
         .build();
     let (mut group_charly, create_commit_result) = CoreGroup::join_by_external_commit(
         backend,
-        &charly_credential,
         &charly_credential,
         params,
         Some(ratchet_tree.into()),
@@ -262,7 +262,6 @@ fn test_external_init_broken_signature(
         ExternalCommitError::PublicGroupError(CreationFromExternalError::InvalidGroupInfoSignature),
         CoreGroup::join_by_external_commit(
             backend,
-            &charlie_credential,
             &charlie_credential,
             params,
             None,

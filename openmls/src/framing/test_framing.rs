@@ -415,7 +415,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .force_self_update(false)
         .build();
     let create_commit_result = group_alice
-        .create_commit(params, backend, &alice_credential, None)
+        .create_commit(params, backend, &alice_credential)
         .expect("Error creating Commit");
 
     group_alice
@@ -459,7 +459,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .force_self_update(false)
         .build();
     let create_commit_result = group_alice
-        .create_commit(params, backend, &alice_credential, None)
+        .create_commit(params, backend, &alice_credential)
         .expect("Error creating Commit");
 
     group_alice
@@ -498,7 +498,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .force_self_update(false)
         .build();
     let create_commit_result = group_alice
-        .create_commit(params, backend, &alice_credential, None)
+        .create_commit(params, backend, &alice_credential)
         .expect("Error creating Commit");
 
     let staged_commit = group_charlie
@@ -561,7 +561,7 @@ fn confirmation_tag_presence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
         .force_self_update(true)
         .build();
     let mut create_commit_result = group_alice
-        .create_commit(params, backend, &alice_credential, None)
+        .create_commit(params, backend, &alice_credential)
         .expect("Error creating Commit");
 
     create_commit_result.commit.unset_confirmation_tag();
@@ -623,7 +623,7 @@ pub(crate) fn setup_alice_bob_group(
         .build();
 
     let create_commit_result = group_alice
-        .create_commit(params, backend, &alice_credential, None)
+        .create_commit(params, backend, &alice_credential)
         .expect("Error creating Commit");
 
     let commit = match create_commit_result.commit.content() {

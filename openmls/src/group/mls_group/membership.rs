@@ -59,7 +59,7 @@ impl MlsGroup {
             .proposal_store(&self.proposal_store)
             .inline_proposals(inline_proposals)
             .build();
-        let create_commit_result = self.group.create_commit(params, backend, signer, None)?;
+        let create_commit_result = self.group.create_commit(params, backend, signer)?;
 
         let welcome = match create_commit_result.welcome_option {
             Some(welcome) => welcome,
@@ -138,7 +138,7 @@ impl MlsGroup {
             .proposal_store(&self.proposal_store)
             .inline_proposals(inline_proposals)
             .build();
-        let create_commit_result = self.group.create_commit(params, backend, signer, None)?;
+        let create_commit_result = self.group.create_commit(params, backend, signer)?;
 
         // Convert PublicMessage messages to MLSMessage and encrypt them if required by
         // the configuration

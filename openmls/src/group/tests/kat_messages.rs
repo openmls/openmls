@@ -242,7 +242,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         .proposal_store(&proposal_store)
         .build();
     let create_commit_result = alice_group
-        .create_commit(params, &backend, &alice_credential, None)
+        .create_commit(params, &backend, &alice_credential)
         .unwrap();
     alice_group
         .merge_staged_commit(

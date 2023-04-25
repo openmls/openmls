@@ -1,5 +1,6 @@
 //! Builder for [CreateCommitParams] that is used in [CoreGroup::create_commit()]
 
+use openmls_traits::credential::OpenMlsCredential;
 use serde::{Deserialize, Serialize};
 
 use crate::{framing::FramingParameters, group::ProposalStore, messages::proposals::Proposal};
@@ -20,6 +21,7 @@ pub(crate) struct CreateCommitParams<'a> {
     inline_proposals: Vec<Proposal>,           // Optional
     force_self_update: bool,                   // Optional
     commit_type: CommitType,                   // Optional (default is `Member`)
+    credential: Option<Box<&'a dyn OpenMlsCredential>>, // Mandatory for external commits
 }
 
 pub(crate) struct TempBuilderCCPM0 {}
@@ -53,6 +55,7 @@ impl<'a> TempBuilderCCPM1<'a> {
                 inline_proposals: vec![],
                 force_self_update: true,
                 commit_type: CommitType::Member,
+                credential: None,
             },
         }
     }
@@ -68,8 +71,8 @@ impl<'a> CreateCommitParamsBuilder<'a> {
         self.ccp.force_self_update = force_self_update;
         self
     }
-    pub(crate) fn commit_type(mut self, commit_type: CommitType) -> Self {
-        self.ccp.commit_type = commit_type;
+    pub(crate) fn credential(mut self, credential: &'a dyn OpenMlsCredential) -> Self {
+        self.ccp.credential = Some(Box::new(credential));
         self
     }
     pub(crate) fn build(self) -> CreateCommitParams<'a> {
@@ -95,5 +98,14 @@ impl<'a> CreateCommitParams<'a> {
     }
     pub(crate) fn commit_type(&self) -> CommitType {
         self.commit_type
+    }
+    pub(crate) fn credential(&self) -> Option<&Box<&dyn OpenMlsCredential>> {
+        self.credential.as_ref()
+    }
+    pub(crate) fn set_commit_type(&mut self, commit_type: CommitType) {
+        self.commit_type = commit_type;
+    }
+    pub(crate) fn set_inline_proposal(&mut self, inline_proposals: Vec<Proposal>) {
+        self.inline_proposals = inline_proposals;
     }
 }

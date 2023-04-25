@@ -323,7 +323,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .build();
         let commit = alice_group
             .group()
-            .create_commit(params, backend, &alice_credential, None)
+            .create_commit(params, backend, &alice_credential)
             .unwrap()
             .commit;
 
