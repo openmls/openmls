@@ -6,6 +6,7 @@
 //! Clients are represented by the `ClientInfo` struct.
 
 use openmls::prelude::*;
+use openmls_basic_credential::VerificationCredential;
 use tls_codec::{
     TlsByteSliceU16, TlsByteVecU16, TlsByteVecU32, TlsByteVecU8, TlsDeserialize, TlsSerialize,
     TlsSize, TlsVecU32,
@@ -35,7 +36,14 @@ impl ClientInfo {
     /// key packages with corresponding hashes.
     pub fn new(client_name: String, mut key_packages: Vec<(Vec<u8>, KeyPackageIn)>) -> Self {
         let key_package = KeyPackage::from(key_packages[0].1.clone());
-        let id = key_package.leaf_node().credential().identity().to_vec();
+        let credential = key_package.leaf_node().credential();
+        let credential = VerificationCredential::try_from(
+            credential.clone(),
+            key_package.leaf_node().signature_key().as_slice().to_vec(),
+            key_package.ciphersuite().into(),
+        )
+        .unwrap();
+        let id = credential.identity().to_vec();
         Self {
             client_name,
             id,
