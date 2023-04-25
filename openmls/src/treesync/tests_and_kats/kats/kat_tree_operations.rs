@@ -85,7 +85,7 @@ fn run_test_vector(test: TestElement, backend: &impl OpenMlsCryptoProvider) -> R
     )
     .unwrap();
 
-    let mut proposal_queue = ProposalQueue::new();
+    let mut proposal_queue = ProposalQueue::default();
 
     let proposal_in = ProposalIn::tls_deserialize_exact(test.proposal).unwrap();
 
