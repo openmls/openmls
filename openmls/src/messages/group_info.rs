@@ -1,6 +1,6 @@
 //! This module contains all types related to group info handling.
 
-use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use thiserror::Error;
 use tls_codec::{Deserialize, Serialize, TlsDeserialize, TlsSerialize, TlsSize};
 
@@ -10,10 +10,8 @@ use crate::{
         signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
         AeadKey, AeadNonce, Signature,
     },
-    error::LibraryError,
     extensions::Extensions,
-    framing::InterimTranscriptHashInput,
-    group::{GroupContext, GroupEpoch},
+    group::{GroupContext, GroupId},
     messages::ConfirmationTag,
 };
 
@@ -70,7 +68,7 @@ impl VerifiableGroupInfo {
     /// Get (unverified) ciphersuite of the verifiable group info.
     ///
     /// Note: This method should only be used when necessary to verify the group info signature.
-    pub(crate) fn ciphersuite(&self) -> Ciphersuite {
+    pub fn ciphersuite(&self) -> Ciphersuite {
         self.payload.group_context.ciphersuite()
     }
 
@@ -86,6 +84,14 @@ impl VerifiableGroupInfo {
     /// Note: This method should only be used when necessary to verify the group info signature.
     pub(crate) fn extensions(&self) -> &Extensions {
         &self.payload.extensions
+    }
+
+    /// Get (unverified) group ID of the verifiable group info.
+    ///
+    /// Note: This method should only be used when necessary to verify the group
+    /// info signature.
+    pub(crate) fn group_id(&self) -> &GroupId {
+        self.payload.group_context.group_id()
     }
 }
 
@@ -148,23 +154,6 @@ impl GroupInfo {
     /// Returns the confirmation tag.
     pub(crate) fn confirmation_tag(&self) -> &ConfirmationTag {
         &self.payload.confirmation_tag
-    }
-
-    pub(crate) fn calculate_interim_transcript_hash(
-        &self,
-        crypto: &impl OpenMlsCrypto,
-    ) -> Result<Vec<u8>, LibraryError> {
-        if self.group_context().epoch() == GroupEpoch::from(0) {
-            return Ok(vec![]);
-        }
-
-        let input = InterimTranscriptHashInput::from(self.confirmation_tag());
-
-        input.calculate_interim_transcript_hash(
-            crypto,
-            self.group_context().ciphersuite(),
-            self.group_context().confirmed_transcript_hash(),
-        )
     }
 
     #[cfg(any(feature = "test-utils", test))]

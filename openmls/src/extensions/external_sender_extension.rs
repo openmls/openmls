@@ -66,20 +66,21 @@ impl SenderExtensionIndex {
 #[cfg(test)]
 mod test {
     use openmls_basic_credential::SignatureKeyPair;
-    use openmls_traits::types::SignatureScheme;
+    use openmls_traits::types::Ciphersuite;
     use tls_codec::{Deserialize, Serialize};
 
     use super::*;
-    use crate::credentials::CredentialType;
+    use crate::{credentials::CredentialType, test_utils::*};
 
-    #[test]
-    fn test_serialize_deserialize() {
+    #[apply(ciphersuites)]
+    fn test_serialize_deserialize(ciphersuite: Ciphersuite) {
         let tests = {
             let mut external_sender_extensions = Vec::new();
 
             for _ in 0..8 {
                 let credential = Credential::new(b"Alice".to_vec(), CredentialType::Basic).unwrap();
-                let signature_keys = SignatureKeyPair::new(SignatureScheme::ED25519).unwrap();
+                let signature_keys =
+                    SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
                 external_sender_extensions.push(ExternalSender {
                     signature_key: signature_keys.to_public_vec().into(),

@@ -126,7 +126,7 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
         backend,
         &bob_signer,
         params,
-        Some(ratchet_tree),
+        Some(ratchet_tree.into()),
         verifiable_group_info,
     )
     .expect("Error initializing group externally.");
@@ -201,7 +201,7 @@ fn test_external_init_single_member_group(
         .export_group_info(backend, &alice_signer, false)
         .unwrap()
         .into_verifiable_group_info();
-    let nodes_option = group_alice.public_group().export_ratchet_tree();
+    let ratchet_tree = group_alice.public_group().export_ratchet_tree();
 
     let proposal_store = ProposalStore::new();
     let params = CreateCommitParams::builder()
@@ -213,7 +213,7 @@ fn test_external_init_single_member_group(
         backend,
         &charly_signer,
         params,
-        Some(nodes_option),
+        Some(ratchet_tree.into()),
         verifiable_group_info,
     )
     .expect("Error initializing group externally.");

@@ -7,6 +7,7 @@
 use std::collections::HashSet;
 
 use openmls_traits::{
+    crypto::OpenMlsCrypto,
     types::{Ciphersuite, HpkeCiphertext},
     OpenMlsCryptoProvider,
 };
@@ -15,15 +16,17 @@ use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 use super::{
     diff::TreeSyncDiff,
+    errors::UpdatePathError,
     node::{
         encryption_keys::{EncryptionKey, EncryptionKeyPair},
+        leaf_node::{LeafNodeIn, TreePosition, VerifiableLeafNode},
         parent_node::{ParentNode, PlainUpdatePathNode},
     },
     ApplyUpdatePathError, LeafNode,
 };
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
-    ciphersuite::{hpke, HpkePublicKey},
+    ciphersuite::{hpke, signable::Verifiable, HpkePublicKey},
     error::LibraryError,
     messages::{proposals::AddProposal, EncryptedGroupSecrets, GroupSecrets, PathSecret},
     schedule::{psk::PreSharedKeyId, CommitSecret, JoinerSecret},
@@ -364,24 +367,53 @@ impl UpdatePath {
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
 pub struct UpdatePathIn {
-    leaf_node: LeafNode,
+    leaf_node: LeafNodeIn,
     nodes: Vec<UpdatePathNode>,
 }
 
 impl UpdatePathIn {
     /// Return the `leaf_node` of this [`UpdatePath`].
-    pub(crate) fn leaf_node(&self) -> &LeafNode {
+    pub(crate) fn leaf_node(&self) -> &LeafNodeIn {
         &self.leaf_node
+    }
+
+    /// Return a verified [`UpdatePath`].
+    pub(crate) fn into_verified(
+        self,
+        ciphersuite: Ciphersuite,
+        crypto: &impl OpenMlsCrypto,
+        tree_position: TreePosition,
+    ) -> Result<UpdatePath, UpdatePathError> {
+        let leaf_node_in = self.leaf_node().clone();
+        let verifiable_leaf_node = leaf_node_in.into_verifiable_leaf_node();
+        match verifiable_leaf_node {
+            VerifiableLeafNode::Commit(mut commit_leaf_node) => {
+                let pk = &commit_leaf_node
+                    .signature_key()
+                    .clone()
+                    .into_signature_public_key_enriched(ciphersuite.signature_algorithm());
+                commit_leaf_node.add_tree_position(tree_position);
+
+                let leaf_node: LeafNode = commit_leaf_node.verify(crypto, pk)?;
+                Ok(UpdatePath {
+                    leaf_node,
+                    nodes: self.nodes,
+                })
+            }
+            VerifiableLeafNode::Update(_) | VerifiableLeafNode::KeyPackage(_) => {
+                Err(UpdatePathError::InvalidType)
+            }
+        }
     }
 }
 
-// TODO #1186: The following must be removed once the validation refactoring is
-// completed.
-
+// The following `From` implementation( breaks abstraction layers and MUST
+// NOT be made available outside of tests or "test-utils".
+#[cfg(any(feature = "test-utils", test))]
 impl From<UpdatePathIn> for UpdatePath {
     fn from(update_path_in: UpdatePathIn) -> Self {
         Self {
-            leaf_node: update_path_in.leaf_node,
+            leaf_node: update_path_in.leaf_node.into(),
             nodes: update_path_in.nodes,
         }
     }
@@ -390,7 +422,7 @@ impl From<UpdatePathIn> for UpdatePath {
 impl From<UpdatePath> for UpdatePathIn {
     fn from(update_path: UpdatePath) -> Self {
         Self {
-            leaf_node: update_path.leaf_node,
+            leaf_node: update_path.leaf_node.into(),
             nodes: update_path.nodes,
         }
     }

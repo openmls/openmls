@@ -19,7 +19,7 @@ use crate::{
         CreateCommitParams,
     },
     key_packages::KeyPackageBundle,
-    schedule::psk::PskSecret,
+    schedule::psk::{store::ResumptionPskStore, PskSecret},
     tree::{secret_tree::SecretTree, sender_ratchet::SenderRatchetConfiguration},
     versions::ProtocolVersion,
 };
@@ -443,7 +443,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .expect("Could not create proposal.");
 
     let mut proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -464,9 +464,10 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
-        Some(group_alice.public_group().export_ratchet_tree()),
+        Some(group_alice.public_group().export_ratchet_tree().into()),
         bob_key_package_bundle,
         backend,
+        ResumptionPskStore::new(1024),
     )
     .expect("Bob: Error creating group from Welcome");
 
@@ -482,8 +483,12 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, charlie_add_proposal)
-            .expect("Could not create staged proposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend,
+            charlie_add_proposal,
+        )
+        .expect("Could not create staged proposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -503,9 +508,10 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
-        Some(group_alice.public_group().export_ratchet_tree()),
+        Some(group_alice.public_group().export_ratchet_tree().into()),
         charlie_key_package_bundle,
         backend,
+        ResumptionPskStore::new(1024),
     )
     .expect("Charlie: Error creating group from Welcome");
 
@@ -520,8 +526,12 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_remove_proposal)
-            .expect("Could not create staged proposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend,
+            bob_remove_proposal,
+        )
+        .expect("Could not create staged proposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -661,7 +671,7 @@ pub(crate) fn setup_alice_bob_group(
         .expect("Could not create proposal.");
 
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -693,9 +703,10 @@ pub(crate) fn setup_alice_bob_group(
         create_commit_result
             .welcome_option
             .expect("commit didn't return a welcome as expected"),
-        Some(group_alice.public_group().export_ratchet_tree()),
+        Some(group_alice.public_group().export_ratchet_tree().into()),
         bob_key_package_bundle,
         backend,
+        ResumptionPskStore::new(1024),
     )
     .expect("error creating group from welcome");
 

@@ -20,10 +20,7 @@ use crate::{
         Member, ProposalQueue,
     },
     messages::proposals::{Proposal, ProposalOrRefType, ProposalType},
-    schedule::{
-        errors::PskError,
-        psk::{Psk, ResumptionPskUsage},
-    },
+    schedule::errors::PskError,
     treesync::node::leaf_node::LeafNode,
 };
 
@@ -280,7 +277,7 @@ impl PublicGroup {
         for leaf in self.treesync().full_leaves() {
             // 8.3. Leaf Node Validation
             // encryption key must be unique
-            encryption_keys.insert(leaf.public_key().as_slice().to_vec());
+            encryption_keys.insert(leaf.encryption_key().as_slice().to_vec());
         }
 
         // Check the update proposals from the proposal queue first
@@ -332,47 +329,16 @@ impl PublicGroup {
         for proposal in proposal_queue.psk_proposals() {
             let psk_id = proposal.psk_proposal().clone().into_psk_id();
 
-            // ValSem402
-            match psk_id.psk() {
-                Psk::Resumption(resumption_psk) => {
-                    if resumption_psk.usage != ResumptionPskUsage::Application {
-                        return Err(ProposalValidationError::Psk(PskError::UsageMismatch {
-                            allowed: vec![ResumptionPskUsage::Application],
-                            got: resumption_psk.usage,
-                        }));
-                    }
-                }
-                Psk::External(_) => {}
-            };
-
             // ValSem401
-            {
-                let expected_nonce_length = self.ciphersuite().hash_length();
-                let got_nonce_length = psk_id.psk_nonce().len();
-
-                if expected_nonce_length != got_nonce_length {
-                    return Err(ProposalValidationError::Psk(
-                        PskError::NonceLengthMismatch {
-                            expected: expected_nonce_length,
-                            got: got_nonce_length,
-                        },
-                    ));
-                }
-            }
+            // ValSem402
+            let psk_id = psk_id.validate_in_proposal(self.ciphersuite())?;
 
             // ValSem403 (2/2)
             if !visited_psk_ids.contains(&psk_id) {
                 visited_psk_ids.insert(psk_id);
             } else {
-                return Err(ProposalValidationError::Psk(PskError::Duplicate {
-                    first: psk_id,
-                }));
+                return Err(PskError::Duplicate { first: psk_id }.into());
             }
-        }
-
-        // TODO(#1330): Remove this when #1330 is finished.
-        if !visited_psk_ids.is_empty() {
-            return Err(ProposalValidationError::Psk(PskError::Unsupported));
         }
 
         Ok(())
@@ -462,7 +428,7 @@ impl PublicGroup {
         extensions: &[crate::extensions::ExtensionType],
     ) -> Result<(), LeafNodeValidationError> {
         for leaf in self.treesync().full_leaves() {
-            leaf.leaf_node().check_extension_support(extensions)?;
+            leaf.check_extension_support(extensions)?;
         }
         Ok(())
     }

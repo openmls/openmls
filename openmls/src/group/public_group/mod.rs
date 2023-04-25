@@ -14,7 +14,7 @@
 #[cfg(test)]
 use std::collections::HashSet;
 
-use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 
 use self::{
@@ -29,6 +29,7 @@ use crate::{
     ciphersuite::signable::Verifiable,
     error::LibraryError,
     extensions::RequiredCapabilitiesExtension,
+    framing::InterimTranscriptHashInput,
     messages::{
         group_info::{GroupInfo, VerifiableGroupInfo},
         proposals::{Proposal, ProposalType},
@@ -36,12 +37,12 @@ use crate::{
     },
     schedule::CommitSecret,
     treesync::{
-        errors::DerivePathError,
+        errors::{DerivePathError, TreeSyncFromNodesError},
         node::{
             encryption_keys::{EncryptionKey, EncryptionKeyPair},
-            leaf_node::OpenMlsLeafNode,
+            leaf_node::LeafNode,
         },
-        RatchetTree, TreeSync,
+        RatchetTree, RatchetTreeIn, TreeSync,
     },
     versions::ProtocolVersion,
 };
@@ -72,20 +73,29 @@ pub struct PublicGroup {
 impl PublicGroup {
     /// Create a new PublicGroup from a [`TreeSync`] instance and a
     /// [`GroupInfo`].
-    fn new(
+    pub(crate) fn new(
+        crypto: &impl OpenMlsCrypto,
         treesync: TreeSync,
         group_context: GroupContext,
         initial_confirmation_tag: ConfirmationTag,
-    ) -> Self {
-        let interim_transcript_hash = vec![];
+    ) -> Result<Self, LibraryError> {
+        let interim_transcript_hash = {
+            let input = InterimTranscriptHashInput::from(&initial_confirmation_tag);
 
-        PublicGroup {
+            input.calculate_interim_transcript_hash(
+                crypto,
+                group_context.ciphersuite(),
+                group_context.confirmed_transcript_hash(),
+            )?
+        };
+
+        Ok(PublicGroup {
             treesync,
             proposal_store: ProposalStore::new(),
             group_context,
             interim_transcript_hash,
             confirmation_tag: initial_confirmation_tag,
-        }
+        })
     }
 
     /// Create a [`PublicGroup`] instance to start tracking an existing MLS group.
@@ -95,11 +105,20 @@ impl PublicGroup {
     /// details.
     pub fn from_external(
         backend: &impl OpenMlsCryptoProvider,
-        ratchet_tree: RatchetTree,
+        ratchet_tree: RatchetTreeIn,
         verifiable_group_info: VerifiableGroupInfo,
         proposal_store: ProposalStore,
     ) -> Result<(Self, GroupInfo), CreationFromExternalError> {
         let ciphersuite = verifiable_group_info.ciphersuite();
+
+        let group_id = verifiable_group_info.group_id();
+        let ratchet_tree = ratchet_tree
+            .into_verified(ciphersuite, backend.crypto(), group_id)
+            .map_err(|e| {
+                CreationFromExternalError::TreeSyncError(TreeSyncFromNodesError::RatchetTreeError(
+                    e,
+                ))
+            })?;
 
         // Create a RatchetTree from the given nodes. We have to do this before
         // verifying the group info, since we need to find the Credential to verify the
@@ -127,10 +146,17 @@ impl PublicGroup {
             return Err(CreationFromExternalError::UnsupportedMlsVersion);
         }
 
-        let interim_transcript_hash =
-            group_info.calculate_interim_transcript_hash(backend.crypto())?;
-
         let group_context = GroupContext::from(group_info.clone());
+
+        let interim_transcript_hash = {
+            let input = InterimTranscriptHashInput::from(group_info.confirmation_tag());
+
+            input.calculate_interim_transcript_hash(
+                backend.crypto(),
+                group_context.ciphersuite(),
+                group_context.confirmed_transcript_hash(),
+            )?
+        };
 
         Ok((
             Self {
@@ -166,6 +192,7 @@ impl PublicGroup {
         let leaf_index = if let Some(remove_proposal) = remove_proposal_option {
             if let Proposal::Remove(remove_proposal) = remove_proposal {
                 let removed_index = remove_proposal.removed();
+                // The committer should always be in the left-most leaf.
                 if removed_index < free_leaf_index {
                     removed_index
                 } else {
@@ -279,7 +306,7 @@ impl PublicGroup {
 
     /// Return a reference to the leaf at the given `LeafNodeIndex` or `None` if the
     /// leaf is blank.
-    pub fn leaf(&self, leaf_index: LeafNodeIndex) -> Option<&OpenMlsLeafNode> {
+    pub fn leaf(&self, leaf_index: LeafNodeIndex) -> Option<&LeafNode> {
         self.treesync().leaf(leaf_index)
     }
 
