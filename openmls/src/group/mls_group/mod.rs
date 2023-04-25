@@ -15,6 +15,7 @@ use crate::{
     treesync::{node::leaf_node::LeafNode, RatchetTree},
 };
 use openmls_traits::{
+    credential::OpenMlsCredential,
     key_store::OpenMlsKeyStore,
     types::{credential::Credential, Ciphersuite},
     OpenMlsCryptoProvider,
@@ -233,7 +234,10 @@ impl MlsGroup {
     }
 
     /// Get the client's own [`Credential`] owning this group.
-    pub fn own_credential(&self) -> Option<&Credential> {
+    pub fn own_credential<T>(&self) -> Option<T>
+    where
+        T: OpenMlsCredential,
+    {
         self.group.own_credential()
     }
 

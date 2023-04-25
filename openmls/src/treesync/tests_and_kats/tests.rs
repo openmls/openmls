@@ -1,4 +1,4 @@
-use openmls_basic_credential::OpenMlsBasicCredential;
+use openmls_basic_credential::{OpenMlsBasicCredential, VerificationCredential};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 
 use crate::{
@@ -57,7 +57,12 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
         group.members().for_each(|member| {
             println!(
                 "member: {}, index: {:?}, target: {}, own_leaf_index: {:?}",
-                String::from_utf8_lossy(member.credential.identity()),
+                String::from_utf8_lossy(
+                    member
+                        .as_credential::<VerificationCredential>(group.ciphersuite())
+                        .unwrap()
+                        .identity()
+                ),
                 member.index,
                 String::from_utf8_lossy(target_id),
                 group.own_leaf_index()
@@ -66,7 +71,12 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
         group
             .members()
             .find_map(|member| {
-                if member.credential.identity() == target_id {
+                if member
+                    .as_credential::<VerificationCredential>(group.ciphersuite())
+                    .unwrap()
+                    .identity()
+                    == target_id
+                {
                     Some(member.index)
                 } else {
                     None

@@ -7,9 +7,18 @@
 //! OpenMLS defines a trait for credentials in order to get a unique identity
 //! from it and the public key.
 
-use crate::types::credential::Credential;
+use crate::types::{credential::Credential, Error, SignatureScheme};
 
-pub trait OpenMlsCredential {
+pub trait OpenMlsCredential // TryFrom<(Credential, Vec<u8>, SignatureScheme), Error = Error>
+{
+    fn try_from(
+        credential: Credential,
+        public_key: Vec<u8>,
+        signature_scheme: SignatureScheme,
+    ) -> Result<Self, Error>
+    where
+        Self: Sized;
+
     /// Get the identity of this credential.
     fn identity(&self) -> &[u8];
 

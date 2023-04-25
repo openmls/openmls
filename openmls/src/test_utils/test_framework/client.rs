@@ -3,11 +3,11 @@
 //! that client perform certain MLS operations.
 use std::{collections::HashMap, sync::RwLock};
 
-use openmls_basic_credential::OpenMlsBasicCredential;
+use openmls_basic_credential::{OpenMlsBasicCredential, VerificationCredential};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
     key_store::OpenMlsKeyStore,
-    types::{credential::Credential, Ciphersuite, HpkeKeyPair, SignatureScheme},
+    types::{Ciphersuite, HpkeKeyPair, SignatureScheme},
     OpenMlsCryptoProvider,
 };
 use tls_codec::Serialize;
@@ -313,9 +313,11 @@ impl Client {
     }
 
     /// Get the identity of this client in the given group.
-    pub fn credential(&self, group_id: &GroupId) -> Option<&Credential> {
+    pub fn identity(&self, group_id: &GroupId) -> Option<Vec<u8>> {
         let groups = self.groups.read().unwrap();
         let group = groups.get(group_id).unwrap();
-        group.own_credential()
+        group
+            .own_credential::<VerificationCredential>()
+            .map(|c| c.identity().to_vec())
     }
 }

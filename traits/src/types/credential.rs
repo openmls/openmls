@@ -173,8 +173,14 @@ pub struct BasicCredential {
 }
 
 impl BasicCredential {
+    /// Generate a new credential for the given identity.
     pub fn new(identity: VLBytes) -> Self {
         Self { identity }
+    }
+
+    /// Get the identity of this credential.
+    pub fn identity(&self) -> &VLBytes {
+        &self.identity
     }
 }
 
@@ -232,6 +238,11 @@ impl Credential {
         self.credential_type
     }
 
+    /// Returns the inner [`MlsCredentialType`].
+    pub fn credential(&self) -> &MlsCredentialType {
+        &self.credential
+    }
+
     /// Creates and returns a new [`Credential`] of the given
     /// [`CredentialType`] for the given identity.
     /// If the credential holds key material, this is generated and stored in
@@ -245,15 +256,6 @@ impl Credential {
                 MlsCredentialType::X509(_) => CredentialType::X509,
             },
             credential,
-        }
-    }
-
-    /// Returns the identity of a given credential.
-    pub fn identity(&self) -> &[u8] {
-        match &self.credential {
-            MlsCredentialType::Basic(basic_credential) => basic_credential.identity.as_slice(),
-            // TODO: implement getter for identity for X509 certificates. See issue #134.
-            MlsCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
         }
     }
 }

@@ -4,7 +4,6 @@ use rstest::*;
 use rstest_reuse::apply;
 
 use crate::{
-    group::GroupId,
     key_packages::KeyPackageBundle,
     test_utils::credential,
     treesync::{node::Node, RatchetTree, TreeSync},

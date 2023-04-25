@@ -121,6 +121,7 @@ pub enum Error {
     CryptoError(CryptoError),
     InvalidSignature,
     SigningError,
+    InvalidCredentialType,
 }
 
 /// Crypto errors.

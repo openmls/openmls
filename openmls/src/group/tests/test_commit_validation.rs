@@ -1,7 +1,7 @@
 //! This module tests the validation of commits as defined in
 //! https://openmls.tech/book/message_validation.html#commit-message-validation
 
-use openmls_basic_credential::OpenMlsBasicCredential;
+use openmls_basic_credential::{OpenMlsBasicCredential, VerificationCredential};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{signatures::Signer, types::Ciphersuite};
 use rstest::*;
@@ -736,7 +736,12 @@ fn test_partial_proposal_commit(ciphersuite: Ciphersuite, backend: &impl OpenMls
 
     let charlie_index = alice_group
         .members()
-        .find(|m| m.credential.identity() == b"Charlie")
+        .find(|m| {
+            m.as_credential::<VerificationCredential>(alice_group.ciphersuite())
+                .unwrap()
+                .identity()
+                == b"Charlie"
+        })
         .unwrap()
         .index;
 

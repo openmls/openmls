@@ -363,12 +363,14 @@ impl PublicGroup {
     ///  - ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
     ///  - ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
     ///  - ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
-    ///  - ValSem243: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
-    ///               leaf are identical to the ones in the path KeyPackage.
+    ///
+    ///
+    /// ValSem243 must be checked by the application.
+    ///     External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
+    ///     leaf are identical to the ones in the path KeyPackage.
     pub(super) fn validate_external_commit(
         &self,
         proposal_queue: &ProposalQueue,
-        path_leaf_node: Option<&LeafNode>,
     ) -> Result<(), ExternalCommitValidationError> {
         let count_external_init_proposals = proposal_queue
             .filtered_by_type(ProposalType::ExternalInit)
@@ -394,29 +396,6 @@ impl PublicGroup {
             return Err(ExternalCommitValidationError::InvalidInlineProposals);
         }
 
-        let remove_proposals = proposal_queue.filtered_by_type(ProposalType::Remove);
-        for proposal in remove_proposals {
-            if proposal.proposal_or_ref_type() == ProposalOrRefType::Proposal {
-                if let Proposal::Remove(remove_proposal) = proposal.proposal() {
-                    let removed_leaf = remove_proposal.removed();
-
-                    if let Some(new_leaf) = path_leaf_node {
-                        // ValSem243: External Commit, inline Remove Proposal:
-                        //            The identity and the endpoint_id of the
-                        //            removed leaf are identical to the ones
-                        //            in the path leaf node.
-                        let removed_leaf = self
-                            .treesync()
-                            .leaf(removed_leaf)
-                            .ok_or(ExternalCommitValidationError::UnknownMemberRemoval)?;
-                        if removed_leaf.credential().identity() != new_leaf.credential().identity()
-                        {
-                            return Err(ExternalCommitValidationError::InvalidRemoveProposal);
-                        }
-                    };
-                }
-            }
-        }
         Ok(())
     }
 

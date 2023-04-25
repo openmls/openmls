@@ -1,7 +1,7 @@
 //! This module tests the validation of proposals as defined in
 //! https://openmls.tech/book/message_validation.html#semantic-validation-of-proposals-covered-by-a-commit
 
-use openmls_basic_credential::OpenMlsBasicCredential;
+use openmls_basic_credential::{OpenMlsBasicCredential, VerificationCredential};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
     key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite, OpenMlsCryptoProvider,
@@ -595,7 +595,12 @@ fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                 let bob_index = alice_group
                     .members()
                     .find_map(|member| {
-                        if member.credential.identity() == b"Bob" {
+                        if member
+                            .as_credential::<VerificationCredential>(alice_group.ciphersuite())
+                            .unwrap()
+                            .identity()
+                            == b"Bob"
+                        {
                             Some(member.index)
                         } else {
                             None

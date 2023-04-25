@@ -6,7 +6,7 @@ use openmls::{
     test_utils::*,
     *,
 };
-use openmls_basic_credential::OpenMlsBasicCredential;
+use openmls_basic_credential::{OpenMlsBasicCredential, VerificationCredential};
 use openmls_traits::{signatures::Signer, types::SignatureScheme, OpenMlsCryptoProvider};
 
 lazy_static! {
@@ -204,8 +204,20 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // Check that Alice & Bob are the members of the group
     let members = alice_group.members().collect::<Vec<Member>>();
-    assert_eq!(members[0].credential.identity(), b"Alice");
-    assert_eq!(members[1].credential.identity(), b"Bob");
+    assert_eq!(
+        members[0]
+            .as_credential::<VerificationCredential>(alice_group.ciphersuite())
+            .unwrap()
+            .identity(),
+        b"Alice"
+    );
+    assert_eq!(
+        members[1]
+            .as_credential::<VerificationCredential>(alice_group.ciphersuite())
+            .unwrap()
+            .identity(),
+        b"Bob"
+    );
 
     // ANCHOR: bob_joins_with_welcome
     let mut bob_group = MlsGroup::new_from_welcome(
@@ -483,9 +495,27 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // Check that Alice, Bob & Charlie are the members of the group
     let members = alice_group.members().collect::<Vec<Member>>();
-    assert_eq!(members[0].credential.identity(), b"Alice");
-    assert_eq!(members[1].credential.identity(), b"Bob");
-    assert_eq!(members[2].credential.identity(), b"Charlie");
+    assert_eq!(
+        members[0]
+            .as_credential::<VerificationCredential>(alice_group.ciphersuite())
+            .unwrap()
+            .identity(),
+        b"Alice"
+    );
+    assert_eq!(
+        members[1]
+            .as_credential::<VerificationCredential>(alice_group.ciphersuite())
+            .unwrap()
+            .identity(),
+        b"Bob"
+    );
+    assert_eq!(
+        members[2]
+            .as_credential::<VerificationCredential>(alice_group.ciphersuite())
+            .unwrap()
+            .identity(),
+        b"Charlie"
+    );
     assert_eq!(members.len(), 3);
 
     // === Charlie sends a message to the group ===
@@ -589,21 +619,24 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     let bob_member = charlie_members
         .iter()
-        .find(
-            |Member {
-                 index: _,
-                 credential,
-                 ..
-             }| credential.identity() == b"Bob",
-        )
+        .find(|m| {
+            m.as_credential::<VerificationCredential>(alice_group.ciphersuite())
+                .unwrap()
+                .identity()
+                == b"Bob"
+        })
         .expect("Couldn't find Bob in the list of group members.");
 
     // Make sure that this is Bob's actual KP reference.
     assert_eq!(
-        bob_member.credential.identity(),
+        bob_member
+            .as_credential::<VerificationCredential>(alice_group.ciphersuite())
+            .unwrap()
+            .identity(),
         bob_group
-            .own_credential()
+            .own_credential::<openmls_basic_credential::VerificationCredential>()
             .expect("An unexpected error occurred.")
+            .identity()
     );
 
     // === Charlie removes Bob ===
@@ -725,8 +758,20 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     assert!(!bob_group.is_active());
     let members = bob_group.members().collect::<Vec<Member>>();
     assert_eq!(members.len(), 2);
-    assert_eq!(members[0].credential.identity(), b"Alice");
-    assert_eq!(members[1].credential.identity(), b"Charlie");
+    assert_eq!(
+        members[0]
+            .as_credential::<VerificationCredential>(alice_group.ciphersuite())
+            .unwrap()
+            .identity(),
+        b"Alice"
+    );
+    assert_eq!(
+        members[1]
+            .as_credential::<VerificationCredential>(alice_group.ciphersuite())
+            .unwrap()
+            .identity(),
+        b"Charlie"
+    );
     // ANCHOR_END: getting_removed
 
     // Make sure that all groups have the same public tree
@@ -740,8 +785,20 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // Check that Alice & Charlie are the members of the group
     let members = alice_group.members().collect::<Vec<Member>>();
-    assert_eq!(members[0].credential.identity(), b"Alice");
-    assert_eq!(members[1].credential.identity(), b"Charlie");
+    assert_eq!(
+        members[0]
+            .as_credential::<VerificationCredential>(alice_group.ciphersuite())
+            .unwrap()
+            .identity(),
+        b"Alice"
+    );
+    assert_eq!(
+        members[1]
+            .as_credential::<VerificationCredential>(alice_group.ciphersuite())
+            .unwrap()
+            .identity(),
+        b"Charlie"
+    );
 
     // Check that Bob can no longer send messages
     assert!(bob_group
@@ -887,8 +944,20 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // Check that Alice & Bob are the members of the group
     let members = alice_group.members().collect::<Vec<Member>>();
-    assert_eq!(members[0].credential.identity(), b"Alice");
-    assert_eq!(members[1].credential.identity(), b"Bob");
+    assert_eq!(
+        members[0]
+            .as_credential::<VerificationCredential>(alice_group.ciphersuite())
+            .unwrap()
+            .identity(),
+        b"Alice"
+    );
+    assert_eq!(
+        members[1]
+            .as_credential::<VerificationCredential>(alice_group.ciphersuite())
+            .unwrap()
+            .identity(),
+        b"Bob"
+    );
 
     // Bob creates a new group
     let mut bob_group = MlsGroup::new_from_welcome(
@@ -907,16 +976,40 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // Check that Alice & Bob are the members of the group
     let members = alice_group.members().collect::<Vec<Member>>();
-    assert_eq!(members[0].credential.identity(), b"Alice");
-    assert_eq!(members[1].credential.identity(), b"Bob");
+    assert_eq!(
+        members[0]
+            .as_credential::<VerificationCredential>(alice_group.ciphersuite())
+            .unwrap()
+            .identity(),
+        b"Alice"
+    );
+    assert_eq!(
+        members[1]
+            .as_credential::<VerificationCredential>(alice_group.ciphersuite())
+            .unwrap()
+            .identity(),
+        b"Bob"
+    );
 
     // Make sure the group contains two members
     assert_eq!(bob_group.members().count(), 2);
 
     // Check that Alice & Bob are the members of the group
     let members = bob_group.members().collect::<Vec<Member>>();
-    assert_eq!(members[0].credential.identity(), b"Alice");
-    assert_eq!(members[1].credential.identity(), b"Bob");
+    assert_eq!(
+        members[0]
+            .as_credential::<VerificationCredential>(alice_group.ciphersuite())
+            .unwrap()
+            .identity(),
+        b"Alice"
+    );
+    assert_eq!(
+        members[1]
+            .as_credential::<VerificationCredential>(alice_group.ciphersuite())
+            .unwrap()
+            .identity(),
+        b"Bob"
+    );
 
     // === Alice sends a message to the group ===
     let message_alice = b"Hi, I'm Alice!";
@@ -1077,7 +1170,13 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // Check that Alice is the only member of the group
     let members = alice_group.members().collect::<Vec<Member>>();
-    assert_eq!(members[0].credential.identity(), b"Alice");
+    assert_eq!(
+        members[0]
+            .as_credential::<VerificationCredential>(alice_group.ciphersuite())
+            .unwrap()
+            .identity(),
+        b"Alice"
+    );
 
     // === Re-Add Bob with external Add proposal ===
 
@@ -1141,7 +1240,12 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     let bob_index = alice_group
         .members()
         .find_map(|member| {
-            if member.credential.identity() == b"Bob" {
+            if member
+                .as_credential::<VerificationCredential>(alice_group.ciphersuite())
+                .unwrap()
+                .identity()
+                == b"Bob"
+            {
                 Some(member.index)
             } else {
                 None

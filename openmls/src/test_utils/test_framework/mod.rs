@@ -31,12 +31,13 @@ use crate::{
     treesync::{node::Node, LeafNode, RatchetTree, RatchetTreeIn},
 };
 use ::rand::{rngs::OsRng, RngCore};
-use openmls_basic_credential::OpenMlsBasicCredential;
+use openmls_basic_credential::{OpenMlsBasicCredential, VerificationCredential};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
+    credential::OpenMlsCredential,
     crypto::OpenMlsCrypto,
     key_store::OpenMlsKeyStore,
-    types::{Ciphersuite, HpkeKeyPair, SignatureScheme, credential::Credential},
+    types::{Ciphersuite, HpkeKeyPair, SignatureScheme},
     OpenMlsCryptoProvider,
 };
 use rayon::prelude::*;
@@ -195,7 +196,7 @@ impl MlsGroupTestSetup {
     }
 
     /// Convert an index in the tree into the corresponding identity.
-    pub fn credential_by_index(&self, index: usize, group: &Group) -> Option<&Credential> {
+    pub fn identity_by_index(&self, index: usize, group: &Group) -> Option<Vec<u8>> {
         let (_, id) = group
             .members
             .iter()
@@ -207,7 +208,7 @@ impl MlsGroupTestSetup {
             .expect("An unexpected error occurred.")
             .read()
             .expect("An unexpected error occurred.");
-        client.credential(&group.group_id)
+        client.identity(&group.group_id)
     }
 
     /// Convert an identity in the tree into the corresponding key package reference.
@@ -223,7 +224,7 @@ impl MlsGroupTestSetup {
             .expect("An unexpected error occurred.")
             .read()
             .expect("An unexpected error occurred.");
-        client.credential(&group.group_id)
+        client.identity(&group.group_id)
     }
 
     /// Deliver a Welcome message to the intended recipients. It uses the given
@@ -327,11 +328,11 @@ impl MlsGroupTestSetup {
         group.members = sender
             .get_members_of_group(&group.group_id)?
             .iter()
-            .map(
-                |Member {
-                     index, credential, ..
-                 }| { (index.usize(), credential.identity().to_vec()) },
-            )
+            .map(|member| {
+                let basic_credential: VerificationCredential =
+                    member.as_credential(sender_group.ciphersuite()).unwrap();
+                (member.index.usize(), basic_credential.identity().to_vec())
+            })
             .collect();
         group.public_tree = sender_group.export_ratchet_tree();
         group.exporter_secret = sender_group.export_secret(&sender.crypto, "test", &[], 32)?;

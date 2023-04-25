@@ -126,6 +126,21 @@ impl Member {
             credential,
         }
     }
+
+    /// Get the real credential for this member.
+    pub fn as_credential<T>(
+        &self,
+        ciphersuite: Ciphersuite,
+    ) -> Result<T, openmls_traits::types::Error>
+    where
+        T: OpenMlsCredential,
+    {
+        T::try_from(
+            self.credential.clone(),
+            self.signature_key.clone(),
+            ciphersuite.into(),
+        )
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -661,10 +676,14 @@ impl CoreGroup {
     }
 
     /// Get the client's own [`Credential`] owning this group.
-    pub(crate) fn own_credential(&self) -> Option<&Credential> {
+    pub(crate) fn own_credential<T>(&self) -> Option<T>
+    where
+        T: OpenMlsCredential,
+    {
         self.public_group()
             .leaf(self.own_leaf_index)
-            .map(|node| node.credential())
+            .map(|node| node.full_credential(self.ciphersuite()).ok())
+            .flatten()
     }
 
     /// Get a reference to the group epoch secrets from the group

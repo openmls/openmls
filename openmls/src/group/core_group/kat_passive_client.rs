@@ -1,4 +1,5 @@
 use log::{debug, info, warn};
+use openmls_basic_credential::VerificationCredential;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
 use serde::{self, Deserialize, Serialize};
@@ -539,7 +540,12 @@ fn propose_remove(
 ) -> TestProposal {
     let remove = group
         .members()
-        .find(|Member { credential, .. }| credential.identity() == remove_identity)
+        .find(|m| {
+            m.as_credential::<VerificationCredential>(group.ciphersuite())
+                .unwrap()
+                .identity()
+                == remove_identity
+        })
         .unwrap()
         .index;
 

@@ -1,4 +1,4 @@
-use openmls_basic_credential::OpenMlsBasicCredential;
+use openmls_basic_credential::{OpenMlsBasicCredential, VerificationCredential};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use rstest::*;
 use rstest_reuse::{self, *};
@@ -112,7 +112,13 @@ fn external_remove_proposal_should_remove_member(
     // get Bob's index
     let bob_index = alice_group
         .members()
-        .find(|member| member.credential.identity() == b"Bob")
+        .find(|member| {
+            member
+                .as_credential::<VerificationCredential>(alice_group.ciphersuite())
+                .unwrap()
+                .identity()
+                == b"Bob"
+        })
         .map(|member| member.index)
         .unwrap();
     // Now Delivery Service wants to (already) remove Bob
@@ -192,7 +198,13 @@ fn external_remove_proposal_should_fail_when_invalid_external_senders_index(
     // get Bob's index
     let bob_index = alice_group
         .members()
-        .find(|member| member.credential.identity() == b"Bob")
+        .find(|member| {
+            member
+                .as_credential::<VerificationCredential>(alice_group.ciphersuite())
+                .unwrap()
+                .identity()
+                == b"Bob"
+        })
         .map(|member| member.index)
         .unwrap();
     // Now Delivery Service wants to (already) remove Bob with invalid sender index
@@ -247,7 +259,13 @@ fn external_remove_proposal_should_fail_when_invalid_signature(
     // get Bob's index
     let bob_index = alice_group
         .members()
-        .find(|member| member.credential.identity() == b"Bob")
+        .find(|member| {
+            member
+                .as_credential::<VerificationCredential>(alice_group.ciphersuite())
+                .unwrap()
+                .identity()
+                == b"Bob"
+        })
         .map(|member| member.index)
         .unwrap();
     // Now Delivery Service wants to (already) remove Bob with invalid sender index
@@ -289,7 +307,13 @@ fn external_remove_proposal_should_fail_when_no_external_senders(
     // get Bob's index
     let bob_index = alice_group
         .members()
-        .find(|member| member.credential.identity() == b"Bob")
+        .find(|member| {
+            member
+                .as_credential::<VerificationCredential>(alice_group.ciphersuite())
+                .unwrap()
+                .identity()
+                == b"Bob"
+        })
         .map(|member| member.index)
         .unwrap();
     // Now Delivery Service wants to remove Bob with invalid sender index but there's no extension

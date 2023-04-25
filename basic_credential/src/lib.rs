@@ -42,6 +42,18 @@ impl VerificationCredential {
             identity,
         }
     }
+
+    pub fn identity(&self) -> &[u8] {
+        self.identity.as_ref()
+    }
+
+    pub fn signature_scheme(&self) -> SignatureScheme {
+        self.signature_scheme
+    }
+
+    pub fn public_key(&self) -> &[u8] {
+        self.public_key.as_ref()
+    }
 }
 
 /// A signature key pair for the basic credential.
@@ -101,6 +113,10 @@ impl OpenMlsCredential for OpenMlsBasicCredential {
             self.public_credential.identity.clone().into(),
         ));
         Credential::new(credential)
+    }
+
+    fn try_from(_: Credential, _: Vec<u8>, _: SignatureScheme) -> Result<Self, Error> {
+        unimplemented!("Use VerificationCredential instead!");
     }
 }
 
@@ -223,7 +239,41 @@ impl OpenMlsCredential for VerificationCredential {
             MlsCredentialType::Basic(BasicCredential::new(self.identity.clone().into()));
         Credential::new(credential)
     }
+
+    fn try_from(
+        credential: Credential,
+        public_key: Vec<u8>,
+        signature_scheme: SignatureScheme,
+    ) -> Result<Self, Error> {
+        let identity = match credential.credential() {
+            MlsCredentialType::Basic(c) => c.identity().as_slice().to_vec(),
+            MlsCredentialType::X509(_) => return Err(Error::InvalidCredentialType),
+        };
+
+        Ok(Self {
+            public_key,
+            signature_scheme,
+            identity,
+        })
+    }
 }
+
+// impl TryFrom<(Credential, Vec<u8>, SignatureScheme)> for VerificationCredential {
+//     type Error = Error;
+
+//     fn try_from(value: (Credential, Vec<u8>, SignatureScheme)) -> Result<Self, Self::Error> {
+//         let identity = match value.0.credential() {
+//             MlsCredentialType::Basic(c) => c.identity().as_slice().to_vec(),
+//             MlsCredentialType::X509(_) => return Err(Error::InvalidCredentialType),
+//         };
+
+//         Ok(Self {
+//             public_key: value.1,
+//             signature_scheme: value.2,
+//             identity,
+//         })
+//     }
+// }
 
 #[cfg(feature = "test-utils")]
 impl OpenMlsBasicCredential {

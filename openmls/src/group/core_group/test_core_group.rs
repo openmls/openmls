@@ -1,4 +1,4 @@
-use openmls_basic_credential::OpenMlsBasicCredential;
+use openmls_basic_credential::{OpenMlsBasicCredential, VerificationCredential};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
     crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, types::HpkeCiphertext, OpenMlsCryptoProvider,
@@ -623,13 +623,12 @@ fn test_proposal_application_after_self_was_removed(
     let bob_index = alice_group
         .public_group()
         .members()
-        .find(
-            |Member {
-                 index: _,
-                 credential,
-                 ..
-             }| credential.identity() == b"Bob",
-        )
+        .find(|m| {
+            m.as_credential::<VerificationCredential>(alice_group.ciphersuite())
+                .unwrap()
+                .identity()
+                == b"Bob"
+        })
         .expect("Couldn't find Bob in tree.")
         .index;
     let bob_remove_proposal = alice_group
@@ -716,14 +715,26 @@ fn test_proposal_application_after_self_was_removed(
         // didn't get updated.
         assert_eq!(alice_member.index, bob_member.index);
         assert_eq!(
-            alice_member.credential.identity(),
-            bob_member.credential.identity()
+            alice_member
+                .as_credential::<VerificationCredential>(alice_group.ciphersuite())
+                .unwrap()
+                .identity(),
+            bob_member
+                .as_credential::<VerificationCredential>(alice_group.ciphersuite())
+                .unwrap()
+                .identity()
         );
         assert_eq!(alice_member.signature_key, bob_member.signature_key);
         assert_eq!(charlie_member.index, bob_member.index);
         assert_eq!(
-            charlie_member.credential.identity(),
-            bob_member.credential.identity()
+            charlie_member
+                .as_credential::<VerificationCredential>(alice_group.ciphersuite())
+                .unwrap()
+                .identity(),
+            bob_member
+                .as_credential::<VerificationCredential>(alice_group.ciphersuite())
+                .unwrap()
+                .identity()
         );
         assert_eq!(charlie_member.signature_key, bob_member.signature_key);
         assert_eq!(charlie_member.encryption_key, alice_member.encryption_key);
@@ -731,9 +742,22 @@ fn test_proposal_application_after_self_was_removed(
 
     let mut bob_members = bob_group.public_group().members();
 
-    assert_eq!(bob_members.next().unwrap().credential.identity(), b"Alice");
     assert_eq!(
-        bob_members.next().unwrap().credential.identity(),
+        bob_members
+            .next()
+            .unwrap()
+            .as_credential::<VerificationCredential>(alice_group.ciphersuite())
+            .unwrap()
+            .identity(),
+        b"Alice"
+    );
+    assert_eq!(
+        bob_members
+            .next()
+            .unwrap()
+            .as_credential::<VerificationCredential>(alice_group.ciphersuite())
+            .unwrap()
+            .identity(),
         b"Charlie"
     );
 }

@@ -350,9 +350,22 @@ impl LeafNode {
         &self.payload.signature_key
     }
 
-    /// Returns the `signature_key` as byte slice.
+    /// Returns the credential reference.
     pub fn credential(&self) -> &Credential {
         &self.payload.credential
+    }
+
+    /// Returns the full credential.
+    pub fn full_credential<T>(&self, ciphersuite: Ciphersuite) -> Result<T, u8>
+    where
+        T: OpenMlsCredential,
+    {
+        T::try_from(
+            self.payload.credential.clone(),
+            self.payload.signature_key.as_slice().to_vec(),
+            ciphersuite.into(),
+        )
+        .map_err(|_| 1)
     }
 
     /// Returns the `parent_hash` as byte slice or `None`.
