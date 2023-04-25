@@ -57,6 +57,13 @@ cd ..
 
 You should now see how the test-runner orchestrated the "welcome" scenario between OpenMLS and MLS++. You can run more scenarios by specifying another config file.
 
+### Notes on interop testing
+
+* Each "step" in the config files is translated to one (or more) gRPC calls. For example, `"action": "externalJoin"` will request a group info, request an external commit from the joiner, and request all members to process the commit.
+* References such as `"byReference": [5, 6]` in the config files refer to the **index** of a step in the scenario.
+* Currently, the supported ciphersuites were fixated by a patch to `[1, 2, 3]` in the test-runner.
+* In order to pinpoint discrepancies, it might help to add (more) logging to OpenMLS or MLS++. Use a Docker volume to persist your changes.
+
 ## Test script
 
 The interop client can be used to have OpenMLS perform interop testing against
