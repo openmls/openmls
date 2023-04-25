@@ -22,6 +22,7 @@ RUN go mod tidy -e
 RUN make run-go || echo "Build despite errors."
 WORKDIR test-runner
 COPY main.go.patch .
-# Fix: Patch the test-runner so that it uses only the ciphersuites supported by OpenMLS.
+# TODO(#1366)
+# Patch the test-runner so that it uses only the ciphersuites supported by OpenMLS.
 RUN patch main.go main.go.patch
 RUN go build
