@@ -1,0 +1,17 @@
+FROM ubuntu:latest
+
+RUN apt-get -y update
+RUN apt-get -y install git make golang protoc-gen-go
+RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+ENV GOPATH=/root/go
+ENV PATH=$PATH:$GOPATH/bin
+RUN git clone --depth 1 https://github.com/mlswg/mls-implementations.git
+WORKDIR mls-implementations/interop
+RUN go mod tidy -e
+RUN make run-go || echo "Build despite errors."
+WORKDIR test-runner
+COPY main.go.patch .
+# QuickFix: Patch the test-runner so that it uses only the ciphersuites supported by OpenMLS.
+RUN patch main.go main.go.patch
+RUN go build
