@@ -99,7 +99,7 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         backend,
         &mls_group_config,
         welcome.into_welcome().expect("Unexpected message type."),
-        Some(alice_group.export_ratchet_tree()),
+        Some(alice_group.export_ratchet_tree().into()),
     )
     .expect("Error creating group from Welcome");
 
@@ -134,7 +134,7 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         backend,
         &mls_group_config,
         welcome.into_welcome().expect("Unexpected message type."),
-        Some(bob_group.export_ratchet_tree()),
+        Some(bob_group.export_ratchet_tree().into()),
     )
     .expect("Error creating group from Welcome");
 
@@ -467,7 +467,7 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
             .expect("no welcome after commit")
             .into_welcome()
             .expect("Unexpected message type."),
-        Some(alice_group.export_ratchet_tree()),
+        Some(alice_group.export_ratchet_tree().into()),
     )
     .expect("error creating group from welcome");
 
@@ -545,7 +545,7 @@ fn key_package_deletion(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         backend,
         &mls_group_config,
         welcome.into_welcome().expect("Unexpected message type."),
-        Some(alice_group.export_ratchet_tree()),
+        Some(alice_group.export_ratchet_tree().into()),
     )
     .expect("Error creating group from Welcome");
 
@@ -608,7 +608,7 @@ fn remove_prosposal_by_ref(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypt
         backend,
         &mls_group_config,
         welcome.into_welcome().unwrap(),
-        Some(alice_group.export_ratchet_tree()),
+        Some(alice_group.export_ratchet_tree().into()),
     )
     .unwrap();
     // alice proposes to add charlie

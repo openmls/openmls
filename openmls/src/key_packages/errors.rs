@@ -24,6 +24,12 @@ pub enum KeyPackageVerifyError {
     /// The key package signature is not valid.
     #[error("The key package signature is not valid.")]
     InvalidSignature,
+    /// The leaf node signature is not valid.
+    #[error("The leaf node signature is not valid.")]
+    InvalidLeafNodeSignature,
+    /// Invalid LeafNode source type
+    #[error("Invalid LeafNode source type")]
+    InvalidLeafNodeSourceType,
 }
 
 /// KeyPackage extension support error

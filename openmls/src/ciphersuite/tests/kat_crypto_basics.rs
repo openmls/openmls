@@ -70,7 +70,7 @@
 //!   * `DecryptWithLabel(priv, label, context, kem_output_candidate, ciphertext_candidate) == plaintext`
 
 use crate::prelude_test::{
-    signable::{Signable, SignedStruct},
+    signable::{Signable, SignedStruct, VerifiedStruct},
     Signature, Verifiable,
 };
 #[cfg(test)]
@@ -165,6 +165,13 @@ impl Verifiable for ParsedSignWithLabel {
     fn label(&self) -> &str {
         &self.label
     }
+}
+
+// Dummy implementation
+impl VerifiedStruct<ParsedSignWithLabel> for () {
+    type SealingType = u8;
+
+    fn from_verifiable(_: ParsedSignWithLabel, _seal: Self::SealingType) -> Self {}
 }
 
 impl Signable for ParsedSignWithLabel {
@@ -299,24 +306,27 @@ pub fn run_test_vector(
         let my_signature = parsed.clone().sign(&parsed.key).unwrap();
 
         // verify signature
-        let verification = parsed.verify_no_out(
-            backend.crypto(),
-            &OpenMlsSignaturePublicKey::new(
-                public.clone().into(),
-                ciphersuite.signature_algorithm(),
+        parsed
+            .clone()
+            .verify::<()>(
+                backend.crypto(),
+                &OpenMlsSignaturePublicKey::new(
+                    public.clone().into(),
+                    ciphersuite.signature_algorithm(),
+                )
+                .unwrap(),
             )
-            .unwrap(),
-        );
-        assert!(verification.is_ok());
+            .expect("Signature verification failed");
 
         // verify own signature
         parsed.signature = my_signature.0;
-        let verification = parsed.verify_no_out(
-            backend.crypto(),
-            &OpenMlsSignaturePublicKey::new(public.into(), ciphersuite.signature_algorithm())
-                .unwrap(),
-        );
-        assert!(verification.is_ok());
+        parsed
+            .verify::<()>(
+                backend.crypto(),
+                &OpenMlsSignaturePublicKey::new(public.into(), ciphersuite.signature_algorithm())
+                    .unwrap(),
+            )
+            .expect("Signature verification failed");
     }
 
     // encrypt with label

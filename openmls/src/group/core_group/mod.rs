@@ -32,9 +32,6 @@ mod test_past_secrets;
 #[cfg(test)]
 mod test_proposals;
 
-#[cfg(test)]
-use std::io::{Error, Read, Write};
-
 use log::{debug, trace};
 use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
@@ -45,8 +42,7 @@ use self::{
     past_secrets::MessageSecretsStore,
     staged_commit::{MemberStagedCommitState, StagedCommit, StagedCommitState},
 };
-#[cfg(test)]
-use super::errors::CreateGroupContextExtProposalError;
+
 use super::{
     builder::TempBuilderPG1,
     errors::{
@@ -56,6 +52,7 @@ use super::{
     group_context::*,
     public_group::{diff::compute_path::PathComputationResult, PublicGroup},
 };
+
 use crate::{
     binary_tree::array_representation::{LeafNodeIndex, TreeSize},
     ciphersuite::{signable::Signable, HpkePublicKey, SignaturePublicKey},
@@ -78,12 +75,19 @@ use crate::{
     treesync::{
         node::{
             encryption_keys::{EncryptionKey, EncryptionKeyPair},
-            leaf_node::{Lifetime, OpenMlsLeafNode},
+            leaf_node::Lifetime,
         },
         *,
     },
     versions::ProtocolVersion,
 };
+
+#[cfg(test)]
+use super::errors::CreateGroupContextExtProposalError;
+#[cfg(test)]
+use crate::treesync::node::leaf_node::TreePosition;
+#[cfg(test)]
+use std::io::{Error, Read, Write};
 
 #[derive(Debug)]
 pub(crate) struct CreateCommitResult {
@@ -736,7 +740,7 @@ impl CoreGroup {
         }
     }
 
-    pub(crate) fn own_leaf_node(&self) -> Result<&OpenMlsLeafNode, LibraryError> {
+    pub(crate) fn own_leaf_node(&self) -> Result<&LeafNode, LibraryError> {
         self.public_group()
             .leaf(self.own_leaf_index())
             .ok_or_else(|| LibraryError::custom("Tree has no own leaf."))
@@ -1067,6 +1071,11 @@ impl CoreGroup {
         })
     }
 
+    #[cfg(test)]
+    pub(crate) fn own_tree_position(&self) -> TreePosition {
+        TreePosition::new(self.group_id().clone(), self.own_leaf_index())
+    }
+
     /// Return supported credentials of all members.
     // TODO(#1186)
     #[allow(unused)]
@@ -1076,7 +1085,7 @@ impl CoreGroup {
         self.public_group().members().filter_map(|member| {
             self.public_group()
                 .leaf(member.index)
-                .map(|leaf| leaf.leaf_node().capabilities().credentials())
+                .map(|leaf| leaf.capabilities().credentials())
         })
     }
 

@@ -38,7 +38,7 @@ fn test_client_info() {
             .expect("Could not hash KeyPackage.")
             .as_slice()
             .to_vec(),
-        client_key_package,
+        KeyPackageIn::from(client_key_package),
     )];
     let client_data = ClientInfo::new(client_name.to_string(), client_key_package);
 

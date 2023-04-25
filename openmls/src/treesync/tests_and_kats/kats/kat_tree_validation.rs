@@ -66,8 +66,9 @@ use tls_codec::Deserialize as TlsDeserializeTrait;
 
 use crate::{
     binary_tree::array_representation::TreeNodeIndex,
+    group::GroupId,
     test_utils::*,
-    treesync::{RatchetTree, TreeSync},
+    treesync::{RatchetTreeIn, TreeSync},
 };
 
 #[derive(Deserialize)]
@@ -79,7 +80,6 @@ struct TestElement {
     #[serde(with = "hex")]
     tree: Vec<u8>,
     #[serde(with = "hex")]
-    #[allow(dead_code)] // TODO #1289: Remove
     group_id: Vec<u8>,
     resolutions: Vec<Vec<u32>>,
     tree_hashes: Vec<TreeHash>,
@@ -97,10 +97,15 @@ fn run_test_vector(test: TestElement, backend: &impl OpenMlsCryptoProvider) -> R
         return Ok(());
     }
 
-    let ratchet_tree = RatchetTree::tls_deserialize_exact(test.tree).unwrap();
+    let ratchet_tree = RatchetTreeIn::tls_deserialize_exact(test.tree).unwrap();
 
-    let treesync = TreeSync::from_ratchet_tree(backend, ciphersuite, ratchet_tree.clone())
-        .map_err(|e| format!("Error while creating tree sync: {e:?}"))?;
+    let treesync = TreeSync::from_ratchet_tree(
+        backend,
+        ciphersuite,
+        ratchet_tree.clone(),
+        &GroupId::from_slice(test.group_id.as_slice()),
+    )
+    .map_err(|e| format!("Error while creating tree sync: {e:?}"))?;
 
     let diff = treesync.empty_diff();
 
@@ -121,8 +126,6 @@ fn run_test_vector(test: TestElement, backend: &impl OpenMlsCryptoProvider) -> R
 
         // Verify tree hash
         assert_eq!(tree_hash, test.tree_hashes[index].0);
-
-        // TODO #1289: Verify the signature of the leaf nodes
     }
 
     Ok(())
@@ -138,7 +141,7 @@ fn read_test_vectors_tree_validation(backend: &impl OpenMlsCryptoProvider) {
     for test_vector in tests {
         match run_test_vector(test_vector, backend) {
             Ok(_) => {}
-            Err(e) => panic!("Error while checking PSK secret test vector.\n{e:?}"),
+            Err(e) => panic!("Error while checking tree validation test vector.\n{e:?}"),
         }
     }
     log::trace!("Finished test vector verification");

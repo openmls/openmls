@@ -95,7 +95,7 @@ async fn test_list_clients() {
             .unwrap()
             .as_slice()
             .to_vec(),
-        client_key_package.clone(),
+        KeyPackageIn::from(client_key_package.clone()),
     )];
     let client_data = ClientInfo::new(client_name.to_string(), client_key_package.clone());
     let req = test::TestRequest::post()
@@ -139,7 +139,7 @@ async fn test_list_clients() {
 
     let response_body = response.response_mut().take_body();
     let response_body = response_body.as_ref().unwrap();
-    let mut key_packages: Vec<(TlsByteVecU8, KeyPackage)> = match response_body {
+    let mut key_packages: Vec<(TlsByteVecU8, KeyPackageIn)> = match response_body {
         Body::Bytes(b) => {
             ClientKeyPackages::tls_deserialize(&mut b.as_ref())
                 .expect("Invalid key package response")
@@ -148,7 +148,7 @@ async fn test_list_clients() {
         _ => panic!("Unexpected server response."),
     }
     .into();
-    let key_packages: Vec<(Vec<u8>, KeyPackage)> = key_packages
+    let key_packages: Vec<(Vec<u8>, KeyPackageIn)> = key_packages
         .drain(..)
         .map(|(e1, e2)| (e1.into(), e2))
         .collect();
@@ -200,7 +200,7 @@ async fn test_group() {
                     .unwrap()
                     .as_slice()
                     .to_vec(),
-                client_key_package.clone(),
+                client_key_package.clone().into(),
             )],
         );
         key_packages.push(client_key_package);
@@ -253,7 +253,7 @@ async fn test_group() {
     };
     let client2_key_package = client2_key_packages
         .iter()
-        .position(|(_hash, kp)| kp.ciphersuite() == group_ciphersuite)
+        .position(|(_hash, kp)| KeyPackage::from(kp.clone()).ciphersuite() == group_ciphersuite)
         .expect("No key package with the group ciphersuite available");
     let (_client2_key_package_hash, client2_key_package) =
         client2_key_packages.remove(client2_key_package);
@@ -261,7 +261,7 @@ async fn test_group() {
     // With the key package we can invite Client2 (create proposal and merge it
     // locally.)
     let (_out_messages, welcome_msg, _group_info) = group
-        .add_members(crypto, &signer_1, &[client2_key_package])
+        .add_members(crypto, &signer_1, &[client2_key_package.into()])
         .expect("Could not add member to group.");
     group
         .merge_pending_commit(crypto)
@@ -306,7 +306,7 @@ async fn test_group() {
         welcome_msg
             .into_welcome()
             .expect("Unexpected message type."),
-        Some(group.export_ratchet_tree()), // delivered out of band
+        Some(group.export_ratchet_tree().into()), // delivered out of band
     )
     .expect("Error creating group from Welcome");
 

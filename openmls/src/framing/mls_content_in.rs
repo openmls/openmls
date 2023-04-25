@@ -3,7 +3,9 @@
 
 use crate::{
     ciphersuite::signable::Signable,
-    group::{GroupEpoch, GroupId},
+    error::LibraryError,
+    framing::SenderContext,
+    group::{errors::ValidationError, GroupEpoch, GroupId},
     messages::{proposals_in::ProposalIn, CommitIn},
     versions::ProtocolVersion,
 };
@@ -12,10 +14,11 @@ use std::io::{Read, Write};
 
 use super::{
     mls_auth_content_in::AuthenticatedContentIn,
-    mls_content::{framed_content_tbs_serialized, FramedContentBody},
+    mls_content::{framed_content_tbs_serialized, FramedContent, FramedContentBody},
     ContentType, Sender, WireFormat,
 };
 
+use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
 use tls_codec::{
     Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, Size, TlsDeserialize,
@@ -41,8 +44,25 @@ pub(crate) struct FramedContentIn {
     pub(super) epoch: GroupEpoch,
     pub(super) sender: Sender,
     pub(super) authenticated_data: VLBytes,
-
     pub(super) body: FramedContentBodyIn,
+}
+
+impl FramedContentIn {
+    /// Returns a [`FramedContent`] after successful validation.
+    pub(crate) fn validate(
+        self,
+        ciphersuite: Ciphersuite,
+        crypto: &impl OpenMlsCrypto,
+        sender_context: Option<SenderContext>,
+    ) -> Result<FramedContent, ValidationError> {
+        Ok(FramedContent {
+            group_id: self.group_id,
+            epoch: self.epoch,
+            sender: self.sender,
+            authenticated_data: self.authenticated_data,
+            body: self.body.validate(ciphersuite, crypto, sender_context)?,
+        })
+    }
 }
 
 impl From<AuthenticatedContentIn> for FramedContentIn {
@@ -104,6 +124,30 @@ impl FramedContentBodyIn {
             ContentType::Commit => FramedContentBodyIn::Commit(CommitIn::tls_deserialize(bytes)?),
         })
     }
+
+    /// Returns a [`FramedContentBody`] after successful validation.
+    pub(crate) fn validate(
+        self,
+        ciphersuite: Ciphersuite,
+        crypto: &impl OpenMlsCrypto,
+        sender_context: Option<SenderContext>,
+    ) -> Result<FramedContentBody, ValidationError> {
+        Ok(match self {
+            FramedContentBodyIn::Application(bytes) => FramedContentBody::Application(bytes),
+            FramedContentBodyIn::Proposal(proposal_in) => FramedContentBody::Proposal(
+                proposal_in.validate(crypto, ciphersuite, sender_context)?,
+            ),
+            FramedContentBodyIn::Commit(commit_in) => {
+                let sender_context = sender_context
+                    .ok_or(LibraryError::custom("Forgot the commit sender context"))?;
+                FramedContentBody::Commit(commit_in.validate(
+                    ciphersuite,
+                    crypto,
+                    sender_context,
+                )?)
+            }
+        })
+    }
 }
 
 #[derive(PartialEq, Debug, Clone, Serialize, Deserialize)]
@@ -159,10 +203,9 @@ impl TlsSerializeTrait for FramedContentTbsIn {
     }
 }
 
-// The following two `From` implementations break abstraction layers and MUST
+// The following `From` implementation( breaks abstraction layers and MUST
 // NOT be made available outside of tests or "test-utils".
-
-// TODO #1186: re-enable #[cfg(any(feature = "test-utils", test))]
+#[cfg(any(feature = "test-utils", test))]
 impl From<FramedContentBodyIn> for FramedContentBody {
     fn from(body: FramedContentBodyIn) -> Self {
         match body {
@@ -175,9 +218,9 @@ impl From<FramedContentBodyIn> for FramedContentBody {
     }
 }
 
-// TODO #1186: The following is temporary until the refactoring of incoming
-// messages is done.
-
+// The following `From` implementation( breaks abstraction layers and MUST
+// NOT be made available outside of tests or "test-utils".
+#[cfg(any(feature = "test-utils", test))]
 impl From<FramedContentIn> for crate::framing::mls_content::FramedContent {
     fn from(value: FramedContentIn) -> Self {
         Self {
@@ -214,6 +257,8 @@ impl From<crate::framing::mls_content::FramedContent> for FramedContentIn {
     }
 }
 
+// The following `From` implementation( breaks abstraction layers and MUST
+// NOT be made available outside of tests or "test-utils".
 #[cfg(any(feature = "test-utils", test))]
 impl From<FramedContentTbsIn> for crate::framing::mls_content::FramedContentTbs {
     fn from(value: FramedContentTbsIn) -> Self {

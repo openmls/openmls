@@ -254,9 +254,8 @@ pub(crate) struct PrivateContentAad<'a> {
     pub(crate) authenticated_data: VLByteSlice<'a>,
 }
 
-// TODO #1186: The following is temporary until the refactoring of incoming
-// messages is done.
-
+// The following `From` implementation( breaks abstraction layers and MUST
+// NOT be made available outside of tests or "test-utils".
 #[cfg(any(feature = "test-utils", test))]
 impl From<PrivateMessageIn> for PrivateMessage {
     fn from(value: PrivateMessageIn) -> Self {
