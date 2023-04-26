@@ -7,7 +7,6 @@ use crate::{
     },
     key_packages::KeyPackage,
     prelude::*,
-    test_utils::*,
 };
 
 mod test_diff;

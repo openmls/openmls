@@ -4,10 +4,9 @@ use lazy_static::lazy_static;
 use openmls::{
     prelude::{config::CryptoConfig, *},
     test_utils::*,
-    *,
 };
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_rust_crypto::OpenMlsRustCrypto;
+
 use openmls_traits::{signatures::Signer, types::SignatureScheme, OpenMlsCryptoProvider};
 
 lazy_static! {

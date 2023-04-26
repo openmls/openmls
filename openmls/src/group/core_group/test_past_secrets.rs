@@ -2,7 +2,7 @@
 
 use crate::{
     binary_tree::LeafNodeIndex, group::past_secrets::MessageSecretsStore,
-    schedule::message_secrets::MessageSecrets, test_utils::*,
+    schedule::message_secrets::MessageSecrets,
 };
 
 #[openmls_test::openmls_test]

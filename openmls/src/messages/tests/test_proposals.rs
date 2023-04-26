@@ -1,4 +1,4 @@
-use openmls_rust_crypto::OpenMlsRustCrypto;
+
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
@@ -8,7 +8,6 @@ use crate::{
         proposals::{Proposal, ProposalOrRef, RemoveProposal},
         proposals_in::ProposalOrRefIn,
     },
-    test_utils::*,
 };
 
 /// This test encodes and decodes the `ProposalOrRef` struct and makes sure the

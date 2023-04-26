@@ -1,6 +1,6 @@
 use core_group::test_core_group::setup_client;
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
+
+use openmls_traits::key_store::OpenMlsKeyStore;
 
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -11,7 +11,6 @@ use crate::{
     test_utils::test_framework::{
         errors::ClientError, ActionType::Commit, CodecUse, MlsGroupTestSetup,
     },
-    test_utils::*,
 };
 
 #[openmls_test::openmls_test]

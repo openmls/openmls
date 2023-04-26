@@ -1,6 +1,3 @@
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
-
 use super::CoreGroup;
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -21,7 +18,6 @@ use crate::{
     key_packages::{KeyPackageBundle, KeyPackageIn},
     messages::proposals::{AddProposal, Proposal, ProposalOrRef, ProposalType},
     schedule::psk::store::ResumptionPskStore,
-    test_utils::*,
     treesync::errors::LeafNodeValidationError,
 };
 

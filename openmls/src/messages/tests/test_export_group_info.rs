@@ -3,11 +3,7 @@ use tls_codec::{Deserialize, Serialize};
 use crate::{
     ciphersuite::signable::Verifiable,
     group::test_core_group::setup_alice_group,
-    messages::{
-        group_info::{GroupInfo, VerifiableGroupInfo},
-        *,
-    },
-    test_utils::*,
+    messages::group_info::{GroupInfo, VerifiableGroupInfo},
 };
 
 /// Tests the creation of an [UnverifiedGroupInfo] and verifies it was correctly signed.

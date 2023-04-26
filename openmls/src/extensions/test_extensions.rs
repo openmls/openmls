@@ -2,7 +2,7 @@
 //! Some basic unit tests for extensions
 //! Proper testing is done through the public APIs.
 
-use openmls_rust_crypto::OpenMlsRustCrypto;
+
 use tls_codec::{Deserialize, Serialize};
 
 use super::*;
@@ -13,7 +13,6 @@ use crate::{
     key_packages::*,
     messages::proposals::ProposalType,
     schedule::psk::store::ResumptionPskStore,
-    test_utils::*,
 };
 
 #[test]

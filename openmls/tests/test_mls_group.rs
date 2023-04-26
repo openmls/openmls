@@ -1,7 +1,6 @@
 use openmls::{
     prelude::{config::CryptoConfig, test_utils::new_credential, *},
     test_utils::*,
-    *,
 };
 
 use lazy_static::lazy_static;

@@ -2,10 +2,6 @@
 //! commit messages as defined in
 //! https://github.com/openmls/openmls/wiki/Message-validation
 
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
-use rstest::rstest;
-use rstest_reuse::apply;
 use tls_codec::{Deserialize, Serialize};
 
 use self::utils::*;

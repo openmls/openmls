@@ -2,7 +2,7 @@ use std::io::Write;
 
 use itertools::iproduct;
 use openmls_traits::{
-    crypto::OpenMlsCrypto, random::OpenMlsRand, types::Ciphersuite, OpenMlsCryptoProvider,
+    crypto::OpenMlsCrypto, random::OpenMlsRand, OpenMlsCryptoProvider,
 };
 use rstest::*;
 use rstest_reuse::{self, *};

@@ -1,13 +1,11 @@
 //! Key Schedule Unit Tests
 
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{random::OpenMlsRand, OpenMlsCryptoProvider};
+use openmls_traits::random::OpenMlsRand;
 
 use super::PskSecret;
 use crate::{
     ciphersuite::Secret,
     schedule::psk::{store::ResumptionPskStore, *},
-    test_utils::*,
     versions::ProtocolVersion,
 };
 
