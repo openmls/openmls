@@ -30,7 +30,10 @@ use crate::{
     schedule::psk::{store::ResumptionPskStore, *},
     test_utils::*,
     tree::sender_ratchet::*,
-    treesync::node::{leaf_node::Capabilities, Node},
+    treesync::node::{
+        leaf_node::{Capabilities, TreeInfoTbs},
+        NodeIn,
+    },
     versions::ProtocolVersion,
 };
 
@@ -174,6 +177,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
                 .clone(),
             capabilities,
             Extensions::default(),
+            TreeInfoTbs::Update(alice_group.own_tree_position()),
             &crypto,
             &alice_credential_with_key_and_signer.signer.clone(),
         )
@@ -279,7 +283,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
 
     let mut receiver_group = CoreGroup::new_from_welcome(
         alice_welcome.clone(),
-        Some(alice_group.public_group().export_ratchet_tree()),
+        Some(alice_group.public_group().export_ratchet_tree().into()),
         bob_key_package_bundle,
         &crypto,
         ResumptionPskStore::new(1024),
@@ -453,7 +457,7 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
 
     // RatchetTree
     let tv_ratchet_tree = tv.ratchet_tree;
-    let dec_ratchet_tree = Vec::<Option<Node>>::tls_deserialize_exact(&tv_ratchet_tree).unwrap();
+    let dec_ratchet_tree = Vec::<Option<NodeIn>>::tls_deserialize_exact(&tv_ratchet_tree).unwrap();
     let my_ratchet_tree = dec_ratchet_tree.tls_serialize_detached().unwrap();
     if tv_ratchet_tree != my_ratchet_tree {
         log::error!("  RatchetTree encoding mismatch");

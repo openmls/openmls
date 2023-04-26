@@ -30,7 +30,7 @@ use openmls::{
     schedule::{psk::ResumptionPskUsage, ExternalPsk, PreSharedKeyId, Psk},
     treesync::{
         test_utils::{read_keys_from_key_store, write_keys_from_key_store},
-        RatchetTree,
+        RatchetTreeIn,
     },
     versions::ProtocolVersion,
 };
@@ -144,10 +144,10 @@ pub fn wire_format_policy(encrypt: bool) -> WireFormatPolicy {
     }
 }
 
-fn ratchet_tree_from_config(bytes: Vec<u8>) -> Option<RatchetTree> {
+fn ratchet_tree_from_config(bytes: Vec<u8>) -> Option<RatchetTreeIn> {
     debug!("Deserializing `RatchetTree`.");
     if !bytes.is_empty() {
-        let ratchet_tree = RatchetTree::tls_deserialize_exact(bytes.as_slice()).unwrap();
+        let ratchet_tree = RatchetTreeIn::tls_deserialize_exact(bytes.as_slice()).unwrap();
         debug!("Got `RatchetTree`.");
         trace!(?ratchet_tree);
         Some(ratchet_tree)

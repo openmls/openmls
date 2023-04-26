@@ -11,7 +11,7 @@ use crate::{
     error::LibraryError,
 };
 
-use super::{hashes::TreeHashInput, node::leaf_node::OpenMlsLeafNode, Node, ParentNode};
+use super::{hashes::TreeHashInput, LeafNode, Node, ParentNode};
 
 #[allow(clippy::large_enum_variant)]
 pub(crate) enum TreeSyncNode {
@@ -61,7 +61,7 @@ impl From<TreeSyncNode> for TreeNode<TreeSyncLeafNode, TreeSyncParentNode> {
 /// hash values. Blank nodes are represented by [`TreeSyncNode`] instances where
 /// `node = None`.
 pub(crate) struct TreeSyncLeafNode {
-    node: Option<OpenMlsLeafNode>,
+    node: Option<LeafNode>,
 }
 
 impl TreeSyncLeafNode {
@@ -71,18 +71,12 @@ impl TreeSyncLeafNode {
     }
 
     /// Return a reference to the contained `Option<Node>`.
-    pub(in crate::treesync) fn node(&self) -> &Option<OpenMlsLeafNode> {
+    pub(in crate::treesync) fn node(&self) -> &Option<LeafNode> {
         &self.node
     }
 
-    /// Return a copy of this node, but remove any potential private key
-    /// material contained in the `Node`.
-    pub(in crate::treesync) fn node_without_index(&self) -> Option<OpenMlsLeafNode> {
-        self.node.as_ref().map(|node| node.clone_public())
-    }
-
     /// Return a mutable reference to the contained `Option<Node>`.
-    pub(in crate::treesync) fn node_mut(&mut self) -> &mut Option<OpenMlsLeafNode> {
+    pub(in crate::treesync) fn node_mut(&mut self) -> &mut Option<LeafNode> {
         &mut self.node
     }
 
@@ -94,16 +88,15 @@ impl TreeSyncLeafNode {
         ciphersuite: Ciphersuite,
         leaf_index: LeafNodeIndex,
     ) -> Result<Vec<u8>, LibraryError> {
-        let hash_input =
-            TreeHashInput::new_leaf(&leaf_index, self.node.as_ref().map(|node| &node.leaf_node));
+        let hash_input = TreeHashInput::new_leaf(&leaf_index, self.node.as_ref());
         let hash = hash_input.hash(backend, ciphersuite)?;
 
         Ok(hash)
     }
 }
 
-impl From<OpenMlsLeafNode> for TreeSyncLeafNode {
-    fn from(node: OpenMlsLeafNode) -> Self {
+impl From<LeafNode> for TreeSyncLeafNode {
+    fn from(node: LeafNode) -> Self {
         Self { node: Some(node) }
     }
 }

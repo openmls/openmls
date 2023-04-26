@@ -31,17 +31,13 @@ fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
 
     // Build a rudimentary tree with two populated and two empty leaf nodes.
     let ratchet_tree = RatchetTree::trimmed(vec![
-        Some(Node::LeafNode(
-            kpb_0.key_package().leaf_node().clone().into(),
-        )), // Leaf 0
+        Some(Node::LeafNode(kpb_0.key_package().leaf_node().clone())), // Leaf 0
         None,
         None, // Leaf 1
         None,
         None, // Leaf 2
         None,
-        Some(Node::LeafNode(
-            kpb_3.key_package().leaf_node().clone().into(),
-        )), // Leaf 3
+        Some(Node::LeafNode(kpb_3.key_package().leaf_node().clone())), // Leaf 3
     ]);
 
     // Get the encryption key pair from the leaf.
@@ -61,7 +57,7 @@ fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
     let mut diff = tree.empty_diff();
     let free_leaf_index = diff.free_leaf_index();
     let added_leaf_index = diff
-        .add_leaf(kpb_2.key_package().leaf_node().clone().into())
+        .add_leaf(kpb_2.key_package().leaf_node().clone())
         .expect("error adding leaf");
     assert_eq!(free_leaf_index.u32(), 1u32);
     assert_eq!(free_leaf_index, added_leaf_index);

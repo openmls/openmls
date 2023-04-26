@@ -2,7 +2,6 @@ use std::collections::HashSet;
 
 use super::{super::errors::*, *};
 use crate::{
-    ciphersuite::signable::Verifiable,
     framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, Sender},
     group::{
         core_group::{
@@ -12,7 +11,6 @@ use crate::{
         StagedCommit,
     },
     messages::{proposals::ProposalOrRef, Commit},
-    treesync::node::leaf_node::{LeafNodeTbs, TreeInfoTbs, VerifiableLeafNode},
 };
 
 impl PublicGroup {
@@ -140,38 +138,6 @@ impl PublicGroup {
 
         // Validation in case of path
         if let Some(path) = commit.path.clone() {
-            // TODO #106: Support external members
-            let leaf_node = path.leaf_node();
-            // TODO: The clone here is unnecessary. But the leaf node structs are
-            //       already too complex. This should be cleaned up in a follow
-            //       up.
-            let tbs = LeafNodeTbs::from(
-                leaf_node.clone(),
-                TreeInfoTbs::commit(self.group_id().clone(), sender_index),
-            );
-            let verifiable_leaf_node = VerifiableLeafNode {
-                tbs: &tbs,
-                signature: leaf_node.signature(),
-            };
-            let signature_public_key = leaf_node
-                .signature_key()
-                .clone()
-                .into_signature_public_key_enriched(self.ciphersuite().signature_algorithm());
-            if verifiable_leaf_node
-                .verify_no_out(backend.crypto(), &signature_public_key)
-                .is_err()
-            {
-                debug_assert!(
-                    false,
-                    "Verification failed of leaf node in commit path.\n\
-                     Leaf node identity: {:?} ({})",
-                    leaf_node.credential().identity(),
-                    String::from_utf8(leaf_node.credential().identity().to_vec())
-                        .unwrap_or_default()
-                );
-                return Err(StageCommitError::PathLeafNodeVerificationFailure);
-            };
-
             // Make sure that the new path key package is valid
             self.validate_path_key_package(path.leaf_node(), public_key_set)?;
         }
@@ -257,10 +223,10 @@ impl PublicGroup {
         };
 
         // Determine if Commit has a path
-        if let Some(path) = commit.path.clone() {
+        if let Some(update_path) = &commit.path {
             // Update the public group
             // ValSem202: Path must be the right length
-            diff.apply_received_update_path(backend, ciphersuite, sender_index, &path)?;
+            diff.apply_received_update_path(backend, ciphersuite, sender_index, update_path)?;
         } else if apply_proposals_values.path_required {
             // ValSem201
             return Err(StageCommitError::RequiredPathNotFound);

@@ -19,7 +19,13 @@ impl Backend {
         let mut url = self.ds_url.clone();
         url.set_path("/clients/register");
 
-        let client_info = ClientInfo::new(user.username.clone(), user.key_packages());
+        let client_info = ClientInfo::new(
+            user.username.clone(),
+            user.key_packages()
+                .into_iter()
+                .map(|(b, kp)| (b, KeyPackageIn::from(kp)))
+                .collect(),
+        );
         let response = post(&url, &client_info)?;
 
         Ok(String::from_utf8(response).unwrap())

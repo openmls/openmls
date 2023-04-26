@@ -715,7 +715,7 @@ pub fn group_setup(
         backend,
         &cfg,
         welcome.into_welcome().unwrap(),
-        Some(alice_group.export_ratchet_tree()),
+        Some(alice_group.export_ratchet_tree().into()),
     )
     .unwrap();
     (alice_group, bob_group, alice_signer, bob_signer)

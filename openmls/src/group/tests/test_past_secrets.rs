@@ -69,7 +69,7 @@ fn test_past_secrets_in_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
             backend,
             &mls_group_config,
             welcome.into_welcome().expect("Unexpected message type."),
-            Some(alice_group.export_ratchet_tree()),
+            Some(alice_group.export_ratchet_tree().into()),
         )
         .expect("Error creating group from Welcome");
 

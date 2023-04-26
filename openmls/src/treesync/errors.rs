@@ -149,6 +149,9 @@ pub enum TreeSyncFromNodesError {
     /// See [`PublicTreeError`] for more details.
     #[error(transparent)]
     PublicTreeError(#[from] PublicTreeError),
+    /// See [`RatchetTreeError`] for more details.
+    #[error(transparent)]
+    RatchetTreeError(#[from] RatchetTreeError),
 }
 
 /// TreeSync parent hash error
@@ -264,4 +267,15 @@ pub enum LifetimeError {
     /// Lifetime doesn't cover current time.
     #[error("Lifetime doesn't cover current time.")]
     NotCurrent,
+}
+
+/// Errors that can happen during path validation.
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+pub enum UpdatePathError {
+    /// The update path contains an invalid type of leaf node.
+    #[error("The update path contains an invalid type of leaf node.")]
+    InvalidType,
+    /// See [`SignatureError`] for more details.
+    #[error(transparent)]
+    SignatureError(#[from] SignatureError),
 }

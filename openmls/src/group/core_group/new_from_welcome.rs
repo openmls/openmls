@@ -15,7 +15,7 @@ impl CoreGroup {
     // Join a group from a welcome message
     pub fn new_from_welcome<KeyStore: OpenMlsKeyStore>(
         welcome: Welcome,
-        ratchet_tree: Option<RatchetTree>,
+        ratchet_tree: Option<RatchetTreeIn>,
         key_package_bundle: KeyPackageBundle,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         mut resumption_psk_store: ResumptionPskStore,

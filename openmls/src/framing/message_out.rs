@@ -178,7 +178,7 @@ impl From<MlsMessageIn> for MlsMessageOut {
         let body = match mls_message.body {
             MlsMessageInBody::Welcome(w) => MlsMessageOutBody::Welcome(w),
             MlsMessageInBody::GroupInfo(gi) => MlsMessageOutBody::GroupInfo(gi.into()),
-            MlsMessageInBody::KeyPackage(kp) => MlsMessageOutBody::KeyPackage(kp),
+            MlsMessageInBody::KeyPackage(kp) => MlsMessageOutBody::KeyPackage(kp.into()),
             MlsMessageInBody::PublicMessage(pm) => MlsMessageOutBody::PublicMessage(pm.into()),
             MlsMessageInBody::PrivateMessage(pm) => MlsMessageOutBody::PrivateMessage(pm.into()),
         };
@@ -197,7 +197,7 @@ impl From<MlsMessageOut> for MlsMessageIn {
             MlsMessageOutBody::GroupInfo(gi) => {
                 MlsMessageInBody::GroupInfo(gi.into_verifiable_group_info())
             }
-            MlsMessageOutBody::KeyPackage(kp) => MlsMessageInBody::KeyPackage(kp),
+            MlsMessageOutBody::KeyPackage(kp) => MlsMessageInBody::KeyPackage(kp.into()),
         };
         Self { version, body }
     }

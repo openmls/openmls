@@ -92,7 +92,7 @@ fn validation_test_setup(
         backend,
         &mls_group_config,
         welcome.into_welcome().expect("Unexpected message type."),
-        Some(alice_group.export_ratchet_tree()),
+        Some(alice_group.export_ratchet_tree().into()),
     )
     .expect("error creating group from welcome");
 
@@ -205,7 +205,7 @@ fn external_add_proposal_should_succeed(
             backend,
             &cfg,
             welcome.unwrap().into_welcome().unwrap(),
-            Some(alice_group.export_ratchet_tree()),
+            Some(alice_group.export_ratchet_tree().into()),
         )
         .unwrap();
         assert_eq!(charlie_group.members().count(), 3);
