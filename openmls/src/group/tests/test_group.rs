@@ -15,8 +15,8 @@ use crate::{
     *,
 };
 
-#[apply(ciphersuites_and_backends)]
-fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn create_commit_optional_path() {
     let group_aad = b"Alice's test group";
     // Framing parameters
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -201,8 +201,8 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         .expect("error merging pending commit");
 }
 
-#[apply(ciphersuites_and_backends)]
-fn basic_group_setup(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn basic_group_setup() {
     let group_aad = b"Alice's test group";
     // Framing parameters
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -273,8 +273,8 @@ fn basic_group_setup(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvi
 ///  - Charlie sends a message to the group
 ///  - Charlie updates and commits
 ///  - Charlie removes Bob
-#[apply(ciphersuites_and_backends)]
-fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn group_operations() {
     let group_aad = b"Alice's test group";
     // Framing parameters
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);

@@ -4,6 +4,8 @@ use openmls_traits::OpenMlsCryptoProvider;
 mod provider;
 pub use provider::*;
 
+pub use openmls_traits;
+
 #[derive(Default)]
 pub struct OpenMlsLibcrux {
     crypto: LibcruxProvider,

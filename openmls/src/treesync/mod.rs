@@ -722,7 +722,7 @@ mod test {
         RatchetTree::trimmed(vec![None]);
     }
 
-    #[apply(ciphersuites_and_backends)]
+    #[openmls_test::openmls_test]
     fn test_ratchet_tree_trailing_blank_nodes(
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,

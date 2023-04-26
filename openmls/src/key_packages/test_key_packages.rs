@@ -32,16 +32,16 @@ pub(crate) fn key_package(
     (key_package, credential, signer)
 }
 
-#[apply(ciphersuites_and_backends)]
-fn generate_key_package(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn generate_key_package() {
     let (key_package, _credential, _signature_keys) = key_package(ciphersuite, backend);
 
     let kpi = KeyPackageIn::from(key_package);
     assert!(kpi.validate(backend.crypto()).is_ok());
 }
 
-#[apply(ciphersuites_and_backends)]
-fn serialization(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn serialization() {
     let (key_package, _, _) = key_package(ciphersuite, backend);
 
     let encoded = key_package
@@ -55,8 +55,8 @@ fn serialization(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider)
     assert_eq!(key_package, decoded_key_package);
 }
 
-#[apply(ciphersuites_and_backends)]
-fn application_id_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn application_id_extension() {
     let credential = Credential::new(b"Sasha".to_vec(), CredentialType::Basic)
         .expect("An unexpected error occurred.");
     let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();

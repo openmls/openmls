@@ -15,7 +15,7 @@ mod test_unmerged_leaves;
 
 /// Pathological example taken from ...
 ///   https://github.com/mlswg/mls-protocol/issues/690#issue-1244086547.
-#[apply(ciphersuites_and_backends)]
+#[openmls_test::openmls_test]
 fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,

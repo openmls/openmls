@@ -10,7 +10,8 @@ members = [
     "libcrux_backend",
     "delivery-service/ds",
     "delivery-service/ds-lib",
-    "basic_credential"
+    "basic_credential",
+    "openmls_test",
 ]
 resolver = "2"
 

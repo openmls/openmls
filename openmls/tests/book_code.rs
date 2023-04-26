@@ -98,8 +98,8 @@ fn generate_key_package(
 ///  - Alice removes Charlie and adds Bob
 ///  - Bob leaves
 ///  - Test saving the group state
-#[apply(ciphersuites_and_backends)]
-fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn book_operations() {
     // Generate credential bundles
     let (alice_credential, alice_signature_keys) = generate_credential(
         "Alice".into(),
@@ -1284,8 +1284,8 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     );
 }
 
-#[apply(ciphersuites_and_backends)]
-fn test_empty_input_errors(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn test_empty_input_errors() {
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Generate credential bundles

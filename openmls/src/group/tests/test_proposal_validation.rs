@@ -230,8 +230,8 @@ enum KeyUniqueness {
 /// ValSem101:
 /// Add Proposal:
 /// Signature public key in proposals must be unique among proposals
-#[apply(ciphersuites_and_backends)]
-fn test_valsem101(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn test_valsem101() {
     for bob_and_charlie_share_keys in [
         KeyUniqueness::NegativeSameKey,
         KeyUniqueness::PositiveDifferentKey,
@@ -397,8 +397,8 @@ fn test_valsem101(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 /// ValSem102:
 /// Add Proposal:
 /// HPKE init key in proposals must be unique among proposals
-#[apply(ciphersuites_and_backends)]
-fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn test_valsem102() {
     for bob_and_charlie_share_keys in [
         KeyUniqueness::NegativeSameKey,
         KeyUniqueness::PositiveDifferentKey,
@@ -550,8 +550,8 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 /// Add Proposal:
 /// Signature public key in proposals must be unique among existing group
 /// members
-#[apply(ciphersuites_and_backends)]
-fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn test_valsem104() {
     for alice_and_bob_share_keys in [
         KeyUniqueness::NegativeSameKey,
         KeyUniqueness::PositiveDifferentKey,
@@ -805,8 +805,8 @@ fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 /// Add Proposal: HPKE init key and encryption key must be different
 /// ValSem114:
 /// Add Proposal: Encryption key must be unique in the tree
-#[apply(ciphersuites_and_backends)]
-fn test_valsem113_valsem114(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn test_valsem113_valsem114() {
     for alice_and_bob_share_keys in [
         KeyUniqueness::NegativeSameKey,
         KeyUniqueness::PositiveDifferentKey,
@@ -986,8 +986,8 @@ enum ProposalInclusion {
 /// ValSem106:
 /// Add Proposal:
 /// Required capabilities
-#[apply(ciphersuites_and_backends)]
-fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn test_valsem106() {
     let _ = pretty_env_logger::try_init();
 
     // Required capabilities validation includes two types of checks on the
@@ -1283,8 +1283,8 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 /// ValSem107:
 /// Remove Proposal:
 /// Removed member must be unique among proposals
-#[apply(ciphersuites_and_backends)]
-fn test_valsem107(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn test_valsem107() {
     // Helper function to unwrap a commit with a single proposal from an mls message.
     fn unwrap_specific_commit(commit_ref_remove: MlsMessageOut) -> Commit {
         let serialized_message = commit_ref_remove.tls_serialize_detached().unwrap();
@@ -1430,8 +1430,8 @@ fn test_valsem107(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 /// ValSem108
 /// Remove Proposal:
 /// Removed member must be an existing group member
-#[apply(ciphersuites_and_backends)]
-fn test_valsem108(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn test_valsem108() {
     // Before we can test creation or reception of (invalid) proposals, we set
     // up a new group with Alice and Bob.
     let ProposalValidationTestSetup {
@@ -1554,8 +1554,8 @@ fn test_valsem108(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 /// ValSem110
 /// Update Proposal:
 /// HPKE init key must be unique among existing members
-#[apply(ciphersuites_and_backends)]
-fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn test_valsem110() {
     // Before we can test creation or reception of (invalid) proposals, we set
     // up a new group with Alice and Bob.
     let ProposalValidationTestSetup {
@@ -1694,8 +1694,8 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 /// ValSem111
 /// Update Proposal:
 /// The sender of a full Commit must not include own update proposals
-#[apply(ciphersuites_and_backends)]
-fn test_valsem111(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn test_valsem111() {
     // Before we can test creation or reception of (invalid) proposals, we set
     // up a new group with Alice and Bob.
     let ProposalValidationTestSetup {
@@ -1859,8 +1859,8 @@ fn test_valsem111(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 /// ValSem112
 /// Update Proposal:
 /// The sender of a standalone update proposal must be of type member
-#[apply(ciphersuites_and_backends)]
-fn test_valsem112(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn test_valsem112() {
     // Before we can test creation or reception of (invalid) proposals, we set
     // up a new group with Alice and Bob.
     let ProposalValidationTestSetup {
@@ -1922,8 +1922,8 @@ fn test_valsem112(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
 // --- PreSharedKey Proposals ---
 
-#[apply(ciphersuites_and_backends)]
-fn test_valsem401_valsem402(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn test_valsem401_valsem402() {
     let ProposalValidationTestSetup {
         mut alice_group,
         alice_credential_with_key_and_signer,

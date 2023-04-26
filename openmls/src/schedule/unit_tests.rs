@@ -11,8 +11,8 @@ use crate::{
     versions::ProtocolVersion,
 };
 
-#[apply(ciphersuites_and_backends)]
-fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn test_psks() {
     // Create a new PSK secret from multiple PSKs.
     let prng = backend.rand();
 

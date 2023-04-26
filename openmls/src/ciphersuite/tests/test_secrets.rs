@@ -1,13 +1,9 @@
-use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_test::openmls_test;
 
-use crate::{
-    ciphersuite::{Ciphersuite, Secret},
-    test_utils::*,
-    versions::ProtocolVersion,
-};
+use crate::{ciphersuite::Secret, versions::ProtocolVersion};
 
-#[apply(ciphersuites_and_backends)]
-fn secret_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test]
+fn secret_init() {
     // These two secrets must be incompatible
     let default_secret =
         Secret::random(ciphersuite, backend, None).expect("Not enough randomness.");
@@ -20,8 +16,8 @@ fn secret_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
 }
 
 #[should_panic]
-#[apply(ciphersuites_and_backends)]
-fn secret_incompatible(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test]
+fn secret_incompatible() {
     // These two secrets must be incompatible
     let default_secret =
         Secret::random(ciphersuite, backend, None).expect("Not enough randomness.");

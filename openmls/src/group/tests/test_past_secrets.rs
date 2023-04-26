@@ -12,8 +12,8 @@ use crate::{
     group::{config::CryptoConfig, errors::*, *},
 };
 
-#[apply(ciphersuites_and_backends)]
-fn test_past_secrets_in_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn test_past_secrets_in_group() {
     // Test this for different parameters
     for max_epochs in (0..10usize).step_by(2) {
         let group_id = GroupId::from_slice(b"Test Group");

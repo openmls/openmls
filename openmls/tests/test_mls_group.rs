@@ -48,8 +48,8 @@ fn generate_key_package<KeyStore: OpenMlsKeyStore>(
 ///  - Alice removes Charlie and adds Bob
 ///  - Bob leaves
 ///  - Test saving the group state
-#[apply(ciphersuites_and_backends)]
-fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn mls_group_operations() {
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
         let group_id = GroupId::from_slice(b"Test Group");
 
@@ -935,8 +935,8 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     }
 }
 
-#[apply(ciphersuites_and_backends)]
-fn test_empty_input_errors(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn test_empty_input_errors() {
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Generate credential bundles
@@ -977,7 +977,7 @@ fn test_empty_input_errors(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypt
 }
 
 // This tests the ratchet tree extension usage flag in the configuration
-#[apply(ciphersuites_and_backends)]
+#[openmls_test::openmls_test]
 fn mls_group_ratchet_tree_extension(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,

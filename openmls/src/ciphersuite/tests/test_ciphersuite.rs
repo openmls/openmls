@@ -1,12 +1,12 @@
 //! Unit tests for the ciphersuites.
-use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_test::openmls_test;
 use openmls_traits::types::HpkeCiphertext;
 
-use crate::{ciphersuite::*, test_utils::*};
+use crate::ciphersuite::*;
 
 // Spot test to make sure hpke seal/open work.
-#[apply(ciphersuites_and_backends)]
-fn test_hpke_seal_open(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test]
+fn test_hpke_seal_open() {
     let plaintext = &[1, 2, 3];
     let kp = backend.crypto().derive_hpke_keypair(
         ciphersuite.hpke_config(),

@@ -9,6 +9,8 @@ use openmls_traits::OpenMlsCryptoProvider;
 mod provider;
 pub use provider::*;
 
+pub use openmls_traits;
+
 #[derive(Default, Debug)]
 pub struct OpenMlsRustCrypto {
     crypto: RustCrypto,

@@ -10,8 +10,8 @@ use crate::{
 use openmls_rust_crypto::OpenMlsRustCrypto;
 
 // Tests the different variants of the RemoveOperation enum.
-#[apply(ciphersuites_and_backends)]
-fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn test_remove_operation_variants() {
     let _ = backend;
     let alice_backend = OpenMlsRustCrypto::default();
     let bob_backend = OpenMlsRustCrypto::default();

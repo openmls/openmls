@@ -127,13 +127,13 @@ impl Secret {
         // We don't return an error here to keep the error propagation from
         // blowing up. If this fails, something in the library is really wrong
         // and we can't recover from it.
-        assert!(
+        debug_assert!(
             self.mls_version == ikm.mls_version,
             "{} != {}",
             self.mls_version,
             ikm.mls_version
         );
-        assert!(
+        debug_assert!(
             self.ciphersuite == ikm.ciphersuite,
             "{} != {}",
             self.ciphersuite,

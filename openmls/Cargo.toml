@@ -40,8 +40,8 @@ test-utils = [
     "openmls_basic_credential",
     "openmls_basic_credential/clonable",
     "openmls_basic_credential/test-utils",
+    "openmls_libcrux",
 ]
-libcrux = ["openmls_libcrux"] # libcrux needs to be enabled individually
 crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
 content-debug = [] # ☣️ Enable logging of sensitive message content
 
@@ -56,11 +56,7 @@ pretty_env_logger = "0.4"
 rstest = "^0.16"
 rstest_reuse = "0.4"
 tempfile = "3"
-
-# x64 targets get libcrux compiled into dev-dependencies.
-[target.'cfg(target_arch = "x86_64")'.dev-dependencies.openmls]
-path = "."
-features = ["test-utils", "libcrux"]
+openmls_test = { path = "../openmls_test" }
 
 [[bench]]
 name = "benchmark"

@@ -98,8 +98,8 @@ fn padding(backend: &impl OpenMlsCryptoProvider) {
 }
 
 /// Check that PrivateMessageContent's padding field is verified to be all-zero.
-#[apply(ciphersuites_and_backends)]
-fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn bad_padding() {
     let tests = {
         // { 2^i } ∪ { 2^i +- 1 }
         let padding_sizes = [

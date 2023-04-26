@@ -34,8 +34,8 @@ use crate::{
 /// the encrypted group info. As the group info is part of the decryption context of the encrypted
 /// group info, it is not possible to generate a matching encrypted group context with different
 /// parameters.
-#[apply(ciphersuites_and_backends)]
-fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn test_welcome_context_mismatch() {
     let _ = pretty_env_logger::try_init();
 
     // We need a ciphersuite that is different from the current one to create
@@ -190,8 +190,8 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, backend: &impl OpenMl
     .expect("Error creating group from a valid Welcome.");
 }
 
-#[apply(ciphersuites_and_backends)]
-fn test_welcome_msg(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn test_welcome_msg() {
     test_welcome_message(ciphersuite, backend);
 }
 

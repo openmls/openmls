@@ -92,8 +92,8 @@ fn receive_message(
 }
 
 // Test positive cases with all valid (pure & mixed) policies
-#[apply(ciphersuites_and_backends)]
-fn test_wire_policy_positive(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn test_wire_policy_positive() {
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
         let (mut alice_group, alice_credential_with_key_and_signer) =
             create_group(ciphersuite, backend, *wire_format_policy);
@@ -110,8 +110,8 @@ fn test_wire_policy_positive(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
 }
 
 // Test negative cases with only icompatible policies
-#[apply(ciphersuites_and_backends)]
-fn test_wire_policy_negative(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn test_wire_policy_negative() {
     // All combinations that are not part of WIRE_FORMAT_POLICIES
     let incompatible_policies = vec![
         WireFormatPolicy::new(

@@ -25,8 +25,8 @@ use crate::{
 };
 
 /// This tests serializing/deserializing PublicMessage
-#[apply(ciphersuites_and_backends)]
-fn codec_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn codec_plaintext() {
     let (_credential, signature_keys) = test_utils::new_credential(
         backend,
         b"Creator",
@@ -77,8 +77,8 @@ fn codec_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 }
 
 /// This tests serializing/deserializing PrivateMessage
-#[apply(ciphersuites_and_backends)]
-fn codec_ciphertext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn codec_ciphertext() {
     let (_credential, signature_keys) = test_utils::new_credential(
         backend,
         b"Creator",
@@ -154,8 +154,8 @@ fn codec_ciphertext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 }
 
 /// This tests the correctness of wire format checks
-#[apply(ciphersuites_and_backends)]
-fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn wire_format_checks() {
     let configuration = &SenderRatchetConfiguration::default();
     let (plaintext, _credential, _keys) =
         create_content(ciphersuite, WireFormat::PrivateMessage, backend);
@@ -329,8 +329,8 @@ fn create_content(
     (content, credential, signature_keys)
 }
 
-#[apply(ciphersuites_and_backends)]
-fn membership_tag(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn membership_tag() {
     let (_credential, signature_keys) = test_utils::new_credential(
         backend,
         b"Creator",
@@ -385,8 +385,8 @@ fn membership_tag(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .is_err());
 }
 
-#[apply(ciphersuites_and_backends)]
-fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn unknown_sender() {
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
     let configuration = &SenderRatchetConfiguration::default();
@@ -589,8 +589,8 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     );
 }
 
-#[apply(ciphersuites_and_backends)]
-fn confirmation_tag_presence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn confirmation_tag_presence() {
     let (framing_parameters, group_alice, alice_signature_keys, group_bob, _, _) =
         setup_alice_bob_group(ciphersuite, backend);
 

@@ -49,8 +49,8 @@ pub(crate) fn setup_alice_group(
     (group, alice_credential_with_key, alice_signature_keys, pk)
 }
 
-#[apply(ciphersuites_and_backends)]
-fn test_core_group_persistence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn test_core_group_persistence() {
     let (alice_group, _, _, _) = setup_alice_group(ciphersuite, backend);
 
     let mut file_out = tempfile::NamedTempFile::new().expect("Could not create file");
@@ -77,7 +77,7 @@ pub fn flip_last_byte(ctxt: &mut HpkeCiphertext) {
     ctxt.ciphertext.push(last_bits);
 }
 
-#[apply(ciphersuites_and_backends)]
+#[openmls_test::openmls_test]
 fn test_failed_groupinfo_decryption(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
@@ -194,8 +194,8 @@ fn test_failed_groupinfo_decryption(
 
 /// Test what happens if the KEM ciphertext for the receiver in the UpdatePath
 /// is broken.
-#[apply(ciphersuites_and_backends)]
-fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn test_update_path() {
     // === Alice creates a group with her and Bob ===
     let (
         framing_parameters,
@@ -329,8 +329,8 @@ fn setup_alice_bob(
 }
 
 // Test several scenarios when PSKs are used in a group
-#[apply(ciphersuites_and_backends)]
-fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn test_psks() {
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -451,8 +451,8 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
 }
 
 // Test several scenarios when PSKs are used in a group
-#[apply(ciphersuites_and_backends)]
-fn test_staged_commit_creation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn test_staged_commit_creation() {
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -519,8 +519,8 @@ fn test_staged_commit_creation(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
 }
 
 // Test processing of own commits
-#[apply(ciphersuites_and_backends)]
-fn test_own_commit_processing(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn test_own_commit_processing() {
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -592,7 +592,7 @@ pub(crate) fn setup_client(
     (credential_with_key, key_package_bundle, signature_keys, pk)
 }
 
-#[apply(ciphersuites_and_backends)]
+#[openmls_test::openmls_test]
 fn test_proposal_application_after_self_was_removed(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,

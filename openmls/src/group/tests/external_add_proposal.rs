@@ -102,7 +102,7 @@ fn validation_test_setup(
     }
 }
 
-#[apply(ciphersuites_and_backends)]
+#[openmls_test::openmls_test]
 fn external_add_proposal_should_succeed(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
@@ -212,7 +212,7 @@ fn external_add_proposal_should_succeed(
     }
 }
 
-#[apply(ciphersuites_and_backends)]
+#[openmls_test::openmls_test]
 fn external_add_proposal_should_be_signed_by_key_package_it_references(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
@@ -256,7 +256,7 @@ fn external_add_proposal_should_be_signed_by_key_package_it_references(
 }
 
 // TODO #1093: move this test to a dedicated external proposal ValSem test module once all external proposals implemented
-#[apply(ciphersuites_and_backends)]
+#[openmls_test::openmls_test]
 fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,

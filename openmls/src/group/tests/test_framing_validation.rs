@@ -105,8 +105,8 @@ fn validation_test_setup(
 }
 
 // ValSem002 Group id
-#[apply(ciphersuites_and_backends)]
-fn test_valsem002(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn test_valsem002() {
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -151,8 +151,8 @@ fn test_valsem002(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 }
 
 // ValSem003 Epoch
-#[apply(ciphersuites_and_backends)]
-fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn test_valsem003() {
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -245,8 +245,8 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 }
 
 // ValSem004 Sender: Member: check the member exists
-#[apply(ciphersuites_and_backends)]
-fn test_valsem004(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn test_valsem004() {
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -301,8 +301,8 @@ fn test_valsem004(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 }
 
 // ValSem005 Application messages must use ciphertext
-#[apply(ciphersuites_and_backends)]
-fn test_valsem005(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn test_valsem005() {
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -356,8 +356,8 @@ fn test_valsem005(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 }
 
 // ValSem006 Ciphertext: decryption needs to work
-#[apply(ciphersuites_and_backends)]
-fn test_valsem006(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn test_valsem006() {
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -404,8 +404,8 @@ fn test_valsem006(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 }
 
 // ValSem007 Membership tag presence
-#[apply(ciphersuites_and_backends)]
-fn test_valsem007(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn test_valsem007() {
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -450,8 +450,8 @@ fn test_valsem007(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 }
 
 // ValSem008 Membership tag verification
-#[apply(ciphersuites_and_backends)]
-fn test_valsem008(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn test_valsem008() {
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -500,8 +500,8 @@ fn test_valsem008(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 }
 
 // ValSem009 Confirmation tag presence
-#[apply(ciphersuites_and_backends)]
-fn test_valsem009(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn test_valsem009() {
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -555,8 +555,8 @@ fn test_valsem009(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 }
 
 // ValSem010 Signature verification
-#[apply(ciphersuites_and_backends)]
-fn test_valsem010(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn test_valsem010() {
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,

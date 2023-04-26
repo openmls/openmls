@@ -10,8 +10,8 @@ use crate::{
 };
 
 // Verifies that when we add a leaf to a tree with blank leaf nodes, the leaf will be added at the leftmost free leaf index
-#[apply(ciphersuites_and_backends)]
-fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn test_free_leaf_computation() {
     let (c_0, sk_0) = new_credential(
         backend,
         b"leaf0",

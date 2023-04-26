@@ -84,7 +84,7 @@ fn validation_test_setup(
     (alice_group, alice_signer_when_keys)
 }
 
-#[apply(ciphersuites_and_backends)]
+#[openmls_test::openmls_test]
 fn external_remove_proposal_should_remove_member(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
@@ -174,7 +174,7 @@ fn external_remove_proposal_should_remove_member(
     );
 }
 
-#[apply(ciphersuites_and_backends)]
+#[openmls_test::openmls_test]
 fn external_remove_proposal_should_fail_when_invalid_external_senders_index(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
@@ -226,7 +226,7 @@ fn external_remove_proposal_should_fail_when_invalid_external_senders_index(
     );
 }
 
-#[apply(ciphersuites_and_backends)]
+#[openmls_test::openmls_test]
 fn external_remove_proposal_should_fail_when_invalid_signature(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
@@ -281,7 +281,7 @@ fn external_remove_proposal_should_fail_when_invalid_signature(
     assert_eq!(error, ProcessMessageError::InvalidSignature);
 }
 
-#[apply(ciphersuites_and_backends)]
+#[openmls_test::openmls_test]
 fn external_remove_proposal_should_fail_when_no_external_senders(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,

@@ -18,8 +18,8 @@ use crate::{
 
 use super::PublicGroup;
 
-#[apply(ciphersuites_and_backends)]
-fn public_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn public_group() {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =

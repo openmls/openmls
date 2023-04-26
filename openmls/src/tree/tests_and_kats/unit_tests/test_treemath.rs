@@ -35,8 +35,8 @@ fn test_dir_path() {
     }
 }
 
-#[apply(ciphersuites_and_backends)]
-fn test_tree_hash(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn test_tree_hash() {
     fn create_identity(
         id: &[u8],
         ciphersuite: Ciphersuite,

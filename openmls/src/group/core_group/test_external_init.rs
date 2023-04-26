@@ -17,8 +17,8 @@ use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 
 use super::{proposals::ProposalStore, CoreGroup};
 
-#[apply(ciphersuites_and_backends)]
-fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn test_external_init() {
     let (
         framing_parameters,
         mut group_alice,
@@ -180,7 +180,7 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
     );
 }
 
-#[apply(ciphersuites_and_backends)]
+#[openmls_test::openmls_test]
 fn test_external_init_single_member_group(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
@@ -242,7 +242,7 @@ fn test_external_init_single_member_group(
     );
 }
 
-#[apply(ciphersuites_and_backends)]
+#[openmls_test::openmls_test]
 fn test_external_init_broken_signature(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
