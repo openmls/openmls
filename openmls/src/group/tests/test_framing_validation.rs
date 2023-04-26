@@ -1,12 +1,8 @@
 //! This module tests the validation of message framing as defined in
 //! https://openmls.tech/book/message_validation.html#semantic-validation-of-message-framing
 
-
 use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use tls_codec::{Deserialize, Serialize};
-
-
-
 
 use crate::{
     binary_tree::LeafNodeIndex,

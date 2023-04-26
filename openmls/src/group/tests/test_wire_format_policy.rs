@@ -1,10 +1,6 @@
 //! This module tests the different values for `WireFormatPolicy`
 
-
 use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsCryptoProvider};
-
-
-
 
 use crate::{
     framing::*,

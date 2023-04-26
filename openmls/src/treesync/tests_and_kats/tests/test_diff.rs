@@ -1,8 +1,3 @@
-
-
-
-
-
 use crate::{
     credentials::{test_utils::new_credential, CredentialType},
     key_packages::KeyPackageBundle,

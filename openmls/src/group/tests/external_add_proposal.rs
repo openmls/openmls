@@ -1,8 +1,5 @@
 use openmls_basic_credential::SignatureKeyPair;
 
-
-
-
 use crate::{
     binary_tree::LeafNodeIndex,
     framing::*,

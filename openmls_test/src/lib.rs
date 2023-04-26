@@ -9,8 +9,7 @@ use syn::{parse_macro_input, ItemFn};
 
 #[proc_macro_attribute]
 pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    let item_copy = item.clone();
-    let func = parse_macro_input!(item_copy as ItemFn);
+    let func = parse_macro_input!(item as ItemFn);
 
     let attrs = func.attrs;
     let sig = func.sig;

@@ -1,11 +1,5 @@
 //! This module contains tests regarding the use of [`MessageSecretsStore`] in [`MlsGroup`]
 
-
-
-
-
-
-
 use super::utils::{generate_credential_bundle, generate_key_package};
 use crate::{
     framing::{MessageDecryptionError, ProcessedMessageContent},

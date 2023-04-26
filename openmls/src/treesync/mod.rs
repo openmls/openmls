@@ -18,9 +18,6 @@
 // Finally, this module contains the [`treekem`] module, which allows the
 // encryption and decryption of updates to the tree.
 
-
-
-
 #[cfg(any(feature = "test-utils", test))]
 use std::fmt;
 

@@ -4,7 +4,6 @@ use openmls_traits::{
     crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider,
 };
 
-
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{

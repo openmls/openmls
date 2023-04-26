@@ -11,9 +11,6 @@ use crate::{
     messages::proposals::{ProposalOrRef, ProposalType},
 };
 
-
-
-
 use super::{proposals::ProposalStore, CoreGroup};
 
 #[openmls_test::openmls_test]

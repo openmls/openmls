@@ -321,7 +321,7 @@ fn test_setup(backend: &impl OpenMlsCryptoProvider) {
     };
     let group_config = CoreGroupConfig::default();
     let test_group_config = TestGroupConfig {
-        ciphersuite: ciphersuite,
+        ciphersuite,
         config: group_config,
         members: vec![test_client_config_a.clone(), test_client_config_b.clone()],
     };

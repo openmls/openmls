@@ -293,7 +293,7 @@ impl OpenMlsCrypto for LibcruxProvider {
 
         let enc_ctxt = hpke::HpkeSeal(
             hpke_config,
-            pk_r,
+            &hpke::kem::DeserializePublicKey(hpke_config.1, pk_r).unwrap(),
             info,
             aad,
             ptxt,
@@ -351,7 +351,8 @@ impl OpenMlsCrypto for LibcruxProvider {
 
         let exported_secret = hpke::SendExport(
             hpke_config,
-            pk_r,
+            &hpke::kem::DeserializePublicKey(hpke_config.1, pk_r)
+                .map_err(|_| CryptoError::ExporterError)?,
             info,
             exporter_context.to_vec(),
             exporter_length,

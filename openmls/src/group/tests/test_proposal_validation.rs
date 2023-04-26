@@ -6,7 +6,6 @@ use openmls_traits::{
     key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite, OpenMlsCryptoProvider,
 };
 
-
 use tls_codec::{Deserialize, Serialize};
 
 use super::utils::{
