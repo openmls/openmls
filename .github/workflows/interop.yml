@@ -95,10 +95,14 @@ jobs:
           ./mlspp/cmd/interop/mlspp_client -live 12345&
 
           cd mls-implementations/interop
-          for scenario in {welcome_join.json,external_join.json,commit.json,application.json};
+          # TODO(#1238):
+          # * Add `commit.json` as soon as group context extensions proposals are supported.
+          # Note: It's also possible to remove GCE proposals by hand from `commit.json`.
+          #       But let's not do this in CI for now and hope that it isn't needed anymore soon.
+          for scenario in {welcome_join.json,external_join.json,application.json};
           do
             echo Running configs/$scenario
-            errors=$(./test-runner/test-runner -fail-fast -client localhost:50051 -client localhost:12345 -config=configs/$scenario | grep error --count)
+            errors=$(./test-runner/test-runner -fail-fast -client localhost:50051 -client localhost:12345 -config=configs/$scenario | grep error | wc -l)
             if [ "$errors" = "0" ];
             then
               echo "Success";
