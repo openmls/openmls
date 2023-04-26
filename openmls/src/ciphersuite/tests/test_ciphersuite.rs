@@ -1,5 +1,4 @@
 //! Unit tests for the ciphersuites.
-use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::types::HpkeCiphertext;
 
@@ -73,32 +72,4 @@ fn test_hpke_seal_open(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPro
         .expect_err("Erroneously correct ciphertext decryption of broken ciphertext."),
         CryptoError::HpkeDecryptionError
     );
-}
-
-#[test]
-fn supported_ciphersuites() {
-    const SUPPORTED_CIPHERSUITE_NAMES: &[Ciphersuite] = &[
-        Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
-        Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-        Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
-    ];
-
-    const UNSUPPORTED_CIPHERSUITE_NAMES: &[Ciphersuite] = &[
-        Ciphersuite::MLS_256_DHKEMX448_AES256GCM_SHA512_Ed448,
-        Ciphersuite::MLS_256_DHKEMP521_AES256GCM_SHA512_P521,
-        Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448,
-        Ciphersuite::MLS_256_DHKEMP384_AES256GCM_SHA384_P384,
-    ];
-
-    for ciphersuite in SUPPORTED_CIPHERSUITE_NAMES {
-        // Create signature keypair
-        let _signature_keypair = SignatureKeyPair::new(ciphersuite.signature_algorithm())
-            .expect("Could not create signature keypair.");
-    }
-
-    for ciphersuite in UNSUPPORTED_CIPHERSUITE_NAMES {
-        // Create signature keypair
-        let _signature_keypair = SignatureKeyPair::new(SignatureScheme::from(*ciphersuite))
-            .expect_err("Could create signature keypair with unsupported ciphersuite.");
-    }
 }

@@ -11,9 +11,9 @@ use crate::{
     group::{config::CryptoConfig, errors::*, *},
     key_packages::*,
     messages::{group_info::GroupInfoTBS, *},
-    schedule::psk::*,
+    schedule::psk::{store::ResumptionPskStore, ExternalPsk, PreSharedKeyId, Psk},
     test_utils::*,
-    treesync::errors::ApplyUpdatePathError,
+    treesync::{errors::ApplyUpdatePathError, node::leaf_node::TreeInfoTbs},
 };
 
 use wasm_bindgen_test::wasm_bindgen_test;
@@ -180,8 +180,14 @@ fn test_failed_groupinfo_decryption(
     // Now build the welcome message.
     let broken_welcome = Welcome::new(ciphersuite, broken_secrets, encrypted_group_info);
 
-    let error = CoreGroup::new_from_welcome(broken_welcome, None, key_package_bundle, backend)
-        .expect_err("Creation of core group from a broken Welcome was successful.");
+    let error = CoreGroup::new_from_welcome(
+        broken_welcome,
+        None,
+        key_package_bundle,
+        backend,
+        ResumptionPskStore::new(1024),
+    )
+    .expect_err("Creation of core group from a broken Welcome was successful.");
 
     assert_eq!(
         error,
@@ -207,9 +213,9 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     // === Bob updates and commits ===
     let bob_old_leaf = group_bob.own_leaf_node().unwrap();
     let bob_update_leaf_node = bob_old_leaf
-        .leaf_node()
         .updated(
             CryptoConfig::with_default_version(ciphersuite),
+            TreeInfoTbs::Update(group_bob.own_tree_position()),
             backend,
             &bob_signature_keys,
         )
@@ -223,8 +229,12 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         )
         .expect("Could not create proposal.");
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, update_proposal_bob)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend,
+            update_proposal_bob,
+        )
+        .expect("Could not create QueuedProposal."),
     );
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
@@ -345,9 +355,8 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let preshared_key_id =
         PreSharedKeyId::new(ciphersuite, backend.rand(), Psk::External(external_psk))
             .expect("An unexpected error occured.");
-    let psk_bundle = PskBundle::new(secret).expect("Could not create PskBundle.");
     preshared_key_id
-        .write_to_key_store(backend, ciphersuite, psk_bundle.secret().as_slice())
+        .write_to_key_store(backend, ciphersuite, secret.as_slice())
         .unwrap();
     let mut alice_group = CoreGroup::builder(
         GroupId::random(backend),
@@ -374,11 +383,11 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         .expect("Could not create proposal");
 
     let mut proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
     proposal_store.add(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, psk_proposal)
+        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, psk_proposal)
             .expect("Could not create QueuedProposal."),
     );
     log::info!(" >>> Creating commit ...");
@@ -402,18 +411,19 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
-        Some(ratchet_tree),
+        Some(ratchet_tree.into()),
         bob_key_package_bundle,
         backend,
+        ResumptionPskStore::new(1024),
     )
     .expect("Could not create new group from Welcome");
 
     // === Bob updates and commits ===
     let bob_old_leaf = group_bob.own_leaf_node().unwrap();
     let bob_update_leaf_node = bob_old_leaf
-        .leaf_node()
         .updated(
             CryptoConfig::with_default_version(ciphersuite),
+            TreeInfoTbs::Update(group_bob.own_tree_position()),
             backend,
             &bob_signature_keys,
         )
@@ -427,8 +437,12 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         )
         .expect("Could not create proposal.");
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, update_proposal_bob)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend,
+            update_proposal_bob,
+        )
+        .expect("Could not create QueuedProposal."),
     );
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
@@ -469,7 +483,7 @@ fn test_staged_commit_creation(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         )
         .expect("Could not create proposal.");
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
     let params = CreateCommitParams::builder()
@@ -491,9 +505,10 @@ fn test_staged_commit_creation(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
-        Some(alice_group.public_group().export_ratchet_tree()),
+        Some(alice_group.public_group().export_ratchet_tree().into()),
         bob_key_package_bundle,
         backend,
+        ResumptionPskStore::new(1024),
     )
     .expect("An unexpected error occurred.");
 
@@ -622,7 +637,7 @@ fn test_proposal_application_after_self_was_removed(
         .expect("Could not create proposal");
 
     let bob_add_proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -645,9 +660,10 @@ fn test_proposal_application_after_self_was_removed(
         add_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
-        Some(ratchet_tree),
+        Some(ratchet_tree.into()),
         bob_kpb,
         backend,
+        ResumptionPskStore::new(1024),
     )
     .expect("Error joining group.");
 
@@ -677,13 +693,21 @@ fn test_proposal_application_after_self_was_removed(
         .expect("Could not create proposal");
 
     let mut remove_add_proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_remove_proposal)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend,
+            bob_remove_proposal,
+        )
+        .expect("Could not create QueuedProposal."),
     );
 
     remove_add_proposal_store.add(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, charlie_add_proposal)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend,
+            charlie_add_proposal,
+        )
+        .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -716,9 +740,10 @@ fn test_proposal_application_after_self_was_removed(
         remove_add_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
-        Some(ratchet_tree),
+        Some(ratchet_tree.into()),
         charlie_kpb,
         backend,
+        ResumptionPskStore::new(1024),
     )
     .expect("Error joining group.");
 

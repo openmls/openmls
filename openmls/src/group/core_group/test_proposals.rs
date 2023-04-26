@@ -18,8 +18,9 @@ use crate::{
         test_core_group::setup_client,
         CreateCommitParams, GroupContext, GroupId,
     },
-    key_packages::KeyPackageBundle,
+    key_packages::{KeyPackageBundle, KeyPackageIn},
     messages::proposals::{AddProposal, Proposal, ProposalOrRef, ProposalType},
+    schedule::psk::store::ResumptionPskStore,
     test_utils::*,
     treesync::errors::LeafNodeValidationError,
 };
@@ -41,7 +42,8 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
     let alice_update_key_package_bundle =
         KeyPackageBundle::new(backend, &alice_signer, ciphersuite, alice_credential);
     let alice_update_key_package = alice_update_key_package_bundle.key_package();
-    assert!(alice_update_key_package.verify(backend.crypto()).is_ok());
+    let kpi = KeyPackageIn::from(alice_update_key_package.clone());
+    assert!(kpi.validate(backend.crypto()).is_ok());
 
     let group_context = GroupContext::new(
         ciphersuite,
@@ -98,19 +100,19 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
     )
     .unwrap();
 
-    let proposal_reference_add_alice1 = ProposalRef::from_authenticated_content(
+    let proposal_reference_add_alice1 = ProposalRef::from_authenticated_content_by_ref(
         backend.crypto(),
         ciphersuite,
         &mls_plaintext_add_alice1,
     )
     .unwrap();
-    let proposal_reference_add_alice2 = ProposalRef::from_authenticated_content(
+    let proposal_reference_add_alice2 = ProposalRef::from_authenticated_content_by_ref(
         backend.crypto(),
         ciphersuite,
         &mls_plaintext_add_alice2,
     )
     .unwrap();
-    let proposal_reference_add_bob = ProposalRef::from_authenticated_content(
+    let proposal_reference_add_bob = ProposalRef::from_authenticated_content_by_ref(
         backend.crypto(),
         ciphersuite,
         &mls_plaintext_add_bob,
@@ -118,12 +120,20 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
     .unwrap();
 
     let mut proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, mls_plaintext_add_alice1)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend,
+            mls_plaintext_add_alice1,
+        )
+        .expect("Could not create QueuedProposal."),
     );
     proposal_store.add(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, mls_plaintext_add_alice2)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend,
+            mls_plaintext_add_alice2,
+        )
+        .expect("Could not create QueuedProposal."),
     );
 
     let (proposal_queue, own_update) = ProposalQueue::filter_proposals(
@@ -174,7 +184,8 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     let alice_update_key_package_bundle =
         KeyPackageBundle::new(backend, &alice_signer, ciphersuite, alice_credential);
     let alice_update_key_package = alice_update_key_package_bundle.key_package();
-    assert!(alice_update_key_package.verify(backend.crypto()).is_ok());
+    let kpi = KeyPackageIn::from(alice_update_key_package.clone());
+    assert!(kpi.validate(backend.crypto()).is_ok());
 
     let group_context = GroupContext::new(
         ciphersuite,
@@ -205,7 +216,7 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         &alice_signer,
     )
     .unwrap();
-    let proposal_reference_add_alice1 = ProposalRef::from_authenticated_content(
+    let proposal_reference_add_alice1 = ProposalRef::from_authenticated_content_by_ref(
         backend.crypto(),
         ciphersuite,
         &mls_plaintext_add_alice1,
@@ -223,12 +234,20 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
     // This should set the order of the proposals.
     let mut proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, mls_plaintext_add_alice1)
-            .unwrap(),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend,
+            mls_plaintext_add_alice1,
+        )
+        .unwrap(),
     );
     proposal_store.add(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, mls_plaintext_add_bob1)
-            .unwrap(),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend,
+            mls_plaintext_add_bob1,
+        )
+        .unwrap(),
     );
 
     let proposal_or_refs = vec![
@@ -380,7 +399,7 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMl
         .expect("Could not create proposal");
 
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
     log::info!(" >>> Creating commit ...");
@@ -406,9 +425,10 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMl
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
-        Some(ratchet_tree),
+        Some(ratchet_tree.into()),
         bob_key_package_bundle,
         backend,
+        ResumptionPskStore::new(1024),
     )
     .expect("Error joining group.");
 }
@@ -476,7 +496,7 @@ fn test_group_context_extension_proposal_fails(
         .expect("Could not create proposal");
 
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
     log::info!(" >>> Creating commit ...");
@@ -500,9 +520,10 @@ fn test_group_context_extension_proposal_fails(
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
-        Some(ratchet_tree),
+        Some(ratchet_tree.into()),
         bob_key_package_bundle,
         backend,
+        ResumptionPskStore::new(1024),
     )
     .expect("Error joining group.");
 
@@ -555,7 +576,7 @@ fn test_group_context_extension_proposal(
         .expect("Could not create proposal");
 
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
     log::info!(" >>> Creating commit ...");
@@ -580,9 +601,10 @@ fn test_group_context_extension_proposal(
         create_commit_results
             .welcome_option
             .expect("An unexpected error occurred."),
-        Some(ratchet_tree),
+        Some(ratchet_tree.into()),
         bob_key_package_bundle,
         backend,
+        ResumptionPskStore::new(1024),
     )
     .expect("Error joining group.");
 
@@ -602,7 +624,7 @@ fn test_group_context_extension_proposal(
         .expect("Error creating gce proposal.");
 
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, gce_proposal)
+        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, gce_proposal)
             .expect("Could not create QueuedProposal."),
     );
     log::info!(" >>> Creating commit ...");

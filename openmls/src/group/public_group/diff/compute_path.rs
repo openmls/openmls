@@ -15,7 +15,7 @@ use crate::{
     schedule::CommitSecret,
     treesync::{
         node::{
-            encryption_keys::EncryptionKeyPair, leaf_node::OpenMlsLeafNode,
+            encryption_keys::EncryptionKeyPair, leaf_node::LeafNode,
             parent_node::PlainUpdatePathNode,
         },
         treekem::UpdatePath,
@@ -68,8 +68,7 @@ impl<'a> PublicGroupDiff<'a> {
                 credential_with_key.ok_or(CreateCommitError::MissingCredential)?,
             )?;
 
-            let mut leaf_node: OpenMlsLeafNode = key_package.into();
-            leaf_node.set_leaf_index(leaf_index);
+            let leaf_node: LeafNode = key_package.into();
             self.diff
                 .add_leaf(leaf_node)
                 .map_err(|_| LibraryError::custom("Tree full: cannot add more members"))?;
@@ -80,8 +79,14 @@ impl<'a> PublicGroupDiff<'a> {
                 .diff
                 .leaf_mut(leaf_index)
                 .ok_or_else(|| LibraryError::custom("Unable to get own leaf from diff"))?;
-            let encryption_keypair =
-                own_diff_leaf.rekey(&group_id, ciphersuite, version, backend, signer)?;
+            let encryption_keypair = own_diff_leaf.rekey(
+                &group_id,
+                leaf_index,
+                ciphersuite,
+                version,
+                backend,
+                signer,
+            )?;
             vec![encryption_keypair]
         };
 
@@ -117,7 +122,7 @@ impl<'a> PublicGroupDiff<'a> {
             .leaf(leaf_index)
             .ok_or_else(|| LibraryError::custom("Couldn't find own leaf"))?
             .clone();
-        let encrypted_path = UpdatePath::new(leaf_node.into(), encrypted_path);
+        let encrypted_path = UpdatePath::new(leaf_node, encrypted_path);
         Ok(PathComputationResult {
             commit_secret: Some(commit_secret),
             encrypted_path: Some(encrypted_path),

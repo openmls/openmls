@@ -47,7 +47,7 @@ impl MlsGroup {
     /// Returns a resumption psk for a given epoch. If no resumption psk
     /// is available for that epoch,  `None` is returned.
     pub fn get_past_resumption_psk(&self, epoch: GroupEpoch) -> Option<&ResumptionPskSecret> {
-        self.resumption_psk_store.get(epoch)
+        self.group.resumption_psk_store.get(epoch)
     }
 
     /// Export a group info object for this group.

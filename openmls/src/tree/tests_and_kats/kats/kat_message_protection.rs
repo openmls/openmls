@@ -270,8 +270,12 @@ pub fn run_test_vector(
             .expect("Could not create proposal.");
 
         let proposal_store = ProposalStore::from_queued_proposal(
-            QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
-                .expect("Could not create QueuedProposal."),
+            QueuedProposal::from_authenticated_content_by_ref(
+                ciphersuite,
+                backend,
+                bob_add_proposal,
+            )
+            .expect("Could not create QueuedProposal."),
         );
 
         let params = CreateCommitParams::builder()
@@ -349,8 +353,10 @@ pub fn run_test_vector(
             .public_group()
             .parse_message(decrypted_message, group.message_secrets_store())
             .unwrap();
-        let processed_message: AuthenticatedContent =
-            processed_unverified_message.verify(backend).unwrap().0;
+        let processed_message: AuthenticatedContent = processed_unverified_message
+            .verify(ciphersuite, backend.crypto())
+            .unwrap()
+            .0;
         match processed_message.content().to_owned() {
             FramedContentBody::Proposal(p) => assert_eq!(proposal, p.into()),
             _ => panic!("Wrong processed message content"),
@@ -413,8 +419,10 @@ pub fn run_test_vector(
             .public_group()
             .parse_message(decrypted_message, group.message_secrets_store())
             .unwrap();
-        let processed_message: AuthenticatedContent =
-            processed_unverified_message.verify(backend).unwrap().0;
+        let processed_message: AuthenticatedContent = processed_unverified_message
+            .verify(ciphersuite, backend.crypto())
+            .unwrap()
+            .0;
         match processed_message.content().to_owned() {
             FramedContentBody::Commit(c) => {
                 assert_eq!(commit, CommitIn::from(c))
@@ -435,8 +443,10 @@ pub fn run_test_vector(
             .public_group()
             .parse_message(decrypted_message, group.message_secrets_store())
             .unwrap();
-        let processed_message: AuthenticatedContent =
-            processed_unverified_message.verify(backend).unwrap().0;
+        let processed_message: AuthenticatedContent = processed_unverified_message
+            .verify(ciphersuite, backend.crypto())
+            .unwrap()
+            .0;
         match processed_message.content().to_owned() {
             FramedContentBody::Commit(c) => {
                 assert_eq!(commit, CommitIn::from(c))

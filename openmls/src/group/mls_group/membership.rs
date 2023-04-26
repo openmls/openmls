@@ -5,14 +5,13 @@
 use core_group::create_commit_params::CreateCommitParams;
 use openmls_traits::signatures::Signer;
 
-use crate::{
-    binary_tree::array_representation::LeafNodeIndex, ciphersuite::hash_ref::ProposalRef,
-    group::errors::CreateAddProposalError, messages::group_info::GroupInfo, treesync::LeafNode,
-};
-
 use super::{
     errors::{AddMembersError, LeaveGroupError, RemoveMembersError},
     *,
+};
+use crate::{
+    binary_tree::array_representation::LeafNodeIndex, messages::group_info::GroupInfo,
+    treesync::LeafNode,
 };
 
 impl MlsGroup {
@@ -91,10 +90,7 @@ impl MlsGroup {
 
     /// Returns a reference to the own [`LeafNode`].
     pub fn own_leaf(&self) -> Option<&LeafNode> {
-        self.group
-            .public_group()
-            .leaf(self.group.own_leaf_index())
-            .map(|l| l.leaf_node())
+        self.group.public_group().leaf(self.group.own_leaf_index())
     }
 
     /// Removes members from the group.
@@ -166,101 +162,6 @@ impl MlsGroup {
         ))
     }
 
-    /// Creates proposals to add members to the group.
-    ///
-    /// Returns an error if there is a pending commit.
-    pub fn propose_add_member(
-        &mut self,
-        backend: &impl OpenMlsCryptoProvider,
-        signer: &impl Signer,
-        key_package: &KeyPackage,
-    ) -> Result<(MlsMessageOut, ProposalRef), ProposeAddMemberError> {
-        self.is_operational()?;
-
-        let add_proposal = self
-            .group
-            .create_add_proposal(self.framing_parameters(), key_package.clone(), signer)
-            .map_err(|e| match e {
-                CreateAddProposalError::LibraryError(e) => e.into(),
-                CreateAddProposalError::LeafNodeValidation(error) => {
-                    ProposeAddMemberError::LeafNodeValidation(error)
-                }
-            })?;
-
-        let proposal = QueuedProposal::from_authenticated_content(
-            self.ciphersuite(),
-            backend,
-            add_proposal.clone(),
-        )?;
-        let proposal_ref = proposal.proposal_reference();
-        self.proposal_store.add(proposal);
-
-        let mls_message = self.content_to_mls_message(add_proposal, backend)?;
-
-        // Since the state of the group might be changed, arm the state flag
-        self.flag_state_change();
-
-        Ok((mls_message, proposal_ref))
-    }
-
-    /// Creates proposals to remove members from the group.
-    /// The `member` has to be the member's leaf index.
-    ///
-    /// Returns an error if there is a pending commit.
-    pub fn propose_remove_member(
-        &mut self,
-        backend: &impl OpenMlsCryptoProvider,
-        signer: &impl Signer,
-        member: LeafNodeIndex,
-    ) -> Result<(MlsMessageOut, ProposalRef), ProposeRemoveMemberError> {
-        self.is_operational()?;
-
-        let remove_proposal = self
-            .group
-            .create_remove_proposal(self.framing_parameters(), member, signer)
-            .map_err(|_| ProposeRemoveMemberError::UnknownMember)?;
-
-        let proposal = QueuedProposal::from_authenticated_content(
-            self.ciphersuite(),
-            backend,
-            remove_proposal.clone(),
-        )?;
-        let proposal_ref = proposal.proposal_reference();
-        self.proposal_store.add(proposal);
-
-        let mls_message = self.content_to_mls_message(remove_proposal, backend)?;
-
-        // Since the state of the group might be changed, arm the state flag
-        self.flag_state_change();
-
-        Ok((mls_message, proposal_ref))
-    }
-
-    /// Creates proposals to remove members from the group.
-    /// The `member` has to be the member's credential.
-    ///
-    /// Returns an error if there is a pending commit.
-    pub fn propose_remove_member_by_credential(
-        &mut self,
-        backend: &impl OpenMlsCryptoProvider,
-        signer: &impl Signer,
-        member: &Credential,
-    ) -> Result<(MlsMessageOut, ProposalRef), ProposeRemoveMemberError> {
-        // Find the user for the credential first.
-        let member_index = self
-            .group
-            .public_group()
-            .members()
-            .find(|m| &m.credential == member)
-            .map(|m| m.index);
-
-        if let Some(member_index) = member_index {
-            self.propose_remove_member(backend, signer, member_index)
-        } else {
-            Err(ProposeRemoveMemberError::UnknownMember)
-        }
-    }
-
     /// Leave the group.
     ///
     /// Creates a Remove Proposal that needs to be covered by a Commit from a different member.
@@ -281,7 +182,7 @@ impl MlsGroup {
             .map_err(|_| LibraryError::custom("Creating a self removal should not fail"))?;
 
         self.proposal_store
-            .add(QueuedProposal::from_authenticated_content(
+            .add(QueuedProposal::from_authenticated_content_by_ref(
                 self.ciphersuite(),
                 backend,
                 remove_proposal.clone(),

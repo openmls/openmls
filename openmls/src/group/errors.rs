@@ -11,6 +11,7 @@ use crate::{
     error::LibraryError,
     extensions::errors::{ExtensionError, InvalidExtensionError},
     framing::errors::{MessageDecryptionError, SenderError},
+    key_packages::errors::KeyPackageVerifyError,
     key_packages::errors::{KeyPackageExtensionSupportError, KeyPackageNewError},
     messages::{group_info::GroupInfoError, GroupSecretsError},
     schedule::errors::PskError,
@@ -185,6 +186,9 @@ pub enum StageCommitError {
     /// Missing decryption key.
     #[error("Missing decryption key.")]
     MissingDecryptionKey,
+    /// See [`UpdatePathError`] for more details.
+    #[error(transparent)]
+    VerifiedUpdatePathError(#[from] UpdatePathError),
 }
 
 /// Create commit error
@@ -285,9 +289,27 @@ pub enum ValidationError {
     /// The provided external sender is not authorized to send external proposals
     #[error("The provided external sender is not authorized to send external proposals")]
     UnauthorizedExternalSender,
-    /// The group doesn't contain external senders extension
+    /// The group doesn't contain external senders extension.
     #[error("The group doesn't contain external senders extension")]
     NoExternalSendersExtension,
+    /// The KeyPackage could not be validated.
+    #[error(transparent)]
+    KeyPackageVerifyError(#[from] KeyPackageVerifyError),
+    /// The UpdatePath could not be validated.
+    #[error(transparent)]
+    UpdatePathError(#[from] UpdatePathError),
+    /// Invalid LeafNode signature.
+    #[error("Invalid LeafNode signature.")]
+    InvalidLeafNodeSignature,
+    /// Invalid LeafNode source type
+    #[error("Invalid LeafNode source type")]
+    InvalidLeafNodeSourceType,
+    /// Invalid sender type.
+    #[error("Invalid sender type")]
+    InvalidSenderType,
+    /// The Commit includes update proposals from the committer.
+    #[error("The Commit includes update proposals from the committer.")]
+    CommitterIncludedOwnUpdate,
 }
 
 /// Proposal validation error
@@ -346,7 +368,7 @@ pub enum ProposalValidationError {
     InsufficientCapabilities,
     /// See [`PskError`] for more details.
     #[error(transparent)]
-    Psk(PskError),
+    Psk(#[from] PskError),
 }
 
 /// External Commit validaton error
@@ -383,11 +405,9 @@ pub enum ExternalCommitValidationError {
     ReferencedProposal,
 }
 
-// === Crate errors ===
-
 /// Create add proposal error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub(crate) enum CreateAddProposalError {
+pub enum CreateAddProposalError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -395,6 +415,8 @@ pub(crate) enum CreateAddProposalError {
     #[error(transparent)]
     LeafNodeValidation(#[from] LeafNodeValidationError),
 }
+
+// === Crate errors ===
 
 /// Exporter error
 #[derive(Error, Debug, PartialEq, Clone)]

@@ -20,7 +20,7 @@ use crate::{
         diff::{StagedTreeSyncDiff, TreeSyncDiff},
         errors::ApplyUpdatePathError,
         node::{
-            encryption_keys::EncryptionKeyPair, leaf_node::OpenMlsLeafNode,
+            encryption_keys::EncryptionKeyPair, leaf_node::LeafNode,
             parent_node::PlainUpdatePathNode,
         },
         treekem::{DecryptPathParams, UpdatePath, UpdatePathNode},
@@ -148,7 +148,7 @@ impl<'a> PublicGroupDiff<'a> {
     }
 
     /// Return a reference to the leaf with the given index.
-    pub(crate) fn leaf(&self, index: LeafNodeIndex) -> Option<&OpenMlsLeafNode> {
+    pub(crate) fn leaf(&self, index: LeafNodeIndex) -> Option<&LeafNode> {
         self.diff.leaf(index)
     }
 

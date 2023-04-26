@@ -4,6 +4,7 @@ use openmls_traits::key_store::OpenMlsKeyStore;
 use crate::{
     ciphersuite::hash_ref::HashReference,
     group::{core_group::*, errors::WelcomeError},
+    schedule::psk::store::ResumptionPskStore,
     treesync::{
         errors::{DerivePathError, PublicTreeError},
         node::encryption_keys::EncryptionKeyPair,
@@ -14,9 +15,10 @@ impl CoreGroup {
     // Join a group from a welcome message
     pub fn new_from_welcome<KeyStore: OpenMlsKeyStore>(
         welcome: Welcome,
-        ratchet_tree: Option<RatchetTree>,
+        ratchet_tree: Option<RatchetTreeIn>,
         key_package_bundle: KeyPackageBundle,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        mut resumption_psk_store: ResumptionPskStore,
     ) -> Result<Self, WelcomeError<KeyStore::Error>> {
         log::debug!("CoreGroup::new_from_welcome_internal");
 
@@ -60,7 +62,15 @@ impl CoreGroup {
         )?;
 
         // Prepare the PskSecret
-        let psk_secret = PskSecret::new(ciphersuite, backend, &group_secrets.psks)?;
+        let psk_secret = {
+            let psks = load_psks(
+                backend.key_store(),
+                &resumption_psk_store,
+                &group_secrets.psks,
+            )?;
+
+            PskSecret::new(backend, ciphersuite, psks)?
+        };
 
         // Create key schedule
         let mut key_schedule = KeySchedule::init(
@@ -214,12 +224,17 @@ impl CoreGroup {
 
         let message_secrets_store = MessageSecretsStore::new_with_secret(0, message_secrets);
 
+        // Extract and store the resumption PSK for the current epoch.
+        let resumption_psk = group_epoch_secrets.resumption_psk();
+        resumption_psk_store.add(public_group.group_context().epoch(), resumption_psk.clone());
+
         let group = CoreGroup {
             public_group,
             group_epoch_secrets,
             own_leaf_index,
             use_ratchet_tree_extension: enable_ratchet_tree_extension,
             message_secrets_store,
+            resumption_psk_store,
         };
         group
             .store_epoch_keypairs(backend, group_keypairs.as_slice())

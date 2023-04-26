@@ -29,7 +29,7 @@ use crate::{
     group::*,
     key_packages::*,
     messages::*,
-    treesync::{node::Node, LeafNode, RatchetTree},
+    treesync::{node::Node, LeafNode, RatchetTree, RatchetTreeIn},
 };
 use ::rand::{rngs::OsRng, RngCore};
 use openmls_basic_credential::SignatureKeyPair;
@@ -270,7 +270,7 @@ impl MlsGroupTestSetup {
             client.join_group(
                 group.group_config.clone(),
                 welcome.clone(),
-                Some(group.public_tree.clone()),
+                Some(group.public_tree.clone().into()),
             )?;
         }
         Ok(())

@@ -1,0 +1,24 @@
+diff --git a/interop/test-runner/main.go b/interop/test-runner/main.go
+index f7495bf..89052d8 100644
+--- a/interop/test-runner/main.go
++++ b/interop/test-runner/main.go
+@@ -1345,8 +1345,9 @@ func (config *ScriptActorConfig) Run(script Script) ScriptResult {
+ }
+ 
+ func (p *ClientPool) ScriptMatrix(actors []string, clientMode ClientMode, suite int, hsMode HandshakeMode) []ScriptActorConfig {
+-	suite32 := uint32(suite)
+-	suites := []uint32{}
++	// FIXME: Only use ciphersuites that OpenMLS supports.
++	suites := []uint32{1, 2, 3}
++	/*
+ 	if suite == 0 {
+ 		suites = []uint32{}
+ 		for suite := range p.suiteSupport {
+@@ -1357,6 +1358,7 @@ func (p *ClientPool) ScriptMatrix(actors []string, clientMode ClientMode, suite
+ 	} else {
+ 		panic(fmt.Sprintf("Unsupported ciphersuite: %d", suite))
+ 	}
++	*/
+ 
+ 	encryptOptions := []bool{true, false}
+ 	switch hsMode {

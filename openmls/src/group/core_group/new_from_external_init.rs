@@ -28,7 +28,7 @@ impl CoreGroup {
         backend: &impl OpenMlsCryptoProvider,
         signer: &impl Signer,
         mut params: CreateCommitParams,
-        ratchet_tree: Option<RatchetTree>,
+        ratchet_tree: Option<RatchetTreeIn>,
         verifiable_group_info: VerifiableGroupInfo,
     ) -> Result<ExternalCommitResult, ExternalCommitError> {
         // Build the ratchet tree
@@ -108,6 +108,8 @@ impl CoreGroup {
             group_epoch_secrets,
             message_secrets_store,
             own_leaf_index,
+            // TODO(#1357)
+            resumption_psk_store: ResumptionPskStore::new(32),
         };
 
         let params = CreateCommitParams::builder()

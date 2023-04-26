@@ -13,10 +13,7 @@ use crate::{
     key_packages::{KeyPackage, KeyPackageBundle},
     messages::{proposals::*, Welcome},
     schedule::ResumptionPskSecret,
-    treesync::{
-        node::leaf_node::{LeafNode, OpenMlsLeafNode},
-        RatchetTree,
-    },
+    treesync::{node::leaf_node::LeafNode, RatchetTree},
 };
 use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider};
 use std::io::{Error, Read, Write};
@@ -25,12 +22,10 @@ use std::io::{Error, Read, Write};
 mod application;
 mod creation;
 mod exporting;
-mod resumption;
 mod updates;
 
 use config::*;
 use errors::*;
-use resumption::*;
 use ser::*;
 
 // Crate
@@ -38,7 +33,7 @@ pub(crate) mod config;
 pub(crate) mod errors;
 pub(crate) mod membership;
 pub(crate) mod processing;
-pub(crate) mod psk;
+pub(crate) mod proposal;
 pub(crate) mod ser;
 
 // Tests
@@ -163,15 +158,13 @@ pub struct MlsGroup {
     // A [ProposalStore] that stores incoming proposals from the DS within one epoch.
     // The store is emptied after every epoch change.
     pub(crate) proposal_store: ProposalStore,
-    // Own [`OpenMlsLeafNode`]s that were created for update proposals and that
+    // Own [`LeafNode`]s that were created for update proposals and that
     // are needed in case an update proposal is committed by another group
     // member. The vector is emptied after every epoch change.
-    own_leaf_nodes: Vec<OpenMlsLeafNode>,
+    own_leaf_nodes: Vec<LeafNode>,
     // The AAD that is used for all outgoing handshake messages. The AAD can be set through
     // `set_aad()`.
     aad: Vec<u8>,
-    // Resumption psk store. This is where the resumption psks are kept in a rollover list.
-    resumption_psk_store: ResumptionPskStore,
     // A variable that indicates the state of the group. See [`MlsGroupState`]
     // for more information.
     group_state: MlsGroupState,
@@ -248,7 +241,7 @@ impl MlsGroup {
 
     /// Returns the leaf node of the client in the tree owning this group.
     pub fn own_leaf_node(&self) -> Option<&LeafNode> {
-        self.group.own_leaf_node().map(|l| l.leaf_node()).ok()
+        self.group.own_leaf_node().ok()
     }
 
     /// Returns the group ID.
