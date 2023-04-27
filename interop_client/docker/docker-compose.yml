@@ -1,0 +1,18 @@
+---
+name: mls-interop
+services:
+  openmls:
+    build: ./openmls/
+    volumes:
+      - ../../:/home/user/openmls/
+    ports:
+      - 50051:${OPENMLS_PORT:-50051}
+    command: -p ${OPENMLS_PORT:-50051}
+  mlspp:
+    build: ./mlspp/
+    ports:
+      - 50052:${MLSPP_PORT:-50052}
+    command: -live ${MLSPP_PORT:-50052}
+  test-runner:
+    build: ./test-runner/
+    command: -fail-fast -client openmls:${OPENMLS_PORT:-50051} -client mlspp:${MLSPP_PORT:-50052} -config=../configs/${CONFIG_RUN:-welcome_join.json}
