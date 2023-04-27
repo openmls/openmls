@@ -1563,7 +1563,7 @@ impl MlsClient for MlsClientImpl {
 
 #[derive(Parser)]
 struct Opts {
-    #[clap(long, default_value = "[::1]")]
+    #[clap(long, default_value = "127.0.0.1")]
     host: String,
 
     #[clap(short, long, default_value = "50051")]
