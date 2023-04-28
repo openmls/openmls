@@ -199,7 +199,8 @@ key material from OpenMLS.</p>
 <p>The key store provides functions to <code>store</code>, <code>read</code>, and <code>delete</code> values.
 Note that it does not allow updating values.
 Instead, entries must be deleted and newly stored.</p>
-<pre><code class="language-rust no_run noplayground">    /// In case for example you need to select a SQL table depending on the entity type
+<pre><code class="language-rust no_run noplayground">    /// Identifier used to downcast the actual entity within an [OpenMlsKeyStore] method.
+    /// In case for example you need to select a SQL table depending on the entity type
     const ID: MlsEntityId;
 }
 
@@ -223,8 +224,7 @@ pub trait OpenMlsKeyStore: Send + Sync {
     fn store&lt;V: MlsEntity&gt;(&amp;self, k: &amp;[u8], v: &amp;V) -&gt; Result&lt;(), Self::Error&gt;
     where
         Self: Sized;
-
-    /// Read and return a value stored for ID `k` that implements the</code></pre>
+</code></pre>
 <p><strong>NOTE:</strong> Right now, key material must be extracted from the key store.
 This will most likely change in the future.</p>
 <h3 id="openmlscryptoprovider"><a class="header" href="#openmlscryptoprovider">OpenMlsCryptoProvider</a></h3>

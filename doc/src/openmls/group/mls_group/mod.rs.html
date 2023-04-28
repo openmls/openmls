@@ -457,7 +457,6 @@
     treesync::{node::leaf_node::LeafNode, RatchetTree},
 };
 <span class="kw">use </span>openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider};
-<span class="kw">use </span>std::io::{Error, Read, Write};
 
 <span class="comment">// Private
 </span><span class="kw">mod </span>application;
@@ -467,7 +466,6 @@
 
 <span class="kw">use </span>config::<span class="kw-2">*</span>;
 <span class="kw">use </span>errors::<span class="kw-2">*</span>;
-<span class="kw">use </span>ser::<span class="kw-2">*</span>;
 
 <span class="comment">// Crate
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>config;
@@ -738,17 +736,19 @@
     <span class="comment">// === Load &amp; save ===
 
     </span><span class="doccomment">/// Loads the state from persisted state.
-    </span><span class="kw">pub fn </span>load&lt;R: Read&gt;(reader: R) -&gt; <span class="prelude-ty">Result</span>&lt;MlsGroup, Error&gt; {
-        <span class="comment">// TODO #245: Remove this once we have a proper serialization format
-        </span><span class="attr">#[allow(deprecated)]
-        </span><span class="kw">let </span>serialized_mls_group: SerializedMlsGroup = serde_json::from_reader(reader)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(serialized_mls_group.into_mls_group())
+    </span><span class="kw">pub fn </span>load(group_id: <span class="kw-2">&amp;</span>GroupId, backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider) -&gt; <span class="prelude-ty">Option</span>&lt;MlsGroup&gt; {
+        backend.key_store().read(group_id.as_slice())
     }
 
     <span class="doccomment">/// Persists the state.
-    </span><span class="kw">pub fn </span>save&lt;W: Write&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, writer: <span class="kw-2">&amp;mut </span>W) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        <span class="kw">let </span>serialized_mls_group = serde_json::to_string_pretty(<span class="self">self</span>)<span class="question-mark">?</span>;
-        writer.write_all(<span class="kw-2">&amp;</span>serialized_mls_group.into_bytes())<span class="question-mark">?</span>;
+    </span><span class="kw">pub fn </span>save&lt;KeyStore: OpenMlsKeyStore&gt;(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), KeyStore::Error&gt; {
+        backend
+            .key_store()
+            .store(<span class="self">self</span>.group_id().as_slice(), <span class="kw-2">&amp;*</span><span class="self">self</span>)<span class="question-mark">?</span>;
+
         <span class="self">self</span>.state_changed = InnerState::Persisted;
         <span class="prelude-val">Ok</span>(())
     }
