@@ -839,15 +839,6 @@ fn test_valsem113_valsem114(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
             }
             KeyUniqueness::PositiveSameKeyWithRemove => unreachable!(),
         }
-        eprintln!("bob kp init key: {:x?}", bob_key_package.hpke_init_key());
-        eprintln!(
-            "bob leaf node encryption key: {:x?}",
-            bob_key_package
-                .leaf_node()
-                .encryption_key()
-                .as_slice()
-                .to_vec()
-        );
 
         // 1. Alice creates a group and tries to add Bob to it
         let res = create_group_with_members(
@@ -1290,7 +1281,6 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                             ProposalValidationError::InsufficientCapabilities,
                         ),
                     );
-                    println!("New error: {:?}", err);
                     assert!(err == expected_error_1 || err == expected_error_2);
                 }
                 KeyPackageTestVersion::UnsupportedCiphersuite => {

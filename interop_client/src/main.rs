@@ -470,7 +470,7 @@ impl MlsClient for MlsClientImpl {
                 let msg =
                     MlsMessageIn::tls_deserialize(&mut request.group_info.as_slice()).unwrap();
 
-                match msg.extract() {
+                match msg.extract(ProtocolVersion::Mls10).unwrap() {
                     MlsMessageInBody::GroupInfo(verifiable_group_info) => verifiable_group_info,
                     other => panic!("Expected `MlsMessageInBody::GroupInfo`, got {other:?}."),
                 }

@@ -190,7 +190,7 @@ impl User {
 
         // Go through the list of messages and process or store them.
         for message in self.backend.recv_msgs(self)?.drain(..) {
-            match message.extract() {
+            match message.extract(ProtocolVersion::Mls10).unwrap() {
                 MlsMessageInBody::Welcome(welcome) => {
                     // Join the group. (Later we should ask the user to
                     // approve first ...)
