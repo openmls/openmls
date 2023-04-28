@@ -1,6 +1,3 @@
-use std::fs::File;
-
-use lazy_static::lazy_static;
 use openmls::{
     prelude::{config::CryptoConfig, *},
     test_utils::*,
@@ -9,11 +6,6 @@ use openmls::{
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{signatures::Signer, types::SignatureScheme, OpenMlsCryptoProvider};
-
-lazy_static! {
-    static ref TEMP_DIR: tempfile::TempDir =
-        tempfile::tempdir().expect("Error creating temp directory");
-}
 
 #[test]
 fn create_backend_rust_crypto() {
@@ -191,6 +183,8 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         // Silence "unused variable" and "does not need to be mutable" warnings.
         let _ignore_mut_warning = &mut alice_group;
     }
+
+    let group_id = alice_group.group_id().clone();
 
     // === Alice adds Bob ===
     // ANCHOR: alice_adds_bob
@@ -1255,27 +1249,14 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     assert_eq!(bob_group.state_changed(), InnerState::Changed);
     //save(&mut bob_group);
 
-    let name = bytes_to_hex(
-        bob_group
-            .own_leaf_node()
-            .unwrap()
-            .signature_key()
-            .as_slice(),
-    )
-    .to_lowercase();
-    let path = TEMP_DIR
-        .path()
-        .join(format!("test_mls_group_{}.json", &name));
-    let out_file = &mut File::create(path.clone()).expect("Could not create file");
     bob_group
-        .save(out_file)
+        .save(backend)
         .expect("Could not write group state to file");
 
     // Check that the state flag gets reset when saving
     assert_eq!(bob_group.state_changed(), InnerState::Persisted);
 
-    let file = File::open(path).expect("Could not open file");
-    let bob_group = MlsGroup::load(file).expect("Could not load group from file");
+    let bob_group = MlsGroup::load(&group_id, backend).expect("Could not load group from file");
 
     // Make sure the state is still the same
     assert_eq!(

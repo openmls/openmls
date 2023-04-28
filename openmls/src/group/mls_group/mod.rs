@@ -16,7 +16,6 @@ use crate::{
     treesync::{node::leaf_node::LeafNode, RatchetTree},
 };
 use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider};
-use std::io::{Error, Read, Write};
 
 // Private
 mod application;
@@ -26,7 +25,6 @@ mod updates;
 
 use config::*;
 use errors::*;
-use ser::*;
 
 // Crate
 pub(crate) mod config;
@@ -297,17 +295,19 @@ impl MlsGroup {
     // === Load & save ===
 
     /// Loads the state from persisted state.
-    pub fn load<R: Read>(reader: R) -> Result<MlsGroup, Error> {
-        // TODO #245: Remove this once we have a proper serialization format
-        #[allow(deprecated)]
-        let serialized_mls_group: SerializedMlsGroup = serde_json::from_reader(reader)?;
-        Ok(serialized_mls_group.into_mls_group())
+    pub fn load(group_id: &GroupId, backend: &impl OpenMlsCryptoProvider) -> Option<MlsGroup> {
+        backend.key_store().read(group_id.as_slice())
     }
 
     /// Persists the state.
-    pub fn save<W: Write>(&mut self, writer: &mut W) -> Result<(), Error> {
-        let serialized_mls_group = serde_json::to_string_pretty(self)?;
-        writer.write_all(&serialized_mls_group.into_bytes())?;
+    pub fn save<KeyStore: OpenMlsKeyStore>(
+        &mut self,
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+    ) -> Result<(), KeyStore::Error> {
+        backend
+            .key_store()
+            .store(self.group_id().as_slice(), &*self)?;
+
         self.state_changed = InnerState::Persisted;
         Ok(())
     }
