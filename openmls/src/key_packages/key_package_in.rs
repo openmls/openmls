@@ -5,7 +5,7 @@ use crate::{
     ciphersuite::{signable::*, *},
     credentials::*,
     extensions::Extensions,
-    treesync::node::leaf_node::{LeafNodeIn, VerifiableLeafNode},
+    treesync::node::leaf_node::{LeafNode, LeafNodeIn, VerifiableLeafNode},
     versions::ProtocolVersion,
 };
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
@@ -105,11 +105,15 @@ impl KeyPackageIn {
     /// * verify that the signature on the leaf node is valid
     /// * verify that all extensions are supported by the leaf node
     /// * make sure that the lifetime is valid
-    /// Returns a [`KeyPackage`] after
-    /// having verified the signature or a [`KeyPackageVerifyError`] otherwise.
+    /// * make sure that the init key and the encryption key are different
+    /// * make sure that the protocol version is valid
+    ///
+    /// Returns a [`KeyPackage`] after having verified the signature or a
+    /// [`KeyPackageVerifyError`] otherwise.
     pub fn validate(
         self,
         crypto: &impl OpenMlsCrypto,
+        protocol_version: ProtocolVersion,
     ) -> Result<KeyPackage, KeyPackageVerifyError> {
         // We first need to verify the LeafNode inside the KeyPackage
         let leaf_node = self.payload.leaf_node.clone().into_verifiable_leaf_node();
@@ -121,10 +125,20 @@ impl KeyPackageIn {
 
         let leaf_node = match leaf_node {
             VerifiableLeafNode::KeyPackage(leaf_node) => leaf_node
-                .verify(crypto, signature_key)
+                .verify::<LeafNode>(crypto, signature_key)
                 .map_err(|_| KeyPackageVerifyError::InvalidLeafNodeSignature)?,
             _ => return Err(KeyPackageVerifyError::InvalidLeafNodeSourceType),
         };
+
+        // Verify that the protocol version is valid
+        if self.payload.protocol_version != protocol_version {
+            return Err(KeyPackageVerifyError::InvalidProtocolVersion);
+        }
+
+        // Verify that the encryption key and the init key are different
+        if leaf_node.encryption_key().key() == &self.payload.init_key {
+            return Err(KeyPackageVerifyError::InitKeyEqualsEncryptionKey);
+        }
 
         let key_package_tbs = KeyPackageTbs {
             protocol_version: self.payload.protocol_version,
@@ -163,6 +177,12 @@ impl KeyPackageIn {
         }
 
         Ok(key_package)
+    }
+
+    /// Returns true if the protocol version is supported by this key package and
+    /// false otherwise.
+    pub(crate) fn version_is_supported(&self, protocol_version: ProtocolVersion) -> bool {
+        self.payload.protocol_version == protocol_version
     }
 }
 

@@ -149,11 +149,16 @@ impl MlsMessageOut {
 
     #[cfg(any(feature = "test-utils", test))]
     pub fn into_protocol_message(self) -> Option<ProtocolMessage> {
+        let version = self.version;
         let mls_message_in: MlsMessageIn = self.into();
-        match mls_message_in.extract() {
-            MlsMessageInBody::PublicMessage(pm) => Some(pm.into()),
-            MlsMessageInBody::PrivateMessage(pm) => Some(pm.into()),
-            _ => None,
+        if let Some(body) = mls_message_in.extract(version) {
+            match body {
+                MlsMessageInBody::PublicMessage(pm) => Some(pm.into()),
+                MlsMessageInBody::PrivateMessage(pm) => Some(pm.into()),
+                _ => None,
+            }
+        } else {
+            None
         }
     }
 

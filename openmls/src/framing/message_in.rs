@@ -106,15 +106,32 @@ impl MlsMessageIn {
     }
 
     /// Extract the content of an [`MlsMessageIn`] after deserialization for use
-    /// with the [`MlsGroup`] API.
-    pub fn extract(self) -> MlsMessageInBody {
-        self.body
+    /// with the [`MlsGroup`] API. The protocol version is used to determine
+    /// whether the message has the expected version.
+    pub fn extract(self, protocol_version: ProtocolVersion) -> Option<MlsMessageInBody> {
+        if self.version == protocol_version {
+            match self.body {
+                MlsMessageInBody::KeyPackage(key_package) => {
+                    if key_package.version_is_supported(protocol_version) {
+                        Some(MlsMessageInBody::KeyPackage(key_package))
+                    } else {
+                        None
+                    }
+                }
+                _ => Some(self.body),
+            }
+        } else {
+            None
+        }
     }
 
     #[cfg(any(test, feature = "test-utils"))]
     pub fn into_keypackage(self) -> Option<crate::key_packages::KeyPackage> {
         match self.body {
-            MlsMessageInBody::KeyPackage(kp) => Some(kp.into()),
+            MlsMessageInBody::KeyPackage(key_package) => {
+                debug_assert!(key_package.version_is_supported(self.version));
+                Some(key_package.into())
+            }
             _ => None,
         }
     }
@@ -138,6 +155,7 @@ impl MlsMessageIn {
     /// Convert this message into a [`Welcome`].
     ///
     /// Returns `None` if this message is not a welcome message.
+    #[cfg(any(feature = "test-utils", test))]
     pub fn into_welcome(self) -> Option<Welcome> {
         match self.body {
             MlsMessageInBody::Welcome(w) => Some(w),

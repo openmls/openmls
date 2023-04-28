@@ -502,7 +502,7 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let (dave_credential_with_key_and_signer, mut dave_key_package) =
         generate_credential_bundle_and_key_package("Dave".into(), ciphersuite, backend);
     // Change the init key and re-sign.
-    dave_key_package.set_public_key(charlie_key_package.hpke_init_key().clone());
+    dave_key_package.set_init_key(charlie_key_package.hpke_init_key().clone());
     let dave_key_package = dave_key_package.resign(
         &dave_credential_with_key_and_signer.signer,
         dave_credential_with_key_and_signer
@@ -972,9 +972,15 @@ fn test_valsem113_valsem114(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
 
 #[derive(Debug)]
 enum KeyPackageTestVersion {
+    // Wrong ciphersuite in the KeyPackage
     WrongCiphersuite,
+    // Wrong version in the KeyPackage
+    WrongVersion,
+    // Unsupported ciphersuite in the KeyPackage's capabilities
     UnsupportedVersion,
+    // Unsupported ciphersuite in the KeyPackage's capabilities
     UnsupportedCiphersuite,
+    // Positive case
     ValidTestCase,
 }
 
@@ -1014,6 +1020,7 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // We begin with the creation of KeyPackages
     for key_package_version in [
         KeyPackageTestVersion::WrongCiphersuite,
+        KeyPackageTestVersion::WrongVersion,
         KeyPackageTestVersion::UnsupportedVersion,
         KeyPackageTestVersion::UnsupportedCiphersuite,
         KeyPackageTestVersion::ValidTestCase,
@@ -1030,7 +1037,8 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             generate_credential_bundle_and_key_package("Charlie".into(), ciphersuite, backend);
 
         let kpi = KeyPackageIn::from(charlie_key_package.clone());
-        kpi.validate(backend.crypto()).unwrap();
+        kpi.validate(backend.crypto(), ProtocolVersion::Mls10)
+            .unwrap();
 
         // Let's just pick a ciphersuite that's not the one we're testing right now.
         let wrong_ciphersuite = match ciphersuite {
@@ -1042,6 +1050,9 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         match key_package_version {
             KeyPackageTestVersion::WrongCiphersuite => {
                 charlie_key_package.set_ciphersuite(wrong_ciphersuite)
+            }
+            KeyPackageTestVersion::WrongVersion => {
+                charlie_key_package.set_version(ProtocolVersion::Mls10Draft11);
             }
             KeyPackageTestVersion::UnsupportedVersion => {
                 let mut new_leaf_node = charlie_key_package.leaf_node().clone();
@@ -1079,6 +1090,9 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             match key_package_version {
                 KeyPackageTestVersion::WrongCiphersuite => {
                     charlie_key_package.set_ciphersuite(wrong_ciphersuite)
+                }
+                KeyPackageTestVersion::WrongVersion => {
+                    charlie_key_package.set_version(ProtocolVersion::Mls10Draft11);
                 }
                 KeyPackageTestVersion::UnsupportedVersion => {
                     let mut new_leaf_node = charlie_key_package.leaf_node().clone();
@@ -1126,16 +1140,10 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                             result.unwrap();
                         }
                         _ => {
-                            assert_eq!(
-                                result.expect_err(
-                                    "no error when committing add with key package with insufficient capabilities",
-                                ),
-                                CommitToPendingProposalsError::CreateCommitError(
-                                    CreateCommitError::ProposalValidationError(
-                                        ProposalValidationError::InsufficientCapabilities
-                                    )
-                                )
-                            )
+                            matches!(
+                                result.unwrap_err(),
+                                CommitToPendingProposalsError::CreateCommitError(_)
+                            );
                         }
                     }
                 }
@@ -1151,16 +1159,7 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                             result.unwrap();
                         }
                         _ => {
-                            assert_eq!(
-                                result.expect_err(
-                                    "no error when committing add with key package with insufficient capabilities",
-                                ),
-                                AddMembersError::CreateCommitError(
-                                    CreateCommitError::ProposalValidationError(
-                                        ProposalValidationError::InsufficientCapabilities
-                                    )
-                                )
-                            )
+                            matches!(result.unwrap_err(), AddMembersError::CreateCommitError(_));
                         }
                     }
                 }
@@ -1241,12 +1240,13 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                     assert_eq!(err, expected_error);
                 }
                 KeyPackageTestVersion::WrongCiphersuite => {
-                    // In this case we need to differentiate, since the
-                    // signature algorithm can also have a mismatch and
-                    // therefore invalidate the signature
+                    // In this case we need to differentiate, since we
+                    // manipulated the ciphersuite. The signature algorithm can
+                    // also have a mismatch and therefore invalidate the
+                    // signature, and/or the ciphersuite doesn't match.
                     let expected_error_1 = ProcessMessageError::InvalidCommit(
                         StageCommitError::ProposalValidationError(
-                            ProposalValidationError::InsufficientCapabilities,
+                            ProposalValidationError::InvalidAddProposalCiphersuiteOrVersion,
                         ),
                     );
                     let expected_error_2 = ProcessMessageError::ValidationError(
@@ -1254,9 +1254,46 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                             KeyPackageVerifyError::InvalidLeafNodeSignature,
                         ),
                     );
+                    let expected_error_3 = ProcessMessageError::ValidationError(
+                        ValidationError::InvalidAddProposalCiphersuite,
+                    );
+                    assert!(
+                        err == expected_error_1
+                            || err == expected_error_2
+                            || err == expected_error_3
+                    );
+                }
+                KeyPackageTestVersion::WrongVersion => {
+                    // We need to distinguish between the two cases where the
+                    // version is wrong, depending on whether it's a proposal by
+                    // value or by reference.
+                    let expected_error_1 = ProcessMessageError::InvalidCommit(
+                        StageCommitError::ProposalValidationError(
+                            ProposalValidationError::InvalidAddProposalCiphersuiteOrVersion,
+                        ),
+                    );
+                    let expected_error_2 = ProcessMessageError::ValidationError(
+                        ValidationError::KeyPackageVerifyError(
+                            KeyPackageVerifyError::InvalidProtocolVersion,
+                        ),
+                    );
                     assert!(err == expected_error_1 || err == expected_error_2);
                 }
-                _ => {
+                KeyPackageTestVersion::UnsupportedVersion => {
+                    let expected_error_1 = ProcessMessageError::ValidationError(
+                        ValidationError::KeyPackageVerifyError(
+                            KeyPackageVerifyError::InvalidProtocolVersion,
+                        ),
+                    );
+                    let expected_error_2 = ProcessMessageError::InvalidCommit(
+                        StageCommitError::ProposalValidationError(
+                            ProposalValidationError::InsufficientCapabilities,
+                        ),
+                    );
+                    println!("New error: {:?}", err);
+                    assert!(err == expected_error_1 || err == expected_error_2);
+                }
+                KeyPackageTestVersion::UnsupportedCiphersuite => {
                     let expected_error = ProcessMessageError::InvalidCommit(
                         StageCommitError::ProposalValidationError(
                             ProposalValidationError::InsufficientCapabilities,
