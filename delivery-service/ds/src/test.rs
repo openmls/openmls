@@ -357,11 +357,7 @@ async fn test_group() {
             )
         })
         .expect("Didn't get an MLS application message from the server.");
-    let protocol_message: ProtocolMessage = match messages
-        .remove(mls_message)
-        .extract(ProtocolVersion::Mls10)
-        .unwrap()
-    {
+    let protocol_message: ProtocolMessage = match messages.remove(mls_message).extract() {
         MlsMessageInBody::PrivateMessage(m) => m.into(),
         MlsMessageInBody::PublicMessage(m) => m.into(),
         _ => panic!("This is not an MLS message."),

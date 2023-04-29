@@ -34,7 +34,7 @@ use crate::{
 ///
 /// The `-In` suffix of this struct is to separate it from the [`MlsMessageOut`]
 /// which is commonly returned by functions of the [`MlsGroup`] API.
-#[derive(PartialEq, Debug, Clone, TlsSize, TlsDeserialize)]
+#[derive(PartialEq, Debug, Clone, TlsSize)]
 #[cfg_attr(feature = "test-utils", derive(TlsSerialize))]
 pub struct MlsMessageIn {
     pub(crate) version: ProtocolVersion,
@@ -106,23 +106,9 @@ impl MlsMessageIn {
     }
 
     /// Extract the content of an [`MlsMessageIn`] after deserialization for use
-    /// with the [`MlsGroup`] API. The protocol version is used to determine
-    /// whether the message has the expected version.
-    pub fn extract(self, protocol_version: ProtocolVersion) -> Option<MlsMessageInBody> {
-        if self.version == protocol_version {
-            match self.body {
-                MlsMessageInBody::KeyPackage(key_package) => {
-                    if key_package.version_is_supported(protocol_version) {
-                        Some(MlsMessageInBody::KeyPackage(key_package))
-                    } else {
-                        None
-                    }
-                }
-                _ => Some(self.body),
-            }
-        } else {
-            None
-        }
+    /// with the [`MlsGroup`] API.
+    pub fn extract(self) -> MlsMessageInBody {
+        self.body
     }
 
     #[cfg(any(test, feature = "test-utils"))]

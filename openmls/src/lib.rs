@@ -115,7 +115,7 @@
 //!    .expect("An unexpected error occurred.");
 //!
 //! // ... and inspect the message.
-//! let welcome = match mls_message_in.extract(ProtocolVersion::Mls10).expect("Message has wrong version.") {
+//! let welcome = match mls_message_in.extract() {
 //!    MlsMessageInBody::Welcome(welcome) => welcome,
 //!    // We know it's a welcome message, so we ignore all other cases.
 //!    _ => unreachable!("Unexpected message type."),
