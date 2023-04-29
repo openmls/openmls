@@ -250,6 +250,12 @@
 <a href="#250" id="250">250</a>
 <a href="#251" id="251">251</a>
 <a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS content authentication
 //!
 //! This module contains structs and implementation that pertain to content
@@ -307,10 +313,16 @@
         ciphersuite: Ciphersuite,
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         sender_context: <span class="prelude-ty">Option</span>&lt;SenderContext&gt;,
+        protocol_version: ProtocolVersion,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;AuthenticatedContent, ValidationError&gt; {
         <span class="prelude-val">Ok</span>(AuthenticatedContent {
             wire_format: <span class="self">self</span>.wire_format,
-            content: <span class="self">self</span>.content.validate(ciphersuite, crypto, sender_context)<span class="question-mark">?</span>,
+            content: <span class="self">self</span>.content.validate(
+                ciphersuite,
+                crypto,
+                sender_context,
+                protocol_version,
+            )<span class="question-mark">?</span>,
             auth: <span class="self">self</span>.auth,
         })
     }

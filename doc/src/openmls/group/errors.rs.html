@@ -536,6 +536,16 @@
 <a href="#536" id="536">536</a>
 <a href="#537" id="537">537</a>
 <a href="#538" id="538">538</a>
+<a href="#539" id="539">539</a>
+<a href="#540" id="540">540</a>
+<a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
+<a href="#544" id="544">544</a>
+<a href="#545" id="545">545</a>
+<a href="#546" id="546">546</a>
+<a href="#547" id="547">547</a>
+<a href="#548" id="548">548</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS group errors
 //!
 //! This module contains errors that originate at lower levels and are partially re-exported in errors thrown by functions of the `MlsGroup` API.
@@ -848,6 +858,11 @@
     <span class="doccomment">/// The Commit includes update proposals from the committer.
     </span><span class="attr">#[error(<span class="string">&quot;The Commit includes update proposals from the committer.&quot;</span>)]
     </span>CommitterIncludedOwnUpdate,
+    <span class="doccomment">/// The ciphersuite in the KeyPackage of the Add proposal does not match the group context.
+    </span><span class="attr">#[error(
+        <span class="string">&quot;The ciphersuite in the KeyPackage of the Add proposal does not match the group context.&quot;
+    </span>)]
+    </span>InvalidAddProposalCiphersuite,
 }
 
 <span class="doccomment">/// Proposal validation error
@@ -904,6 +919,11 @@
     <span class="doccomment">/// The capabilities of the add proposal are insufficient for this group.
     </span><span class="attr">#[error(<span class="string">&quot;The capabilities of the add proposal are insufficient for this group.&quot;</span>)]
     </span>InsufficientCapabilities,
+    <span class="doccomment">/// The add proposal&#39;s ciphersuite or protocol version do not match the ones in the group context.
+    </span><span class="attr">#[error(
+        <span class="string">&quot;The add proposal&#39;s ciphersuite or protocol version do not match the ones in the group context.&quot;
+    </span>)]
+    </span>InvalidAddProposalCiphersuiteOrVersion,
     <span class="doccomment">/// See [`PskError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>Psk(<span class="attr">#[from] </span>PskError),

@@ -270,6 +270,11 @@
 <a href="#270" id="270">270</a>
 <a href="#271" id="271">271</a>
 <a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the [`FramedContentIn`] struct and associated helper structs
 //! such as [`FramedContentTbsIn`], as well as their implementations.
 
@@ -326,13 +331,16 @@
         ciphersuite: Ciphersuite,
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         sender_context: <span class="prelude-ty">Option</span>&lt;SenderContext&gt;,
+        protocol_version: ProtocolVersion,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;FramedContent, ValidationError&gt; {
         <span class="prelude-val">Ok</span>(FramedContent {
             group_id: <span class="self">self</span>.group_id,
             epoch: <span class="self">self</span>.epoch,
             sender: <span class="self">self</span>.sender,
             authenticated_data: <span class="self">self</span>.authenticated_data,
-            body: <span class="self">self</span>.body.validate(ciphersuite, crypto, sender_context)<span class="question-mark">?</span>,
+            body: <span class="self">self
+                </span>.body
+                .validate(ciphersuite, crypto, sender_context, protocol_version)<span class="question-mark">?</span>,
         })
     }
 }
@@ -403,11 +411,12 @@
         ciphersuite: Ciphersuite,
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         sender_context: <span class="prelude-ty">Option</span>&lt;SenderContext&gt;,
+        protocol_version: ProtocolVersion,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;FramedContentBody, ValidationError&gt; {
         <span class="prelude-val">Ok</span>(<span class="kw">match </span><span class="self">self </span>{
             FramedContentBodyIn::Application(bytes) =&gt; FramedContentBody::Application(bytes),
             FramedContentBodyIn::Proposal(proposal_in) =&gt; FramedContentBody::Proposal(
-                proposal_in.validate(crypto, ciphersuite, sender_context)<span class="question-mark">?</span>,
+                proposal_in.validate(crypto, ciphersuite, sender_context, protocol_version)<span class="question-mark">?</span>,
             ),
             FramedContentBodyIn::Commit(commit_in) =&gt; {
                 <span class="kw">let </span>sender_context = sender_context
@@ -416,6 +425,7 @@
                     ciphersuite,
                     crypto,
                     sender_context,
+                    protocol_version,
                 )<span class="question-mark">?</span>)
             }
         })

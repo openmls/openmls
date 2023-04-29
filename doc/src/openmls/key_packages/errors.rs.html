@@ -56,6 +56,12 @@
 <a href="#56" id="56">56</a>
 <a href="#57" id="57">57</a>
 <a href="#58" id="58">58</a>
+<a href="#59" id="59">59</a>
+<a href="#60" id="60">60</a>
+<a href="#61" id="61">61</a>
+<a href="#62" id="62">62</a>
+<a href="#63" id="63">63</a>
+<a href="#64" id="64">64</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key Package errors
 //!
 //! `KeyPackageError` are thrown on errors handling `KeyPackage`s.
@@ -88,6 +94,12 @@
     <span class="doccomment">/// Invalid LeafNode source type
     </span><span class="attr">#[error(<span class="string">&quot;Invalid LeafNode source type&quot;</span>)]
     </span>InvalidLeafNodeSourceType,
+    <span class="doccomment">/// The init key and the encryption key are equal.
+    </span><span class="attr">#[error(<span class="string">&quot;The init key and the encryption key are equal.&quot;</span>)]
+    </span>InitKeyEqualsEncryptionKey,
+    <span class="doccomment">/// The protocol version is not valid.
+    </span><span class="attr">#[error(<span class="string">&quot;The protocol version is not valid.&quot;</span>)]
+    </span>InvalidProtocolVersion,
 }
 
 <span class="doccomment">/// KeyPackage extension support error

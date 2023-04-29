@@ -402,6 +402,9 @@
 <a href="#402" id="402">402</a>
 <a href="#403" id="403">403</a>
 <a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Validation steps for incoming messages
 //!
 //! ```text
@@ -440,6 +443,7 @@
     },
     tree::sender_ratchet::SenderRatchetConfiguration,
     treesync::TreeSync,
+    versions::ProtocolVersion,
 };
 
 <span class="kw">use </span><span class="self">self</span>::mls_group::errors::ProcessMessageError;
@@ -674,12 +678,14 @@
         <span class="self">self</span>,
         ciphersuite: Ciphersuite,
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+        protocol_version: ProtocolVersion,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(AuthenticatedContent, Credential), ProcessMessageError&gt; {
         <span class="kw">let </span>content: AuthenticatedContentIn = <span class="self">self
             </span>.verifiable_content
             .verify(crypto, <span class="kw-2">&amp;</span><span class="self">self</span>.sender_pk)
             .map_err(|<span class="kw">_</span>| ProcessMessageError::InvalidSignature)<span class="question-mark">?</span>;
-        <span class="kw">let </span>content = content.validate(ciphersuite, crypto, <span class="self">self</span>.sender_context)<span class="question-mark">?</span>;
+        <span class="kw">let </span>content =
+            content.validate(ciphersuite, crypto, <span class="self">self</span>.sender_context, protocol_version)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>((content, <span class="self">self</span>.credential))
     }
 

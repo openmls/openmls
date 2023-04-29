@@ -617,7 +617,7 @@
                     <span class="string">&quot;   add_proposal.add_proposal().key_package().ciphersuite(): {:?}&quot;</span>,
                     add_proposal.add_proposal().key_package().ciphersuite()
                 );
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::InsufficientCapabilities);
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::InvalidAddProposalCiphersuiteOrVersion);
             }
 
             <span class="comment">// Check if the ciphersuite and the version of the group are

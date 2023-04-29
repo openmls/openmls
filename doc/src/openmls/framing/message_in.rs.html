@@ -256,6 +256,10 @@
 <a href="#256" id="256">256</a>
 <a href="#257" id="257">257</a>
 <a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
 </pre><pre class="rust"><code><span class="doccomment">//! MLS Message (Input)
 //!
 //! This module defines the [`MlsMessageIn`] structs which implements the
@@ -292,7 +296,7 @@
 ///
 /// The `-In` suffix of this struct is to separate it from the [`MlsMessageOut`]
 /// which is commonly returned by functions of the [`MlsGroup`] API.
-</span><span class="attr">#[derive(PartialEq, Debug, Clone, TlsSize, TlsDeserialize)]
+</span><span class="attr">#[derive(PartialEq, Debug, Clone, TlsSize)]
 #[cfg_attr(feature = <span class="string">&quot;test-utils&quot;</span>, derive(TlsSerialize))]
 </span><span class="kw">pub struct </span>MlsMessageIn {
     <span class="kw">pub</span>(<span class="kw">crate</span>) version: ProtocolVersion,
@@ -372,7 +376,10 @@
     <span class="attr">#[cfg(any(test, feature = <span class="string">&quot;test-utils&quot;</span>))]
     </span><span class="kw">pub fn </span>into_keypackage(<span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw">crate</span>::key_packages::KeyPackage&gt; {
         <span class="kw">match </span><span class="self">self</span>.body {
-            MlsMessageInBody::KeyPackage(kp) =&gt; <span class="prelude-val">Some</span>(kp.into()),
+            MlsMessageInBody::KeyPackage(key_package) =&gt; {
+                <span class="macro">debug_assert!</span>(key_package.version_is_supported(<span class="self">self</span>.version));
+                <span class="prelude-val">Some</span>(key_package.into())
+            }
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         }
     }
@@ -396,6 +403,7 @@
     <span class="doccomment">/// Convert this message into a [`Welcome`].
     ///
     /// Returns `None` if this message is not a welcome message.
+    </span><span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
     </span><span class="kw">pub fn </span>into_welcome(<span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Welcome&gt; {
         <span class="kw">match </span><span class="self">self</span>.body {
             MlsMessageInBody::Welcome(w) =&gt; <span class="prelude-val">Some</span>(w),

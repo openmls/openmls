@@ -202,6 +202,7 @@
 <a href="#202" id="202">202</a>
 <a href="#203" id="203">203</a>
 <a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
 </pre><pre class="rust"><code><span class="doccomment">//! MLS Message (Output)
 //!
 //! This module defines the [`MlsMessageOut`] structs which implements the
@@ -354,6 +355,7 @@
     <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
     </span><span class="kw">pub fn </span>into_protocol_message(<span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;ProtocolMessage&gt; {
         <span class="kw">let </span>mls_message_in: MlsMessageIn = <span class="self">self</span>.into();
+
         <span class="kw">match </span>mls_message_in.extract() {
             MlsMessageInBody::PublicMessage(pm) =&gt; <span class="prelude-val">Some</span>(pm.into()),
             MlsMessageInBody::PrivateMessage(pm) =&gt; <span class="prelude-val">Some</span>(pm.into()),

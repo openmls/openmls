@@ -498,6 +498,7 @@
 <a href="#498" id="498">498</a>
 <a href="#499" id="499">499</a>
 <a href="#500" id="500">500</a>
+<a href="#501" id="501">501</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Messages
 //!
 //! This module contains the types and implementations for Commit &amp; Welcome messages,
@@ -693,11 +694,12 @@
         ciphersuite: Ciphersuite,
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         sender_context: SenderContext,
+        protocol_version: ProtocolVersion,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Commit, ValidationError&gt; {
         <span class="kw">let </span>proposals = <span class="self">self
             </span>.proposals
             .into_iter()
-            .map(|p| p.validate(crypto, ciphersuite))
+            .map(|p| p.validate(crypto, ciphersuite, protocol_version))
             .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>;
 
         <span class="kw">let </span>path = <span class="kw">if let </span><span class="prelude-val">Some</span>(path) = <span class="self">self</span>.path {

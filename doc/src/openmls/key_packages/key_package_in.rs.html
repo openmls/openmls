@@ -209,6 +209,26 @@
 <a href="#209" id="209">209</a>
 <a href="#210" id="210">210</a>
 <a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Incoming KeyPackages. This modules contains deserialization and validation
 //! of KeyPackages.
 
@@ -216,7 +236,7 @@
     ciphersuite::{signable::<span class="kw-2">*</span>, <span class="kw-2">*</span>},
     credentials::<span class="kw-2">*</span>,
     extensions::Extensions,
-    treesync::node::leaf_node::{LeafNodeIn, VerifiableLeafNode},
+    treesync::node::leaf_node::{LeafNode, LeafNodeIn, VerifiableLeafNode},
     versions::ProtocolVersion,
 };
 <span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
@@ -316,11 +336,15 @@
     /// * verify that the signature on the leaf node is valid
     /// * verify that all extensions are supported by the leaf node
     /// * make sure that the lifetime is valid
-    /// Returns a [`KeyPackage`] after
-    /// having verified the signature or a [`KeyPackageVerifyError`] otherwise.
+    /// * make sure that the init key and the encryption key are different
+    /// * make sure that the protocol version is valid
+    ///
+    /// Returns a [`KeyPackage`] after having verified the signature or a
+    /// [`KeyPackageVerifyError`] otherwise.
     </span><span class="kw">pub fn </span>validate(
         <span class="self">self</span>,
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+        protocol_version: ProtocolVersion,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;KeyPackage, KeyPackageVerifyError&gt; {
         <span class="comment">// We first need to verify the LeafNode inside the KeyPackage
         </span><span class="kw">let </span>leaf_node = <span class="self">self</span>.payload.leaf_node.clone().into_verifiable_leaf_node();
@@ -332,10 +356,20 @@
 
         <span class="kw">let </span>leaf_node = <span class="kw">match </span>leaf_node {
             VerifiableLeafNode::KeyPackage(leaf_node) =&gt; leaf_node
-                .verify(crypto, signature_key)
+                .verify::&lt;LeafNode&gt;(crypto, signature_key)
                 .map_err(|<span class="kw">_</span>| KeyPackageVerifyError::InvalidLeafNodeSignature)<span class="question-mark">?</span>,
             <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(KeyPackageVerifyError::InvalidLeafNodeSourceType),
         };
+
+        <span class="comment">// Verify that the protocol version is valid
+        </span><span class="kw">if </span>!<span class="self">self</span>.version_is_supported(protocol_version) {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(KeyPackageVerifyError::InvalidProtocolVersion);
+        }
+
+        <span class="comment">// Verify that the encryption key and the init key are different
+        </span><span class="kw">if </span>leaf_node.encryption_key().key() == <span class="kw-2">&amp;</span><span class="self">self</span>.payload.init_key {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(KeyPackageVerifyError::InitKeyEqualsEncryptionKey);
+        }
 
         <span class="kw">let </span>key_package_tbs = KeyPackageTbs {
             protocol_version: <span class="self">self</span>.payload.protocol_version,
@@ -374,6 +408,12 @@
         }
 
         <span class="prelude-val">Ok</span>(key_package)
+    }
+
+    <span class="doccomment">/// Returns true if the protocol version is supported by this key package and
+    /// false otherwise.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>version_is_supported(<span class="kw-2">&amp;</span><span class="self">self</span>, protocol_version: ProtocolVersion) -&gt; bool {
+        <span class="self">self</span>.payload.protocol_version == protocol_version
     }
 }
 

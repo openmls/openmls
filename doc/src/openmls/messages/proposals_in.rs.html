@@ -326,6 +326,17 @@
 <a href="#326" id="326">326</a>
 <a href="#327" id="327">327</a>
 <a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Proposals
 //!
 //! This module defines all the different types of Proposals.
@@ -340,6 +351,7 @@
     group::errors::ValidationError,
     key_packages::<span class="kw-2">*</span>,
     treesync::node::leaf_node::{LeafNodeIn, TreePosition, VerifiableLeafNode},
+    versions::ProtocolVersion,
 };
 
 <span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
@@ -425,9 +437,12 @@
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         sender_context: <span class="prelude-ty">Option</span>&lt;SenderContext&gt;,
+        protocol_version: ProtocolVersion,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Proposal, ValidationError&gt; {
         <span class="prelude-val">Ok</span>(<span class="kw">match </span><span class="self">self </span>{
-            ProposalIn::Add(add) =&gt; Proposal::Add(add.validate(crypto)<span class="question-mark">?</span>),
+            ProposalIn::Add(add) =&gt; {
+                Proposal::Add(add.validate(crypto, protocol_version, ciphersuite)<span class="question-mark">?</span>)
+            }
             ProposalIn::Update(update) =&gt; {
                 <span class="kw">let </span>sender_context =
                     sender_context.ok_or(ValidationError::CommitterIncludedOwnUpdate)<span class="question-mark">?</span>;
@@ -471,8 +486,14 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate(
         <span class="self">self</span>,
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+        protocol_version: ProtocolVersion,
+        ciphersuite: Ciphersuite,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;AddProposal, ValidationError&gt; {
-        <span class="kw">let </span>key_package = <span class="self">self</span>.key_package.validate(crypto)<span class="question-mark">?</span>;
+        <span class="kw">let </span>key_package = <span class="self">self</span>.key_package.validate(crypto, protocol_version)<span class="question-mark">?</span>;
+        <span class="comment">// Verify that the ciphersuite is valid
+        </span><span class="kw">if </span>key_package.ciphersuite() != ciphersuite {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ValidationError::InvalidAddProposalCiphersuite);
+        }
         <span class="prelude-val">Ok</span>(AddProposal { key_package })
     }
 }
@@ -549,11 +570,12 @@
         <span class="self">self</span>,
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         ciphersuite: Ciphersuite,
+        protocol_version: ProtocolVersion,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ProposalOrRef, ValidationError&gt; {
         <span class="prelude-val">Ok</span>(<span class="kw">match </span><span class="self">self </span>{
-            ProposalOrRefIn::Proposal(proposal_in) =&gt; {
-                ProposalOrRef::Proposal(proposal_in.validate(crypto, ciphersuite, <span class="prelude-val">None</span>)<span class="question-mark">?</span>)
-            }
+            ProposalOrRefIn::Proposal(proposal_in) =&gt; ProposalOrRef::Proposal(
+                proposal_in.validate(crypto, ciphersuite, <span class="prelude-val">None</span>, protocol_version)<span class="question-mark">?</span>,
+            ),
             ProposalOrRefIn::Reference(reference) =&gt; ProposalOrRef::Reference(reference),
         })
     }
