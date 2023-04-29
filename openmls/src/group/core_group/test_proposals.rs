@@ -23,6 +23,7 @@ use crate::{
     schedule::psk::store::ResumptionPskStore,
     test_utils::*,
     treesync::errors::LeafNodeValidationError,
+    versions::ProtocolVersion,
 };
 
 /// This test makes sure ProposalQueue works as intended. This functionality is
@@ -43,7 +44,9 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
         KeyPackageBundle::new(backend, &alice_signer, ciphersuite, alice_credential);
     let alice_update_key_package = alice_update_key_package_bundle.key_package();
     let kpi = KeyPackageIn::from(alice_update_key_package.clone());
-    assert!(kpi.validate(backend.crypto()).is_ok());
+    assert!(kpi
+        .validate(backend.crypto(), ProtocolVersion::Mls10)
+        .is_ok());
 
     let group_context = GroupContext::new(
         ciphersuite,
@@ -185,7 +188,9 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         KeyPackageBundle::new(backend, &alice_signer, ciphersuite, alice_credential);
     let alice_update_key_package = alice_update_key_package_bundle.key_package();
     let kpi = KeyPackageIn::from(alice_update_key_package.clone());
-    assert!(kpi.validate(backend.crypto()).is_ok());
+    assert!(kpi
+        .validate(backend.crypto(), ProtocolVersion::Mls10)
+        .is_ok());
 
     let group_context = GroupContext::new(
         ciphersuite,

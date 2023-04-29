@@ -36,6 +36,7 @@ use crate::{
     },
     tree::sender_ratchet::SenderRatchetConfiguration,
     treesync::TreeSync,
+    versions::ProtocolVersion,
 };
 
 use self::mls_group::errors::ProcessMessageError;
@@ -270,12 +271,14 @@ impl UnverifiedMessage {
         self,
         ciphersuite: Ciphersuite,
         crypto: &impl OpenMlsCrypto,
+        protocol_version: ProtocolVersion,
     ) -> Result<(AuthenticatedContent, Credential), ProcessMessageError> {
         let content: AuthenticatedContentIn = self
             .verifiable_content
             .verify(crypto, &self.sender_pk)
             .map_err(|_| ProcessMessageError::InvalidSignature)?;
-        let content = content.validate(ciphersuite, crypto, self.sender_context)?;
+        let content =
+            content.validate(ciphersuite, crypto, self.sender_context, protocol_version)?;
         Ok((content, self.credential))
     }
 

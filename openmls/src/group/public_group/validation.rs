@@ -182,7 +182,7 @@ impl PublicGroup {
                     "   add_proposal.add_proposal().key_package().ciphersuite(): {:?}",
                     add_proposal.add_proposal().key_package().ciphersuite()
                 );
-                return Err(ProposalValidationError::InsufficientCapabilities);
+                return Err(ProposalValidationError::InvalidAddProposalCiphersuiteOrVersion);
             }
 
             // Check if the ciphersuite and the version of the group are

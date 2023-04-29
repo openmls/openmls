@@ -34,7 +34,7 @@ use crate::{
 ///
 /// The `-In` suffix of this struct is to separate it from the [`MlsMessageOut`]
 /// which is commonly returned by functions of the [`MlsGroup`] API.
-#[derive(PartialEq, Debug, Clone, TlsSize, TlsDeserialize)]
+#[derive(PartialEq, Debug, Clone, TlsSize)]
 #[cfg_attr(feature = "test-utils", derive(TlsSerialize))]
 pub struct MlsMessageIn {
     pub(crate) version: ProtocolVersion,
@@ -114,7 +114,10 @@ impl MlsMessageIn {
     #[cfg(any(test, feature = "test-utils"))]
     pub fn into_keypackage(self) -> Option<crate::key_packages::KeyPackage> {
         match self.body {
-            MlsMessageInBody::KeyPackage(kp) => Some(kp.into()),
+            MlsMessageInBody::KeyPackage(key_package) => {
+                debug_assert!(key_package.version_is_supported(self.version));
+                Some(key_package.into())
+            }
             _ => None,
         }
     }
@@ -138,6 +141,7 @@ impl MlsMessageIn {
     /// Convert this message into a [`Welcome`].
     ///
     /// Returns `None` if this message is not a welcome message.
+    #[cfg(any(feature = "test-utils", test))]
     pub fn into_welcome(self) -> Option<Welcome> {
         match self.body {
             MlsMessageInBody::Welcome(w) => Some(w),
