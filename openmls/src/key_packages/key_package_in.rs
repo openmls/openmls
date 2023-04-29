@@ -131,7 +131,7 @@ impl KeyPackageIn {
         };
 
         // Verify that the protocol version is valid
-        if self.payload.protocol_version != protocol_version {
+        if self.version_is_supported(protocol_version) {
             return Err(KeyPackageVerifyError::InvalidProtocolVersion);
         }
 
