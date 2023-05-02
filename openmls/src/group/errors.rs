@@ -311,6 +311,11 @@ pub enum ValidationError {
     /// The Commit includes update proposals from the committer.
     #[error("The Commit includes update proposals from the committer.")]
     CommitterIncludedOwnUpdate,
+    /// The ciphersuite in the KeyPackage of the Add proposal does not match the group context.
+    #[error(
+        "The ciphersuite in the KeyPackage of the Add proposal does not match the group context."
+    )]
+    InvalidAddProposalCiphersuite,
 }
 
 /// Proposal validation error
@@ -367,6 +372,11 @@ pub enum ProposalValidationError {
     /// The capabilities of the add proposal are insufficient for this group.
     #[error("The capabilities of the add proposal are insufficient for this group.")]
     InsufficientCapabilities,
+    /// The add proposal's ciphersuite or protocol version do not match the ones in the group context.
+    #[error(
+        "The add proposal's ciphersuite or protocol version do not match the ones in the group context."
+    )]
+    InvalidAddProposalCiphersuiteOrVersion,
     /// See [`PskError`] for more details.
     #[error(transparent)]
     Psk(#[from] PskError),

@@ -193,11 +193,12 @@ impl CommitIn {
         ciphersuite: Ciphersuite,
         crypto: &impl OpenMlsCrypto,
         sender_context: SenderContext,
+        protocol_version: ProtocolVersion,
     ) -> Result<Commit, ValidationError> {
         let proposals = self
             .proposals
             .into_iter()
-            .map(|p| p.validate(crypto, ciphersuite))
+            .map(|p| p.validate(crypto, ciphersuite, protocol_version))
             .collect::<Result<Vec<_>, _>>()?;
 
         let path = if let Some(path) = self.path {
