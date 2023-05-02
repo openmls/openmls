@@ -58,7 +58,7 @@ impl MlsGroup {
     /// This operation results in a Commit with a `path`, i.e. it includes an
     /// update of the committer's leaf [KeyPackage].
     ///
-    /// If successful, it returns a tupple where the first element
+    /// If successful, it returns a tuple where the first element
     /// contains the commit and the second an optional [GroupInfo] that
     /// will be [Some] if the group has the `use_ratchet_tree_extension` flag set.
     ///
