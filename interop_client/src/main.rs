@@ -26,7 +26,7 @@ use openmls::{
         PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     key_packages::KeyPackage,
-    prelude::{config::CryptoConfig, Capabilities, SenderRatchetConfiguration},
+    prelude::{config::CryptoConfig, Capabilities, ProposalType, SenderRatchetConfiguration},
     schedule::{psk::ResumptionPskUsage, ExternalPsk, PreSharedKeyId, Psk},
     treesync::{
         test_utils::{read_keys_from_key_store, write_keys_from_key_store},
@@ -48,6 +48,22 @@ use tracing::{debug, error, info, instrument, trace, Span};
 use tracing_subscriber::EnvFilter;
 
 const IMPLEMENTATION_NAME: &str = "OpenMLS";
+const PROPOSAL_TYPES: [ProposalType; 6] = [
+    ProposalType::Add,
+    ProposalType::Update,
+    ProposalType::Remove,
+    ProposalType::PreSharedKey,
+    ProposalType::Reinit,
+    ProposalType::GroupContextExtensions,
+];
+const CREDENTIAL_TYPES: [CredentialType; 2] = [CredentialType::X509, CredentialType::Basic];
+const EXTENSION_TYPES: [ExtensionType; 5] = [
+    ExtensionType::ApplicationId,
+    ExtensionType::ExternalSenders,
+    ExtensionType::RequiredCapabilities,
+    ExtensionType::ExternalPub,
+    ExtensionType::RatchetTree,
+];
 
 /// This struct contains the state for a single MLS client. The interop client
 /// doesn't consider scenarios where a credential is re-used across groups, so
@@ -277,6 +293,13 @@ impl MlsClient for MlsClientImpl {
             .sender_ratchet_configuration(SenderRatchetConfiguration::default())
             .use_ratchet_tree_extension(true)
             .wire_format_policy(wire_format_policy)
+            .leaf_extensions(Extensions::single(Extension::RequiredCapabilities(
+                RequiredCapabilitiesExtension::new(
+                    &EXTENSION_TYPES,
+                    &PROPOSAL_TYPES,
+                    &CREDENTIAL_TYPES,
+                ),
+            )))
             .build();
         let group = MlsGroup::new_with_group_id(
             &backend,
@@ -332,7 +355,21 @@ impl MlsClient for MlsClientImpl {
         let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
         let key_package = KeyPackage::builder()
-            .leaf_node_capabilities(Capabilities::default())
+            .leaf_node_capabilities(Capabilities::new(
+                Some(&[ProtocolVersion::Mls10, ProtocolVersion::Mls10Draft11]),
+                Some(&[
+                    Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+                    Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
+                    Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+                    Ciphersuite::MLS_256_DHKEMP521_AES256GCM_SHA512_P521,
+                    Ciphersuite::MLS_256_DHKEMP384_AES256GCM_SHA384_P384,
+                    Ciphersuite::MLS_256_DHKEMX448_AES256GCM_SHA512_Ed448,
+                    Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448,
+                ]),
+                Some(&EXTENSION_TYPES),
+                Some(&PROPOSAL_TYPES),
+                Some(&CREDENTIAL_TYPES),
+            ))
             .build(
                 CryptoConfig {
                     ciphersuite,
@@ -1563,7 +1600,7 @@ impl MlsClient for MlsClientImpl {
 
 #[derive(Parser)]
 struct Opts {
-    #[clap(long, default_value = "127.0.0.1")]
+    #[clap(long, default_value = "0.0.0.0")]
     host: String,
 
     #[clap(short, long, default_value = "50051")]
