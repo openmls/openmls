@@ -87,7 +87,7 @@
 //!     .expect("Could not deserialize KeyPackage");
 //!
 //! let key_package = key_package_in
-//!     .validate(backend.crypto())
+//!     .validate(backend.crypto(), ProtocolVersion::Mls10)
 //!     .expect("Invalid KeyPackage");
 //! ```
 //!
@@ -520,7 +520,7 @@ impl KeyPackage {
     }
 
     /// Replace the public key in the KeyPackage.
-    pub fn set_public_key(&mut self, public_key: HpkePublicKey) {
+    pub fn set_init_key(&mut self, public_key: HpkePublicKey) {
         self.payload.init_key = public_key
     }
 

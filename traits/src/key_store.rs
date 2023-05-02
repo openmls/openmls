@@ -7,6 +7,7 @@ pub enum MlsEntityId {
     KeyPackage,
     PskBundle,
     EncryptionKeyPair,
+    GroupState,
 }
 
 /// To implement by any struct owned by openmls aiming to be persisted in [OpenMlsKeyStore]

@@ -4,6 +4,7 @@
 use super::*;
 use crate::schedule::psk::store::ResumptionPskStore;
 
+use openmls_traits::key_store::{MlsEntity, MlsEntityId};
 use serde::{
     ser::{SerializeStruct, Serializer},
     Deserialize, Serialize,
@@ -25,9 +26,9 @@ pub struct SerializedMlsGroup {
     group_state: MlsGroupState,
 }
 
-impl SerializedMlsGroup {
-    /// Helper method that converts the SerializedMlsGroup to MlsGroup.
-    pub fn into_mls_group(self) -> MlsGroup {
+#[allow(clippy::from_over_into)]
+impl Into<MlsGroup> for SerializedMlsGroup {
+    fn into(self) -> MlsGroup {
         MlsGroup {
             mls_group_config: self.mls_group_config,
             group: self.group,
@@ -38,6 +39,10 @@ impl SerializedMlsGroup {
             state_changed: InnerState::Persisted,
         }
     }
+}
+
+impl MlsEntity for MlsGroup {
+    const ID: MlsEntityId = MlsEntityId::GroupState;
 }
 
 impl Serialize for MlsGroup {
@@ -54,5 +59,15 @@ impl Serialize for MlsGroup {
         state.serialize_field("resumption_psk_store", &self.group.resumption_psk_store)?;
         state.serialize_field("group_state", &self.group_state)?;
         state.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for MlsGroup {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let sgroup = SerializedMlsGroup::deserialize(deserializer)?;
+        Ok(sgroup.into())
     }
 }

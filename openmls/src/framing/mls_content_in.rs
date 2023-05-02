@@ -54,13 +54,16 @@ impl FramedContentIn {
         ciphersuite: Ciphersuite,
         crypto: &impl OpenMlsCrypto,
         sender_context: Option<SenderContext>,
+        protocol_version: ProtocolVersion,
     ) -> Result<FramedContent, ValidationError> {
         Ok(FramedContent {
             group_id: self.group_id,
             epoch: self.epoch,
             sender: self.sender,
             authenticated_data: self.authenticated_data,
-            body: self.body.validate(ciphersuite, crypto, sender_context)?,
+            body: self
+                .body
+                .validate(ciphersuite, crypto, sender_context, protocol_version)?,
         })
     }
 }
@@ -131,11 +134,12 @@ impl FramedContentBodyIn {
         ciphersuite: Ciphersuite,
         crypto: &impl OpenMlsCrypto,
         sender_context: Option<SenderContext>,
+        protocol_version: ProtocolVersion,
     ) -> Result<FramedContentBody, ValidationError> {
         Ok(match self {
             FramedContentBodyIn::Application(bytes) => FramedContentBody::Application(bytes),
             FramedContentBodyIn::Proposal(proposal_in) => FramedContentBody::Proposal(
-                proposal_in.validate(crypto, ciphersuite, sender_context)?,
+                proposal_in.validate(crypto, ciphersuite, sender_context, protocol_version)?,
             ),
             FramedContentBodyIn::Commit(commit_in) => {
                 let sender_context = sender_context
@@ -144,6 +148,7 @@ impl FramedContentBodyIn {
                     ciphersuite,
                     crypto,
                     sender_context,
+                    protocol_version,
                 )?)
             }
         })
