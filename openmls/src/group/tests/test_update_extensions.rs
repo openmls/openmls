@@ -4,8 +4,8 @@ use crate::{
     extensions::{
         ApplicationIdExtension, Extension, ExtensionType, Extensions, RequiredCapabilitiesExtension,
     },
+    framing::{validation::ProcessedMessageContent, MlsMessageIn},
     group::errors::UpdateExtensionsError,
-    prelude::{MlsMessageIn, ProcessedMessageContent},
     test_utils::*,
     treesync::errors::{LeafNodeValidationError, MemberExtensionValidationError},
 };

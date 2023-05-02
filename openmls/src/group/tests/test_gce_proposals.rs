@@ -4,19 +4,20 @@ use crate::{
         ApplicationIdExtension, Extension, ExtensionType, Extensions, ExternalSender,
         ExternalSendersExtension, RequiredCapabilitiesExtension, SenderExtensionIndex,
     },
-    framing::MlsMessageIn,
+    framing::{
+        validation::ProcessedMessageContent, FramedContentBody, MlsMessageIn, MlsMessageOut,
+    },
     group::core_group::test_core_group::setup_client,
     group::{
-        config::CryptoConfig, errors::*, test_core_group::setup_client_with_extensions,
+        config::CryptoConfig,
+        errors::*,
+        mls_group::{config::MlsGroupConfig, MlsGroup},
+        test_core_group::setup_client_with_extensions,
         PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     messages::{
-        external_proposals::JoinProposal,
-        proposals::{GroupContextExtensionProposal, Proposal, ProposalOrRef},
-    },
-    prelude::{
-        CreateCommitError, ExternalProposal, FramedContentBody, MlsGroup, MlsGroupConfig,
-        MlsMessageOut, ProcessedMessageContent, ProposalType,
+        external_proposals::{ExternalProposal, JoinProposal},
+        proposals::{GroupContextExtensionProposal, Proposal, ProposalOrRef, ProposalType},
     },
     test_utils::*,
     treesync::errors::{LeafNodeValidationError, MemberExtensionValidationError},
@@ -697,7 +698,7 @@ pub fn group_setup(
         required_capabilities,
         external_senders,
         crypto_config,
-        leaf_extensions: Some(kp_extensions),
+        leaf_extensions: kp_extensions,
         ..Default::default()
     };
     let mut alice_group =

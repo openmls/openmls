@@ -420,20 +420,20 @@ impl PublicGroup {
     }
 
     /// Validate GroupContextExtensions proposals.
-    /// 
+    ///
     /// There must be at most one GroupContextExtensions proposal.
     pub(crate) fn validate_group_context_extensions_proposals(
         &self,
         proposal_queue: &ProposalQueue,
     ) -> Result<(), ProposalValidationError> {
-        let nb_gce = proposal_queue
+        let gce_count = proposal_queue
             .queued_proposals()
             .filter(|p| matches!(p.proposal(), Proposal::GroupContextExtensions(_)))
             .count();
 
-        if nb_gce > 1 {
+        if gce_count > 1 {
             return Err(ProposalValidationError::TooManyGroupContextExtensions(
-                nb_gce,
+                gce_count,
             ));
         }
 

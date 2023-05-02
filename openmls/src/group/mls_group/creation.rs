@@ -59,12 +59,7 @@ impl MlsGroup {
         .with_external_senders(mls_group_config.external_senders.clone())
         .with_max_past_epoch_secrets(mls_group_config.max_past_epochs)
         .with_lifetime(*mls_group_config.lifetime())
-        .with_leaf_extensions(
-            mls_group_config
-                .leaf_extensions()
-                .cloned()
-                .unwrap_or_default(),
-        )
+        .with_leaf_extensions(mls_group_config.leaf_extensions().clone())
         .build(backend, signer)
         .map_err(|e| match e {
             CoreGroupBuildError::LibraryError(e) => e.into(),

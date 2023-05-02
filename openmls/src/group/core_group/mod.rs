@@ -424,7 +424,9 @@ impl CoreGroup {
         )
     }
 
-    pub(crate) fn members_supports_extensions<'a>(
+    /// Checks if the memebers suuport the provided extensions. Pending proposals have to be passed
+    /// as parameters as Remove Proposals should be ignored
+    pub(crate) fn members_support_extensions<'a>(
         &self,
         extensions: &Extensions,
         pending_proposals: impl Iterator<Item = &'a QueuedProposal>,
@@ -462,7 +464,7 @@ impl CoreGroup {
         signer: &impl Signer,
     ) -> Result<AuthenticatedContent, ProposeGroupContextExtensionError> {
         // Ensure that the group supports all the extensions that are wanted.
-        self.members_supports_extensions(&extensions, pending_proposals)?;
+        self.members_support_extensions(&extensions, pending_proposals)?;
 
         let gce_proposal = GroupContextExtensionProposal::new(extensions);
         let proposal = Proposal::GroupContextExtensions(gce_proposal);
@@ -917,7 +919,7 @@ impl CoreGroup {
             } else {
                 // If path is not needed, update the group context and return
                 // empty path processing results
-                diff.update_group_context(backend, apply_proposals_values.extensions)?;
+                diff.update_group_context(backend, apply_proposals_values.extensions.cloned())?;
                 PathComputationResult::default()
             };
 
