@@ -28,7 +28,7 @@ fn test_mls_group_persistence() {
         backend,
         &alice_signer,
         &mls_group_config,
-        group_id,
+        group_id.clone(),
         alice_credential_with_key,
     )
     .expect("An unexpected error occurred.");
@@ -36,15 +36,12 @@ fn test_mls_group_persistence() {
     // Check the internal state has changed
     assert_eq!(alice_group.state_changed(), InnerState::Changed);
 
-    let mut file_out = tempfile::NamedTempFile::new().expect("Could not create file");
     alice_group
-        .save(&mut file_out)
+        .save(backend)
         .expect("Could not write group state to file");
 
-    let file_in = file_out
-        .reopen()
-        .expect("Error re-opening serialized group state file");
-    let alice_group_deserialized = MlsGroup::load(file_in).expect("Could not deserialize MlsGroup");
+    let alice_group_deserialized =
+        MlsGroup::load(&group_id, backend).expect("Could not deserialize MlsGroup");
 
     assert_eq!(
         (

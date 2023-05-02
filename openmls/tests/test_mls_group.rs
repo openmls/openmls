@@ -3,14 +3,7 @@ use openmls::{
     test_utils::*,
 };
 
-use lazy_static::lazy_static;
 use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, OpenMlsCryptoProvider};
-use std::fs::File;
-
-lazy_static! {
-    static ref TEMP_DIR: tempfile::TempDir =
-        tempfile::tempdir().expect("Error creating temp directory");
-}
 
 fn generate_key_package<KeyStore: OpenMlsKeyStore>(
     ciphersuite: Ciphersuite,
@@ -95,7 +88,7 @@ fn mls_group_operations() {
             backend,
             &alice_signer,
             &mls_group_config,
-            group_id,
+            group_id.clone(),
             alice_credential.clone(),
         )
         .expect("An unexpected error occurred.");
@@ -904,27 +897,14 @@ fn mls_group_operations() {
         assert_eq!(bob_group.state_changed(), InnerState::Changed);
         //save(&mut bob_group);
 
-        let name = bytes_to_hex(
-            bob_group
-                .own_leaf_node()
-                .unwrap()
-                .signature_key()
-                .as_slice(),
-        )
-        .to_lowercase();
-        let path = TEMP_DIR
-            .path()
-            .join(format!("test_mls_group_{}.json", &name));
-        let out_file = &mut File::create(path.clone()).expect("Could not create file");
         bob_group
-            .save(out_file)
+            .save(backend)
             .expect("Could not write group state to file");
 
         // Check that the state flag gets reset when saving
         assert_eq!(bob_group.state_changed(), InnerState::Persisted);
 
-        let file = File::open(path).expect("Could not open file");
-        let bob_group = MlsGroup::load(file).expect("Could not load group from file");
+        let bob_group = MlsGroup::load(&group_id, backend).expect("Could not load group from file");
 
         // Make sure the state is still the same
         assert_eq!(

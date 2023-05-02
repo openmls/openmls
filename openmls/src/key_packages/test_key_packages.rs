@@ -37,7 +37,9 @@ fn generate_key_package() {
     let (key_package, _credential, _signature_keys) = key_package(ciphersuite, backend);
 
     let kpi = KeyPackageIn::from(key_package);
-    assert!(kpi.validate(backend.crypto()).is_ok());
+    assert!(kpi
+        .validate(backend.crypto(), ProtocolVersion::Mls10)
+        .is_ok());
 }
 
 #[openmls_test::openmls_test]
@@ -82,7 +84,9 @@ fn application_id_extension() {
         .expect("An unexpected error occurred.");
 
     let kpi = KeyPackageIn::from(key_package.clone());
-    assert!(kpi.validate(backend.crypto()).is_ok());
+    assert!(kpi
+        .validate(backend.crypto(), ProtocolVersion::Mls10)
+        .is_ok());
 
     // Check ID
     assert_eq!(
@@ -93,4 +97,50 @@ fn application_id_extension() {
             .application_id()
             .map(|e| e.as_slice())
     );
+}
+
+/// Test that the key package is correctly validated:
+/// - The protocol version is correct
+/// - The init key is not equal to the encryption key
+#[apply(ciphersuites_and_backends)]
+fn key_package_validation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let (key_package_orig, _, _) = key_package(ciphersuite, backend);
+
+    // === Protocol version ===
+
+    let mut key_package = key_package_orig.clone();
+
+    // Set an invalid protocol version
+    key_package.set_version(ProtocolVersion::Mls10Draft11);
+
+    let encoded = key_package
+        .tls_serialize_detached()
+        .expect("An unexpected error occurred.");
+
+    let key_package_in = KeyPackageIn::tls_deserialize(&mut encoded.as_slice()).unwrap();
+    let err = key_package_in
+        .validate(backend.crypto(), ProtocolVersion::Mls10)
+        .unwrap_err();
+
+    // Expect an invalid protocol version error
+    assert_eq!(err, KeyPackageVerifyError::InvalidProtocolVersion);
+
+    // === Init/encryption key ===
+
+    let mut key_package = key_package_orig;
+
+    // Set an invalid init key
+    key_package.set_init_key(key_package.leaf_node().encryption_key().key().clone());
+
+    let encoded = key_package
+        .tls_serialize_detached()
+        .expect("An unexpected error occurred.");
+
+    let key_package_in = KeyPackageIn::tls_deserialize(&mut encoded.as_slice()).unwrap();
+    let err = key_package_in
+        .validate(backend.crypto(), ProtocolVersion::Mls10)
+        .unwrap_err();
+
+    // Expect an invalid init/encryption key error
+    assert_eq!(err, KeyPackageVerifyError::InitKeyEqualsEncryptionKey);
 }

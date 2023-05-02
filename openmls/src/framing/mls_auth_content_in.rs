@@ -55,10 +55,16 @@ impl AuthenticatedContentIn {
         ciphersuite: Ciphersuite,
         crypto: &impl OpenMlsCrypto,
         sender_context: Option<SenderContext>,
+        protocol_version: ProtocolVersion,
     ) -> Result<AuthenticatedContent, ValidationError> {
         Ok(AuthenticatedContent {
             wire_format: self.wire_format,
-            content: self.content.validate(ciphersuite, crypto, sender_context)?,
+            content: self.content.validate(
+                ciphersuite,
+                crypto,
+                sender_context,
+                protocol_version,
+            )?,
             auth: self.auth,
         })
     }

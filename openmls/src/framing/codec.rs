@@ -1,10 +1,12 @@
-use tls_codec::{Serialize, Size};
+use std::io::{Read, Write};
+use tls_codec::{Deserialize, Serialize, Size};
+
+use crate::versions::ProtocolVersion;
 
 use super::{
     mls_auth_content::FramedContentAuthData, mls_content_in::FramedContentBodyIn,
     private_message_in::PrivateMessageContentIn, *,
 };
-use std::io::{Read, Write};
 
 impl Size for PrivateMessageContent {
     fn tls_serialized_len(&self) -> usize {
@@ -56,4 +58,21 @@ pub(super) fn deserialize_ciphertext_content<R: Read>(
     }
 
     Ok(PrivateMessageContentIn { content, auth })
+}
+
+impl Deserialize for MlsMessageIn {
+    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
+        let version = ProtocolVersion::tls_deserialize(bytes)?;
+        let body = MlsMessageInBody::tls_deserialize(bytes)?;
+
+        // KeyPackage version must match MlsMessage version.
+        if let MlsMessageInBody::KeyPackage(key_package) = &body {
+            if !key_package.version_is_supported(version) {
+                return Err(tls_codec::Error::DecodingError(
+                    "KeyPackage version does not match MlsMessage version.".into(),
+                ));
+            }
+        }
+        Ok(Self { version, body })
+    }
 }

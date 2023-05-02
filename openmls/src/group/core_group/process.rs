@@ -50,7 +50,7 @@ impl CoreGroup {
         //  - ValSem010
         //  - ValSem246 (as part of ValSem010)
         let (content, credential) =
-            unverified_message.verify(self.ciphersuite(), backend.crypto())?;
+            unverified_message.verify(self.ciphersuite(), backend.crypto(), self.version())?;
 
         match content.sender() {
             Sender::Member(_) | Sender::NewMemberCommit | Sender::NewMemberProposal => {

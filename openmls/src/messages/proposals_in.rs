@@ -12,6 +12,7 @@ use crate::{
     group::errors::ValidationError,
     key_packages::*,
     treesync::node::leaf_node::{LeafNodeIn, TreePosition, VerifiableLeafNode},
+    versions::ProtocolVersion,
 };
 
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
@@ -97,9 +98,12 @@ impl ProposalIn {
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         sender_context: Option<SenderContext>,
+        protocol_version: ProtocolVersion,
     ) -> Result<Proposal, ValidationError> {
         Ok(match self {
-            ProposalIn::Add(add) => Proposal::Add(add.validate(crypto)?),
+            ProposalIn::Add(add) => {
+                Proposal::Add(add.validate(crypto, protocol_version, ciphersuite)?)
+            }
             ProposalIn::Update(update) => {
                 let sender_context =
                     sender_context.ok_or(ValidationError::CommitterIncludedOwnUpdate)?;
@@ -143,8 +147,14 @@ impl AddProposalIn {
     pub(crate) fn validate(
         self,
         crypto: &impl OpenMlsCrypto,
+        protocol_version: ProtocolVersion,
+        ciphersuite: Ciphersuite,
     ) -> Result<AddProposal, ValidationError> {
-        let key_package = self.key_package.validate(crypto)?;
+        let key_package = self.key_package.validate(crypto, protocol_version)?;
+        // Verify that the ciphersuite is valid
+        if key_package.ciphersuite() != ciphersuite {
+            return Err(ValidationError::InvalidAddProposalCiphersuite);
+        }
         Ok(AddProposal { key_package })
     }
 }
@@ -221,11 +231,12 @@ impl ProposalOrRefIn {
         self,
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
+        protocol_version: ProtocolVersion,
     ) -> Result<ProposalOrRef, ValidationError> {
         Ok(match self {
-            ProposalOrRefIn::Proposal(proposal_in) => {
-                ProposalOrRef::Proposal(proposal_in.validate(crypto, ciphersuite, None)?)
-            }
+            ProposalOrRefIn::Proposal(proposal_in) => ProposalOrRef::Proposal(
+                proposal_in.validate(crypto, ciphersuite, None, protocol_version)?,
+            ),
             ProposalOrRefIn::Reference(reference) => ProposalOrRef::Reference(reference),
         })
     }
