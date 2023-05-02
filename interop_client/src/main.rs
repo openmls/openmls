@@ -21,7 +21,9 @@ use openmls::{
         PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     key_packages::KeyPackage,
-    prelude::{config::CryptoConfig, Capabilities, ProposalType, SenderRatchetConfiguration},
+    prelude::{
+        config::CryptoConfig, Capabilities, ExtensionType, ProposalType, SenderRatchetConfiguration,
+    },
     schedule::{psk::ResumptionPskUsage, ExternalPsk, PreSharedKeyId, Psk},
     treesync::{
         test_utils::{read_keys_from_key_store, write_keys_from_key_store},
@@ -245,13 +247,6 @@ impl MlsClient for MlsClientImpl {
             .sender_ratchet_configuration(SenderRatchetConfiguration::default())
             .use_ratchet_tree_extension(true)
             .wire_format_policy(wire_format_policy)
-            .leaf_extensions(Extensions::single(Extension::RequiredCapabilities(
-                RequiredCapabilitiesExtension::new(
-                    &EXTENSION_TYPES,
-                    &PROPOSAL_TYPES,
-                    &CREDENTIAL_TYPES,
-                ),
-            )))
             .build();
         let group = MlsGroup::new_with_group_id(
             &backend,
