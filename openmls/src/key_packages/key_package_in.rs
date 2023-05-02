@@ -161,6 +161,12 @@ impl KeyPackageIn {
                 .leaf_node
                 .supports_extension(&extension.extension_type())
             {
+                log::error!("{}", KeyPackageVerifyError::UnsupportedExtension);
+                log::error!("extension type: {:?}", extension.extension_type());
+                log::error!(
+                    "kp capabilities: {:?}",
+                    key_package.payload.leaf_node.capabilities()
+                );
                 return Err(KeyPackageVerifyError::UnsupportedExtension);
             }
         }
