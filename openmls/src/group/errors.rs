@@ -381,7 +381,7 @@ pub enum ProposalValidationError {
     #[error(transparent)]
     Psk(#[from] PskError),
     /// There cannot be more than 1 GroupContextExtensions proposal in a commit
-    #[error("Expected 1 GroupContextExtensions proposal per commit found {0}")]
+    #[error("Expected at most 1 GroupContextExtensions proposal, found {0}")]
     TooManyGroupContextExtensions(usize),
 }
 

@@ -1,6 +1,6 @@
 //! MLS group context extensions
 //!
-//! Contains all the method related to modifying a group's extensions
+//! Contains all the methods related to modifying a group's extensions.
 
 use std::iter;
 
@@ -17,8 +17,8 @@ use crate::{
 use super::*;
 
 impl MlsGroup {
-    /// Creates proposals to update extensions of the group. This replaces the existing extensions
-    /// of a group and does not merge them.
+    /// Propose to update the group context extensions. This replaces the existing extensions
+    /// of the group but does not merge them yet.
     ///
     /// Returns an error if there is a pending commit.
     pub fn propose_extensions(
@@ -96,7 +96,7 @@ impl MlsGroup {
         Ok((mls_messages, create_commit_result.group_info))
     }
 
-    /// Get a group's [`Extension`].
+    /// Get the group's [`Extensions`].
     pub fn group_context_extensions(&self) -> &Extensions {
         self.group.context().extensions()
     }

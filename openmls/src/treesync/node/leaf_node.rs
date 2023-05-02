@@ -599,7 +599,7 @@ impl LeafNode {
             .contains(credential_type)
     }
 
-    /// Check whether the this leaf node supports all the required extensions
+    /// Check whether this leaf node supports all the required extensions
     /// in the provided list.
     pub(crate) fn check_extension_support(
         &self,

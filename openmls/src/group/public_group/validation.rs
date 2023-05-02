@@ -419,7 +419,9 @@ impl PublicGroup {
         Ok(())
     }
 
-    /// Validate GroupContextExtensions proposals. There must not be more than 1
+    /// Validate GroupContextExtensions proposals.
+    /// 
+    /// There must be at most one GroupContextExtensions proposal.
     pub(crate) fn validate_group_context_extensions_proposals(
         &self,
         proposal_queue: &ProposalQueue,
@@ -440,7 +442,7 @@ impl PublicGroup {
 
     /// Returns a [`LeafNodeValidationError`] if an [`ExtensionType`]
     /// in `extensions` is not supported by a leaf in this tree.
-    /// A list leaves proposed to be removed must be provided as they
+    /// A list of leaves proposed to be removed must be provided as they
     /// should be ignored by this validation
     pub(crate) fn check_extension_support(
         &self,
