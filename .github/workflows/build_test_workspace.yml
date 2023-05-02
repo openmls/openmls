@@ -24,16 +24,17 @@ jobs:
           - macos-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - name: Install dependencies
-        if: matrix.os == 'ubuntu-latest'
-        run: sudo apt-get -y install protobuf-compiler
-      - name: Install dependencies
-        if: matrix.os == 'macos-latest'
-        run: brew install protobuf
+      - name: Setup
+        uses: ./.github/actions/setup
+        with:
+          os: ${{ matrix.os }}
+
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+
       - name: Build workspace
         run: cargo build --workspace --all-targets
+
       - name: Test workspace
         run: cargo test --workspace --all-targets --exclude=openmls --exclude openmls-fuzz

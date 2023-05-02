@@ -1,6 +1,5 @@
 use openmls::{
     prelude::{config::CryptoConfig, *},
-    test_utils::*,
 };
 use openmls_basic_credential::SignatureKeyPair;
 

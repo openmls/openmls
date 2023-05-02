@@ -12,14 +12,14 @@ runs:
       shell: bash
       run: |
         sudo apt-get update
-        sudo apt-get install ninja-build
+        sudo apt-get -y install ninja-build protobuf-compiler
 
     - name: Update & Install Dependencies (MacOS)
       if: inputs.os == 'macos-latest'
       shell: bash
       run: |
         brew update
-        brew install ninja
+        brew install ninja protobuf
 
     - name: Update & Install Dependencies (Windows)
       if: inputs.os == 'windows-latest'

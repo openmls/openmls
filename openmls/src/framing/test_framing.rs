@@ -717,8 +717,8 @@ pub(crate) fn setup_alice_bob_group(
 }
 
 /// Test divergent protocol versions in KeyPackages
-#[apply(ciphersuites_and_backends)]
-fn key_package_version(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn key_package_version() {
     let (mut key_package, _, _) = key_package(ciphersuite, backend);
 
     // Set an invalid protocol version

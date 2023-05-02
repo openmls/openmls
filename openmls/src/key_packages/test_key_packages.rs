@@ -102,8 +102,8 @@ fn application_id_extension() {
 /// Test that the key package is correctly validated:
 /// - The protocol version is correct
 /// - The init key is not equal to the encryption key
-#[apply(ciphersuites_and_backends)]
-fn key_package_validation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[openmls_test::openmls_test]
+fn key_package_validation() {
     let (key_package_orig, _, _) = key_package(ciphersuite, backend);
 
     // === Protocol version ===
