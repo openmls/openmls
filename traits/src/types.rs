@@ -5,7 +5,7 @@
 use std::{convert::TryFrom, ops::Deref};
 
 use serde::{Deserialize, Serialize};
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes, SecretVLBytes};
+use tls_codec::{SecretVLBytes, TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
 
 use crate::key_store::{MlsEntity, MlsEntityId};
 
