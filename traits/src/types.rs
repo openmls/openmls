@@ -5,8 +5,7 @@
 use std::{convert::TryFrom, ops::Deref};
 
 use serde::{Deserialize, Serialize};
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
-use zeroize::ZeroizeOnDrop;
+use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes, SecretVLBytes};
 
 use crate::key_store::{MlsEntity, MlsEntityId};
 
@@ -234,22 +233,15 @@ pub struct HpkeCiphertext {
 
 /// A simple type for HPKE private keys.
 #[derive(
-    Debug,
-    Clone,
-    serde::Serialize,
-    serde::Deserialize,
-    TlsSerialize,
-    TlsDeserialize,
-    TlsSize,
-    ZeroizeOnDrop,
+    Debug, Clone, serde::Serialize, serde::Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
 #[cfg_attr(feature = "test-utils", derive(PartialEq, Eq))]
 #[serde(transparent)]
-pub struct HpkePrivateKey(Vec<u8>);
+pub struct HpkePrivateKey(SecretVLBytes);
 
 impl From<Vec<u8>> for HpkePrivateKey {
     fn from(bytes: Vec<u8>) -> Self {
-        Self(bytes)
+        Self(bytes.into())
     }
 }
 
@@ -279,8 +271,8 @@ pub struct HpkeKeyPair {
 }
 
 pub type KemOutput = Vec<u8>;
-#[derive(Clone, Debug, ZeroizeOnDrop)]
-pub struct ExporterSecret(Vec<u8>);
+#[derive(Clone, Debug)]
+pub struct ExporterSecret(SecretVLBytes);
 
 impl Deref for ExporterSecret {
     type Target = [u8];
@@ -292,7 +284,7 @@ impl Deref for ExporterSecret {
 
 impl From<Vec<u8>> for ExporterSecret {
     fn from(secret: Vec<u8>) -> Self {
-        Self(secret)
+        Self(secret.into())
     }
 }
 

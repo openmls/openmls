@@ -27,7 +27,6 @@ openmls_evercrypt = { version = "0.1.0", path = "../evercrypt_backend", optional
 openmls_basic_credential = { version = "0.1.0", path = "../basic_credential", optional = true, features = ["clonable", "test-utils"] }
 rstest = { version = "^0.16", optional = true }
 rstest_reuse = { version = "0.4", optional = true }
-zeroize = { version = "1.0", features = ["zeroize_derive"] }
 
 [features]
 default = []

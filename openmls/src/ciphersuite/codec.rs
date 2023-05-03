@@ -21,7 +21,7 @@ impl tls_codec::Deserialize for Secret {
     fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, ::tls_codec::Error> {
         let value = Vec::tls_deserialize(bytes)?;
         Ok(Secret {
-            value,
+            value: value.into(),
             mls_version: ProtocolVersion::default(),
             ciphersuite: Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
         })

@@ -1,21 +1,9 @@
+use tls_codec::SecretVLBytes;
+
 use super::*;
 
 /// The default NONCE size in bytes.
 pub(crate) const NONCE_BYTES: usize = 12;
-
-/// Wrapper on top of a byte vector to implement ZeroizeOnDrop.
-#[derive(Serialize, Deserialize, zeroize::ZeroizeOnDrop)]
-#[cfg_attr(any(feature = "test-utils", test), derive(Clone, PartialEq, Eq))]
-#[cfg_attr(feature = "crypto-debug", derive(Debug))]
-pub struct AeadSecretKey(Vec<u8>);
-
-impl std::ops::Deref for AeadSecretKey {
-    type Target = [u8];
-
-    fn deref(&self) -> &Self::Target {
-        self.0.as_slice()
-    }
-}
 
 /// AEAD keys holding the plain key value and the AEAD algorithm type.
 #[derive(Serialize, Deserialize)]
@@ -23,7 +11,7 @@ impl std::ops::Deref for AeadSecretKey {
 #[cfg_attr(feature = "crypto-debug", derive(Debug))]
 pub struct AeadKey {
     aead_mode: AeadType,
-    value: AeadSecretKey,
+    value: SecretVLBytes,
 }
 
 #[cfg(not(feature = "crypto-debug"))]
@@ -51,13 +39,11 @@ impl core::fmt::Debug for AeadNonce {
 impl AeadKey {
     /// Create an `AeadKey` from a `Secret`. TODO: This function should
     /// disappear when tackling issue #103.
-    pub(crate) fn from_secret(mut secret: Secret) -> Self {
+    pub(crate) fn from_secret(secret: Secret) -> Self {
         log::trace!("AeadKey::from_secret with {}", secret.ciphersuite);
-        let value = std::mem::take(&mut secret.value);
-
         AeadKey {
             aead_mode: secret.ciphersuite.aead_algorithm(),
-            value: AeadSecretKey(value),
+            value: secret.value,
         }
     }
 
@@ -73,7 +59,7 @@ impl AeadKey {
     #[cfg(any(feature = "test-utils", test))]
     /// Get a slice to the key value.
     pub(crate) fn as_slice(&self) -> &[u8] {
-        &self.value
+        self.value.as_slice()
     }
 
     /// Encrypt a payload under the AeadKey given a nonce.
@@ -86,7 +72,7 @@ impl AeadKey {
     ) -> Result<Vec<u8>, CryptoError> {
         backend
             .crypto()
-            .aead_encrypt(self.aead_mode, &self.value, msg, &nonce.0, aad)
+            .aead_encrypt(self.aead_mode, self.value.as_slice(), msg, &nonce.0, aad)
             .map_err(|_| CryptoError::CryptoLibraryError)
     }
 
@@ -100,7 +86,13 @@ impl AeadKey {
     ) -> Result<Vec<u8>, CryptoError> {
         backend
             .crypto()
-            .aead_decrypt(self.aead_mode, &self.value, ciphertext, &nonce.0, aad)
+            .aead_decrypt(
+                self.aead_mode,
+                self.value.as_slice(),
+                ciphertext,
+                &nonce.0,
+                aad,
+            )
             .map_err(|_| CryptoError::AeadDecryptionError)
     }
 }
@@ -110,7 +102,7 @@ impl AeadNonce {
     /// disappear when tackling issue #103.
     pub(crate) fn from_secret(secret: Secret) -> Self {
         let mut nonce = [0u8; NONCE_BYTES];
-        nonce.clone_from_slice(&secret.value);
+        nonce.clone_from_slice(secret.value.as_slice());
         Self(nonce)
     }
 
@@ -149,15 +141,17 @@ impl AeadNonce {
 pub(crate) fn aead_key_gen(
     alg: openmls_traits::types::AeadType,
     rng: &impl OpenMlsRand,
-) -> AeadSecretKey {
+) -> SecretVLBytes {
     match alg {
-        openmls_traits::types::AeadType::Aes128Gcm => {
-            AeadSecretKey(rng.random_vec(16).expect("An unexpected error occurred."))
-        }
+        openmls_traits::types::AeadType::Aes128Gcm => rng
+            .random_vec(16)
+            .expect("An unexpected error occurred.")
+            .into(),
         openmls_traits::types::AeadType::Aes256Gcm
-        | openmls_traits::types::AeadType::ChaCha20Poly1305 => {
-            AeadSecretKey(rng.random_vec(32).expect("An unexpected error occurred."))
-        }
+        | openmls_traits::types::AeadType::ChaCha20Poly1305 => rng
+            .random_vec(32)
+            .expect("An unexpected error occurred.")
+            .into(),
     }
 }
 
