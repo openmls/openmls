@@ -111,13 +111,13 @@ impl PublicGroup {
     // === Proposals ===
 
     /// Validate key uniqueness. This function implements the following checks:
-    ///  - ValSem101
-    ///  - ValSem102
-    ///  - ValSem103
-    ///  - ValSem104
-    ///  - ValSem110
-    ///  - ValSem206
-    ///  - ValSem207
+    ///  - ValSem101: Add Proposal: Signature public key in proposals must be unique among proposals & members
+    ///  - ValSem102: Add Proposal: Init key in proposals must be unique among proposals
+    ///  - ValSem103: Add Proposal: Encryption key in proposals must be unique among proposals & members
+    ///  - ValSem104: Add Proposal: Init key and encryption key must be different
+    ///  - ValSem110: Update Proposal: Encryption key must be unique among proposals & members
+    ///  - ValSem206: Commit: Path leaf node encryption key must be unique among proposals & members
+    ///  - ValSem207: Commit: Path encryption keys must be unique among proposals & members
     pub(crate) fn validate_key_uniqueness(
         &self,
         proposal_queue: &ProposalQueue,
@@ -250,8 +250,8 @@ impl PublicGroup {
     }
 
     /// Validate capablities. This function implements the following checks:
-    /// - ValSem106
-    /// - ValSem109
+    /// - ValSem106: Add Proposal: required capabilities
+    /// - ValSem109: Update Proposal: required capabilities
     pub(crate) fn validate_capabilities(
         &self,
         proposal_queue: &ProposalQueue,
@@ -335,7 +335,7 @@ impl PublicGroup {
     }
 
     /// Validate Add proposals. This function implements the following checks:
-    ///  - ValSem105
+    ///  - ValSem105: Add Proposal: Ciphersuite & protocol version must match the group
     pub(crate) fn validate_add_proposals(
         &self,
         proposal_queue: &ProposalQueue,
@@ -354,8 +354,8 @@ impl PublicGroup {
     }
 
     /// Validate Remove proposals. This function implements the following checks:
-    ///  - ValSem107
-    ///  - ValSem108
+    ///  - ValSem107: Remove Proposal: Removed member must be unique among proposals
+    ///  - ValSem108: Remove Proposal: Removed member must be an existing group member
     pub(crate) fn validate_remove_proposals(
         &self,
         proposal_queue: &ProposalQueue,
@@ -381,8 +381,8 @@ impl PublicGroup {
     }
 
     /// Validate Update proposals. This function implements the following checks:
-    ///  - ValSem111
-    ///  - ValSem112
+    ///  - ValSem111: Update Proposal: The sender of a full Commit must not include own update proposals
+    ///  - ValSem112: Update Proposal: The sender of a standalone update proposal must be of type member
     /// TODO: #133 This validation must be updated according to Sec. 13.2
     pub(crate) fn validate_update_proposals(
         &self,
@@ -412,9 +412,9 @@ impl PublicGroup {
     ///
     /// This method implements the following checks:
     ///
-    /// * ValSem401
-    /// * ValSem402
-    /// * ValSem403
+    /// * ValSem401: The nonce of a PreSharedKeyID must have length KDF.Nh.
+    /// * ValSem402: PSK in proposal must be of type Resumption (with usage Application) or External.
+    /// * ValSem403: Proposal list must not contain multiple PreSharedKey proposals that reference the same PreSharedKeyID.
     pub(crate) fn validate_pre_shared_key_proposals(
         &self,
         proposal_queue: &ProposalQueue,
