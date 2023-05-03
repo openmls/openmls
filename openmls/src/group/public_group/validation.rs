@@ -260,7 +260,7 @@ impl PublicGroup {
         // proposals This includes the following checks:
         // - Are ciphersuite & version listed in the `Capabilities` Extension?
         // - If a `RequiredCapabilitiesExtension` is present in the group: Is
-        //   this upported by the node?
+        //   this supported by the node?
         // - Check that all extensions are contained in the capabilities.
         // - Check that the capabilities contain the leaf node's credential
         //   type.

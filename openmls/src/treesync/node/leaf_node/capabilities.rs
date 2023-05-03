@@ -151,7 +151,7 @@ impl Capabilities {
         Ok(())
     }
 
-    /// Check if these [`Capabilities`] contain all the extension.
+    /// Check if these [`Capabilities`] contain all the extensions.
     pub(crate) fn contain_extensions(&self, extension: &Extensions) -> bool {
         extension
             .iter()
