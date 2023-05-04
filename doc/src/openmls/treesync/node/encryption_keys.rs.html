@@ -304,7 +304,7 @@
 <span class="doccomment">/// [`EncryptionKey`] contains an HPKE public key that allows the encryption of
 /// path secrets in MLS commits.
 </span><span class="attr">#[derive(
-    Debug, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize, PartialEq, Eq,
+    Debug, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize, PartialEq, Eq, Hash,
 )]
 </span><span class="kw">pub struct </span>EncryptionKey {
     key: HpkePublicKey,

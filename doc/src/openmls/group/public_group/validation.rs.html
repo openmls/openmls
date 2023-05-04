@@ -433,6 +433,89 @@
 <a href="#433" id="433">433</a>
 <a href="#434" id="434">434</a>
 <a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
+<a href="#452" id="452">452</a>
+<a href="#453" id="453">453</a>
+<a href="#454" id="454">454</a>
+<a href="#455" id="455">455</a>
+<a href="#456" id="456">456</a>
+<a href="#457" id="457">457</a>
+<a href="#458" id="458">458</a>
+<a href="#459" id="459">459</a>
+<a href="#460" id="460">460</a>
+<a href="#461" id="461">461</a>
+<a href="#462" id="462">462</a>
+<a href="#463" id="463">463</a>
+<a href="#464" id="464">464</a>
+<a href="#465" id="465">465</a>
+<a href="#466" id="466">466</a>
+<a href="#467" id="467">467</a>
+<a href="#468" id="468">468</a>
+<a href="#469" id="469">469</a>
+<a href="#470" id="470">470</a>
+<a href="#471" id="471">471</a>
+<a href="#472" id="472">472</a>
+<a href="#473" id="473">473</a>
+<a href="#474" id="474">474</a>
+<a href="#475" id="475">475</a>
+<a href="#476" id="476">476</a>
+<a href="#477" id="477">477</a>
+<a href="#478" id="478">478</a>
+<a href="#479" id="479">479</a>
+<a href="#480" id="480">480</a>
+<a href="#481" id="481">481</a>
+<a href="#482" id="482">482</a>
+<a href="#483" id="483">483</a>
+<a href="#484" id="484">484</a>
+<a href="#485" id="485">485</a>
+<a href="#486" id="486">486</a>
+<a href="#487" id="487">487</a>
+<a href="#488" id="488">488</a>
+<a href="#489" id="489">489</a>
+<a href="#490" id="490">490</a>
+<a href="#491" id="491">491</a>
+<a href="#492" id="492">492</a>
+<a href="#493" id="493">493</a>
+<a href="#494" id="494">494</a>
+<a href="#495" id="495">495</a>
+<a href="#496" id="496">496</a>
+<a href="#497" id="497">497</a>
+<a href="#498" id="498">498</a>
+<a href="#499" id="499">499</a>
+<a href="#500" id="500">500</a>
+<a href="#501" id="501">501</a>
+<a href="#502" id="502">502</a>
+<a href="#503" id="503">503</a>
+<a href="#504" id="504">504</a>
+<a href="#505" id="505">505</a>
+<a href="#506" id="506">506</a>
+<a href="#507" id="507">507</a>
+<a href="#508" id="508">508</a>
+<a href="#509" id="509">509</a>
+<a href="#510" id="510">510</a>
+<a href="#511" id="511">511</a>
+<a href="#512" id="512">512</a>
+<a href="#513" id="513">513</a>
+<a href="#514" id="514">514</a>
+<a href="#515" id="515">515</a>
+<a href="#516" id="516">516</a>
+<a href="#517" id="517">517</a>
+<a href="#518" id="518">518</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains validation functions for incoming messages
 //! as defined in &lt;https://github.com/openmls/openmls/wiki/Message-validation&gt;
 
@@ -454,7 +537,10 @@
         past_secrets::MessageSecretsStore,
         Member, ProposalQueue,
     },
-    messages::proposals::{Proposal, ProposalOrRefType, ProposalType},
+    messages::{
+        proposals::{Proposal, ProposalOrRefType, ProposalType},
+        Commit,
+    },
     schedule::errors::PskError,
     treesync::node::leaf_node::LeafNode,
 };
@@ -542,137 +628,252 @@
 
     <span class="comment">// === Proposals ===
 
-    </span><span class="doccomment">/// Validate Add proposals. This function implements the following checks:
-    ///  - ValSem101
-    ///  - ValSem102
-    ///  - ValSem104
-    ///  - ValSem106
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_add_proposals(
+    </span><span class="doccomment">/// Validate key uniqueness. This function implements the following checks:
+    ///  - ValSem101: Add Proposal: Signature public key in proposals must be unique among proposals &amp; members
+    ///  - ValSem102: Add Proposal: Init key in proposals must be unique among proposals
+    ///  - ValSem103: Add Proposal: Encryption key in proposals must be unique among proposals &amp; members
+    ///  - ValSem104: Add Proposal: Init key and encryption key must be different
+    ///  - ValSem110: Update Proposal: Encryption key must be unique among proposals &amp; members
+    ///  - ValSem206: Commit: Path leaf node encryption key must be unique among proposals &amp; members
+    ///  - ValSem207: Commit: Path encryption keys must be unique among proposals &amp; members
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_key_uniqueness(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         proposal_queue: <span class="kw-2">&amp;</span>ProposalQueue,
+        commit: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Commit&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProposalValidationError&gt; {
-        <span class="kw">let </span>add_proposals = proposal_queue.add_proposals();
-
         <span class="kw">let </span><span class="kw-2">mut </span>signature_key_set = HashSet::new();
         <span class="kw">let </span><span class="kw-2">mut </span>init_key_set = HashSet::new();
         <span class="kw">let </span><span class="kw-2">mut </span>encryption_key_set = HashSet::new();
-        <span class="kw">for </span>add_proposal <span class="kw">in </span>add_proposals {
-            <span class="kw">let </span>signature_key = add_proposal
-                .add_proposal()
-                .key_package()
-                .leaf_node()
-                .signature_key()
-                .as_slice()
-                .to_vec();
-            <span class="comment">// ValSem101
-            </span><span class="kw">if </span>!signature_key_set.insert(signature_key) {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::DuplicateSignatureKeyAddProposal);
-            }
 
-            <span class="kw">let </span>proposal_init_key = add_proposal
-                .add_proposal()
-                .key_package()
-                .hpke_init_key()
-                .as_slice()
-                .to_vec();
-            <span class="kw">let </span>proposal_encryption_key = add_proposal
-                .add_proposal()
-                .key_package()
-                .leaf_node()
-                .encryption_key();
+        <span class="kw">let </span>remove_proposals = HashSet::&lt;LeafNodeIndex&gt;::from_iter(
+            proposal_queue
+                .remove_proposals()
+                .map(|remove_proposal| remove_proposal.remove_proposal().removed),
+        );
 
-            <span class="comment">// ValSem113
-            </span><span class="kw">if </span>proposal_init_key == proposal_encryption_key.as_slice() {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::InitEncryptionKeyCollision);
-            }
-
-            <span class="comment">// ValSem102
-            </span><span class="kw">if </span>!init_key_set.insert(proposal_init_key) {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::DuplicatePublicKeyAddProposal);
-            }
-
-            <span class="comment">// ValSem114
-            // Here we check that the encryption keys in the proposal are unique.
-            // Further down we check that the encryption keys in the proposals
-            // are not in the tree yet.
-            </span><span class="kw">if </span>!encryption_key_set.insert(proposal_encryption_key.as_slice().to_vec()) {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::DuplicatePublicKeyAddProposal);
-            }
-
-            <span class="comment">// ValSem106: Check the required capabilities of the add proposals
-            // This includes the following checks:
-            // - Do ciphersuite and version match that of the group?
-            // - Are the two listed in the `Capabilities` Extension?
-            // - If a `RequiredCapabilitiesExtension` is present in the group:
-            //   Does the key package advertise the capabilities required by that
-            //   extension?
-
-            // Check if ciphersuite and version of the group are correct.
-            </span><span class="kw">if </span>add_proposal.add_proposal().key_package().ciphersuite() != <span class="self">self</span>.ciphersuite()
-                || add_proposal.add_proposal().key_package().protocol_version() != <span class="self">self</span>.version()
-            {
-                <span class="macro">log::error!</span>(<span class="string">&quot;Tried to commit an Add proposal, where either the `Ciphersuite` or the `ProtocolVersion` is not compatible with the group.&quot;</span>);
-                <span class="macro">log::error!</span>(<span class="string">&quot;   self.ciphersuite: {:?}&quot;</span>, <span class="self">self</span>.ciphersuite());
-                <span class="macro">log::error!</span>(
-                    <span class="string">&quot;   add_proposal.add_proposal().key_package().ciphersuite(): {:?}&quot;</span>,
-                    add_proposal.add_proposal().key_package().ciphersuite()
-                );
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::InvalidAddProposalCiphersuiteOrVersion);
-            }
-
-            <span class="comment">// Check if the ciphersuite and the version of the group are
-            // supported.
-            </span><span class="kw">let </span>capabilities = add_proposal
-                .add_proposal()
-                .key_package()
-                .leaf_node()
-                .capabilities();
-            <span class="kw">if </span>!capabilities
-                .ciphersuites()
-                .contains(<span class="kw-2">&amp;</span>VerifiableCiphersuite::from(<span class="self">self</span>.ciphersuite()))
-                || !capabilities.versions().contains(<span class="kw-2">&amp;</span><span class="self">self</span>.version())
-            {
-                <span class="macro">log::error!</span>(<span class="string">&quot;Tried to commit an Add proposal, where either the group&#39;s `Ciphersuite` or the group&#39;s `ProtocolVersion` is not in the `KeyPackage`&#39;s `Capabilities`.&quot;</span>);
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::InsufficientCapabilities);
-            }
-            <span class="comment">// If there is a required capabilities extension, check if that one
-            // is supported.
-            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(required_capabilities) =
-                <span class="self">self</span>.group_context().extensions().required_capabilities()
-            {
-                <span class="comment">// Check if all required capabilities are supported.
-                </span><span class="kw">if </span>!capabilities.supports_required_capabilities(required_capabilities) {
-                    <span class="macro">log::error!</span>(<span class="string">&quot;Tried to commit an Add proposal, where the `Capabilities` of the given `KeyPackage` do not fulfill the `RequiredCapabilities` of the group.&quot;</span>);
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::InsufficientCapabilities);
-                }
-            }
-        }
-
-        <span class="kw">for </span>Member {
+        <span class="comment">// Initialize the sets with the current members, filtered by the
+        // remove proposals.
+        </span><span class="kw">for </span>Member {
             index,
             encryption_key,
             signature_key,
             ..
         } <span class="kw">in </span><span class="self">self</span>.treesync().full_leave_members()
         {
-            <span class="kw">let </span>has_remove_proposal = proposal_queue
-                .remove_proposals()
-                .any(|p| p.remove_proposal().removed == index);
-            <span class="comment">// ValSem104
-            </span><span class="kw">if </span>signature_key_set.contains(<span class="kw-2">&amp;</span>signature_key) &amp;&amp; !has_remove_proposal {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::ExistingSignatureKeyAddProposal);
+            <span class="kw">if </span>!remove_proposals.contains(<span class="kw-2">&amp;</span>index) {
+                signature_key_set.insert(signature_key);
+                encryption_key_set.insert(encryption_key);
             }
-            <span class="comment">// ValSem114
-            </span><span class="kw">if </span>encryption_key_set.contains(<span class="kw-2">&amp;</span>encryption_key) {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::ExistingPublicKeyAddProposal);
+        }
+
+        <span class="comment">// Collect signature keys from add proposals
+        </span><span class="kw">let </span>signature_keys = proposal_queue.add_proposals().map(|add_proposal| {
+            add_proposal
+                .add_proposal()
+                .key_package()
+                .leaf_node()
+                .signature_key()
+                .as_slice()
+                .to_vec()
+        });
+
+        <span class="comment">// Collect encryption keys from add proposals, update proposals, the
+        // commit leaf node and path keys
+        </span><span class="kw">let </span>encryption_keys = proposal_queue
+            .add_proposals()
+            .map(|add_proposal| {
+                add_proposal
+                    .add_proposal()
+                    .key_package()
+                    .leaf_node()
+                    .encryption_key()
+                    .key()
+                    .as_slice()
+                    .to_vec()
+            })
+            .chain(proposal_queue.update_proposals().map(|update_proposal| {
+                update_proposal
+                    .update_proposal()
+                    .leaf_node()
+                    .encryption_key()
+                    .key()
+                    .as_slice()
+                    .to_vec()
+            }))
+            .chain(commit.and_then(|commit| {
+                commit
+                    .path
+                    .as_ref()
+                    .map(|path| path.leaf_node().encryption_key().as_slice().to_vec())
+            }))
+            .chain(
+                commit
+                    .iter()
+                    .filter_map(|commit| {
+                        commit.path.as_ref().map(|path| {
+                            path.nodes()
+                                .iter()
+                                .map(|node| node.encryption_key().as_slice().to_vec())
+                        })
+                    })
+                    .flatten(),
+            );
+
+        <span class="comment">// Collect init keys from add proposals
+        </span><span class="kw">let </span>init_keys = proposal_queue.add_proposals().map(|add_proposal| {
+            add_proposal
+                .add_proposal()
+                .key_package()
+                .hpke_init_key()
+                .as_slice()
+                .to_vec()
+        });
+
+        <span class="comment">// Validate uniqueness of signature keys
+        //  - ValSem101
+        </span><span class="kw">for </span>signature_key <span class="kw">in </span>signature_keys {
+            <span class="kw">if </span>!signature_key_set.insert(signature_key) {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::DuplicateSignatureKey);
+            }
+        }
+
+        <span class="comment">// Validate uniqueness of encryption keys
+        //  - ValSem103
+        //  - ValSem104
+        //  - ValSem110
+        //  - ValSem206
+        //  - ValSem207
+        </span><span class="kw">for </span>encryption_key <span class="kw">in </span>encryption_keys {
+            <span class="kw">if </span>init_key_set.contains(<span class="kw-2">&amp;</span>encryption_key) {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::InitEncryptionKeyCollision);
+            }
+            <span class="kw">if </span>!encryption_key_set.insert(encryption_key) {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::DuplicateEncryptionKey);
+            }
+        }
+
+        <span class="comment">// Validate uniqueness of init keys
+        //  - ValSem102
+        //  - ValSem104
+        </span><span class="kw">for </span>init_key <span class="kw">in </span>init_keys {
+            <span class="kw">if </span>encryption_key_set.contains(<span class="kw-2">&amp;</span>init_key) {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::InitEncryptionKeyCollision);
+            }
+            <span class="kw">if </span>!init_key_set.insert(init_key) {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::DuplicateInitKey);
+            }
+        }
+
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="doccomment">/// Validate capablities. This function implements the following checks:
+    /// - ValSem106: Add Proposal: required capabilities
+    /// - ValSem109: Update Proposal: required capabilities
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_capabilities(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        proposal_queue: <span class="kw-2">&amp;</span>ProposalQueue,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProposalValidationError&gt; {
+        <span class="comment">// ValSem106/ValSem109: Check the required capabilities of the add &amp; update
+        // proposals This includes the following checks:
+        // - Are ciphersuite &amp; version listed in the `Capabilities` Extension?
+        // - If a `RequiredCapabilitiesExtension` is present in the group: Is
+        //   this supported by the node?
+        // - Check that all extensions are contained in the capabilities.
+        // - Check that the capabilities contain the leaf node&#39;s credential
+        //   type.
+        // - Check that the credential type is supported by all members of the
+        //   group.
+        // - Check that the capabilities field of this LeafNode indicates
+        //   support for all the credential types currently in use by other
+        //   members.
+
+        // Extract the leaf nodes from the add &amp; update proposals
+        </span><span class="kw">let </span>leaf_nodes = proposal_queue
+            .queued_proposals()
+            .filter_map(|p| <span class="kw">match </span>p.proposal() {
+                Proposal::Add(add_proposal) =&gt; <span class="prelude-val">Some</span>(add_proposal.key_package().leaf_node()),
+                Proposal::Update(update_proposal) =&gt; <span class="prelude-val">Some</span>(update_proposal.leaf_node()),
+                <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+            });
+
+        <span class="kw">let </span><span class="kw-2">mut </span>group_leaf_nodes = <span class="self">self</span>.treesync().full_leaves();
+
+        <span class="kw">for </span>leaf_node <span class="kw">in </span>leaf_nodes {
+            <span class="comment">// Check if the ciphersuite and the version of the group are
+            // supported.
+            </span><span class="kw">let </span>capabilities = leaf_node.capabilities();
+            <span class="kw">if </span>!capabilities
+                .ciphersuites()
+                .contains(<span class="kw-2">&amp;</span>VerifiableCiphersuite::from(<span class="self">self</span>.ciphersuite()))
+                || !capabilities.versions().contains(<span class="kw-2">&amp;</span><span class="self">self</span>.version())
+            {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::InsufficientCapabilities);
+            }
+
+            <span class="comment">// If there is a required capabilities extension, check if that one
+            // is supported.
+            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(required_capabilities) =
+                <span class="self">self</span>.group_context().extensions().required_capabilities()
+            {
+                <span class="comment">// Check if all required capabilities are supported.
+                </span>capabilities
+                    .supports_required_capabilities(required_capabilities)
+                    .map_err(|<span class="kw">_</span>| ProposalValidationError::InsufficientCapabilities)<span class="question-mark">?</span>;
+            }
+
+            <span class="comment">// Check that all extensions are contained in the capabilities.
+            </span><span class="kw">if </span>!capabilities.contain_extensions(leaf_node.extensions()) {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::InsufficientCapabilities);
+            }
+
+            <span class="comment">// Check that the capabilities contain the leaf node&#39;s credential type.
+            </span><span class="kw">if </span>!capabilities.contains_credential(<span class="kw-2">&amp;</span>leaf_node.credential().credential_type()) {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::InsufficientCapabilities);
+            }
+
+            <span class="comment">// Check that the credential type is supported by all members of the group.
+            </span><span class="kw">if </span>!group_leaf_nodes.all(|node| {
+                node.capabilities()
+                    .contains_credential(<span class="kw-2">&amp;</span>leaf_node.credential().credential_type())
+            }) {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::InsufficientCapabilities);
+            }
+
+            <span class="comment">// Check that the capabilities field of this LeafNode indicates
+            // support for all the credential types currently in use by other
+            // members.
+            </span><span class="kw">if </span>!group_leaf_nodes
+                .all(|node| capabilities.contains_credential(<span class="kw-2">&amp;</span>node.credential().credential_type()))
+            {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::InsufficientCapabilities);
+            }
+        }
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="doccomment">/// Validate Add proposals. This function implements the following checks:
+    ///  - ValSem105: Add Proposal: Ciphersuite &amp; protocol version must match the group
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_add_proposals(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        proposal_queue: <span class="kw-2">&amp;</span>ProposalQueue,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProposalValidationError&gt; {
+        <span class="kw">let </span>add_proposals = proposal_queue.add_proposals();
+
+        <span class="kw">for </span>add_proposal <span class="kw">in </span>add_proposals {
+            <span class="comment">// ValSem105: Check if ciphersuite and version of the group are correct:
+            </span><span class="kw">if </span>add_proposal.add_proposal().key_package().ciphersuite() != <span class="self">self</span>.ciphersuite()
+                || add_proposal.add_proposal().key_package().protocol_version() != <span class="self">self</span>.version()
+            {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::InvalidAddProposalCiphersuiteOrVersion);
             }
         }
         <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Validate Remove proposals. This function implements the following checks:
-    ///  - ValSem107
-    ///  - ValSem108
+    ///  - ValSem107: Remove Proposal: Removed member must be unique among proposals
+    ///  - ValSem108: Remove Proposal: Removed member must be an existing group member
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_remove_proposals(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         proposal_queue: <span class="kw-2">&amp;</span>ProposalQueue,
@@ -688,7 +889,7 @@
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::DuplicateMemberRemoval);
             }
 
-            <span class="comment">// TODO: ValSem108
+            <span class="comment">// ValSem108
             </span><span class="kw">if </span>!<span class="self">self</span>.treesync().is_leaf_in_tree(removed) {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::UnknownMemberRemoval);
             }
@@ -698,23 +899,14 @@
     }
 
     <span class="doccomment">/// Validate Update proposals. This function implements the following checks:
-    ///  -
-    ///  - ValSem110
-    ///  - ValSem111
-    ///  - ValSem112
+    ///  - ValSem111: Update Proposal: The sender of a full Commit must not include own update proposals
+    ///  - ValSem112: Update Proposal: The sender of a standalone update proposal must be of type member
     /// TODO: #133 This validation must be updated according to Sec. 13.2
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_update_proposals(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         proposal_queue: <span class="kw-2">&amp;</span>ProposalQueue,
         committer: LeafNodeIndex,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;HashSet&lt;Vec&lt;u8&gt;&gt;, ProposalValidationError&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>encryption_keys = HashSet::new();
-        <span class="kw">for </span>leaf <span class="kw">in </span><span class="self">self</span>.treesync().full_leaves() {
-            <span class="comment">// 8.3. Leaf Node Validation
-            // encryption key must be unique
-            </span>encryption_keys.insert(leaf.encryption_key().as_slice().to_vec());
-        }
-
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProposalValidationError&gt; {
         <span class="comment">// Check the update proposals from the proposal queue first
         </span><span class="kw">let </span>update_proposals = proposal_queue.update_proposals();
 
@@ -730,28 +922,17 @@
             } <span class="kw">else </span>{
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::UpdateFromNonMember);
             }
-
-            <span class="kw">let </span>encryption_key = update_proposal
-                .update_proposal()
-                .leaf_node()
-                .encryption_key()
-                .as_slice();
-            <span class="comment">// ValSem110
-            // HPKE init key must be unique among existing members
-            </span><span class="kw">if </span>encryption_keys.contains(encryption_key) {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::ExistingPublicKeyUpdateProposal);
-            }
         }
-        <span class="prelude-val">Ok</span>(encryption_keys)
+        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Validate PreSharedKey proposals.
     ///
     /// This method implements the following checks:
     ///
-    /// * ValSem401
-    /// * ValSem402
-    /// * ValSem403
+    /// * ValSem401: The nonce of a PreSharedKeyID must have length KDF.Nh.
+    /// * ValSem402: PSK in proposal must be of type Resumption (with usage Application) or External.
+    /// * ValSem403: Proposal list must not contain multiple PreSharedKey proposals that reference the same PreSharedKeyID.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_pre_shared_key_proposals(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         proposal_queue: <span class="kw-2">&amp;</span>ProposalQueue,
@@ -776,21 +957,6 @@
             }
         }
 
-        <span class="prelude-val">Ok</span>(())
-    }
-
-    <span class="doccomment">/// Validate the new key package in a path
-    /// TODO: #730 - There&#39;s nothing testing this function.
-    /// - ValSem110
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_path_key_package(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        leaf_node: <span class="kw-2">&amp;</span>LeafNode,
-        public_key_set: HashSet&lt;Vec&lt;u8&gt;&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProposalValidationError&gt; {
-        <span class="comment">// ValSem110
-        </span><span class="kw">if </span>public_key_set.contains(leaf_node.encryption_key().as_slice()) {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::ExistingPublicKeyUpdateProposal);
-        }
         <span class="prelude-val">Ok</span>(())
     }
 

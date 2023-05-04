@@ -938,17 +938,18 @@ Further syntax checks are applied for the latter case once the message is decryp
 </div>
 <h3 id="semantic-validation-of-proposals-covered-by-a-commit"><a class="header" href="#semantic-validation-of-proposals-covered-by-a-commit">Semantic validation of proposals covered by a Commit</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
-<tr><td><code>ValSem101</code></td><td>Add Proposal: Signature public key in proposals must be unique among proposals</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
-<tr><td><code>ValSem102</code></td><td>Add Proposal: HPKE init key in proposals must be unique among proposals</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
-<tr><td><code>ValSem104</code></td><td>Add Proposal: Signature public key in proposals must be unique among existing group members</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
+<tr><td><code>ValSem101</code></td><td>Add Proposal: Signature public key in proposals must be unique among proposals &amp; members</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
+<tr><td><code>ValSem102</code></td><td>Add Proposal: Init key in proposals must be unique among proposals</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
+<tr><td><code>ValSem103</code></td><td>Add Proposal: Encryption key in proposals must be unique among proposals &amp; members</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
+<tr><td><code>ValSem104</code></td><td>Add Proposal: Init key and encryption key must be different</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
+<tr><td><code>ValSem105</code></td><td>Add Proposal: Ciphersuite &amp; protocol version must match the group</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
 <tr><td><code>ValSem106</code></td><td>Add Proposal: required capabilities</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
 <tr><td><code>ValSem107</code></td><td>Remove Proposal: Removed member must be unique among proposals</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
 <tr><td><code>ValSem108</code></td><td>Remove Proposal: Removed member must be an existing group member</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
-<tr><td><code>ValSem110</code></td><td>Update Proposal: HPKE init key must be unique among existing members</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
+<tr><td><code>ValSem109</code></td><td>Update Proposal: required capabilities</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
+<tr><td><code>ValSem110</code></td><td>Update Proposal: Encryption key must be unique among proposals &amp; members</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
 <tr><td><code>ValSem111</code></td><td>Update Proposal: The sender of a full Commit must not include own update proposals</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
 <tr><td><code>ValSem112</code></td><td>Update Proposal: The sender of a standalone update proposal must be of type member</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
-<tr><td><code>ValSem113</code></td><td>Add Proposal: Init key and encryption key must be different</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
-<tr><td><code>ValSem114</code></td><td>Add Proposal: Encryption key must be unique in the tree</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
 </tbody></table>
 </div>
 <h3 id="commit-message-validation"><a class="header" href="#commit-message-validation">Commit message validation</a></h3>
@@ -959,6 +960,8 @@ Further syntax checks are applied for the latter case once the message is decryp
 <tr><td><code>ValSem203</code></td><td>Path secrets must decrypt correctly</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_commit_validation.rs</code></td></tr>
 <tr><td><code>ValSem204</code></td><td>Public keys from Path must be verified and match the private keys from the direct path</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_commit_validation.rs</code></td></tr>
 <tr><td><code>ValSem205</code></td><td>Confirmation tag must be successfully verified</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_commit_validation.rs</code></td></tr>
+<tr><td><code>ValSem206</code></td><td>Path leaf node encryption key must be unique among proposals &amp; members</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_commit_validation.rs</code></td></tr>
+<tr><td><code>ValSem207</code></td><td>Path encryption keys must be unique among proposals &amp; members</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_commit_validation.rs</code></td></tr>
 </tbody></table>
 </div>
 <h3 id="external-commit-message-validation"><a class="header" href="#external-commit-message-validation">External Commit message validation</a></h3>

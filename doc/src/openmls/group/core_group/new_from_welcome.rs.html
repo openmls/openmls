@@ -257,6 +257,7 @@
 <a href="#257" id="257">257</a>
 <a href="#258" id="258">258</a>
 <a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
 </pre><pre class="rust"><code><span class="kw">use </span>log::debug;
 <span class="kw">use </span>openmls_traits::key_store::OpenMlsKeyStore;
 
@@ -366,7 +367,8 @@
             </span>key_package_bundle
                 .key_package()
                 .leaf_node()
-                .validate_required_capabilities(required_capabilities)<span class="question-mark">?</span>;
+                .capabilities()
+                .supports_required_capabilities(required_capabilities)<span class="question-mark">?</span>;
         }
 
         <span class="kw">let </span>path_secret_option = group_secrets.path_secret;

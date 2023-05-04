@@ -260,15 +260,7 @@
 <a href="#260" id="260">260</a>
 <a href="#261" id="261">261</a>
 <a href="#262" id="262">262</a>
-<a href="#263" id="263">263</a>
-<a href="#264" id="264">264</a>
-<a href="#265" id="265">265</a>
-<a href="#266" id="266">266</a>
-<a href="#267" id="267">267</a>
-<a href="#268" id="268">268</a>
-</pre><pre class="rust"><code><span class="kw">use </span>std::collections::HashSet;
-
-<span class="kw">use super</span>::{<span class="kw">super</span>::errors::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
+</pre><pre class="rust"><code><span class="kw">use super</span>::{<span class="kw">super</span>::errors::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 <span class="kw">use crate</span>::{
     framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, Sender},
     group::{
@@ -346,10 +338,14 @@
         <span class="comment">// Validate the staged proposals by doing the following checks:
         // ValSem101
         // ValSem102
+        // ValSem103
         // ValSem104
-        // ValSem105
-        // ValSem106
+        </span><span class="self">self</span>.validate_key_uniqueness(<span class="kw-2">&amp;</span>proposal_queue, <span class="prelude-val">Some</span>(commit))<span class="question-mark">?</span>;
+        <span class="comment">// ValSem105
         </span><span class="self">self</span>.validate_add_proposals(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
+        <span class="comment">// ValSem106
+        // ValSem109
+        </span><span class="self">self</span>.validate_capabilities(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
         <span class="comment">// ValSem107
         // ValSem108
         </span><span class="self">self</span>.validate_remove_proposals(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
@@ -358,13 +354,13 @@
         // ValSem403
         </span><span class="self">self</span>.validate_pre_shared_key_proposals(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>public_key_set = <span class="kw">match </span>sender {
+        <span class="kw">match </span>sender {
             Sender::Member(leaf_index) =&gt; {
                 <span class="comment">// ValSem110
                 // ValSem111
                 // ValSem112
-                </span><span class="self">self</span>.validate_update_proposals(<span class="kw-2">&amp;</span>proposal_queue, <span class="kw-2">*</span>leaf_index)<span class="question-mark">?
-            </span>}
+                </span><span class="self">self</span>.validate_update_proposals(<span class="kw-2">&amp;</span>proposal_queue, <span class="kw-2">*</span>leaf_index)<span class="question-mark">?</span>;
+            }
             Sender::External(<span class="kw">_</span>) =&gt; {
                 <span class="comment">// A commit cannot be issued by a pre-configured sender.
                 </span><span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::SenderTypeExternal);
@@ -380,10 +376,8 @@
                 // ValSem243: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
                 //            leaf are identical to the ones in the path KeyPackage.
                 </span><span class="self">self</span>.validate_external_commit(<span class="kw-2">&amp;</span>proposal_queue, commit_update_leaf_node.as_ref())<span class="question-mark">?</span>;
-                <span class="comment">// Since there are no update proposals in an External Commit we have no public keys to return
-                </span>HashSet::new()
             }
-        };
+        }
 
         <span class="comment">// Now we can actually look at the public keys as they might have changed.
         </span><span class="kw">let </span>sender_index = <span class="kw">match </span>sender {
@@ -402,12 +396,6 @@
                 <span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::SenderTypeExternal);
             }
         };
-
-        <span class="comment">// Validation in case of path
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(path) = commit.path.clone() {
-            <span class="comment">// Make sure that the new path key package is valid
-            </span><span class="self">self</span>.validate_path_key_package(path.leaf_node(), public_key_set)<span class="question-mark">?</span>;
-        }
 
         <span class="prelude-val">Ok</span>((commit, proposal_queue, sender_index))
     }
