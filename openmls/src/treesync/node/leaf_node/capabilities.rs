@@ -6,8 +6,9 @@ use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 use super::LeafNode;
 use crate::{
     credentials::CredentialType,
-    extensions::{ExtensionType, RequiredCapabilitiesExtension},
+    extensions::{Extension, ExtensionType, Extensions, RequiredCapabilitiesExtension},
     messages::proposals::ProposalType,
+    treesync::errors::LeafNodeValidationError,
     versions::ProtocolVersion,
 };
 
@@ -112,20 +113,24 @@ impl Capabilities {
 
     // ---------------------------------------------------------------------------------------------
 
-    /// Check if these [`Capabilities`] support all the capabilities
-    /// required by the given [`RequiredCapabilities`] extension. Returns
-    /// `true` if that is the case and `false` otherwise.
+    /// Check if these [`Capabilities`] support all the capabilities required by
+    /// the given [`RequiredCapabilitiesExtension`].
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`LeafNodeValidationError`] error if any of the required
+    /// capabilities is not supported.
     pub(crate) fn supports_required_capabilities(
         &self,
         required_capabilities: &RequiredCapabilitiesExtension,
-    ) -> bool {
+    ) -> Result<(), LeafNodeValidationError> {
         // Check if all required extensions are supported.
         if required_capabilities
             .extension_types()
             .iter()
             .any(|e| !self.extensions().contains(e))
         {
-            return false;
+            return Err(LeafNodeValidationError::UnsupportedExtensions);
         }
         // Check if all required proposals are supported.
         if required_capabilities
@@ -133,9 +138,30 @@ impl Capabilities {
             .iter()
             .any(|p| !self.proposals().contains(p))
         {
-            return false;
+            return Err(LeafNodeValidationError::UnsupportedProposals);
         }
-        true
+        // Check if all required credential types are supported.
+        if required_capabilities
+            .credential_types()
+            .iter()
+            .any(|c| !self.credentials().contains(c))
+        {
+            return Err(LeafNodeValidationError::UnsupportedCredentials);
+        }
+        Ok(())
+    }
+
+    /// Check if these [`Capabilities`] contain all the extensions.
+    pub(crate) fn contain_extensions(&self, extension: &Extensions) -> bool {
+        extension
+            .iter()
+            .map(Extension::extension_type)
+            .all(|e| self.extensions().contains(&e))
+    }
+
+    /// Check if these [`Capabilities`] contain all the credentials.
+    pub(crate) fn contains_credential(&self, credential_type: &CredentialType) -> bool {
+        self.credentials().contains(credential_type)
     }
 }
 

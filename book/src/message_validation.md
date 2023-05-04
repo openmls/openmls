@@ -55,17 +55,18 @@ The following is a list of the individual semantic validation steps performed by
 
 | ValidationStep | Description                                                                                 | Implemented | Tested | Test File                                             |
 | -------------- | ------------------------------------------------------------------------------------------- | ----------- | ------ | ----------------------------------------------------- |
-| `ValSem101`    | Add Proposal: Signature public key in proposals must be unique among proposals              | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
-| `ValSem102`    | Add Proposal: HPKE init key in proposals must be unique among proposals                     | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
-| `ValSem104`    | Add Proposal: Signature public key in proposals must be unique among existing group members | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
+| `ValSem101`    | Add Proposal: Signature public key in proposals must be unique among proposals & members    | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
+| `ValSem102`    | Add Proposal: Init key in proposals must be unique among proposals                          | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
+| `ValSem103`    | Add Proposal: Encryption key in proposals must be unique among proposals & members          | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
+| `ValSem104`    | Add Proposal: Init key and encryption key must be different                                 | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
+| `ValSem105`    | Add Proposal: Ciphersuite & protocol version must match the group                           | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem106`    | Add Proposal: required capabilities                                                         | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem107`    | Remove Proposal: Removed member must be unique among proposals                              | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem108`    | Remove Proposal: Removed member must be an existing group member                            | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
-| `ValSem110`    | Update Proposal: HPKE init key must be unique among existing members                        | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
+| `ValSem109`    | Update Proposal: required capabilities                                                      | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
+| `ValSem110`    | Update Proposal: Encryption key must be unique among proposals & members                    | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem111`    | Update Proposal: The sender of a full Commit must not include own update proposals          | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem112`    | Update Proposal: The sender of a standalone update proposal must be of type member          | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
-| `ValSem113`    | Add Proposal: Init key and encryption key must be different                                 | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
-| `ValSem114`    | Add Proposal: Encryption key must be unique in the tree                                     | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
 
 ### Commit message validation
 
@@ -77,6 +78,8 @@ The following is a list of the individual semantic validation steps performed by
 | `ValSem203`    | Path secrets must decrypt correctly                                                    | ✅          | ✅     | `openmls/src/group/tests/test_commit_validation.rs` |
 | `ValSem204`    | Public keys from Path must be verified and match the private keys from the direct path | ✅          | ✅     | `openmls/src/group/tests/test_commit_validation.rs` |
 | `ValSem205`    | Confirmation tag must be successfully verified                                         | ✅          | ✅     | `openmls/src/group/tests/test_commit_validation.rs` |
+| `ValSem206`    | Path leaf node encryption key must be unique among proposals & members                 | ✅          | ✅     | `openmls/src/group/tests/test_commit_validation.rs` |
+| `ValSem207`    | Path encryption keys must be unique among proposals & members                          | ✅          | ✅     | `openmls/src/group/tests/test_commit_validation.rs` |
 
 ### External Commit message validation
 
