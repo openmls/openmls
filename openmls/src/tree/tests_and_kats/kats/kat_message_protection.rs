@@ -187,9 +187,9 @@ pub fn run_test_vector(
         binary_tree::array_representation::TreeSize,
         extensions::Extensions,
         group::config::CryptoConfig,
-        messages::{proposals_in::ProposalIn, CommitIn},
+        messages::{proposals_in::ProposalIn, CommitIn, ConfirmationTag},
         prelude::KeyPackageBundle,
-        prelude_test::Secret,
+        prelude_test::{Mac, Secret},
     };
 
     let ciphersuite = test.cipher_suite.try_into().unwrap();
@@ -508,59 +508,151 @@ pub fn run_test_vector(
         let commit_priv =
             MlsMessageIn::tls_deserialize_exact(hex_to_bytes(&test.commit_priv)).unwrap();
 
-        // Group stuff we need for openmls
-        let sender_ratchet_config = SenderRatchetConfiguration::new(10, 10);
+        fn test_commit_pub(
+            mut group: CoreGroup,
+            backend: &impl OpenMlsCryptoProvider,
+            ciphersuite: Ciphersuite,
+            commit: CommitIn,
+            commit_pub: MlsMessageIn,
+        ) {
+            // Group stuff we need for openmls
+            let sender_ratchet_config = SenderRatchetConfiguration::new(10, 10);
 
-        // TODO: wrap `commit` into a `PrivateMessage`.
-        // TODO: wrap `commit` into a `PublicMessage`.
+            // check that the proposal in proposal_pub == proposal
+            let decrypted_message = group
+                .decrypt_message(
+                    backend,
+                    commit_pub.into_protocol_message().unwrap(),
+                    &sender_ratchet_config,
+                )
+                .unwrap();
 
-        // check that the proposal in proposal_pub == proposal
-        let decrypted_message = group
-            .decrypt_message(
-                backend,
-                commit_pub.into_protocol_message().unwrap(),
-                &sender_ratchet_config,
-            )
-            .unwrap();
-
-        let processed_unverified_message = group
-            .public_group()
-            .parse_message(decrypted_message, group.message_secrets_store())
-            .unwrap();
-        let processed_message: AuthenticatedContent = processed_unverified_message
-            .verify(ciphersuite, backend.crypto(), ProtocolVersion::Mls10)
-            .unwrap()
-            .0;
-        match processed_message.content().to_owned() {
-            FramedContentBody::Commit(c) => {
-                assert_eq!(commit, CommitIn::from(c))
+            let processed_unverified_message = group
+                .public_group()
+                .parse_message(decrypted_message, group.message_secrets_store())
+                .unwrap();
+            let processed_message: AuthenticatedContent = processed_unverified_message
+                .verify(ciphersuite, backend.crypto(), ProtocolVersion::Mls10)
+                .unwrap()
+                .0;
+            match processed_message.content().to_owned() {
+                FramedContentBody::Commit(c) => {
+                    assert_eq!(commit, CommitIn::from(c))
+                }
+                _ => panic!("Wrong processed message content"),
             }
-            _ => panic!("Wrong processed message content"),
         }
 
-        // check that the proposal in proposal_priv == proposal
-        let decrypted_message = group
-            .decrypt_message(
-                backend,
-                commit_priv.into_protocol_message().unwrap(),
-                &sender_ratchet_config,
-            )
-            .unwrap();
+        test_commit_pub(
+            setup_group(backend, ciphersuite, &test, false),
+            backend,
+            ciphersuite,
+            commit.clone(),
+            commit_pub,
+        );
 
-        let processed_unverified_message = group
-            .public_group()
-            .parse_message(decrypted_message, group.message_secrets_store())
-            .unwrap();
-        let processed_message: AuthenticatedContent = processed_unverified_message
-            .verify(ciphersuite, backend.crypto(), ProtocolVersion::Mls10)
-            .unwrap()
-            .0;
-        match processed_message.content().to_owned() {
-            FramedContentBody::Commit(c) => {
-                assert_eq!(commit, CommitIn::from(c))
+        fn test_commit_priv(
+            mut group: CoreGroup,
+            backend: &impl OpenMlsCryptoProvider,
+            ciphersuite: Ciphersuite,
+            commit: CommitIn,
+            commit_priv: MlsMessageIn,
+        ) {
+            // Group stuff we need for openmls
+            let sender_ratchet_config = SenderRatchetConfiguration::new(10, 10);
+
+            // check that the proposal in proposal_priv == proposal
+            let decrypted_message = group
+                .decrypt_message(
+                    backend,
+                    commit_priv.into_protocol_message().unwrap(),
+                    &sender_ratchet_config,
+                )
+                .unwrap();
+
+            let processed_unverified_message = group
+                .public_group()
+                .parse_message(decrypted_message, group.message_secrets_store())
+                .unwrap();
+            let processed_message: AuthenticatedContent = processed_unverified_message
+                .verify(ciphersuite, backend.crypto(), ProtocolVersion::Mls10)
+                .unwrap()
+                .0;
+            match processed_message.content().to_owned() {
+                FramedContentBody::Commit(c) => {
+                    assert_eq!(commit, CommitIn::from(c))
+                }
+                _ => panic!("Wrong processed message content"),
             }
-            _ => panic!("Wrong processed message content"),
         }
+
+        test_commit_priv(
+            setup_group(backend, ciphersuite, &test, false),
+            backend,
+            ciphersuite,
+            commit.clone(),
+            commit_priv,
+        );
+
+        // Wrap `commit` into a `PrivateMessage`.
+        let group = setup_group(backend, ciphersuite, &test, false);
+        let mut sender_group = setup_group(backend, ciphersuite, &test, true);
+        let mut commit_authenticated_content = AuthenticatedContent::commit(
+            FramingParameters::new(&[], WireFormat::PrivateMessage),
+            Sender::Member(sender_index),
+            commit.clone().into(),
+            &group_context,
+            &signer,
+        )
+        .unwrap();
+        commit_authenticated_content.set_confirmation_tag(ConfirmationTag(Mac {
+            mac_value: vec![0; 32].into(), // Set a face mac, we don't check it.
+        }));
+        let my_commit_pub = sender_group
+            .encrypt(commit_authenticated_content, 0, backend)
+            .unwrap();
+        let my_commit_priv_out =
+            MlsMessageOut::from_private_message(my_commit_pub, group.version());
+
+        test_commit_priv(
+            group,
+            backend,
+            ciphersuite,
+            commit.clone(),
+            my_commit_priv_out.into(),
+        );
+
+        // Wrap `commit` into a `PublicMessage`.
+        let group = setup_group(backend, ciphersuite, &test, false);
+        let sender_group = setup_group(backend, ciphersuite, &test, true);
+        let mut commit_authenticated_content = AuthenticatedContent::commit(
+            FramingParameters::new(&[], WireFormat::PublicMessage),
+            Sender::Member(sender_index),
+            commit.clone().into(),
+            &group_context,
+            &signer,
+        )
+        .unwrap();
+        commit_authenticated_content.set_confirmation_tag(ConfirmationTag(Mac {
+            mac_value: vec![0; 32].into(), // Set a face mac, we don't check it.
+        }));
+        let mut my_commit_pub_msg: PublicMessage = commit_authenticated_content.into();
+        my_commit_pub_msg
+            .set_membership_tag(
+                backend,
+                sender_group.message_secrets().membership_key(),
+                sender_group.message_secrets().serialized_context(),
+            )
+            .expect("error setting membership tag");
+        let my_commit_pub_out: MlsMessageOut = my_commit_pub_msg.into();
+
+        test_commit_pub(
+            group,
+            backend,
+            ciphersuite,
+            commit.clone(),
+            my_commit_pub_out.into(),
+        );
     }
 
     // Application
