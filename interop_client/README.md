@@ -35,11 +35,11 @@ docker compose run test-runner -client openmls:50051 -client mlspp:50052 -config
 
 All the parameters after the `test-runner` will be passed to the executable. The configs are in the `../configs` folder and the default hostnames and ports for the openmls implementation and mlspp are `openmls:50051` and `mlspp:50052`.
 
-The ports are open to the host so one can manually call each of the services. To change the port that it will be run, set the environment variables `OPENMLS_PORT` and `MLSPP_PORT` prior to the container creation.
+The ports are open to the host so one can manually call each of the services. To change the port, set the environment variables `OPENMLS_PORT` and `MLSPP_PORT` prior to the container creation.
 
 ### Each service separately
 
-Be aware that the network flag used here for docker only works on linux. Consider using the docker compose in other platforms.
+Be aware that the network flag used here for docker only works on Linux. Consider using the docker compose in other platforms.
 
 #### Build & start the OpenMLS gRPC server
 
@@ -80,7 +80,7 @@ You should now see how the test-runner orchestrated the "welcome" scenario betwe
 
 - Each "step" in the config files is translated to one (or more) gRPC calls. For example, `"action": "externalJoin"` will request a group info, request an external commit from the joiner, and request all members to process the commit.
 - References such as `"byReference": [5, 6]` in the config files refer to the **index** of a step in the scenario.
-- Currently, the supported ciphersuites were fixated by a patch to `[1, 2, 3]` in the test-runner.
+- Currently, the supported ciphersuites are fixed by a patch to `[1, 2, 3]` in the test-runner.
 - In order to pinpoint discrepancies, it might help to add (more) logging to OpenMLS or MLS++. Use a Docker volume to persist your changes.
 
 ## Test script
@@ -93,7 +93,7 @@ USAGE:
     interop_client [OPTIONS]
 
 OPTIONS:
-    -h, --host <HOST>    [default: [::1]]
+    -h, --host <HOST>    [default: [0.0.0.0]]
         --help           Print help information
     -p, --port <PORT>    [default: 50051]
 ```

@@ -54,7 +54,7 @@ use super::{
 
 use crate::{
     binary_tree::array_representation::{LeafNodeIndex, TreeSize},
-    ciphersuite::{signable::Signable, HpkePublicKey, SignaturePublicKey},
+    ciphersuite::{signable::Signable, HpkePublicKey},
     credentials::*,
     error::LibraryError,
     framing::{mls_auth_content::AuthenticatedContent, *},
@@ -73,10 +73,7 @@ use crate::{
     tree::{secret_tree::SecretTreeError, sender_ratchet::SenderRatchetConfiguration},
     treesync::errors::MemberExtensionValidationError,
     treesync::{
-        node::{
-            encryption_keys::{EncryptionKey, EncryptionKeyPair},
-            leaf_node::Lifetime,
-        },
+        node::{encryption_keys::EncryptionKeyPair, leaf_node::Lifetime},
         *,
     },
     versions::ProtocolVersion,
@@ -337,9 +334,12 @@ impl CoreGroup {
         joiner_key_package: KeyPackage,
         signer: &impl Signer,
     ) -> Result<AuthenticatedContent, CreateAddProposalError> {
-        joiner_key_package
-            .leaf_node()
-            .validate_required_capabilities(self.required_capabilities())?;
+        if let Some(required_capabilities) = self.required_capabilities() {
+            joiner_key_package
+                .leaf_node()
+                .capabilities()
+                .supports_required_capabilities(required_capabilities)?;
+        }
         let add_proposal = AddProposal {
             key_package: joiner_key_package,
         };
@@ -438,8 +438,11 @@ impl CoreGroup {
             let required_capabilities = required_extension.as_required_capabilities_extension()?;
             // Ensure we support all the capabilities.
             required_capabilities.check_support()?;
-            self.own_leaf_node()?
-                .validate_required_capabilities(required_capabilities)?;
+            // TODO #566/#1361: This needs to be re-enabled once we support GCEs
+            /* self.own_leaf_node()?
+            .capabilities()
+            .supports_required_capabilities(required_capabilities)?; */
+
             // Ensure that all other leaf nodes support all the required
             // extensions as well.
             let removed = pending_proposals.filter_map(|proposal| {
@@ -868,9 +871,15 @@ impl CoreGroup {
 
         // ValSem101
         // ValSem102
+        // ValSem103
         // ValSem104
-        // ValSem106
+        self.public_group
+            .validate_key_uniqueness(&proposal_queue, None)?;
+        // ValSem105
         self.public_group.validate_add_proposals(&proposal_queue)?;
+        // ValSem106
+        // ValSem109
+        self.public_group.validate_capabilities(&proposal_queue)?;
         // ValSem107
         // ValSem108
         self.public_group
@@ -1100,58 +1109,6 @@ impl CoreGroup {
     #[cfg(test)]
     pub(crate) fn own_tree_position(&self) -> TreePosition {
         TreePosition::new(self.group_id().clone(), self.own_leaf_index())
-    }
-
-    /// Return supported credentials of all members.
-    // TODO(#1186)
-    #[allow(unused)]
-    pub(crate) fn members_supported_credentials(
-        &self,
-    ) -> impl Iterator<Item = &[CredentialType]> + '_ {
-        self.public_group().members().filter_map(|member| {
-            self.public_group()
-                .leaf(member.index)
-                .map(|leaf| leaf.capabilities().credentials())
-        })
-    }
-
-    /// Return currently used credentials of all members.
-    // TODO(#1186)
-    #[allow(unused)]
-    pub(crate) fn members_used_credentials(&self) -> impl Iterator<Item = CredentialType> + '_ {
-        self.public_group()
-            .members()
-            .map(|Member { credential, .. }| credential.credential_type())
-    }
-
-    /// Return currently used signature keys of all members.
-    // TODO(#1186)
-    #[allow(unused)]
-    pub(crate) fn signature_keys(
-        &self,
-        exclude_own: bool,
-    ) -> impl Iterator<Item = SignaturePublicKey> + '_ {
-        self.public_group()
-            .members()
-            .filter(move |member| {
-                if exclude_own {
-                    member.index != self.own_leaf_index
-                } else {
-                    true
-                }
-            })
-            .map(|Member { signature_key, .. }| SignaturePublicKey::from(signature_key))
-    }
-
-    /// Return currently used encryption keys of all members.
-    // TODO(#1186)
-    #[allow(unused)]
-    pub(crate) fn encryption_keys(&self) -> impl Iterator<Item = EncryptionKey> + '_ {
-        self.public_group()
-            .members()
-            .map(|Member { encryption_key, .. }| {
-                EncryptionKey::from(HpkePublicKey::new(encryption_key))
-            })
     }
 }
 

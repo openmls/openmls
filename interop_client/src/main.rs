@@ -26,7 +26,7 @@ use openmls::{
         PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     key_packages::KeyPackage,
-    prelude::{config::CryptoConfig, Capabilities, ProposalType, SenderRatchetConfiguration},
+    prelude::{config::CryptoConfig, Capabilities, ExtensionType, SenderRatchetConfiguration},
     schedule::{psk::ResumptionPskUsage, ExternalPsk, PreSharedKeyId, Psk},
     treesync::{
         test_utils::{read_keys_from_key_store, write_keys_from_key_store},
@@ -48,15 +48,7 @@ use tracing::{debug, error, info, instrument, trace, Span};
 use tracing_subscriber::EnvFilter;
 
 const IMPLEMENTATION_NAME: &str = "OpenMLS";
-const PROPOSAL_TYPES: [ProposalType; 6] = [
-    ProposalType::Add,
-    ProposalType::Update,
-    ProposalType::Remove,
-    ProposalType::PreSharedKey,
-    ProposalType::Reinit,
-    ProposalType::GroupContextExtensions,
-];
-const CREDENTIAL_TYPES: [CredentialType; 2] = [CredentialType::X509, CredentialType::Basic];
+const CREDENTIAL_TYPES: [CredentialType; 1] = [CredentialType::Basic];
 const EXTENSION_TYPES: [ExtensionType; 5] = [
     ExtensionType::ApplicationId,
     ExtensionType::ExternalSenders,
@@ -361,13 +353,9 @@ impl MlsClient for MlsClientImpl {
                     Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
                     Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
                     Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-                    Ciphersuite::MLS_256_DHKEMP521_AES256GCM_SHA512_P521,
-                    Ciphersuite::MLS_256_DHKEMP384_AES256GCM_SHA384_P384,
-                    Ciphersuite::MLS_256_DHKEMX448_AES256GCM_SHA512_Ed448,
-                    Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448,
                 ]),
                 Some(&EXTENSION_TYPES),
-                Some(&PROPOSAL_TYPES),
+                None,
                 Some(&CREDENTIAL_TYPES),
             ))
             .build(

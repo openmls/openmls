@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use super::{super::errors::*, *};
 use crate::{
     framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, Sender},
@@ -78,10 +76,14 @@ impl PublicGroup {
         // Validate the staged proposals by doing the following checks:
         // ValSem101
         // ValSem102
+        // ValSem103
         // ValSem104
+        self.validate_key_uniqueness(&proposal_queue, Some(commit))?;
         // ValSem105
-        // ValSem106
         self.validate_add_proposals(&proposal_queue)?;
+        // ValSem106
+        // ValSem109
+        self.validate_capabilities(&proposal_queue)?;
         // ValSem107
         // ValSem108
         self.validate_remove_proposals(&proposal_queue)?;
@@ -91,12 +93,12 @@ impl PublicGroup {
         self.validate_pre_shared_key_proposals(&proposal_queue)?;
         self.validate_group_context_extensions_proposals(&proposal_queue)?;
 
-        let public_key_set = match sender {
+        match sender {
             Sender::Member(leaf_index) => {
                 // ValSem110
                 // ValSem111
                 // ValSem112
-                self.validate_update_proposals(&proposal_queue, *leaf_index)?
+                self.validate_update_proposals(&proposal_queue, *leaf_index)?;
             }
             Sender::External(_) => {
                 // A commit cannot be issued by a pre-configured sender.
@@ -113,10 +115,8 @@ impl PublicGroup {
                 // ValSem243: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
                 //            leaf are identical to the ones in the path KeyPackage.
                 self.validate_external_commit(&proposal_queue, commit_update_leaf_node.as_ref())?;
-                // Since there are no update proposals in an External Commit we have no public keys to return
-                HashSet::new()
             }
-        };
+        }
 
         // Now we can actually look at the public keys as they might have changed.
         let sender_index = match sender {
@@ -135,12 +135,6 @@ impl PublicGroup {
                 return Err(StageCommitError::SenderTypeExternal);
             }
         };
-
-        // Validation in case of path
-        if let Some(path) = commit.path.clone() {
-            // Make sure that the new path key package is valid
-            self.validate_path_key_package(path.leaf_node(), public_key_set)?;
-        }
 
         Ok((commit, proposal_queue, sender_index))
     }
