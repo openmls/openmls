@@ -125,7 +125,7 @@ impl Member {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(test, derive(PartialEq, Clone))]
 pub(crate) struct CoreGroup {
     public_group: PublicGroup,
     group_epoch_secrets: GroupEpochSecrets,
@@ -484,7 +484,6 @@ impl CoreGroup {
         padding_size: usize,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<PrivateMessage, MessageEncryptionError> {
-        log::trace!("{:?}", public_message.confirmation_tag());
         PrivateMessage::try_from_authenticated_content(
             &public_message,
             self.ciphersuite(),

@@ -146,6 +146,7 @@ impl PrivateMessageIn {
         sender_ratchet_configuration: &SenderRatchetConfiguration,
         sender_data: MlsSenderData,
     ) -> Result<VerifiableAuthenticatedContentIn, MessageDecryptionError> {
+        log::debug!("to_verifiable_content");
         let secret_type = SecretType::from(&self.content_type);
         // Extract generation and key material for encryption
         let (ratchet_key, ratchet_nonce) = message_secrets
@@ -158,9 +159,9 @@ impl PrivateMessageIn {
                 sender_data.generation,
                 sender_ratchet_configuration,
             )
-            .map_err(|_| {
+            .map_err(|e| {
                 log::error!(
-                    "  Ciphertext generation out of bounds {}",
+                    "  Ciphertext generation out of bounds {}\n\t{e:?}",
                     sender_data.generation
                 );
                 MessageDecryptionError::GenerationOutOfBound
