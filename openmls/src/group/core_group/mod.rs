@@ -659,6 +659,11 @@ impl CoreGroup {
     pub(crate) fn use_ratchet_tree_extension(&self) -> bool {
         self.use_ratchet_tree_extension
     }
+
+    #[cfg(test)]
+    pub(crate) fn set_own_leaf_index(&mut self, own_leaf_index: LeafNodeIndex) {
+        self.own_leaf_index = own_leaf_index;
+    }
 }
 
 // Private and crate functions

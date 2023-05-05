@@ -339,7 +339,10 @@ impl SecretTree {
                 .expect("Index out of bounds");
         }
         match self.ratchet_mut(index, secret_type) {
-            SenderRatchet::DecryptionRatchet(_) => Err(SecretTreeError::RatchetTypeError),
+            SenderRatchet::DecryptionRatchet(_) => {
+                log::error!("Invalid ratchet type. Got decryption, expected encryption.");
+                Err(SecretTreeError::RatchetTypeError)
+            }
             SenderRatchet::EncryptionRatchet(enc_ratchet) => {
                 enc_ratchet.ratchet_forward(backend, ciphersuite)
             }

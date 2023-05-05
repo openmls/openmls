@@ -340,6 +340,11 @@ pub fn run_test_vector(
         let serialized_group_context = group_context.tls_serialize_detached().unwrap();
         group.set_group_context(group_context);
 
+        if sender {
+            // Force the sender index
+            group.set_own_leaf_index(sender_index);
+        }
+
         let message_secrets = group.message_secrets_test_mut();
         if sender {
             message_secrets.replace_secret_tree(sender_secret_tree);
@@ -497,9 +502,6 @@ pub fn run_test_vector(
         );
     }
 
-    // Reset the state
-    let mut group = setup_group(backend, ciphersuite, &test, false);
-
     // Commit
     {
         let commit = CommitIn::tls_deserialize_exact(hex_to_bytes(&test.commit)).unwrap();
@@ -606,7 +608,7 @@ pub fn run_test_vector(
         )
         .unwrap();
         commit_authenticated_content.set_confirmation_tag(ConfirmationTag(Mac {
-            mac_value: vec![0; 32].into(), // Set a face mac, we don't check it.
+            mac_value: vec![0; 32].into(), // Set a fake mac, we don't check it.
         }));
         let my_commit_pub = sender_group
             .encrypt(commit_authenticated_content, 0, backend)
@@ -634,7 +636,7 @@ pub fn run_test_vector(
         )
         .unwrap();
         commit_authenticated_content.set_confirmation_tag(ConfirmationTag(Mac {
-            mac_value: vec![0; 32].into(), // Set a face mac, we don't check it.
+            mac_value: vec![0; 32].into(), // Set a fake mac, we don't check it.
         }));
         let mut my_commit_pub_msg: PublicMessage = commit_authenticated_content.into();
         my_commit_pub_msg
@@ -650,40 +652,66 @@ pub fn run_test_vector(
             group,
             backend,
             ciphersuite,
-            commit.clone(),
+            commit,
             my_commit_pub_out.into(),
         );
     }
 
     // Application
     {
-        eprintln!("application_priv: {}", test.application_priv);
         let application = hex_to_bytes(&test.application);
         let application_priv =
             MlsMessageIn::tls_deserialize_exact(hex_to_bytes(&test.application_priv)).unwrap();
 
-        // Group stuff we need for openmls
-        let sender_ratchet_config = SenderRatchetConfiguration::new(0, 0);
-        let proposal_store = ProposalStore::default();
+        fn test_application_priv(
+            mut group: CoreGroup,
+            backend: &impl OpenMlsCryptoProvider,
+            application: Vec<u8>,
+            application_priv: MlsMessageIn,
+        ) {
+            // Group stuff we need for openmls
+            let sender_ratchet_config = SenderRatchetConfiguration::new(0, 0);
+            let proposal_store = ProposalStore::default();
 
-        // TODO: wrap `application` into a `PrivateMessage`.
-
-        // check that the proposal in proposal_pub == proposal
-        let processed_message = group
-            .process_message(
-                backend,
-                application_priv.into_ciphertext().unwrap(),
-                &sender_ratchet_config,
-                &proposal_store,
-                &[],
-            )
-            .unwrap();
-        match processed_message.into_content() {
-            ProcessedMessageContent::ApplicationMessage(a) => {
-                assert_eq!(application, a.into_bytes())
+            // check that the proposal in proposal_pub == proposal
+            let processed_message = group
+                .process_message(
+                    backend,
+                    application_priv.into_ciphertext().unwrap(),
+                    &sender_ratchet_config,
+                    &proposal_store,
+                    &[],
+                )
+                .unwrap();
+            match processed_message.into_content() {
+                ProcessedMessageContent::ApplicationMessage(a) => {
+                    assert_eq!(application, a.into_bytes())
+                }
+                _ => panic!("Wrong processed message content"),
             }
-            _ => panic!("Wrong processed message content"),
         }
+
+        test_application_priv(
+            setup_group(backend, ciphersuite, &test, false),
+            backend,
+            application.clone(),
+            application_priv,
+        );
+
+        // Wrap `application` into a `PrivateMessage`.
+        let mut sender_group = setup_group(backend, ciphersuite, &test, true);
+        let private_message = sender_group
+            .create_application_message(&[], &application, 0, backend, &signer)
+            .unwrap();
+        let my_application_priv_out =
+            MlsMessageOut::from_private_message(private_message, sender_group.version());
+
+        test_application_priv(
+            setup_group(backend, ciphersuite, &test, false),
+            backend,
+            application.clone(),
+            my_application_priv_out.into(),
+        );
     }
 
     log::trace!("Finished test verification");
