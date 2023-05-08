@@ -146,7 +146,6 @@ impl PrivateMessageIn {
         sender_ratchet_configuration: &SenderRatchetConfiguration,
         sender_data: MlsSenderData,
     ) -> Result<VerifiableAuthenticatedContentIn, MessageDecryptionError> {
-        log::debug!("to_verifiable_content");
         let secret_type = SecretType::from(&self.content_type);
         // Extract generation and key material for encryption
         let (ratchet_key, ratchet_nonce) = message_secrets
