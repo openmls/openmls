@@ -314,11 +314,9 @@ impl PublicGroup {
             }
 
             // Check that all extensions are contained in the capabilities.
-            // if !capabilities.contain_extensions(leaf_node.extensions()) {
-            //     return Err(ProposalValidationError::InsufficientCapabilities(
-            //         "leaf doesn't contain extensions listed in the capabilities",
-            //     ));
-            // }
+            if !capabilities.are_extensions_supported(leaf_node.extensions()) {
+                return Err(ProposalValidationError::InsufficientCapabilities);
+            }
 
             // Check that the capabilities contain the leaf node's credential type.
             if !capabilities.contains_credential(&leaf_node.credential().credential_type()) {

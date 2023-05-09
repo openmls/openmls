@@ -380,8 +380,6 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMl
         ProposalType::Update,
     ];
     let credentials = &[CredentialType::Basic];
-    let required_capabilities =
-        RequiredCapabilitiesExtension::new(extensions, proposals, credentials);
 
     let leaf_capabilities = Capabilities::new(
         None,
@@ -395,18 +393,14 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMl
         "Alice",
         ciphersuite,
         backend,
-        Extensions::single(Extension::RequiredCapabilities(
-            required_capabilities.clone(),
-        )),
+        Extensions::empty(),
         leaf_capabilities.clone(),
     );
     let (_bob_credential_bundle, bob_key_package_bundle, _, _) = setup_client_with_extensions(
         "Bob",
         ciphersuite,
         backend,
-        Extensions::single(Extension::RequiredCapabilities(
-            required_capabilities.clone(),
-        )),
+        Extensions::empty(),
         leaf_capabilities.clone(),
     );
 
@@ -417,7 +411,6 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMl
         CryptoConfig::with_default_version(ciphersuite),
         alice_credential,
     )
-    .with_required_capabilities(required_capabilities)
     .with_leaf_capabilities(leaf_capabilities)
     .build(backend, &alice_signer)
     .expect("Error creating CoreGroup.");

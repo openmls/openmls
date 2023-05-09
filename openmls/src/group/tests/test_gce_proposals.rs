@@ -183,18 +183,9 @@ fn gce_proposal_should_overwrite_previous(
         &DEFAULT_CREDENTIAL_TYPES,
     );
 
-    let kp_extensions = Extensions::from_vec(vec![
-        Extension::ExternalSenders(ExternalSendersExtension::default()),
-        Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
-            &[
-                ExtensionType::ExternalSenders,
-                ExtensionType::RatchetTree,
-                ExtensionType::ApplicationId,
-            ],
-            &DEFAULT_PROPOSAL_TYPES,
-            &DEFAULT_CREDENTIAL_TYPES,
-        )),
-    ])
+    let kp_extensions = Extensions::from_vec(vec![Extension::ExternalSenders(
+        ExternalSendersExtension::default(),
+    )])
     .unwrap();
 
     let kp_capabilities = Capabilities::new(
@@ -378,14 +369,9 @@ fn gce_proposal_must_be_applied_first_then_used_to_validate_other_add_proposals(
 ) {
     let required_capabilities =
         RequiredCapabilitiesExtension::new(&[], &DEFAULT_PROPOSAL_TYPES, &DEFAULT_CREDENTIAL_TYPES);
-    let kp_extensions = Extensions::from_vec(vec![
-        Extension::ExternalSenders(ExternalSendersExtension::default()),
-        Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
-            &[ExtensionType::ExternalSenders],
-            &DEFAULT_PROPOSAL_TYPES,
-            &DEFAULT_CREDENTIAL_TYPES,
-        )),
-    ])
+    let kp_extensions = Extensions::from_vec(vec![Extension::ExternalSenders(
+        ExternalSendersExtension::default(),
+    )])
     .unwrap();
     let kp_capabilities = Capabilities::new(
         None,
@@ -461,14 +447,9 @@ fn gce_proposal_must_be_applied_first_then_used_to_validate_other_external_add_p
 ) {
     let required_capabilities =
         RequiredCapabilitiesExtension::new(&[], &DEFAULT_PROPOSAL_TYPES, &DEFAULT_CREDENTIAL_TYPES);
-    let kp_extensions = Extensions::from_vec(vec![
-        Extension::ExternalSenders(ExternalSendersExtension::default()),
-        Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
-            &[ExtensionType::ExternalSenders],
-            &DEFAULT_PROPOSAL_TYPES,
-            &DEFAULT_CREDENTIAL_TYPES,
-        )),
-    ])
+    let kp_extensions = Extensions::from_vec(vec![Extension::ExternalSenders(
+        ExternalSendersExtension::default(),
+    )])
     .unwrap();
     let kp_capabilities = Capabilities::new(
         None,
@@ -542,11 +523,6 @@ fn gce_proposal_must_be_applied_first_but_ignored_for_remove_proposals(
         RequiredCapabilitiesExtension::new(&[], &DEFAULT_PROPOSAL_TYPES, &DEFAULT_CREDENTIAL_TYPES);
     // Alice & Bob have ExternalSenders support even though it is not required
     let external_senders = Extension::ExternalSenders(ExternalSendersExtension::default());
-    let kp_extensions = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
-        &[ExtensionType::ExternalSenders],
-        &DEFAULT_PROPOSAL_TYPES,
-        &DEFAULT_CREDENTIAL_TYPES,
-    ));
     let kp_capabilities = Capabilities::new(
         None,
         None,
@@ -558,7 +534,7 @@ fn gce_proposal_must_be_applied_first_but_ignored_for_remove_proposals(
         ciphersuite,
         required_capabilities,
         None,
-        Extensions::from_vec(vec![external_senders, kp_extensions]).unwrap(),
+        Extensions::from_vec(vec![external_senders]).unwrap(),
         kp_capabilities,
         backend,
     );
@@ -652,15 +628,7 @@ fn gce_proposal_must_be_applied_first_but_ignored_for_external_remove_proposals(
         ds_credential_bundle.credential,
     );
     let external_senders = Extension::ExternalSenders(vec![external_sender.clone()]);
-    let kp_extensions = Extensions::from_vec(vec![
-        external_senders,
-        Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
-            &[ExtensionType::ExternalSenders],
-            &DEFAULT_PROPOSAL_TYPES,
-            &DEFAULT_CREDENTIAL_TYPES,
-        )),
-    ])
-    .unwrap();
+    let kp_extensions = Extensions::from_vec(vec![external_senders]).unwrap();
     let kp_capabilities = Capabilities::new(
         None,
         None,
