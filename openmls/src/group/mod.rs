@@ -4,6 +4,8 @@
 
 mod group_context;
 
+use std::fmt::Display;
+
 #[cfg(test)]
 use crate::ciphersuite::*;
 use crate::extensions::*;
@@ -132,5 +134,11 @@ impl GroupEpoch {
 impl From<u64> for GroupEpoch {
     fn from(val: u64) -> Self {
         Self(val)
+    }
+}
+
+impl Display for GroupEpoch {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{}", self.0))
     }
 }
