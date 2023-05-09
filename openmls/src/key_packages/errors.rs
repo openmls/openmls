@@ -30,6 +30,12 @@ pub enum KeyPackageVerifyError {
     /// Invalid LeafNode source type
     #[error("Invalid LeafNode source type")]
     InvalidLeafNodeSourceType,
+    /// The init key and the encryption key are equal.
+    #[error("The init key and the encryption key are equal.")]
+    InitKeyEqualsEncryptionKey,
+    /// The protocol version is not valid.
+    #[error("The protocol version is not valid.")]
+    InvalidProtocolVersion,
 }
 
 /// KeyPackage extension support error

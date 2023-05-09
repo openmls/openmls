@@ -231,7 +231,7 @@ enum KeyUniqueness {
 /// Add Proposal:
 /// Signature public key in proposals must be unique among proposals
 #[apply(ciphersuites_and_backends)]
-fn test_valsem101(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem101a(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     for bob_and_charlie_share_keys in [
         KeyUniqueness::NegativeSameKey,
         KeyUniqueness::PositiveDifferentKey,
@@ -294,7 +294,7 @@ fn test_valsem101(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                 assert_eq!(
                     err,
                     AddMembersError::CreateCommitError(CreateCommitError::ProposalValidationError(
-                        ProposalValidationError::DuplicateSignatureKeyAddProposal
+                        ProposalValidationError::DuplicateSignatureKey
                     ))
                 );
             }
@@ -380,7 +380,7 @@ fn test_valsem101(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     assert_eq!(
         err,
         ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
-            ProposalValidationError::DuplicateSignatureKeyAddProposal
+            ProposalValidationError::DuplicateSignatureKey
         ))
     );
 
@@ -450,7 +450,7 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                 assert_eq!(
                     err,
                     AddMembersError::CreateCommitError(CreateCommitError::ProposalValidationError(
-                        ProposalValidationError::DuplicatePublicKeyAddProposal
+                        ProposalValidationError::DuplicateInitKey
                     ))
                 );
             }
@@ -502,7 +502,7 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let (dave_credential_with_key_and_signer, mut dave_key_package) =
         generate_credential_bundle_and_key_package("Dave".into(), ciphersuite, backend);
     // Change the init key and re-sign.
-    dave_key_package.set_public_key(charlie_key_package.hpke_init_key().clone());
+    dave_key_package.set_init_key(charlie_key_package.hpke_init_key().clone());
     let dave_key_package = dave_key_package.resign(
         &dave_credential_with_key_and_signer.signer,
         dave_credential_with_key_and_signer
@@ -527,12 +527,12 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Have bob process the resulting plaintext
     let err = bob_group
         .process_message(backend, update_message_in)
-        .expect_err("Could process message despite modified public key in path.");
+        .expect_err("Could process message despite modified encryption key in path.");
 
     assert_eq!(
         err,
         ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
-            ProposalValidationError::DuplicatePublicKeyAddProposal
+            ProposalValidationError::DuplicateInitKey
         ))
     );
 
@@ -546,12 +546,12 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .expect("Unexpected error.");
 }
 
-/// ValSem104:
+/// ValSem101:
 /// Add Proposal:
 /// Signature public key in proposals must be unique among existing group
 /// members
 #[apply(ciphersuites_and_backends)]
-fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem101b(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     for alice_and_bob_share_keys in [
         KeyUniqueness::NegativeSameKey,
         KeyUniqueness::PositiveDifferentKey,
@@ -626,7 +626,7 @@ fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                 assert_eq!(
                     err,
                     AddMembersError::CreateCommitError(CreateCommitError::ProposalValidationError(
-                        ProposalValidationError::ExistingSignatureKeyAddProposal
+                        ProposalValidationError::DuplicateSignatureKey
                     ))
                 );
             }
@@ -801,12 +801,12 @@ fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     } */
 }
 
-/// ValSem113:
-/// Add Proposal: HPKE init key and encryption key must be different
-/// ValSem114:
+/// ValSem103:
 /// Add Proposal: Encryption key must be unique in the tree
+/// ValSem104:
+/// Add Proposal: Init key and encryption key must be different
 #[apply(ciphersuites_and_backends)]
-fn test_valsem113_valsem114(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem103_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     for alice_and_bob_share_keys in [
         KeyUniqueness::NegativeSameKey,
         KeyUniqueness::PositiveDifferentKey,
@@ -839,15 +839,6 @@ fn test_valsem113_valsem114(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
             }
             KeyUniqueness::PositiveSameKeyWithRemove => unreachable!(),
         }
-        eprintln!("bob kp init key: {:x?}", bob_key_package.hpke_init_key());
-        eprintln!(
-            "bob leaf node encryption key: {:x?}",
-            bob_key_package
-                .leaf_node()
-                .encryption_key()
-                .as_slice()
-                .to_vec()
-        );
 
         // 1. Alice creates a group and tries to add Bob to it
         let res = create_group_with_members(
@@ -956,7 +947,7 @@ fn test_valsem113_valsem114(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
     assert_eq!(
         err,
         ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
-            ProposalValidationError::ExistingPublicKeyAddProposal
+            ProposalValidationError::DuplicateEncryptionKey
         ))
     );
 
@@ -972,9 +963,15 @@ fn test_valsem113_valsem114(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
 
 #[derive(Debug)]
 enum KeyPackageTestVersion {
+    // Wrong ciphersuite in the KeyPackage
     WrongCiphersuite,
+    // Wrong version in the KeyPackage
+    WrongVersion,
+    // Unsupported ciphersuite in the KeyPackage's capabilities
     UnsupportedVersion,
+    // Unsupported ciphersuite in the KeyPackage's capabilities
     UnsupportedCiphersuite,
+    // Positive case
     ValidTestCase,
 }
 
@@ -983,17 +980,16 @@ enum ProposalInclusion {
     ByReference,
 }
 
-/// ValSem106:
+/// ValSem105:
 /// Add Proposal:
-/// Required capabilities
+/// Ciphersuite & protocol version must match the group
 #[apply(ciphersuites_and_backends)]
-fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let _ = pretty_env_logger::try_init();
 
-    // Required capabilities validation includes two types of checks on the
-    // capabilities of the `KeyPackage` in the Add proposal: One against the
-    // ciphersuite and the version of the group and one against a potential
-    // RequiredCapabilities extension present in the group.
+    // Ciphersuite & protocol version validation includes checking the
+    // ciphersuite and the version of the KeyPackage in the add proposal to make
+    // sure they match the ones from the group.
 
     // Since RequiredCapabilities can only contain non-MTI extensions and
     // proposals and OpenMLS doesn't support any of those, we can't test
@@ -1014,6 +1010,7 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // We begin with the creation of KeyPackages
     for key_package_version in [
         KeyPackageTestVersion::WrongCiphersuite,
+        KeyPackageTestVersion::WrongVersion,
         KeyPackageTestVersion::UnsupportedVersion,
         KeyPackageTestVersion::UnsupportedCiphersuite,
         KeyPackageTestVersion::ValidTestCase,
@@ -1030,7 +1027,8 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             generate_credential_bundle_and_key_package("Charlie".into(), ciphersuite, backend);
 
         let kpi = KeyPackageIn::from(charlie_key_package.clone());
-        kpi.validate(backend.crypto()).unwrap();
+        kpi.validate(backend.crypto(), ProtocolVersion::Mls10)
+            .unwrap();
 
         // Let's just pick a ciphersuite that's not the one we're testing right now.
         let wrong_ciphersuite = match ciphersuite {
@@ -1042,6 +1040,9 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         match key_package_version {
             KeyPackageTestVersion::WrongCiphersuite => {
                 charlie_key_package.set_ciphersuite(wrong_ciphersuite)
+            }
+            KeyPackageTestVersion::WrongVersion => {
+                charlie_key_package.set_version(ProtocolVersion::Mls10Draft11);
             }
             KeyPackageTestVersion::UnsupportedVersion => {
                 let mut new_leaf_node = charlie_key_package.leaf_node().clone();
@@ -1079,6 +1080,9 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             match key_package_version {
                 KeyPackageTestVersion::WrongCiphersuite => {
                     charlie_key_package.set_ciphersuite(wrong_ciphersuite)
+                }
+                KeyPackageTestVersion::WrongVersion => {
+                    charlie_key_package.set_version(ProtocolVersion::Mls10Draft11);
                 }
                 KeyPackageTestVersion::UnsupportedVersion => {
                     let mut new_leaf_node = charlie_key_package.leaf_node().clone();
@@ -1126,16 +1130,10 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                             result.unwrap();
                         }
                         _ => {
-                            assert_eq!(
-                                result.expect_err(
-                                    "no error when committing add with key package with insufficient capabilities",
-                                ),
-                                CommitToPendingProposalsError::CreateCommitError(
-                                    CreateCommitError::ProposalValidationError(
-                                        ProposalValidationError::InsufficientCapabilities
-                                    )
-                                )
-                            )
+                            matches!(
+                                result.unwrap_err(),
+                                CommitToPendingProposalsError::CreateCommitError(_)
+                            );
                         }
                     }
                 }
@@ -1151,16 +1149,7 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                             result.unwrap();
                         }
                         _ => {
-                            assert_eq!(
-                                result.expect_err(
-                                    "no error when committing add with key package with insufficient capabilities",
-                                ),
-                                AddMembersError::CreateCommitError(
-                                    CreateCommitError::ProposalValidationError(
-                                        ProposalValidationError::InsufficientCapabilities
-                                    )
-                                )
-                            )
+                            matches!(result.unwrap_err(), AddMembersError::CreateCommitError(_));
                         }
                     }
                 }
@@ -1241,12 +1230,13 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                     assert_eq!(err, expected_error);
                 }
                 KeyPackageTestVersion::WrongCiphersuite => {
-                    // In this case we need to differentiate, since the
-                    // signature algorithm can also have a mismatch and
-                    // therefore invalidate the signature
+                    // In this case we need to differentiate, since we
+                    // manipulated the ciphersuite. The signature algorithm can
+                    // also have a mismatch and therefore invalidate the
+                    // signature, and/or the ciphersuite doesn't match.
                     let expected_error_1 = ProcessMessageError::InvalidCommit(
                         StageCommitError::ProposalValidationError(
-                            ProposalValidationError::InsufficientCapabilities,
+                            ProposalValidationError::InvalidAddProposalCiphersuiteOrVersion,
                         ),
                     );
                     let expected_error_2 = ProcessMessageError::ValidationError(
@@ -1254,9 +1244,45 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                             KeyPackageVerifyError::InvalidLeafNodeSignature,
                         ),
                     );
+                    let expected_error_3 = ProcessMessageError::ValidationError(
+                        ValidationError::InvalidAddProposalCiphersuite,
+                    );
+                    assert!(
+                        err == expected_error_1
+                            || err == expected_error_2
+                            || err == expected_error_3
+                    );
+                }
+                KeyPackageTestVersion::WrongVersion => {
+                    // We need to distinguish between the two cases where the
+                    // version is wrong, depending on whether it's a proposal by
+                    // value or by reference.
+                    let expected_error_1 = ProcessMessageError::InvalidCommit(
+                        StageCommitError::ProposalValidationError(
+                            ProposalValidationError::InvalidAddProposalCiphersuiteOrVersion,
+                        ),
+                    );
+                    let expected_error_2 = ProcessMessageError::ValidationError(
+                        ValidationError::KeyPackageVerifyError(
+                            KeyPackageVerifyError::InvalidProtocolVersion,
+                        ),
+                    );
                     assert!(err == expected_error_1 || err == expected_error_2);
                 }
-                _ => {
+                KeyPackageTestVersion::UnsupportedVersion => {
+                    let expected_error_1 = ProcessMessageError::ValidationError(
+                        ValidationError::KeyPackageVerifyError(
+                            KeyPackageVerifyError::InvalidProtocolVersion,
+                        ),
+                    );
+                    let expected_error_2 = ProcessMessageError::InvalidCommit(
+                        StageCommitError::ProposalValidationError(
+                            ProposalValidationError::InsufficientCapabilities,
+                        ),
+                    );
+                    assert!(err == expected_error_1 || err == expected_error_2);
+                }
+                KeyPackageTestVersion::UnsupportedCiphersuite => {
                     let expected_error = ProcessMessageError::InvalidCommit(
                         StageCommitError::ProposalValidationError(
                             ProposalValidationError::InsufficientCapabilities,
@@ -1553,7 +1579,7 @@ fn test_valsem108(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
 /// ValSem110
 /// Update Proposal:
-/// HPKE init key must be unique among existing members
+/// Encryption key must be unique among existing members
 #[apply(ciphersuites_and_backends)]
 fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Before we can test creation or reception of (invalid) proposals, we set
@@ -1627,7 +1653,7 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         err,
         CommitToPendingProposalsError::CreateCommitError(
             CreateCommitError::ProposalValidationError(
-                ProposalValidationError::ExistingPublicKeyUpdateProposal
+                ProposalValidationError::DuplicateEncryptionKey
             )
         )
     );

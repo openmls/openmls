@@ -310,6 +310,11 @@ pub enum ValidationError {
     /// The Commit includes update proposals from the committer.
     #[error("The Commit includes update proposals from the committer.")]
     CommitterIncludedOwnUpdate,
+    /// The ciphersuite in the KeyPackage of the Add proposal does not match the group context.
+    #[error(
+        "The ciphersuite in the KeyPackage of the Add proposal does not match the group context."
+    )]
+    InvalidAddProposalCiphersuite,
 }
 
 /// Proposal validation error
@@ -321,36 +326,18 @@ pub enum ProposalValidationError {
     /// The sender could not be matched to a member of the group.
     #[error("The sender could not be matched to a member of the group.")]
     UnknownMember,
-    /// Found two add proposals with the same identity.
-    #[error("Found two add proposals with the same identity.")]
-    DuplicateIdentityAddProposal,
-    /// Found two add proposals with the same signature key.
-    #[error("Found two add proposals with the same signature key.")]
-    DuplicateSignatureKeyAddProposal,
-    /// Found two add proposals with the same HPKE public key.
-    #[error("Found two add proposals with the same HPKE public key.")]
-    DuplicatePublicKeyAddProposal,
-    /// Identity of the add proposal already existed in tree.
-    #[error("Identity of the add proposal already existed in tree.")]
-    ExistingIdentityAddProposal,
-    /// Signature key of the add proposal already existed in tree.
-    #[error("Signature key of the add proposal already existed in tree.")]
-    ExistingSignatureKeyAddProposal,
-    /// HPKE public key (init or encryption) of the add proposal already existed in tree.
-    #[error("HPKE public key (init or encryption) of the add proposal already existed in tree.")]
-    ExistingPublicKeyAddProposal,
+    /// Duplicate signature key in proposals and group.
+    #[error("Duplicate signature key in proposals and group.")]
+    DuplicateSignatureKey,
+    /// Duplicate encryption key in proposals and group.
+    #[error("Duplicate encryption key in proposals and group.")]
+    DuplicateEncryptionKey,
+    /// Duplicate init key in proposals.
+    #[error("Duplicate init key in proposals.")]
+    DuplicateInitKey,
     /// The HPKE init and encryption keys are the same.
     #[error("The HPKE init and encryption keys are the same.")]
     InitEncryptionKeyCollision,
-    /// The identity of the update proposal did not match the existing identity.
-    #[error("The identity of the update proposal did not match the existing identity.")]
-    UpdateProposalIdentityMismatch,
-    /// Signature key of the update proposal already existed in tree.
-    #[error("Signature key of the update proposal already existed in tree.")]
-    ExistingSignatureKeyUpdateProposal,
-    /// HPKE public key of the update proposal already existed in tree.
-    #[error("HPKE public key of the update proposal already existed in tree.")]
-    ExistingPublicKeyUpdateProposal,
     /// Duplicate remove proposals for the same member.
     #[error("Duplicate remove proposals for the same member.")]
     DuplicateMemberRemoval,
@@ -366,6 +353,11 @@ pub enum ProposalValidationError {
     /// The capabilities of the add proposal are insufficient for this group.
     #[error("The capabilities of the add proposal are insufficient for this group.")]
     InsufficientCapabilities,
+    /// The add proposal's ciphersuite or protocol version do not match the ones in the group context.
+    #[error(
+        "The add proposal's ciphersuite or protocol version do not match the ones in the group context."
+    )]
+    InvalidAddProposalCiphersuiteOrVersion,
     /// See [`PskError`] for more details.
     #[error(transparent)]
     Psk(#[from] PskError),

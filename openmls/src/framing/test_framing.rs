@@ -18,7 +18,7 @@ use crate::{
         errors::*,
         CreateCommitParams,
     },
-    key_packages::KeyPackageBundle,
+    key_packages::{test_key_packages::key_package, KeyPackageBundle},
     schedule::psk::{store::ResumptionPskStore, PskSecret},
     tree::{secret_tree::SecretTree, sender_ratchet::SenderRatchetConfiguration},
     versions::ProtocolVersion,
@@ -718,4 +718,28 @@ pub(crate) fn setup_alice_bob_group(
         bob_signature_keys,
         bob_credential,
     )
+}
+
+/// Test divergent protocol versions in KeyPackages
+#[apply(ciphersuites_and_backends)]
+fn key_package_version(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let (mut key_package, _, _) = key_package(ciphersuite, backend);
+
+    // Set an invalid protocol version
+    key_package.set_version(ProtocolVersion::Mls10Draft11);
+
+    let message = MlsMessageOut {
+        version: ProtocolVersion::Mls10,
+        body: MlsMessageOutBody::KeyPackage(key_package),
+    };
+
+    let encoded = message
+        .tls_serialize_detached()
+        .expect("An unexpected error occurred.");
+
+    let err = MlsMessageIn::tls_deserialize(&mut encoded.as_slice())
+        .expect_err("Deserialization should have failed.");
+
+    // Expect a decoding  error
+    matches!(err, tls_codec::Error::DecodingError(_));
 }
