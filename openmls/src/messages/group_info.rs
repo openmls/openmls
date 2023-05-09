@@ -142,7 +142,7 @@ pub struct GroupInfo {
 
 impl GroupInfo {
     /// Returns the group context.
-    pub(crate) fn group_context(&self) -> &GroupContext {
+    pub fn group_context(&self) -> &GroupContext {
         &self.payload.group_context
     }
 

@@ -239,3 +239,10 @@ pub(crate) struct StagedPublicGroupDiff {
     pub(super) interim_transcript_hash: Vec<u8>,
     pub(super) confirmation_tag: ConfirmationTag,
 }
+
+impl StagedPublicGroupDiff {
+    /// Get the staged [`GroupContext`].
+    pub(crate) fn group_context(&self) -> &GroupContext {
+        &self.group_context
+    }
+}

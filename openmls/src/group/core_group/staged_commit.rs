@@ -416,6 +416,13 @@ impl StagedCommit {
         matches!(self.state, StagedCommitState::PublicState(_))
     }
 
+    pub fn staged_context(&self) -> &GroupContext {
+        match self.state {
+            StagedCommitState::PublicState(ref ps) => ps.group_context(),
+            StagedCommitState::GroupMember(ref gm) => gm.group_context(),
+        }
+    }
+
     /// Consume this [`StagedCommit`] and return the internal [`StagedCommitState`].
     pub(crate) fn into_state(self) -> StagedCommitState {
         self.state
@@ -447,5 +454,10 @@ impl MemberStagedCommitState {
             new_keypairs,
             new_leaf_keypair_option,
         }
+    }
+
+    /// Get the staged [`GroupContext`].
+    pub(crate) fn group_context(&self) -> &GroupContext {
+        &self.staged_diff.group_context()
     }
 }
