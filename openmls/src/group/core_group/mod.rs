@@ -125,7 +125,7 @@ impl Member {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(test, derive(PartialEq, Clone))]
 pub(crate) struct CoreGroup {
     public_group: PublicGroup,
     group_epoch_secrets: GroupEpochSecrets,
@@ -484,7 +484,6 @@ impl CoreGroup {
         padding_size: usize,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<PrivateMessage, MessageEncryptionError> {
-        log::trace!("{:?}", public_message.confirmation_tag());
         PrivateMessage::try_from_authenticated_content(
             &public_message,
             self.ciphersuite(),
@@ -659,6 +658,11 @@ impl CoreGroup {
     #[cfg(test)]
     pub(crate) fn use_ratchet_tree_extension(&self) -> bool {
         self.use_ratchet_tree_extension
+    }
+
+    #[cfg(test)]
+    pub(crate) fn set_own_leaf_index(&mut self, own_leaf_index: LeafNodeIndex) {
+        self.own_leaf_index = own_leaf_index;
     }
 }
 
