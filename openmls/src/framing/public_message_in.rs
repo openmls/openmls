@@ -68,10 +68,6 @@ impl PublicMessageIn {
         self.content.epoch = epoch.into();
     }
 
-    pub fn confirmation_tag(&self) -> Option<&ConfirmationTag> {
-        self.auth.confirmation_tag.as_ref()
-    }
-
     /// Set the sender.
     pub(crate) fn set_sender(&mut self, sender: Sender) {
         self.content.sender = sender;
