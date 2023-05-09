@@ -26,7 +26,7 @@ use openmls::{
         PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     key_packages::KeyPackage,
-    prelude::{config::CryptoConfig, Capabilities, ExtensionType, SenderRatchetConfiguration},
+    prelude::{config::CryptoConfig, Capabilities, SenderRatchetConfiguration},
     schedule::{psk::ResumptionPskUsage, ExternalPsk, PreSharedKeyId, Psk},
     treesync::{
         test_utils::{read_keys_from_key_store, write_keys_from_key_store},
@@ -286,11 +286,7 @@ impl MlsClient for MlsClientImpl {
             .use_ratchet_tree_extension(true)
             .wire_format_policy(wire_format_policy)
             .leaf_extensions(Extensions::single(Extension::RequiredCapabilities(
-                RequiredCapabilitiesExtension::new(
-                    &EXTENSION_TYPES,
-                    &PROPOSAL_TYPES,
-                    &CREDENTIAL_TYPES,
-                ),
+                RequiredCapabilitiesExtension::new(&EXTENSION_TYPES, &[], &CREDENTIAL_TYPES),
             )))
             .build();
         let group = MlsGroup::new_with_group_id(
@@ -343,7 +339,7 @@ impl MlsClient for MlsClientImpl {
             "Creating key package."
         );
 
-        let credential = Credential::new(identity, CredentialType::Basic).unwrap();
+        let credential = Credential::new(identity.into(), CredentialType::Basic).unwrap();
         let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
         let key_package = KeyPackage::builder()

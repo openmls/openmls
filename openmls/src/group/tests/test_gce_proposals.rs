@@ -20,7 +20,10 @@ use crate::{
         proposals::{GroupContextExtensionProposal, Proposal, ProposalOrRef, ProposalType},
     },
     test_utils::*,
-    treesync::errors::{LeafNodeValidationError, MemberExtensionValidationError},
+    treesync::{
+        errors::{LeafNodeValidationError, MemberExtensionValidationError},
+        node::leaf_node::Capabilities,
+    },
     versions::ProtocolVersion,
 };
 use openmls_basic_credential::SignatureKeyPair;
@@ -38,29 +41,34 @@ pub const DEFAULT_PROPOSAL_TYPES: [ProposalType; 6] = [
     ProposalType::GroupContextExtensions,
 ];
 
-pub const ALL_CREDENTIAL_TYPES: [CredentialType; 2] = [CredentialType::X509, CredentialType::Basic];
+pub const DEFAULT_CREDENTIAL_TYPES: [CredentialType; 1] = [CredentialType::Basic];
 
 #[apply(ciphersuites_and_backends)]
 fn gce_are_forwarded_in_welcome(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let required_capabilities = RequiredCapabilitiesExtension::new(
         &[ExtensionType::ExternalSenders],
         &DEFAULT_PROPOSAL_TYPES,
-        &ALL_CREDENTIAL_TYPES,
+        &DEFAULT_CREDENTIAL_TYPES,
     );
     let (ds_credential, ..) = setup_client("delivery service", ciphersuite, backend);
     let external_senders = vec![ExternalSender::new(
         ds_credential.signature_key,
         ds_credential.credential,
     )];
-    let kp_extensions = Extensions::single(Extension::RequiredCapabilities(
-        required_capabilities.clone(),
-    ));
+    let kp_capabilities = Capabilities::new(
+        None,
+        None,
+        Some(&[ExtensionType::ExternalSenders]),
+        None,
+        Some(&DEFAULT_CREDENTIAL_TYPES),
+    );
     // Bob has been created from a welcome message
     let (alice_group, bob_group, ..) = group_setup(
         ciphersuite,
         required_capabilities.clone(),
         Some(external_senders.clone()),
-        kp_extensions,
+        Extensions::empty(),
+        kp_capabilities,
         backend,
     );
     assert_eq!(
@@ -87,7 +95,7 @@ fn cannot_create_group_when_keypackage_lacks_required_capability(
         // External senders is required...
         &[ExtensionType::ExternalSenders],
         &DEFAULT_PROPOSAL_TYPES,
-        &ALL_CREDENTIAL_TYPES,
+        &DEFAULT_CREDENTIAL_TYPES,
     );
     let _ = group_setup(
         ciphersuite,
@@ -95,6 +103,7 @@ fn cannot_create_group_when_keypackage_lacks_required_capability(
         None,
         // ...but not present in keypackage extensions
         Extensions::empty(),
+        Capabilities::default(),
         backend,
     );
 }
@@ -105,13 +114,14 @@ fn gce_fails_when_it_contains_unsupported_extensions(
     backend: &impl OpenMlsCryptoProvider,
 ) {
     let required_capabilities =
-        RequiredCapabilitiesExtension::new(&[], &DEFAULT_PROPOSAL_TYPES, &ALL_CREDENTIAL_TYPES);
+        RequiredCapabilitiesExtension::new(&[], &DEFAULT_PROPOSAL_TYPES, &DEFAULT_CREDENTIAL_TYPES);
     // Bob has been created from a welcome message
     let (mut alice_group, mut bob_group, alice_signer, bob_signer) = group_setup(
         ciphersuite,
         required_capabilities,
         None,
         Extensions::empty(),
+        Capabilities::default(),
         backend,
     );
     // Alice tries to add a required capability she doesn't support herself.
@@ -159,7 +169,7 @@ fn gce_proposal_should_overwrite_previous(
             ProposalType::PreSharedKey,
             ProposalType::GroupContextExtensions,
         ],
-        &ALL_CREDENTIAL_TYPES,
+        &DEFAULT_CREDENTIAL_TYPES,
     );
     let new_required_capabilities = RequiredCapabilitiesExtension::new(
         &[ExtensionType::RatchetTree, ExtensionType::ApplicationId],
@@ -170,7 +180,7 @@ fn gce_proposal_should_overwrite_previous(
             ProposalType::Reinit,
             ProposalType::GroupContextExtensions,
         ],
-        &ALL_CREDENTIAL_TYPES,
+        &DEFAULT_CREDENTIAL_TYPES,
     );
 
     let kp_extensions = Extensions::from_vec(vec![
@@ -182,16 +192,28 @@ fn gce_proposal_should_overwrite_previous(
                 ExtensionType::ApplicationId,
             ],
             &DEFAULT_PROPOSAL_TYPES,
-            &ALL_CREDENTIAL_TYPES,
+            &DEFAULT_CREDENTIAL_TYPES,
         )),
     ])
     .unwrap();
 
+    let kp_capabilities = Capabilities::new(
+        None,
+        None,
+        Some(&[
+            ExtensionType::ExternalSenders,
+            ExtensionType::RatchetTree,
+            ExtensionType::ApplicationId,
+        ]),
+        None,
+        Some(&DEFAULT_CREDENTIAL_TYPES),
+    );
     let (mut alice_group, _, alice_signer, _) = group_setup(
         ciphersuite,
         old_required_capabilities,
         None,
         kp_extensions,
+        kp_capabilities,
         backend,
     );
 
@@ -214,12 +236,13 @@ fn gce_proposal_should_overwrite_previous(
 #[apply(ciphersuites_and_backends)]
 fn gce_proposal_can_roundtrip(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let required_capabilities =
-        RequiredCapabilitiesExtension::new(&[], &DEFAULT_PROPOSAL_TYPES, &ALL_CREDENTIAL_TYPES);
+        RequiredCapabilitiesExtension::new(&[], &DEFAULT_PROPOSAL_TYPES, &DEFAULT_CREDENTIAL_TYPES);
     let (mut alice_group, mut bob_group, alice_signer, bob_signer) = group_setup(
         ciphersuite,
         required_capabilities,
         None,
         Extensions::empty(),
+        Capabilities::default(),
         backend,
     );
 
@@ -258,12 +281,13 @@ fn creating_commit_with_more_than_one_gce_proposal_should_fail(
     backend: &impl OpenMlsCryptoProvider,
 ) {
     let required_capabilities =
-        RequiredCapabilitiesExtension::new(&[], &DEFAULT_PROPOSAL_TYPES, &ALL_CREDENTIAL_TYPES);
+        RequiredCapabilitiesExtension::new(&[], &DEFAULT_PROPOSAL_TYPES, &DEFAULT_CREDENTIAL_TYPES);
     let (mut alice_group, _, alice_signer, _) = group_setup(
         ciphersuite,
         required_capabilities,
         None,
         Extensions::empty(),
+        Capabilities::default(),
         backend,
     );
 
@@ -294,12 +318,13 @@ fn validating_commit_with_more_than_one_gce_proposal_should_fail(
     backend: &impl OpenMlsCryptoProvider,
 ) {
     let required_capabilities =
-        RequiredCapabilitiesExtension::new(&[], &DEFAULT_PROPOSAL_TYPES, &ALL_CREDENTIAL_TYPES);
+        RequiredCapabilitiesExtension::new(&[], &DEFAULT_PROPOSAL_TYPES, &DEFAULT_CREDENTIAL_TYPES);
     let (mut alice_group, mut bob_group, alice_signer, bob_signer) = group_setup(
         ciphersuite,
         required_capabilities,
         None,
         Extensions::empty(),
+        Capabilities::default(),
         backend,
     );
 
@@ -352,22 +377,30 @@ fn gce_proposal_must_be_applied_first_then_used_to_validate_other_add_proposals(
     backend: &impl OpenMlsCryptoProvider,
 ) {
     let required_capabilities =
-        RequiredCapabilitiesExtension::new(&[], &DEFAULT_PROPOSAL_TYPES, &ALL_CREDENTIAL_TYPES);
+        RequiredCapabilitiesExtension::new(&[], &DEFAULT_PROPOSAL_TYPES, &DEFAULT_CREDENTIAL_TYPES);
     let kp_extensions = Extensions::from_vec(vec![
         Extension::ExternalSenders(ExternalSendersExtension::default()),
         Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
             &[ExtensionType::ExternalSenders],
             &DEFAULT_PROPOSAL_TYPES,
-            &ALL_CREDENTIAL_TYPES,
+            &DEFAULT_CREDENTIAL_TYPES,
         )),
     ])
     .unwrap();
+    let kp_capabilities = Capabilities::new(
+        None,
+        None,
+        Some(&[ExtensionType::ExternalSenders]),
+        None,
+        Some(&DEFAULT_CREDENTIAL_TYPES),
+    );
     // Alice & Bob both support ExternalSenders
     let (mut alice_group, mut bob_group, alice_signer, bob_signer) = group_setup(
         ciphersuite,
         required_capabilities,
         None,
         kp_extensions,
+        kp_capabilities,
         backend,
     );
 
@@ -376,7 +409,7 @@ fn gce_proposal_must_be_applied_first_then_used_to_validate_other_add_proposals(
         Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
             &[ExtensionType::ExternalSenders],
             &DEFAULT_PROPOSAL_TYPES,
-            &ALL_CREDENTIAL_TYPES,
+            &DEFAULT_CREDENTIAL_TYPES,
         ));
     let (gce_proposal, _) = alice_group
         .propose_extensions(
@@ -427,22 +460,30 @@ fn gce_proposal_must_be_applied_first_then_used_to_validate_other_external_add_p
     backend: &impl OpenMlsCryptoProvider,
 ) {
     let required_capabilities =
-        RequiredCapabilitiesExtension::new(&[], &DEFAULT_PROPOSAL_TYPES, &ALL_CREDENTIAL_TYPES);
+        RequiredCapabilitiesExtension::new(&[], &DEFAULT_PROPOSAL_TYPES, &DEFAULT_CREDENTIAL_TYPES);
     let kp_extensions = Extensions::from_vec(vec![
         Extension::ExternalSenders(ExternalSendersExtension::default()),
         Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
             &[ExtensionType::ExternalSenders],
             &DEFAULT_PROPOSAL_TYPES,
-            &ALL_CREDENTIAL_TYPES,
+            &DEFAULT_CREDENTIAL_TYPES,
         )),
     ])
     .unwrap();
+    let kp_capabilities = Capabilities::new(
+        None,
+        None,
+        Some(&[ExtensionType::ExternalSenders]),
+        None,
+        Some(&DEFAULT_CREDENTIAL_TYPES),
+    );
     // Alice support ExternalSenders
     let (mut alice_group, _, alice_signer, _) = group_setup(
         ciphersuite,
         required_capabilities,
         None,
         kp_extensions,
+        kp_capabilities,
         backend,
     );
 
@@ -451,7 +492,7 @@ fn gce_proposal_must_be_applied_first_then_used_to_validate_other_external_add_p
         Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
             &[ExtensionType::ExternalSenders],
             &DEFAULT_PROPOSAL_TYPES,
-            &ALL_CREDENTIAL_TYPES,
+            &DEFAULT_CREDENTIAL_TYPES,
         ));
     alice_group
         .propose_extensions(
@@ -498,19 +539,27 @@ fn gce_proposal_must_be_applied_first_but_ignored_for_remove_proposals(
     backend: &impl OpenMlsCryptoProvider,
 ) {
     let required_capabilities =
-        RequiredCapabilitiesExtension::new(&[], &DEFAULT_PROPOSAL_TYPES, &ALL_CREDENTIAL_TYPES);
+        RequiredCapabilitiesExtension::new(&[], &DEFAULT_PROPOSAL_TYPES, &DEFAULT_CREDENTIAL_TYPES);
     // Alice & Bob have ExternalSenders support even though it is not required
     let external_senders = Extension::ExternalSenders(ExternalSendersExtension::default());
-    let kp_capabilities = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
+    let kp_extensions = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
         &[ExtensionType::ExternalSenders],
         &DEFAULT_PROPOSAL_TYPES,
-        &ALL_CREDENTIAL_TYPES,
+        &DEFAULT_CREDENTIAL_TYPES,
     ));
+    let kp_capabilities = Capabilities::new(
+        None,
+        None,
+        Some(&[ExtensionType::ExternalSenders]),
+        None,
+        Some(&DEFAULT_CREDENTIAL_TYPES),
+    );
     let (mut alice_group, mut bob_group, alice_signer, _) = group_setup(
         ciphersuite,
         required_capabilities,
         None,
-        Extensions::from_vec(vec![external_senders, kp_capabilities]).unwrap(),
+        Extensions::from_vec(vec![external_senders, kp_extensions]).unwrap(),
+        kp_capabilities,
         backend,
     );
 
@@ -536,7 +585,7 @@ fn gce_proposal_must_be_applied_first_but_ignored_for_remove_proposals(
         Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
             &[ExtensionType::ExternalSenders],
             &DEFAULT_PROPOSAL_TYPES,
-            &ALL_CREDENTIAL_TYPES,
+            &DEFAULT_CREDENTIAL_TYPES,
         ));
 
     let extension_proposal = alice_group.propose_extensions(
@@ -596,7 +645,7 @@ fn gce_proposal_must_be_applied_first_but_ignored_for_external_remove_proposals(
     let (ds_credential_bundle, _, ds_signer, _) = setup_client("DS", ciphersuite, backend);
 
     let required_capabilities =
-        RequiredCapabilitiesExtension::new(&[], &DEFAULT_PROPOSAL_TYPES, &ALL_CREDENTIAL_TYPES);
+        RequiredCapabilitiesExtension::new(&[], &DEFAULT_PROPOSAL_TYPES, &DEFAULT_CREDENTIAL_TYPES);
     // Alice & Bob have ExternalSenders support even though it is not required
     let external_sender = ExternalSender::new(
         ds_credential_bundle.signature_key,
@@ -608,15 +657,23 @@ fn gce_proposal_must_be_applied_first_but_ignored_for_external_remove_proposals(
         Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
             &[ExtensionType::ExternalSenders],
             &DEFAULT_PROPOSAL_TYPES,
-            &ALL_CREDENTIAL_TYPES,
+            &DEFAULT_CREDENTIAL_TYPES,
         )),
     ])
     .unwrap();
+    let kp_capabilities = Capabilities::new(
+        None,
+        None,
+        Some(&[ExtensionType::ExternalSenders]),
+        None,
+        Some(&DEFAULT_CREDENTIAL_TYPES),
+    );
     let (mut alice_group, _, alice_signer, _) = group_setup(
         ciphersuite,
         required_capabilities,
         Some(vec![external_sender]),
         kp_extensions,
+        kp_capabilities,
         backend,
     );
 
@@ -657,7 +714,7 @@ fn gce_proposal_must_be_applied_first_but_ignored_for_external_remove_proposals(
         Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
             &[ExtensionType::ExternalSenders],
             &DEFAULT_PROPOSAL_TYPES,
-            &ALL_CREDENTIAL_TYPES,
+            &DEFAULT_CREDENTIAL_TYPES,
         ));
     alice_group
         .propose_extensions(
@@ -679,13 +736,24 @@ pub fn group_setup(
     required_capabilities: RequiredCapabilitiesExtension,
     external_senders: Option<ExternalSendersExtension>,
     kp_extensions: Extensions,
+    kp_capabilities: Capabilities,
     backend: &impl OpenMlsCryptoProvider,
 ) -> (MlsGroup, MlsGroup, SignatureKeyPair, SignatureKeyPair) {
     // Basic group setup.
-    let (alice_credential_bundle, _kpb, alice_signer, _pk) =
-        setup_client_with_extensions("Alice", ciphersuite, backend, kp_extensions.clone());
-    let (_, bob_key_package_bundle, bob_signer, _pk) =
-        setup_client_with_extensions("Bob", ciphersuite, backend, kp_extensions.clone());
+    let (alice_credential_bundle, _kpb, alice_signer, _pk) = setup_client_with_extensions(
+        "Alice",
+        ciphersuite,
+        backend,
+        kp_extensions.clone(),
+        kp_capabilities.clone(),
+    );
+    let (_, bob_key_package_bundle, bob_signer, _pk) = setup_client_with_extensions(
+        "Bob",
+        ciphersuite,
+        backend,
+        kp_extensions.clone(),
+        kp_capabilities.clone(),
+    );
 
     let external_senders = external_senders.unwrap_or_default();
     let crypto_config = CryptoConfig {
@@ -699,6 +767,7 @@ pub fn group_setup(
         external_senders,
         crypto_config,
         leaf_extensions: kp_extensions,
+        leaf_capabilities: Some(kp_capabilities),
         ..Default::default()
     };
     let mut alice_group =

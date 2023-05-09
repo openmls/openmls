@@ -30,7 +30,7 @@
 use super::*;
 use crate::{
     group::config::CryptoConfig, tree::sender_ratchet::SenderRatchetConfiguration,
-    treesync::node::leaf_node::Lifetime,
+    treesync::node::leaf_node::Capabilities, treesync::node::leaf_node::Lifetime,
 };
 use serde::{Deserialize, Serialize};
 
@@ -62,6 +62,8 @@ pub struct MlsGroupConfig {
     pub(crate) crypto_config: CryptoConfig,
     /// Extensions to be added to the own leaf node
     pub(crate) leaf_extensions: Extensions,
+    /// Capabilities of the own leaf node
+    pub(crate) leaf_capabilities: Option<Capabilities>,
 }
 
 impl MlsGroupConfig {
@@ -216,6 +218,12 @@ impl MlsGroupConfigBuilder {
     /// Sets the group creator's leaf extensions
     pub fn leaf_extensions(mut self, leaf_extensions: Extensions) -> Self {
         self.config.leaf_extensions = leaf_extensions;
+        self
+    }
+
+    /// Sets the group creator's leaf capabilities
+    pub fn leaf_capabilities(mut self, leaf_capabilities: Capabilities) -> Self {
+        self.config.leaf_capabilities = Some(leaf_capabilities);
         self
     }
 

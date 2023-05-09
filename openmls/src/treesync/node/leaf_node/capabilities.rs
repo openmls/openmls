@@ -64,7 +64,7 @@ impl Capabilities {
             },
             proposals: match proposals {
                 Some(p) => p.into(),
-                None => vec![],
+                None => ProposalType::supported_types().into(),
             },
             credentials: match credentials {
                 Some(c) => c.into(),

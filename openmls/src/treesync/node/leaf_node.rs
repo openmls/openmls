@@ -24,7 +24,6 @@ use crate::{
     versions::ProtocolVersion,
 };
 
-#[cfg(test)]
 use crate::treesync::errors::LeafNodeValidationError;
 
 mod capabilities;
@@ -386,20 +385,6 @@ impl LeafNode {
             .extensions
             .contains(extension_type)
             || default_extensions().iter().any(|et| et == extension_type)
-    }
-
-    /// Returns `true` if the [`ProposalType`] is supported by this leaf node.
-    pub(crate) fn supports_proposal(&self, proposal_type: &ProposalType) -> bool {
-        self.payload.capabilities.proposals.contains(proposal_type)
-            || default_proposals().iter().any(|pt| pt == proposal_type)
-    }
-
-    /// Returns `true` if the [`CredentialType`] is supported by this leaf node.
-    pub(crate) fn supports_credential(&self, credential_type: &CredentialType) -> bool {
-        self.payload
-            .capabilities
-            .credentials
-            .contains(credential_type)
     }
 
     /// Check whether this leaf node supports all the required extensions

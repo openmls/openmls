@@ -7,10 +7,13 @@ use crate::{
     framing::{validation::ProcessedMessageContent, MlsMessageIn},
     group::errors::UpdateExtensionsError,
     test_utils::*,
-    treesync::errors::{LeafNodeValidationError, MemberExtensionValidationError},
+    treesync::{
+        errors::{LeafNodeValidationError, MemberExtensionValidationError},
+        node::leaf_node::Capabilities,
+    },
 };
 
-use super::test_gce_proposals::{group_setup, ALL_CREDENTIAL_TYPES, DEFAULT_PROPOSAL_TYPES};
+use super::test_gce_proposals::{group_setup, DEFAULT_CREDENTIAL_TYPES, DEFAULT_PROPOSAL_TYPES};
 
 #[apply(ciphersuites_and_backends)]
 fn gce_fails_when_it_contains_unsupported_extensions(
@@ -18,13 +21,14 @@ fn gce_fails_when_it_contains_unsupported_extensions(
     backend: &impl OpenMlsCryptoProvider,
 ) {
     let required_capabilities =
-        RequiredCapabilitiesExtension::new(&[], &DEFAULT_PROPOSAL_TYPES, &ALL_CREDENTIAL_TYPES);
+        RequiredCapabilitiesExtension::new(&[], &DEFAULT_PROPOSAL_TYPES, &DEFAULT_CREDENTIAL_TYPES);
     // Bob has been created from a welcome message
     let (mut alice_group, mut bob_group, alice_signer, bob_signer) = group_setup(
         ciphersuite,
         required_capabilities,
         None,
         Extensions::empty(),
+        Capabilities::default(),
         backend,
     );
     // Alice tries to add a required capability she doesn't support herself.
@@ -61,12 +65,13 @@ fn gce_fails_when_it_contains_unsupported_extensions(
 #[apply(ciphersuites_and_backends)]
 fn gce_commit_can_roundtrip(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let required_capabilities =
-        RequiredCapabilitiesExtension::new(&[], &DEFAULT_PROPOSAL_TYPES, &ALL_CREDENTIAL_TYPES);
+        RequiredCapabilitiesExtension::new(&[], &DEFAULT_PROPOSAL_TYPES, &DEFAULT_CREDENTIAL_TYPES);
     let (mut alice_group, mut bob_group, alice_signer, _) = group_setup(
         ciphersuite,
         required_capabilities,
         None,
         Extensions::empty(),
+        Capabilities::default(),
         backend,
     );
 

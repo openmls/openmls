@@ -71,7 +71,7 @@ use crate::{
         *,
     },
     tree::{secret_tree::SecretTreeError, sender_ratchet::SenderRatchetConfiguration},
-    treesync::errors::MemberExtensionValidationError,
+    treesync::{errors::MemberExtensionValidationError, node::leaf_node::Capabilities},
     treesync::{
         node::{encryption_keys::EncryptionKeyPair, leaf_node::Lifetime},
         *,
@@ -200,11 +200,18 @@ impl CoreGroupBuilder {
         }
         self
     }
-    /// Set the [`Extensions`] of the leaves in [`CoreGroup`].
+    /// Set the [`Extensions`] of the own leaf in [`CoreGroup`].
     pub(crate) fn with_leaf_extensions(mut self, leaf_extensions: Extensions) -> Self {
         self.public_group_builder = self
             .public_group_builder
             .with_leaf_extensions(leaf_extensions);
+        self
+    }
+    /// Set the [`Capabilities`] of the own leaf in [`CoreGroup`].
+    pub(crate) fn with_leaf_capabilities(mut self, leaf_capabilities: Capabilities) -> Self {
+        self.public_group_builder = self
+            .public_group_builder
+            .with_leaf_capabilities(leaf_capabilities);
         self
     }
     /// Set the number of past epochs the group should keep secrets.
@@ -438,10 +445,9 @@ impl CoreGroup {
             let required_capabilities = required_extension.as_required_capabilities_extension()?;
             // Ensure we support all the capabilities.
             required_capabilities.check_support()?;
-            // TODO #566/#1361: This needs to be re-enabled once we support GCEs
-            /* self.own_leaf_node()?
-            .capabilities()
-            .supports_required_capabilities(required_capabilities)?; */
+            self.own_leaf_node()?
+                .capabilities()
+                .supports_required_capabilities(required_capabilities)?;
 
             // Ensure that all other leaf nodes support all the required
             // extensions as well.

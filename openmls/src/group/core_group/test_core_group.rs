@@ -13,7 +13,10 @@ use crate::{
     messages::{group_info::GroupInfoTBS, *},
     schedule::psk::{store::ResumptionPskStore, ExternalPsk, PreSharedKeyId, Psk},
     test_utils::*,
-    treesync::{errors::ApplyUpdatePathError, node::leaf_node::TreeInfoTbs},
+    treesync::{
+        errors::ApplyUpdatePathError,
+        node::leaf_node::{Capabilities, TreeInfoTbs},
+    },
 };
 
 pub(crate) fn setup_alice_group(
@@ -565,6 +568,7 @@ pub(crate) fn setup_client_with_extensions(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
     extensions: Extensions,
+    capabilities: Capabilities,
 ) -> (
     CredentialWithKey,
     KeyPackageBundle,
@@ -590,6 +594,7 @@ pub(crate) fn setup_client_with_extensions(
         ciphersuite,
         credential_with_key.clone(),
         extensions,
+        capabilities,
     );
     (credential_with_key, key_package_bundle, signature_keys, pk)
 }
@@ -604,7 +609,13 @@ pub(crate) fn setup_client(
     SignatureKeyPair,
     OpenMlsSignaturePublicKey,
 ) {
-    setup_client_with_extensions(id, ciphersuite, backend, Extensions::default())
+    setup_client_with_extensions(
+        id,
+        ciphersuite,
+        backend,
+        Extensions::default(),
+        Capabilities::default(),
+    )
 }
 
 #[apply(ciphersuites_and_backends)]

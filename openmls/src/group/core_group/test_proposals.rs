@@ -22,7 +22,7 @@ use crate::{
     messages::proposals::{AddProposal, Proposal, ProposalOrRef, ProposalType},
     schedule::psk::store::ResumptionPskStore,
     test_utils::*,
-    treesync::errors::LeafNodeValidationError,
+    treesync::{errors::LeafNodeValidationError, node::leaf_node::Capabilities},
     versions::ProtocolVersion,
 };
 
@@ -383,6 +383,13 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMl
     let required_capabilities =
         RequiredCapabilitiesExtension::new(extensions, proposals, credentials);
 
+    let leaf_capabilities = Capabilities::new(
+        None,
+        None,
+        Some(extensions),
+        Some(proposals),
+        Some(credentials),
+    );
     // create clients
     let (alice_credential, _, alice_signer, _alice_pk) = setup_client_with_extensions(
         "Alice",
@@ -391,6 +398,7 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMl
         Extensions::single(Extension::RequiredCapabilities(
             required_capabilities.clone(),
         )),
+        leaf_capabilities.clone(),
     );
     let (_bob_credential_bundle, bob_key_package_bundle, _, _) = setup_client_with_extensions(
         "Bob",
@@ -399,6 +407,7 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMl
         Extensions::single(Extension::RequiredCapabilities(
             required_capabilities.clone(),
         )),
+        leaf_capabilities.clone(),
     );
 
     let bob_key_package = bob_key_package_bundle.key_package();
@@ -409,6 +418,7 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMl
         alice_credential,
     )
     .with_required_capabilities(required_capabilities)
+    .with_leaf_capabilities(leaf_capabilities)
     .build(backend, &alice_signer)
     .expect("Error creating CoreGroup.");
 

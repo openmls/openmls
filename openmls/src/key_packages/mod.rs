@@ -676,33 +676,11 @@ impl KeyPackageBundle {
         ciphersuite: Ciphersuite,
         credential_with_key: CredentialWithKey,
         extensions: Extensions,
+        capabilities: Capabilities,
     ) -> Self {
-        use crate::messages::proposals::ProposalType;
-        let extension_types =
-            if let Some(required_capabilities) = extensions.required_capabilities() {
-                required_capabilities.extension_types().to_vec()
-            } else {
-                extensions
-                    .iter()
-                    .map(|extension| extension.extension_type())
-                    .collect()
-            };
         let key_package = KeyPackage::builder()
             .leaf_node_extensions(extensions)
-            .leaf_node_capabilities(Capabilities::new(
-                Some(&[ProtocolVersion::default()]),
-                Some(&[ciphersuite]),
-                Some(&extension_types),
-                Some(&[
-                    ProposalType::Add,
-                    ProposalType::Update,
-                    ProposalType::Remove,
-                    ProposalType::PreSharedKey,
-                    ProposalType::Reinit,
-                    ProposalType::GroupContextExtensions,
-                ]),
-                Some(&[CredentialType::X509, CredentialType::Basic]),
-            ))
+            .leaf_node_capabilities(capabilities)
             .build(
                 CryptoConfig {
                     ciphersuite,
@@ -735,6 +713,7 @@ impl KeyPackageBundle {
             ciphersuite,
             credential_with_key,
             Extensions::default(),
+            Capabilities::default(),
         )
     }
 }
