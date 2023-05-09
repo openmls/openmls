@@ -106,7 +106,7 @@ pub(crate) struct SecretTreeNode {
 
 #[derive(Serialize, Deserialize)]
 #[cfg_attr(any(feature = "test-utils", test), derive(PartialEq, Clone))]
-#[cfg_attr(feature = "crypto-debug", derive(Debug))]
+#[cfg_attr(any(feature = "crypto-debug", test), derive(Debug))]
 pub(crate) struct SecretTree {
     own_index: LeafNodeIndex,
     leaf_nodes: Vec<Option<SecretTreeNode>>,
@@ -339,7 +339,10 @@ impl SecretTree {
                 .expect("Index out of bounds");
         }
         match self.ratchet_mut(index, secret_type) {
-            SenderRatchet::DecryptionRatchet(_) => Err(SecretTreeError::RatchetTypeError),
+            SenderRatchet::DecryptionRatchet(_) => {
+                log::error!("Invalid ratchet type. Got decryption, expected encryption.");
+                Err(SecretTreeError::RatchetTypeError)
+            }
             SenderRatchet::EncryptionRatchet(enc_ratchet) => {
                 enc_ratchet.ratchet_forward(backend, ciphersuite)
             }

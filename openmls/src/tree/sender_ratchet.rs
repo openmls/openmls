@@ -71,7 +71,7 @@ pub(crate) type RatchetKeyMaterial = (AeadKey, AeadNonce);
 /// secrets around.
 #[derive(Serialize, Deserialize)]
 #[cfg_attr(any(feature = "test-utils", test), derive(PartialEq, Clone))]
-#[cfg_attr(feature = "crypto-debug", derive(Debug))]
+#[cfg_attr(any(feature = "crypto-debug", test), derive(Debug))]
 pub(crate) enum SenderRatchet {
     EncryptionRatchet(RatchetSecret),
     DecryptionRatchet(DecryptionRatchet),
@@ -168,7 +168,7 @@ impl RatchetSecret {
 /// `maximum_forward_distance` of the given [`SenderRatchetConfiguration`].
 #[derive(Serialize, Deserialize)]
 #[cfg_attr(any(feature = "test-utils", test), derive(PartialEq, Clone))]
-#[cfg_attr(feature = "crypto-debug", derive(Debug))]
+#[cfg_attr(any(feature = "crypto-debug", test), derive(Debug))]
 pub struct DecryptionRatchet {
     past_secrets: VecDeque<Option<RatchetKeyMaterial>>,
     ratchet_head: RatchetSecret,
@@ -220,6 +220,7 @@ impl DecryptionRatchet {
         if generation < self.generation()
             && (self.generation() - generation) > configuration.out_of_order_tolerance()
         {
+            log::error!("  Generation is too far in the past (broke out of order tolerance ({}) {generation} < {}).", configuration.out_of_order_tolerance(), self.generation());
             return Err(SecretTreeError::TooDistantInThePast);
         }
         // If generation is the one the ratchet is currently at or in the future
@@ -253,6 +254,7 @@ impl DecryptionRatchet {
             let index = if window_index >= 0 {
                 window_index as usize
             } else {
+                log::error!("  Generation is too far in the past (not in the window).");
                 return Err(SecretTreeError::TooDistantInThePast);
             };
             // Get the relevant secrets from the past secrets queue.

@@ -509,7 +509,7 @@ pub mod store {
     ///
     /// This is where the resumption PSKs are kept in a rollover list.
     #[derive(Debug, Serialize, Deserialize)]
-    #[cfg_attr(test, derive(PartialEq))]
+    #[cfg_attr(test, derive(PartialEq, Clone))]
     pub(crate) struct ResumptionPskStore {
         max_number_of_secrets: usize,
         resumption_psk: Vec<(GroupEpoch, ResumptionPskSecret)>,
