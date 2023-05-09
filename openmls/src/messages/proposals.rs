@@ -124,6 +124,7 @@ impl ProposalType {
         )
     }
 
+    /// Returns a slice of all supported proposal types by OpenMls
     pub const fn supported_types() -> &'static [ProposalType] {
         &[
             ProposalType::Add,
