@@ -443,9 +443,9 @@
                 sender_data.generation,
                 sender_ratchet_configuration,
             )
-            .map_err(|<span class="kw">_</span>| {
+            .map_err(|e| {
                 <span class="macro">log::error!</span>(
-                    <span class="string">&quot;  Ciphertext generation out of bounds {}&quot;</span>,
+                    <span class="string">&quot;  Ciphertext generation out of bounds {}\n\t{e:?}&quot;</span>,
                     sender_data.generation
                 );
                 MessageDecryptionError::GenerationOutOfBound

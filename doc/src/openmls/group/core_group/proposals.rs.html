@@ -614,6 +614,7 @@
 <a href="#614" id="614">614</a>
 <a href="#615" id="615">615</a>
 <a href="#616" id="616">616</a>
+<a href="#617" id="617">617</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::{hash_map::Entry, HashMap, HashSet};
 
 <span class="kw">use </span>openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
@@ -636,6 +637,7 @@
 <span class="doccomment">/// A [ProposalStore] can store the standalone proposals that are received from the DS
 /// in between two commit messages.
 </span><span class="attr">#[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
+#[cfg_attr(test, derive(Clone))]
 </span><span class="kw">pub struct </span>ProposalStore {
     queued_proposals: Vec&lt;QueuedProposal&gt;,
 }

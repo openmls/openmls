@@ -1063,7 +1063,7 @@
     ///
     /// This is where the resumption PSKs are kept in a rollover list.
     </span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
-    #[cfg_attr(test, derive(PartialEq))]
+    #[cfg_attr(test, derive(PartialEq, Clone))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ResumptionPskStore {
         max_number_of_secrets: usize,
         resumption_psk: Vec&lt;(GroupEpoch, ResumptionPskSecret)&gt;,

@@ -269,6 +269,8 @@
 <a href="#269" id="269">269</a>
 <a href="#270" id="270">270</a>
 <a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -342,7 +344,7 @@
 /// secrets around.
 </span><span class="attr">#[derive(Serialize, Deserialize)]
 #[cfg_attr(any(feature = <span class="string">&quot;test-utils&quot;</span>, test), derive(PartialEq, Clone))]
-#[cfg_attr(feature = <span class="string">&quot;crypto-debug&quot;</span>, derive(Debug))]
+#[cfg_attr(any(feature = <span class="string">&quot;crypto-debug&quot;</span>, test), derive(Debug))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>SenderRatchet {
     EncryptionRatchet(RatchetSecret),
     DecryptionRatchet(DecryptionRatchet),
@@ -439,7 +441,7 @@
 /// `maximum_forward_distance` of the given [`SenderRatchetConfiguration`].
 </span><span class="attr">#[derive(Serialize, Deserialize)]
 #[cfg_attr(any(feature = <span class="string">&quot;test-utils&quot;</span>, test), derive(PartialEq, Clone))]
-#[cfg_attr(feature = <span class="string">&quot;crypto-debug&quot;</span>, derive(Debug))]
+#[cfg_attr(any(feature = <span class="string">&quot;crypto-debug&quot;</span>, test), derive(Debug))]
 </span><span class="kw">pub struct </span>DecryptionRatchet {
     past_secrets: VecDeque&lt;<span class="prelude-ty">Option</span>&lt;RatchetKeyMaterial&gt;&gt;,
     ratchet_head: RatchetSecret,
@@ -491,6 +493,7 @@
         </span><span class="kw">if </span>generation &lt; <span class="self">self</span>.generation()
             &amp;&amp; (<span class="self">self</span>.generation() - generation) &gt; configuration.out_of_order_tolerance()
         {
+            <span class="macro">log::error!</span>(<span class="string">&quot;  Generation is too far in the past (broke out of order tolerance ({}) {generation} &lt; {}).&quot;</span>, configuration.out_of_order_tolerance(), <span class="self">self</span>.generation());
             <span class="kw">return </span><span class="prelude-val">Err</span>(SecretTreeError::TooDistantInThePast);
         }
         <span class="comment">// If generation is the one the ratchet is currently at or in the future
@@ -524,6 +527,7 @@
             </span><span class="kw">let </span>index = <span class="kw">if </span>window_index &gt;= <span class="number">0 </span>{
                 window_index <span class="kw">as </span>usize
             } <span class="kw">else </span>{
+                <span class="macro">log::error!</span>(<span class="string">&quot;  Generation is too far in the past (not in the window).&quot;</span>);
                 <span class="kw">return </span><span class="prelude-val">Err</span>(SecretTreeError::TooDistantInThePast);
             };
             <span class="comment">// Get the relevant secrets from the past secrets queue.

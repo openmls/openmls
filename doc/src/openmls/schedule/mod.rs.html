@@ -1257,6 +1257,8 @@
 <a href="#1257" id="1257">1257</a>
 <a href="#1258" id="1258">1258</a>
 <a href="#1259" id="1259">1259</a>
+<a href="#1260" id="1260">1260</a>
+<a href="#1261" id="1261">1261</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key schedule
 //!
 //! This module contains the types and implementations for key schedule operations.
@@ -1445,7 +1447,7 @@
 <span class="doccomment">/// A secret that can be used among members to make sure everyone has the same
 /// group state.
 </span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(Eq, PartialEq))]
+#[cfg_attr(test, derive(Eq, PartialEq, Clone))]
 </span><span class="kw">pub struct </span>EpochAuthenticator {
     secret: Secret,
 }
@@ -1510,7 +1512,7 @@
 
 <span class="doccomment">/// The `InitSecret` is used to connect the next epoch to the current one.
 </span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(test, derive(PartialEq, Clone))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>InitSecret {
     secret: Secret,
 }
@@ -1901,6 +1903,7 @@
 }
 
 <span class="doccomment">/// The `EncryptionSecret` is used to create a `SecretTree`.
+</span><span class="attr">#[cfg_attr(test, derive(Clone))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>EncryptionSecret {
     secret: Secret,
 }
@@ -1959,7 +1962,7 @@
 
 <span class="doccomment">/// A secret that we can derive secrets from, that are used outside of OpenMLS.
 </span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(test, derive(PartialEq, Clone))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ExporterSecret {
     secret: Secret,
 }
@@ -2004,7 +2007,7 @@
 
 <span class="doccomment">/// A secret used when joining a group with an external Commit.
 </span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(test, derive(PartialEq, Clone))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ExternalSecret {
     secret: Secret,
 }
@@ -2036,7 +2039,7 @@
 
 <span class="doccomment">/// The confirmation key is used to calculate the `ConfirmationTag`.
 </span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(test, derive(PartialEq, Clone))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ConfirmationKey {
     secret: Secret,
 }
@@ -2104,7 +2107,7 @@
 
 <span class="doccomment">/// The membership key is used to calculate the `MembershipTag`.
 </span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(test, derive(PartialEq, Clone))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MembershipKey {
     secret: Secret,
 }
@@ -2458,6 +2461,7 @@
 }
 
 <span class="attr">#[derive(Serialize, Deserialize)]
+#[cfg_attr(test, derive(Clone))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>GroupEpochSecrets {
     init_secret: InitSecret,
     exporter_secret: ExporterSecret,

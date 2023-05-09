@@ -1134,6 +1134,10 @@
 <a href="#1134" id="1134">1134</a>
 <a href="#1135" id="1135">1135</a>
 <a href="#1136" id="1136">1136</a>
+<a href="#1137" id="1137">1137</a>
+<a href="#1138" id="1138">1138</a>
+<a href="#1139" id="1139">1139</a>
+<a href="#1140" id="1140">1140</a>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -1261,7 +1265,7 @@
 }
 
 <span class="attr">#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(test, derive(PartialEq, Clone))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>CoreGroup {
     public_group: PublicGroup,
     group_epoch_secrets: GroupEpochSecrets,
@@ -1620,7 +1624,6 @@
         padding_size: usize,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;PrivateMessage, MessageEncryptionError&gt; {
-        <span class="macro">log::trace!</span>(<span class="string">&quot;{:?}&quot;</span>, public_message.confirmation_tag());
         PrivateMessage::try_from_authenticated_content(
             <span class="kw-2">&amp;</span>public_message,
             <span class="self">self</span>.ciphersuite(),
@@ -1795,6 +1798,11 @@
     </span><span class="attr">#[cfg(test)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>use_ratchet_tree_extension(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="self">self</span>.use_ratchet_tree_extension
+    }
+
+    <span class="attr">#[cfg(test)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>set_own_leaf_index(<span class="kw-2">&amp;mut </span><span class="self">self</span>, own_leaf_index: LeafNodeIndex) {
+        <span class="self">self</span>.own_leaf_index = own_leaf_index;
     }
 }
 
