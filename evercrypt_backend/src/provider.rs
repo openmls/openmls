@@ -120,7 +120,7 @@ impl OpenMlsCrypto for EvercryptProvider {
         hash_type: HashType,
         salt: &[u8],
         ikm: &[u8],
-    ) -> Result<SecreVLBytes, CryptoError> {
+    ) -> Result<SecretVLBytes, CryptoError> {
         let hmac = hmac_from_hash(hash_type);
         Ok(hkdf::extract(hmac, salt, ikm).into())
     }
