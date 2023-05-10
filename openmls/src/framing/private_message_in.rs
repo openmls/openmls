@@ -158,9 +158,9 @@ impl PrivateMessageIn {
                 sender_data.generation,
                 sender_ratchet_configuration,
             )
-            .map_err(|_| {
+            .map_err(|e| {
                 log::error!(
-                    "  Ciphertext generation out of bounds {}",
+                    "  Ciphertext generation out of bounds {}\n\t{e:?}",
                     sender_data.generation
                 );
                 MessageDecryptionError::GenerationOutOfBound
