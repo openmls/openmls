@@ -21,6 +21,7 @@ use openmls_traits::{
     },
 };
 use rand::{RngCore, SeedableRng};
+use tls_codec::SecretVLBytes;
 
 /// The Evercrypt crypto provider.
 #[derive(Debug)]
@@ -119,9 +120,9 @@ impl OpenMlsCrypto for EvercryptProvider {
         hash_type: HashType,
         salt: &[u8],
         ikm: &[u8],
-    ) -> Result<Vec<u8>, CryptoError> {
+    ) -> Result<SecreVLBytes, CryptoError> {
         let hmac = hmac_from_hash(hash_type);
-        Ok(hkdf::extract(hmac, salt, ikm))
+        Ok(hkdf::extract(hmac, salt, ikm).into())
     }
 
     /// Returns `HKDF::expand` with the given parameters or an error if the HKDF
@@ -132,9 +133,9 @@ impl OpenMlsCrypto for EvercryptProvider {
         prk: &[u8],
         info: &[u8],
         okm_len: usize,
-    ) -> Result<Vec<u8>, CryptoError> {
+    ) -> Result<SecretVLBytes, CryptoError> {
         let hmac = hmac_from_hash(hash_type);
-        Ok(hkdf::expand(hmac, prk, info, okm_len))
+        Ok(hkdf::expand(hmac, prk, info, okm_len).into())
     }
 
     /// Returns the hash of `data` or an error if the hash algorithm isn't supported.

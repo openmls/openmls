@@ -175,7 +175,7 @@ impl Secret {
                 okm_len,
             )
             .map_err(|_| CryptoError::CryptoLibraryError)?;
-        if key.is_empty() {
+        if key.as_slice().is_empty() {
             return Err(CryptoError::InvalidLength);
         }
         Ok(Self {
