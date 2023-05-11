@@ -146,14 +146,11 @@ impl Secret {
         );
 
         Ok(Self {
-            value: backend
-                .crypto()
-                .hkdf_extract(
-                    self.ciphersuite.hash_algorithm(),
-                    self.value.as_slice(),
-                    ikm.value.as_slice(),
-                )?
-                .into(),
+            value: backend.crypto().hkdf_extract(
+                self.ciphersuite.hash_algorithm(),
+                self.value.as_slice(),
+                ikm.value.as_slice(),
+            )?,
             mls_version: self.mls_version,
             ciphersuite: self.ciphersuite,
         })
@@ -179,7 +176,7 @@ impl Secret {
             return Err(CryptoError::InvalidLength);
         }
         Ok(Self {
-            value: key.into(),
+            value: key,
             mls_version: self.mls_version,
             ciphersuite: self.ciphersuite,
         })
