@@ -281,5 +281,5 @@ impl From<(EncryptionKey, EncryptionPrivateKey)> for EncryptionKeyPair {
 }
 
 impl MlsEntity for EncryptionKeyPair {
-    const ID: MlsEntityId = MlsEntityId::SignatureKeyPair;
+    const ID: MlsEntityId = MlsEntityId::EncryptionKeyPair;
 }
