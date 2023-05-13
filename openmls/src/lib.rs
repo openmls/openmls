@@ -27,7 +27,7 @@
 //!         SignatureKeyPair::new(signature_algorithm)
 //!             .expect("Error generating a signature key pair.");
 //!
-//!     // Store the credential bundle into the key store so OpenMLS has access
+//!     // Store the signature key into the key store so OpenMLS has access
 //!     // to it.
 //!     signature_keys
 //!         .store(backend.key_store())
