@@ -46,7 +46,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
         let group_id = GroupId::from_slice(b"Test Group");
 
-        // Generate credential bundles
+        // Generate credentials with keys
         let (alice_credential, alice_signer) = new_credential(
             backend,
             b"Alice",
@@ -919,7 +919,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 fn test_empty_input_errors(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
-    // Generate credential bundles
+    // Generate credentials with keys
     let (alice_credential, alice_signer) = new_credential(
         backend,
         b"Alice",
@@ -1023,7 +1023,7 @@ fn mls_group_ratchet_tree_extension(
 
         // === Negative case: not using the ratchet tree extension ===
 
-        // Generate credential bundles
+        // Generate credentials with keys
         let (alice_credential, alice_signer) = new_credential(
             backend,
             b"Alice",

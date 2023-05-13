@@ -16,7 +16,7 @@
 //! // Now let's create two participants.
 //!
 //! // A helper to create and store credentials.
-//! fn generate_credential_bundle(
+//! fn generate_credential_with_key(
 //!     identity: Vec<u8>,
 //!     credential_type: CredentialType,
 //!     signature_algorithm: SignatureScheme,
@@ -64,14 +64,14 @@
 //! }
 //!
 //! // First they need credentials to identify them
-//! let (sasha_credential_with_key, sasha_signer) = generate_credential_bundle(
+//! let (sasha_credential_with_key, sasha_signer) = generate_credential_with_key(
 //!     "Sasha".into(),
 //!     CredentialType::Basic,
 //!     ciphersuite.signature_algorithm(),
 //!     backend,
 //! );
 //!
-//! let (maxim_credential_with_key, maxim_signer) = generate_credential_bundle(
+//! let (maxim_credential_with_key, maxim_signer) = generate_credential_with_key(
 //!     "Maxim".into(),
 //!     CredentialType::Basic,
 //!     ciphersuite.signature_algorithm(),

@@ -19,7 +19,9 @@ use crate::{
         errors::{
             ExternalCommitValidationError, ProcessMessageError, StageCommitError, ValidationError,
         },
-        tests::utils::{generate_credential_bundle, generate_key_package, resign_external_commit},
+        tests::utils::{
+            generate_credential_with_key, generate_key_package, resign_external_commit,
+        },
         Extensions, MlsGroup, OpenMlsSignaturePublicKey, PURE_CIPHERTEXT_WIRE_FORMAT_POLICY,
         PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
@@ -222,7 +224,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     let deny_list = {
         let add_proposal = {
-            let charlie_credential = generate_credential_bundle(
+            let charlie_credential = generate_credential_with_key(
                 "Charlie".into(),
                 ciphersuite.signature_algorithm(),
                 backend,
@@ -614,7 +616,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         // the path by generating a new credential for bob, putting it in the path
         // and then re-signing the message with his original credential.
         let bob_new_credential =
-            generate_credential_bundle("Bob".into(), ciphersuite.signature_algorithm(), backend);
+            generate_credential_with_key("Bob".into(), ciphersuite.signature_algorithm(), backend);
 
         // Generate KeyPackage
         let bob_new_key_package = generate_key_package(
@@ -748,7 +750,7 @@ mod utils {
         framing::{MlsMessageIn, PublicMessage, Sender},
         group::{
             config::CryptoConfig,
-            tests::utils::{generate_credential_bundle, CredentialWithKeyAndSigner},
+            tests::utils::{generate_credential_with_key, CredentialWithKeyAndSigner},
             MlsGroup, MlsGroupConfig, WireFormatPolicy,
         },
     };
@@ -768,12 +770,15 @@ mod utils {
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
     ) -> ECValidationTestSetup {
-        // Generate credential bundles
-        let alice_credential =
-            generate_credential_bundle("Alice".into(), ciphersuite.signature_algorithm(), backend);
+        // Generate credentials with keys
+        let alice_credential = generate_credential_with_key(
+            "Alice".into(),
+            ciphersuite.signature_algorithm(),
+            backend,
+        );
 
         let bob_credential =
-            generate_credential_bundle("Bob".into(), ciphersuite.signature_algorithm(), backend);
+            generate_credential_with_key("Bob".into(), ciphersuite.signature_algorithm(), backend);
 
         // Define the MlsGroup configuration
         let mls_group_config = MlsGroupConfig::builder()

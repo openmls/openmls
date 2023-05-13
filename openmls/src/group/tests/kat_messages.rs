@@ -17,7 +17,7 @@ use crate::{
     framing::*,
     group::{
         config::CryptoConfig,
-        tests::utils::{generate_credential_bundle, generate_key_package, randombytes},
+        tests::utils::{generate_credential_with_key, generate_key_package, randombytes},
         *,
     },
     key_packages::*,
@@ -122,7 +122,7 @@ pub struct MessagesTestVector {
 pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     let crypto = OpenMlsRustCrypto::default();
 
-    let alice_credential_with_key_and_signer = generate_credential_bundle(
+    let alice_credential_with_key_and_signer = generate_credential_with_key(
         b"Alice".to_vec(),
         SignatureScheme::from(ciphersuite),
         &crypto,
@@ -190,7 +190,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
 
     // Bob
     let bob_credential_with_key_and_signer =
-        generate_credential_bundle(b"Bob".to_vec(), SignatureScheme::from(ciphersuite), &crypto);
+        generate_credential_with_key(b"Bob".to_vec(), SignatureScheme::from(ciphersuite), &crypto);
 
     let bob_key_package_bundle = KeyPackageBundle::new(
         &crypto,

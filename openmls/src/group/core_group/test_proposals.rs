@@ -36,7 +36,7 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
     // Define identities
     let (alice_credential, alice_key_package_bundle, alice_signer, _alice_pk) =
         setup_client("Alice", ciphersuite, backend);
-    let (_bob_credential_bundle, bob_key_package_bundle, _bob_signer, _bob_pk) =
+    let (_bob_credential_with_key, bob_key_package_bundle, _bob_signer, _bob_pk) =
         setup_client("Bob", ciphersuite, backend);
 
     let bob_key_package = bob_key_package_bundle.key_package();
@@ -180,7 +180,7 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     // Define identities
     let (alice_credential, alice_key_package_bundle, alice_signer, _alice_pk) =
         setup_client("Alice", ciphersuite, backend);
-    let (_bob_credential_bundle, bob_key_package_bundle, _bob_signer, _bob_pk) =
+    let (_bob_credential_with_key, bob_key_package_bundle, _bob_signer, _bob_pk) =
         setup_client("Bob", ciphersuite, backend);
 
     let bob_key_package = bob_key_package_bundle.key_package();
@@ -324,7 +324,7 @@ fn test_required_extension_key_package_mismatch(
 
     let (alice_credential, _, alice_signer, _alice_pk) =
         setup_client("Alice", ciphersuite, backend);
-    let (_bob_credential_bundle, bob_key_package_bundle, _, _) =
+    let (_bob_credential_with_key, bob_key_package_bundle, _, _) =
         setup_client("Bob", ciphersuite, backend);
     let bob_key_package = bob_key_package_bundle.key_package();
 
@@ -373,7 +373,7 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMl
 
     let (alice_credential, _, alice_signer, _alice_pk) =
         setup_client("Alice", ciphersuite, backend);
-    let (_bob_credential_bundle, bob_key_package_bundle, _, _) =
+    let (_bob_credential_with_key, bob_key_package_bundle, _, _) =
         setup_client("Bob", ciphersuite, backend);
 
     let bob_key_package = bob_key_package_bundle.key_package();
@@ -449,7 +449,7 @@ fn test_group_context_extension_proposal_fails(
 
     let (alice_credential, _, alice_signer, _alice_pk) =
         setup_client("Alice", ciphersuite, backend);
-    let (_bob_credential_bundle, bob_key_package_bundle, _, _) =
+    let (_bob_credential_with_key, bob_key_package_bundle, _, _) =
         setup_client("Bob", ciphersuite, backend);
 
     let bob_key_package = bob_key_package_bundle.key_package();
@@ -562,7 +562,7 @@ fn test_group_context_extension_proposal(
 
     let (alice_credential, _, alice_signer, _alice_pk) =
         setup_client("Alice", ciphersuite, backend);
-    let (_bob_credential_bundle, bob_key_package_bundle, _, _) =
+    let (_bob_credential_with_key, bob_key_package_bundle, _, _) =
         setup_client("Bob", ciphersuite, backend);
 
     let bob_key_package = bob_key_package_bundle.key_package();
