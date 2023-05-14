@@ -615,6 +615,8 @@
 <a href="#615" id="615">615</a>
 <a href="#616" id="616">616</a>
 <a href="#617" id="617">617</a>
+<a href="#618" id="618">618</a>
+<a href="#619" id="619">619</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::{hash_map::Entry, HashMap, HashSet};
 
 <span class="kw">use </span>openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
@@ -632,6 +634,7 @@
         AddProposal, PreSharedKeyProposal, Proposal, ProposalOrRef, ProposalOrRefType,
         ProposalType, RemoveProposal, UpdateProposal,
     },
+    utils::vector_converter,
 };
 
 <span class="doccomment">/// A [ProposalStore] can store the standalone proposals that are received from the DS
@@ -794,6 +797,7 @@
     </span>proposal_references: Vec&lt;ProposalRef&gt;,
     <span class="doccomment">/// `queued_proposals` contains the actual proposals in the queue. They are
     /// stored in a `HashMap` to allow for efficient access to the proposals.
+    </span><span class="attr">#[serde(with = <span class="string">&quot;vector_converter&quot;</span>)]
     </span>queued_proposals: HashMap&lt;ProposalRef, QueuedProposal&gt;,
 }
 
