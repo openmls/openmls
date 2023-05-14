@@ -876,6 +876,14 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             .add_members(backend, &alice_signer, &[bob_key_package])
             .expect("Could not add Bob");
 
+        // Test saving & loading the group state when there is a pending commit
+        alice_group
+            .save(backend)
+            .expect("Could not save group state.");
+
+        let _test_group =
+            MlsGroup::load(&group_id, backend).expect("Could not load the group state.");
+
         // Merge Commit
         alice_group
             .merge_pending_commit(backend)
@@ -896,7 +904,6 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
         // Check that the state flag gets reset when saving
         assert_eq!(bob_group.state_changed(), InnerState::Changed);
-        //save(&mut bob_group);
 
         bob_group
             .save(backend)
