@@ -458,6 +458,6 @@ impl MemberStagedCommitState {
 
     /// Get the staged [`GroupContext`].
     pub(crate) fn group_context(&self) -> &GroupContext {
-        &self.staged_diff.group_context()
+        self.staged_diff.group_context()
     }
 }
