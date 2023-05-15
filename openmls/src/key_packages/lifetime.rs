@@ -92,7 +92,7 @@ impl Default for Lifetime {
 mod tests {
     use tls_codec::{Deserialize, Serialize};
 
-    use crate::treesync::node::leaf_node::Lifetime;
+    use super::Lifetime;
 
     #[test]
     fn lifetime() {

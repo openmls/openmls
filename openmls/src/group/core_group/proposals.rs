@@ -15,6 +15,7 @@ use crate::{
         AddProposal, PreSharedKeyProposal, Proposal, ProposalOrRef, ProposalOrRefType,
         ProposalType, RemoveProposal, UpdateProposal,
     },
+    utils::vector_converter,
 };
 
 /// A [ProposalStore] can store the standalone proposals that are received from the DS
@@ -177,6 +178,7 @@ pub(crate) struct ProposalQueue {
     proposal_references: Vec<ProposalRef>,
     /// `queued_proposals` contains the actual proposals in the queue. They are
     /// stored in a `HashMap` to allow for efficient access to the proposals.
+    #[serde(with = "vector_converter")]
     queued_proposals: HashMap<ProposalRef, QueuedProposal>,
 }
 

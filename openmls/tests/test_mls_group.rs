@@ -46,7 +46,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
         let group_id = GroupId::from_slice(b"Test Group");
 
-        // Generate credential bundles
+        // Generate credentials with keys
         let (alice_credential, alice_signer) = new_credential(
             backend,
             b"Alice",
@@ -876,6 +876,14 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             .add_members(backend, &alice_signer, &[bob_key_package])
             .expect("Could not add Bob");
 
+        // Test saving & loading the group state when there is a pending commit
+        alice_group
+            .save(backend)
+            .expect("Could not save group state.");
+
+        let _test_group =
+            MlsGroup::load(&group_id, backend).expect("Could not load the group state.");
+
         // Merge Commit
         alice_group
             .merge_pending_commit(backend)
@@ -896,7 +904,6 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
         // Check that the state flag gets reset when saving
         assert_eq!(bob_group.state_changed(), InnerState::Changed);
-        //save(&mut bob_group);
 
         bob_group
             .save(backend)
@@ -919,7 +926,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 fn test_empty_input_errors(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
-    // Generate credential bundles
+    // Generate credentials with keys
     let (alice_credential, alice_signer) = new_credential(
         backend,
         b"Alice",
@@ -1023,7 +1030,7 @@ fn mls_group_ratchet_tree_extension(
 
         // === Negative case: not using the ratchet tree extension ===
 
-        // Generate credential bundles
+        // Generate credentials with keys
         let (alice_credential, alice_signer) = new_credential(
             backend,
             b"Alice",

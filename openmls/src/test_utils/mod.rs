@@ -152,7 +152,7 @@ pub(crate) fn generate_group_candidate(
                     .unwrap();
 
                 HpkeKeyPair {
-                    private: private.as_slice().to_vec(),
+                    private,
                     public: key_package.hpke_init_key().as_slice().to_vec(),
                 }
             };

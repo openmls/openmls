@@ -72,10 +72,7 @@ use crate::{
         *,
     },
     tree::{secret_tree::SecretTreeError, sender_ratchet::SenderRatchetConfiguration},
-    treesync::{
-        node::{encryption_keys::EncryptionKeyPair, leaf_node::Lifetime},
-        *,
-    },
+    treesync::{node::encryption_keys::EncryptionKeyPair, *},
     versions::ProtocolVersion,
 };
 

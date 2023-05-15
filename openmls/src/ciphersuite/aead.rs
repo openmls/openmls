@@ -1,3 +1,5 @@
+use tls_codec::SecretVLBytes;
+
 use super::*;
 
 /// The default NONCE size in bytes.
@@ -9,7 +11,7 @@ pub(crate) const NONCE_BYTES: usize = 12;
 #[cfg_attr(feature = "crypto-debug", derive(Debug))]
 pub struct AeadKey {
     aead_mode: AeadType,
-    value: Vec<u8>,
+    value: SecretVLBytes,
 }
 
 #[cfg(not(feature = "crypto-debug"))]
@@ -57,7 +59,7 @@ impl AeadKey {
     #[cfg(any(feature = "test-utils", test))]
     /// Get a slice to the key value.
     pub(crate) fn as_slice(&self) -> &[u8] {
-        &self.value
+        self.value.as_slice()
     }
 
     /// Encrypt a payload under the AeadKey given a nonce.
@@ -100,7 +102,7 @@ impl AeadNonce {
     /// disappear when tackling issue #103.
     pub(crate) fn from_secret(secret: Secret) -> Self {
         let mut nonce = [0u8; NONCE_BYTES];
-        nonce.clone_from_slice(&secret.value);
+        nonce.clone_from_slice(secret.value.as_slice());
         Self(nonce)
     }
 
@@ -139,15 +141,17 @@ impl AeadNonce {
 pub(crate) fn aead_key_gen(
     alg: openmls_traits::types::AeadType,
     rng: &impl OpenMlsRand,
-) -> Vec<u8> {
+) -> SecretVLBytes {
     match alg {
-        openmls_traits::types::AeadType::Aes128Gcm => {
-            rng.random_vec(16).expect("An unexpected error occurred.")
-        }
+        openmls_traits::types::AeadType::Aes128Gcm => rng
+            .random_vec(16)
+            .expect("An unexpected error occurred.")
+            .into(),
         openmls_traits::types::AeadType::Aes256Gcm
-        | openmls_traits::types::AeadType::ChaCha20Poly1305 => {
-            rng.random_vec(32).expect("An unexpected error occurred.")
-        }
+        | openmls_traits::types::AeadType::ChaCha20Poly1305 => rng
+            .random_vec(32)
+            .expect("An unexpected error occurred.")
+            .into(),
     }
 }
 

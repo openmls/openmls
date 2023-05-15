@@ -279,10 +279,9 @@ impl<'a> TreeSyncDiff<'a> {
         ParentNode::derive_path(backend, ciphersuite, path_secret, path_indices)
     }
 
-    /// Given a new [`LeafNode`], use it to create a new path starting
-    /// from `leaf_index` and apply it to this diff. The given
-    /// [`CredentialBundle`] reference is used to sign the target
-    /// [`LeafNode`] after updating its parent hash.
+    /// Given a new [`LeafNode`], use it to create a new path starting from
+    /// `leaf_index` and apply it to this diff. The given [`Signer`] reference
+    /// is used to sign the target [`LeafNode`] after updating its parent hash.
     ///
     /// Returns the [`CommitSecret`] and the path resulting from the path
     /// derivation, as well as the newly derived [`EncryptionKeyPair`]s.
