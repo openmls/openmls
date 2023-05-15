@@ -773,6 +773,7 @@
 <a href="#773" id="773">773</a>
 <a href="#774" id="774">774</a>
 <a href="#775" id="775">775</a>
+<a href="#776" id="776">776</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the ratchet tree component of MLS.
 //!
 //! It exposes the [`Node`] enum that can contain either a [`LeafNode`] or a [`ParentNode`].
@@ -816,7 +817,7 @@
     diff::{StagedTreeSyncDiff, TreeSyncDiff},
     node::{
         leaf_node::{
-            Capabilities, LeafNodeSource, Lifetime, NewLeafNodeParams, TreeInfoTbs, TreePosition,
+            Capabilities, LeafNodeSource, NewLeafNodeParams, TreeInfoTbs, TreePosition,
             VerifiableLeafNode,
         },
         NodeIn,
@@ -841,6 +842,7 @@
     extensions::Extensions,
     framing::SenderError,
     group::{config::CryptoConfig, GroupId, Member},
+    key_packages::Lifetime,
     messages::{PathSecret, PathSecretError},
     schedule::CommitSecret,
 };

@@ -175,8 +175,6 @@
 <a href="#175" id="175">175</a>
 <a href="#176" id="176">176</a>
 <a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
 </pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer, OpenMlsCryptoProvider};
 
 <span class="kw">use super</span>::{errors::PublicGroupBuildError, PublicGroup};
@@ -188,13 +186,11 @@
         RequiredCapabilitiesExtension,
     },
     group::{config::CryptoConfig, GroupContext, GroupId},
+    key_packages::Lifetime,
     messages::ConfirmationTag,
     schedule::CommitSecret,
     treesync::{
-        node::{
-            encryption_keys::EncryptionKeyPair,
-            leaf_node::{Capabilities, Lifetime},
-        },
+        node::{encryption_keys::EncryptionKeyPair, leaf_node::Capabilities},
         TreeSync,
     },
 };

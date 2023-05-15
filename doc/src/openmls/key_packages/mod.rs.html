@@ -693,6 +693,24 @@
 <a href="#693" id="693">693</a>
 <a href="#694" id="694">694</a>
 <a href="#695" id="695">695</a>
+<a href="#696" id="696">696</a>
+<a href="#697" id="697">697</a>
+<a href="#698" id="698">698</a>
+<a href="#699" id="699">699</a>
+<a href="#700" id="700">700</a>
+<a href="#701" id="701">701</a>
+<a href="#702" id="702">702</a>
+<a href="#703" id="703">703</a>
+<a href="#704" id="704">704</a>
+<a href="#705" id="705">705</a>
+<a href="#706" id="706">706</a>
+<a href="#707" id="707">707</a>
+<a href="#708" id="708">708</a>
+<a href="#709" id="709">709</a>
+<a href="#710" id="710">710</a>
+<a href="#711" id="711">711</a>
+<a href="#712" id="712">712</a>
+<a href="#713" id="713">713</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key Packages
 //!
 //! Key packages are pre-published public keys that provide some information
@@ -804,7 +822,7 @@
     treesync::{
         node::{
             encryption_keys::EncryptionKeyPair,
-            leaf_node::{Capabilities, LeafNodeSource, Lifetime, NewLeafNodeParams, TreeInfoTbs},
+            leaf_node::{Capabilities, LeafNodeSource, NewLeafNodeParams, TreeInfoTbs},
         },
         LeafNode,
     },
@@ -827,12 +845,15 @@
 </span><span class="kw">pub mod </span>errors;
 <span class="kw">pub mod </span>key_package_in;
 
+<span class="kw">mod </span>lifetime;
+
 <span class="comment">// Tests
 </span><span class="attr">#[cfg(test)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>test_key_packages;
 
 <span class="comment">// Public types
 </span><span class="kw">pub use </span>key_package_in::KeyPackageIn;
+<span class="kw">pub use </span>lifetime::Lifetime;
 
 <span class="doccomment">/// The unsigned payload of a key package.
 /// Any modification must happen on this unsigned struct. Use `sign` to get a
@@ -917,12 +938,14 @@
         KeyPackageBuilder::new()
     }
 
-    <span class="doccomment">/// Create a new key package for the given `ciphersuite` and `identity`.
+    <span class="attr">#[allow(clippy::too_many_arguments)]
+    </span><span class="doccomment">/// Create a new key package for the given `ciphersuite` and `identity`.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>create&lt;KeyStore: OpenMlsKeyStore&gt;(
         config: CryptoConfig,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         credential_with_key: CredentialWithKey,
+        lifetime: Lifetime,
         extensions: Extensions,
         leaf_node_capabilities: Capabilities,
         leaf_node_extensions: Extensions,
@@ -942,6 +965,7 @@
             backend,
             signer,
             credential_with_key,
+            lifetime,
             extensions,
             leaf_node_capabilities,
             leaf_node_extensions,
@@ -970,6 +994,7 @@
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         credential_with_key: CredentialWithKey,
+        lifetime: Lifetime,
         extensions: Extensions,
         capabilities: Capabilities,
         leaf_node_extensions: Extensions,
@@ -980,7 +1005,7 @@
 
         </span><span class="kw">let </span>new_leaf_node_params = NewLeafNodeParams {
             config,
-            leaf_node_source: LeafNodeSource::KeyPackage(Lifetime::default()),
+            leaf_node_source: LeafNodeSource::KeyPackage(lifetime),
             credential_with_key,
             capabilities,
             extensions: leaf_node_extensions,
@@ -1094,6 +1119,7 @@
             backend,
             signer,
             credential_with_key,
+            Lifetime::default(),
             extensions,
             leaf_node_capabilities,
             leaf_node_extensions,
@@ -1238,6 +1264,7 @@
 <span class="doccomment">/// Builder that helps creating (and configuring) a [`KeyPackage`].
 </span><span class="attr">#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>KeyPackageBuilder {
+    key_package_lifetime: <span class="prelude-ty">Option</span>&lt;Lifetime&gt;,
     key_package_extensions: <span class="prelude-ty">Option</span>&lt;Extensions&gt;,
     leaf_node_capabilities: <span class="prelude-ty">Option</span>&lt;Capabilities&gt;,
     leaf_node_extensions: <span class="prelude-ty">Option</span>&lt;Extensions&gt;,
@@ -1247,27 +1274,34 @@
     <span class="doccomment">/// Create a key package builder.
     </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
+            key_package_lifetime: <span class="prelude-val">None</span>,
             key_package_extensions: <span class="prelude-val">None</span>,
             leaf_node_capabilities: <span class="prelude-val">None</span>,
             leaf_node_extensions: <span class="prelude-val">None</span>,
         }
     }
 
+    <span class="doccomment">/// Set the key package lifetime.
+    </span><span class="kw">pub fn </span>key_package_lifetime(<span class="kw-2">mut </span><span class="self">self</span>, lifetime: Lifetime) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.key_package_lifetime.replace(lifetime);
+        <span class="self">self
+    </span>}
+
     <span class="doccomment">/// Set the key package extensions.
     </span><span class="kw">pub fn </span>key_package_extensions(<span class="kw-2">mut </span><span class="self">self</span>, extensions: Extensions) -&gt; <span class="self">Self </span>{
-        <span class="self">self</span>.key_package_extensions = <span class="prelude-val">Some</span>(extensions);
+        <span class="self">self</span>.key_package_extensions.replace(extensions);
         <span class="self">self
     </span>}
 
     <span class="doccomment">/// Set the leaf node capabilities.
     </span><span class="kw">pub fn </span>leaf_node_capabilities(<span class="kw-2">mut </span><span class="self">self</span>, capabilities: Capabilities) -&gt; <span class="self">Self </span>{
-        <span class="self">self</span>.leaf_node_capabilities = <span class="prelude-val">Some</span>(capabilities);
+        <span class="self">self</span>.leaf_node_capabilities.replace(capabilities);
         <span class="self">self
     </span>}
 
     <span class="doccomment">/// Set the leaf node extensions.
     </span><span class="kw">pub fn </span>leaf_node_extensions(<span class="kw-2">mut </span><span class="self">self</span>, extensions: Extensions) -&gt; <span class="self">Self </span>{
-        <span class="self">self</span>.leaf_node_extensions = <span class="prelude-val">Some</span>(extensions);
+        <span class="self">self</span>.leaf_node_extensions.replace(extensions);
         <span class="self">self
     </span>}
 
@@ -1283,6 +1317,7 @@
             backend,
             signer,
             credential_with_key,
+            <span class="self">self</span>.key_package_lifetime.unwrap_or_default(),
             <span class="self">self</span>.key_package_extensions.unwrap_or_default(),
             <span class="self">self</span>.leaf_node_capabilities.unwrap_or_default(),
             <span class="self">self</span>.leaf_node_extensions.unwrap_or_default(),
@@ -1306,6 +1341,7 @@
             backend,
             signer,
             credential_with_key,
+            <span class="self">self</span>.key_package_lifetime.unwrap_or_default(),
             <span class="self">self</span>.key_package_extensions.unwrap_or_default(),
             <span class="self">self</span>.leaf_node_capabilities.unwrap_or_default(),
             <span class="self">self</span>.leaf_node_extensions.unwrap_or_default(),
