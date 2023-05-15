@@ -410,6 +410,11 @@ impl StagedCommit {
         self.staged_proposal_queue.psk_proposals()
     }
 
+    /// Returns an iterator over all [`QueuedProposal`]s.
+    pub fn queued_proposals(&self) -> impl Iterator<Item = &QueuedProposal> {
+        self.staged_proposal_queue.queued_proposals()
+    }
+
     /// Returns `true` if the member was removed through a proposal covered by this Commit message
     /// and `false` otherwise.
     pub fn self_removed(&self) -> bool {
