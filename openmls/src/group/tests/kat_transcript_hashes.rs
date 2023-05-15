@@ -16,7 +16,7 @@ use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     framing::{mls_auth_content::AuthenticatedContent, *},
     group::{
-        tests::utils::{generate_credential_bundle, randombytes},
+        tests::utils::{generate_credential_with_key, randombytes},
         *,
     },
     messages::*,
@@ -203,7 +203,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
         };
 
         let signer = {
-            let credential_with_key_and_signer = generate_credential_bundle(
+            let credential_with_key_and_signer = generate_credential_with_key(
                 b"Alice".to_vec(),
                 ciphersuite.signature_algorithm(),
                 &backend,

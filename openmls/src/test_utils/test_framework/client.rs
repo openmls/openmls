@@ -33,8 +33,9 @@ use super::{errors::ClientError, ActionType};
 #[derive(Debug)]
 /// The client contains the necessary state for a client in the context of MLS.
 /// It contains the group states, as well as a reference to a `KeyStore`
-/// containing its `CredentialBundle`s. The `key_package_bundles` field contains
-/// generated `KeyPackageBundle`s that are waiting to be used for new groups.
+/// containing its `CredentialWithKey`s. The `key_package_bundles` field
+/// contains generated `KeyPackageBundle`s that are waiting to be used for new
+/// groups.
 pub struct Client {
     /// Name of the client.
     pub identity: Vec<u8>,
@@ -80,8 +81,7 @@ impl Client {
 
     /// Create a group with the given [MlsGroupConfig] and [Ciphersuite], and return the created [GroupId].
     ///
-    /// Returns an error if the client doesn't support the `ciphersuite`, i.e.,
-    /// if no corresponding `CredentialBundle` exists.
+    /// Returns an error if the client doesn't support the `ciphersuite`.
     pub fn create_group(
         &self,
         mls_group_config: MlsGroupConfig,

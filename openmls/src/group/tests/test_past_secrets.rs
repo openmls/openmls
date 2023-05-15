@@ -6,7 +6,7 @@ use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use rstest::*;
 use rstest_reuse::{self, *};
 
-use super::utils::{generate_credential_bundle, generate_key_package};
+use super::utils::{generate_credential_with_key, generate_key_package};
 use crate::{
     framing::{MessageDecryptionError, ProcessedMessageContent},
     group::{config::CryptoConfig, errors::*, *},
@@ -19,13 +19,16 @@ fn test_past_secrets_in_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
         let group_id = GroupId::from_slice(b"Test Group");
 
         // Generate credentials
-        let alice_credential_with_keys = generate_credential_bundle(
+        let alice_credential_with_keys = generate_credential_with_key(
             b"Alice".to_vec(),
             ciphersuite.signature_algorithm(),
             backend,
         );
-        let bob_credential_with_keys =
-            generate_credential_bundle(b"Bob".to_vec(), ciphersuite.signature_algorithm(), backend);
+        let bob_credential_with_keys = generate_credential_with_key(
+            b"Bob".to_vec(),
+            ciphersuite.signature_algorithm(),
+            backend,
+        );
 
         // Generate KeyPackages
         let bob_key_package = generate_key_package(
