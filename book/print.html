@@ -754,7 +754,7 @@ randomness and store it in an array or vector.</p>
 <li>Signatures</li>
 <li>HPKE</li>
 </ul>
-<pre><code class="language-rust no_run noplayground">pub trait OpenMlsCrypto {</code></pre>
+<pre><code class="language-rust no_run noplayground">};</code></pre>
 <h3 id="openmlskeystore"><a class="header" href="#openmlskeystore">OpenMlsKeyStore</a></h3>
 <p>This trait defines a CRUD API for a key store that is used to store long-term
 key material from OpenMLS.</p>
@@ -815,16 +815,16 @@ Suppose you want to use a persisting key store. In that case, it is sufficient t
 identifiers.</p>
 <p><strong>AEADs</strong></p>
 <p>The following AEADs are defined.</p>
-<pre><code class="language-rust no_run noplayground">/// AEAD types
+<pre><code class="language-rust no_run noplayground">#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
+#[repr(u16)]
+/// AEAD types
 pub enum AeadType {
     /// AES GCM 128
     Aes128Gcm = 0x0001,
 
     /// AES GCM 256
     Aes256Gcm = 0x0002,
-
-    /// ChaCha20 Poly1305
-    ChaCha20Poly1305 = 0x0003,</code></pre>
+</code></pre>
 <p>An AEAD provides the following functions to get the according values for each
 algorithm.</p>
 <ul>
@@ -834,11 +834,11 @@ algorithm.</p>
 </ul>
 <p><strong>Hashing</strong></p>
 <p>The following hash algorithms are defined.</p>
-<pre><code class="language-rust no_run noplayground">/// Hash types
+<pre><code class="language-rust no_run noplayground">#[repr(u8)]
+#[allow(non_camel_case_types)]
+/// Hash types
 pub enum HashType {
-    Sha2_256 = 0x04,
-    Sha2_384 = 0x05,
-    Sha2_512 = 0x06,</code></pre>
+    Sha2_256 = 0x04,</code></pre>
 <p>A hash algorithm provides the following functions to get the according values for each
 algorithm.</p>
 <ul>
@@ -846,7 +846,9 @@ algorithm.</p>
 </ul>
 <p><strong>Signatures</strong></p>
 <p>The following signature schemes are defined.</p>
-<pre><code class="language-rust no_run noplayground">#[repr(u16)]
+<pre><code class="language-rust no_run noplayground">    TlsSize,
+)]
+#[repr(u16)]
 pub enum SignatureScheme {
     /// ECDSA_SECP256R1_SHA256
     ECDSA_SECP256R1_SHA256 = 0x0403,
@@ -855,14 +857,14 @@ pub enum SignatureScheme {
     /// ECDSA_SECP521R1_SHA512
     ECDSA_SECP521R1_SHA512 = 0x0603,
     /// ED25519
-    ED25519 = 0x0807,
-    /// ED448
-    ED448 = 0x0808,</code></pre>
+    ED25519 = 0x0807,</code></pre>
 <h1 id="hpke-types"><a class="header" href="#hpke-types">HPKE Types</a></h1>
 <p>The HPKE implementation is part of the crypto provider as well.
 The crate, therefore, defines the necessary types too.</p>
 <p>The HPKE algorithms are defined as follows.</p>
-<pre><code class="language-rust no_run noplayground">pub struct HpkeConfig(pub HpkeKemType, pub HpkeKdfType, pub HpkeAeadType);
+<pre><code class="language-rust no_run noplayground">/// Convenience tuple struct for an HPKE configuration.
+#[derive(Debug)]
+pub struct HpkeConfig(pub HpkeKemType, pub HpkeKdfType, pub HpkeAeadType);
 
 /// KEM Types for HPKE
 #[derive(PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
@@ -875,20 +877,20 @@ pub enum HpkeKemType {
     DhKemP384 = 0x0011,
 
     /// DH KEM on P521
-    DhKemP521 = 0x0012,
-
-    /// DH KEM on x25519</code></pre>
-<pre><code class="language-rust no_run noplayground">}
+    DhKemP521 = 0x0012,</code></pre>
+<pre><code class="language-rust no_run noplayground">    /// DH KEM on x448
+    DhKem448 = 0x0021,
+}
 
 /// KDF Types for HPKE
 #[derive(PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
 #[repr(u16)]
 pub enum HpkeKdfType {
     /// HKDF SHA 256
-    HkdfSha256 = 0x0001,
-
-    /// HKDF SHA 384</code></pre>
-<pre><code class="language-rust no_run noplayground">}
+    HkdfSha256 = 0x0001,</code></pre>
+<pre><code class="language-rust no_run noplayground">    /// HKDF SHA 512
+    HkdfSha512 = 0x0003,
+}
 
 /// AEAD Types for HPKE.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -898,18 +900,16 @@ pub enum HpkeAeadType {
     AesGcm128 = 0x0001,
 
     /// AES GCM 256
-    AesGcm256 = 0x0002,
-
-    /// ChaCha20 Poly1305</code></pre>
+    AesGcm256 = 0x0002,</code></pre>
 <p>In addition, helper structs for <code>HpkeCiphertext</code> and <code>HpkeKeyPair</code> are defined.</p>
-<pre><code class="language-rust no_run noplayground">/// } HPKECiphertext;
-/// ```
-#[derive(
-    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,</code></pre>
-<pre><code class="language-rust no_run noplayground">    pub ciphertext: VLBytes,
-}
-
-/// Helper holding a (private, public) key pair as byte vectors.</code></pre>
+<pre><code class="language-rust no_run noplayground">///     opaque kem_output&lt;V&gt;;
+///     opaque ciphertext&lt;V&gt;;
+/// } HPKECiphertext;
+/// ```</code></pre>
+<pre><code class="language-rust no_run noplayground">pub struct HpkeCiphertext {
+    pub kem_output: VLBytes,
+    pub ciphertext: VLBytes,
+}</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="message-validation"><a class="header" href="#message-validation">Message Validation</a></h1>
 <p>OpenMLS implements a variety of syntactical and semantical checks, both when parsing and processing incoming commits and when creating own commits.</p>
 <h2 id="validation-steps"><a class="header" href="#validation-steps">Validation steps</a></h2>

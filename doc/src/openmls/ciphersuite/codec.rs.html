@@ -50,7 +50,7 @@
     <span class="kw">fn </span>tls_deserialize&lt;R: Read&gt;(bytes: <span class="kw-2">&amp;mut </span>R) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, ::tls_codec::Error&gt; {
         <span class="kw">let </span>value = Vec::tls_deserialize(bytes)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(Secret {
-            value,
+            value: value.into(),
             mls_version: ProtocolVersion::default(),
             ciphersuite: Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
         })

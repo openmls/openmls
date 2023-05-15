@@ -177,7 +177,13 @@
 <a href="#177" id="177">177</a>
 <a href="#178" id="178">178</a>
 <a href="#179" id="179">179</a>
-</pre><pre class="rust"><code><span class="kw">use super</span>::<span class="kw-2">*</span>;
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+</pre><pre class="rust"><code><span class="kw">use </span>tls_codec::SecretVLBytes;
+
+<span class="kw">use super</span>::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// The default NONCE size in bytes.
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>NONCE_BYTES: usize = <span class="number">12</span>;
@@ -188,7 +194,7 @@
 #[cfg_attr(feature = <span class="string">&quot;crypto-debug&quot;</span>, derive(Debug))]
 </span><span class="kw">pub struct </span>AeadKey {
     aead_mode: AeadType,
-    value: Vec&lt;u8&gt;,
+    value: SecretVLBytes,
 }
 
 <span class="attr">#[cfg(not(feature = <span class="string">&quot;crypto-debug&quot;</span>))]
@@ -236,7 +242,7 @@
     <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
     </span><span class="doccomment">/// Get a slice to the key value.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>as_slice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.value
+        <span class="self">self</span>.value.as_slice()
     }
 
     <span class="doccomment">/// Encrypt a payload under the AeadKey given a nonce.
@@ -279,7 +285,7 @@
     /// disappear when tackling issue #103.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_secret(secret: Secret) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span><span class="kw-2">mut </span>nonce = [<span class="number">0u8</span>; NONCE_BYTES];
-        nonce.clone_from_slice(<span class="kw-2">&amp;</span>secret.value);
+        nonce.clone_from_slice(secret.value.as_slice());
         <span class="self">Self</span>(nonce)
     }
 
@@ -318,15 +324,17 @@
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>aead_key_gen(
     alg: openmls_traits::types::AeadType,
     rng: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsRand,
-) -&gt; Vec&lt;u8&gt; {
+) -&gt; SecretVLBytes {
     <span class="kw">match </span>alg {
-        openmls_traits::types::AeadType::Aes128Gcm =&gt; {
-            rng.random_vec(<span class="number">16</span>).expect(<span class="string">&quot;An unexpected error occurred.&quot;</span>)
-        }
+        openmls_traits::types::AeadType::Aes128Gcm =&gt; rng
+            .random_vec(<span class="number">16</span>)
+            .expect(<span class="string">&quot;An unexpected error occurred.&quot;</span>)
+            .into(),
         openmls_traits::types::AeadType::Aes256Gcm
-        | openmls_traits::types::AeadType::ChaCha20Poly1305 =&gt; {
-            rng.random_vec(<span class="number">32</span>).expect(<span class="string">&quot;An unexpected error occurred.&quot;</span>)
-        }
+        | openmls_traits::types::AeadType::ChaCha20Poly1305 =&gt; rng
+            .random_vec(<span class="number">32</span>)
+            .expect(<span class="string">&quot;An unexpected error occurred.&quot;</span>)
+            .into(),
     }
 }
 

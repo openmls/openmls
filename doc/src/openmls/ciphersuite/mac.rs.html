@@ -42,6 +42,7 @@
 <a href="#42" id="42">42</a>
 <a href="#43" id="43">43</a>
 <a href="#44" id="44">44</a>
+<a href="#45" id="45">45</a>
 </pre><pre class="rust"><code><span class="kw">use super</span>::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// 7.1 Content Authentication
@@ -75,6 +76,7 @@
                     <span class="kw-2">&amp;</span>Secret::from_slice(ikm, salt.mls_version, salt.ciphersuite),
                 )<span class="question-mark">?
                 </span>.value
+                .as_slice()
                 .into(),
         })
     }

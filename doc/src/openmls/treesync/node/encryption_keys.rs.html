@@ -398,7 +398,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Secret, hpke::Error&gt; {
         <span class="comment">// ValSem203: Path secrets must decrypt correctly
         </span>hpke::decrypt_with_label(
-            <span class="self">self</span>.key.as_slice(),
+            <span class="kw-2">&amp;</span><span class="self">self</span>.key,
             <span class="string">&quot;UpdatePathNode&quot;</span>,
             group_context,
             ciphertext,
@@ -506,7 +506,7 @@
         <span class="kw">let </span>keys = EncryptionKeyPair::read_from_key_store(backend, encryption_key).unwrap();
 
         HpkeKeyPair {
-            private: keys.private_key.key.as_slice().to_vec(),
+            private: keys.private_key.key,
             public: keys.public_key.key.as_slice().to_vec(),
         }
     }
