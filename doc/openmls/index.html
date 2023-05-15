@@ -69,7 +69,7 @@ up to parties and have them create a group.</p>
 <span class="comment">// Now let&#39;s create two participants.
 
 // A helper to create and store credentials.
-</span><span class="kw">fn </span>generate_credential_bundle(
+</span><span class="kw">fn </span>generate_credential_with_key(
     identity: Vec&lt;u8&gt;,
     credential_type: CredentialType,
     signature_algorithm: SignatureScheme,
@@ -80,7 +80,7 @@ up to parties and have them create a group.</p>
         SignatureKeyPair::new(signature_algorithm)
             .expect(<span class="string">&quot;Error generating a signature key pair.&quot;</span>);
 
-    <span class="comment">// Store the credential bundle into the key store so OpenMLS has access
+    <span class="comment">// Store the signature key into the key store so OpenMLS has access
     // to it.
     </span>signature_keys
         .store(backend.key_store())
@@ -117,14 +117,14 @@ up to parties and have them create a group.</p>
 }
 
 <span class="comment">// First they need credentials to identify them
-</span><span class="kw">let </span>(sasha_credential_with_key, sasha_signer) = generate_credential_bundle(
+</span><span class="kw">let </span>(sasha_credential_with_key, sasha_signer) = generate_credential_with_key(
     <span class="string">&quot;Sasha&quot;</span>.into(),
     CredentialType::Basic,
     ciphersuite.signature_algorithm(),
     backend,
 );
 
-<span class="kw">let </span>(maxim_credential_with_key, maxim_signer) = generate_credential_bundle(
+<span class="kw">let </span>(maxim_credential_with_key, maxim_signer) = generate_credential_with_key(
     <span class="string">&quot;Maxim&quot;</span>.into(),
     CredentialType::Basic,
     ciphersuite.signature_algorithm(),
