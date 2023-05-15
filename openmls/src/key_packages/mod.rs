@@ -93,6 +93,8 @@
 //!
 //! See [`KeyPackage`] for more details on how to use key packages.
 
+#[cfg(test)]
+use crate::treesync::node::encryption_keys::EncryptionKey;
 use crate::{
     ciphersuite::{
         hash_ref::{make_key_package_ref, KeyPackageRef},
@@ -122,9 +124,6 @@ use openmls_traits::{
 };
 use serde::{Deserialize, Serialize};
 use tls_codec::{Serialize as TlsSerializeTrait, TlsSerialize, TlsSize};
-
-#[cfg(test)]
-use crate::treesync::node::encryption_keys::EncryptionKey;
 
 // Private
 use errors::*;
@@ -211,7 +210,7 @@ impl MlsEntity for KeyPackage {
 pub(crate) struct KeyPackageCreationResult {
     pub key_package: KeyPackage,
     pub encryption_keypair: EncryptionKeyPair,
-    pub init_private_key: Vec<u8>,
+    pub init_private_key: HpkePrivateKey,
 }
 
 // Public `KeyPackage` functions.
@@ -448,7 +447,7 @@ impl KeyPackage {
         // The key is the public key.
         backend
             .key_store()
-            .store::<HpkePrivateKey>(&init_key.public, &init_key.private.into())
+            .store::<HpkePrivateKey>(&init_key.public, &init_key.private)
             .map_err(KeyPackageNewError::KeyStoreError)?;
 
         // We don't need the private key here. It's stored in the key store for
@@ -636,10 +635,7 @@ impl KeyPackageBuilder {
         // The key is the public key.
         backend
             .key_store()
-            .store::<HpkePrivateKey>(
-                key_package.hpke_init_key().as_slice(),
-                &init_private_key.into(),
-            )
+            .store::<HpkePrivateKey>(key_package.hpke_init_key().as_slice(), &init_private_key)
             .map_err(KeyPackageNewError::KeyStoreError)?;
 
         Ok(key_package)

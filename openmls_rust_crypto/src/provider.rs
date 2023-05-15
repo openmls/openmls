@@ -16,8 +16,8 @@ use openmls_traits::{
     crypto::OpenMlsCrypto,
     random::OpenMlsRand,
     types::{
-        self, AeadType, Ciphersuite, CryptoError, HashType, HpkeAeadType, HpkeCiphertext,
-        HpkeConfig, HpkeKdfType, HpkeKemType, HpkeKeyPair, SignatureScheme,
+        self, AeadType, Ciphersuite, CryptoError, ExporterSecret, HashType, HpkeAeadType,
+        HpkeCiphertext, HpkeConfig, HpkeKdfType, HpkeKemType, HpkeKeyPair, SignatureScheme,
     },
 };
 use p256::{
@@ -26,6 +26,7 @@ use p256::{
 };
 use rand::{RngCore, SeedableRng};
 use sha2::{Digest, Sha256, Sha384, Sha512};
+use tls_codec::SecretVLBytes;
 
 #[derive(Debug)]
 pub struct RustCrypto {
@@ -93,7 +94,7 @@ impl OpenMlsCrypto for RustCrypto {
         hash_type: openmls_traits::types::HashType,
         salt: &[u8],
         ikm: &[u8],
-    ) -> Result<Vec<u8>, openmls_traits::types::CryptoError> {
+    ) -> Result<SecretVLBytes, openmls_traits::types::CryptoError> {
         match hash_type {
             HashType::Sha2_256 => Ok(Hkdf::<Sha256>::extract(Some(salt), ikm).0.as_slice().into()),
             HashType::Sha2_384 => Ok(Hkdf::<Sha384>::extract(Some(salt), ikm).0.as_slice().into()),
@@ -107,7 +108,7 @@ impl OpenMlsCrypto for RustCrypto {
         prk: &[u8],
         info: &[u8],
         okm_len: usize,
-    ) -> Result<Vec<u8>, openmls_traits::types::CryptoError> {
+    ) -> Result<SecretVLBytes, openmls_traits::types::CryptoError> {
         match hash_type {
             HashType::Sha2_256 => {
                 let hkdf = Hkdf::<Sha256>::from_prk(prk)
@@ -115,7 +116,7 @@ impl OpenMlsCrypto for RustCrypto {
                 let mut okm = vec![0u8; okm_len];
                 hkdf.expand(info, &mut okm)
                     .map_err(|_| CryptoError::HkdfOutputLengthInvalid)?;
-                Ok(okm)
+                Ok(okm.into())
             }
             HashType::Sha2_512 => {
                 let hkdf = Hkdf::<Sha512>::from_prk(prk)
@@ -123,7 +124,7 @@ impl OpenMlsCrypto for RustCrypto {
                 let mut okm = vec![0u8; okm_len];
                 hkdf.expand(info, &mut okm)
                     .map_err(|_| CryptoError::HkdfOutputLengthInvalid)?;
-                Ok(okm)
+                Ok(okm.into())
             }
             HashType::Sha2_384 => {
                 let hkdf = Hkdf::<Sha384>::from_prk(prk)
@@ -131,7 +132,7 @@ impl OpenMlsCrypto for RustCrypto {
                 let mut okm = vec![0u8; okm_len];
                 hkdf.expand(info, &mut okm)
                     .map_err(|_| CryptoError::HkdfOutputLengthInvalid)?;
-                Ok(okm)
+                Ok(okm.into())
             }
         }
     }
@@ -344,14 +345,14 @@ impl OpenMlsCrypto for RustCrypto {
         info: &[u8],
         exporter_context: &[u8],
         exporter_length: usize,
-    ) -> Result<(Vec<u8>, Vec<u8>), CryptoError> {
+    ) -> Result<(Vec<u8>, ExporterSecret), CryptoError> {
         let (kem_output, context) = hpke_from_config(config)
             .setup_sender(&pk_r.into(), info, None, None, None)
             .map_err(|_| CryptoError::SenderSetupError)?;
         let exported_secret = context
             .export(exporter_context, exporter_length)
             .map_err(|_| CryptoError::ExporterError)?;
-        Ok((kem_output, exported_secret))
+        Ok((kem_output, exported_secret.into()))
     }
 
     fn hpke_setup_receiver_and_export(
@@ -362,14 +363,14 @@ impl OpenMlsCrypto for RustCrypto {
         info: &[u8],
         exporter_context: &[u8],
         exporter_length: usize,
-    ) -> Result<Vec<u8>, CryptoError> {
+    ) -> Result<ExporterSecret, CryptoError> {
         let context = hpke_from_config(config)
             .setup_receiver(enc, &sk_r.into(), info, None, None, None)
             .map_err(|_| CryptoError::ReceiverSetupError)?;
         let exported_secret = context
             .export(exporter_context, exporter_length)
             .map_err(|_| CryptoError::ExporterError)?;
-        Ok(exported_secret)
+        Ok(exported_secret.into())
     }
 
     fn derive_hpke_keypair(&self, config: HpkeConfig, ikm: &[u8]) -> types::HpkeKeyPair {
