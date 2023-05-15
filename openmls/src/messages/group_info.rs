@@ -41,6 +41,23 @@ pub enum GroupInfoError {
 }
 
 impl VerifiableGroupInfo {
+    /// Create a new [`VerifiableGroupInfo`] from its contents.
+    pub fn new(
+        group_context: GroupContext,
+        extensions: Extensions,
+        confirmation_tag: ConfirmationTag,
+        signer: LeafNodeIndex,
+        signature: Signature,
+    ) -> Self {
+        let payload = GroupInfoTBS {
+            group_context,
+            extensions,
+            confirmation_tag,
+            signer,
+        };
+        Self { payload, signature }
+    }
+
     pub(crate) fn try_from_ciphertext(
         skey: &AeadKey,
         nonce: &AeadNonce,
