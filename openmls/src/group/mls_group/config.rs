@@ -29,8 +29,8 @@
 
 use super::*;
 use crate::{
-    group::config::CryptoConfig, tree::sender_ratchet::SenderRatchetConfiguration,
-    treesync::node::leaf_node::Lifetime,
+    group::config::CryptoConfig, key_packages::Lifetime,
+    tree::sender_ratchet::SenderRatchetConfiguration,
 };
 use serde::{Deserialize, Serialize};
 

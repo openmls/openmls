@@ -113,7 +113,7 @@ impl EncryptionPrivateKey {
     ) -> Result<Secret, hpke::Error> {
         // ValSem203: Path secrets must decrypt correctly
         hpke::decrypt_with_label(
-            self.key.as_slice(),
+            &self.key,
             "UpdatePathNode",
             group_context,
             ciphertext,
@@ -221,7 +221,7 @@ pub mod test_utils {
         let keys = EncryptionKeyPair::read_from_key_store(backend, encryption_key).unwrap();
 
         HpkeKeyPair {
-            private: keys.private_key.key.as_slice().to_vec(),
+            private: keys.private_key.key,
             public: keys.public_key.key.as_slice().to_vec(),
         }
     }

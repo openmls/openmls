@@ -87,7 +87,7 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, backend: &impl OpenMl
     let egs = welcome.secrets[0].clone();
 
     let group_secrets_bytes = hpke::decrypt_with_label(
-        bob_private_key.as_slice(),
+        bob_private_key,
         "Welcome",
         welcome.encrypted_group_info(),
         egs.encrypted_group_secrets(),

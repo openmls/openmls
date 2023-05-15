@@ -20,3 +20,4 @@ log = { version = "0.4", features = ["std"] }
 hpke-rs-crypto = { version = "0.1.1" }
 hpke-rs-evercrypt = { version = "0.1.2" }
 thiserror = "1.0"
+tls_codec = { workspace = true }

@@ -19,7 +19,7 @@ use crate::{
     error::LibraryError,
     extensions::{ExtensionType, Extensions},
     group::{config::CryptoConfig, GroupId},
-    key_packages::KeyPackage,
+    key_packages::{KeyPackage, Lifetime},
     treesync::errors::PublicTreeError,
     versions::ProtocolVersion,
 };
@@ -29,10 +29,8 @@ use crate::treesync::errors::LeafNodeValidationError;
 
 mod capabilities;
 mod codec;
-mod lifetime;
 
 pub use capabilities::*;
-pub use lifetime::Lifetime;
 
 /// Private module to ensure protection.
 mod private_mod {

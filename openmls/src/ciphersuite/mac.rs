@@ -31,6 +31,7 @@ impl Mac {
                     &Secret::from_slice(ikm, salt.mls_version, salt.ciphersuite),
                 )?
                 .value
+                .as_slice()
                 .into(),
         })
     }
