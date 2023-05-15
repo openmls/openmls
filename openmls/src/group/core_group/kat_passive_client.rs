@@ -494,13 +494,8 @@ pub fn generate_test_vector(cipher_suite: Ciphersuite) -> PassiveClientWelcomeTe
             .unwrap(),
 
         signature_priv: passive.signature_keypair.private().to_vec(),
-        encryption_priv: passive
-            .encryption_keypair
-            .private_key()
-            .key()
-            .as_slice()
-            .to_vec(),
-        init_priv: passive.init_keypair.private,
+        encryption_priv: passive.encryption_keypair.private_key().key().to_vec(),
+        init_priv: passive.init_keypair.private.to_vec(),
 
         welcome: mls_message_welcome.tls_serialize_detached().unwrap(),
         ratchet_tree: None,

@@ -330,7 +330,7 @@ impl InitSecret {
             .hpke_setup_receiver_and_export(
                 ciphersuite.hpke_config(),
                 kem_output,
-                external_priv.as_slice(),
+                external_priv,
                 &[],
                 hpke_info_from_version(version).as_bytes(),
                 ciphersuite.hash_length(),

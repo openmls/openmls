@@ -28,8 +28,7 @@ impl CoreGroup {
             let external_priv = epoch_secrets
                 .external_secret()
                 .derive_external_keypair(backend.crypto(), self.ciphersuite())
-                .private
-                .into();
+                .private;
             let init_secret = InitSecret::from_kem_output(
                 backend,
                 self.ciphersuite(),
