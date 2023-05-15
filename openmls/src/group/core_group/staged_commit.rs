@@ -420,6 +420,7 @@ impl StagedCommit {
         matches!(self.state, StagedCommitState::PublicState(_))
     }
 
+    /// Returns the [`GroupContext`] of the staged commit state.
     pub fn staged_context(&self) -> &GroupContext {
         match self.state {
             StagedCommitState::PublicState(ref ps) => ps.group_context(),
