@@ -176,7 +176,7 @@ impl PublicGroup {
     /// of the sender.
     ///
     /// The proposals must be validated before calling this function.
-    pub(crate) fn free_leaf_index_after_remove<'a>(
+    pub fn free_leaf_index_after_remove<'a>(
         &self,
         mut inline_proposals: impl Iterator<Item = Option<&'a Proposal>>,
     ) -> Result<LeafNodeIndex, LibraryError> {
