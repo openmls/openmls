@@ -431,8 +431,8 @@ impl CoreGroup {
         )
     }
 
-    /// Checks if the memebers suuport the provided extensions. Pending proposals have to be passed
-    /// as parameters as Remove Proposals should be ignored
+    /// Checks if the members support the provided extensions. Pending proposals have to be passed
+    /// as parameters as Remove proposals should be ignored.
     pub(crate) fn members_support_extensions<'a>(
         &self,
         extensions: &Extensions,
