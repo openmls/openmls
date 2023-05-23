@@ -71,7 +71,7 @@ impl MlsGroup {
     ) -> Result<(MlsMessageOut, Option<GroupInfo>), UpdateExtensionsError<KeyStore::Error>> {
         self.is_operational()?;
         self.group
-            .members_support_extensions(&extensions, iter::empty())?;
+            .members_support_extensions(&extensions, self.pending_proposals())?;
         let proposal =
             Proposal::GroupContextExtensions(GroupContextExtensionProposal::new(extensions));
         let params = CreateCommitParams::builder()
