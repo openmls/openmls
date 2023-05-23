@@ -203,6 +203,17 @@
 <a href="#203" id="203">203</a>
 <a href="#204" id="204">204</a>
 <a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
 </pre><pre class="rust"><code><span class="doccomment">//! MLS Message (Output)
 //!
 //! This module defines the [`MlsMessageOut`] structs which implements the
@@ -292,6 +303,17 @@
     }
 }
 
+<span class="kw">impl </span>From&lt;PrivateMessage&gt; <span class="kw">for </span>MlsMessageOut {
+    <span class="kw">fn </span>from(private_message: PrivateMessage) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            <span class="comment">// TODO #34: The version should be set explicitly here instead of
+            // the default.
+            </span>version: ProtocolVersion::default(),
+            body: MlsMessageOutBody::PrivateMessage(private_message),
+        }
+    }
+}
+
 <span class="kw">impl </span>From&lt;GroupInfo&gt; <span class="kw">for </span>MlsMessageOut {
     <span class="kw">fn </span>from(group_info: GroupInfo) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
@@ -325,7 +347,7 @@
 
     <span class="doccomment">/// Create an [`MlsMessageOut`] from a [`Welcome`] message and the currently
     /// used [`ProtocolVersion`].
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_welcome(welcome: Welcome, version: ProtocolVersion) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>from_welcome(welcome: Welcome, version: ProtocolVersion) -&gt; <span class="self">Self </span>{
         MlsMessageOut {
             version,
             body: MlsMessageOutBody::Welcome(welcome),
