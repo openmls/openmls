@@ -1,6 +1,7 @@
 //! This module contains all types related to group info handling.
 
 use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
+use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
 use thiserror::Error;
 use tls_codec::{Deserialize, Serialize, TlsDeserialize, TlsSerialize, TlsSize};
 
@@ -150,7 +151,7 @@ impl From<VerifiableGroupInfo> for GroupInfo {
 ///     opaque signature<V>;
 /// } GroupInfo;
 /// ```
-#[derive(Debug, PartialEq, Clone, TlsSerialize, TlsSize)]
+#[derive(Debug, PartialEq, Clone, TlsSerialize, TlsSize, SerdeSerialize, SerdeDeserialize)]
 #[cfg_attr(feature = "test-utils", derive(TlsDeserialize))]
 pub struct GroupInfo {
     payload: GroupInfoTBS,
@@ -205,7 +206,9 @@ impl From<GroupInfo> for GroupContext {
 ///     uint32 signer;
 /// } GroupInfoTBS;
 /// ```
-#[derive(Debug, PartialEq, Clone, TlsDeserialize, TlsSerialize, TlsSize)]
+#[derive(
+    Debug, PartialEq, Clone, TlsDeserialize, TlsSerialize, TlsSize, SerdeSerialize, SerdeDeserialize,
+)]
 pub(crate) struct GroupInfoTBS {
     group_context: GroupContext,
     extensions: Extensions,
