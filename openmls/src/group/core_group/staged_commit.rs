@@ -421,7 +421,7 @@ impl StagedCommit {
     }
 
     /// Returns the [`GroupContext`] of the staged commit state.
-    pub fn staged_context(&self) -> &GroupContext {
+    pub fn group_context(&self) -> &GroupContext {
         match self.state {
             StagedCommitState::PublicState(ref ps) => ps.group_context(),
             StagedCommitState::GroupMember(ref gm) => gm.group_context(),
