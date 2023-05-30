@@ -21,7 +21,7 @@ use self::{
     diff::{PublicGroupDiff, StagedPublicGroupDiff},
     errors::CreationFromExternalError,
 };
-use super::{GroupContext, GroupId, Member, ProposalStore, QueuedProposal};
+use super::{GroupContext, GroupId, Member, ProposalStore, QueuedProposal, StagedCommit};
 #[cfg(test)]
 use crate::treesync::{node::parent_node::PlainUpdatePathNode, treekem::UpdatePathNode};
 use crate::{
@@ -32,7 +32,7 @@ use crate::{
     framing::InterimTranscriptHashInput,
     messages::{
         group_info::{GroupInfo, VerifiableGroupInfo},
-        proposals::{Proposal, ProposalType},
+        proposals::{Proposal, ProposalOrRefType, ProposalType},
         ConfirmationTag, PathSecret,
     },
     schedule::CommitSecret,
@@ -170,13 +170,27 @@ impl PublicGroup {
         ))
     }
 
+    /// Returns the index of the sender of a staged, external commit.
+    pub fn ext_commit_sender_index(
+        &self,
+        commit: &StagedCommit,
+    ) -> Result<LeafNodeIndex, LibraryError> {
+        self.leftmost_free_index(commit.queued_proposals().filter_map(|p| {
+            if matches!(p.proposal_or_ref_type(), ProposalOrRefType::Proposal) {
+                Some(Some(p.proposal()))
+            } else {
+                None
+            }
+        }))
+    }
+
     /// Returns the leftmost free leaf index.
     ///
     /// For External Commits of the "resync" type, this returns the index
     /// of the sender.
     ///
     /// The proposals must be validated before calling this function.
-    pub fn free_leaf_index_after_remove<'a>(
+    pub(crate) fn leftmost_free_index<'a>(
         &self,
         mut inline_proposals: impl Iterator<Item = Option<&'a Proposal>>,
     ) -> Result<LeafNodeIndex, LibraryError> {
