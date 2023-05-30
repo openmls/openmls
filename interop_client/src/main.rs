@@ -3,7 +3,7 @@
 //!
 //! It is based on the Mock client in that repository.
 
-use std::{collections::HashMap, convert::TryFrom, fmt::Display, fs::File, io::Write, sync::Mutex};
+use std::{collections::HashMap, fmt::Display, fs::File, io::Write, sync::Mutex};
 
 use clap::Parser;
 use clap_derive::*;
