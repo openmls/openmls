@@ -2,7 +2,7 @@
 name = "openmls_rust_crypto"
 authors = ["OpenMLS Authors"]
 version = "0.2.0-pre.0"
-edition = "2018"
+edition = "2021"
 description = "A crypto backend for OpenMLS implementing openmls_traits using RustCrypto primitives."
 license = "MIT"
 documentation = "https://docs.rs/openmls_rust_crypto"

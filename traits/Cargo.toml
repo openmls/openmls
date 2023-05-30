@@ -2,7 +2,7 @@
 name = "openmls_traits"
 version = "0.2.0-pre.0"
 authors = ["OpenMLS Authors"]
-edition = "2018"
+edition = "2021"
 description = "Traits used by OpenMLS"
 license = "MIT"
 documentation = "https://docs.rs/openmls_traits"
