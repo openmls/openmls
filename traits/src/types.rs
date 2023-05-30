@@ -290,7 +290,7 @@ impl From<Vec<u8>> for ExporterSecret {
 
 /// A currently unknown ciphersuite.
 ///
-/// Used to accept unknown values, e.g., in [`Capabilities`].
+/// Used to accept unknown values, e.g., in `Capabilities`.
 #[derive(
     Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
