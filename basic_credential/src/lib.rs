@@ -12,7 +12,7 @@ use openmls_traits::{
     types::{CryptoError, Error, SignatureScheme},
 };
 
-use p256::ecdsa::SigningKey;
+use p256::ecdsa::{signature::Signer as P256Signer, Signature, SigningKey};
 
 // See https://github.com/rust-analyzer/rust-analyzer/issues/7243
 // for the rust-analyzer issue with the following line.
@@ -46,8 +46,9 @@ impl Signer for SignatureKeyPair {
     fn sign(&self, payload: &[u8]) -> Result<Vec<u8>, Error> {
         match self.signature_scheme {
             SignatureScheme::ECDSA_SECP256R1_SHA256 => {
-                let k = SigningKey::from_bytes(&self.private).map_err(|_| Error::SigningError)?;
-                let signature = k.sign(payload);
+                let k = SigningKey::from_bytes(self.private.as_slice().into())
+                    .map_err(|_| Error::SigningError)?;
+                let signature: Signature = k.sign(payload);
                 Ok(signature.to_der().to_bytes().into())
             }
             SignatureScheme::ED25519 => {

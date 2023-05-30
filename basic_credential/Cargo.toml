@@ -16,7 +16,7 @@ serde = "1.0"
 
 # Rust Crypto
 ed25519-dalek = { version = "1.0" }
-p256 = { version = "0.11" }
+p256 = { version = "0.13" }
 rand-07 = {version = "0.7", package = "rand" } # only needed because of ed25519-dalek
 rand = "0.8"
 
