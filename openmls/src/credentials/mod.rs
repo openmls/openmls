@@ -24,6 +24,7 @@
 
 use std::io::{Read, Write};
 
+use openmls_traits::types::SignatureScheme;
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
 
@@ -33,7 +34,7 @@ mod codec;
 mod tests;
 use errors::*;
 
-use crate::ciphersuite::SignaturePublicKey;
+use crate::{ciphersuite::SignaturePublicKey, prelude::Lifetime};
 
 // Public
 pub mod errors;
@@ -76,6 +77,8 @@ pub enum CredentialType {
     Basic,
     /// An X.509 [`Certificate`]
     X509,
+    /// Proprietary credential used in the Infra protocol.
+    Infra,
     /// A currently unknown credential.
     Unknown(u16),
 }
@@ -111,6 +114,7 @@ impl From<u16> for CredentialType {
         match value {
             1 => CredentialType::Basic,
             2 => CredentialType::X509,
+            0xF000 => CredentialType::Infra,
             unknown => CredentialType::Unknown(unknown),
         }
     }
@@ -121,6 +125,7 @@ impl From<CredentialType> for u16 {
         match value {
             CredentialType::Basic => 1,
             CredentialType::X509 => 2,
+            CredentialType::Infra => 0xF000,
             CredentialType::Unknown(unknown) => unknown,
         }
     }
@@ -141,6 +146,17 @@ pub struct Certificate {
     cert_data: Vec<u8>,
 }
 
+#[derive(
+    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsSize, TlsDeserialize,
+)]
+pub struct InfraCredential {
+    // (Pseudonymous) identity
+    identity: Vec<u8>,
+    expiration_data: Lifetime,
+    credential_ciphersuite: SignatureScheme,
+    verifying_key: SignaturePublicKey,
+}
+
 /// MlsCredentialType.
 ///
 /// This enum contains variants containing the different available credentials.
@@ -150,6 +166,8 @@ pub enum MlsCredentialType {
     Basic(BasicCredential),
     /// An X.509 [`Certificate`]
     X509(Certificate),
+    /// Proprietary credential used in the Infra protocol.
+    Infra(InfraCredential),
 }
 
 /// Credential.
@@ -210,6 +228,7 @@ impl Credential {
             MlsCredentialType::Basic(basic_credential) => basic_credential.identity.as_slice(),
             // TODO: implement getter for identity for X509 certificates. See issue #134.
             MlsCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
+            MlsCredentialType::Infra(infra) => infra.identity.as_slice(),
         }
     }
 }
@@ -220,6 +239,7 @@ impl From<MlsCredentialType> for Credential {
             credential_type: match mls_credential_type {
                 MlsCredentialType::Basic(_) => CredentialType::Basic,
                 MlsCredentialType::X509(_) => CredentialType::X509,
+                MlsCredentialType::Infra(_) => CredentialType::Infra,
             },
             credential: mls_credential_type,
         }
