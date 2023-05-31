@@ -81,7 +81,6 @@
 <a href="#81" id="81">81</a>
 <a href="#82" id="82">82</a>
 <a href="#83" id="83">83</a>
-<a href="#84" id="84">84</a>
 </pre><pre class="rust"><code><span class="comment">// === The folowing functions aren&#39;t necessarily cryptographically secure!
 
 </span><span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
@@ -142,7 +141,6 @@
 /// HashMap or a BTreeMap) into a vector of tuples and vice versa.
 </span><span class="kw">pub mod </span>vector_converter {
     <span class="kw">use </span>serde::{Deserialize, Deserializer, Serialize, Serializer};
-    <span class="kw">use </span>std::iter::FromIterator;
 
     <span class="kw">pub fn </span>serialize&lt;<span class="lifetime">&#39;a</span>, T, K, V, S&gt;(target: T, ser: S) -&gt; <span class="prelude-ty">Result</span>&lt;S::Ok, S::Error&gt;
     <span class="kw">where

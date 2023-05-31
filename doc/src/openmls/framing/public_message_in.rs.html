@@ -315,9 +315,6 @@
 <a href="#315" id="315">315</a>
 <a href="#316" id="316">316</a>
 <a href="#317" id="317">317</a>
-<a href="#318" id="318">318</a>
-<a href="#319" id="319">319</a>
-<a href="#320" id="320">320</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # PublicMessageIn
 //!
 //! A PublicMessageIn is a framing structure for MLS messages. It can contain
@@ -334,10 +331,7 @@
 };
 
 <span class="kw">use </span>openmls_traits::OpenMlsCryptoProvider;
-<span class="kw">use </span>std::{
-    convert::TryFrom,
-    io::{Read, Write},
-};
+<span class="kw">use </span>std::io::{Read, Write};
 <span class="kw">use </span>tls_codec::{
     Deserialize <span class="kw">as </span>TlsDeserializeTrait, Serialize <span class="kw">as </span>TlsSerializeTrait, TlsSerialize, TlsSize,
 };
