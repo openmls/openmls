@@ -21,7 +21,10 @@ use openmls_traits::{
     },
 };
 use p256::{
-    ecdsa::{signature::Verifier, Signature, SigningKey, VerifyingKey},
+    ecdsa::{
+        signature::{Signer, Verifier},
+        Signature, SigningKey, VerifyingKey,
+    },
     EncodedPoint,
 };
 use rand::{RngCore, SeedableRng};
@@ -285,8 +288,9 @@ impl OpenMlsCrypto for RustCrypto {
     ) -> Result<Vec<u8>, openmls_traits::types::CryptoError> {
         match alg {
             SignatureScheme::ECDSA_SECP256R1_SHA256 => {
-                let k = SigningKey::from_bytes(key).map_err(|_| CryptoError::CryptoLibraryError)?;
-                let signature = k.sign(data);
+                let k = SigningKey::from_bytes(key.into())
+                    .map_err(|_| CryptoError::CryptoLibraryError)?;
+                let signature: Signature = k.sign(data);
                 Ok(signature.to_der().to_bytes().into())
             }
             SignatureScheme::ED25519 => {
