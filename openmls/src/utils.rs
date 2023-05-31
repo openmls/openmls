@@ -58,7 +58,6 @@ macro_rules! log_content {
 /// HashMap or a BTreeMap) into a vector of tuples and vice versa.
 pub mod vector_converter {
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
-    use std::iter::FromIterator;
 
     pub fn serialize<'a, T, K, V, S>(target: T, ser: S) -> Result<S::Ok, S::Error>
     where
