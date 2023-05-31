@@ -157,6 +157,34 @@ pub struct InfraCredential {
     verifying_key: SignaturePublicKey,
 }
 
+impl InfraCredential {
+    pub fn new(
+        identity: Vec<u8>,
+        expiration_data: Lifetime,
+        credential_ciphersuite: SignatureScheme,
+        verifying_key: SignaturePublicKey,
+    ) -> Self {
+        Self {
+            identity,
+            expiration_data,
+            credential_ciphersuite,
+            verifying_key,
+        }
+    }
+
+    pub fn identity(&self) -> &[u8] {
+        self.identity.as_ref()
+    }
+
+    pub fn expiration_data(&self) -> Lifetime {
+        self.expiration_data
+    }
+
+    pub fn credential_ciphersuite(&self) -> SignatureScheme {
+        self.credential_ciphersuite
+    }
+}
+
 /// MlsCredentialType.
 ///
 /// This enum contains variants containing the different available credentials.
