@@ -3,7 +3,7 @@
 //! A PublicMessage is a framing structure for MLS messages. It can contain
 //! Proposals, Commits and application messages.
 
-use std::{convert::TryFrom, io::Write};
+use std::io::Write;
 
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
 use tls_codec::{Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize};
