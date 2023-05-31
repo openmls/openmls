@@ -68,10 +68,6 @@ impl PublicMessageIn {
         self.content.epoch = epoch.into();
     }
 
-    pub fn confirmation_tag(&self) -> Option<&ConfirmationTag> {
-        self.auth.confirmation_tag.as_ref()
-    }
-
     /// Set the sender.
     pub(crate) fn set_sender(&mut self, sender: Sender) {
         self.content.sender = sender;
@@ -103,12 +99,12 @@ impl PublicMessageIn {
     }
 
     /// Returns the [`ContentType`] of the message.
-    pub(crate) fn content_type(&self) -> ContentType {
+    pub fn content_type(&self) -> ContentType {
         self.content.body.content_type()
     }
 
     /// Get the sender of this message.
-    pub(crate) fn sender(&self) -> &Sender {
+    pub fn sender(&self) -> &Sender {
         &self.content.sender
     }
 
@@ -171,12 +167,12 @@ impl PublicMessageIn {
     }
 
     /// Get the group epoch.
-    pub(crate) fn epoch(&self) -> GroupEpoch {
+    pub fn epoch(&self) -> GroupEpoch {
         self.content.epoch
     }
 
     /// Get the [`GroupId`].
-    pub(crate) fn group_id(&self) -> &GroupId {
+    pub fn group_id(&self) -> &GroupId {
         &self.content.group_id
     }
 
@@ -196,6 +192,11 @@ impl PublicMessageIn {
     /// Get the [`MembershipTag`].
     pub(crate) fn membership_tag(&self) -> Option<&MembershipTag> {
         self.membership_tag.as_ref()
+    }
+
+    /// Get the [`ConfirmationTag`].
+    pub fn confirmation_tag(&self) -> Option<&ConfirmationTag> {
+        self.auth.confirmation_tag.as_ref()
     }
 }
 
