@@ -183,6 +183,10 @@ impl InfraCredential {
     pub fn credential_ciphersuite(&self) -> SignatureScheme {
         self.credential_ciphersuite
     }
+
+    pub fn verifying_key(&self) -> &SignaturePublicKey {
+        &self.verifying_key
+    }
 }
 
 /// MlsCredentialType.
