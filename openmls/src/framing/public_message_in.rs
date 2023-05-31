@@ -14,10 +14,7 @@ use super::{
 };
 
 use openmls_traits::OpenMlsCryptoProvider;
-use std::{
-    convert::TryFrom,
-    io::{Read, Write},
-};
+use std::io::{Read, Write};
 use tls_codec::{
     Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, TlsSerialize, TlsSize,
 };
