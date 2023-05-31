@@ -225,6 +225,15 @@ pub struct Credential {
     credential: MlsCredentialType,
 }
 
+impl From<InfraCredential> for Credential {
+    fn from(value: InfraCredential) -> Self {
+        Self {
+            credential_type: CredentialType::Infra,
+            credential: MlsCredentialType::Infra(value),
+        }
+    }
+}
+
 impl Credential {
     /// Returns the credential type.
     pub fn credential_type(&self) -> CredentialType {
