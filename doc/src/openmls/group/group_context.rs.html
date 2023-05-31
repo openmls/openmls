@@ -143,6 +143,22 @@
 <a href="#143" id="143">143</a>
 <a href="#144" id="144">144</a>
 <a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Group Context
 //!
 //! TODO: #779
@@ -156,7 +172,23 @@
     versions::ProtocolVersion,
 };
 
-<span class="attr">#[derive(
+<span class="doccomment">/// 8.1 Group Context
+///
+///```c
+/// struct {
+///     ProtocolVersion version = mls10;
+///     CipherSuite cipher_suite;
+///     opaque group_id&lt;V&gt;;
+///     uint64 epoch;
+///     opaque tree_hash&lt;V&gt;;
+///     opaque confirmed_transcript_hash&lt;V&gt;;
+///     Extension extensions&lt;V&gt;;
+/// } GroupContext;
+///
+/// The [`GroupContext`] is a state object maintained which summarizes the group
+/// state agreed upon by each member of the group.
+///```
+</span><span class="attr">#[derive(
     Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
 </span><span class="kw">pub struct </span>GroupContext {

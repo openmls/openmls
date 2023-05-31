@@ -269,9 +269,30 @@
 <a href="#269" id="269">269</a>
 <a href="#270" id="270">270</a>
 <a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains all types related to group info handling.
 
 </span><span class="kw">use </span>openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
+<span class="kw">use </span>serde::{Deserialize <span class="kw">as </span>SerdeDeserialize, Serialize <span class="kw">as </span>SerdeSerialize};
 <span class="kw">use </span>thiserror::Error;
 <span class="kw">use </span>tls_codec::{Deserialize, Serialize, TlsDeserialize, TlsSerialize, TlsSize};
 
@@ -312,6 +333,23 @@
 }
 
 <span class="kw">impl </span>VerifiableGroupInfo {
+    <span class="doccomment">/// Create a new [`VerifiableGroupInfo`] from its contents.
+    </span><span class="kw">pub fn </span>new(
+        group_context: GroupContext,
+        extensions: Extensions,
+        confirmation_tag: ConfirmationTag,
+        signer: LeafNodeIndex,
+        signature: Signature,
+    ) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>payload = GroupInfoTBS {
+            group_context,
+            extensions,
+            confirmation_tag,
+            signer,
+        };
+        <span class="self">Self </span>{ payload, signature }
+    }
+
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>try_from_ciphertext(
         skey: <span class="kw-2">&amp;</span>AeadKey,
         nonce: <span class="kw-2">&amp;</span>AeadNonce,
@@ -404,7 +442,7 @@
 ///     opaque signature&lt;V&gt;;
 /// } GroupInfo;
 /// ```
-</span><span class="attr">#[derive(Debug, PartialEq, Clone, TlsSerialize, TlsSize)]
+</span><span class="attr">#[derive(Debug, PartialEq, Clone, TlsSerialize, TlsSize, SerdeSerialize, SerdeDeserialize)]
 #[cfg_attr(feature = <span class="string">&quot;test-utils&quot;</span>, derive(TlsDeserialize))]
 </span><span class="kw">pub struct </span>GroupInfo {
     payload: GroupInfoTBS,
@@ -413,7 +451,7 @@
 
 <span class="kw">impl </span>GroupInfo {
     <span class="doccomment">/// Returns the group context.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>group_context(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupContext {
+    </span><span class="kw">pub fn </span>group_context(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupContext {
         <span class="kw-2">&amp;</span><span class="self">self</span>.payload.group_context
     }
 
@@ -459,7 +497,9 @@
 ///     uint32 signer;
 /// } GroupInfoTBS;
 /// ```
-</span><span class="attr">#[derive(Debug, PartialEq, Clone, TlsDeserialize, TlsSerialize, TlsSize)]
+</span><span class="attr">#[derive(
+    Debug, PartialEq, Clone, TlsDeserialize, TlsSerialize, TlsSize, SerdeSerialize, SerdeDeserialize,
+)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>GroupInfoTBS {
     group_context: GroupContext,
     extensions: Extensions,
