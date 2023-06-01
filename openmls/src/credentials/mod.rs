@@ -155,6 +155,7 @@ pub struct InfraCredential {
     expiration_data: Lifetime,
     credential_ciphersuite: SignatureScheme,
     verifying_key: SignaturePublicKey,
+    encrypted_signature: VLBytes,
 }
 
 impl InfraCredential {
@@ -163,12 +164,14 @@ impl InfraCredential {
         expiration_data: Lifetime,
         credential_ciphersuite: SignatureScheme,
         verifying_key: SignaturePublicKey,
+        encrypted_signature: VLBytes,
     ) -> Self {
         Self {
             identity,
             expiration_data,
             credential_ciphersuite,
             verifying_key,
+            encrypted_signature,
         }
     }
 
@@ -186,6 +189,10 @@ impl InfraCredential {
 
     pub fn verifying_key(&self) -> &SignaturePublicKey {
         &self.verifying_key
+    }
+
+    pub fn encrypted_signature(&self) -> &VLBytes {
+        &self.encrypted_signature
     }
 }
 
