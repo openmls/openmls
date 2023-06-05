@@ -279,6 +279,10 @@ impl Credential {
             MlsCredentialType::Infra(infra) => infra.identity.as_slice(),
         }
     }
+
+    pub fn mls_credential_type(&self) -> &MlsCredentialType {
+        &self.credential
+    }
 }
 
 impl From<MlsCredentialType> for Credential {
