@@ -58,6 +58,7 @@ pub use proposals::*;
     Deserialize,
     Serialize,
     TlsDeserialize,
+    tls_codec::TlsDeserializeBytes,
     TlsSerialize,
     TlsSize,
 )]

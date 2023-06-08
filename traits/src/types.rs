@@ -233,7 +233,14 @@ pub struct HpkeCiphertext {
 
 /// A simple type for HPKE private keys.
 #[derive(
-    Debug, Clone, serde::Serialize, serde::Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    Debug,
+    Clone,
+    serde::Serialize,
+    serde::Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsSize,
+    tls_codec::TlsDeserializeBytes,
 )]
 #[cfg_attr(feature = "test-utils", derive(PartialEq, Eq))]
 #[serde(transparent)]
