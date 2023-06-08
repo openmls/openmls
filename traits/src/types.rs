@@ -86,6 +86,7 @@ impl HashType {
     Deserialize,
     TlsSerialize,
     TlsDeserialize,
+    tls_codec::TlsDeserializeBytes,
     TlsSize,
 )]
 #[repr(u16)]
@@ -224,7 +225,17 @@ pub enum HpkeAeadType {
 /// } HPKECiphertext;
 /// ```
 #[derive(
-    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    tls_codec::TlsDeserializeBytes,
+    TlsSize,
+    Hash,
 )]
 pub struct HpkeCiphertext {
     pub kem_output: VLBytes,

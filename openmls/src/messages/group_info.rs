@@ -3,7 +3,7 @@
 use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
 use thiserror::Error;
-use tls_codec::{Deserialize, Serialize, TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{Deserialize, Serialize, Size, TlsDeserialize, TlsSerialize, TlsSize};
 
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -110,6 +110,21 @@ impl VerifiableGroupInfo {
     /// info signature.
     pub(crate) fn group_id(&self) -> &GroupId {
         self.payload.group_context.group_id()
+    }
+}
+
+impl tls_codec::DeserializeBytes for VerifiableGroupInfo {
+    fn tls_deserialize(bytes: &[u8]) -> Result<(Self, &[u8]), tls_codec::Error>
+    where
+        Self: Sized,
+    {
+        let mut bytes_reader = bytes;
+        let group_info =
+            <VerifiableGroupInfo as tls_codec::Deserialize>::tls_deserialize(&mut bytes_reader)?;
+        let remainder = bytes
+            .get(group_info.tls_serialized_len()..)
+            .ok_or(tls_codec::Error::EndOfStream)?;
+        Ok((group_info, remainder))
     }
 }
 

@@ -48,6 +48,7 @@ const PROPOSAL_REF_LABEL: &[u8; 26] = b"MLS 1.0 Proposal Reference";
     PartialOrd,
     Deserialize,
     TlsDeserialize,
+    tls_codec::TlsDeserializeBytes,
     TlsSerialize,
     TlsSize,
 )]

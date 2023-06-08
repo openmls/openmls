@@ -35,7 +35,7 @@ use openmls_traits::{
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{Size, TlsDeserialize, TlsSerialize, TlsSize};
 
 use self::{
     diff::{StagedTreeSyncDiff, TreeSyncDiff},
@@ -245,6 +245,20 @@ impl RatchetTreeIn {
     #[cfg(test)]
     pub(crate) fn from_nodes(nodes: Vec<Option<NodeIn>>) -> Self {
         Self(nodes)
+    }
+}
+
+impl tls_codec::DeserializeBytes for RatchetTreeIn {
+    fn tls_deserialize(bytes: &[u8]) -> Result<(Self, &[u8]), tls_codec::Error>
+    where
+        Self: Sized,
+    {
+        let mut bytes_reader = bytes;
+        let nodes = <RatchetTreeIn as tls_codec::Deserialize>::tls_deserialize(&mut bytes_reader)?;
+        let remainder = bytes
+            .get(nodes.tls_serialized_len()..)
+            .ok_or(tls_codec::Error::EndOfStream)?;
+        Ok((nodes, remainder))
     }
 }
 

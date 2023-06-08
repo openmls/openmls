@@ -35,7 +35,17 @@ const MAX_LEAF_NODE_LIFETIME_RANGE_SECONDS: u64 =
 /// } Lifetime;
 /// ```
 #[derive(
-    PartialEq, Eq, Copy, Clone, Debug, TlsSerialize, TlsSize, TlsDeserialize, Serialize, Deserialize,
+    PartialEq,
+    Eq,
+    Copy,
+    Clone,
+    Debug,
+    TlsSerialize,
+    TlsSize,
+    TlsDeserialize,
+    tls_codec::TlsDeserializeBytes,
+    Serialize,
+    Deserialize,
 )]
 pub struct Lifetime {
     not_before: u64,

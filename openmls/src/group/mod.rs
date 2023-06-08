@@ -114,6 +114,7 @@ impl GroupId {
     Deserialize,
     Serialize,
     TlsDeserialize,
+    tls_codec::TlsDeserializeBytes,
     TlsSerialize,
     TlsSize,
 )]
