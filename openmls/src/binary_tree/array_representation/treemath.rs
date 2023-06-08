@@ -19,6 +19,7 @@ pub(crate) const MIN_TREE_SIZE: u32 = 1;
     Serialize,
     Deserialize,
     TlsDeserialize,
+    tls_codec::TlsDeserializeBytes,
     TlsSerialize,
     TlsSize,
 )]
