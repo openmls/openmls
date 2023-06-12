@@ -22,7 +22,7 @@ fn export_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvi
 
     let verifiable_group_info = {
         let serialized = group_info.tls_serialize_detached().unwrap();
-        VerifiableGroupInfo::tls_deserialize(&mut serialized.as_slice()).unwrap()
+        <VerifiableGroupInfo as Deserialize>::tls_deserialize(&mut serialized.as_slice()).unwrap()
     };
 
     let _: GroupInfo = verifiable_group_info

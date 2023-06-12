@@ -52,6 +52,20 @@ impl CoreGroup {
         let (content, credential) =
             unverified_message.verify(self.ciphersuite(), backend.crypto(), self.version())?;
 
+        // Check if there is a new credential s.t. we can present it as part of
+        // the ProcessedMessage.
+        let new_credential_option = match content.content() {
+            FramedContentBody::Application(_) | FramedContentBody::Proposal(_) => None,
+            FramedContentBody::Commit(commit) => commit.path().as_ref().and_then(|path| {
+                let path_credential = path.leaf_node().credential();
+                if path_credential == &credential {
+                    Some(path_credential.clone())
+                } else {
+                    None
+                }
+            }),
+        };
+
         match content.sender() {
             Sender::Member(_) | Sender::NewMemberCommit | Sender::NewMemberProposal => {
                 let sender = content.sender().clone();
@@ -128,6 +142,9 @@ impl CoreGroup {
                 }
             }
         }
+        .map(|processed_message| {
+            processed_message.with_new_credential_option(new_credential_option)
+        })
     }
 
     /// This function is used to parse messages from the DS. It checks for

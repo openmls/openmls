@@ -297,6 +297,7 @@ pub struct ProcessedMessage {
     authenticated_data: Vec<u8>,
     content: ProcessedMessageContent,
     credential: Credential,
+    new_credential_option: Option<Credential>,
 }
 
 impl ProcessedMessage {
@@ -316,6 +317,7 @@ impl ProcessedMessage {
             authenticated_data,
             content,
             credential,
+            new_credential_option: None,
         }
     }
 
@@ -352,6 +354,14 @@ impl ProcessedMessage {
     /// Returns the credential of the message.
     pub fn credential(&self) -> &Credential {
         &self.credential
+    }
+
+    pub(crate) fn with_new_credential_option(
+        mut self,
+        new_credential_option: Option<Credential>,
+    ) -> Self {
+        self.new_credential_option = new_credential_option;
+        self
     }
 }
 
