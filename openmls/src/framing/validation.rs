@@ -363,6 +363,10 @@ impl ProcessedMessage {
         self.new_credential_option = new_credential_option;
         self
     }
+
+    pub fn new_credential_option(&self) -> Option<&Credential> {
+        self.new_credential_option.as_ref()
+    }
 }
 
 /// Content of a processed message.
