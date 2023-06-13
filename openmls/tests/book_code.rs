@@ -1,6 +1,4 @@
-use openmls::{
-    prelude::{config::CryptoConfig, *},
-};
+use openmls::prelude::{config::CryptoConfig, *};
 use openmls_basic_credential::SignatureKeyPair;
 
 use openmls_traits::{signatures::Signer, types::SignatureScheme, OpenMlsCryptoProvider};
