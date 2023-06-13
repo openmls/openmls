@@ -93,6 +93,8 @@
 //!
 //! See [`KeyPackage`] for more details on how to use key packages.
 
+#[cfg(test)]
+use crate::treesync::node::encryption_keys::EncryptionKey;
 use crate::{
     ciphersuite::{
         hash_ref::{make_key_package_ref, KeyPackageRef},
@@ -107,7 +109,7 @@ use crate::{
     treesync::{
         node::{
             encryption_keys::EncryptionKeyPair,
-            leaf_node::{Capabilities, LeafNodeSource, Lifetime, NewLeafNodeParams, TreeInfoTbs},
+            leaf_node::{Capabilities, LeafNodeSource, NewLeafNodeParams, TreeInfoTbs},
         },
         LeafNode,
     },
@@ -123,9 +125,6 @@ use openmls_traits::{
 use serde::{Deserialize, Serialize};
 use tls_codec::{Serialize as TlsSerializeTrait, TlsSerialize, TlsSize};
 
-#[cfg(test)]
-use crate::treesync::node::encryption_keys::EncryptionKey;
-
 // Private
 use errors::*;
 
@@ -133,12 +132,15 @@ use errors::*;
 pub mod errors;
 pub mod key_package_in;
 
+mod lifetime;
+
 // Tests
 #[cfg(test)]
 pub(crate) mod test_key_packages;
 
 // Public types
 pub use key_package_in::KeyPackageIn;
+pub use lifetime::Lifetime;
 
 /// The unsigned payload of a key package.
 /// Any modification must happen on this unsigned struct. Use `sign` to get a
@@ -211,7 +213,7 @@ impl MlsEntity for KeyPackage {
 pub(crate) struct KeyPackageCreationResult {
     pub key_package: KeyPackage,
     pub encryption_keypair: EncryptionKeyPair,
-    pub init_private_key: Vec<u8>,
+    pub init_private_key: HpkePrivateKey,
 }
 
 // Public `KeyPackage` functions.
@@ -223,12 +225,14 @@ impl KeyPackage {
         KeyPackageBuilder::new()
     }
 
+    #[allow(clippy::too_many_arguments)]
     /// Create a new key package for the given `ciphersuite` and `identity`.
     pub(crate) fn create<KeyStore: OpenMlsKeyStore>(
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
+        lifetime: Lifetime,
         extensions: Extensions,
         leaf_node_capabilities: Capabilities,
         leaf_node_extensions: Extensions,
@@ -248,6 +252,7 @@ impl KeyPackage {
             backend,
             signer,
             credential_with_key,
+            lifetime,
             extensions,
             leaf_node_capabilities,
             leaf_node_extensions,
@@ -276,6 +281,7 @@ impl KeyPackage {
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
+        lifetime: Lifetime,
         extensions: Extensions,
         capabilities: Capabilities,
         leaf_node_extensions: Extensions,
@@ -286,7 +292,7 @@ impl KeyPackage {
 
         let new_leaf_node_params = NewLeafNodeParams {
             config,
-            leaf_node_source: LeafNodeSource::KeyPackage(Lifetime::default()),
+            leaf_node_source: LeafNodeSource::KeyPackage(lifetime),
             credential_with_key,
             capabilities,
             extensions: leaf_node_extensions,
@@ -400,6 +406,7 @@ impl KeyPackage {
             backend,
             signer,
             credential_with_key,
+            Lifetime::default(),
             extensions,
             leaf_node_capabilities,
             leaf_node_extensions,
@@ -448,7 +455,7 @@ impl KeyPackage {
         // The key is the public key.
         backend
             .key_store()
-            .store::<HpkePrivateKey>(&init_key.public, &init_key.private.into())
+            .store::<HpkePrivateKey>(&init_key.public, &init_key.private)
             .map_err(KeyPackageNewError::KeyStoreError)?;
 
         // We don't need the private key here. It's stored in the key store for
@@ -544,6 +551,7 @@ impl KeyPackage {
 /// Builder that helps creating (and configuring) a [`KeyPackage`].
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct KeyPackageBuilder {
+    key_package_lifetime: Option<Lifetime>,
     key_package_extensions: Option<Extensions>,
     leaf_node_capabilities: Option<Capabilities>,
     leaf_node_extensions: Option<Extensions>,
@@ -553,27 +561,34 @@ impl KeyPackageBuilder {
     /// Create a key package builder.
     pub fn new() -> Self {
         Self {
+            key_package_lifetime: None,
             key_package_extensions: None,
             leaf_node_capabilities: None,
             leaf_node_extensions: None,
         }
     }
 
+    /// Set the key package lifetime.
+    pub fn key_package_lifetime(mut self, lifetime: Lifetime) -> Self {
+        self.key_package_lifetime.replace(lifetime);
+        self
+    }
+
     /// Set the key package extensions.
     pub fn key_package_extensions(mut self, extensions: Extensions) -> Self {
-        self.key_package_extensions = Some(extensions);
+        self.key_package_extensions.replace(extensions);
         self
     }
 
     /// Set the leaf node capabilities.
     pub fn leaf_node_capabilities(mut self, capabilities: Capabilities) -> Self {
-        self.leaf_node_capabilities = Some(capabilities);
+        self.leaf_node_capabilities.replace(capabilities);
         self
     }
 
     /// Set the leaf node extensions.
     pub fn leaf_node_extensions(mut self, extensions: Extensions) -> Self {
-        self.leaf_node_extensions = Some(extensions);
+        self.leaf_node_extensions.replace(extensions);
         self
     }
 
@@ -589,6 +604,7 @@ impl KeyPackageBuilder {
             backend,
             signer,
             credential_with_key,
+            self.key_package_lifetime.unwrap_or_default(),
             self.key_package_extensions.unwrap_or_default(),
             self.leaf_node_capabilities.unwrap_or_default(),
             self.leaf_node_extensions.unwrap_or_default(),
@@ -612,6 +628,7 @@ impl KeyPackageBuilder {
             backend,
             signer,
             credential_with_key,
+            self.key_package_lifetime.unwrap_or_default(),
             self.key_package_extensions.unwrap_or_default(),
             self.leaf_node_capabilities.unwrap_or_default(),
             self.leaf_node_extensions.unwrap_or_default(),
@@ -636,10 +653,7 @@ impl KeyPackageBuilder {
         // The key is the public key.
         backend
             .key_store()
-            .store::<HpkePrivateKey>(
-                key_package.hpke_init_key().as_slice(),
-                &init_private_key.into(),
-            )
+            .store::<HpkePrivateKey>(key_package.hpke_init_key().as_slice(), &init_private_key)
             .map_err(KeyPackageNewError::KeyStoreError)?;
 
         Ok(key_package)

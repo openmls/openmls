@@ -97,12 +97,11 @@ pub enum CodecUse {
 }
 
 /// `MlsGroupTestSetup` is the main struct of the framework. It contains the
-/// state of all clients, as well as the global `KeyStore` containing the
-/// clients' `CredentialBundles`. The `waiting_for_welcome` field acts as a
-/// temporary store for `KeyPackage`s that are used to add new members to
-/// groups. Note, that the `MlsGroupTestSetup` can only be initialized with a
-/// fixed number of clients and that `create_clients` has to be called before it
-/// can be otherwise used.
+/// state of all clients. The `waiting_for_welcome` field acts as a temporary
+/// store for `KeyPackage`s that are used to add new members to groups. Note,
+/// that the `MlsGroupTestSetup` can only be initialized with a fixed number of
+/// clients and that `create_clients` has to be called before it can be
+/// otherwise used.
 pub struct MlsGroupTestSetup {
     // The clients identity is its position in the vector in be_bytes.
     pub clients: RwLock<HashMap<Vec<u8>, RwLock<Client>>>,

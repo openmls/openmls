@@ -27,6 +27,7 @@ use openmls_traits::{
         HpkeConfig, HpkeKdfType, HpkeKemType, HpkeKeyPair, KemOutput, SignatureScheme,
     },
 };
+use tls_codec::SecretVLBytes;
 
 /// The libcrux crypto provider.
 pub struct LibcruxProvider {
@@ -153,9 +154,9 @@ impl OpenMlsCrypto for LibcruxProvider {
         hash_type: HashType,
         salt: &[u8],
         ikm: &[u8],
-    ) -> Result<Vec<u8>, CryptoError> {
+    ) -> Result<SecretVLBytes, openmls_traits::types::CryptoError> {
         let hkdf = hkdf_from_hash(hash_type);
-        Ok(hkdf::extract(hkdf, salt, ikm))
+        Ok(hkdf::extract(hkdf, salt, ikm).into())
     }
 
     /// Returns `HKDF::expand` with the given parameters or an error if the HKDF
@@ -166,9 +167,11 @@ impl OpenMlsCrypto for LibcruxProvider {
         prk: &[u8],
         info: &[u8],
         okm_len: usize,
-    ) -> Result<Vec<u8>, CryptoError> {
+    ) -> Result<SecretVLBytes, openmls_traits::types::CryptoError> {
         let hkdf = hkdf_from_hash(hash_type);
-        hkdf::expand(hkdf, prk, info, okm_len).map_err(|_| CryptoError::HkdfOutputLengthInvalid)
+        hkdf::expand(hkdf, prk, info, okm_len)
+            .map_err(|_| CryptoError::HkdfOutputLengthInvalid)
+            .map(|o| o.into())
     }
 
     /// Returns the hash of `data` or an error if the hash algorithm isn't supported.
@@ -362,7 +365,7 @@ impl OpenMlsCrypto for LibcruxProvider {
             randomness,
         )
         .map_err(|_| CryptoError::ExporterError)?;
-        Ok((exported_secret.0, exported_secret.1))
+        Ok((exported_secret.0, exported_secret.1.into()))
     }
 
     fn hpke_setup_receiver_and_export(
@@ -391,7 +394,7 @@ impl OpenMlsCrypto for LibcruxProvider {
             None,
         )
         .map_err(|_| CryptoError::ExporterError)?;
-        Ok(exported_secret)
+        Ok(exported_secret.into())
     }
 
     fn derive_hpke_keypair(
@@ -402,7 +405,7 @@ impl OpenMlsCrypto for LibcruxProvider {
         let hpke_config = hpke_from_config(config);
         let kp = hpke::kem::DeriveKeyPair(hpke_config.1, ikm).unwrap(); //XXX: return error
         HpkeKeyPair {
-            private: kp.0,
+            private: kp.0.into(),
             public: hpke::kem::SerializePublicKey(hpke_config.1, kp.1),
         }
     }

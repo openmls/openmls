@@ -30,8 +30,8 @@ git = "https://github.com/franziskuskiefer/hpke-rs.git"
 [patch.crates-io.hpke-rs-rust-crypto]
 git = "https://github.com/franziskuskiefer/hpke-rs.git"
 
-# [patch.crates-io.libcrux]
-# git = "https://github.com/cryspen/libcrux.git"
+[patch.crates-io.libcrux]
+git = "https://github.com/cryspen/libcrux.git"
 
 # [patch.crates-io]
 # hacl = { git = "https://github.com/cryspen/hacl-packages" }

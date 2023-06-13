@@ -1,6 +1,6 @@
 //! This module tests the classification of remove operations with RemoveOperation
 
-use super::utils::{generate_credential_bundle, generate_key_package};
+use super::utils::{generate_credential_with_key, generate_key_package};
 use crate::{
     framing::*,
     group::{config::CryptoConfig, *},
@@ -25,20 +25,20 @@ fn test_remove_operation_variants() {
     for test_case in [TestCase::Remove, TestCase::Leave] {
         let group_id = GroupId::from_slice(b"Test Group");
 
-        // Generate credential bundles
-        let alice_credential_with_key_and_signer = generate_credential_bundle(
+        // Generate credentials with keys
+        let alice_credential_with_key_and_signer = generate_credential_with_key(
             "Alice".into(),
             ciphersuite.signature_algorithm(),
             &alice_backend,
         );
 
-        let bob_credential_with_key_and_signer = generate_credential_bundle(
+        let bob_credential_with_key_and_signer = generate_credential_with_key(
             "Bob".into(),
             ciphersuite.signature_algorithm(),
             &bob_backend,
         );
 
-        let charlie_credential_with_key_and_signer = generate_credential_bundle(
+        let charlie_credential_with_key_and_signer = generate_credential_with_key(
             "Charlie".into(),
             ciphersuite.signature_algorithm(),
             &charlie_backend,

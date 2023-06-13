@@ -6,7 +6,7 @@ use openmls_traits::{signatures::Signer, types::Ciphersuite};
 use tls_codec::{Deserialize, Serialize};
 
 use super::utils::{
-    generate_credential_bundle, generate_key_package, resign_message, CredentialWithKeyAndSigner,
+    generate_credential_with_key, generate_key_package, resign_message, CredentialWithKeyAndSigner,
 };
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -36,15 +36,15 @@ fn validation_test_setup(
 ) -> CommitValidationTestSetup {
     let group_id = GroupId::from_slice(b"Test Group");
 
-    // Generate credential bundles
+    // Generate credentials with keys
     let alice_credential =
-        generate_credential_bundle("Alice".into(), ciphersuite.signature_algorithm(), backend);
+        generate_credential_with_key("Alice".into(), ciphersuite.signature_algorithm(), backend);
 
     let bob_credential =
-        generate_credential_bundle("Bob".into(), ciphersuite.signature_algorithm(), backend);
+        generate_credential_with_key("Bob".into(), ciphersuite.signature_algorithm(), backend);
 
     let charlie_credential =
-        generate_credential_bundle("Charlie".into(), ciphersuite.signature_algorithm(), backend);
+        generate_credential_with_key("Charlie".into(), ciphersuite.signature_algorithm(), backend);
 
     // Generate KeyPackages
     let bob_key_package =
@@ -255,7 +255,7 @@ fn test_valsem201() {
 
     let add_proposal = || {
         let dave_credential =
-            generate_credential_bundle("Dave".into(), ciphersuite.signature_algorithm(), backend);
+            generate_credential_with_key("Dave".into(), ciphersuite.signature_algorithm(), backend);
         let dave_key_package =
             generate_key_package(ciphersuite, Extensions::empty(), backend, dave_credential);
 

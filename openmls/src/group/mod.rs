@@ -4,6 +4,8 @@
 
 mod group_context;
 
+use std::fmt::Display;
+
 #[cfg(test)]
 use crate::ciphersuite::*;
 use crate::extensions::*;
@@ -19,8 +21,6 @@ pub(crate) mod core_group;
 pub(crate) mod public_group;
 pub(crate) use core_group::*;
 pub(crate) mod mls_group;
-#[cfg(not(any(feature = "test-utils", test)))]
-pub(crate) use group_context::*;
 
 // Public
 pub mod config;
@@ -28,6 +28,7 @@ pub mod errors;
 
 pub use core_group::proposals::*;
 pub use core_group::staged_commit::StagedCommit;
+pub use group_context::*;
 pub use mls_group::config::*;
 pub use mls_group::membership::*;
 pub use mls_group::processing::*;
@@ -132,5 +133,11 @@ impl GroupEpoch {
 impl From<u64> for GroupEpoch {
     fn from(val: u64) -> Self {
         Self(val)
+    }
+}
+
+impl Display for GroupEpoch {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{}", self.0))
     }
 }

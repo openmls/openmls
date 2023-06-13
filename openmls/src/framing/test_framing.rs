@@ -387,7 +387,7 @@ fn unknown_sender() {
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
     let configuration = &SenderRatchetConfiguration::default();
 
-    // Define credential bundles
+    // Define credentials with keys
     let (alice_credential, alice_signature_keys) = test_utils::new_credential(
         backend,
         b"Alice",

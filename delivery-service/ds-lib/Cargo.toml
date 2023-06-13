@@ -2,7 +2,7 @@
 name = "ds-lib"
 version = "0.1.0"
 authors = ["OpenMLS Authors"]
-edition = "2018"
+edition = "2021"
 description = "Types to interact with the OpenMLS DS."
 
 [dependencies]

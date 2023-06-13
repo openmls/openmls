@@ -1,7 +1,6 @@
 FROM ubuntu:latest
 
-RUN apt-get -y update
-RUN apt-get -y install git make golang protoc-gen-go
+RUN apt-get -y update && apt-get -y install git make golang protoc-gen-go
 
 RUN useradd -m user
 USER user
@@ -26,3 +25,7 @@ COPY main.go.patch .
 # Patch the test-runner so that it uses only the ciphersuites supported by OpenMLS.
 RUN patch main.go main.go.patch
 RUN go build
+
+WORKDIR /home/user/mls-implementations/interop/test-runner
+
+ENTRYPOINT [ "./test-runner" ]

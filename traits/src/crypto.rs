@@ -2,6 +2,8 @@
 //!
 //! This trait defines all cryptographic functions used by OpenMLS.
 
+use tls_codec::SecretVLBytes;
+
 use crate::types::{
     AeadType, Ciphersuite, CryptoError, ExporterSecret, HashType, HpkeCiphertext, HpkeConfig,
     HpkeKeyPair, KemOutput, SignatureScheme,
@@ -24,7 +26,7 @@ pub trait OpenMlsCrypto {
         hash_type: HashType,
         salt: &[u8],
         ikm: &[u8],
-    ) -> Result<Vec<u8>, CryptoError>;
+    ) -> Result<SecretVLBytes, CryptoError>;
 
     /// HKDF expand.
     ///
@@ -36,7 +38,7 @@ pub trait OpenMlsCrypto {
         prk: &[u8],
         info: &[u8],
         okm_len: usize,
-    ) -> Result<Vec<u8>, CryptoError>;
+    ) -> Result<SecretVLBytes, CryptoError>;
 
     /// Hash the `data`.
     ///

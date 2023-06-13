@@ -89,12 +89,11 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
         // Set up the client
         let mut credentials = HashMap::new();
         let mut key_package_bundles = Vec::new();
-        // This currently creates a credential bundle per ciphersuite, (not per
+        // This currently creates a credential with key per ciphersuite, (not per
         // signature scheme), as well as 10 KeyPackages per ciphersuite.
         for ciphersuite in client.ciphersuites {
-            eprintln!("{ciphersuite:?}");
-            // Create a credential_bundle for the given ciphersuite.
-            let credentia_with_key_and_signer = generate_credential_bundle(
+            // Create a credential_with_key for the given ciphersuite.
+            let credentia_with_key_and_signer = generate_credential_with_key(
                 client.name.as_bytes().to_vec(),
                 ciphersuite.signature_algorithm(),
                 backend,
@@ -135,7 +134,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
             .get(group_config.members[0].name)
             .expect("An unexpected error occurred.")
             .borrow_mut();
-        // Get the credential bundle corresponding to the ciphersuite.
+        // Get the credential with key corresponding to the ciphersuite.
         let credential_with_key_and_signer = initial_group_member
             .credentials
             .get(&group_config.ciphersuite)
@@ -338,8 +337,8 @@ pub(crate) struct CredentialWithKeyAndSigner {
     pub(crate) signer: SignatureKeyPair,
 }
 
-// Helper function to generate a CredentialBundle
-pub(crate) fn generate_credential_bundle(
+// Helper function to generate a CredentialWithKeyAndSigner
+pub(crate) fn generate_credential_with_key(
     identity: Vec<u8>,
     signature_scheme: SignatureScheme,
     backend: &impl OpenMlsCryptoProvider,

@@ -1,5 +1,7 @@
 use std::fmt::{Debug, Formatter};
 
+use tls_codec::SecretVLBytes;
+
 use super::{kdf_label::KdfLabel, *};
 
 /// A struct to contain secrets. This is to provide better visibility into where
@@ -11,7 +13,7 @@ use super::{kdf_label::KdfLabel, *};
 #[derive(Clone, Serialize, Deserialize, Eq)]
 pub(crate) struct Secret {
     pub(in crate::ciphersuite) ciphersuite: Ciphersuite,
-    pub(in crate::ciphersuite) value: Vec<u8>,
+    pub(in crate::ciphersuite) value: SecretVLBytes,
     pub(in crate::ciphersuite) mls_version: ProtocolVersion,
 }
 
@@ -33,7 +35,7 @@ impl Default for Secret {
     fn default() -> Self {
         Self {
             ciphersuite: Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
-            value: Vec::new(),
+            value: Vec::new().into(),
             mls_version: ProtocolVersion::default(),
         }
     }
@@ -46,24 +48,24 @@ impl PartialEq for Secret {
         // comparison.
         if self.ciphersuite != other.ciphersuite
             || self.mls_version != other.mls_version
-            || self.value.len() != other.value.len()
+            || self.value.as_slice().len() != other.value.as_slice().len()
         {
             log::error!("Incompatible secrets");
             log::trace!(
                 "  {} {} {}",
                 self.ciphersuite,
                 self.mls_version,
-                self.value.len()
+                self.value.as_slice().len()
             );
             log::trace!(
                 "  {} {} {}",
                 other.ciphersuite,
                 other.mls_version,
-                other.value.len()
+                other.value.as_slice().len()
             );
             return false;
         }
-        equal_ct(&self.value, &other.value)
+        equal_ct(self.value.as_slice(), other.value.as_slice())
     }
 }
 
@@ -83,8 +85,11 @@ impl Secret {
             mls_version
         );
         Ok(Secret {
-            value: crypto.rand().random_vec(ciphersuite.hash_length()).unwrap(),
-            // .map_err(|_| CryptoError::InsufficientRandomness)?,
+            value: crypto
+                .rand()
+                .random_vec(ciphersuite.hash_length())
+                .map_err(|_| CryptoError::InsufficientRandomness)?
+                .into(),
             mls_version,
             ciphersuite,
         })
@@ -93,7 +98,7 @@ impl Secret {
     /// Create an all zero secret.
     pub(crate) fn zero(ciphersuite: Ciphersuite, mls_version: ProtocolVersion) -> Self {
         Self {
-            value: vec![0u8; ciphersuite.hash_length()],
+            value: vec![0u8; ciphersuite.hash_length()].into(),
             mls_version,
             ciphersuite,
         }
@@ -106,7 +111,7 @@ impl Secret {
         ciphersuite: Ciphersuite,
     ) -> Self {
         Secret {
-            value: bytes.to_vec(),
+            value: bytes.into(),
             mls_version,
             ciphersuite,
         }
@@ -162,12 +167,12 @@ impl Secret {
             .crypto()
             .hkdf_expand(
                 self.ciphersuite.hash_algorithm(),
-                &self.value,
+                self.value.as_slice(),
                 info,
                 okm_len,
             )
             .map_err(|_| CryptoError::CryptoLibraryError)?;
-        if key.is_empty() {
+        if key.as_slice().is_empty() {
             return Err(CryptoError::InvalidLength);
         }
         Ok(Self {
@@ -226,7 +231,7 @@ impl Secret {
 
     /// Returns the inner bytes of a secret
     pub(crate) fn as_slice(&self) -> &[u8] {
-        &self.value
+        self.value.as_slice()
     }
 
     /// Returns the ciphersuite of the secret
@@ -246,7 +251,7 @@ impl From<&[u8]> for Secret {
     fn from(bytes: &[u8]) -> Self {
         log::trace!("Secret from slice");
         Secret {
-            value: bytes.to_vec(),
+            value: bytes.into(),
             mls_version: ProtocolVersion::default(),
             ciphersuite: Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
         }

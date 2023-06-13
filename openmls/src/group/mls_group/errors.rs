@@ -27,9 +27,6 @@ pub enum NewGroupError<KeyStoreError> {
     /// No matching KeyPackage was found in the key store.
     #[error("No matching KeyPackage was found in the key store.")]
     NoMatchingKeyPackage,
-    /// No matching CredentialBundle was found in the key store.
-    #[error("No matching CredentialBundle was found in the key store.")]
-    NoMatchingCredentialBundle,
     /// Error accessing the key store.
     #[error("Error accessing the key store.")]
     KeyStoreError(KeyStoreError),
@@ -124,9 +121,6 @@ pub enum CreateMessageError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    /// The own CredentialBundle could not be found in the key store.
-    #[error("The own CredentialBundle could not be found in the key store.")]
-    NoMatchingCredentialBundle,
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
@@ -138,9 +132,6 @@ pub enum AddMembersError<KeyStoreError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    /// The own CredentialBundle could not be found in the key store.
-    #[error("The own CredentialBundle could not be found in the key store.")]
-    NoMatchingCredentialBundle,
     /// See [`EmptyInputError`] for more details.
     #[error(transparent)]
     EmptyInput(#[from] EmptyInputError),
@@ -158,9 +149,6 @@ pub enum ProposeAddMemberError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    /// The own CredentialBundle could not be found in the key store.
-    #[error("The own CredentialBundle could not be found in the key store.")]
-    NoMatchingCredentialBundle,
     /// The new member does not support all required extensions.
     #[error("The new member does not support all required extensions.")]
     UnsupportedExtensions,
@@ -178,9 +166,6 @@ pub enum ProposeRemoveMemberError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    /// The own CredentialBundle could not be found in the key store.
-    #[error("The own CredentialBundle could not be found in the key store.")]
-    NoMatchingCredentialBundle,
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
@@ -195,9 +180,6 @@ pub enum RemoveMembersError<KeyStoreError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    /// The own CredentialBundle could not be found in the key store.
-    #[error("The own CredentialBundle could not be found in the key store.")]
-    NoMatchingCredentialBundle,
     /// See [`EmptyInputError`] for more details.
     #[error(transparent)]
     EmptyInput(#[from] EmptyInputError),
@@ -218,9 +200,6 @@ pub enum LeaveGroupError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    /// The own CredentialBundle could not be found in the key store.
-    #[error("The own CredentialBundle could not be found in the key store.")]
-    NoMatchingCredentialBundle,
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
@@ -232,9 +211,6 @@ pub enum SelfUpdateError<KeyStoreError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    /// The own CredentialBundle could not be found in the key store.
-    #[error("The own CredentialBundle could not be found in the key store.")]
-    NoMatchingCredentialBundle,
     /// See [`CreateCommitError`] for more details.
     #[error(transparent)]
     CreateCommitError(#[from] CreateCommitError<KeyStoreError>),
@@ -252,9 +228,7 @@ pub enum ProposeSelfUpdateError<KeyStoreError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    /// The own CredentialBundle could not be found in the key store.
-    #[error("The own CredentialBundle could not be found in the key store.")]
-    NoMatchingCredentialBundle,
+
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
@@ -272,9 +246,6 @@ pub enum CommitToPendingProposalsError<KeyStoreError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    /// The own CredentialBundle could not be found in the key store.
-    #[error("The own CredentialBundle could not be found in the key store.")]
-    NoMatchingCredentialBundle,
     /// See [`CreateCommitError`] for more details.
     #[error(transparent)]
     CreateCommitError(#[from] CreateCommitError<KeyStoreError>),
@@ -289,9 +260,6 @@ pub enum ExportGroupInfoError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    /// The own CredentialBundle could not be found in the key store.
-    #[error("The own CredentialBundle could not be found in the key store.")]
-    NoMatchingCredentialBundle,
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),

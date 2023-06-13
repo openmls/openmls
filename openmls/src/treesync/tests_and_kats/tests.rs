@@ -2,7 +2,7 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 
 use crate::{
     group::{
-        tests::utils::{generate_credential_bundle, CredentialWithKeyAndSigner},
+        tests::utils::{generate_credential_with_key, CredentialWithKeyAndSigner},
         MlsGroup, MlsGroupConfig,
     },
     key_packages::KeyPackage,
@@ -41,7 +41,7 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
         name: Vec<u8>,
     ) -> Member {
         let credential_with_key_and_signer =
-            generate_credential_bundle(name.clone(), ciphersuite.signature_algorithm(), &backend);
+            generate_credential_with_key(name.clone(), ciphersuite.signature_algorithm(), &backend);
         let key_package = KeyPackage::builder()
             .build(
                 CryptoConfig::with_default_version(ciphersuite),

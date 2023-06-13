@@ -90,7 +90,7 @@ fn generate_key_package(
 ///  - Test saving the group state
 #[openmls_test::openmls_test]
 fn book_operations() {
-    // Generate credential bundles
+    // Generate credentials with keys
     let (alice_credential, alice_signature_keys) = generate_credential(
         "Alice".into(),
         CredentialType::Basic,
@@ -130,7 +130,7 @@ fn book_operations() {
 
     // Define the MlsGroup configuration
     // delivery service credentials
-    let (ds_credential_bundle, ds_signature_keys) = generate_credential(
+    let (ds_credential_with_key, ds_signature_keys) = generate_credential(
         "delivery-service".into(),
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
@@ -145,8 +145,8 @@ fn book_operations() {
             2000, // maximum_forward_distance
         ))
         .external_senders(vec![ExternalSender::new(
-            ds_credential_bundle.signature_key,
-            ds_credential_bundle.credential,
+            ds_credential_with_key.signature_key,
+            ds_credential_with_key.credential,
         )])
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .use_ratchet_tree_extension(true)
@@ -1267,7 +1267,7 @@ fn book_operations() {
 fn test_empty_input_errors() {
     let group_id = GroupId::from_slice(b"Test Group");
 
-    // Generate credential bundles
+    // Generate credentials with keys
     let (alice_credential, alice_signature_keys) = generate_credential(
         "Alice".into(),
         CredentialType::Basic,

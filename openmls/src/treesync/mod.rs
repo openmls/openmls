@@ -35,7 +35,7 @@ use self::{
     diff::{StagedTreeSyncDiff, TreeSyncDiff},
     node::{
         leaf_node::{
-            Capabilities, LeafNodeSource, Lifetime, NewLeafNodeParams, TreeInfoTbs, TreePosition,
+            Capabilities, LeafNodeSource, NewLeafNodeParams, TreeInfoTbs, TreePosition,
             VerifiableLeafNode,
         },
         NodeIn,
@@ -60,6 +60,7 @@ use crate::{
     extensions::Extensions,
     framing::SenderError,
     group::{config::CryptoConfig, GroupId, Member},
+    key_packages::Lifetime,
     messages::{PathSecret, PathSecretError},
     schedule::CommitSecret,
 };

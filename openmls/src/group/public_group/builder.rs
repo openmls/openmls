@@ -9,13 +9,11 @@ use crate::{
         RequiredCapabilitiesExtension,
     },
     group::{config::CryptoConfig, GroupContext, GroupId},
+    key_packages::Lifetime,
     messages::ConfirmationTag,
     schedule::CommitSecret,
     treesync::{
-        node::{
-            encryption_keys::EncryptionKeyPair,
-            leaf_node::{Capabilities, Lifetime},
-        },
+        node::{encryption_keys::EncryptionKeyPair, leaf_node::Capabilities},
         TreeSync,
     },
 };

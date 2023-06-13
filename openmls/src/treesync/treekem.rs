@@ -258,7 +258,6 @@ impl UpdatePathNode {
         self.public_key.key()
     }
 
-    #[cfg(test)]
     pub(crate) fn encryption_key(&self) -> &EncryptionKey {
         &self.public_key
     }

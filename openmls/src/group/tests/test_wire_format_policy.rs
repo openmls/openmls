@@ -7,7 +7,9 @@ use crate::{
     group::{config::CryptoConfig, errors::*, *},
 };
 
-use super::utils::{generate_credential_bundle, generate_key_package, CredentialWithKeyAndSigner};
+use super::utils::{
+    generate_credential_with_key, generate_key_package, CredentialWithKeyAndSigner,
+};
 
 // Creates a group with one member
 fn create_group(
@@ -17,9 +19,9 @@ fn create_group(
 ) -> (MlsGroup, CredentialWithKeyAndSigner) {
     let group_id = GroupId::from_slice(b"Test Group");
 
-    // Generate credential bundles
+    // Generate credentials with keys
     let credential_with_key_and_signer =
-        generate_credential_bundle("Alice".into(), ciphersuite.signature_algorithm(), backend);
+        generate_credential_with_key("Alice".into(), ciphersuite.signature_algorithm(), backend);
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::builder()
@@ -48,9 +50,9 @@ fn receive_message(
     alice_group: &mut MlsGroup,
     alice_signer: &impl Signer,
 ) -> MlsMessageIn {
-    // Generate credential bundles
+    // Generate credentials with keys
     let bob_credential_with_key_and_signer =
-        generate_credential_bundle("Bob".into(), ciphersuite.signature_algorithm(), backend);
+        generate_credential_with_key("Bob".into(), ciphersuite.signature_algorithm(), backend);
 
     // Generate KeyPackages
     let bob_key_package = generate_key_package(

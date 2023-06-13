@@ -28,8 +28,7 @@ impl CoreGroup {
             let external_priv = epoch_secrets
                 .external_secret()
                 .derive_external_keypair(backend.crypto(), self.ciphersuite())
-                .private
-                .into();
+                .private;
             let init_secret = InitSecret::from_kem_output(
                 backend,
                 self.ciphersuite(),
@@ -410,10 +409,23 @@ impl StagedCommit {
         self.staged_proposal_queue.psk_proposals()
     }
 
+    /// Returns an iterator over all [`QueuedProposal`]s.
+    pub(crate) fn queued_proposals(&self) -> impl Iterator<Item = &QueuedProposal> {
+        self.staged_proposal_queue.queued_proposals()
+    }
+
     /// Returns `true` if the member was removed through a proposal covered by this Commit message
     /// and `false` otherwise.
     pub fn self_removed(&self) -> bool {
         matches!(self.state, StagedCommitState::PublicState(_))
+    }
+
+    /// Returns the [`GroupContext`] of the staged commit state.
+    pub fn group_context(&self) -> &GroupContext {
+        match self.state {
+            StagedCommitState::PublicState(ref ps) => ps.group_context(),
+            StagedCommitState::GroupMember(ref gm) => gm.group_context(),
+        }
     }
 
     /// Consume this [`StagedCommit`] and return the internal [`StagedCommitState`].
@@ -447,5 +459,10 @@ impl MemberStagedCommitState {
             new_keypairs,
             new_leaf_keypair_option,
         }
+    }
+
+    /// Get the staged [`GroupContext`].
+    pub(crate) fn group_context(&self) -> &GroupContext {
+        self.staged_diff.group_context()
     }
 }

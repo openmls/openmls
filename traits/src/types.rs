@@ -2,10 +2,12 @@
 //!
 //! This module holds a number of types that are needed by the traits.
 
-use std::convert::TryFrom;
+use std::ops::Deref;
 
 use serde::{Deserialize, Serialize};
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
+use tls_codec::{SecretVLBytes, TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
+
+use crate::key_store::{MlsEntity, MlsEntityId};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
 #[repr(u16)]
@@ -231,19 +233,66 @@ pub struct HpkeCiphertext {
     pub ciphertext: VLBytes,
 }
 
+/// A simple type for HPKE private keys.
+#[derive(
+    Debug, Clone, serde::Serialize, serde::Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]
+#[cfg_attr(feature = "test-utils", derive(PartialEq, Eq))]
+#[serde(transparent)]
+pub struct HpkePrivateKey(SecretVLBytes);
+
+impl From<Vec<u8>> for HpkePrivateKey {
+    fn from(bytes: Vec<u8>) -> Self {
+        Self(bytes.into())
+    }
+}
+
+impl From<&[u8]> for HpkePrivateKey {
+    fn from(bytes: &[u8]) -> Self {
+        Self(bytes.into())
+    }
+}
+
+impl std::ops::Deref for HpkePrivateKey {
+    type Target = [u8];
+
+    fn deref(&self) -> &Self::Target {
+        self.0.as_slice()
+    }
+}
+
+impl MlsEntity for HpkePrivateKey {
+    const ID: MlsEntityId = MlsEntityId::HpkePrivateKey;
+}
+
 /// Helper holding a (private, public) key pair as byte vectors.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HpkeKeyPair {
-    pub private: Vec<u8>,
+    pub private: HpkePrivateKey,
     pub public: Vec<u8>,
 }
 
-pub type ExporterSecret = Vec<u8>;
 pub type KemOutput = Vec<u8>;
+#[derive(Clone, Debug)]
+pub struct ExporterSecret(SecretVLBytes);
+
+impl Deref for ExporterSecret {
+    type Target = [u8];
+
+    fn deref(&self) -> &Self::Target {
+        self.0.as_slice()
+    }
+}
+
+impl From<Vec<u8>> for ExporterSecret {
+    fn from(secret: Vec<u8>) -> Self {
+        Self(secret.into())
+    }
+}
 
 /// A currently unknown ciphersuite.
 ///
-/// Used to accept unknown values, e.g., in [`Capabilities`].
+/// Used to accept unknown values, e.g., in `Capabilities`.
 #[derive(
     Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
