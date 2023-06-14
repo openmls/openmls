@@ -1,5 +1,6 @@
-use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
 use tls_codec::{Deserialize, Serialize, TlsDeserialize, TlsSerialize, TlsSize};
+use openmls_traits::crypto::OpenMlsCrypto;
 
 use super::{
     codec::deserialize_ciphertext_content, mls_auth_content::FramedContentAuthData,
@@ -45,19 +46,19 @@ impl PrivateMessageIn {
     pub(crate) fn sender_data(
         &self,
         message_secrets: &MessageSecrets,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -> Result<MlsSenderData, MessageDecryptionError> {
         log::debug!("Decrypting PrivateMessage");
         // Derive key from the key schedule using the ciphertext.
         let sender_data_key = message_secrets
             .sender_data_secret()
-            .derive_aead_key(backend, self.ciphertext.as_slice())
+            .derive_aead_key(crypto, self.ciphertext.as_slice())
             .map_err(LibraryError::unexpected_crypto_error)?;
         // Derive initial nonce from the key schedule using the ciphertext.
         let sender_data_nonce = message_secrets
             .sender_data_secret()
-            .derive_aead_nonce(ciphersuite, backend, self.ciphertext.as_slice())
+            .derive_aead_nonce(ciphersuite, crypto, self.ciphertext.as_slice())
             .map_err(LibraryError::unexpected_crypto_error)?;
         // Serialize sender data AAD
         let mls_sender_data_aad =
@@ -73,7 +74,7 @@ impl PrivateMessageIn {
         log_crypto!(trace, "Decryption of sender data mls_sender_data_aad_bytes: {mls_sender_data_aad_bytes:x?} - sender_data_nonce: {sender_data_nonce:x?}");
         let sender_data_bytes = sender_data_key
             .aead_open(
-                backend,
+                crypto,
                 self.encrypted_sender_data.as_slice(),
                 &mls_sender_data_aad_bytes,
                 &sender_data_nonce,
@@ -91,7 +92,7 @@ impl PrivateMessageIn {
     #[inline]
     fn decrypt(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ratchet_key: AeadKey,
         ratchet_nonce: &AeadNonce,
     ) -> Result<PrivateMessageContentIn, MessageDecryptionError> {
@@ -113,7 +114,7 @@ impl PrivateMessageIn {
         log::trace!("Decrypting ciphertext {:x?}", self.ciphertext);
         let private_message_content_bytes = ratchet_key
             .aead_open(
-                backend,
+                crypto,
                 self.ciphertext.as_slice(),
                 &private_message_content_aad_bytes,
                 ratchet_nonce,
@@ -140,7 +141,7 @@ impl PrivateMessageIn {
     pub(crate) fn to_verifiable_content(
         &self,
         ciphersuite: Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         message_secrets: &mut MessageSecrets,
         sender_index: LeafNodeIndex,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
@@ -152,7 +153,7 @@ impl PrivateMessageIn {
             .secret_tree_mut()
             .secret_for_decryption(
                 ciphersuite,
-                backend,
+                crypto,
                 sender_index,
                 secret_type,
                 sender_data.generation,
@@ -167,7 +168,7 @@ impl PrivateMessageIn {
             })?;
         // Prepare the nonce by xoring with the reuse guard.
         let prepared_nonce = ratchet_nonce.xor_with_reuse_guard(&sender_data.reuse_guard);
-        let private_message_content = self.decrypt(backend, ratchet_key, &prepared_nonce)?;
+        let private_message_content = self.decrypt(crypto, ratchet_key, &prepared_nonce)?;
 
         // Extract sender. The sender type is always of type Member for PrivateMessage.
         let sender = Sender::from_sender_data(sender_data);

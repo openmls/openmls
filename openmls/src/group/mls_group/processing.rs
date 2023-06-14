@@ -25,7 +25,7 @@ impl MlsGroup {
     /// with the exact reason of the failure.
     pub fn process_message(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsProvider,
         message: impl Into<ProtocolMessage>,
     ) -> Result<ProcessedMessage, ProcessMessageError> {
         // Make sure we are still a member of the group
@@ -83,7 +83,7 @@ impl MlsGroup {
     #[allow(clippy::type_complexity)]
     pub fn commit_to_pending_proposals<KeyStore: OpenMlsKeyStore>(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
     ) -> Result<
         (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
@@ -125,7 +125,7 @@ impl MlsGroup {
     /// the epoch of the group, it also clears any pending commits.
     pub fn merge_staged_commit<KeyStore: OpenMlsKeyStore>(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         staged_commit: StagedCommit,
     ) -> Result<(), MergeCommitError<KeyStore::Error>> {
         // Check if we were removed from the group
@@ -159,7 +159,7 @@ impl MlsGroup {
     /// clears the field by setting it to `None`.
     pub fn merge_pending_commit<KeyStore: OpenMlsKeyStore>(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
     ) -> Result<(), MergePendingCommitError<KeyStore::Error>> {
         match &self.group_state {
             MlsGroupState::PendingCommit(_) => {

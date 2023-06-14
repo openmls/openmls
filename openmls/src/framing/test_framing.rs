@@ -1,5 +1,5 @@
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_traits::{random::OpenMlsRand, types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{random::OpenMlsRand, types::Ciphersuite, OpenMlsProvider};
 
 use rstest::*;
 use rstest_reuse::{self, *};
@@ -26,7 +26,7 @@ use crate::{
 
 /// This tests serializing/deserializing PublicMessage
 #[apply(ciphersuites_and_backends)]
-fn codec_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn codec_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let (_credential, signature_keys) = test_utils::new_credential(
         backend,
         b"Creator",
@@ -78,7 +78,7 @@ fn codec_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
 /// This tests serializing/deserializing PrivateMessage
 #[apply(ciphersuites_and_backends)]
-fn codec_ciphertext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn codec_ciphertext(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let (_credential, signature_keys) = test_utils::new_credential(
         backend,
         b"Creator",
@@ -155,7 +155,7 @@ fn codec_ciphertext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
 /// This tests the correctness of wire format checks
 #[apply(ciphersuites_and_backends)]
-fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let configuration = &SenderRatchetConfiguration::default();
     let (plaintext, _credential, _keys) =
         create_content(ciphersuite, WireFormat::PrivateMessage, backend);
@@ -293,7 +293,7 @@ fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
 fn create_content(
     ciphersuite: Ciphersuite,
     wire_format: WireFormat,
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
 ) -> (AuthenticatedContent, CredentialWithKey, SignatureKeyPair) {
     let (credential, signature_keys) = test_utils::new_credential(
         backend,
@@ -330,7 +330,7 @@ fn create_content(
 }
 
 #[apply(ciphersuites_and_backends)]
-fn membership_tag(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn membership_tag(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let (_credential, signature_keys) = test_utils::new_credential(
         backend,
         b"Creator",
@@ -386,7 +386,7 @@ fn membership_tag(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 }
 
 #[apply(ciphersuites_and_backends)]
-fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
     let configuration = &SenderRatchetConfiguration::default();
@@ -590,7 +590,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 }
 
 #[apply(ciphersuites_and_backends)]
-fn confirmation_tag_presence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn confirmation_tag_presence(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let (framing_parameters, group_alice, alice_signature_keys, group_bob, _, _) =
         setup_alice_bob_group(ciphersuite, backend);
 
@@ -617,7 +617,7 @@ fn confirmation_tag_presence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
 
 pub(crate) fn setup_alice_bob_group(
     ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
 ) -> (
     FramingParameters,
     CoreGroup,
@@ -722,7 +722,7 @@ pub(crate) fn setup_alice_bob_group(
 
 /// Test divergent protocol versions in KeyPackages
 #[apply(ciphersuites_and_backends)]
-fn key_package_version(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn key_package_version(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let (mut key_package, _, _) = key_package(ciphersuite, backend);
 
     // Set an invalid protocol version

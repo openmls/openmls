@@ -35,7 +35,7 @@ fn application_id() {
 // This tests the ratchet tree extension to deliver the public ratcheting tree
 // in-band
 #[apply(ciphersuites_and_backends)]
-fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);

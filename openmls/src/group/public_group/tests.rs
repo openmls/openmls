@@ -1,5 +1,5 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
 use rstest::*;
 use rstest_reuse::{self, *};
 
@@ -19,7 +19,7 @@ use crate::{
 use super::PublicGroup;
 
 #[apply(ciphersuites_and_backends)]
-fn public_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn public_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =

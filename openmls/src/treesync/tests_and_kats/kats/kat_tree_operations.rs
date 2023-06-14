@@ -22,7 +22,7 @@
 //!   value.
 
 use ::serde::Deserialize;
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::OpenMlsProvider;
 use tls_codec::{Deserialize as TlsDeserializeTrait, Serialize};
 
 use crate::{
@@ -48,7 +48,7 @@ struct TestElement {
     tree_after: Vec<u8>,
 }
 
-fn run_test_vector(test: TestElement, backend: &impl OpenMlsCryptoProvider) -> Result<(), String> {
+fn run_test_vector(test: TestElement, backend: &impl OpenMlsProvider) -> Result<(), String> {
     let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
 
     let group_id = GroupId::random(backend);
@@ -120,7 +120,7 @@ fn run_test_vector(test: TestElement, backend: &impl OpenMlsCryptoProvider) -> R
 }
 
 #[apply(backends)]
-fn read_test_vectors_tree_operations(backend: &impl OpenMlsCryptoProvider) {
+fn read_test_vectors_tree_operations(backend: &impl OpenMlsProvider) {
     let _ = pretty_env_logger::try_init();
     log::debug!("Reading test vectors ...");
 

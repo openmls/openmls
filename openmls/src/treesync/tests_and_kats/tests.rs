@@ -18,7 +18,7 @@ mod test_unmerged_leaves;
 #[apply(ciphersuites_and_backends)]
 fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
     ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
 ) {
     let _ = backend; // get rid of warning
     let crypto_config = CryptoConfig::with_default_version(ciphersuite);

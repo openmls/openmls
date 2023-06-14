@@ -2,7 +2,7 @@ use ds_lib::{self, *};
 use openmls::prelude::{config::CryptoConfig, *};
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::OpenMlsProvider;
 use tls_codec::{Deserialize, Serialize};
 
 #[test]

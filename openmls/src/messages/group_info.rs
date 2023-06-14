@@ -1,9 +1,10 @@
 //! This module contains all types related to group info handling.
 
-use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{types::Ciphersuite};
 use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
 use thiserror::Error;
 use tls_codec::{Deserialize, Serialize, TlsDeserialize, TlsSerialize, TlsSize};
+use openmls_traits::crypto::OpenMlsCrypto;
 
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -64,10 +65,10 @@ impl VerifiableGroupInfo {
         nonce: &AeadNonce,
         ciphertext: &[u8],
         context: &[u8],
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
     ) -> Result<Self, GroupInfoError> {
         let verifiable_group_info_plaintext = skey
-            .aead_open(backend, ciphertext, context, nonce)
+            .aead_open(crypto, ciphertext, context, nonce)
             .map_err(|_| GroupInfoError::DecryptionFailed)?;
 
         let mut verifiable_group_info_plaintext_slice = verifiable_group_info_plaintext.as_slice();

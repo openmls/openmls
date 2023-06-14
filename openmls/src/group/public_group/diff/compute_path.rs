@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, OpenMlsCryptoProvider};
+use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, OpenMlsProvider};
 use tls_codec::Serialize;
 
 use crate::{
@@ -37,7 +37,7 @@ pub(crate) struct PathComputationResult {
 impl<'a> PublicGroupDiff<'a> {
     pub(crate) fn compute_path<KeyStore: OpenMlsKeyStore>(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         leaf_index: LeafNodeIndex,
         exclusion_list: HashSet<&LeafNodeIndex>,
         commit_type: CommitType,

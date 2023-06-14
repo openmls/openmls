@@ -38,7 +38,7 @@ use openmls_traits::{
     crypto::OpenMlsCrypto,
     key_store::OpenMlsKeyStore,
     types::{Ciphersuite, HpkeKeyPair, SignatureScheme},
-    OpenMlsCryptoProvider,
+    OpenMlsProvider,
 };
 use rayon::prelude::*;
 use std::{collections::HashMap, sync::RwLock};

@@ -40,7 +40,7 @@ impl CoreGroup {
     ///  - ValSem246 (as part of ValSem010)
     pub(crate) fn process_unverified_message(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsProvider,
         unverified_message: UnverifiedMessage,
         proposal_store: &ProposalStore,
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
@@ -168,7 +168,7 @@ impl CoreGroup {
     ///  - ValSem246 (as part of ValSem010)
     pub(crate) fn process_message(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsProvider,
         message: impl Into<ProtocolMessage>,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
         proposal_store: &ProposalStore,
@@ -218,7 +218,7 @@ impl CoreGroup {
     ///  - ValSem007 MembershipTag presence
     pub(crate) fn decrypt_message(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         message: ProtocolMessage,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
     ) -> Result<DecryptedMessage, ValidationError> {
@@ -247,14 +247,14 @@ impl CoreGroup {
                     public_message,
                     message_secrets,
                     message_secrets.serialized_context().to_vec(),
-                    backend,
+                    crypto,
                 )
             }
             ProtocolMessage::PrivateMessage(ciphertext) => {
                 // If the message is older than the current epoch, we need to fetch the correct secret tree first
                 DecryptedMessage::from_inbound_ciphertext(
                     ciphertext,
-                    backend,
+                    crypto,
                     self,
                     sender_ratchet_configuration,
                 )
@@ -265,7 +265,7 @@ impl CoreGroup {
     /// Helper function to read decryption keypairs.
     pub(super) fn read_decryption_keypairs(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsProvider,
         own_leaf_nodes: &[LeafNode],
     ) -> Result<(Vec<EncryptionKeyPair>, Vec<EncryptionKeyPair>), StageCommitError> {
         // All keys from the previous epoch are potential decryption keypairs.
@@ -288,7 +288,7 @@ impl CoreGroup {
     /// Merge a [StagedCommit] into the group after inspection
     pub(crate) fn merge_staged_commit<KeyStore: OpenMlsKeyStore>(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         staged_commit: StagedCommit,
         proposal_store: &mut ProposalStore,
     ) -> Result<(), MergeCommitError<KeyStore::Error>> {

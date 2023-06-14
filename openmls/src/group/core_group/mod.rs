@@ -82,6 +82,7 @@ use super::errors::CreateGroupContextExtProposalError;
 use crate::treesync::node::leaf_node::TreePosition;
 #[cfg(test)]
 use std::io::{Error, Read, Write};
+use openmls_traits::crypto::OpenMlsCrypto;
 
 #[derive(Debug)]
 pub(crate) struct CreateCommitResult {
@@ -215,10 +216,10 @@ impl CoreGroupBuilder {
     /// values (which might be random).
     ///
     /// This function performs cryptographic operations and there requires an
-    /// [`OpenMlsCryptoProvider`].
+    /// [`OpenMlsProvider`].
     pub(crate) fn build<KeyStore: OpenMlsKeyStore>(
         self,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
     ) -> Result<CoreGroup, CoreGroupBuildError<KeyStore::Error>> {
         let (public_group_builder, commit_secret, leaf_keypair) =
@@ -461,7 +462,7 @@ impl CoreGroup {
         aad: &[u8],
         msg: &[u8],
         padding_size: usize,
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsProvider,
         signer: &impl Signer,
     ) -> Result<PrivateMessage, MessageEncryptionError> {
         let public_message = AuthenticatedContent::new_application(
@@ -479,7 +480,7 @@ impl CoreGroup {
         &mut self,
         public_message: AuthenticatedContent,
         padding_size: usize,
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsProvider,
     ) -> Result<PrivateMessage, MessageEncryptionError> {
         PrivateMessage::try_from_authenticated_content(
             &public_message,
@@ -495,7 +496,7 @@ impl CoreGroup {
     pub(crate) fn decrypt(
         &mut self,
         private_message: &PrivateMessageIn,
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsProvider,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
     ) -> Result<VerifiableAuthenticatedContentIn, MessageDecryptionError> {
         let ciphersuite = self.ciphersuite();
@@ -524,7 +525,7 @@ impl CoreGroup {
     /// Exporter
     pub(crate) fn export_secret(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         label: &str,
         context: &[u8],
         key_length: usize,
@@ -536,13 +537,13 @@ impl CoreGroup {
         Ok(self
             .group_epoch_secrets
             .exporter_secret()
-            .derive_exported_secret(self.ciphersuite(), backend, label, context, key_length)
+            .derive_exported_secret(self.ciphersuite(), crypto, label, context, key_length)
             .map_err(LibraryError::unexpected_crypto_error)?)
     }
 
     pub(crate) fn export_group_info(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         signer: &impl Signer,
         with_ratchet_tree: bool,
     ) -> Result<GroupInfo, LibraryError> {
@@ -557,7 +558,7 @@ impl CoreGroup {
                 let external_pub = self
                     .group_epoch_secrets()
                     .external_secret()
-                    .derive_external_keypair(backend.crypto(), self.ciphersuite())
+                    .derive_external_keypair(crypto, self.ciphersuite())
                     .public;
                 Extension::ExternalPub(ExternalPubExtension::new(HpkePublicKey::from(external_pub)))
             };
@@ -580,7 +581,7 @@ impl CoreGroup {
             extensions,
             self.message_secrets()
                 .confirmation_key()
-                .tag(backend, self.context().confirmed_transcript_hash())
+                .tag(crypto, self.context().confirmed_transcript_hash())
                 .map_err(LibraryError::unexpected_crypto_error)?,
             self.own_leaf_index(),
         );
@@ -756,7 +757,7 @@ impl CoreGroup {
     /// Returns an error if access to the key store fails.
     pub(super) fn store_epoch_keypairs<KeyStore: OpenMlsKeyStore>(
         &self,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        store: &KeyStore,
         keypair_references: &[EncryptionKeyPair],
     ) -> Result<(), KeyStore::Error> {
         let k = EpochKeypairId::new(
@@ -764,8 +765,7 @@ impl CoreGroup {
             self.context().epoch().as_u64(),
             self.own_leaf_index(),
         );
-        backend
-            .key_store()
+        store
             .store(&k.0, &keypair_references.to_vec())
     }
 
@@ -775,15 +775,14 @@ impl CoreGroup {
     /// Returns `None` if access to the key store fails.
     pub(super) fn read_epoch_keypairs<KeyStore: OpenMlsKeyStore>(
         &self,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        store: &KeyStore,
     ) -> Vec<EncryptionKeyPair> {
         let k = EpochKeypairId::new(
             self.group_id(),
             self.context().epoch().as_u64(),
             self.own_leaf_index(),
         );
-        backend
-            .key_store()
+        store
             .read::<Vec<EncryptionKeyPair>>(&k.0)
             .unwrap_or_default()
     }
@@ -794,20 +793,20 @@ impl CoreGroup {
     /// Returns an error if access to the key store fails.
     pub(super) fn delete_previous_epoch_keypairs<KeyStore: OpenMlsKeyStore>(
         &self,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        store: &KeyStore,
     ) -> Result<(), KeyStore::Error> {
         let k = EpochKeypairId::new(
             self.group_id(),
             self.context().epoch().as_u64() - 1,
             self.own_leaf_index(),
         );
-        backend.key_store().delete::<Vec<EncryptionKeyPair>>(&k.0)
+        store.delete::<Vec<EncryptionKeyPair>>(&k.0)
     }
 
     pub(crate) fn create_commit<KeyStore: OpenMlsKeyStore>(
         &self,
         mut params: CreateCommitParams,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
     ) -> Result<CreateCommitResult, CreateCommitError<KeyStore::Error>> {
         let ciphersuite = self.ciphersuite();

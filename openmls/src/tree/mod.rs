@@ -1,5 +1,5 @@
 use crate::ciphersuite::*;
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::OpenMlsProvider;
 
 // Tree modules
 // Public

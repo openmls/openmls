@@ -1,5 +1,5 @@
 use openmls_traits::{
-    key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite, OpenMlsCryptoProvider,
+    key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite, OpenMlsProvider,
 };
 
 use super::{
@@ -62,7 +62,7 @@ macro_rules! impl_propose_fun {
         /// Returns an error if there is a pending commit.
         pub fn $name<KeyStore: OpenMlsKeyStore>(
             &mut self,
-            backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+            backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
             signer: &impl Signer,
             value: $value_ty,
         ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<KeyStore::Error>> {
@@ -124,7 +124,7 @@ impl MlsGroup {
     /// Generate a proposal
     pub fn propose<KeyStore: OpenMlsKeyStore>(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         propose: Propose,
         ref_or_value: ProposalOrRefType,
@@ -202,7 +202,7 @@ impl MlsGroup {
     /// Returns an error if there is a pending commit.
     pub fn propose_add_member(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsProvider,
         signer: &impl Signer,
         key_package: &KeyPackage,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeAddMemberError> {
@@ -240,7 +240,7 @@ impl MlsGroup {
     /// Returns an error if there is a pending commit.
     pub fn propose_remove_member(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsProvider,
         signer: &impl Signer,
         member: LeafNodeIndex,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeRemoveMemberError> {
@@ -273,7 +273,7 @@ impl MlsGroup {
     /// Returns an error if there is a pending commit.
     pub fn propose_remove_member_by_credential(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsProvider,
         signer: &impl Signer,
         member: &Credential,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeRemoveMemberError> {
@@ -298,7 +298,7 @@ impl MlsGroup {
     /// Returns an error if there is a pending commit.
     pub fn propose_remove_member_by_credential_by_value<KeyStore: OpenMlsKeyStore>(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         member: &Credential,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<KeyStore::Error>> {
@@ -322,7 +322,7 @@ impl MlsGroup {
     #[cfg(test)]
     pub fn propose_group_context_extensions(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsProvider,
         extensions: Extensions,
         signer: &impl Signer,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<()>> {

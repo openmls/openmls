@@ -14,7 +14,7 @@
 #[cfg(test)]
 use std::collections::HashSet;
 
-use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsProvider};
 use serde::{Deserialize, Serialize};
 
 use self::{
@@ -104,7 +104,7 @@ impl PublicGroup {
     /// one of the checks fails. See [`CreationFromExternalError`] for more
     /// details.
     pub fn from_external(
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ratchet_tree: RatchetTreeIn,
         verifiable_group_info: VerifiableGroupInfo,
         proposal_store: ProposalStore,
@@ -113,7 +113,7 @@ impl PublicGroup {
 
         let group_id = verifiable_group_info.group_id();
         let ratchet_tree = ratchet_tree
-            .into_verified(ciphersuite, backend.crypto(), group_id)
+            .into_verified(ciphersuite, crypto, group_id)
             .map_err(|e| {
                 CreationFromExternalError::TreeSyncError(TreeSyncFromNodesError::RatchetTreeError(
                     e,
@@ -123,7 +123,7 @@ impl PublicGroup {
         // Create a RatchetTree from the given nodes. We have to do this before
         // verifying the group info, since we need to find the Credential to verify the
         // signature against.
-        let treesync = TreeSync::from_ratchet_tree(backend, ciphersuite, ratchet_tree)?;
+        let treesync = TreeSync::from_ratchet_tree(crypto, ciphersuite, ratchet_tree)?;
 
         let group_info: GroupInfo = {
             let signer_signature_key = treesync
@@ -134,7 +134,7 @@ impl PublicGroup {
                 .into_signature_public_key_enriched(ciphersuite.signature_algorithm());
 
             verifiable_group_info
-                .verify(backend.crypto(), &signer_signature_key)
+                .verify(crypto, &signer_signature_key)
                 .map_err(|_| CreationFromExternalError::InvalidGroupInfoSignature)?
         };
 
@@ -152,7 +152,7 @@ impl PublicGroup {
             let input = InterimTranscriptHashInput::from(group_info.confirmation_tag());
 
             input.calculate_interim_transcript_hash(
-                backend.crypto(),
+                crypto,
                 group_context.ciphersuite(),
                 group_context.confirmed_transcript_hash(),
             )?
@@ -250,14 +250,14 @@ impl PublicGroup {
     /// in the tree.
     pub(crate) fn derive_path_secrets(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         path_secret: PathSecret,
         sender_index: LeafNodeIndex,
         leaf_index: LeafNodeIndex,
     ) -> Result<(Vec<EncryptionKeyPair>, CommitSecret), DerivePathError> {
         self.treesync.derive_path_secrets(
-            backend,
+            crypto,
             ciphersuite,
             path_secret,
             sender_index,
@@ -355,7 +355,7 @@ impl PublicGroup {
     #[cfg(test)]
     pub(crate) fn encrypt_path(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsProvider,
         ciphersuite: Ciphersuite,
         path: &[PlainUpdatePathNode],
         group_context: &[u8],

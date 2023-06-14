@@ -1,7 +1,7 @@
 //! This module tests the different values for `WireFormatPolicy`
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsProvider};
 
 use rstest::*;
 use rstest_reuse::{self, *};
@@ -18,7 +18,7 @@ use super::utils::{
 // Creates a group with one member
 fn create_group(
     ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
     wire_format_policy: WireFormatPolicy,
 ) -> (MlsGroup, CredentialWithKeyAndSigner) {
     let group_id = GroupId::from_slice(b"Test Group");
@@ -50,7 +50,7 @@ fn create_group(
 // Takes an existing group, adds a new member and sends a message from the second member to the first one, returns that message
 fn receive_message(
     ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
     alice_group: &mut MlsGroup,
     alice_signer: &impl Signer,
 ) -> MlsMessageIn {
@@ -95,7 +95,7 @@ fn receive_message(
 
 // Test positive cases with all valid (pure & mixed) policies
 #[apply(ciphersuites_and_backends)]
-fn test_wire_policy_positive(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_wire_policy_positive(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
         let (mut alice_group, alice_credential_with_key_and_signer) =
             create_group(ciphersuite, backend, *wire_format_policy);
@@ -113,7 +113,7 @@ fn test_wire_policy_positive(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
 
 // Test negative cases with only icompatible policies
 #[apply(ciphersuites_and_backends)]
-fn test_wire_policy_negative(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_wire_policy_negative(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // All combinations that are not part of WIRE_FORMAT_POLICIES
     let incompatible_policies = vec![
         WireFormatPolicy::new(

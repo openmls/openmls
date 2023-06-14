@@ -61,7 +61,7 @@
 use std::collections::HashSet;
 
 use ::serde::Deserialize;
-use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsCryptoProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsProvider};
 use tls_codec::Deserialize as TlsDeserializeTrait;
 
 use crate::{
@@ -85,7 +85,7 @@ struct TestElement {
     tree_hashes: Vec<TreeHash>,
 }
 
-fn run_test_vector(test: TestElement, backend: &impl OpenMlsCryptoProvider) -> Result<(), String> {
+fn run_test_vector(test: TestElement, backend: &impl OpenMlsProvider) -> Result<(), String> {
     let ciphersuite = Ciphersuite::try_from(test.cipher_suite).unwrap();
     // Skip unsupported ciphersuites.
     if !backend
@@ -131,7 +131,7 @@ fn run_test_vector(test: TestElement, backend: &impl OpenMlsCryptoProvider) -> R
 }
 
 #[apply(backends)]
-fn read_test_vectors_tree_validation(backend: &impl OpenMlsCryptoProvider) {
+fn read_test_vectors_tree_validation(backend: &impl OpenMlsProvider) {
     let _ = pretty_env_logger::try_init();
     log::debug!("Reading test vectors ...");
 

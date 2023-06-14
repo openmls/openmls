@@ -6,7 +6,7 @@ use openmls_basic_credential::SignatureKeyPair;
 
 fn create_alice_group(
     ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
     use_ratchet_tree_extension: bool,
 ) -> (MlsGroup, CredentialWithKey, SignatureKeyPair) {
     let group_config = MlsGroupConfigBuilder::new()
@@ -33,7 +33,7 @@ fn create_alice_group(
 }
 
 #[apply(ciphersuites_and_backends)]
-fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // Alice creates a new group ...
     let (alice_group, _, alice_signer) = create_alice_group(ciphersuite, backend, false);
 
@@ -129,7 +129,7 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 }
 
 #[apply(ciphersuites_and_backends)]
-fn test_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // Alice creates a new group ...
     let (mut alice_group, _, alice_signer) = create_alice_group(ciphersuite, backend, true);
 
@@ -219,7 +219,7 @@ fn test_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 }
 
 #[apply(ciphersuites_and_backends)]
-fn test_not_present_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_not_present_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // Alice creates a new group ...
     let (mut alice_group, _, alice_signer) = create_alice_group(ciphersuite, backend, false);
 

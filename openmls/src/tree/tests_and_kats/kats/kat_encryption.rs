@@ -82,7 +82,7 @@
 use itertools::izip;
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{signatures::Signer, types::SignatureScheme, OpenMlsCryptoProvider};
+use openmls_traits::{signatures::Signer, types::SignatureScheme, OpenMlsProvider};
 use serde::{self, Deserialize, Serialize};
 use thiserror::Error;
 
@@ -141,7 +141,7 @@ fn generate_credential(
     identity: Vec<u8>,
     credential_type: CredentialType,
     signature_algorithm: SignatureScheme,
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
 ) -> (CredentialWithKey, SignatureKeyPair) {
     let credential = Credential::new(identity, credential_type).unwrap();
     let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
@@ -159,7 +159,7 @@ fn generate_credential(
 #[cfg(any(feature = "test-utils", test))]
 fn group(
     ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
 ) -> (CoreGroup, CredentialWithKey, SignatureKeyPair) {
     use crate::group::config::CryptoConfig;
 
@@ -184,7 +184,7 @@ fn group(
 #[cfg(any(feature = "test-utils", test))]
 fn receiver_group(
     ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
     group_id: GroupId,
 ) -> (CoreGroup, CredentialWithKey, SignatureKeyPair) {
     use crate::group::config::CryptoConfig;
@@ -213,7 +213,7 @@ fn build_handshake_messages(
     sender_index: LeafNodeIndex,
     group: &mut CoreGroup,
     signer: &impl Signer,
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
 ) -> (Vec<u8>, Vec<u8>) {
     use tls_codec::Serialize;
 
@@ -270,7 +270,7 @@ fn build_application_messages(
     sender_index: LeafNodeIndex,
     group: &mut CoreGroup,
     signer: &impl Signer,
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
 ) -> (Vec<u8>, Vec<u8>) {
     use tls_codec::Serialize;
 
@@ -478,7 +478,7 @@ fn write_test_vectors() {
 #[cfg(any(feature = "test-utils", test))]
 pub fn run_test_vector(
     test_vector: EncryptionTestVector,
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
 ) -> Result<(), EncTestVectorError> {
     use tls_codec::{Deserialize, Serialize};
 
@@ -817,7 +817,7 @@ pub fn run_test_vector(
 }
 
 #[apply(backends)]
-fn read_test_vectors_encryption(backend: &impl OpenMlsCryptoProvider) {
+fn read_test_vectors_encryption(backend: &impl OpenMlsProvider) {
     let _ = pretty_env_logger::try_init();
     log::debug!("Reading test vectors ...");
 

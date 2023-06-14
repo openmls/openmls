@@ -5,7 +5,7 @@
 
 use std::io::Write;
 
-use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsProvider};
 use tls_codec::{Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize};
 
 use super::{
@@ -127,7 +127,7 @@ impl PublicMessage {
     /// This should be used after signing messages from group members.
     pub(crate) fn set_membership_tag(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         membership_key: &MembershipKey,
         serialized_context: &[u8],
     ) -> Result<(), LibraryError> {
@@ -140,7 +140,7 @@ impl PublicMessage {
         )
         .map_err(LibraryError::missing_bound_check)?;
         let tbm_payload = AuthenticatedContentTbm::new(&tbs_payload, &self.auth)?;
-        let membership_tag = membership_key.tag_message(backend, tbm_payload)?;
+        let membership_tag = membership_key.tag_message(crypto, tbm_payload)?;
 
         self.membership_tag = Some(membership_tag);
         Ok(())

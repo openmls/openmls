@@ -35,7 +35,7 @@ use openmls_traits::{
     key_store::OpenMlsKeyStore,
     random::OpenMlsRand,
     types::{Ciphersuite, HpkeKeyPair},
-    OpenMlsCryptoProvider,
+    OpenMlsProvider,
 };
 use tls_codec::{Deserialize, Serialize};
 use tonic::{async_trait, transport::Server, Code, Request, Response, Status};

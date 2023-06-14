@@ -1,5 +1,5 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
 
 use super::CoreGroup;
 use crate::{
@@ -30,7 +30,7 @@ use crate::{
 /// used in `create_commit` to filter the epoch proposals. Expected result:
 /// `filtered_queued_proposals` returns only proposals of a certain type
 #[apply(ciphersuites_and_backends)]
-fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // Framing parameters
     let framing_parameters = FramingParameters::new(&[], WireFormat::PublicMessage);
     // Define identities
@@ -174,7 +174,7 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
 
 /// Test, that we QueuedProposalQueue is iterated in the right order.
 #[apply(ciphersuites_and_backends)]
-fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // Framing parameters
     let framing_parameters = FramingParameters::new(&[], WireFormat::PublicMessage);
     // Define identities
@@ -284,7 +284,7 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 #[apply(ciphersuites_and_backends)]
 fn test_required_unsupported_proposals(
     ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
 ) {
     let (alice_credential, _, alice_signer, _alice_pk) =
         setup_client("Alice", ciphersuite, backend);
@@ -316,7 +316,7 @@ fn test_required_unsupported_proposals(
 #[apply(ciphersuites_and_backends)]
 fn test_required_extension_key_package_mismatch(
     ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
 ) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
@@ -366,7 +366,7 @@ fn test_required_extension_key_package_mismatch(
 }
 
 #[apply(ciphersuites_and_backends)]
-fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -441,7 +441,7 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMl
 #[apply(ciphersuites_and_backends)]
 fn test_group_context_extension_proposal_fails(
     ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
 ) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
@@ -554,7 +554,7 @@ fn test_group_context_extension_proposal_fails(
 #[apply(ciphersuites_and_backends)]
 fn test_group_context_extension_proposal(
     ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
 ) {
     // Basic group setup.
     let group_aad = b"Alice's test group";

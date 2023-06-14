@@ -82,7 +82,7 @@ pub struct SecretTree {
 #[cfg(test)]
 pub fn run_test_vector(
     test: SecretTree,
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
 ) -> Result<(), String> {
     use openmls_traits::crypto::OpenMlsCrypto;
 
@@ -191,7 +191,7 @@ pub fn run_test_vector(
 }
 
 #[apply(backends)]
-fn read_test_vectors_st(backend: &impl OpenMlsCryptoProvider) {
+fn read_test_vectors_st(backend: &impl OpenMlsProvider) {
     let _ = pretty_env_logger::try_init();
     log::debug!("Reading test vectors ...");
 

@@ -17,7 +17,7 @@ impl CoreGroup {
         welcome: Welcome,
         ratchet_tree: Option<RatchetTreeIn>,
         key_package_bundle: KeyPackageBundle,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         mut resumption_psk_store: ResumptionPskStore,
     ) -> Result<Self, WelcomeError<KeyStore::Error>> {
         log::debug!("CoreGroup::new_from_welcome_internal");

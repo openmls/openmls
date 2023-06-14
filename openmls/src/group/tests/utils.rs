@@ -9,10 +9,11 @@ use std::{cell::RefCell, collections::HashMap};
 use config::CryptoConfig;
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::{
-    key_store::OpenMlsKeyStore, signatures::Signer, types::SignatureScheme, OpenMlsCryptoProvider,
+    key_store::OpenMlsKeyStore, signatures::Signer, types::SignatureScheme, OpenMlsProvider,
 };
 use rand::{rngs::OsRng, RngCore};
 use tls_codec::Serialize;
+use openmls_traits::crypto::OpenMlsCrypto;
 
 use crate::{
     ciphersuite::signable::Signable, credentials::*, framing::*, group::*, key_packages::*,
@@ -54,13 +55,13 @@ impl TestClient {
     pub(crate) fn find_key_package_bundle(
         &self,
         key_package: &KeyPackage,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
     ) -> Option<KeyPackageBundle> {
         let mut key_package_bundles = self.key_package_bundles.borrow_mut();
         key_package_bundles
             .iter()
             .position(|x| {
-                x.key_package().hash_ref(backend.crypto()) == key_package.hash_ref(backend.crypto())
+                x.key_package().hash_ref(crypto) == key_package.hash_ref(crypto)
             })
             .map(|index| key_package_bundles.remove(index))
     }
@@ -80,7 +81,7 @@ pub(crate) struct TestSetup {
 const KEY_PACKAGE_COUNT: usize = 10;
 
 /// The setup function creates a set of groups and clients.
-pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvider) -> TestSetup {
+pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsProvider) -> TestSetup {
     let mut test_clients: HashMap<&'static str, RefCell<TestClient>> = HashMap::new();
     let mut key_store: HashMap<(&'static str, Ciphersuite), Vec<KeyPackage>> = HashMap::new();
     // Initialize the clients for which we have configurations.
@@ -299,7 +300,7 @@ fn test_random() {
 }
 
 #[apply(backends)]
-fn test_setup(backend: &impl OpenMlsCryptoProvider) {
+fn test_setup(backend: &impl OpenMlsProvider) {
     let test_client_config_a = TestClientConfig {
         name: "TestClientConfigA",
         ciphersuites: vec![Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519],
@@ -331,7 +332,7 @@ pub(crate) struct CredentialWithKeyAndSigner {
 pub(crate) fn generate_credential_with_key(
     identity: Vec<u8>,
     signature_scheme: SignatureScheme,
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
 ) -> CredentialWithKeyAndSigner {
     let (credential, signer) = {
         let credential = Credential::new(identity, CredentialType::Basic).unwrap();
@@ -356,7 +357,7 @@ pub(crate) fn generate_credential_with_key(
 pub(crate) fn generate_key_package<KeyStore: OpenMlsKeyStore>(
     ciphersuite: Ciphersuite,
     extensions: Extensions,
-    backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+    backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
     credential_with_keys: CredentialWithKeyAndSigner,
 ) -> KeyPackage {
     KeyPackage::builder()
@@ -378,7 +379,7 @@ pub(crate) fn resign_message(
     alice_group: &MlsGroup,
     plaintext: PublicMessage,
     original_plaintext: &PublicMessage,
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
     signer: &impl Signer,
 ) -> PublicMessage {
     let serialized_context = alice_group

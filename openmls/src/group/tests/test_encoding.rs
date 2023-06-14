@@ -9,7 +9,7 @@ use crate::{
 };
 
 /// Creates a simple test setup for various encoding tests.
-fn create_encoding_test_setup(backend: &impl OpenMlsCryptoProvider) -> TestSetup {
+fn create_encoding_test_setup(backend: &impl OpenMlsProvider) -> TestSetup {
     // Create a test config for a single client supporting all possible
     // ciphersuites.
     let alice_config = TestClientConfig {
@@ -52,7 +52,7 @@ fn create_encoding_test_setup(backend: &impl OpenMlsCryptoProvider) -> TestSetup
 
 /// This test tests encoding and decoding of application messages.
 #[apply(backends)]
-fn test_application_message_encoding(backend: &impl OpenMlsCryptoProvider) {
+fn test_application_message_encoding(backend: &impl OpenMlsProvider) {
     let test_setup = create_encoding_test_setup(backend);
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients
@@ -94,7 +94,7 @@ fn test_application_message_encoding(backend: &impl OpenMlsCryptoProvider) {
 
 /// This test tests encoding and decoding of update proposals.
 #[apply(backends)]
-fn test_update_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
+fn test_update_proposal_encoding(backend: &impl OpenMlsProvider) {
     let test_setup = create_encoding_test_setup(backend);
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients
@@ -147,7 +147,7 @@ fn test_update_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
 
 /// This test tests encoding and decoding of add proposals.
 #[apply(backends)]
-fn test_add_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
+fn test_add_proposal_encoding(backend: &impl OpenMlsProvider) {
     let test_setup = create_encoding_test_setup(backend);
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients
@@ -197,7 +197,7 @@ fn test_add_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
 
 /// This test tests encoding and decoding of remove proposals.
 #[apply(backends)]
-fn test_remove_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
+fn test_remove_proposal_encoding(backend: &impl OpenMlsProvider) {
     let test_setup = create_encoding_test_setup(backend);
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients
@@ -240,7 +240,7 @@ fn test_remove_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
 
 /// This test tests encoding and decoding of commit messages.
 #[apply(backends)]
-fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
+fn test_commit_encoding(backend: &impl OpenMlsProvider) {
     let test_setup = create_encoding_test_setup(backend);
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients
@@ -340,7 +340,7 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
 }
 
 #[apply(backends)]
-fn test_welcome_message_encoding(backend: &impl OpenMlsCryptoProvider) {
+fn test_welcome_message_encoding(backend: &impl OpenMlsProvider) {
     let test_setup = create_encoding_test_setup(backend);
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients

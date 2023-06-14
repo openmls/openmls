@@ -265,7 +265,7 @@ impl CredentialWithKey {
 #[cfg(any(test, feature = "test-utils"))]
 pub mod test_utils {
     use openmls_basic_credential::SignatureKeyPair;
-    use openmls_traits::{types::SignatureScheme, OpenMlsCryptoProvider};
+    use openmls_traits::{types::SignatureScheme, OpenMlsProvider};
 
     use super::{Credential, CredentialType, CredentialWithKey};
 
@@ -275,7 +275,7 @@ pub mod test_utils {
     ///
     /// Returns the [`Credential`] and the [`SignatureKeyPair`].
     pub fn new_credential(
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsProvider,
         identity: &[u8],
         credential_type: CredentialType,
         signature_scheme: SignatureScheme,

@@ -1,7 +1,7 @@
 //! Key Schedule Unit Tests
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{random::OpenMlsRand, OpenMlsCryptoProvider};
+use openmls_traits::{random::OpenMlsRand, OpenMlsProvider};
 
 use super::PskSecret;
 use crate::{
@@ -12,7 +12,7 @@ use crate::{
 };
 
 #[apply(ciphersuites_and_backends)]
-fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // Create a new PSK secret from multiple PSKs.
     let prng = backend.rand();
 

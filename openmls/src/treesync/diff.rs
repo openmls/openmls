@@ -20,8 +20,9 @@
 use std::collections::HashSet;
 
 use log::debug;
-use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsProvider};
 use serde::{Deserialize, Serialize};
+use openmls_traits::crypto::OpenMlsCrypto;
 
 use super::{
     errors::*,
@@ -265,7 +266,7 @@ impl<'a> TreeSyncDiff<'a> {
     /// Returns an error if the leaf is not in the tree
     fn derive_path(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsProvider,
         ciphersuite: Ciphersuite,
         leaf_index: LeafNodeIndex,
     ) -> Result<PathDerivationResult, LibraryError> {
@@ -289,7 +290,7 @@ impl<'a> TreeSyncDiff<'a> {
     /// Returns an error if the target leaf is not in the tree.
     pub(crate) fn apply_own_update_path(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsProvider,
         signer: &impl Signer,
         ciphersuite: Ciphersuite,
         group_id: GroupId,
@@ -320,7 +321,7 @@ impl<'a> TreeSyncDiff<'a> {
     /// TODO #804
     pub(crate) fn apply_received_update_path(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         sender_leaf_index: LeafNodeIndex,
         update_path: &UpdatePath,
@@ -358,7 +359,7 @@ impl<'a> TreeSyncDiff<'a> {
             )
             .collect();
         let parent_hash =
-            self.process_update_path(backend, ciphersuite, sender_leaf_index, path)?;
+            self.process_update_path(crypto, ciphersuite, sender_leaf_index, path)?;
 
         // Verify the parent hash.
         let leaf_node_parent_hash = update_path
@@ -384,13 +385,13 @@ impl<'a> TreeSyncDiff<'a> {
     /// TODO #804
     fn process_update_path(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         leaf_index: LeafNodeIndex,
         mut path: Vec<(ParentNodeIndex, ParentNode)>,
     ) -> Result<Vec<u8>, LibraryError> {
         // Compute the parent hash.
-        let parent_hash = self.set_parent_hashes(backend, ciphersuite, &mut path, leaf_index)?;
+        let parent_hash = self.set_parent_hashes(crypto, ciphersuite, &mut path, leaf_index)?;
 
         // While probably not necessary, the spec mandates we blank the direct path nodes
         let direct_path_nodes = self.diff.direct_path(leaf_index);
@@ -415,7 +416,7 @@ impl<'a> TreeSyncDiff<'a> {
     /// `LibraryError` if an unexpected error occurs.
     fn set_parent_hashes(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         path: &mut [(ParentNodeIndex, ParentNode)],
         leaf_index: LeafNodeIndex,
@@ -433,7 +434,7 @@ impl<'a> TreeSyncDiff<'a> {
 
         // For every copath node, compute the tree hash.
         let copath_tree_hashes = filtered_copath.into_iter().map(|node_index| {
-            self.compute_tree_hash(backend, ciphersuite, node_index, &HashSet::new())
+            self.compute_tree_hash(crypto, ciphersuite, node_index, &HashSet::new())
         });
 
         // We go through the nodes in the direct path in reverse order and get
@@ -444,7 +445,7 @@ impl<'a> TreeSyncDiff<'a> {
         {
             path_node.set_parent_hash(previous_parent_hash);
             let parent_hash = path_node.compute_parent_hash(
-                backend,
+                crypto,
                 ciphersuite,
                 &original_sibling_tree_hash?,
             )?;
@@ -585,7 +586,7 @@ impl<'a> TreeSyncDiff<'a> {
     /// parent hash.
     pub(super) fn verify_parent_hashes(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -> Result<(), TreeSyncParentHashError> {
         // We traverse the tree by iterating over all parent nodes. For each
@@ -620,17 +621,17 @@ impl<'a> TreeSyncDiff<'a> {
 
                 // Compute the original tree hash (oth) for the left and right child.
                 let oth_left =
-                    self.compute_tree_hash(backend, ciphersuite, left_child, &exclusion_list)?;
+                    self.compute_tree_hash(crypto, ciphersuite, left_child, &exclusion_list)?;
 
                 let oth_right =
-                    self.compute_tree_hash(backend, ciphersuite, right_child, &exclusion_list)?;
+                    self.compute_tree_hash(crypto, ciphersuite, right_child, &exclusion_list)?;
 
                 // Compute the parent hash for both child roles.
                 let parent_hash_left =
-                    parent_node.compute_parent_hash(backend, ciphersuite, &oth_right)?;
+                    parent_node.compute_parent_hash(crypto, ciphersuite, &oth_right)?;
 
                 let parent_hash_right =
-                    parent_node.compute_parent_hash(backend, ciphersuite, &oth_left)?;
+                    parent_node.compute_parent_hash(crypto, ciphersuite, &oth_left)?;
 
                 // Compute the resolution for both children.
                 let left_resolution = self.resolution(left_child, &exclusion_list);
@@ -669,11 +670,11 @@ impl<'a> TreeSyncDiff<'a> {
     /// computes and sets the new tree hash.
     pub(crate) fn into_staged_diff(
         mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -> Result<StagedTreeSyncDiff, LibraryError> {
-        let new_tree_hash = self.compute_tree_hashes(backend, ciphersuite)?;
-        debug_assert!(self.verify_parent_hashes(backend, ciphersuite).is_ok());
+        let new_tree_hash = self.compute_tree_hashes(crypto, ciphersuite)?;
+        debug_assert!(self.verify_parent_hashes(crypto, ciphersuite).is_ok());
         Ok(StagedTreeSyncDiff {
             diff: self.diff.into(),
             new_tree_hash,
@@ -685,7 +686,7 @@ impl<'a> TreeSyncDiff<'a> {
     /// not included in the tree hash.
     pub(super) fn compute_tree_hash(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         node_index: TreeNodeIndex,
         exclusion_list: &HashSet<&LeafNodeIndex>,
@@ -695,24 +696,24 @@ impl<'a> TreeSyncDiff<'a> {
                 let leaf = self.diff.leaf(leaf_index);
 
                 if exclusion_list.contains(&leaf_index) {
-                    TreeSyncLeafNode::blank().compute_tree_hash(backend, ciphersuite, leaf_index)
+                    TreeSyncLeafNode::blank().compute_tree_hash(crypto, ciphersuite, leaf_index)
                 } else {
-                    leaf.compute_tree_hash(backend, ciphersuite, leaf_index)
+                    leaf.compute_tree_hash(crypto, ciphersuite, leaf_index)
                 }
             }
             TreeNodeIndex::Parent(parent_index) => {
                 // Compute left hash.
                 let left_child = self.diff.left_child(parent_index);
                 let left_hash =
-                    self.compute_tree_hash(backend, ciphersuite, left_child, exclusion_list)?;
+                    self.compute_tree_hash(crypto, ciphersuite, left_child, exclusion_list)?;
                 // Compute right hash.
                 let right_child = self.diff.right_child(parent_index);
                 let right_hash =
-                    self.compute_tree_hash(backend, ciphersuite, right_child, exclusion_list)?;
+                    self.compute_tree_hash(crypto, ciphersuite, right_child, exclusion_list)?;
 
                 let node = self.diff.parent(parent_index);
 
-                node.compute_tree_hash(backend, ciphersuite, left_hash, right_hash, exclusion_list)
+                node.compute_tree_hash(crypto, ciphersuite, left_hash, right_hash, exclusion_list)
             }
         }
     }
@@ -730,10 +731,10 @@ impl<'a> TreeSyncDiff<'a> {
     /// Compute and set the tree hash of all nodes in the tree.
     pub(crate) fn compute_tree_hashes(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -> Result<Vec<u8>, LibraryError> {
-        self.compute_tree_hash(backend, ciphersuite, self.diff.root(), &HashSet::new())
+        self.compute_tree_hash(crypto, ciphersuite, self.diff.root(), &HashSet::new())
     }
 
     /// Returns the position of the subtree root shared by both given indices in

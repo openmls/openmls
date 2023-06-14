@@ -5,7 +5,7 @@
 //! for more description on the test vectors.
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{random::OpenMlsRand, types::SignatureScheme, OpenMlsCryptoProvider};
+use openmls_traits::{random::OpenMlsRand, types::SignatureScheme, OpenMlsProvider};
 use rand::{rngs::OsRng, RngCore};
 use serde::{self, Deserialize, Serialize};
 use thiserror::Error;

@@ -120,7 +120,7 @@ use openmls_traits::{
     key_store::{MlsEntity, MlsEntityId, OpenMlsKeyStore},
     signatures::Signer,
     types::Ciphersuite,
-    OpenMlsCryptoProvider,
+    OpenMlsProvider,
 };
 use serde::{Deserialize, Serialize};
 use tls_codec::{Serialize as TlsSerializeTrait, TlsSerialize, TlsSize};
@@ -229,7 +229,7 @@ impl KeyPackage {
     /// Create a new key package for the given `ciphersuite` and `identity`.
     pub(crate) fn create<KeyStore: OpenMlsKeyStore>(
         config: CryptoConfig,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
         lifetime: Lifetime,
@@ -278,7 +278,7 @@ impl KeyPackage {
     #[allow(clippy::too_many_arguments)]
     fn new_from_keys<KeyStore: OpenMlsKeyStore>(
         config: CryptoConfig,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
         lifetime: Lifetime,
@@ -318,7 +318,7 @@ impl KeyPackage {
     /// Delete this key package and its private key from the key store.
     pub fn delete<KeyStore: OpenMlsKeyStore>(
         &self,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
     ) -> Result<(), KeyStore::Error> {
         backend
             .key_store()
@@ -351,13 +351,13 @@ impl KeyPackage {
     /// Compute the [`KeyPackageRef`] of this [`KeyPackage`].
     /// The [`KeyPackageRef`] is used to identify a new member that should get
     /// added to a group.
-    pub fn hash_ref(&self, backend: &impl OpenMlsCrypto) -> Result<KeyPackageRef, LibraryError> {
+    pub fn hash_ref(&self, crypto: &impl OpenMlsCrypto) -> Result<KeyPackageRef, LibraryError> {
         make_key_package_ref(
             &self
                 .tls_serialize_detached()
                 .map_err(LibraryError::missing_bound_check)?,
             self.payload.ciphersuite,
-            backend,
+            crypto,
         )
         .map_err(LibraryError::unexpected_crypto_error)
     }
@@ -393,7 +393,7 @@ impl KeyPackage {
     /// Generate a new key package with a given init key
     pub fn new_from_init_key<KeyStore: OpenMlsKeyStore>(
         config: CryptoConfig,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
         extensions: Extensions,
@@ -437,7 +437,7 @@ impl KeyPackage {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn new_from_encryption_key<KeyStore: OpenMlsKeyStore>(
         config: CryptoConfig,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
         extensions: Extensions,
@@ -595,7 +595,7 @@ impl KeyPackageBuilder {
     pub(crate) fn build_without_key_storage<KeyStore: OpenMlsKeyStore>(
         self,
         config: CryptoConfig,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
     ) -> Result<KeyPackageCreationResult, KeyPackageNewError<KeyStore::Error>> {
@@ -615,7 +615,7 @@ impl KeyPackageBuilder {
     pub fn build<KeyStore: OpenMlsKeyStore>(
         self,
         config: CryptoConfig,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
     ) -> Result<KeyPackage, KeyPackageNewError<KeyStore::Error>> {
@@ -685,7 +685,7 @@ impl KeyPackageBundle {
 #[cfg(test)]
 impl KeyPackageBundle {
     pub(crate) fn new(
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsProvider,
         signer: &impl Signer,
         ciphersuite: Ciphersuite,
         credential_with_key: CredentialWithKey,

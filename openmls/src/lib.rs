@@ -20,7 +20,7 @@
 //!     identity: Vec<u8>,
 //!     credential_type: CredentialType,
 //!     signature_algorithm: SignatureScheme,
-//!     backend: &impl OpenMlsCryptoProvider,
+//!     backend: &impl OpenMlsProvider,
 //! ) -> (CredentialWithKey, SignatureKeyPair) {
 //!     let credential = Credential::new(identity, credential_type).unwrap();
 //!     let signature_keys =
@@ -45,7 +45,7 @@
 //! // A helper to create key package bundles.
 //! fn generate_key_package(
 //!     ciphersuite: Ciphersuite,
-//!     backend: &impl OpenMlsCryptoProvider,
+//!     backend: &impl OpenMlsProvider,
 //!     signer: &SignatureKeyPair,
 //!     credential_with_key: CredentialWithKey,
 //! ) -> KeyPackage {

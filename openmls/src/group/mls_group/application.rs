@@ -13,7 +13,7 @@ impl MlsGroup {
     /// and incoming messages from the DS must be processed afterwards.
     pub fn create_message(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsProvider,
         signer: &impl Signer,
         message: &[u8],
     ) -> Result<MlsMessageOut, CreateMessageError> {

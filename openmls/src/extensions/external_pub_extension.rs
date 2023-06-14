@@ -31,7 +31,7 @@ impl ExternalPubExtension {
 #[cfg(test)]
 mod test {
     use openmls_rust_crypto::OpenMlsRustCrypto;
-    use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
+    use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsProvider};
     use tls_codec::{Deserialize, Serialize};
 
     use super::*;

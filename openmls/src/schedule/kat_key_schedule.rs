@@ -7,7 +7,7 @@
 
 use log::info;
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{random::OpenMlsRand, types::HpkeKeyPair, OpenMlsCryptoProvider};
+use openmls_traits::{random::OpenMlsRand, types::HpkeKeyPair, OpenMlsProvider};
 use serde::{self, Deserialize, Serialize};
 use tls_codec::Serialize as TlsSerializeTrait;
 
@@ -152,7 +152,7 @@ fn generate(
 pub fn generate_test_vector(
     n_epochs: u64,
     ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
 ) -> KeyScheduleTestVector {
     use tls_codec::Serialize;
 
@@ -250,7 +250,7 @@ fn write_test_vectors() {
 }
 
 #[apply(backends)]
-fn read_test_vectors_key_schedule(backend: &impl OpenMlsCryptoProvider) {
+fn read_test_vectors_key_schedule(backend: &impl OpenMlsProvider) {
     let _ = pretty_env_logger::try_init();
 
     let tests: Vec<KeyScheduleTestVector> = read("test_vectors/key-schedule.json");
@@ -266,7 +266,7 @@ fn read_test_vectors_key_schedule(backend: &impl OpenMlsCryptoProvider) {
 #[cfg(any(feature = "test-utils", test))]
 pub fn run_test_vector(
     test_vector: KeyScheduleTestVector,
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
 ) -> Result<(), KsTestVectorError> {
     let ciphersuite = Ciphersuite::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
     log::trace!("  {:?}", test_vector);

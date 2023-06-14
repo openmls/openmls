@@ -11,7 +11,7 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 
 // Tests the different variants of the RemoveOperation enum.
 #[apply(ciphersuites_and_backends)]
-fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let _ = backend;
     let alice_backend = OpenMlsRustCrypto::default();
     let bob_backend = OpenMlsRustCrypto::default();

@@ -4,7 +4,7 @@ use openmls_traits::{
     crypto::OpenMlsCrypto,
     key_store::{MlsEntity, MlsEntityId, OpenMlsKeyStore},
     types::{Ciphersuite, HpkeCiphertext, HpkeKeyPair},
-    OpenMlsCryptoProvider,
+    OpenMlsProvider,
 };
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
@@ -49,7 +49,7 @@ impl EncryptionKey {
     /// Encrypt to this HPKE public key.
     pub(crate) fn encrypt(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         context: &[u8],
         plaintext: &[u8],
@@ -60,7 +60,7 @@ impl EncryptionKey {
             context,
             plaintext,
             ciphersuite,
-            backend.crypto(),
+            crypto,
         )
         .map_err(|_| LibraryError::custom("Encryption failed. A serialization issue really"))
     }
@@ -105,7 +105,7 @@ impl EncryptionPrivateKey {
     /// unsuccessful.
     pub(crate) fn decrypt(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         version: ProtocolVersion,
         ciphertext: &HpkeCiphertext,
@@ -118,7 +118,7 @@ impl EncryptionPrivateKey {
             group_context,
             ciphertext,
             ciphersuite,
-            backend.crypto(),
+            crypto,
         )
         .map(|secret_bytes| Secret::from_slice(&secret_bytes, version, ciphersuite))
     }
@@ -154,10 +154,9 @@ impl EncryptionKeyPair {
     /// Returns a key store error if access to the key store fails.
     pub(crate) fn write_to_key_store<KeyStore: OpenMlsKeyStore>(
         &self,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        store: &KeyStore,
     ) -> Result<(), KeyStore::Error> {
-        backend
-            .key_store()
+        store
             .store(&self.public_key().to_bytes_with_prefix(), self)
     }
 
@@ -167,7 +166,7 @@ impl EncryptionKeyPair {
     ///
     /// Returns `None` if the keypair cannot be read from the store.
     pub(crate) fn read_from_key_store(
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsProvider,
         encryption_key: &EncryptionKey,
     ) -> Option<EncryptionKeyPair> {
         backend
@@ -182,10 +181,9 @@ impl EncryptionKeyPair {
     /// Returns a key store error if access to the key store fails.
     pub(crate) fn delete_from_key_store<KeyStore: OpenMlsKeyStore>(
         &self,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        store: &KeyStore,
     ) -> Result<(), KeyStore::Error> {
-        backend
-            .key_store()
+        store
             .delete::<Self>(&self.public_key().to_bytes_with_prefix())
     }
 
@@ -198,10 +196,10 @@ impl EncryptionKeyPair {
     }
 
     pub(crate) fn random(
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsProvider,
         config: CryptoConfig,
     ) -> Result<Self, LibraryError> {
-        let ikm = Secret::random(config.ciphersuite, backend, config.version)
+        let ikm = Secret::random(config.ciphersuite, backend.rand(), config.version)
             .map_err(LibraryError::unexpected_crypto_error)?;
         Ok(backend
             .crypto()
@@ -215,7 +213,7 @@ pub mod test_utils {
     use super::*;
 
     pub fn read_keys_from_key_store(
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsProvider,
         encryption_key: &EncryptionKey,
     ) -> HpkeKeyPair {
         let keys = EncryptionKeyPair::read_from_key_store(backend, encryption_key).unwrap();
@@ -227,7 +225,7 @@ pub mod test_utils {
     }
 
     pub fn write_keys_from_key_store(
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsProvider,
         encryption_key: HpkeKeyPair,
     ) {
         let keypair = EncryptionKeyPair::from(encryption_key);

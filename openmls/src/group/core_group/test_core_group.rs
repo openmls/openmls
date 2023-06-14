@@ -1,6 +1,6 @@
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{crypto::OpenMlsCrypto, types::HpkeCiphertext, OpenMlsCryptoProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, types::HpkeCiphertext, OpenMlsProvider};
 use tls_codec::Serialize;
 
 use crate::{
@@ -18,7 +18,7 @@ use crate::{
 
 pub(crate) fn setup_alice_group(
     ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
 ) -> (
     CoreGroup,
     CredentialWithKey,
@@ -50,7 +50,7 @@ pub(crate) fn setup_alice_group(
 }
 
 #[apply(ciphersuites_and_backends)]
-fn test_core_group_persistence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_core_group_persistence(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let (alice_group, _, _, _) = setup_alice_group(ciphersuite, backend);
 
     let mut file_out = tempfile::NamedTempFile::new().expect("Could not create file");
@@ -80,7 +80,7 @@ pub fn flip_last_byte(ctxt: &mut HpkeCiphertext) {
 #[apply(ciphersuites_and_backends)]
 fn test_failed_groupinfo_decryption(
     ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
 ) {
     let epoch = 123;
     let group_id = GroupId::random(backend);
@@ -195,7 +195,7 @@ fn test_failed_groupinfo_decryption(
 /// Test what happens if the KEM ciphertext for the receiver in the UpdatePath
 /// is broken.
 #[apply(ciphersuites_and_backends)]
-fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // === Alice creates a group with her and Bob ===
     let (
         framing_parameters,
@@ -295,7 +295,7 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
 fn setup_alice_bob(
     ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
 ) -> (
     CredentialWithKey,
     SignatureKeyPair,
@@ -330,7 +330,7 @@ fn setup_alice_bob(
 
 // Test several scenarios when PSKs are used in a group
 #[apply(ciphersuites_and_backends)]
-fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -452,7 +452,7 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
 
 // Test several scenarios when PSKs are used in a group
 #[apply(ciphersuites_and_backends)]
-fn test_staged_commit_creation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_staged_commit_creation(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -520,7 +520,7 @@ fn test_staged_commit_creation(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
 
 // Test processing of own commits
 #[apply(ciphersuites_and_backends)]
-fn test_own_commit_processing(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_own_commit_processing(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -563,7 +563,7 @@ fn test_own_commit_processing(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
 pub(crate) fn setup_client(
     id: &str,
     ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
 ) -> (
     CredentialWithKey,
     KeyPackageBundle,
@@ -595,7 +595,7 @@ pub(crate) fn setup_client(
 #[apply(ciphersuites_and_backends)]
 fn test_proposal_application_after_self_was_removed(
     ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
 ) {
     // We're going to test if proposals are still applied, even after a client
     // notices that it was removed from a group.  We do so by having Alice

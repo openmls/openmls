@@ -1,7 +1,7 @@
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
-    crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider,
+    crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsProvider,
 };
 use rstest::*;
 use rstest_reuse::{self, *};
@@ -35,7 +35,7 @@ use crate::{
 /// group info, it is not possible to generate a matching encrypted group context with different
 /// parameters.
 #[apply(ciphersuites_and_backends)]
-fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let _ = pretty_env_logger::try_init();
 
     // We need a ciphersuite that is different from the current one to create
@@ -191,11 +191,11 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, backend: &impl OpenMl
 }
 
 #[apply(ciphersuites_and_backends)]
-fn test_welcome_msg(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_welcome_msg(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     test_welcome_message(ciphersuite, backend);
 }
 
-fn test_welcome_message(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_welcome_message(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // We use this dummy group info in all test cases.
     let group_info_tbs = {
         let group_context = GroupContext::new(

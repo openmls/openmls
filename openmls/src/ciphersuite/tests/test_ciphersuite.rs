@@ -6,7 +6,7 @@ use crate::{ciphersuite::*, test_utils::*};
 
 // Spot test to make sure hpke seal/open work.
 #[apply(ciphersuites_and_backends)]
-fn test_hpke_seal_open(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_hpke_seal_open(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let plaintext = &[1, 2, 3];
     let kp = backend.crypto().derive_hpke_keypair(
         ciphersuite.hpke_config(),

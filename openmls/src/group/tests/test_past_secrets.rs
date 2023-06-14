@@ -1,7 +1,7 @@
 //! This module contains tests regarding the use of [`MessageSecretsStore`] in [`MlsGroup`]
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
 
 use rstest::*;
 use rstest_reuse::{self, *};
@@ -13,7 +13,7 @@ use crate::{
 };
 
 #[apply(ciphersuites_and_backends)]
-fn test_past_secrets_in_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_past_secrets_in_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // Test this for different parameters
     for max_epochs in (0..10usize).step_by(2) {
         let group_id = GroupId::from_slice(b"Test Group");

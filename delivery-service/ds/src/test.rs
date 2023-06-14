@@ -4,7 +4,7 @@ use openmls::prelude::config::CryptoConfig;
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::types::SignatureScheme;
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::OpenMlsProvider;
 use tls_codec::{TlsByteVecU8, TlsVecU16};
 
 fn generate_credential(
@@ -25,7 +25,7 @@ fn generate_key_package(
     ciphersuite: Ciphersuite,
     credential_with_key: CredentialWithKey,
     extensions: Extensions,
-    crypto_backend: &impl OpenMlsCryptoProvider,
+    crypto_backend: &impl OpenMlsProvider,
     signer: &SignatureKeyPair,
 ) -> KeyPackage {
     KeyPackage::builder()

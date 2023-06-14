@@ -1,6 +1,6 @@
 use core_group::test_core_group::setup_client;
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
+use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsProvider};
 
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -15,7 +15,7 @@ use crate::{
 };
 
 #[apply(ciphersuites_and_backends)]
-fn test_mls_group_persistence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_mls_group_persistence(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
@@ -59,7 +59,7 @@ fn test_mls_group_persistence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
 // This tests if the remover is correctly passed to the callback when one member
 // issues a RemoveProposal and another members issues the next Commit.
 #[apply(ciphersuites_and_backends)]
-fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
@@ -199,7 +199,7 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
 }
 
 #[apply(ciphersuites_and_backends)]
-fn export_secret(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn export_secret(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
@@ -237,7 +237,7 @@ fn export_secret(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider)
 }
 
 #[apply(ciphersuites_and_backends)]
-fn test_invalid_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_invalid_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // Some basic setup functions for the MlsGroup.
     let mls_group_config = MlsGroupConfig::test_default(ciphersuite);
 
@@ -334,7 +334,7 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
 }
 
 #[apply(ciphersuites_and_backends)]
-fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
@@ -506,7 +506,7 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
 // Test that the key package and the corresponding private key are deleted when
 // creating a new group for a welcome message.
 #[apply(ciphersuites_and_backends)]
-fn key_package_deletion(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn key_package_deletion(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
@@ -569,7 +569,7 @@ fn key_package_deletion(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 }
 
 #[apply(ciphersuites_and_backends)]
-fn remove_prosposal_by_ref(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn remove_prosposal_by_ref(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =

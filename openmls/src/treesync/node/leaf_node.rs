@@ -1,5 +1,5 @@
 //! This module contains the [`LeafNode`] struct and its implementation.
-use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsProvider};
 use serde::{Deserialize, Serialize};
 use tls_codec::{Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
 
@@ -90,7 +90,7 @@ impl LeafNode {
     /// returns the HPKE key pair along with the new leaf node.
     /// The caller is responsible for storing the private key.
     pub(crate) fn new(
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsProvider,
         signer: &impl Signer,
         new_leaf_node_params: NewLeafNodeParams,
     ) -> Result<(Self, EncryptionKeyPair), LibraryError> {
@@ -183,7 +183,7 @@ impl LeafNode {
         &self,
         config: CryptoConfig,
         tree_info_tbs: TreeInfoTbs,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
     ) -> Result<Self, LeafNodeGenerationError<KeyStore::Error>> {
         Self::generate_update(
@@ -214,7 +214,7 @@ impl LeafNode {
         capabilities: Capabilities,
         extensions: Extensions,
         tree_info_tbs: TreeInfoTbs,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
     ) -> Result<Self, LeafNodeGenerationError<KeyStore::Error>> {
         // Note that this function is supposed to be used in the public API only
@@ -289,7 +289,7 @@ impl LeafNode {
         leaf_index: LeafNodeIndex,
         ciphersuite: Ciphersuite,
         protocol_version: ProtocolVersion,
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsProvider,
         signer: &impl Signer,
     ) -> Result<EncryptionKeyPair, PublicTreeError> {
         if !self

@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use log::{debug, trace};
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsProvider};
 use serde::{Deserialize, Serialize};
 use tls_codec::{Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait};
 
@@ -76,7 +76,7 @@ struct LeafNodeInfoTest {
     signature_keypair: SignatureKeyPair,
 }
 
-pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) {
+pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsProvider) {
     // Skip unsupported cipher suites (for now).
     let ciphersuite = Ciphersuite::try_from(test.cipher_suite).unwrap();
 
@@ -325,7 +325,7 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
 
 #[allow(clippy::too_many_arguments)]
 fn apply_update_path(
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
     ciphersuite: Ciphersuite,
     treesync: TreeSync,
     sender: u32,

@@ -7,9 +7,9 @@ use criterion::Criterion;
 use openmls::prelude::{config::CryptoConfig, *};
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsCryptoProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsProvider};
 
-fn criterion_kp_bundle(c: &mut Criterion, backend: &impl OpenMlsCryptoProvider) {
+fn criterion_kp_bundle(c: &mut Criterion, backend: &impl OpenMlsProvider) {
     for &ciphersuite in backend.crypto().supported_ciphersuites().iter() {
         c.bench_function(
             &format!("KeyPackage create bundle with ciphersuite: {ciphersuite:?}"),

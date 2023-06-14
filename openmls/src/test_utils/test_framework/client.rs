@@ -8,7 +8,7 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
     key_store::OpenMlsKeyStore,
     types::{Ciphersuite, HpkeKeyPair, SignatureScheme},
-    OpenMlsCryptoProvider,
+    OpenMlsProvider,
 };
 use tls_codec::Serialize;
 

@@ -13,7 +13,7 @@ use crate::{
 impl CoreGroup {
     fn derive_epoch_secrets(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsProvider,
         apply_proposals_values: ApplyProposalsValues,
         epoch_secrets: &GroupEpochSecrets,
         commit_secret: CommitSecret,
@@ -117,7 +117,7 @@ impl CoreGroup {
         proposal_store: &ProposalStore,
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsProvider,
     ) -> Result<StagedCommit, StageCommitError> {
         // Check that the sender is another member of the group
         if let Sender::Member(member) = mls_content.sender() {
@@ -273,7 +273,7 @@ impl CoreGroup {
     /// might throw a `LibraryError`.
     pub(crate) fn merge_commit<KeyStore: OpenMlsKeyStore>(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         staged_commit: StagedCommit,
     ) -> Result<Option<MessageSecrets>, MergeCommitError<KeyStore::Error>> {
         // Get all keypairs from the old epoch, so we can later store the ones
@@ -351,7 +351,7 @@ impl CoreGroup {
         mls_content: &AuthenticatedContent,
         proposal_store: &ProposalStore,
         own_leaf_nodes: &[LeafNode],
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsProvider,
     ) -> Result<StagedCommit, StageCommitError> {
         let (old_epoch_keypairs, leaf_node_keypairs) =
             self.read_decryption_keypairs(backend, own_leaf_nodes)?;

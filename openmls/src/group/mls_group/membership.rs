@@ -31,7 +31,7 @@ impl MlsGroup {
     #[allow(clippy::type_complexity)]
     pub fn add_members<KeyStore: OpenMlsKeyStore>(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         key_packages: &[KeyPackage],
     ) -> Result<(MlsMessageOut, MlsMessageOut, Option<GroupInfo>), AddMembersError<KeyStore::Error>>
@@ -110,7 +110,7 @@ impl MlsGroup {
     #[allow(clippy::type_complexity)]
     pub fn remove_members<KeyStore: OpenMlsKeyStore>(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         members: &[LeafNodeIndex],
     ) -> Result<
@@ -170,7 +170,7 @@ impl MlsGroup {
     /// Returns an error if there is a pending commit.
     pub fn leave_group(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsProvider,
         signer: &impl Signer,
     ) -> Result<MlsMessageOut, LeaveGroupError> {
         self.is_operational()?;

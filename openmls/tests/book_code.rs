@@ -5,7 +5,7 @@ use openmls::{
 };
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{signatures::Signer, types::SignatureScheme, OpenMlsCryptoProvider};
+use openmls_traits::{signatures::Signer, types::SignatureScheme, OpenMlsProvider};
 
 #[test]
 fn create_backend_rust_crypto() {
@@ -23,7 +23,7 @@ fn generate_credential(
     identity: Vec<u8>,
     credential_type: CredentialType,
     signature_algorithm: SignatureScheme,
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
 ) -> (CredentialWithKey, SignatureKeyPair) {
     // ANCHOR: create_basic_credential
     let credential = Credential::new(identity, credential_type).unwrap();
@@ -46,7 +46,7 @@ fn generate_key_package(
     ciphersuite: Ciphersuite,
     credential_with_key: CredentialWithKey,
     extensions: Extensions,
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
     signer: &impl Signer,
 ) -> KeyPackage {
     // ANCHOR: create_key_package
@@ -78,7 +78,7 @@ fn generate_key_package(
 ///  - Bob leaves
 ///  - Test saving the group state
 #[apply(ciphersuites_and_backends)]
-fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // Generate credentials with keys
     let (alice_credential, alice_signature_keys) = generate_credential(
         "Alice".into(),
@@ -1258,7 +1258,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 }
 
 #[apply(ciphersuites_and_backends)]
-fn test_empty_input_errors(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_empty_input_errors(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Generate credentials with keys

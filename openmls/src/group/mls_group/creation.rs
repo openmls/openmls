@@ -22,7 +22,7 @@ impl MlsGroup {
     /// This function removes the private key corresponding to the
     /// `key_package` from the key store.
     pub fn new<KeyStore: OpenMlsKeyStore>(
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         mls_group_config: &MlsGroupConfig,
         credential_with_key: CredentialWithKey,
@@ -38,7 +38,7 @@ impl MlsGroup {
 
     /// Creates a new group with a given group ID with the creator as the only member.
     pub fn new_with_group_id<KeyStore: OpenMlsKeyStore>(
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         mls_group_config: &MlsGroupConfig,
         group_id: GroupId,
@@ -104,7 +104,7 @@ impl MlsGroup {
     /// can be found.
     // TODO: #1326 This should take an MlsMessage rather than a Welcome message.
     pub fn new_from_welcome<KeyStore: OpenMlsKeyStore>(
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         mls_group_config: &MlsGroupConfig,
         welcome: Welcome,
         ratchet_tree: Option<RatchetTreeIn>,
@@ -177,7 +177,7 @@ impl MlsGroup {
     /// Note: If there is a group member in the group with the same identity as us,
     /// this will create a remove proposal.
     pub fn join_by_external_commit(
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsProvider,
         signer: &impl Signer,
         ratchet_tree: Option<RatchetTreeIn>,
         verifiable_group_info: VerifiableGroupInfo,

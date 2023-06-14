@@ -23,7 +23,7 @@ impl MlsGroup {
     #[allow(clippy::type_complexity)]
     pub fn self_update<KeyStore: OpenMlsKeyStore>(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
     ) -> Result<
         (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
@@ -66,7 +66,7 @@ impl MlsGroup {
     /// private key must be manually added to the key store.
     fn _propose_self_udpate<KeyStore: OpenMlsKeyStore>(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         leaf_node: Option<LeafNode>,
     ) -> Result<AuthenticatedContent, ProposeSelfUpdateError<KeyStore::Error>> {
@@ -119,7 +119,7 @@ impl MlsGroup {
     /// Creates a proposal to update the own leaf node.
     pub fn propose_self_update<KeyStore: OpenMlsKeyStore>(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         leaf_node: Option<LeafNode>,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<KeyStore::Error>> {
@@ -143,7 +143,7 @@ impl MlsGroup {
     /// Creates a proposal to update the own leaf node.
     pub fn propose_self_update_by_value<KeyStore: OpenMlsKeyStore>(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         leaf_node: Option<LeafNode>,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<KeyStore::Error>> {

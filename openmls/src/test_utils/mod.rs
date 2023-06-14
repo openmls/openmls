@@ -10,7 +10,7 @@ use std::{
 
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::{key_store::OpenMlsKeyStore, types::HpkeKeyPair};
-pub use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
+pub use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
 pub use rstest::*;
 pub use rstest_reuse::{self, *};
 use serde::{self, de::DeserializeOwned, Serialize};
@@ -99,7 +99,7 @@ pub(crate) struct GroupCandidate {
 pub(crate) fn generate_group_candidate(
     identity: &[u8],
     ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
     use_store: bool,
 ) -> GroupCandidate {
     let credential_with_key_and_signer = {
@@ -212,7 +212,7 @@ pub use openmls_rust_crypto::OpenMlsRustCrypto;
   )
 ]
 #[allow(non_snake_case)]
-pub fn backends(backend: &impl OpenMlsCryptoProvider) {}
+pub fn backends(backend: &impl OpenMlsProvider) {}
 
 // === Ciphersuites ===
 
@@ -246,4 +246,4 @@ pub fn ciphersuites(ciphersuite: Ciphersuite) {}
   )
 ]
 #[allow(non_snake_case)]
-pub fn ciphersuites_and_backends(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {}
+pub fn ciphersuites_and_backends(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {}

@@ -25,7 +25,7 @@ impl CoreGroup {
     /// Note: If there is a group member in the group with the same identity as us,
     /// this will create a remove proposal.
     pub(crate) fn join_by_external_commit(
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsProvider,
         signer: &impl Signer,
         mut params: CreateCommitParams,
         ratchet_tree: Option<RatchetTreeIn>,

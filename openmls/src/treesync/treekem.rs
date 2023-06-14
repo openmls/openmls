@@ -9,7 +9,7 @@ use std::collections::HashSet;
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     types::{Ciphersuite, HpkeCiphertext},
-    OpenMlsCryptoProvider,
+    OpenMlsProvider,
 };
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -45,7 +45,7 @@ impl<'a> TreeSyncDiff<'a> {
     /// Returns the encrypted path (i.e. an [`UpdatePath`] instance).
     pub(crate) fn encrypt_path(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         path: &[PlainUpdatePathNode],
         group_context: &[u8],
@@ -73,7 +73,7 @@ impl<'a> TreeSyncDiff<'a> {
         // Encrypt the secrets
         path.par_iter()
             .zip(copath_resolutions.par_iter())
-            .map(|(node, resolution)| node.encrypt(backend, ciphersuite, resolution, group_context))
+            .map(|(node, resolution)| node.encrypt(crypto, ciphersuite, resolution, group_context))
             .collect::<Result<Vec<UpdatePathNode>, LibraryError>>()
     }
 
@@ -91,7 +91,7 @@ impl<'a> TreeSyncDiff<'a> {
     /// TODO #804
     pub(crate) fn decrypt_path(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         params: DecryptPathParams,
         owned_keys: &[&EncryptionKeyPair],
@@ -125,7 +125,7 @@ impl<'a> TreeSyncDiff<'a> {
 
         // ValSem203: Path secrets must decrypt correctly
         let path_secret = PathSecret::decrypt(
-            backend,
+            crypto,
             ciphersuite,
             params.version,
             ciphertext,
@@ -137,7 +137,7 @@ impl<'a> TreeSyncDiff<'a> {
         let common_path =
             self.filtered_common_direct_path(own_leaf_index, params.sender_leaf_index);
         let (derived_path, _plain_update_path, keypairs, commit_secret) =
-            ParentNode::derive_path(backend, ciphersuite, path_secret, common_path)?;
+            ParentNode::derive_path(crypto, ciphersuite, path_secret, common_path)?;
         // We now check that the public keys in the update path and in the
         // derived path match up.
         // ValSem204: Public keys from Path must be verified and match the private keys from the direct path
@@ -172,7 +172,7 @@ impl<'a> TreeSyncDiff<'a> {
         plain_path_option: Option<&[PlainUpdatePathNode]>,
         presharedkeys: &[PreSharedKeyId],
         encrypted_group_info: &[u8],
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         encryptor_leaf_index: LeafNodeIndex,
     ) -> Result<Vec<EncryptedGroupSecrets>, LibraryError> {
         let mut encrypted_group_secrets_vec = vec![];
@@ -207,7 +207,7 @@ impl<'a> TreeSyncDiff<'a> {
                 encrypted_group_info,
                 &group_secrets_bytes,
                 key_package.ciphersuite(),
-                backend.crypto(),
+                crypto,
             )
             .map_err(|_| {
                 LibraryError::custom(
@@ -217,7 +217,7 @@ impl<'a> TreeSyncDiff<'a> {
                 )
             })?;
             let encrypted_group_secrets =
-                EncryptedGroupSecrets::new(key_package.hash_ref(backend.crypto())?, ciphertext);
+                EncryptedGroupSecrets::new(key_package.hash_ref(crypto)?, ciphertext);
             encrypted_group_secrets_vec.push(encrypted_group_secrets);
         }
         Ok(encrypted_group_secrets_vec)

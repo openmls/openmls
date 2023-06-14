@@ -4,12 +4,12 @@ use openmls::{
     *,
 };
 
-use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, OpenMlsCryptoProvider};
+use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, OpenMlsProvider};
 
 fn generate_key_package<KeyStore: OpenMlsKeyStore>(
     ciphersuite: Ciphersuite,
     extensions: Extensions,
-    backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+    backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
     credential_with_key: CredentialWithKey,
     signer: &impl Signer,
 ) -> KeyPackage {
@@ -42,7 +42,7 @@ fn generate_key_package<KeyStore: OpenMlsKeyStore>(
 ///  - Bob leaves
 ///  - Test saving the group state
 #[apply(ciphersuites_and_backends)]
-fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
         let group_id = GroupId::from_slice(b"Test Group");
 
@@ -923,7 +923,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 }
 
 #[apply(ciphersuites_and_backends)]
-fn test_empty_input_errors(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_empty_input_errors(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Generate credentials with keys
@@ -967,7 +967,7 @@ fn test_empty_input_errors(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypt
 #[apply(ciphersuites_and_backends)]
 fn mls_group_ratchet_tree_extension(
     ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
 ) {
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
         let group_id = GroupId::from_slice(b"Test Group");

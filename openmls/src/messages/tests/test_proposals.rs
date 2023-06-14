@@ -14,7 +14,7 @@ use crate::{
 /// This test encodes and decodes the `ProposalOrRef` struct and makes sure the
 /// decoded values are the same as the original
 #[apply(ciphersuites_and_backends)]
-fn proposals_codec(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn proposals_codec(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // Proposal
 
     let remove_proposal = RemoveProposal {

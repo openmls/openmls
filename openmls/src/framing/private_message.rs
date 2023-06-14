@@ -1,4 +1,4 @@
-use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
 use std::io::Write;
 use tls_codec::{Serialize, Size, TlsSerialize, TlsSize};
 
@@ -72,7 +72,7 @@ impl PrivateMessage {
     pub(crate) fn try_from_authenticated_content(
         public_message: &AuthenticatedContent,
         ciphersuite: Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsProvider,
         message_secrets: &mut MessageSecrets,
         padding_size: usize,
     ) -> Result<PrivateMessage, MessageEncryptionError> {
@@ -96,7 +96,7 @@ impl PrivateMessage {
     pub(crate) fn encrypt_without_check(
         public_message: &AuthenticatedContent,
         ciphersuite: Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsProvider,
         message_secrets: &mut MessageSecrets,
         padding_size: usize,
     ) -> Result<PrivateMessage, MessageEncryptionError> {
@@ -114,7 +114,7 @@ impl PrivateMessage {
     pub(crate) fn encrypt_with_different_header(
         public_message: &AuthenticatedContent,
         ciphersuite: Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsProvider,
         header: MlsMessageHeader,
         message_secrets: &mut MessageSecrets,
         padding_size: usize,
@@ -135,7 +135,7 @@ impl PrivateMessage {
         test_header: Option<MlsMessageHeader>,
         public_message: &AuthenticatedContent,
         ciphersuite: Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsProvider,
         message_secrets: &mut MessageSecrets,
         padding_size: usize,
     ) -> Result<PrivateMessage, MessageEncryptionError> {

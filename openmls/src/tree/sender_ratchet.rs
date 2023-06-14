@@ -6,6 +6,7 @@
 //! error, will still return a `Result` since they may throw a `LibraryError`.
 
 use std::collections::VecDeque;
+use openmls_traits::crypto::OpenMlsCrypto;
 
 use openmls_traits::types::Ciphersuite;
 
@@ -117,7 +118,7 @@ impl RatchetSecret {
     /// as well as the [`RatchetSecret`] of the next generation and return both.
     pub(crate) fn ratchet_forward(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -> Result<(Generation, RatchetKeyMaterial), SecretTreeError> {
         log::trace!("Ratcheting forward in generation {}.", self.generation);
@@ -132,21 +133,21 @@ impl RatchetSecret {
             "nonce",
             self.generation,
             ciphersuite.aead_nonce_length(),
-            backend,
+            crypto,
         )?;
         let key = derive_tree_secret(
             &self.secret,
             "key",
             self.generation,
             ciphersuite.aead_key_length(),
-            backend,
+            crypto,
         )?;
         self.secret = derive_tree_secret(
             &self.secret,
             "secret",
             self.generation,
             ciphersuite.hash_length(),
-            backend,
+            crypto,
         )?;
         let generation = self.generation;
         self.generation += 1;
@@ -205,7 +206,7 @@ impl DecryptionRatchet {
     pub(crate) fn secret_for_decryption(
         &mut self,
         ciphersuite: Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         generation: Generation,
         configuration: &SenderRatchetConfiguration,
     ) -> Result<RatchetKeyMaterial, SecretTreeError> {
@@ -230,7 +231,7 @@ impl DecryptionRatchet {
                 // Derive the key material
                 let ratchet_secrets = {
                     self.ratchet_head
-                        .ratchet_forward(backend, ciphersuite)
+                        .ratchet_forward(crypto, ciphersuite)
                         .map(|(_, key_material)| key_material)
                 }?;
                 // Add it to the front of the queue
@@ -238,7 +239,7 @@ impl DecryptionRatchet {
             }
             let ratchet_secrets = {
                 self.ratchet_head
-                    .ratchet_forward(backend, ciphersuite)
+                    .ratchet_forward(crypto, ciphersuite)
                     .map(|(_, key_material)| key_material)
             }?;
             // Add an entry to the past secrets queue to keep indexing consistent.

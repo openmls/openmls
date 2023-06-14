@@ -65,13 +65,12 @@ impl AeadKey {
     /// Encrypt a payload under the AeadKey given a nonce.
     pub(crate) fn aead_seal(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         msg: &[u8],
         aad: &[u8],
         nonce: &AeadNonce,
     ) -> Result<Vec<u8>, CryptoError> {
-        backend
-            .crypto()
+        crypto
             .aead_encrypt(self.aead_mode, self.value.as_slice(), msg, &nonce.0, aad)
             .map_err(|_| CryptoError::CryptoLibraryError)
     }
@@ -79,13 +78,12 @@ impl AeadKey {
     /// AEAD decrypt `ciphertext` with `key`, `aad`, and `nonce`.
     pub(crate) fn aead_open(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphertext: &[u8],
         aad: &[u8],
         nonce: &AeadNonce,
     ) -> Result<Vec<u8>, CryptoError> {
-        backend
-            .crypto()
+        crypto
             .aead_decrypt(
                 self.aead_mode,
                 self.value.as_slice(),
@@ -111,8 +109,8 @@ impl AeadNonce {
     /// **NOTE: This has to wait until it can acquire the lock to get randomness!**
     /// TODO: This panics if another thread holding the rng panics.
     #[cfg(test)]
-    pub(crate) fn random(rng: &impl OpenMlsCryptoProvider) -> Self {
-        Self(rng.rand().random_array().expect("Not enough entropy."))
+    pub(crate) fn random(rng: &impl OpenMlsRand) -> Self {
+        Self(rng.random_array().expect("Not enough entropy."))
     }
 
     /// Get a slice to the nonce value.
@@ -165,7 +163,7 @@ mod unit_tests {
     /// it has changed, xoring it again and testing that it's back in its original
     /// state.
     #[apply(backends)]
-    fn test_xor(backend: &impl OpenMlsCryptoProvider) {
+    fn test_xor(backend: &impl OpenMlsProvider) {
         let reuse_guard: ReuseGuard =
             ReuseGuard::try_from_random(backend).expect("An unexpected error occurred.");
         let original_nonce = AeadNonce::random(backend);

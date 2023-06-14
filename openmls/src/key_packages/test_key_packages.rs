@@ -8,7 +8,7 @@ use crate::{extensions::*, key_packages::*};
 /// Helper function to generate key packages
 pub(crate) fn key_package(
     ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
 ) -> (KeyPackage, Credential, SignatureKeyPair) {
     let credential = Credential::new(b"Sasha".to_vec(), CredentialType::Basic).unwrap();
     let signer = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
@@ -33,7 +33,7 @@ pub(crate) fn key_package(
 }
 
 #[apply(ciphersuites_and_backends)]
-fn generate_key_package(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn generate_key_package(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let (key_package, _credential, _signature_keys) = key_package(ciphersuite, backend);
 
     let kpi = KeyPackageIn::from(key_package);
@@ -43,7 +43,7 @@ fn generate_key_package(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 }
 
 #[apply(ciphersuites_and_backends)]
-fn serialization(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn serialization(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let (key_package, _, _) = key_package(ciphersuite, backend);
 
     let encoded = key_package
@@ -58,7 +58,7 @@ fn serialization(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider)
 }
 
 #[apply(ciphersuites_and_backends)]
-fn application_id_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn application_id_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let credential = Credential::new(b"Sasha".to_vec(), CredentialType::Basic)
         .expect("An unexpected error occurred.");
     let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
@@ -103,7 +103,7 @@ fn application_id_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
 /// - The protocol version is correct
 /// - The init key is not equal to the encryption key
 #[apply(ciphersuites_and_backends)]
-fn key_package_validation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn key_package_validation(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let (key_package_orig, _, _) = key_package(ciphersuite, backend);
 
     // === Protocol version ===

@@ -2,7 +2,7 @@ use std::io::Write;
 
 use itertools::iproduct;
 use openmls_traits::{
-    crypto::OpenMlsCrypto, random::OpenMlsRand, types::Ciphersuite, OpenMlsCryptoProvider,
+    crypto::OpenMlsCrypto, random::OpenMlsRand, types::Ciphersuite, OpenMlsProvider,
 };
 use rstest::*;
 use rstest_reuse::{self, *};
@@ -26,7 +26,7 @@ use crate::{
 };
 
 #[apply(backends)]
-fn padding(backend: &impl OpenMlsCryptoProvider) {
+fn padding(backend: &impl OpenMlsProvider) {
     // Create a test config for a single client supporting all possible
     // ciphersuites.
     let alice_config = TestClientConfig {
@@ -99,7 +99,7 @@ fn padding(backend: &impl OpenMlsCryptoProvider) {
 
 /// Check that PrivateMessageContent's padding field is verified to be all-zero.
 #[apply(ciphersuites_and_backends)]
-fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let tests = {
         // { 2^i } ∪ { 2^i +- 1 }
         let padding_sizes = [

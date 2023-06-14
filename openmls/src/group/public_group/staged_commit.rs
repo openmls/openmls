@@ -16,7 +16,7 @@ impl PublicGroup {
         &self,
         mls_content: &'a AuthenticatedContent,
         proposal_store: &ProposalStore,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
     ) -> Result<(&'a Commit, ProposalQueue, LeafNodeIndex), StageCommitError> {
         let ciphersuite = self.ciphersuite();
 
@@ -54,7 +54,7 @@ impl PublicGroup {
         // ValSem240: Commit must not cover inline self Remove proposal
         let proposal_queue = ProposalQueue::from_committed_proposals(
             ciphersuite,
-            backend,
+            crypto,
             commit.proposals.as_slice().to_vec(),
             proposal_store,
             sender,
@@ -184,14 +184,14 @@ impl PublicGroup {
         &self,
         mls_content: &AuthenticatedContent,
         proposal_store: &ProposalStore,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
     ) -> Result<StagedCommit, StageCommitError> {
         let ciphersuite = self.ciphersuite();
 
         let (commit, proposal_queue, sender_index) =
-            self.validate_commit(mls_content, proposal_store, backend)?;
+            self.validate_commit(mls_content, proposal_store, crypto)?;
 
-        let staged_diff = self.stage_diff(mls_content, &proposal_queue, sender_index, backend)?;
+        let staged_diff = self.stage_diff(mls_content, &proposal_queue, sender_index, crypto)?;
 
         let staged_commit_state = StagedCommitState::PublicState(Box::new(staged_diff));
 
@@ -203,7 +203,7 @@ impl PublicGroup {
         mls_content: &AuthenticatedContent,
         proposal_queue: &ProposalQueue,
         sender_index: LeafNodeIndex,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
     ) -> Result<StagedPublicGroupDiff, StageCommitError> {
         let ciphersuite = self.ciphersuite();
         let mut diff = self.empty_diff();
@@ -219,17 +219,17 @@ impl PublicGroup {
         if let Some(update_path) = &commit.path {
             // Update the public group
             // ValSem202: Path must be the right length
-            diff.apply_received_update_path(backend, ciphersuite, sender_index, update_path)?;
+            diff.apply_received_update_path(crypto, ciphersuite, sender_index, update_path)?;
         } else if apply_proposals_values.path_required {
             // ValSem201
             return Err(StageCommitError::RequiredPathNotFound);
         };
 
         // Update group context
-        diff.update_group_context(backend)?;
+        diff.update_group_context(crypto)?;
 
         // Update the confirmed transcript hash before we compute the confirmation tag.
-        diff.update_confirmed_transcript_hash(backend, mls_content)?;
+        diff.update_confirmed_transcript_hash(crypto, mls_content)?;
 
         let received_confirmation_tag = mls_content
             .confirmation_tag()
@@ -239,11 +239,11 @@ impl PublicGroup {
         // epoch and check the confirmation tag.
         diff.update_interim_transcript_hash(
             ciphersuite,
-            backend,
+            crypto,
             received_confirmation_tag.clone(),
         )?;
 
-        let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
+        let staged_diff = diff.into_staged_diff(crypto, ciphersuite)?;
 
         Ok(staged_diff)
     }

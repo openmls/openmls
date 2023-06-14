@@ -27,7 +27,7 @@ fn new_test_group(
     identity: &str,
     wire_format_policy: WireFormatPolicy,
     ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
 ) -> (MlsGroup, CredentialWithKeyAndSigner) {
     let group_id = GroupId::from_slice(b"Test Group");
 
@@ -58,7 +58,7 @@ fn new_test_group(
 fn validation_test_setup(
     wire_format_policy: WireFormatPolicy,
     ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
 ) -> ProposalValidationTestSetup {
     // === Alice creates a group ===
     let (mut alice_group, alice_signer_with_keys) =
@@ -105,7 +105,7 @@ fn validation_test_setup(
 #[apply(ciphersuites_and_backends)]
 fn external_add_proposal_should_succeed(
     ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
 ) {
     for policy in WIRE_FORMAT_POLICIES {
         let ProposalValidationTestSetup {
@@ -215,7 +215,7 @@ fn external_add_proposal_should_succeed(
 #[apply(ciphersuites_and_backends)]
 fn external_add_proposal_should_be_signed_by_key_package_it_references(
     ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
 ) {
     let ProposalValidationTestSetup { alice_group, .. } =
         validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
@@ -259,7 +259,7 @@ fn external_add_proposal_should_be_signed_by_key_package_it_references(
 #[apply(ciphersuites_and_backends)]
 fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
     ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
 ) {
     let ProposalValidationTestSetup {
         alice_group,

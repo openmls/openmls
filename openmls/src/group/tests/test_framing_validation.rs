@@ -2,7 +2,7 @@
 //! https://openmls.tech/book/message_validation.html#semantic-validation-of-message-framing
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
 use tls_codec::{Deserialize, Serialize};
 
 use rstest::*;
@@ -33,7 +33,7 @@ struct ValidationTestSetup {
 fn validation_test_setup(
     wire_format_policy: WireFormatPolicy,
     ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
+    backend: &impl OpenMlsProvider,
 ) -> ValidationTestSetup {
     let group_id = GroupId::from_slice(b"Test Group");
 
@@ -108,7 +108,7 @@ fn validation_test_setup(
 
 // ValSem002 Group id
 #[apply(ciphersuites_and_backends)]
-fn test_valsem002(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem002(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -154,7 +154,7 @@ fn test_valsem002(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
 // ValSem003 Epoch
 #[apply(ciphersuites_and_backends)]
-fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -248,7 +248,7 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
 // ValSem004 Sender: Member: check the member exists
 #[apply(ciphersuites_and_backends)]
-fn test_valsem004(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem004(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -304,7 +304,7 @@ fn test_valsem004(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
 // ValSem005 Application messages must use ciphertext
 #[apply(ciphersuites_and_backends)]
-fn test_valsem005(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem005(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -359,7 +359,7 @@ fn test_valsem005(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
 // ValSem006 Ciphertext: decryption needs to work
 #[apply(ciphersuites_and_backends)]
-fn test_valsem006(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem006(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -407,7 +407,7 @@ fn test_valsem006(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
 // ValSem007 Membership tag presence
 #[apply(ciphersuites_and_backends)]
-fn test_valsem007(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem007(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -453,7 +453,7 @@ fn test_valsem007(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
 // ValSem008 Membership tag verification
 #[apply(ciphersuites_and_backends)]
-fn test_valsem008(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem008(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -503,7 +503,7 @@ fn test_valsem008(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
 // ValSem009 Confirmation tag presence
 #[apply(ciphersuites_and_backends)]
-fn test_valsem009(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem009(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -558,7 +558,7 @@ fn test_valsem009(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
 // ValSem010 Signature verification
 #[apply(ciphersuites_and_backends)]
-fn test_valsem010(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem010(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,

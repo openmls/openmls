@@ -3,7 +3,7 @@
 use openmls_traits::{
     key_store::{MlsEntity, MlsEntityId, OpenMlsKeyStore},
     random::OpenMlsRand,
-    OpenMlsCryptoProvider,
+    OpenMlsProvider,
 };
 use serde::{Deserialize, Serialize};
 use tls_codec::{Serialize as TlsSerializeTrait, VLBytes};
@@ -281,7 +281,7 @@ impl PreSharedKeyId {
     /// Note: The nonce is not saved as it must be unique for each time it's being applied.
     pub fn write_to_key_store<KeyStore: OpenMlsKeyStore>(
         &self,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         ciphersuite: Ciphersuite,
         psk: &[u8],
     ) -> Result<(), PskError> {
@@ -402,7 +402,7 @@ impl PskSecret {
     /// psk_secret     = psk_secret[n]
     /// ```
     pub(crate) fn new(
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         psks: Vec<(&PreSharedKeyId, Secret)>,
     ) -> Result<Self, PskError> {
@@ -421,7 +421,7 @@ impl PskSecret {
             let psk_extracted = {
                 let zero_secret = Secret::zero(ciphersuite, mls_version);
                 zero_secret
-                    .hkdf_extract(backend, &psk)
+                    .hkdf_extract(crypto, &psk)
                     .map_err(LibraryError::unexpected_crypto_error)?
             };
 
@@ -433,7 +433,7 @@ impl PskSecret {
 
                 psk_extracted
                     .kdf_expand_label(
-                        backend,
+                        crypto,
                         "derived psk",
                         &psk_label,
                         ciphersuite.hash_length(),
@@ -443,7 +443,7 @@ impl PskSecret {
 
             // psk_secret_[i] = KDF.Extract(psk_input_[i-1], psk_secret_[i-1])
             psk_secret = psk_input
-                .hkdf_extract(backend, &psk_secret)
+                .hkdf_extract(crypto, &psk_secret)
                 .map_err(LibraryError::unexpected_crypto_error)?;
         }
 
