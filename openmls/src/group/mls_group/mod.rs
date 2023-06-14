@@ -270,6 +270,17 @@ impl MlsGroup {
         }
     }
 
+    /// Returns the [`LeafNodeIndex`] of the sender of the given staged commit
+    /// if it is an external commit.
+    pub fn ext_commit_sender_index(
+        &self,
+        staged_commit: &StagedCommit,
+    ) -> Result<LeafNodeIndex, LibraryError> {
+        self.group
+            .public_group()
+            .ext_commit_sender_index(staged_commit)
+    }
+
     /// Sets the `group_state` to [`MlsGroupState::Operational`], thus clearing
     /// any potentially pending commits.
     ///
