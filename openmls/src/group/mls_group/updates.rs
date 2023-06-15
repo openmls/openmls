@@ -101,7 +101,7 @@ impl MlsGroup {
             )?;
             // TODO #1207: Move to the top of the function.
             keypair
-                .write_to_key_store(backend)
+                .write_to_key_store(backend.key_store())
                 .map_err(ProposeSelfUpdateError::KeyStoreError)?;
         };
 
@@ -126,7 +126,7 @@ impl MlsGroup {
         let update_proposal = self._propose_self_udpate(backend, signer, leaf_node)?;
         let proposal = QueuedProposal::from_authenticated_content_by_ref(
             self.ciphersuite(),
-            backend,
+            backend.crypto(),
             update_proposal.clone(),
         )?;
         let proposal_ref = proposal.proposal_reference();
@@ -150,7 +150,7 @@ impl MlsGroup {
         let update_proposal = self._propose_self_udpate(backend, signer, leaf_node)?;
         let proposal = QueuedProposal::from_authenticated_content_by_value(
             self.ciphersuite(),
-            backend,
+            backend.crypto(),
             update_proposal.clone(),
         )?;
         let proposal_ref = proposal.proposal_reference();

@@ -101,7 +101,7 @@ impl<'a> PublicGroupDiff<'a> {
         // After we've processed the path, we can update the group context s.t.
         // the updated group context is used for path secret encryption. Note
         // that we have not yet updated the confirmed transcript hash.
-        self.update_group_context(backend)?;
+        self.update_group_context(backend.crypto())?;
 
         let serialized_group_context = self
             .group_context()
@@ -110,7 +110,7 @@ impl<'a> PublicGroupDiff<'a> {
 
         // Encrypt the path to the correct recipient nodes.
         let encrypted_path = self.diff.encrypt_path(
-            backend,
+            backend.crypto(),
             ciphersuite,
             &plain_path,
             &serialized_group_context,

@@ -184,7 +184,7 @@ impl MlsGroup {
         self.proposal_store
             .add(QueuedProposal::from_authenticated_content_by_ref(
                 self.ciphersuite(),
-                backend,
+                backend.crypto(),
                 remove_proposal.clone(),
             )?);
 

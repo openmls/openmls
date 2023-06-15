@@ -5,7 +5,7 @@
 
 use std::io::Write;
 
-use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 use tls_codec::{Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize};
 
 use super::{

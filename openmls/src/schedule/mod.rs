@@ -121,7 +121,7 @@
 // | `resumption_psk`        | "resumption"    |
 // ```
 
-use openmls_traits::{crypto::OpenMlsCrypto, types::*, OpenMlsProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, types::*};
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 

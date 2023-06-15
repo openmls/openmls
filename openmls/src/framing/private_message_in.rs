@@ -1,4 +1,4 @@
-use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::{types::Ciphersuite};
 use tls_codec::{Deserialize, Serialize, TlsDeserialize, TlsSerialize, TlsSize};
 use openmls_traits::crypto::OpenMlsCrypto;
 

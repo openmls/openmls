@@ -271,13 +271,13 @@ impl<'a> TreeSyncDiff<'a> {
         leaf_index: LeafNodeIndex,
     ) -> Result<PathDerivationResult, LibraryError> {
         let path_secret = PathSecret::from(
-            Secret::random(ciphersuite, backend, None)
+            Secret::random(ciphersuite, backend.rand(), None)
                 .map_err(LibraryError::unexpected_crypto_error)?,
         );
 
         let path_indices = self.filtered_direct_path(leaf_index);
 
-        ParentNode::derive_path(backend, ciphersuite, path_secret, path_indices)
+        ParentNode::derive_path(backend.crypto(), ciphersuite, path_secret, path_indices)
     }
 
     /// Given a new [`LeafNode`], use it to create a new path starting from
@@ -304,7 +304,7 @@ impl<'a> TreeSyncDiff<'a> {
         let (path, update_path_nodes, keypairs, commit_secret) =
             self.derive_path(backend, ciphersuite, leaf_index)?;
 
-        let parent_hash = self.process_update_path(backend, ciphersuite, leaf_index, path)?;
+        let parent_hash = self.process_update_path(backend.crypto(), ciphersuite, leaf_index, path)?;
 
         self.leaf_mut(leaf_index)
             .ok_or_else(|| LibraryError::custom("Didn't find own leaf in diff."))?

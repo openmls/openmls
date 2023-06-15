@@ -14,7 +14,7 @@
 #[cfg(test)]
 use std::collections::HashSet;
 
-use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
 
 use self::{

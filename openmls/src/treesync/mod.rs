@@ -384,11 +384,11 @@ impl TreeSync {
         let (leaf, encryption_key_pair) = LeafNode::new(backend, signer, new_leaf_node_params)?;
 
         let node = Node::LeafNode(leaf);
-        let path_secret: PathSecret = Secret::random(config.ciphersuite, backend, None)
+        let path_secret: PathSecret = Secret::random(config.ciphersuite, backend.rand(), None)
             .map_err(LibraryError::unexpected_crypto_error)?
             .into();
         let commit_secret: CommitSecret = path_secret
-            .derive_path_secret(backend, config.ciphersuite)?
+            .derive_path_secret(backend.crypto(), config.ciphersuite)?
             .into();
         let nodes = vec![TreeSyncNode::from(node).into()];
         let tree = MlsBinaryTree::new(nodes)
@@ -398,7 +398,7 @@ impl TreeSync {
             tree_hash: vec![],
         };
         // Populate tree hash caches.
-        tree_sync.populate_parent_hashes(backend, config.ciphersuite)?;
+        tree_sync.populate_parent_hashes(backend.crypto(), config.ciphersuite)?;
 
         Ok((tree_sync, commit_secret, encryption_key_pair))
     }

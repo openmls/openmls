@@ -66,7 +66,7 @@ impl CoreGroup {
                     FramedContentBody::Proposal(_) => {
                         let proposal = Box::new(QueuedProposal::from_authenticated_content_by_ref(
                             self.ciphersuite(),
-                            backend,
+                            backend.crypto(),
                             content,
                         )?);
                         if matches!(sender, Sender::NewMemberProposal) {
@@ -107,7 +107,7 @@ impl CoreGroup {
                         let content = ProcessedMessageContent::ProposalMessage(Box::new(
                             QueuedProposal::from_authenticated_content_by_ref(
                                 self.ciphersuite(),
-                                backend,
+                                backend.crypto(),
                                 content,
                             )?,
                         ));
@@ -182,7 +182,7 @@ impl CoreGroup {
         //  - ValSem006
         //  - ValSem007 MembershipTag presence
         let decrypted_message =
-            self.decrypt_message(backend, message, sender_ratchet_configuration)?;
+            self.decrypt_message(backend.crypto(), message, sender_ratchet_configuration)?;
 
         let unverified_message = self
             .public_group
@@ -269,7 +269,7 @@ impl CoreGroup {
         own_leaf_nodes: &[LeafNode],
     ) -> Result<(Vec<EncryptionKeyPair>, Vec<EncryptionKeyPair>), StageCommitError> {
         // All keys from the previous epoch are potential decryption keypairs.
-        let old_epoch_keypairs = self.read_epoch_keypairs(backend);
+        let old_epoch_keypairs = self.read_epoch_keypairs(backend.key_store());
 
         // If we are processing an update proposal that originally came from
         // us, the keypair corresponding to the leaf in the update is also a

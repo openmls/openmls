@@ -4,7 +4,7 @@
 //! [`StagedPublicGroupDiff`] and associated functions and types.
 use std::collections::HashSet;
 
-use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::{types::Ciphersuite};
 use serde::{Deserialize, Serialize};
 use tls_codec::Serialize as TlsSerialize;
 use openmls_traits::crypto::OpenMlsCrypto;

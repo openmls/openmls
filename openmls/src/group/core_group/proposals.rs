@@ -1,6 +1,6 @@
 use std::collections::{hash_map::Entry, HashMap, HashSet};
 
-use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::{types::Ciphersuite};
 use serde::{Deserialize, Serialize};
 use openmls_traits::crypto::OpenMlsCrypto;
 

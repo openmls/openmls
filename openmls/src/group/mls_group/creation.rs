@@ -31,7 +31,7 @@ impl MlsGroup {
             backend,
             signer,
             mls_group_config,
-            GroupId::random(backend),
+            GroupId::random(backend.rand()),
             credential_with_key,
         )
     }

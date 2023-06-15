@@ -341,7 +341,7 @@ impl MlsGroup {
                 // Set the membership tag only if the sender type is `Member`.
                 if plaintext.sender().is_member() {
                     plaintext.set_membership_tag(
-                        backend,
+                        backend.crypto(),
                         self.group.message_secrets().membership_key(),
                         self.group.message_secrets().serialized_context(),
                     )?;

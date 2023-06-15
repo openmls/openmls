@@ -3,7 +3,6 @@
 //! [`UpdatePathNode`] instances.
 use openmls_traits::{
     types::{Ciphersuite, HpkeCiphertext},
-    OpenMlsProvider,
 };
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};

@@ -240,9 +240,9 @@ impl CoreGroupBuilder {
         // Derive an epoch secret from the joiner secret.
         // We use a random `InitSecret` for initialization.
         let joiner_secret = JoinerSecret::new(
-            backend,
+            backend.crypto(),
             commit_secret,
-            &InitSecret::random(ciphersuite, backend, version)
+            &InitSecret::random(ciphersuite, backend.rand(), version)
                 .map_err(LibraryError::unexpected_crypto_error)?,
             &serialized_group_context,
         )
@@ -255,16 +255,16 @@ impl CoreGroupBuilder {
         let psk_secret = {
             let psks = load_psks(backend.key_store(), &resumption_psk_store, &self.psk_ids)?;
 
-            PskSecret::new(backend, ciphersuite, psks)?
+            PskSecret::new(backend.crypto(), ciphersuite, psks)?
         };
 
-        let mut key_schedule = KeySchedule::init(ciphersuite, backend, &joiner_secret, psk_secret)?;
+        let mut key_schedule = KeySchedule::init(ciphersuite, backend.crypto(), &joiner_secret, psk_secret)?;
         key_schedule
-            .add_context(backend, &serialized_group_context)
+            .add_context(backend.crypto(), &serialized_group_context)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 
         let epoch_secrets = key_schedule
-            .epoch_secrets(backend)
+            .epoch_secrets(backend.crypto())
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 
         let (group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
@@ -275,7 +275,7 @@ impl CoreGroupBuilder {
 
         let initial_confirmation_tag = message_secrets
             .confirmation_key()
-            .tag(backend, &[])
+            .tag(backend.crypto(), &[])
             .map_err(LibraryError::unexpected_crypto_error)?;
 
         let message_secrets_store =
@@ -296,7 +296,7 @@ impl CoreGroupBuilder {
 
         // Store the private key of the own leaf in the key store as an epoch keypair.
         group
-            .store_epoch_keypairs(backend, &[leaf_keypair])
+            .store_epoch_keypairs(backend.key_store(), &[leaf_keypair])
             .map_err(CoreGroupBuildError::KeyStoreError)?;
 
         Ok(group)
@@ -819,7 +819,7 @@ impl CoreGroup {
         // Filter proposals
         let (proposal_queue, contains_own_updates) = ProposalQueue::filter_proposals(
             ciphersuite,
-            backend,
+            backend.crypto(),
             sender.clone(),
             params.proposal_store(),
             params.inline_proposals(),
@@ -902,7 +902,7 @@ impl CoreGroup {
             } else {
                 // If path is not needed, update the group context and return
                 // empty path processing results
-                diff.update_group_context(backend)?;
+                diff.update_group_context(backend.crypto())?;
                 PathComputationResult::default()
             };
 
@@ -922,7 +922,7 @@ impl CoreGroup {
         )?;
 
         // Update the confirmed transcript hash using the commit we just created.
-        diff.update_confirmed_transcript_hash(backend, &authenticated_content)?;
+        diff.update_confirmed_transcript_hash(backend.crypto(), &authenticated_content)?;
 
         let serialized_provisional_group_context = diff
             .group_context()
@@ -930,7 +930,7 @@ impl CoreGroup {
             .map_err(LibraryError::missing_bound_check)?;
 
         let joiner_secret = JoinerSecret::new(
-            backend,
+            backend.crypto(),
             path_computation_result.commit_secret,
             self.group_epoch_secrets().init_secret(),
             &serialized_provisional_group_context,
@@ -945,11 +945,11 @@ impl CoreGroup {
                 &apply_proposals_values.presharedkeys,
             )?;
 
-            PskSecret::new(backend, ciphersuite, psks)?
+            PskSecret::new(backend.crypto(), ciphersuite, psks)?
         };
 
         // Create key schedule
-        let mut key_schedule = KeySchedule::init(ciphersuite, backend, &joiner_secret, psk_secret)?;
+        let mut key_schedule = KeySchedule::init(ciphersuite, backend.crypto(), &joiner_secret, psk_secret)?;
 
         let serialized_provisional_group_context = diff
             .group_context()
@@ -957,25 +957,25 @@ impl CoreGroup {
             .map_err(LibraryError::missing_bound_check)?;
 
         let welcome_secret = key_schedule
-            .welcome(backend)
+            .welcome(backend.crypto())
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
         key_schedule
-            .add_context(backend, &serialized_provisional_group_context)
+            .add_context(backend.crypto(), &serialized_provisional_group_context)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
         let provisional_epoch_secrets = key_schedule
-            .epoch_secrets(backend)
+            .epoch_secrets(backend.crypto())
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 
         // Calculate the confirmation tag
         let confirmation_tag = provisional_epoch_secrets
             .confirmation_key()
-            .tag(backend, diff.group_context().confirmed_transcript_hash())
+            .tag(backend.crypto(), diff.group_context().confirmed_transcript_hash())
             .map_err(LibraryError::unexpected_crypto_error)?;
 
         // Set the confirmation tag
         authenticated_content.set_confirmation_tag(confirmation_tag.clone());
 
-        diff.update_interim_transcript_hash(ciphersuite, backend, confirmation_tag.clone())?;
+        diff.update_interim_transcript_hash(ciphersuite, backend.crypto(), confirmation_tag.clone())?;
 
         // only computes the group info if necessary
         let group_info = if !apply_proposals_values.invitation_list.is_empty()
@@ -1016,11 +1016,11 @@ impl CoreGroup {
         let welcome_option = if !apply_proposals_values.invitation_list.is_empty() {
             // Encrypt GroupInfo object
             let (welcome_key, welcome_nonce) = welcome_secret
-                .derive_welcome_key_nonce(backend)
+                .derive_welcome_key_nonce(backend.crypto())
                 .map_err(LibraryError::unexpected_crypto_error)?;
             let encrypted_group_info = welcome_key
                 .aead_seal(
-                    backend,
+                    backend.crypto(),
                     group_info
                         .as_ref()
                         .ok_or_else(|| LibraryError::custom("GroupInfo was not computed"))?
@@ -1040,7 +1040,7 @@ impl CoreGroup {
                 path_computation_result.plain_path.as_deref(),
                 &apply_proposals_values.presharedkeys,
                 &encrypted_group_info,
-                backend,
+                backend.crypto(),
                 self.own_leaf_index(),
             )?;
 
@@ -1061,7 +1061,7 @@ impl CoreGroup {
         let staged_commit_state = MemberStagedCommitState::new(
             provisional_group_epoch_secrets,
             provisional_message_secrets,
-            diff.into_staged_diff(backend, ciphersuite)?,
+            diff.into_staged_diff(backend.crypto(), ciphersuite)?,
             path_computation_result.new_keypairs,
             // The committer is not allowed to include their own update
             // proposal, so there is no extra keypair to store here.

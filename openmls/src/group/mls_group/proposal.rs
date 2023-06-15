@@ -74,7 +74,7 @@ macro_rules! impl_propose_fun {
 
             let queued_proposal = QueuedProposal::from_authenticated_content(
                 self.ciphersuite(),
-                backend,
+                backend.crypto(),
                 proposal.clone(),
                 $ref_or_value,
             )?;
@@ -220,7 +220,7 @@ impl MlsGroup {
 
         let proposal = QueuedProposal::from_authenticated_content_by_ref(
             self.ciphersuite(),
-            backend,
+            backend.crypto(),
             add_proposal.clone(),
         )?;
         let proposal_ref = proposal.proposal_reference();
@@ -253,7 +253,7 @@ impl MlsGroup {
 
         let proposal = QueuedProposal::from_authenticated_content_by_ref(
             self.ciphersuite(),
-            backend,
+            backend.crypto(),
             remove_proposal.clone(),
         )?;
         let proposal_ref = proposal.proposal_reference();

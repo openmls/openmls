@@ -230,7 +230,7 @@ pub mod test_utils {
     ) {
         let keypair = EncryptionKeyPair::from(encryption_key);
 
-        keypair.write_to_key_store(backend).unwrap();
+        keypair.write_to_key_store(backend.key_store()).unwrap();
     }
 }
 

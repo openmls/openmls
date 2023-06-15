@@ -1,4 +1,3 @@
-use openmls_traits::OpenMlsProvider;
 use tls_codec::Serialize;
 use openmls_traits::crypto::OpenMlsCrypto;
 

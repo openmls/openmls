@@ -9,7 +9,6 @@ use std::collections::HashSet;
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     types::{Ciphersuite, HpkeCiphertext},
-    OpenMlsProvider,
 };
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};

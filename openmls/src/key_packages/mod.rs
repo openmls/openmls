@@ -242,7 +242,7 @@ impl KeyPackage {
         }
 
         // Create a new HPKE key pair
-        let ikm = Secret::random(config.ciphersuite, backend, config.version)
+        let ikm = Secret::random(config.ciphersuite, backend.rand(), config.version)
             .map_err(LibraryError::unexpected_crypto_error)?;
         let init_key = backend
             .crypto()
@@ -425,7 +425,7 @@ impl KeyPackage {
 
         // Store the encryption key pair in the key store.
         encryption_key_pair
-            .write_to_key_store(backend)
+            .write_to_key_store(backend.key_store())
             .map_err(KeyPackageNewError::KeyStoreError)?;
 
         Ok(key_package)
@@ -646,7 +646,7 @@ impl KeyPackageBuilder {
 
         // Store the encryption key pair in the key store.
         encryption_keypair
-            .write_to_key_store(backend)
+            .write_to_key_store(backend.key_store())
             .map_err(KeyPackageNewError::KeyStoreError)?;
 
         // Store the private part of the init_key into the key store.

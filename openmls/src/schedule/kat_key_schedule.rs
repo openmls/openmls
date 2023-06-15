@@ -81,7 +81,7 @@ fn generate(
         .rand()
         .random_vec(ciphersuite.hash_length())
         .expect("An unexpected error occurred.");
-    let commit_secret = CommitSecret::random(ciphersuite, &crypto);
+    let commit_secret = CommitSecret::random(ciphersuite, crypto.rand());
 
     let confirmed_transcript_hash = crypto
         .rand()
@@ -91,7 +91,7 @@ fn generate(
     // PSK secret can sometimes be the all zero vector
     let a: [u8; 1] = crypto.rand().random_array().unwrap();
     let psk_secret = if a[0] > 127 {
-        PskSecret::from(Secret::random(ciphersuite, &crypto, ProtocolVersion::Mls10).unwrap())
+        PskSecret::from(Secret::random(ciphersuite, crypto.rand(), ProtocolVersion::Mls10).unwrap())
     } else {
         PskSecret::from(Secret::zero(ciphersuite, ProtocolVersion::Mls10))
     };
@@ -106,17 +106,17 @@ fn generate(
     );
 
     let joiner_secret = JoinerSecret::new(
-        &crypto,
+        crypto.crypto(),
         commit_secret.clone(),
         init_secret,
         &group_context.tls_serialize_detached().unwrap(),
     )
     .expect("Could not create JoinerSecret.");
     let mut key_schedule =
-        KeySchedule::init(ciphersuite, &crypto, &joiner_secret, psk_secret.clone())
+        KeySchedule::init(ciphersuite, crypto.crypto(), &joiner_secret, psk_secret.clone())
             .expect("Could not create KeySchedule.");
     let welcome_secret = key_schedule
-        .welcome(&crypto)
+        .welcome(crypto.crypto())
         .expect("An unexpected error occurred.");
 
     let serialized_group_context = group_context
@@ -124,10 +124,10 @@ fn generate(
         .expect("Could not serialize group context.");
 
     key_schedule
-        .add_context(&crypto, &serialized_group_context)
+        .add_context(crypto.crypto(), &serialized_group_context)
         .expect("An unexpected error occurred.");
     let epoch_secrets = key_schedule
-        .epoch_secrets(&crypto)
+        .epoch_secrets(crypto.crypto())
         .expect("An unexpected error occurred.");
 
     // Calculate external HPKE key pair
@@ -157,7 +157,7 @@ pub fn generate_test_vector(
     use tls_codec::Serialize;
 
     // Set up setting.
-    let mut init_secret = InitSecret::random(ciphersuite, backend, ProtocolVersion::default())
+    let mut init_secret = InitSecret::random(ciphersuite, backend.rand(), ProtocolVersion::default())
         .expect("Not enough randomness.");
     let initial_init_secret = init_secret.clone();
     let group_id = backend
@@ -190,7 +190,7 @@ pub fn generate_test_vector(
             .exporter_secret()
             .derive_exported_secret(
                 ciphersuite,
-                backend,
+                backend.crypto(),
                 exporter_label,
                 exporter_context,
                 exporter_length as usize,
@@ -314,7 +314,7 @@ pub fn run_test_vector(
         );
 
         let joiner_secret = JoinerSecret::new(
-            backend,
+            backend.crypto(),
             commit_secret,
             &init_secret,
             &group_context.tls_serialize_detached().unwrap(),
@@ -334,10 +334,10 @@ pub fn run_test_vector(
         );
         let psk_secret = PskSecret::from(psk_secret_inner);
 
-        let mut key_schedule = KeySchedule::init(ciphersuite, backend, &joiner_secret, psk_secret)
+        let mut key_schedule = KeySchedule::init(ciphersuite, backend.crypto(), &joiner_secret, psk_secret)
             .expect("Could not create KeySchedule.");
         let welcome_secret = key_schedule
-            .welcome(backend)
+            .welcome(backend.crypto())
             .expect("An unexpected error occurred.");
 
         if hex_to_bytes(&epoch.welcome_secret) != welcome_secret.as_slice() {
@@ -362,11 +362,11 @@ pub fn run_test_vector(
         }
 
         key_schedule
-            .add_context(backend, &group_context_serialized)
+            .add_context(backend.crypto(), &group_context_serialized)
             .expect("An unexpected error occurred.");
 
         let epoch_secrets = key_schedule
-            .epoch_secrets(backend)
+            .epoch_secrets(backend.crypto())
             .expect("An unexpected error occurred.");
 
         init_secret = epoch_secrets.init_secret().clone();
@@ -458,7 +458,7 @@ pub fn run_test_vector(
             .exporter_secret()
             .derive_exported_secret(
                 ciphersuite,
-                backend,
+                backend.crypto(),
                 &epoch.exporter.label,
                 &hex_to_bytes(&epoch.exporter.context),
                 epoch.exporter.length as usize,

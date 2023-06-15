@@ -13,7 +13,6 @@ use super::{
     *,
 };
 
-use openmls_traits::OpenMlsProvider;
 use std::io::{Read, Write};
 use tls_codec::{
     Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, TlsSerialize, TlsSize,

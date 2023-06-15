@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 
-use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::{types::Ciphersuite};
 use serde::{Deserialize, Serialize};
 use tls_codec::VLByteSlice;
 use openmls_traits::crypto::OpenMlsCrypto;

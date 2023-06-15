@@ -6,12 +6,10 @@
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     types::{Ciphersuite, HpkeCiphertext, HpkeKeyPair},
-    OpenMlsProvider,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tls_codec::{Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, *};
-use openmls_traits::random::OpenMlsRand;
 
 #[cfg(test)]
 use crate::schedule::psk::{ExternalPsk, Psk};

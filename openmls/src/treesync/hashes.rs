@@ -1,6 +1,6 @@
 //! This module contains helper structs and functions related to parent hashing
 //! and tree hashing.
-use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 use tls_codec::{Serialize, TlsSerialize, TlsSize, VLByteSlice};
 
 use crate::{

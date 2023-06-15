@@ -171,7 +171,7 @@ fn group(
     );
 
     let group = CoreGroup::builder(
-        GroupId::random(backend),
+        GroupId::random(backend.rand()),
         CryptoConfig::with_default_version(ciphersuite),
         credential_with_key.clone(),
     )
@@ -223,7 +223,7 @@ fn build_handshake_messages(
     group.context_mut().set_epoch(epoch.into());
     let framing_parameters = FramingParameters::new(&[1, 2, 3, 4], WireFormat::PrivateMessage);
     let membership_key = MembershipKey::from_secret(
-        Secret::random(group.ciphersuite(), backend, None /* MLS version */)
+        Secret::random(group.ciphersuite(), backend.rand(), None /* MLS version */)
             .expect("Not enough randomness."),
     );
     let content = AuthenticatedContentIn::from(
@@ -242,7 +242,7 @@ fn build_handshake_messages(
     let mut plaintext: PublicMessage = content.clone().into();
     plaintext
         .set_membership_tag(
-            backend,
+            backend.crypto(),
             &membership_key,
             &group.context().tls_serialize_detached().unwrap(),
         )
@@ -279,7 +279,7 @@ fn build_application_messages(
     let epoch = random_u64();
     group.context_mut().set_epoch(epoch.into());
     let membership_key = MembershipKey::from_secret(
-        Secret::random(group.ciphersuite(), backend, None /* MLS version */)
+        Secret::random(group.ciphersuite(), backend.rand(), None /* MLS version */)
             .expect("Not enough randomness."),
     );
     let content = AuthenticatedContent::new_application(
@@ -293,7 +293,7 @@ fn build_application_messages(
     let mut plaintext: PublicMessage = content.clone().into();
     plaintext
         .set_membership_tag(
-            backend,
+            backend.crypto(),
             &membership_key,
             &group.context().tls_serialize_detached().unwrap(),
         )
@@ -334,7 +334,7 @@ pub fn generate_test_vector(
         .rand()
         .random_vec(ciphersuite.hash_length())
         .expect("An unexpected error occurred.");
-    let sender_data_secret = SenderDataSecret::random(ciphersuite, &crypto);
+    let sender_data_secret = SenderDataSecret::random(ciphersuite, crypto.rand());
     let sender_data_secret_bytes = sender_data_secret.as_slice();
 
     // Create sender_data_key/secret
@@ -343,11 +343,11 @@ pub fn generate_test_vector(
         .random_vec(77)
         .expect("An unexpected error occurred.");
     let sender_data_key = sender_data_secret
-        .derive_aead_key(&crypto, &ciphertext)
+        .derive_aead_key(crypto.crypto(), &ciphertext)
         .expect("Could not derive AEAD key.");
     // Derive initial nonce from the key schedule using the ciphertext.
     let sender_data_nonce = sender_data_secret
-        .derive_aead_nonce(ciphersuite, &crypto, &ciphertext)
+        .derive_aead_nonce(ciphersuite, crypto.crypto(), &ciphertext)
         .expect("Could not derive nonce.");
     let sender_data_info = SenderDataInfo {
         ciphertext: bytes_to_hex(&ciphertext),
@@ -391,7 +391,7 @@ pub fn generate_test_vector(
             let (application_secret_key, application_secret_nonce) = decryption_secret_tree
                 .secret_for_decryption(
                     ciphersuite,
-                    &crypto,
+                    crypto.crypto(),
                     sender_leaf,
                     SecretType::ApplicationSecret,
                     generation,
@@ -414,7 +414,7 @@ pub fn generate_test_vector(
             let (handshake_secret_key, handshake_secret_nonce) = decryption_secret_tree
                 .secret_for_decryption(
                     ciphersuite,
-                    &crypto,
+                    crypto.crypto(),
                     sender_leaf,
                     SecretType::HandshakeSecret,
                     generation,
@@ -503,14 +503,14 @@ pub fn run_test_vector(
 
     let sender_data_key = sender_data_secret
         .derive_aead_key(
-            backend,
+            backend.crypto(),
             &hex_to_bytes(&test_vector.sender_data_info.ciphertext),
         )
         .expect("Could not derive AEAD key.");
     let sender_data_nonce = sender_data_secret
         .derive_aead_nonce(
             ciphersuite,
-            backend,
+            backend.crypto(),
             &hex_to_bytes(&test_vector.sender_data_info.ciphertext),
         )
         .expect("Could not derive nonce.");
@@ -569,7 +569,7 @@ pub fn run_test_vector(
             let (application_secret_key, application_secret_nonce) = secret_tree
                 .secret_for_decryption(
                     ciphersuite,
-                    backend,
+                    backend.crypto(),
                     leaf_index,
                     SecretType::ApplicationSecret,
                     generation,
@@ -622,20 +622,20 @@ pub fn run_test_vector(
             // above ratcheted the tree forward.
             let mut message_secrets = MessageSecrets::new(
                 sender_data_secret.clone(),
-                MembershipKey::random(ciphersuite, backend), // we don't care about this value
-                ConfirmationKey::random(ciphersuite, backend), // we don't care about this value
+                MembershipKey::random(ciphersuite, backend.rand()), // we don't care about this value
+                ConfirmationKey::random(ciphersuite, backend.rand()), // we don't care about this value
                 group.context().tls_serialize_detached().unwrap(),
                 fresh_secret_tree.clone(),
             );
 
             // Decrypt and check application message
             let sender_data = mls_ciphertext_application
-                .sender_data(group.message_secrets_test_mut(), backend, ciphersuite)
+                .sender_data(group.message_secrets_test_mut(), backend.crypto(), ciphersuite)
                 .expect("Unable to get sender data");
             let mls_plaintext_application: AuthenticatedContentIn = mls_ciphertext_application
                 .to_verifiable_content(
                     ciphersuite,
-                    backend,
+                    backend.crypto(),
                     &mut message_secrets,
                     leaf_index,
                     &SenderRatchetConfiguration::default(),
@@ -666,7 +666,7 @@ pub fn run_test_vector(
                 .clone()
                 .secret_for_decryption(
                     ciphersuite,
-                    backend,
+                    backend.crypto(),
                     leaf_index,
                     SecretType::HandshakeSecret,
                     generation,
@@ -704,12 +704,12 @@ pub fn run_test_vector(
 
             // Decrypt and check message
             let sender_data = mls_ciphertext_handshake
-                .sender_data(group.message_secrets_test_mut(), backend, ciphersuite)
+                .sender_data(group.message_secrets_test_mut(), backend.crypto(), ciphersuite)
                 .expect("Unable to get sender data");
             let mls_plaintext_handshake: AuthenticatedContentIn = mls_ciphertext_handshake
                 .to_verifiable_content(
                     ciphersuite,
-                    backend,
+                    backend.crypto(),
                     group.message_secrets_test_mut(),
                     leaf_index,
                     &SenderRatchetConfiguration::default(),
@@ -742,7 +742,7 @@ pub fn run_test_vector(
                 .clone()
                 .secret_for_decryption(
                     ciphersuite,
-                    backend,
+                    backend.crypto(),
                     leaf_index,
                     SecretType::HandshakeSecret,
                     generation,
@@ -779,12 +779,12 @@ pub fn run_test_vector(
 
             // Decrypt and check message
             let sender_data = mls_ciphertext_handshake
-                .sender_data(group.message_secrets_test_mut(), backend, ciphersuite)
+                .sender_data(group.message_secrets_test_mut(), backend.crypto(), ciphersuite)
                 .expect("Unable to get sender data");
             let mls_plaintext_handshake: AuthenticatedContentIn = mls_ciphertext_handshake
                 .to_verifiable_content(
                     ciphersuite,
-                    backend,
+                    backend.crypto(),
                     group.message_secrets_test_mut(),
                     leaf_index,
                     &SenderRatchetConfiguration::default(),
