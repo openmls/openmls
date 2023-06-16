@@ -136,7 +136,7 @@ impl OpenMlsCrypto for LibcruxProvider {
     }
 
     fn supported_ciphersuites(&self) -> Vec<Ciphersuite> {
-        if cfg!(target_arch = "x86_64") {
+        if libcrux::aes_ni_support() {
             vec![
                 Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
                 Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
