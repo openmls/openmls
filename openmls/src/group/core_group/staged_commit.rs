@@ -410,7 +410,7 @@ impl StagedCommit {
     }
 
     /// Returns an iterator over all [`QueuedProposal`]s.
-    pub(crate) fn queued_proposals(&self) -> impl Iterator<Item = &QueuedProposal> {
+    pub fn queued_proposals(&self) -> impl Iterator<Item = &QueuedProposal> {
         self.staged_proposal_queue.queued_proposals()
     }
 
