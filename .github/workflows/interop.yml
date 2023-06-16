@@ -19,7 +19,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: OpenMLS | Install dependencies
-        run: sudo apt-get -y install protobuf-compiler
+        run: sudo apt-get -y install protobuf-compiler ninja-build
 
       - name: OpenMLS | Build
         run: cargo build -p interop_client
