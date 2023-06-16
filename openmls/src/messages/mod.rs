@@ -31,6 +31,7 @@ use crate::{
     versions::ProtocolVersion,
 };
 
+pub mod codec;
 pub mod external_proposals;
 pub mod group_info;
 pub mod proposals;

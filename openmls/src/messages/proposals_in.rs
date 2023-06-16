@@ -22,7 +22,7 @@ use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 use super::proposals::{
     AddProposal, AppAckProposal, ExternalInitProposal, GroupContextExtensionProposal,
     PreSharedKeyProposal, Proposal, ProposalOrRef, ProposalType, ReInitProposal, RemoveProposal,
-    UpdateProposal,
+    UnknownProposal, UpdateProposal,
 };
 
 /// Proposal.
@@ -45,31 +45,22 @@ use super::proposals::{
 /// } Proposal;
 /// ```
 #[allow(clippy::large_enum_variant)]
-#[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSize, TlsSerialize, TlsDeserialize,
-)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 #[allow(missing_docs)]
 #[repr(u16)]
 pub enum ProposalIn {
-    #[tls_codec(discriminant = 1)]
     Add(AddProposalIn),
-    #[tls_codec(discriminant = 2)]
     Update(UpdateProposalIn),
-    #[tls_codec(discriminant = 3)]
     Remove(RemoveProposal),
-    #[tls_codec(discriminant = 4)]
     PreSharedKey(PreSharedKeyProposal),
-    #[tls_codec(discriminant = 5)]
     ReInit(ReInitProposal),
-    #[tls_codec(discriminant = 6)]
     ExternalInit(ExternalInitProposal),
-    #[tls_codec(discriminant = 7)]
     GroupContextExtensions(GroupContextExtensionProposal),
     // # Extensions
     // TODO(#916): `AppAck` is not in draft-ietf-mls-protocol-17 but
     //             was moved to `draft-ietf-mls-extensions-00`.
-    #[tls_codec(discriminant = 8)]
     AppAck(AppAckProposal),
+    Unknown((u16, UnknownProposal)),
 }
 
 impl ProposalIn {
@@ -84,6 +75,9 @@ impl ProposalIn {
             ProposalIn::ExternalInit(_) => ProposalType::ExternalInit,
             ProposalIn::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,
             ProposalIn::AppAck(_) => ProposalType::AppAck,
+            ProposalIn::Unknown((proposal_type, _)) => {
+                ProposalType::Unknown(proposal_type.to_owned())
+            }
         }
     }
 
@@ -117,6 +111,7 @@ impl ProposalIn {
                 Proposal::GroupContextExtensions(group_context_extension)
             }
             ProposalIn::AppAck(app_ack) => Proposal::AppAck(app_ack),
+            ProposalIn::Unknown(unknown) => Proposal::Unknown(unknown),
         })
     }
 }
@@ -294,6 +289,7 @@ impl From<ProposalIn> for crate::messages::proposals::Proposal {
                 Self::GroupContextExtensions(group_context_extension)
             }
             ProposalIn::AppAck(app_ack) => Self::AppAck(app_ack),
+            ProposalIn::Unknown(unknown) => Self::Unknown(unknown),
         }
     }
 }
@@ -311,6 +307,7 @@ impl From<crate::messages::proposals::Proposal> for ProposalIn {
                 Self::GroupContextExtensions(group_context_extension)
             }
             Proposal::AppAck(app_ack) => Self::AppAck(app_ack),
+            Proposal::Unknown(unknown) => Self::Unknown(unknown),
         }
     }
 }

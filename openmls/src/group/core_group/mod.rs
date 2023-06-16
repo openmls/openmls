@@ -50,6 +50,7 @@ use super::{
         ValidationError,
     },
     group_context::*,
+    proposal::CustomProposal,
     public_group::{diff::compute_path::PathComputationResult, PublicGroup},
 };
 
@@ -407,6 +408,23 @@ impl CoreGroup {
     ) -> Result<AuthenticatedContent, LibraryError> {
         let presharedkey_proposal = PreSharedKeyProposal::new(psk);
         let proposal = Proposal::PreSharedKey(presharedkey_proposal);
+        AuthenticatedContent::member_proposal(
+            framing_parameters,
+            self.own_leaf_index(),
+            proposal,
+            self.context(),
+            signer,
+        )
+    }
+
+    pub(crate) fn create_custom_proposal(
+        &self,
+        framing_parameters: FramingParameters,
+        custom_proposal: CustomProposal,
+        signer: &impl Signer,
+    ) -> Result<AuthenticatedContent, LibraryError> {
+        let unknown_proposal = UnknownProposal(custom_proposal.0 .1.into());
+        let proposal = Proposal::Unknown((custom_proposal.0 .0, unknown_proposal));
         AuthenticatedContent::member_proposal(
             framing_parameters,
             self.own_leaf_index(),
