@@ -479,7 +479,10 @@ impl PublicGroup {
             let is_inline = p.proposal_or_ref_type() == ProposalOrRefType::Proposal;
             let is_allowed_type = matches!(
                 p.proposal(),
-                Proposal::ExternalInit(_) | Proposal::Remove(_) | Proposal::PreSharedKey(_)
+                Proposal::ExternalInit(_)
+                    | Proposal::Remove(_)
+                    | Proposal::PreSharedKey(_)
+                    | Proposal::Unknown(_)
             );
             is_inline && !is_allowed_type
         });
