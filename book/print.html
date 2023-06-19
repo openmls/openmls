@@ -205,15 +205,11 @@ details.</p>
 <p>The user manual describes how to use the different parts of the OpenMLS API.</p>
 <h2 id="prerequisites"><a class="header" href="#prerequisites">Prerequisites</a></h2>
 <p>Most operations in OpenMLS require a <code>backend</code> object that provides all required cryptographic algorithms via the <a href="https://docs.rs/openmls/latest/openmls/prelude/trait.OpenMlsCryptoProvider.html"><code>OpenMlsCryptoProvider</code></a> trait.
-Currently, there are two implementations available through the <a href="https://crates.io/crates/openmls_rust_crypto">openmls_rust_crypto</a> and <a href="https://crates.io/crates/openmls_evercrypt">openmls_evercrypt</a> crates.</p>
+Currently, there are two implementations available through the <a href="https://crates.io/crates/openmls_rust_crypto">openmls_rust_crypto</a> crate.</p>
 <p>Thus, you can create the <code>backend</code> object for the following examples using ...</p>
 <pre><code class="language-rust no_run noplayground">    use openmls_rust_crypto::OpenMlsRustCrypto;
 
     let backend = OpenMlsRustCrypto::default();</code></pre>
-<p>... or ...</p>
-<pre><code class="language-rust no_run noplayground">    use openmls_evercrypt::OpenMlsEvercrypt;
-
-    let backend = OpenMlsEvercrypt::default();</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="credentials"><a class="header" href="#credentials">Credentials</a></h1>
 <p>MLS relies on credentials to encode the identity of clients in the context of a group.
 There are different types of credentials, with the OpenMLS library currently only supporting the <code>BasicCredential</code> credential type (see below).
@@ -714,18 +710,13 @@ Please ensure you know what you're doing when implementing your own versions.</s
 </blockquote>
 <p>Because implementing the <code>OpenMLSCryptoProvider</code> is challenging, requires
 tremendous care, and is not what the average OpenMLS consumer wants to (or should) do,
-we provide two implementations that can be used.</p>
+we provide an implementation that can be used.</p>
 <ul>
 <li><a href="https://crates.io/crates/openmls_rust_crypto">Rust Crypto</a></li>
-<li><a href="https://crates.io/crates/openmls_evercrypt_backend">Evercrypt</a></li>
 </ul>
 <p><strong>Rust Crypto Provider</strong>
 The go-to default at the moment is an implementation using commonly used, native Rust
 crypto implementations.</p>
-<p><strong>Evercrypt Provider</strong>
-In addition to the Rust Crypto Provider, there's the Evercrypt provider that uses
-the formally verified HACL*/Evercrypt library.
-Note that this provider does not work equally well on all platforms yet.</p>
 <h2 id="the-traits"><a class="header" href="#the-traits">The Traits</a></h2>
 <p>There are 4 different traits defined in the <a href="https://crates.io/crates/openmls_traits">OpenMLS traits crate</a>.</p>
 <h3 id="openmlsrand"><a class="header" href="#openmlsrand">OpenMlsRand</a></h3>
@@ -1159,7 +1150,6 @@ It is also sufficient to tag only the most high-level crate being published.</p>
 <li><a href="https://github.com/openmls/openmls/blob/main/traits/Cargo.toml">Traits</a></li>
 <li><a href="https://github.com/openmls/openmls/blob/main/memory_keystore/Cargo.toml">Memory Keystore</a></li>
 <li><a href="https://github.com/openmls/openmls/blob/main/openmls_rust_crypto/Cargo.toml">Rust Crypto Backend</a></li>
-<li><a href="https://github.com/openmls/openmls/blob/main/evercrypt_backend/Cargo.toml">Evercrypt Backend</a></li>
 <li><a href="https://github.com/openmls/openmls/blob/main/openmls/Cargo.toml">OpenMLS</a></li>
 </ul>
 <h2 id="release-note-and-changelog-template"><a class="header" href="#release-note-and-changelog-template">Release note and changelog template</a></h2>
