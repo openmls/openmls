@@ -11,7 +11,7 @@ use rstest_reuse::{self, *};
 use crate::{
     binary_tree::LeafNodeIndex,
     framing::*,
-    group::{config::CryptoConfig, errors::*, *},
+    group::{config::CryptoConfig, *},
     key_packages::*,
 };
 

@@ -20,7 +20,7 @@ use crate::{
         mls_content::FramedContentBody, validation::ProcessedMessageContent, AuthenticatedContent,
         FramedContent, MlsMessageIn, MlsMessageOut, ProtocolMessage, PublicMessage, Sender,
     },
-    group::{config::CryptoConfig, errors::*, *},
+    group::{config::CryptoConfig, *},
     key_packages::{errors::*, *},
     messages::{
         proposals::{AddProposal, Proposal, ProposalOrRef, RemoveProposal, UpdateProposal},
