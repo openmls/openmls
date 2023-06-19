@@ -60,7 +60,8 @@ impl From<Node> for NodeIn {
 
 // The following `From` implementation breaks abstraction layers and MUST
 // NOT be made available outside of tests or "test-utils".
-#[cfg(any(feature = "test-utils", test))]
+// XXX: We do it anyway here.
+// #[cfg(any(feature = "test-utils", test))]
 impl From<NodeIn> for Node {
     fn from(node: NodeIn) -> Self {
         match node {

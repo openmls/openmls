@@ -29,6 +29,7 @@ use serde::{Deserialize, Serialize};
 // Private
 mod application_id_extension;
 mod codec;
+mod expandable_tree;
 mod external_pub_extension;
 mod external_sender_extension;
 mod ratchet_tree_extension;
@@ -40,6 +41,7 @@ pub mod errors;
 
 // Public re-exports
 pub use application_id_extension::ApplicationIdExtension;
+pub use expandable_tree::ExpandableTreeExtension;
 pub use external_pub_extension::ExternalPubExtension;
 pub use external_sender_extension::{
     ExternalSender, ExternalSendersExtension, SenderExtensionIndex,
@@ -87,6 +89,9 @@ pub enum ExtensionType {
     /// of senders that are permitted to send external proposals to the group.
     ExternalSenders,
 
+    /// An expandable tree information
+    ExpandableTree,
+
     /// A currently unknown extension type.
     Unknown(u16),
 }
@@ -125,6 +130,7 @@ impl From<u16> for ExtensionType {
             3 => ExtensionType::RequiredCapabilities,
             4 => ExtensionType::ExternalPub,
             5 => ExtensionType::ExternalSenders,
+            0xF000 => ExtensionType::ExpandableTree,
             unknown => ExtensionType::Unknown(unknown),
         }
     }
@@ -138,6 +144,7 @@ impl From<ExtensionType> for u16 {
             ExtensionType::RequiredCapabilities => 3,
             ExtensionType::ExternalPub => 4,
             ExtensionType::ExternalSenders => 5,
+            ExtensionType::ExpandableTree => 0xF000, // Use a private value for now
             ExtensionType::Unknown(unknown) => unknown,
         }
     }
@@ -153,6 +160,7 @@ impl ExtensionType {
                 | ExtensionType::RequiredCapabilities
                 | ExtensionType::ExternalPub
                 | ExtensionType::ExternalSenders
+                | ExtensionType::ExpandableTree
         )
     }
 }
@@ -187,6 +195,8 @@ pub enum Extension {
 
     /// A [`ExternalPubExtension`]
     ExternalSenders(ExternalSendersExtension),
+
+    ExpandableTree(ExpandableTreeExtension),
 
     /// A currently unknown extension.
     Unknown(u16, UnknownExtension),
@@ -437,6 +447,7 @@ impl Extension {
             Extension::RequiredCapabilities(_) => ExtensionType::RequiredCapabilities,
             Extension::ExternalPub(_) => ExtensionType::ExternalPub,
             Extension::ExternalSenders(_) => ExtensionType::ExternalSenders,
+            Extension::ExpandableTree(_) => ExtensionType::ExpandableTree,
             Extension::Unknown(kind, _) => ExtensionType::Unknown(*kind),
         }
     }

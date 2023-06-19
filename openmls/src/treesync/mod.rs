@@ -97,8 +97,8 @@ pub use node::{leaf_node::LeafNode, parent_node::ParentNode, Node};
 pub mod tests_and_kats;
 
 /// An exported ratchet tree as used in, e.g., [`GroupInfo`](crate::messages::group_info::GroupInfo).
-#[derive(PartialEq, Eq, Clone, Debug, Serialize, Deserialize, TlsSerialize, TlsSize)]
-pub struct RatchetTree(Vec<Option<Node>>);
+#[derive(PartialEq, Eq, Clone, Debug, Serialize, Deserialize, TlsSerialize, TlsSize, Default)]
+pub struct RatchetTree(pub(crate) Vec<Option<Node>>);
 
 /// An error during processing of an incoming ratchet tree.
 #[derive(Error, Debug, PartialEq, Clone)]
@@ -217,9 +217,18 @@ impl RatchetTree {
 /// A ratchet tree made of unverified nodes. This is used for deserialization
 /// and verification.
 #[derive(
-    PartialEq, Eq, Clone, Debug, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    PartialEq,
+    Eq,
+    Clone,
+    Debug,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
+    Default,
 )]
-pub struct RatchetTreeIn(Vec<Option<NodeIn>>);
+pub struct RatchetTreeIn(pub(crate) Vec<Option<NodeIn>>);
 
 impl RatchetTreeIn {
     /// Create a new [`RatchetTreeIn`] from a vector of nodes after verifying

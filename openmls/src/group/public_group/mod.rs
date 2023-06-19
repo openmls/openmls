@@ -28,13 +28,14 @@ use crate::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
     ciphersuite::signable::Verifiable,
     error::LibraryError,
-    extensions::RequiredCapabilitiesExtension,
+    extensions::{ExpandableTreeExtension, RequiredCapabilitiesExtension},
     framing::InterimTranscriptHashInput,
     messages::{
         group_info::{GroupInfo, VerifiableGroupInfo},
         proposals::{Proposal, ProposalOrRefType, ProposalType},
         ConfirmationTag, PathSecret,
     },
+    prelude::Node,
     schedule::CommitSecret,
     treesync::{
         errors::{DerivePathError, TreeSyncFromNodesError},
@@ -98,6 +99,30 @@ impl PublicGroup {
         })
     }
 
+    pub fn from_external2(
+        backend: &impl OpenMlsCryptoProvider,
+        expandable_tree: ExpandableTreeExtension,
+        verifiable_group_info: VerifiableGroupInfo,
+        proposal_store: ProposalStore,
+    ) -> Result<(Self, GroupInfo), CreationFromExternalError> {
+        let ciphersuite = verifiable_group_info.ciphersuite();
+
+        let treesync = build_expandable_tree(
+            expandable_tree,
+            ciphersuite,
+            backend,
+            verifiable_group_info.group_id(),
+        )?;
+
+        build_group(
+            treesync,
+            verifiable_group_info,
+            ciphersuite,
+            backend,
+            proposal_store,
+        )
+    }
+
     /// Create a [`PublicGroup`] instance to start tracking an existing MLS group.
     ///
     /// This function performs basic validation checks and returns an error if
@@ -111,63 +136,20 @@ impl PublicGroup {
     ) -> Result<(Self, GroupInfo), CreationFromExternalError> {
         let ciphersuite = verifiable_group_info.ciphersuite();
 
-        let group_id = verifiable_group_info.group_id();
-        let ratchet_tree = ratchet_tree
-            .into_verified(ciphersuite, backend.crypto(), group_id)
-            .map_err(|e| {
-                CreationFromExternalError::TreeSyncError(TreeSyncFromNodesError::RatchetTreeError(
-                    e,
-                ))
-            })?;
+        let treesync = build_tree(
+            ratchet_tree,
+            ciphersuite,
+            backend,
+            verifiable_group_info.group_id(),
+        )?;
 
-        // Create a RatchetTree from the given nodes. We have to do this before
-        // verifying the group info, since we need to find the Credential to verify the
-        // signature against.
-        let treesync = TreeSync::from_ratchet_tree(backend, ciphersuite, ratchet_tree)?;
-
-        let group_info: GroupInfo = {
-            let signer_signature_key = treesync
-                .leaf(verifiable_group_info.signer())
-                .ok_or(CreationFromExternalError::UnknownSender)?
-                .signature_key()
-                .clone()
-                .into_signature_public_key_enriched(ciphersuite.signature_algorithm());
-
-            verifiable_group_info
-                .verify(backend.crypto(), &signer_signature_key)
-                .map_err(|_| CreationFromExternalError::InvalidGroupInfoSignature)?
-        };
-
-        if treesync.tree_hash() != group_info.group_context().tree_hash() {
-            return Err(CreationFromExternalError::TreeHashMismatch);
-        }
-
-        if group_info.group_context().protocol_version() != ProtocolVersion::Mls10 {
-            return Err(CreationFromExternalError::UnsupportedMlsVersion);
-        }
-
-        let group_context = GroupContext::from(group_info.clone());
-
-        let interim_transcript_hash = {
-            let input = InterimTranscriptHashInput::from(group_info.confirmation_tag());
-
-            input.calculate_interim_transcript_hash(
-                backend.crypto(),
-                group_context.ciphersuite(),
-                group_context.confirmed_transcript_hash(),
-            )?
-        };
-
-        Ok((
-            Self {
-                treesync,
-                group_context,
-                interim_transcript_hash,
-                confirmation_tag: group_info.confirmation_tag().clone(),
-                proposal_store,
-            },
-            group_info,
-        ))
+        build_group(
+            treesync,
+            verifiable_group_info,
+            ciphersuite,
+            backend,
+            proposal_store,
+        )
     }
 
     /// Returns the index of the sender of a staged, external commit.
@@ -279,6 +261,90 @@ impl PublicGroup {
     pub fn add_proposal(&mut self, proposal: QueuedProposal) {
         self.proposal_store.add(proposal)
     }
+}
+
+fn build_group(
+    treesync: TreeSync,
+    verifiable_group_info: VerifiableGroupInfo,
+    ciphersuite: Ciphersuite,
+    backend: &impl OpenMlsCryptoProvider,
+    proposal_store: ProposalStore,
+) -> Result<(PublicGroup, GroupInfo), CreationFromExternalError> {
+    let group_info: GroupInfo = {
+        let signer_signature_key = treesync
+            .leaf(verifiable_group_info.signer())
+            .ok_or(CreationFromExternalError::UnknownSender)?
+            .signature_key()
+            .clone()
+            .into_signature_public_key_enriched(ciphersuite.signature_algorithm());
+
+        verifiable_group_info
+            .verify(backend.crypto(), &signer_signature_key)
+            .map_err(|_| CreationFromExternalError::InvalidGroupInfoSignature)?
+    };
+
+    if treesync.tree_hash() != group_info.group_context().tree_hash() {
+        return Err(CreationFromExternalError::TreeHashMismatch);
+    }
+
+    if group_info.group_context().protocol_version() != ProtocolVersion::Mls10 {
+        return Err(CreationFromExternalError::UnsupportedMlsVersion);
+    }
+
+    let group_context = GroupContext::from(group_info.clone());
+
+    let interim_transcript_hash = {
+        let input = InterimTranscriptHashInput::from(group_info.confirmation_tag());
+
+        input.calculate_interim_transcript_hash(
+            backend.crypto(),
+            group_context.ciphersuite(),
+            group_context.confirmed_transcript_hash(),
+        )?
+    };
+
+    Ok((
+        PublicGroup {
+            treesync,
+            group_context,
+            interim_transcript_hash,
+            confirmation_tag: group_info.confirmation_tag().clone(),
+            proposal_store,
+        },
+        group_info,
+    ))
+}
+
+fn build_tree(
+    ratchet_tree: RatchetTreeIn,
+    ciphersuite: Ciphersuite,
+    backend: &impl OpenMlsCryptoProvider,
+    group_id: &GroupId,
+) -> Result<TreeSync, CreationFromExternalError> {
+    let ratchet_tree = ratchet_tree
+        .into_verified(ciphersuite, backend.crypto(), group_id)
+        .map_err(|e| {
+            CreationFromExternalError::TreeSyncError(TreeSyncFromNodesError::RatchetTreeError(e))
+        })?;
+    let treesync = TreeSync::from_ratchet_tree(backend, ciphersuite, ratchet_tree)?;
+    Ok(treesync)
+}
+
+fn build_expandable_tree(
+    expandable_tree: ExpandableTreeExtension,
+    ciphersuite: Ciphersuite,
+    backend: &impl OpenMlsCryptoProvider,
+    group_id: &GroupId,
+) -> Result<TreeSync, CreationFromExternalError> {
+    let mut nodes: Vec<Option<Node>> =
+        vec![None; usize::try_from(expandable_tree.num_leaves()).unwrap()];
+    for node in expandable_tree.into_nodes().into_iter() {
+        nodes[usize::try_from(node.index).unwrap()] = node.node.map(|n| n.into());
+    }
+    let ratchet_tree = RatchetTree(nodes);
+
+    let treesync = TreeSync::from_ratchet_tree(backend, ciphersuite, ratchet_tree)?;
+    Ok(treesync)
 }
 
 // Getters

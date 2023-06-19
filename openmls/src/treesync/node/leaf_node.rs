@@ -753,6 +753,32 @@ pub(crate) struct VerifiableKeyPackageLeafNode {
     signature: Signature,
 }
 
+// XXX: Skip signature checks.
+impl From<VerifiableKeyPackageLeafNode> for LeafNode {
+    fn from(value: VerifiableKeyPackageLeafNode) -> Self {
+        Self {
+            payload: value.payload,
+            signature: value.signature,
+        }
+    }
+}
+impl From<VerifiableUpdateLeafNode> for LeafNode {
+    fn from(value: VerifiableUpdateLeafNode) -> Self {
+        Self {
+            payload: value.payload,
+            signature: value.signature,
+        }
+    }
+}
+impl From<VerifiableCommitLeafNode> for LeafNode {
+    fn from(value: VerifiableCommitLeafNode) -> Self {
+        Self {
+            payload: value.payload,
+            signature: value.signature,
+        }
+    }
+}
+
 impl VerifiableKeyPackageLeafNode {
     pub(crate) fn signature_key(&self) -> &SignaturePublicKey {
         &self.payload.signature_key

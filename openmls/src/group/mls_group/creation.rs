@@ -109,6 +109,16 @@ impl MlsGroup {
         welcome: Welcome,
         ratchet_tree: Option<RatchetTreeIn>,
     ) -> Result<Self, WelcomeError<KeyStore::Error>> {
+        Self::new_from_welcome2(backend, mls_group_config, welcome, ratchet_tree, None)
+    }
+
+    pub fn new_from_welcome2<KeyStore: OpenMlsKeyStore>(
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        mls_group_config: &MlsGroupConfig,
+        welcome: Welcome,
+        ratchet_tree: Option<RatchetTreeIn>,
+        expandable_tree: Option<ExpandableTreeExtension>,
+    ) -> Result<Self, WelcomeError<KeyStore::Error>> {
         let resumption_psk_store =
             ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
         let (key_package, _) = welcome
@@ -140,9 +150,10 @@ impl MlsGroup {
             .delete(backend)
             .map_err(WelcomeError::KeyStoreError)?;
 
-        let mut group = CoreGroup::new_from_welcome(
+        let mut group = CoreGroup::new_from_welcome2(
             welcome,
             ratchet_tree,
+            expandable_tree,
             key_package_bundle,
             backend,
             resumption_psk_store,

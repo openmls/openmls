@@ -825,7 +825,7 @@ impl<'a> TreeSyncDiff<'a> {
             nodes.push(leaf.node().clone().map(Node::LeafNode));
         } else {
             // The tree was empty.
-            return RatchetTree::trimmed(vec![]);
+            return RatchetTree::default();
         }
 
         // Blank parent node used for padding

@@ -18,6 +18,24 @@ impl CoreGroup {
         ratchet_tree: Option<RatchetTreeIn>,
         key_package_bundle: KeyPackageBundle,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        resumption_psk_store: ResumptionPskStore,
+    ) -> Result<Self, WelcomeError<KeyStore::Error>> {
+        Self::new_from_welcome2(
+            welcome,
+            ratchet_tree,
+            None,
+            key_package_bundle,
+            backend,
+            resumption_psk_store,
+        )
+    }
+
+    pub fn new_from_welcome2<KeyStore: OpenMlsKeyStore>(
+        welcome: Welcome,
+        ratchet_tree: Option<RatchetTreeIn>,
+        expandable_tree: Option<ExpandableTreeExtension>,
+        key_package_bundle: KeyPackageBundle,
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         mut resumption_psk_store: ResumptionPskStore,
     ) -> Result<Self, WelcomeError<KeyStore::Error>> {
         log::debug!("CoreGroup::new_from_welcome_internal");
@@ -124,7 +142,10 @@ impl CoreGroup {
                 Some(extension) => (extension.ratchet_tree().clone(), true),
                 None => match ratchet_tree {
                     Some(ratchet_tree) => (ratchet_tree, false),
-                    None => return Err(WelcomeError::MissingRatchetTree),
+                    None => match expandable_tree {
+                        Some(_) => (RatchetTreeIn::default(), false),
+                        None => return Err(WelcomeError::MissingRatchetTree),
+                    },
                 },
             };
 
@@ -132,12 +153,24 @@ impl CoreGroup {
 
         // Since there is currently only the external pub extension, there is no
         // group info extension of interest here.
-        let (public_group, _group_info_extensions) = PublicGroup::from_external(
-            backend,
-            ratchet_tree,
-            verifiable_group_info,
-            ProposalStore::new(),
-        )?;
+        let (public_group, _group_info_extensions) = if ratchet_tree.0.is_empty() {
+            // The `ratchet_tree` is empty if we use expandable trees.
+            let expandable_tree =
+                expandable_tree.expect("If we get here, there have to be expandable tree info");
+            PublicGroup::from_external2(
+                backend,
+                expandable_tree,
+                verifiable_group_info,
+                ProposalStore::new(),
+            )?
+        } else {
+            PublicGroup::from_external(
+                backend,
+                ratchet_tree,
+                verifiable_group_info,
+                ProposalStore::new(),
+            )?
+        };
 
         // Find our own leaf in the tree.
         let own_leaf_index = public_group
