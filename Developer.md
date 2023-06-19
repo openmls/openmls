@@ -10,10 +10,9 @@ the current state of the `main` branch as well.
 This repository is a cargo workspace with the OpenMLS library as the main component.
 
 In order to use OpenMLS an implementation of the [traits](https://github.com/openmls/openmls/tree/main/traits) is required.
-This repository provides two default implementations
+This repository provides one default implementations
 
 - [Rust Crypto](https://github.com/openmls/openmls/tree/main/openmls_rust_crypto/)
-- [Evercrypt](https://github.com/openmls/openmls/tree/main/evercrypt_backend/)
 
 It further holds the following crates that are used for testing.
 
