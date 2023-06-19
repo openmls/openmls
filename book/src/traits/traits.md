@@ -6,7 +6,7 @@
 
 Because implementing the `OpenMLSCryptoProvider` is challenging, requires
 tremendous care, and is not what the average OpenMLS consumer wants to (or should) do,
-we provide one implementations that can be used.
+we provide an implementation that can be used.
 
 - [Rust Crypto]
 
