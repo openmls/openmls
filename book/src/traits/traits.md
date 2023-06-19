@@ -6,19 +6,13 @@
 
 Because implementing the `OpenMLSCryptoProvider` is challenging, requires
 tremendous care, and is not what the average OpenMLS consumer wants to (or should) do,
-we provide two implementations that can be used.
+we provide an implementation that can be used.
 
 - [Rust Crypto]
-- [Evercrypt]
 
 **Rust Crypto Provider**
 The go-to default at the moment is an implementation using commonly used, native Rust
 crypto implementations.
-
-**Evercrypt Provider**
-In addition to the Rust Crypto Provider, there's the Evercrypt provider that uses
-the formally verified HACL\*/Evercrypt library.
-Note that this provider does not work equally well on all platforms yet.
 
 ## The Traits
 
@@ -84,6 +78,5 @@ It is not necessary to implement all sub-traits if one functionality is missing.
 Suppose you want to use a persisting key store. In that case, it is sufficient to do a new implementation of the key store trait and combine it with one of the provided crypto and randomness trait implementations.
 
 [rust crypto]: https://crates.io/crates/openmls_rust_crypto
-[evercrypt]: https://crates.io/crates/openmls_evercrypt_backend
 [openmls traits crate]: https://crates.io/crates/openmls_traits
 [rand crate]: https://crates.io/crates/rand
