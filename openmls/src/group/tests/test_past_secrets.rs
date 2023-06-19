@@ -9,7 +9,7 @@ use rstest_reuse::{self, *};
 use super::utils::{generate_credential_with_key, generate_key_package};
 use crate::{
     framing::{MessageDecryptionError, ProcessedMessageContent},
-    group::{config::CryptoConfig, errors::*, *},
+    group::{config::CryptoConfig, *},
 };
 
 #[apply(ciphersuites_and_backends)]

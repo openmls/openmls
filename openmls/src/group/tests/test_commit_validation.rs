@@ -14,7 +14,7 @@ use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::signable::Signable,
     framing::*,
-    group::{config::CryptoConfig, errors::*, *},
+    group::{config::CryptoConfig, *},
     messages::proposals::*,
     schedule::{ExternalPsk, PreSharedKeyId, Psk},
     treesync::{

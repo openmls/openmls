@@ -11,6 +11,22 @@ use crate::{
     versions::ProtocolVersion,
 };
 
+/// 8.1 Group Context
+///
+///```c
+/// struct {
+///     ProtocolVersion version = mls10;
+///     CipherSuite cipher_suite;
+///     opaque group_id<V>;
+///     uint64 epoch;
+///     opaque tree_hash<V>;
+///     opaque confirmed_transcript_hash<V>;
+///     Extension extensions<V>;
+/// } GroupContext;
+///
+/// The [`GroupContext`] is a state object maintained which summarizes the group
+/// state agreed upon by each member of the group.
+///```
 #[derive(
     Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]

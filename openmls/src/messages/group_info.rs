@@ -1,6 +1,7 @@
 //! This module contains all types related to group info handling.
 
 use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
+use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
 use thiserror::Error;
 use tls_codec::{Deserialize, Serialize, TlsDeserialize, TlsSerialize, TlsSize};
 
@@ -41,6 +42,23 @@ pub enum GroupInfoError {
 }
 
 impl VerifiableGroupInfo {
+    /// Create a new [`VerifiableGroupInfo`] from its contents.
+    pub fn new(
+        group_context: GroupContext,
+        extensions: Extensions,
+        confirmation_tag: ConfirmationTag,
+        signer: LeafNodeIndex,
+        signature: Signature,
+    ) -> Self {
+        let payload = GroupInfoTBS {
+            group_context,
+            extensions,
+            confirmation_tag,
+            signer,
+        };
+        Self { payload, signature }
+    }
+
     pub(crate) fn try_from_ciphertext(
         skey: &AeadKey,
         nonce: &AeadNonce,
@@ -133,7 +151,7 @@ impl From<VerifiableGroupInfo> for GroupInfo {
 ///     opaque signature<V>;
 /// } GroupInfo;
 /// ```
-#[derive(Debug, PartialEq, Clone, TlsSerialize, TlsSize)]
+#[derive(Debug, PartialEq, Clone, TlsSerialize, TlsSize, SerdeSerialize, SerdeDeserialize)]
 #[cfg_attr(feature = "test-utils", derive(TlsDeserialize))]
 pub struct GroupInfo {
     payload: GroupInfoTBS,
@@ -142,7 +160,7 @@ pub struct GroupInfo {
 
 impl GroupInfo {
     /// Returns the group context.
-    pub(crate) fn group_context(&self) -> &GroupContext {
+    pub fn group_context(&self) -> &GroupContext {
         &self.payload.group_context
     }
 
@@ -188,7 +206,9 @@ impl From<GroupInfo> for GroupContext {
 ///     uint32 signer;
 /// } GroupInfoTBS;
 /// ```
-#[derive(Debug, PartialEq, Clone, TlsDeserialize, TlsSerialize, TlsSize)]
+#[derive(
+    Debug, PartialEq, Clone, TlsDeserialize, TlsSerialize, TlsSize, SerdeSerialize, SerdeDeserialize,
+)]
 pub(crate) struct GroupInfoTBS {
     group_context: GroupContext,
     extensions: Extensions,

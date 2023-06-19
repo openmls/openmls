@@ -2,7 +2,7 @@
 //!
 //! This module holds a number of types that are needed by the traits.
 
-use std::{convert::TryFrom, ops::Deref};
+use std::ops::Deref;
 
 use serde::{Deserialize, Serialize};
 use tls_codec::{SecretVLBytes, TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
@@ -290,7 +290,7 @@ impl From<Vec<u8>> for ExporterSecret {
 
 /// A currently unknown ciphersuite.
 ///
-/// Used to accept unknown values, e.g., in [`Capabilities`].
+/// Used to accept unknown values, e.g., in `Capabilities`.
 #[derive(
     Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]

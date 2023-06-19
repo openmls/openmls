@@ -22,10 +22,7 @@
 //! There are multiple [`CredentialType`]s, although OpenMLS currently only
 //! supports the [`BasicCredential`].
 
-use std::{
-    convert::TryFrom,
-    io::{Read, Write},
-};
+use std::io::{Read, Write};
 
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
