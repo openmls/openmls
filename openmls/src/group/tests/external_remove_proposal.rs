@@ -4,7 +4,7 @@ use rstest_reuse::{self, *};
 
 use crate::{
     framing::*,
-    group::{config::CryptoConfig, errors::*, *},
+    group::{config::CryptoConfig, *},
     messages::external_proposals::*,
 };
 
