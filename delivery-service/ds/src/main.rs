@@ -30,13 +30,10 @@
 //! The DS returns a list of messages queued for the client in all groups they
 //! are part of.
 
-use actix_web::{
-    body::Body, get, post, web, web::Payload, App, HttpRequest, HttpServer, Responder,
-};
-use clap::App as ClapApp;
+use actix_web::{get, post, web, web::Payload, App, HttpRequest, HttpServer, Responder};
+use clap::Command;
 use futures_util::StreamExt;
 use std::collections::HashMap;
-use std::ops::{Deref, DerefMut};
 use std::sync::Mutex;
 use tls_codec::{Deserialize, Serialize, TlsSliceU16, TlsVecU32};
 
@@ -51,10 +48,10 @@ mod test;
 #[derive(Default, Debug)]
 pub struct DsData {
     // (ClientIdentity, ClientInfo)
-    clients: HashMap<Vec<u8>, ClientInfo>,
+    clients: Mutex<HashMap<Vec<u8>, ClientInfo>>,
 
     // (group_id, epoch)
-    groups: HashMap<Vec<u8>, u64>,
+    groups: Mutex<HashMap<Vec<u8>, u64>>,
 }
 
 macro_rules! unwrap_item {
@@ -82,7 +79,7 @@ macro_rules! unwrap_data {
 /// An HTTP conflict (409) is returned if a client with this name exists
 /// already.
 #[post("/clients/register")]
-async fn register_client(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Responder {
+async fn register_client(mut body: Payload, data: web::Data<DsData>) -> impl Responder {
     let mut bytes = web::BytesMut::new();
     while let Some(item) = body.next().await {
         bytes.extend_from_slice(&unwrap_item!(item));
@@ -96,9 +93,9 @@ async fn register_client(mut body: Payload, data: web::Data<Mutex<DsData>>) -> i
     };
     log::debug!("Registering client: {:?}", info);
 
-    let mut data = unwrap_data!(data.lock());
+    let mut clients = unwrap_data!(data.clients.lock());
     let client_name = info.client_name.clone();
-    let old = data.clients.insert(info.id.clone(), info);
+    let old = clients.insert(info.id.clone(), info);
     if old.is_some() {
         return actix_web::HttpResponse::Conflict().finish();
     }
@@ -108,14 +105,12 @@ async fn register_client(mut body: Payload, data: web::Data<Mutex<DsData>>) -> i
 
 /// Returns a list of clients with their names and IDs.
 #[get("/clients/list")]
-async fn list_clients(_req: HttpRequest, data: web::Data<Mutex<DsData>>) -> impl Responder {
+async fn list_clients(_req: HttpRequest, data: web::Data<DsData>) -> impl Responder {
     log::debug!("Listing clients");
-    let data = unwrap_data!(data.lock());
+    let clients = unwrap_data!(data.clients.lock());
 
     // XXX: we could encode while iterating to be less wasteful.
-    let clients: TlsVecU32<ClientInfo> = data
-        .deref()
-        .clients
+    let clients: TlsVecU32<ClientInfo> = clients
         .values()
         .cloned()
         .collect::<Vec<ClientInfo>>()
@@ -124,17 +119,17 @@ async fn list_clients(_req: HttpRequest, data: web::Data<Mutex<DsData>>) -> impl
     if clients.tls_serialize(&mut out_bytes).is_err() {
         return actix_web::HttpResponse::InternalServerError().finish();
     };
-    actix_web::HttpResponse::Ok().body(Body::from_slice(&out_bytes))
+    actix_web::HttpResponse::Ok().body(out_bytes)
 }
 
 /// Resets the server state.
 #[get("/reset")]
-async fn reset(_req: HttpRequest, data: web::Data<Mutex<DsData>>) -> impl Responder {
+async fn reset(_req: HttpRequest, data: web::Data<DsData>) -> impl Responder {
     log::debug!("Resetting server");
-    let mut data = unwrap_data!(data.lock());
-    let data = data.deref_mut();
-    data.clients.clear();
-    data.groups.clear();
+    let mut clients = unwrap_data!(data.clients.lock());
+    let mut groups = unwrap_data!(data.groups.lock());
+    clients.clear();
+    groups.clear();
     actix_web::HttpResponse::Ok().finish()
 }
 
@@ -142,32 +137,27 @@ async fn reset(_req: HttpRequest, data: web::Data<Mutex<DsData>>) -> impl Respon
 /// This returns a serialised vector of `ClientKeyPackages` (see the `ds-lib`
 /// for details).
 #[get("/clients/key_packages/{id}")]
-async fn get_key_packages(
-    web::Path(id): web::Path<String>,
-    data: web::Data<Mutex<DsData>>,
-) -> impl Responder {
-    let data = unwrap_data!(data.lock());
+async fn get_key_packages(path: web::Path<String>, data: web::Data<DsData>) -> impl Responder {
+    let clients = unwrap_data!(data.clients.lock());
 
-    let id = match base64::decode_config(id, base64::URL_SAFE) {
+    let id = match base64::decode_config(path.into_inner(), base64::URL_SAFE) {
         Ok(v) => v,
         Err(_) => return actix_web::HttpResponse::BadRequest().finish(),
     };
     log::debug!("Getting key packages for {:?}", id);
 
-    let client = match data.clients.get(&id) {
+    let client = match clients.get(&id) {
         Some(c) => c,
         None => return actix_web::HttpResponse::NoContent().finish(),
     };
-    actix_web::HttpResponse::Ok().body(Body::from_slice(&unwrap_data!(client
-        .key_packages
-        .tls_serialize_detached())))
+    actix_web::HttpResponse::Ok().body(unwrap_data!(client.key_packages.tls_serialize_detached()))
 }
 
 /// Send a welcome message to a client.
 /// This takes a serialised `Welcome` message and stores the message for all
 /// clients in the welcome message.
 #[post("/send/welcome")]
-async fn send_welcome(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Responder {
+async fn send_welcome(mut body: Payload, data: web::Data<DsData>) -> impl Responder {
     let mut bytes = web::BytesMut::new();
     while let Some(item) = body.next().await {
         bytes.extend_from_slice(&unwrap_item!(item));
@@ -176,10 +166,10 @@ async fn send_welcome(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl
     let welcome = welcome_msg.clone().into_welcome().unwrap();
     log::debug!("Storing welcome message: {:?}", welcome_msg);
 
-    let mut data = unwrap_data!(data.lock());
+    let mut clients = unwrap_data!(data.clients.lock());
     for secret in welcome.secrets().iter() {
         let key_package_hash = &secret.new_member();
-        for (_client_name, client) in data.clients.iter_mut() {
+        for (_client_name, client) in clients.iter_mut() {
             for (client_hash, _) in client.key_packages.0.iter() {
                 if client_hash.as_slice() == key_package_hash.as_slice() {
                     client.welcome_queue.push(welcome_msg.clone());
@@ -197,7 +187,7 @@ async fn send_welcome(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl
 /// handshake message this DS has seen, a 409 is returned and the message is not
 /// processed.
 #[post("/send/message")]
-async fn msg_send(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Responder {
+async fn msg_send(mut body: Payload, data: web::Data<DsData>) -> impl Responder {
     let mut bytes = web::BytesMut::new();
     while let Some(item) = body.next().await {
         bytes.extend_from_slice(&unwrap_item!(item));
@@ -205,7 +195,8 @@ async fn msg_send(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Res
     let group_msg = unwrap_data!(GroupMessage::tls_deserialize(&mut &bytes[..]));
     log::debug!("Storing group message: {:?}", group_msg);
 
-    let mut data = unwrap_data!(data.lock());
+    let mut clients = unwrap_data!(data.clients.lock());
+    let mut groups = unwrap_data!(data.groups.lock());
 
     let protocol_msg: ProtocolMessage = group_msg.msg.clone().into();
 
@@ -217,18 +208,18 @@ async fn msg_send(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Res
     if protocol_msg.is_handshake_message() {
         let epoch = protocol_msg.epoch().as_u64();
         let group_id = protocol_msg.group_id().as_slice();
-        if let Some(&group_epoch) = data.groups.get(group_id) {
+        if let Some(&group_epoch) = groups.get(group_id) {
             if group_epoch > epoch {
                 return actix_web::HttpResponse::Conflict().finish();
             }
             // Update server state to the latest epoch.
-            let old_value = data.groups.insert(group_id.to_vec(), epoch);
+            let old_value = groups.insert(group_id.to_vec(), epoch);
             if old_value.is_none() {
                 return actix_web::HttpResponse::InternalServerError().finish();
             }
         } else {
             // We haven't seen this group_id yet. Store it.
-            let old_value = data.groups.insert(group_id.to_vec(), epoch);
+            let old_value = groups.insert(group_id.to_vec(), epoch);
             if old_value.is_some() {
                 return actix_web::HttpResponse::InternalServerError().finish();
             }
@@ -236,7 +227,7 @@ async fn msg_send(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Res
     }
 
     for recipient in group_msg.recipients.iter() {
-        let client = match data.clients.get_mut(recipient.as_slice()) {
+        let client = match clients.get_mut(recipient.as_slice()) {
             Some(client) => client,
             None => return actix_web::HttpResponse::NotFound().finish(),
         };
@@ -250,19 +241,15 @@ async fn msg_send(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Res
 /// details) the DS has stored for the given client.
 /// The messages are deleted on the DS when sent out.
 #[get("/recv/{id}")]
-async fn msg_recv(
-    web::Path(id): web::Path<String>,
-    data: web::Data<Mutex<DsData>>,
-) -> impl Responder {
-    let mut data = unwrap_data!(data.lock());
-    let data = data.deref_mut();
+async fn msg_recv(path: web::Path<String>, data: web::Data<DsData>) -> impl Responder {
+    let mut clients = unwrap_data!(data.clients.lock());
 
-    let id = match base64::decode_config(id, base64::URL_SAFE) {
+    let id = match base64::decode_config(path.into_inner(), base64::URL_SAFE) {
         Ok(v) => v,
         Err(_) => return actix_web::HttpResponse::BadRequest().finish(),
     };
     log::debug!("Getting messages for client {:?}", id);
-    let client = match data.clients.get_mut(&id) {
+    let client = match clients.get_mut(&id) {
         Some(client) => client,
         None => return actix_web::HttpResponse::NotFound().finish(),
     };
@@ -274,7 +261,7 @@ async fn msg_recv(
     out.append(&mut msgs);
 
     match TlsSliceU16(&out).tls_serialize_detached() {
-        Ok(out) => actix_web::HttpResponse::Ok().body(Body::from_slice(&out)),
+        Ok(out) => actix_web::HttpResponse::Ok().body(out),
         Err(_) => actix_web::HttpResponse::InternalServerError().finish(),
     }
 }
@@ -286,29 +273,25 @@ async fn main() -> std::io::Result<()> {
     pretty_env_logger::init();
 
     // Configure App and command line arguments.
-    let matches = ClapApp::new("OpenMLS DS")
+    let matches = Command::new("OpenMLS DS")
         .version("0.1.0")
         .author("OpenMLS Developers")
         .about("PoC MLS Delivery Service")
         .arg(
-            clap::Arg::with_name("port")
-                .short("p")
+            clap::Arg::new("port")
+                .short('p')
                 .long("port")
                 .value_name("port")
-                .help("Sets a custom port number")
-                .takes_value(true),
+                .help("Sets a custom port number"),
         )
         .get_matches();
 
     // The data this app operates on.
-    let data = web::Data::new(Mutex::new(DsData::default()));
+    let data = web::Data::new(DsData::default());
 
     // Set default port or use port provided on the command line.
-    let port = if let Some(p) = matches.value_of("port") {
-        p.parse::<u16>().unwrap()
-    } else {
-        8080
-    };
+    let port = matches.get_one("port").unwrap_or(&8080u16);
+
     let ip = "127.0.0.1";
     let addr = format!("{ip}:{port}");
     log::info!("Listening on: {}", addr);
