@@ -7,6 +7,7 @@ use crate::{
     binary_tree::LeafNodeIndex,
     credentials::CredentialWithKey,
     error::LibraryError,
+    extensions::Extensions,
     group::{
         config::CryptoConfig, core_group::create_commit_params::CommitType,
         errors::CreateCommitError,
@@ -15,7 +16,8 @@ use crate::{
     schedule::CommitSecret,
     treesync::{
         node::{
-            encryption_keys::EncryptionKeyPair, leaf_node::LeafNode,
+            encryption_keys::EncryptionKeyPair,
+            leaf_node::{Capabilities, LeafNode},
             parent_node::PlainUpdatePathNode,
         },
         treekem::UpdatePath,
@@ -35,6 +37,7 @@ pub(crate) struct PathComputationResult {
 }
 
 impl<'a> PublicGroupDiff<'a> {
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn compute_path<KeyStore: OpenMlsKeyStore>(
         &mut self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
@@ -43,6 +46,8 @@ impl<'a> PublicGroupDiff<'a> {
         commit_type: CommitType,
         signer: &impl Signer,
         credential_with_key: Option<CredentialWithKey>,
+        leaf_node_extensions_option: Option<Extensions>,
+        leaf_node_capabilities_option: Option<Capabilities>,
     ) -> Result<PathComputationResult, CreateCommitError<KeyStore::Error>> {
         let version = self.group_context().protocol_version();
         let ciphersuite = self.group_context().ciphersuite();
@@ -58,15 +63,18 @@ impl<'a> PublicGroupDiff<'a> {
                 // The KeyPackage is immediately put into the group. No need for
                 // the init key.
                 init_private_key: _,
-            } = KeyPackage::builder().build_without_key_storage(
-                CryptoConfig {
-                    ciphersuite,
-                    version,
-                },
-                backend,
-                signer,
-                credential_with_key.ok_or(CreateCommitError::MissingCredential)?,
-            )?;
+            } = KeyPackage::builder()
+                .leaf_node_capabilities(leaf_node_capabilities_option)
+                .leaf_node_extensions(leaf_node_extensions_option)
+                .build_without_key_storage(
+                    CryptoConfig {
+                        ciphersuite,
+                        version,
+                    },
+                    backend,
+                    signer,
+                    credential_with_key.ok_or(CreateCommitError::MissingCredential)?,
+                )?;
 
             let leaf_node: LeafNode = key_package.into();
             self.diff

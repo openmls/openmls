@@ -26,6 +26,7 @@ pub(crate) struct TempBuilderPG1 {
     required_capabilities: Option<RequiredCapabilitiesExtension>,
     external_senders: Option<ExternalSendersExtension>,
     leaf_extensions: Option<Extensions>,
+    leaf_capabilities: Option<Capabilities>,
 }
 
 impl TempBuilderPG1 {
@@ -39,6 +40,19 @@ impl TempBuilderPG1 {
         required_capabilities: RequiredCapabilitiesExtension,
     ) -> Self {
         self.required_capabilities = Some(required_capabilities);
+        self
+    }
+
+    pub(crate) fn with_leaf_node_extensions(mut self, leaf_node_extensions: Extensions) -> Self {
+        self.leaf_extensions = Some(leaf_node_extensions);
+        self
+    }
+
+    pub(crate) fn with_leaf_node_capabilities(
+        mut self,
+        leaf_node_capabilities: Capabilities,
+    ) -> Self {
+        self.leaf_capabilities = Some(leaf_node_capabilities);
         self
     }
 
@@ -57,23 +71,24 @@ impl TempBuilderPG1 {
         backend: &impl OpenMlsCryptoProvider,
         signer: &impl Signer,
     ) -> Result<(TempBuilderPG2, CommitSecret, EncryptionKeyPair), PublicGroupBuildError> {
-        let capabilities = self
+        let required_capabilities_extension_types = self
             .required_capabilities
             .as_ref()
             .map(|re| re.extension_types());
+        let default_capabilities = Capabilities::new(
+            Some(&[self.crypto_config.version]), // TODO: Allow more versions
+            Some(&[self.crypto_config.ciphersuite]), // TODO: allow more ciphersuites
+            required_capabilities_extension_types,
+            None,
+            None,
+        );
         let (treesync, commit_secret, leaf_keypair) = TreeSync::new(
             backend,
             signer,
             self.crypto_config,
             self.credential_with_key,
             self.lifetime.unwrap_or_default(),
-            Capabilities::new(
-                Some(&[self.crypto_config.version]), // TODO: Allow more versions
-                Some(&[self.crypto_config.ciphersuite]), // TODO: allow more ciphersuites
-                capabilities,
-                None,
-                None,
-            ),
+            self.leaf_capabilities.unwrap_or(default_capabilities),
             self.leaf_extensions.unwrap_or(Extensions::empty()),
         )?;
         let required_capabilities = self.required_capabilities.unwrap_or_default();
@@ -172,6 +187,7 @@ impl PublicGroup {
             required_capabilities: None,
             external_senders: None,
             leaf_extensions: None,
+            leaf_capabilities: None,
         }
     }
 }

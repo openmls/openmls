@@ -581,14 +581,14 @@ impl KeyPackageBuilder {
     }
 
     /// Set the leaf node capabilities.
-    pub fn leaf_node_capabilities(mut self, capabilities: Capabilities) -> Self {
-        self.leaf_node_capabilities.replace(capabilities);
+    pub fn leaf_node_capabilities(mut self, capabilities: impl Into<Option<Capabilities>>) -> Self {
+        self.leaf_node_capabilities = capabilities.into();
         self
     }
 
     /// Set the leaf node extensions.
-    pub fn leaf_node_extensions(mut self, extensions: Extensions) -> Self {
-        self.leaf_node_extensions.replace(extensions);
+    pub fn leaf_node_extensions(mut self, extensions: impl Into<Option<Extensions>>) -> Self {
+        self.leaf_node_extensions = extensions.into();
         self
     }
 

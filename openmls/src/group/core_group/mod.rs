@@ -73,7 +73,10 @@ use crate::{
         *,
     },
     tree::{secret_tree::SecretTreeError, sender_ratchet::SenderRatchetConfiguration},
-    treesync::{node::encryption_keys::EncryptionKeyPair, *},
+    treesync::{
+        node::{encryption_keys::EncryptionKeyPair, leaf_node::Capabilities},
+        *,
+    },
     versions::ProtocolVersion,
 };
 
@@ -188,6 +191,28 @@ impl CoreGroupBuilder {
             .with_required_capabilities(required_capabilities);
         self
     }
+
+    /// Set the [`Extension`]s for the [`LeafNode`] of the [`CoreGroup`]'
+    /// creator.
+    pub(crate) fn with_leaf_node_extensions(mut self, leaf_node_extensions: Extensions) -> Self {
+        self.public_group_builder = self
+            .public_group_builder
+            .with_leaf_node_extensions(leaf_node_extensions);
+        self
+    }
+
+    /// Set the [`Capabilities`] for the [`LeafNode`] of the [`CoreGroup`]'
+    /// creator.
+    pub(crate) fn with_leaf_node_capabilities(
+        mut self,
+        leaf_node_capabilities: Capabilities,
+    ) -> Self {
+        self.public_group_builder = self
+            .public_group_builder
+            .with_leaf_node_capabilities(leaf_node_capabilities);
+        self
+    }
+
     /// Set the [`ExternalSendersExtension`] of the [`CoreGroup`].
     pub(crate) fn with_external_senders(
         mut self,
@@ -916,7 +941,9 @@ impl CoreGroup {
                     apply_proposals_values.exclusion_list(),
                     params.commit_type(),
                     signer,
-                    params.take_credential_with_key()
+                    params.take_credential_with_key(),
+                    params.take_leaf_extensions(),
+                    params.take_leaf_capabilities()
                 )?
             } else {
                 // If path is not needed, update the group context and return

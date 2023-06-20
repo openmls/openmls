@@ -93,6 +93,8 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
                 .build(),
             b"",
             bob_credential,
+            None,
+            None,
         )
         .unwrap();
     }
@@ -116,6 +118,8 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
                 .build(),
             b"",
             bob_credential,
+            None,
+            None,
         )
         .unwrap_err();
 
@@ -160,6 +164,8 @@ fn test_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
             .build(),
         b"",
         bob_credential,
+        None,
+        None,
     )
     .map(|(group, msg, group_info)| (group, MlsMessageIn::from(msg), group_info))
     .unwrap();
@@ -213,6 +219,8 @@ fn test_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
             .build(),
         b"",
         bob_credential,
+        None,
+        None,
     )
     .unwrap();
     bob_group.merge_pending_commit(backend).unwrap();

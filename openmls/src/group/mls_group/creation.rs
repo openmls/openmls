@@ -11,7 +11,7 @@ use crate::{
     },
     messages::group_info::{GroupInfo, VerifiableGroupInfo},
     schedule::psk::store::ResumptionPskStore,
-    treesync::RatchetTreeIn,
+    treesync::{node::leaf_node::Capabilities, RatchetTreeIn},
 };
 
 impl MlsGroup {
@@ -56,6 +56,8 @@ impl MlsGroup {
         )
         .with_config(group_config)
         .with_required_capabilities(mls_group_config.required_capabilities.clone())
+        .with_leaf_node_capabilities(mls_group_config.leaf_node_capabilities.clone())
+        .with_leaf_node_extensions(mls_group_config.leaf_node_extensions.clone())
         .with_external_senders(mls_group_config.external_senders.clone())
         .with_max_past_epoch_secrets(mls_group_config.max_past_epochs)
         .with_lifetime(*mls_group_config.lifetime())
@@ -176,6 +178,7 @@ impl MlsGroup {
     ///
     /// Note: If there is a group member in the group with the same identity as us,
     /// this will create a remove proposal.
+    #[allow(clippy::too_many_arguments)]
     pub fn join_by_external_commit(
         backend: &impl OpenMlsCryptoProvider,
         signer: &impl Signer,
@@ -184,6 +187,8 @@ impl MlsGroup {
         mls_group_config: &MlsGroupConfig,
         aad: &[u8],
         credential_with_key: CredentialWithKey,
+        leaf_node_extensions: Option<Extensions>,
+        leaf_node_capabilities: Option<Capabilities>,
     ) -> Result<(Self, MlsMessageOut, Option<GroupInfo>), ExternalCommitError> {
         // Prepare the commit parameters
         let framing_parameters = FramingParameters::new(aad, WireFormat::PublicMessage);
@@ -193,6 +198,8 @@ impl MlsGroup {
             .framing_parameters(framing_parameters)
             .proposal_store(&proposal_store)
             .credential_with_key(credential_with_key)
+            .leaf_capabilities(leaf_node_capabilities)
+            .leaf_extensions(leaf_node_extensions)
             .build();
         let (mut group, create_commit_result) = CoreGroup::join_by_external_commit(
             backend,

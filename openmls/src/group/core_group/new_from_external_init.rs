@@ -111,12 +111,16 @@ impl CoreGroup {
             resumption_psk_store: ResumptionPskStore::new(32),
         };
 
+        let leaf_extensions = params.take_leaf_extensions();
+        let leaf_capabilities = params.take_leaf_capabilities();
         let params = CreateCommitParams::builder()
             .framing_parameters(*params.framing_parameters())
             .proposal_store(params.proposal_store())
             .inline_proposals(inline_proposals)
             .commit_type(CommitType::External)
             .credential_with_key(params_credential_with_key)
+            .leaf_capabilities(leaf_capabilities)
+            .leaf_extensions(leaf_extensions)
             .build();
 
         // Immediately create the commit to add ourselves to the group.

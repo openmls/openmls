@@ -538,6 +538,8 @@ impl MlsClient for MlsClientImpl {
                 &mls_group_config,
                 b"",
                 credential_with_key,
+                None,
+                None,
             )
             .unwrap();
 

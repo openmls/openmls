@@ -30,7 +30,7 @@
 use super::*;
 use crate::{
     group::config::CryptoConfig, key_packages::Lifetime,
-    tree::sender_ratchet::SenderRatchetConfiguration,
+    tree::sender_ratchet::SenderRatchetConfiguration, treesync::node::leaf_node::Capabilities,
 };
 use serde::{Deserialize, Serialize};
 
@@ -52,6 +52,12 @@ pub struct MlsGroupConfig {
     pub(crate) use_ratchet_tree_extension: bool,
     /// Required capabilities (extensions and proposal types)
     pub(crate) required_capabilities: RequiredCapabilitiesExtension,
+    /// Leaf node capabilities. Only used for freshly created groups (not those
+    /// created via Welcome of External Commit).
+    pub(crate) leaf_node_capabilities: Capabilities,
+    /// Leaf node extensions. Only used for freshly created groups (not those
+    /// created via Welcome of External Commit).
+    pub(crate) leaf_node_extensions: Extensions,
     /// Senders authorized to send external remove proposals
     pub(crate) external_senders: ExternalSendersExtension,
     /// Sender ratchet configuration
@@ -184,6 +190,18 @@ impl MlsGroupConfigBuilder {
         required_capabilities_extension: RequiredCapabilitiesExtension,
     ) -> Self {
         self.config.required_capabilities = required_capabilities_extension;
+        self
+    }
+
+    /// Sets the `LeafNode` extensions of the MlsGroupConfig.
+    pub fn leaf_node_extensions(mut self, leaf_node_extensions: Extensions) -> Self {
+        self.config.leaf_node_extensions = leaf_node_extensions;
+        self
+    }
+
+    /// Sets the `LeafNode` [`Capabilities`] of the MlsGroupConfig.
+    pub fn leaf_node_capabilities(mut self, leaf_node_capabilities: Capabilities) -> Self {
+        self.config.leaf_node_capabilities = leaf_node_capabilities;
         self
     }
 

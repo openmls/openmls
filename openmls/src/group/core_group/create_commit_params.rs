@@ -3,8 +3,8 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    credentials::CredentialWithKey, framing::FramingParameters, group::ProposalStore,
-    messages::proposals::Proposal,
+    credentials::CredentialWithKey, extensions::Extensions, framing::FramingParameters,
+    group::ProposalStore, messages::proposals::Proposal, treesync::node::leaf_node::Capabilities,
 };
 
 #[cfg(doc)]
@@ -21,6 +21,8 @@ pub(crate) struct CreateCommitParams<'a> {
     framing_parameters: FramingParameters<'a>,      // Mandatory
     proposal_store: &'a ProposalStore,              // Mandatory
     inline_proposals: Vec<Proposal>,                // Optional
+    leaf_extensions: Option<Extensions>,            // Optional
+    leaf_capabilities: Option<Capabilities>,        // Optional
     force_self_update: bool,                        // Optional
     commit_type: CommitType,                        // Optional (default is `Member`)
     credential_with_key: Option<CredentialWithKey>, // Mandatory for external commits
@@ -55,6 +57,8 @@ impl<'a> TempBuilderCCPM1<'a> {
                 framing_parameters: self.framing_parameters,
                 proposal_store,
                 inline_proposals: vec![],
+                leaf_extensions: None,
+                leaf_capabilities: None,
                 force_self_update: true,
                 commit_type: CommitType::Member,
                 credential_with_key: None,
@@ -75,6 +79,14 @@ impl<'a> CreateCommitParamsBuilder<'a> {
     }
     pub(crate) fn commit_type(mut self, commit_type: CommitType) -> Self {
         self.ccp.commit_type = commit_type;
+        self
+    }
+    pub(crate) fn leaf_extensions(mut self, leaf_extensions: Option<Extensions>) -> Self {
+        self.ccp.leaf_extensions = leaf_extensions;
+        self
+    }
+    pub(crate) fn leaf_capabilities(mut self, leaf_capabilities: Option<Capabilities>) -> Self {
+        self.ccp.leaf_capabilities = leaf_capabilities;
         self
     }
     pub(crate) fn credential_with_key(mut self, credential_with_key: CredentialWithKey) -> Self {
@@ -107,5 +119,11 @@ impl<'a> CreateCommitParams<'a> {
     }
     pub(crate) fn take_credential_with_key(&mut self) -> Option<CredentialWithKey> {
         self.credential_with_key.take()
+    }
+    pub(crate) fn take_leaf_extensions(&mut self) -> Option<Extensions> {
+        self.leaf_extensions.take()
+    }
+    pub(crate) fn take_leaf_capabilities(&mut self) -> Option<Capabilities> {
+        self.leaf_capabilities.take()
     }
 }
