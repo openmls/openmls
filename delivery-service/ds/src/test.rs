@@ -1,5 +1,5 @@
 use super::*;
-use actix_web::{dev::Body, http::StatusCode, test, web, web::Bytes, App};
+use actix_web::{body::MessageBody, http::StatusCode, test, web, web::Bytes, App};
 use openmls::prelude::config::CryptoConfig;
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
@@ -44,7 +44,7 @@ fn generate_key_package(
 
 #[actix_rt::test]
 async fn test_list_clients() {
-    let data = web::Data::new(Mutex::new(DsData::default()));
+    let data = web::Data::new(DsData::default());
     let mut app = test::init_service(
         App::new()
             .app_data(data.clone())
@@ -57,21 +57,17 @@ async fn test_list_clients() {
     // There is no client. So the response body is empty.
     let req = test::TestRequest::with_uri("/clients/list").to_request();
 
-    let mut response = test::call_service(&mut app, req).await;
+    let response = test::call_service(&mut app, req).await;
     assert_eq!(response.status(), StatusCode::OK);
 
-    let response_body = response.response_mut().take_body();
-    let response_body = response_body.as_ref().unwrap();
+    let bytes = response.into_body().try_into_bytes().unwrap();
+    let client_info =
+        TlsVecU32::<ClientInfo>::tls_deserialize(&mut bytes.as_ref()).expect("Invalid client list");
 
     let expected = TlsVecU32::<ClientInfo>::new(vec![]);
-    let response_body = match response_body {
-        Body::Bytes(b) => {
-            TlsVecU32::<ClientInfo>::tls_deserialize(&mut b.as_ref()).expect("Invalid client list")
-        }
-        _ => panic!("Unexpected server response."),
-    };
+
     assert_eq!(
-        response_body.tls_serialize_detached().unwrap(),
+        client_info.tls_serialize_detached().unwrap(),
         expected.tls_serialize_detached().unwrap()
     );
 
@@ -111,21 +107,17 @@ async fn test_list_clients() {
     // There should be Client1 now.
     let req = test::TestRequest::with_uri("/clients/list").to_request();
 
-    let mut response = test::call_service(&mut app, req).await;
+    let response = test::call_service(&mut app, req).await;
     assert_eq!(response.status(), StatusCode::OK);
 
-    let response_body = response.response_mut().take_body();
-    let response_body = response_body.as_ref().unwrap();
+    let bytes = response.into_body().try_into_bytes().unwrap();
+    let client_info =
+        TlsVecU32::<ClientInfo>::tls_deserialize(&mut bytes.as_ref()).expect("Invalid client list");
 
     let expected = TlsVecU32::<ClientInfo>::new(vec![client_data]);
-    let response_body = match response_body {
-        Body::Bytes(b) => {
-            TlsVecU32::<ClientInfo>::tls_deserialize(&mut b.as_ref()).expect("Invalid client list")
-        }
-        _ => panic!("Unexpected server response."),
-    };
+
     assert_eq!(
-        response_body.tls_serialize_detached().unwrap(),
+        client_info.tls_serialize_detached().unwrap(),
         expected.tls_serialize_detached().unwrap()
     );
 
@@ -134,20 +126,15 @@ async fn test_list_clients() {
         "/clients/key_packages/".to_owned() + &base64::encode_config(client_id, base64::URL_SAFE);
     let req = test::TestRequest::with_uri(&path).to_request();
 
-    let mut response = test::call_service(&mut app, req).await;
+    let response = test::call_service(&mut app, req).await;
     assert_eq!(response.status(), StatusCode::OK);
 
-    let response_body = response.response_mut().take_body();
-    let response_body = response_body.as_ref().unwrap();
-    let mut key_packages: Vec<(TlsByteVecU8, KeyPackageIn)> = match response_body {
-        Body::Bytes(b) => {
-            ClientKeyPackages::tls_deserialize(&mut b.as_ref())
-                .expect("Invalid key package response")
-                .0
-        }
-        _ => panic!("Unexpected server response."),
-    }
-    .into();
+    let bytes = response.into_body().try_into_bytes().unwrap();
+    let mut key_packages =
+        TlsVecU32::<(TlsByteVecU8, KeyPackageIn)>::tls_deserialize(&mut bytes.as_ref())
+            .expect("Invalid key package response")
+            .into_vec();
+
     let key_packages: Vec<(Vec<u8>, KeyPackageIn)> = key_packages
         .drain(..)
         .map(|(e1, e2)| (e1.into(), e2))
@@ -160,7 +147,7 @@ async fn test_list_clients() {
 async fn test_group() {
     let crypto = &OpenMlsRustCrypto::default();
     let mls_group_config = MlsGroupConfig::default();
-    let data = web::Data::new(Mutex::new(DsData::default()));
+    let data = web::Data::new(DsData::default());
     let mut app = test::init_service(
         App::new()
             .app_data(data.clone())
@@ -235,22 +222,17 @@ async fn test_group() {
     // First we need to get the key package for Client2 from the DS.
     let path = "/clients/key_packages/".to_owned()
         + &base64::encode_config(&client_ids[1], base64::URL_SAFE);
-    println!("path: {path}");
+
     let req = test::TestRequest::with_uri(&path).to_request();
 
-    let mut response = test::call_service(&mut app, req).await;
+    let response = test::call_service(&mut app, req).await;
     assert_eq!(response.status(), StatusCode::OK);
 
-    let response_body = response.response_mut().take_body();
-    let response_body = response_body.as_ref().unwrap();
-    let mut client2_key_packages = match response_body {
-        Body::Bytes(b) => {
-            ClientKeyPackages::tls_deserialize(&mut b.as_ref())
-                .expect("Invalid key package response")
-                .0
-        }
-        _ => panic!("Unexpected server response."),
-    };
+    let bytes = response.into_body().try_into_bytes().unwrap();
+    let mut client2_key_packages = ClientKeyPackages::tls_deserialize(&mut bytes.as_ref())
+        .expect("Invalid key package response")
+        .0;
+
     let client2_key_package = client2_key_packages
         .iter()
         .position(|(_hash, kp)| KeyPackage::from(kp.clone()).ciphersuite() == group_ciphersuite)
@@ -280,17 +262,13 @@ async fn test_group() {
     // There should be a welcome message now for Client2.
     let path = "/recv/".to_owned() + &base64::encode_config(clients[1], base64::URL_SAFE);
     let req = test::TestRequest::with_uri(&path).to_request();
-    let mut response = test::call_service(&mut app, req).await;
+    let response = test::call_service(&mut app, req).await;
     assert_eq!(response.status(), StatusCode::OK);
 
-    let response_body = response.response_mut().take_body();
-    let response_body = response_body.as_ref().unwrap();
-    let mut messages: Vec<MlsMessageIn> = match response_body {
-        Body::Bytes(b) => TlsVecU16::<MlsMessageIn>::tls_deserialize(&mut b.as_ref())
-            .expect("Invalid message list")
-            .into(),
-        _ => panic!("Unexpected server response."),
-    };
+    let bytes = response.into_body().try_into_bytes().unwrap();
+    let mut messages = TlsVecU16::<MlsMessageIn>::tls_deserialize(&mut bytes.as_ref())
+        .expect("Invalid message list")
+        .into_vec();
 
     let welcome_message = messages
         .iter()
@@ -336,17 +314,12 @@ async fn test_group() {
     // Client1 retrieves messages from the DS
     let path = "/recv/".to_owned() + &base64::encode_config(clients[0], base64::URL_SAFE);
     let req = test::TestRequest::with_uri(&path).to_request();
-    let mut response = test::call_service(&mut app, req).await;
+    let response = test::call_service(&mut app, req).await;
     assert_eq!(response.status(), StatusCode::OK);
 
-    let response_body = response.response_mut().take_body();
-    let response_body = response_body.as_ref().unwrap();
-    let mut messages: Vec<MlsMessageIn> = match response_body {
-        Body::Bytes(b) => TlsVecU16::<MlsMessageIn>::tls_deserialize(&mut b.as_ref())
-            .expect("Invalid message list")
-            .into(),
-        _ => panic!("Unexpected server response."),
-    };
+    let bytes = response.into_body().try_into_bytes().unwrap();
+    let mut messages = TlsVecU16::<MlsMessageIn>::tls_deserialize(&mut bytes.as_ref())
+        .expect("Invalid message list");
 
     let mls_message = messages
         .iter()

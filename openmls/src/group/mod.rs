@@ -24,10 +24,11 @@ pub(crate) mod mls_group;
 
 // Public
 pub mod config;
-pub mod errors;
+pub(crate) mod errors;
 
 pub use core_group::proposals::*;
 pub use core_group::staged_commit::StagedCommit;
+pub use errors::*;
 pub use group_context::*;
 pub use mls_group::config::*;
 pub use mls_group::membership::*;
