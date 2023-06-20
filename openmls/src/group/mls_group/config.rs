@@ -178,6 +178,15 @@ impl MlsGroupConfigBuilder {
         self
     }
 
+    /// Sets the `required_capabilities` of the MlsGroupConfig.
+    pub fn required_capabilities(
+        mut self,
+        required_capabilities_extension: RequiredCapabilitiesExtension,
+    ) -> Self {
+        self.config.required_capabilities = required_capabilities_extension;
+        self
+    }
+
     /// Sets the `sender_ratchet_configuration` property of the MlsGroupConfig.
     /// See [`SenderRatchetConfiguration`] for more information.
     pub fn sender_ratchet_configuration(
