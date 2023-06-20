@@ -13,6 +13,6 @@ members = [
 ]
 resolver = "2"
 
-# Patching unreleased crates
+# Central dependency management for some crates
 [workspace.dependencies]
-tls_codec = { version = "0.3.0-pre.4", features = ["derive", "serde", "mls"] }
+tls_codec = { version = "0.3.0", features = ["derive", "serde", "mls"] }
