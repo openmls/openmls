@@ -243,8 +243,6 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         &mls_group_config,
         &[],
         dave_credential,
-        None,
-        None,
     )
     .expect("Error joining from external commit");
     dave_group

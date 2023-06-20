@@ -11,7 +11,7 @@ use crate::{
     },
     messages::group_info::{GroupInfo, VerifiableGroupInfo},
     schedule::psk::store::ResumptionPskStore,
-    treesync::{node::leaf_node::Capabilities, RatchetTreeIn},
+    treesync::RatchetTreeIn,
 };
 
 impl MlsGroup {
@@ -187,8 +187,6 @@ impl MlsGroup {
         mls_group_config: &MlsGroupConfig,
         aad: &[u8],
         credential_with_key: CredentialWithKey,
-        leaf_node_extensions: Option<Extensions>,
-        leaf_node_capabilities: Option<Capabilities>,
     ) -> Result<(Self, MlsMessageOut, Option<GroupInfo>), ExternalCommitError> {
         // Prepare the commit parameters
         let framing_parameters = FramingParameters::new(aad, WireFormat::PublicMessage);
@@ -198,8 +196,8 @@ impl MlsGroup {
             .framing_parameters(framing_parameters)
             .proposal_store(&proposal_store)
             .credential_with_key(credential_with_key)
-            .leaf_capabilities(leaf_node_capabilities)
-            .leaf_extensions(leaf_node_extensions)
+            .leaf_capabilities(Some(mls_group_config.leaf_node_capabilities.clone()))
+            .leaf_extensions(Some(mls_group_config.leaf_node_extensions.clone()))
             .build();
         let (mut group, create_commit_result) = CoreGroup::join_by_external_commit(
             backend,

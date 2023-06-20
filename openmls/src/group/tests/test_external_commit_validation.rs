@@ -202,8 +202,6 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         alice_group.configuration(),
         &[],
         bob_credential.credential_with_key.clone(),
-        None,
-        None,
     )
     .unwrap();
 
@@ -357,8 +355,6 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         alice_group.configuration(),
         &[],
         bob_credential.credential_with_key,
-        None,
-        None,
     )
     .unwrap();
 
@@ -454,8 +450,6 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         alice_group.configuration(),
         &[],
         alice_credential.credential_with_key,
-        None,
-        None,
     );
     assert!(alice_new_group.is_ok());
 
@@ -738,8 +732,6 @@ fn test_pure_ciphertest(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         alice_group.configuration(),
         &[],
         bob_credential.credential_with_key.clone(),
-        None,
-        None,
     )
     .expect("Error initializing group externally.");
 
@@ -821,8 +813,6 @@ mod utils {
             alice_group.configuration(),
             &[],
             bob_credential.credential_with_key.clone(),
-            None,
-            None,
         )
         .unwrap();
 
