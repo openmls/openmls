@@ -466,6 +466,17 @@
 <a href="#466" id="466">466</a>
 <a href="#467" id="467">467</a>
 <a href="#468" id="468">468</a>
+<a href="#469" id="469">469</a>
+<a href="#470" id="470">470</a>
+<a href="#471" id="471">471</a>
+<a href="#472" id="472">472</a>
+<a href="#473" id="473">473</a>
+<a href="#474" id="474">474</a>
+<a href="#475" id="475">475</a>
+<a href="#476" id="476">476</a>
+<a href="#477" id="477">477</a>
+<a href="#478" id="478">478</a>
+<a href="#479" id="479">479</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>core::fmt::Debug;
 <span class="kw">use </span>std::mem;
 
@@ -899,6 +910,17 @@
     <span class="doccomment">/// Consume this [`StagedCommit`] and return the internal [`StagedCommitState`].
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>into_state(<span class="self">self</span>) -&gt; StagedCommitState {
         <span class="self">self</span>.state
+    }
+
+    <span class="doccomment">/// Returns the [`EpochAuthenticator`] of the staged commit state if the
+    /// owner of the originating group state is a member of the group. Returns
+    /// `None` otherwise.
+    </span><span class="kw">pub fn </span>epoch_authenticator(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>EpochAuthenticator&gt; {
+        <span class="kw">if let </span>StagedCommitState::GroupMember(<span class="kw-2">ref </span>gm) = <span class="self">self</span>.state {
+            <span class="prelude-val">Some</span>(gm.group_epoch_secrets.epoch_authenticator())
+        } <span class="kw">else </span>{
+            <span class="prelude-val">None
+        </span>}
     }
 }
 
