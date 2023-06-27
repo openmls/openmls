@@ -4,7 +4,7 @@ This crate defines a number of crates that have to be implemented in order to us
 
 The OpenMLS repository provides a default implementation for these traits
 
-- [Rust Crypto](../openmls_rust_crypto/Readme.md)
+- [Rust Crypto](../openmls_rust_crypto/README.md)
 
 **⚠️ These traits are responsible for all cryptographic operations and randomness within OpenMLS. Please ensure you know what you're doing when implementing your own versions.**
 
