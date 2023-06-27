@@ -42,6 +42,9 @@ impl tls_codec::Deserialize for Credential {
             CredentialType::Basic => Ok(Credential::from(MlsCredentialType::Basic(
                 BasicCredential::tls_deserialize(bytes)?,
             ))),
+            CredentialType::Infra => Ok(Credential::from(MlsCredentialType::Infra(
+                InfraCredential::tls_deserialize(bytes)?,
+            ))),
             _ => Err(tls_codec::Error::DecodingError(format!(
                 "{credential_type:?} can not be deserialized."
             ))),
