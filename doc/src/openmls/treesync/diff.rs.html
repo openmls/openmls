@@ -910,7 +910,6 @@
 <a href="#910" id="910">910</a>
 <a href="#911" id="911">911</a>
 <a href="#912" id="912">912</a>
-<a href="#913" id="913">913</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module provides the diff functionality for [`TreeSync`].
 //!
 //! # About
@@ -1572,7 +1571,6 @@
                 // other child, the parent hash is valid.
                 </span><span class="kw">if </span>left_descendant.is_none() ^ right_descendant.is_some() {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(TreeSyncParentHashError::InvalidParentHash);
-                } <span class="kw">else </span>{
                 }
             }
         }
