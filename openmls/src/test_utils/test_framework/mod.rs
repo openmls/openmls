@@ -293,7 +293,9 @@ impl MlsGroupTestSetup {
                 let mls_message_out: MlsMessageOut = message.clone().into();
                 let serialized_message = mls_message_out.tls_serialize_detached()?;
 
-                MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())?
+                <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(
+                    &mut serialized_message.as_slice(),
+                )?
             }
             CodecUse::StructMessages => message.clone(),
         }

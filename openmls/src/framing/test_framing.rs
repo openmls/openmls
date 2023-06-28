@@ -737,7 +737,7 @@ fn key_package_version(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPro
         .tls_serialize_detached()
         .expect("An unexpected error occurred.");
 
-    let err = MlsMessageIn::tls_deserialize(&mut encoded.as_slice())
+    let err = <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(&mut encoded.as_slice())
         .expect_err("Deserialization should have failed.");
 
     // Expect a decoding  error

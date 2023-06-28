@@ -5,7 +5,7 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{signatures::Signer, types::Ciphersuite};
 use rstest::*;
 use rstest_reuse::{self, *};
-use tls_codec::{Deserialize, Serialize};
+use tls_codec::Serialize;
 
 use super::utils::{
     generate_credential_with_key, generate_key_package, resign_message, CredentialWithKeyAndSigner,
@@ -139,11 +139,12 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .expect("serialization error");
 
     // Let's get the proposal out of the message.
-    let proposal_message =
-        MlsMessageIn::tls_deserialize(&mut serialized_proposal_message.as_slice())
-            .expect("Could not deserialize message.")
-            .into_plaintext()
-            .expect("Message was not a plaintext.");
+    let proposal_message = <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(
+        &mut serialized_proposal_message.as_slice(),
+    )
+    .expect("Could not deserialize message.")
+    .into_plaintext()
+    .expect("Message was not a plaintext.");
 
     let proposal = if let FramedContentBody::Proposal(proposal) = proposal_message.content() {
         proposal.clone()
@@ -162,10 +163,12 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut plaintext = MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())
-        .expect("Could not deserialize message.")
-        .into_plaintext()
-        .expect("Message was not a plaintext.");
+    let mut plaintext = <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(
+        &mut serialized_message.as_slice(),
+    )
+    .expect("Could not deserialize message.")
+    .into_plaintext()
+    .expect("Message was not a plaintext.");
 
     // Keep the original plaintext for positive test later.
     let original_plaintext = plaintext.clone();
@@ -437,10 +440,12 @@ fn test_valsem202(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut plaintext = MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
-        .expect("Could not deserialize message.")
-        .into_plaintext()
-        .expect("Message was not a plaintext.");
+    let mut plaintext = <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(
+        &mut serialized_update.as_slice(),
+    )
+    .expect("Could not deserialize message.")
+    .into_plaintext()
+    .expect("Message was not a plaintext.");
 
     // Keep the original plaintext for positive test later.
     let original_plaintext = plaintext.clone();
@@ -477,9 +482,10 @@ fn test_valsem202(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         ))
     );
 
-    let original_update_plaintext =
-        MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
-            .expect("Could not deserialize message.");
+    let original_update_plaintext = <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(
+        &mut serialized_update.as_slice(),
+    )
+    .expect("Could not deserialize message.");
 
     // Positive case
     bob_group
@@ -508,10 +514,12 @@ fn test_valsem203(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut plaintext = MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
-        .expect("Could not deserialize message.")
-        .into_plaintext()
-        .expect("Message was not a plaintext.");
+    let mut plaintext = <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(
+        &mut serialized_update.as_slice(),
+    )
+    .expect("Could not deserialize message.")
+    .into_plaintext()
+    .expect("Message was not a plaintext.");
 
     // Keep the original plaintext for positive test later.
     let original_plaintext = plaintext.clone();
@@ -550,9 +558,10 @@ fn test_valsem203(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         ))
     );
 
-    let original_update_plaintext =
-        MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
-            .expect("Could not deserialize message.");
+    let original_update_plaintext = <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(
+        &mut serialized_update.as_slice(),
+    )
+    .expect("Could not deserialize message.");
 
     // Positive case
     bob_group
@@ -581,10 +590,12 @@ fn test_valsem204(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut plaintext = MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
-        .expect("Could not deserialize message.")
-        .into_plaintext()
-        .expect("Message was not a plaintext.");
+    let mut plaintext = <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(
+        &mut serialized_update.as_slice(),
+    )
+    .expect("Could not deserialize message.")
+    .into_plaintext()
+    .expect("Message was not a plaintext.");
 
     // Keep the original plaintext for positive test later.
     let original_plaintext = plaintext.clone();
@@ -669,9 +680,10 @@ fn test_valsem204(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         ))
     );
 
-    let original_update_plaintext =
-        MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
-            .expect("Could not deserialize message.");
+    let original_update_plaintext = <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(
+        &mut serialized_update.as_slice(),
+    )
+    .expect("Could not deserialize message.");
 
     // Positive case
     bob_group
@@ -700,10 +712,12 @@ fn test_valsem205(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut plaintext = MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
-        .expect("Could not deserialize message.")
-        .into_plaintext()
-        .expect("Message was not a plaintext.");
+    let mut plaintext = <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(
+        &mut serialized_update.as_slice(),
+    )
+    .expect("Could not deserialize message.")
+    .into_plaintext()
+    .expect("Message was not a plaintext.");
 
     // Keep the original plaintext for positive test later.
     let original_plaintext = plaintext.clone();

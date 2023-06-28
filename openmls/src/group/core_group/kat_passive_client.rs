@@ -142,7 +142,8 @@ pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
     });
 
     passive_client.join_by_welcome(
-        MlsMessageIn::tls_deserialize_exact(&test_vector.welcome).unwrap(),
+        <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize_exact(&test_vector.welcome)
+            .unwrap(),
         ratchet_tree,
     );
 
@@ -160,12 +161,15 @@ pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
         info!("Epoch #{}", i);
 
         for proposal in epoch.proposals {
-            let message = MlsMessageIn::tls_deserialize_exact(&proposal.0).unwrap();
+            let message =
+                <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize_exact(&proposal.0)
+                    .unwrap();
             debug!("Proposal: {message:?}");
             passive_client.process_message(message);
         }
 
-        let message = MlsMessageIn::tls_deserialize_exact(&epoch.commit).unwrap();
+        let message =
+            <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize_exact(&epoch.commit).unwrap();
         debug!("Commit: {message:#?}");
         passive_client.process_message(message);
 
@@ -231,7 +235,9 @@ impl PassiveClient {
         init_priv: Vec<u8>,
     ) {
         let key_package: KeyPackage = {
-            let mls_message_key_package = MlsMessageIn::tls_deserialize_exact(key_package).unwrap();
+            let mls_message_key_package =
+                <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize_exact(key_package)
+                    .unwrap();
 
             match mls_message_key_package.body {
                 MlsMessageInBody::KeyPackage(key_package) => key_package.into(),

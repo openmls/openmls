@@ -409,10 +409,11 @@ fn write_test_vectors_msg() {
 pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
     // Welcome
     let tv_mls_welcome = tv.mls_welcome;
-    let my_mls_welcome = MlsMessageIn::tls_deserialize_exact(&tv_mls_welcome)
-        .unwrap()
-        .tls_serialize_detached()
-        .unwrap();
+    let my_mls_welcome =
+        <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize_exact(&tv_mls_welcome)
+            .unwrap()
+            .tls_serialize_detached()
+            .unwrap();
     if tv_mls_welcome != my_mls_welcome {
         log::error!("  Welcome encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_mls_welcome);
@@ -425,10 +426,11 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
 
     // (Verifiable)GroupInfo
     let tv_mls_group_info = tv.mls_group_info;
-    let my_mls_group_info = MlsMessageIn::tls_deserialize_exact(&tv_mls_group_info)
-        .unwrap()
-        .tls_serialize_detached()
-        .unwrap();
+    let my_mls_group_info =
+        <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize_exact(&tv_mls_group_info)
+            .unwrap()
+            .tls_serialize_detached()
+            .unwrap();
     if tv_mls_group_info != my_mls_group_info {
         log::error!("  VerifiableGroupInfo encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_mls_group_info);
@@ -441,10 +443,11 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
 
     // KeyPackage
     let tv_mls_key_package = tv.mls_key_package;
-    let my_key_package = MlsMessageIn::tls_deserialize_exact(&tv_mls_key_package)
-        .unwrap()
-        .tls_serialize_detached()
-        .unwrap();
+    let my_key_package =
+        <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize_exact(&tv_mls_key_package)
+            .unwrap()
+            .tls_serialize_detached()
+            .unwrap();
     if tv_mls_key_package != my_key_package {
         log::error!("  KeyPackage encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_key_package);
@@ -573,10 +576,12 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
     // // Fake the wire format so we can deserialize
     //tv_public_message_application[0] = WireFormat::PublicMessage as u8;
     let my_public_message_application =
-        MlsMessageIn::tls_deserialize_exact(&tv_public_message_application)
-            .unwrap()
-            .tls_serialize_detached()
-            .unwrap();
+        <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize_exact(
+            &tv_public_message_application,
+        )
+        .unwrap()
+        .tls_serialize_detached()
+        .unwrap();
     if tv_public_message_application != my_public_message_application {
         log::error!("  MlsPlaintextApplication encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_public_message_application);
@@ -590,10 +595,12 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
     // PublicMessage(Proposal)
     let tv_public_message_proposal = tv.public_message_proposal;
     let my_public_message_proposal =
-        MlsMessageIn::tls_deserialize_exact(&tv_public_message_proposal)
-            .unwrap()
-            .tls_serialize_detached()
-            .unwrap();
+        <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize_exact(
+            &tv_public_message_proposal,
+        )
+        .unwrap()
+        .tls_serialize_detached()
+        .unwrap();
     if tv_public_message_proposal != my_public_message_proposal {
         log::error!("  PublicMessage(Proposal) encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_public_message_proposal);
@@ -606,10 +613,11 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
 
     // PublicMessage(Commit)
     let tv_public_message_commit = tv.public_message_commit;
-    let my_public_message_commit = MlsMessageIn::tls_deserialize_exact(&tv_public_message_commit)
-        .unwrap()
-        .tls_serialize_detached()
-        .unwrap();
+    let my_public_message_commit =
+        <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize_exact(&tv_public_message_commit)
+            .unwrap()
+            .tls_serialize_detached()
+            .unwrap();
     if tv_public_message_commit != my_public_message_commit {
         log::error!("  PublicMessage(Commit) encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_public_message_commit);
@@ -622,10 +630,11 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
 
     // PrivateMessage
     let tv_private_message = tv.private_message;
-    let my_private_message = MlsMessageIn::tls_deserialize_exact(&tv_private_message)
-        .unwrap()
-        .tls_serialize_detached()
-        .unwrap();
+    let my_private_message =
+        <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize_exact(&tv_private_message)
+            .unwrap()
+            .tls_serialize_detached()
+            .unwrap();
     if tv_private_message != my_private_message {
         log::error!("  PrivateMessage encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_private_message);

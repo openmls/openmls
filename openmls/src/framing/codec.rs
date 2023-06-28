@@ -76,3 +76,27 @@ impl Deserialize for MlsMessageIn {
         Ok(Self { version, body })
     }
 }
+
+impl DeserializeBytes for MlsMessageIn {
+    fn tls_deserialize(bytes: &[u8]) -> Result<(Self, &[u8]), Error>
+    where
+        Self: Sized,
+    {
+        let mut bytes_reader = bytes;
+        let version = ProtocolVersion::tls_deserialize(&mut bytes_reader)?;
+        let body = MlsMessageInBody::tls_deserialize(&mut bytes_reader)?;
+
+        // KeyPackage version must match MlsMessage version.
+        if let MlsMessageInBody::KeyPackage(key_package) = &body {
+            if !key_package.version_is_supported(version) {
+                return Err(tls_codec::Error::DecodingError(
+                    "KeyPackage version does not match MlsMessage version.".into(),
+                ));
+            }
+        }
+        let bytes_read = version.tls_serialized_len() + body.tls_serialized_len();
+        let message = Self { version, body };
+        let remainder = bytes.get(bytes_read..).ok_or(Error::EndOfStream)?;
+        Ok((message, remainder))
+    }
+}
