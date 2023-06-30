@@ -76,7 +76,7 @@ impl User {
             index: _,
             encryption_key: _,
             signature_key,
-            credential
+            credential,
         } in mls_group.members()
         {
             if self
