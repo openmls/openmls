@@ -38,7 +38,7 @@ sudo apt-get install -y cmake
 sudo apt-get install -y libssl-dev
 sudo apt-get install -y protobuf-compiler
 sudo apt-get install -y ninja-build
-sudo apt-get install -y clang --install-suggests
+sudo apt-get install -y clang
 ```
 
 Then inside openmls repository folder run:
