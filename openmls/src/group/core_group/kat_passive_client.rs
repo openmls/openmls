@@ -274,7 +274,7 @@ impl PassiveClient {
             EncryptionPrivateKey::from(encryption_priv),
         ));
 
-        key_pair.write_to_key_store(&self.backend).unwrap();
+        key_pair.write_to_key_store(self.backend.key_store()).unwrap();
     }
 
     fn join_by_welcome(

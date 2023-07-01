@@ -233,7 +233,7 @@ impl LeafNode {
 
         // Store the encryption key pair in the key store.
         encryption_key_pair
-            .write_to_key_store(backend)
+            .write_to_key_store(backend.key_store())
             .map_err(LeafNodeGenerationError::KeyStoreError)?;
 
         Ok(leaf_node)

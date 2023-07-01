@@ -18,6 +18,7 @@ use tls_codec::{
     Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, TlsSerialize, TlsSize,
 };
 use openmls_traits::crypto::OpenMlsCrypto;
+use openmls_traits::OpenMlsProvider;
 
 /// [`PublicMessageIn`] is a framing structure for MLS messages. It can contain
 /// Proposals, Commits and application messages.
@@ -121,7 +122,7 @@ impl PublicMessageIn {
         )
         .map_err(LibraryError::missing_bound_check)?;
         let tbm_payload = AuthenticatedContentTbm::new(&tbs_payload, &self.auth)?;
-        let membership_tag = membership_key.tag_message(backend, tbm_payload)?;
+        let membership_tag = membership_key.tag_message(backend.crypto(), tbm_payload)?;
 
         self.membership_tag = Some(membership_tag);
         Ok(())

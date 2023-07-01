@@ -139,7 +139,7 @@ fn group(
     );
 
     let group = CoreGroup::builder(
-        GroupId::random(backend),
+        GroupId::random(backend.rand()),
         CryptoConfig::with_default_version(ciphersuite),
         credential_with_key.clone(),
     )
@@ -305,7 +305,7 @@ pub fn run_test_vector(
         let proposal_store = ProposalStore::from_queued_proposal(
             QueuedProposal::from_authenticated_content_by_ref(
                 ciphersuite,
-                backend,
+                backend.crypto(),
                 bob_add_proposal,
             )
             .expect("Could not create QueuedProposal."),
@@ -387,7 +387,7 @@ pub fn run_test_vector(
             // check that the proposal in proposal_pub == proposal
             let decrypted_message = group
                 .decrypt_message(
-                    backend,
+                    backend.crypto(),
                     proposal_pub.into_protocol_message().unwrap(),
                     &sender_ratchet_config,
                 )
@@ -486,7 +486,7 @@ pub fn run_test_vector(
         let mut my_proposal_pub: PublicMessage = proposal_authenticated_content.into();
         my_proposal_pub
             .set_membership_tag(
-                backend,
+                backend.crypto(),
                 sender_group.message_secrets().membership_key(),
                 sender_group.message_secrets().serialized_context(),
             )
@@ -523,7 +523,7 @@ pub fn run_test_vector(
             // check that the proposal in proposal_pub == proposal
             let decrypted_message = group
                 .decrypt_message(
-                    backend,
+                    backend.crypto(),
                     commit_pub.into_protocol_message().unwrap(),
                     &sender_ratchet_config,
                 )
@@ -566,7 +566,7 @@ pub fn run_test_vector(
             // check that the proposal in proposal_priv == proposal
             let decrypted_message = group
                 .decrypt_message(
-                    backend,
+                    backend.crypto(),
                     commit_priv.into_protocol_message().unwrap(),
                     &sender_ratchet_config,
                 )
@@ -641,7 +641,7 @@ pub fn run_test_vector(
         let mut my_commit_pub_msg: PublicMessage = commit_authenticated_content.into();
         my_commit_pub_msg
             .set_membership_tag(
-                backend,
+                backend.crypto(),
                 sender_group.message_secrets().membership_key(),
                 sender_group.message_secrets().serialized_context(),
             )

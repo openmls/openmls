@@ -30,7 +30,7 @@ fn test_pre_shared_key_proposal_codec(backend: &impl OpenMlsProvider) {
     let psk = PreSharedKeyId {
         psk: Psk::Resumption(ResumptionPsk::new(
             ResumptionPskUsage::Application,
-            GroupId::random(backend),
+            GroupId::random(backend.rand()),
             1234.into(),
         )),
         psk_nonce: vec![1, 2, 3].into(),
@@ -47,7 +47,7 @@ fn test_pre_shared_key_proposal_codec(backend: &impl OpenMlsProvider) {
     let psk = PreSharedKeyId {
         psk: Psk::Resumption(ResumptionPsk::new(
             ResumptionPskUsage::Reinit,
-            GroupId::random(backend),
+            GroupId::random(backend.rand()),
             1234.into(),
         )),
         psk_nonce: vec![1, 2, 3].into(),
@@ -64,7 +64,7 @@ fn test_pre_shared_key_proposal_codec(backend: &impl OpenMlsProvider) {
     let psk = PreSharedKeyId {
         psk: Psk::Resumption(ResumptionPsk::new(
             ResumptionPskUsage::Branch,
-            GroupId::random(backend),
+            GroupId::random(backend.rand()),
             1234.into(),
         )),
         psk_nonce: vec![1, 2, 3].into(),
@@ -82,7 +82,7 @@ fn test_pre_shared_key_proposal_codec(backend: &impl OpenMlsProvider) {
 #[apply(ciphersuites_and_backends)]
 fn test_reinit_proposal_codec(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let orig = ReInitProposal {
-        group_id: GroupId::random(backend),
+        group_id: GroupId::random(backend.rand()),
         version: ProtocolVersion::default(),
         ciphersuite,
         extensions: Extensions::empty(),

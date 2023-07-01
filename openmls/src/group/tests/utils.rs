@@ -192,7 +192,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsProvider) -> 
                 proposal_store.add(
                     QueuedProposal::from_authenticated_content_by_ref(
                         group_config.ciphersuite,
-                        backend,
+                        backend.crypto(),
                         proposal,
                     )
                     .expect("Could not create staged proposal."),
@@ -408,7 +408,7 @@ pub(crate) fn resign_message(
 
     signed_plaintext
         .set_membership_tag(
-            backend,
+            backend.crypto(),
             membership_key,
             alice_group.group().message_secrets().serialized_context(),
         )

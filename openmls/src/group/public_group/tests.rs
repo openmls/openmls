@@ -47,13 +47,13 @@ fn public_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
     // === Create a public group that tracks the changes throughout this test ===
     let verifiable_group_info = alice_group
-        .export_group_info(backend, &alice_signer, false)
+        .export_group_info(backend.crypto(), &alice_signer, false)
         .unwrap()
         .into_verifiable_group_info()
         .unwrap();
     let ratchet_tree = alice_group.export_ratchet_tree();
     let (mut public_group, _extensions) = PublicGroup::from_external(
-        backend,
+        backend.crypto(),
         ratchet_tree.into(),
         verifiable_group_info,
         ProposalStore::new(),
@@ -74,7 +74,7 @@ fn public_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         ProtocolMessage::PublicMessage(public_message) => public_message,
     };
     let processed_message = public_group
-        .process_message(backend, public_message)
+        .process_message(backend.crypto(), public_message)
         .unwrap();
 
     // Further inspection of the message can take place here ...
@@ -127,7 +127,7 @@ fn public_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
     // The public group processes
     let ppm = public_group
-        .process_message(backend, into_public_message(queued_messages))
+        .process_message(backend.crypto(), into_public_message(queued_messages))
         .unwrap();
     public_group.merge_commit(extract_staged_commit(ppm));
 
@@ -162,7 +162,7 @@ fn public_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
     // The public group processes
     let ppm = public_group
-        .process_message(backend, into_public_message(queued_messages))
+        .process_message(backend.crypto(), into_public_message(queued_messages))
         .unwrap();
     // We have to add the proposal to the public group's proposal store.
     match ppm.into_content() {
@@ -207,7 +207,7 @@ fn public_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
     // The public group processes
     let ppm = public_group
-        .process_message(backend, into_public_message(queued_messages.clone()))
+        .process_message(backend.crypto(), into_public_message(queued_messages.clone()))
         .unwrap();
     public_group.merge_commit(extract_staged_commit(ppm));
 

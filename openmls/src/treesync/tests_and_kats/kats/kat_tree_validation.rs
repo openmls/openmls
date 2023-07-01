@@ -103,7 +103,7 @@ fn run_test_vector(test: TestElement, backend: &impl OpenMlsProvider) -> Result<
         .into_verified(ciphersuite, backend.crypto(), group_id)
         .unwrap();
 
-    let treesync = TreeSync::from_ratchet_tree(backend, ciphersuite, ratchet_tree.clone())
+    let treesync = TreeSync::from_ratchet_tree(backend.crypto(), ciphersuite, ratchet_tree.clone())
         .map_err(|e| format!("Error while creating tree sync: {e:?}"))?;
 
     let diff = treesync.empty_diff();
@@ -120,7 +120,7 @@ fn run_test_vector(test: TestElement, backend: &impl OpenMlsProvider) -> Result<
         assert_eq!(resolution, test.resolutions[index]);
 
         let tree_hash = diff
-            .compute_tree_hash(backend, ciphersuite, tree_node_index, &HashSet::new())
+            .compute_tree_hash(backend.crypto(), ciphersuite, tree_node_index, &HashSet::new())
             .unwrap();
 
         // Verify tree hash

@@ -165,8 +165,8 @@ mod unit_tests {
     #[apply(backends)]
     fn test_xor(backend: &impl OpenMlsProvider) {
         let reuse_guard: ReuseGuard =
-            ReuseGuard::try_from_random(backend).expect("An unexpected error occurred.");
-        let original_nonce = AeadNonce::random(backend);
+            ReuseGuard::try_from_random(backend.rand()).expect("An unexpected error occurred.");
+        let original_nonce = AeadNonce::random(backend.rand());
         let xored_once = original_nonce.clone().xor_with_reuse_guard(&reuse_guard);
         assert_ne!(
             original_nonce, xored_once,

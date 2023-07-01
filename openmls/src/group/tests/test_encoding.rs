@@ -127,7 +127,7 @@ fn test_update_proposal_encoding(backend: &impl OpenMlsProvider) {
             .into();
         update
             .set_membership_tag(
-                backend,
+                backend.crypto(),
                 group_state.message_secrets().membership_key(),
                 group_state.message_secrets().serialized_context(),
             )
@@ -180,7 +180,7 @@ fn test_add_proposal_encoding(backend: &impl OpenMlsProvider) {
             .expect("Could not create proposal.")
             .into();
         add.set_membership_tag(
-            backend,
+            backend.crypto(),
             group_state.message_secrets().membership_key(),
             group_state.message_secrets().serialized_context(),
         )
@@ -223,7 +223,7 @@ fn test_remove_proposal_encoding(backend: &impl OpenMlsProvider) {
             .into();
         remove
             .set_membership_tag(
-                backend,
+                backend.crypto(),
                 group_state.message_secrets().membership_key(),
                 group_state.message_secrets().serialized_context(),
             )
@@ -295,7 +295,7 @@ fn test_commit_encoding(backend: &impl OpenMlsProvider) {
         let mut proposal_store = ProposalStore::from_queued_proposal(
             QueuedProposal::from_authenticated_content_by_ref(
                 group_state.ciphersuite(),
-                backend,
+                backend.crypto(),
                 add,
             )
             .expect("Could not create QueuedProposal."),
@@ -303,7 +303,7 @@ fn test_commit_encoding(backend: &impl OpenMlsProvider) {
         proposal_store.add(
             QueuedProposal::from_authenticated_content_by_ref(
                 group_state.ciphersuite(),
-                backend,
+                backend.crypto(),
                 update,
             )
             .expect("Could not create QueuedProposal."),
@@ -323,7 +323,7 @@ fn test_commit_encoding(backend: &impl OpenMlsProvider) {
         let mut commit: PublicMessage = create_commit_result.commit.into();
         commit
             .set_membership_tag(
-                backend,
+                backend.crypto(),
                 group_state.message_secrets().membership_key(),
                 group_state.message_secrets().serialized_context(),
             )
@@ -377,7 +377,7 @@ fn test_welcome_message_encoding(backend: &impl OpenMlsProvider) {
         let proposal_store = ProposalStore::from_queued_proposal(
             QueuedProposal::from_authenticated_content_by_ref(
                 group_state.ciphersuite(),
-                backend,
+                backend.crypto(),
                 add,
             )
             .expect("Could not create QueuedProposal."),
@@ -417,7 +417,7 @@ fn test_welcome_message_encoding(backend: &impl OpenMlsProvider) {
             .borrow();
 
         let charlie_key_package_bundle = charlie
-            .find_key_package_bundle(&charlie_key_package, backend)
+            .find_key_package_bundle(&charlie_key_package, backend.crypto())
             .expect("An unexpected error occurred.");
 
         // This makes Charlie decode the internals of the Welcome message, for

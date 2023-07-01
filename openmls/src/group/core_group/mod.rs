@@ -503,7 +503,7 @@ impl CoreGroup {
         let message_secrets = self
             .message_secrets_mut(private_message.epoch())
             .map_err(|_| MessageDecryptionError::AeadError)?;
-        let sender_data = private_message.sender_data(message_secrets, backend, ciphersuite)?;
+        let sender_data = private_message.sender_data(message_secrets, backend.crypto(), ciphersuite)?;
         if self.public_group().leaf(sender_data.leaf_index).is_none() {
             return Err(MessageDecryptionError::SenderError(
                 SenderError::UnknownSender,
@@ -514,7 +514,7 @@ impl CoreGroup {
             .map_err(|_| MessageDecryptionError::AeadError)?;
         private_message.to_verifiable_content(
             ciphersuite,
-            backend,
+            backend.crypto(),
             message_secrets,
             sender_data.leaf_index,
             sender_ratchet_configuration,

@@ -252,7 +252,7 @@ pub fn run_test_vector(
         let context = hex_to_bytes(&test.expand_with_label.context);
         let length = test.expand_with_label.length;
         let out = Secret::from_slice(&secret, ProtocolVersion::default(), ciphersuite)
-            .kdf_expand_label(backend, &label, &context, length.into())
+            .kdf_expand_label(backend.crypto(), &label, &context, length.into())
             .unwrap();
 
         assert_eq!(&hex_to_bytes(&test.expand_with_label.out), out.as_slice());
@@ -263,7 +263,7 @@ pub fn run_test_vector(
         let label = test.derive_secret.label;
         let secret = hex_to_bytes(&test.derive_secret.secret);
         let out = Secret::from_slice(&secret, ProtocolVersion::default(), ciphersuite)
-            .derive_secret(backend, &label)
+            .derive_secret(backend.crypto(), &label)
             .unwrap();
 
         assert_eq!(&hex_to_bytes(&test.derive_secret.out), out.as_slice());
@@ -389,7 +389,7 @@ pub fn run_test_vector(
             &label,
             generation,
             length.into(),
-            backend,
+            backend.crypto(),
         )
         .unwrap();
 

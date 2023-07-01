@@ -40,7 +40,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsP
 
     // Alice creates a group
     let mut group_alice = CoreGroup::builder(
-        GroupId::random(backend),
+        GroupId::random(backend.rand()),
         CryptoConfig::with_default_version(ciphersuite),
         alice_credential_with_keys.credential_with_key,
     )
@@ -59,7 +59,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsP
         .expect("Could not create proposal.");
 
     let mut proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend.crypto(), bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -95,7 +95,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsP
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend.crypto(), bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -172,7 +172,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsP
     proposal_store.add(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
-            backend,
+            backend.crypto(),
             alice_update_proposal,
         )
         .expect("Could not create QueuedProposal."),
@@ -226,7 +226,7 @@ fn basic_group_setup(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
     // Alice creates a group
     let group_alice = CoreGroup::builder(
-        GroupId::random(backend),
+        GroupId::random(backend.rand()),
         CryptoConfig::with_default_version(ciphersuite),
         alice_credential_with_keys.credential_with_key,
     )
@@ -243,7 +243,7 @@ fn basic_group_setup(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         .expect("Could not create proposal.");
 
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend.crypto(), bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -300,7 +300,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
     // === Alice creates a group ===
     let mut group_alice = CoreGroup::builder(
-        GroupId::random(backend),
+        GroupId::random(backend.rand()),
         CryptoConfig::with_default_version(ciphersuite),
         alice_credential_with_keys.credential_with_key.clone(),
     )
@@ -317,7 +317,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         .expect("Could not create proposal.");
 
     let mut proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend.crypto(), bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -426,7 +426,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     proposal_store.add(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
-            backend,
+            backend.crypto(),
             update_proposal_bob,
         )
         .expect("Could not create QueuedProposal."),
@@ -493,7 +493,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     proposal_store.add(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
-            backend,
+            backend.crypto(),
             update_proposal_alice,
         )
         .expect("Could not create QueuedProposal."),
@@ -556,7 +556,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     proposal_store.add(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
-            backend,
+            backend.crypto(),
             update_proposal_bob.clone(),
         )
         .expect("Could not create QueuedProposal."),
@@ -583,7 +583,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     proposal_store.add(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
-            backend,
+            backend.crypto(),
             update_proposal_bob,
         )
         .expect("Could not create StagedProposal."),
@@ -634,7 +634,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     proposal_store.add(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
-            backend,
+            backend.crypto(),
             add_charlie_proposal_bob,
         )
         .expect("Could not create QueuedProposal."),
@@ -780,7 +780,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     proposal_store.add(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
-            backend,
+            backend.crypto(),
             update_proposal_charlie,
         )
         .expect("Could not create QueuedProposal."),
@@ -843,7 +843,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     proposal_store.add(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
-            backend,
+            backend.crypto(),
             remove_bob_proposal_charlie,
         )
         .expect("Could not create QueuedProposal."),
@@ -891,16 +891,16 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
     // Make sure all groups export the same key
     let alice_exporter = group_alice
-        .export_secret(backend, "export test", &[], 32)
+        .export_secret(backend.crypto(), "export test", &[], 32)
         .expect("An unexpected error occurred.");
     let charlie_exporter = group_charlie
-        .export_secret(backend, "export test", &[], 32)
+        .export_secret(backend.crypto(), "export test", &[], 32)
         .expect("An unexpected error occurred.");
     assert_eq!(alice_exporter, charlie_exporter);
 
     // Now alice tries to derive an exporter with too large of a key length.
     let exporter_length: usize = u16::MAX.into();
     let exporter_length = exporter_length + 1;
-    let alice_exporter = group_alice.export_secret(backend, "export test", &[], exporter_length);
+    let alice_exporter = group_alice.export_secret(backend.crypto(), "export test", &[], exporter_length);
     assert!(alice_exporter.is_err())
 }

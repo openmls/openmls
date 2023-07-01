@@ -17,7 +17,7 @@ fn export_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let (group_alice, _, signer, pk) = setup_alice_group(ciphersuite, backend);
 
     let group_info: GroupInfo = group_alice
-        .export_group_info(backend, &signer, true)
+        .export_group_info(backend.crypto(), &signer, true)
         .unwrap();
 
     let verifiable_group_info = {

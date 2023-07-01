@@ -446,7 +446,7 @@ impl KeyPackage {
         encryption_key: EncryptionKey,
     ) -> Result<Self, KeyPackageNewError<KeyStore::Error>> {
         // Create a new HPKE init key pair
-        let ikm = Secret::random(config.ciphersuite, backend, config.version).unwrap();
+        let ikm = Secret::random(config.ciphersuite, backend.rand(), config.version).unwrap();
         let init_key = backend
             .crypto()
             .derive_hpke_keypair(config.ciphersuite.hpke_config(), ikm.as_slice());

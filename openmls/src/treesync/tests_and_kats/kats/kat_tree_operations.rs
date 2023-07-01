@@ -51,13 +51,13 @@ struct TestElement {
 fn run_test_vector(test: TestElement, backend: &impl OpenMlsProvider) -> Result<(), String> {
     let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
 
-    let group_id = GroupId::random(backend);
+    let group_id = GroupId::random(backend.rand());
 
     let nodes = Vec::<Option<NodeIn>>::tls_deserialize_exact(test.tree_before).unwrap();
 
     let ratchet_tree = RatchetTree::from(RatchetTreeIn::from_nodes(nodes));
 
-    let tree_before = TreeSync::from_ratchet_tree(backend, ciphersuite, ratchet_tree)
+    let tree_before = TreeSync::from_ratchet_tree(backend.crypto(), ciphersuite, ratchet_tree)
         .map_err(|e| format!("Error while creating tree sync: {e:?}"))?;
 
     let group_context = GroupContext::new(
@@ -70,8 +70,8 @@ fn run_test_vector(test: TestElement, backend: &impl OpenMlsProvider) -> Result<
     );
     let initial_confirmation_tag = ConfirmationTag(
         Mac::new(
-            backend,
-            &Secret::random(ciphersuite, backend, ProtocolVersion::Mls10).unwrap(),
+            backend.crypto(),
+            &Secret::random(ciphersuite, backend.rand(), ProtocolVersion::Mls10).unwrap(),
             &[],
         )
         .unwrap(),
@@ -93,7 +93,7 @@ fn run_test_vector(test: TestElement, backend: &impl OpenMlsProvider) -> Result<
 
     let queued_proposal = QueuedProposal::from_proposal_and_sender(
         ciphersuite,
-        backend,
+        backend.crypto(),
         proposal,
         &Sender::Member(LeafNodeIndex::new(test.proposal_sender)),
     )
@@ -105,7 +105,7 @@ fn run_test_vector(test: TestElement, backend: &impl OpenMlsProvider) -> Result<
 
     diff.apply_proposals(&proposal_queue, None).unwrap();
 
-    let staged_diff = diff.into_staged_diff(backend, ciphersuite).unwrap();
+    let staged_diff = diff.into_staged_diff(backend.crypto(), ciphersuite).unwrap();
 
     group.merge_diff(staged_diff);
 

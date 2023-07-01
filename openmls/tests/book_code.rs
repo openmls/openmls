@@ -228,7 +228,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
     // ANCHOR: alice_exports_group_info
     let verifiable_group_info = alice_group
-        .export_group_info(backend, &alice_signature_keys, true)
+        .export_group_info(backend.crypto(), &alice_signature_keys, true)
         .expect("Cannot export group info")
         .into_verifiable_group_info()
         .expect("Could not get group info");
@@ -335,8 +335,8 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
     // Check that both groups have the same state
     assert_eq!(
-        alice_group.export_secret(backend, "", &[], 32),
-        bob_group.export_secret(backend, "", &[], 32)
+        alice_group.export_secret(backend.crypto(), "", &[], 32),
+        bob_group.export_secret(backend.crypto(), "", &[], 32)
     );
 
     // Make sure that both groups have the same public tree
@@ -431,8 +431,8 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
     // Check that both groups have the same state
     assert_eq!(
-        alice_group.export_secret(backend, "", &[], 32),
-        bob_group.export_secret(backend, "", &[], 32)
+        alice_group.export_secret(backend.crypto(), "", &[], 32),
+        bob_group.export_secret(backend.crypto(), "", &[], 32)
     );
 
     // Make sure that both groups have the same public tree
@@ -579,12 +579,12 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
     // Check that all groups have the same state
     assert_eq!(
-        alice_group.export_secret(backend, "", &[], 32),
-        bob_group.export_secret(backend, "", &[], 32)
+        alice_group.export_secret(backend.crypto(), "", &[], 32),
+        bob_group.export_secret(backend.crypto(), "", &[], 32)
     );
     assert_eq!(
-        alice_group.export_secret(backend, "", &[], 32),
-        charlie_group.export_secret(backend, "", &[], 32)
+        alice_group.export_secret(backend.crypto(), "", &[], 32),
+        charlie_group.export_secret(backend.crypto(), "", &[], 32)
     );
 
     // Make sure that all groups have the same public tree
@@ -1233,8 +1233,8 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     .expect("Could not create group from Welcome");
 
     assert_eq!(
-        alice_group.export_secret(backend, "before load", &[], 32),
-        bob_group.export_secret(backend, "before load", &[], 32)
+        alice_group.export_secret(backend.crypto(), "before load", &[], 32),
+        bob_group.export_secret(backend.crypto(), "before load", &[], 32)
     );
 
     // Check that the state flag gets reset when saving
@@ -1242,18 +1242,18 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     //save(&mut bob_group);
 
     bob_group
-        .save(backend)
+        .save(backend.key_store())
         .expect("Could not write group state to file");
 
     // Check that the state flag gets reset when saving
     assert_eq!(bob_group.state_changed(), InnerState::Persisted);
 
-    let bob_group = MlsGroup::load(&group_id, backend).expect("Could not load group from file");
+    let bob_group = MlsGroup::load(&group_id, backend.key_store()).expect("Could not load group from file");
 
     // Make sure the state is still the same
     assert_eq!(
-        alice_group.export_secret(backend, "after load", &[], 32),
-        bob_group.export_secret(backend, "after load", &[], 32)
+        alice_group.export_secret(backend.crypto(), "after load", &[], 32),
+        bob_group.export_secret(backend.crypto(), "after load", &[], 32)
     );
 }
 

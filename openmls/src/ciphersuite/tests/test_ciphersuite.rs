@@ -10,7 +10,7 @@ fn test_hpke_seal_open(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider)
     let plaintext = &[1, 2, 3];
     let kp = backend.crypto().derive_hpke_keypair(
         ciphersuite.hpke_config(),
-        Secret::random(ciphersuite, backend, None)
+        Secret::random(ciphersuite, backend.rand(), None)
             .expect("Not enough randomness.")
             .as_slice(),
     );

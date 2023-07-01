@@ -47,7 +47,7 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, backend: &impl OpenMl
         _ => Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
     };
 
-    let group_id = GroupId::random(backend);
+    let group_id = GroupId::random(backend.rand());
     let mls_group_config = MlsGroupConfigBuilder::new()
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
@@ -106,22 +106,22 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, backend: &impl OpenMl
 
         let psks = load_psks(backend.key_store(), &resumption_psk_store, &[]).unwrap();
 
-        PskSecret::new(backend, ciphersuite, psks).unwrap()
+        PskSecret::new(backend.crypto(), ciphersuite, psks).unwrap()
     };
 
     // Create key schedule
-    let key_schedule = KeySchedule::init(ciphersuite, backend, &joiner_secret, psk_secret)
+    let key_schedule = KeySchedule::init(ciphersuite, backend.crypto(), &joiner_secret, psk_secret)
         .expect("Could not create KeySchedule.");
 
     // Derive welcome key & nonce from the key schedule
     let (welcome_key, welcome_nonce) = key_schedule
-        .welcome(backend)
+        .welcome(backend.crypto())
         .expect("Using the key schedule in the wrong state")
-        .derive_welcome_key_nonce(backend)
+        .derive_welcome_key_nonce(backend.crypto())
         .expect("Could not derive welcome key and nonce.");
 
     let group_info_bytes = welcome_key
-        .aead_open(backend, welcome.encrypted_group_info(), &[], &welcome_nonce)
+        .aead_open(backend.crypto(), welcome.encrypted_group_info(), &[], &welcome_nonce)
         .expect("Could not decrypt GroupInfo.");
     let mut verifiable_group_info =
         VerifiableGroupInfo::tls_deserialize(&mut group_info_bytes.as_slice()).unwrap();
@@ -137,7 +137,7 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, backend: &impl OpenMl
     let verifiable_group_info_bytes = verifiable_group_info.tls_serialize_detached().unwrap();
 
     let encrypted_verifiable_group_info = welcome_key
-        .aead_seal(backend, &verifiable_group_info_bytes, &[], &welcome_nonce)
+        .aead_seal(backend.crypto(), &verifiable_group_info_bytes, &[], &welcome_nonce)
         .unwrap();
 
     welcome.encrypted_group_info = encrypted_verifiable_group_info.into();
@@ -179,7 +179,7 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, backend: &impl OpenMl
         .store::<HpkePrivateKey>(bob_kp.hpke_init_key().as_slice(), bob_private_key)
         .unwrap();
 
-    encryption_keypair.write_to_key_store(backend).unwrap();
+    encryption_keypair.write_to_key_store(backend.key_store()).unwrap();
 
     let _group = MlsGroup::new_from_welcome(
         backend,
@@ -200,7 +200,7 @@ fn test_welcome_message(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider
     let group_info_tbs = {
         let group_context = GroupContext::new(
             ciphersuite,
-            GroupId::random(backend),
+            GroupId::random(backend.rand()),
             123,
             vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
             vec![1, 1, 1],
@@ -226,12 +226,12 @@ fn test_welcome_message(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider
 
     // Generate key and nonce for the symmetric cipher.
     let welcome_key = AeadKey::random(ciphersuite, backend.rand());
-    let welcome_nonce = AeadNonce::random(backend);
+    let welcome_nonce = AeadNonce::random(backend.rand());
 
     // Generate receiver key pair.
     let receiver_key_pair = backend.crypto().derive_hpke_keypair(
         ciphersuite.hpke_config(),
-        Secret::random(ciphersuite, backend, None)
+        Secret::random(ciphersuite, backend.rand(), None)
             .expect("Not enough randomness.")
             .as_slice(),
     );
@@ -254,7 +254,7 @@ fn test_welcome_message(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider
     // Encrypt the group info.
     let encrypted_group_info = welcome_key
         .aead_seal(
-            backend,
+            backend.crypto(),
             &group_info
                 .tls_serialize_detached()
                 .expect("An unexpected error occurred."),

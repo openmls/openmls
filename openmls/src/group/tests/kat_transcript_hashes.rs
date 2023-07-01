@@ -96,7 +96,7 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) {
         ciphersuite,
     ));
     let got_confirmation_tag = confirmation_key
-        .tag(&backend, &test_vector.confirmed_transcript_hash_after)
+        .tag(backend.crypto(), &test_vector.confirmed_transcript_hash_after)
         .unwrap();
     assert_eq!(
         got_confirmation_tag,
@@ -161,7 +161,7 @@ fn write_test_vectors() {
 pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
     let backend = OpenMlsRustCrypto::default();
 
-    let confirmation_key = ConfirmationKey::random(ciphersuite, &backend);
+    let confirmation_key = ConfirmationKey::random(ciphersuite, backend.rand());
 
     let interim_transcript_hash_before = randombytes(ciphersuite.hash_length());
 
@@ -192,7 +192,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
 
             GroupContext::new(
                 ciphersuite,
-                GroupId::random(&backend),
+                GroupId::random(backend.rand()),
                 random_u64(),
                 tree_hash_before,
                 confirmed_transcript_hash_before,
@@ -230,7 +230,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
     // ... and the `confirmation_tag` ...
     let confirmation_tag = {
         confirmation_key
-            .tag(&backend, &confirmed_transcript_hash_after)
+            .tag(backend.crypto(), &confirmed_transcript_hash_after)
             .unwrap()
     };
 

@@ -10,13 +10,13 @@ fn test_secret_tree_store(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvid
     // Create a store that keeps up to 3 epochs
     let mut message_secrets_store = MessageSecretsStore::new_with_secret(
         3,
-        MessageSecrets::random(ciphersuite, backend, LeafNodeIndex::new(0)),
+        MessageSecrets::random(ciphersuite, backend.rand(), LeafNodeIndex::new(0)),
     );
 
     // Add message secrets to the store
     message_secrets_store.add(
         0,
-        MessageSecrets::random(ciphersuite, backend, LeafNodeIndex::new(0)),
+        MessageSecrets::random(ciphersuite, backend.rand(), LeafNodeIndex::new(0)),
         Vec::new(),
     );
 
@@ -27,7 +27,7 @@ fn test_secret_tree_store(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvid
     for i in 1..6u64 {
         message_secrets_store.add(
             i,
-            MessageSecrets::random(ciphersuite, backend, LeafNodeIndex::new(0)),
+            MessageSecrets::random(ciphersuite, backend.rand(), LeafNodeIndex::new(0)),
             Vec::new(),
         );
     }
@@ -49,13 +49,13 @@ fn test_empty_secret_tree_store(ciphersuite: Ciphersuite, backend: &impl OpenMls
     // Create a store that keeps no epochs
     let mut message_secrets_store = MessageSecretsStore::new_with_secret(
         0,
-        MessageSecrets::random(ciphersuite, backend, LeafNodeIndex::new(0)),
+        MessageSecrets::random(ciphersuite, backend.rand(), LeafNodeIndex::new(0)),
     );
 
     // Add message secrets to the store
     message_secrets_store.add(
         0,
-        MessageSecrets::random(ciphersuite, backend, LeafNodeIndex::new(0)),
+        MessageSecrets::random(ciphersuite, backend.rand(), LeafNodeIndex::new(0)),
         Vec::new(),
     );
 

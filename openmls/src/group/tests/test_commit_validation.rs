@@ -208,7 +208,7 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
     signed_plaintext
         .set_membership_tag(
-            backend,
+            backend.crypto(),
             membership_key,
             alice_group.group().message_secrets().serialized_context(),
         )
@@ -248,7 +248,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let queued = |proposal: Proposal| {
         QueuedProposal::from_proposal_and_sender(
             ciphersuite,
-            backend,
+            backend.crypto(),
             proposal,
             &Sender::Member(alice_group.own_leaf_index()),
         )
@@ -267,7 +267,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     };
 
     let psk_proposal = || {
-        let secret = Secret::random(ciphersuite, backend, None).unwrap();
+        let secret = Secret::random(ciphersuite, backend.rand(), None).unwrap();
         let rand = backend
             .rand()
             .random_vec(ciphersuite.hash_length())
@@ -356,7 +356,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         let membership_key = alice_group.group().message_secrets().membership_key();
         commit
             .set_membership_tag(
-                backend,
+                backend.crypto(),
                 membership_key,
                 alice_group.group().message_secrets().serialized_context(),
             )
@@ -624,7 +624,7 @@ fn test_valsem204(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
             .map(|upn| {
                 PlainUpdatePathNode::new(
                     upn.encryption_key().clone(),
-                    Secret::random(ciphersuite, backend, ProtocolVersion::default())
+                    Secret::random(ciphersuite, backend.rand(), ProtocolVersion::default())
                         .unwrap()
                         .into(),
                 )
@@ -722,7 +722,7 @@ fn test_valsem205(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
     plaintext
         .set_membership_tag(
-            backend,
+            backend.crypto(),
             membership_key,
             alice_group.group().message_secrets().serialized_context(),
         )

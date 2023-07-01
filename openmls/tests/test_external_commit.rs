@@ -40,7 +40,7 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider
     // ... and exports a group info (with ratchet_tree).
     let verifiable_group_info = {
         let group_info = alice_group
-            .export_group_info(backend, &alice_signer, true)
+            .export_group_info(backend.crypto(), &alice_signer, true)
             .unwrap();
 
         let serialized_group_info = group_info.tls_serialize_detached().unwrap();
@@ -53,7 +53,7 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider
 
     let verifiable_group_info_broken = {
         let group_info = alice_group
-            .export_group_info(backend, &alice_signer, true)
+            .export_group_info(backend.crypto(), &alice_signer, true)
             .unwrap();
 
         let serialized_group_info = {

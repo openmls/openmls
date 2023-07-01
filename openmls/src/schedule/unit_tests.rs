@@ -48,6 +48,6 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
         let psks = load_psks(backend.key_store(), &resumption_psk_store, &psk_ids).unwrap();
 
-        PskSecret::new(backend, ciphersuite, psks).unwrap()
+        PskSecret::new(backend.crypto(), ciphersuite, psks).unwrap()
     };
 }

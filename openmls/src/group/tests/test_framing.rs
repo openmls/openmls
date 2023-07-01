@@ -127,7 +127,7 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
         let group_context = GroupContext::new(
             ciphersuite,
-            GroupId::random(backend),
+            GroupId::random(backend.rand()),
             1,
             vec![],
             vec![],
@@ -137,7 +137,7 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         let plaintext = {
             let plaintext_tbs = FramedContentTbs::new(
                 WireFormat::PrivateMessage,
-                GroupId::random(backend),
+                GroupId::random(backend.rand()),
                 1,
                 sender,
                 vec![1, 2, 3].into(),
@@ -151,7 +151,7 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         };
 
         let mut message_secrets =
-            MessageSecrets::random(ciphersuite, backend, LeafNodeIndex::new(0));
+            MessageSecrets::random(ciphersuite, backend.rand(), LeafNodeIndex::new(0));
 
         let encryption_secret_bytes = backend
             .rand()
@@ -214,11 +214,11 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
             let secret_type = SecretType::from(&plaintext.content().content_type());
             let (generation, (ratchet_key, ratchet_nonce)) = message_secrets
                 .secret_tree_mut()
-                .secret_for_encryption(ciphersuite, backend, LeafNodeIndex::new(0), secret_type)
+                .secret_for_encryption(ciphersuite, backend.crypto(), LeafNodeIndex::new(0), secret_type)
                 .unwrap();
 
             // Sample reuse guard uniformly at random.
-            let reuse_guard: ReuseGuard = ReuseGuard::try_from_random(backend).unwrap();
+            let reuse_guard: ReuseGuard = ReuseGuard::try_from_random(backend.rand()).unwrap();
 
             // Prepare the nonce by xoring with the reuse guard.
             let prepared_nonce = ratchet_nonce.xor_with_reuse_guard(&reuse_guard);
@@ -271,7 +271,7 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
             let ciphertext = ratchet_key
                 .aead_seal(
-                    backend,
+                    backend.crypto(),
                     &padded,
                     &private_message_content_aad_bytes,
                     &prepared_nonce,
@@ -280,12 +280,12 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
             // Derive the sender data key from the key schedule using the ciphertext.
             let sender_data_key = message_secrets
                 .sender_data_secret()
-                .derive_aead_key(backend, &ciphertext)
+                .derive_aead_key(backend.crypto(), &ciphertext)
                 .unwrap();
             // Derive initial nonce from the key schedule using the ciphertext.
             let sender_data_nonce = message_secrets
                 .sender_data_secret()
-                .derive_aead_nonce(ciphersuite, backend, &ciphertext)
+                .derive_aead_nonce(ciphersuite, backend.crypto(), &ciphertext)
                 .unwrap();
             // Compute sender data nonce by xoring reuse guard and key schedule
             // nonce as per spec.
@@ -301,7 +301,7 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
             // Encrypt the sender data
             let encrypted_sender_data = sender_data_key
                 .aead_seal(
-                    backend,
+                    backend.crypto(),
                     &sender_data.tls_serialize_detached().unwrap(),
                     &mls_sender_data_aad_bytes,
                     &sender_data_nonce,
@@ -323,12 +323,12 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         let tampered_ciphertext: PrivateMessageIn = tampered_ciphertext.into();
 
         let sender_data = tampered_ciphertext
-            .sender_data(&message_secrets, backend, ciphersuite)
+            .sender_data(&message_secrets, backend.crypto(), ciphersuite)
             .expect("Could not decrypt sender data.");
 
         let verifiable_plaintext_result = tampered_ciphertext.to_verifiable_content(
             ciphersuite,
-            backend,
+            backend.crypto(),
             &mut message_secrets,
             LeafNodeIndex::new(0),
             &SenderRatchetConfiguration::default(),

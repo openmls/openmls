@@ -212,12 +212,12 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
 
         let psks = load_psks(backend.key_store(), &resumption_psk_store, &[]).unwrap();
 
-        PskSecret::new(&backend, cipher_suite, psks).unwrap()
+        PskSecret::new(backend.crypto(), cipher_suite, psks).unwrap()
     };
 
     let mut key_schedule = KeySchedule::init(
         welcome.ciphersuite(),
-        &backend,
+        backend.crypto(),
         &group_secrets.joiner_secret,
         psk_secret,
     )
@@ -226,9 +226,9 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
     let group_info: GroupInfo = {
         let verifiable_group_info: VerifiableGroupInfo = {
             let (welcome_key, welcome_nonce) = key_schedule
-                .welcome(&backend)
+                .welcome(backend.crypto())
                 .unwrap()
-                .derive_welcome_key_nonce(&backend)
+                .derive_welcome_key_nonce(backend.crypto())
                 .unwrap();
 
             VerifiableGroupInfo::try_from_ciphertext(
@@ -236,7 +236,7 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
                 &welcome_nonce,
                 welcome.encrypted_group_info(),
                 &[],
-                &backend,
+                backend.crypto(),
             )
             .unwrap()
         };
@@ -257,11 +257,11 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
     let serialized_group_context = group_context.tls_serialize_detached().unwrap();
 
     key_schedule
-        .add_context(&backend, &serialized_group_context)
+        .add_context(backend.crypto(), &serialized_group_context)
         .unwrap();
 
     let (_group_epoch_secrets, message_secrets) = {
-        let epoch_secrets = key_schedule.epoch_secrets(&backend).unwrap();
+        let epoch_secrets = key_schedule.epoch_secrets(backend.crypto()).unwrap();
 
         epoch_secrets.split_secrets(
             serialized_group_context.to_vec(),
@@ -272,7 +272,7 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
 
     let confirmation_tag = message_secrets
         .confirmation_key()
-        .tag(&backend, group_context.confirmed_transcript_hash())
+        .tag(backend.crypto(), group_context.confirmed_transcript_hash())
         .unwrap();
 
     assert_eq!(&confirmation_tag, group_info.confirmation_tag());

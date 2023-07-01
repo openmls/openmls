@@ -279,7 +279,7 @@ fn test_valsem004(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // The membership tag is checked before the sender, so we need to re-calculate it and set it
     plaintext
         .set_membership_tag(
-            backend,
+            backend.crypto(),
             alice_group.group().message_secrets().membership_key(),
             alice_group.group().message_secrets().serialized_context(),
         )
@@ -334,7 +334,7 @@ fn test_valsem005(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // The membership tag is checked before verifying content encryption, so we need to re-calculate it and set it
     plaintext
         .set_membership_tag(
-            backend,
+            backend.crypto(),
             alice_group.group().message_secrets().membership_key(),
             alice_group.group().message_secrets().serialized_context(),
         )
@@ -480,7 +480,7 @@ fn test_valsem008(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let original_message = plaintext.clone();
 
     plaintext.set_membership_tag_test(MembershipTag(
-        Mac::new(backend, &Secret::default(), &[1, 2, 3])
+        Mac::new(backend.crypto(), &Secret::default(), &[1, 2, 3])
             .expect("Could not compute membership tag."),
     ));
 
@@ -533,7 +533,7 @@ fn test_valsem009(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // The membership tag covers the confirmation tag, so we need to re-calculate it and set it
     plaintext
         .set_membership_tag(
-            backend,
+            backend.crypto(),
             alice_group.group().message_secrets().membership_key(),
             alice_group.group().message_secrets().serialized_context(),
         )
@@ -590,7 +590,7 @@ fn test_valsem010(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // The membership tag covers the signature, so we need to re-calculate it and set it
     plaintext
         .set_membership_tag(
-            backend,
+            backend.crypto(),
             alice_group.group().message_secrets().membership_key(),
             alice_group.group().message_secrets().serialized_context(),
         )

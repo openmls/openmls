@@ -14,7 +14,7 @@
 #[cfg(test)]
 use std::collections::HashSet;
 
-use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
+use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsProvider, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
 
 use self::{
@@ -363,7 +363,7 @@ impl PublicGroup {
         own_leaf_index: LeafNodeIndex,
     ) -> Result<Vec<UpdatePathNode>, LibraryError> {
         self.treesync().empty_diff().encrypt_path(
-            backend,
+            backend.crypto(),
             ciphersuite,
             path,
             group_context,

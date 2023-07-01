@@ -206,7 +206,7 @@ fn insert_proposal_and_resign(
 
     signed_plaintext
         .set_membership_tag(
-            backend,
+            backend.crypto(),
             membership_key,
             committer_group
                 .group()
@@ -1193,7 +1193,7 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
             let proposal_or_ref = match proposal_inclusion {
                 ProposalInclusion::ByValue => ProposalOrRef::Proposal(add_proposal.clone()),
                 ProposalInclusion::ByReference => ProposalOrRef::Reference(
-                    ProposalRef::from_raw_proposal(ciphersuite, backend, &add_proposal).unwrap(),
+                    ProposalRef::from_raw_proposal(ciphersuite, backend.crypto(), &add_proposal).unwrap(),
                 ),
             };
             // Artificially add the proposal.
@@ -1214,7 +1214,7 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
                 bob_group.store_pending_proposal(
                     QueuedProposal::from_proposal_and_sender(
                         ciphersuite,
-                        backend,
+                        backend.crypto(),
                         add_proposal.clone(),
                         &Sender::build_member(alice_group.own_leaf_index()),
                     )
@@ -1709,11 +1709,11 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // process the commit.
     let leaf_keypair = alice_group
         .group()
-        .read_epoch_keypairs(backend)
+        .read_epoch_keypairs(backend.key_store())
         .into_iter()
         .find(|keypair| keypair.public_key() == &alice_encryption_key)
         .unwrap();
-    leaf_keypair.write_to_key_store(backend).unwrap();
+    leaf_keypair.write_to_key_store(backend.key_store()).unwrap();
 
     // Have bob process the resulting plaintext
     let err = bob_group
@@ -1824,7 +1824,7 @@ fn test_valsem111(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     bob_group.store_pending_proposal(
         QueuedProposal::from_proposal_and_sender(
             ciphersuite,
-            backend,
+            backend.crypto(),
             update_proposal.clone(),
             &Sender::build_member(alice_group.own_leaf_index()),
         )
@@ -1858,7 +1858,7 @@ fn test_valsem111(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let verifiable_plaintext = insert_proposal_and_resign(
         backend,
         vec![ProposalOrRef::Reference(
-            ProposalRef::from_raw_proposal(ciphersuite, backend, &update_proposal)
+            ProposalRef::from_raw_proposal(ciphersuite, backend.crypto(), &update_proposal)
                 .expect("error creating hash reference"),
         )],
         plaintext,

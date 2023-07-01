@@ -335,7 +335,7 @@ impl MlsGroup {
 
         let queued_proposal = QueuedProposal::from_authenticated_content_by_ref(
             self.ciphersuite(),
-            backend,
+            backend.crypto(),
             proposal.clone(),
         )?;
 

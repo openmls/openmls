@@ -753,7 +753,7 @@ mod test {
                 ciphersuite,
                 backend.crypto(),
                 test,
-                &GroupId::random(backend),
+                &GroupId::random(backend.rand()),
             )
             .is_ok();
             assert_eq!(got, expected);

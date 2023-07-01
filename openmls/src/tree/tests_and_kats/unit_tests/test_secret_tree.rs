@@ -14,7 +14,7 @@ use std::collections::HashMap;
 #[apply(ciphersuites_and_backends)]
 fn test_boundaries(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let configuration = &SenderRatchetConfiguration::default();
-    let encryption_secret = EncryptionSecret::random(ciphersuite, backend);
+    let encryption_secret = EncryptionSecret::random(ciphersuite, backend.rand());
     let mut secret_tree = SecretTree::new(
         encryption_secret,
         TreeSize::from_leaf_count(3u32),
@@ -24,7 +24,7 @@ fn test_boundaries(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     assert!(secret_tree
         .secret_for_decryption(
             ciphersuite,
-            backend,
+            backend.crypto(),
             LeafNodeIndex::new(0u32),
             secret_type,
             0,
@@ -34,7 +34,7 @@ fn test_boundaries(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     assert!(secret_tree
         .secret_for_decryption(
             ciphersuite,
-            backend,
+            backend.crypto(),
             LeafNodeIndex::new(1u32),
             secret_type,
             0,
@@ -44,7 +44,7 @@ fn test_boundaries(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     assert!(secret_tree
         .secret_for_decryption(
             ciphersuite,
-            backend,
+            backend.crypto(),
             LeafNodeIndex::new(0u32),
             secret_type,
             1,
@@ -54,7 +54,7 @@ fn test_boundaries(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     assert!(secret_tree
         .secret_for_decryption(
             ciphersuite,
-            backend,
+            backend.crypto(),
             LeafNodeIndex::new(0u32),
             secret_type,
             1_000,
@@ -64,7 +64,7 @@ fn test_boundaries(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     assert_eq!(
         secret_tree.secret_for_decryption(
             ciphersuite,
-            backend,
+            backend.crypto(),
             LeafNodeIndex::new(1u32),
             secret_type,
             // We're at generation 1, so 1001 is still ok.
@@ -76,7 +76,7 @@ fn test_boundaries(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     assert!(secret_tree
         .secret_for_decryption(
             ciphersuite,
-            backend,
+            backend.crypto(),
             LeafNodeIndex::new(0u32),
             secret_type,
             996,
@@ -86,7 +86,7 @@ fn test_boundaries(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     assert_eq!(
         secret_tree.secret_for_decryption(
             ciphersuite,
-            backend,
+            backend.crypto(),
             LeafNodeIndex::new(0u32),
             secret_type,
             995,
@@ -97,7 +97,7 @@ fn test_boundaries(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     assert_eq!(
         secret_tree.secret_for_decryption(
             ciphersuite,
-            backend,
+            backend.crypto(),
             LeafNodeIndex::new(4u32),
             secret_type,
             0,
@@ -105,7 +105,7 @@ fn test_boundaries(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         ),
         Err(SecretTreeError::IndexOutOfBounds)
     );
-    let encryption_secret = EncryptionSecret::random(ciphersuite, backend);
+    let encryption_secret = EncryptionSecret::random(ciphersuite, backend.rand());
     let mut largetree = SecretTree::new(
         encryption_secret,
         TreeSize::from_leaf_count(100_000u32),
@@ -114,7 +114,7 @@ fn test_boundaries(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     assert!(largetree
         .secret_for_decryption(
             ciphersuite,
-            backend,
+            backend.crypto(),
             LeafNodeIndex::new(0u32),
             secret_type,
             0,
@@ -124,7 +124,7 @@ fn test_boundaries(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     largetree
         .secret_for_decryption(
             ciphersuite,
-            backend,
+            backend.crypto(),
             LeafNodeIndex::new(99_999u32),
             secret_type,
             0,
@@ -134,7 +134,7 @@ fn test_boundaries(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     assert!(largetree
         .secret_for_decryption(
             ciphersuite,
-            backend,
+            backend.crypto(),
             LeafNodeIndex::new(99_999u32),
             secret_type,
             1_000,
@@ -144,7 +144,7 @@ fn test_boundaries(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     assert_eq!(
         largetree.secret_for_decryption(
             ciphersuite,
-            backend,
+            backend.crypto(),
             LeafNodeIndex::new(200_000u32),
             secret_type,
             0,
@@ -162,7 +162,7 @@ fn increment_generation(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider
     const MAX_GENERATIONS: usize = 10;
 
     let mut unique_values: HashMap<Vec<u8>, bool> = HashMap::new();
-    let encryption_secret = EncryptionSecret::random(ciphersuite, backend);
+    let encryption_secret = EncryptionSecret::random(ciphersuite, backend.rand());
     let mut secret_tree = SecretTree::new(
         encryption_secret,
         TreeSize::from_leaf_count(SIZE as u32),
@@ -186,7 +186,7 @@ fn increment_generation(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider
             let (handshake_key, handshake_nonce) = secret_tree
                 .secret_for_decryption(
                     ciphersuite,
-                    backend,
+                    backend.crypto(),
                     LeafNodeIndex::new(j as u32),
                     SecretType::HandshakeSecret,
                     i as u32,
@@ -205,7 +205,7 @@ fn increment_generation(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider
             let (application_key, application_nonce) = secret_tree
                 .secret_for_decryption(
                     ciphersuite,
-                    backend,
+                    backend.crypto(),
                     LeafNodeIndex::new(j as u32),
                     SecretType::ApplicationSecret,
                     i as u32,
@@ -244,7 +244,7 @@ fn secret_tree(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let (application_secret_key, application_secret_nonce) = secret_tree
         .secret_for_decryption(
             ciphersuite,
-            backend,
+            backend.crypto(),
             LeafNodeIndex::new(leaf_index),
             SecretType::ApplicationSecret,
             generation,

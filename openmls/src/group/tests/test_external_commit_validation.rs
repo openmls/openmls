@@ -189,7 +189,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     alice_group.merge_pending_commit(backend).unwrap();
 
     let verifiable_group_info = alice_group
-        .export_group_info(backend, &alice_credential.signer, true)
+        .export_group_info(backend.crypto(), &alice_credential.signer, true)
         .unwrap()
         .into_verifiable_group_info()
         .unwrap();
@@ -340,7 +340,7 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
     // Have Alice export everything that bob needs.
     let verifiable_group_info = alice_group
-        .export_group_info(backend, &alice_credential.signer, false)
+        .export_group_info(backend.crypto(), &alice_credential.signer, false)
         .unwrap()
         .into_verifiable_group_info()
         .unwrap();
@@ -492,7 +492,7 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         });
 
         let proposal_ref =
-            ProposalRef::from_raw_proposal(ciphersuite, backend, &add_proposal).unwrap();
+            ProposalRef::from_raw_proposal(ciphersuite, backend.crypto(), &add_proposal).unwrap();
 
         // Add an Add proposal to the external commit.
         let add_proposal_ref = ProposalOrRef::Reference(proposal_ref);
@@ -683,7 +683,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
             .message_secrets()
             .serialized_context()
             .to_vec(),
-        backend,
+        backend.crypto(),
     )
     .unwrap();
     let verification_result: Result<AuthenticatedContentIn, _> =
@@ -719,7 +719,7 @@ fn test_pure_ciphertest(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider
 
     // Have Alice export everything that bob needs.
     let verifiable_group_info = alice_group
-        .export_group_info(backend, &alice_credential.signer, true)
+        .export_group_info(backend.crypto(), &alice_credential.signer, true)
         .unwrap()
         .into_verifiable_group_info()
         .unwrap();
@@ -799,7 +799,7 @@ mod utils {
 
         // Have Alice export everything that bob needs.
         let verifiable_group_info = alice_group
-            .export_group_info(backend, &alice_credential.signer, false)
+            .export_group_info(backend.crypto(), &alice_credential.signer, false)
             .unwrap()
             .into_verifiable_group_info()
             .unwrap();

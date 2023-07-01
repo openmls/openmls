@@ -38,20 +38,20 @@ fn test_mls_group_persistence(ciphersuite: Ciphersuite, backend: &impl OpenMlsPr
     assert_eq!(alice_group.state_changed(), InnerState::Changed);
 
     alice_group
-        .save(backend)
+        .save(backend.key_store())
         .expect("Could not write group state to file");
 
     let alice_group_deserialized =
-        MlsGroup::load(&group_id, backend).expect("Could not deserialize MlsGroup");
+        MlsGroup::load(&group_id, backend.key_store()).expect("Could not deserialize MlsGroup");
 
     assert_eq!(
         (
             alice_group.export_ratchet_tree(),
-            alice_group.export_secret(backend, "test", &[], 32)
+            alice_group.export_secret(backend.crypto(), "test", &[], 32)
         ),
         (
             alice_group_deserialized.export_ratchet_tree(),
-            alice_group_deserialized.export_secret(backend, "test", &[], 32)
+            alice_group_deserialized.export_secret(backend.crypto(), "test", &[], 32)
         )
     );
 }
@@ -220,18 +220,18 @@ fn export_secret(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
     assert!(
         alice_group
-            .export_secret(backend, "test1", &[], ciphersuite.hash_length())
+            .export_secret(backend.crypto(), "test1", &[], ciphersuite.hash_length())
             .expect("An unexpected error occurred.")
             != alice_group
-                .export_secret(backend, "test2", &[], ciphersuite.hash_length())
+                .export_secret(backend.crypto(), "test2", &[], ciphersuite.hash_length())
                 .expect("An unexpected error occurred.")
     );
     assert!(
         alice_group
-            .export_secret(backend, "test", &[0u8], ciphersuite.hash_length())
+            .export_secret(backend.crypto(), "test", &[0u8], ciphersuite.hash_length())
             .expect("An unexpected error occurred.")
             != alice_group
-                .export_secret(backend, "test", &[1u8], ciphersuite.hash_length())
+                .export_secret(backend.crypto(), "test", &[1u8], ciphersuite.hash_length())
                 .expect("An unexpected error occurred.")
     )
 }
@@ -293,7 +293,7 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvid
         MlsMessageOutBody::PublicMessage(pt) => {
             pt.set_sender(random_sender);
             pt.set_membership_tag(
-                backend,
+                backend.crypto(),
                 membership_key,
                 client_group.group().message_secrets().serialized_context(),
             )
@@ -473,8 +473,8 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsPro
         alice_group.export_ratchet_tree()
     );
     assert_eq!(
-        bob_group.export_secret(backend, "test", &[], ciphersuite.hash_length()),
-        alice_group.export_secret(backend, "test", &[], ciphersuite.hash_length())
+        bob_group.export_secret(backend.crypto(), "test", &[], ciphersuite.hash_length()),
+        alice_group.export_secret(backend.crypto(), "test", &[], ciphersuite.hash_length())
     );
 
     // While a commit is pending, merging Bob's commit should clear the pending commit.
