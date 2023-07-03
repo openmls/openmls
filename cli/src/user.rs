@@ -190,6 +190,7 @@ impl User {
 
         // Go through the list of messages and process or store them.
         for message in self.backend.recv_msgs(self)?.drain(..) {
+            log::debug!("Reading message format {:#?} ...", message.wire_format());
             match message.extract() {
                 MlsMessageInBody::Welcome(welcome) => {
                     // Join the group. (Later we should ask the user to
@@ -305,26 +306,28 @@ impl User {
             )
             .map_err(|e| format!("Failed to add member to group - {e}"))?;
 
-        // First, process the invitation on our end.
-        group
-            .mls_group
-            .borrow_mut()
-            .merge_pending_commit(&self.crypto)
-            .expect("error merging pending commit");
-
-        // Second, send Welcome to the joiner.
-        log::trace!("Sending welcome");
-        self.backend
-            .send_welcome(&welcome)
-            .expect("Error sending Welcome message");
-
-        // Finally, send the MlsMessages to the group.
+        /* First, send the MlsMessage proposal to the group.
+        This must be done before the member invitation is committed.
+        It avoids the invited member to receive the proposal (which is in the previous group epoch).*/
         log::trace!("Sending proposal");
         let group = groups.get_mut(group_id).unwrap(); // XXX: not cool.
         let group_recipients = self.recipients(group);
 
         let msg = GroupMessage::new(out_messages.into(), &group_recipients);
         self.backend.send_msg(&msg)?;
+
+        // Second, process the invitation on our end.
+        group
+            .mls_group
+            .borrow_mut()
+            .merge_pending_commit(&self.crypto)
+            .expect("error merging pending commit");
+
+        // Finally, send Welcome to the joiner.
+        log::trace!("Sending welcome");
+        self.backend
+            .send_welcome(&welcome)
+            .expect("Error sending Welcome message");
 
         Ok(())
     }
