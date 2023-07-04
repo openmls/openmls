@@ -58,7 +58,7 @@ impl CoreGroup {
             FramedContentBody::Application(_) | FramedContentBody::Proposal(_) => None,
             FramedContentBody::Commit(commit) => commit.path().as_ref().and_then(|path| {
                 let path_credential = path.leaf_node().credential();
-                if path_credential == &credential {
+                if path_credential != &credential {
                     Some(path_credential.clone())
                 } else {
                     None
