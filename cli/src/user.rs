@@ -67,6 +67,23 @@ impl User {
         )]
     }
 
+    /// Get a member
+    fn find_member_index(&self, name: String, group: &Group) -> Result<LeafNodeIndex, String> {
+        let mls_group = group.mls_group.borrow();
+        for Member {
+            index,
+            encryption_key: _,
+            signature_key: _,
+            credential,
+        } in mls_group.members()
+        {
+            if credential.identity() == name.as_bytes() {
+                return Ok(index);
+            }
+        }
+        return Err("Unknown member".to_string());
+    }
+
     /// Get a list of clients in the group to send messages to.
     fn recipients(&self, group: &Group) -> Vec<Vec<u8>> {
         let mut recipients = Vec::new();
@@ -122,8 +139,11 @@ impl User {
 
         let msg = GroupMessage::new(message_out.into(), &self.recipients(group));
         log::debug!(" >>> send: {:?}", msg);
-        self.backend.send_msg(&msg)?;
-
+        match self.backend.send_msg(&msg) {
+            Ok(()) => (),
+            Err(e) => println!("Error sending group message: {e:?}"),
+        }
+        
         // XXX: Need to update the client's local view of the conversation to include
         // the message they sent.
 
@@ -328,6 +348,49 @@ impl User {
         self.backend
             .send_welcome(&welcome)
             .expect("Error sending Welcome message");
+
+        Ok(())
+    }
+
+     /// Remove user with the given name from the group.
+     pub fn remove(&mut self, name: String, group: String) -> Result<(), String> {
+
+        // Get the group ID
+        let group_id = group.as_bytes();
+        let mut groups = self.groups.borrow_mut();
+        let group = match groups.get_mut(group_id) {
+            Some(g) => g,
+            None => return Err(format!("No group with name {group} known.")),
+        };
+
+        // Get the client leaf index
+        let leaf_index = self.find_member_index(name,group).unwrap();
+
+        // Remove operation on the mls group
+        let (remove_message, _welcome, _group_info) = group
+            .mls_group
+            .borrow_mut()
+            .remove_members(
+                &self.crypto,
+                &self.identity.borrow().signer,
+                &[leaf_index],
+            )
+            .map_err(|e| format!("Failed to add member to group - {e}"))?;
+
+        // First, send the MlsMessage remove commit to the group.
+        log::trace!("Sending commit");
+        let group = groups.get_mut(group_id).unwrap(); // XXX: not cool.
+        let group_recipients = self.recipients(group);
+
+        let msg = GroupMessage::new(remove_message.into(), &group_recipients);
+        self.backend.send_msg(&msg)?;
+
+        // Second, process the removal on our end.
+        group
+            .mls_group
+            .borrow_mut()
+            .merge_pending_commit(&self.crypto)
+            .expect("error merging pending commit");
 
         Ok(())
     }
