@@ -306,10 +306,10 @@ impl User {
             )
             .map_err(|e| format!("Failed to add member to group - {e}"))?;
 
-        /* First, send the MlsMessage proposal to the group.
-        This must be done before the member invitation is committed.
-        It avoids the invited member to receive the proposal (which is in the previous group epoch).*/
-        log::trace!("Sending proposal");
+        /* First, send the MlsMessage commit to the group.
+        This must be done before the member invitation is locally committed.
+        It avoids the invited member to receive the commit message (which is in the previous group epoch).*/
+        log::trace!("Sending commit");
         let group = groups.get_mut(group_id).unwrap(); // XXX: not cool.
         let group_recipients = self.recipients(group);
 
