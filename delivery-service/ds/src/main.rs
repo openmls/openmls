@@ -33,7 +33,7 @@
 use actix_web::{get, post, web, web::Payload, App, HttpRequest, HttpServer, Responder};
 use clap::Command;
 use futures_util::StreamExt;
-use std::{collections::HashMap, borrow::BorrowMut};
+use std::collections::HashMap;
 use std::sync::Mutex;
 use tls_codec::{Deserialize, Serialize, TlsSliceU16, TlsVecU32};
 
@@ -151,6 +151,42 @@ async fn get_key_packages(path: web::Path<String>, data: web::Data<DsData>) -> i
         None => return actix_web::HttpResponse::NoContent().finish(),
     };
     actix_web::HttpResponse::Ok().body(unwrap_data!(client.key_packages.tls_serialize_detached()))
+}
+
+/// Publish key packages for a given client `{id}`.
+#[post("/clients/key_packages/{id}")]
+async fn publish_key_packages(path: web::Path<String>, mut body: Payload, data: web::Data<DsData>) -> impl Responder {
+    let mut clients = unwrap_data!(data.clients.lock());
+
+    let id = match base64::decode_config(path.into_inner(), base64::URL_SAFE) {
+        Ok(v) => v,
+        Err(_) => return actix_web::HttpResponse::BadRequest().finish(),
+    };
+    log::debug!("Add key package for {:?}", id);
+
+    let client = match clients.get_mut(&id) {
+        Some(client) => client,
+        None => return actix_web::HttpResponse::NotFound().finish(),
+    };
+
+    let mut bytes = web::BytesMut::new();
+    while let Some(item) = body.next().await {
+        bytes.extend_from_slice(&unwrap_item!(item));
+    }
+    let key_packages = match ClientKeyPackages::tls_deserialize(&mut &bytes[..]) {
+        Ok(ckp) => ckp,
+        Err(_) => {
+            log::error!("Invalid payload for /clients/key_packages/{:?}\n{:?}", id, bytes);
+            return actix_web::HttpResponse::BadRequest().finish();
+        }
+    };
+
+    key_packages.0
+                .iter()
+                .map(|(b, kp)| (b.clone(), KeyPackageIn::from(kp.clone())))
+                .for_each(|value| client.key_packages.0.push(value));
+                
+    actix_web::HttpResponse::Ok().finish()
 }
 
 /// Consume a key package for a given client `{id}`.
@@ -324,6 +360,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(data.clone())
             .service(register_client)
             .service(list_clients)
+            .service(publish_key_packages)
             .service(get_key_packages)
             .service(consume_key_package)
             .service(send_welcome)

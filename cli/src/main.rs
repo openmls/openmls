@@ -16,6 +16,7 @@ const HELP: &str = "
 >>>     - update                                update the client state
 >>>     - reset                                 reset the server
 >>>     - register {client name}                register a new client
+>>>     - create kp                             create a new key package
 >>>     - create group {group name}             create a new group
 >>>     - group {group name}                    group operations
 >>>         - send {message}                    send message to group
@@ -67,6 +68,22 @@ fn main() {
             stdout
                 .write_all(format!("registered new client {client_name}\n\n").as_bytes())
                 .unwrap();
+            continue;
+        }
+
+        // Create a new KeyPackage.
+        if op == "create kp" {
+            if let Some(client) = &mut client {
+                // client.create_kp().unwrap();
+                client.create_kp();
+                stdout
+                    .write_all(b" >>> New key package created\n\n")
+                    .unwrap();
+            } else {
+                stdout
+                    .write_all(b" >>> No client to update :(\n\n")
+                    .unwrap();
+            }
             continue;
         }
 

@@ -6,7 +6,6 @@ use ds_lib::{ClientKeyPackages, GroupMessage};
 use openmls::prelude::*;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::OpenMlsCryptoProvider;
-use openmls_basic_credential::SignatureKeyPair;
 
 use super::{backend::Backend, conversation::Conversation, identity::Identity};
 
@@ -149,6 +148,15 @@ impl User {
             || Err("Unknown group".to_string()),
             |g| Ok(g.conversation.get(100).map(|messages| messages.to_vec())),
         )
+    }
+
+    /// Create a new key package.
+    pub fn create_kp(&self) {
+        self.add_key_package();
+        match self.backend.send_kp(&self) {
+            Ok(()) => (),
+            Err(e) => println!("Error sending new key package: {e:?}"),
+        };
     }
 
     /// Send an application message to the group.
