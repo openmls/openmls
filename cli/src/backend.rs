@@ -58,6 +58,20 @@ impl Backend {
         }
     }
 
+    /// Get a list of key packages for a client.
+    pub fn consume_key_package(&self, client_id: &[u8]) -> Result<KeyPackageIn, String> {
+        let mut url = self.ds_url.clone();
+        let path = "/clients/key_package/".to_string()
+            + &base64::encode_config(client_id, base64::URL_SAFE);
+        url.set_path(&path);
+
+        let response = get(&url)?;
+        match KeyPackageIn::tls_deserialize(&mut response.as_slice()) {
+            Ok(kp) => Ok(kp),
+            Err(e) => Err(format!("Error decoding server response: {e:?}")),
+        }
+    }
+
     /// Send a welcome message.
     pub fn send_welcome(&self, welcome_msg: &MlsMessageOut) -> Result<(), String> {
         let mut url = self.ds_url.clone();

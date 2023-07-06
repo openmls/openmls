@@ -4,6 +4,7 @@ use ds_lib::{ClientKeyPackages, GroupMessage};
 use openmls::prelude::*;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::OpenMlsCryptoProvider;
+use openmls_basic_credential::SignatureKeyPair;
 
 use super::{backend::Backend, conversation::Conversation, identity::Identity};
 
@@ -44,29 +45,39 @@ impl User {
             backend: Backend::default(),
             crypto,
         };
-
-        match out.backend.register_client(&out) {
-            Ok(r) => log::debug!("Created new user: {:?}", r),
-            Err(e) => log::error!("Error creating user: {:?}", e),
-        }
-
         out
     }
 
-    /// Get the key packages fo this user.
-    pub fn key_packages(&self) -> Vec<(Vec<u8>, KeyPackage)> {
-        vec![(
-            self.identity
-                .borrow()
-                .kp
+    pub fn add_key_package(&self) {
+        let ciphersuite = CIPHERSUITE;
+        let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+        let credential_with_key = CredentialWithKey {
+            credential: self.identity.borrow().credential_with_key.credential.clone(),
+            signature_key: signature_keys.to_public_vec().into(),
+        };
+        signature_keys.store(self.crypto.key_store()).unwrap();
+
+        let key_package = KeyPackage::builder()
+            .build(
+                CryptoConfig {
+                    ciphersuite,
+                    version: ProtocolVersion::default(),
+                },
+                &self.crypto,
+                &signature_keys,
+                credential_with_key.clone(),
+            )
+            .unwrap();
+
+        self.identity.borrow_mut().kp.push(
+            (key_package
                 .hash_ref(self.crypto.crypto())
                 .unwrap()
                 .as_slice()
                 .to_vec(),
-            self.identity.borrow().kp.clone(),
-        )]
+                key_package));
     }
-
+   
     /// Get a member
     fn find_member_index(&self, name: String, group: &Group) -> Result<LeafNodeIndex, String> {
         let mls_group = group.mls_group.borrow();
@@ -82,6 +93,18 @@ impl User {
             }
         }
         return Err("Unknown member".to_string());
+    }
+
+    /// Get the key packages fo this user.
+    pub fn key_packages(&self) -> Vec<(Vec<u8>, KeyPackage)> {
+        self.identity.borrow().kp.clone()
+    }
+
+    pub fn register(&self) {
+        match self.backend.register_client(&self) {
+            Ok(r) => log::debug!("Created new user: {:?}", r),
+            Err(e) => log::error!("Error creating user: {:?}", e),
+        }
     }
 
     /// Get a list of clients in the group to send messages to.
@@ -208,6 +231,7 @@ impl User {
             Ok(())
         };
 
+        log::debug!("update::Processing messages for {} ", self.username);
         // Go through the list of messages and process or store them.
         for message in self.backend.recv_msgs(self)?.drain(..) {
             log::debug!("Reading message format {:#?} ...", message.wire_format());
@@ -230,7 +254,7 @@ impl User {
                 _ => panic!("Unsupported message type"),
             }
         }
-        log::trace!("done with messages ...");
+        log::debug!("update::Processing messages done");
 
         for c in self.backend.list_clients()?.drain(..) {
             if c.id != self.identity.borrow().identity()
@@ -249,7 +273,7 @@ impl User {
                 log::trace!("Updated client {}", "");
             }
         }
-        log::trace!("done with clients ...");
+        log::debug!("update::Processing clients done");
 
         Ok(messages_out)
     }
@@ -300,6 +324,7 @@ impl User {
             Some(v) => v,
             None => return Err(format!("No contact with name {name} known.")),
         };
+        /*
         let (_hash, joiner_key_package) = self
             .backend
             .get_client(&contact.id)
@@ -307,7 +332,10 @@ impl User {
             .0
             .pop()
             .unwrap();
-
+        */
+        // Reclaim a key package from the server
+        let joiner_key_package  = self.backend.consume_key_package(&contact.id).unwrap();
+        
         // Build a proposal with this key package and do the MLS bits.
         let group_id = group.as_bytes();
         let mut groups = self.groups.borrow_mut();
@@ -332,7 +360,7 @@ impl User {
         log::trace!("Sending commit");
         let group = groups.get_mut(group_id).unwrap(); // XXX: not cool.
         let group_recipients = self.recipients(group);
-
+        
         let msg = GroupMessage::new(out_messages.into(), &group_recipients);
         self.backend.send_msg(&msg)?;
 

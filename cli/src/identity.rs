@@ -4,7 +4,7 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::OpenMlsCryptoProvider;
 
 pub struct Identity {
-    pub(crate) kp: KeyPackage,
+    pub(crate) kp: Vec<(Vec<u8>, KeyPackage)>,
     pub(crate) credential_with_key: CredentialWithKey,
     pub(crate) signer: SignatureKeyPair,
 }
@@ -32,7 +32,12 @@ impl Identity {
             .unwrap();
 
         Self {
-            kp: key_package,
+            kp: vec![(key_package
+            .hash_ref(crypto.crypto())
+            .unwrap()
+            .as_slice()
+            .to_vec(),
+            key_package)],
             credential_with_key,
             signer: signature_keys,
         }

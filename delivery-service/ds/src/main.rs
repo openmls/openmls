@@ -153,6 +153,26 @@ async fn get_key_packages(path: web::Path<String>, data: web::Data<DsData>) -> i
     actix_web::HttpResponse::Ok().body(unwrap_data!(client.key_packages.tls_serialize_detached()))
 }
 
+/// Consume a key package for a given client `{id}`.
+/// This returns a serialised `KeyPackage` (see the `ds-lib`
+/// for details).
+#[get("/clients/key_package/{id}")]
+async fn consume_key_package(path: web::Path<String>, data: web::Data<DsData>) -> impl Responder {
+    let mut clients = unwrap_data!(data.clients.lock());
+
+    let id = match base64::decode_config(path.into_inner(), base64::URL_SAFE) {
+        Ok(v) => v,
+        Err(_) => return actix_web::HttpResponse::BadRequest().finish(),
+    };
+    log::debug!("Consuming key package for {:?}", id);
+
+   let key_package  = match clients.get_mut(&id) {
+        Some(c) => c.consume_kp().unwrap(),
+        None => return actix_web::HttpResponse::NoContent().finish(),
+    };
+    actix_web::HttpResponse::Ok().body(unwrap_data!(key_package.tls_serialize_detached()))
+}
+
 /// Send a welcome message to a client.
 /// This takes a serialised `Welcome` message and stores the message for all
 /// clients in the welcome message.
@@ -303,6 +323,7 @@ async fn main() -> std::io::Result<()> {
             .service(register_client)
             .service(list_clients)
             .service(get_key_packages)
+            .service(consume_key_package)
             .service(send_welcome)
             .service(msg_recv)
             .service(msg_send)

@@ -56,6 +56,13 @@ impl ClientInfo {
     pub fn id(&self) -> &[u8] {
         self.id.as_slice()
     }
+
+    pub fn consume_kp(&mut self) -> Result<KeyPackageIn, String> {
+        match self.key_packages.0.pop() {
+            Some(c) => Ok(c.1),
+            None => Err("No more keypackage available".to_string()),
+        }
+    }
 }
 
 /// An core group message.
