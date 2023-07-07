@@ -1,4 +1,6 @@
+use std::borrow::Borrow;
 use std::{cell::RefCell, collections::HashMap};
+use std::str;
 
 use ds_lib::{ClientKeyPackages, GroupMessage};
 use openmls::prelude::*;
@@ -50,12 +52,12 @@ impl User {
 
     pub fn add_key_package(&self) {
         let ciphersuite = CIPHERSUITE;
-        let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+        /*let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
         let credential_with_key = CredentialWithKey {
             credential: self.identity.borrow().credential_with_key.credential.clone(),
             signature_key: signature_keys.to_public_vec().into(),
         };
-        signature_keys.store(self.crypto.key_store()).unwrap();
+        signature_keys.store(self.crypto.key_store()).unwrap();*/
 
         let key_package = KeyPackage::builder()
             .build(
@@ -64,8 +66,8 @@ impl User {
                     version: ProtocolVersion::default(),
                 },
                 &self.crypto,
-                &signature_keys,
-                credential_with_key.clone(),
+                &self.identity.borrow().signer,
+                self.identity.borrow().credential_with_key.clone(),
             )
             .unwrap();
 
@@ -127,6 +129,7 @@ impl User {
                 .as_slice()
                 != signature_key.as_slice()
             {
+                log::debug!("Searching for contact {:?}", str::from_utf8(credential.identity()).unwrap());
                 let contact = match self.contacts.get(&credential.identity().to_vec()) {
                     Some(c) => c.id.clone(),
                     None => panic!("There's a member in the group we don't know."),
@@ -257,6 +260,8 @@ impl User {
         log::debug!("update::Processing messages done");
 
         for c in self.backend.list_clients()?.drain(..) {
+            let client_id = c.id.clone();
+            log::debug!("update::Processing client for contact {:?}", str::from_utf8(&client_id).unwrap());
             if c.id != self.identity.borrow().identity()
                 && self
                     .contacts
@@ -270,10 +275,14 @@ impl User {
                     )
                     .is_some()
             {
+                log::debug!("update::added client to contact {:?}", str::from_utf8(&client_id).unwrap());
                 log::trace!("Updated client {}", "");
             }
         }
-        log::debug!("update::Processing clients done");
+        log::debug!("update::Processing clients done, contact list is:");
+        for (contact_id, _contact) in self.contacts.borrow() {
+            log::debug!("update::Parsing contact {:?}", str::from_utf8(&contact_id).unwrap());
+        }
 
         Ok(messages_out)
     }

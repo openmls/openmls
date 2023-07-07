@@ -5,6 +5,8 @@
 //!
 //! Clients are represented by the `ClientInfo` struct.
 
+use std::collections::HashSet;
+
 use openmls::prelude::*;
 use tls_codec::{
     TlsByteSliceU16, TlsByteVecU16, TlsByteVecU32, TlsByteVecU8, TlsDeserialize, TlsSerialize,
@@ -18,6 +20,8 @@ use tls_codec::{
 pub struct ClientInfo {
     pub client_name: String,
     pub key_packages: ClientKeyPackages,
+    /// map of reserved key_packages [group_id, key_package_hash]
+    pub reserved_key_pkg_hash: HashSet<Vec<u8>>,
     pub id: Vec<u8>,
     pub msgs: Vec<MlsMessageIn>,
     pub welcome_queue: Vec<MlsMessageIn>,
@@ -46,6 +50,7 @@ impl ClientInfo {
                     .collect::<Vec<(TlsByteVecU8, KeyPackageIn)>>()
                     .into(),
             ),
+            reserved_key_pkg_hash: HashSet::new(),
             msgs: Vec::new(),
             welcome_queue: Vec::new(),
         }
@@ -59,7 +64,10 @@ impl ClientInfo {
 
     pub fn consume_kp(&mut self) -> Result<KeyPackageIn, String> {
         match self.key_packages.0.pop() {
-            Some(c) => Ok(c.1),
+            Some(c) => {
+                self.reserved_key_pkg_hash.insert(c.0.into_vec());
+                Ok(c.1)
+            },
             None => Err("No more keypackage available".to_string()),
         }
     }

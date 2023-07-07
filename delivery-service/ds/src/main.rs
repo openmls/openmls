@@ -33,7 +33,7 @@
 use actix_web::{get, post, web, web::Payload, App, HttpRequest, HttpServer, Responder};
 use clap::Command;
 use futures_util::StreamExt;
-use std::collections::HashMap;
+use std::{collections::HashMap, borrow::BorrowMut};
 use std::sync::Mutex;
 use tls_codec::{Deserialize, Serialize, TlsSliceU16, TlsVecU32};
 
@@ -190,14 +190,16 @@ async fn send_welcome(mut body: Payload, data: web::Data<DsData>) -> impl Respon
     for secret in welcome.secrets().iter() {
         let key_package_hash = &secret.new_member();
         for (_client_name, client) in clients.iter_mut() {
-            for (client_hash, _) in client.key_packages.0.iter() {
-                if client_hash.as_slice() == key_package_hash.as_slice() {
+            match client.reserved_key_pkg_hash.take(key_package_hash.as_slice()) {
+                Some(_kp_hash) => { 
                     client.welcome_queue.push(welcome_msg.clone());
-                }
-            }
+                    return actix_web::HttpResponse::Ok().finish();
+                },
+                None => continue,
+            };
         }
     }
-    actix_web::HttpResponse::Ok().finish()
+    actix_web::HttpResponse::NoContent().finish()
 }
 
 /// Send an MLS message to a set of clients (group).
