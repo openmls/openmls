@@ -2,10 +2,10 @@
 
 use std::collections::HashSet;
 
-use openmls_traits::{types::Ciphersuite};
+use openmls_traits::crypto::OpenMlsCrypto;
+use openmls_traits::types::Ciphersuite;
 use serde::{Deserialize, Serialize};
 use tls_codec::VLByteSlice;
-use openmls_traits::crypto::OpenMlsCrypto;
 
 use crate::{
     binary_tree::array_representation::{tree::TreeNode, LeafNodeIndex},

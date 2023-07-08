@@ -62,9 +62,12 @@ impl CoreGroup {
             .ok_or(ExternalCommitError::MissingExternalPub)?
             .external_pub();
 
-        let (init_secret, kem_output) =
-            InitSecret::from_group_context(backend.crypto(), group_context, external_pub.as_slice())
-                .map_err(|_| ExternalCommitError::UnsupportedCiphersuite)?;
+        let (init_secret, kem_output) = InitSecret::from_group_context(
+            backend.crypto(),
+            group_context,
+            external_pub.as_slice(),
+        )
+        .map_err(|_| ExternalCommitError::UnsupportedCiphersuite)?;
 
         // The `EpochSecrets` we create here are essentially zero, with the
         // exception of the `InitSecret`, which is all we need here for the

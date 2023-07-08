@@ -1,10 +1,10 @@
 //! This module contains all types related to group info handling.
 
-use openmls_traits::{types::Ciphersuite};
+use openmls_traits::crypto::OpenMlsCrypto;
+use openmls_traits::types::Ciphersuite;
 use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
 use thiserror::Error;
 use tls_codec::{Deserialize, Serialize, TlsDeserialize, TlsSerialize, TlsSize};
-use openmls_traits::crypto::OpenMlsCrypto;
 
 use crate::{
     binary_tree::LeafNodeIndex,

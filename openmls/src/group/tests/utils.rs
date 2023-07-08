@@ -8,12 +8,12 @@ use std::{cell::RefCell, collections::HashMap};
 
 use config::CryptoConfig;
 use openmls_basic_credential::SignatureKeyPair;
+use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::{
     key_store::OpenMlsKeyStore, signatures::Signer, types::SignatureScheme, OpenMlsProvider,
 };
 use rand::{rngs::OsRng, RngCore};
 use tls_codec::Serialize;
-use openmls_traits::crypto::OpenMlsCrypto;
 
 use crate::{
     ciphersuite::signable::Signable, credentials::*, framing::*, group::*, key_packages::*,
@@ -60,9 +60,7 @@ impl TestClient {
         let mut key_package_bundles = self.key_package_bundles.borrow_mut();
         key_package_bundles
             .iter()
-            .position(|x| {
-                x.key_package().hash_ref(crypto) == key_package.hash_ref(crypto)
-            })
+            .position(|x| x.key_package().hash_ref(crypto) == key_package.hash_ref(crypto))
             .map(|index| key_package_bundles.remove(index))
     }
 }

@@ -59,8 +59,12 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsP
         .expect("Could not create proposal.");
 
     let mut proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend.crypto(), bob_add_proposal)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend.crypto(),
+            bob_add_proposal,
+        )
+        .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -95,8 +99,12 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsP
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend.crypto(), bob_add_proposal)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend.crypto(),
+            bob_add_proposal,
+        )
+        .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -243,8 +251,12 @@ fn basic_group_setup(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         .expect("Could not create proposal.");
 
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend.crypto(), bob_add_proposal)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend.crypto(),
+            bob_add_proposal,
+        )
+        .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -317,8 +329,12 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         .expect("Could not create proposal.");
 
     let mut proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend.crypto(), bob_add_proposal)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend.crypto(),
+            bob_add_proposal,
+        )
+        .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -901,6 +917,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // Now alice tries to derive an exporter with too large of a key length.
     let exporter_length: usize = u16::MAX.into();
     let exporter_length = exporter_length + 1;
-    let alice_exporter = group_alice.export_secret(backend.crypto(), "export test", &[], exporter_length);
+    let alice_exporter =
+        group_alice.export_secret(backend.crypto(), "export test", &[], exporter_length);
     assert!(alice_exporter.is_err())
 }

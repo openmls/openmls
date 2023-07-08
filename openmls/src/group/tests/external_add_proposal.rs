@@ -103,10 +103,7 @@ fn validation_test_setup(
 }
 
 #[apply(ciphersuites_and_backends)]
-fn external_add_proposal_should_succeed(
-    ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsProvider,
-) {
+fn external_add_proposal_should_succeed(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     for policy in WIRE_FORMAT_POLICIES {
         let ProposalValidationTestSetup {
             alice_group,

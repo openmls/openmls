@@ -127,7 +127,8 @@ fn codec_ciphertext(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         .add_context(backend.crypto(), &serialized_group_context)
         .expect("Could not add context to key schedule");
 
-    let mut message_secrets = MessageSecrets::random(ciphersuite, backend.rand(), LeafNodeIndex::new(0));
+    let mut message_secrets =
+        MessageSecrets::random(ciphersuite, backend.rand(), LeafNodeIndex::new(0));
 
     let orig = PrivateMessage::encrypt_with_different_header(
         &plaintext,
@@ -160,7 +161,8 @@ fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) 
     let (plaintext, _credential, _keys) =
         create_content(ciphersuite, WireFormat::PrivateMessage, backend);
 
-    let mut message_secrets = MessageSecrets::random(ciphersuite, backend.rand(), LeafNodeIndex::new(0));
+    let mut message_secrets =
+        MessageSecrets::random(ciphersuite, backend.rand(), LeafNodeIndex::new(0));
     let encryption_secret_bytes = backend
         .rand()
         .random_vec(ciphersuite.hash_length())
@@ -443,8 +445,12 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         .expect("Could not create proposal.");
 
     let mut proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend.crypto(), bob_add_proposal)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend.crypto(),
+            bob_add_proposal,
+        )
+        .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -671,8 +677,12 @@ pub(crate) fn setup_alice_bob_group(
         .expect("Could not create proposal.");
 
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend.crypto(), bob_add_proposal)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend.crypto(),
+            bob_add_proposal,
+        )
+        .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()

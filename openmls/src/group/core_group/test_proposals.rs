@@ -282,10 +282,7 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider
 }
 
 #[apply(ciphersuites_and_backends)]
-fn test_required_unsupported_proposals(
-    ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsProvider,
-) {
+fn test_required_unsupported_proposals(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let (alice_credential, _, alice_signer, _alice_pk) =
         setup_client("Alice", ciphersuite, backend);
 
@@ -404,8 +401,12 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMl
         .expect("Could not create proposal");
 
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend.crypto(), bob_add_proposal)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend.crypto(),
+            bob_add_proposal,
+        )
+        .expect("Could not create QueuedProposal."),
     );
     log::info!(" >>> Creating commit ...");
     let params = CreateCommitParams::builder()
@@ -501,8 +502,12 @@ fn test_group_context_extension_proposal_fails(
         .expect("Could not create proposal");
 
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend.crypto(), bob_add_proposal)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend.crypto(),
+            bob_add_proposal,
+        )
+        .expect("Could not create QueuedProposal."),
     );
     log::info!(" >>> Creating commit ...");
     let params = CreateCommitParams::builder()
@@ -552,10 +557,7 @@ fn test_group_context_extension_proposal_fails(
 }
 
 #[apply(ciphersuites_and_backends)]
-fn test_group_context_extension_proposal(
-    ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsProvider,
-) {
+fn test_group_context_extension_proposal(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -581,8 +583,12 @@ fn test_group_context_extension_proposal(
         .expect("Could not create proposal");
 
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend.crypto(), bob_add_proposal)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend.crypto(),
+            bob_add_proposal,
+        )
+        .expect("Could not create QueuedProposal."),
     );
     log::info!(" >>> Creating commit ...");
     let params = CreateCommitParams::builder()
@@ -629,8 +635,12 @@ fn test_group_context_extension_proposal(
         .expect("Error creating gce proposal.");
 
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend.crypto(), gce_proposal)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend.crypto(),
+            gce_proposal,
+        )
+        .expect("Could not create QueuedProposal."),
     );
     log::info!(" >>> Creating commit ...");
     let params = CreateCommitParams::builder()

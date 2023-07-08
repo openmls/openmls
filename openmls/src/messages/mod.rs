@@ -10,7 +10,6 @@ use openmls_traits::{
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tls_codec::{Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, *};
-use openmls_traits::random::OpenMlsRand;
 
 #[cfg(test)]
 use crate::schedule::psk::{ExternalPsk, Psk};
@@ -30,6 +29,8 @@ use crate::{
     },
     versions::ProtocolVersion,
 };
+#[cfg(test)]
+use openmls_traits::random::OpenMlsRand;
 
 pub mod external_proposals;
 pub mod group_info;
@@ -300,8 +301,8 @@ impl PathSecret {
             .path_secret
             .kdf_expand_label(crypto, "node", &[], ciphersuite.hash_length())
             .map_err(LibraryError::unexpected_crypto_error)?;
-        let HpkeKeyPair { public, private } = crypto
-            .derive_hpke_keypair(ciphersuite.hpke_config(), node_secret.as_slice());
+        let HpkeKeyPair { public, private } =
+            crypto.derive_hpke_keypair(ciphersuite.hpke_config(), node_secret.as_slice());
 
         Ok((HpkePublicKey::from(public), private).into())
     }
@@ -463,14 +464,11 @@ impl GroupSecrets {
         rng: &impl OpenMlsRand,
         version: ProtocolVersion,
     ) -> Result<Vec<u8>, tls_codec::Error> {
-        use openmls_traits::random::OpenMlsRand;
-
         let psk_id = PreSharedKeyId::new(
             ciphersuite,
             rng,
             Psk::External(ExternalPsk::new(
-                rng
-                    .random_vec(ciphersuite.hash_length())
+                rng.random_vec(ciphersuite.hash_length())
                     .expect("Not enough randomness."),
             )),
         )

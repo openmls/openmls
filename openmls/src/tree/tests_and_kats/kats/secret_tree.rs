@@ -80,10 +80,7 @@ pub struct SecretTree {
 }
 
 #[cfg(test)]
-pub fn run_test_vector(
-    test: SecretTree,
-    backend: &impl OpenMlsProvider,
-) -> Result<(), String> {
+pub fn run_test_vector(test: SecretTree, backend: &impl OpenMlsProvider) -> Result<(), String> {
     use openmls_traits::crypto::OpenMlsCrypto;
 
     use crate::{

@@ -87,8 +87,12 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvid
         .expect("Could not create proposal.");
 
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend.crypto(), bob_add_proposal)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend.crypto(),
+            bob_add_proposal,
+        )
+        .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -161,8 +165,12 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvid
         .expect("Could not create proposal.");
 
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend.crypto(), bob_add_proposal)
-            .expect("Could not create staged proposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend.crypto(),
+            bob_add_proposal,
+        )
+        .expect("Could not create staged proposal."),
     );
 
     let params = CreateCommitParams::builder()

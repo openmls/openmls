@@ -524,8 +524,7 @@ impl ProposalRef {
 
         data.append(&mut encoded);
 
-        make_proposal_ref(&data, ciphersuite, crypto)
-            .map_err(LibraryError::unexpected_crypto_error)
+        make_proposal_ref(&data, ciphersuite, crypto).map_err(LibraryError::unexpected_crypto_error)
     }
 }
 

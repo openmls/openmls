@@ -1,6 +1,6 @@
-use openmls_traits::{types::Ciphersuite};
-use tls_codec::{Deserialize, Serialize, TlsDeserialize, TlsSerialize, TlsSize};
 use openmls_traits::crypto::OpenMlsCrypto;
+use openmls_traits::types::Ciphersuite;
+use tls_codec::{Deserialize, Serialize, TlsDeserialize, TlsSerialize, TlsSize};
 
 use super::{
     codec::deserialize_ciphertext_content, mls_auth_content::FramedContentAuthData,

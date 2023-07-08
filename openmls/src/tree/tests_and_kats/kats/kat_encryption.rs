@@ -223,8 +223,12 @@ fn build_handshake_messages(
     group.context_mut().set_epoch(epoch.into());
     let framing_parameters = FramingParameters::new(&[1, 2, 3, 4], WireFormat::PrivateMessage);
     let membership_key = MembershipKey::from_secret(
-        Secret::random(group.ciphersuite(), backend.rand(), None /* MLS version */)
-            .expect("Not enough randomness."),
+        Secret::random(
+            group.ciphersuite(),
+            backend.rand(),
+            None, /* MLS version */
+        )
+        .expect("Not enough randomness."),
     );
     let content = AuthenticatedContentIn::from(
         AuthenticatedContent::member_proposal(
@@ -279,8 +283,12 @@ fn build_application_messages(
     let epoch = random_u64();
     group.context_mut().set_epoch(epoch.into());
     let membership_key = MembershipKey::from_secret(
-        Secret::random(group.ciphersuite(), backend.rand(), None /* MLS version */)
-            .expect("Not enough randomness."),
+        Secret::random(
+            group.ciphersuite(),
+            backend.rand(),
+            None, /* MLS version */
+        )
+        .expect("Not enough randomness."),
     );
     let content = AuthenticatedContent::new_application(
         sender_index,
@@ -630,7 +638,11 @@ pub fn run_test_vector(
 
             // Decrypt and check application message
             let sender_data = mls_ciphertext_application
-                .sender_data(group.message_secrets_test_mut(), backend.crypto(), ciphersuite)
+                .sender_data(
+                    group.message_secrets_test_mut(),
+                    backend.crypto(),
+                    ciphersuite,
+                )
                 .expect("Unable to get sender data");
             let mls_plaintext_application: AuthenticatedContentIn = mls_ciphertext_application
                 .to_verifiable_content(
@@ -704,7 +716,11 @@ pub fn run_test_vector(
 
             // Decrypt and check message
             let sender_data = mls_ciphertext_handshake
-                .sender_data(group.message_secrets_test_mut(), backend.crypto(), ciphersuite)
+                .sender_data(
+                    group.message_secrets_test_mut(),
+                    backend.crypto(),
+                    ciphersuite,
+                )
                 .expect("Unable to get sender data");
             let mls_plaintext_handshake: AuthenticatedContentIn = mls_ciphertext_handshake
                 .to_verifiable_content(
@@ -779,7 +795,11 @@ pub fn run_test_vector(
 
             // Decrypt and check message
             let sender_data = mls_ciphertext_handshake
-                .sender_data(group.message_secrets_test_mut(), backend.crypto(), ciphersuite)
+                .sender_data(
+                    group.message_secrets_test_mut(),
+                    backend.crypto(),
+                    ciphersuite,
+                )
                 .expect("Unable to get sender data");
             let mls_plaintext_handshake: AuthenticatedContentIn = mls_ciphertext_handshake
                 .to_verifiable_content(

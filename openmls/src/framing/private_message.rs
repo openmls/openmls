@@ -170,8 +170,8 @@ impl PrivateMessage {
             // Even in tests we want to use the real sender index, so we have a key to encrypt.
             .secret_for_encryption(ciphersuite, backend.crypto(), sender_index, secret_type)?;
         // Sample reuse guard uniformly at random.
-        let reuse_guard: ReuseGuard =
-            ReuseGuard::try_from_random(backend.rand()).map_err(LibraryError::unexpected_crypto_error)?;
+        let reuse_guard: ReuseGuard = ReuseGuard::try_from_random(backend.rand())
+            .map_err(LibraryError::unexpected_crypto_error)?;
         // Prepare the nonce by xoring with the reuse guard.
         let prepared_nonce = ratchet_nonce.xor_with_reuse_guard(&reuse_guard);
         // Encrypt the payload

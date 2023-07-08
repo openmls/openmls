@@ -432,12 +432,7 @@ impl PskSecret {
                     .map_err(LibraryError::missing_bound_check)?;
 
                 psk_extracted
-                    .kdf_expand_label(
-                        crypto,
-                        "derived psk",
-                        &psk_label,
-                        ciphersuite.hash_length(),
-                    )
+                    .kdf_expand_label(crypto, "derived psk", &psk_label, ciphersuite.hash_length())
                     .map_err(LibraryError::unexpected_crypto_error)?
             };
 

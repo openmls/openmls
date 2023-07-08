@@ -80,9 +80,9 @@ use crate::{
 use super::errors::CreateGroupContextExtProposalError;
 #[cfg(test)]
 use crate::treesync::node::leaf_node::TreePosition;
+use openmls_traits::crypto::OpenMlsCrypto;
 #[cfg(test)]
 use std::io::{Error, Read, Write};
-use openmls_traits::crypto::OpenMlsCrypto;
 
 #[derive(Debug)]
 pub(crate) struct CreateCommitResult {
@@ -258,7 +258,8 @@ impl CoreGroupBuilder {
             PskSecret::new(backend.crypto(), ciphersuite, psks)?
         };
 
-        let mut key_schedule = KeySchedule::init(ciphersuite, backend.crypto(), &joiner_secret, psk_secret)?;
+        let mut key_schedule =
+            KeySchedule::init(ciphersuite, backend.crypto(), &joiner_secret, psk_secret)?;
         key_schedule
             .add_context(backend.crypto(), &serialized_group_context)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
@@ -503,7 +504,8 @@ impl CoreGroup {
         let message_secrets = self
             .message_secrets_mut(private_message.epoch())
             .map_err(|_| MessageDecryptionError::AeadError)?;
-        let sender_data = private_message.sender_data(message_secrets, backend.crypto(), ciphersuite)?;
+        let sender_data =
+            private_message.sender_data(message_secrets, backend.crypto(), ciphersuite)?;
         if self.public_group().leaf(sender_data.leaf_index).is_none() {
             return Err(MessageDecryptionError::SenderError(
                 SenderError::UnknownSender,
@@ -765,8 +767,7 @@ impl CoreGroup {
             self.context().epoch().as_u64(),
             self.own_leaf_index(),
         );
-        store
-            .store(&k.0, &keypair_references.to_vec())
+        store.store(&k.0, &keypair_references.to_vec())
     }
 
     /// Read the [`EncryptionKeyPair`]s of this group and its current
@@ -949,7 +950,8 @@ impl CoreGroup {
         };
 
         // Create key schedule
-        let mut key_schedule = KeySchedule::init(ciphersuite, backend.crypto(), &joiner_secret, psk_secret)?;
+        let mut key_schedule =
+            KeySchedule::init(ciphersuite, backend.crypto(), &joiner_secret, psk_secret)?;
 
         let serialized_provisional_group_context = diff
             .group_context()
@@ -969,13 +971,20 @@ impl CoreGroup {
         // Calculate the confirmation tag
         let confirmation_tag = provisional_epoch_secrets
             .confirmation_key()
-            .tag(backend.crypto(), diff.group_context().confirmed_transcript_hash())
+            .tag(
+                backend.crypto(),
+                diff.group_context().confirmed_transcript_hash(),
+            )
             .map_err(LibraryError::unexpected_crypto_error)?;
 
         // Set the confirmation tag
         authenticated_content.set_confirmation_tag(confirmation_tag.clone());
 
-        diff.update_interim_transcript_hash(ciphersuite, backend.crypto(), confirmation_tag.clone())?;
+        diff.update_interim_transcript_hash(
+            ciphersuite,
+            backend.crypto(),
+            confirmation_tag.clone(),
+        )?;
 
         // only computes the group info if necessary
         let group_info = if !apply_proposals_values.invitation_list.is_empty()

@@ -1,14 +1,12 @@
 //! This module contains the [`ParentNode`] struct, its implementation, as well
 //! as the [`PlainUpdatePathNode`], a helper struct for the creation of
 //! [`UpdatePathNode`] instances.
-use openmls_traits::{
-    types::{Ciphersuite, HpkeCiphertext},
-};
+use openmls_traits::crypto::OpenMlsCrypto;
+use openmls_traits::types::{Ciphersuite, HpkeCiphertext};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use thiserror::*;
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
-use openmls_traits::crypto::OpenMlsCrypto;
 
 use super::encryption_keys::{EncryptionKey, EncryptionKeyPair};
 use crate::{

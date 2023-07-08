@@ -65,8 +65,12 @@ impl CoreGroup {
         };
 
         // Create key schedule
-        let mut key_schedule =
-            KeySchedule::init(self.ciphersuite(), backend.crypto(), &joiner_secret, psk_secret)?;
+        let mut key_schedule = KeySchedule::init(
+            self.ciphersuite(),
+            backend.crypto(),
+            &joiner_secret,
+            psk_secret,
+        )?;
 
         key_schedule
             .add_context(backend.crypto(), serialized_provisional_group_context)
@@ -149,65 +153,66 @@ impl CoreGroup {
         }
 
         // Determine if Commit has a path
-        let (commit_secret, new_keypairs, new_leaf_keypair_option) =
-            if let Some(path) = commit.path.clone() {
-                // Update the public group
-                // ValSem202: Path must be the right length
-                diff.apply_received_update_path(backend.crypto(), ciphersuite, sender_index, &path)?;
+        let (commit_secret, new_keypairs, new_leaf_keypair_option) = if let Some(path) =
+            commit.path.clone()
+        {
+            // Update the public group
+            // ValSem202: Path must be the right length
+            diff.apply_received_update_path(backend.crypto(), ciphersuite, sender_index, &path)?;
 
-                // Update group context
-                diff.update_group_context(backend.crypto())?;
+            // Update group context
+            diff.update_group_context(backend.crypto())?;
 
-                let decryption_keypairs: Vec<&EncryptionKeyPair> = old_epoch_keypairs
-                    .iter()
-                    .chain(leaf_node_keypairs.iter())
-                    .collect();
+            let decryption_keypairs: Vec<&EncryptionKeyPair> = old_epoch_keypairs
+                .iter()
+                .chain(leaf_node_keypairs.iter())
+                .collect();
 
-                // ValSem203: Path secrets must decrypt correctly
-                // ValSem204: Public keys from Path must be verified and match the private keys from the direct path
-                let (new_keypairs, commit_secret) = diff.decrypt_path(
-                    backend.crypto(),
-                    &decryption_keypairs,
-                    self.own_leaf_index(),
-                    sender_index,
-                    path.nodes(),
-                    &apply_proposals_values.exclusion_list(),
-                )?;
+            // ValSem203: Path secrets must decrypt correctly
+            // ValSem204: Public keys from Path must be verified and match the private keys from the direct path
+            let (new_keypairs, commit_secret) = diff.decrypt_path(
+                backend.crypto(),
+                &decryption_keypairs,
+                self.own_leaf_index(),
+                sender_index,
+                path.nodes(),
+                &apply_proposals_values.exclusion_list(),
+            )?;
 
-                // Check if one of our update proposals was applied. If so, we
-                // need to store that keypair separately, because after merging
-                // it needs to be removed from the key store separately and in
-                // addition to the removal of the keypairs of the previous
-                // epoch.
-                let new_leaf_keypair_option = if let Some(leaf) = diff.leaf(self.own_leaf_index()) {
-                    leaf_node_keypairs.into_iter().find_map(|keypair| {
-                        if leaf.encryption_key() == keypair.public_key() {
-                            Some(keypair)
-                        } else {
-                            None
-                        }
-                    })
-                } else {
-                    // We should have an own leaf at this point.
-                    debug_assert!(false);
-                    None
-                };
-                (commit_secret, new_keypairs, new_leaf_keypair_option)
+            // Check if one of our update proposals was applied. If so, we
+            // need to store that keypair separately, because after merging
+            // it needs to be removed from the key store separately and in
+            // addition to the removal of the keypairs of the previous
+            // epoch.
+            let new_leaf_keypair_option = if let Some(leaf) = diff.leaf(self.own_leaf_index()) {
+                leaf_node_keypairs.into_iter().find_map(|keypair| {
+                    if leaf.encryption_key() == keypair.public_key() {
+                        Some(keypair)
+                    } else {
+                        None
+                    }
+                })
             } else {
-                if apply_proposals_values.path_required {
-                    // ValSem201
-                    return Err(StageCommitError::RequiredPathNotFound);
-                }
-
-                // Even if there is no path, we have to update the group context.
-                diff.update_group_context(backend.crypto())?;
-
-                (
-                    CommitSecret::zero_secret(ciphersuite, self.version()),
-                    vec![],
-                    None,
-                )
+                // We should have an own leaf at this point.
+                debug_assert!(false);
+                None
             };
+            (commit_secret, new_keypairs, new_leaf_keypair_option)
+        } else {
+            if apply_proposals_values.path_required {
+                // ValSem201
+                return Err(StageCommitError::RequiredPathNotFound);
+            }
+
+            // Even if there is no path, we have to update the group context.
+            diff.update_group_context(backend.crypto())?;
+
+            (
+                CommitSecret::zero_secret(ciphersuite, self.version()),
+                vec![],
+                None,
+            )
+        };
 
         // Update the confirmed transcript hash before we compute the confirmation tag.
         diff.update_confirmed_transcript_hash(backend.crypto(), mls_content)?;
@@ -239,7 +244,10 @@ impl CoreGroup {
         // ValSem205
         let own_confirmation_tag = provisional_message_secrets
             .confirmation_key()
-            .tag(backend.crypto(), diff.group_context().confirmed_transcript_hash())
+            .tag(
+                backend.crypto(),
+                diff.group_context().confirmed_transcript_hash(),
+            )
             .map_err(LibraryError::unexpected_crypto_error)?;
         if &own_confirmation_tag != received_confirmation_tag {
             log::error!("Confirmation tag mismatch");

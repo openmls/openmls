@@ -1,7 +1,7 @@
+use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::{Ciphersuite, CryptoError};
 use thiserror::Error;
 use tls_codec::{Error as TlsCodecError, TlsSerialize, TlsSize};
-use openmls_traits::crypto::OpenMlsCrypto;
 
 use super::*;
 use crate::{

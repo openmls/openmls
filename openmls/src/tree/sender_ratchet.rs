@@ -5,8 +5,8 @@
 //! This means that some functions that are not expected to fail and throw an
 //! error, will still return a `Result` since they may throw a `LibraryError`.
 
-use std::collections::VecDeque;
 use openmls_traits::crypto::OpenMlsCrypto;
+use std::collections::VecDeque;
 
 use openmls_traits::types::Ciphersuite;
 

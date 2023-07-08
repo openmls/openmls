@@ -72,10 +72,7 @@ impl GroupId {
     /// Group IDs should be random and not be misused as, e.g., a group name.
     pub fn random(rng: &impl OpenMlsRand) -> Self {
         Self {
-            value: rng
-                .random_vec(16)
-                .expect("Not enough randomness.")
-                .into(),
+            value: rng.random_vec(16).expect("Not enough randomness.").into(),
         }
     }
 

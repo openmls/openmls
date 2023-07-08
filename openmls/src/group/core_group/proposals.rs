@@ -1,8 +1,8 @@
 use std::collections::{hash_map::Entry, HashMap, HashSet};
 
-use openmls_traits::{types::Ciphersuite};
-use serde::{Deserialize, Serialize};
 use openmls_traits::crypto::OpenMlsCrypto;
+use openmls_traits::types::Ciphersuite;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
@@ -115,12 +115,9 @@ impl QueuedProposal {
             FramedContentBody::Proposal(p) => p,
             _ => return Err(LibraryError::custom("Wrong content type")),
         };
-        let proposal_reference = ProposalRef::from_authenticated_content_by_ref(
-            crypto,
-            ciphersuite,
-            &public_message,
-        )
-        .map_err(|_| LibraryError::custom("Could not calculate `ProposalRef`."))?;
+        let proposal_reference =
+            ProposalRef::from_authenticated_content_by_ref(crypto, ciphersuite, &public_message)
+                .map_err(|_| LibraryError::custom("Could not calculate `ProposalRef`."))?;
 
         Ok(Self {
             proposal: proposal.clone(), // FIXME
@@ -228,12 +225,7 @@ impl ProposalQueue {
                         }
                     }
 
-                    QueuedProposal::from_proposal_and_sender(
-                        ciphersuite,
-                        crypto,
-                        proposal,
-                        sender,
-                    )?
+                    QueuedProposal::from_proposal_and_sender(ciphersuite, crypto, proposal, sender)?
                 }
                 ProposalOrRef::Reference(ref proposal_reference) => {
                     match proposals_by_reference_queue.get(proposal_reference) {

@@ -51,7 +51,7 @@ impl<'a> ParentHashInput<'a> {
         let payload = self
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;
-       crypto
+        crypto
             .hash(ciphersuite.hash_algorithm(), &payload)
             .map_err(LibraryError::unexpected_crypto_error)
     }

@@ -17,8 +17,6 @@ use std::io::{Read, Write};
 use tls_codec::{
     Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, TlsSerialize, TlsSize,
 };
-use openmls_traits::crypto::OpenMlsCrypto;
-use openmls_traits::OpenMlsProvider;
 
 /// [`PublicMessageIn`] is a framing structure for MLS messages. It can contain
 /// Proposals, Commits and application messages.
@@ -109,7 +107,7 @@ impl PublicMessageIn {
     #[cfg(test)]
     pub(crate) fn set_membership_tag(
         &mut self,
-        backend: &impl OpenMlsProvider,
+        backend: &impl openmls_traits::OpenMlsProvider,
         membership_key: &MembershipKey,
         serialized_context: &[u8],
     ) -> Result<(), LibraryError> {
@@ -134,7 +132,7 @@ impl PublicMessageIn {
     // TODO #133: Include this in the validation
     pub(crate) fn verify_membership(
         &self,
-        crypto: &impl OpenMlsCrypto,
+        crypto: &impl openmls_traits::crypto::OpenMlsCrypto,
         membership_key: &MembershipKey,
         serialized_context: &[u8],
     ) -> Result<(), ValidationError> {

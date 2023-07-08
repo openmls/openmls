@@ -1,5 +1,5 @@
-use tls_codec::Serialize;
 use openmls_traits::crypto::OpenMlsCrypto;
+use tls_codec::Serialize;
 
 use crate::{
     ciphersuite::OpenMlsSignaturePublicKey,

@@ -343,7 +343,8 @@ impl MlsGroupTestSetup {
             )
             .collect();
         group.public_tree = sender_group.export_ratchet_tree();
-        group.exporter_secret = sender_group.export_secret(sender.crypto.crypto(), "test", &[], 32)?;
+        group.exporter_secret =
+            sender_group.export_secret(sender.crypto.crypto(), "test", &[], 32)?;
         Ok(())
     }
 
@@ -462,7 +463,8 @@ impl MlsGroupTestSetup {
             .get(&group_id)
             .expect("An unexpected error occurred.");
         let public_tree = group.export_ratchet_tree();
-        let exporter_secret = group.export_secret(group_creator.crypto.crypto(), "test", &[], 32)?;
+        let exporter_secret =
+            group.export_secret(group_creator.crypto.crypto(), "test", &[], 32)?;
         let member_ids = vec![(0, group_creator_id)];
         let group = Group {
             group_id: group_id.clone(),

@@ -121,7 +121,12 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, backend: &impl OpenMl
         .expect("Could not derive welcome key and nonce.");
 
     let group_info_bytes = welcome_key
-        .aead_open(backend.crypto(), welcome.encrypted_group_info(), &[], &welcome_nonce)
+        .aead_open(
+            backend.crypto(),
+            welcome.encrypted_group_info(),
+            &[],
+            &welcome_nonce,
+        )
         .expect("Could not decrypt GroupInfo.");
     let mut verifiable_group_info =
         VerifiableGroupInfo::tls_deserialize(&mut group_info_bytes.as_slice()).unwrap();
@@ -137,7 +142,12 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, backend: &impl OpenMl
     let verifiable_group_info_bytes = verifiable_group_info.tls_serialize_detached().unwrap();
 
     let encrypted_verifiable_group_info = welcome_key
-        .aead_seal(backend.crypto(), &verifiable_group_info_bytes, &[], &welcome_nonce)
+        .aead_seal(
+            backend.crypto(),
+            &verifiable_group_info_bytes,
+            &[],
+            &welcome_nonce,
+        )
         .unwrap();
 
     welcome.encrypted_group_info = encrypted_verifiable_group_info.into();
@@ -179,7 +189,9 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, backend: &impl OpenMl
         .store::<HpkePrivateKey>(bob_kp.hpke_init_key().as_slice(), bob_private_key)
         .unwrap();
 
-    encryption_keypair.write_to_key_store(backend.key_store()).unwrap();
+    encryption_keypair
+        .write_to_key_store(backend.key_store())
+        .unwrap();
 
     let _group = MlsGroup::new_from_welcome(
         backend,

@@ -78,10 +78,7 @@ pub fn flip_last_byte(ctxt: &mut HpkeCiphertext) {
 }
 
 #[apply(ciphersuites_and_backends)]
-fn test_failed_groupinfo_decryption(
-    ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsProvider,
-) {
+fn test_failed_groupinfo_decryption(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let epoch = 123;
     let group_id = GroupId::random(backend.rand());
     let tree_hash = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
@@ -379,12 +376,20 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         .expect("Could not create proposal");
 
     let mut proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend.crypto(), bob_add_proposal)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend.crypto(),
+            bob_add_proposal,
+        )
+        .expect("Could not create QueuedProposal."),
     );
     proposal_store.add(
-        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend.crypto(), psk_proposal)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend.crypto(),
+            psk_proposal,
+        )
+        .expect("Could not create QueuedProposal."),
     );
     log::info!(" >>> Creating commit ...");
     let params = CreateCommitParams::builder()
@@ -478,8 +483,12 @@ fn test_staged_commit_creation(ciphersuite: Ciphersuite, backend: &impl OpenMlsP
         )
         .expect("Could not create proposal.");
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend.crypto(), bob_add_proposal)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend.crypto(),
+            bob_add_proposal,
+        )
+        .expect("Could not create QueuedProposal."),
     );
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
@@ -630,8 +639,12 @@ fn test_proposal_application_after_self_was_removed(
         .expect("Could not create proposal");
 
     let bob_add_proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content_by_ref(ciphersuite, backend.crypto(), bob_add_proposal)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            backend.crypto(),
+            bob_add_proposal,
+        )
+        .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()

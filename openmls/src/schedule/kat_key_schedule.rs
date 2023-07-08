@@ -112,9 +112,13 @@ fn generate(
         &group_context.tls_serialize_detached().unwrap(),
     )
     .expect("Could not create JoinerSecret.");
-    let mut key_schedule =
-        KeySchedule::init(ciphersuite, crypto.crypto(), &joiner_secret, psk_secret.clone())
-            .expect("Could not create KeySchedule.");
+    let mut key_schedule = KeySchedule::init(
+        ciphersuite,
+        crypto.crypto(),
+        &joiner_secret,
+        psk_secret.clone(),
+    )
+    .expect("Could not create KeySchedule.");
     let welcome_secret = key_schedule
         .welcome(crypto.crypto())
         .expect("An unexpected error occurred.");
@@ -157,8 +161,9 @@ pub fn generate_test_vector(
     use tls_codec::Serialize;
 
     // Set up setting.
-    let mut init_secret = InitSecret::random(ciphersuite, backend.rand(), ProtocolVersion::default())
-        .expect("Not enough randomness.");
+    let mut init_secret =
+        InitSecret::random(ciphersuite, backend.rand(), ProtocolVersion::default())
+            .expect("Not enough randomness.");
     let initial_init_secret = init_secret.clone();
     let group_id = backend
         .rand()
@@ -334,8 +339,9 @@ pub fn run_test_vector(
         );
         let psk_secret = PskSecret::from(psk_secret_inner);
 
-        let mut key_schedule = KeySchedule::init(ciphersuite, backend.crypto(), &joiner_secret, psk_secret)
-            .expect("Could not create KeySchedule.");
+        let mut key_schedule =
+            KeySchedule::init(ciphersuite, backend.crypto(), &joiner_secret, psk_secret)
+                .expect("Could not create KeySchedule.");
         let welcome_secret = key_schedule
             .welcome(backend.crypto())
             .expect("An unexpected error occurred.");

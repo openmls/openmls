@@ -97,15 +97,11 @@ impl MessageSecrets {
         rng: &impl OpenMlsRand,
         own_index: LeafNodeIndex,
     ) -> Self {
-        use openmls_traits::random::OpenMlsRand;
-
         Self {
             sender_data_secret: SenderDataSecret::random(ciphersuite, rng),
             membership_key: MembershipKey::random(ciphersuite, rng),
             confirmation_key: ConfirmationKey::random(ciphersuite, rng),
-            serialized_context: rng
-                .random_vec(10)
-                .expect("Not enough randomness."),
+            serialized_context: rng.random_vec(10).expect("Not enough randomness."),
             secret_tree: SecretTree::new(
                 EncryptionSecret::random(ciphersuite, rng),
                 TreeSize::new(10),

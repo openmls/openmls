@@ -207,7 +207,10 @@ fn public_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
     // The public group processes
     let ppm = public_group
-        .process_message(backend.crypto(), into_public_message(queued_messages.clone()))
+        .process_message(
+            backend.crypto(),
+            into_public_message(queued_messages.clone()),
+        )
         .unwrap();
     public_group.merge_commit(extract_staged_commit(ppm));
 

@@ -214,7 +214,12 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
             let secret_type = SecretType::from(&plaintext.content().content_type());
             let (generation, (ratchet_key, ratchet_nonce)) = message_secrets
                 .secret_tree_mut()
-                .secret_for_encryption(ciphersuite, backend.crypto(), LeafNodeIndex::new(0), secret_type)
+                .secret_for_encryption(
+                    ciphersuite,
+                    backend.crypto(),
+                    LeafNodeIndex::new(0),
+                    secret_type,
+                )
                 .unwrap();
 
             // Sample reuse guard uniformly at random.

@@ -170,10 +170,7 @@ pub struct ResumptionPskSecret {
 
 impl ResumptionPskSecret {
     /// Derive an `ResumptionPsk` from an `EpochSecret`.
-    fn new(
-        crypto: &impl OpenMlsCrypto,
-        epoch_secret: &EpochSecret,
-    ) -> Result<Self, CryptoError> {
+    fn new(crypto: &impl OpenMlsCrypto, epoch_secret: &EpochSecret) -> Result<Self, CryptoError> {
         let secret = epoch_secret.secret.derive_secret(crypto, "resumption")?;
         Ok(Self { secret })
     }
@@ -194,10 +191,7 @@ pub struct EpochAuthenticator {
 
 impl EpochAuthenticator {
     /// Derive an `EpochAuthenticator` from an `EpochSecret`.
-    fn new(
-        crypto: &impl OpenMlsCrypto,
-        epoch_secret: &EpochSecret,
-    ) -> Result<Self, CryptoError> {
+    fn new(crypto: &impl OpenMlsCrypto, epoch_secret: &EpochSecret) -> Result<Self, CryptoError> {
         let secret = epoch_secret
             .secret
             .derive_secret(crypto, "authentication")?;
@@ -275,10 +269,7 @@ fn hpke_info_from_version(version: ProtocolVersion) -> &'static str {
 
 impl InitSecret {
     /// Derive an `InitSecret` from an `EpochSecret`.
-    fn new(
-        crypto: &impl OpenMlsCrypto,
-        epoch_secret: EpochSecret,
-    ) -> Result<Self, CryptoError> {
+    fn new(crypto: &impl OpenMlsCrypto, epoch_secret: EpochSecret) -> Result<Self, CryptoError> {
         let secret = epoch_secret.secret.derive_secret(crypto, "init")?;
         log_crypto!(trace, "Init secret: {:x?}", secret);
         Ok(InitSecret { secret })
@@ -578,10 +569,7 @@ impl WelcomeSecret {
     }
 
     /// Derive a new AEAD key from a `WelcomeSecret`.
-    fn derive_aead_key(
-        &self,
-        crypto: &impl OpenMlsCrypto,
-    ) -> Result<AeadKey, CryptoError> {
+    fn derive_aead_key(&self, crypto: &impl OpenMlsCrypto) -> Result<AeadKey, CryptoError> {
         log::trace!(
             "WelcomeSecret.derive_aead_key with {}",
             self.secret.ciphersuite()
@@ -596,10 +584,7 @@ impl WelcomeSecret {
     }
 
     /// Derive a new AEAD nonce from a `WelcomeSecret`.
-    fn derive_aead_nonce(
-        &self,
-        crypto: &impl OpenMlsCrypto,
-    ) -> Result<AeadNonce, CryptoError> {
+    fn derive_aead_nonce(&self, crypto: &impl OpenMlsCrypto) -> Result<AeadNonce, CryptoError> {
         let nonce_secret = self.secret.kdf_expand_label(
             crypto,
             "nonce",
@@ -649,10 +634,7 @@ pub(crate) struct EncryptionSecret {
 
 impl EncryptionSecret {
     /// Derive an encryption secret from a reference to an `EpochSecret`.
-    fn new(
-        crypto: &impl OpenMlsCrypto,
-        epoch_secret: &EpochSecret,
-    ) -> Result<Self, CryptoError> {
+    fn new(crypto: &impl OpenMlsCrypto, epoch_secret: &EpochSecret) -> Result<Self, CryptoError> {
         Ok(EncryptionSecret {
             secret: epoch_secret.secret.derive_secret(crypto, "encryption")?,
         })
@@ -708,10 +690,7 @@ pub(crate) struct ExporterSecret {
 
 impl ExporterSecret {
     /// Derive an `ExporterSecret` from an `EpochSecret`.
-    fn new(
-        crypto: &impl OpenMlsCrypto,
-        epoch_secret: &EpochSecret,
-    ) -> Result<Self, CryptoError> {
+    fn new(crypto: &impl OpenMlsCrypto, epoch_secret: &EpochSecret) -> Result<Self, CryptoError> {
         let secret = epoch_secret.secret.derive_secret(crypto, "exporter")?;
         Ok(ExporterSecret { secret })
     }
@@ -732,8 +711,7 @@ impl ExporterSecret {
         context: &[u8],
         key_length: usize,
     ) -> Result<Vec<u8>, CryptoError> {
-        let context_hash = &crypto
-            .hash(ciphersuite.hash_algorithm(), context)?;
+        let context_hash = &crypto.hash(ciphersuite.hash_algorithm(), context)?;
         Ok(self
             .secret
             .derive_secret(crypto, label)?
@@ -752,10 +730,7 @@ pub(crate) struct ExternalSecret {
 
 impl ExternalSecret {
     /// Derive an `ExternalSecret` from an `EpochSecret`.
-    fn new(
-        crypto: &impl OpenMlsCrypto,
-        epoch_secret: &EpochSecret,
-    ) -> Result<Self, CryptoError> {
+    fn new(crypto: &impl OpenMlsCrypto, epoch_secret: &EpochSecret) -> Result<Self, CryptoError> {
         let secret = epoch_secret.secret.derive_secret(crypto, "external")?;
         Ok(Self { secret })
     }
@@ -784,10 +759,7 @@ pub(crate) struct ConfirmationKey {
 
 impl ConfirmationKey {
     /// Derive an `ConfirmationKey` from an `EpochSecret`.
-    fn new(
-        crypto: &impl OpenMlsCrypto,
-        epoch_secret: &EpochSecret,
-    ) -> Result<Self, CryptoError> {
+    fn new(crypto: &impl OpenMlsCrypto, epoch_secret: &EpochSecret) -> Result<Self, CryptoError> {
         log::debug!("Computing confirmation key.");
         log_crypto!(
             trace,
@@ -852,10 +824,7 @@ pub(crate) struct MembershipKey {
 
 impl MembershipKey {
     /// Derive an `MembershipKey` from an `EpochSecret`.
-    fn new(
-        crypto: &impl OpenMlsCrypto,
-        epoch_secret: &EpochSecret,
-    ) -> Result<Self, CryptoError> {
+    fn new(crypto: &impl OpenMlsCrypto, epoch_secret: &EpochSecret) -> Result<Self, CryptoError> {
         let secret = epoch_secret.secret.derive_secret(crypto, "membership")?;
         Ok(Self { secret })
     }
@@ -924,10 +893,7 @@ pub(crate) struct SenderDataSecret {
 
 impl SenderDataSecret {
     /// Derive an `ExporterSecret` from an `EpochSecret`.
-    fn new(
-        crypto: &impl OpenMlsCrypto,
-        epoch_secret: &EpochSecret,
-    ) -> Result<Self, CryptoError> {
+    fn new(crypto: &impl OpenMlsCrypto, epoch_secret: &EpochSecret) -> Result<Self, CryptoError> {
         let secret = epoch_secret.secret.derive_secret(crypto, "sender data")?;
         Ok(SenderDataSecret { secret })
     }
@@ -1109,10 +1075,7 @@ impl EpochSecrets {
     /// Derive `EpochSecrets` from an `EpochSecret`.
     /// If the `with_init_secret` argument is `true`, the init secret is derived and
     /// part of the `EpochSecrets`. Otherwise not.
-    fn new(
-        crypto: &impl OpenMlsCrypto,
-        epoch_secret: EpochSecret,
-    ) -> Result<Self, CryptoError> {
+    fn new(crypto: &impl OpenMlsCrypto, epoch_secret: EpochSecret) -> Result<Self, CryptoError> {
         log::debug!(
             "Computing EpochSecrets from epoch secret with {}",
             epoch_secret.secret.ciphersuite()

@@ -304,8 +304,7 @@ impl MlsGroup {
         &mut self,
         store: &KeyStore,
     ) -> Result<(), KeyStore::Error> {
-        store
-            .store(self.group_id().as_slice(), &*self)?;
+        store.store(self.group_id().as_slice(), &*self)?;
 
         self.state_changed = InnerState::Persisted;
         Ok(())

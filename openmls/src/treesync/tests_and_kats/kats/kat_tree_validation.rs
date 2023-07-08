@@ -120,7 +120,12 @@ fn run_test_vector(test: TestElement, backend: &impl OpenMlsProvider) -> Result<
         assert_eq!(resolution, test.resolutions[index]);
 
         let tree_hash = diff
-            .compute_tree_hash(backend.crypto(), ciphersuite, tree_node_index, &HashSet::new())
+            .compute_tree_hash(
+                backend.crypto(),
+                ciphersuite,
+                tree_node_index,
+                &HashSet::new(),
+            )
             .unwrap();
 
         // Verify tree hash

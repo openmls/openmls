@@ -176,10 +176,14 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsProvider) {
         .unwrap();
 
         // Check the parent hash in the diff is correct.
-        assert!(diff.verify_parent_hashes(backend.crypto(), ciphersuite).is_ok());
+        assert!(diff
+            .verify_parent_hashes(backend.crypto(), ciphersuite)
+            .is_ok());
 
         // Merge the diff into a new tree.
-        let staged_diff = diff.into_staged_diff(backend.crypto(), ciphersuite).unwrap();
+        let staged_diff = diff
+            .into_staged_diff(backend.crypto(), ciphersuite)
+            .unwrap();
         let mut tree_after_kat = treesync.clone();
         tree_after_kat.merge_diff(staged_diff);
 
@@ -371,7 +375,9 @@ fn apply_update_path(
             ciphersuite,
         ));
 
-        path_secret.derive_key_pair(backend.crypto(), ciphersuite).unwrap()
+        path_secret
+            .derive_key_pair(backend.crypto(), ciphersuite)
+            .unwrap()
     };
 
     assert_eq!(encryption_keys[0], expected_keypair);

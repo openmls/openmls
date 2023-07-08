@@ -96,7 +96,10 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) {
         ciphersuite,
     ));
     let got_confirmation_tag = confirmation_key
-        .tag(backend.crypto(), &test_vector.confirmed_transcript_hash_after)
+        .tag(
+            backend.crypto(),
+            &test_vector.confirmed_transcript_hash_after,
+        )
         .unwrap();
     assert_eq!(
         got_confirmation_tag,

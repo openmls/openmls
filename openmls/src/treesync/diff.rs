@@ -20,9 +20,9 @@
 use std::collections::HashSet;
 
 use log::debug;
+use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsProvider};
 use serde::{Deserialize, Serialize};
-use openmls_traits::crypto::OpenMlsCrypto;
 
 use super::{
     errors::*,
@@ -304,7 +304,8 @@ impl<'a> TreeSyncDiff<'a> {
         let (path, update_path_nodes, keypairs, commit_secret) =
             self.derive_path(backend, ciphersuite, leaf_index)?;
 
-        let parent_hash = self.process_update_path(backend.crypto(), ciphersuite, leaf_index, path)?;
+        let parent_hash =
+            self.process_update_path(backend.crypto(), ciphersuite, leaf_index, path)?;
 
         self.leaf_mut(leaf_index)
             .ok_or_else(|| LibraryError::custom("Didn't find own leaf in diff."))?
@@ -358,8 +359,7 @@ impl<'a> TreeSyncDiff<'a> {
                     .map(|update_path_node| update_path_node.public_key.clone().into()),
             )
             .collect();
-        let parent_hash =
-            self.process_update_path(crypto, ciphersuite, sender_leaf_index, path)?;
+        let parent_hash = self.process_update_path(crypto, ciphersuite, sender_leaf_index, path)?;
 
         // Verify the parent hash.
         let leaf_node_parent_hash = update_path
@@ -444,11 +444,8 @@ impl<'a> TreeSyncDiff<'a> {
             path.iter_mut().rev().zip(copath_tree_hashes.rev())
         {
             path_node.set_parent_hash(previous_parent_hash);
-            let parent_hash = path_node.compute_parent_hash(
-                crypto,
-                ciphersuite,
-                &original_sibling_tree_hash?,
-            )?;
+            let parent_hash =
+                path_node.compute_parent_hash(crypto, ciphersuite, &original_sibling_tree_hash?)?;
             previous_parent_hash = parent_hash
         }
         // The final hash is the one of the leaf's parent.

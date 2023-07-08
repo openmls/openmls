@@ -156,8 +156,7 @@ impl EncryptionKeyPair {
         &self,
         store: &KeyStore,
     ) -> Result<(), KeyStore::Error> {
-        store
-            .store(&self.public_key().to_bytes_with_prefix(), self)
+        store.store(&self.public_key().to_bytes_with_prefix(), self)
     }
 
     /// Read the [`EncryptionKeyPair`] from the key store of the `backend`. This
@@ -183,8 +182,7 @@ impl EncryptionKeyPair {
         &self,
         store: &KeyStore,
     ) -> Result<(), KeyStore::Error> {
-        store
-            .delete::<Self>(&self.public_key().to_bytes_with_prefix())
+        store.delete::<Self>(&self.public_key().to_bytes_with_prefix())
     }
 
     pub(crate) fn public_key(&self) -> &EncryptionKey {
@@ -224,10 +222,7 @@ pub mod test_utils {
         }
     }
 
-    pub fn write_keys_from_key_store(
-        backend: &impl OpenMlsProvider,
-        encryption_key: HpkeKeyPair,
-    ) {
+    pub fn write_keys_from_key_store(backend: &impl OpenMlsProvider, encryption_key: HpkeKeyPair) {
         let keypair = EncryptionKeyPair::from(encryption_key);
 
         keypair.write_to_key_store(backend.key_store()).unwrap();

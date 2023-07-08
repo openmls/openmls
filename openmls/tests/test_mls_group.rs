@@ -881,8 +881,8 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider
             .save(backend.key_store())
             .expect("Could not save group state.");
 
-        let _test_group =
-            MlsGroup::load(&group_id, backend.key_store()).expect("Could not load the group state.");
+        let _test_group = MlsGroup::load(&group_id, backend.key_store())
+            .expect("Could not load the group state.");
 
         // Merge Commit
         alice_group
@@ -912,7 +912,8 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider
         // Check that the state flag gets reset when saving
         assert_eq!(bob_group.state_changed(), InnerState::Persisted);
 
-        let bob_group = MlsGroup::load(&group_id, backend.key_store()).expect("Could not load group from file");
+        let bob_group =
+            MlsGroup::load(&group_id, backend.key_store()).expect("Could not load group from file");
 
         // Make sure the state is still the same
         assert_eq!(
@@ -965,10 +966,7 @@ fn test_empty_input_errors(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvi
 
 // This tests the ratchet tree extension usage flag in the configuration
 #[apply(ciphersuites_and_backends)]
-fn mls_group_ratchet_tree_extension(
-    ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsProvider,
-) {
+fn mls_group_ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
         let group_id = GroupId::from_slice(b"Test Group");
 

@@ -151,7 +151,11 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     let alice_ratchet_tree = alice_group.public_group().export_ratchet_tree();
 
     let alice_group_info = alice_group
-        .export_group_info(crypto.rand(), &alice_credential_with_key_and_signer.signer, true)
+        .export_group_info(
+            crypto.rand(),
+            &alice_credential_with_key_and_signer.signer,
+            true,
+        )
         .unwrap();
 
     let alice_leaf_node = {

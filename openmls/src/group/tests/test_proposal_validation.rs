@@ -1193,7 +1193,8 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
             let proposal_or_ref = match proposal_inclusion {
                 ProposalInclusion::ByValue => ProposalOrRef::Proposal(add_proposal.clone()),
                 ProposalInclusion::ByReference => ProposalOrRef::Reference(
-                    ProposalRef::from_raw_proposal(ciphersuite, backend.crypto(), &add_proposal).unwrap(),
+                    ProposalRef::from_raw_proposal(ciphersuite, backend.crypto(), &add_proposal)
+                        .unwrap(),
                 ),
             };
             // Artificially add the proposal.
@@ -1713,7 +1714,9 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         .into_iter()
         .find(|keypair| keypair.public_key() == &alice_encryption_key)
         .unwrap();
-    leaf_keypair.write_to_key_store(backend.key_store()).unwrap();
+    leaf_keypair
+        .write_to_key_store(backend.key_store())
+        .unwrap();
 
     // Have bob process the resulting plaintext
     let err = bob_group

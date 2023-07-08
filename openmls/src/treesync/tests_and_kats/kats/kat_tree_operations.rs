@@ -105,7 +105,9 @@ fn run_test_vector(test: TestElement, backend: &impl OpenMlsProvider) -> Result<
 
     diff.apply_proposals(&proposal_queue, None).unwrap();
 
-    let staged_diff = diff.into_staged_diff(backend.crypto(), ciphersuite).unwrap();
+    let staged_diff = diff
+        .into_staged_diff(backend.crypto(), ciphersuite)
+        .unwrap();
 
     group.merge_diff(staged_diff);
 

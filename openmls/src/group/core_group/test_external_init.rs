@@ -243,10 +243,7 @@ fn test_external_init_single_member_group(
 }
 
 #[apply(ciphersuites_and_backends)]
-fn test_external_init_broken_signature(
-    ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsProvider,
-) {
+fn test_external_init_broken_signature(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     let (
         framing_parameters,
         group_alice,

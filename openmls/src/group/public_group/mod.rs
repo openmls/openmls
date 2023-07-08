@@ -12,9 +12,11 @@
 //! relies on a [`PublicGroup`] as well.
 
 #[cfg(test)]
+use crate::prelude::OpenMlsProvider;
+#[cfg(test)]
 use std::collections::HashSet;
 
-use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsProvider, types::Ciphersuite};
+use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
 
 use self::{
