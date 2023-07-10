@@ -71,13 +71,13 @@ impl User {
             )
             .unwrap();
 
-        self.identity.borrow_mut().kp.push(
-            (key_package
+        self.identity.borrow_mut().kp.insert(
+            key_package
                 .hash_ref(self.crypto.crypto())
                 .unwrap()
                 .as_slice()
                 .to_vec(),
-                key_package));
+                key_package);
     }
    
     /// Get a member
@@ -99,7 +99,9 @@ impl User {
 
     /// Get the key packages fo this user.
     pub fn key_packages(&self) -> Vec<(Vec<u8>, KeyPackage)> {
-        self.identity.borrow().kp.clone()
+        // clone first !
+        let kpgs = self.identity.borrow().kp.clone();
+        Vec::from_iter(kpgs.into_iter())
     }
 
     pub fn register(&self) {
@@ -436,6 +438,13 @@ impl User {
     fn join_group(&self, welcome: Welcome) -> Result<(), String> {
         log::debug!("{} joining group ...", self.username);
 
+        let mut ident = self.identity.borrow_mut();
+        for secret in welcome.secrets().iter() {
+            let key_package_hash = &secret.new_member();
+            if ident.kp.contains_key(key_package_hash.as_slice()) {
+                ident.kp.remove(key_package_hash.as_slice());
+            }
+        }
         // NOTE: Since the DS currently doesn't distribute copies of the group's ratchet
         // tree, we need to include the ratchet_tree_extension.
         let group_config = MlsGroupConfig::builder()

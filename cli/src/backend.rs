@@ -58,7 +58,7 @@ impl Backend {
         }
     }
 
-    /// Get a list of key packages for a client.
+    /// Get and reserve a key package for a client.
     pub fn consume_key_package(&self, client_id: &[u8]) -> Result<KeyPackageIn, String> {
         let mut url = self.ds_url.clone();
         let path = "/clients/key_package/".to_string()
