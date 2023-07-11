@@ -63,6 +63,10 @@ impl ClientInfo {
     }
 
     pub fn consume_kp(&mut self) -> Result<KeyPackageIn, String> {
+        if self.key_packages.0.len() <= 1 {
+            // We keep one keypackage to handle ClientInfo serialization/deserialization issues
+            return Err("No more keypackage available".to_string());
+        }
         match self.key_packages.0.pop() {
             Some(c) => {
                 self.reserved_key_pkg_hash.insert(c.0.into_vec());

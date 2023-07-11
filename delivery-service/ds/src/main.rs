@@ -203,9 +203,16 @@ async fn consume_key_package(path: web::Path<String>, data: web::Data<DsData>) -
     log::debug!("Consuming key package for {:?}", id);
 
    let key_package  = match clients.get_mut(&id) {
-        Some(c) => c.consume_kp().unwrap(),
-        None => return actix_web::HttpResponse::NoContent().finish(),
+        Some(c) => match c.consume_kp() {
+            Ok(kp) => kp,
+            Err(e) => {
+                log::debug!("Error consuming key package: {}", e);
+                return actix_web::HttpResponse::NoContent().finish()
+            }
+        },
+        None => return actix_web::HttpResponse::NoContent().finish()
     };
+
     actix_web::HttpResponse::Ok().body(unwrap_data!(key_package.tls_serialize_detached()))
 }
 
