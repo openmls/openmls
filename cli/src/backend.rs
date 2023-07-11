@@ -1,4 +1,4 @@
-use tls_codec::{Deserialize, TlsVecU16, TlsVecU32, TlsByteVecU8};
+use tls_codec::{Deserialize, TlsVecU16, TlsVecU32};
 use url::Url;
 
 use super::{

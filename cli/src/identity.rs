@@ -1,4 +1,4 @@
-use std::{collections::HashMap, borrow::BorrowMut};
+use std::{collections::HashMap};
 
 use openmls::prelude::{config::CryptoConfig, *};
 use openmls_basic_credential::SignatureKeyPair;
