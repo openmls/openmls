@@ -59,24 +59,14 @@ impl Backend {
     }
 
     /// Send a key package for a client.
-    pub fn send_kp(&self, user: &User) -> Result<(), String> {
+    pub fn send_kp(&self, user: &User, ckp: &ClientKeyPackages) -> Result<(), String> {
         let mut url = self.ds_url.clone();
         let path = "/clients/key_packages/".to_string()
             + &base64::encode_config(user.identity.borrow().identity(), base64::URL_SAFE);
         url.set_path(&path);
-
-        let mut last_key_package =  user.key_packages().last().into_iter().cloned().collect::<Vec<_>>();
-
-        let client_key_packages = ClientKeyPackages(
-            last_key_package
-                .drain(..)
-                .map(|(e1, e2)| (e1.into(), KeyPackageIn::from(e2)))
-                .collect::<Vec<(TlsByteVecU8, KeyPackageIn)>>()
-                .into()
-        );
         
         // The response should be empty.
-        let _response = post(&url, &client_key_packages)?;
+        let _response = post(&url, &ckp)?;
         Ok(())
     }
 

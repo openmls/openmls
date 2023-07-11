@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, borrow::BorrowMut};
 
 use openmls::prelude::{config::CryptoConfig, *};
 use openmls_basic_credential::SignatureKeyPair;
@@ -43,6 +43,36 @@ impl Identity {
             credential_with_key,
             signer: signature_keys,
         }
+    }
+
+    pub fn add_key_package(&mut self, ciphersuite: Ciphersuite, crypto: &OpenMlsRustCrypto) -> KeyPackage {
+        /*let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+        let credential_with_key = CredentialWithKey {
+            credential: self.identity.borrow().credential_with_key.credential.clone(),
+            signature_key: signature_keys.to_public_vec().into(),
+        };
+        signature_keys.store(self.crypto.key_store()).unwrap();*/
+
+        let key_package = KeyPackage::builder()
+            .build(
+                CryptoConfig {
+                    ciphersuite,
+                    version: ProtocolVersion::default(),
+                },
+                crypto,
+                &self.signer,
+                self.credential_with_key.clone(),
+            )
+            .unwrap();
+
+        self.kp.insert(
+            key_package
+                .hash_ref(crypto.crypto())
+                .unwrap()
+                .as_slice()
+                .to_vec(),
+                key_package.clone());
+        key_package
     }
 
     /// Get the plain identity as byte vector.

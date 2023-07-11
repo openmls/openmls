@@ -6,6 +6,7 @@ use ds_lib::{ClientKeyPackages, GroupMessage};
 use openmls::prelude::*;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::OpenMlsCryptoProvider;
+use tls_codec::{TlsByteVecU8, TlsVecU32};
 
 use super::{backend::Backend, conversation::Conversation, identity::Identity};
 
@@ -49,34 +50,14 @@ impl User {
         out
     }
 
-    pub fn add_key_package(&self) {
-        let ciphersuite = CIPHERSUITE;
-        /*let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
-        let credential_with_key = CredentialWithKey {
-            credential: self.identity.borrow().credential_with_key.credential.clone(),
-            signature_key: signature_keys.to_public_vec().into(),
-        };
-        signature_keys.store(self.crypto.key_store()).unwrap();*/
-
-        let key_package = KeyPackage::builder()
-            .build(
-                CryptoConfig {
-                    ciphersuite,
-                    version: ProtocolVersion::default(),
-                },
-                &self.crypto,
-                &self.identity.borrow().signer,
-                self.identity.borrow().credential_with_key.clone(),
-            )
-            .unwrap();
-
-        self.identity.borrow_mut().kp.insert(
-            key_package
-                .hash_ref(self.crypto.crypto())
-                .unwrap()
-                .as_slice()
-                .to_vec(),
-                key_package);
+    pub fn add_key_package(&self) -> (Vec<u8>, KeyPackage) {
+        let kp = self.identity.borrow_mut().add_key_package(CIPHERSUITE,&self.crypto);
+        (kp
+            .hash_ref(self.crypto.crypto())
+            .unwrap()
+            .as_slice()
+            .to_vec(),
+            kp)
     }
    
     /// Get a member
@@ -152,8 +133,12 @@ impl User {
 
     /// Create a new key package.
     pub fn create_kp(&self) {
-        self.add_key_package();
-        match self.backend.send_kp(&self) {
+        let kp = self.add_key_package();
+        let ckp = ClientKeyPackages(vec![kp].into_iter()
+            .map(|(b, kp)| (b.into(), KeyPackageIn::from(kp)))
+            .collect::<Vec<(TlsByteVecU8, KeyPackageIn)>>().into());
+        
+        match self.backend.send_kp(&self,&ckp) {
             Ok(()) => (),
             Err(e) => println!("Error sending new key package: {e:?}"),
         };
