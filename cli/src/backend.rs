@@ -58,8 +58,8 @@ impl Backend {
         }
     }
 
-    /// Send a key package for a client.
-    pub fn send_kp(&self, user: &User, ckp: &ClientKeyPackages) -> Result<(), String> {
+    /// Publish client additional key packages
+    pub fn publish_key_packages(&self, user: &User, ckp: &ClientKeyPackages) -> Result<(), String> {
         let mut url = self.ds_url.clone();
         let path = "/clients/key_packages/".to_string()
             + &base64::encode_config(user.identity.borrow().identity(), base64::URL_SAFE);

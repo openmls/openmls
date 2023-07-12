@@ -56,6 +56,7 @@ impl User {
         out
     }
 
+    /// Add a key package to the user identity and return the pair [key package hash ref , key package]
     pub fn add_key_package(&self) -> (Vec<u8>, KeyPackage) {
         let kp = self
             .identity
@@ -144,7 +145,7 @@ impl User {
         )
     }
 
-    /// Create a new key package.
+    /// Create a new key package and publish it to the delivery server
     pub fn create_kp(&self) {
         let kp = self.add_key_package();
         let ckp = ClientKeyPackages(
@@ -155,7 +156,7 @@ impl User {
                 .into(),
         );
 
-        match self.backend.send_kp(&self, &ckp) {
+        match self.backend.publish_key_packages(&self, &ckp) {
             Ok(()) => (),
             Err(e) => println!("Error sending new key package: {e:?}"),
         };

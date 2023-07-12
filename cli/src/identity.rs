@@ -47,18 +47,12 @@ impl Identity {
         }
     }
 
+    /// Create an additional key package using the credential_with_key/signer bound to this identity
     pub fn add_key_package(
         &mut self,
         ciphersuite: Ciphersuite,
         crypto: &OpenMlsRustCrypto,
     ) -> KeyPackage {
-        /*let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
-        let credential_with_key = CredentialWithKey {
-            credential: self.identity.borrow().credential_with_key.credential.clone(),
-            signature_key: signature_keys.to_public_vec().into(),
-        };
-        signature_keys.store(self.crypto.key_store()).unwrap();*/
-
         let key_package = KeyPackage::builder()
             .build(
                 CryptoConfig {

@@ -62,6 +62,9 @@ impl ClientInfo {
         self.id.as_slice()
     }
 
+    /// Acquire a key package from the client's key packages
+    /// Mark the key package hash ref as "reserved key package"
+    /// The reserved hash ref will be used in DS::send_welcome and removed once welcome is distributed
     pub fn consume_kp(&mut self) -> Result<KeyPackageIn, String> {
         if self.key_packages.0.len() <= 1 {
             // We keep one keypackage to handle ClientInfo serialization/deserialization issues
