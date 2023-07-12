@@ -112,10 +112,10 @@ fn main() {
 
                     // Send a message to the group.
                     if let Some(msg) = op2.strip_prefix("send ") {
-                        match client.send_msg(msg, group_name.to_string()){
+                        match client.send_msg(msg, group_name.to_string()) {
                             Ok(()) => stdout
-                                        .write_all(format!("sent message to {group_name}\n\n").as_bytes())
-                                        .unwrap(),
+                                .write_all(format!("sent message to {group_name}\n\n").as_bytes())
+                                .unwrap(),
                             Err(e) => println!("Error sending group message: {e:?}"),
                         }
                         continue;
@@ -141,7 +141,8 @@ fn main() {
                             .unwrap();
                         stdout
                             .write_all(
-                                format!("Removed {rem_client} from group {group_name}\n\n").as_bytes(),
+                                format!("Removed {rem_client} from group {group_name}\n\n")
+                                    .as_bytes(),
                             )
                             .unwrap();
                         continue;

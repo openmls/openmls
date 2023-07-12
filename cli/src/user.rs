@@ -1,6 +1,6 @@
 use std::borrow::Borrow;
-use std::{cell::RefCell, collections::HashMap};
 use std::str;
+use std::{cell::RefCell, collections::HashMap};
 
 use ds_lib::{ClientKeyPackages, GroupMessage};
 use openmls::prelude::*;
@@ -37,7 +37,8 @@ pub struct User {
 
 #[derive(PartialEq)]
 pub enum PostUpdateActions {
-    None, Remove
+    None,
+    Remove,
 }
 
 impl User {
@@ -56,15 +57,19 @@ impl User {
     }
 
     pub fn add_key_package(&self) -> (Vec<u8>, KeyPackage) {
-        let kp = self.identity.borrow_mut().add_key_package(CIPHERSUITE,&self.crypto);
-        (kp
-            .hash_ref(self.crypto.crypto())
-            .unwrap()
-            .as_slice()
-            .to_vec(),
-            kp)
+        let kp = self
+            .identity
+            .borrow_mut()
+            .add_key_package(CIPHERSUITE, &self.crypto);
+        (
+            kp.hash_ref(self.crypto.crypto())
+                .unwrap()
+                .as_slice()
+                .to_vec(),
+            kp,
+        )
     }
-   
+
     /// Get a member
     fn find_member_index(&self, name: String, group: &Group) -> Result<LeafNodeIndex, String> {
         let mls_group = group.mls_group.borrow();
@@ -116,7 +121,10 @@ impl User {
                 .as_slice()
                 != signature_key.as_slice()
             {
-                log::debug!("Searching for contact {:?}", str::from_utf8(credential.identity()).unwrap());
+                log::debug!(
+                    "Searching for contact {:?}",
+                    str::from_utf8(credential.identity()).unwrap()
+                );
                 let contact = match self.contacts.get(&credential.identity().to_vec()) {
                     Some(c) => c.id.clone(),
                     None => panic!("There's a member in the group we don't know."),
@@ -139,11 +147,15 @@ impl User {
     /// Create a new key package.
     pub fn create_kp(&self) {
         let kp = self.add_key_package();
-        let ckp = ClientKeyPackages(vec![kp].into_iter()
-            .map(|(b, kp)| (b.into(), KeyPackageIn::from(kp)))
-            .collect::<Vec<(TlsByteVecU8, KeyPackageIn)>>().into());
+        let ckp = ClientKeyPackages(
+            vec![kp]
+                .into_iter()
+                .map(|(b, kp)| (b.into(), KeyPackageIn::from(kp)))
+                .collect::<Vec<(TlsByteVecU8, KeyPackageIn)>>()
+                .into(),
+        );
 
-        match self.backend.send_kp(&self,&ckp) {
+        match self.backend.send_kp(&self, &ckp) {
             Ok(()) => (),
             Err(e) => println!("Error sending new key package: {e:?}"),
         };
@@ -169,7 +181,7 @@ impl User {
             Ok(()) => (),
             Err(e) => println!("Error sending group message: {e:?}"),
         }
-        
+
         // XXX: Need to update the client's local view of the conversation to include
         // the message they sent.
 
@@ -184,10 +196,13 @@ impl User {
 
         let mut messages_out = Vec::new();
 
-        let mut process_protocol_message = |message: ProtocolMessage| -> Result<(PostUpdateActions,Option<GroupId>),String> {
+        let mut process_protocol_message = |message: ProtocolMessage| -> Result<
+            (PostUpdateActions, Option<GroupId>),
+            String,
+        > {
             let processed_message: ProcessedMessage;
             let mut groups = self.groups.borrow_mut();
-            
+
             let group = match groups.get_mut(message.group_id().as_slice()) {
                 Some(g) => g,
                 None => {
@@ -230,16 +245,18 @@ impl User {
                     if commit_ptr.self_removed() {
                         remove_proposal = true;
                     }
-                    match mls_group
-                        .merge_staged_commit(&self.crypto, *commit_ptr) {
-                            Ok(()) => {
-                                if remove_proposal {
-                                    log::debug!("update::Processing StagedCommitMessage removing {} from group {} ", self.username, group.group_name);
-                                    return Ok((PostUpdateActions::Remove, Some(mls_group.group_id().clone())));
-                                }                            
-                            },
-                            Err(e) =>  return Err(e.to_string()),
+                    match mls_group.merge_staged_commit(&self.crypto, *commit_ptr) {
+                        Ok(()) => {
+                            if remove_proposal {
+                                log::debug!("update::Processing StagedCommitMessage removing {} from group {} ", self.username, group.group_name);
+                                return Ok((
+                                    PostUpdateActions::Remove,
+                                    Some(mls_group.group_id().clone()),
+                                ));
+                            }
                         }
+                        Err(e) => return Err(e.to_string()),
+                    }
                 }
             }
             Ok((PostUpdateActions::None, None))
@@ -257,16 +274,19 @@ impl User {
                 }
                 MlsMessageInBody::PrivateMessage(message) => {
                     match process_protocol_message(message.into()) {
-                        Ok(p) => 
+                        Ok(p) => {
                             if p.0 == PostUpdateActions::Remove {
                                 match p.1 {
-                                    Some(gid) => {   
+                                    Some(gid) => {
                                         let mut grps = self.groups.borrow_mut();
                                         grps.remove_entry(gid.as_slice());
-                                    },
-                                    None => log::debug!("update::Error post update remove must have a group id")
+                                    }
+                                    None => log::debug!(
+                                        "update::Error post update remove must have a group id"
+                                    ),
                                 }
-                        } 
+                            }
+                        }
                         Err(_e) => {
                             continue;
                         }
@@ -284,7 +304,10 @@ impl User {
 
         for c in self.backend.list_clients()?.drain(..) {
             let client_id = c.id.clone();
-            log::debug!("update::Processing client for contact {:?}", str::from_utf8(&client_id).unwrap());
+            log::debug!(
+                "update::Processing client for contact {:?}",
+                str::from_utf8(&client_id).unwrap()
+            );
             if c.id != self.identity.borrow().identity()
                 && self
                     .contacts
@@ -298,13 +321,19 @@ impl User {
                     )
                     .is_some()
             {
-                log::debug!("update::added client to contact {:?}", str::from_utf8(&client_id).unwrap());
+                log::debug!(
+                    "update::added client to contact {:?}",
+                    str::from_utf8(&client_id).unwrap()
+                );
                 log::trace!("Updated client {}", "");
             }
         }
         log::debug!("update::Processing clients done, contact list is:");
         for (contact_id, _contact) in self.contacts.borrow() {
-            log::debug!("update::Parsing contact {:?}", str::from_utf8(&contact_id).unwrap());
+            log::debug!(
+                "update::Parsing contact {:?}",
+                str::from_utf8(&contact_id).unwrap()
+            );
         }
 
         Ok(messages_out)
@@ -357,8 +386,8 @@ impl User {
         };
 
         // Reclaim a key package from the server
-        let joiner_key_package  = self.backend.consume_key_package(&contact.id).unwrap();
-        
+        let joiner_key_package = self.backend.consume_key_package(&contact.id).unwrap();
+
         // Build a proposal with this key package and do the MLS bits.
         let group_id = group.as_bytes();
         let mut groups = self.groups.borrow_mut();
@@ -383,7 +412,7 @@ impl User {
         log::trace!("Sending commit");
         let group = groups.get_mut(group_id).unwrap(); // XXX: not cool.
         let group_recipients = self.recipients(group);
-        
+
         let msg = GroupMessage::new(out_messages.into(), &group_recipients);
         self.backend.send_msg(&msg)?;
 
@@ -403,9 +432,8 @@ impl User {
         Ok(())
     }
 
-     /// Remove user with the given name from the group.
-     pub fn remove(&mut self, name: String, group: String) -> Result<(), String> {
-
+    /// Remove user with the given name from the group.
+    pub fn remove(&mut self, name: String, group: String) -> Result<(), String> {
         // Get the group ID
         let group_id = group.as_bytes();
         let mut groups = self.groups.borrow_mut();
@@ -415,17 +443,13 @@ impl User {
         };
 
         // Get the client leaf index
-        let leaf_index = self.find_member_index(name,group).unwrap();
+        let leaf_index = self.find_member_index(name, group).unwrap();
 
         // Remove operation on the mls group
         let (remove_message, _welcome, _group_info) = group
             .mls_group
             .borrow_mut()
-            .remove_members(
-                &self.crypto,
-                &self.identity.borrow().signer,
-                &[leaf_index],
-            )
+            .remove_members(&self.crypto, &self.identity.borrow().signer, &[leaf_index])
             .map_err(|e| format!("Failed to add member to group - {e}"))?;
 
         // First, send the MlsMessage remove commit to the group.

@@ -155,7 +155,11 @@ async fn get_key_packages(path: web::Path<String>, data: web::Data<DsData>) -> i
 
 /// Publish key packages for a given client `{id}`.
 #[post("/clients/key_packages/{id}")]
-async fn publish_key_packages(path: web::Path<String>, mut body: Payload, data: web::Data<DsData>) -> impl Responder {
+async fn publish_key_packages(
+    path: web::Path<String>,
+    mut body: Payload,
+    data: web::Data<DsData>,
+) -> impl Responder {
     let mut clients = unwrap_data!(data.clients.lock());
 
     let id = match base64::decode_config(path.into_inner(), base64::URL_SAFE) {
@@ -176,16 +180,21 @@ async fn publish_key_packages(path: web::Path<String>, mut body: Payload, data: 
     let key_packages = match ClientKeyPackages::tls_deserialize(&mut &bytes[..]) {
         Ok(ckp) => ckp,
         Err(_) => {
-            log::error!("Invalid payload for /clients/key_packages/{:?}\n{:?}", id, bytes);
+            log::error!(
+                "Invalid payload for /clients/key_packages/{:?}\n{:?}",
+                id,
+                bytes
+            );
             return actix_web::HttpResponse::BadRequest().finish();
         }
     };
 
-    key_packages.0
-                .iter()
-                .map(|(b, kp)| (b.clone(), KeyPackageIn::from(kp.clone())))
-                .for_each(|value| client.key_packages.0.push(value));
-                
+    key_packages
+        .0
+        .iter()
+        .map(|(b, kp)| (b.clone(), KeyPackageIn::from(kp.clone())))
+        .for_each(|value| client.key_packages.0.push(value));
+
     actix_web::HttpResponse::Ok().finish()
 }
 
@@ -202,15 +211,15 @@ async fn consume_key_package(path: web::Path<String>, data: web::Data<DsData>) -
     };
     log::debug!("Consuming key package for {:?}", id);
 
-   let key_package  = match clients.get_mut(&id) {
+    let key_package = match clients.get_mut(&id) {
         Some(c) => match c.consume_kp() {
             Ok(kp) => kp,
             Err(e) => {
                 log::debug!("Error consuming key package: {}", e);
-                return actix_web::HttpResponse::NoContent().finish()
+                return actix_web::HttpResponse::NoContent().finish();
             }
         },
-        None => return actix_web::HttpResponse::NoContent().finish()
+        None => return actix_web::HttpResponse::NoContent().finish(),
     };
 
     actix_web::HttpResponse::Ok().body(unwrap_data!(key_package.tls_serialize_detached()))
@@ -233,11 +242,14 @@ async fn send_welcome(mut body: Payload, data: web::Data<DsData>) -> impl Respon
     for secret in welcome.secrets().iter() {
         let key_package_hash = &secret.new_member();
         for (_client_name, client) in clients.iter_mut() {
-            match client.reserved_key_pkg_hash.take(key_package_hash.as_slice()) {
-                Some(_kp_hash) => { 
+            match client
+                .reserved_key_pkg_hash
+                .take(key_package_hash.as_slice())
+            {
+                Some(_kp_hash) => {
                     client.welcome_queue.push(welcome_msg.clone());
                     return actix_web::HttpResponse::Ok().finish();
-                },
+                }
                 None => continue,
             };
         }

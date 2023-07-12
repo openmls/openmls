@@ -1,4 +1,4 @@
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
 use openmls::prelude::{config::CryptoConfig, *};
 use openmls_basic_credential::SignatureKeyPair;
@@ -34,18 +34,24 @@ impl Identity {
             .unwrap();
 
         Self {
-            kp: HashMap::from([(key_package
-            .hash_ref(crypto.crypto())
-            .unwrap()
-            .as_slice()
-            .to_vec(),
-            key_package)]),
+            kp: HashMap::from([(
+                key_package
+                    .hash_ref(crypto.crypto())
+                    .unwrap()
+                    .as_slice()
+                    .to_vec(),
+                key_package,
+            )]),
             credential_with_key,
             signer: signature_keys,
         }
     }
 
-    pub fn add_key_package(&mut self, ciphersuite: Ciphersuite, crypto: &OpenMlsRustCrypto) -> KeyPackage {
+    pub fn add_key_package(
+        &mut self,
+        ciphersuite: Ciphersuite,
+        crypto: &OpenMlsRustCrypto,
+    ) -> KeyPackage {
         /*let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
         let credential_with_key = CredentialWithKey {
             credential: self.identity.borrow().credential_with_key.credential.clone(),
@@ -71,7 +77,8 @@ impl Identity {
                 .unwrap()
                 .as_slice()
                 .to_vec(),
-                key_package.clone());
+            key_package.clone(),
+        );
         key_package
     }
 

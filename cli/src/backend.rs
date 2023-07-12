@@ -64,7 +64,7 @@ impl Backend {
         let path = "/clients/key_packages/".to_string()
             + &base64::encode_config(user.identity.borrow().identity(), base64::URL_SAFE);
         url.set_path(&path);
-        
+
         // The response should be empty.
         let _response = post(&url, &ckp)?;
         Ok(())

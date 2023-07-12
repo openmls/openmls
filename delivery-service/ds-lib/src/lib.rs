@@ -71,7 +71,7 @@ impl ClientInfo {
             Some(c) => {
                 self.reserved_key_pkg_hash.insert(c.0.into_vec());
                 Ok(c.1)
-            },
+            }
             None => Err("No more keypackage available".to_string()),
         }
     }
