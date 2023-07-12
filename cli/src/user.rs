@@ -444,7 +444,11 @@ impl User {
         };
 
         // Get the client leaf index
-        let leaf_index = self.find_member_index(name, group).unwrap();
+
+        let leaf_index = match self.find_member_index(name, group) {
+            Ok(l) => l,
+            Err(e) => return Err(e),
+        };
 
         // Remove operation on the mls group
         let (remove_message, _welcome, _group_info) = group
