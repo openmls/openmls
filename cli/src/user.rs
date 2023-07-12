@@ -383,7 +383,7 @@ impl User {
         log::trace!("Sending commit");
         let group = groups.get_mut(group_id).unwrap(); // XXX: not cool.
         let group_recipients = self.recipients(group);
-        
+
         let msg = GroupMessage::new(out_messages.into(), &group_recipients);
         self.backend.send_msg(&msg)?;
 
