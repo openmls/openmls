@@ -215,7 +215,7 @@ async fn test_group() {
         credentials_with_key.get(1).unwrap().clone(),
         Extensions::empty(),
         crypto,
-        &signers.get(1).unwrap(),
+        signers.get(1).unwrap(),
     );
 
     let key_package_2 = (
@@ -246,7 +246,7 @@ async fn test_group() {
         .to_request();
 
     // The response should be empty.
-    let response = test::call_service(&mut app, req).await;
+    let response = test::call_service(&app, req).await;
     assert_eq!(response.status(), StatusCode::OK);
 
     // Client1 creates MyFirstGroup
