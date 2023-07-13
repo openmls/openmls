@@ -85,7 +85,7 @@ impl User {
                 return Ok(index);
             }
         }
-        return Err("Unknown member".to_string());
+        Err("Unknown member".to_string())
     }
 
     /// Get the key packages fo this user.
@@ -96,7 +96,7 @@ impl User {
     }
 
     pub fn register(&self) {
-        match self.backend.register_client(&self) {
+        match self.backend.register_client(self) {
             Ok(r) => log::debug!("Created new user: {:?}", r),
             Err(e) => log::error!("Error creating user: {:?}", e),
         }
@@ -156,7 +156,7 @@ impl User {
                 .into(),
         );
 
-        match self.backend.publish_key_packages(&self, &ckp) {
+        match self.backend.publish_key_packages(self, &ckp) {
             Ok(()) => (),
             Err(e) => println!("Error sending new key package: {e:?}"),
         };
@@ -330,10 +330,10 @@ impl User {
             }
         }
         log::debug!("update::Processing clients done, contact list is:");
-        for (contact_id, _contact) in self.contacts.borrow() {
+        for contact_id in self.contacts.borrow().keys() {
             log::debug!(
                 "update::Parsing contact {:?}",
-                str::from_utf8(&contact_id).unwrap()
+                str::from_utf8(contact_id).unwrap()
             );
         }
 

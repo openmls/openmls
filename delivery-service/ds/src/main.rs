@@ -160,6 +160,11 @@ async fn publish_key_packages(
     mut body: Payload,
     data: web::Data<DsData>,
 ) -> impl Responder {
+    let mut bytes = web::BytesMut::new();
+    while let Some(item) = body.next().await {
+        bytes.extend_from_slice(&unwrap_item!(item));
+    }
+
     let mut clients = unwrap_data!(data.clients.lock());
 
     let id = match base64::decode_config(path.into_inner(), base64::URL_SAFE) {
@@ -173,10 +178,6 @@ async fn publish_key_packages(
         None => return actix_web::HttpResponse::NotFound().finish(),
     };
 
-    let mut bytes = web::BytesMut::new();
-    while let Some(item) = body.next().await {
-        bytes.extend_from_slice(&unwrap_item!(item));
-    }
     let key_packages = match ClientKeyPackages::tls_deserialize(&mut &bytes[..]) {
         Ok(ckp) => ckp,
         Err(_) => {
@@ -192,7 +193,7 @@ async fn publish_key_packages(
     key_packages
         .0
         .iter()
-        .map(|(b, kp)| (b.clone(), KeyPackageIn::from(kp.clone())))
+        .map(|(b, kp)| (b.clone(), kp.clone()))
         .for_each(|value| client.key_packages.0.push(value));
 
     actix_web::HttpResponse::Ok().finish()
@@ -247,7 +248,7 @@ async fn send_welcome(mut body: Payload, data: web::Data<DsData>) -> impl Respon
                 .take(key_package_hash.as_slice())
             {
                 Some(_kp_hash) => {
-                    client.welcome_queue.push(welcome_msg.clone());
+                    client.welcome_queue.push(welcome_msg);
                     return actix_web::HttpResponse::Ok().finish();
                 }
                 None => continue,
