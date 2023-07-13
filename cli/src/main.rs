@@ -16,6 +16,7 @@ const HELP: &str = "
 >>>     - update                                update the client state
 >>>     - reset                                 reset the server
 >>>     - register {client name}                register a new client
+>>>     - create kp                             create a new key package
 >>>     - create group {group name}             create a new group
 >>>     - group {group name}                    group operations
 >>>         - send {message}                    send message to group
@@ -61,9 +62,28 @@ fn main() {
         // register a new client.
         if let Some(client_name) = op.strip_prefix("register ") {
             client = Some(user::User::new(client_name.to_string()));
+            client.as_mut().unwrap().add_key_package();
+            client.as_mut().unwrap().add_key_package();
+            client.as_ref().unwrap().register();
             stdout
                 .write_all(format!("registered new client {client_name}\n\n").as_bytes())
                 .unwrap();
+            continue;
+        }
+
+        // Create a new KeyPackage.
+        if op == "create kp" {
+            if let Some(client) = &mut client {
+                // client.create_kp().unwrap();
+                client.create_kp();
+                stdout
+                    .write_all(b" >>> New key package created\n\n")
+                    .unwrap();
+            } else {
+                stdout
+                    .write_all(b" >>> No client to update :(\n\n")
+                    .unwrap();
+            }
             continue;
         }
 
@@ -92,10 +112,12 @@ fn main() {
 
                     // Send a message to the group.
                     if let Some(msg) = op2.strip_prefix("send ") {
-                        client.send_msg(msg, group_name.to_string()).unwrap();
-                        stdout
-                            .write_all(format!("sent message to {group_name}\n\n").as_bytes())
-                            .unwrap();
+                        match client.send_msg(msg, group_name.to_string()) {
+                            Ok(()) => stdout
+                                .write_all(format!("sent message to {group_name}\n\n").as_bytes())
+                                .unwrap(),
+                            Err(e) => println!("Error sending group message: {e:?}"),
+                        }
                         continue;
                     }
 
@@ -107,6 +129,20 @@ fn main() {
                         stdout
                             .write_all(
                                 format!("added {new_client} to group {group_name}\n\n").as_bytes(),
+                            )
+                            .unwrap();
+                        continue;
+                    }
+
+                    // Remove a client from the group.
+                    if let Some(rem_client) = op2.strip_prefix("remove ") {
+                        client
+                            .remove(rem_client.to_string(), group_name.to_string())
+                            .unwrap();
+                        stdout
+                            .write_all(
+                                format!("Removed {rem_client} from group {group_name}\n\n")
+                                    .as_bytes(),
                             )
                             .unwrap();
                         continue;

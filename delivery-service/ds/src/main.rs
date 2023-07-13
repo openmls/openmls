@@ -153,6 +153,79 @@ async fn get_key_packages(path: web::Path<String>, data: web::Data<DsData>) -> i
     actix_web::HttpResponse::Ok().body(unwrap_data!(client.key_packages.tls_serialize_detached()))
 }
 
+/// Publish key packages for a given client `{id}`.
+#[post("/clients/key_packages/{id}")]
+async fn publish_key_packages(
+    path: web::Path<String>,
+    mut body: Payload,
+    data: web::Data<DsData>,
+) -> impl Responder {
+    let mut bytes = web::BytesMut::new();
+    while let Some(item) = body.next().await {
+        bytes.extend_from_slice(&unwrap_item!(item));
+    }
+
+    let mut clients = unwrap_data!(data.clients.lock());
+
+    let id = match base64::decode_config(path.into_inner(), base64::URL_SAFE) {
+        Ok(v) => v,
+        Err(_) => return actix_web::HttpResponse::BadRequest().finish(),
+    };
+    log::debug!("Add key package for {:?}", id);
+
+    let client = match clients.get_mut(&id) {
+        Some(client) => client,
+        None => return actix_web::HttpResponse::NotFound().finish(),
+    };
+
+    let key_packages = match ClientKeyPackages::tls_deserialize(&mut &bytes[..]) {
+        Ok(ckp) => ckp,
+        Err(_) => {
+            log::error!(
+                "Invalid payload for /clients/key_packages/{:?}\n{:?}",
+                id,
+                bytes
+            );
+            return actix_web::HttpResponse::BadRequest().finish();
+        }
+    };
+
+    key_packages
+        .0
+        .iter()
+        .map(|(b, kp)| (b.clone(), kp.clone()))
+        .for_each(|value| client.key_packages.0.push(value));
+
+    actix_web::HttpResponse::Ok().finish()
+}
+
+/// Consume a key package for a given client `{id}`.
+/// This returns a serialised `KeyPackage` (see the `ds-lib`
+/// for details).
+#[get("/clients/key_package/{id}")]
+async fn consume_key_package(path: web::Path<String>, data: web::Data<DsData>) -> impl Responder {
+    let mut clients = unwrap_data!(data.clients.lock());
+
+    let id = match base64::decode_config(path.into_inner(), base64::URL_SAFE) {
+        Ok(v) => v,
+        Err(_) => return actix_web::HttpResponse::BadRequest().finish(),
+    };
+    log::debug!("Consuming key package for {:?}", id);
+
+    let key_package = match clients.get_mut(&id) {
+        Some(c) => match c.consume_kp() {
+            Ok(kp) => kp,
+            Err(e) => {
+                log::debug!("Error consuming key package: {}", e);
+                return actix_web::HttpResponse::NoContent().finish();
+            }
+        },
+        None => return actix_web::HttpResponse::NoContent().finish(),
+    };
+
+    actix_web::HttpResponse::Ok().body(unwrap_data!(key_package.tls_serialize_detached()))
+}
+
 /// Send a welcome message to a client.
 /// This takes a serialised `Welcome` message and stores the message for all
 /// clients in the welcome message.
@@ -170,14 +243,19 @@ async fn send_welcome(mut body: Payload, data: web::Data<DsData>) -> impl Respon
     for secret in welcome.secrets().iter() {
         let key_package_hash = &secret.new_member();
         for (_client_name, client) in clients.iter_mut() {
-            for (client_hash, _) in client.key_packages.0.iter() {
-                if client_hash.as_slice() == key_package_hash.as_slice() {
-                    client.welcome_queue.push(welcome_msg.clone());
+            match client
+                .reserved_key_pkg_hash
+                .take(key_package_hash.as_slice())
+            {
+                Some(_kp_hash) => {
+                    client.welcome_queue.push(welcome_msg);
+                    return actix_web::HttpResponse::Ok().finish();
                 }
-            }
+                None => continue,
+            };
         }
     }
-    actix_web::HttpResponse::Ok().finish()
+    actix_web::HttpResponse::NoContent().finish()
 }
 
 /// Send an MLS message to a set of clients (group).
@@ -302,7 +380,9 @@ async fn main() -> std::io::Result<()> {
             .app_data(data.clone())
             .service(register_client)
             .service(list_clients)
+            .service(publish_key_packages)
             .service(get_key_packages)
+            .service(consume_key_package)
             .service(send_welcome)
             .service(msg_recv)
             .service(msg_send)
