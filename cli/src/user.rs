@@ -1,9 +1,12 @@
+use std::borrow::Borrow;
+use std::str;
 use std::{cell::RefCell, collections::HashMap};
 
 use ds_lib::{ClientKeyPackages, GroupMessage};
 use openmls::prelude::*;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::OpenMlsCryptoProvider;
+use tls_codec::TlsByteVecU8;
 
 use super::{backend::Backend, conversation::Conversation, identity::Identity};
 
@@ -32,6 +35,12 @@ pub struct User {
     crypto: OpenMlsRustCrypto,
 }
 
+#[derive(PartialEq)]
+pub enum PostUpdateActions {
+    None,
+    Remove,
+}
+
 impl User {
     /// Create a new user with the given name and a fresh set of credentials.
     pub fn new(username: String) -> Self {
@@ -44,27 +53,53 @@ impl User {
             backend: Backend::default(),
             crypto,
         };
-
-        match out.backend.register_client(&out) {
-            Ok(r) => log::debug!("Created new user: {:?}", r),
-            Err(e) => log::error!("Error creating user: {:?}", e),
-        }
-
         out
+    }
+
+    /// Add a key package to the user identity and return the pair [key package hash ref , key package]
+    pub fn add_key_package(&self) -> (Vec<u8>, KeyPackage) {
+        let kp = self
+            .identity
+            .borrow_mut()
+            .add_key_package(CIPHERSUITE, &self.crypto);
+        (
+            kp.hash_ref(self.crypto.crypto())
+                .unwrap()
+                .as_slice()
+                .to_vec(),
+            kp,
+        )
+    }
+
+    /// Get a member
+    fn find_member_index(&self, name: String, group: &Group) -> Result<LeafNodeIndex, String> {
+        let mls_group = group.mls_group.borrow();
+        for Member {
+            index,
+            encryption_key: _,
+            signature_key: _,
+            credential,
+        } in mls_group.members()
+        {
+            if credential.identity() == name.as_bytes() {
+                return Ok(index);
+            }
+        }
+        return Err("Unknown member".to_string());
     }
 
     /// Get the key packages fo this user.
     pub fn key_packages(&self) -> Vec<(Vec<u8>, KeyPackage)> {
-        vec![(
-            self.identity
-                .borrow()
-                .kp
-                .hash_ref(self.crypto.crypto())
-                .unwrap()
-                .as_slice()
-                .to_vec(),
-            self.identity.borrow().kp.clone(),
-        )]
+        // clone first !
+        let kpgs = self.identity.borrow().kp.clone();
+        Vec::from_iter(kpgs.into_iter())
+    }
+
+    pub fn register(&self) {
+        match self.backend.register_client(&self) {
+            Ok(r) => log::debug!("Created new user: {:?}", r),
+            Err(e) => log::error!("Error creating user: {:?}", e),
+        }
     }
 
     /// Get a list of clients in the group to send messages to.
@@ -87,6 +122,10 @@ impl User {
                 .as_slice()
                 != signature_key.as_slice()
             {
+                log::debug!(
+                    "Searching for contact {:?}",
+                    str::from_utf8(credential.identity()).unwrap()
+                );
                 let contact = match self.contacts.get(&credential.identity().to_vec()) {
                     Some(c) => c.id.clone(),
                     None => panic!("There's a member in the group we don't know."),
@@ -106,6 +145,23 @@ impl User {
         )
     }
 
+    /// Create a new key package and publish it to the delivery server
+    pub fn create_kp(&self) {
+        let kp = self.add_key_package();
+        let ckp = ClientKeyPackages(
+            vec![kp]
+                .into_iter()
+                .map(|(b, kp)| (b.into(), KeyPackageIn::from(kp)))
+                .collect::<Vec<(TlsByteVecU8, KeyPackageIn)>>()
+                .into(),
+        );
+
+        match self.backend.publish_key_packages(&self, &ckp) {
+            Ok(()) => (),
+            Err(e) => println!("Error sending new key package: {e:?}"),
+        };
+    }
+
     /// Send an application message to the group.
     pub fn send_msg(&self, msg: &str, group: String) -> Result<(), String> {
         let groups = self.groups.borrow();
@@ -122,7 +178,10 @@ impl User {
 
         let msg = GroupMessage::new(message_out.into(), &self.recipients(group));
         log::debug!(" >>> send: {:?}", msg);
-        self.backend.send_msg(&msg)?;
+        match self.backend.send_msg(&msg) {
+            Ok(()) => (),
+            Err(e) => println!("Error sending group message: {e:?}"),
+        }
 
         // XXX: Need to update the client's local view of the conversation to include
         // the message they sent.
@@ -138,7 +197,11 @@ impl User {
 
         let mut messages_out = Vec::new();
 
-        let mut process_protocol_message = |message: ProtocolMessage| {
+        let mut process_protocol_message = |message: ProtocolMessage| -> Result<
+            (PostUpdateActions, Option<GroupId>),
+            String,
+        > {
+            let processed_message: ProcessedMessage;
             let mut groups = self.groups.borrow_mut();
 
             let group = match groups.get_mut(message.group_id().as_slice()) {
@@ -148,22 +211,21 @@ impl User {
                         "Error getting group {:?} for a message. Dropping message.",
                         message.group_id()
                     );
-                    return Err("error");
+                    return Err("error".to_string());
                 }
             };
             let mut mls_group = group.mls_group.borrow_mut();
 
-            let processed_message = match mls_group.process_message(&self.crypto, message) {
+            processed_message = match mls_group.process_message(&self.crypto, message) {
                 Ok(msg) => msg,
                 Err(e) => {
                     log::error!(
                         "Error processing unverified message: {:?} -  Dropping message.",
                         e
                     );
-                    return Err("error");
+                    return Err("error".to_string());
                 }
             };
-
             match processed_message.into_content() {
                 ProcessedMessageContent::ApplicationMessage(application_message) => {
                     let application_message =
@@ -180,14 +242,28 @@ impl User {
                     // intentionally left blank.
                 }
                 ProcessedMessageContent::StagedCommitMessage(commit_ptr) => {
-                    mls_group
-                        .merge_staged_commit(&self.crypto, *commit_ptr)
-                        .map_err(|_| "error")?;
+                    let mut remove_proposal: bool = false;
+                    if commit_ptr.self_removed() {
+                        remove_proposal = true;
+                    }
+                    match mls_group.merge_staged_commit(&self.crypto, *commit_ptr) {
+                        Ok(()) => {
+                            if remove_proposal {
+                                log::debug!("update::Processing StagedCommitMessage removing {} from group {} ", self.username, group.group_name);
+                                return Ok((
+                                    PostUpdateActions::Remove,
+                                    Some(mls_group.group_id().clone()),
+                                ));
+                            }
+                        }
+                        Err(e) => return Err(e.to_string()),
+                    }
                 }
             }
-            Ok(())
+            Ok((PostUpdateActions::None, None))
         };
 
+        log::debug!("update::Processing messages for {} ", self.username);
         // Go through the list of messages and process or store them.
         for message in self.backend.recv_msgs(self)?.drain(..) {
             log::debug!("Reading message format {:#?} ...", message.wire_format());
@@ -198,9 +274,24 @@ impl User {
                     self.join_group(welcome)?;
                 }
                 MlsMessageInBody::PrivateMessage(message) => {
-                    if process_protocol_message(message.into()).is_err() {
-                        continue;
-                    }
+                    match process_protocol_message(message.into()) {
+                        Ok(p) => {
+                            if p.0 == PostUpdateActions::Remove {
+                                match p.1 {
+                                    Some(gid) => {
+                                        let mut grps = self.groups.borrow_mut();
+                                        grps.remove_entry(gid.as_slice());
+                                    }
+                                    None => log::debug!(
+                                        "update::Error post update remove must have a group id"
+                                    ),
+                                }
+                            }
+                        }
+                        Err(_e) => {
+                            continue;
+                        }
+                    };
                 }
                 MlsMessageInBody::PublicMessage(message) => {
                     if process_protocol_message(message.into()).is_err() {
@@ -210,9 +301,14 @@ impl User {
                 _ => panic!("Unsupported message type"),
             }
         }
-        log::trace!("done with messages ...");
+        log::debug!("update::Processing messages done");
 
         for c in self.backend.list_clients()?.drain(..) {
+            let client_id = c.id.clone();
+            log::debug!(
+                "update::Processing client for contact {:?}",
+                str::from_utf8(&client_id).unwrap()
+            );
             if c.id != self.identity.borrow().identity()
                 && self
                     .contacts
@@ -226,10 +322,20 @@ impl User {
                     )
                     .is_some()
             {
+                log::debug!(
+                    "update::added client to contact {:?}",
+                    str::from_utf8(&client_id).unwrap()
+                );
                 log::trace!("Updated client {}", "");
             }
         }
-        log::trace!("done with clients ...");
+        log::debug!("update::Processing clients done, contact list is:");
+        for (contact_id, _contact) in self.contacts.borrow() {
+            log::debug!(
+                "update::Parsing contact {:?}",
+                str::from_utf8(&contact_id).unwrap()
+            );
+        }
 
         Ok(messages_out)
     }
@@ -275,18 +381,13 @@ impl User {
     /// Invite user with the given name to the group.
     pub fn invite(&mut self, name: String, group: String) -> Result<(), String> {
         // First we need to get the key package for {id} from the DS.
-        // We just take the first key package we get back from the server.
         let contact = match self.contacts.values().find(|c| c.username == name) {
             Some(v) => v,
             None => return Err(format!("No contact with name {name} known.")),
         };
-        let (_hash, joiner_key_package) = self
-            .backend
-            .get_client(&contact.id)
-            .unwrap()
-            .0
-            .pop()
-            .unwrap();
+
+        // Reclaim a key package from the server
+        let joiner_key_package = self.backend.consume_key_package(&contact.id).unwrap();
 
         // Build a proposal with this key package and do the MLS bits.
         let group_id = group.as_bytes();
@@ -332,10 +433,59 @@ impl User {
         Ok(())
     }
 
+    /// Remove user with the given name from the group.
+    pub fn remove(&mut self, name: String, group: String) -> Result<(), String> {
+        // Get the group ID
+        let group_id = group.as_bytes();
+        let mut groups = self.groups.borrow_mut();
+        let group = match groups.get_mut(group_id) {
+            Some(g) => g,
+            None => return Err(format!("No group with name {group} known.")),
+        };
+
+        // Get the client leaf index
+
+        let leaf_index = match self.find_member_index(name, group) {
+            Ok(l) => l,
+            Err(e) => return Err(e),
+        };
+
+        // Remove operation on the mls group
+        let (remove_message, _welcome, _group_info) = group
+            .mls_group
+            .borrow_mut()
+            .remove_members(&self.crypto, &self.identity.borrow().signer, &[leaf_index])
+            .map_err(|e| format!("Failed to add member to group - {e}"))?;
+
+        // First, send the MlsMessage remove commit to the group.
+        log::trace!("Sending commit");
+        let group = groups.get_mut(group_id).unwrap(); // XXX: not cool.
+        let group_recipients = self.recipients(group);
+
+        let msg = GroupMessage::new(remove_message.into(), &group_recipients);
+        self.backend.send_msg(&msg)?;
+
+        // Second, process the removal on our end.
+        group
+            .mls_group
+            .borrow_mut()
+            .merge_pending_commit(&self.crypto)
+            .expect("error merging pending commit");
+
+        Ok(())
+    }
+
     /// Join a group with the provided welcome message.
     fn join_group(&self, welcome: Welcome) -> Result<(), String> {
         log::debug!("{} joining group ...", self.username);
 
+        let mut ident = self.identity.borrow_mut();
+        for secret in welcome.secrets().iter() {
+            let key_package_hash = &secret.new_member();
+            if ident.kp.contains_key(key_package_hash.as_slice()) {
+                ident.kp.remove(key_package_hash.as_slice());
+            }
+        }
         // NOTE: Since the DS currently doesn't distribute copies of the group's ratchet
         // tree, we need to include the ratchet_tree_extension.
         let group_config = MlsGroupConfig::builder()
