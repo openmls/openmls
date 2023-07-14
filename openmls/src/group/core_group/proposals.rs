@@ -401,6 +401,7 @@ impl ProposalQueue {
         }
         let mut members = HashMap::<LeafNodeIndex, Member>::new();
         let mut adds: HashSet<ProposalRef> = HashSet::new();
+        let mut ordered_adds: Vec<ProposalRef> = Vec::new();
         let mut valid_proposals: HashSet<ProposalRef> = HashSet::new();
         let mut proposal_pool: HashMap<ProposalRef, QueuedProposal> = HashMap::new();
         let mut contains_own_updates = false;
@@ -430,8 +431,11 @@ impl ProposalQueue {
         for queued_proposal in queued_proposal_list {
             match queued_proposal.proposal {
                 Proposal::Add(_) => {
-                    adds.insert(queued_proposal.proposal_reference());
-                    proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
+                    let is_unique = adds.insert(queued_proposal.proposal_reference());
+                    if is_unique {
+                        ordered_adds.push(queued_proposal.proposal_reference());
+                        proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
+                    }
                 }
                 Proposal::Update(_) => {
                     // Only members can send update proposals
@@ -501,7 +505,7 @@ impl ProposalQueue {
         }
         // Only retain `adds` and `valid_proposals`
         let mut proposal_queue = ProposalQueue::default();
-        for proposal_reference in adds.iter().chain(valid_proposals.iter()) {
+        for proposal_reference in ordered_adds.iter().chain(valid_proposals.iter()) {
             proposal_queue.add(match proposal_pool.get(proposal_reference) {
                 Some(queued_proposal) => queued_proposal.clone(),
                 None => return Err(ProposalQueueError::ProposalNotFound),
