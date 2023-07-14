@@ -518,7 +518,7 @@ impl ProposalQueue {
                 }
                 Proposal::AppAck(_) => unimplemented!("See #291"),
                 Proposal::Unknown(_) => {
-                    valid_proposals.insert(queued_proposal.proposal_reference());
+                    valid_proposals.add(queued_proposal.proposal_reference());
                     proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
             }
