@@ -166,6 +166,38 @@ impl QueuedProposal {
     }
 }
 
+/// Helper struct to collect proposals such that they are unique and can be read
+/// out in the order in that they were added.
+struct OrderedProposalRefs {
+    proposal_refs: HashSet<ProposalRef>,
+    ordered_proposal_refs: Vec<ProposalRef>,
+}
+
+impl OrderedProposalRefs {
+    fn new() -> Self {
+        Self {
+            proposal_refs: HashSet::new(),
+            ordered_proposal_refs: Vec::new(),
+        }
+    }
+
+    /// Adds a proposal reference to the queue. If the proposal reference is
+    /// already in the queue, it ignores it.
+    fn insert(&mut self, proposal_ref: ProposalRef) {
+        // The `insert` function of the `HashSet` returns `true` if the element
+        // is new to the set.
+        if self.proposal_refs.insert(proposal_ref.clone()) {
+            self.ordered_proposal_refs.push(proposal_ref);
+        }
+    }
+
+    /// Returns an iterator over the proposal references in the order in which
+    /// they were inserted.
+    fn iter(&self) -> impl Iterator<Item = &ProposalRef> {
+        self.ordered_proposal_refs.iter()
+    }
+}
+
 /// Proposal queue that helps filtering and sorting Proposals received during one
 /// epoch. The Proposals are stored in a `HashMap` which maps Proposal
 /// references to Proposals, such that, given a reference, a proposal can be
@@ -400,9 +432,10 @@ impl ProposalQueue {
             removes: Vec<QueuedProposal>,
         }
         let mut members = HashMap::<LeafNodeIndex, Member>::new();
-        let mut adds: HashSet<ProposalRef> = HashSet::new();
-        let mut ordered_adds: Vec<ProposalRef> = Vec::new();
-        let mut valid_proposals: HashSet<ProposalRef> = HashSet::new();
+        // We use a HashSet to filter out duplicate Adds and use a vector in
+        // addition to keep the order as they come in.
+        let mut adds: OrderedProposalRefs = OrderedProposalRefs::new();
+        let mut valid_proposals: OrderedProposalRefs = OrderedProposalRefs::new();
         let mut proposal_pool: HashMap<ProposalRef, QueuedProposal> = HashMap::new();
         let mut contains_own_updates = false;
         let mut contains_external_init = false;
@@ -431,11 +464,10 @@ impl ProposalQueue {
         for queued_proposal in queued_proposal_list {
             match queued_proposal.proposal {
                 Proposal::Add(_) => {
-                    let is_unique = adds.insert(queued_proposal.proposal_reference());
-                    if is_unique {
-                        ordered_adds.push(queued_proposal.proposal_reference());
-                        proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
-                    }
+                    // `insert` returns true only if there was not entry present
+                    // with the same hash, i.e. if the entry is unique.
+                    adds.insert(queued_proposal.proposal_reference());
+                    proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
                 Proposal::Update(_) => {
                     // Only members can send update proposals
@@ -505,7 +537,7 @@ impl ProposalQueue {
         }
         // Only retain `adds` and `valid_proposals`
         let mut proposal_queue = ProposalQueue::default();
-        for proposal_reference in ordered_adds.iter().chain(valid_proposals.iter()) {
+        for proposal_reference in adds.iter().chain(valid_proposals.iter()) {
             proposal_queue.add(match proposal_pool.get(proposal_reference) {
                 Some(queued_proposal) => queued_proposal.clone(),
                 None => return Err(ProposalQueueError::ProposalNotFound),
