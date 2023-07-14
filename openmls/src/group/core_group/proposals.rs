@@ -183,7 +183,7 @@ impl OrderedProposalRefs {
 
     /// Adds a proposal reference to the queue. If the proposal reference is
     /// already in the queue, it ignores it.
-    fn insert(&mut self, proposal_ref: ProposalRef) {
+    fn add(&mut self, proposal_ref: ProposalRef) {
         // The `insert` function of the `HashSet` returns `true` if the element
         // is new to the set.
         if self.proposal_refs.insert(proposal_ref.clone()) {
@@ -464,9 +464,7 @@ impl ProposalQueue {
         for queued_proposal in queued_proposal_list {
             match queued_proposal.proposal {
                 Proposal::Add(_) => {
-                    // `insert` returns true only if there was not entry present
-                    // with the same hash, i.e. if the entry is unique.
-                    adds.insert(queued_proposal.proposal_reference());
+                    adds.add(queued_proposal.proposal_reference());
                     proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
                 Proposal::Update(_) => {
@@ -499,7 +497,7 @@ impl ProposalQueue {
                     proposal_pool.insert(proposal_reference, queued_proposal);
                 }
                 Proposal::PreSharedKey(_) => {
-                    valid_proposals.insert(queued_proposal.proposal_reference());
+                    valid_proposals.add(queued_proposal.proposal_reference());
                     proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
                 Proposal::ReInit(_) => {
@@ -509,7 +507,7 @@ impl ProposalQueue {
                 Proposal::ExternalInit(_) => {
                     // Only use the first external init proposal we find.
                     if !contains_external_init {
-                        valid_proposals.insert(queued_proposal.proposal_reference());
+                        valid_proposals.add(queued_proposal.proposal_reference());
                         proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                         contains_external_init = true;
                     }
@@ -528,11 +526,11 @@ impl ProposalQueue {
                 // Delete all Updates when a Remove is found
                 member.updates = Vec::new();
                 // Only keep the last Remove
-                valid_proposals.insert(last_remove.proposal_reference());
+                valid_proposals.add(last_remove.proposal_reference());
             }
             if let Some(last_update) = member.updates.last() {
                 // Only keep the last Update
-                valid_proposals.insert(last_update.proposal_reference());
+                valid_proposals.add(last_update.proposal_reference());
             }
         }
         // Only retain `adds` and `valid_proposals`
