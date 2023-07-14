@@ -166,6 +166,38 @@ impl QueuedProposal {
     }
 }
 
+/// Helper struct to collect proposals such that they are unique and can be read
+/// out in the order in that they were added.
+struct OrderedProposalRefs {
+    proposal_refs: HashSet<ProposalRef>,
+    ordered_proposal_refs: Vec<ProposalRef>,
+}
+
+impl OrderedProposalRefs {
+    fn new() -> Self {
+        Self {
+            proposal_refs: HashSet::new(),
+            ordered_proposal_refs: Vec::new(),
+        }
+    }
+
+    /// Adds a proposal reference to the queue. If the proposal reference is
+    /// already in the queue, it ignores it.
+    fn add(&mut self, proposal_ref: ProposalRef) {
+        // The `insert` function of the `HashSet` returns `true` if the element
+        // is new to the set.
+        if self.proposal_refs.insert(proposal_ref.clone()) {
+            self.ordered_proposal_refs.push(proposal_ref);
+        }
+    }
+
+    /// Returns an iterator over the proposal references in the order in which
+    /// they were inserted.
+    fn iter(&self) -> impl Iterator<Item = &ProposalRef> {
+        self.ordered_proposal_refs.iter()
+    }
+}
+
 /// Proposal queue that helps filtering and sorting Proposals received during one
 /// epoch. The Proposals are stored in a `HashMap` which maps Proposal
 /// references to Proposals, such that, given a reference, a proposal can be
@@ -400,8 +432,10 @@ impl ProposalQueue {
             removes: Vec<QueuedProposal>,
         }
         let mut members = HashMap::<LeafNodeIndex, Member>::new();
-        let mut adds: HashSet<ProposalRef> = HashSet::new();
-        let mut valid_proposals: HashSet<ProposalRef> = HashSet::new();
+        // We use a HashSet to filter out duplicate Adds and use a vector in
+        // addition to keep the order as they come in.
+        let mut adds: OrderedProposalRefs = OrderedProposalRefs::new();
+        let mut valid_proposals: OrderedProposalRefs = OrderedProposalRefs::new();
         let mut proposal_pool: HashMap<ProposalRef, QueuedProposal> = HashMap::new();
         let mut contains_own_updates = false;
         let mut contains_external_init = false;
@@ -430,7 +464,7 @@ impl ProposalQueue {
         for queued_proposal in queued_proposal_list {
             match queued_proposal.proposal {
                 Proposal::Add(_) => {
-                    adds.insert(queued_proposal.proposal_reference());
+                    adds.add(queued_proposal.proposal_reference());
                     proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
                 Proposal::Update(_) => {
@@ -463,7 +497,7 @@ impl ProposalQueue {
                     proposal_pool.insert(proposal_reference, queued_proposal);
                 }
                 Proposal::PreSharedKey(_) => {
-                    valid_proposals.insert(queued_proposal.proposal_reference());
+                    valid_proposals.add(queued_proposal.proposal_reference());
                     proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
                 Proposal::ReInit(_) => {
@@ -473,7 +507,7 @@ impl ProposalQueue {
                 Proposal::ExternalInit(_) => {
                     // Only use the first external init proposal we find.
                     if !contains_external_init {
-                        valid_proposals.insert(queued_proposal.proposal_reference());
+                        valid_proposals.add(queued_proposal.proposal_reference());
                         proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                         contains_external_init = true;
                     }
@@ -496,11 +530,11 @@ impl ProposalQueue {
                 // Delete all Updates when a Remove is found
                 member.updates = Vec::new();
                 // Only keep the last Remove
-                valid_proposals.insert(last_remove.proposal_reference());
+                valid_proposals.add(last_remove.proposal_reference());
             }
             if let Some(last_update) = member.updates.last() {
                 // Only keep the last Update
-                valid_proposals.insert(last_update.proposal_reference());
+                valid_proposals.add(last_update.proposal_reference());
             }
         }
         // Only retain `adds` and `valid_proposals`

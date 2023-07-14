@@ -409,20 +409,25 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         )
         .expect("Could not process message.");
 
+    alice_group
+        .merge_pending_commit(backend)
+        .expect("error merging pending commit");
+
     // Check that we received the correct message
     if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
         bob_processed_message.into_content()
     {
+        let authenticator_bob = staged_commit
+            .epoch_authenticator()
+            .expect("Couldn't get authenticator.");
+        let authenticator_alice = alice_group.epoch_authenticator();
+        assert_eq!(authenticator_bob.as_slice(), authenticator_alice.as_slice());
         bob_group
             .merge_staged_commit(backend, *staged_commit)
             .expect("Error merging staged commit.");
     } else {
         unreachable!("Expected a StagedCommit.");
     }
-
-    alice_group
-        .merge_pending_commit(backend)
-        .expect("error merging pending commit");
 
     // Check that both groups have the same state
     assert_eq!(

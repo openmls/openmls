@@ -432,6 +432,17 @@ impl StagedCommit {
     pub(crate) fn into_state(self) -> StagedCommitState {
         self.state
     }
+
+    /// Returns the [`EpochAuthenticator`] of the staged commit state if the
+    /// owner of the originating group state is a member of the group. Returns
+    /// `None` otherwise.
+    pub fn epoch_authenticator(&self) -> Option<&EpochAuthenticator> {
+        if let StagedCommitState::GroupMember(ref gm) = self.state {
+            Some(gm.group_epoch_secrets.epoch_authenticator())
+        } else {
+            None
+        }
+    }
 }
 
 /// This struct is used internally by [StagedCommit] to encapsulate all the modified group state.

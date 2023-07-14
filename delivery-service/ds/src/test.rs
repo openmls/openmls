@@ -49,6 +49,8 @@ async fn test_list_clients() {
         App::new()
             .app_data(data.clone())
             .service(get_key_packages)
+            .service(consume_key_package)
+            .service(publish_key_packages)
             .service(list_clients)
             .service(register_client),
     )
@@ -154,6 +156,8 @@ async fn test_group() {
             .service(register_client)
             .service(list_clients)
             .service(get_key_packages)
+            .service(consume_key_package)
+            .service(publish_key_packages)
             .service(send_welcome)
             .service(msg_recv)
             .service(msg_send),
@@ -204,9 +208,50 @@ async fn test_group() {
         assert_eq!(response.status(), StatusCode::OK);
     }
 
+    // Add an additional key package for Client2
+    let group_ciphersuite = key_packages[0].ciphersuite();
+    let key_package_2 = generate_key_package(
+        group_ciphersuite,
+        credentials_with_key.get(1).unwrap().clone(),
+        Extensions::empty(),
+        crypto,
+        signers.get(1).unwrap(),
+    );
+
+    let key_package_2 = (
+        key_package_2
+            .hash_ref(crypto.crypto())
+            .unwrap()
+            .as_slice()
+            .to_vec(),
+        key_package_2,
+    );
+
+    let ckp = ClientKeyPackages(
+        vec![key_package_2]
+            .into_iter()
+            .map(|(b, kp)| (b.into(), KeyPackageIn::from(kp)))
+            .collect::<Vec<(TlsByteVecU8, KeyPackageIn)>>()
+            .into(),
+    );
+
+    // Publish key package to the DS for Client2
+    let path = "/clients/key_packages/".to_string()
+        + &base64::encode_config(&client_ids[1], base64::URL_SAFE);
+    let req = test::TestRequest::post()
+        .uri(&path)
+        .set_payload(Bytes::copy_from_slice(
+            &ckp.tls_serialize_detached().unwrap(),
+        ))
+        .to_request();
+
+    // The response should be empty.
+    let response = test::call_service(&app, req).await;
+    assert_eq!(response.status(), StatusCode::OK);
+
     // Client1 creates MyFirstGroup
     let group_id = GroupId::from_slice(b"MyFirstGroup");
-    let group_ciphersuite = key_packages[0].ciphersuite();
+
     let credential_with_key_1 = credentials_with_key.remove(0);
     let signer_1 = signers.remove(0);
     let mut group = MlsGroup::new_with_group_id(
@@ -219,8 +264,8 @@ async fn test_group() {
     .expect("An unexpected error occurred.");
 
     // === Client1 invites Client2 ===
-    // First we need to get the key package for Client2 from the DS.
-    let path = "/clients/key_packages/".to_owned()
+    // First we need to reserve the key package for Client2 from the DS.
+    let path = "/clients/key_package/".to_owned()
         + &base64::encode_config(&client_ids[1], base64::URL_SAFE);
 
     let req = test::TestRequest::with_uri(&path).to_request();
@@ -229,16 +274,8 @@ async fn test_group() {
     assert_eq!(response.status(), StatusCode::OK);
 
     let bytes = response.into_body().try_into_bytes().unwrap();
-    let mut client2_key_packages = ClientKeyPackages::tls_deserialize(&mut bytes.as_ref())
-        .expect("Invalid key package response")
-        .0;
-
-    let client2_key_package = client2_key_packages
-        .iter()
-        .position(|(_hash, kp)| KeyPackage::from(kp.clone()).ciphersuite() == group_ciphersuite)
-        .expect("No key package with the group ciphersuite available");
-    let (_client2_key_package_hash, client2_key_package) =
-        client2_key_packages.remove(client2_key_package);
+    let client2_key_package =
+        KeyPackageIn::tls_deserialize(&mut bytes.as_ref()).expect("Invalid key package response");
 
     // With the key package we can invite Client2 (create proposal and merge it
     // locally.)

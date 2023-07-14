@@ -659,7 +659,6 @@ impl<'a> TreeSyncDiff<'a> {
                 // other child, the parent hash is valid.
                 if left_descendant.is_none() ^ right_descendant.is_some() {
                     return Err(TreeSyncParentHashError::InvalidParentHash);
-                } else {
                 }
             }
         }

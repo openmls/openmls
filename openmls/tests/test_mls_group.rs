@@ -923,6 +923,117 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 }
 
 #[apply(ciphersuites_and_backends)]
+fn addition_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
+        let group_id = GroupId::from_slice(b"Test Group");
+        // Generate credentials with keys
+        let (alice_credential, alice_signer) = new_credential(
+            backend,
+            b"Alice",
+            CredentialType::Basic,
+            ciphersuite.signature_algorithm(),
+        );
+
+        let (bob_credential, bob_signer) = new_credential(
+            backend,
+            b"Bob",
+            CredentialType::Basic,
+            ciphersuite.signature_algorithm(),
+        );
+
+        let (charlie_credential, charlie_signer) = new_credential(
+            backend,
+            b"Charlie",
+            CredentialType::Basic,
+            ciphersuite.signature_algorithm(),
+        );
+
+        // Generate KeyPackages
+        let bob_key_package = generate_key_package(
+            ciphersuite,
+            Extensions::empty(),
+            backend,
+            bob_credential.clone(),
+            &bob_signer,
+        );
+        let charlie_key_package = generate_key_package(
+            ciphersuite,
+            Extensions::empty(),
+            backend,
+            charlie_credential.clone(),
+            &charlie_signer,
+        );
+
+        // Define the MlsGroup configuration
+
+        let mls_group_config = MlsGroupConfig::builder()
+            .wire_format_policy(*wire_format_policy)
+            .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+            .build();
+
+        // === Alice creates a group ===
+        let mut alice_group = MlsGroup::new_with_group_id(
+            backend,
+            &alice_signer,
+            &mls_group_config,
+            group_id.clone(),
+            alice_credential.clone(),
+        )
+        .expect("An unexpected error occurred.");
+
+        // === Alice adds Bob ===
+        let _welcome = match alice_group.add_members(
+            backend,
+            &alice_signer,
+            &[bob_key_package, charlie_key_package],
+        ) {
+            Ok((_, welcome, _)) => welcome,
+            Err(e) => panic!("Could not add member to group: {e:?}"),
+        };
+
+        // Check that the proposals are in the right order in the staged commit.
+        if let Some(staged_commit) = alice_group.pending_commit() {
+            let mut add_proposals = staged_commit.add_proposals();
+            let add_bob = add_proposals.next().expect("Expected a proposal.");
+            // Check that Bob is first
+            assert_eq!(
+                add_bob
+                    .add_proposal()
+                    .key_package()
+                    .leaf_node()
+                    .credential(),
+                &bob_credential.credential
+            );
+            let add_charlie = add_proposals.next().expect("Expected a proposal.");
+            // Check that Charlie is second
+            assert_eq!(
+                add_charlie
+                    .add_proposal()
+                    .key_package()
+                    .leaf_node()
+                    .credential(),
+                &charlie_credential.credential
+            );
+        } else {
+            unreachable!("Expected a StagedCommit.");
+        }
+
+        alice_group
+            .merge_pending_commit(backend)
+            .expect("error merging pending commit");
+
+        // Check that the members got added in the same order as the KeyPackages
+        // in the original API call. After merging, bob should be at index 1 and
+        // charlie at index 2.
+        let members = alice_group.members().collect::<Vec<Member>>();
+        assert_eq!(members[1].credential.identity(), b"Bob");
+        assert_eq!(members[1].index, LeafNodeIndex::new(1));
+        assert_eq!(members[2].credential.identity(), b"Charlie");
+        assert_eq!(members[2].index, LeafNodeIndex::new(2));
+    }
+}
+
+#[apply(ciphersuites_and_backends)]
 fn test_empty_input_errors(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
