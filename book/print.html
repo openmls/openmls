@@ -171,13 +171,13 @@
 <!-- Get the Readme without the headline until (including) the introductory sentence  -->
 <p><a href="https://openmls.zulipchat.com"><img src="https://img.shields.io/badge/zulip-join_chat-blue.svg?style=for-the-badge&amp;logo=zulip" alt="OpenMLS Chat" /></a>
 <a href="https://groups.google.com/u/0/g/openmls-dev"><img src="https://img.shields.io/badge/mailing-list-blue.svg?style=for-the-badge" alt="OpenMLS List" /></a></p>
-<p><a href="https://github.com/openmls/openmls/actions/workflows/tests.yml?branch=main"><img src="https://img.shields.io/github/actions/workflow/status/openmls/openmls/tests.yml?branch=main&amp;style=for-the-badge&amp;logo=github" alt="Tests &amp; Checks" /></a>
-<a href="https://cloud.drone.io/openmls/openmls"><img src="https://img.shields.io/drone/build/openmls/openmls/main?label=ARM64%20Build%20Status&amp;logo=drone&amp;style=for-the-badge" alt="ARM64 Build Status" /></a>
-<a href="https://codecov.io/gh/openmls/openmls"><img src="https://img.shields.io/codecov/c/github/openmls/openmls/main?logo=codecov&amp;style=for-the-badge" alt="codecov" /></a></p>
+<p><a href="https://github.com/openmls/openmls/actions/workflows/tests.yml?branch=main"><img src="https://img.shields.io/github/actions/workflow/status/openmls/openmls/tests.yml?branch=main&amp;style=for-the-badge&amp;logo=github" alt="Tests &amp; Checks" /></a></p>
+<!-- Disabled until the drone CI is fixed in #1094 [![ARM64 Build Status][drone-image]](https://cloud.drone.io/openmls/openmls) -->
+<p><a href="https://codecov.io/gh/openmls/openmls"><img src="https://img.shields.io/codecov/c/github/openmls/openmls/main?logo=codecov&amp;style=for-the-badge" alt="codecov" /></a></p>
 <p><a href="https://docs.rs/crate/openmls/latest"><img src="https://img.shields.io/badge/docs-release-blue.svg?style=for-the-badge" alt="Docs" /></a>
 <a href="https://openmls.tech/book"><img src="https://img.shields.io/badge/book-release-blue.svg?style=for-the-badge" alt="Book" /></a>
 <img src="https://img.shields.io/badge/rustc-1.56+-blue.svg?style=for-the-badge&amp;logo=rust" alt="Rust Version" /></p>
-<p><em>OpenMLS</em> is a Rust implementation of <a href="https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md">Messaging Layer Security</a>.
+<p><em>OpenMLS</em> is a Rust implementation of the Messaging Layer Security (MLS) protocol, as specified in <a href="https://datatracker.ietf.org/doc/html/rfc9420">RFC 9420</a>.
 OpenMLS provides a high-level API to create and manage MLS groups. It supports basic ciphersuites and an interchangeable cryptographic backend, key store, and random number generator.</p>
 <p>This book provides guidance on using OpenMLS and its <code>MlsGroup</code> API to perform basic group operations, illustrated with examples.</p>
 <!-- Get the rest of the Readme -->
@@ -196,8 +196,8 @@ OpenMLS provides a high-level API to create and manage MLS groups. It supports b
 <li>i686-pc-windows-msvc</li>
 <li>x86_64-apple-darwin</li>
 </ul>
-<p>Additionally, we're building and testing aarch64-unknown-linux-gnu on
-<a href="https://cloud.drone.io/openmls/openmls">drone.io</a>.</p>
+<!-- Disabled until #1094 is fixed. Additionally, we're building and testing aarch64-unknown-linux-gnu on
+[drone.io](https://cloud.drone.io/openmls/openmls). -->
 <p>The Github CI also builds (but doesn't test) the following rust targets.</p>
 <ul>
 <li>aarch64-apple-darwin</li>
