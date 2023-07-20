@@ -8,7 +8,7 @@ license = "MIT"
 documentation = "https://openmls.github.io/openmls/"
 repository = "https://github.com/openmls/openmls/"
 readme = "../README.md"
-keywords = ["MLS", "Messaging-Layer-Security", "IETF", "RFC9420", "Encryption"]
+keywords = ["MLS", "IETF", "RFC9420", "Encryption", "E2EE"]
 
 [dependencies]
 openmls_traits = { version = "0.2.0", path = "../traits" }
