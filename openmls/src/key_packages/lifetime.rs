@@ -48,12 +48,13 @@ impl Lifetime {
     /// clocks, i.e. `not_before` is set to now - 1h.
     pub fn new(t: u64) -> Self {
         let lifetime_margin: u64 = DEFAULT_KEY_PACKAGE_LIFETIME_MARGIN_SECONDS;
-        let now = if cfg!(not(target_arch = "wasm32")) {
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("SystemTime before UNIX EPOCH!")
-                .as_secs()
-        } else {
+        #[cfg(not(target_arch = "wasm32"))]
+            let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("SystemTime before UNIX EPOCH!")
+            .as_secs();
+        #[cfg(target_arch = "wasm32")]
+            let now = {
             let ms = js_sys::Date::now() as u64;
             let sec = ms / 1000;
             sec
