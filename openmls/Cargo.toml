@@ -28,6 +28,9 @@ openmls_basic_credential = { version = "0.2.0", path = "../basic_credential", op
 rstest = { version = "^0.16", optional = true }
 rstest_reuse = { version = "0.4", optional = true }
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+js-sys = "0.3"
+
 [features]
 default = []
 crypto-subtle = [] # Enable subtle crypto APIs that have to be used with care.
