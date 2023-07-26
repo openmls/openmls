@@ -46,6 +46,10 @@ struct TestElement {
     proposal_sender: u32,
     #[serde(with = "hex")]
     tree_after: Vec<u8>,
+    #[serde(with = "hex")]
+    tree_hash_after: Vec<u8>,
+    #[serde(with = "hex")]
+    tree_hash_before: Vec<u8>,
 }
 
 fn run_test_vector(test: TestElement, backend: &impl OpenMlsCryptoProvider) -> Result<(), String> {
@@ -59,6 +63,9 @@ fn run_test_vector(test: TestElement, backend: &impl OpenMlsCryptoProvider) -> R
 
     let tree_before = TreeSync::from_ratchet_tree(backend, ciphersuite, ratchet_tree)
         .map_err(|e| format!("Error while creating tree sync: {e:?}"))?;
+
+    let tree_hash_before = tree_before.tree_hash();
+    assert_eq!(test.tree_hash_before, tree_hash_before);
 
     let group_context = GroupContext::new(
         ciphersuite,
@@ -104,6 +111,7 @@ fn run_test_vector(test: TestElement, backend: &impl OpenMlsCryptoProvider) -> R
     let mut diff = group.empty_diff();
 
     diff.apply_proposals(&proposal_queue, None).unwrap();
+    diff.update_group_context(backend).unwrap();
 
     let staged_diff = diff.into_staged_diff(backend, ciphersuite).unwrap();
 
@@ -115,6 +123,9 @@ fn run_test_vector(test: TestElement, backend: &impl OpenMlsCryptoProvider) -> R
         .unwrap();
 
     assert_eq!(test.tree_after, tree_after);
+
+    let tree_hash_after = group.group_context().tree_hash();
+    assert_eq!(test.tree_hash_after, tree_hash_after);
 
     Ok(())
 }
