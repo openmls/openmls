@@ -111,6 +111,7 @@ fn run_test_vector(test: TestElement, backend: &impl OpenMlsCryptoProvider) -> R
     let mut diff = group.empty_diff();
 
     diff.apply_proposals(&proposal_queue, None).unwrap();
+    diff.update_group_context(backend).unwrap();
 
     let staged_diff = diff.into_staged_diff(backend, ciphersuite).unwrap();
 
