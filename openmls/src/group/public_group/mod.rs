@@ -228,6 +228,9 @@ impl PublicGroup {
 
     /// Merge the changes performed on the [`PublicGroupDiff`] into this
     /// [`PublicGroup`].
+    ///
+    /// **NOTE:** The caller must ensure that the group context in the `diff` is
+    ///           updated before calling this function with `update_group_context`.
     pub(crate) fn merge_diff(&mut self, diff: StagedPublicGroupDiff) {
         self.treesync.merge_diff(diff.staged_diff);
         self.group_context = diff.group_context;
