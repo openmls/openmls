@@ -36,6 +36,8 @@ OpenMLS is built and tested on the Github CI for the following rust targets.
 <!-- Disabled until #1094 is fixed. Additionally, we're building and testing aarch64-unknown-linux-gnu on
 [drone.io](https://cloud.drone.io/openmls/openmls). -->
 
+### Unsupported, but built on CI
+
 The Github CI also builds (but doesn't test) the following rust targets.
 
 - aarch64-apple-darwin
