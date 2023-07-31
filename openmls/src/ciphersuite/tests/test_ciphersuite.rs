@@ -5,12 +5,12 @@ use openmls_traits::types::HpkeCiphertext;
 use crate::{ciphersuite::*, test_utils::*};
 
 // Spot test to make sure hpke seal/open work.
-#[apply(ciphersuites_and_backends)]
-fn test_hpke_seal_open(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
+#[apply(ciphersuites_and_providers)]
+fn test_hpke_seal_open(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let plaintext = &[1, 2, 3];
-    let kp = backend.crypto().derive_hpke_keypair(
+    let kp = provider.crypto().derive_hpke_keypair(
         ciphersuite.hpke_config(),
-        Secret::random(ciphersuite, backend.rand(), None)
+        Secret::random(ciphersuite, provider.rand(), None)
             .expect("Not enough randomness.")
             .as_slice(),
     );
@@ -20,7 +20,7 @@ fn test_hpke_seal_open(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider)
         &[1, 2, 3],
         plaintext,
         ciphersuite,
-        backend.crypto(),
+        provider.crypto(),
     )
     .unwrap();
     let decrypted_payload = hpke::decrypt_with_label(
@@ -29,7 +29,7 @@ fn test_hpke_seal_open(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider)
         &[1, 2, 3],
         &ciphertext,
         ciphersuite,
-        backend.crypto(),
+        provider.crypto(),
     )
     .expect("Unexpected error while decrypting a valid ciphertext.");
     assert_eq!(decrypted_payload, plaintext);
@@ -53,7 +53,7 @@ fn test_hpke_seal_open(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider)
             &[1, 2, 3],
             &broken_ciphertext1,
             ciphersuite,
-            backend.crypto(),
+            provider.crypto(),
         )
         .map_err(|_| CryptoError::HpkeDecryptionError)
         .expect_err("Erroneously correct ciphertext decryption of broken ciphertext."),
@@ -66,7 +66,7 @@ fn test_hpke_seal_open(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider)
             &[1, 2, 3],
             &broken_ciphertext2,
             ciphersuite,
-            backend.crypto(),
+            provider.crypto(),
         )
         .map_err(|_| CryptoError::HpkeDecryptionError)
         .expect_err("Erroneously correct ciphertext decryption of broken ciphertext."),

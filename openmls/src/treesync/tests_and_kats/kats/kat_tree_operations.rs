@@ -48,16 +48,16 @@ struct TestElement {
     tree_after: Vec<u8>,
 }
 
-fn run_test_vector(test: TestElement, backend: &impl OpenMlsProvider) -> Result<(), String> {
+fn run_test_vector(test: TestElement, provider: &impl OpenMlsProvider) -> Result<(), String> {
     let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
 
-    let group_id = GroupId::random(backend.rand());
+    let group_id = GroupId::random(provider.rand());
 
     let nodes = Vec::<Option<NodeIn>>::tls_deserialize_exact(test.tree_before).unwrap();
 
     let ratchet_tree = RatchetTree::from(RatchetTreeIn::from_nodes(nodes));
 
-    let tree_before = TreeSync::from_ratchet_tree(backend.crypto(), ciphersuite, ratchet_tree)
+    let tree_before = TreeSync::from_ratchet_tree(provider.crypto(), ciphersuite, ratchet_tree)
         .map_err(|e| format!("Error while creating tree sync: {e:?}"))?;
 
     let group_context = GroupContext::new(
@@ -70,15 +70,15 @@ fn run_test_vector(test: TestElement, backend: &impl OpenMlsProvider) -> Result<
     );
     let initial_confirmation_tag = ConfirmationTag(
         Mac::new(
-            backend.crypto(),
-            &Secret::random(ciphersuite, backend.rand(), ProtocolVersion::Mls10).unwrap(),
+            provider.crypto(),
+            &Secret::random(ciphersuite, provider.rand(), ProtocolVersion::Mls10).unwrap(),
             &[],
         )
         .unwrap(),
     );
 
     let mut group = PublicGroup::new(
-        backend.crypto(),
+        provider.crypto(),
         tree_before,
         group_context,
         initial_confirmation_tag,
@@ -93,7 +93,7 @@ fn run_test_vector(test: TestElement, backend: &impl OpenMlsProvider) -> Result<
 
     let queued_proposal = QueuedProposal::from_proposal_and_sender(
         ciphersuite,
-        backend.crypto(),
+        provider.crypto(),
         proposal,
         &Sender::Member(LeafNodeIndex::new(test.proposal_sender)),
     )
@@ -106,7 +106,7 @@ fn run_test_vector(test: TestElement, backend: &impl OpenMlsProvider) -> Result<
     diff.apply_proposals(&proposal_queue, None).unwrap();
 
     let staged_diff = diff
-        .into_staged_diff(backend.crypto(), ciphersuite)
+        .into_staged_diff(provider.crypto(), ciphersuite)
         .unwrap();
 
     group.merge_diff(staged_diff);
@@ -121,15 +121,15 @@ fn run_test_vector(test: TestElement, backend: &impl OpenMlsProvider) -> Result<
     Ok(())
 }
 
-#[apply(backends)]
-fn read_test_vectors_tree_operations(backend: &impl OpenMlsProvider) {
+#[apply(providers)]
+fn read_test_vectors_tree_operations(provider: &impl OpenMlsProvider) {
     let _ = pretty_env_logger::try_init();
     log::debug!("Reading test vectors ...");
 
     let tests: Vec<TestElement> = read("test_vectors/tree-operations.json");
 
     for test_vector in tests {
-        match run_test_vector(test_vector, backend) {
+        match run_test_vector(test_vector, provider) {
             Ok(_) => {}
             Err(e) => panic!("Error while checking tree operations test vector.\n{e:?}"),
         }

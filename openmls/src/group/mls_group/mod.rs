@@ -332,7 +332,7 @@ impl MlsGroup {
     fn content_to_mls_message(
         &mut self,
         mls_auth_content: AuthenticatedContent,
-        backend: &impl OpenMlsProvider,
+        provider: &impl OpenMlsProvider,
     ) -> Result<MlsMessageOut, LibraryError> {
         let msg = match self.configuration().wire_format_policy().outgoing() {
             OutgoingWireFormatPolicy::AlwaysPlaintext => {
@@ -340,7 +340,7 @@ impl MlsGroup {
                 // Set the membership tag only if the sender type is `Member`.
                 if plaintext.sender().is_member() {
                     plaintext.set_membership_tag(
-                        backend.crypto(),
+                        provider.crypto(),
                         self.group.message_secrets().membership_key(),
                         self.group.message_secrets().serialized_context(),
                     )?;
@@ -353,7 +353,7 @@ impl MlsGroup {
                     .encrypt(
                         mls_auth_content,
                         self.configuration().padding_size(),
-                        backend,
+                        provider,
                     )
                     // We can be sure the encryption will work because the plaintext was created by us
                     .map_err(|_| LibraryError::custom("Malformed plaintext"))?;

@@ -156,16 +156,16 @@ fn generate(
 pub fn generate_test_vector(
     n_epochs: u64,
     ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsProvider,
+    provider: &impl OpenMlsProvider,
 ) -> KeyScheduleTestVector {
     use tls_codec::Serialize;
 
     // Set up setting.
     let mut init_secret =
-        InitSecret::random(ciphersuite, backend.rand(), ProtocolVersion::default())
+        InitSecret::random(ciphersuite, provider.rand(), ProtocolVersion::default())
             .expect("Not enough randomness.");
     let initial_init_secret = init_secret.clone();
-    let group_id = backend
+    let group_id = provider
         .rand()
         .random_vec(16)
         .expect("An unexpected error occurred.");
@@ -195,7 +195,7 @@ pub fn generate_test_vector(
             .exporter_secret()
             .derive_exported_secret(
                 ciphersuite,
-                backend.crypto(),
+                provider.crypto(),
                 exporter_label,
                 exporter_context,
                 exporter_length as usize,
@@ -247,21 +247,21 @@ pub fn generate_test_vector(
 fn write_test_vectors() {
     const NUM_EPOCHS: u64 = 2;
     let mut tests = Vec::new();
-    let backend = OpenMlsRustCrypto::default();
-    for &ciphersuite in backend.crypto().supported_ciphersuites().iter() {
-        tests.push(generate_test_vector(NUM_EPOCHS, ciphersuite, &backend));
+    let provider = OpenMlsRustCrypto::default();
+    for &ciphersuite in provider.crypto().supported_ciphersuites().iter() {
+        tests.push(generate_test_vector(NUM_EPOCHS, ciphersuite, &provider));
     }
     write("test_vectors/key-schedule-new.json", &tests);
 }
 
-#[apply(backends)]
-fn read_test_vectors_key_schedule(backend: &impl OpenMlsProvider) {
+#[apply(providers)]
+fn read_test_vectors_key_schedule(provider: &impl OpenMlsProvider) {
     let _ = pretty_env_logger::try_init();
 
     let tests: Vec<KeyScheduleTestVector> = read("test_vectors/key-schedule.json");
 
     for test_vector in tests {
-        match run_test_vector(test_vector, backend) {
+        match run_test_vector(test_vector, provider) {
             Ok(_) => {}
             Err(e) => panic!("Error while checking key schedule test vector.\n{e:?}"),
         }
@@ -271,12 +271,12 @@ fn read_test_vectors_key_schedule(backend: &impl OpenMlsProvider) {
 #[cfg(any(feature = "test-utils", test))]
 pub fn run_test_vector(
     test_vector: KeyScheduleTestVector,
-    backend: &impl OpenMlsProvider,
+    provider: &impl OpenMlsProvider,
 ) -> Result<(), KsTestVectorError> {
     let ciphersuite = Ciphersuite::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
     log::trace!("  {:?}", test_vector);
 
-    if !backend
+    if !provider
         .crypto()
         .supported_ciphersuites()
         .contains(&ciphersuite)
@@ -319,7 +319,7 @@ pub fn run_test_vector(
         );
 
         let joiner_secret = JoinerSecret::new(
-            backend.crypto(),
+            provider.crypto(),
             commit_secret,
             &init_secret,
             &group_context.tls_serialize_detached().unwrap(),
@@ -340,10 +340,10 @@ pub fn run_test_vector(
         let psk_secret = PskSecret::from(psk_secret_inner);
 
         let mut key_schedule =
-            KeySchedule::init(ciphersuite, backend.crypto(), &joiner_secret, psk_secret)
+            KeySchedule::init(ciphersuite, provider.crypto(), &joiner_secret, psk_secret)
                 .expect("Could not create KeySchedule.");
         let welcome_secret = key_schedule
-            .welcome(backend.crypto())
+            .welcome(provider.crypto())
             .expect("An unexpected error occurred.");
 
         if hex_to_bytes(&epoch.welcome_secret) != welcome_secret.as_slice() {
@@ -368,11 +368,11 @@ pub fn run_test_vector(
         }
 
         key_schedule
-            .add_context(backend.crypto(), &group_context_serialized)
+            .add_context(provider.crypto(), &group_context_serialized)
             .expect("An unexpected error occurred.");
 
         let epoch_secrets = key_schedule
-            .epoch_secrets(backend.crypto())
+            .epoch_secrets(provider.crypto())
             .expect("An unexpected error occurred.");
 
         init_secret = epoch_secrets.init_secret().clone();
@@ -443,7 +443,7 @@ pub fn run_test_vector(
         // Calculate external HPKE key pair
         let external_key_pair = epoch_secrets
             .external_secret()
-            .derive_external_keypair(backend.crypto(), ciphersuite);
+            .derive_external_keypair(provider.crypto(), ciphersuite);
         if hex_to_bytes(&epoch.external_pub) != external_key_pair.public {
             log::error!("  External public key mismatch");
             log::debug!(
@@ -464,7 +464,7 @@ pub fn run_test_vector(
             .exporter_secret()
             .derive_exported_secret(
                 ciphersuite,
-                backend.crypto(),
+                provider.crypto(),
                 &epoch.exporter.label,
                 &hex_to_bytes(&epoch.exporter.context),
                 epoch.exporter.length as usize,

@@ -357,7 +357,7 @@ impl PublicGroup {
     #[cfg(test)]
     pub(crate) fn encrypt_path(
         &self,
-        backend: &impl OpenMlsProvider,
+        provider: &impl OpenMlsProvider,
         ciphersuite: Ciphersuite,
         path: &[PlainUpdatePathNode],
         group_context: &[u8],
@@ -365,7 +365,7 @@ impl PublicGroup {
         own_leaf_index: LeafNodeIndex,
     ) -> Result<Vec<UpdatePathNode>, LibraryError> {
         self.treesync().empty_diff().encrypt_path(
-            backend.crypto(),
+            provider.crypto(),
             ciphersuite,
             path,
             group_context,

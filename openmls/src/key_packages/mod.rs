@@ -34,7 +34,7 @@
 //! use openmls_basic_credential::SignatureKeyPair;
 //!
 //! let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
-//! let backend = OpenMlsRustCrypto::default();
+//! let provider = OpenMlsRustCrypto::default();
 //!
 //! let credential = Credential::new("identity".into(), CredentialType::Basic).unwrap();
 //! let signer =
@@ -50,7 +50,7 @@
 //!             ciphersuite,
 //!             version: ProtocolVersion::default(),
 //!         },
-//!         &backend,
+//!         &provider,
 //!         &signer,
 //!         credential_with_key,
 //!     )
@@ -69,7 +69,7 @@
 //! use openmls::test_utils::hex_to_bytes;
 //! use openmls_rust_crypto::OpenMlsRustCrypto;
 //!
-//! let backend = OpenMlsRustCrypto::default();
+//! let provider = OpenMlsRustCrypto::default();
 //! let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
 //!
 //! let key_package_bytes = hex_to_bytes(
@@ -87,7 +87,7 @@
 //!     .expect("Could not deserialize KeyPackage");
 //!
 //! let key_package = key_package_in
-//!     .validate(backend.crypto(), ProtocolVersion::Mls10)
+//!     .validate(provider.crypto(), ProtocolVersion::Mls10)
 //!     .expect("Invalid KeyPackage");
 //! ```
 //!
@@ -229,7 +229,7 @@ impl KeyPackage {
     /// Create a new key package for the given `ciphersuite` and `identity`.
     pub(crate) fn create<KeyStore: OpenMlsKeyStore>(
         config: CryptoConfig,
-        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
         lifetime: Lifetime,
@@ -242,14 +242,14 @@ impl KeyPackage {
         }
 
         // Create a new HPKE key pair
-        let ikm = Secret::random(config.ciphersuite, backend.rand(), config.version)
+        let ikm = Secret::random(config.ciphersuite, provider.rand(), config.version)
             .map_err(LibraryError::unexpected_crypto_error)?;
-        let init_key = backend
+        let init_key = provider
             .crypto()
             .derive_hpke_keypair(config.ciphersuite.hpke_config(), ikm.as_slice());
         let (key_package, encryption_keypair) = Self::new_from_keys(
             config,
-            backend,
+            provider,
             signer,
             credential_with_key,
             lifetime,
@@ -278,7 +278,7 @@ impl KeyPackage {
     #[allow(clippy::too_many_arguments)]
     fn new_from_keys<KeyStore: OpenMlsKeyStore>(
         config: CryptoConfig,
-        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
         lifetime: Lifetime,
@@ -300,7 +300,7 @@ impl KeyPackage {
         };
 
         let (leaf_node, encryption_key_pair) =
-            LeafNode::new(backend, signer, new_leaf_node_params)?;
+            LeafNode::new(provider, signer, new_leaf_node_params)?;
 
         let key_package_tbs = KeyPackageTbs {
             protocol_version: config.version,
@@ -318,12 +318,12 @@ impl KeyPackage {
     /// Delete this key package and its private key from the key store.
     pub fn delete<KeyStore: OpenMlsKeyStore>(
         &self,
-        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
     ) -> Result<(), KeyStore::Error> {
-        backend
+        provider
             .key_store()
-            .delete::<Self>(self.hash_ref(backend.crypto()).unwrap().as_slice())?;
-        backend
+            .delete::<Self>(self.hash_ref(provider.crypto()).unwrap().as_slice())?;
+        provider
             .key_store()
             .delete::<HpkePrivateKey>(self.hpke_init_key().as_slice())
     }
@@ -393,7 +393,7 @@ impl KeyPackage {
     /// Generate a new key package with a given init key
     pub fn new_from_init_key<KeyStore: OpenMlsKeyStore>(
         config: CryptoConfig,
-        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
         extensions: Extensions,
@@ -403,7 +403,7 @@ impl KeyPackage {
     ) -> Result<Self, KeyPackageNewError<KeyStore::Error>> {
         let (key_package, encryption_key_pair) = Self::new_from_keys(
             config,
-            backend,
+            provider,
             signer,
             credential_with_key,
             Lifetime::default(),
@@ -415,17 +415,17 @@ impl KeyPackage {
 
         // Store the key package in the key store with the hash reference as id
         // for retrieval when parsing welcome messages.
-        backend
+        provider
             .key_store()
             .store(
-                key_package.hash_ref(backend.crypto())?.as_slice(),
+                key_package.hash_ref(provider.crypto())?.as_slice(),
                 &key_package,
             )
             .map_err(KeyPackageNewError::KeyStoreError)?;
 
         // Store the encryption key pair in the key store.
         encryption_key_pair
-            .write_to_key_store(backend.key_store())
+            .write_to_key_store(provider.key_store())
             .map_err(KeyPackageNewError::KeyStoreError)?;
 
         Ok(key_package)
@@ -437,7 +437,7 @@ impl KeyPackage {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn new_from_encryption_key<KeyStore: OpenMlsKeyStore>(
         config: CryptoConfig,
-        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
         extensions: Extensions,
@@ -446,14 +446,14 @@ impl KeyPackage {
         encryption_key: EncryptionKey,
     ) -> Result<Self, KeyPackageNewError<KeyStore::Error>> {
         // Create a new HPKE init key pair
-        let ikm = Secret::random(config.ciphersuite, backend.rand(), config.version).unwrap();
-        let init_key = backend
+        let ikm = Secret::random(config.ciphersuite, provider.rand(), config.version).unwrap();
+        let init_key = provider
             .crypto()
             .derive_hpke_keypair(config.ciphersuite.hpke_config(), ikm.as_slice());
 
         // Store the private part of the init_key into the key store.
         // The key is the public key.
-        backend
+        provider
             .key_store()
             .store::<HpkePrivateKey>(&init_key.public, &init_key.private)
             .map_err(KeyPackageNewError::KeyStoreError)?;
@@ -483,10 +483,10 @@ impl KeyPackage {
 
         // Store the key package in the key store with the hash reference as id
         // for retrieval when parsing welcome messages.
-        backend
+        provider
             .key_store()
             .store(
-                key_package.hash_ref(backend.crypto())?.as_slice(),
+                key_package.hash_ref(provider.crypto())?.as_slice(),
                 &key_package,
             )
             .map_err(KeyPackageNewError::KeyStoreError)?;
@@ -595,13 +595,13 @@ impl KeyPackageBuilder {
     pub(crate) fn build_without_key_storage<KeyStore: OpenMlsKeyStore>(
         self,
         config: CryptoConfig,
-        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
     ) -> Result<KeyPackageCreationResult, KeyPackageNewError<KeyStore::Error>> {
         KeyPackage::create(
             config,
-            backend,
+            provider,
             signer,
             credential_with_key,
             self.key_package_lifetime.unwrap_or_default(),
@@ -615,7 +615,7 @@ impl KeyPackageBuilder {
     pub fn build<KeyStore: OpenMlsKeyStore>(
         self,
         config: CryptoConfig,
-        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
     ) -> Result<KeyPackage, KeyPackageNewError<KeyStore::Error>> {
@@ -625,7 +625,7 @@ impl KeyPackageBuilder {
             init_private_key,
         } = KeyPackage::create(
             config,
-            backend,
+            provider,
             signer,
             credential_with_key,
             self.key_package_lifetime.unwrap_or_default(),
@@ -636,22 +636,22 @@ impl KeyPackageBuilder {
 
         // Store the key package in the key store with the hash reference as id
         // for retrieval when parsing welcome messages.
-        backend
+        provider
             .key_store()
             .store(
-                key_package.hash_ref(backend.crypto())?.as_slice(),
+                key_package.hash_ref(provider.crypto())?.as_slice(),
                 &key_package,
             )
             .map_err(KeyPackageNewError::KeyStoreError)?;
 
         // Store the encryption key pair in the key store.
         encryption_keypair
-            .write_to_key_store(backend.key_store())
+            .write_to_key_store(provider.key_store())
             .map_err(KeyPackageNewError::KeyStoreError)?;
 
         // Store the private part of the init_key into the key store.
         // The key is the public key.
-        backend
+        provider
             .key_store()
             .store::<HpkePrivateKey>(key_package.hpke_init_key().as_slice(), &init_private_key)
             .map_err(KeyPackageNewError::KeyStoreError)?;
@@ -685,7 +685,7 @@ impl KeyPackageBundle {
 #[cfg(test)]
 impl KeyPackageBundle {
     pub(crate) fn new(
-        backend: &impl OpenMlsProvider,
+        provider: &impl OpenMlsProvider,
         signer: &impl Signer,
         ciphersuite: Ciphersuite,
         credential_with_key: CredentialWithKey,
@@ -696,12 +696,12 @@ impl KeyPackageBundle {
                     ciphersuite,
                     version: ProtocolVersion::default(),
                 },
-                backend,
+                provider,
                 signer,
                 credential_with_key,
             )
             .unwrap();
-        let private_key = backend
+        let private_key = provider
             .key_store()
             .read::<HpkePrivateKey>(key_package.hpke_init_key().as_slice())
             .unwrap();

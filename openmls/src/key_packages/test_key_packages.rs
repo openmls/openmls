@@ -8,7 +8,7 @@ use crate::{extensions::*, key_packages::*};
 /// Helper function to generate key packages
 pub(crate) fn key_package(
     ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsProvider,
+    provider: &impl OpenMlsProvider,
 ) -> (KeyPackage, Credential, SignatureKeyPair) {
     let credential = Credential::new(b"Sasha".to_vec(), CredentialType::Basic).unwrap();
     let signer = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
@@ -20,7 +20,7 @@ pub(crate) fn key_package(
                 ciphersuite,
                 version: ProtocolVersion::default(),
             },
-            backend,
+            provider,
             &signer,
             CredentialWithKey {
                 credential: credential.clone(),
@@ -32,19 +32,19 @@ pub(crate) fn key_package(
     (key_package, credential, signer)
 }
 
-#[apply(ciphersuites_and_backends)]
-fn generate_key_package(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
-    let (key_package, _credential, _signature_keys) = key_package(ciphersuite, backend);
+#[apply(ciphersuites_and_providers)]
+fn generate_key_package(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+    let (key_package, _credential, _signature_keys) = key_package(ciphersuite, provider);
 
     let kpi = KeyPackageIn::from(key_package);
     assert!(kpi
-        .validate(backend.crypto(), ProtocolVersion::Mls10)
+        .validate(provider.crypto(), ProtocolVersion::Mls10)
         .is_ok());
 }
 
-#[apply(ciphersuites_and_backends)]
-fn serialization(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
-    let (key_package, _, _) = key_package(ciphersuite, backend);
+#[apply(ciphersuites_and_providers)]
+fn serialization(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+    let (key_package, _, _) = key_package(ciphersuite, provider);
 
     let encoded = key_package
         .tls_serialize_detached()
@@ -57,8 +57,8 @@ fn serialization(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     assert_eq!(key_package, decoded_key_package);
 }
 
-#[apply(ciphersuites_and_backends)]
-fn application_id_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
+#[apply(ciphersuites_and_providers)]
+fn application_id_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let credential = Credential::new(b"Sasha".to_vec(), CredentialType::Basic)
         .expect("An unexpected error occurred.");
     let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
@@ -74,7 +74,7 @@ fn application_id_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsProv
                 ciphersuite,
                 version: ProtocolVersion::default(),
             },
-            backend,
+            provider,
             &signature_keys,
             CredentialWithKey {
                 signature_key: signature_keys.to_public_vec().into(),
@@ -85,7 +85,7 @@ fn application_id_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsProv
 
     let kpi = KeyPackageIn::from(key_package.clone());
     assert!(kpi
-        .validate(backend.crypto(), ProtocolVersion::Mls10)
+        .validate(provider.crypto(), ProtocolVersion::Mls10)
         .is_ok());
 
     // Check ID
@@ -102,9 +102,9 @@ fn application_id_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsProv
 /// Test that the key package is correctly validated:
 /// - The protocol version is correct
 /// - The init key is not equal to the encryption key
-#[apply(ciphersuites_and_backends)]
-fn key_package_validation(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
-    let (key_package_orig, _, _) = key_package(ciphersuite, backend);
+#[apply(ciphersuites_and_providers)]
+fn key_package_validation(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+    let (key_package_orig, _, _) = key_package(ciphersuite, provider);
 
     // === Protocol version ===
 
@@ -119,7 +119,7 @@ fn key_package_validation(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvid
 
     let key_package_in = KeyPackageIn::tls_deserialize(&mut encoded.as_slice()).unwrap();
     let err = key_package_in
-        .validate(backend.crypto(), ProtocolVersion::Mls10)
+        .validate(provider.crypto(), ProtocolVersion::Mls10)
         .unwrap_err();
 
     // Expect an invalid protocol version error
@@ -138,7 +138,7 @@ fn key_package_validation(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvid
 
     let key_package_in = KeyPackageIn::tls_deserialize(&mut encoded.as_slice()).unwrap();
     let err = key_package_in
-        .validate(backend.crypto(), ProtocolVersion::Mls10)
+        .validate(provider.crypto(), ProtocolVersion::Mls10)
         .unwrap_err();
 
     // Expect an invalid init/encryption key error

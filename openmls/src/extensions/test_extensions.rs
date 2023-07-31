@@ -34,21 +34,21 @@ fn application_id() {
 
 // This tests the ratchet tree extension to deliver the public ratcheting tree
 // in-band
-#[apply(ciphersuites_and_backends)]
-fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
+#[apply(ciphersuites_and_providers)]
+fn ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
     // Create credentials and keys
     let (alice_credential_with_key, alice_signature_keys) = test_utils::new_credential(
-        backend,
+        provider,
         b"Alice",
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
     );
     let (bob_credential_with_key, bob_signature_keys) = test_utils::new_credential(
-        backend,
+        provider,
         b"Bob",
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
@@ -56,7 +56,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvid
 
     // Generate KeyPackages
     let bob_key_package_bundle = KeyPackageBundle::new(
-        backend,
+        provider,
         &bob_signature_keys,
         ciphersuite,
         bob_credential_with_key.clone(),
@@ -69,12 +69,12 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvid
 
     // === Alice creates a group with the ratchet tree extension ===
     let mut alice_group = CoreGroup::builder(
-        GroupId::random(backend.rand()),
+        GroupId::random(provider.rand()),
         config::CryptoConfig::with_default_version(ciphersuite),
         alice_credential_with_key.clone(),
     )
     .with_config(config)
-    .build(backend, &alice_signature_keys)
+    .build(provider, &alice_signature_keys)
     .expect("Error creating group.");
 
     // === Alice adds Bob ===
@@ -89,7 +89,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvid
     let proposal_store = ProposalStore::from_queued_proposal(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
-            backend.crypto(),
+            provider.crypto(),
             bob_add_proposal,
         )
         .expect("Could not create QueuedProposal."),
@@ -101,11 +101,11 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvid
         .force_self_update(false)
         .build();
     let create_commit_result = alice_group
-        .create_commit(params, backend, &alice_signature_keys)
+        .create_commit(params, provider, &alice_signature_keys)
         .expect("Error creating commit");
 
     alice_group
-        .merge_commit(backend, create_commit_result.staged_commit)
+        .merge_commit(provider, create_commit_result.staged_commit)
         .expect("error merging commit");
 
     let bob_group = match CoreGroup::new_from_welcome(
@@ -114,7 +114,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvid
             .expect("An unexpected error occurred."),
         None,
         bob_key_package_bundle,
-        backend,
+        provider,
         ResumptionPskStore::new(1024),
     ) {
         Ok(g) => g,
@@ -135,7 +135,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvid
 
     // Generate KeyPackages
     let bob_key_package_bundle = KeyPackageBundle::new(
-        backend,
+        provider,
         &bob_signature_keys,
         ciphersuite,
         bob_credential_with_key,
@@ -147,12 +147,12 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvid
     };
 
     let mut alice_group = CoreGroup::builder(
-        GroupId::random(backend.rand()),
+        GroupId::random(provider.rand()),
         config::CryptoConfig::with_default_version(ciphersuite),
         alice_credential_with_key,
     )
     .with_config(config)
-    .build(backend, &alice_signature_keys)
+    .build(provider, &alice_signature_keys)
     .expect("Error creating group.");
 
     // === Alice adds Bob ===
@@ -167,7 +167,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvid
     let proposal_store = ProposalStore::from_queued_proposal(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
-            backend.crypto(),
+            provider.crypto(),
             bob_add_proposal,
         )
         .expect("Could not create staged proposal."),
@@ -179,11 +179,11 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvid
         .force_self_update(false)
         .build();
     let create_commit_result = alice_group
-        .create_commit(params, backend, &alice_signature_keys)
+        .create_commit(params, provider, &alice_signature_keys)
         .expect("Error creating commit");
 
     alice_group
-        .merge_commit(backend, create_commit_result.staged_commit)
+        .merge_commit(provider, create_commit_result.staged_commit)
         .expect("error merging commit");
 
     let error = CoreGroup::new_from_welcome(
@@ -192,7 +192,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvid
             .expect("An unexpected error occurred."),
         None,
         bob_key_package_bundle,
-        backend,
+        provider,
         ResumptionPskStore::new(1024),
     )
     .err();

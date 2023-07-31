@@ -275,14 +275,14 @@ pub mod test_utils {
     ///
     /// Returns the [`Credential`] and the [`SignatureKeyPair`].
     pub fn new_credential(
-        backend: &impl OpenMlsProvider,
+        provider: &impl OpenMlsProvider,
         identity: &[u8],
         credential_type: CredentialType,
         signature_scheme: SignatureScheme,
     ) -> (CredentialWithKey, SignatureKeyPair) {
         let credential = Credential::new(identity.into(), credential_type).unwrap();
         let signature_keys = SignatureKeyPair::new(signature_scheme).unwrap();
-        signature_keys.store(backend.key_store()).unwrap();
+        signature_keys.store(provider.key_store()).unwrap();
 
         (
             CredentialWithKey {

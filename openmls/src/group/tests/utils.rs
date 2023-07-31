@@ -79,7 +79,7 @@ pub(crate) struct TestSetup {
 const KEY_PACKAGE_COUNT: usize = 10;
 
 /// The setup function creates a set of groups and clients.
-pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsProvider) -> TestSetup {
+pub(crate) fn setup(config: TestSetupConfig, provider: &impl OpenMlsProvider) -> TestSetup {
     let mut test_clients: HashMap<&'static str, RefCell<TestClient>> = HashMap::new();
     let mut key_store: HashMap<(&'static str, Ciphersuite), Vec<KeyPackage>> = HashMap::new();
     // Initialize the clients for which we have configurations.
@@ -94,13 +94,13 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsProvider) -> 
             let credentia_with_key_and_signer = generate_credential_with_key(
                 client.name.as_bytes().to_vec(),
                 ciphersuite.signature_algorithm(),
-                backend,
+                provider,
             );
             // Create a number of key packages.
             let mut key_packages = Vec::new();
             for _ in 0..KEY_PACKAGE_COUNT {
                 let key_package_bundle: KeyPackageBundle = KeyPackageBundle::new(
-                    backend,
+                    provider,
                     &credentia_with_key_and_signer.signer,
                     ciphersuite,
                     credentia_with_key_and_signer.credential_with_key.clone(),
@@ -144,7 +144,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsProvider) -> 
             credential_with_key_and_signer.credential_with_key.clone(),
         )
         .with_config(group_config.config)
-        .build(backend, &credential_with_key_and_signer.signer)
+        .build(provider, &credential_with_key_and_signer.signer)
         .expect("Error creating new CoreGroup");
         let mut proposal_list = Vec::new();
         let group_aad = b"";
@@ -190,7 +190,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsProvider) -> 
                 proposal_store.add(
                     QueuedProposal::from_authenticated_content_by_ref(
                         group_config.ciphersuite,
-                        backend.crypto(),
+                        provider.crypto(),
                         proposal,
                     )
                     .expect("Could not create staged proposal."),
@@ -201,7 +201,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsProvider) -> 
                 .proposal_store(&proposal_store)
                 .build();
             let create_commit_result = core_group
-                .create_commit(params, backend, &credential_with_key_and_signer.signer)
+                .create_commit(params, provider, &credential_with_key_and_signer.signer)
                 .expect("An unexpected error occurred.");
             let welcome = create_commit_result
                 .welcome_option
@@ -209,7 +209,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsProvider) -> 
 
             core_group
                 .merge_staged_commit(
-                    backend,
+                    provider,
                     create_commit_result.staged_commit,
                     &mut proposal_store,
                 )
@@ -233,7 +233,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsProvider) -> 
                             .iter()
                             .any(|y| {
                                 y.key_package()
-                                    .hash_ref(backend.crypto())
+                                    .hash_ref(provider.crypto())
                                     .expect("Could not hash KeyPackage.")
                                     == x.new_member()
                             })
@@ -245,7 +245,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsProvider) -> 
                     .iter()
                     .position(|y| {
                         y.key_package()
-                            .hash_ref(backend.crypto())
+                            .hash_ref(provider.crypto())
                             .expect("Could not hash KeyPackage.")
                             == member_secret.new_member()
                     })
@@ -260,7 +260,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsProvider) -> 
                     welcome.clone(),
                     Some(core_group.public_group().export_ratchet_tree().into()),
                     key_package_bundle,
-                    backend,
+                    provider,
                     ResumptionPskStore::new(1024),
                 ) {
                     Ok(group) => group,
@@ -297,8 +297,8 @@ fn test_random() {
     randombytes(0);
 }
 
-#[apply(backends)]
-fn test_setup(backend: &impl OpenMlsProvider) {
+#[apply(providers)]
+fn test_setup(provider: &impl OpenMlsProvider) {
     let test_client_config_a = TestClientConfig {
         name: "TestClientConfigA",
         ciphersuites: vec![Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519],
@@ -317,7 +317,7 @@ fn test_setup(backend: &impl OpenMlsProvider) {
         clients: vec![test_client_config_a, test_client_config_b],
         groups: vec![test_group_config],
     };
-    let _test_setup = setup(test_setup_config, backend);
+    let _test_setup = setup(test_setup_config, provider);
 }
 
 #[derive(Clone)]
@@ -330,12 +330,12 @@ pub(crate) struct CredentialWithKeyAndSigner {
 pub(crate) fn generate_credential_with_key(
     identity: Vec<u8>,
     signature_scheme: SignatureScheme,
-    backend: &impl OpenMlsProvider,
+    provider: &impl OpenMlsProvider,
 ) -> CredentialWithKeyAndSigner {
     let (credential, signer) = {
         let credential = Credential::new(identity, CredentialType::Basic).unwrap();
         let signature_keys = SignatureKeyPair::new(signature_scheme).unwrap();
-        signature_keys.store(backend.key_store()).unwrap();
+        signature_keys.store(provider.key_store()).unwrap();
 
         (credential, signature_keys)
     };
@@ -355,7 +355,7 @@ pub(crate) fn generate_credential_with_key(
 pub(crate) fn generate_key_package<KeyStore: OpenMlsKeyStore>(
     ciphersuite: Ciphersuite,
     extensions: Extensions,
-    backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+    provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
     credential_with_keys: CredentialWithKeyAndSigner,
 ) -> KeyPackage {
     KeyPackage::builder()
@@ -365,7 +365,7 @@ pub(crate) fn generate_key_package<KeyStore: OpenMlsKeyStore>(
                 ciphersuite,
                 version: ProtocolVersion::default(),
             },
-            backend,
+            provider,
             &credential_with_keys.signer,
             credential_with_keys.credential_with_key,
         )
@@ -377,7 +377,7 @@ pub(crate) fn resign_message(
     alice_group: &MlsGroup,
     plaintext: PublicMessage,
     original_plaintext: &PublicMessage,
-    backend: &impl OpenMlsProvider,
+    provider: &impl OpenMlsProvider,
     signer: &impl Signer,
 ) -> PublicMessage {
     let serialized_context = alice_group
@@ -406,7 +406,7 @@ pub(crate) fn resign_message(
 
     signed_plaintext
         .set_membership_tag(
-            backend.crypto(),
+            provider.crypto(),
             membership_key,
             alice_group.group().message_secrets().serialized_context(),
         )

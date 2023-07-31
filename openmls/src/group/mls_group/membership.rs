@@ -31,7 +31,7 @@ impl MlsGroup {
     #[allow(clippy::type_complexity)]
     pub fn add_members<KeyStore: OpenMlsKeyStore>(
         &mut self,
-        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         key_packages: &[KeyPackage],
     ) -> Result<(MlsMessageOut, MlsMessageOut, Option<GroupInfo>), AddMembersError<KeyStore::Error>>
@@ -59,7 +59,7 @@ impl MlsGroup {
             .proposal_store(&self.proposal_store)
             .inline_proposals(inline_proposals)
             .build();
-        let create_commit_result = self.group.create_commit(params, backend, signer)?;
+        let create_commit_result = self.group.create_commit(params, provider, signer)?;
 
         let welcome = match create_commit_result.welcome_option {
             Some(welcome) => welcome,
@@ -70,7 +70,7 @@ impl MlsGroup {
 
         // Convert PublicMessage messages to MLSMessage and encrypt them if required by
         // the configuration
-        let mls_messages = self.content_to_mls_message(create_commit_result.commit, backend)?;
+        let mls_messages = self.content_to_mls_message(create_commit_result.commit, provider)?;
 
         // Set the current group state to [`MlsGroupState::PendingCommit`],
         // storing the current [`StagedCommit`] from the commit results
@@ -110,7 +110,7 @@ impl MlsGroup {
     #[allow(clippy::type_complexity)]
     pub fn remove_members<KeyStore: OpenMlsKeyStore>(
         &mut self,
-        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         members: &[LeafNodeIndex],
     ) -> Result<
@@ -138,11 +138,11 @@ impl MlsGroup {
             .proposal_store(&self.proposal_store)
             .inline_proposals(inline_proposals)
             .build();
-        let create_commit_result = self.group.create_commit(params, backend, signer)?;
+        let create_commit_result = self.group.create_commit(params, provider, signer)?;
 
         // Convert PublicMessage messages to MLSMessage and encrypt them if required by
         // the configuration
-        let mls_message = self.content_to_mls_message(create_commit_result.commit, backend)?;
+        let mls_message = self.content_to_mls_message(create_commit_result.commit, provider)?;
 
         // Set the current group state to [`MlsGroupState::PendingCommit`],
         // storing the current [`StagedCommit`] from the commit results
@@ -170,7 +170,7 @@ impl MlsGroup {
     /// Returns an error if there is a pending commit.
     pub fn leave_group(
         &mut self,
-        backend: &impl OpenMlsProvider,
+        provider: &impl OpenMlsProvider,
         signer: &impl Signer,
     ) -> Result<MlsMessageOut, LeaveGroupError> {
         self.is_operational()?;
@@ -184,11 +184,11 @@ impl MlsGroup {
         self.proposal_store
             .add(QueuedProposal::from_authenticated_content_by_ref(
                 self.ciphersuite(),
-                backend.crypto(),
+                provider.crypto(),
                 remove_proposal.clone(),
             )?);
 
-        Ok(self.content_to_mls_message(remove_proposal, backend)?)
+        Ok(self.content_to_mls_message(remove_proposal, provider)?)
     }
 
     /// Returns a list of [`Member`]s in the group.

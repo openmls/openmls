@@ -25,7 +25,7 @@ impl MlsGroup {
     /// with the exact reason of the failure.
     pub fn process_message(
         &mut self,
-        backend: &impl OpenMlsProvider,
+        provider: &impl OpenMlsProvider,
         message: impl Into<ProtocolMessage>,
     ) -> Result<ProcessedMessage, ProcessMessageError> {
         // Make sure we are still a member of the group
@@ -55,7 +55,7 @@ impl MlsGroup {
         let sender_ratchet_configuration =
             self.configuration().sender_ratchet_configuration().clone();
         self.group.process_message(
-            backend,
+            provider,
             message,
             &sender_ratchet_configuration,
             &self.proposal_store,
@@ -83,7 +83,7 @@ impl MlsGroup {
     #[allow(clippy::type_complexity)]
     pub fn commit_to_pending_proposals<KeyStore: OpenMlsKeyStore>(
         &mut self,
-        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
     ) -> Result<
         (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
@@ -97,11 +97,11 @@ impl MlsGroup {
             .framing_parameters(self.framing_parameters())
             .proposal_store(&self.proposal_store)
             .build();
-        let create_commit_result = self.group.create_commit(params, backend, signer)?;
+        let create_commit_result = self.group.create_commit(params, provider, signer)?;
 
         // Convert PublicMessage messages to MLSMessage and encrypt them if required by
         // the configuration
-        let mls_message = self.content_to_mls_message(create_commit_result.commit, backend)?;
+        let mls_message = self.content_to_mls_message(create_commit_result.commit, provider)?;
 
         // Set the current group state to [`MlsGroupState::PendingCommit`],
         // storing the current [`StagedCommit`] from the commit results
@@ -125,7 +125,7 @@ impl MlsGroup {
     /// the epoch of the group, it also clears any pending commits.
     pub fn merge_staged_commit<KeyStore: OpenMlsKeyStore>(
         &mut self,
-        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         staged_commit: StagedCommit,
     ) -> Result<(), MergeCommitError<KeyStore::Error>> {
         // Check if we were removed from the group
@@ -138,7 +138,7 @@ impl MlsGroup {
 
         // Merge staged commit
         self.group
-            .merge_staged_commit(backend, staged_commit, &mut self.proposal_store)?;
+            .merge_staged_commit(provider, staged_commit, &mut self.proposal_store)?;
 
         // Extract and store the resumption psk for the current epoch
         let resumption_psk = self.group.group_epoch_secrets().resumption_psk();
@@ -159,13 +159,13 @@ impl MlsGroup {
     /// clears the field by setting it to `None`.
     pub fn merge_pending_commit<KeyStore: OpenMlsKeyStore>(
         &mut self,
-        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
     ) -> Result<(), MergePendingCommitError<KeyStore::Error>> {
         match &self.group_state {
             MlsGroupState::PendingCommit(_) => {
                 let old_state = mem::replace(&mut self.group_state, MlsGroupState::Operational);
                 if let MlsGroupState::PendingCommit(pending_commit_state) = old_state {
-                    self.merge_staged_commit(backend, (*pending_commit_state).into())?;
+                    self.merge_staged_commit(provider, (*pending_commit_state).into())?;
                 }
                 Ok(())
             }

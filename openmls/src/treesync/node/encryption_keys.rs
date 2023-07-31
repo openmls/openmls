@@ -147,7 +147,7 @@ pub(crate) struct EncryptionKeyPair {
 const ENCRYPTION_KEY_LABEL: &[u8; 19] = b"leaf_encryption_key";
 
 impl EncryptionKeyPair {
-    /// Write the [`EncryptionKeyPair`] to the key store of the `backend`. This
+    /// Write the [`EncryptionKeyPair`] to the key store of the `provider`. This
     /// function is meant to store standalone keypairs, not ones that are
     /// already in use with an MLS group.
     ///
@@ -159,21 +159,21 @@ impl EncryptionKeyPair {
         store.store(&self.public_key().to_bytes_with_prefix(), self)
     }
 
-    /// Read the [`EncryptionKeyPair`] from the key store of the `backend`. This
+    /// Read the [`EncryptionKeyPair`] from the key store of the `provider`. This
     /// function is meant to read standalone keypairs, not ones that are
     /// already in use with an MLS group.
     ///
     /// Returns `None` if the keypair cannot be read from the store.
     pub(crate) fn read_from_key_store(
-        backend: &impl OpenMlsProvider,
+        provider: &impl OpenMlsProvider,
         encryption_key: &EncryptionKey,
     ) -> Option<EncryptionKeyPair> {
-        backend
+        provider
             .key_store()
             .read(&encryption_key.to_bytes_with_prefix())
     }
 
-    /// Delete the [`EncryptionKeyPair`] from the key store of the `backend`.
+    /// Delete the [`EncryptionKeyPair`] from the key store of the `provider`.
     /// This function is meant to delete standalone keypairs, not ones that are
     /// already in use with an MLS group.
     ///
@@ -194,12 +194,12 @@ impl EncryptionKeyPair {
     }
 
     pub(crate) fn random(
-        backend: &impl OpenMlsProvider,
+        provider: &impl OpenMlsProvider,
         config: CryptoConfig,
     ) -> Result<Self, LibraryError> {
-        let ikm = Secret::random(config.ciphersuite, backend.rand(), config.version)
+        let ikm = Secret::random(config.ciphersuite, provider.rand(), config.version)
             .map_err(LibraryError::unexpected_crypto_error)?;
-        Ok(backend
+        Ok(provider
             .crypto()
             .derive_hpke_keypair(config.ciphersuite.hpke_config(), ikm.as_slice())
             .into())
@@ -211,10 +211,10 @@ pub mod test_utils {
     use super::*;
 
     pub fn read_keys_from_key_store(
-        backend: &impl OpenMlsProvider,
+        provider: &impl OpenMlsProvider,
         encryption_key: &EncryptionKey,
     ) -> HpkeKeyPair {
-        let keys = EncryptionKeyPair::read_from_key_store(backend, encryption_key).unwrap();
+        let keys = EncryptionKeyPair::read_from_key_store(provider, encryption_key).unwrap();
 
         HpkeKeyPair {
             private: keys.private_key.key,
@@ -222,10 +222,10 @@ pub mod test_utils {
         }
     }
 
-    pub fn write_keys_from_key_store(backend: &impl OpenMlsProvider, encryption_key: HpkeKeyPair) {
+    pub fn write_keys_from_key_store(provider: &impl OpenMlsProvider, encryption_key: HpkeKeyPair) {
         let keypair = EncryptionKeyPair::from(encryption_key);
 
-        keypair.write_to_key_store(backend.key_store()).unwrap();
+        keypair.write_to_key_store(provider.key_store()).unwrap();
     }
 }
 

@@ -141,11 +141,11 @@ fn generate_credential(
     identity: Vec<u8>,
     credential_type: CredentialType,
     signature_algorithm: SignatureScheme,
-    backend: &impl OpenMlsProvider,
+    provider: &impl OpenMlsProvider,
 ) -> (CredentialWithKey, SignatureKeyPair) {
     let credential = Credential::new(identity, credential_type).unwrap();
     let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
-    signature_keys.store(backend.key_store()).unwrap();
+    signature_keys.store(provider.key_store()).unwrap();
 
     (
         CredentialWithKey {
@@ -159,7 +159,7 @@ fn generate_credential(
 #[cfg(any(feature = "test-utils", test))]
 fn group(
     ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsProvider,
+    provider: &impl OpenMlsProvider,
 ) -> (CoreGroup, CredentialWithKey, SignatureKeyPair) {
     use crate::group::config::CryptoConfig;
 
@@ -167,15 +167,15 @@ fn group(
         "Kreator".into(),
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
-        backend,
+        provider,
     );
 
     let group = CoreGroup::builder(
-        GroupId::random(backend.rand()),
+        GroupId::random(provider.rand()),
         CryptoConfig::with_default_version(ciphersuite),
         credential_with_key.clone(),
     )
-    .build(backend, &signer)
+    .build(provider, &signer)
     .unwrap();
 
     (group, credential_with_key, signer)
@@ -184,7 +184,7 @@ fn group(
 #[cfg(any(feature = "test-utils", test))]
 fn receiver_group(
     ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsProvider,
+    provider: &impl OpenMlsProvider,
     group_id: GroupId,
 ) -> (CoreGroup, CredentialWithKey, SignatureKeyPair) {
     use crate::group::config::CryptoConfig;
@@ -193,7 +193,7 @@ fn receiver_group(
         "Receiver".into(),
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
-        backend,
+        provider,
     );
 
     let group = CoreGroup::builder(
@@ -201,7 +201,7 @@ fn receiver_group(
         CryptoConfig::with_default_version(ciphersuite),
         credential_with_key.clone(),
     )
-    .build(backend, &signer)
+    .build(provider, &signer)
     .unwrap();
 
     (group, credential_with_key, signer)
@@ -213,7 +213,7 @@ fn build_handshake_messages(
     sender_index: LeafNodeIndex,
     group: &mut CoreGroup,
     signer: &impl Signer,
-    backend: &impl OpenMlsProvider,
+    provider: &impl OpenMlsProvider,
 ) -> (Vec<u8>, Vec<u8>) {
     use tls_codec::Serialize;
 
@@ -225,7 +225,7 @@ fn build_handshake_messages(
     let membership_key = MembershipKey::from_secret(
         Secret::random(
             group.ciphersuite(),
-            backend.rand(),
+            provider.rand(),
             None, /* MLS version */
         )
         .expect("Not enough randomness."),
@@ -246,7 +246,7 @@ fn build_handshake_messages(
     let mut plaintext: PublicMessage = content.clone().into();
     plaintext
         .set_membership_tag(
-            backend.crypto(),
+            provider.crypto(),
             &membership_key,
             &group.context().tls_serialize_detached().unwrap(),
         )
@@ -254,7 +254,7 @@ fn build_handshake_messages(
     let ciphertext = PrivateMessage::encrypt_without_check(
         &content,
         group.ciphersuite(),
-        backend,
+        provider,
         group.message_secrets_test_mut(),
         0,
     )
@@ -274,7 +274,7 @@ fn build_application_messages(
     sender_index: LeafNodeIndex,
     group: &mut CoreGroup,
     signer: &impl Signer,
-    backend: &impl OpenMlsProvider,
+    provider: &impl OpenMlsProvider,
 ) -> (Vec<u8>, Vec<u8>) {
     use tls_codec::Serialize;
 
@@ -285,7 +285,7 @@ fn build_application_messages(
     let membership_key = MembershipKey::from_secret(
         Secret::random(
             group.ciphersuite(),
-            backend.rand(),
+            provider.rand(),
             None, /* MLS version */
         )
         .expect("Not enough randomness."),
@@ -301,7 +301,7 @@ fn build_application_messages(
     let mut plaintext: PublicMessage = content.clone().into();
     plaintext
         .set_membership_tag(
-            backend.crypto(),
+            provider.crypto(),
             &membership_key,
             &group.context().tls_serialize_detached().unwrap(),
         )
@@ -309,7 +309,7 @@ fn build_application_messages(
     let ciphertext = match PrivateMessage::encrypt_without_check(
         &content,
         group.ciphersuite(),
-        backend,
+        provider,
         group.message_secrets_test_mut(),
         0,
     ) {
@@ -486,7 +486,7 @@ fn write_test_vectors() {
 #[cfg(any(feature = "test-utils", test))]
 pub fn run_test_vector(
     test_vector: EncryptionTestVector,
-    backend: &impl OpenMlsProvider,
+    provider: &impl OpenMlsProvider,
 ) -> Result<(), EncTestVectorError> {
     use tls_codec::{Deserialize, Serialize};
 
@@ -511,14 +511,14 @@ pub fn run_test_vector(
 
     let sender_data_key = sender_data_secret
         .derive_aead_key(
-            backend.crypto(),
+            provider.crypto(),
             &hex_to_bytes(&test_vector.sender_data_info.ciphertext),
         )
         .expect("Could not derive AEAD key.");
     let sender_data_nonce = sender_data_secret
         .derive_aead_nonce(
             ciphersuite,
-            backend.crypto(),
+            provider.crypto(),
             &hex_to_bytes(&test_vector.sender_data_info.ciphertext),
         )
         .expect("Could not derive nonce.");
@@ -577,7 +577,7 @@ pub fn run_test_vector(
             let (application_secret_key, application_secret_nonce) = secret_tree
                 .secret_for_decryption(
                     ciphersuite,
-                    backend.crypto(),
+                    provider.crypto(),
                     leaf_index,
                     SecretType::ApplicationSecret,
                     generation,
@@ -616,7 +616,7 @@ pub fn run_test_vector(
                 .expect("Error parsing PrivateMessage");
             let (mut group, _, _) = receiver_group(
                 ciphersuite,
-                backend,
+                provider,
                 mls_ciphertext_application.group_id().clone(),
             );
             *group.message_secrets_test_mut().sender_data_secret_mut() =
@@ -630,8 +630,8 @@ pub fn run_test_vector(
             // above ratcheted the tree forward.
             let mut message_secrets = MessageSecrets::new(
                 sender_data_secret.clone(),
-                MembershipKey::random(ciphersuite, backend.rand()), // we don't care about this value
-                ConfirmationKey::random(ciphersuite, backend.rand()), // we don't care about this value
+                MembershipKey::random(ciphersuite, provider.rand()), // we don't care about this value
+                ConfirmationKey::random(ciphersuite, provider.rand()), // we don't care about this value
                 group.context().tls_serialize_detached().unwrap(),
                 fresh_secret_tree.clone(),
             );
@@ -640,14 +640,14 @@ pub fn run_test_vector(
             let sender_data = mls_ciphertext_application
                 .sender_data(
                     group.message_secrets_test_mut(),
-                    backend.crypto(),
+                    provider.crypto(),
                     ciphersuite,
                 )
                 .expect("Unable to get sender data");
             let mls_plaintext_application: AuthenticatedContentIn = mls_ciphertext_application
                 .to_verifiable_content(
                     ciphersuite,
-                    backend.crypto(),
+                    provider.crypto(),
                     &mut message_secrets,
                     leaf_index,
                     &SenderRatchetConfiguration::default(),
@@ -678,7 +678,7 @@ pub fn run_test_vector(
                 .clone()
                 .secret_for_decryption(
                     ciphersuite,
-                    backend.crypto(),
+                    provider.crypto(),
                     leaf_index,
                     SecretType::HandshakeSecret,
                     generation,
@@ -718,14 +718,14 @@ pub fn run_test_vector(
             let sender_data = mls_ciphertext_handshake
                 .sender_data(
                     group.message_secrets_test_mut(),
-                    backend.crypto(),
+                    provider.crypto(),
                     ciphersuite,
                 )
                 .expect("Unable to get sender data");
             let mls_plaintext_handshake: AuthenticatedContentIn = mls_ciphertext_handshake
                 .to_verifiable_content(
                     ciphersuite,
-                    backend.crypto(),
+                    provider.crypto(),
                     group.message_secrets_test_mut(),
                     leaf_index,
                     &SenderRatchetConfiguration::default(),
@@ -758,7 +758,7 @@ pub fn run_test_vector(
                 .clone()
                 .secret_for_decryption(
                     ciphersuite,
-                    backend.crypto(),
+                    provider.crypto(),
                     leaf_index,
                     SecretType::HandshakeSecret,
                     generation,
@@ -778,7 +778,7 @@ pub fn run_test_vector(
                 .expect("Error parsing PrivateMessage");
             let (mut group, _, _) = receiver_group(
                 ciphersuite,
-                backend,
+                provider,
                 mls_ciphertext_handshake.group_id().clone(),
             );
             *group.message_secrets_test_mut().sender_data_secret_mut() =
@@ -797,14 +797,14 @@ pub fn run_test_vector(
             let sender_data = mls_ciphertext_handshake
                 .sender_data(
                     group.message_secrets_test_mut(),
-                    backend.crypto(),
+                    provider.crypto(),
                     ciphersuite,
                 )
                 .expect("Unable to get sender data");
             let mls_plaintext_handshake: AuthenticatedContentIn = mls_ciphertext_handshake
                 .to_verifiable_content(
                     ciphersuite,
-                    backend.crypto(),
+                    provider.crypto(),
                     group.message_secrets_test_mut(),
                     leaf_index,
                     &SenderRatchetConfiguration::default(),
@@ -836,15 +836,15 @@ pub fn run_test_vector(
     Ok(())
 }
 
-#[apply(backends)]
-fn read_test_vectors_encryption(backend: &impl OpenMlsProvider) {
+#[apply(providers)]
+fn read_test_vectors_encryption(provider: &impl OpenMlsProvider) {
     let _ = pretty_env_logger::try_init();
     log::debug!("Reading test vectors ...");
 
     let tests: Vec<EncryptionTestVector> = read("test_vectors/kat_encryption_openmls.json");
 
     for test_vector in tests {
-        match run_test_vector(test_vector, backend) {
+        match run_test_vector(test_vector, provider) {
             Ok(_) => {}
             Err(e) => panic!("Error while checking encryption test vector.\n{e:?}"),
         }
@@ -862,7 +862,7 @@ fn read_test_vectors_encryption(backend: &impl OpenMlsProvider) {
     ];
     for &tv_file in tv_files.iter() {
         let tv: EncryptionTestVector = read(tv_file);
-        run_test_vector(tv, backend).expect("Error while checking key schedule test vector.");
+        run_test_vector(tv, provider).expect("Error while checking key schedule test vector.");
     }
 
     log::trace!("Finished test vector verification");

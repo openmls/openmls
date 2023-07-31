@@ -364,7 +364,7 @@ impl TreeSync {
     /// Returns the resulting [`TreeSync`] instance, as well as the
     /// corresponding [`CommitSecret`].
     pub(crate) fn new(
-        backend: &impl OpenMlsProvider,
+        provider: &impl OpenMlsProvider,
         signer: &impl Signer,
         config: CryptoConfig,
         credential_with_key: CredentialWithKey,
@@ -381,14 +381,14 @@ impl TreeSync {
             extensions,
             tree_info_tbs: TreeInfoTbs::KeyPackage,
         };
-        let (leaf, encryption_key_pair) = LeafNode::new(backend, signer, new_leaf_node_params)?;
+        let (leaf, encryption_key_pair) = LeafNode::new(provider, signer, new_leaf_node_params)?;
 
         let node = Node::LeafNode(leaf);
-        let path_secret: PathSecret = Secret::random(config.ciphersuite, backend.rand(), None)
+        let path_secret: PathSecret = Secret::random(config.ciphersuite, provider.rand(), None)
             .map_err(LibraryError::unexpected_crypto_error)?
             .into();
         let commit_secret: CommitSecret = path_secret
-            .derive_path_secret(backend.crypto(), config.ciphersuite)?
+            .derive_path_secret(provider.crypto(), config.ciphersuite)?
             .into();
         let nodes = vec![TreeSyncNode::from(node).into()];
         let tree = MlsBinaryTree::new(nodes)
@@ -398,7 +398,7 @@ impl TreeSync {
             tree_hash: vec![],
         };
         // Populate tree hash caches.
-        tree_sync.populate_parent_hashes(backend.crypto(), config.ciphersuite)?;
+        tree_sync.populate_parent_hashes(provider.crypto(), config.ciphersuite)?;
 
         Ok((tree_sync, commit_secret, encryption_key_pair))
     }
@@ -723,13 +723,13 @@ mod test {
         RatchetTree::trimmed(vec![None]);
     }
 
-    #[apply(ciphersuites_and_backends)]
+    #[apply(ciphersuites_and_providers)]
     fn test_ratchet_tree_trailing_blank_nodes(
         ciphersuite: Ciphersuite,
-        backend: &impl OpenMlsProvider,
+        provider: &impl OpenMlsProvider,
     ) {
         let (key_package, _, _) =
-            crate::key_packages::test_key_packages::key_package(ciphersuite, backend);
+            crate::key_packages::test_key_packages::key_package(ciphersuite, provider);
         let node_in = NodeIn::from(Node::LeafNode(LeafNode::from(key_package)));
         let tests = [
             (vec![], false),
@@ -751,9 +751,9 @@ mod test {
         for (test, expected) in tests.into_iter() {
             let got = RatchetTree::try_from_nodes(
                 ciphersuite,
-                backend.crypto(),
+                provider.crypto(),
                 test,
-                &GroupId::random(backend.rand()),
+                &GroupId::random(provider.rand()),
             )
             .is_ok();
             assert_eq!(got, expected);

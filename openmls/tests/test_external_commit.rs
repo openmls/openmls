@@ -6,7 +6,7 @@ use openmls_basic_credential::SignatureKeyPair;
 
 fn create_alice_group(
     ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsProvider,
+    provider: &impl OpenMlsProvider,
     use_ratchet_tree_extension: bool,
 ) -> (MlsGroup, CredentialWithKey, SignatureKeyPair) {
     let group_config = MlsGroupConfigBuilder::new()
@@ -15,14 +15,14 @@ fn create_alice_group(
         .build();
 
     let (credential_with_key, signature_keys) = new_credential(
-        backend,
+        provider,
         b"Alice",
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
     );
 
     let group = MlsGroup::new(
-        backend,
+        provider,
         &signature_keys,
         &group_config,
         credential_with_key.clone(),
@@ -32,15 +32,15 @@ fn create_alice_group(
     (group, credential_with_key, signature_keys)
 }
 
-#[apply(ciphersuites_and_backends)]
-fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
+#[apply(ciphersuites_and_providers)]
+fn test_external_commit(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // Alice creates a new group ...
-    let (alice_group, _, alice_signer) = create_alice_group(ciphersuite, backend, false);
+    let (alice_group, _, alice_signer) = create_alice_group(ciphersuite, provider, false);
 
     // ... and exports a group info (with ratchet_tree).
     let verifiable_group_info = {
         let group_info = alice_group
-            .export_group_info(backend.crypto(), &alice_signer, true)
+            .export_group_info(provider.crypto(), &alice_signer, true)
             .unwrap();
 
         let serialized_group_info = group_info.tls_serialize_detached().unwrap();
@@ -53,7 +53,7 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider
 
     let verifiable_group_info_broken = {
         let group_info = alice_group
-            .export_group_info(backend.crypto(), &alice_signer, true)
+            .export_group_info(provider.crypto(), &alice_signer, true)
             .unwrap();
 
         let serialized_group_info = {
@@ -77,14 +77,14 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider
     // Now, Bob wants to join Alice' group by an external commit. (Positive case.)
     {
         let (bob_credential, bob_signature_keys) = new_credential(
-            backend,
+            provider,
             b"Bob",
             CredentialType::Basic,
             ciphersuite.signature_algorithm(),
         );
 
         let (_bob_group, _, _) = MlsGroup::join_by_external_commit(
-            backend,
+            provider,
             &bob_signature_keys,
             None,
             verifiable_group_info,
@@ -100,14 +100,14 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider
     // Now, Bob wants to join Alice' group by an external commit. (Negative case, broken signature.)
     {
         let (bob_credential, bob_signature_keys) = new_credential(
-            backend,
+            provider,
             b"Bob",
             CredentialType::Basic,
             ciphersuite.signature_algorithm(),
         );
 
         let got_error = MlsGroup::join_by_external_commit(
-            backend,
+            provider,
             &bob_signature_keys,
             None,
             verifiable_group_info_broken,
@@ -128,18 +128,18 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider
     }
 }
 
-#[apply(ciphersuites_and_backends)]
-fn test_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
+#[apply(ciphersuites_and_providers)]
+fn test_group_info(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // Alice creates a new group ...
-    let (mut alice_group, _, alice_signer) = create_alice_group(ciphersuite, backend, true);
+    let (mut alice_group, _, alice_signer) = create_alice_group(ciphersuite, provider, true);
 
     // Self update Alice's to get a group info from a commit
-    let (.., group_info) = alice_group.self_update(backend, &alice_signer).unwrap();
-    alice_group.merge_pending_commit(backend).unwrap();
+    let (.., group_info) = alice_group.self_update(provider, &alice_signer).unwrap();
+    alice_group.merge_pending_commit(provider).unwrap();
 
     // Bob wants to join
     let (bob_credential, bob_signature_keys) = new_credential(
-        backend,
+        provider,
         b"Bob",
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
@@ -151,7 +151,7 @@ fn test_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         VerifiableGroupInfo::tls_deserialize(&mut serialized_group_info.as_slice()).unwrap()
     };
     let (mut bob_group, msg, group_info) = MlsGroup::join_by_external_commit(
-        backend,
+        provider,
         &bob_signature_keys,
         None,
         verifiable_group_info,
@@ -163,27 +163,27 @@ fn test_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     )
     .map(|(group, msg, group_info)| (group, MlsMessageIn::from(msg), group_info))
     .unwrap();
-    bob_group.merge_pending_commit(backend).unwrap();
+    bob_group.merge_pending_commit(provider).unwrap();
 
     // let alice process bob's new client
     let msg = alice_group
-        .process_message(backend, msg)
+        .process_message(provider, msg)
         .unwrap()
         .into_content();
     match msg {
         ProcessedMessageContent::StagedCommitMessage(commit) => {
-            alice_group.merge_staged_commit(backend, *commit).unwrap();
+            alice_group.merge_staged_commit(provider, *commit).unwrap();
         }
         _ => panic!("Unexpected message type"),
     }
 
     // bob sends a message to alice
     let message: MlsMessageIn = bob_group
-        .create_message(backend, &bob_signature_keys, b"Hello Alice")
+        .create_message(provider, &bob_signature_keys, b"Hello Alice")
         .unwrap()
         .into();
 
-    let msg = alice_group.process_message(backend, message).unwrap();
+    let msg = alice_group.process_message(provider, message).unwrap();
     let decrypted = match msg.into_content() {
         ProcessedMessageContent::ApplicationMessage(msg) => msg.into_bytes(),
         _ => panic!("Not an ApplicationMessage"),
@@ -193,7 +193,7 @@ fn test_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // check that the returned group info from the external join is valid
     // Bob wants to join with another client
     let (bob_credential, bob_signature_keys) = new_credential(
-        backend,
+        provider,
         b"Bob 2",
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
@@ -204,7 +204,7 @@ fn test_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         VerifiableGroupInfo::tls_deserialize(&mut serialized_group_info.as_slice()).unwrap()
     };
     let (mut bob_group, ..) = MlsGroup::join_by_external_commit(
-        backend,
+        provider,
         &bob_signature_keys,
         None,
         verifiable_group_info,
@@ -215,17 +215,17 @@ fn test_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         bob_credential,
     )
     .unwrap();
-    bob_group.merge_pending_commit(backend).unwrap();
+    bob_group.merge_pending_commit(provider).unwrap();
 }
 
-#[apply(ciphersuites_and_backends)]
-fn test_not_present_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
+#[apply(ciphersuites_and_providers)]
+fn test_not_present_group_info(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // Alice creates a new group ...
-    let (mut alice_group, _, alice_signer) = create_alice_group(ciphersuite, backend, false);
+    let (mut alice_group, _, alice_signer) = create_alice_group(ciphersuite, provider, false);
 
     // Self update Alice's to get a group info from a commit
-    let (.., group_info) = alice_group.self_update(backend, &alice_signer).unwrap();
-    alice_group.merge_pending_commit(backend).unwrap();
+    let (.., group_info) = alice_group.self_update(provider, &alice_signer).unwrap();
+    alice_group.merge_pending_commit(provider).unwrap();
 
     assert!(group_info.is_none());
 }

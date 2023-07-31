@@ -11,8 +11,8 @@ use crate::{
 
 /// Test the encoding for PreSharedKeyProposal, that also covers some of the
 /// other PSK-related structs
-#[apply(backends)]
-fn test_pre_shared_key_proposal_codec(backend: &impl OpenMlsProvider) {
+#[apply(providers)]
+fn test_pre_shared_key_proposal_codec(provider: &impl OpenMlsProvider) {
     // External
     let psk = PreSharedKeyId {
         psk: Psk::External(ExternalPsk::new(vec![1, 2, 3])),
@@ -30,7 +30,7 @@ fn test_pre_shared_key_proposal_codec(backend: &impl OpenMlsProvider) {
     let psk = PreSharedKeyId {
         psk: Psk::Resumption(ResumptionPsk::new(
             ResumptionPskUsage::Application,
-            GroupId::random(backend.rand()),
+            GroupId::random(provider.rand()),
             1234.into(),
         )),
         psk_nonce: vec![1, 2, 3].into(),
@@ -47,7 +47,7 @@ fn test_pre_shared_key_proposal_codec(backend: &impl OpenMlsProvider) {
     let psk = PreSharedKeyId {
         psk: Psk::Resumption(ResumptionPsk::new(
             ResumptionPskUsage::Reinit,
-            GroupId::random(backend.rand()),
+            GroupId::random(provider.rand()),
             1234.into(),
         )),
         psk_nonce: vec![1, 2, 3].into(),
@@ -64,7 +64,7 @@ fn test_pre_shared_key_proposal_codec(backend: &impl OpenMlsProvider) {
     let psk = PreSharedKeyId {
         psk: Psk::Resumption(ResumptionPsk::new(
             ResumptionPskUsage::Branch,
-            GroupId::random(backend.rand()),
+            GroupId::random(provider.rand()),
             1234.into(),
         )),
         psk_nonce: vec![1, 2, 3].into(),
@@ -79,10 +79,10 @@ fn test_pre_shared_key_proposal_codec(backend: &impl OpenMlsProvider) {
 }
 /// Test the encoding for ReInitProposal, that also covers some of the
 /// other PSK-related structs
-#[apply(ciphersuites_and_backends)]
-fn test_reinit_proposal_codec(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
+#[apply(ciphersuites_and_providers)]
+fn test_reinit_proposal_codec(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let orig = ReInitProposal {
-        group_id: GroupId::random(backend.rand()),
+        group_id: GroupId::random(provider.rand()),
         version: ProtocolVersion::default(),
         ciphersuite,
         extensions: Extensions::empty(),

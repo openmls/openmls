@@ -70,10 +70,10 @@ fn read_test_vectors_transcript() {
 }
 
 pub fn run_test_vector(test_vector: TranscriptTestVector) {
-    let backend = OpenMlsRustCrypto::default();
+    let provider = OpenMlsRustCrypto::default();
 
     let ciphersuite = Ciphersuite::try_from(test_vector.cipher_suite).unwrap();
-    if backend.crypto().supports(ciphersuite).is_err() {
+    if provider.crypto().supports(ciphersuite).is_err() {
         log::debug!("Skipping unsupported ciphersuite `{ciphersuite:?}`.");
         return;
     }
@@ -97,7 +97,7 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) {
     ));
     let got_confirmation_tag = confirmation_key
         .tag(
-            backend.crypto(),
+            provider.crypto(),
             &test_vector.confirmed_transcript_hash_after,
         )
         .unwrap();
@@ -112,7 +112,7 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) {
 
         input
             .calculate_confirmed_transcript_hash(
-                backend.crypto(),
+                provider.crypto(),
                 ciphersuite,
                 &test_vector.interim_transcript_hash_before,
             )
@@ -129,7 +129,7 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) {
 
         input
             .calculate_interim_transcript_hash(
-                backend.crypto(),
+                provider.crypto(),
                 ciphersuite,
                 &got_confirmed_transcript_hash_after,
             )
@@ -162,16 +162,16 @@ fn write_test_vectors() {
 }
 
 pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
-    let backend = OpenMlsRustCrypto::default();
+    let provider = OpenMlsRustCrypto::default();
 
-    let confirmation_key = ConfirmationKey::random(ciphersuite, backend.rand());
+    let confirmation_key = ConfirmationKey::random(ciphersuite, provider.rand());
 
     let interim_transcript_hash_before = randombytes(ciphersuite.hash_length());
 
     // Note: This does not have a valid `confirmation_tag` for now and is only used to
     // calculate `confirmed_transcript_hash_after`.
     let mut authenticated_content = {
-        let aad = backend.rand().random_vec(48).unwrap();
+        let aad = provider.rand().random_vec(48).unwrap();
         let framing_parameters = FramingParameters::new(&aad, WireFormat::PublicMessage);
 
         // XXX: Use random but valid sender.
@@ -183,19 +183,19 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
         };
 
         let group_context = {
-            let tree_hash_before = backend
+            let tree_hash_before = provider
                 .rand()
                 .random_vec(ciphersuite.hash_length())
                 .unwrap();
 
-            let confirmed_transcript_hash_before = backend
+            let confirmed_transcript_hash_before = provider
                 .rand()
                 .random_vec(ciphersuite.hash_length())
                 .unwrap();
 
             GroupContext::new(
                 ciphersuite,
-                GroupId::random(backend.rand()),
+                GroupId::random(provider.rand()),
                 random_u64(),
                 tree_hash_before,
                 confirmed_transcript_hash_before,
@@ -207,7 +207,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
             let credential_with_key_and_signer = generate_credential_with_key(
                 b"Alice".to_vec(),
                 ciphersuite.signature_algorithm(),
-                &backend,
+                &provider,
             );
 
             credential_with_key_and_signer.signer
@@ -223,7 +223,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
 
         input
             .calculate_confirmed_transcript_hash(
-                backend.crypto(),
+                provider.crypto(),
                 ciphersuite,
                 &interim_transcript_hash_before,
             )
@@ -233,7 +233,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
     // ... and the `confirmation_tag` ...
     let confirmation_tag = {
         confirmation_key
-            .tag(backend.crypto(), &confirmed_transcript_hash_after)
+            .tag(provider.crypto(), &confirmed_transcript_hash_after)
             .unwrap()
     };
 
@@ -245,7 +245,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
 
         input
             .calculate_interim_transcript_hash(
-                backend.crypto(),
+                provider.crypto(),
                 ciphersuite,
                 &confirmed_transcript_hash_after,
             )

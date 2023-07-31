@@ -18,7 +18,7 @@ See the [OpenMlsKeyStore trait](./traits.md#openmlskeystore) description for det
 but note that the key used to store, read, and delete values in the key store has
 to be provided as a byte slice.
 
-In the following examples, we have a `ciphersuite` and a `backend` (`OpenMlsCryptoProvider`).
+In the following examples, we have a `ciphersuite` and a `provider` (`OpenMlsCryptoProvider`).
 
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/key_store.rs:key_store_store}}

@@ -80,7 +80,7 @@ pub struct SecretTree {
 }
 
 #[cfg(test)]
-pub fn run_test_vector(test: SecretTree, backend: &impl OpenMlsProvider) -> Result<(), String> {
+pub fn run_test_vector(test: SecretTree, provider: &impl OpenMlsProvider) -> Result<(), String> {
     use openmls_traits::crypto::OpenMlsCrypto;
 
     use crate::{
@@ -92,7 +92,7 @@ pub fn run_test_vector(test: SecretTree, backend: &impl OpenMlsProvider) -> Resu
 
     let ciphersuite = Ciphersuite::try_from(test.cipher_suite).unwrap();
     // Skip unsupported ciphersuites.
-    if !backend
+    if !provider
         .crypto()
         .supported_ciphersuites()
         .contains(&ciphersuite)
@@ -111,11 +111,11 @@ pub fn run_test_vector(test: SecretTree, backend: &impl OpenMlsProvider) -> Resu
     let sender_data_nonce = hex_to_bytes(&test.sender_data.nonce);
 
     let my_sender_data_key = sender_data_secret
-        .derive_aead_key(backend.crypto(), &sender_data_ciphertext)
+        .derive_aead_key(provider.crypto(), &sender_data_ciphertext)
         .unwrap();
     assert_eq!(&sender_data_key, my_sender_data_key.as_slice());
     let my_sender_data_nonce = sender_data_secret
-        .derive_aead_nonce(ciphersuite, backend.crypto(), &sender_data_ciphertext)
+        .derive_aead_nonce(ciphersuite, provider.crypto(), &sender_data_ciphertext)
         .unwrap();
     assert_eq!(&sender_data_nonce, my_sender_data_nonce.as_slice());
 
@@ -147,7 +147,7 @@ pub fn run_test_vector(test: SecretTree, backend: &impl OpenMlsProvider) -> Resu
                 let handshake = secret_tree
                     .secret_for_encryption(
                         ciphersuite,
-                        backend.crypto(),
+                        provider.crypto(),
                         LeafNodeIndex::new(leaf_index as u32),
                         SecretType::HandshakeSecret,
                     )
@@ -155,7 +155,7 @@ pub fn run_test_vector(test: SecretTree, backend: &impl OpenMlsProvider) -> Resu
                 let application = secret_tree
                     .secret_for_encryption(
                         ciphersuite,
-                        backend.crypto(),
+                        provider.crypto(),
                         LeafNodeIndex::new(leaf_index as u32),
                         SecretType::ApplicationSecret,
                     )
@@ -187,15 +187,15 @@ pub fn run_test_vector(test: SecretTree, backend: &impl OpenMlsProvider) -> Resu
     Ok(())
 }
 
-#[apply(backends)]
-fn read_test_vectors_st(backend: &impl OpenMlsProvider) {
+#[apply(providers)]
+fn read_test_vectors_st(provider: &impl OpenMlsProvider) {
     let _ = pretty_env_logger::try_init();
     log::debug!("Reading test vectors ...");
 
     let tests: Vec<SecretTree> = read("test_vectors/secret-tree.json");
 
     for test_vector in tests {
-        match run_test_vector(test_vector, backend) {
+        match run_test_vector(test_vector, provider) {
             Ok(_) => {}
             Err(e) => panic!("Error while checking secret tree test vector.\n{e:?}"),
         }

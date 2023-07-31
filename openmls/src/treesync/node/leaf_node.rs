@@ -90,7 +90,7 @@ impl LeafNode {
     /// returns the HPKE key pair along with the new leaf node.
     /// The caller is responsible for storing the private key.
     pub(crate) fn new(
-        backend: &impl OpenMlsProvider,
+        provider: &impl OpenMlsProvider,
         signer: &impl Signer,
         new_leaf_node_params: NewLeafNodeParams,
     ) -> Result<(Self, EncryptionKeyPair), LibraryError> {
@@ -104,7 +104,7 @@ impl LeafNode {
         } = new_leaf_node_params;
 
         // Create a new encryption key pair.
-        let encryption_key_pair = EncryptionKeyPair::random(backend, config)?;
+        let encryption_key_pair = EncryptionKeyPair::random(provider, config)?;
 
         let leaf_node = Self::new_with_key(
             encryption_key_pair.public_key().clone(),
@@ -183,7 +183,7 @@ impl LeafNode {
         &self,
         config: CryptoConfig,
         tree_info_tbs: TreeInfoTbs,
-        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
     ) -> Result<Self, LeafNodeGenerationError<KeyStore::Error>> {
         Self::generate_update(
@@ -195,7 +195,7 @@ impl LeafNode {
             self.payload.capabilities.clone(),
             self.payload.extensions.clone(),
             tree_info_tbs,
-            backend,
+            provider,
             signer,
         )
     }
@@ -214,7 +214,7 @@ impl LeafNode {
         capabilities: Capabilities,
         extensions: Extensions,
         tree_info_tbs: TreeInfoTbs,
-        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
     ) -> Result<Self, LeafNodeGenerationError<KeyStore::Error>> {
         // Note that this function is supposed to be used in the public API only
@@ -229,11 +229,11 @@ impl LeafNode {
             tree_info_tbs,
         };
 
-        let (leaf_node, encryption_key_pair) = Self::new(backend, signer, new_leaf_node_params)?;
+        let (leaf_node, encryption_key_pair) = Self::new(provider, signer, new_leaf_node_params)?;
 
         // Store the encryption key pair in the key store.
         encryption_key_pair
-            .write_to_key_store(backend.key_store())
+            .write_to_key_store(provider.key_store())
             .map_err(LeafNodeGenerationError::KeyStoreError)?;
 
         Ok(leaf_node)
@@ -289,7 +289,7 @@ impl LeafNode {
         leaf_index: LeafNodeIndex,
         ciphersuite: Ciphersuite,
         protocol_version: ProtocolVersion,
-        backend: &impl OpenMlsProvider,
+        provider: &impl OpenMlsProvider,
         signer: &impl Signer,
     ) -> Result<EncryptionKeyPair, PublicTreeError> {
         if !self
@@ -311,7 +311,7 @@ impl LeafNode {
             .into());
         }
         let key_pair = EncryptionKeyPair::random(
-            backend,
+            provider,
             CryptoConfig {
                 ciphersuite,
                 version: protocol_version,

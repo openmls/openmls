@@ -281,7 +281,7 @@ impl PreSharedKeyId {
     /// Note: The nonce is not saved as it must be unique for each time it's being applied.
     pub fn write_to_key_store<KeyStore: OpenMlsKeyStore>(
         &self,
-        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         ciphersuite: Ciphersuite,
         psk: &[u8],
     ) -> Result<(), PskError> {
@@ -293,7 +293,7 @@ impl PreSharedKeyId {
             PskBundle { secret }
         };
 
-        backend
+        provider
             .key_store()
             .store(&keystore_id, &psk_bundle)
             .map_err(|_| PskError::KeyStore)

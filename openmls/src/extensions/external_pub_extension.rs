@@ -40,7 +40,7 @@ mod test {
     #[test]
     fn test_serialize_deserialize() {
         let tests = {
-            let backend = OpenMlsRustCrypto::default();
+            let provider = OpenMlsRustCrypto::default();
 
             let mut external_pub_extensions = Vec::new();
 
@@ -48,11 +48,11 @@ mod test {
                 let hpke_public_key = {
                     let ikm = Secret::random(
                         Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-                        backend.rand(),
+                        provider.rand(),
                         ProtocolVersion::default(),
                     )
                     .unwrap();
-                    let init_key = backend.crypto().derive_hpke_keypair(
+                    let init_key = provider.crypto().derive_hpke_keypair(
                         Ciphersuite::hpke_config(
                             &Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
                         ),

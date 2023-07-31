@@ -13,7 +13,7 @@ use crate::{
 impl CoreGroup {
     fn derive_epoch_secrets(
         &self,
-        backend: &impl OpenMlsProvider,
+        provider: &impl OpenMlsProvider,
         apply_proposals_values: ApplyProposalsValues,
         epoch_secrets: &GroupEpochSecrets,
         commit_secret: CommitSecret,
@@ -27,17 +27,17 @@ impl CoreGroup {
             // Decrypt the content and derive the external init secret.
             let external_priv = epoch_secrets
                 .external_secret()
-                .derive_external_keypair(backend.crypto(), self.ciphersuite())
+                .derive_external_keypair(provider.crypto(), self.ciphersuite())
                 .private;
             let init_secret = InitSecret::from_kem_output(
-                backend.crypto(),
+                provider.crypto(),
                 self.ciphersuite(),
                 self.version(),
                 &external_priv,
                 external_init_proposal.kem_output(),
             )?;
             JoinerSecret::new(
-                backend.crypto(),
+                provider.crypto(),
                 commit_secret,
                 &init_secret,
                 serialized_provisional_group_context,
@@ -45,7 +45,7 @@ impl CoreGroup {
             .map_err(LibraryError::unexpected_crypto_error)?
         } else {
             JoinerSecret::new(
-                backend.crypto(),
+                provider.crypto(),
                 commit_secret,
                 epoch_secrets.init_secret(),
                 serialized_provisional_group_context,
@@ -56,27 +56,27 @@ impl CoreGroup {
         // Prepare the PskSecret
         let psk_secret = {
             let psks = load_psks(
-                backend.key_store(),
+                provider.key_store(),
                 &self.resumption_psk_store,
                 &apply_proposals_values.presharedkeys,
             )?;
 
-            PskSecret::new(backend.crypto(), self.ciphersuite(), psks)?
+            PskSecret::new(provider.crypto(), self.ciphersuite(), psks)?
         };
 
         // Create key schedule
         let mut key_schedule = KeySchedule::init(
             self.ciphersuite(),
-            backend.crypto(),
+            provider.crypto(),
             &joiner_secret,
             psk_secret,
         )?;
 
         key_schedule
-            .add_context(backend.crypto(), serialized_provisional_group_context)
+            .add_context(provider.crypto(), serialized_provisional_group_context)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
         Ok(key_schedule
-            .epoch_secrets(backend.crypto())
+            .epoch_secrets(provider.crypto())
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?)
     }
 
@@ -121,7 +121,7 @@ impl CoreGroup {
         proposal_store: &ProposalStore,
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
-        backend: &impl OpenMlsProvider,
+        provider: &impl OpenMlsProvider,
     ) -> Result<StagedCommit, StageCommitError> {
         // Check that the sender is another member of the group
         if let Sender::Member(member) = mls_content.sender() {
@@ -134,7 +134,7 @@ impl CoreGroup {
 
         let (commit, proposal_queue, sender_index) =
             self.public_group
-                .validate_commit(mls_content, proposal_store, backend.crypto())?;
+                .validate_commit(mls_content, proposal_store, provider.crypto())?;
 
         // Create the provisional public group state (including the tree and
         // group context) and apply proposals.
@@ -145,7 +145,7 @@ impl CoreGroup {
 
         // Check if we were removed from the group
         if apply_proposals_values.self_removed {
-            let staged_diff = diff.into_staged_diff(backend.crypto(), ciphersuite)?;
+            let staged_diff = diff.into_staged_diff(provider.crypto(), ciphersuite)?;
             return Ok(StagedCommit::new(
                 proposal_queue,
                 StagedCommitState::PublicState(Box::new(staged_diff)),
@@ -158,10 +158,10 @@ impl CoreGroup {
         {
             // Update the public group
             // ValSem202: Path must be the right length
-            diff.apply_received_update_path(backend.crypto(), ciphersuite, sender_index, &path)?;
+            diff.apply_received_update_path(provider.crypto(), ciphersuite, sender_index, &path)?;
 
             // Update group context
-            diff.update_group_context(backend.crypto())?;
+            diff.update_group_context(provider.crypto())?;
 
             let decryption_keypairs: Vec<&EncryptionKeyPair> = old_epoch_keypairs
                 .iter()
@@ -171,7 +171,7 @@ impl CoreGroup {
             // ValSem203: Path secrets must decrypt correctly
             // ValSem204: Public keys from Path must be verified and match the private keys from the direct path
             let (new_keypairs, commit_secret) = diff.decrypt_path(
-                backend.crypto(),
+                provider.crypto(),
                 &decryption_keypairs,
                 self.own_leaf_index(),
                 sender_index,
@@ -205,7 +205,7 @@ impl CoreGroup {
             }
 
             // Even if there is no path, we have to update the group context.
-            diff.update_group_context(backend.crypto())?;
+            diff.update_group_context(provider.crypto())?;
 
             (
                 CommitSecret::zero_secret(ciphersuite, self.version()),
@@ -215,7 +215,7 @@ impl CoreGroup {
         };
 
         // Update the confirmed transcript hash before we compute the confirmation tag.
-        diff.update_confirmed_transcript_hash(backend.crypto(), mls_content)?;
+        diff.update_confirmed_transcript_hash(provider.crypto(), mls_content)?;
 
         let received_confirmation_tag = mls_content
             .confirmation_tag()
@@ -228,7 +228,7 @@ impl CoreGroup {
 
         let (provisional_group_secrets, provisional_message_secrets) = self
             .derive_epoch_secrets(
-                backend,
+                provider,
                 apply_proposals_values,
                 self.group_epoch_secrets(),
                 commit_secret,
@@ -245,7 +245,7 @@ impl CoreGroup {
         let own_confirmation_tag = provisional_message_secrets
             .confirmation_key()
             .tag(
-                backend.crypto(),
+                provider.crypto(),
                 diff.group_context().confirmed_transcript_hash(),
             )
             .map_err(LibraryError::unexpected_crypto_error)?;
@@ -259,9 +259,9 @@ impl CoreGroup {
             return Err(StageCommitError::ConfirmationTagMismatch);
         }
 
-        diff.update_interim_transcript_hash(ciphersuite, backend.crypto(), own_confirmation_tag)?;
+        diff.update_interim_transcript_hash(ciphersuite, provider.crypto(), own_confirmation_tag)?;
 
-        let staged_diff = diff.into_staged_diff(backend.crypto(), ciphersuite)?;
+        let staged_diff = diff.into_staged_diff(provider.crypto(), ciphersuite)?;
         let staged_commit_state =
             StagedCommitState::GroupMember(Box::new(MemberStagedCommitState::new(
                 provisional_group_secrets,
@@ -281,12 +281,12 @@ impl CoreGroup {
     /// might throw a `LibraryError`.
     pub(crate) fn merge_commit<KeyStore: OpenMlsKeyStore>(
         &mut self,
-        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         staged_commit: StagedCommit,
     ) -> Result<Option<MessageSecrets>, MergeCommitError<KeyStore::Error>> {
         // Get all keypairs from the old epoch, so we can later store the ones
         // that are still relevant in the new epoch.
-        let old_epoch_keypairs = self.read_epoch_keypairs(backend.key_store());
+        let old_epoch_keypairs = self.read_epoch_keypairs(provider.key_store());
         match staged_commit.state {
             StagedCommitState::PublicState(staged_diff) => {
                 self.public_group.merge_diff(*staged_diff);
@@ -335,14 +335,14 @@ impl CoreGroup {
                     .into());
                 }
                 // Store the relevant keys under the new epoch
-                self.store_epoch_keypairs(backend.key_store(), epoch_keypairs.as_slice())
+                self.store_epoch_keypairs(provider.key_store(), epoch_keypairs.as_slice())
                     .map_err(MergeCommitError::KeyStoreError)?;
                 // Delete the old keys.
-                self.delete_previous_epoch_keypairs(backend.key_store())
+                self.delete_previous_epoch_keypairs(provider.key_store())
                     .map_err(MergeCommitError::KeyStoreError)?;
                 if let Some(keypair) = state.new_leaf_keypair_option {
                     keypair
-                        .delete_from_key_store(backend.key_store())
+                        .delete_from_key_store(provider.key_store())
                         .map_err(MergeCommitError::KeyStoreError)?;
                 }
 
@@ -359,17 +359,17 @@ impl CoreGroup {
         mls_content: &AuthenticatedContent,
         proposal_store: &ProposalStore,
         own_leaf_nodes: &[LeafNode],
-        backend: &impl OpenMlsProvider,
+        provider: &impl OpenMlsProvider,
     ) -> Result<StagedCommit, StageCommitError> {
         let (old_epoch_keypairs, leaf_node_keypairs) =
-            self.read_decryption_keypairs(backend, own_leaf_nodes)?;
+            self.read_decryption_keypairs(provider, own_leaf_nodes)?;
 
         self.stage_commit(
             mls_content,
             proposal_store,
             old_epoch_keypairs,
             leaf_node_keypairs,
-            backend,
+            provider,
         )
     }
 }

@@ -10,12 +10,12 @@ use crate::{
 use openmls_rust_crypto::OpenMlsRustCrypto;
 
 // Tests the different variants of the RemoveOperation enum.
-#[apply(ciphersuites_and_backends)]
-fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
-    let _ = backend;
-    let alice_backend = OpenMlsRustCrypto::default();
-    let bob_backend = OpenMlsRustCrypto::default();
-    let charlie_backend = OpenMlsRustCrypto::default();
+#[apply(ciphersuites_and_providers)]
+fn test_remove_operation_variants(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+    let _ = provider;
+    let alice_provider = OpenMlsRustCrypto::default();
+    let bob_provider = OpenMlsRustCrypto::default();
+    let charlie_provider = OpenMlsRustCrypto::default();
 
     // We define two test cases, one where the member is removed by another member
     // and one where the member leaves the group on its own
@@ -31,32 +31,32 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
         let alice_credential_with_key_and_signer = generate_credential_with_key(
             "Alice".into(),
             ciphersuite.signature_algorithm(),
-            &alice_backend,
+            &alice_provider,
         );
 
         let bob_credential_with_key_and_signer = generate_credential_with_key(
             "Bob".into(),
             ciphersuite.signature_algorithm(),
-            &bob_backend,
+            &bob_provider,
         );
 
         let charlie_credential_with_key_and_signer = generate_credential_with_key(
             "Charlie".into(),
             ciphersuite.signature_algorithm(),
-            &charlie_backend,
+            &charlie_provider,
         );
 
         // Generate KeyPackages
         let bob_key_package = generate_key_package(
             ciphersuite,
             Extensions::empty(),
-            &bob_backend,
+            &bob_provider,
             bob_credential_with_key_and_signer.clone(),
         );
         let charlie_key_package = generate_key_package(
             ciphersuite,
             Extensions::empty(),
-            &charlie_backend,
+            &charlie_provider,
             charlie_credential_with_key_and_signer,
         );
 
@@ -67,7 +67,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
 
         // === Alice creates a group ===
         let mut alice_group = MlsGroup::new_with_group_id(
-            &alice_backend,
+            &alice_provider,
             &alice_credential_with_key_and_signer.signer,
             &mls_group_config,
             group_id,
@@ -79,19 +79,19 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
 
         let (_message, welcome, _group_info) = alice_group
             .add_members(
-                &alice_backend,
+                &alice_provider,
                 &alice_credential_with_key_and_signer.signer,
                 &[bob_key_package, charlie_key_package],
             )
             .expect("An unexpected error occurred.");
         alice_group
-            .merge_pending_commit(&alice_backend)
+            .merge_pending_commit(&alice_provider)
             .expect("error merging pending commit");
 
         let welcome = welcome.into_welcome().expect("Unexpected message type.");
 
         let mut bob_group = MlsGroup::new_from_welcome(
-            &bob_backend,
+            &bob_provider,
             &mls_group_config,
             welcome.clone(),
             Some(alice_group.export_ratchet_tree().into()),
@@ -99,7 +99,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
         .expect("Error creating group from Welcome");
 
         let mut charlie_group = MlsGroup::new_from_welcome(
-            &charlie_backend,
+            &charlie_provider,
             &mls_group_config,
             welcome,
             Some(alice_group.export_ratchet_tree().into()),
@@ -116,7 +116,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
             // Alice removes Bob
             TestCase::Remove => alice_group
                 .remove_members(
-                    &alice_backend,
+                    &alice_provider,
                     &alice_credential_with_key_and_signer.signer,
                     &[bob_index],
                 )
@@ -125,14 +125,14 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
             TestCase::Leave => {
                 // Bob leaves the group
                 let message = bob_group
-                    .leave_group(&bob_backend, &bob_credential_with_key_and_signer.signer)
+                    .leave_group(&bob_provider, &bob_credential_with_key_and_signer.signer)
                     .expect("Could not leave group.");
 
                 // Alice & Charlie store the pending proposal
                 for group in [&mut alice_group, &mut charlie_group] {
                     let processed_message = group
                         .process_message(
-                            &charlie_backend,
+                            &charlie_provider,
                             message.clone().into_protocol_message().unwrap(),
                         )
                         .expect("Could not process message.");
@@ -148,7 +148,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
                 // Alice commits to Bob's proposal
                 alice_group
                     .commit_to_pending_proposals(
-                        &alice_backend,
+                        &alice_provider,
                         &alice_credential_with_key_and_signer.signer,
                     )
                     .expect("An unexpected error occurred.")
@@ -194,7 +194,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
 
         let bob_processed_message = bob_group
             .process_message(
-                &bob_backend,
+                &bob_provider,
                 message.clone().into_protocol_message().unwrap(),
             )
             .expect("Could not process message.");
@@ -247,7 +247,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
         // === Remove operation from Charlie's perspective ===
 
         let charlie_processed_message = charlie_group
-            .process_message(&charlie_backend, message.into_protocol_message().unwrap())
+            .process_message(&charlie_provider, message.into_protocol_message().unwrap())
             .expect("Could not process message.");
 
         match charlie_processed_message.into_content() {

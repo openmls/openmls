@@ -8,29 +8,29 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{signatures::Signer, types::SignatureScheme, OpenMlsProvider};
 
 #[test]
-fn create_backend_rust_crypto() {
-    // ANCHOR: create_backend_rust_crypto
+fn create_provider_rust_crypto() {
+    // ANCHOR: create_provider_rust_crypto
     use openmls_rust_crypto::OpenMlsRustCrypto;
 
-    let backend = OpenMlsRustCrypto::default();
-    // ANCHOR_END: create_backend_rust_crypto
+    let provider = OpenMlsRustCrypto::default();
+    // ANCHOR_END: create_provider_rust_crypto
 
     // Suppress warning.
-    let _backend = backend;
+    let _provider = provider;
 }
 
 fn generate_credential(
     identity: Vec<u8>,
     credential_type: CredentialType,
     signature_algorithm: SignatureScheme,
-    backend: &impl OpenMlsProvider,
+    provider: &impl OpenMlsProvider,
 ) -> (CredentialWithKey, SignatureKeyPair) {
     // ANCHOR: create_basic_credential
     let credential = Credential::new(identity, credential_type).unwrap();
     // ANCHOR_END: create_basic_credential
     // ANCHOR: create_credential_keys
     let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
-    signature_keys.store(backend.key_store()).unwrap();
+    signature_keys.store(provider.key_store()).unwrap();
     // ANCHOR_END: create_credential_keys
 
     (
@@ -46,7 +46,7 @@ fn generate_key_package(
     ciphersuite: Ciphersuite,
     credential_with_key: CredentialWithKey,
     extensions: Extensions,
-    backend: &impl OpenMlsProvider,
+    provider: &impl OpenMlsProvider,
     signer: &impl Signer,
 ) -> KeyPackage {
     // ANCHOR: create_key_package
@@ -55,7 +55,7 @@ fn generate_key_package(
         .key_package_extensions(extensions)
         .build(
             CryptoConfig::with_default_version(ciphersuite),
-            backend,
+            provider,
             signer,
             credential_with_key,
         )
@@ -77,35 +77,35 @@ fn generate_key_package(
 ///  - Alice removes Charlie and adds Bob
 ///  - Bob leaves
 ///  - Test saving the group state
-#[apply(ciphersuites_and_backends)]
-fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
+#[apply(ciphersuites_and_providers)]
+fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // Generate credentials with keys
     let (alice_credential, alice_signature_keys) = generate_credential(
         "Alice".into(),
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
-        backend,
+        provider,
     );
 
     let (bob_credential, bob_signature_keys) = generate_credential(
         "Bob".into(),
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
-        backend,
+        provider,
     );
 
     let (charlie_credential, charlie_signature_keys) = generate_credential(
         "Charlie".into(),
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
-        backend,
+        provider,
     );
 
     let (dave_credential, dave_signature_keys) = generate_credential(
         "Dave".into(),
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
-        backend,
+        provider,
     );
 
     // Generate KeyPackages
@@ -113,7 +113,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         ciphersuite,
         bob_credential.clone(),
         Extensions::default(),
-        backend,
+        provider,
         &bob_signature_keys,
     );
 
@@ -123,7 +123,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         "delivery-service".into(),
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
-        backend,
+        provider,
     );
 
     // ANCHOR: mls_group_config_example
@@ -144,7 +144,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
     // ANCHOR: alice_create_group
     let mut alice_group = MlsGroup::new(
-        backend,
+        provider,
         &alice_signature_keys,
         &mls_group_config,
         alice_credential.clone(),
@@ -158,7 +158,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         let group_id = GroupId::from_slice(b"123e4567e89b");
 
         let mut alice_group = MlsGroup::new_with_group_id(
-            backend,
+            provider,
             &alice_signature_keys,
             &mls_group_config,
             group_id,
@@ -176,7 +176,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // === Alice adds Bob ===
     // ANCHOR: alice_adds_bob
     let (mls_message_out, welcome, group_info) = alice_group
-        .add_members(backend, &alice_signature_keys, &[bob_key_package])
+        .add_members(provider, &alice_signature_keys, &[bob_key_package])
         .expect("Could not add members.");
     // ANCHOR_END: alice_adds_bob
 
@@ -205,7 +205,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     }
 
     alice_group
-        .merge_pending_commit(backend)
+        .merge_pending_commit(provider)
         .expect("error merging pending commit");
 
     // Check that the group now has two members
@@ -218,7 +218,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
     // ANCHOR: bob_joins_with_welcome
     let mut bob_group = MlsGroup::new_from_welcome(
-        backend,
+        provider,
         &mls_group_config,
         welcome.into_welcome().expect("Unexpected message type."),
         None, // We use the ratchet tree extension, so we don't provide a ratchet tree here
@@ -228,7 +228,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
     // ANCHOR: alice_exports_group_info
     let verifiable_group_info = alice_group
-        .export_group_info(backend.crypto(), &alice_signature_keys, true)
+        .export_group_info(provider.crypto(), &alice_signature_keys, true)
         .expect("Cannot export group info")
         .into_verifiable_group_info()
         .expect("Could not get group info");
@@ -236,7 +236,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
     // ANCHOR: charlie_joins_external_commit
     let (mut dave_group, _out, _group_info) = MlsGroup::join_by_external_commit(
-        backend,
+        provider,
         &dave_signature_keys,
         None,
         verifiable_group_info,
@@ -246,7 +246,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     )
     .expect("Error joining from external commit");
     dave_group
-        .merge_pending_commit(backend)
+        .merge_pending_commit(provider)
         .expect("Cannot merge commit");
     // ANCHOR_END: charlie_joins_external_commit
 
@@ -263,7 +263,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // ANCHOR: create_application_message
     let message_alice = b"Hi, I'm Alice!";
     let mls_message_out = alice_group
-        .create_message(backend, &alice_signature_keys, message_alice)
+        .create_message(provider, &alice_signature_keys, message_alice)
         .expect("Error creating application message.");
     // ANCHOR_END: create_application_message
 
@@ -281,7 +281,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // ANCHOR: process_message
     let protocol_message: ProtocolMessage = mls_message.into();
     let processed_message = bob_group
-        .process_message(backend, protocol_message)
+        .process_message(provider, protocol_message)
         .expect("Could not process message.");
     // ANCHOR_END: process_message
 
@@ -301,13 +301,13 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // === Bob updates and commits ===
     // ANCHOR: self_update
     let (mls_message_out, welcome_option, _group_info) = bob_group
-        .self_update(backend, &bob_signature_keys)
+        .self_update(provider, &bob_signature_keys)
         .expect("Could not update own key package.");
     // ANCHOR_END: self_update
 
     let alice_processed_message = alice_group
         .process_message(
-            backend,
+            provider,
             mls_message_out
                 .into_protocol_message()
                 .expect("Unexpected message type"),
@@ -320,14 +320,14 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     {
         // Merge staged Commit
         alice_group
-            .merge_staged_commit(backend, *staged_commit)
+            .merge_staged_commit(provider, *staged_commit)
             .expect("Error merging staged commit.");
     } else {
         unreachable!("Expected a StagedCommit.");
     }
 
     bob_group
-        .merge_pending_commit(backend)
+        .merge_pending_commit(provider)
         .expect("error merging pending commit");
 
     // Check we didn't receive a Welcome message
@@ -335,8 +335,8 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
     // Check that both groups have the same state
     assert_eq!(
-        alice_group.export_secret(backend.crypto(), "", &[], 32),
-        bob_group.export_secret(backend.crypto(), "", &[], 32)
+        alice_group.export_secret(provider.crypto(), "", &[], 32),
+        bob_group.export_secret(provider.crypto(), "", &[], 32)
     );
 
     // Make sure that both groups have the same public tree
@@ -349,7 +349,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // ANCHOR: propose_self_update
     let (mls_message_out, _proposal_ref) = alice_group
         .propose_self_update(
-            backend,
+            provider,
             &alice_signature_keys,
             None, // We don't provide a leaf node, it will be created on the fly instead
         )
@@ -358,7 +358,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
     let bob_processed_message = bob_group
         .process_message(
-            backend,
+            provider,
             mls_message_out
                 .into_protocol_message()
                 .expect("Unexpected message type"),
@@ -393,7 +393,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
     // ANCHOR: commit_to_proposals
     let (mls_message_out, welcome_option, _group_info) = alice_group
-        .commit_to_pending_proposals(backend, &alice_signature_keys)
+        .commit_to_pending_proposals(provider, &alice_signature_keys)
         .expect("Could not commit to pending proposals.");
     // ANCHOR_END: commit_to_proposals
 
@@ -402,7 +402,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
     let bob_processed_message = bob_group
         .process_message(
-            backend,
+            provider,
             mls_message_out
                 .into_protocol_message()
                 .expect("Unexpected message type"),
@@ -410,7 +410,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         .expect("Could not process message.");
 
     alice_group
-        .merge_pending_commit(backend)
+        .merge_pending_commit(provider)
         .expect("error merging pending commit");
 
     // Check that we received the correct message
@@ -423,7 +423,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         let authenticator_alice = alice_group.epoch_authenticator();
         assert_eq!(authenticator_bob.as_slice(), authenticator_alice.as_slice());
         bob_group
-            .merge_staged_commit(backend, *staged_commit)
+            .merge_staged_commit(provider, *staged_commit)
             .expect("Error merging staged commit.");
     } else {
         unreachable!("Expected a StagedCommit.");
@@ -431,8 +431,8 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
     // Check that both groups have the same state
     assert_eq!(
-        alice_group.export_secret(backend.crypto(), "", &[], 32),
-        bob_group.export_secret(backend.crypto(), "", &[], 32)
+        alice_group.export_secret(provider.crypto(), "", &[], 32),
+        bob_group.export_secret(provider.crypto(), "", &[], 32)
     );
 
     // Make sure that both groups have the same public tree
@@ -446,24 +446,24 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         ciphersuite,
         charlie_credential.clone(),
         Extensions::default(),
-        backend,
+        provider,
         &charlie_signature_keys,
     );
 
     let (queued_message, welcome, _group_info) = bob_group
-        .add_members(backend, &bob_signature_keys, &[charlie_key_package])
+        .add_members(provider, &bob_signature_keys, &[charlie_key_package])
         .unwrap();
 
     let alice_processed_message = alice_group
         .process_message(
-            backend,
+            provider,
             queued_message
                 .into_protocol_message()
                 .expect("Unexpected message type"),
         )
         .expect("Could not process message.");
     bob_group
-        .merge_pending_commit(backend)
+        .merge_pending_commit(provider)
         .expect("error merging pending commit");
 
     // Merge Commit
@@ -471,14 +471,14 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         alice_processed_message.into_content()
     {
         alice_group
-            .merge_staged_commit(backend, *staged_commit)
+            .merge_staged_commit(provider, *staged_commit)
             .expect("Error merging staged commit.");
     } else {
         unreachable!("Expected a StagedCommit.");
     }
 
     let mut charlie_group = MlsGroup::new_from_welcome(
-        backend,
+        provider,
         &mls_group_config,
         welcome.into_welcome().expect("Unexpected message type."),
         Some(bob_group.export_ratchet_tree().into()),
@@ -505,12 +505,12 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // === Charlie sends a message to the group ===
     let message_charlie = b"Hi, I'm Charlie!";
     let queued_message = charlie_group
-        .create_message(backend, &charlie_signature_keys, message_charlie)
+        .create_message(provider, &charlie_signature_keys, message_charlie)
         .expect("Error creating application message");
 
     let _alice_processed_message = alice_group
         .process_message(
-            backend,
+            provider,
             queued_message
                 .clone()
                 .into_protocol_message()
@@ -519,7 +519,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         .expect("Could not process message.");
     let _bob_processed_message = bob_group
         .process_message(
-            backend,
+            provider,
             queued_message
                 .into_protocol_message()
                 .expect("Unexpected message type"),
@@ -528,12 +528,12 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
     // === Charlie updates and commits ===
     let (queued_message, welcome_option, _group_info) = charlie_group
-        .self_update(backend, &charlie_signature_keys)
+        .self_update(provider, &charlie_signature_keys)
         .unwrap();
 
     let alice_processed_message = alice_group
         .process_message(
-            backend,
+            provider,
             queued_message
                 .clone()
                 .into_protocol_message()
@@ -542,14 +542,14 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         .expect("Could not process message.");
     let bob_processed_message = bob_group
         .process_message(
-            backend,
+            provider,
             queued_message
                 .into_protocol_message()
                 .expect("Unexpected message type"),
         )
         .expect("Could not process message.");
     charlie_group
-        .merge_pending_commit(backend)
+        .merge_pending_commit(provider)
         .expect("error merging pending commit");
 
     // Merge Commit
@@ -557,7 +557,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         alice_processed_message.into_content()
     {
         alice_group
-            .merge_staged_commit(backend, *staged_commit)
+            .merge_staged_commit(provider, *staged_commit)
             .expect("Error merging staged commit.");
     } else {
         unreachable!("Expected a StagedCommit.");
@@ -568,7 +568,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         bob_processed_message.into_content()
     {
         bob_group
-            .merge_staged_commit(backend, *staged_commit)
+            .merge_staged_commit(provider, *staged_commit)
             .expect("Error merging staged commit.");
     } else {
         unreachable!("Expected a StagedCommit.");
@@ -579,12 +579,12 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
     // Check that all groups have the same state
     assert_eq!(
-        alice_group.export_secret(backend.crypto(), "", &[], 32),
-        bob_group.export_secret(backend.crypto(), "", &[], 32)
+        alice_group.export_secret(provider.crypto(), "", &[], 32),
+        bob_group.export_secret(provider.crypto(), "", &[], 32)
     );
     assert_eq!(
-        alice_group.export_secret(backend.crypto(), "", &[], 32),
-        charlie_group.export_secret(backend.crypto(), "", &[], 32)
+        alice_group.export_secret(provider.crypto(), "", &[], 32),
+        charlie_group.export_secret(provider.crypto(), "", &[], 32)
     );
 
     // Make sure that all groups have the same public tree
@@ -623,7 +623,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // === Charlie removes Bob ===
     // ANCHOR: charlie_removes_bob
     let (mls_message_out, welcome_option, _group_info) = charlie_group
-        .remove_members(backend, &charlie_signature_keys, &[bob_member.index])
+        .remove_members(provider, &charlie_signature_keys, &[bob_member.index])
         .expect("Could not remove Bob from group.");
     // ANCHOR_END: charlie_removes_bob
 
@@ -632,7 +632,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
     let alice_processed_message = alice_group
         .process_message(
-            backend,
+            provider,
             mls_message_out
                 .clone()
                 .into_protocol_message()
@@ -656,7 +656,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
     let bob_processed_message = bob_group
         .process_message(
-            backend,
+            provider,
             mls_message_out
                 .into_protocol_message()
                 .expect("Unexpected message type"),
@@ -664,7 +664,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         .expect("Could not process message.");
     let charlies_leaf_index = charlie_group.own_leaf_index();
     charlie_group
-        .merge_pending_commit(backend)
+        .merge_pending_commit(provider)
         .expect("error merging pending commit");
 
     // Check that we receive the correct proposal for Alice
@@ -689,7 +689,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         ));
         // Merge staged commit
         alice_group
-            .merge_staged_commit(backend, *staged_commit)
+            .merge_staged_commit(provider, *staged_commit)
             .expect("Error merging staged commit.");
     }
     // ANCHOR_END: inspect_staged_commit
@@ -725,7 +725,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
         // Merge staged Commit
         bob_group
-            .merge_staged_commit(backend, *staged_commit)
+            .merge_staged_commit(provider, *staged_commit)
             .expect("Error merging staged commit.");
     } else {
         unreachable!("Expected a StagedCommit.");
@@ -759,7 +759,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
     // Check that Bob can no longer send messages
     assert!(bob_group
-        .create_message(backend, &bob_signature_keys, b"Should not go through")
+        .create_message(provider, &bob_signature_keys, b"Should not go through")
         .is_err());
 
     // === Alice removes Charlie and re-adds Bob ===
@@ -769,7 +769,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         ciphersuite,
         bob_credential.clone(),
         Extensions::default(),
-        backend,
+        provider,
         &bob_signature_keys,
     );
 
@@ -777,7 +777,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // ANCHOR: propose_remove
     let (mls_message_out, _proposal_ref) = alice_group
         .propose_remove_member(
-            backend,
+            provider,
             &alice_signature_keys,
             charlie_group.own_leaf_index(),
         )
@@ -786,7 +786,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
     let charlie_processed_message = charlie_group
         .process_message(
-            backend,
+            provider,
             mls_message_out
                 .into_protocol_message()
                 .expect("Unexpected message type"),
@@ -818,7 +818,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // Create AddProposal and remove it
     // ANCHOR: rollback_proposal_by_ref
     let (_mls_message_out, proposal_ref) = alice_group
-        .propose_add_member(backend, &alice_signature_keys, &bob_key_package)
+        .propose_add_member(provider, &alice_signature_keys, &bob_key_package)
         .expect("Could not create proposal to add Bob");
     alice_group
         .remove_pending_proposal(proposal_ref)
@@ -828,13 +828,13 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // Create AddProposal and process it
     // ANCHOR: propose_add
     let (mls_message_out, _proposal_ref) = alice_group
-        .propose_add_member(backend, &alice_signature_keys, &bob_key_package)
+        .propose_add_member(provider, &alice_signature_keys, &bob_key_package)
         .expect("Could not create proposal to add Bob");
     // ANCHOR_END: propose_add
 
     let charlie_processed_message = charlie_group
         .process_message(
-            backend,
+            provider,
             mls_message_out
                 .into_protocol_message()
                 .expect("Unexpected message type"),
@@ -872,12 +872,12 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
     // Commit to the proposals and process it
     let (queued_message, welcome_option, _group_info) = alice_group
-        .commit_to_pending_proposals(backend, &alice_signature_keys)
+        .commit_to_pending_proposals(provider, &alice_signature_keys)
         .expect("Could not flush proposals");
 
     let charlie_processed_message = charlie_group
         .process_message(
-            backend,
+            provider,
             queued_message
                 .into_protocol_message()
                 .expect("Unexpected message type"),
@@ -886,7 +886,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
     // Merge Commit
     alice_group
-        .merge_pending_commit(backend)
+        .merge_pending_commit(provider)
         .expect("error merging pending commit");
 
     // Merge Commit
@@ -894,7 +894,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         charlie_processed_message.into_content()
     {
         charlie_group
-            .merge_staged_commit(backend, *staged_commit)
+            .merge_staged_commit(provider, *staged_commit)
             .expect("Error merging staged commit.");
     } else {
         unreachable!("Expected a StagedCommit.");
@@ -910,7 +910,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
     // Bob creates a new group
     let mut bob_group = MlsGroup::new_from_welcome(
-        backend,
+        provider,
         &mls_group_config,
         welcome_option
             .expect("Welcome was not returned")
@@ -939,12 +939,12 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // === Alice sends a message to the group ===
     let message_alice = b"Hi, I'm Alice!";
     let queued_message = alice_group
-        .create_message(backend, &alice_signature_keys, message_alice)
+        .create_message(provider, &alice_signature_keys, message_alice)
         .expect("Error creating application message");
 
     let bob_processed_message = bob_group
         .process_message(
-            backend,
+            provider,
             queued_message
                 .into_protocol_message()
                 .expect("Unexpected message type"),
@@ -988,13 +988,13 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
     // ANCHOR: leaving
     let queued_message = bob_group
-        .leave_group(backend, &bob_signature_keys)
+        .leave_group(provider, &bob_signature_keys)
         .expect("Could not leave group");
     // ANCHOR_END: leaving
 
     let alice_processed_message = alice_group
         .process_message(
-            backend,
+            provider,
             queued_message
                 .into_protocol_message()
                 .expect("Unexpected message type"),
@@ -1013,14 +1013,14 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
 
     // Should fail because you cannot remove yourself from a group
     assert_eq!(
-        bob_group.commit_to_pending_proposals(backend, &bob_signature_keys),
+        bob_group.commit_to_pending_proposals(provider, &bob_signature_keys),
         Err(CommitToPendingProposalsError::CreateCommitError(
             CreateCommitError::CannotRemoveSelf
         ))
     );
 
     let (queued_message, _welcome_option, _group_info) = alice_group
-        .commit_to_pending_proposals(backend, &alice_signature_keys)
+        .commit_to_pending_proposals(provider, &alice_signature_keys)
         .expect("Could not commit to proposals.");
 
     // Check that Bob's group is still active
@@ -1048,12 +1048,12 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     }
 
     alice_group
-        .merge_pending_commit(backend)
+        .merge_pending_commit(provider)
         .expect("Could not merge Commit.");
 
     let bob_processed_message = bob_group
         .process_message(
-            backend,
+            provider,
             queued_message
                 .into_protocol_message()
                 .expect("Unexpected message type"),
@@ -1081,7 +1081,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         assert!(staged_commit.self_removed());
         // Merge staged Commit
         bob_group
-            .merge_staged_commit(backend, *staged_commit)
+            .merge_staged_commit(provider, *staged_commit)
             .expect("Error merging staged commit.");
     } else {
         unreachable!("Expected a StagedCommit.");
@@ -1104,7 +1104,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         ciphersuite,
         bob_credential.clone(),
         Extensions::default(),
-        backend,
+        provider,
         &bob_signature_keys,
     );
 
@@ -1121,7 +1121,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // ANCHOR: decrypt_external_join_proposal
     let alice_processed_message = alice_group
         .process_message(
-            backend,
+            provider,
             proposal
                 .into_protocol_message()
                 .expect("Unexpected message type."),
@@ -1131,16 +1131,16 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         ProcessedMessageContent::ExternalJoinProposalMessage(proposal) => {
             alice_group.store_pending_proposal(*proposal);
             let (_commit, welcome, _group_info) = alice_group
-                .commit_to_pending_proposals(backend, &alice_signature_keys)
+                .commit_to_pending_proposals(provider, &alice_signature_keys)
                 .expect("Could not commit");
             assert_eq!(alice_group.members().count(), 1);
             alice_group
-                .merge_pending_commit(backend)
+                .merge_pending_commit(provider)
                 .expect("Could not merge commit");
             assert_eq!(alice_group.members().count(), 2);
 
             let bob_group = MlsGroup::new_from_welcome(
-                backend,
+                provider,
                 &mls_group_config,
                 welcome
                     .unwrap()
@@ -1181,7 +1181,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     // ANCHOR: decrypt_external_join_proposal
     let alice_processed_message = alice_group
         .process_message(
-            backend,
+            provider,
             proposal
                 .into_protocol_message()
                 .expect("Unexpected message type."),
@@ -1192,10 +1192,10 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
             alice_group.store_pending_proposal(*proposal);
             assert_eq!(alice_group.members().count(), 2);
             alice_group
-                .commit_to_pending_proposals(backend, &alice_signature_keys)
+                .commit_to_pending_proposals(provider, &alice_signature_keys)
                 .expect("Could not commit");
             alice_group
-                .merge_pending_commit(backend)
+                .merge_pending_commit(provider)
                 .expect("Could not merge commit");
             assert_eq!(alice_group.members().count(), 1);
         }
@@ -1210,22 +1210,22 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         ciphersuite,
         bob_credential,
         Extensions::default(),
-        backend,
+        provider,
         &bob_signature_keys,
     );
 
     // Add Bob to the group
     let (_queued_message, welcome, _group_info) = alice_group
-        .add_members(backend, &alice_signature_keys, &[bob_key_package])
+        .add_members(provider, &alice_signature_keys, &[bob_key_package])
         .expect("Could not add Bob");
 
     // Merge Commit
     alice_group
-        .merge_pending_commit(backend)
+        .merge_pending_commit(provider)
         .expect("error merging pending commit");
 
     let mut bob_group = MlsGroup::new_from_welcome(
-        backend,
+        provider,
         &mls_group_config,
         welcome.into_welcome().expect("Unexpected message type."),
         Some(alice_group.export_ratchet_tree().into()),
@@ -1233,8 +1233,8 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     .expect("Could not create group from Welcome");
 
     assert_eq!(
-        alice_group.export_secret(backend.crypto(), "before load", &[], 32),
-        bob_group.export_secret(backend.crypto(), "before load", &[], 32)
+        alice_group.export_secret(provider.crypto(), "before load", &[], 32),
+        bob_group.export_secret(provider.crypto(), "before load", &[], 32)
     );
 
     // Check that the state flag gets reset when saving
@@ -1242,24 +1242,24 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
     //save(&mut bob_group);
 
     bob_group
-        .save(backend.key_store())
+        .save(provider.key_store())
         .expect("Could not write group state to file");
 
     // Check that the state flag gets reset when saving
     assert_eq!(bob_group.state_changed(), InnerState::Persisted);
 
     let bob_group =
-        MlsGroup::load(&group_id, backend.key_store()).expect("Could not load group from file");
+        MlsGroup::load(&group_id, provider.key_store()).expect("Could not load group from file");
 
     // Make sure the state is still the same
     assert_eq!(
-        alice_group.export_secret(backend.crypto(), "after load", &[], 32),
-        bob_group.export_secret(backend.crypto(), "after load", &[], 32)
+        alice_group.export_secret(provider.crypto(), "after load", &[], 32),
+        bob_group.export_secret(provider.crypto(), "after load", &[], 32)
     );
 }
 
-#[apply(ciphersuites_and_backends)]
-fn test_empty_input_errors(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
+#[apply(ciphersuites_and_providers)]
+fn test_empty_input_errors(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Generate credentials with keys
@@ -1267,7 +1267,7 @@ fn test_empty_input_errors(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvi
         "Alice".into(),
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
-        backend,
+        provider,
     );
 
     // Define the MlsGroup configuration
@@ -1275,7 +1275,7 @@ fn test_empty_input_errors(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvi
 
     // === Alice creates a group ===
     let mut alice_group = MlsGroup::new_with_group_id(
-        backend,
+        provider,
         &alice_signature_keys,
         &mls_group_config,
         group_id,
@@ -1285,13 +1285,13 @@ fn test_empty_input_errors(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvi
 
     assert_eq!(
         alice_group
-            .add_members(backend, &alice_signature_keys, &[])
+            .add_members(provider, &alice_signature_keys, &[])
             .expect_err("No EmptyInputError when trying to pass an empty slice to `add_members`."),
         AddMembersError::EmptyInput(EmptyInputError::AddMembers)
     );
     assert_eq!(
         alice_group
-            .remove_members(backend, &alice_signature_keys, &[])
+            .remove_members(provider, &alice_signature_keys, &[])
             .expect_err(
                 "No EmptyInputError when trying to pass an empty slice to `remove_members`."
             ),

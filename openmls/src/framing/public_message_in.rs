@@ -107,7 +107,7 @@ impl PublicMessageIn {
     #[cfg(test)]
     pub(crate) fn set_membership_tag(
         &mut self,
-        backend: &impl openmls_traits::OpenMlsProvider,
+        provider: &impl openmls_traits::OpenMlsProvider,
         membership_key: &MembershipKey,
         serialized_context: &[u8],
     ) -> Result<(), LibraryError> {
@@ -120,7 +120,7 @@ impl PublicMessageIn {
         )
         .map_err(LibraryError::missing_bound_check)?;
         let tbm_payload = AuthenticatedContentTbm::new(&tbs_payload, &self.auth)?;
-        let membership_tag = membership_key.tag_message(backend.crypto(), tbm_payload)?;
+        let membership_tag = membership_key.tag_message(provider.crypto(), tbm_payload)?;
 
         self.membership_tag = Some(membership_tag);
         Ok(())

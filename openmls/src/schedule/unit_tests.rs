@@ -11,17 +11,17 @@ use crate::{
     versions::ProtocolVersion,
 };
 
-#[apply(ciphersuites_and_backends)]
-fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
+#[apply(ciphersuites_and_providers)]
+fn test_psks(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // Create a new PSK secret from multiple PSKs.
-    let prng = backend.rand();
+    let prng = provider.rand();
 
     let psk_ids = (0..33)
         .map(|_| {
             let id = prng.random_vec(12).expect("An unexpected error occurred.");
             PreSharedKeyId::new(
                 ciphersuite,
-                backend.rand(),
+                provider.rand(),
                 Psk::External(ExternalPsk::new(id)),
             )
             .expect("An unexpected error occurred.")
@@ -39,15 +39,15 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsProvider) {
         .zip(psk_ids.clone())
     {
         psk_id
-            .write_to_key_store(backend, ciphersuite, secret.as_slice())
+            .write_to_key_store(provider, ciphersuite, secret.as_slice())
             .unwrap();
     }
 
     let _psk_secret = {
         let resumption_psk_store = ResumptionPskStore::new(1024);
 
-        let psks = load_psks(backend.key_store(), &resumption_psk_store, &psk_ids).unwrap();
+        let psks = load_psks(provider.key_store(), &resumption_psk_store, &psk_ids).unwrap();
 
-        PskSecret::new(backend.crypto(), ciphersuite, psks).unwrap()
+        PskSecret::new(provider.crypto(), ciphersuite, psks).unwrap()
     };
 }

@@ -22,23 +22,23 @@ impl MlsGroup {
     /// This function removes the private key corresponding to the
     /// `key_package` from the key store.
     pub fn new<KeyStore: OpenMlsKeyStore>(
-        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         mls_group_config: &MlsGroupConfig,
         credential_with_key: CredentialWithKey,
     ) -> Result<Self, NewGroupError<KeyStore::Error>> {
         Self::new_with_group_id(
-            backend,
+            provider,
             signer,
             mls_group_config,
-            GroupId::random(backend.rand()),
+            GroupId::random(provider.rand()),
             credential_with_key,
         )
     }
 
     /// Creates a new group with a given group ID with the creator as the only member.
     pub fn new_with_group_id<KeyStore: OpenMlsKeyStore>(
-        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         mls_group_config: &MlsGroupConfig,
         group_id: GroupId,
@@ -59,7 +59,7 @@ impl MlsGroup {
         .with_external_senders(mls_group_config.external_senders.clone())
         .with_max_past_epoch_secrets(mls_group_config.max_past_epochs)
         .with_lifetime(*mls_group_config.lifetime())
-        .build(backend, signer)
+        .build(provider, signer)
         .map_err(|e| match e {
             CoreGroupBuildError::LibraryError(e) => e.into(),
             // We don't support PSKs yet
@@ -104,7 +104,7 @@ impl MlsGroup {
     /// can be found.
     // TODO: #1326 This should take an MlsMessage rather than a Welcome message.
     pub fn new_from_welcome<KeyStore: OpenMlsKeyStore>(
-        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         mls_group_config: &MlsGroupConfig,
         welcome: Welcome,
         ratchet_tree: Option<RatchetTreeIn>,
@@ -116,7 +116,7 @@ impl MlsGroup {
             .iter()
             .find_map(|egs| {
                 let hash_ref = egs.new_member().as_slice().to_vec();
-                backend
+                provider
                     .key_store()
                     .read(&hash_ref)
                     .map(|kp: KeyPackage| (kp, hash_ref))
@@ -124,7 +124,7 @@ impl MlsGroup {
             .ok_or(WelcomeError::NoMatchingKeyPackage)?;
 
         // TODO #751
-        let private_key = backend
+        let private_key = provider
             .key_store()
             .read::<HpkePrivateKey>(key_package.hpke_init_key().as_slice())
             .ok_or(WelcomeError::NoMatchingKeyPackage)?;
@@ -137,14 +137,14 @@ impl MlsGroup {
         // key store
         key_package_bundle
             .key_package
-            .delete(backend)
+            .delete(provider)
             .map_err(WelcomeError::KeyStoreError)?;
 
         let mut group = CoreGroup::new_from_welcome(
             welcome,
             ratchet_tree,
             key_package_bundle,
-            backend,
+            provider,
             resumption_psk_store,
         )?;
         group.set_max_past_epochs(mls_group_config.max_past_epochs);
@@ -177,7 +177,7 @@ impl MlsGroup {
     /// Note: If there is a group member in the group with the same identity as us,
     /// this will create a remove proposal.
     pub fn join_by_external_commit(
-        backend: &impl OpenMlsProvider,
+        provider: &impl OpenMlsProvider,
         signer: &impl Signer,
         ratchet_tree: Option<RatchetTreeIn>,
         verifiable_group_info: VerifiableGroupInfo,
@@ -195,7 +195,7 @@ impl MlsGroup {
             .credential_with_key(credential_with_key)
             .build();
         let (mut group, create_commit_result) = CoreGroup::join_by_external_commit(
-            backend,
+            provider,
             signer,
             params,
             ratchet_tree,

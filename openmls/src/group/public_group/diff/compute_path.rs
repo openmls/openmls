@@ -37,7 +37,7 @@ pub(crate) struct PathComputationResult {
 impl<'a> PublicGroupDiff<'a> {
     pub(crate) fn compute_path<KeyStore: OpenMlsKeyStore>(
         &mut self,
-        backend: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         leaf_index: LeafNodeIndex,
         exclusion_list: HashSet<&LeafNodeIndex>,
         commit_type: CommitType,
@@ -63,7 +63,7 @@ impl<'a> PublicGroupDiff<'a> {
                     ciphersuite,
                     version,
                 },
-                backend,
+                provider,
                 signer,
                 credential_with_key.ok_or(CreateCommitError::MissingCredential)?,
             )?;
@@ -84,7 +84,7 @@ impl<'a> PublicGroupDiff<'a> {
                 leaf_index,
                 ciphersuite,
                 version,
-                backend,
+                provider,
                 signer,
             )?;
             vec![encryption_keypair]
@@ -94,14 +94,14 @@ impl<'a> PublicGroupDiff<'a> {
         // generated new leaf.
         let (plain_path, mut new_parent_keypairs, commit_secret) = self
             .diff
-            .apply_own_update_path(backend, signer, ciphersuite, group_id, leaf_index)?;
+            .apply_own_update_path(provider, signer, ciphersuite, group_id, leaf_index)?;
 
         new_keypairs.append(&mut new_parent_keypairs);
 
         // After we've processed the path, we can update the group context s.t.
         // the updated group context is used for path secret encryption. Note
         // that we have not yet updated the confirmed transcript hash.
-        self.update_group_context(backend.crypto())?;
+        self.update_group_context(provider.crypto())?;
 
         let serialized_group_context = self
             .group_context()
@@ -110,7 +110,7 @@ impl<'a> PublicGroupDiff<'a> {
 
         // Encrypt the path to the correct recipient nodes.
         let encrypted_path = self.diff.encrypt_path(
-            backend.crypto(),
+            provider.crypto(),
             ciphersuite,
             &plain_path,
             &serialized_group_context,
