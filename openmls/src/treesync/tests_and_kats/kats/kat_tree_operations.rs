@@ -39,6 +39,7 @@ use crate::{
 
 #[derive(Deserialize)]
 struct TestElement {
+    cipher_suite: u16,
     #[serde(with = "hex")]
     tree_before: Vec<u8>,
     #[serde(with = "hex")]
@@ -53,7 +54,7 @@ struct TestElement {
 }
 
 fn run_test_vector(test: TestElement, backend: &impl OpenMlsCryptoProvider) -> Result<(), String> {
-    let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+    let ciphersuite = Ciphersuite::try_from(test.cipher_suite).unwrap();
 
     let group_id = GroupId::random(backend);
 
