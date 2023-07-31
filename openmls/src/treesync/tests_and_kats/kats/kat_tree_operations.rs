@@ -112,7 +112,7 @@ fn run_test_vector(test: TestElement, provider: &impl OpenMlsProvider) -> Result
     let mut diff = group.empty_diff();
 
     diff.apply_proposals(&proposal_queue, None).unwrap();
-    diff.update_group_context(backend).unwrap();
+    diff.update_group_context(provider.crypto()).unwrap();
 
     let staged_diff = diff
         .into_staged_diff(provider.crypto(), ciphersuite)

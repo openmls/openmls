@@ -923,8 +923,8 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
     }
 }
 
-#[apply(ciphersuites_and_backends)]
-fn addition_order(ciphersuite: Ciphersuite, provider: &impl OpenMlsCryptoProvider) {
+#[apply(ciphersuites_and_providers)]
+fn addition_order(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
         let group_id = GroupId::from_slice(b"Test Group");
         // Generate credentials with keys
@@ -1020,7 +1020,7 @@ fn addition_order(ciphersuite: Ciphersuite, provider: &impl OpenMlsCryptoProvide
         }
 
         alice_group
-            .merge_pending_commit(backend)
+            .merge_pending_commit(provider)
             .expect("error merging pending commit");
 
         // Check that the members got added in the same order as the KeyPackages
