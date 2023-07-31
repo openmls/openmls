@@ -39,6 +39,7 @@ use crate::{
 
 #[derive(Deserialize)]
 struct TestElement {
+    cipher_suite: u16,
     #[serde(with = "hex")]
     tree_before: Vec<u8>,
     #[serde(with = "hex")]
@@ -46,10 +47,14 @@ struct TestElement {
     proposal_sender: u32,
     #[serde(with = "hex")]
     tree_after: Vec<u8>,
+    #[serde(with = "hex")]
+    tree_hash_after: Vec<u8>,
+    #[serde(with = "hex")]
+    tree_hash_before: Vec<u8>,
 }
 
 fn run_test_vector(test: TestElement, provider: &impl OpenMlsProvider) -> Result<(), String> {
-    let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+    let ciphersuite = Ciphersuite::try_from(test.cipher_suite).unwrap();
 
     let group_id = GroupId::random(provider.rand());
 
@@ -59,6 +64,9 @@ fn run_test_vector(test: TestElement, provider: &impl OpenMlsProvider) -> Result
 
     let tree_before = TreeSync::from_ratchet_tree(provider.crypto(), ciphersuite, ratchet_tree)
         .map_err(|e| format!("Error while creating tree sync: {e:?}"))?;
+
+    let tree_hash_before = tree_before.tree_hash();
+    assert_eq!(test.tree_hash_before, tree_hash_before);
 
     let group_context = GroupContext::new(
         ciphersuite,
@@ -104,6 +112,7 @@ fn run_test_vector(test: TestElement, provider: &impl OpenMlsProvider) -> Result
     let mut diff = group.empty_diff();
 
     diff.apply_proposals(&proposal_queue, None).unwrap();
+    diff.update_group_context(backend).unwrap();
 
     let staged_diff = diff
         .into_staged_diff(provider.crypto(), ciphersuite)
@@ -117,6 +126,9 @@ fn run_test_vector(test: TestElement, provider: &impl OpenMlsProvider) -> Result
         .unwrap();
 
     assert_eq!(test.tree_after, tree_after);
+
+    let tree_hash_after = group.group_context().tree_hash();
+    assert_eq!(test.tree_hash_after, tree_hash_after);
 
     Ok(())
 }

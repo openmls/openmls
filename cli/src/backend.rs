@@ -44,18 +44,30 @@ impl Backend {
         }
     }
 
-    /// Get a list of key packages for a client.
-    pub fn get_client(&self, client_id: &[u8]) -> Result<ClientKeyPackages, String> {
+    /// Get and reserve a key package for a client.
+    pub fn consume_key_package(&self, client_id: &[u8]) -> Result<KeyPackageIn, String> {
         let mut url = self.ds_url.clone();
-        let path = "/clients/key_packages/".to_string()
+        let path = "/clients/key_package/".to_string()
             + &base64::encode_config(client_id, base64::URL_SAFE);
         url.set_path(&path);
 
         let response = get(&url)?;
-        match ClientKeyPackages::tls_deserialize(&mut response.as_slice()) {
-            Ok(ckp) => Ok(ckp),
+        match KeyPackageIn::tls_deserialize(&mut response.as_slice()) {
+            Ok(kp) => Ok(kp),
             Err(e) => Err(format!("Error decoding server response: {e:?}")),
         }
+    }
+
+    /// Publish client additional key packages
+    pub fn publish_key_packages(&self, user: &User, ckp: &ClientKeyPackages) -> Result<(), String> {
+        let mut url = self.ds_url.clone();
+        let path = "/clients/key_packages/".to_string()
+            + &base64::encode_config(user.identity.borrow().identity(), base64::URL_SAFE);
+        url.set_path(&path);
+
+        // The response should be empty.
+        let _response = post(&url, &ckp)?;
+        Ok(())
     }
 
     /// Send a welcome message.

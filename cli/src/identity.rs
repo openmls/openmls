@@ -1,10 +1,12 @@
+use std::collections::HashMap;
+
 use openmls::prelude::{config::CryptoConfig, *};
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::OpenMlsProvider;
 
 pub struct Identity {
-    pub(crate) kp: KeyPackage,
+    pub(crate) kp: HashMap<Vec<u8>, KeyPackage>,
     pub(crate) credential_with_key: CredentialWithKey,
     pub(crate) signer: SignatureKeyPair,
 }
@@ -32,10 +34,46 @@ impl Identity {
             .unwrap();
 
         Self {
-            kp: key_package,
+            kp: HashMap::from([(
+                key_package
+                    .hash_ref(crypto.crypto())
+                    .unwrap()
+                    .as_slice()
+                    .to_vec(),
+                key_package,
+            )]),
             credential_with_key,
             signer: signature_keys,
         }
+    }
+
+    /// Create an additional key package using the credential_with_key/signer bound to this identity
+    pub fn add_key_package(
+        &mut self,
+        ciphersuite: Ciphersuite,
+        crypto: &OpenMlsRustCrypto,
+    ) -> KeyPackage {
+        let key_package = KeyPackage::builder()
+            .build(
+                CryptoConfig {
+                    ciphersuite,
+                    version: ProtocolVersion::default(),
+                },
+                crypto,
+                &self.signer,
+                self.credential_with_key.clone(),
+            )
+            .unwrap();
+
+        self.kp.insert(
+            key_package
+                .hash_ref(crypto.crypto())
+                .unwrap()
+                .as_slice()
+                .to_vec(),
+            key_package.clone(),
+        );
+        key_package
     }
 
     /// Get the plain identity as byte vector.

@@ -5,6 +5,8 @@
 //!
 //! Clients are represented by the `ClientInfo` struct.
 
+use std::collections::HashSet;
+
 use openmls::prelude::*;
 use tls_codec::{
     TlsByteSliceU16, TlsByteVecU16, TlsByteVecU32, TlsByteVecU8, TlsDeserialize, TlsSerialize,
@@ -18,6 +20,8 @@ use tls_codec::{
 pub struct ClientInfo {
     pub client_name: String,
     pub key_packages: ClientKeyPackages,
+    /// map of reserved key_packages [group_id, key_package_hash]
+    pub reserved_key_pkg_hash: HashSet<Vec<u8>>,
     pub id: Vec<u8>,
     pub msgs: Vec<MlsMessageIn>,
     pub welcome_queue: Vec<MlsMessageIn>,
@@ -34,7 +38,7 @@ impl ClientInfo {
     /// Create a new `ClientInfo` struct for a given client name and vector of
     /// key packages with corresponding hashes.
     pub fn new(client_name: String, mut key_packages: Vec<(Vec<u8>, KeyPackageIn)>) -> Self {
-        let key_package = KeyPackage::from(key_packages[0].1.clone());
+        let key_package: KeyPackage = KeyPackage::from(key_packages[0].1.clone());
         let id = key_package.leaf_node().credential().identity().to_vec();
         Self {
             client_name,
@@ -46,6 +50,7 @@ impl ClientInfo {
                     .collect::<Vec<(TlsByteVecU8, KeyPackageIn)>>()
                     .into(),
             ),
+            reserved_key_pkg_hash: HashSet::new(),
             msgs: Vec::new(),
             welcome_queue: Vec::new(),
         }
@@ -55,6 +60,23 @@ impl ClientInfo {
     /// package right now.
     pub fn id(&self) -> &[u8] {
         self.id.as_slice()
+    }
+
+    /// Acquire a key package from the client's key packages
+    /// Mark the key package hash ref as "reserved key package"
+    /// The reserved hash ref will be used in DS::send_welcome and removed once welcome is distributed
+    pub fn consume_kp(&mut self) -> Result<KeyPackageIn, String> {
+        if self.key_packages.0.len() <= 1 {
+            // We keep one keypackage to handle ClientInfo serialization/deserialization issues
+            return Err("No more keypackage available".to_string());
+        }
+        match self.key_packages.0.pop() {
+            Some(c) => {
+                self.reserved_key_pkg_hash.insert(c.0.into_vec());
+                Ok(c.1)
+            }
+            None => Err("No more keypackage available".to_string()),
+        }
     }
 }
 
