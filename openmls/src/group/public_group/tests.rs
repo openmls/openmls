@@ -24,7 +24,8 @@ fn public_group(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
         setup_client("Alice", ciphersuite, provider);
-    let (_bob_credential, bob_kpb, bob_signer, _bob_pk) = setup_client("Bob", ciphersuite, provider);
+    let (_bob_credential, bob_kpb, bob_signer, _bob_pk) =
+        setup_client("Bob", ciphersuite, provider);
     let (_charlie_credential, charlie_kpb, charlie_signer, _charlie_pk) =
         setup_client("Charly", ciphersuite, provider);
 

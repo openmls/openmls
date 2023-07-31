@@ -118,8 +118,12 @@ fn test_forward_secrecy(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 
     // Now let's get a few keys. The first time we're trying to get the key of a given generation, it should work. The second time, we should get a SecretReuseError.
     for generation in 10 - configuration.out_of_order_tolerance() + 1..10 {
-        let keys =
-            ratchet.secret_for_decryption(ciphersuite, provider.crypto(), generation, configuration);
+        let keys = ratchet.secret_for_decryption(
+            ciphersuite,
+            provider.crypto(),
+            generation,
+            configuration,
+        );
         assert!(keys.is_ok());
 
         let err = ratchet

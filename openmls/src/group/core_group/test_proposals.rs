@@ -557,7 +557,10 @@ fn test_group_context_extension_proposal_fails(
 }
 
 #[apply(ciphersuites_and_providers)]
-fn test_group_context_extension_proposal(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_group_context_extension_proposal(
+    ciphersuite: Ciphersuite,
+    provider: &impl OpenMlsProvider,
+) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);

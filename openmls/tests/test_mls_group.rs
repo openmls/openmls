@@ -397,8 +397,9 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
             .expect("Could not process message.");
 
         // === Charlie updates and commits ===
-        let (queued_message, welcome_option, _group_info) =
-            charlie_group.self_update(provider, &charlie_signer).unwrap();
+        let (queued_message, welcome_option, _group_info) = charlie_group
+            .self_update(provider, &charlie_signer)
+            .unwrap();
 
         let alice_processed_message = alice_group
             .process_message(
@@ -912,8 +913,8 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
         // Check that the state flag gets reset when saving
         assert_eq!(bob_group.state_changed(), InnerState::Persisted);
 
-        let bob_group =
-            MlsGroup::load(&group_id, provider.key_store()).expect("Could not load group from file");
+        let bob_group = MlsGroup::load(&group_id, provider.key_store())
+            .expect("Could not load group from file");
 
         // Make sure the state is still the same
         assert_eq!(

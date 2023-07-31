@@ -41,8 +41,11 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
         provider: OpenMlsRustCrypto,
         name: Vec<u8>,
     ) -> Member {
-        let credential_with_key_and_signer =
-            generate_credential_with_key(name.clone(), ciphersuite.signature_algorithm(), &provider);
+        let credential_with_key_and_signer = generate_credential_with_key(
+            name.clone(),
+            ciphersuite.signature_algorithm(),
+            &provider,
+        );
         let key_package = KeyPackage::builder()
             .build(
                 CryptoConfig::with_default_version(ciphersuite),

@@ -45,8 +45,11 @@ fn validation_test_setup(
     let bob_credential =
         generate_credential_with_key("Bob".into(), ciphersuite.signature_algorithm(), provider);
 
-    let charlie_credential =
-        generate_credential_with_key("Charlie".into(), ciphersuite.signature_algorithm(), provider);
+    let charlie_credential = generate_credential_with_key(
+        "Charlie".into(),
+        ciphersuite.signature_algorithm(),
+        provider,
+    );
 
     // Generate KeyPackages
     let bob_key_package =
@@ -256,8 +259,11 @@ fn test_valsem201(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     };
 
     let add_proposal = || {
-        let dave_credential =
-            generate_credential_with_key("Dave".into(), ciphersuite.signature_algorithm(), provider);
+        let dave_credential = generate_credential_with_key(
+            "Dave".into(),
+            ciphersuite.signature_algorithm(),
+            provider,
+        );
         let dave_key_package =
             generate_key_package(ciphersuite, Extensions::empty(), provider, dave_credential);
 

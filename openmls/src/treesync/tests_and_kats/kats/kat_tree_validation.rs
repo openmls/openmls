@@ -103,8 +103,9 @@ fn run_test_vector(test: TestElement, provider: &impl OpenMlsProvider) -> Result
         .into_verified(ciphersuite, provider.crypto(), group_id)
         .unwrap();
 
-    let treesync = TreeSync::from_ratchet_tree(provider.crypto(), ciphersuite, ratchet_tree.clone())
-        .map_err(|e| format!("Error while creating tree sync: {e:?}"))?;
+    let treesync =
+        TreeSync::from_ratchet_tree(provider.crypto(), ciphersuite, ratchet_tree.clone())
+            .map_err(|e| format!("Error while creating tree sync: {e:?}"))?;
 
     let diff = treesync.empty_diff();
 

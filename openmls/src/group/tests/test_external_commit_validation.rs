@@ -739,7 +739,9 @@ fn test_pure_ciphertest(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
     assert_eq!(mls_message_in.wire_format(), WireFormat::PublicMessage);
 
     // Would fail if handshake message processing did not distinguish external messages
-    assert!(alice_group.process_message(provider, mls_message_in).is_ok());
+    assert!(alice_group
+        .process_message(provider, mls_message_in)
+        .is_ok());
 }
 
 mod utils {

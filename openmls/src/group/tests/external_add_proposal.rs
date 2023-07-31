@@ -225,8 +225,11 @@ fn external_add_proposal_should_be_signed_by_key_package_it_references(
     );
 
     // A new client, Charlie, will now ask joining with an external Add proposal
-    let charlie_credential =
-        generate_credential_with_key("Charlie".into(), ciphersuite.signature_algorithm(), provider);
+    let charlie_credential = generate_credential_with_key(
+        "Charlie".into(),
+        ciphersuite.signature_algorithm(),
+        provider,
+    );
 
     let charlie_kp = generate_key_package(
         ciphersuite,
