@@ -271,6 +271,7 @@
 <a href="#271" id="271">271</a>
 <a href="#272" id="272">272</a>
 <a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -278,7 +279,8 @@
 //! This means that some functions that are not expected to fail and throw an
 //! error, will still return a `Result` since they may throw a `LibraryError`.
 
-</span><span class="kw">use </span>std::collections::VecDeque;
+</span><span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
+<span class="kw">use </span>std::collections::VecDeque;
 
 <span class="kw">use </span>openmls_traits::types::Ciphersuite;
 
@@ -390,7 +392,7 @@
     /// as well as the [`RatchetSecret`] of the next generation and return both.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>ratchet_forward(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(Generation, RatchetKeyMaterial), SecretTreeError&gt; {
         <span class="macro">log::trace!</span>(<span class="string">&quot;Ratcheting forward in generation {}.&quot;</span>, <span class="self">self</span>.generation);
@@ -405,21 +407,21 @@
             <span class="string">&quot;nonce&quot;</span>,
             <span class="self">self</span>.generation,
             ciphersuite.aead_nonce_length(),
-            backend,
+            crypto,
         )<span class="question-mark">?</span>;
         <span class="kw">let </span>key = derive_tree_secret(
             <span class="kw-2">&amp;</span><span class="self">self</span>.secret,
             <span class="string">&quot;key&quot;</span>,
             <span class="self">self</span>.generation,
             ciphersuite.aead_key_length(),
-            backend,
+            crypto,
         )<span class="question-mark">?</span>;
         <span class="self">self</span>.secret = derive_tree_secret(
             <span class="kw-2">&amp;</span><span class="self">self</span>.secret,
             <span class="string">&quot;secret&quot;</span>,
             <span class="self">self</span>.generation,
             ciphersuite.hash_length(),
-            backend,
+            crypto,
         )<span class="question-mark">?</span>;
         <span class="kw">let </span>generation = <span class="self">self</span>.generation;
         <span class="self">self</span>.generation += <span class="number">1</span>;
@@ -478,7 +480,7 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>secret_for_decryption(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         ciphersuite: Ciphersuite,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         generation: Generation,
         configuration: <span class="kw-2">&amp;</span>SenderRatchetConfiguration,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;RatchetKeyMaterial, SecretTreeError&gt; {
@@ -503,7 +505,7 @@
                 <span class="comment">// Derive the key material
                 </span><span class="kw">let </span>ratchet_secrets = {
                     <span class="self">self</span>.ratchet_head
-                        .ratchet_forward(backend, ciphersuite)
+                        .ratchet_forward(crypto, ciphersuite)
                         .map(|(<span class="kw">_</span>, key_material)| key_material)
                 }<span class="question-mark">?</span>;
                 <span class="comment">// Add it to the front of the queue
@@ -511,7 +513,7 @@
             }
             <span class="kw">let </span>ratchet_secrets = {
                 <span class="self">self</span>.ratchet_head
-                    .ratchet_forward(backend, ciphersuite)
+                    .ratchet_forward(crypto, ciphersuite)
                     .map(|(<span class="kw">_</span>, key_material)| key_material)
             }<span class="question-mark">?</span>;
             <span class="comment">// Add an entry to the past secrets queue to keep indexing consistent.

@@ -277,7 +277,7 @@
         welcome: Welcome,
         ratchet_tree: <span class="prelude-ty">Option</span>&lt;RatchetTreeIn&gt;,
         key_package_bundle: KeyPackageBundle,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
         <span class="kw-2">mut </span>resumption_psk_store: ResumptionPskStore,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, WelcomeError&lt;KeyStore::Error&gt;&gt; {
         <span class="macro">log::debug!</span>(<span class="string">&quot;CoreGroup::new_from_welcome_internal&quot;</span>);
@@ -286,12 +286,12 @@
         // TODO #1207: Key store access happens as early as possible so it can
         // be pulled up later more easily.
         </span><span class="kw">let </span>leaf_keypair = EncryptionKeyPair::read_from_key_store(
-            backend,
+            provider,
             key_package_bundle.key_package.leaf_node().encryption_key(),
         )
         .ok_or(WelcomeError::NoMatchingEncryptionKey)<span class="question-mark">?</span>;
         leaf_keypair
-            .delete_from_key_store(backend)
+            .delete_from_key_store(provider.key_store())
             .map_err(|<span class="kw">_</span>| WelcomeError::NoMatchingEncryptionKey)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>ciphersuite = welcome.ciphersuite();
@@ -300,7 +300,7 @@
         </span><span class="kw">let </span>egs = <span class="kw">if let </span><span class="prelude-val">Some</span>(egs) = <span class="self">Self</span>::find_key_package_from_welcome_secrets(
             key_package_bundle
                 .key_package()
-                .hash_ref(backend.crypto())<span class="question-mark">?</span>,
+                .hash_ref(provider.crypto())<span class="question-mark">?</span>,
             welcome.secrets(),
         ) {
             egs
@@ -318,33 +318,33 @@
             egs.encrypted_group_secrets(),
             welcome.encrypted_group_info(),
             ciphersuite,
-            backend.crypto(),
+            provider.crypto(),
         )<span class="question-mark">?</span>;
 
         <span class="comment">// Prepare the PskSecret
         </span><span class="kw">let </span>psk_secret = {
             <span class="kw">let </span>psks = load_psks(
-                backend.key_store(),
+                provider.key_store(),
                 <span class="kw-2">&amp;</span>resumption_psk_store,
                 <span class="kw-2">&amp;</span>group_secrets.psks,
             )<span class="question-mark">?</span>;
 
-            PskSecret::new(backend, ciphersuite, psks)<span class="question-mark">?
+            PskSecret::new(provider.crypto(), ciphersuite, psks)<span class="question-mark">?
         </span>};
 
         <span class="comment">// Create key schedule
         </span><span class="kw">let </span><span class="kw-2">mut </span>key_schedule = KeySchedule::init(
             ciphersuite,
-            backend,
+            provider.crypto(),
             <span class="kw-2">&amp;</span>group_secrets.joiner_secret,
             psk_secret,
         )<span class="question-mark">?</span>;
 
         <span class="comment">// Derive welcome key &amp; nonce from the key schedule
         </span><span class="kw">let </span>(welcome_key, welcome_nonce) = key_schedule
-            .welcome(backend)
+            .welcome(provider.crypto())
             .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Using the key schedule in the wrong state&quot;</span>))<span class="question-mark">?
-            </span>.derive_welcome_key_nonce(backend)
+            </span>.derive_welcome_key_nonce(provider.crypto())
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>verifiable_group_info = VerifiableGroupInfo::try_from_ciphertext(
@@ -352,7 +352,7 @@
             <span class="kw-2">&amp;</span>welcome_nonce,
             welcome.encrypted_group_info(),
             <span class="kw-2">&amp;</span>[],
-            backend,
+            provider.crypto(),
         )<span class="question-mark">?</span>;
 
         <span class="comment">// Make sure that we can support the required capabilities in the group info.
@@ -393,7 +393,7 @@
         <span class="comment">// Since there is currently only the external pub extension, there is no
         // group info extension of interest here.
         </span><span class="kw">let </span>(public_group, _group_info_extensions) = PublicGroup::from_external(
-            backend,
+            provider.crypto(),
             ratchet_tree,
             verifiable_group_info,
             ProposalStore::new(),
@@ -424,7 +424,7 @@
         </span><span class="kw">let </span>group_keypairs = <span class="kw">if let </span><span class="prelude-val">Some</span>(path_secret) = path_secret_option {
             <span class="kw">let </span>(path_keypairs, _commit_secret) = public_group
                 .derive_path_secrets(
-                    backend,
+                    provider.crypto(),
                     ciphersuite,
                     path_secret,
                     welcome_sender_index,
@@ -452,11 +452,11 @@
 
             <span class="comment">// TODO #751: Implement PSK
             </span>key_schedule
-                .add_context(backend, <span class="kw-2">&amp;</span>serialized_group_context)
+                .add_context(provider.crypto(), <span class="kw-2">&amp;</span>serialized_group_context)
                 .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Using the key schedule in the wrong state&quot;</span>))<span class="question-mark">?</span>;
 
             <span class="kw">let </span>epoch_secrets = key_schedule
-                .epoch_secrets(backend)
+                .epoch_secrets(provider.crypto())
                 .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Using the key schedule in the wrong state&quot;</span>))<span class="question-mark">?</span>;
 
             epoch_secrets.split_secrets(
@@ -469,7 +469,7 @@
         <span class="kw">let </span>confirmation_tag = message_secrets
             .confirmation_key()
             .tag(
-                backend,
+                provider.crypto(),
                 public_group.group_context().confirmed_transcript_hash(),
             )
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
@@ -498,7 +498,7 @@
             resumption_psk_store,
         };
         group
-            .store_epoch_keypairs(backend, group_keypairs.as_slice())
+            .store_epoch_keypairs(provider.key_store(), group_keypairs.as_slice())
             .map_err(WelcomeError::KeyStoreError)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(group)

@@ -133,7 +133,7 @@
 <a href="#133" id="133">133</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashSet;
 
-<span class="kw">use </span>openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, OpenMlsCryptoProvider};
+<span class="kw">use </span>openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, OpenMlsProvider};
 <span class="kw">use </span>tls_codec::Serialize;
 
 <span class="kw">use crate</span>::{
@@ -170,7 +170,7 @@
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; PublicGroupDiff&lt;<span class="lifetime">&#39;a</span>&gt; {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>compute_path&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
         leaf_index: LeafNodeIndex,
         exclusion_list: HashSet&lt;<span class="kw-2">&amp;</span>LeafNodeIndex&gt;,
         commit_type: CommitType,
@@ -196,7 +196,7 @@
                     ciphersuite,
                     version,
                 },
-                backend,
+                provider,
                 signer,
                 credential_with_key.ok_or(CreateCommitError::MissingCredential)<span class="question-mark">?</span>,
             )<span class="question-mark">?</span>;
@@ -217,7 +217,7 @@
                 leaf_index,
                 ciphersuite,
                 version,
-                backend,
+                provider,
                 signer,
             )<span class="question-mark">?</span>;
             <span class="macro">vec!</span>[encryption_keypair]
@@ -227,14 +227,14 @@
         // generated new leaf.
         </span><span class="kw">let </span>(plain_path, <span class="kw-2">mut </span>new_parent_keypairs, commit_secret) = <span class="self">self
             </span>.diff
-            .apply_own_update_path(backend, signer, ciphersuite, group_id, leaf_index)<span class="question-mark">?</span>;
+            .apply_own_update_path(provider, signer, ciphersuite, group_id, leaf_index)<span class="question-mark">?</span>;
 
         new_keypairs.append(<span class="kw-2">&amp;mut </span>new_parent_keypairs);
 
         <span class="comment">// After we&#39;ve processed the path, we can update the group context s.t.
         // the updated group context is used for path secret encryption. Note
         // that we have not yet updated the confirmed transcript hash.
-        </span><span class="self">self</span>.update_group_context(backend)<span class="question-mark">?</span>;
+        </span><span class="self">self</span>.update_group_context(provider.crypto())<span class="question-mark">?</span>;
 
         <span class="kw">let </span>serialized_group_context = <span class="self">self
             </span>.group_context()
@@ -243,7 +243,7 @@
 
         <span class="comment">// Encrypt the path to the correct recipient nodes.
         </span><span class="kw">let </span>encrypted_path = <span class="self">self</span>.diff.encrypt_path(
-            backend,
+            provider.crypto(),
             ciphersuite,
             <span class="kw-2">&amp;</span>plain_path,
             <span class="kw-2">&amp;</span>serialized_group_context,

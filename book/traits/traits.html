@@ -249,7 +249,7 @@ This will most likely change in the future.</p>
 the public OpenMLS API.
 Some OpenMLS APIs require only one of the sub-traits, though.</p>
 <pre><code class="language-rust no_run noplayground">/// to perform randomness generation, cryptographic operations, and key storage.
-pub trait OpenMlsCryptoProvider: Send + Sync {
+pub trait OpenMlsProvider: Send + Sync {
     type CryptoProvider: crypto::OpenMlsCrypto;
     type RandProvider: random::OpenMlsRand;
     type KeyStoreProvider: key_store::OpenMlsKeyStore;

@@ -159,11 +159,13 @@
 <a href="#159" id="159">159</a>
 <a href="#160" id="160">160</a>
 <a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Group Context
 //!
 //! TODO: #779
 
-</span><span class="kw">use </span>openmls_traits::types::Ciphersuite;
+</span><span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
+<span class="kw">use </span>openmls_traits::types::Ciphersuite;
 
 <span class="kw">use super</span>::<span class="kw-2">*</span>;
 <span class="kw">use crate</span>::{
@@ -260,7 +262,7 @@
     /// `interim_transcript_hash`, as well as the `commit_content`.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>update_confirmed_transcript_hash(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         interim_transcript_hash: <span class="kw-2">&amp;</span>[u8],
         authenticated_content: <span class="kw-2">&amp;</span>AuthenticatedContent,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), LibraryError&gt; {
@@ -269,7 +271,7 @@
                 .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;PublicMessage did not contain a commit&quot;</span>))<span class="question-mark">?</span>;
 
             input.calculate_confirmed_transcript_hash(
-                backend.crypto(),
+                crypto,
                 <span class="self">self</span>.ciphersuite,
                 interim_transcript_hash,
             )<span class="question-mark">?

@@ -278,7 +278,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         mls_content: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>AuthenticatedContent,
         proposal_store: <span class="kw-2">&amp;</span>ProposalStore,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Commit, ProposalQueue, LeafNodeIndex), StageCommitError&gt; {
         <span class="kw">let </span>ciphersuite = <span class="self">self</span>.ciphersuite();
 
@@ -316,7 +316,7 @@
         // ValSem240: Commit must not cover inline self Remove proposal
         </span><span class="kw">let </span>proposal_queue = ProposalQueue::from_committed_proposals(
             ciphersuite,
-            backend,
+            crypto,
             commit.proposals.as_slice().to_vec(),
             proposal_store,
             sender,
@@ -446,14 +446,14 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         mls_content: <span class="kw-2">&amp;</span>AuthenticatedContent,
         proposal_store: <span class="kw-2">&amp;</span>ProposalStore,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;StagedCommit, StageCommitError&gt; {
         <span class="kw">let </span>ciphersuite = <span class="self">self</span>.ciphersuite();
 
         <span class="kw">let </span>(commit, proposal_queue, sender_index) =
-            <span class="self">self</span>.validate_commit(mls_content, proposal_store, backend)<span class="question-mark">?</span>;
+            <span class="self">self</span>.validate_commit(mls_content, proposal_store, crypto)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>staged_diff = <span class="self">self</span>.stage_diff(mls_content, <span class="kw-2">&amp;</span>proposal_queue, sender_index, backend)<span class="question-mark">?</span>;
+        <span class="kw">let </span>staged_diff = <span class="self">self</span>.stage_diff(mls_content, <span class="kw-2">&amp;</span>proposal_queue, sender_index, crypto)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>staged_commit_state = StagedCommitState::PublicState(Box::new(staged_diff));
 
@@ -465,7 +465,7 @@
         mls_content: <span class="kw-2">&amp;</span>AuthenticatedContent,
         proposal_queue: <span class="kw-2">&amp;</span>ProposalQueue,
         sender_index: LeafNodeIndex,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;StagedPublicGroupDiff, StageCommitError&gt; {
         <span class="kw">let </span>ciphersuite = <span class="self">self</span>.ciphersuite();
         <span class="kw">let </span><span class="kw-2">mut </span>diff = <span class="self">self</span>.empty_diff();
@@ -481,17 +481,17 @@
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(update_path) = <span class="kw-2">&amp;</span>commit.path {
             <span class="comment">// Update the public group
             // ValSem202: Path must be the right length
-            </span>diff.apply_received_update_path(backend, ciphersuite, sender_index, update_path)<span class="question-mark">?</span>;
+            </span>diff.apply_received_update_path(crypto, ciphersuite, sender_index, update_path)<span class="question-mark">?</span>;
         } <span class="kw">else if </span>apply_proposals_values.path_required {
             <span class="comment">// ValSem201
             </span><span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::RequiredPathNotFound);
         };
 
         <span class="comment">// Update group context
-        </span>diff.update_group_context(backend)<span class="question-mark">?</span>;
+        </span>diff.update_group_context(crypto)<span class="question-mark">?</span>;
 
         <span class="comment">// Update the confirmed transcript hash before we compute the confirmation tag.
-        </span>diff.update_confirmed_transcript_hash(backend, mls_content)<span class="question-mark">?</span>;
+        </span>diff.update_confirmed_transcript_hash(crypto, mls_content)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>received_confirmation_tag = mls_content
             .confirmation_tag()
@@ -501,11 +501,11 @@
         // epoch and check the confirmation tag.
         </span>diff.update_interim_transcript_hash(
             ciphersuite,
-            backend,
+            crypto,
             received_confirmation_tag.clone(),
         )<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>staged_diff = diff.into_staged_diff(backend, ciphersuite)<span class="question-mark">?</span>;
+        <span class="kw">let </span>staged_diff = diff.into_staged_diff(crypto, ciphersuite)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(staged_diff)
     }

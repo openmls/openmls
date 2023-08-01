@@ -45,7 +45,7 @@ It has a safe and easy-to-use interface that hides the complexity of the underly
 <h3 id="cryptography-dependencies"><a href="#cryptography-dependencies">Cryptography Dependencies</a></h3>
 <p>OpenMLS does not implement its own cryptographic primitives. Instead, it relies
 on existing implementations of the cryptographic primitives used by MLS. There
-are two different cryptography backends implemented right now. But consumers
+are two different cryptography providers implemented right now. But consumers
 can bring their own implementation. See <a href="https://github.com/openmls/openmls/tree/main/traits">traits</a> for more
 details.</p>
 <h3 id="working-on-openmls"><a href="#working-on-openmls">Working on OpenMLS</a></h3>
@@ -64,8 +64,8 @@ up to parties and have them create a group.</p>
 
 <span class="comment">// Define ciphersuite ...
 </span><span class="kw">let </span>ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
-<span class="comment">// ... and the crypto backend to use.
-</span><span class="kw">let </span>backend = <span class="kw-2">&amp;</span>OpenMlsRustCrypto::default();
+<span class="comment">// ... and the crypto provider to use.
+</span><span class="kw">let </span>provider = <span class="kw-2">&amp;</span>OpenMlsRustCrypto::default();
 
 <span class="comment">// Now let&#39;s create two participants.
 
@@ -74,7 +74,7 @@ up to parties and have them create a group.</p>
     identity: Vec&lt;u8&gt;,
     credential_type: CredentialType,
     signature_algorithm: SignatureScheme,
-    backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+    provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
 ) -&gt; (CredentialWithKey, SignatureKeyPair) {
     <span class="kw">let </span>credential = Credential::new(identity, credential_type).unwrap();
     <span class="kw">let </span>signature_keys =
@@ -84,7 +84,7 @@ up to parties and have them create a group.</p>
     <span class="comment">// Store the signature key into the key store so OpenMLS has access
     // to it.
     </span>signature_keys
-        .store(backend.key_store())
+        .store(provider.key_store())
         .expect(<span class="string">&quot;Error storing signature keys in key store.&quot;</span>);
      
     (
@@ -99,7 +99,7 @@ up to parties and have them create a group.</p>
 <span class="comment">// A helper to create key package bundles.
 </span><span class="kw">fn </span>generate_key_package(
     ciphersuite: Ciphersuite,
-    backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+    provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
     signer: <span class="kw-2">&amp;</span>SignatureKeyPair,
     credential_with_key: CredentialWithKey,
 ) -&gt; KeyPackage {
@@ -110,7 +110,7 @@ up to parties and have them create a group.</p>
                 ciphersuite,
                 version: ProtocolVersion::default(),
             },
-            backend,
+            provider,
             signer,
             credential_with_key,
         )
@@ -122,25 +122,25 @@ up to parties and have them create a group.</p>
     <span class="string">&quot;Sasha&quot;</span>.into(),
     CredentialType::Basic,
     ciphersuite.signature_algorithm(),
-    backend,
+    provider,
 );
 
 <span class="kw">let </span>(maxim_credential_with_key, maxim_signer) = generate_credential_with_key(
     <span class="string">&quot;Maxim&quot;</span>.into(),
     CredentialType::Basic,
     ciphersuite.signature_algorithm(),
-    backend,
+    provider,
 );
 
 <span class="comment">// Then they generate key packages to facilitate the asynchronous handshakes
 // in MLS
 
 // Generate KeyPackages
-</span><span class="kw">let </span>maxim_key_package = generate_key_package(ciphersuite, backend, <span class="kw-2">&amp;</span>maxim_signer, maxim_credential_with_key);
+</span><span class="kw">let </span>maxim_key_package = generate_key_package(ciphersuite, provider, <span class="kw-2">&amp;</span>maxim_signer, maxim_credential_with_key);
 
 <span class="comment">// Now Sasha starts a new group ...
 </span><span class="kw">let </span><span class="kw-2">mut </span>sasha_group = MlsGroup::new(
-    backend,
+    provider,
     <span class="kw-2">&amp;</span>sasha_signer,
     <span class="kw-2">&amp;</span>MlsGroupConfig::default(),
     sasha_credential_with_key,
@@ -151,12 +151,12 @@ up to parties and have them create a group.</p>
 // The key package has to be retrieved from Maxim in some way. Most likely
 // via a server storing key packages for users.
 </span><span class="kw">let </span>(mls_message_out, welcome_out, group_info) = sasha_group
-    .add_members(backend, <span class="kw-2">&amp;</span>sasha_signer, <span class="kw-2">&amp;</span>[maxim_key_package])
+    .add_members(provider, <span class="kw-2">&amp;</span>sasha_signer, <span class="kw-2">&amp;</span>[maxim_key_package])
     .expect(<span class="string">&quot;Could not add members.&quot;</span>);
 
 <span class="comment">// Sasha merges the pending commit that adds Maxim.
 </span>sasha_group
-   .merge_pending_commit(backend)
+   .merge_pending_commit(provider)
    .expect(<span class="string">&quot;error merging pending commit&quot;</span>);
 
 <span class="comment">// Sascha serializes the [`MlsMessageOut`] containing the [`Welcome`].
@@ -177,7 +177,7 @@ up to parties and have them create a group.</p>
 
 <span class="comment">// Now Maxim can join the group.
  </span><span class="kw">let </span><span class="kw-2">mut </span>maxim_group = MlsGroup::new_from_welcome(
-    backend,
+    provider,
     <span class="kw-2">&amp;</span>MlsGroupConfig::default(),
     welcome,
     <span class="comment">// The public tree is need and transferred out of band.

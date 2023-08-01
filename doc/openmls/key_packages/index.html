@@ -28,7 +28,7 @@ package bundle can be created as follows:</p>
 <span class="kw">use </span>openmls_basic_credential::SignatureKeyPair;
 
 <span class="kw">let </span>ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
-<span class="kw">let </span>backend = OpenMlsRustCrypto::default();
+<span class="kw">let </span>provider = OpenMlsRustCrypto::default();
 
 <span class="kw">let </span>credential = Credential::new(<span class="string">&quot;identity&quot;</span>.into(), CredentialType::Basic).unwrap();
 <span class="kw">let </span>signer =
@@ -44,7 +44,7 @@ package bundle can be created as follows:</p>
             ciphersuite,
             version: ProtocolVersion::default(),
         },
-        <span class="kw-2">&amp;</span>backend,
+        <span class="kw-2">&amp;</span>provider,
         <span class="kw-2">&amp;</span>signer,
         credential_with_key,
     )
@@ -58,7 +58,7 @@ as follows;</p>
 <span class="kw">use </span>openmls::test_utils::hex_to_bytes;
 <span class="kw">use </span>openmls_rust_crypto::OpenMlsRustCrypto;
 
-<span class="kw">let </span>backend = OpenMlsRustCrypto::default();
+<span class="kw">let </span>provider = OpenMlsRustCrypto::default();
 <span class="kw">let </span>ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
 
 <span class="kw">let </span>key_package_bytes = hex_to_bytes(
@@ -76,7 +76,7 @@ as follows;</p>
     .expect(<span class="string">&quot;Could not deserialize KeyPackage&quot;</span>);
 
 <span class="kw">let </span>key_package = key_package_in
-    .validate(backend.crypto(), ProtocolVersion::Mls10)
+    .validate(provider.crypto(), ProtocolVersion::Mls10)
     .expect(<span class="string">&quot;Invalid KeyPackage&quot;</span>);</code></pre></div>
 <p>See <a href="struct.KeyPackage.html" title="struct openmls::key_packages::KeyPackage"><code>KeyPackage</code></a> for more details on how to use key packages.</p>
 </div></details><h2 id="reexports" class="small-section-header"><a href="#reexports">Re-exports</a></h2><ul class="item-table"><li><div class="item-name" id="reexport.KeyPackageIn"><code>pub use key_package_in::<a class="struct" href="key_package_in/struct.KeyPackageIn.html" title="struct openmls::key_packages::key_package_in::KeyPackageIn">KeyPackageIn</a>;</code></div></li></ul><h2 id="modules" class="small-section-header"><a href="#modules">Modules</a></h2><ul class="item-table"><li><div class="item-name"><a class="mod" href="errors/index.html" title="mod openmls::key_packages::errors">errors</a></div><div class="desc docblock-short">Key Package errors</div></li><li><div class="item-name"><a class="mod" href="key_package_in/index.html" title="mod openmls::key_packages::key_package_in">key_package_in</a></div><div class="desc docblock-short">Incoming KeyPackages. This modules contains deserialization and validation

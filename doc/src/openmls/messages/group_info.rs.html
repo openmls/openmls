@@ -289,9 +289,11 @@
 <a href="#289" id="289">289</a>
 <a href="#290" id="290">290</a>
 <a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains all types related to group info handling.
 
-</span><span class="kw">use </span>openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
+</span><span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
+<span class="kw">use </span>openmls_traits::types::Ciphersuite;
 <span class="kw">use </span>serde::{Deserialize <span class="kw">as </span>SerdeDeserialize, Serialize <span class="kw">as </span>SerdeSerialize};
 <span class="kw">use </span>thiserror::Error;
 <span class="kw">use </span>tls_codec::{Deserialize, Serialize, TlsDeserialize, TlsSerialize, TlsSize};
@@ -355,10 +357,10 @@
         nonce: <span class="kw-2">&amp;</span>AeadNonce,
         ciphertext: <span class="kw-2">&amp;</span>[u8],
         context: <span class="kw-2">&amp;</span>[u8],
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, GroupInfoError&gt; {
         <span class="kw">let </span>verifiable_group_info_plaintext = skey
-            .aead_open(backend, ciphertext, context, nonce)
+            .aead_open(crypto, ciphertext, context, nonce)
             .map_err(|<span class="kw">_</span>| GroupInfoError::DecryptionFailed)<span class="question-mark">?</span>;
 
         <span class="kw">let </span><span class="kw-2">mut </span>verifiable_group_info_plaintext_slice = verifiable_group_info_plaintext.as_slice();

@@ -211,18 +211,18 @@
 </span><span class="kw">pub fn </span>make_proposal_ref(
     value: <span class="kw-2">&amp;</span>[u8],
     ciphersuite: Ciphersuite,
-    backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+    crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;ProposalRef, CryptoError&gt; {
-    HashReference::new(value, ciphersuite, backend, PROPOSAL_REF_LABEL)
+    HashReference::new(value, ciphersuite, crypto, PROPOSAL_REF_LABEL)
 }
 
 <span class="doccomment">/// Compute a new [`KeyPackageRef`] value for a `value`.
 </span><span class="kw">pub fn </span>make_key_package_ref(
     value: <span class="kw-2">&amp;</span>[u8],
     ciphersuite: Ciphersuite,
-    backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+    crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;KeyPackageRef, CryptoError&gt; {
-    HashReference::new(value, ciphersuite, backend, KEY_PACKAGE_REF_LABEL)
+    HashReference::new(value, ciphersuite, crypto, KEY_PACKAGE_REF_LABEL)
 }
 
 <span class="kw">impl </span>HashReference {
@@ -230,7 +230,7 @@
     </span><span class="kw">pub fn </span>new(
         value: <span class="kw-2">&amp;</span>[u8],
         ciphersuite: Ciphersuite,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         label: <span class="kw-2">&amp;</span>[u8],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, CryptoError&gt; {
         <span class="kw">let </span>input = HashReferenceInput {
@@ -240,7 +240,7 @@
         <span class="kw">let </span>payload = input
             .tls_serialize_detached()
             .map_err(|<span class="kw">_</span>| CryptoError::TlsSerializationError)<span class="question-mark">?</span>;
-        <span class="kw">let </span>value = backend.hash(ciphersuite.hash_algorithm(), <span class="kw-2">&amp;</span>payload)<span class="question-mark">?</span>;
+        <span class="kw">let </span>value = crypto.hash(ciphersuite.hash_algorithm(), <span class="kw-2">&amp;</span>payload)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
             value: VLBytes::new(value),
         })

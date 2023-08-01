@@ -302,7 +302,7 @@
     </span><span class="attr">#[allow(clippy::type_complexity)]
     </span><span class="kw">pub fn </span>add_members&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         key_packages: <span class="kw-2">&amp;</span>[KeyPackage],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, MlsMessageOut, <span class="prelude-ty">Option</span>&lt;GroupInfo&gt;), AddMembersError&lt;KeyStore::Error&gt;&gt;
@@ -330,7 +330,7 @@
             .proposal_store(<span class="kw-2">&amp;</span><span class="self">self</span>.proposal_store)
             .inline_proposals(inline_proposals)
             .build();
-        <span class="kw">let </span>create_commit_result = <span class="self">self</span>.group.create_commit(params, backend, signer)<span class="question-mark">?</span>;
+        <span class="kw">let </span>create_commit_result = <span class="self">self</span>.group.create_commit(params, provider, signer)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>welcome = <span class="kw">match </span>create_commit_result.welcome_option {
             <span class="prelude-val">Some</span>(welcome) =&gt; welcome,
@@ -341,7 +341,7 @@
 
         <span class="comment">// Convert PublicMessage messages to MLSMessage and encrypt them if required by
         // the configuration
-        </span><span class="kw">let </span>mls_messages = <span class="self">self</span>.content_to_mls_message(create_commit_result.commit, backend)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>mls_messages = <span class="self">self</span>.content_to_mls_message(create_commit_result.commit, provider)<span class="question-mark">?</span>;
 
         <span class="comment">// Set the current group state to [`MlsGroupState::PendingCommit`],
         // storing the current [`StagedCommit`] from the commit results
@@ -381,7 +381,7 @@
     </span><span class="attr">#[allow(clippy::type_complexity)]
     </span><span class="kw">pub fn </span>remove_members&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         members: <span class="kw-2">&amp;</span>[LeafNodeIndex],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;
@@ -409,11 +409,11 @@
             .proposal_store(<span class="kw-2">&amp;</span><span class="self">self</span>.proposal_store)
             .inline_proposals(inline_proposals)
             .build();
-        <span class="kw">let </span>create_commit_result = <span class="self">self</span>.group.create_commit(params, backend, signer)<span class="question-mark">?</span>;
+        <span class="kw">let </span>create_commit_result = <span class="self">self</span>.group.create_commit(params, provider, signer)<span class="question-mark">?</span>;
 
         <span class="comment">// Convert PublicMessage messages to MLSMessage and encrypt them if required by
         // the configuration
-        </span><span class="kw">let </span>mls_message = <span class="self">self</span>.content_to_mls_message(create_commit_result.commit, backend)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>mls_message = <span class="self">self</span>.content_to_mls_message(create_commit_result.commit, provider)<span class="question-mark">?</span>;
 
         <span class="comment">// Set the current group state to [`MlsGroupState::PendingCommit`],
         // storing the current [`StagedCommit`] from the commit results
@@ -441,7 +441,7 @@
     /// Returns an error if there is a pending commit.
     </span><span class="kw">pub fn </span>leave_group(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, LeaveGroupError&gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
@@ -455,11 +455,11 @@
         <span class="self">self</span>.proposal_store
             .add(QueuedProposal::from_authenticated_content_by_ref(
                 <span class="self">self</span>.ciphersuite(),
-                backend,
+                provider.crypto(),
                 remove_proposal.clone(),
             )<span class="question-mark">?</span>);
 
-        <span class="prelude-val">Ok</span>(<span class="self">self</span>.content_to_mls_message(remove_proposal, backend)<span class="question-mark">?</span>)
+        <span class="prelude-val">Ok</span>(<span class="self">self</span>.content_to_mls_message(remove_proposal, provider)<span class="question-mark">?</span>)
     }
 
     <span class="doccomment">/// Returns a list of [`Member`]s in the group.

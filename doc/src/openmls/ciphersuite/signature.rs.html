@@ -202,8 +202,6 @@
 <a href="#202" id="202">202</a>
 <a href="#203" id="203">203</a>
 <a href="#204" id="204">204</a>
-<a href="#205" id="205">205</a>
-<a href="#206" id="206">206</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Signatures.
 //!
 //! This module contains structs for creating signature keys, issuing signatures and verifying them.
@@ -359,7 +357,7 @@
     /// public key.
     </span><span class="kw">pub fn </span>verify_with_label(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         signature: <span class="kw-2">&amp;</span>Signature,
         sign_content: <span class="kw-2">&amp;</span>SignContent,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), CryptoError&gt; {
@@ -370,8 +368,7 @@
                 <span class="kw">return </span><span class="prelude-val">Err</span>(CryptoError::TlsSerializationError);
             }
         };
-        backend
-            .crypto()
+        crypto
             .verify_signature(
                 <span class="self">self</span>.signature_scheme,
                 <span class="kw-2">&amp;</span>payload,
@@ -385,12 +382,11 @@
     /// public key.
     </span><span class="kw">pub fn </span>verify(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         signature: <span class="kw-2">&amp;</span>Signature,
         payload: <span class="kw-2">&amp;</span>[u8],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), CryptoError&gt; {
-        backend
-            .crypto()
+        crypto
             .verify_signature(
                 <span class="self">self</span>.signature_scheme,
                 payload,

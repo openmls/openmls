@@ -65,14 +65,14 @@
     /// HMAC that is also used in HKDF.
     /// Compute the HMAC on `salt` with key `ikm`.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         salt: <span class="kw-2">&amp;</span>Secret,
         ikm: <span class="kw-2">&amp;</span>[u8],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, CryptoError&gt; {
         <span class="prelude-val">Ok</span>(Mac {
             mac_value: salt
                 .hkdf_extract(
-                    backend,
+                    crypto,
                     <span class="kw-2">&amp;</span>Secret::from_slice(ikm, salt.mls_version, salt.ciphersuite),
                 )<span class="question-mark">?
                 </span>.value

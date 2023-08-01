@@ -1135,6 +1135,14 @@
 <a href="#1135" id="1135">1135</a>
 <a href="#1136" id="1136">1136</a>
 <a href="#1137" id="1137">1137</a>
+<a href="#1138" id="1138">1138</a>
+<a href="#1139" id="1139">1139</a>
+<a href="#1140" id="1140">1140</a>
+<a href="#1141" id="1141">1141</a>
+<a href="#1142" id="1142">1142</a>
+<a href="#1143" id="1143">1143</a>
+<a href="#1144" id="1144">1144</a>
+<a href="#1145" id="1145">1145</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -1217,6 +1225,7 @@
 </span><span class="kw">use </span><span class="kw">super</span>::errors::CreateGroupContextExtProposalError;
 <span class="attr">#[cfg(test)]
 </span><span class="kw">use </span><span class="kw">crate</span>::treesync::node::leaf_node::TreePosition;
+<span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
 <span class="attr">#[cfg(test)]
 </span><span class="kw">use </span>std::io::{Error, Read, Write};
 
@@ -1352,14 +1361,14 @@
     /// values (which might be random).
     ///
     /// This function performs cryptographic operations and there requires an
-    /// [`OpenMlsCryptoProvider`].
+    /// [`OpenMlsProvider`].
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>build&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;CoreGroup, CoreGroupBuildError&lt;KeyStore::Error&gt;&gt; {
         <span class="kw">let </span>(public_group_builder, commit_secret, leaf_keypair) =
-            <span class="self">self</span>.public_group_builder.get_secrets(backend, signer)<span class="question-mark">?</span>;
+            <span class="self">self</span>.public_group_builder.get_secrets(provider, signer)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>ciphersuite = public_group_builder.crypto_config().ciphersuite;
         <span class="kw">let </span>config = <span class="self">self</span>.config.unwrap_or_default();
@@ -1376,9 +1385,9 @@
         // Derive an epoch secret from the joiner secret.
         // We use a random `InitSecret` for initialization.
         </span><span class="kw">let </span>joiner_secret = JoinerSecret::new(
-            backend,
+            provider.crypto(),
             commit_secret,
-            <span class="kw-2">&amp;</span>InitSecret::random(ciphersuite, backend, version)
+            <span class="kw-2">&amp;</span>InitSecret::random(ciphersuite, provider.rand(), version)
                 .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>,
             <span class="kw-2">&amp;</span>serialized_group_context,
         )
@@ -1389,18 +1398,19 @@
 
         <span class="comment">// Prepare the PskSecret
         </span><span class="kw">let </span>psk_secret = {
-            <span class="kw">let </span>psks = load_psks(backend.key_store(), <span class="kw-2">&amp;</span>resumption_psk_store, <span class="kw-2">&amp;</span><span class="self">self</span>.psk_ids)<span class="question-mark">?</span>;
+            <span class="kw">let </span>psks = load_psks(provider.key_store(), <span class="kw-2">&amp;</span>resumption_psk_store, <span class="kw-2">&amp;</span><span class="self">self</span>.psk_ids)<span class="question-mark">?</span>;
 
-            PskSecret::new(backend, ciphersuite, psks)<span class="question-mark">?
+            PskSecret::new(provider.crypto(), ciphersuite, psks)<span class="question-mark">?
         </span>};
 
-        <span class="kw">let </span><span class="kw-2">mut </span>key_schedule = KeySchedule::init(ciphersuite, backend, <span class="kw-2">&amp;</span>joiner_secret, psk_secret)<span class="question-mark">?</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>key_schedule =
+            KeySchedule::init(ciphersuite, provider.crypto(), <span class="kw-2">&amp;</span>joiner_secret, psk_secret)<span class="question-mark">?</span>;
         key_schedule
-            .add_context(backend, <span class="kw-2">&amp;</span>serialized_group_context)
+            .add_context(provider.crypto(), <span class="kw-2">&amp;</span>serialized_group_context)
             .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Using the key schedule in the wrong state&quot;</span>))<span class="question-mark">?</span>;
 
         <span class="kw">let </span>epoch_secrets = key_schedule
-            .epoch_secrets(backend)
+            .epoch_secrets(provider.crypto())
             .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Using the key schedule in the wrong state&quot;</span>))<span class="question-mark">?</span>;
 
         <span class="kw">let </span>(group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
@@ -1411,7 +1421,7 @@
 
         <span class="kw">let </span>initial_confirmation_tag = message_secrets
             .confirmation_key()
-            .tag(backend, <span class="kw-2">&amp;</span>[])
+            .tag(provider.crypto(), <span class="kw-2">&amp;</span>[])
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>message_secrets_store =
@@ -1419,7 +1429,7 @@
 
         <span class="kw">let </span>public_group = public_group_builder
             .with_confirmation_tag(initial_confirmation_tag)
-            .build(backend.crypto())<span class="question-mark">?</span>;
+            .build(provider.crypto())<span class="question-mark">?</span>;
 
         <span class="kw">let </span>group = CoreGroup {
             public_group,
@@ -1432,7 +1442,7 @@
 
         <span class="comment">// Store the private key of the own leaf in the key store as an epoch keypair.
         </span>group
-            .store_epoch_keypairs(backend, <span class="kw-2">&amp;</span>[leaf_keypair])
+            .store_epoch_keypairs(provider.key_store(), <span class="kw-2">&amp;</span>[leaf_keypair])
             .map_err(CoreGroupBuildError::KeyStoreError)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(group)
@@ -1598,7 +1608,7 @@
         aad: <span class="kw-2">&amp;</span>[u8],
         msg: <span class="kw-2">&amp;</span>[u8],
         padding_size: usize,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;PrivateMessage, MessageEncryptionError&gt; {
         <span class="kw">let </span>public_message = AuthenticatedContent::new_application(
@@ -1608,7 +1618,7 @@
             <span class="self">self</span>.context(),
             signer,
         )<span class="question-mark">?</span>;
-        <span class="self">self</span>.encrypt(public_message, padding_size, backend)
+        <span class="self">self</span>.encrypt(public_message, padding_size, provider)
     }
 
     <span class="comment">// Encrypt an PublicMessage into an PrivateMessage
@@ -1616,12 +1626,12 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         public_message: AuthenticatedContent,
         padding_size: usize,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;PrivateMessage, MessageEncryptionError&gt; {
         PrivateMessage::try_from_authenticated_content(
             <span class="kw-2">&amp;</span>public_message,
             <span class="self">self</span>.ciphersuite(),
-            backend,
+            provider,
             <span class="self">self</span>.message_secrets_store.message_secrets_mut(),
             padding_size,
         )
@@ -1632,14 +1642,15 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>decrypt(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         private_message: <span class="kw-2">&amp;</span>PrivateMessageIn,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
         sender_ratchet_configuration: <span class="kw-2">&amp;</span>SenderRatchetConfiguration,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;VerifiableAuthenticatedContentIn, MessageDecryptionError&gt; {
         <span class="kw">let </span>ciphersuite = <span class="self">self</span>.ciphersuite();
         <span class="kw">let </span>message_secrets = <span class="self">self
             </span>.message_secrets_mut(private_message.epoch())
             .map_err(|<span class="kw">_</span>| MessageDecryptionError::AeadError)<span class="question-mark">?</span>;
-        <span class="kw">let </span>sender_data = private_message.sender_data(message_secrets, backend, ciphersuite)<span class="question-mark">?</span>;
+        <span class="kw">let </span>sender_data =
+            private_message.sender_data(message_secrets, provider.crypto(), ciphersuite)<span class="question-mark">?</span>;
         <span class="kw">if </span><span class="self">self</span>.public_group().leaf(sender_data.leaf_index).is_none() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(MessageDecryptionError::SenderError(
                 SenderError::UnknownSender,
@@ -1650,7 +1661,7 @@
             .map_err(|<span class="kw">_</span>| MessageDecryptionError::AeadError)<span class="question-mark">?</span>;
         private_message.to_verifiable_content(
             ciphersuite,
-            backend,
+            provider.crypto(),
             message_secrets,
             sender_data.leaf_index,
             sender_ratchet_configuration,
@@ -1661,7 +1672,7 @@
     <span class="doccomment">/// Exporter
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>export_secret(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         label: <span class="kw-2">&amp;</span>str,
         context: <span class="kw-2">&amp;</span>[u8],
         key_length: usize,
@@ -1673,13 +1684,13 @@
         <span class="prelude-val">Ok</span>(<span class="self">self
             </span>.group_epoch_secrets
             .exporter_secret()
-            .derive_exported_secret(<span class="self">self</span>.ciphersuite(), backend, label, context, key_length)
+            .derive_exported_secret(<span class="self">self</span>.ciphersuite(), crypto, label, context, key_length)
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>)
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>export_group_info(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         with_ratchet_tree: bool,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;GroupInfo, LibraryError&gt; {
@@ -1694,7 +1705,7 @@
                 <span class="kw">let </span>external_pub = <span class="self">self
                     </span>.group_epoch_secrets()
                     .external_secret()
-                    .derive_external_keypair(backend.crypto(), <span class="self">self</span>.ciphersuite())
+                    .derive_external_keypair(crypto, <span class="self">self</span>.ciphersuite())
                     .public;
                 Extension::ExternalPub(ExternalPubExtension::new(HpkePublicKey::from(external_pub)))
             };
@@ -1717,7 +1728,7 @@
             extensions,
             <span class="self">self</span>.message_secrets()
                 .confirmation_key()
-                .tag(backend, <span class="self">self</span>.context().confirmed_transcript_hash())
+                .tag(crypto, <span class="self">self</span>.context().confirmed_transcript_hash())
                 .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>,
             <span class="self">self</span>.own_leaf_index(),
         );
@@ -1887,13 +1898,13 @@
             .ok_or_else(|| LibraryError::custom(<span class="string">&quot;Tree has no own leaf.&quot;</span>))
     }
 
-    <span class="doccomment">/// Store the given [`EncryptionKeyPair`]s in the `backend`&#39;s key store
+    <span class="doccomment">/// Store the given [`EncryptionKeyPair`]s in the `provider`&#39;s key store
     /// indexed by this group&#39;s [`GroupId`] and [`GroupEpoch`].
     ///
     /// Returns an error if access to the key store fails.
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>store_epoch_keypairs&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        store: <span class="kw-2">&amp;</span>KeyStore,
         keypair_references: <span class="kw-2">&amp;</span>[EncryptionKeyPair],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), KeyStore::Error&gt; {
         <span class="kw">let </span>k = EpochKeypairId::new(
@@ -1901,50 +1912,47 @@
             <span class="self">self</span>.context().epoch().as_u64(),
             <span class="self">self</span>.own_leaf_index(),
         );
-        backend
-            .key_store()
-            .store(<span class="kw-2">&amp;</span>k.<span class="number">0</span>, <span class="kw-2">&amp;</span>keypair_references.to_vec())
+        store.store(<span class="kw-2">&amp;</span>k.<span class="number">0</span>, <span class="kw-2">&amp;</span>keypair_references.to_vec())
     }
 
     <span class="doccomment">/// Read the [`EncryptionKeyPair`]s of this group and its current
-    /// [`GroupEpoch`] from the `backend`&#39;s key store.
+    /// [`GroupEpoch`] from the `provider`&#39;s key store.
     ///
     /// Returns `None` if access to the key store fails.
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>read_epoch_keypairs&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        store: <span class="kw-2">&amp;</span>KeyStore,
     ) -&gt; Vec&lt;EncryptionKeyPair&gt; {
         <span class="kw">let </span>k = EpochKeypairId::new(
             <span class="self">self</span>.group_id(),
             <span class="self">self</span>.context().epoch().as_u64(),
             <span class="self">self</span>.own_leaf_index(),
         );
-        backend
-            .key_store()
+        store
             .read::&lt;Vec&lt;EncryptionKeyPair&gt;&gt;(<span class="kw-2">&amp;</span>k.<span class="number">0</span>)
             .unwrap_or_default()
     }
 
     <span class="doccomment">/// Delete the [`EncryptionKeyPair`]s from the previous [`GroupEpoch`] from
-    /// the `backend`&#39;s key store.
+    /// the `provider`&#39;s key store.
     ///
     /// Returns an error if access to the key store fails.
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>delete_previous_epoch_keypairs&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        store: <span class="kw-2">&amp;</span>KeyStore,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), KeyStore::Error&gt; {
         <span class="kw">let </span>k = EpochKeypairId::new(
             <span class="self">self</span>.group_id(),
             <span class="self">self</span>.context().epoch().as_u64() - <span class="number">1</span>,
             <span class="self">self</span>.own_leaf_index(),
         );
-        backend.key_store().delete::&lt;Vec&lt;EncryptionKeyPair&gt;&gt;(<span class="kw-2">&amp;</span>k.<span class="number">0</span>)
+        store.delete::&lt;Vec&lt;EncryptionKeyPair&gt;&gt;(<span class="kw-2">&amp;</span>k.<span class="number">0</span>)
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>create_commit&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="kw-2">mut </span>params: CreateCommitParams,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;CreateCommitResult, CreateCommitError&lt;KeyStore::Error&gt;&gt; {
         <span class="kw">let </span>ciphersuite = <span class="self">self</span>.ciphersuite();
@@ -1957,7 +1965,7 @@
         <span class="comment">// Filter proposals
         </span><span class="kw">let </span>(proposal_queue, contains_own_updates) = ProposalQueue::filter_proposals(
             ciphersuite,
-            backend,
+            provider.crypto(),
             sender.clone(),
             params.proposal_store(),
             params.inline_proposals(),
@@ -2030,7 +2038,7 @@
                 // group context by updating the epoch and computing the new
                 // tree hash.
                 </span>diff.compute_path(
-                    backend,
+                    provider,
                     <span class="self">self</span>.own_leaf_index(),
                     apply_proposals_values.exclusion_list(),
                     params.commit_type(),
@@ -2040,7 +2048,7 @@
             </span>} <span class="kw">else </span>{
                 <span class="comment">// If path is not needed, update the group context and return
                 // empty path processing results
-                </span>diff.update_group_context(backend)<span class="question-mark">?</span>;
+                </span>diff.update_group_context(provider.crypto())<span class="question-mark">?</span>;
                 PathComputationResult::default()
             };
 
@@ -2060,7 +2068,7 @@
         )<span class="question-mark">?</span>;
 
         <span class="comment">// Update the confirmed transcript hash using the commit we just created.
-        </span>diff.update_confirmed_transcript_hash(backend, <span class="kw-2">&amp;</span>authenticated_content)<span class="question-mark">?</span>;
+        </span>diff.update_confirmed_transcript_hash(provider.crypto(), <span class="kw-2">&amp;</span>authenticated_content)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>serialized_provisional_group_context = diff
             .group_context()
@@ -2068,7 +2076,7 @@
             .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>joiner_secret = JoinerSecret::new(
-            backend,
+            provider.crypto(),
             path_computation_result.commit_secret,
             <span class="self">self</span>.group_epoch_secrets().init_secret(),
             <span class="kw-2">&amp;</span>serialized_provisional_group_context,
@@ -2078,16 +2086,17 @@
         <span class="comment">// Prepare the PskSecret
         </span><span class="kw">let </span>psk_secret = {
             <span class="kw">let </span>psks = load_psks(
-                backend.key_store(),
+                provider.key_store(),
                 <span class="kw-2">&amp;</span><span class="self">self</span>.resumption_psk_store,
                 <span class="kw-2">&amp;</span>apply_proposals_values.presharedkeys,
             )<span class="question-mark">?</span>;
 
-            PskSecret::new(backend, ciphersuite, psks)<span class="question-mark">?
+            PskSecret::new(provider.crypto(), ciphersuite, psks)<span class="question-mark">?
         </span>};
 
         <span class="comment">// Create key schedule
-        </span><span class="kw">let </span><span class="kw-2">mut </span>key_schedule = KeySchedule::init(ciphersuite, backend, <span class="kw-2">&amp;</span>joiner_secret, psk_secret)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span><span class="kw-2">mut </span>key_schedule =
+            KeySchedule::init(ciphersuite, provider.crypto(), <span class="kw-2">&amp;</span>joiner_secret, psk_secret)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>serialized_provisional_group_context = diff
             .group_context()
@@ -2095,25 +2104,32 @@
             .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>welcome_secret = key_schedule
-            .welcome(backend)
+            .welcome(provider.crypto())
             .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Using the key schedule in the wrong state&quot;</span>))<span class="question-mark">?</span>;
         key_schedule
-            .add_context(backend, <span class="kw-2">&amp;</span>serialized_provisional_group_context)
+            .add_context(provider.crypto(), <span class="kw-2">&amp;</span>serialized_provisional_group_context)
             .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Using the key schedule in the wrong state&quot;</span>))<span class="question-mark">?</span>;
         <span class="kw">let </span>provisional_epoch_secrets = key_schedule
-            .epoch_secrets(backend)
+            .epoch_secrets(provider.crypto())
             .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Using the key schedule in the wrong state&quot;</span>))<span class="question-mark">?</span>;
 
         <span class="comment">// Calculate the confirmation tag
         </span><span class="kw">let </span>confirmation_tag = provisional_epoch_secrets
             .confirmation_key()
-            .tag(backend, diff.group_context().confirmed_transcript_hash())
+            .tag(
+                provider.crypto(),
+                diff.group_context().confirmed_transcript_hash(),
+            )
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
 
         <span class="comment">// Set the confirmation tag
         </span>authenticated_content.set_confirmation_tag(confirmation_tag.clone());
 
-        diff.update_interim_transcript_hash(ciphersuite, backend, confirmation_tag.clone())<span class="question-mark">?</span>;
+        diff.update_interim_transcript_hash(
+            ciphersuite,
+            provider.crypto(),
+            confirmation_tag.clone(),
+        )<span class="question-mark">?</span>;
 
         <span class="comment">// only computes the group info if necessary
         </span><span class="kw">let </span>group_info = <span class="kw">if </span>!apply_proposals_values.invitation_list.is_empty()
@@ -2122,7 +2138,7 @@
             <span class="comment">// Create the ratchet tree extension if necessary
             </span><span class="kw">let </span>external_pub = provisional_epoch_secrets
                 .external_secret()
-                .derive_external_keypair(backend.crypto(), ciphersuite)
+                .derive_external_keypair(provider.crypto(), ciphersuite)
                 .public;
             <span class="kw">let </span>external_pub_extension =
                 Extension::ExternalPub(ExternalPubExtension::new(external_pub.into()));
@@ -2154,11 +2170,11 @@
         </span><span class="kw">let </span>welcome_option = <span class="kw">if </span>!apply_proposals_values.invitation_list.is_empty() {
             <span class="comment">// Encrypt GroupInfo object
             </span><span class="kw">let </span>(welcome_key, welcome_nonce) = welcome_secret
-                .derive_welcome_key_nonce(backend)
+                .derive_welcome_key_nonce(provider.crypto())
                 .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
             <span class="kw">let </span>encrypted_group_info = welcome_key
                 .aead_seal(
-                    backend,
+                    provider.crypto(),
                     group_info
                         .as_ref()
                         .ok_or_else(|| LibraryError::custom(<span class="string">&quot;GroupInfo was not computed&quot;</span>))<span class="question-mark">?
@@ -2178,7 +2194,7 @@
                 path_computation_result.plain_path.as_deref(),
                 <span class="kw-2">&amp;</span>apply_proposals_values.presharedkeys,
                 <span class="kw-2">&amp;</span>encrypted_group_info,
-                backend,
+                provider.crypto(),
                 <span class="self">self</span>.own_leaf_index(),
             )<span class="question-mark">?</span>;
 
@@ -2199,7 +2215,7 @@
         <span class="kw">let </span>staged_commit_state = MemberStagedCommitState::new(
             provisional_group_epoch_secrets,
             provisional_message_secrets,
-            diff.into_staged_diff(backend, ciphersuite)<span class="question-mark">?</span>,
+            diff.into_staged_diff(provider.crypto(), ciphersuite)<span class="question-mark">?</span>,
             path_computation_result.new_keypairs,
             <span class="comment">// The committer is not allowed to include their own update
             // proposal, so there is no extra keypair to store here.

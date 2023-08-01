@@ -807,7 +807,7 @@
     crypto::OpenMlsCrypto,
     signatures::Signer,
     types::{Ciphersuite, CryptoError},
-    OpenMlsCryptoProvider,
+    OpenMlsProvider,
 };
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>thiserror::Error;
@@ -1140,7 +1140,7 @@
     /// Returns the resulting [`TreeSync`] instance, as well as the
     /// corresponding [`CommitSecret`].
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         config: CryptoConfig,
         credential_with_key: CredentialWithKey,
@@ -1157,14 +1157,14 @@
             extensions,
             tree_info_tbs: TreeInfoTbs::KeyPackage,
         };
-        <span class="kw">let </span>(leaf, encryption_key_pair) = LeafNode::new(backend, signer, new_leaf_node_params)<span class="question-mark">?</span>;
+        <span class="kw">let </span>(leaf, encryption_key_pair) = LeafNode::new(provider, signer, new_leaf_node_params)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>node = Node::LeafNode(leaf);
-        <span class="kw">let </span>path_secret: PathSecret = Secret::random(config.ciphersuite, backend, <span class="prelude-val">None</span>)
+        <span class="kw">let </span>path_secret: PathSecret = Secret::random(config.ciphersuite, provider.rand(), <span class="prelude-val">None</span>)
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?
             </span>.into();
         <span class="kw">let </span>commit_secret: CommitSecret = path_secret
-            .derive_path_secret(backend, config.ciphersuite)<span class="question-mark">?
+            .derive_path_secret(provider.crypto(), config.ciphersuite)<span class="question-mark">?
             </span>.into();
         <span class="kw">let </span>nodes = <span class="macro">vec!</span>[TreeSyncNode::from(node).into()];
         <span class="kw">let </span>tree = MlsBinaryTree::new(nodes)
@@ -1174,7 +1174,7 @@
             tree_hash: <span class="macro">vec!</span>[],
         };
         <span class="comment">// Populate tree hash caches.
-        </span>tree_sync.populate_parent_hashes(backend, config.ciphersuite)<span class="question-mark">?</span>;
+        </span>tree_sync.populate_parent_hashes(provider.crypto(), config.ciphersuite)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>((tree_sync, commit_secret, encryption_key_pair))
     }
@@ -1202,7 +1202,7 @@
     /// slice of nodes. It verifies that the provided encryption key is present
     /// in the tree and that the invariants documented in [`TreeSync`] hold.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_ratchet_tree(
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         ratchet_tree: RatchetTree,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, TreeSyncFromNodesError&gt; {
@@ -1234,7 +1234,7 @@
         };
         <span class="comment">// Verify all parent hashes.
         </span>tree_sync
-            .verify_parent_hashes(backend, ciphersuite)
+            .verify_parent_hashes(crypto, ciphersuite)
             .map_err(|e| <span class="kw">match </span>e {
                 TreeSyncParentHashError::LibraryError(e) =&gt; e.into(),
                 TreeSyncParentHashError::InvalidParentHash =&gt; {
@@ -1242,7 +1242,7 @@
                 }
             })<span class="question-mark">?</span>;
         <span class="comment">// Populate tree hash caches.
-        </span>tree_sync.populate_parent_hashes(backend, ciphersuite)<span class="question-mark">?</span>;
+        </span>tree_sync.populate_parent_hashes(crypto, ciphersuite)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(tree_sync)
     }
 
@@ -1258,13 +1258,13 @@
     <span class="doccomment">/// Populate the parent hash caches of all nodes in the tree.
     </span><span class="kw">fn </span>populate_parent_hashes(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), LibraryError&gt; {
         <span class="kw">let </span>diff = <span class="self">self</span>.empty_diff();
         <span class="comment">// Make the diff into a staged diff. This implicitly computes the
         // tree hashes and poulates the tree hash caches.
-        </span><span class="kw">let </span>staged_diff = diff.into_staged_diff(backend, ciphersuite)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>staged_diff = diff.into_staged_diff(crypto, ciphersuite)<span class="question-mark">?</span>;
         <span class="comment">// Merge the diff.
         </span><span class="self">self</span>.merge_diff(staged_diff);
         <span class="prelude-val">Ok</span>(())
@@ -1276,7 +1276,7 @@
     /// parent hash.
     </span><span class="kw">fn </span>verify_parent_hashes(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), TreeSyncParentHashError&gt; {
         <span class="comment">// The ability to verify parent hashes is required both for diffs and
@@ -1294,7 +1294,7 @@
         // should reconsider and choose the alternative sketched above
         </span><span class="kw">let </span>diff = <span class="self">self</span>.empty_diff();
         <span class="comment">// No need to merge the diff, since we didn&#39;t actually modify any state.
-        </span>diff.verify_parent_hashes(backend, ciphersuite)
+        </span>diff.verify_parent_hashes(crypto, ciphersuite)
     }
 
     <span class="doccomment">/// Returns the tree size
@@ -1427,7 +1427,7 @@
     /// in the tree.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>derive_path_secrets(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         <span class="kw-2">mut </span>path_secret: PathSecret,
         sender_index: LeafNodeIndex,
@@ -1445,7 +1445,7 @@
                 <span class="comment">// If our own leaf index is not in the list of unmerged leaves
                 // then we should have the secret for this node.
                 </span><span class="kw">if </span>!parent_node.unmerged_leaves().contains(<span class="kw-2">&amp;</span>leaf_index) {
-                    <span class="kw">let </span>keypair = path_secret.derive_key_pair(backend, ciphersuite)<span class="question-mark">?</span>;
+                    <span class="kw">let </span>keypair = path_secret.derive_key_pair(crypto, ciphersuite)<span class="question-mark">?</span>;
                     <span class="comment">// The derived public key should match the one in the node.
                     // If not, the tree is corrupt.
                     </span><span class="kw">if </span>parent_node.encryption_key() != keypair.public_key() {
@@ -1454,7 +1454,7 @@
                         <span class="comment">// If everything is ok, set the private key and derive
                         // the next path secret.
                         </span>keypairs.push(keypair);
-                        path_secret = path_secret.derive_path_secret(backend, ciphersuite)<span class="question-mark">?</span>;
+                        path_secret = path_secret.derive_path_secret(crypto, ciphersuite)<span class="question-mark">?</span>;
                     }
                 };
                 <span class="comment">// If the leaf is blank or our index is in the list of unmerged
@@ -1499,13 +1499,13 @@
         RatchetTree::trimmed(<span class="macro">vec!</span>[<span class="prelude-val">None</span>]);
     }
 
-    <span class="attr">#[apply(ciphersuites_and_backends)]
+    <span class="attr">#[apply(ciphersuites_and_providers)]
     </span><span class="kw">fn </span>test_ratchet_tree_trailing_blank_nodes(
         ciphersuite: Ciphersuite,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
     ) {
         <span class="kw">let </span>(key_package, <span class="kw">_</span>, <span class="kw">_</span>) =
-            <span class="kw">crate</span>::key_packages::test_key_packages::key_package(ciphersuite, backend);
+            <span class="kw">crate</span>::key_packages::test_key_packages::key_package(ciphersuite, provider);
         <span class="kw">let </span>node_in = NodeIn::from(Node::LeafNode(LeafNode::from(key_package)));
         <span class="kw">let </span>tests = [
             (<span class="macro">vec!</span>[], <span class="bool-val">false</span>),
@@ -1527,9 +1527,9 @@
         <span class="kw">for </span>(test, expected) <span class="kw">in </span>tests.into_iter() {
             <span class="kw">let </span>got = RatchetTree::try_from_nodes(
                 ciphersuite,
-                backend.crypto(),
+                provider.crypto(),
                 test,
-                <span class="kw-2">&amp;</span>GroupId::random(backend),
+                <span class="kw-2">&amp;</span>GroupId::random(provider.rand()),
             )
             .is_ok();
             <span class="macro">assert_eq!</span>(got, expected);

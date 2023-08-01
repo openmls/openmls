@@ -19,9 +19,6 @@
 <a href="#19" id="19">19</a>
 <a href="#20" id="20">20</a>
 <a href="#21" id="21">21</a>
-<a href="#22" id="22">22</a>
-<a href="#23" id="23">23</a>
-<a href="#24" id="24">24</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// Re-use guard size.
@@ -35,12 +32,9 @@
 
 <span class="kw">impl </span>ReuseGuard {
     <span class="doccomment">/// Samples a fresh reuse guard uniformly at random.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>try_from_random(
-        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, CryptoError&gt; {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>try_from_random(rng: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsRand) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, CryptoError&gt; {
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
-            value: crypto
-                .rand()
+            value: rng
                 .random_array()
                 .map_err(|<span class="kw">_</span>| CryptoError::InsufficientRandomness)<span class="question-mark">?</span>,
         })

@@ -107,7 +107,7 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test {
     <span class="kw">use </span>openmls_rust_crypto::OpenMlsRustCrypto;
-    <span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
+    <span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsProvider};
     <span class="kw">use </span>tls_codec::{Deserialize, Serialize};
 
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
@@ -116,7 +116,7 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_serialize_deserialize() {
         <span class="kw">let </span>tests = {
-            <span class="kw">let </span>backend = OpenMlsRustCrypto::default();
+            <span class="kw">let </span>provider = OpenMlsRustCrypto::default();
 
             <span class="kw">let </span><span class="kw-2">mut </span>external_pub_extensions = Vec::new();
 
@@ -124,11 +124,11 @@
                 <span class="kw">let </span>hpke_public_key = {
                     <span class="kw">let </span>ikm = Secret::random(
                         Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-                        <span class="kw-2">&amp;</span>backend,
+                        provider.rand(),
                         ProtocolVersion::default(),
                     )
                     .unwrap();
-                    <span class="kw">let </span>init_key = backend.crypto().derive_hpke_keypair(
+                    <span class="kw">let </span>init_key = provider.crypto().derive_hpke_keypair(
                         Ciphersuite::hpke_config(
                             <span class="kw-2">&amp;</span>Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
                         ),

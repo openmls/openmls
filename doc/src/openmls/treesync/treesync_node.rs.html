@@ -188,11 +188,13 @@
 <a href="#188" id="188">188</a>
 <a href="#189" id="189">189</a>
 <a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the [`TreeSyncNode`] struct and its implementation.
 
 </span><span class="kw">use </span>std::collections::HashSet;
 
-<span class="kw">use </span>openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
+<span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
+<span class="kw">use </span>openmls_traits::types::Ciphersuite;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>tls_codec::VLByteSlice;
 
@@ -274,12 +276,12 @@
     /// field.
     </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>compute_tree_hash(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         leaf_index: LeafNodeIndex,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, LibraryError&gt; {
         <span class="kw">let </span>hash_input = TreeHashInput::new_leaf(<span class="kw-2">&amp;</span>leaf_index, <span class="self">self</span>.node.as_ref());
-        <span class="kw">let </span>hash = hash_input.hash(backend, ciphersuite)<span class="question-mark">?</span>;
+        <span class="kw">let </span>hash = hash_input.hash(crypto, ciphersuite)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(hash)
     }
@@ -326,7 +328,7 @@
     /// are filtered out.
     </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>compute_tree_hash(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         left_hash: Vec&lt;u8&gt;,
         right_hash: Vec&lt;u8&gt;,
@@ -339,7 +341,7 @@
                 VLByteSlice(<span class="kw-2">&amp;</span>left_hash),
                 VLByteSlice(<span class="kw-2">&amp;</span>right_hash),
             )
-            .hash(backend, ciphersuite)<span class="question-mark">?
+            .hash(crypto, ciphersuite)<span class="question-mark">?
         </span>} <span class="kw">else if let </span><span class="prelude-val">Some</span>(parent_node) = <span class="self">self</span>.node.as_ref() {
             <span class="comment">// If the exclusion list is not empty, we need to create a new
             // parent node without the excluded indices in the unmerged leaves.
@@ -356,11 +358,11 @@
                 VLByteSlice(<span class="kw-2">&amp;</span>left_hash),
                 VLByteSlice(<span class="kw-2">&amp;</span>right_hash),
             )
-            .hash(backend, ciphersuite)<span class="question-mark">?
+            .hash(crypto, ciphersuite)<span class="question-mark">?
         </span>} <span class="kw">else </span>{
             <span class="comment">// If the node is blank
             </span>TreeHashInput::new_parent(<span class="prelude-val">None</span>, VLByteSlice(<span class="kw-2">&amp;</span>left_hash), VLByteSlice(<span class="kw-2">&amp;</span>right_hash))
-                .hash(backend, ciphersuite)<span class="question-mark">?
+                .hash(crypto, ciphersuite)<span class="question-mark">?
         </span>};
 
         <span class="prelude-val">Ok</span>(hash)

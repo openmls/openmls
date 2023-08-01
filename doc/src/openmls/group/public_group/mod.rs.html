@@ -375,6 +375,8 @@
 <a href="#375" id="375">375</a>
 <a href="#376" id="376">376</a>
 <a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Public Groups
 //!
 //! There are a few use-cases that require the tracking of an MLS group based on
@@ -389,9 +391,11 @@
 //! relies on a [`PublicGroup`] as well.
 
 </span><span class="attr">#[cfg(test)]
+</span><span class="kw">use </span><span class="kw">crate</span>::prelude::OpenMlsProvider;
+<span class="attr">#[cfg(test)]
 </span><span class="kw">use </span>std::collections::HashSet;
 
-<span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
+<span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 
 <span class="kw">use </span><span class="self">self</span>::{
@@ -481,7 +485,7 @@
     /// one of the checks fails. See [`CreationFromExternalError`] for more
     /// details.
     </span><span class="kw">pub fn </span>from_external(
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         ratchet_tree: RatchetTreeIn,
         verifiable_group_info: VerifiableGroupInfo,
         proposal_store: ProposalStore,
@@ -490,7 +494,7 @@
 
         <span class="kw">let </span>group_id = verifiable_group_info.group_id();
         <span class="kw">let </span>ratchet_tree = ratchet_tree
-            .into_verified(ciphersuite, backend.crypto(), group_id)
+            .into_verified(ciphersuite, crypto, group_id)
             .map_err(|e| {
                 CreationFromExternalError::TreeSyncError(TreeSyncFromNodesError::RatchetTreeError(
                     e,
@@ -500,7 +504,7 @@
         <span class="comment">// Create a RatchetTree from the given nodes. We have to do this before
         // verifying the group info, since we need to find the Credential to verify the
         // signature against.
-        </span><span class="kw">let </span>treesync = TreeSync::from_ratchet_tree(backend, ciphersuite, ratchet_tree)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>treesync = TreeSync::from_ratchet_tree(crypto, ciphersuite, ratchet_tree)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>group_info: GroupInfo = {
             <span class="kw">let </span>signer_signature_key = treesync
@@ -511,7 +515,7 @@
                 .into_signature_public_key_enriched(ciphersuite.signature_algorithm());
 
             verifiable_group_info
-                .verify(backend.crypto(), <span class="kw-2">&amp;</span>signer_signature_key)
+                .verify(crypto, <span class="kw-2">&amp;</span>signer_signature_key)
                 .map_err(|<span class="kw">_</span>| CreationFromExternalError::InvalidGroupInfoSignature)<span class="question-mark">?
         </span>};
 
@@ -529,7 +533,7 @@
             <span class="kw">let </span>input = InterimTranscriptHashInput::from(group_info.confirmation_tag());
 
             input.calculate_interim_transcript_hash(
-                backend.crypto(),
+                crypto,
                 group_context.ciphersuite(),
                 group_context.confirmed_transcript_hash(),
             )<span class="question-mark">?
@@ -630,14 +634,14 @@
     /// in the tree.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>derive_path_secrets(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         path_secret: PathSecret,
         sender_index: LeafNodeIndex,
         leaf_index: LeafNodeIndex,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;EncryptionKeyPair&gt;, CommitSecret), DerivePathError&gt; {
         <span class="self">self</span>.treesync.derive_path_secrets(
-            backend,
+            crypto,
             ciphersuite,
             path_secret,
             sender_index,
@@ -735,7 +739,7 @@
     <span class="attr">#[cfg(test)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encrypt_path(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
         ciphersuite: Ciphersuite,
         path: <span class="kw-2">&amp;</span>[PlainUpdatePathNode],
         group_context: <span class="kw-2">&amp;</span>[u8],
@@ -743,7 +747,7 @@
         own_leaf_index: LeafNodeIndex,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;UpdatePathNode&gt;, LibraryError&gt; {
         <span class="self">self</span>.treesync().empty_diff().encrypt_path(
-            backend,
+            provider.crypto(),
             ciphersuite,
             path,
             group_context,

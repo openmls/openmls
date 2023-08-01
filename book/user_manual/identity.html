@@ -188,7 +188,7 @@ Thus, to create a fresh <code>Credential</code>, the following inputs are requir
 <p>After creating the credential bundle, clients should create keys for it.
 OpenMLS provides a simple implementation of <a href="https://github.com/openmls/openmls/tree/main/basic-credential"><code>BasicCredential</code></a> for tests and to demonstrate how to use credentials.</p>
 <pre><code class="language-rust no_run noplayground">    let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
-    signature_keys.store(backend.key_store()).unwrap();</code></pre>
+    signature_keys.store(provider.key_store()).unwrap();</code></pre>
 <p>All functions and structs related to credentials can be found in the <a href="https://docs.rs/crate/openmls/latest/credentials/index.html"><code>credentials</code></a> module.</p>
 
                     </main>

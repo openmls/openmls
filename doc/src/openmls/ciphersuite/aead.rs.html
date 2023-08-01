@@ -179,8 +179,6 @@
 <a href="#179" id="179">179</a>
 <a href="#180" id="180">180</a>
 <a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>tls_codec::SecretVLBytes;
 
 <span class="kw">use super</span>::<span class="kw-2">*</span>;
@@ -248,13 +246,12 @@
     <span class="doccomment">/// Encrypt a payload under the AeadKey given a nonce.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>aead_seal(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         msg: <span class="kw-2">&amp;</span>[u8],
         aad: <span class="kw-2">&amp;</span>[u8],
         nonce: <span class="kw-2">&amp;</span>AeadNonce,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, CryptoError&gt; {
-        backend
-            .crypto()
+        crypto
             .aead_encrypt(<span class="self">self</span>.aead_mode, <span class="self">self</span>.value.as_slice(), msg, <span class="kw-2">&amp;</span>nonce.<span class="number">0</span>, aad)
             .map_err(|<span class="kw">_</span>| CryptoError::CryptoLibraryError)
     }
@@ -262,13 +259,12 @@
     <span class="doccomment">/// AEAD decrypt `ciphertext` with `key`, `aad`, and `nonce`.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>aead_open(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         ciphertext: <span class="kw-2">&amp;</span>[u8],
         aad: <span class="kw-2">&amp;</span>[u8],
         nonce: <span class="kw-2">&amp;</span>AeadNonce,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, CryptoError&gt; {
-        backend
-            .crypto()
+        crypto
             .aead_decrypt(
                 <span class="self">self</span>.aead_mode,
                 <span class="self">self</span>.value.as_slice(),
@@ -294,8 +290,8 @@
     /// **NOTE: This has to wait until it can acquire the lock to get randomness!**
     /// TODO: This panics if another thread holding the rng panics.
     </span><span class="attr">#[cfg(test)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>random(rng: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider) -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>(rng.rand().random_array().expect(<span class="string">&quot;Not enough entropy.&quot;</span>))
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>random(rng: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsRand) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>(rng.random_array().expect(<span class="string">&quot;Not enough entropy.&quot;</span>))
     }
 
     <span class="doccomment">/// Get a slice to the nonce value.
@@ -347,11 +343,11 @@
     <span class="doccomment">/// Make sure that xoring works by xoring a nonce with a reuse guard, testing if
     /// it has changed, xoring it again and testing that it&#39;s back in its original
     /// state.
-    </span><span class="attr">#[apply(backends)]
-    </span><span class="kw">fn </span>test_xor(backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider) {
+    </span><span class="attr">#[apply(providers)]
+    </span><span class="kw">fn </span>test_xor(provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider) {
         <span class="kw">let </span>reuse_guard: ReuseGuard =
-            ReuseGuard::try_from_random(backend).expect(<span class="string">&quot;An unexpected error occurred.&quot;</span>);
-        <span class="kw">let </span>original_nonce = AeadNonce::random(backend);
+            ReuseGuard::try_from_random(provider.rand()).expect(<span class="string">&quot;An unexpected error occurred.&quot;</span>);
+        <span class="kw">let </span>original_nonce = AeadNonce::random(provider.rand());
         <span class="kw">let </span>xored_once = original_nonce.clone().xor_with_reuse_guard(<span class="kw-2">&amp;</span>reuse_guard);
         <span class="macro">assert_ne!</span>(
             original_nonce, xored_once,

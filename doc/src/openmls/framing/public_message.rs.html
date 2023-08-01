@@ -310,7 +310,7 @@
 
 </span><span class="kw">use </span>std::io::Write;
 
-<span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
+<span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 <span class="kw">use </span>tls_codec::{Serialize <span class="kw">as </span>TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize};
 
 <span class="kw">use super</span>::{
@@ -432,7 +432,7 @@
     /// This should be used after signing messages from group members.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>set_membership_tag(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         membership_key: <span class="kw-2">&amp;</span>MembershipKey,
         serialized_context: <span class="kw-2">&amp;</span>[u8],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), LibraryError&gt; {
@@ -445,7 +445,7 @@
         )
         .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
         <span class="kw">let </span>tbm_payload = AuthenticatedContentTbm::new(<span class="kw-2">&amp;</span>tbs_payload, <span class="kw-2">&amp;</span><span class="self">self</span>.auth)<span class="question-mark">?</span>;
-        <span class="kw">let </span>membership_tag = membership_key.tag_message(backend, tbm_payload)<span class="question-mark">?</span>;
+        <span class="kw">let </span>membership_tag = membership_key.tag_message(crypto, tbm_payload)<span class="question-mark">?</span>;
 
         <span class="self">self</span>.membership_tag = <span class="prelude-val">Some</span>(membership_tag);
         <span class="prelude-val">Ok</span>(())

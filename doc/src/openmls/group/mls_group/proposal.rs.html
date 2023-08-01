@@ -351,7 +351,7 @@
 <a href="#351" id="351">351</a>
 <a href="#352" id="352">352</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::{
-    key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite, OpenMlsCryptoProvider,
+    key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite, OpenMlsProvider,
 };
 
 <span class="kw">use super</span>::{
@@ -414,7 +414,7 @@
         /// Returns an error if there is a pending commit.
         </span><span class="kw">pub fn </span><span class="macro-nonterminal">$name</span>&lt;KeyStore: OpenMlsKeyStore&gt;(
             <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-            backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+            provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
             signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
             value: <span class="macro-nonterminal">$value_ty</span>,
         ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposalError&lt;KeyStore::Error&gt;&gt; {
@@ -426,7 +426,7 @@
 
             <span class="kw">let </span>queued_proposal = QueuedProposal::from_authenticated_content(
                 <span class="self">self</span>.ciphersuite(),
-                backend,
+                provider.crypto(),
                 proposal.clone(),
                 <span class="macro-nonterminal">$ref_or_value</span>,
             )<span class="question-mark">?</span>;
@@ -434,7 +434,7 @@
             <span class="macro">log::trace!</span>(<span class="string">&quot;Storing proposal in queue {:?}&quot;</span>, queued_proposal);
             <span class="self">self</span>.proposal_store.add(queued_proposal);
 
-            <span class="kw">let </span>mls_message = <span class="self">self</span>.content_to_mls_message(proposal, backend)<span class="question-mark">?</span>;
+            <span class="kw">let </span>mls_message = <span class="self">self</span>.content_to_mls_message(proposal, provider)<span class="question-mark">?</span>;
 
             <span class="comment">// Since the state of the group might be changed, arm the state flag
             </span><span class="self">self</span>.flag_state_change();
@@ -476,7 +476,7 @@
     <span class="doccomment">/// Generate a proposal
     </span><span class="kw">pub fn </span>propose&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         propose: Propose,
         ref_or_value: ProposalOrRefType,
@@ -484,48 +484,48 @@
         <span class="kw">match </span>propose {
             Propose::Add(key_package) =&gt; <span class="kw">match </span>ref_or_value {
                 ProposalOrRefType::Proposal =&gt; {
-                    <span class="self">self</span>.propose_add_member_by_value(backend, signer, key_package)
+                    <span class="self">self</span>.propose_add_member_by_value(provider, signer, key_package)
                 }
                 ProposalOrRefType::Reference =&gt; <span class="self">self
-                    </span>.propose_add_member(backend, signer, <span class="kw-2">&amp;</span>key_package)
+                    </span>.propose_add_member(provider, signer, <span class="kw-2">&amp;</span>key_package)
                     .map_err(|e| e.into()),
             },
 
             Propose::Update(leaf_node) =&gt; <span class="kw">match </span>ref_or_value {
                 ProposalOrRefType::Proposal =&gt; <span class="self">self
-                    </span>.propose_self_update_by_value(backend, signer, leaf_node)
+                    </span>.propose_self_update_by_value(provider, signer, leaf_node)
                     .map_err(|e| e.into()),
                 ProposalOrRefType::Reference =&gt; <span class="self">self
-                    </span>.propose_self_update(backend, signer, leaf_node)
+                    </span>.propose_self_update(provider, signer, leaf_node)
                     .map_err(|e| e.into()),
             },
 
             Propose::Remove(leaf_index) =&gt; <span class="kw">match </span>ref_or_value {
                 ProposalOrRefType::Proposal =&gt; <span class="self">self</span>.propose_remove_member_by_value(
-                    backend,
+                    provider,
                     signer,
                     LeafNodeIndex::new(leaf_index),
                 ),
                 ProposalOrRefType::Reference =&gt; <span class="self">self
-                    </span>.propose_remove_member(backend, signer, LeafNodeIndex::new(leaf_index))
+                    </span>.propose_remove_member(provider, signer, LeafNodeIndex::new(leaf_index))
                     .map_err(|e| e.into()),
             },
 
             Propose::RemoveCredential(credential) =&gt; <span class="kw">match </span>ref_or_value {
                 ProposalOrRefType::Proposal =&gt; {
-                    <span class="self">self</span>.propose_remove_member_by_credential_by_value(backend, signer, <span class="kw-2">&amp;</span>credential)
+                    <span class="self">self</span>.propose_remove_member_by_credential_by_value(provider, signer, <span class="kw-2">&amp;</span>credential)
                 }
                 ProposalOrRefType::Reference =&gt; <span class="self">self
-                    </span>.propose_remove_member_by_credential(backend, signer, <span class="kw-2">&amp;</span>credential)
+                    </span>.propose_remove_member_by_credential(provider, signer, <span class="kw-2">&amp;</span>credential)
                     .map_err(|e| e.into()),
             },
             Propose::PreSharedKey(psk_id) =&gt; <span class="kw">match </span>psk_id.psk() {
                 <span class="kw">crate</span>::schedule::Psk::External(<span class="kw">_</span>) =&gt; <span class="kw">match </span>ref_or_value {
                     ProposalOrRefType::Proposal =&gt; {
-                        <span class="self">self</span>.propose_external_psk_by_value(backend, signer, psk_id)
+                        <span class="self">self</span>.propose_external_psk_by_value(provider, signer, psk_id)
                     }
                     ProposalOrRefType::Reference =&gt; {
-                        <span class="self">self</span>.propose_external_psk(backend, signer, psk_id)
+                        <span class="self">self</span>.propose_external_psk(provider, signer, psk_id)
                     }
                 },
                 <span class="kw">crate</span>::schedule::Psk::Resumption(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(ProposalError::LibraryError(
@@ -554,7 +554,7 @@
     /// Returns an error if there is a pending commit.
     </span><span class="kw">pub fn </span>propose_add_member(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         key_package: <span class="kw-2">&amp;</span>KeyPackage,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposeAddMemberError&gt; {
@@ -572,13 +572,13 @@
 
         <span class="kw">let </span>proposal = QueuedProposal::from_authenticated_content_by_ref(
             <span class="self">self</span>.ciphersuite(),
-            backend,
+            provider.crypto(),
             add_proposal.clone(),
         )<span class="question-mark">?</span>;
         <span class="kw">let </span>proposal_ref = proposal.proposal_reference();
         <span class="self">self</span>.proposal_store.add(proposal);
 
-        <span class="kw">let </span>mls_message = <span class="self">self</span>.content_to_mls_message(add_proposal, backend)<span class="question-mark">?</span>;
+        <span class="kw">let </span>mls_message = <span class="self">self</span>.content_to_mls_message(add_proposal, provider)<span class="question-mark">?</span>;
 
         <span class="comment">// Since the state of the group might be changed, arm the state flag
         </span><span class="self">self</span>.flag_state_change();
@@ -592,7 +592,7 @@
     /// Returns an error if there is a pending commit.
     </span><span class="kw">pub fn </span>propose_remove_member(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         member: LeafNodeIndex,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposeRemoveMemberError&gt; {
@@ -605,13 +605,13 @@
 
         <span class="kw">let </span>proposal = QueuedProposal::from_authenticated_content_by_ref(
             <span class="self">self</span>.ciphersuite(),
-            backend,
+            provider.crypto(),
             remove_proposal.clone(),
         )<span class="question-mark">?</span>;
         <span class="kw">let </span>proposal_ref = proposal.proposal_reference();
         <span class="self">self</span>.proposal_store.add(proposal);
 
-        <span class="kw">let </span>mls_message = <span class="self">self</span>.content_to_mls_message(remove_proposal, backend)<span class="question-mark">?</span>;
+        <span class="kw">let </span>mls_message = <span class="self">self</span>.content_to_mls_message(remove_proposal, provider)<span class="question-mark">?</span>;
 
         <span class="comment">// Since the state of the group might be changed, arm the state flag
         </span><span class="self">self</span>.flag_state_change();
@@ -625,7 +625,7 @@
     /// Returns an error if there is a pending commit.
     </span><span class="kw">pub fn </span>propose_remove_member_by_credential(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         member: <span class="kw-2">&amp;</span>Credential,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposeRemoveMemberError&gt; {
@@ -638,7 +638,7 @@
             .map(|m| m.index);
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(member_index) = member_index {
-            <span class="self">self</span>.propose_remove_member(backend, signer, member_index)
+            <span class="self">self</span>.propose_remove_member(provider, signer, member_index)
         } <span class="kw">else </span>{
             <span class="prelude-val">Err</span>(ProposeRemoveMemberError::UnknownMember)
         }
@@ -650,7 +650,7 @@
     /// Returns an error if there is a pending commit.
     </span><span class="kw">pub fn </span>propose_remove_member_by_credential_by_value&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         member: <span class="kw-2">&amp;</span>Credential,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposalError&lt;KeyStore::Error&gt;&gt; {
@@ -663,7 +663,7 @@
             .map(|m| m.index);
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(member_index) = member_index {
-            <span class="self">self</span>.propose_remove_member_by_value(backend, signer, member_index)
+            <span class="self">self</span>.propose_remove_member_by_value(provider, signer, member_index)
         } <span class="kw">else </span>{
             <span class="prelude-val">Err</span>(ProposalError::ProposeRemoveMemberError(
                 ProposeRemoveMemberError::UnknownMember,
@@ -674,7 +674,7 @@
     <span class="attr">#[cfg(test)]
     </span><span class="kw">pub fn </span>propose_group_context_extensions(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
         extensions: Extensions,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposalError&lt;()&gt;&gt; {
@@ -687,14 +687,14 @@
 
         <span class="kw">let </span>queued_proposal = QueuedProposal::from_authenticated_content_by_ref(
             <span class="self">self</span>.ciphersuite(),
-            backend,
+            provider.crypto(),
             proposal.clone(),
         )<span class="question-mark">?</span>;
 
         <span class="kw">let </span>proposal_ref = queued_proposal.proposal_reference();
         <span class="self">self</span>.proposal_store.add(queued_proposal);
 
-        <span class="kw">let </span>mls_message = <span class="self">self</span>.content_to_mls_message(proposal, backend)<span class="question-mark">?</span>;
+        <span class="kw">let </span>mls_message = <span class="self">self</span>.content_to_mls_message(proposal, provider)<span class="question-mark">?</span>;
 
         <span class="comment">// Since the state of the group might be changed, arm the state flag
         </span><span class="self">self</span>.flag_state_change();

@@ -178,7 +178,7 @@
 <a href="https://openmls.tech/book"><img src="https://img.shields.io/badge/book-release-blue.svg?style=for-the-badge" alt="Book" /></a>
 <img src="https://img.shields.io/badge/rustc-1.56+-blue.svg?style=for-the-badge&amp;logo=rust" alt="Rust Version" /></p>
 <p><em>OpenMLS</em> is a Rust implementation of the Messaging Layer Security (MLS) protocol, as specified in <a href="https://datatracker.ietf.org/doc/html/rfc9420">RFC 9420</a>.
-OpenMLS provides a high-level API to create and manage MLS groups. It supports basic ciphersuites and an interchangeable cryptographic backend, key store, and random number generator.</p>
+OpenMLS provides a high-level API to create and manage MLS groups. It supports basic ciphersuites and an interchangeable cryptographic provider, key store, and random number generator.</p>
 <p>This book provides guidance on using OpenMLS and its <code>MlsGroup</code> API to perform basic group operations, illustrated with examples.</p>
 <!-- Get the rest of the Readme -->
 <h2 id="supported-ciphersuites"><a class="header" href="#supported-ciphersuites">Supported ciphersuites</a></h2>
@@ -215,7 +215,7 @@ OpenMLS provides a high-level API to create and manage MLS groups. It supports b
 <h2 id="cryptography-dependencies"><a class="header" href="#cryptography-dependencies">Cryptography Dependencies</a></h2>
 <p>OpenMLS does not implement its own cryptographic primitives. Instead, it relies
 on existing implementations of the cryptographic primitives used by MLS. There
-are two different cryptography backends implemented right now. But consumers
+are two different cryptography providers implemented right now. But consumers
 can bring their own implementation. See <a href="https://github.com/openmls/openmls/tree/main/traits">traits</a> for more
 details.</p>
 <h2 id="working-on-openmls"><a class="header" href="#working-on-openmls">Working on OpenMLS</a></h2>
@@ -227,12 +227,12 @@ details.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="user-manual"><a class="header" href="#user-manual">User manual</a></h1>
 <p>The user manual describes how to use the different parts of the OpenMLS API.</p>
 <h2 id="prerequisites"><a class="header" href="#prerequisites">Prerequisites</a></h2>
-<p>Most operations in OpenMLS require a <code>backend</code> object that provides all required cryptographic algorithms via the <a href="https://docs.rs/openmls/latest/openmls/prelude/trait.OpenMlsCryptoProvider.html"><code>OpenMlsCryptoProvider</code></a> trait.
+<p>Most operations in OpenMLS require a <code>provider</code> object that provides all required cryptographic algorithms via the <a href="https://docs.rs/openmls/latest/openmls/prelude/trait.OpenMlsCryptoProvider.html"><code>OpenMlsCryptoProvider</code></a> trait.
 Currently, there are two implementations available through the <a href="https://crates.io/crates/openmls_rust_crypto">openmls_rust_crypto</a> crate.</p>
-<p>Thus, you can create the <code>backend</code> object for the following examples using ...</p>
+<p>Thus, you can create the <code>provider</code> object for the following examples using ...</p>
 <pre><code class="language-rust no_run noplayground">    use openmls_rust_crypto::OpenMlsRustCrypto;
 
-    let backend = OpenMlsRustCrypto::default();</code></pre>
+    let provider = OpenMlsRustCrypto::default();</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="credentials"><a class="header" href="#credentials">Credentials</a></h1>
 <p>MLS relies on credentials to encode the identity of clients in the context of a group.
 There are different types of credentials, with the OpenMLS library currently only supporting the <code>BasicCredential</code> credential type (see below).
@@ -255,7 +255,7 @@ Thus, to create a fresh <code>Credential</code>, the following inputs are requir
 <p>After creating the credential bundle, clients should create keys for it.
 OpenMLS provides a simple implementation of <a href="https://github.com/openmls/openmls/tree/main/basic-credential"><code>BasicCredential</code></a> for tests and to demonstrate how to use credentials.</p>
 <pre><code class="language-rust no_run noplayground">    let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
-    signature_keys.store(backend.key_store()).unwrap();</code></pre>
+    signature_keys.store(provider.key_store()).unwrap();</code></pre>
 <p>All functions and structs related to credentials can be found in the <a href="https://docs.rs/crate/openmls/latest/credentials/index.html"><code>credentials</code></a> module.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="key-packages"><a class="header" href="#key-packages">Key packages</a></h1>
 <p>To enable the asynchronous establishment of groups through pre-publishing key material, as well as to represent clients in the group, MLS relies on key packages. Key packages hold several pieces of information:</p>
@@ -281,7 +281,7 @@ OpenMLS provides a simple implementation of <a href="https://github.com/openmls/
         .key_package_extensions(extensions)
         .build(
             CryptoConfig::with_default_version(ciphersuite),
-            backend,
+            provider,
             signer,
             credential_with_key,
         )
@@ -324,26 +324,26 @@ OpenMLS provides a simple implementation of <a href="https://github.com/openmls/
         .key_package_extensions(extensions)
         .build(
             CryptoConfig::with_default_version(ciphersuite),
-            backend,
+            provider,
             signer,
             credential_with_key,
         )
         .unwrap()</code></pre>
 <p>After that, the group can be created:</p>
 <pre><code class="language-rust no_run noplayground">    let mut alice_group = MlsGroup::new(
-        backend,
+        provider,
         &amp;alice_signature_keys,
         &amp;mls_group_config,
         alice_credential.clone(),
     )
     .expect(&quot;An unexpected error occurred.&quot;);</code></pre>
 <p>Note: Every group is assigned a random group ID during creation. The group ID cannot be changed and remains immutable throughout the group's lifetime. Choosing it randomly makes sure that the group ID doesn't collide with any other group ID in the same system.</p>
-<p>If someone else already gave you a group ID, e.g., a backend server, you can also create a group using a specific group ID:</p>
+<p>If someone else already gave you a group ID, e.g., a provider server, you can also create a group using a specific group ID:</p>
 <pre><code class="language-rust no_run noplayground">        // Some specific group ID generated by someone else.
         let group_id = GroupId::from_slice(b&quot;123e4567e89b&quot;);
 
         let mut alice_group = MlsGroup::new_with_group_id(
-            backend,
+            provider,
             &amp;alice_signature_keys,
             &amp;mls_group_config,
             group_id,
@@ -354,7 +354,7 @@ OpenMLS provides a simple implementation of <a href="https://github.com/openmls/
 <p>To join a group from a <code>Welcome</code> message, a new <code>MlsGroup</code> can be instantiated directly from the <code>Welcome</code> message.
 If the group configuration does not use the ratchet tree extension, the ratchet tree needs to be provided.</p>
 <pre><code class="language-rust no_run noplayground">    let mut bob_group = MlsGroup::new_from_welcome(
-        backend,
+        provider,
         &amp;mls_group_config,
         welcome.into_welcome().expect(&quot;Unexpected message type.&quot;),
         None, // We use the ratchet tree extension, so we don't provide a ratchet tree here
@@ -366,13 +366,13 @@ Delivery Service. Otherwise, you would end up with an invalid MLS group instance
 <h2 id="immediate-operation"><a class="header" href="#immediate-operation">Immediate operation</a></h2>
 <p>Members can be added to the group atomically with the <code>.add_members()</code> function. The application needs to fetch the corresponding key packages from every new member from the Delivery Service first.</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, welcome, group_info) = alice_group
-        .add_members(backend, &amp;alice_signature_keys, &amp;[bob_key_package])
+        .add_members(provider, &amp;alice_signature_keys, &amp;[bob_key_package])
         .expect(&quot;Could not add members.&quot;);</code></pre>
 <p>The function returns the tuple <code>(MlsMessageOut, Welcome)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing group members. The <code>Welcome</code> message must be sent to the newly added members.</p>
 <h2 id="proposal"><a class="header" href="#proposal">Proposal</a></h2>
 <p>Members can also be added as a proposal (without the corresponding Commit message) by using the <code>.propose_add_member()</code> function:</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, _proposal_ref) = alice_group
-        .propose_add_member(backend, &amp;alice_signature_keys, &amp;bob_key_package)
+        .propose_add_member(provider, &amp;alice_signature_keys, &amp;bob_key_package)
         .expect(&quot;Could not create proposal to add Bob&quot;);</code></pre>
 <p>In this case, the function returns an <code>MlsMessageOut</code> that needs to be fanned out to existing group members.</p>
 <h2 id="external-proposal"><a class="header" href="#external-proposal">External proposal</a></h2>
@@ -389,7 +389,7 @@ proposals are crafted by outsiders, they are always plaintext messages.</p>
 Note that in this scenario it is up to the application to define a proper authorization policy to grant the sender.</p>
 <pre><code class="language-rust no_run noplayground">    let alice_processed_message = alice_group
         .process_message(
-            backend,
+            provider,
             proposal
                 .into_protocol_message()
                 .expect(&quot;Unexpected message type.&quot;),
@@ -399,16 +399,16 @@ Note that in this scenario it is up to the application to define a proper author
         ProcessedMessageContent::ExternalJoinProposalMessage(proposal) =&gt; {
             alice_group.store_pending_proposal(*proposal);
             let (_commit, welcome, _group_info) = alice_group
-                .commit_to_pending_proposals(backend, &amp;alice_signature_keys)
+                .commit_to_pending_proposals(provider, &amp;alice_signature_keys)
                 .expect(&quot;Could not commit&quot;);
             assert_eq!(alice_group.members().count(), 1);
             alice_group
-                .merge_pending_commit(backend)
+                .merge_pending_commit(provider)
                 .expect(&quot;Could not merge commit&quot;);
             assert_eq!(alice_group.members().count(), 2);
 
             let bob_group = MlsGroup::new_from_welcome(
-                backend,
+                provider,
                 &amp;mls_group_config,
                 welcome
                     .unwrap()
@@ -425,7 +425,7 @@ Note that in this scenario it is up to the application to define a proper author
 <h2 id="immediate-operation-1"><a class="header" href="#immediate-operation-1">Immediate operation</a></h2>
 <p>Members can be removed from the group atomically with the <code>.remove_members()</code> function, which takes the <code>KeyPackageRef</code> of group member as input. References to the <code>KeyPackage</code>s of group members can be obtained using the <code>.members()</code> function, from which one can in turn compute the <code>KeyPackageRef</code> using their <code>.hash_ref()</code> function.</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, welcome_option, _group_info) = charlie_group
-        .remove_members(backend, &amp;charlie_signature_keys, &amp;[bob_member.index])
+        .remove_members(provider, &amp;charlie_signature_keys, &amp;[bob_member.index])
         .expect(&quot;Could not remove Bob from group.&quot;);</code></pre>
 <p>The function returns the tuple <code>(MlsMessageOut, Option&lt;Welcome&gt;)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing group members.
 Even though members were removed in this operation, the Commit message could potentially also cover Add Proposals previously received in the epoch. Therefore the function can also optionally return a <code>Welcome</code> message. The <code>Welcome</code> message must be sent to the newly added members.</p>
@@ -433,7 +433,7 @@ Even though members were removed in this operation, the Commit message could pot
 <p>Members can also be removed as a proposal (without the corresponding Commit message) by using the <code>.propose_remove_member()</code> function:</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, _proposal_ref) = alice_group
         .propose_remove_member(
-            backend,
+            provider,
             &amp;alice_signature_keys,
             charlie_group.own_leaf_index(),
         )
@@ -466,7 +466,7 @@ Even though members were removed in this operation, the Commit message could pot
 
         // Merge staged Commit
         bob_group
-            .merge_staged_commit(backend, *staged_commit)
+            .merge_staged_commit(provider, *staged_commit)
             .expect(&quot;Error merging staged commit.&quot;);
     } else {
         unreachable!(&quot;Expected a StagedCommit.&quot;);
@@ -499,7 +499,7 @@ Since those proposals are crafted by outsiders, they are always public messages.
 <p>Members can update their own leaf key package atomically with the <code>.self_update()</code> function.
 The application can optionally provide a <code>KeyPackage</code> manually. If not, a key package will be created on the fly with the same extensions as the current one but with a fresh HPKE init key.</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, welcome_option, _group_info) = bob_group
-        .self_update(backend, &amp;bob_signature_keys)
+        .self_update(provider, &amp;bob_signature_keys)
         .expect(&quot;Could not update own key package.&quot;);</code></pre>
 <p>The function returns the tuple <code>(MlsMessageOut, Option&lt;Welcome&gt;)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing group members.
 Even though the member updates its own key package only in this operation, the Commit message could potentially also cover Add Proposals that were previously received in the epoch. Therefore the function can also optionally return a <code>Welcome</code> message. The <code>Welcome</code> message must be sent to the newly added members.</p>
@@ -507,7 +507,7 @@ Even though the member updates its own key package only in this operation, the C
 <p>Members can also update their key package as a proposal (without the corresponding Commit message) by using the <code>.propose_self_update()</code> function. Just like with the <code>.self_update()</code> function, an optional key package can be provided:</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, _proposal_ref) = alice_group
         .propose_self_update(
-            backend,
+            provider,
             &amp;alice_signature_keys,
             None, // We don't provide a leaf node, it will be created on the fly instead
         )
@@ -516,7 +516,7 @@ Even though the member updates its own key package only in this operation, the C
 <div style="break-before: page; page-break-before: always;"></div><h1 id="leaving-a-group"><a class="header" href="#leaving-a-group">Leaving a group</a></h1>
 <p>Members can indicate to other group members that they wish to leave the group using the <code>leave_group()</code> function, which creates a remove proposal targeting the member's own leaf. The member can't create a Commit message that covers this proposal, as that would violate the Post-compromise Security guarantees of MLS because the member would know the epoch secrets of the next epoch.</p>
 <pre><code class="language-rust no_run noplayground">    let queued_message = bob_group
-        .leave_group(backend, &amp;bob_signature_keys)
+        .leave_group(provider, &amp;bob_signature_keys)
         .expect(&quot;Could not leave group&quot;);</code></pre>
 <p>After successfully sending the proposal to the DS for fanout, there is still the possibility that the remove proposal is not covered in the following commit. The member leaving the group thus has two options:</p>
 <ul>
@@ -528,7 +528,7 @@ Even though the member updates its own key package only in this operation, the C
 <p>Application messages are created from byte slices with the <code>.create_message()</code> function:</p>
 <pre><code class="language-rust no_run noplayground">    let message_alice = b&quot;Hi, I'm Alice!&quot;;
     let mls_message_out = alice_group
-        .create_message(backend, &amp;alice_signature_keys, message_alice)
+        .create_message(provider, &amp;alice_signature_keys, message_alice)
         .expect(&quot;Error creating application message.&quot;);</code></pre>
 <p>Note that the theoretical maximum length of application messages is 2^32 bytes. However, messages should be much shorter in practice unless the Delivery Service can cope with long messages.</p>
 <p>The function returns an <code>MlsMessageOut</code> that needs to be sent to the Delivery Service for fanout to other group members. To guarantee the best possible Forward Secrecy, the key material used to encrypt messages is immediately discarded after encryption. This means that the message author cannot decrypt application messages. If access to the message's content is required after creating the message, a copy of the plaintext message should be kept by the application.</p>
@@ -536,7 +536,7 @@ Even though the member updates its own key package only in this operation, the C
 <p>During an epoch, members can create proposals that are not immediately committed. These proposals are called &quot;pending proposals&quot;. They will automatically be covered by any operation that creates a Commit message (like <code>.add_members(),</code> <code>.remove_members()</code>, etc.).</p>
 <p>Some operations (like creating application messages) are not allowed as long as pending proposals exist for the current epoch. In that case, the application must first commit to the pending proposals by creating a Commit message that covers these proposals. This can be done with the <code>commit_to_pending_proposals()</code> function:</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, welcome_option, _group_info) = alice_group
-        .commit_to_pending_proposals(backend, &amp;alice_signature_keys)
+        .commit_to_pending_proposals(provider, &amp;alice_signature_keys)
         .expect(&quot;Could not commit to pending proposals.&quot;);</code></pre>
 <p>The function returns the tuple <code>(MlsMessageOut, Option&lt;Welcome&gt;)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing group members.
 If the Commit message also covers Add Proposals previously received in the epoch, a <code>Welcome</code> message is required to invite the new members. Therefore the function can also optionally return a <code>Welcome</code> message that must be sent to the newly added members.</p>
@@ -553,7 +553,7 @@ encrypted, it will be decrypted automatically. This step performs all syntactic
 and semantic validation checks and verifies the message's signature:</p>
 <pre><code class="language-rust no_run noplayground">    let protocol_message: ProtocolMessage = mls_message.into();
     let processed_message = bob_group
-        .process_message(backend, protocol_message)
+        .process_message(provider, protocol_message)
         .expect(&quot;Could not process message.&quot;);</code></pre>
 <h2 id="interpreting-the-processed-message"><a class="header" href="#interpreting-the-processed-message">Interpreting the processed message</a></h2>
 <p>In the last step, the message is ready for inspection. The <code>ProcessedMessage</code>
@@ -596,7 +596,7 @@ sender, and authenticated data. It also exposes the message's content. There are
 <p>Operations that add a proposal to the proposal store, will return its reference. This reference can be used to remove
 a proposal from the proposal store. This can be useful for example to roll back in case of errors.</p>
 <pre><code class="language-rust no_run noplayground">    let (_mls_message_out, proposal_ref) = alice_group
-        .propose_add_member(backend, &amp;alice_signature_keys, &amp;bob_key_package)
+        .propose_add_member(provider, &amp;alice_signature_keys, &amp;bob_key_package)
         .expect(&quot;Could not create proposal to add Bob&quot;);
     alice_group
         .remove_pending_proposal(proposal_ref)
@@ -623,7 +623,7 @@ a proposal from the proposal store. This can be useful for example to roll back 
         ));
         // Merge staged commit
         alice_group
-            .merge_staged_commit(backend, *staged_commit)
+            .merge_staged_commit(provider, *staged_commit)
             .expect(&quot;Error merging staged commit.&quot;);
     }</code></pre>
 <h3 id="interpreting-remove-operations"><a class="header" href="#interpreting-remove-operations">Interpreting remove operations</a></h3>
@@ -661,7 +661,7 @@ a proposal from the proposal store. This can be useful for example to roll back 
 
         // Merge staged Commit
         bob_group
-            .merge_staged_commit(backend, *staged_commit)
+            .merge_staged_commit(provider, *staged_commit)
             .expect(&quot;Error merging staged commit.&quot;);
     } else {
         unreachable!(&quot;Expected a StagedCommit.&quot;);
@@ -701,7 +701,7 @@ that use OpenMLS will interact with it.
 See the <a href="traits/./traits.html#openmlskeystore">OpenMlsKeyStore trait</a> description for details
 but note that the key used to store, read, and delete values in the key store has
 to be provided as a byte slice.</p>
-<p>In the following examples, we have a <code>ciphersuite</code> and a <code>backend</code> (<code>OpenMlsCryptoProvider</code>).</p>
+<p>In the following examples, we have a <code>ciphersuite</code> and a <code>provider</code> (<code>OpenMlsCryptoProvider</code>).</p>
 <pre><code class="language-rust no_run noplayground">    // First we generate a credential and key package for our user.
     let credential = Credential::new(b&quot;User ID&quot;.to_vec(), CredentialType::Basic).unwrap();
     let signature_keys = SignatureKeyPair::new(ciphersuite.into()).unwrap();
@@ -709,7 +709,7 @@ to be provided as a byte slice.</p>
     let key_package = KeyPackage::builder()
         .build(
             CryptoConfig::with_default_version(ciphersuite),
-            backend,
+            provider,
             &amp;signature_keys,
             CredentialWithKey {
                 credential,
@@ -720,7 +720,7 @@ to be provided as a byte slice.</p>
 <p>The <code>delete</code> is called with the identifier to delete a value.</p>
 <pre><code class="language-rust no_run noplayground">    // Delete the key package
     key_package
-        .delete(backend)
+        .delete(provider)
         .expect(&quot;Error deleting key package&quot;);</code></pre>
 <p>Retrieving a value from the key store is as simple as calling <code>read</code>.
 In this example, we assume we got a <code>credential</code> where we want to retrieve the credential bundle, i.e., the private key material.</p>
@@ -808,7 +808,7 @@ This will most likely change in the future.</p>
 the public OpenMLS API.
 Some OpenMLS APIs require only one of the sub-traits, though.</p>
 <pre><code class="language-rust no_run noplayground">/// to perform randomness generation, cryptographic operations, and key storage.
-pub trait OpenMlsCryptoProvider: Send + Sync {
+pub trait OpenMlsProvider: Send + Sync {
     type CryptoProvider: crypto::OpenMlsCrypto;
     type RandProvider: random::OpenMlsRand;
     type KeyStoreProvider: key_store::OpenMlsKeyStore;
@@ -1172,7 +1172,7 @@ It is also sufficient to tag only the most high-level crate being published.</p>
 <ul>
 <li><a href="https://github.com/openmls/openmls/blob/main/traits/Cargo.toml">Traits</a></li>
 <li><a href="https://github.com/openmls/openmls/blob/main/memory_keystore/Cargo.toml">Memory Keystore</a></li>
-<li><a href="https://github.com/openmls/openmls/blob/main/openmls_rust_crypto/Cargo.toml">Rust Crypto Backend</a></li>
+<li><a href="https://github.com/openmls/openmls/blob/main/openmls_rust_crypto/Cargo.toml">Rust Crypto provider</a></li>
 <li><a href="https://github.com/openmls/openmls/blob/main/openmls/Cargo.toml">OpenMLS</a></li>
 </ul>
 <h2 id="release-note-and-changelog-template"><a class="header" href="#release-note-and-changelog-template">Release note and changelog template</a></h2>

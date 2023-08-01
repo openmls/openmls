@@ -252,15 +252,11 @@
 <a href="#252" id="252">252</a>
 <a href="#253" id="253">253</a>
 <a href="#254" id="254">254</a>
-<a href="#255" id="255">255</a>
-<a href="#256" id="256">256</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the [`ParentNode`] struct, its implementation, as well
 //! as the [`PlainUpdatePathNode`], a helper struct for the creation of
 //! [`UpdatePathNode`] instances.
-</span><span class="kw">use </span>openmls_traits::{
-    types::{Ciphersuite, HpkeCiphertext},
-    OpenMlsCryptoProvider,
-};
+</span><span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
+<span class="kw">use </span>openmls_traits::types::{Ciphersuite, HpkeCiphertext};
 <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>thiserror::<span class="kw-2">*</span>;
@@ -310,7 +306,7 @@
     <span class="doccomment">/// Encrypt this node and return the resulting [`UpdatePathNode`].
     </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>encrypt(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         public_keys: <span class="kw-2">&amp;</span>[EncryptionKey],
         group_context: <span class="kw-2">&amp;</span>[u8],
@@ -319,7 +315,7 @@
             .par_iter()
             .map(|pk| {
                 <span class="self">self</span>.path_secret
-                    .encrypt(backend, ciphersuite, pk, group_context)
+                    .encrypt(crypto, ciphersuite, pk, group_context)
             })
             .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;HpkeCiphertext&gt;, LibraryError&gt;&gt;()
             .map(|encrypted_path_secrets| UpdatePathNode {
@@ -359,7 +355,7 @@
     /// Returns the resulting vector of [`ParentNode`] instances, as well as the
     /// intermediary [`PathSecret`]s, and the [`CommitSecret`].
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>derive_path(
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         path_secret: PathSecret,
         path_indices: Vec&lt;ParentNodeIndex&gt;,
@@ -370,7 +366,7 @@
         <span class="kw">for _ in </span><span class="number">0</span>..path_indices.len() {
             <span class="kw">let </span>path_secret = next_path_secret;
             <span class="comment">// Derive the next path secret.
-            </span>next_path_secret = path_secret.derive_path_secret(backend, ciphersuite)<span class="question-mark">?</span>;
+            </span>next_path_secret = path_secret.derive_path_secret(crypto, ciphersuite)<span class="question-mark">?</span>;
             path_secrets.push(path_secret);
         }
 
@@ -386,7 +382,7 @@
             .map(|(path_secret, index)| {
                 <span class="comment">// Derive a key pair from the path secret. This includes the
                 // intermediate derivation of a node secret.
-                </span><span class="kw">let </span>keypair = path_secret.derive_key_pair(backend, ciphersuite)<span class="question-mark">?</span>;
+                </span><span class="kw">let </span>keypair = path_secret.derive_key_pair(crypto, ciphersuite)<span class="question-mark">?</span>;
                 <span class="kw">let </span>parent_node = ParentNode::from(keypair.public_key().clone());
                 <span class="comment">// Store the current path secret and the derived public key for
                 // later encryption.
@@ -440,7 +436,7 @@
     <span class="doccomment">/// Compute the parent hash value of this node.
     </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>compute_parent_hash(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         original_child_resolution: <span class="kw-2">&amp;</span>[u8],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, LibraryError&gt; {
@@ -449,7 +445,7 @@
             <span class="self">self</span>.parent_hash(),
             original_child_resolution,
         );
-        parent_hash_input.hash(backend, ciphersuite)
+        parent_hash_input.hash(crypto, ciphersuite)
     }
 
     <span class="doccomment">/// Set the `parent_hash` of this node.

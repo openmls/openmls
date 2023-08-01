@@ -201,7 +201,7 @@
     /// with the exact reason of the failure.
     </span><span class="kw">pub fn </span>process_message(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
         message: <span class="kw">impl </span>Into&lt;ProtocolMessage&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ProcessedMessage, ProcessMessageError&gt; {
         <span class="comment">// Make sure we are still a member of the group
@@ -231,7 +231,7 @@
         </span><span class="kw">let </span>sender_ratchet_configuration =
             <span class="self">self</span>.configuration().sender_ratchet_configuration().clone();
         <span class="self">self</span>.group.process_message(
-            backend,
+            provider,
             message,
             <span class="kw-2">&amp;</span>sender_ratchet_configuration,
             <span class="kw-2">&amp;</span><span class="self">self</span>.proposal_store,
@@ -259,7 +259,7 @@
     </span><span class="attr">#[allow(clippy::type_complexity)]
     </span><span class="kw">pub fn </span>commit_to_pending_proposals&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;
         (MlsMessageOut, <span class="prelude-ty">Option</span>&lt;MlsMessageOut&gt;, <span class="prelude-ty">Option</span>&lt;GroupInfo&gt;),
@@ -273,11 +273,11 @@
             .framing_parameters(<span class="self">self</span>.framing_parameters())
             .proposal_store(<span class="kw-2">&amp;</span><span class="self">self</span>.proposal_store)
             .build();
-        <span class="kw">let </span>create_commit_result = <span class="self">self</span>.group.create_commit(params, backend, signer)<span class="question-mark">?</span>;
+        <span class="kw">let </span>create_commit_result = <span class="self">self</span>.group.create_commit(params, provider, signer)<span class="question-mark">?</span>;
 
         <span class="comment">// Convert PublicMessage messages to MLSMessage and encrypt them if required by
         // the configuration
-        </span><span class="kw">let </span>mls_message = <span class="self">self</span>.content_to_mls_message(create_commit_result.commit, backend)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>mls_message = <span class="self">self</span>.content_to_mls_message(create_commit_result.commit, provider)<span class="question-mark">?</span>;
 
         <span class="comment">// Set the current group state to [`MlsGroupState::PendingCommit`],
         // storing the current [`StagedCommit`] from the commit results
@@ -301,7 +301,7 @@
     /// the epoch of the group, it also clears any pending commits.
     </span><span class="kw">pub fn </span>merge_staged_commit&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
         staged_commit: StagedCommit,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), MergeCommitError&lt;KeyStore::Error&gt;&gt; {
         <span class="comment">// Check if we were removed from the group
@@ -314,7 +314,7 @@
 
         <span class="comment">// Merge staged commit
         </span><span class="self">self</span>.group
-            .merge_staged_commit(backend, staged_commit, <span class="kw-2">&amp;mut </span><span class="self">self</span>.proposal_store)<span class="question-mark">?</span>;
+            .merge_staged_commit(provider, staged_commit, <span class="kw-2">&amp;mut </span><span class="self">self</span>.proposal_store)<span class="question-mark">?</span>;
 
         <span class="comment">// Extract and store the resumption psk for the current epoch
         </span><span class="kw">let </span>resumption_psk = <span class="self">self</span>.group.group_epoch_secrets().resumption_psk();
@@ -335,13 +335,13 @@
     /// clears the field by setting it to `None`.
     </span><span class="kw">pub fn </span>merge_pending_commit&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), MergePendingCommitError&lt;KeyStore::Error&gt;&gt; {
         <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.group_state {
             MlsGroupState::PendingCommit(<span class="kw">_</span>) =&gt; {
                 <span class="kw">let </span>old_state = mem::replace(<span class="kw-2">&amp;mut </span><span class="self">self</span>.group_state, MlsGroupState::Operational);
                 <span class="kw">if let </span>MlsGroupState::PendingCommit(pending_commit_state) = old_state {
-                    <span class="self">self</span>.merge_staged_commit(backend, (<span class="kw-2">*</span>pending_commit_state).into())<span class="question-mark">?</span>;
+                    <span class="self">self</span>.merge_staged_commit(provider, (<span class="kw-2">*</span>pending_commit_state).into())<span class="question-mark">?</span>;
                 }
                 <span class="prelude-val">Ok</span>(())
             }

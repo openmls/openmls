@@ -917,7 +917,7 @@
 <a href="#917" id="917">917</a>
 <a href="#918" id="918">918</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the [`LeafNode`] struct and its implementation.
-</span><span class="kw">use </span>openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsCryptoProvider};
+</span><span class="kw">use </span>openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsProvider};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>tls_codec::{Serialize <span class="kw">as </span>TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
 
@@ -1008,7 +1008,7 @@
     /// returns the HPKE key pair along with the new leaf node.
     /// The caller is responsible for storing the private key.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         new_leaf_node_params: NewLeafNodeParams,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, EncryptionKeyPair), LibraryError&gt; {
@@ -1022,7 +1022,7 @@
         } = new_leaf_node_params;
 
         <span class="comment">// Create a new encryption key pair.
-        </span><span class="kw">let </span>encryption_key_pair = EncryptionKeyPair::random(backend, config)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>encryption_key_pair = EncryptionKeyPair::random(provider, config)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>leaf_node = <span class="self">Self</span>::new_with_key(
             encryption_key_pair.public_key().clone(),
@@ -1101,7 +1101,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         config: CryptoConfig,
         tree_info_tbs: TreeInfoTbs,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LeafNodeGenerationError&lt;KeyStore::Error&gt;&gt; {
         <span class="self">Self</span>::generate_update(
@@ -1113,7 +1113,7 @@
             <span class="self">self</span>.payload.capabilities.clone(),
             <span class="self">self</span>.payload.extensions.clone(),
             tree_info_tbs,
-            backend,
+            provider,
             signer,
         )
     }
@@ -1132,7 +1132,7 @@
         capabilities: Capabilities,
         extensions: Extensions,
         tree_info_tbs: TreeInfoTbs,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LeafNodeGenerationError&lt;KeyStore::Error&gt;&gt; {
         <span class="comment">// Note that this function is supposed to be used in the public API only
@@ -1147,11 +1147,11 @@
             tree_info_tbs,
         };
 
-        <span class="kw">let </span>(leaf_node, encryption_key_pair) = <span class="self">Self</span>::new(backend, signer, new_leaf_node_params)<span class="question-mark">?</span>;
+        <span class="kw">let </span>(leaf_node, encryption_key_pair) = <span class="self">Self</span>::new(provider, signer, new_leaf_node_params)<span class="question-mark">?</span>;
 
         <span class="comment">// Store the encryption key pair in the key store.
         </span>encryption_key_pair
-            .write_to_key_store(backend)
+            .write_to_key_store(provider.key_store())
             .map_err(LeafNodeGenerationError::KeyStoreError)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(leaf_node)
@@ -1207,7 +1207,7 @@
         leaf_index: LeafNodeIndex,
         ciphersuite: Ciphersuite,
         protocol_version: ProtocolVersion,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;EncryptionKeyPair, PublicTreeError&gt; {
         <span class="kw">if </span>!<span class="self">self
@@ -1229,7 +1229,7 @@
             .into());
         }
         <span class="kw">let </span>key_pair = EncryptionKeyPair::random(
-            backend,
+            provider,
             CryptoConfig {
                 ciphersuite,
                 version: protocol_version,

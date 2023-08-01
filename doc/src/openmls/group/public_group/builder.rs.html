@@ -175,7 +175,7 @@
 <a href="#175" id="175">175</a>
 <a href="#176" id="176">176</a>
 <a href="#177" id="177">177</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer, OpenMlsCryptoProvider};
+</pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer, OpenMlsProvider};
 
 <span class="kw">use super</span>::{errors::PublicGroupBuildError, PublicGroup};
 <span class="kw">use crate</span>::{
@@ -231,7 +231,7 @@
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_secrets(
         <span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(TempBuilderPG2, CommitSecret, EncryptionKeyPair), PublicGroupBuildError&gt; {
         <span class="kw">let </span>capabilities = <span class="self">self
@@ -239,7 +239,7 @@
             .as_ref()
             .map(|re| re.extension_types());
         <span class="kw">let </span>(treesync, commit_secret, leaf_keypair) = TreeSync::new(
-            backend,
+            provider,
             signer,
             <span class="self">self</span>.crypto_config,
             <span class="self">self</span>.credential_with_key,

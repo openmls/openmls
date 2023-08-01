@@ -283,7 +283,9 @@
 <a href="#283" id="283">283</a>
 <a href="#284" id="284">284</a>
 <a href="#285" id="285">285</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
+<a href="#286" id="286">286</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
+<span class="kw">use </span>openmls_traits::types::Ciphersuite;
 <span class="kw">use </span>tls_codec::{Deserialize, Serialize, TlsDeserialize, TlsSerialize, TlsSize};
 
 <span class="kw">use super</span>::{
@@ -330,19 +332,19 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>sender_data(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         message_secrets: <span class="kw-2">&amp;</span>MessageSecrets,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsSenderData, MessageDecryptionError&gt; {
         <span class="macro">log::debug!</span>(<span class="string">&quot;Decrypting PrivateMessage&quot;</span>);
         <span class="comment">// Derive key from the key schedule using the ciphertext.
         </span><span class="kw">let </span>sender_data_key = message_secrets
             .sender_data_secret()
-            .derive_aead_key(backend, <span class="self">self</span>.ciphertext.as_slice())
+            .derive_aead_key(crypto, <span class="self">self</span>.ciphertext.as_slice())
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
         <span class="comment">// Derive initial nonce from the key schedule using the ciphertext.
         </span><span class="kw">let </span>sender_data_nonce = message_secrets
             .sender_data_secret()
-            .derive_aead_nonce(ciphersuite, backend, <span class="self">self</span>.ciphertext.as_slice())
+            .derive_aead_nonce(ciphersuite, crypto, <span class="self">self</span>.ciphertext.as_slice())
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
         <span class="comment">// Serialize sender data AAD
         </span><span class="kw">let </span>mls_sender_data_aad =
@@ -358,7 +360,7 @@
         <span class="macro">log_crypto!</span>(trace, <span class="string">&quot;Decryption of sender data mls_sender_data_aad_bytes: {mls_sender_data_aad_bytes:x?} - sender_data_nonce: {sender_data_nonce:x?}&quot;</span>);
         <span class="kw">let </span>sender_data_bytes = sender_data_key
             .aead_open(
-                backend,
+                crypto,
                 <span class="self">self</span>.encrypted_sender_data.as_slice(),
                 <span class="kw-2">&amp;</span>mls_sender_data_aad_bytes,
                 <span class="kw-2">&amp;</span>sender_data_nonce,
@@ -376,7 +378,7 @@
     </span><span class="attr">#[inline]
     </span><span class="kw">fn </span>decrypt(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         ratchet_key: AeadKey,
         ratchet_nonce: <span class="kw-2">&amp;</span>AeadNonce,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;PrivateMessageContentIn, MessageDecryptionError&gt; {
@@ -398,7 +400,7 @@
         <span class="macro">log::trace!</span>(<span class="string">&quot;Decrypting ciphertext {:x?}&quot;</span>, <span class="self">self</span>.ciphertext);
         <span class="kw">let </span>private_message_content_bytes = ratchet_key
             .aead_open(
-                backend,
+                crypto,
                 <span class="self">self</span>.ciphertext.as_slice(),
                 <span class="kw-2">&amp;</span>private_message_content_aad_bytes,
                 ratchet_nonce,
@@ -425,7 +427,7 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>to_verifiable_content(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         ciphersuite: Ciphersuite,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         message_secrets: <span class="kw-2">&amp;mut </span>MessageSecrets,
         sender_index: LeafNodeIndex,
         sender_ratchet_configuration: <span class="kw-2">&amp;</span>SenderRatchetConfiguration,
@@ -437,7 +439,7 @@
             .secret_tree_mut()
             .secret_for_decryption(
                 ciphersuite,
-                backend,
+                crypto,
                 sender_index,
                 secret_type,
                 sender_data.generation,
@@ -452,7 +454,7 @@
             })<span class="question-mark">?</span>;
         <span class="comment">// Prepare the nonce by xoring with the reuse guard.
         </span><span class="kw">let </span>prepared_nonce = ratchet_nonce.xor_with_reuse_guard(<span class="kw-2">&amp;</span>sender_data.reuse_guard);
-        <span class="kw">let </span>private_message_content = <span class="self">self</span>.decrypt(backend, ratchet_key, <span class="kw-2">&amp;</span>prepared_nonce)<span class="question-mark">?</span>;
+        <span class="kw">let </span>private_message_content = <span class="self">self</span>.decrypt(crypto, ratchet_key, <span class="kw-2">&amp;</span>prepared_nonce)<span class="question-mark">?</span>;
 
         <span class="comment">// Extract sender. The sender type is always of type Member for PrivateMessage.
         </span><span class="kw">let </span>sender = Sender::from_sender_data(sender_data);

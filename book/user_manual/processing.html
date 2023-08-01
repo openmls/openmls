@@ -179,7 +179,7 @@ encrypted, it will be decrypted automatically. This step performs all syntactic
 and semantic validation checks and verifies the message's signature:</p>
 <pre><code class="language-rust no_run noplayground">    let protocol_message: ProtocolMessage = mls_message.into();
     let processed_message = bob_group
-        .process_message(backend, protocol_message)
+        .process_message(provider, protocol_message)
         .expect(&quot;Could not process message.&quot;);</code></pre>
 <h2 id="interpreting-the-processed-message"><a class="header" href="#interpreting-the-processed-message">Interpreting the processed message</a></h2>
 <p>In the last step, the message is ready for inspection. The <code>ProcessedMessage</code>
@@ -222,7 +222,7 @@ sender, and authenticated data. It also exposes the message's content. There are
 <p>Operations that add a proposal to the proposal store, will return its reference. This reference can be used to remove
 a proposal from the proposal store. This can be useful for example to roll back in case of errors.</p>
 <pre><code class="language-rust no_run noplayground">    let (_mls_message_out, proposal_ref) = alice_group
-        .propose_add_member(backend, &amp;alice_signature_keys, &amp;bob_key_package)
+        .propose_add_member(provider, &amp;alice_signature_keys, &amp;bob_key_package)
         .expect(&quot;Could not create proposal to add Bob&quot;);
     alice_group
         .remove_pending_proposal(proposal_ref)
@@ -249,7 +249,7 @@ a proposal from the proposal store. This can be useful for example to roll back 
         ));
         // Merge staged commit
         alice_group
-            .merge_staged_commit(backend, *staged_commit)
+            .merge_staged_commit(provider, *staged_commit)
             .expect(&quot;Error merging staged commit.&quot;);
     }</code></pre>
 <h3 id="interpreting-remove-operations"><a class="header" href="#interpreting-remove-operations">Interpreting remove operations</a></h3>
@@ -287,7 +287,7 @@ a proposal from the proposal store. This can be useful for example to roll back 
 
         // Merge staged Commit
         bob_group
-            .merge_staged_commit(backend, *staged_commit)
+            .merge_staged_commit(provider, *staged_commit)
             .expect(&quot;Error merging staged commit.&quot;);
     } else {
         unreachable!(&quot;Expected a StagedCommit.&quot;);

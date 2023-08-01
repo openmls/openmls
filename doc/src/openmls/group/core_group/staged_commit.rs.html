@@ -477,6 +477,14 @@
 <a href="#477" id="477">477</a>
 <a href="#478" id="478">478</a>
 <a href="#479" id="479">479</a>
+<a href="#480" id="480">480</a>
+<a href="#481" id="481">481</a>
+<a href="#482" id="482">482</a>
+<a href="#483" id="483">483</a>
+<a href="#484" id="484">484</a>
+<a href="#485" id="485">485</a>
+<a href="#486" id="486">486</a>
+<a href="#487" id="487">487</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>core::fmt::Debug;
 <span class="kw">use </span>std::mem;
 
@@ -492,7 +500,7 @@
 <span class="kw">impl </span>CoreGroup {
     <span class="kw">fn </span>derive_epoch_secrets(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
         apply_proposals_values: ApplyProposalsValues,
         epoch_secrets: <span class="kw-2">&amp;</span>GroupEpochSecrets,
         commit_secret: CommitSecret,
@@ -506,17 +514,17 @@
             <span class="comment">// Decrypt the content and derive the external init secret.
             </span><span class="kw">let </span>external_priv = epoch_secrets
                 .external_secret()
-                .derive_external_keypair(backend.crypto(), <span class="self">self</span>.ciphersuite())
+                .derive_external_keypair(provider.crypto(), <span class="self">self</span>.ciphersuite())
                 .private;
             <span class="kw">let </span>init_secret = InitSecret::from_kem_output(
-                backend,
+                provider.crypto(),
                 <span class="self">self</span>.ciphersuite(),
                 <span class="self">self</span>.version(),
                 <span class="kw-2">&amp;</span>external_priv,
                 external_init_proposal.kem_output(),
             )<span class="question-mark">?</span>;
             JoinerSecret::new(
-                backend,
+                provider.crypto(),
                 commit_secret,
                 <span class="kw-2">&amp;</span>init_secret,
                 serialized_provisional_group_context,
@@ -524,7 +532,7 @@
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?
         </span>} <span class="kw">else </span>{
             JoinerSecret::new(
-                backend,
+                provider.crypto(),
                 commit_secret,
                 epoch_secrets.init_secret(),
                 serialized_provisional_group_context,
@@ -535,23 +543,27 @@
         <span class="comment">// Prepare the PskSecret
         </span><span class="kw">let </span>psk_secret = {
             <span class="kw">let </span>psks = load_psks(
-                backend.key_store(),
+                provider.key_store(),
                 <span class="kw-2">&amp;</span><span class="self">self</span>.resumption_psk_store,
                 <span class="kw-2">&amp;</span>apply_proposals_values.presharedkeys,
             )<span class="question-mark">?</span>;
 
-            PskSecret::new(backend, <span class="self">self</span>.ciphersuite(), psks)<span class="question-mark">?
+            PskSecret::new(provider.crypto(), <span class="self">self</span>.ciphersuite(), psks)<span class="question-mark">?
         </span>};
 
         <span class="comment">// Create key schedule
-        </span><span class="kw">let </span><span class="kw-2">mut </span>key_schedule =
-            KeySchedule::init(<span class="self">self</span>.ciphersuite(), backend, <span class="kw-2">&amp;</span>joiner_secret, psk_secret)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span><span class="kw-2">mut </span>key_schedule = KeySchedule::init(
+            <span class="self">self</span>.ciphersuite(),
+            provider.crypto(),
+            <span class="kw-2">&amp;</span>joiner_secret,
+            psk_secret,
+        )<span class="question-mark">?</span>;
 
         key_schedule
-            .add_context(backend, serialized_provisional_group_context)
+            .add_context(provider.crypto(), serialized_provisional_group_context)
             .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Using the key schedule in the wrong state&quot;</span>))<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(key_schedule
-            .epoch_secrets(backend)
+            .epoch_secrets(provider.crypto())
             .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Using the key schedule in the wrong state&quot;</span>))<span class="question-mark">?</span>)
     }
 
@@ -596,7 +608,7 @@
         proposal_store: <span class="kw-2">&amp;</span>ProposalStore,
         old_epoch_keypairs: Vec&lt;EncryptionKeyPair&gt;,
         leaf_node_keypairs: Vec&lt;EncryptionKeyPair&gt;,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;StagedCommit, StageCommitError&gt; {
         <span class="comment">// Check that the sender is another member of the group
         </span><span class="kw">if let </span>Sender::Member(member) = mls_content.sender() {
@@ -609,7 +621,7 @@
 
         <span class="kw">let </span>(commit, proposal_queue, sender_index) =
             <span class="self">self</span>.public_group
-                .validate_commit(mls_content, proposal_store, backend)<span class="question-mark">?</span>;
+                .validate_commit(mls_content, proposal_store, provider.crypto())<span class="question-mark">?</span>;
 
         <span class="comment">// Create the provisional public group state (including the tree and
         // group context) and apply proposals.
@@ -620,7 +632,7 @@
 
         <span class="comment">// Check if we were removed from the group
         </span><span class="kw">if </span>apply_proposals_values.self_removed {
-            <span class="kw">let </span>staged_diff = diff.into_staged_diff(backend, ciphersuite)<span class="question-mark">?</span>;
+            <span class="kw">let </span>staged_diff = diff.into_staged_diff(provider.crypto(), ciphersuite)<span class="question-mark">?</span>;
             <span class="kw">return </span><span class="prelude-val">Ok</span>(StagedCommit::new(
                 proposal_queue,
                 StagedCommitState::PublicState(Box::new(staged_diff)),
@@ -628,68 +640,69 @@
         }
 
         <span class="comment">// Determine if Commit has a path
-        </span><span class="kw">let </span>(commit_secret, new_keypairs, new_leaf_keypair_option) =
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(path) = commit.path.clone() {
-                <span class="comment">// Update the public group
-                // ValSem202: Path must be the right length
-                </span>diff.apply_received_update_path(backend, ciphersuite, sender_index, <span class="kw-2">&amp;</span>path)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>(commit_secret, new_keypairs, new_leaf_keypair_option) = <span class="kw">if let </span><span class="prelude-val">Some</span>(path) =
+            commit.path.clone()
+        {
+            <span class="comment">// Update the public group
+            // ValSem202: Path must be the right length
+            </span>diff.apply_received_update_path(provider.crypto(), ciphersuite, sender_index, <span class="kw-2">&amp;</span>path)<span class="question-mark">?</span>;
 
-                <span class="comment">// Update group context
-                </span>diff.update_group_context(backend)<span class="question-mark">?</span>;
+            <span class="comment">// Update group context
+            </span>diff.update_group_context(provider.crypto())<span class="question-mark">?</span>;
 
-                <span class="kw">let </span>decryption_keypairs: Vec&lt;<span class="kw-2">&amp;</span>EncryptionKeyPair&gt; = old_epoch_keypairs
-                    .iter()
-                    .chain(leaf_node_keypairs.iter())
-                    .collect();
+            <span class="kw">let </span>decryption_keypairs: Vec&lt;<span class="kw-2">&amp;</span>EncryptionKeyPair&gt; = old_epoch_keypairs
+                .iter()
+                .chain(leaf_node_keypairs.iter())
+                .collect();
 
-                <span class="comment">// ValSem203: Path secrets must decrypt correctly
-                // ValSem204: Public keys from Path must be verified and match the private keys from the direct path
-                </span><span class="kw">let </span>(new_keypairs, commit_secret) = diff.decrypt_path(
-                    backend,
-                    <span class="kw-2">&amp;</span>decryption_keypairs,
-                    <span class="self">self</span>.own_leaf_index(),
-                    sender_index,
-                    path.nodes(),
-                    <span class="kw-2">&amp;</span>apply_proposals_values.exclusion_list(),
-                )<span class="question-mark">?</span>;
+            <span class="comment">// ValSem203: Path secrets must decrypt correctly
+            // ValSem204: Public keys from Path must be verified and match the private keys from the direct path
+            </span><span class="kw">let </span>(new_keypairs, commit_secret) = diff.decrypt_path(
+                provider.crypto(),
+                <span class="kw-2">&amp;</span>decryption_keypairs,
+                <span class="self">self</span>.own_leaf_index(),
+                sender_index,
+                path.nodes(),
+                <span class="kw-2">&amp;</span>apply_proposals_values.exclusion_list(),
+            )<span class="question-mark">?</span>;
 
-                <span class="comment">// Check if one of our update proposals was applied. If so, we
-                // need to store that keypair separately, because after merging
-                // it needs to be removed from the key store separately and in
-                // addition to the removal of the keypairs of the previous
-                // epoch.
-                </span><span class="kw">let </span>new_leaf_keypair_option = <span class="kw">if let </span><span class="prelude-val">Some</span>(leaf) = diff.leaf(<span class="self">self</span>.own_leaf_index()) {
-                    leaf_node_keypairs.into_iter().find_map(|keypair| {
-                        <span class="kw">if </span>leaf.encryption_key() == keypair.public_key() {
-                            <span class="prelude-val">Some</span>(keypair)
-                        } <span class="kw">else </span>{
-                            <span class="prelude-val">None
-                        </span>}
-                    })
-                } <span class="kw">else </span>{
-                    <span class="comment">// We should have an own leaf at this point.
-                    </span><span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-                    <span class="prelude-val">None
-                </span>};
-                (commit_secret, new_keypairs, new_leaf_keypair_option)
+            <span class="comment">// Check if one of our update proposals was applied. If so, we
+            // need to store that keypair separately, because after merging
+            // it needs to be removed from the key store separately and in
+            // addition to the removal of the keypairs of the previous
+            // epoch.
+            </span><span class="kw">let </span>new_leaf_keypair_option = <span class="kw">if let </span><span class="prelude-val">Some</span>(leaf) = diff.leaf(<span class="self">self</span>.own_leaf_index()) {
+                leaf_node_keypairs.into_iter().find_map(|keypair| {
+                    <span class="kw">if </span>leaf.encryption_key() == keypair.public_key() {
+                        <span class="prelude-val">Some</span>(keypair)
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">None
+                    </span>}
+                })
             } <span class="kw">else </span>{
-                <span class="kw">if </span>apply_proposals_values.path_required {
-                    <span class="comment">// ValSem201
-                    </span><span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::RequiredPathNotFound);
-                }
+                <span class="comment">// We should have an own leaf at this point.
+                </span><span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
+                <span class="prelude-val">None
+            </span>};
+            (commit_secret, new_keypairs, new_leaf_keypair_option)
+        } <span class="kw">else </span>{
+            <span class="kw">if </span>apply_proposals_values.path_required {
+                <span class="comment">// ValSem201
+                </span><span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::RequiredPathNotFound);
+            }
 
-                <span class="comment">// Even if there is no path, we have to update the group context.
-                </span>diff.update_group_context(backend)<span class="question-mark">?</span>;
+            <span class="comment">// Even if there is no path, we have to update the group context.
+            </span>diff.update_group_context(provider.crypto())<span class="question-mark">?</span>;
 
-                (
-                    CommitSecret::zero_secret(ciphersuite, <span class="self">self</span>.version()),
-                    <span class="macro">vec!</span>[],
-                    <span class="prelude-val">None</span>,
-                )
-            };
+            (
+                CommitSecret::zero_secret(ciphersuite, <span class="self">self</span>.version()),
+                <span class="macro">vec!</span>[],
+                <span class="prelude-val">None</span>,
+            )
+        };
 
         <span class="comment">// Update the confirmed transcript hash before we compute the confirmation tag.
-        </span>diff.update_confirmed_transcript_hash(backend, mls_content)<span class="question-mark">?</span>;
+        </span>diff.update_confirmed_transcript_hash(provider.crypto(), mls_content)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>received_confirmation_tag = mls_content
             .confirmation_tag()
@@ -702,7 +715,7 @@
 
         <span class="kw">let </span>(provisional_group_secrets, provisional_message_secrets) = <span class="self">self
             </span>.derive_epoch_secrets(
-                backend,
+                provider,
                 apply_proposals_values,
                 <span class="self">self</span>.group_epoch_secrets(),
                 commit_secret,
@@ -718,7 +731,10 @@
         // ValSem205
         </span><span class="kw">let </span>own_confirmation_tag = provisional_message_secrets
             .confirmation_key()
-            .tag(backend, diff.group_context().confirmed_transcript_hash())
+            .tag(
+                provider.crypto(),
+                diff.group_context().confirmed_transcript_hash(),
+            )
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
         <span class="kw">if </span><span class="kw-2">&amp;</span>own_confirmation_tag != received_confirmation_tag {
             <span class="macro">log::error!</span>(<span class="string">&quot;Confirmation tag mismatch&quot;</span>);
@@ -730,9 +746,9 @@
             </span><span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::ConfirmationTagMismatch);
         }
 
-        diff.update_interim_transcript_hash(ciphersuite, backend, own_confirmation_tag)<span class="question-mark">?</span>;
+        diff.update_interim_transcript_hash(ciphersuite, provider.crypto(), own_confirmation_tag)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>staged_diff = diff.into_staged_diff(backend, ciphersuite)<span class="question-mark">?</span>;
+        <span class="kw">let </span>staged_diff = diff.into_staged_diff(provider.crypto(), ciphersuite)<span class="question-mark">?</span>;
         <span class="kw">let </span>staged_commit_state =
             StagedCommitState::GroupMember(Box::new(MemberStagedCommitState::new(
                 provisional_group_secrets,
@@ -752,12 +768,12 @@
     /// might throw a `LibraryError`.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>merge_commit&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
         staged_commit: StagedCommit,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;MessageSecrets&gt;, MergeCommitError&lt;KeyStore::Error&gt;&gt; {
         <span class="comment">// Get all keypairs from the old epoch, so we can later store the ones
         // that are still relevant in the new epoch.
-        </span><span class="kw">let </span>old_epoch_keypairs = <span class="self">self</span>.read_epoch_keypairs(backend);
+        </span><span class="kw">let </span>old_epoch_keypairs = <span class="self">self</span>.read_epoch_keypairs(provider.key_store());
         <span class="kw">match </span>staged_commit.state {
             StagedCommitState::PublicState(staged_diff) =&gt; {
                 <span class="self">self</span>.public_group.merge_diff(<span class="kw-2">*</span>staged_diff);
@@ -806,14 +822,14 @@
                     .into());
                 }
                 <span class="comment">// Store the relevant keys under the new epoch
-                </span><span class="self">self</span>.store_epoch_keypairs(backend, epoch_keypairs.as_slice())
+                </span><span class="self">self</span>.store_epoch_keypairs(provider.key_store(), epoch_keypairs.as_slice())
                     .map_err(MergeCommitError::KeyStoreError)<span class="question-mark">?</span>;
                 <span class="comment">// Delete the old keys.
-                </span><span class="self">self</span>.delete_previous_epoch_keypairs(backend)
+                </span><span class="self">self</span>.delete_previous_epoch_keypairs(provider.key_store())
                     .map_err(MergeCommitError::KeyStoreError)<span class="question-mark">?</span>;
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(keypair) = state.new_leaf_keypair_option {
                     keypair
-                        .delete_from_key_store(backend)
+                        .delete_from_key_store(provider.key_store())
                         .map_err(MergeCommitError::KeyStoreError)<span class="question-mark">?</span>;
                 }
 
@@ -830,17 +846,17 @@
         mls_content: <span class="kw-2">&amp;</span>AuthenticatedContent,
         proposal_store: <span class="kw-2">&amp;</span>ProposalStore,
         own_leaf_nodes: <span class="kw-2">&amp;</span>[LeafNode],
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;StagedCommit, StageCommitError&gt; {
         <span class="kw">let </span>(old_epoch_keypairs, leaf_node_keypairs) =
-            <span class="self">self</span>.read_decryption_keypairs(backend, own_leaf_nodes)<span class="question-mark">?</span>;
+            <span class="self">self</span>.read_decryption_keypairs(provider, own_leaf_nodes)<span class="question-mark">?</span>;
 
         <span class="self">self</span>.stage_commit(
             mls_content,
             proposal_store,
             old_epoch_keypairs,
             leaf_node_keypairs,
-            backend,
+            provider,
         )
     }
 }

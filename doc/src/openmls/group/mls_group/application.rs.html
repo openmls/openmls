@@ -64,7 +64,7 @@
     /// and incoming messages from the DS must be processed afterwards.
     </span><span class="kw">pub fn </span>create_message(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         message: <span class="kw-2">&amp;</span>[u8],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, CreateMessageError&gt; {
@@ -85,7 +85,7 @@
                 <span class="kw-2">&amp;</span><span class="self">self</span>.aad,
                 message,
                 <span class="self">self</span>.configuration().padding_size(),
-                backend,
+                provider,
                 signer,
             )
             <span class="comment">// We know the application message is wellformed and we have the key material of the current epoch

@@ -177,7 +177,7 @@
 <a href="https://openmls.tech/book"><img src="https://img.shields.io/badge/book-release-blue.svg?style=for-the-badge" alt="Book" /></a>
 <img src="https://img.shields.io/badge/rustc-1.56+-blue.svg?style=for-the-badge&amp;logo=rust" alt="Rust Version" /></p>
 <p><em>OpenMLS</em> is a Rust implementation of the Messaging Layer Security (MLS) protocol, as specified in <a href="https://datatracker.ietf.org/doc/html/rfc9420">RFC 9420</a>.
-OpenMLS provides a high-level API to create and manage MLS groups. It supports basic ciphersuites and an interchangeable cryptographic backend, key store, and random number generator.</p>
+OpenMLS provides a high-level API to create and manage MLS groups. It supports basic ciphersuites and an interchangeable cryptographic provider, key store, and random number generator.</p>
 <p>This book provides guidance on using OpenMLS and its <code>MlsGroup</code> API to perform basic group operations, illustrated with examples.</p>
 <!-- Get the rest of the Readme -->
 <h2 id="supported-ciphersuites"><a class="header" href="#supported-ciphersuites">Supported ciphersuites</a></h2>
@@ -214,7 +214,7 @@ OpenMLS provides a high-level API to create and manage MLS groups. It supports b
 <h2 id="cryptography-dependencies"><a class="header" href="#cryptography-dependencies">Cryptography Dependencies</a></h2>
 <p>OpenMLS does not implement its own cryptographic primitives. Instead, it relies
 on existing implementations of the cryptographic primitives used by MLS. There
-are two different cryptography backends implemented right now. But consumers
+are two different cryptography providers implemented right now. But consumers
 can bring their own implementation. See <a href="https://github.com/openmls/openmls/tree/main/traits">traits</a> for more
 details.</p>
 <h2 id="working-on-openmls"><a class="header" href="#working-on-openmls">Working on OpenMLS</a></h2>

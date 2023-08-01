@@ -132,6 +132,9 @@
 <a href="#132" id="132">132</a>
 <a href="#133" id="133">133</a>
 <a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     binary_tree::array_representation::LeafNodeIndex,
     group::{
@@ -159,7 +162,7 @@
     /// Note: If there is a group member in the group with the same identity as us,
     /// this will create a remove proposal.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>join_by_external_commit(
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         <span class="kw-2">mut </span>params: CreateCommitParams,
         ratchet_tree: <span class="prelude-ty">Option</span>&lt;RatchetTreeIn&gt;,
@@ -181,7 +184,7 @@
             };
 
         <span class="kw">let </span>(public_group, group_info) = PublicGroup::from_external(
-            backend,
+            provider.crypto(),
             ratchet_tree,
             verifiable_group_info,
             <span class="comment">// Existing proposals are discarded when joining by external commit.
@@ -196,14 +199,17 @@
             .ok_or(ExternalCommitError::MissingExternalPub)<span class="question-mark">?
             </span>.external_pub();
 
-        <span class="kw">let </span>(init_secret, kem_output) =
-            InitSecret::from_group_context(backend, group_context, external_pub.as_slice())
-                .map_err(|<span class="kw">_</span>| ExternalCommitError::UnsupportedCiphersuite)<span class="question-mark">?</span>;
+        <span class="kw">let </span>(init_secret, kem_output) = InitSecret::from_group_context(
+            provider.crypto(),
+            group_context,
+            external_pub.as_slice(),
+        )
+        .map_err(|<span class="kw">_</span>| ExternalCommitError::UnsupportedCiphersuite)<span class="question-mark">?</span>;
 
         <span class="comment">// The `EpochSecrets` we create here are essentially zero, with the
         // exception of the `InitSecret`, which is all we need here for the
         // external commit.
-        </span><span class="kw">let </span>epoch_secrets = EpochSecrets::with_init_secret(backend, init_secret)
+        </span><span class="kw">let </span>epoch_secrets = EpochSecrets::with_init_secret(provider.crypto(), init_secret)
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
         <span class="kw">let </span>(group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
             group_context
@@ -254,7 +260,7 @@
             .build();
 
         <span class="comment">// Immediately create the commit to add ourselves to the group.
-        </span><span class="kw">let </span>create_commit_result = group.create_commit(params, backend, signer);
+        </span><span class="kw">let </span>create_commit_result = group.create_commit(params, provider, signer);
         <span class="macro">debug_assert!</span>(
             create_commit_result.is_ok(),
             <span class="string">&quot;Error creating commit {create_commit_result:?}&quot;

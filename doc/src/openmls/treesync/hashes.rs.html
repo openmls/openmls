@@ -166,11 +166,9 @@
 <a href="#166" id="166">166</a>
 <a href="#167" id="167">167</a>
 <a href="#168" id="168">168</a>
-<a href="#169" id="169">169</a>
-<a href="#170" id="170">170</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains helper structs and functions related to parent hashing
 //! and tree hashing.
-</span><span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
+</span><span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 <span class="kw">use </span>tls_codec::{Serialize, TlsSerialize, TlsSize, VLByteSlice};
 
 <span class="kw">use crate</span>::{
@@ -215,14 +213,13 @@
     <span class="doccomment">/// Serialize and hash this instance of [`ParentHashInput`].
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>hash(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, LibraryError&gt; {
         <span class="kw">let </span>payload = <span class="self">self
             </span>.tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
-        backend
-            .crypto()
+        crypto
             .hash(ciphersuite.hash_algorithm(), <span class="kw-2">&amp;</span>payload)
             .map_err(LibraryError::unexpected_crypto_error)
     }
@@ -294,14 +291,13 @@
     <span class="doccomment">/// Serialize and hash this instance of [`TreeHashInput`].
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>hash(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, LibraryError&gt; {
         <span class="kw">let </span>payload = <span class="self">self
             </span>.tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
-        backend
-            .crypto()
+        crypto
             .hash(ciphersuite.hash_algorithm(), <span class="kw-2">&amp;</span>payload)
             .map_err(LibraryError::unexpected_crypto_error)
     }

@@ -248,23 +248,23 @@
     /// This function removes the private key corresponding to the
     /// `key_package` from the key store.
     </span><span class="kw">pub fn </span>new&lt;KeyStore: OpenMlsKeyStore&gt;(
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         mls_group_config: <span class="kw-2">&amp;</span>MlsGroupConfig,
         credential_with_key: CredentialWithKey,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, NewGroupError&lt;KeyStore::Error&gt;&gt; {
         <span class="self">Self</span>::new_with_group_id(
-            backend,
+            provider,
             signer,
             mls_group_config,
-            GroupId::random(backend),
+            GroupId::random(provider.rand()),
             credential_with_key,
         )
     }
 
     <span class="doccomment">/// Creates a new group with a given group ID with the creator as the only member.
     </span><span class="kw">pub fn </span>new_with_group_id&lt;KeyStore: OpenMlsKeyStore&gt;(
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         mls_group_config: <span class="kw-2">&amp;</span>MlsGroupConfig,
         group_id: GroupId,
@@ -285,7 +285,7 @@
         .with_external_senders(mls_group_config.external_senders.clone())
         .with_max_past_epoch_secrets(mls_group_config.max_past_epochs)
         .with_lifetime(<span class="kw-2">*</span>mls_group_config.lifetime())
-        .build(backend, signer)
+        .build(provider, signer)
         .map_err(|e| <span class="kw">match </span>e {
             CoreGroupBuildError::LibraryError(e) =&gt; e.into(),
             <span class="comment">// We don&#39;t support PSKs yet
@@ -330,7 +330,7 @@
     /// can be found.
     </span><span class="comment">// TODO: #1326 This should take an MlsMessage rather than a Welcome message.
     </span><span class="kw">pub fn </span>new_from_welcome&lt;KeyStore: OpenMlsKeyStore&gt;(
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
         mls_group_config: <span class="kw-2">&amp;</span>MlsGroupConfig,
         welcome: Welcome,
         ratchet_tree: <span class="prelude-ty">Option</span>&lt;RatchetTreeIn&gt;,
@@ -342,7 +342,7 @@
             .iter()
             .find_map(|egs| {
                 <span class="kw">let </span>hash_ref = egs.new_member().as_slice().to_vec();
-                backend
+                provider
                     .key_store()
                     .read(<span class="kw-2">&amp;</span>hash_ref)
                     .map(|kp: KeyPackage| (kp, hash_ref))
@@ -350,7 +350,7 @@
             .ok_or(WelcomeError::NoMatchingKeyPackage)<span class="question-mark">?</span>;
 
         <span class="comment">// TODO #751
-        </span><span class="kw">let </span>private_key = backend
+        </span><span class="kw">let </span>private_key = provider
             .key_store()
             .read::&lt;HpkePrivateKey&gt;(key_package.hpke_init_key().as_slice())
             .ok_or(WelcomeError::NoMatchingKeyPackage)<span class="question-mark">?</span>;
@@ -363,14 +363,14 @@
         // key store
         </span>key_package_bundle
             .key_package
-            .delete(backend)
+            .delete(provider)
             .map_err(WelcomeError::KeyStoreError)<span class="question-mark">?</span>;
 
         <span class="kw">let </span><span class="kw-2">mut </span>group = CoreGroup::new_from_welcome(
             welcome,
             ratchet_tree,
             key_package_bundle,
-            backend,
+            provider,
             resumption_psk_store,
         )<span class="question-mark">?</span>;
         group.set_max_past_epochs(mls_group_config.max_past_epochs);
@@ -403,7 +403,7 @@
     /// Note: If there is a group member in the group with the same identity as us,
     /// this will create a remove proposal.
     </span><span class="kw">pub fn </span>join_by_external_commit(
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         ratchet_tree: <span class="prelude-ty">Option</span>&lt;RatchetTreeIn&gt;,
         verifiable_group_info: VerifiableGroupInfo,
@@ -421,7 +421,7 @@
             .credential_with_key(credential_with_key)
             .build();
         <span class="kw">let </span>(<span class="kw-2">mut </span>group, create_commit_result) = CoreGroup::join_by_external_commit(
-            backend,
+            provider,
             signer,
             params,
             ratchet_tree,

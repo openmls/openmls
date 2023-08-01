@@ -246,13 +246,15 @@
 <a href="#246" id="246">246</a>
 <a href="#247" id="247">247</a>
 <a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Public group diffs
 //!
 //! This module contains the [`PublicGroupDiff`] struct, as well as the
 //! [`StagedPublicGroupDiff`] and associated functions and types.
 </span><span class="kw">use </span>std::collections::HashSet;
 
-<span class="kw">use </span>openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
+<span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
+<span class="kw">use </span>openmls_traits::types::Ciphersuite;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>tls_codec::Serialize <span class="kw">as </span>TlsSerialize;
 
@@ -302,10 +304,10 @@
     /// freezing it until it is merged with the original [`PublicGroup`].
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>into_staged_diff(
         <span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;StagedPublicGroupDiff, LibraryError&gt; {
-        <span class="kw">let </span>staged_diff = <span class="self">self</span>.diff.into_staged_diff(backend, ciphersuite)<span class="question-mark">?</span>;
+        <span class="kw">let </span>staged_diff = <span class="self">self</span>.diff.into_staged_diff(crypto, ciphersuite)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(StagedPublicGroupDiff {
             staged_diff,
             group_context: <span class="self">self</span>.group_context,
@@ -331,7 +333,7 @@
         plain_path_option: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[PlainUpdatePathNode]&gt;,
         presharedkeys: <span class="kw-2">&amp;</span>[PreSharedKeyId],
         encrypted_group_info: <span class="kw-2">&amp;</span>[u8],
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         leaf_index: LeafNodeIndex,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;EncryptedGroupSecrets&gt;, LibraryError&gt; {
         <span class="self">self</span>.diff.encrypt_group_secrets(
@@ -340,7 +342,7 @@
             plain_path_option,
             presharedkeys,
             encrypted_group_info,
-            backend,
+            crypto,
             leaf_index,
         )
     }
@@ -369,7 +371,7 @@
     /// TODO #804
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>decrypt_path(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         owned_keys: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>EncryptionKeyPair],
         own_leaf_index: LeafNodeIndex,
         sender_leaf_index: LeafNodeIndex,
@@ -387,7 +389,7 @@
                 .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>,
         };
         <span class="self">self</span>.diff.decrypt_path(
-            backend,
+            crypto,
             <span class="self">self</span>.group_context().ciphersuite(),
             params,
             owned_keys,
@@ -408,13 +410,13 @@
     /// TODO #804
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>apply_received_update_path(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         sender_leaf_index: LeafNodeIndex,
         update_path: <span class="kw-2">&amp;</span>UpdatePath,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ApplyUpdatePathError&gt; {
         <span class="self">self</span>.diff
-            .apply_received_update_path(backend, ciphersuite, sender_leaf_index, update_path)
+            .apply_received_update_path(crypto, ciphersuite, sender_leaf_index, update_path)
     }
 
     <span class="doccomment">/// Update the interim transcript hash of the diff and store the
@@ -423,14 +425,14 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>update_interim_transcript_hash(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         ciphersuite: Ciphersuite,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         confirmation_tag: ConfirmationTag,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), LibraryError&gt; {
         <span class="kw">let </span>interim_transcript_hash = {
             <span class="kw">let </span>input = InterimTranscriptHashInput::from(<span class="kw-2">&amp;</span>confirmation_tag);
 
             input.calculate_interim_transcript_hash(
-                backend.crypto(),
+                crypto,
                 ciphersuite,
                 <span class="self">self</span>.group_context.confirmed_transcript_hash(),
             )<span class="question-mark">?
@@ -447,12 +449,12 @@
     /// confirmed transcript hash.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>update_group_context(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), LibraryError&gt; {
         <span class="comment">// Calculate tree hash
         </span><span class="kw">let </span>new_tree_hash = <span class="self">self
             </span>.diff
-            .compute_tree_hashes(backend, <span class="self">self</span>.group_context().ciphersuite())<span class="question-mark">?</span>;
+            .compute_tree_hashes(crypto, <span class="self">self</span>.group_context().ciphersuite())<span class="question-mark">?</span>;
         <span class="self">self</span>.group_context.update_tree_hash(new_tree_hash);
         <span class="self">self</span>.group_context.increment_epoch();
         <span class="prelude-val">Ok</span>(())
@@ -463,11 +465,11 @@
     /// `commit_content`.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>update_confirmed_transcript_hash(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         commit_content: <span class="kw-2">&amp;</span>AuthenticatedContent,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), LibraryError&gt; {
         <span class="self">self</span>.group_context.update_confirmed_transcript_hash(
-            backend,
+            crypto,
             <span class="kw-2">&amp;</span><span class="self">self</span>.interim_transcript_hash,
             commit_content,
         )

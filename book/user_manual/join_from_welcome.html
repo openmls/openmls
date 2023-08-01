@@ -170,7 +170,7 @@
 <p>To join a group from a <code>Welcome</code> message, a new <code>MlsGroup</code> can be instantiated directly from the <code>Welcome</code> message.
 If the group configuration does not use the ratchet tree extension, the ratchet tree needs to be provided.</p>
 <pre><code class="language-rust no_run noplayground">    let mut bob_group = MlsGroup::new_from_welcome(
-        backend,
+        provider,
         &amp;mls_group_config,
         welcome.into_welcome().expect(&quot;Unexpected message type.&quot;),
         None, // We use the ratchet tree extension, so we don't provide a ratchet tree here

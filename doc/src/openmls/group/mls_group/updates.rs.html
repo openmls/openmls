@@ -189,7 +189,7 @@
     </span><span class="attr">#[allow(clippy::type_complexity)]
     </span><span class="kw">pub fn </span>self_update&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;
         (MlsMessageOut, <span class="prelude-ty">Option</span>&lt;MlsMessageOut&gt;, <span class="prelude-ty">Option</span>&lt;GroupInfo&gt;),
@@ -203,11 +203,11 @@
             .build();
         <span class="comment">// Create Commit over all proposals.
         // TODO #751
-        </span><span class="kw">let </span>create_commit_result = <span class="self">self</span>.group.create_commit(params, backend, signer)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>create_commit_result = <span class="self">self</span>.group.create_commit(params, provider, signer)<span class="question-mark">?</span>;
 
         <span class="comment">// Convert PublicMessage messages to MLSMessage and encrypt them if required by
         // the configuration
-        </span><span class="kw">let </span>mls_message = <span class="self">self</span>.content_to_mls_message(create_commit_result.commit, backend)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>mls_message = <span class="self">self</span>.content_to_mls_message(create_commit_result.commit, provider)<span class="question-mark">?</span>;
 
         <span class="comment">// Set the current group state to [`MlsGroupState::PendingCommit`],
         // storing the current [`StagedCommit`] from the commit results
@@ -232,7 +232,7 @@
     /// private key must be manually added to the key store.
     </span><span class="kw">fn </span>_propose_self_udpate&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         leaf_node: <span class="prelude-ty">Option</span>&lt;LeafNode&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;AuthenticatedContent, ProposeSelfUpdateError&lt;KeyStore::Error&gt;&gt; {
@@ -262,12 +262,12 @@
                 <span class="self">self</span>.own_leaf_index(),
                 <span class="self">self</span>.ciphersuite(),
                 ProtocolVersion::default(), <span class="comment">// XXX: openmls/openmls#1065
-                </span>backend,
+                </span>provider,
                 signer,
             )<span class="question-mark">?</span>;
             <span class="comment">// TODO #1207: Move to the top of the function.
             </span>keypair
-                .write_to_key_store(backend)
+                .write_to_key_store(provider.key_store())
                 .map_err(ProposeSelfUpdateError::KeyStoreError)<span class="question-mark">?</span>;
         };
 
@@ -285,20 +285,20 @@
     <span class="doccomment">/// Creates a proposal to update the own leaf node.
     </span><span class="kw">pub fn </span>propose_self_update&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         leaf_node: <span class="prelude-ty">Option</span>&lt;LeafNode&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposeSelfUpdateError&lt;KeyStore::Error&gt;&gt; {
-        <span class="kw">let </span>update_proposal = <span class="self">self</span>._propose_self_udpate(backend, signer, leaf_node)<span class="question-mark">?</span>;
+        <span class="kw">let </span>update_proposal = <span class="self">self</span>._propose_self_udpate(provider, signer, leaf_node)<span class="question-mark">?</span>;
         <span class="kw">let </span>proposal = QueuedProposal::from_authenticated_content_by_ref(
             <span class="self">self</span>.ciphersuite(),
-            backend,
+            provider.crypto(),
             update_proposal.clone(),
         )<span class="question-mark">?</span>;
         <span class="kw">let </span>proposal_ref = proposal.proposal_reference();
         <span class="self">self</span>.proposal_store.add(proposal);
 
-        <span class="kw">let </span>mls_message = <span class="self">self</span>.content_to_mls_message(update_proposal, backend)<span class="question-mark">?</span>;
+        <span class="kw">let </span>mls_message = <span class="self">self</span>.content_to_mls_message(update_proposal, provider)<span class="question-mark">?</span>;
 
         <span class="comment">// Since the state of the group might be changed, arm the state flag
         </span><span class="self">self</span>.flag_state_change();
@@ -309,20 +309,20 @@
     <span class="doccomment">/// Creates a proposal to update the own leaf node.
     </span><span class="kw">pub fn </span>propose_self_update_by_value&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         leaf_node: <span class="prelude-ty">Option</span>&lt;LeafNode&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposeSelfUpdateError&lt;KeyStore::Error&gt;&gt; {
-        <span class="kw">let </span>update_proposal = <span class="self">self</span>._propose_self_udpate(backend, signer, leaf_node)<span class="question-mark">?</span>;
+        <span class="kw">let </span>update_proposal = <span class="self">self</span>._propose_self_udpate(provider, signer, leaf_node)<span class="question-mark">?</span>;
         <span class="kw">let </span>proposal = QueuedProposal::from_authenticated_content_by_value(
             <span class="self">self</span>.ciphersuite(),
-            backend,
+            provider.crypto(),
             update_proposal.clone(),
         )<span class="question-mark">?</span>;
         <span class="kw">let </span>proposal_ref = proposal.proposal_reference();
         <span class="self">self</span>.proposal_store.add(proposal);
 
-        <span class="kw">let </span>mls_message = <span class="self">self</span>.content_to_mls_message(update_proposal, backend)<span class="question-mark">?</span>;
+        <span class="kw">let </span>mls_message = <span class="self">self</span>.content_to_mls_message(update_proposal, provider)<span class="question-mark">?</span>;
 
         <span class="comment">// Since the state of the group might be changed, arm the state flag
         </span><span class="self">self</span>.flag_state_change();

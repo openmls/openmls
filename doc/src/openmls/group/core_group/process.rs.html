@@ -349,7 +349,7 @@
     ///  - ValSem246 (as part of ValSem010)
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>process_unverified_message(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
         unverified_message: UnverifiedMessage,
         proposal_store: <span class="kw-2">&amp;</span>ProposalStore,
         old_epoch_keypairs: Vec&lt;EncryptionKeyPair&gt;,
@@ -359,7 +359,7 @@
         //  - ValSem010
         //  - ValSem246 (as part of ValSem010)
         </span><span class="kw">let </span>(content, credential) =
-            unverified_message.verify(<span class="self">self</span>.ciphersuite(), backend.crypto(), <span class="self">self</span>.version())<span class="question-mark">?</span>;
+            unverified_message.verify(<span class="self">self</span>.ciphersuite(), provider.crypto(), <span class="self">self</span>.version())<span class="question-mark">?</span>;
 
         <span class="kw">match </span>content.sender() {
             Sender::Member(<span class="kw">_</span>) | Sender::NewMemberCommit | Sender::NewMemberProposal =&gt; {
@@ -375,7 +375,7 @@
                     FramedContentBody::Proposal(<span class="kw">_</span>) =&gt; {
                         <span class="kw">let </span>proposal = Box::new(QueuedProposal::from_authenticated_content_by_ref(
                             <span class="self">self</span>.ciphersuite(),
-                            backend,
+                            provider.crypto(),
                             content,
                         )<span class="question-mark">?</span>);
                         <span class="kw">if </span><span class="macro">matches!</span>(sender, Sender::NewMemberProposal) {
@@ -390,7 +390,7 @@
                             proposal_store,
                             old_epoch_keypairs,
                             leaf_node_keypairs,
-                            backend,
+                            provider,
                         )<span class="question-mark">?</span>;
                         ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))
                     }
@@ -416,7 +416,7 @@
                         <span class="kw">let </span>content = ProcessedMessageContent::ProposalMessage(Box::new(
                             QueuedProposal::from_authenticated_content_by_ref(
                                 <span class="self">self</span>.ciphersuite(),
-                                backend,
+                                provider.crypto(),
                                 content,
                             )<span class="question-mark">?</span>,
                         ));
@@ -477,7 +477,7 @@
     ///  - ValSem246 (as part of ValSem010)
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>process_message(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
         message: <span class="kw">impl </span>Into&lt;ProtocolMessage&gt;,
         sender_ratchet_configuration: <span class="kw-2">&amp;</span>SenderRatchetConfiguration,
         proposal_store: <span class="kw-2">&amp;</span>ProposalStore,
@@ -491,7 +491,7 @@
         //  - ValSem006
         //  - ValSem007 MembershipTag presence
         </span><span class="kw">let </span>decrypted_message =
-            <span class="self">self</span>.decrypt_message(backend, message, sender_ratchet_configuration)<span class="question-mark">?</span>;
+            <span class="self">self</span>.decrypt_message(provider.crypto(), message, sender_ratchet_configuration)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>unverified_message = <span class="self">self
             </span>.public_group
@@ -501,13 +501,13 @@
         <span class="comment">// If this is a commit, we need to load the private key material we need for decryption.
         </span><span class="kw">let </span>(old_epoch_keypairs, leaf_node_keypairs) =
             <span class="kw">if let </span>ContentType::Commit = unverified_message.content_type() {
-                <span class="self">self</span>.read_decryption_keypairs(backend, own_leaf_nodes)<span class="question-mark">?
+                <span class="self">self</span>.read_decryption_keypairs(provider, own_leaf_nodes)<span class="question-mark">?
             </span>} <span class="kw">else </span>{
                 (<span class="macro">vec!</span>[], <span class="macro">vec!</span>[])
             };
 
         <span class="self">self</span>.process_unverified_message(
-            backend,
+            provider,
             unverified_message,
             proposal_store,
             old_epoch_keypairs,
@@ -527,7 +527,7 @@
     ///  - ValSem007 MembershipTag presence
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>decrypt_message(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         message: ProtocolMessage,
         sender_ratchet_configuration: <span class="kw-2">&amp;</span>SenderRatchetConfiguration,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;DecryptedMessage, ValidationError&gt; {
@@ -556,14 +556,14 @@
                     public_message,
                     message_secrets,
                     message_secrets.serialized_context().to_vec(),
-                    backend,
+                    crypto,
                 )
             }
             ProtocolMessage::PrivateMessage(ciphertext) =&gt; {
                 <span class="comment">// If the message is older than the current epoch, we need to fetch the correct secret tree first
                 </span>DecryptedMessage::from_inbound_ciphertext(
                     ciphertext,
-                    backend,
+                    crypto,
                     <span class="self">self</span>,
                     sender_ratchet_configuration,
                 )
@@ -574,11 +574,11 @@
     <span class="doccomment">/// Helper function to read decryption keypairs.
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>read_decryption_keypairs(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
         own_leaf_nodes: <span class="kw-2">&amp;</span>[LeafNode],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;EncryptionKeyPair&gt;, Vec&lt;EncryptionKeyPair&gt;), StageCommitError&gt; {
         <span class="comment">// All keys from the previous epoch are potential decryption keypairs.
-        </span><span class="kw">let </span>old_epoch_keypairs = <span class="self">self</span>.read_epoch_keypairs(backend);
+        </span><span class="kw">let </span>old_epoch_keypairs = <span class="self">self</span>.read_epoch_keypairs(provider.key_store());
 
         <span class="comment">// If we are processing an update proposal that originally came from
         // us, the keypair corresponding to the leaf in the update is also a
@@ -586,7 +586,7 @@
         </span><span class="kw">let </span>leaf_node_keypairs = own_leaf_nodes
             .iter()
             .map(|leaf_node| {
-                EncryptionKeyPair::read_from_key_store(backend, leaf_node.encryption_key())
+                EncryptionKeyPair::read_from_key_store(provider, leaf_node.encryption_key())
                     .ok_or(StageCommitError::MissingDecryptionKey)
             })
             .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;EncryptionKeyPair&gt;, StageCommitError&gt;&gt;()<span class="question-mark">?</span>;
@@ -597,7 +597,7 @@
     <span class="doccomment">/// Merge a [StagedCommit] into the group after inspection
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>merge_staged_commit&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
         staged_commit: StagedCommit,
         proposal_store: <span class="kw-2">&amp;mut </span>ProposalStore,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), MergeCommitError&lt;KeyStore::Error&gt;&gt; {
@@ -607,7 +607,7 @@
         </span><span class="kw">let </span>leaves = <span class="self">self</span>.public_group().members().collect();
         <span class="comment">// Merge the staged commit into the group state and store the secret tree from the
         // previous epoch in the message secrets store.
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(message_secrets) = <span class="self">self</span>.merge_commit(backend, staged_commit)<span class="question-mark">? </span>{
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(message_secrets) = <span class="self">self</span>.merge_commit(provider, staged_commit)<span class="question-mark">? </span>{
             <span class="self">self</span>.message_secrets_store
                 .add(past_epoch, message_secrets, leaves);
         }

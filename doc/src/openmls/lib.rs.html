@@ -196,8 +196,8 @@
 //!
 //! // Define ciphersuite ...
 //! let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
-//! // ... and the crypto backend to use.
-//! let backend = &amp;OpenMlsRustCrypto::default();
+//! // ... and the crypto provider to use.
+//! let provider = &amp;OpenMlsRustCrypto::default();
 //!
 //! // Now let&#39;s create two participants.
 //!
@@ -206,7 +206,7 @@
 //!     identity: Vec&lt;u8&gt;,
 //!     credential_type: CredentialType,
 //!     signature_algorithm: SignatureScheme,
-//!     backend: &amp;impl OpenMlsCryptoProvider,
+//!     provider: &amp;impl OpenMlsProvider,
 //! ) -&gt; (CredentialWithKey, SignatureKeyPair) {
 //!     let credential = Credential::new(identity, credential_type).unwrap();
 //!     let signature_keys =
@@ -216,7 +216,7 @@
 //!     // Store the signature key into the key store so OpenMLS has access
 //!     // to it.
 //!     signature_keys
-//!         .store(backend.key_store())
+//!         .store(provider.key_store())
 //!         .expect(&quot;Error storing signature keys in key store.&quot;);
 //!     
 //!     (
@@ -231,7 +231,7 @@
 //! // A helper to create key package bundles.
 //! fn generate_key_package(
 //!     ciphersuite: Ciphersuite,
-//!     backend: &amp;impl OpenMlsCryptoProvider,
+//!     provider: &amp;impl OpenMlsProvider,
 //!     signer: &amp;SignatureKeyPair,
 //!     credential_with_key: CredentialWithKey,
 //! ) -&gt; KeyPackage {
@@ -242,7 +242,7 @@
 //!                 ciphersuite,
 //!                 version: ProtocolVersion::default(),
 //!             },
-//!             backend,
+//!             provider,
 //!             signer,
 //!             credential_with_key,
 //!         )
@@ -254,25 +254,25 @@
 //!     &quot;Sasha&quot;.into(),
 //!     CredentialType::Basic,
 //!     ciphersuite.signature_algorithm(),
-//!     backend,
+//!     provider,
 //! );
 //!
 //! let (maxim_credential_with_key, maxim_signer) = generate_credential_with_key(
 //!     &quot;Maxim&quot;.into(),
 //!     CredentialType::Basic,
 //!     ciphersuite.signature_algorithm(),
-//!     backend,
+//!     provider,
 //! );
 //!
 //! // Then they generate key packages to facilitate the asynchronous handshakes
 //! // in MLS
 //!
 //! // Generate KeyPackages
-//! let maxim_key_package = generate_key_package(ciphersuite, backend, &amp;maxim_signer, maxim_credential_with_key);
+//! let maxim_key_package = generate_key_package(ciphersuite, provider, &amp;maxim_signer, maxim_credential_with_key);
 //!
 //! // Now Sasha starts a new group ...
 //! let mut sasha_group = MlsGroup::new(
-//!     backend,
+//!     provider,
 //!     &amp;sasha_signer,
 //!     &amp;MlsGroupConfig::default(),
 //!     sasha_credential_with_key,
@@ -283,12 +283,12 @@
 //! // The key package has to be retrieved from Maxim in some way. Most likely
 //! // via a server storing key packages for users.
 //! let (mls_message_out, welcome_out, group_info) = sasha_group
-//!     .add_members(backend, &amp;sasha_signer, &amp;[maxim_key_package])
+//!     .add_members(provider, &amp;sasha_signer, &amp;[maxim_key_package])
 //!     .expect(&quot;Could not add members.&quot;);
 //!
 //! // Sasha merges the pending commit that adds Maxim.
 //! sasha_group
-//!    .merge_pending_commit(backend)
+//!    .merge_pending_commit(provider)
 //!    .expect(&quot;error merging pending commit&quot;);
 //!
 //! // Sascha serializes the [`MlsMessageOut`] containing the [`Welcome`].
@@ -309,7 +309,7 @@
 //!
 //! // Now Maxim can join the group.
 //!  let mut maxim_group = MlsGroup::new_from_welcome(
-//!     backend,
+//!     provider,
 //!     &amp;MlsGroupConfig::default(),
 //!     welcome,
 //!     // The public tree is need and transferred out of band.

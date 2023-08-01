@@ -276,20 +276,13 @@
 <a href="#276" id="276">276</a>
 <a href="#277" id="277">277</a>
 <a href="#278" id="278">278</a>
-<a href="#279" id="279">279</a>
-<a href="#280" id="280">280</a>
-<a href="#281" id="281">281</a>
-<a href="#282" id="282">282</a>
-<a href="#283" id="283">283</a>
-<a href="#284" id="284">284</a>
-<a href="#285" id="285">285</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::fmt::Debug;
 
 <span class="kw">use </span>openmls_traits::{
     crypto::OpenMlsCrypto,
     key_store::{MlsEntity, MlsEntityId, OpenMlsKeyStore},
     types::{Ciphersuite, HpkeCiphertext, HpkeKeyPair},
-    OpenMlsCryptoProvider,
+    OpenMlsProvider,
 };
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
@@ -334,7 +327,7 @@
     <span class="doccomment">/// Encrypt to this HPKE public key.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encrypt(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         context: <span class="kw-2">&amp;</span>[u8],
         plaintext: <span class="kw-2">&amp;</span>[u8],
@@ -345,7 +338,7 @@
             context,
             plaintext,
             ciphersuite,
-            backend.crypto(),
+            crypto,
         )
         .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Encryption failed. A serialization issue really&quot;</span>))
     }
@@ -390,7 +383,7 @@
     /// unsuccessful.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>decrypt(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         version: ProtocolVersion,
         ciphertext: <span class="kw-2">&amp;</span>HpkeCiphertext,
@@ -403,7 +396,7 @@
             group_context,
             ciphertext,
             ciphersuite,
-            backend.crypto(),
+            crypto,
         )
         .map(|secret_bytes| Secret::from_slice(<span class="kw-2">&amp;</span>secret_bytes, version, ciphersuite))
     }
@@ -432,46 +425,42 @@
 <span class="kw">const </span>ENCRYPTION_KEY_LABEL: <span class="kw-2">&amp;</span>[u8; <span class="number">19</span>] = <span class="string">b&quot;leaf_encryption_key&quot;</span>;
 
 <span class="kw">impl </span>EncryptionKeyPair {
-    <span class="doccomment">/// Write the [`EncryptionKeyPair`] to the key store of the `backend`. This
+    <span class="doccomment">/// Write the [`EncryptionKeyPair`] to the key store of the `provider`. This
     /// function is meant to store standalone keypairs, not ones that are
     /// already in use with an MLS group.
     ///
     /// Returns a key store error if access to the key store fails.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>write_to_key_store&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        store: <span class="kw-2">&amp;</span>KeyStore,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), KeyStore::Error&gt; {
-        backend
-            .key_store()
-            .store(<span class="kw-2">&amp;</span><span class="self">self</span>.public_key().to_bytes_with_prefix(), <span class="self">self</span>)
+        store.store(<span class="kw-2">&amp;</span><span class="self">self</span>.public_key().to_bytes_with_prefix(), <span class="self">self</span>)
     }
 
-    <span class="doccomment">/// Read the [`EncryptionKeyPair`] from the key store of the `backend`. This
+    <span class="doccomment">/// Read the [`EncryptionKeyPair`] from the key store of the `provider`. This
     /// function is meant to read standalone keypairs, not ones that are
     /// already in use with an MLS group.
     ///
     /// Returns `None` if the keypair cannot be read from the store.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>read_from_key_store(
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
         encryption_key: <span class="kw-2">&amp;</span>EncryptionKey,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;EncryptionKeyPair&gt; {
-        backend
+        provider
             .key_store()
             .read(<span class="kw-2">&amp;</span>encryption_key.to_bytes_with_prefix())
     }
 
-    <span class="doccomment">/// Delete the [`EncryptionKeyPair`] from the key store of the `backend`.
+    <span class="doccomment">/// Delete the [`EncryptionKeyPair`] from the key store of the `provider`.
     /// This function is meant to delete standalone keypairs, not ones that are
     /// already in use with an MLS group.
     ///
     /// Returns a key store error if access to the key store fails.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>delete_from_key_store&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        store: <span class="kw-2">&amp;</span>KeyStore,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), KeyStore::Error&gt; {
-        backend
-            .key_store()
-            .delete::&lt;<span class="self">Self</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>.public_key().to_bytes_with_prefix())
+        store.delete::&lt;<span class="self">Self</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>.public_key().to_bytes_with_prefix())
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>public_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>EncryptionKey {
@@ -483,12 +472,12 @@
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>random(
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
         config: CryptoConfig,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
-        <span class="kw">let </span>ikm = Secret::random(config.ciphersuite, backend, config.version)
+        <span class="kw">let </span>ikm = Secret::random(config.ciphersuite, provider.rand(), config.version)
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(backend
+        <span class="prelude-val">Ok</span>(provider
             .crypto()
             .derive_hpke_keypair(config.ciphersuite.hpke_config(), ikm.as_slice())
             .into())
@@ -500,10 +489,10 @@
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
     <span class="kw">pub fn </span>read_keys_from_key_store(
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
         encryption_key: <span class="kw-2">&amp;</span>EncryptionKey,
     ) -&gt; HpkeKeyPair {
-        <span class="kw">let </span>keys = EncryptionKeyPair::read_from_key_store(backend, encryption_key).unwrap();
+        <span class="kw">let </span>keys = EncryptionKeyPair::read_from_key_store(provider, encryption_key).unwrap();
 
         HpkeKeyPair {
             private: keys.private_key.key,
@@ -511,13 +500,10 @@
         }
     }
 
-    <span class="kw">pub fn </span>write_keys_from_key_store(
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        encryption_key: HpkeKeyPair,
-    ) {
+    <span class="kw">pub fn </span>write_keys_from_key_store(provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider, encryption_key: HpkeKeyPair) {
         <span class="kw">let </span>keypair = EncryptionKeyPair::from(encryption_key);
 
-        keypair.write_to_key_store(backend).unwrap();
+        keypair.write_to_key_store(provider.key_store()).unwrap();
     }
 }
 

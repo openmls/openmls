@@ -351,7 +351,7 @@
 <a href="#351" id="351">351</a>
 <a href="#352" id="352">352</a>
 <a href="#353" id="353">353</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
+</pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::{types::Ciphersuite, OpenMlsProvider};
 <span class="kw">use </span>std::io::Write;
 <span class="kw">use </span>tls_codec::{Serialize, Size, TlsSerialize, TlsSize};
 
@@ -425,7 +425,7 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>try_from_authenticated_content(
         public_message: <span class="kw-2">&amp;</span>AuthenticatedContent,
         ciphersuite: Ciphersuite,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
         message_secrets: <span class="kw-2">&amp;mut </span>MessageSecrets,
         padding_size: usize,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;PrivateMessage, MessageEncryptionError&gt; {
@@ -439,7 +439,7 @@
             <span class="prelude-val">None</span>,
             public_message,
             ciphersuite,
-            backend,
+            provider,
             message_secrets,
             padding_size,
         )
@@ -449,7 +449,7 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encrypt_without_check(
         public_message: <span class="kw-2">&amp;</span>AuthenticatedContent,
         ciphersuite: Ciphersuite,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
         message_secrets: <span class="kw-2">&amp;mut </span>MessageSecrets,
         padding_size: usize,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;PrivateMessage, MessageEncryptionError&gt; {
@@ -457,7 +457,7 @@
             <span class="prelude-val">None</span>,
             public_message,
             ciphersuite,
-            backend,
+            provider,
             message_secrets,
             padding_size,
         )
@@ -467,7 +467,7 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encrypt_with_different_header(
         public_message: <span class="kw-2">&amp;</span>AuthenticatedContent,
         ciphersuite: Ciphersuite,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
         header: MlsMessageHeader,
         message_secrets: <span class="kw-2">&amp;mut </span>MessageSecrets,
         padding_size: usize,
@@ -476,7 +476,7 @@
             <span class="prelude-val">Some</span>(header),
             public_message,
             ciphersuite,
-            backend,
+            provider,
             message_secrets,
             padding_size,
         )
@@ -488,7 +488,7 @@
         test_header: <span class="prelude-ty">Option</span>&lt;MlsMessageHeader&gt;,
         public_message: <span class="kw-2">&amp;</span>AuthenticatedContent,
         ciphersuite: Ciphersuite,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
         message_secrets: <span class="kw-2">&amp;mut </span>MessageSecrets,
         padding_size: usize,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;PrivateMessage, MessageEncryptionError&gt; {
@@ -521,10 +521,10 @@
         <span class="kw">let </span>(generation, (ratchet_key, ratchet_nonce)) = message_secrets
             .secret_tree_mut()
             <span class="comment">// Even in tests we want to use the real sender index, so we have a key to encrypt.
-            </span>.secret_for_encryption(ciphersuite, backend, sender_index, secret_type)<span class="question-mark">?</span>;
+            </span>.secret_for_encryption(ciphersuite, provider.crypto(), sender_index, secret_type)<span class="question-mark">?</span>;
         <span class="comment">// Sample reuse guard uniformly at random.
-        </span><span class="kw">let </span>reuse_guard: ReuseGuard =
-            ReuseGuard::try_from_random(backend).map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>reuse_guard: ReuseGuard = ReuseGuard::try_from_random(provider.rand())
+            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
         <span class="comment">// Prepare the nonce by xoring with the reuse guard.
         </span><span class="kw">let </span>prepared_nonce = ratchet_nonce.xor_with_reuse_guard(<span class="kw-2">&amp;</span>reuse_guard);
         <span class="comment">// Encrypt the payload
@@ -535,7 +535,7 @@
         <span class="macro">log_crypto!</span>(trace, <span class="string">&quot;Encryption of private message private_message_content_aad_bytes: {private_message_content_aad_bytes:x?} - ratchet_nonce: {prepared_nonce:x?}&quot;</span>);
         <span class="kw">let </span>ciphertext = ratchet_key
             .aead_seal(
-                backend,
+                provider.crypto(),
                 <span class="kw-2">&amp;</span><span class="self">Self</span>::encode_padded_ciphertext_content_detached(
                     public_message,
                     padding_size,
@@ -550,12 +550,12 @@
         <span class="comment">// Derive the sender data key from the key schedule using the ciphertext.
         </span><span class="kw">let </span>sender_data_key = message_secrets
             .sender_data_secret()
-            .derive_aead_key(backend, <span class="kw-2">&amp;</span>ciphertext)
+            .derive_aead_key(provider.crypto(), <span class="kw-2">&amp;</span>ciphertext)
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
         <span class="comment">// Derive initial nonce from the key schedule using the ciphertext.
         </span><span class="kw">let </span>sender_data_nonce = message_secrets
             .sender_data_secret()
-            .derive_aead_nonce(ciphersuite, backend, <span class="kw-2">&amp;</span>ciphertext)
+            .derive_aead_nonce(ciphersuite, provider.crypto(), <span class="kw-2">&amp;</span>ciphertext)
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
         <span class="comment">// Compute sender data nonce by xoring reuse guard and key schedule
         // nonce as per spec.
@@ -582,7 +582,7 @@
         <span class="macro">log_crypto!</span>(trace, <span class="string">&quot;Encryption of sender data mls_sender_data_aad_bytes: {mls_sender_data_aad_bytes:x?} - sender_data_nonce: {sender_data_nonce:x?}&quot;</span>);
         <span class="kw">let </span>encrypted_sender_data = sender_data_key
             .aead_seal(
-                backend,
+                provider.crypto(),
                 <span class="kw-2">&amp;</span>sender_data
                     .tls_serialize_detached()
                     .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>,

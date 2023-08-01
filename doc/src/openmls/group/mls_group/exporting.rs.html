@@ -63,7 +63,9 @@
 <a href="#63" id="63">63</a>
 <a href="#64" id="64">64</a>
 <a href="#65" id="65">65</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::signatures::Signer;
+<a href="#66" id="66">66</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
+<span class="kw">use </span>openmls_traits::signatures::Signer;
 
 <span class="kw">use crate</span>::{group::errors::ExporterError, schedule::EpochAuthenticator};
 
@@ -79,7 +81,7 @@
     /// if the group is not active.
     </span><span class="kw">pub fn </span>export_secret(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         label: <span class="kw-2">&amp;</span>str,
         context: <span class="kw-2">&amp;</span>[u8],
         key_length: usize,
@@ -87,7 +89,7 @@
         <span class="kw">if </span><span class="self">self</span>.is_active() {
             <span class="prelude-val">Ok</span>(<span class="self">self
                 </span>.group
-                .export_secret(backend, label, context, key_length)
+                .export_secret(crypto, label, context, key_length)
                 .map_err(|e| <span class="kw">match </span>e {
                     ExporterError::LibraryError(e) =&gt; e.into(),
                     ExporterError::KeyLengthTooLong =&gt; ExportSecretError::KeyLengthTooLong,
@@ -118,13 +120,13 @@
     <span class="doccomment">/// Export a group info object for this group.
     </span><span class="kw">pub fn </span>export_group_info(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         with_ratchet_tree: bool,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, ExportGroupInfoError&gt; {
         <span class="prelude-val">Ok</span>(<span class="self">self
             </span>.group
-            .export_group_info(backend, signer, with_ratchet_tree)<span class="question-mark">?
+            .export_group_info(crypto, signer, with_ratchet_tree)<span class="question-mark">?
             </span>.into())
     }
 }
