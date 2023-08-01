@@ -5,7 +5,7 @@ use std::{cell::RefCell, collections::HashMap};
 use ds_lib::{ClientKeyPackages, GroupMessage};
 use openmls::prelude::*;
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::OpenMlsProvider;
 use tls_codec::TlsByteVecU8;
 
 use super::{backend::Backend, conversation::Conversation, identity::Identity};

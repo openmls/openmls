@@ -63,7 +63,7 @@
 
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{types::SignatureScheme, OpenMlsCryptoProvider};
+use openmls_traits::{types::SignatureScheme, OpenMlsProvider};
 use serde::{self, Deserialize, Serialize};
 
 use crate::{
@@ -109,11 +109,11 @@ fn generate_credential(
     identity: Vec<u8>,
     credential_type: CredentialType,
     signature_algorithm: SignatureScheme,
-    backend: &impl OpenMlsCryptoProvider,
+    provider: &impl OpenMlsProvider,
 ) -> (CredentialWithKey, SignatureKeyPair) {
     let credential = Credential::new(identity, credential_type).unwrap();
     let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
-    signature_keys.store(backend.key_store()).unwrap();
+    signature_keys.store(provider.key_store()).unwrap();
 
     (
         CredentialWithKey {
@@ -127,7 +127,7 @@ fn generate_credential(
 #[cfg(any(feature = "test-utils", test))]
 fn group(
     ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
+    provider: &impl OpenMlsProvider,
 ) -> (CoreGroup, CredentialWithKey, SignatureKeyPair) {
     use crate::group::config::CryptoConfig;
 
@@ -135,15 +135,15 @@ fn group(
         "Kreator".into(),
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
-        backend,
+        provider,
     );
 
     let group = CoreGroup::builder(
-        GroupId::random(backend),
+        GroupId::random(provider.rand()),
         CryptoConfig::with_default_version(ciphersuite),
         credential_with_key.clone(),
     )
-    .build(backend, &signer)
+    .build(provider, &signer)
     .unwrap();
 
     (group, credential_with_key, signer)
@@ -152,7 +152,7 @@ fn group(
 #[cfg(any(feature = "test-utils", test))]
 fn receiver_group(
     ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
+    provider: &impl OpenMlsProvider,
     group_id: GroupId,
 ) -> (CoreGroup, CredentialWithKey, SignatureKeyPair) {
     use crate::group::config::CryptoConfig;
@@ -161,7 +161,7 @@ fn receiver_group(
         "Receiver".into(),
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
-        backend,
+        provider,
     );
 
     let group = CoreGroup::builder(
@@ -169,7 +169,7 @@ fn receiver_group(
         CryptoConfig::with_default_version(ciphersuite),
         credential_with_key.clone(),
     )
-    .build(backend, &signer)
+    .build(provider, &signer)
     .unwrap();
 
     (group, credential_with_key, signer)
@@ -178,7 +178,7 @@ fn receiver_group(
 #[cfg(test)]
 pub fn run_test_vector(
     test: MessageProtectionTest,
-    backend: &impl OpenMlsCryptoProvider,
+    provider: &impl OpenMlsProvider,
 ) -> Result<(), String> {
     use openmls_traits::crypto::OpenMlsCrypto;
     use tls_codec::{Deserialize, Serialize};
@@ -193,7 +193,7 @@ pub fn run_test_vector(
     };
 
     let ciphersuite = test.cipher_suite.try_into().unwrap();
-    if !backend
+    if !provider
         .crypto()
         .supported_ciphersuites()
         .contains(&ciphersuite)
@@ -236,7 +236,7 @@ pub fn run_test_vector(
 
     // Make the group think it has two members.
     fn setup_group(
-        backend: &impl OpenMlsCryptoProvider,
+        provider: &impl OpenMlsProvider,
         ciphersuite: Ciphersuite,
         test: &MessageProtectionTest,
         sender: bool,
@@ -282,13 +282,13 @@ pub fn run_test_vector(
                 signature_key: random_own_signature_key.into(),
             },
         )
-        .build(backend, &signer)
+        .build(provider, &signer)
         .unwrap();
 
         let credential = Credential::new("Fake user".into(), CredentialType::Basic).unwrap();
         let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
         let bob_key_package_bundle = KeyPackageBundle::new(
-            backend,
+            provider,
             &signature_keys,
             ciphersuite,
             CredentialWithKey {
@@ -305,7 +305,7 @@ pub fn run_test_vector(
         let proposal_store = ProposalStore::from_queued_proposal(
             QueuedProposal::from_authenticated_content_by_ref(
                 ciphersuite,
-                backend,
+                provider.crypto(),
                 bob_add_proposal,
             )
             .expect("Could not create QueuedProposal."),
@@ -318,11 +318,11 @@ pub fn run_test_vector(
             .build();
 
         let create_commit_result = group
-            .create_commit(params, backend, &signer)
+            .create_commit(params, provider, &signer)
             .expect("Error creating Commit");
 
         group
-            .merge_commit(backend, create_commit_result.staged_commit)
+            .merge_commit(provider, create_commit_result.staged_commit)
             .expect("error merging pending commit");
 
         // Inject the test values into the group
@@ -376,7 +376,7 @@ pub fn run_test_vector(
 
         fn test_proposal_pub(
             mut group: CoreGroup,
-            backend: &impl OpenMlsCryptoProvider,
+            provider: &impl OpenMlsProvider,
             ciphersuite: Ciphersuite,
             proposal: ProposalIn,
             proposal_pub: MlsMessageIn,
@@ -387,7 +387,7 @@ pub fn run_test_vector(
             // check that the proposal in proposal_pub == proposal
             let decrypted_message = group
                 .decrypt_message(
-                    backend,
+                    provider.crypto(),
                     proposal_pub.into_protocol_message().unwrap(),
                     &sender_ratchet_config,
                 )
@@ -398,7 +398,7 @@ pub fn run_test_vector(
                 .parse_message(decrypted_message, group.message_secrets_store())
                 .unwrap();
             let processed_message: AuthenticatedContent = processed_unverified_message
-                .verify(ciphersuite, backend.crypto(), ProtocolVersion::Mls10)
+                .verify(ciphersuite, provider.crypto(), ProtocolVersion::Mls10)
                 .unwrap()
                 .0;
             match processed_message.content().to_owned() {
@@ -408,8 +408,8 @@ pub fn run_test_vector(
         }
 
         test_proposal_pub(
-            setup_group(backend, ciphersuite, &test, false),
-            backend,
+            setup_group(provider, ciphersuite, &test, false),
+            provider,
             ciphersuite,
             proposal.clone(),
             proposal_pub,
@@ -417,7 +417,7 @@ pub fn run_test_vector(
 
         fn test_proposal_priv(
             mut group: CoreGroup,
-            backend: &impl OpenMlsCryptoProvider,
+            provider: &impl OpenMlsProvider,
             proposal: ProposalIn,
             proposal_priv: MlsMessageIn,
         ) {
@@ -428,7 +428,7 @@ pub fn run_test_vector(
             // decrypt private message
             let processed_message = group
                 .process_message(
-                    backend,
+                    provider,
                     proposal_priv.into_protocol_message().unwrap(),
                     &sender_ratchet_config,
                     &proposal_store,
@@ -445,12 +445,12 @@ pub fn run_test_vector(
             }
         }
 
-        let group = setup_group(backend, ciphersuite, &test, false);
-        test_proposal_priv(group, backend, proposal.clone(), proposal_priv);
+        let group = setup_group(provider, ciphersuite, &test, false);
+        test_proposal_priv(group, provider, proposal.clone(), proposal_priv);
 
         // Wrap `proposal` into a `PrivateMessage`.
-        let group = setup_group(backend, ciphersuite, &test, false);
-        let mut sender_group = setup_group(backend, ciphersuite, &test, true);
+        let group = setup_group(provider, ciphersuite, &test, false);
+        let mut sender_group = setup_group(provider, ciphersuite, &test, true);
         let proposal_authenticated_content = AuthenticatedContent::member_proposal(
             FramingParameters::new(&[], WireFormat::PrivateMessage),
             sender_index,
@@ -460,21 +460,21 @@ pub fn run_test_vector(
         )
         .unwrap();
         let my_proposal_priv = sender_group
-            .encrypt(proposal_authenticated_content, 0, backend)
+            .encrypt(proposal_authenticated_content, 0, provider)
             .unwrap();
         let my_proposal_priv_out =
             MlsMessageOut::from_private_message(my_proposal_priv, group.version());
 
         test_proposal_priv(
             group,
-            backend,
+            provider,
             proposal.clone(),
             my_proposal_priv_out.into(),
         );
 
         // Wrap `proposal` into a `PublicMessage`.
-        let group = setup_group(backend, ciphersuite, &test, false);
-        let sender_group = setup_group(backend, ciphersuite, &test, true);
+        let group = setup_group(provider, ciphersuite, &test, false);
+        let sender_group = setup_group(provider, ciphersuite, &test, true);
         let proposal_authenticated_content = AuthenticatedContent::member_proposal(
             FramingParameters::new(&[], WireFormat::PublicMessage),
             sender_index,
@@ -486,7 +486,7 @@ pub fn run_test_vector(
         let mut my_proposal_pub: PublicMessage = proposal_authenticated_content.into();
         my_proposal_pub
             .set_membership_tag(
-                backend,
+                provider.crypto(),
                 sender_group.message_secrets().membership_key(),
                 sender_group.message_secrets().serialized_context(),
             )
@@ -495,7 +495,7 @@ pub fn run_test_vector(
 
         test_proposal_pub(
             group,
-            backend,
+            provider,
             ciphersuite,
             proposal,
             my_proposal_pub_out.into(),
@@ -512,7 +512,7 @@ pub fn run_test_vector(
 
         fn test_commit_pub(
             mut group: CoreGroup,
-            backend: &impl OpenMlsCryptoProvider,
+            provider: &impl OpenMlsProvider,
             ciphersuite: Ciphersuite,
             commit: CommitIn,
             commit_pub: MlsMessageIn,
@@ -523,7 +523,7 @@ pub fn run_test_vector(
             // check that the proposal in proposal_pub == proposal
             let decrypted_message = group
                 .decrypt_message(
-                    backend,
+                    provider.crypto(),
                     commit_pub.into_protocol_message().unwrap(),
                     &sender_ratchet_config,
                 )
@@ -534,7 +534,7 @@ pub fn run_test_vector(
                 .parse_message(decrypted_message, group.message_secrets_store())
                 .unwrap();
             let processed_message: AuthenticatedContent = processed_unverified_message
-                .verify(ciphersuite, backend.crypto(), ProtocolVersion::Mls10)
+                .verify(ciphersuite, provider.crypto(), ProtocolVersion::Mls10)
                 .unwrap()
                 .0;
             match processed_message.content().to_owned() {
@@ -546,8 +546,8 @@ pub fn run_test_vector(
         }
 
         test_commit_pub(
-            setup_group(backend, ciphersuite, &test, false),
-            backend,
+            setup_group(provider, ciphersuite, &test, false),
+            provider,
             ciphersuite,
             commit.clone(),
             commit_pub,
@@ -555,7 +555,7 @@ pub fn run_test_vector(
 
         fn test_commit_priv(
             mut group: CoreGroup,
-            backend: &impl OpenMlsCryptoProvider,
+            provider: &impl OpenMlsProvider,
             ciphersuite: Ciphersuite,
             commit: CommitIn,
             commit_priv: MlsMessageIn,
@@ -566,7 +566,7 @@ pub fn run_test_vector(
             // check that the proposal in proposal_priv == proposal
             let decrypted_message = group
                 .decrypt_message(
-                    backend,
+                    provider.crypto(),
                     commit_priv.into_protocol_message().unwrap(),
                     &sender_ratchet_config,
                 )
@@ -577,7 +577,7 @@ pub fn run_test_vector(
                 .parse_message(decrypted_message, group.message_secrets_store())
                 .unwrap();
             let processed_message: AuthenticatedContent = processed_unverified_message
-                .verify(ciphersuite, backend.crypto(), ProtocolVersion::Mls10)
+                .verify(ciphersuite, provider.crypto(), ProtocolVersion::Mls10)
                 .unwrap()
                 .0;
             match processed_message.content().to_owned() {
@@ -589,16 +589,16 @@ pub fn run_test_vector(
         }
 
         test_commit_priv(
-            setup_group(backend, ciphersuite, &test, false),
-            backend,
+            setup_group(provider, ciphersuite, &test, false),
+            provider,
             ciphersuite,
             commit.clone(),
             commit_priv,
         );
 
         // Wrap `commit` into a `PrivateMessage`.
-        let group = setup_group(backend, ciphersuite, &test, false);
-        let mut sender_group = setup_group(backend, ciphersuite, &test, true);
+        let group = setup_group(provider, ciphersuite, &test, false);
+        let mut sender_group = setup_group(provider, ciphersuite, &test, true);
         let mut commit_authenticated_content = AuthenticatedContent::commit(
             FramingParameters::new(&[], WireFormat::PrivateMessage),
             Sender::Member(sender_index),
@@ -611,22 +611,22 @@ pub fn run_test_vector(
             mac_value: vec![0; 32].into(), // Set a fake mac, we don't check it.
         }));
         let my_commit_pub = sender_group
-            .encrypt(commit_authenticated_content, 0, backend)
+            .encrypt(commit_authenticated_content, 0, provider)
             .unwrap();
         let my_commit_priv_out =
             MlsMessageOut::from_private_message(my_commit_pub, group.version());
 
         test_commit_priv(
             group,
-            backend,
+            provider,
             ciphersuite,
             commit.clone(),
             my_commit_priv_out.into(),
         );
 
         // Wrap `commit` into a `PublicMessage`.
-        let group = setup_group(backend, ciphersuite, &test, false);
-        let sender_group = setup_group(backend, ciphersuite, &test, true);
+        let group = setup_group(provider, ciphersuite, &test, false);
+        let sender_group = setup_group(provider, ciphersuite, &test, true);
         let mut commit_authenticated_content = AuthenticatedContent::commit(
             FramingParameters::new(&[], WireFormat::PublicMessage),
             Sender::Member(sender_index),
@@ -641,7 +641,7 @@ pub fn run_test_vector(
         let mut my_commit_pub_msg: PublicMessage = commit_authenticated_content.into();
         my_commit_pub_msg
             .set_membership_tag(
-                backend,
+                provider.crypto(),
                 sender_group.message_secrets().membership_key(),
                 sender_group.message_secrets().serialized_context(),
             )
@@ -650,7 +650,7 @@ pub fn run_test_vector(
 
         test_commit_pub(
             group,
-            backend,
+            provider,
             ciphersuite,
             commit,
             my_commit_pub_out.into(),
@@ -665,7 +665,7 @@ pub fn run_test_vector(
 
         fn test_application_priv(
             mut group: CoreGroup,
-            backend: &impl OpenMlsCryptoProvider,
+            provider: &impl OpenMlsProvider,
             application: Vec<u8>,
             application_priv: MlsMessageIn,
         ) {
@@ -676,7 +676,7 @@ pub fn run_test_vector(
             // check that the proposal in proposal_pub == proposal
             let processed_message = group
                 .process_message(
-                    backend,
+                    provider,
                     application_priv.into_ciphertext().unwrap(),
                     &sender_ratchet_config,
                     &proposal_store,
@@ -692,23 +692,23 @@ pub fn run_test_vector(
         }
 
         test_application_priv(
-            setup_group(backend, ciphersuite, &test, false),
-            backend,
+            setup_group(provider, ciphersuite, &test, false),
+            provider,
             application.clone(),
             application_priv,
         );
 
         // Wrap `application` into a `PrivateMessage`.
-        let mut sender_group = setup_group(backend, ciphersuite, &test, true);
+        let mut sender_group = setup_group(provider, ciphersuite, &test, true);
         let private_message = sender_group
-            .create_application_message(&[], &application, 0, backend, &signer)
+            .create_application_message(&[], &application, 0, provider, &signer)
             .unwrap();
         let my_application_priv_out =
             MlsMessageOut::from_private_message(private_message, sender_group.version());
 
         test_application_priv(
-            setup_group(backend, ciphersuite, &test, false),
-            backend,
+            setup_group(provider, ciphersuite, &test, false),
+            provider,
             application.clone(),
             my_application_priv_out.into(),
         );
@@ -719,15 +719,15 @@ pub fn run_test_vector(
     Ok(())
 }
 
-#[apply(backends)]
-fn read_test_vectors_mp(backend: &impl OpenMlsCryptoProvider) {
+#[apply(providers)]
+fn read_test_vectors_mp(provider: &impl OpenMlsProvider) {
     let _ = pretty_env_logger::try_init();
     log::debug!("Reading test vectors ...");
 
     let tests: Vec<MessageProtectionTest> = read("test_vectors/message-protection.json");
 
     for test_vector in tests {
-        match run_test_vector(test_vector, backend) {
+        match run_test_vector(test_vector, provider) {
             Ok(_) => {}
             Err(e) => panic!("Error while checking message protection test vector.\n{e:?}"),
         }

@@ -1,6 +1,6 @@
 //! This module contains helper structs and functions related to parent hashing
 //! and tree hashing.
-use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 use tls_codec::{Serialize, TlsSerialize, TlsSize, VLByteSlice};
 
 use crate::{
@@ -45,14 +45,13 @@ impl<'a> ParentHashInput<'a> {
     /// Serialize and hash this instance of [`ParentHashInput`].
     pub(super) fn hash(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -> Result<Vec<u8>, LibraryError> {
         let payload = self
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;
-        backend
-            .crypto()
+        crypto
             .hash(ciphersuite.hash_algorithm(), &payload)
             .map_err(LibraryError::unexpected_crypto_error)
     }
@@ -124,14 +123,13 @@ impl<'a> TreeHashInput<'a> {
     /// Serialize and hash this instance of [`TreeHashInput`].
     pub(super) fn hash(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -> Result<Vec<u8>, LibraryError> {
         let payload = self
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;
-        backend
-            .crypto()
+        crypto
             .hash(ciphersuite.hash_algorithm(), &payload)
             .map_err(LibraryError::unexpected_crypto_error)
     }

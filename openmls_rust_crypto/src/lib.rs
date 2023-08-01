@@ -1,10 +1,10 @@
 //! # OpenMLS Default Crypto Provider
 //!
-//! This is an implementation of the [`OpenMlsCryptoProvider`] trait to use with
+//! This is an implementation of the [`OpenMlsProvider`] trait to use with
 //! OpenMLS.
 
 pub use openmls_memory_keystore::{MemoryKeyStore, MemoryKeyStoreError};
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::OpenMlsProvider;
 
 mod provider;
 pub use provider::*;
@@ -15,7 +15,7 @@ pub struct OpenMlsRustCrypto {
     key_store: MemoryKeyStore,
 }
 
-impl OpenMlsCryptoProvider for OpenMlsRustCrypto {
+impl OpenMlsProvider for OpenMlsRustCrypto {
     type CryptoProvider = RustCrypto;
     type RandProvider = RustCrypto;
     type KeyStoreProvider = MemoryKeyStore;

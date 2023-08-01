@@ -153,7 +153,7 @@ impl OpenMlsSignaturePublicKey {
     /// public key.
     pub fn verify_with_label(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         signature: &Signature,
         sign_content: &SignContent,
     ) -> Result<(), CryptoError> {
@@ -164,8 +164,7 @@ impl OpenMlsSignaturePublicKey {
                 return Err(CryptoError::TlsSerializationError);
             }
         };
-        backend
-            .crypto()
+        crypto
             .verify_signature(
                 self.signature_scheme,
                 &payload,
@@ -179,12 +178,11 @@ impl OpenMlsSignaturePublicKey {
     /// public key.
     pub fn verify(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         signature: &Signature,
         payload: &[u8],
     ) -> Result<(), CryptoError> {
-        backend
-            .crypto()
+        crypto
             .verify_signature(
                 self.signature_scheme,
                 payload,

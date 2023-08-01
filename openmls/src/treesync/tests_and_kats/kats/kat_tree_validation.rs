@@ -61,7 +61,7 @@
 use std::collections::HashSet;
 
 use ::serde::Deserialize;
-use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsCryptoProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsProvider};
 use tls_codec::Deserialize as TlsDeserializeTrait;
 
 use crate::{
@@ -85,10 +85,10 @@ struct TestElement {
     tree_hashes: Vec<TreeHash>,
 }
 
-fn run_test_vector(test: TestElement, backend: &impl OpenMlsCryptoProvider) -> Result<(), String> {
+fn run_test_vector(test: TestElement, provider: &impl OpenMlsProvider) -> Result<(), String> {
     let ciphersuite = Ciphersuite::try_from(test.cipher_suite).unwrap();
     // Skip unsupported ciphersuites.
-    if !backend
+    if !provider
         .crypto()
         .supported_ciphersuites()
         .contains(&ciphersuite)
@@ -100,11 +100,12 @@ fn run_test_vector(test: TestElement, backend: &impl OpenMlsCryptoProvider) -> R
     let group_id = &GroupId::from_slice(test.group_id.as_slice());
     let ratchet_tree = RatchetTreeIn::tls_deserialize_exact(test.tree)
         .unwrap()
-        .into_verified(ciphersuite, backend.crypto(), group_id)
+        .into_verified(ciphersuite, provider.crypto(), group_id)
         .unwrap();
 
-    let treesync = TreeSync::from_ratchet_tree(backend, ciphersuite, ratchet_tree.clone())
-        .map_err(|e| format!("Error while creating tree sync: {e:?}"))?;
+    let treesync =
+        TreeSync::from_ratchet_tree(provider.crypto(), ciphersuite, ratchet_tree.clone())
+            .map_err(|e| format!("Error while creating tree sync: {e:?}"))?;
 
     let diff = treesync.empty_diff();
 
@@ -120,7 +121,12 @@ fn run_test_vector(test: TestElement, backend: &impl OpenMlsCryptoProvider) -> R
         assert_eq!(resolution, test.resolutions[index]);
 
         let tree_hash = diff
-            .compute_tree_hash(backend, ciphersuite, tree_node_index, &HashSet::new())
+            .compute_tree_hash(
+                provider.crypto(),
+                ciphersuite,
+                tree_node_index,
+                &HashSet::new(),
+            )
             .unwrap();
 
         // Verify tree hash
@@ -130,15 +136,15 @@ fn run_test_vector(test: TestElement, backend: &impl OpenMlsCryptoProvider) -> R
     Ok(())
 }
 
-#[apply(backends)]
-fn read_test_vectors_tree_validation(backend: &impl OpenMlsCryptoProvider) {
+#[apply(providers)]
+fn read_test_vectors_tree_validation(provider: &impl OpenMlsProvider) {
     let _ = pretty_env_logger::try_init();
     log::debug!("Reading test vectors ...");
 
     let tests: Vec<TestElement> = read("test_vectors/tree-validation.json");
 
     for test_vector in tests {
-        match run_test_vector(test_vector, backend) {
+        match run_test_vector(test_vector, provider) {
             Ok(_) => {}
             Err(e) => panic!("Error while checking tree validation test vector.\n{e:?}"),
         }

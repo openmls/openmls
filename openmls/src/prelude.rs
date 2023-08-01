@@ -59,5 +59,5 @@ pub use crate::error::*;
 // OpenMLS traits
 pub use openmls_traits::{
     crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, random::OpenMlsRand, types::*,
-    OpenMlsCryptoProvider,
+    OpenMlsProvider,
 };

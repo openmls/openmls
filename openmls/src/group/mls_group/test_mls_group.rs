@@ -1,6 +1,6 @@
 use core_group::test_core_group::setup_client;
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
+use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsProvider};
 
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -14,19 +14,19 @@ use crate::{
     test_utils::*,
 };
 
-#[apply(ciphersuites_and_backends)]
-fn test_mls_group_persistence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[apply(ciphersuites_and_providers)]
+fn test_mls_group_persistence(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
-        setup_client("Alice", ciphersuite, backend);
+        setup_client("Alice", ciphersuite, provider);
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::test_default(ciphersuite);
 
     // === Alice creates a group ===
     let mut alice_group = MlsGroup::new_with_group_id(
-        backend,
+        provider,
         &alice_signer,
         &mls_group_config,
         group_id.clone(),
@@ -38,35 +38,36 @@ fn test_mls_group_persistence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
     assert_eq!(alice_group.state_changed(), InnerState::Changed);
 
     alice_group
-        .save(backend)
+        .save(provider.key_store())
         .expect("Could not write group state to file");
 
     let alice_group_deserialized =
-        MlsGroup::load(&group_id, backend).expect("Could not deserialize MlsGroup");
+        MlsGroup::load(&group_id, provider.key_store()).expect("Could not deserialize MlsGroup");
 
     assert_eq!(
         (
             alice_group.export_ratchet_tree(),
-            alice_group.export_secret(backend, "test", &[], 32)
+            alice_group.export_secret(provider.crypto(), "test", &[], 32)
         ),
         (
             alice_group_deserialized.export_ratchet_tree(),
-            alice_group_deserialized.export_secret(backend, "test", &[], 32)
+            alice_group_deserialized.export_secret(provider.crypto(), "test", &[], 32)
         )
     );
 }
 
 // This tests if the remover is correctly passed to the callback when one member
 // issues a RemoveProposal and another members issues the next Commit.
-#[apply(ciphersuites_and_backends)]
-fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[apply(ciphersuites_and_providers)]
+fn remover(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
-        setup_client("Alice", ciphersuite, backend);
-    let (_bob_credential, bob_kpb, bob_signer, _bob_pk) = setup_client("Bob", ciphersuite, backend);
+        setup_client("Alice", ciphersuite, provider);
+    let (_bob_credential, bob_kpb, bob_signer, _bob_pk) =
+        setup_client("Bob", ciphersuite, provider);
     let (_charlie_credential, charlie_kpb, charlie_signer, _charlie_pk) =
-        setup_client("Charly", ciphersuite, backend);
+        setup_client("Charly", ciphersuite, provider);
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfigBuilder::new()
@@ -75,7 +76,7 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
 
     // === Alice creates a group ===
     let mut alice_group = MlsGroup::new_with_group_id(
-        backend,
+        provider,
         &alice_signer,
         &mls_group_config,
         group_id,
@@ -85,15 +86,15 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
 
     // === Alice adds Bob ===
     let (_queued_message, welcome, _group_info) = alice_group
-        .add_members(backend, &alice_signer, &[bob_kpb.key_package().clone()])
+        .add_members(provider, &alice_signer, &[bob_kpb.key_package().clone()])
         .expect("Could not add member to group.");
 
     alice_group
-        .merge_pending_commit(backend)
+        .merge_pending_commit(provider)
         .expect("error merging pending commit");
 
     let mut bob_group = MlsGroup::new_from_welcome(
-        backend,
+        provider,
         &mls_group_config,
         welcome.into_welcome().expect("Unexpected message type."),
         Some(alice_group.export_ratchet_tree().into()),
@@ -102,12 +103,12 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
 
     // === Bob adds Charlie ===
     let (queued_messages, welcome, _group_info) = bob_group
-        .add_members(backend, &bob_signer, &[charlie_kpb.key_package().clone()])
+        .add_members(provider, &bob_signer, &[charlie_kpb.key_package().clone()])
         .unwrap();
 
     let alice_processed_message = alice_group
         .process_message(
-            backend,
+            provider,
             queued_messages
                 .into_protocol_message()
                 .expect("Unexpected message type"),
@@ -117,18 +118,18 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         alice_processed_message.into_content()
     {
         alice_group
-            .merge_staged_commit(backend, *staged_commit)
+            .merge_staged_commit(provider, *staged_commit)
             .expect("Error merging commit.");
     } else {
         unreachable!("Expected a StagedCommit.");
     }
 
     bob_group
-        .merge_pending_commit(backend)
+        .merge_pending_commit(provider)
         .expect("error merging pending commit");
 
     let mut charlie_group = MlsGroup::new_from_welcome(
-        backend,
+        provider,
         &mls_group_config,
         welcome.into_welcome().expect("Unexpected message type."),
         Some(bob_group.export_ratchet_tree().into()),
@@ -138,12 +139,12 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // === Alice removes Bob & Charlie commits ===
 
     let (queued_messages, _) = alice_group
-        .propose_remove_member(backend, &alice_signer, LeafNodeIndex::new(1))
+        .propose_remove_member(provider, &alice_signer, LeafNodeIndex::new(1))
         .expect("Could not propose removal");
 
     let charlie_processed_message = charlie_group
         .process_message(
-            backend,
+            provider,
             queued_messages
                 .into_protocol_message()
                 .expect("Unexpected message type"),
@@ -174,7 +175,7 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
 
     // Charlie commits
     let (_queued_messages, _welcome, _group_info) = charlie_group
-        .commit_to_pending_proposals(backend, &charlie_signer)
+        .commit_to_pending_proposals(provider, &charlie_signer)
         .expect("Could not commit proposal");
 
     // Check that we receive the correct proposal
@@ -192,25 +193,25 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     };
 
     charlie_group
-        .merge_pending_commit(backend)
+        .merge_pending_commit(provider)
         .expect("error merging pending commit");
 
     // TODO #524: Check that Alice removed Bob
 }
 
-#[apply(ciphersuites_and_backends)]
-fn export_secret(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[apply(ciphersuites_and_providers)]
+fn export_secret(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
-        setup_client("Alice", ciphersuite, backend);
+        setup_client("Alice", ciphersuite, provider);
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::test_default(ciphersuite);
 
     // === Alice creates a group ===
     let alice_group = MlsGroup::new_with_group_id(
-        backend,
+        provider,
         &alice_signer,
         &mls_group_config,
         group_id,
@@ -220,24 +221,24 @@ fn export_secret(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider)
 
     assert!(
         alice_group
-            .export_secret(backend, "test1", &[], ciphersuite.hash_length())
+            .export_secret(provider.crypto(), "test1", &[], ciphersuite.hash_length())
             .expect("An unexpected error occurred.")
             != alice_group
-                .export_secret(backend, "test2", &[], ciphersuite.hash_length())
+                .export_secret(provider.crypto(), "test2", &[], ciphersuite.hash_length())
                 .expect("An unexpected error occurred.")
     );
     assert!(
         alice_group
-            .export_secret(backend, "test", &[0u8], ciphersuite.hash_length())
+            .export_secret(provider.crypto(), "test", &[0u8], ciphersuite.hash_length())
             .expect("An unexpected error occurred.")
             != alice_group
-                .export_secret(backend, "test", &[1u8], ciphersuite.hash_length())
+                .export_secret(provider.crypto(), "test", &[1u8], ciphersuite.hash_length())
                 .expect("An unexpected error occurred.")
     )
 }
 
-#[apply(ciphersuites_and_backends)]
-fn test_invalid_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[apply(ciphersuites_and_providers)]
+fn test_invalid_plaintext(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // Some basic setup functions for the MlsGroup.
     let mls_group_config = MlsGroupConfig::test_default(ciphersuite);
 
@@ -293,7 +294,7 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
         MlsMessageOutBody::PublicMessage(pt) => {
             pt.set_sender(random_sender);
             pt.set_membership_tag(
-                backend,
+                provider.crypto(),
                 membership_key,
                 client_group.group().message_secrets().serialized_context(),
             )
@@ -333,20 +334,21 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
     );
 }
 
-#[apply(ciphersuites_and_backends)]
-fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[apply(ciphersuites_and_providers)]
+fn test_pending_commit_logic(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
-        setup_client("Alice", ciphersuite, backend);
-    let (_bob_credential, bob_kpb, bob_signer, _bob_pk) = setup_client("Bob", ciphersuite, backend);
+        setup_client("Alice", ciphersuite, provider);
+    let (_bob_credential, bob_kpb, bob_signer, _bob_pk) =
+        setup_client("Bob", ciphersuite, provider);
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::test_default(ciphersuite);
 
     // === Alice creates a group ===
     let mut alice_group = MlsGroup::new_with_group_id(
-        backend,
+        provider,
         &alice_signer,
         &mls_group_config,
         group_id,
@@ -361,11 +363,11 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
 
     // Let's add bob
     let (proposal, _) = alice_group
-        .propose_add_member(backend, &alice_signer, bob_key_package)
+        .propose_add_member(provider, &alice_signer, bob_key_package)
         .expect("error creating self-update proposal");
 
     let alice_processed_message = alice_group
-        .process_message(backend, proposal.into_protocol_message().unwrap())
+        .process_message(provider, proposal.into_protocol_message().unwrap())
         .expect("Could not process messages.");
     assert!(alice_group.pending_commit().is_none());
 
@@ -382,7 +384,7 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
 
     println!("\nCreating commit with add proposal.");
     let (_msg, _welcome_option, _group_info) = alice_group
-        .self_update(backend, &alice_signer)
+        .self_update(provider, &alice_signer)
         .expect("error creating self-update commit");
     println!("Done creating commit.");
 
@@ -392,49 +394,49 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
     // If there is a pending commit, other commit- or proposal-creating actions
     // should fail.
     let error = alice_group
-        .add_members(backend, &alice_signer, &[bob_key_package.clone()])
+        .add_members(provider, &alice_signer, &[bob_key_package.clone()])
         .expect_err("no error committing while a commit is pending");
     assert_eq!(
         error,
         AddMembersError::GroupStateError(MlsGroupStateError::PendingCommit)
     );
     let error = alice_group
-        .propose_add_member(backend, &alice_signer, bob_key_package)
+        .propose_add_member(provider, &alice_signer, bob_key_package)
         .expect_err("no error creating a proposal while a commit is pending");
     assert_eq!(
         error,
         ProposeAddMemberError::GroupStateError(MlsGroupStateError::PendingCommit)
     );
     let error = alice_group
-        .remove_members(backend, &alice_signer, &[LeafNodeIndex::new(1)])
+        .remove_members(provider, &alice_signer, &[LeafNodeIndex::new(1)])
         .expect_err("no error committing while a commit is pending");
     assert_eq!(
         error,
         RemoveMembersError::GroupStateError(MlsGroupStateError::PendingCommit)
     );
     let error = alice_group
-        .propose_remove_member(backend, &alice_signer, LeafNodeIndex::new(1))
+        .propose_remove_member(provider, &alice_signer, LeafNodeIndex::new(1))
         .expect_err("no error creating a proposal while a commit is pending");
     assert_eq!(
         error,
         ProposeRemoveMemberError::GroupStateError(MlsGroupStateError::PendingCommit)
     );
     let error = alice_group
-        .commit_to_pending_proposals(backend, &alice_signer)
+        .commit_to_pending_proposals(provider, &alice_signer)
         .expect_err("no error committing while a commit is pending");
     assert_eq!(
         error,
         CommitToPendingProposalsError::GroupStateError(MlsGroupStateError::PendingCommit)
     );
     let error = alice_group
-        .self_update(backend, &alice_signer)
+        .self_update(provider, &alice_signer)
         .expect_err("no error committing while a commit is pending");
     assert_eq!(
         error,
         SelfUpdateError::GroupStateError(MlsGroupStateError::PendingCommit)
     );
     let error = alice_group
-        .propose_self_update(backend, &alice_signer, None)
+        .propose_self_update(provider, &alice_signer, None)
         .expect_err("no error creating a proposal while a commit is pending");
     assert_eq!(
         error,
@@ -447,18 +449,18 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
 
     // Creating a new commit should commit the same proposals.
     let (_msg, welcome_option, _group_info) = alice_group
-        .self_update(backend, &alice_signer)
+        .self_update(provider, &alice_signer)
         .expect("error creating self-update commit");
 
     // Merging the pending commit should clear the pending commit and we should
     // end up in the same state as bob.
     alice_group
-        .merge_pending_commit(backend)
+        .merge_pending_commit(provider)
         .expect("error merging pending commit");
     assert!(alice_group.pending_commit().is_none());
 
     let mut bob_group = MlsGroup::new_from_welcome(
-        backend,
+        provider,
         &mls_group_config,
         welcome_option
             .expect("no welcome after commit")
@@ -473,21 +475,21 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
         alice_group.export_ratchet_tree()
     );
     assert_eq!(
-        bob_group.export_secret(backend, "test", &[], ciphersuite.hash_length()),
-        alice_group.export_secret(backend, "test", &[], ciphersuite.hash_length())
+        bob_group.export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length()),
+        alice_group.export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
     );
 
     // While a commit is pending, merging Bob's commit should clear the pending commit.
     let (_msg, _welcome_option, _group_info) = alice_group
-        .self_update(backend, &alice_signer)
+        .self_update(provider, &alice_signer)
         .expect("error creating self-update commit");
 
     let (msg, _welcome_option, _group_info) = bob_group
-        .self_update(backend, &bob_signer)
+        .self_update(provider, &bob_signer)
         .expect("error creating self-update commit");
 
     let alice_processed_message = alice_group
-        .process_message(backend, msg.into_protocol_message().unwrap())
+        .process_message(provider, msg.into_protocol_message().unwrap())
         .expect("Could not process messages.");
     assert!(alice_group.pending_commit().is_some());
 
@@ -495,7 +497,7 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
         alice_processed_message.into_content()
     {
         alice_group
-            .merge_staged_commit(backend, *staged_commit)
+            .merge_staged_commit(provider, *staged_commit)
             .expect("Error merging commit.");
     } else {
         unreachable!("Expected a StagedCommit.");
@@ -505,14 +507,14 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
 
 // Test that the key package and the corresponding private key are deleted when
 // creating a new group for a welcome message.
-#[apply(ciphersuites_and_backends)]
-fn key_package_deletion(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[apply(ciphersuites_and_providers)]
+fn key_package_deletion(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
-        setup_client("Alice", ciphersuite, backend);
+        setup_client("Alice", ciphersuite, provider);
     let (_bob_credential_with_key, bob_kpb, _bob_signer, _bob_pk) =
-        setup_client("Bob", ciphersuite, backend);
+        setup_client("Bob", ciphersuite, provider);
     let bob_key_package = bob_kpb.key_package();
 
     // Define the MlsGroup configuration
@@ -522,7 +524,7 @@ fn key_package_deletion(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
     // === Alice creates a group ===
     let mut alice_group = MlsGroup::new_with_group_id(
-        backend,
+        provider,
         &alice_signer,
         &mls_group_config,
         group_id,
@@ -532,14 +534,14 @@ fn key_package_deletion(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
     // === Alice adds Bob ===
     let (_queued_message, welcome, _group_info) = alice_group
-        .add_members(backend, &alice_signer, &[bob_key_package.clone()])
+        .add_members(provider, &alice_signer, &[bob_key_package.clone()])
         .unwrap();
 
-    alice_group.merge_pending_commit(backend).unwrap();
+    alice_group.merge_pending_commit(provider).unwrap();
 
     // === Bob joins the group ===
     let _bob_group = MlsGroup::new_from_welcome(
-        backend,
+        provider,
         &mls_group_config,
         welcome.into_welcome().expect("Unexpected message type."),
         Some(alice_group.export_ratchet_tree().into()),
@@ -547,7 +549,7 @@ fn key_package_deletion(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     .expect("Error creating group from Welcome");
 
     // TEST: The private key must be gone from the key store.
-    assert!(backend
+    assert!(provider
         .key_store()
         .read::<HpkePrivateKey>(bob_key_package.hpke_init_key().as_slice())
         .is_none(),
@@ -555,11 +557,11 @@ fn key_package_deletion(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
     // TEST: The key package must be gone from the key store.
     assert!(
-        backend
+        provider
             .key_store()
             .read::<KeyPackage>(
                 bob_key_package
-                    .hash_ref(backend.crypto())
+                    .hash_ref(provider.crypto())
                     .unwrap()
                     .as_slice()
             )
@@ -568,17 +570,17 @@ fn key_package_deletion(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     );
 }
 
-#[apply(ciphersuites_and_backends)]
-fn remove_prosposal_by_ref(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[apply(ciphersuites_and_providers)]
+fn remove_prosposal_by_ref(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
-        setup_client("Alice", ciphersuite, backend);
+        setup_client("Alice", ciphersuite, provider);
     let (_bob_credential_with_key, bob_kpb, _bob_signer, _bob_pk) =
-        setup_client("Bob", ciphersuite, backend);
+        setup_client("Bob", ciphersuite, provider);
     let bob_key_package = bob_kpb.key_package().clone();
     let (_charlie_credential_with_key, charlie_kpb, _charlie_signer, _charlie_pk) =
-        setup_client("Charlie", ciphersuite, backend);
+        setup_client("Charlie", ciphersuite, provider);
     let charlie_key_package = charlie_kpb.key_package();
 
     // Define the MlsGroup configuration
@@ -588,7 +590,7 @@ fn remove_prosposal_by_ref(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypt
 
     // === Alice creates a group ===
     let mut alice_group = MlsGroup::new_with_group_id(
-        backend,
+        provider,
         &alice_signer,
         &mls_group_config,
         group_id,
@@ -598,11 +600,11 @@ fn remove_prosposal_by_ref(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypt
 
     // alice adds bob and bob processes the welcome
     let (_, welcome, _) = alice_group
-        .add_members(backend, &alice_signer, &[bob_key_package])
+        .add_members(provider, &alice_signer, &[bob_key_package])
         .unwrap();
-    alice_group.merge_pending_commit(backend).unwrap();
+    alice_group.merge_pending_commit(provider).unwrap();
     let mut bob_group = MlsGroup::new_from_welcome(
-        backend,
+        provider,
         &mls_group_config,
         welcome.into_welcome().unwrap(),
         Some(alice_group.export_ratchet_tree().into()),
@@ -610,7 +612,7 @@ fn remove_prosposal_by_ref(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypt
     .unwrap();
     // alice proposes to add charlie
     let (_, reference) = alice_group
-        .propose_add_member(backend, &alice_signer, charlie_key_package)
+        .propose_add_member(provider, &alice_signer, charlie_key_package)
         .unwrap();
 
     assert_eq!(alice_group.proposal_store.proposals().count(), 1);
@@ -626,10 +628,10 @@ fn remove_prosposal_by_ref(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypt
 
     // the commit should have no proposal
     let (commit, _, _) = alice_group
-        .commit_to_pending_proposals(backend, &alice_signer)
+        .commit_to_pending_proposals(provider, &alice_signer)
         .unwrap();
     let msg = bob_group
-        .process_message(backend, MlsMessageIn::from(commit))
+        .process_message(provider, MlsMessageIn::from(commit))
         .unwrap();
     match msg.into_content() {
         ProcessedMessageContent::StagedCommitMessage(commit) => {

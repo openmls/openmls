@@ -56,7 +56,7 @@ OpenMLS supports 32 bit platforms and above.
 
 OpenMLS does not implement its own cryptographic primitives. Instead, it relies
 on existing implementations of the cryptographic primitives used by MLS. There
-are two different cryptography backends implemented right now. But consumers
+are two different cryptography providers implemented right now. But consumers
 can bring their own implementation. See [traits](https://github.com/openmls/openmls/tree/main/traits) for more
 details.
 

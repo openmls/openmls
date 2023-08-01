@@ -23,7 +23,7 @@ impl MlsGroup {
     #[allow(clippy::type_complexity)]
     pub fn self_update<KeyStore: OpenMlsKeyStore>(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
     ) -> Result<
         (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
@@ -37,11 +37,11 @@ impl MlsGroup {
             .build();
         // Create Commit over all proposals.
         // TODO #751
-        let create_commit_result = self.group.create_commit(params, backend, signer)?;
+        let create_commit_result = self.group.create_commit(params, provider, signer)?;
 
         // Convert PublicMessage messages to MLSMessage and encrypt them if required by
         // the configuration
-        let mls_message = self.content_to_mls_message(create_commit_result.commit, backend)?;
+        let mls_message = self.content_to_mls_message(create_commit_result.commit, provider)?;
 
         // Set the current group state to [`MlsGroupState::PendingCommit`],
         // storing the current [`StagedCommit`] from the commit results
@@ -66,7 +66,7 @@ impl MlsGroup {
     /// private key must be manually added to the key store.
     fn _propose_self_udpate<KeyStore: OpenMlsKeyStore>(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         leaf_node: Option<LeafNode>,
     ) -> Result<AuthenticatedContent, ProposeSelfUpdateError<KeyStore::Error>> {
@@ -96,12 +96,12 @@ impl MlsGroup {
                 self.own_leaf_index(),
                 self.ciphersuite(),
                 ProtocolVersion::default(), // XXX: openmls/openmls#1065
-                backend,
+                provider,
                 signer,
             )?;
             // TODO #1207: Move to the top of the function.
             keypair
-                .write_to_key_store(backend)
+                .write_to_key_store(provider.key_store())
                 .map_err(ProposeSelfUpdateError::KeyStoreError)?;
         };
 
@@ -119,20 +119,20 @@ impl MlsGroup {
     /// Creates a proposal to update the own leaf node.
     pub fn propose_self_update<KeyStore: OpenMlsKeyStore>(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         leaf_node: Option<LeafNode>,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<KeyStore::Error>> {
-        let update_proposal = self._propose_self_udpate(backend, signer, leaf_node)?;
+        let update_proposal = self._propose_self_udpate(provider, signer, leaf_node)?;
         let proposal = QueuedProposal::from_authenticated_content_by_ref(
             self.ciphersuite(),
-            backend,
+            provider.crypto(),
             update_proposal.clone(),
         )?;
         let proposal_ref = proposal.proposal_reference();
         self.proposal_store.add(proposal);
 
-        let mls_message = self.content_to_mls_message(update_proposal, backend)?;
+        let mls_message = self.content_to_mls_message(update_proposal, provider)?;
 
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();
@@ -143,20 +143,20 @@ impl MlsGroup {
     /// Creates a proposal to update the own leaf node.
     pub fn propose_self_update_by_value<KeyStore: OpenMlsKeyStore>(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         leaf_node: Option<LeafNode>,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<KeyStore::Error>> {
-        let update_proposal = self._propose_self_udpate(backend, signer, leaf_node)?;
+        let update_proposal = self._propose_self_udpate(provider, signer, leaf_node)?;
         let proposal = QueuedProposal::from_authenticated_content_by_value(
             self.ciphersuite(),
-            backend,
+            provider.crypto(),
             update_proposal.clone(),
         )?;
         let proposal_ref = proposal.proposal_reference();
         self.proposal_store.add(proposal);
 
-        let mls_message = self.content_to_mls_message(update_proposal, backend)?;
+        let mls_message = self.content_to_mls_message(update_proposal, provider)?;
 
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();

@@ -30,7 +30,7 @@ The crates must be published in the order below.
 
 - [Traits](https://github.com/openmls/openmls/blob/main/traits/Cargo.toml)
 - [Memory Keystore](https://github.com/openmls/openmls/blob/main/memory_keystore/Cargo.toml)
-- [Rust Crypto Backend](https://github.com/openmls/openmls/blob/main/openmls_rust_crypto/Cargo.toml)
+- [Rust Crypto provider](https://github.com/openmls/openmls/blob/main/openmls_rust_crypto/Cargo.toml)
 - [OpenMLS](https://github.com/openmls/openmls/blob/main/openmls/Cargo.toml)
 
 ## Release note and changelog template
