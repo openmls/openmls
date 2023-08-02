@@ -230,7 +230,7 @@
     <span class="doccomment">/// Creates a proposal to update the own leaf node. Optionally, a
     /// [`LeafNode`] can be provided to update the leaf node. Note that its
     /// private key must be manually added to the key store.
-    </span><span class="kw">fn </span>_propose_self_udpate&lt;KeyStore: OpenMlsKeyStore&gt;(
+    </span><span class="kw">fn </span>_propose_self_update&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
@@ -289,7 +289,7 @@
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         leaf_node: <span class="prelude-ty">Option</span>&lt;LeafNode&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposeSelfUpdateError&lt;KeyStore::Error&gt;&gt; {
-        <span class="kw">let </span>update_proposal = <span class="self">self</span>._propose_self_udpate(provider, signer, leaf_node)<span class="question-mark">?</span>;
+        <span class="kw">let </span>update_proposal = <span class="self">self</span>._propose_self_update(provider, signer, leaf_node)<span class="question-mark">?</span>;
         <span class="kw">let </span>proposal = QueuedProposal::from_authenticated_content_by_ref(
             <span class="self">self</span>.ciphersuite(),
             provider.crypto(),
@@ -313,7 +313,7 @@
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         leaf_node: <span class="prelude-ty">Option</span>&lt;LeafNode&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposeSelfUpdateError&lt;KeyStore::Error&gt;&gt; {
-        <span class="kw">let </span>update_proposal = <span class="self">self</span>._propose_self_udpate(provider, signer, leaf_node)<span class="question-mark">?</span>;
+        <span class="kw">let </span>update_proposal = <span class="self">self</span>._propose_self_update(provider, signer, leaf_node)<span class="question-mark">?</span>;
         <span class="kw">let </span>proposal = QueuedProposal::from_authenticated_content_by_value(
             <span class="self">self</span>.ciphersuite(),
             provider.crypto(),
