@@ -64,7 +64,7 @@ impl MlsGroup {
     /// Creates a proposal to update the own leaf node. Optionally, a
     /// [`LeafNode`] can be provided to update the leaf node. Note that its
     /// private key must be manually added to the key store.
-    fn _propose_self_udpate<KeyStore: OpenMlsKeyStore>(
+    fn _propose_self_update<KeyStore: OpenMlsKeyStore>(
         &mut self,
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
@@ -123,7 +123,7 @@ impl MlsGroup {
         signer: &impl Signer,
         leaf_node: Option<LeafNode>,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<KeyStore::Error>> {
-        let update_proposal = self._propose_self_udpate(provider, signer, leaf_node)?;
+        let update_proposal = self._propose_self_update(provider, signer, leaf_node)?;
         let proposal = QueuedProposal::from_authenticated_content_by_ref(
             self.ciphersuite(),
             provider.crypto(),
@@ -147,7 +147,7 @@ impl MlsGroup {
         signer: &impl Signer,
         leaf_node: Option<LeafNode>,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<KeyStore::Error>> {
-        let update_proposal = self._propose_self_udpate(provider, signer, leaf_node)?;
+        let update_proposal = self._propose_self_update(provider, signer, leaf_node)?;
         let proposal = QueuedProposal::from_authenticated_content_by_value(
             self.ciphersuite(),
             provider.crypto(),
