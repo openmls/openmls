@@ -35,7 +35,7 @@ use openmls_traits::{
     key_store::OpenMlsKeyStore,
     random::OpenMlsRand,
     types::{Ciphersuite, HpkeKeyPair},
-    OpenMlsCryptoProvider,
+    OpenMlsProvider,
 };
 use tls_codec::{Deserialize, Serialize};
 use tonic::{async_trait, transport::Server, Code, Request, Response, Status};
@@ -195,7 +195,7 @@ impl MlsClient for MlsClientImpl {
         &self,
         _request: Request<SupportedCiphersuitesRequest>,
     ) -> Result<Response<SupportedCiphersuitesResponse>, Status> {
-        // TODO: read from backend
+        // TODO: read from provider
         let ciphersuites = &[
             Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
             Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
@@ -219,12 +219,12 @@ impl MlsClient for MlsClientImpl {
         let request = request.get_ref();
         info!(?request, "Request");
 
-        let backend = OpenMlsRustCrypto::default();
+        let provider = OpenMlsRustCrypto::default();
 
         let ciphersuite = Ciphersuite::try_from(request.cipher_suite as u16).unwrap();
         let credential = Credential::new(request.identity.clone(), CredentialType::Basic).unwrap();
         let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
-        signature_keys.store(backend.key_store()).unwrap();
+        signature_keys.store(provider.key_store()).unwrap();
 
         let wire_format_policy = wire_format_policy(request.encrypt_handshake);
         // Note: We just use some values here that make live testing work.
@@ -239,7 +239,7 @@ impl MlsClient for MlsClientImpl {
             .wire_format_policy(wire_format_policy)
             .build();
         let group = MlsGroup::new_with_group_id(
-            &backend,
+            &provider,
             &signature_keys,
             &mls_group_config,
             GroupId::from_slice(&request.group_id),
@@ -258,7 +258,7 @@ impl MlsClient for MlsClientImpl {
             wire_format_policy,
             signature_keys,
             messages_out: Vec::new(),
-            crypto_provider: backend,
+            crypto_provider: provider,
         };
 
         let mut groups = self.groups.lock().unwrap();
@@ -498,7 +498,7 @@ impl MlsClient for MlsClientImpl {
 
             let ratchet_tree = ratchet_tree_from_config(request.ratchet_tree.clone());
 
-            let backend = OpenMlsRustCrypto::default();
+            let provider = OpenMlsRustCrypto::default();
             let ciphersuite = verifiable_group_info.ciphersuite();
 
             let (credential_with_key, signer) = {
@@ -508,7 +508,7 @@ impl MlsClient for MlsClientImpl {
                 let signature_keypair =
                     SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
-                signature_keypair.store(backend.key_store()).unwrap();
+                signature_keypair.store(provider.key_store()).unwrap();
 
                 let credential_with_key = CredentialWithKey {
                     credential,
@@ -531,7 +531,7 @@ impl MlsClient for MlsClientImpl {
             };
 
             let (mut group, commit, _group_info) = MlsGroup::join_by_external_commit(
-                &backend,
+                &provider,
                 &signer,
                 ratchet_tree,
                 verifiable_group_info,
@@ -543,7 +543,7 @@ impl MlsClient for MlsClientImpl {
 
             trace!(?commit, "Commit created.");
             debug!(commit=?group.pending_commit(), "Merging pending commit.");
-            group.merge_pending_commit(&backend).unwrap();
+            group.merge_pending_commit(&provider).unwrap();
 
             (
                 InteropGroup {
@@ -551,7 +551,7 @@ impl MlsClient for MlsClientImpl {
                     group,
                     signature_keys: signer,
                     messages_out: Vec::new(),
-                    crypto_provider: backend,
+                    crypto_provider: provider,
                 },
                 commit,
             )
@@ -626,7 +626,7 @@ impl MlsClient for MlsClientImpl {
         let exported_secret = interop_group
             .group
             .export_secret(
-                &interop_group.crypto_provider,
+                interop_group.crypto_provider.crypto(),
                 &request.label,
                 &request.context,
                 request.key_length as usize,
@@ -1281,7 +1281,7 @@ impl MlsClient for MlsClientImpl {
 
         let group_info = group
             .export_group_info(
-                &interop_group.crypto_provider,
+                interop_group.crypto_provider.crypto(),
                 &interop_group.signature_keys,
                 !request.external_tree,
             )

@@ -1,5 +1,5 @@
 use openmls_traits::{
-    key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite, OpenMlsCryptoProvider,
+    key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite, OpenMlsProvider,
 };
 
 use super::{
@@ -69,7 +69,7 @@ macro_rules! impl_propose_fun {
         /// Returns an error if there is a pending commit.
         pub fn $name<KeyStore: OpenMlsKeyStore>(
             &mut self,
-            backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+            provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
             signer: &impl Signer,
             value: $value_ty,
         ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<KeyStore::Error>> {
@@ -81,7 +81,7 @@ macro_rules! impl_propose_fun {
 
             let queued_proposal = QueuedProposal::from_authenticated_content(
                 self.ciphersuite(),
-                backend,
+                provider.crypto(),
                 proposal.clone(),
                 $ref_or_value,
             )?;
@@ -89,7 +89,7 @@ macro_rules! impl_propose_fun {
             log::trace!("Storing proposal in queue {:?}", queued_proposal);
             self.proposal_store.add(queued_proposal);
 
-            let mls_message = self.content_to_mls_message(proposal, backend)?;
+            let mls_message = self.content_to_mls_message(proposal, provider)?;
 
             // Since the state of the group might be changed, arm the state flag
             self.flag_state_change();
@@ -145,7 +145,7 @@ impl MlsGroup {
     /// Generate a proposal
     pub fn propose<KeyStore: OpenMlsKeyStore>(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         propose: Propose,
         ref_or_value: ProposalOrRefType,
@@ -153,48 +153,48 @@ impl MlsGroup {
         match propose {
             Propose::Add(key_package) => match ref_or_value {
                 ProposalOrRefType::Proposal => {
-                    self.propose_add_member_by_value(backend, signer, key_package)
+                    self.propose_add_member_by_value(provider, signer, key_package)
                 }
                 ProposalOrRefType::Reference => self
-                    .propose_add_member(backend, signer, &key_package)
+                    .propose_add_member(provider, signer, &key_package)
                     .map_err(|e| e.into()),
             },
 
             Propose::Update(leaf_node) => match ref_or_value {
                 ProposalOrRefType::Proposal => self
-                    .propose_self_update_by_value(backend, signer, leaf_node)
+                    .propose_self_update_by_value(provider, signer, leaf_node)
                     .map_err(|e| e.into()),
                 ProposalOrRefType::Reference => self
-                    .propose_self_update(backend, signer, leaf_node)
+                    .propose_self_update(provider, signer, leaf_node)
                     .map_err(|e| e.into()),
             },
 
             Propose::Remove(leaf_index) => match ref_or_value {
                 ProposalOrRefType::Proposal => self.propose_remove_member_by_value(
-                    backend,
+                    provider,
                     signer,
                     LeafNodeIndex::new(leaf_index),
                 ),
                 ProposalOrRefType::Reference => self
-                    .propose_remove_member(backend, signer, LeafNodeIndex::new(leaf_index))
+                    .propose_remove_member(provider, signer, LeafNodeIndex::new(leaf_index))
                     .map_err(|e| e.into()),
             },
 
             Propose::RemoveCredential(credential) => match ref_or_value {
                 ProposalOrRefType::Proposal => {
-                    self.propose_remove_member_by_credential_by_value(backend, signer, &credential)
+                    self.propose_remove_member_by_credential_by_value(provider, signer, &credential)
                 }
                 ProposalOrRefType::Reference => self
-                    .propose_remove_member_by_credential(backend, signer, &credential)
+                    .propose_remove_member_by_credential(provider, signer, &credential)
                     .map_err(|e| e.into()),
             },
             Propose::PreSharedKey(psk_id) => match psk_id.psk() {
                 crate::schedule::Psk::External(_) => match ref_or_value {
                     ProposalOrRefType::Proposal => {
-                        self.propose_external_psk_by_value(backend, signer, psk_id)
+                        self.propose_external_psk_by_value(provider, signer, psk_id)
                     }
                     ProposalOrRefType::Reference => {
-                        self.propose_external_psk(backend, signer, psk_id)
+                        self.propose_external_psk(provider, signer, psk_id)
                     }
                 },
                 crate::schedule::Psk::Resumption(_) => Err(ProposalError::LibraryError(
@@ -217,10 +217,10 @@ impl MlsGroup {
             )),
             Propose::Custom(custom_proposal) => match ref_or_value {
                 ProposalOrRefType::Proposal => {
-                    self.propose_custom_proposal_by_value(backend, signer, custom_proposal)
+                    self.propose_custom_proposal_by_value(provider, signer, custom_proposal)
                 }
                 ProposalOrRefType::Reference => {
-                    self.propose_custom_proposal_by_reference(backend, signer, custom_proposal)
+                    self.propose_custom_proposal_by_reference(provider, signer, custom_proposal)
                 }
             },
         }
@@ -231,7 +231,7 @@ impl MlsGroup {
     /// Returns an error if there is a pending commit.
     pub fn propose_add_member(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        provider: &impl OpenMlsProvider,
         signer: &impl Signer,
         key_package: &KeyPackage,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeAddMemberError> {
@@ -249,13 +249,13 @@ impl MlsGroup {
 
         let proposal = QueuedProposal::from_authenticated_content_by_ref(
             self.ciphersuite(),
-            backend,
+            provider.crypto(),
             add_proposal.clone(),
         )?;
         let proposal_ref = proposal.proposal_reference();
         self.proposal_store.add(proposal);
 
-        let mls_message = self.content_to_mls_message(add_proposal, backend)?;
+        let mls_message = self.content_to_mls_message(add_proposal, provider)?;
 
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();
@@ -269,7 +269,7 @@ impl MlsGroup {
     /// Returns an error if there is a pending commit.
     pub fn propose_remove_member(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        provider: &impl OpenMlsProvider,
         signer: &impl Signer,
         member: LeafNodeIndex,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeRemoveMemberError> {
@@ -282,13 +282,13 @@ impl MlsGroup {
 
         let proposal = QueuedProposal::from_authenticated_content_by_ref(
             self.ciphersuite(),
-            backend,
+            provider.crypto(),
             remove_proposal.clone(),
         )?;
         let proposal_ref = proposal.proposal_reference();
         self.proposal_store.add(proposal);
 
-        let mls_message = self.content_to_mls_message(remove_proposal, backend)?;
+        let mls_message = self.content_to_mls_message(remove_proposal, provider)?;
 
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();
@@ -302,7 +302,7 @@ impl MlsGroup {
     /// Returns an error if there is a pending commit.
     pub fn propose_remove_member_by_credential(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        provider: &impl OpenMlsProvider,
         signer: &impl Signer,
         member: &Credential,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeRemoveMemberError> {
@@ -315,7 +315,7 @@ impl MlsGroup {
             .map(|m| m.index);
 
         if let Some(member_index) = member_index {
-            self.propose_remove_member(backend, signer, member_index)
+            self.propose_remove_member(provider, signer, member_index)
         } else {
             Err(ProposeRemoveMemberError::UnknownMember)
         }
@@ -327,7 +327,7 @@ impl MlsGroup {
     /// Returns an error if there is a pending commit.
     pub fn propose_remove_member_by_credential_by_value<KeyStore: OpenMlsKeyStore>(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         member: &Credential,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<KeyStore::Error>> {
@@ -340,7 +340,7 @@ impl MlsGroup {
             .map(|m| m.index);
 
         if let Some(member_index) = member_index {
-            self.propose_remove_member_by_value(backend, signer, member_index)
+            self.propose_remove_member_by_value(provider, signer, member_index)
         } else {
             Err(ProposalError::ProposeRemoveMemberError(
                 ProposeRemoveMemberError::UnknownMember,
@@ -351,7 +351,7 @@ impl MlsGroup {
     #[cfg(test)]
     pub fn propose_group_context_extensions(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        provider: &impl OpenMlsProvider,
         extensions: Extensions,
         signer: &impl Signer,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<()>> {
@@ -364,14 +364,14 @@ impl MlsGroup {
 
         let queued_proposal = QueuedProposal::from_authenticated_content_by_ref(
             self.ciphersuite(),
-            backend,
+            provider.crypto(),
             proposal.clone(),
         )?;
 
         let proposal_ref = queued_proposal.proposal_reference();
         self.proposal_store.add(queued_proposal);
 
-        let mls_message = self.content_to_mls_message(proposal, backend)?;
+        let mls_message = self.content_to_mls_message(proposal, provider)?;
 
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();

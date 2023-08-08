@@ -74,18 +74,18 @@ struct HashReferenceInput<'a> {
 pub fn make_proposal_ref(
     value: &[u8],
     ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCrypto,
+    crypto: &impl OpenMlsCrypto,
 ) -> Result<ProposalRef, CryptoError> {
-    HashReference::new(value, ciphersuite, backend, PROPOSAL_REF_LABEL)
+    HashReference::new(value, ciphersuite, crypto, PROPOSAL_REF_LABEL)
 }
 
 /// Compute a new [`KeyPackageRef`] value for a `value`.
 pub fn make_key_package_ref(
     value: &[u8],
     ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCrypto,
+    crypto: &impl OpenMlsCrypto,
 ) -> Result<KeyPackageRef, CryptoError> {
-    HashReference::new(value, ciphersuite, backend, KEY_PACKAGE_REF_LABEL)
+    HashReference::new(value, ciphersuite, crypto, KEY_PACKAGE_REF_LABEL)
 }
 
 impl HashReference {
@@ -93,7 +93,7 @@ impl HashReference {
     pub fn new(
         value: &[u8],
         ciphersuite: Ciphersuite,
-        backend: &impl OpenMlsCrypto,
+        crypto: &impl OpenMlsCrypto,
         label: &[u8],
     ) -> Result<Self, CryptoError> {
         let input = HashReferenceInput {
@@ -103,7 +103,7 @@ impl HashReference {
         let payload = input
             .tls_serialize_detached()
             .map_err(|_| CryptoError::TlsSerializationError)?;
-        let value = backend.hash(ciphersuite.hash_algorithm(), &payload)?;
+        let value = crypto.hash(ciphersuite.hash_algorithm(), &payload)?;
         Ok(Self {
             value: VLBytes::new(value),
         })

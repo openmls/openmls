@@ -2,6 +2,7 @@
 //!
 //! TODO: #779
 
+use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::Ciphersuite;
 
 use super::*;
@@ -99,7 +100,7 @@ impl GroupContext {
     /// `interim_transcript_hash`, as well as the `commit_content`.
     pub(crate) fn update_confirmed_transcript_hash(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         interim_transcript_hash: &[u8],
         authenticated_content: &AuthenticatedContent,
     ) -> Result<(), LibraryError> {
@@ -108,7 +109,7 @@ impl GroupContext {
                 .map_err(|_| LibraryError::custom("PublicMessage did not contain a commit"))?;
 
             input.calculate_confirmed_transcript_hash(
-                backend.crypto(),
+                crypto,
                 self.ciphersuite,
                 interim_transcript_hash,
             )?

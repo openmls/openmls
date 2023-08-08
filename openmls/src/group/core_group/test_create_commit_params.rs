@@ -3,9 +3,9 @@ use crate::test_utils::*;
 use super::*;
 
 // Tests that the builder for CreateCommitParams works as expected
-#[apply(backends)]
-fn build_create_commit_params(backend: &impl OpenMlsCryptoProvider) {
-    let _ = backend;
+#[apply(providers)]
+fn build_create_commit_params(provider: &impl OpenMlsProvider) {
+    let _ = provider;
     let framing_parameters: FramingParameters =
         FramingParameters::new(&[1, 2, 3], WireFormat::PrivateMessage);
     let proposal_store: &ProposalStore = &ProposalStore::new();

@@ -2,8 +2,8 @@
 use openmls::{prelude::*, test_utils::*, *};
 use openmls_basic_credential::SignatureKeyPair;
 
-#[apply(ciphersuites_and_backends)]
-fn test_store_key_package(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[apply(ciphersuites_and_providers)]
+fn test_store_key_package(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // ANCHOR: key_store_store
     // First we generate a credential and key package for our user.
     let credential = Credential::new(b"User ID".to_vec(), CredentialType::Basic).unwrap();
@@ -12,7 +12,7 @@ fn test_store_key_package(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
     let key_package = KeyPackage::builder()
         .build(
             CryptoConfig::with_default_version(ciphersuite),
-            backend,
+            provider,
             &signature_keys,
             CredentialWithKey {
                 credential,
@@ -25,7 +25,7 @@ fn test_store_key_package(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
     // ANCHOR: key_store_delete
     // Delete the key package
     key_package
-        .delete(backend)
+        .delete(provider)
         .expect("Error deleting key package");
     // ANCHOR_END: key_store_delete
 }

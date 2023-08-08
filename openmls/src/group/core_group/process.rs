@@ -40,7 +40,7 @@ impl CoreGroup {
     ///  - ValSem246 (as part of ValSem010)
     pub(crate) fn process_unverified_message(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        provider: &impl OpenMlsProvider,
         unverified_message: UnverifiedMessage,
         proposal_store: &ProposalStore,
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
@@ -50,7 +50,7 @@ impl CoreGroup {
         //  - ValSem010
         //  - ValSem246 (as part of ValSem010)
         let (content, credential) =
-            unverified_message.verify(self.ciphersuite(), backend.crypto(), self.version())?;
+            unverified_message.verify(self.ciphersuite(), provider.crypto(), self.version())?;
 
         // Check if there is a new credential s.t. we can present it as part of
         // the ProcessedMessage.
@@ -80,7 +80,7 @@ impl CoreGroup {
                     FramedContentBody::Proposal(_) => {
                         let proposal = Box::new(QueuedProposal::from_authenticated_content_by_ref(
                             self.ciphersuite(),
-                            backend,
+                            provider.crypto(),
                             content,
                         )?);
                         if matches!(sender, Sender::NewMemberProposal) {
@@ -95,7 +95,7 @@ impl CoreGroup {
                             proposal_store,
                             old_epoch_keypairs,
                             leaf_node_keypairs,
-                            backend,
+                            provider,
                         )?;
                         ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))
                     }
@@ -121,7 +121,7 @@ impl CoreGroup {
                         let content = ProcessedMessageContent::ProposalMessage(Box::new(
                             QueuedProposal::from_authenticated_content_by_ref(
                                 self.ciphersuite(),
-                                backend,
+                                provider.crypto(),
                                 content,
                             )?,
                         ));
@@ -185,7 +185,7 @@ impl CoreGroup {
     ///  - ValSem246 (as part of ValSem010)
     pub(crate) fn process_message(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        provider: &impl OpenMlsProvider,
         message: impl Into<ProtocolMessage>,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
         proposal_store: &ProposalStore,
@@ -199,7 +199,7 @@ impl CoreGroup {
         //  - ValSem006
         //  - ValSem007 MembershipTag presence
         let decrypted_message =
-            self.decrypt_message(backend, message, sender_ratchet_configuration)?;
+            self.decrypt_message(provider.crypto(), message, sender_ratchet_configuration)?;
 
         let unverified_message = self
             .public_group
@@ -209,13 +209,13 @@ impl CoreGroup {
         // If this is a commit, we need to load the private key material we need for decryption.
         let (old_epoch_keypairs, leaf_node_keypairs) =
             if let ContentType::Commit = unverified_message.content_type() {
-                self.read_decryption_keypairs(backend, own_leaf_nodes)?
+                self.read_decryption_keypairs(provider, own_leaf_nodes)?
             } else {
                 (vec![], vec![])
             };
 
         self.process_unverified_message(
-            backend,
+            provider,
             unverified_message,
             proposal_store,
             old_epoch_keypairs,
@@ -235,7 +235,7 @@ impl CoreGroup {
     ///  - ValSem007 MembershipTag presence
     pub(crate) fn decrypt_message(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         message: ProtocolMessage,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
     ) -> Result<DecryptedMessage, ValidationError> {
@@ -264,14 +264,14 @@ impl CoreGroup {
                     public_message,
                     message_secrets,
                     message_secrets.serialized_context().to_vec(),
-                    backend,
+                    crypto,
                 )
             }
             ProtocolMessage::PrivateMessage(ciphertext) => {
                 // If the message is older than the current epoch, we need to fetch the correct secret tree first
                 DecryptedMessage::from_inbound_ciphertext(
                     ciphertext,
-                    backend,
+                    crypto,
                     self,
                     sender_ratchet_configuration,
                 )
@@ -282,11 +282,11 @@ impl CoreGroup {
     /// Helper function to read decryption keypairs.
     pub(super) fn read_decryption_keypairs(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        provider: &impl OpenMlsProvider,
         own_leaf_nodes: &[LeafNode],
     ) -> Result<(Vec<EncryptionKeyPair>, Vec<EncryptionKeyPair>), StageCommitError> {
         // All keys from the previous epoch are potential decryption keypairs.
-        let old_epoch_keypairs = self.read_epoch_keypairs(backend);
+        let old_epoch_keypairs = self.read_epoch_keypairs(provider.key_store());
 
         // If we are processing an update proposal that originally came from
         // us, the keypair corresponding to the leaf in the update is also a
@@ -294,7 +294,7 @@ impl CoreGroup {
         let leaf_node_keypairs = own_leaf_nodes
             .iter()
             .map(|leaf_node| {
-                EncryptionKeyPair::read_from_key_store(backend, leaf_node.encryption_key())
+                EncryptionKeyPair::read_from_key_store(provider, leaf_node.encryption_key())
                     .ok_or(StageCommitError::MissingDecryptionKey)
             })
             .collect::<Result<Vec<EncryptionKeyPair>, StageCommitError>>()?;
@@ -305,7 +305,7 @@ impl CoreGroup {
     /// Merge a [StagedCommit] into the group after inspection
     pub(crate) fn merge_staged_commit<KeyStore: OpenMlsKeyStore>(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         staged_commit: StagedCommit,
         proposal_store: &mut ProposalStore,
     ) -> Result<(), MergeCommitError<KeyStore::Error>> {
@@ -315,7 +315,7 @@ impl CoreGroup {
         let leaves = self.public_group().members().collect();
         // Merge the staged commit into the group state and store the secret tree from the
         // previous epoch in the message secrets store.
-        if let Some(message_secrets) = self.merge_commit(backend, staged_commit)? {
+        if let Some(message_secrets) = self.merge_commit(provider, staged_commit)? {
             self.message_secrets_store
                 .add(past_epoch, message_secrets, leaves);
         }

@@ -1,10 +1,8 @@
 //! This module contains the [`ParentNode`] struct, its implementation, as well
 //! as the [`PlainUpdatePathNode`], a helper struct for the creation of
 //! [`UpdatePathNode`] instances.
-use openmls_traits::{
-    types::{Ciphersuite, HpkeCiphertext},
-    OpenMlsCryptoProvider,
-};
+use openmls_traits::crypto::OpenMlsCrypto;
+use openmls_traits::types::{Ciphersuite, HpkeCiphertext};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use thiserror::*;
@@ -54,7 +52,7 @@ impl PlainUpdatePathNode {
     /// Encrypt this node and return the resulting [`UpdatePathNode`].
     pub(in crate::treesync) fn encrypt(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         public_keys: &[EncryptionKey],
         group_context: &[u8],
@@ -63,7 +61,7 @@ impl PlainUpdatePathNode {
             .par_iter()
             .map(|pk| {
                 self.path_secret
-                    .encrypt(backend, ciphersuite, pk, group_context)
+                    .encrypt(crypto, ciphersuite, pk, group_context)
             })
             .collect::<Result<Vec<HpkeCiphertext>, LibraryError>>()
             .map(|encrypted_path_secrets| UpdatePathNode {
@@ -103,7 +101,7 @@ impl ParentNode {
     /// Returns the resulting vector of [`ParentNode`] instances, as well as the
     /// intermediary [`PathSecret`]s, and the [`CommitSecret`].
     pub(crate) fn derive_path(
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         path_secret: PathSecret,
         path_indices: Vec<ParentNodeIndex>,
@@ -114,7 +112,7 @@ impl ParentNode {
         for _ in 0..path_indices.len() {
             let path_secret = next_path_secret;
             // Derive the next path secret.
-            next_path_secret = path_secret.derive_path_secret(backend, ciphersuite)?;
+            next_path_secret = path_secret.derive_path_secret(crypto, ciphersuite)?;
             path_secrets.push(path_secret);
         }
 
@@ -130,7 +128,7 @@ impl ParentNode {
             .map(|(path_secret, index)| {
                 // Derive a key pair from the path secret. This includes the
                 // intermediate derivation of a node secret.
-                let keypair = path_secret.derive_key_pair(backend, ciphersuite)?;
+                let keypair = path_secret.derive_key_pair(crypto, ciphersuite)?;
                 let parent_node = ParentNode::from(keypair.public_key().clone());
                 // Store the current path secret and the derived public key for
                 // later encryption.
@@ -184,7 +182,7 @@ impl ParentNode {
     /// Compute the parent hash value of this node.
     pub(in crate::treesync) fn compute_parent_hash(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         original_child_resolution: &[u8],
     ) -> Result<Vec<u8>, LibraryError> {
@@ -193,7 +191,7 @@ impl ParentNode {
             self.parent_hash(),
             original_child_resolution,
         );
-        parent_hash_input.hash(backend, ciphersuite)
+        parent_hash_input.hash(crypto, ciphersuite)
     }
 
     /// Set the `parent_hash` of this node.

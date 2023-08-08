@@ -7,10 +7,10 @@ use criterion::Criterion;
 use openmls::prelude::{config::CryptoConfig, *};
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsCryptoProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsProvider};
 
-fn criterion_kp_bundle(c: &mut Criterion, backend: &impl OpenMlsCryptoProvider) {
-    for &ciphersuite in backend.crypto().supported_ciphersuites().iter() {
+fn criterion_kp_bundle(c: &mut Criterion, provider: &impl OpenMlsProvider) {
+    for &ciphersuite in provider.crypto().supported_ciphersuites().iter() {
         c.bench_function(
             &format!("KeyPackage create bundle with ciphersuite: {ciphersuite:?}"),
             move |b| {
@@ -34,7 +34,7 @@ fn criterion_kp_bundle(c: &mut Criterion, backend: &impl OpenMlsCryptoProvider) 
                                     ciphersuite,
                                     version: ProtocolVersion::default(),
                                 },
-                                backend,
+                                provider,
                                 &signer,
                                 credential_with_key,
                             )
@@ -47,9 +47,9 @@ fn criterion_kp_bundle(c: &mut Criterion, backend: &impl OpenMlsCryptoProvider) 
 }
 
 fn kp_bundle_rust_crypto(c: &mut Criterion) {
-    let backend = &OpenMlsRustCrypto::default();
-    println!("Backend: RustCrypto");
-    criterion_kp_bundle(c, backend);
+    let provider = &OpenMlsRustCrypto::default();
+    println!("provider: RustCrypto");
+    criterion_kp_bundle(c, provider);
 }
 
 fn criterion_benchmark(c: &mut Criterion) {

@@ -4,7 +4,7 @@ use openmls::prelude::config::CryptoConfig;
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::types::SignatureScheme;
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::OpenMlsProvider;
 use tls_codec::{TlsByteVecU8, TlsVecU16};
 
 fn generate_credential(
@@ -25,7 +25,7 @@ fn generate_key_package(
     ciphersuite: Ciphersuite,
     credential_with_key: CredentialWithKey,
     extensions: Extensions,
-    crypto_backend: &impl OpenMlsCryptoProvider,
+    crypto_provider: &impl OpenMlsProvider,
     signer: &SignatureKeyPair,
 ) -> KeyPackage {
     KeyPackage::builder()
@@ -35,7 +35,7 @@ fn generate_key_package(
                 ciphersuite,
                 version: ProtocolVersion::default(),
             },
-            crypto_backend,
+            crypto_provider,
             signer,
             credential_with_key,
         )
@@ -45,7 +45,7 @@ fn generate_key_package(
 #[actix_rt::test]
 async fn test_list_clients() {
     let data = web::Data::new(DsData::default());
-    let mut app = test::init_service(
+    let app = test::init_service(
         App::new()
             .app_data(data.clone())
             .service(get_key_packages)
@@ -59,7 +59,7 @@ async fn test_list_clients() {
     // There is no client. So the response body is empty.
     let req = test::TestRequest::with_uri("/clients/list").to_request();
 
-    let response = test::call_service(&mut app, req).await;
+    let response = test::call_service(&app, req).await;
     assert_eq!(response.status(), StatusCode::OK);
 
     let bytes = response.into_body().try_into_bytes().unwrap();
@@ -103,13 +103,13 @@ async fn test_list_clients() {
         ))
         .to_request();
 
-    let response = test::call_service(&mut app, req).await;
+    let response = test::call_service(&app, req).await;
     assert_eq!(response.status(), StatusCode::OK);
 
     // There should be Client1 now.
     let req = test::TestRequest::with_uri("/clients/list").to_request();
 
-    let response = test::call_service(&mut app, req).await;
+    let response = test::call_service(&app, req).await;
     assert_eq!(response.status(), StatusCode::OK);
 
     let bytes = response.into_body().try_into_bytes().unwrap();
@@ -128,7 +128,7 @@ async fn test_list_clients() {
         "/clients/key_packages/".to_owned() + &base64::encode_config(client_id, base64::URL_SAFE);
     let req = test::TestRequest::with_uri(&path).to_request();
 
-    let response = test::call_service(&mut app, req).await;
+    let response = test::call_service(&app, req).await;
     assert_eq!(response.status(), StatusCode::OK);
 
     let bytes = response.into_body().try_into_bytes().unwrap();
@@ -150,7 +150,7 @@ async fn test_group() {
     let crypto = &OpenMlsRustCrypto::default();
     let mls_group_config = MlsGroupConfig::default();
     let data = web::Data::new(DsData::default());
-    let mut app = test::init_service(
+    let app = test::init_service(
         App::new()
             .app_data(data.clone())
             .service(register_client)
@@ -204,7 +204,7 @@ async fn test_group() {
                 &client_data.tls_serialize_detached().unwrap(),
             ))
             .to_request();
-        let response = test::call_service(&mut app, req).await;
+        let response = test::call_service(&app, req).await;
         assert_eq!(response.status(), StatusCode::OK);
     }
 
@@ -270,7 +270,7 @@ async fn test_group() {
 
     let req = test::TestRequest::with_uri(&path).to_request();
 
-    let response = test::call_service(&mut app, req).await;
+    let response = test::call_service(&app, req).await;
     assert_eq!(response.status(), StatusCode::OK);
 
     let bytes = response.into_body().try_into_bytes().unwrap();
@@ -293,13 +293,13 @@ async fn test_group() {
             &welcome_msg.tls_serialize_detached().unwrap(),
         ))
         .to_request();
-    let response = test::call_service(&mut app, req).await;
+    let response = test::call_service(&app, req).await;
     assert_eq!(response.status(), StatusCode::OK);
 
     // There should be a welcome message now for Client2.
     let path = "/recv/".to_owned() + &base64::encode_config(clients[1], base64::URL_SAFE);
     let req = test::TestRequest::with_uri(&path).to_request();
-    let response = test::call_service(&mut app, req).await;
+    let response = test::call_service(&app, req).await;
     assert_eq!(response.status(), StatusCode::OK);
 
     let bytes = response.into_body().try_into_bytes().unwrap();
@@ -345,13 +345,13 @@ async fn test_group() {
             &msg.tls_serialize_detached().unwrap(),
         ))
         .to_request();
-    let response = test::call_service(&mut app, req).await;
+    let response = test::call_service(&app, req).await;
     assert_eq!(response.status(), StatusCode::OK);
 
     // Client1 retrieves messages from the DS
     let path = "/recv/".to_owned() + &base64::encode_config(clients[0], base64::URL_SAFE);
     let req = test::TestRequest::with_uri(&path).to_request();
-    let response = test::call_service(&mut app, req).await;
+    let response = test::call_service(&app, req).await;
     assert_eq!(response.status(), StatusCode::OK);
 
     let bytes = response.into_body().try_into_bytes().unwrap();

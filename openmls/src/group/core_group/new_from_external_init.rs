@@ -25,7 +25,7 @@ impl CoreGroup {
     /// Note: If there is a group member in the group with the same identity as us,
     /// this will create a remove proposal.
     pub(crate) fn join_by_external_commit(
-        backend: &impl OpenMlsCryptoProvider,
+        provider: &impl OpenMlsProvider,
         signer: &impl Signer,
         mut params: CreateCommitParams,
         ratchet_tree: Option<RatchetTreeIn>,
@@ -47,7 +47,7 @@ impl CoreGroup {
             };
 
         let (public_group, group_info) = PublicGroup::from_external(
-            backend,
+            provider.crypto(),
             ratchet_tree,
             verifiable_group_info,
             // Existing proposals are discarded when joining by external commit.
@@ -62,14 +62,17 @@ impl CoreGroup {
             .ok_or(ExternalCommitError::MissingExternalPub)?
             .external_pub();
 
-        let (init_secret, kem_output) =
-            InitSecret::from_group_context(backend, group_context, external_pub.as_slice())
-                .map_err(|_| ExternalCommitError::UnsupportedCiphersuite)?;
+        let (init_secret, kem_output) = InitSecret::from_group_context(
+            provider.crypto(),
+            group_context,
+            external_pub.as_slice(),
+        )
+        .map_err(|_| ExternalCommitError::UnsupportedCiphersuite)?;
 
         // The `EpochSecrets` we create here are essentially zero, with the
         // exception of the `InitSecret`, which is all we need here for the
         // external commit.
-        let epoch_secrets = EpochSecrets::with_init_secret(backend, init_secret)
+        let epoch_secrets = EpochSecrets::with_init_secret(provider.crypto(), init_secret)
             .map_err(LibraryError::unexpected_crypto_error)?;
         let (group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
             group_context
@@ -124,7 +127,7 @@ impl CoreGroup {
             .build();
 
         // Immediately create the commit to add ourselves to the group.
-        let create_commit_result = group.create_commit(params, backend, signer);
+        let create_commit_result = group.create_commit(params, provider, signer);
         debug_assert!(
             create_commit_result.is_ok(),
             "Error creating commit {create_commit_result:?}"

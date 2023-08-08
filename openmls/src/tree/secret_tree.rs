@@ -1,3 +1,4 @@
+use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::{Ciphersuite, CryptoError};
 use thiserror::Error;
 use tls_codec::{Error as TlsCodecError, TlsSerialize, TlsSize};
@@ -77,7 +78,7 @@ pub(crate) fn derive_tree_secret(
     label: &str,
     generation: u32,
     length: usize,
-    backend: &impl OpenMlsCryptoProvider,
+    crypto: &impl OpenMlsCrypto,
 ) -> Result<Secret, SecretTreeError> {
     log::debug!(
         "Derive tree secret with label \"{}\" in generation {} of length {}",
@@ -87,7 +88,7 @@ pub(crate) fn derive_tree_secret(
     );
     log_crypto!(trace, "Input secret {:x?}", secret.as_slice());
 
-    let secret = secret.kdf_expand_label(backend, label, &generation.to_be_bytes(), length)?;
+    let secret = secret.kdf_expand_label(crypto, label, &generation.to_be_bytes(), length)?;
     log_crypto!(trace, "Derived secret {:x?}", secret.as_slice());
     Ok(secret)
 }
@@ -188,7 +189,7 @@ impl SecretTree {
     fn initialize_sender_ratchets(
         &mut self,
         ciphersuite: Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         index: LeafNodeIndex,
     ) -> Result<(), SecretTreeError> {
         log::trace!("Initializing sender ratchets for {index:?} with {ciphersuite}");
@@ -230,7 +231,7 @@ impl SecretTree {
             // Derive the secrets down all the way to the leaf node
             for n in empty_nodes {
                 log::trace!("Derive down for parent node {n:?}.");
-                self.derive_down(ciphersuite, backend, n)?;
+                self.derive_down(ciphersuite, crypto, n)?;
             }
         }
 
@@ -246,9 +247,9 @@ impl SecretTree {
         log::trace!("Deriving leaf node secrets for leaf {index:?}");
 
         let handshake_ratchet_secret =
-            node_secret.kdf_expand_label(backend, "handshake", b"", ciphersuite.hash_length())?;
+            node_secret.kdf_expand_label(crypto, "handshake", b"", ciphersuite.hash_length())?;
         let application_ratchet_secret =
-            node_secret.kdf_expand_label(backend, "application", b"", ciphersuite.hash_length())?;
+            node_secret.kdf_expand_label(crypto, "application", b"", ciphersuite.hash_length())?;
 
         log_crypto!(
             trace,
@@ -291,7 +292,7 @@ impl SecretTree {
     pub(crate) fn secret_for_decryption(
         &mut self,
         ciphersuite: Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         index: LeafNodeIndex,
         secret_type: SecretType,
         generation: u32,
@@ -311,7 +312,7 @@ impl SecretTree {
         }
         if self.ratchet_opt(index, secret_type)?.is_none() {
             log::trace!("   initialize sender ratchets");
-            self.initialize_sender_ratchets(ciphersuite, backend, index)?;
+            self.initialize_sender_ratchets(ciphersuite, crypto, index)?;
         }
         match self.ratchet_mut(index, secret_type) {
             SenderRatchet::EncryptionRatchet(_) => {
@@ -320,7 +321,7 @@ impl SecretTree {
             }
             SenderRatchet::DecryptionRatchet(dec_ratchet) => {
                 log::trace!("   getting secret for decryption");
-                dec_ratchet.secret_for_decryption(ciphersuite, backend, generation, configuration)
+                dec_ratchet.secret_for_decryption(ciphersuite, crypto, generation, configuration)
             }
         }
     }
@@ -330,12 +331,12 @@ impl SecretTree {
     pub(crate) fn secret_for_encryption(
         &mut self,
         ciphersuite: Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         index: LeafNodeIndex,
         secret_type: SecretType,
     ) -> Result<(u32, RatchetKeyMaterial), SecretTreeError> {
         if self.ratchet_opt(index, secret_type)?.is_none() {
-            self.initialize_sender_ratchets(ciphersuite, backend, index)
+            self.initialize_sender_ratchets(ciphersuite, crypto, index)
                 .expect("Index out of bounds");
         }
         match self.ratchet_mut(index, secret_type) {
@@ -344,7 +345,7 @@ impl SecretTree {
                 Err(SecretTreeError::RatchetTypeError)
             }
             SenderRatchet::EncryptionRatchet(enc_ratchet) => {
-                enc_ratchet.ratchet_forward(backend, ciphersuite)
+                enc_ratchet.ratchet_forward(crypto, ciphersuite)
             }
         }
     }
@@ -384,7 +385,7 @@ impl SecretTree {
     fn derive_down(
         &mut self,
         ciphersuite: Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         index_in_tree: ParentNodeIndex,
     ) -> Result<(), SecretTreeError> {
         log::debug!(
@@ -403,8 +404,8 @@ impl SecretTree {
         log_crypto!(trace, "Node secret: {:x?}", node_secret.as_slice());
         let left_index = left(index_in_tree);
         let right_index = right(index_in_tree);
-        let left_secret = node_secret.kdf_expand_label(backend, "tree", b"left", hash_len)?;
-        let right_secret = node_secret.kdf_expand_label(backend, "tree", b"right", hash_len)?;
+        let left_secret = node_secret.kdf_expand_label(crypto, "tree", b"left", hash_len)?;
+        let right_secret = node_secret.kdf_expand_label(crypto, "tree", b"right", hash_len)?;
         log_crypto!(
             trace,
             "Left node ({}) secret: {:x?}",

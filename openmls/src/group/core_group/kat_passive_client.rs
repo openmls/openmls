@@ -1,6 +1,6 @@
 use log::{debug, info, warn};
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, OpenMlsProvider};
 use serde::{self, Deserialize, Serialize};
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize};
 
@@ -111,9 +111,9 @@ fn test_read_vectors() {
 pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
     let _ = pretty_env_logger::try_init();
 
-    let backend = OpenMlsRustCrypto::default();
+    let provider = OpenMlsRustCrypto::default();
     let cipher_suite = test_vector.cipher_suite.try_into().unwrap();
-    if backend.crypto().supports(cipher_suite).is_err() {
+    if provider.crypto().supports(cipher_suite).is_err() {
         warn!("Skipping {}", cipher_suite);
         return;
     }
@@ -200,14 +200,14 @@ fn test_write_vectors() {
 }
 
 struct PassiveClient {
-    backend: OpenMlsRustCrypto,
+    provider: OpenMlsRustCrypto,
     group_config: MlsGroupConfig,
     group: Option<MlsGroup>,
 }
 
 impl PassiveClient {
     fn new(group_config: MlsGroupConfig, psks: Vec<ExternalPskTest>) -> Self {
-        let backend = OpenMlsRustCrypto::default();
+        let provider = OpenMlsRustCrypto::default();
 
         // Load all PSKs into key store.
         for psk in psks.into_iter() {
@@ -216,12 +216,12 @@ impl PassiveClient {
             // The nonce is not saved, so it can be empty...
             let psk_id = PreSharedKeyId::external(psk.psk_id, vec![]);
             psk_id
-                .write_to_key_store(&backend, group_config.crypto_config.ciphersuite, &psk.psk)
+                .write_to_key_store(&provider, group_config.crypto_config.ciphersuite, &psk.psk)
                 .unwrap();
         }
 
         Self {
-            backend,
+            provider,
             group_config,
             group: None,
         }
@@ -253,11 +253,11 @@ impl PassiveClient {
         };
 
         // Store key package.
-        self.backend
+        self.provider
             .key_store()
             .store(
                 key_package
-                    .hash_ref(self.backend.crypto())
+                    .hash_ref(self.provider.crypto())
                     .unwrap()
                     .as_slice(),
                 &key_package,
@@ -265,7 +265,7 @@ impl PassiveClient {
             .unwrap();
 
         // Store init key.
-        self.backend
+        self.provider
             .key_store()
             .store::<HpkePrivateKey>(
                 key_package.hpke_init_key().as_slice(),
@@ -279,7 +279,9 @@ impl PassiveClient {
             EncryptionPrivateKey::from(encryption_priv),
         ));
 
-        key_pair.write_to_key_store(&self.backend).unwrap();
+        key_pair
+            .write_to_key_store(self.provider.key_store())
+            .unwrap();
     }
 
     fn join_by_welcome(
@@ -288,7 +290,7 @@ impl PassiveClient {
         ratchet_tree: Option<RatchetTreeIn>,
     ) {
         let group = MlsGroup::new_from_welcome(
-            &self.backend,
+            &self.provider,
             &self.group_config,
             mls_message_welcome.into_welcome().unwrap(),
             ratchet_tree,
@@ -304,7 +306,7 @@ impl PassiveClient {
             .group
             .as_mut()
             .unwrap()
-            .process_message(&self.backend, message.into_protocol_message().unwrap())
+            .process_message(&self.provider, message.into_protocol_message().unwrap())
             .unwrap();
 
         match processed_message.into_content() {
@@ -318,7 +320,7 @@ impl PassiveClient {
                 self.group
                     .as_mut()
                     .unwrap()
-                    .merge_staged_commit(&self.backend, *staged_commit)
+                    .merge_staged_commit(&self.provider, *staged_commit)
                     .unwrap();
             }
             _ => unimplemented!(),
@@ -341,13 +343,13 @@ pub fn generate_test_vector(cipher_suite: Ciphersuite) -> PassiveClientWelcomeTe
         .use_ratchet_tree_extension(true)
         .build();
 
-    let creator_backend = OpenMlsRustCrypto::default();
+    let creator_provider = OpenMlsRustCrypto::default();
 
     let creator =
-        generate_group_candidate(b"Alice (Creator)", cipher_suite, &creator_backend, true);
+        generate_group_candidate(b"Alice (Creator)", cipher_suite, &creator_provider, true);
 
     let mut creator_group = MlsGroup::new(
-        &creator_backend,
+        &creator_provider,
         &creator.signature_keypair,
         &group_config,
         creator
@@ -366,30 +368,30 @@ pub fn generate_test_vector(cipher_suite: Ciphersuite) -> PassiveClientWelcomeTe
 
     let (_, mls_message_welcome, _) = creator_group
         .add_members(
-            &creator_backend,
+            &creator_provider,
             &creator.signature_keypair,
             &[passive.key_package.clone()],
         )
         .unwrap();
 
     creator_group
-        .merge_pending_commit(&creator_backend)
+        .merge_pending_commit(&creator_provider)
         .unwrap();
 
     let initial_epoch_authenticator = creator_group.epoch_authenticator().as_slice().to_vec();
 
-    let epoch1 = update_inline(&creator_backend, &creator, &mut creator_group);
+    let epoch1 = update_inline(&creator_provider, &creator, &mut creator_group);
 
     let epoch2 = {
         let proposals = vec![propose_add(
             cipher_suite,
-            &creator_backend,
+            &creator_provider,
             &creator,
             &mut creator_group,
             b"Charlie",
         )];
 
-        let commit = commit(&creator_backend, &creator, &mut creator_group);
+        let commit = commit(&creator_provider, &creator, &mut creator_group);
 
         let epoch_authenticator = creator_group.epoch_authenticator().as_slice().to_vec();
 
@@ -402,13 +404,13 @@ pub fn generate_test_vector(cipher_suite: Ciphersuite) -> PassiveClientWelcomeTe
 
     let epoch3 = {
         let proposals = vec![propose_remove(
-            &creator_backend,
+            &creator_provider,
             &creator,
             &mut creator_group,
             b"Charlie",
         )];
 
-        let commit = commit(&creator_backend, &creator, &mut creator_group);
+        let commit = commit(&creator_provider, &creator, &mut creator_group);
 
         let epoch_authenticator = creator_group.epoch_authenticator().as_slice().to_vec();
 
@@ -423,21 +425,21 @@ pub fn generate_test_vector(cipher_suite: Ciphersuite) -> PassiveClientWelcomeTe
         let proposals = vec![
             propose_add(
                 cipher_suite,
-                &creator_backend,
+                &creator_provider,
                 &creator,
                 &mut creator_group,
                 b"Daniel",
             ),
             propose_add(
                 cipher_suite,
-                &creator_backend,
+                &creator_provider,
                 &creator,
                 &mut creator_group,
                 b"Evelin",
             ),
         ];
 
-        let commit = commit(&creator_backend, &creator, &mut creator_group);
+        let commit = commit(&creator_provider, &creator, &mut creator_group);
 
         let epoch_authenticator = creator_group.epoch_authenticator().as_slice().to_vec();
 
@@ -450,17 +452,17 @@ pub fn generate_test_vector(cipher_suite: Ciphersuite) -> PassiveClientWelcomeTe
 
     let epoch5 = {
         let proposals = vec![
-            propose_remove(&creator_backend, &creator, &mut creator_group, b"Daniel"),
+            propose_remove(&creator_provider, &creator, &mut creator_group, b"Daniel"),
             propose_add(
                 cipher_suite,
-                &creator_backend,
+                &creator_provider,
                 &creator,
                 &mut creator_group,
                 b"Fardi",
             ),
         ];
 
-        let commit = commit(&creator_backend, &creator, &mut creator_group);
+        let commit = commit(&creator_provider, &creator, &mut creator_group);
 
         let epoch_authenticator = creator_group.epoch_authenticator().as_slice().to_vec();
 
@@ -473,11 +475,11 @@ pub fn generate_test_vector(cipher_suite: Ciphersuite) -> PassiveClientWelcomeTe
 
     let epoch6 = {
         let proposals = vec![
-            propose_remove(&creator_backend, &creator, &mut creator_group, b"Fardi"),
-            propose_remove(&creator_backend, &creator, &mut creator_group, b"Evelin"),
+            propose_remove(&creator_provider, &creator, &mut creator_group, b"Fardi"),
+            propose_remove(&creator_provider, &creator, &mut creator_group, b"Evelin"),
         ];
 
-        let commit = commit(&creator_backend, &creator, &mut creator_group);
+        let commit = commit(&creator_provider, &creator, &mut creator_group);
 
         let epoch_authenticator = creator_group.epoch_authenticator().as_slice().to_vec();
 
@@ -514,7 +516,7 @@ pub fn generate_test_vector(cipher_suite: Ciphersuite) -> PassiveClientWelcomeTe
 
 fn propose_add(
     cipher_suite: Ciphersuite,
-    backend: &OpenMlsRustCrypto,
+    provider: &OpenMlsRustCrypto,
     candidate: &GroupCandidate,
     group: &mut MlsGroup,
     add_identity: &[u8],
@@ -528,18 +530,18 @@ fn propose_add(
 
     let mls_message_out_proposal = group
         .propose_add_member(
-            backend,
+            provider,
             &candidate.signature_keypair,
             &add_candidate.key_package,
         )
         .unwrap();
-    group.merge_pending_commit(backend).unwrap();
+    group.merge_pending_commit(provider).unwrap();
 
     TestProposal(mls_message_out_proposal.tls_serialize_detached().unwrap())
 }
 
 fn propose_remove(
-    backend: &OpenMlsRustCrypto,
+    provider: &OpenMlsRustCrypto,
     candidate: &GroupCandidate,
     group: &mut MlsGroup,
     remove_identity: &[u8],
@@ -551,30 +553,30 @@ fn propose_remove(
         .index;
 
     let mls_message_out_proposal = group
-        .propose_remove_member(backend, &candidate.signature_keypair, remove)
+        .propose_remove_member(provider, &candidate.signature_keypair, remove)
         .unwrap();
 
     TestProposal(mls_message_out_proposal.tls_serialize_detached().unwrap())
 }
 
-fn commit(backend: &OpenMlsRustCrypto, creator: &GroupCandidate, group: &mut MlsGroup) -> Vec<u8> {
+fn commit(provider: &OpenMlsRustCrypto, creator: &GroupCandidate, group: &mut MlsGroup) -> Vec<u8> {
     let (mls_message_out_commit, _, _) = group
-        .commit_to_pending_proposals(backend, &creator.signature_keypair)
+        .commit_to_pending_proposals(provider, &creator.signature_keypair)
         .unwrap();
-    group.merge_pending_commit(backend).unwrap();
+    group.merge_pending_commit(provider).unwrap();
 
     mls_message_out_commit.tls_serialize_detached().unwrap()
 }
 
 fn update_inline(
-    backend: &OpenMlsRustCrypto,
+    provider: &OpenMlsRustCrypto,
     candidate: &GroupCandidate,
     group: &mut MlsGroup,
 ) -> TestEpoch {
     let (mls_message_out_commit, _, _) = group
-        .self_update(backend, &candidate.signature_keypair)
+        .self_update(provider, &candidate.signature_keypair)
         .unwrap();
-    group.merge_pending_commit(backend).unwrap();
+    group.merge_pending_commit(provider).unwrap();
 
     let proposals = vec![];
 

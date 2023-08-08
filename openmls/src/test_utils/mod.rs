@@ -10,7 +10,7 @@ use std::{
 
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::{key_store::OpenMlsKeyStore, types::HpkeKeyPair};
-pub use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
+pub use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
 pub use rstest::*;
 pub use rstest_reuse::{self, *};
 use serde::{self, de::DeserializeOwned, Serialize};
@@ -99,7 +99,7 @@ pub(crate) struct GroupCandidate {
 pub(crate) fn generate_group_candidate(
     identity: &[u8],
     ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
+    provider: &impl OpenMlsProvider,
     use_store: bool,
 ) -> GroupCandidate {
     let credential_with_key_and_signer = {
@@ -109,7 +109,7 @@ pub(crate) fn generate_group_candidate(
 
         // Store if there is a key store.
         if use_store {
-            signature_keypair.store(backend.key_store()).unwrap();
+            signature_keypair.store(provider.key_store()).unwrap();
         }
 
         let signature_pkey = OpenMlsSignaturePublicKey::new(
@@ -134,19 +134,19 @@ pub(crate) fn generate_group_candidate(
             let key_package = builder
                 .build(
                     CryptoConfig::with_default_version(ciphersuite),
-                    backend,
+                    provider,
                     &credential_with_key_and_signer.signer,
                     credential_with_key_and_signer.credential_with_key.clone(),
                 )
                 .unwrap();
 
             let encryption_keypair = EncryptionKeyPair::read_from_key_store(
-                backend,
+                provider,
                 key_package.leaf_node().encryption_key(),
             )
             .unwrap();
             let init_keypair = {
-                let private = backend
+                let private = provider
                     .key_store()
                     .read::<HpkePrivateKey>(key_package.hpke_init_key().as_slice())
                     .unwrap();
@@ -160,12 +160,12 @@ pub(crate) fn generate_group_candidate(
             (key_package, encryption_keypair, init_keypair)
         } else {
             // We don't want to store anything. So...
-            let backend = OpenMlsRustCrypto::default();
+            let provider = OpenMlsRustCrypto::default();
 
             let key_package_creation_result = builder
                 .build_without_key_storage(
                     CryptoConfig::with_default_version(ciphersuite),
-                    &backend,
+                    &provider,
                     &credential_with_key_and_signer.signer,
                     credential_with_key_and_signer.credential_with_key.clone(),
                 )
@@ -198,25 +198,25 @@ pub(crate) fn generate_group_candidate(
     }
 }
 
-// === Define backend per platform ===
+// === Define provider per platform ===
 
-// This backend is currently used on all platforms
+// This provider is currently used on all platforms
 pub use openmls_rust_crypto::OpenMlsRustCrypto;
 
-// === Backends ===
+// === providers ===
 
 #[template]
 #[export]
-#[rstest(backend,
+#[rstest(provider,
     case::rust_crypto(&OpenMlsRustCrypto::default()),
   )
 ]
 #[allow(non_snake_case)]
-pub fn backends(backend: &impl OpenMlsCryptoProvider) {}
+pub fn providers(provider: &impl OpenMlsProvider) {}
 
 // === Ciphersuites ===
 
-// For now we support all ciphersuites, regardless of the backend
+// For now we support all ciphersuites, regardless of the provider
 
 #[template]
 #[export]
@@ -235,15 +235,15 @@ pub fn backends(backend: &impl OpenMlsCryptoProvider) {}
 #[allow(non_snake_case)]
 pub fn ciphersuites(ciphersuite: Ciphersuite) {}
 
-// === Ciphersuites & backends ===
+// === Ciphersuites & providers ===
 
 #[template]
 #[export]
-#[rstest(ciphersuite, backend,
+#[rstest(ciphersuite, provider,
     case::rust_crypto_MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519, &OpenMlsRustCrypto::default()),
     case::rust_crypto_MLS_128_DHKEMP256_AES128GCM_SHA256_P256(Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256, &OpenMlsRustCrypto::default()),
     case::rust_crypto_MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519, &OpenMlsRustCrypto::default()),
   )
 ]
 #[allow(non_snake_case)]
-pub fn ciphersuites_and_backends(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {}
+pub fn ciphersuites_and_providers(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {}

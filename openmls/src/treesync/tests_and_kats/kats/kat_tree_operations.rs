@@ -22,7 +22,7 @@
 //!   value.
 
 use ::serde::Deserialize;
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::OpenMlsProvider;
 use tls_codec::{Deserialize as TlsDeserializeTrait, Serialize};
 
 use crate::{
@@ -39,6 +39,7 @@ use crate::{
 
 #[derive(Deserialize)]
 struct TestElement {
+    cipher_suite: u16,
     #[serde(with = "hex")]
     tree_before: Vec<u8>,
     #[serde(with = "hex")]
@@ -46,19 +47,26 @@ struct TestElement {
     proposal_sender: u32,
     #[serde(with = "hex")]
     tree_after: Vec<u8>,
+    #[serde(with = "hex")]
+    tree_hash_after: Vec<u8>,
+    #[serde(with = "hex")]
+    tree_hash_before: Vec<u8>,
 }
 
-fn run_test_vector(test: TestElement, backend: &impl OpenMlsCryptoProvider) -> Result<(), String> {
-    let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+fn run_test_vector(test: TestElement, provider: &impl OpenMlsProvider) -> Result<(), String> {
+    let ciphersuite = Ciphersuite::try_from(test.cipher_suite).unwrap();
 
-    let group_id = GroupId::random(backend);
+    let group_id = GroupId::random(provider.rand());
 
     let nodes = Vec::<Option<NodeIn>>::tls_deserialize_exact(test.tree_before).unwrap();
 
     let ratchet_tree = RatchetTree::from(RatchetTreeIn::from_nodes(nodes));
 
-    let tree_before = TreeSync::from_ratchet_tree(backend, ciphersuite, ratchet_tree)
+    let tree_before = TreeSync::from_ratchet_tree(provider.crypto(), ciphersuite, ratchet_tree)
         .map_err(|e| format!("Error while creating tree sync: {e:?}"))?;
+
+    let tree_hash_before = tree_before.tree_hash();
+    assert_eq!(test.tree_hash_before, tree_hash_before);
 
     let group_context = GroupContext::new(
         ciphersuite,
@@ -70,15 +78,15 @@ fn run_test_vector(test: TestElement, backend: &impl OpenMlsCryptoProvider) -> R
     );
     let initial_confirmation_tag = ConfirmationTag(
         Mac::new(
-            backend,
-            &Secret::random(ciphersuite, backend, ProtocolVersion::Mls10).unwrap(),
+            provider.crypto(),
+            &Secret::random(ciphersuite, provider.rand(), ProtocolVersion::Mls10).unwrap(),
             &[],
         )
         .unwrap(),
     );
 
     let mut group = PublicGroup::new(
-        backend.crypto(),
+        provider.crypto(),
         tree_before,
         group_context,
         initial_confirmation_tag,
@@ -93,7 +101,7 @@ fn run_test_vector(test: TestElement, backend: &impl OpenMlsCryptoProvider) -> R
 
     let queued_proposal = QueuedProposal::from_proposal_and_sender(
         ciphersuite,
-        backend,
+        provider.crypto(),
         proposal,
         &Sender::Member(LeafNodeIndex::new(test.proposal_sender)),
     )
@@ -104,8 +112,11 @@ fn run_test_vector(test: TestElement, backend: &impl OpenMlsCryptoProvider) -> R
     let mut diff = group.empty_diff();
 
     diff.apply_proposals(&proposal_queue, None).unwrap();
+    diff.update_group_context(provider.crypto()).unwrap();
 
-    let staged_diff = diff.into_staged_diff(backend, ciphersuite).unwrap();
+    let staged_diff = diff
+        .into_staged_diff(provider.crypto(), ciphersuite)
+        .unwrap();
 
     group.merge_diff(staged_diff);
 
@@ -116,18 +127,21 @@ fn run_test_vector(test: TestElement, backend: &impl OpenMlsCryptoProvider) -> R
 
     assert_eq!(test.tree_after, tree_after);
 
+    let tree_hash_after = group.group_context().tree_hash();
+    assert_eq!(test.tree_hash_after, tree_hash_after);
+
     Ok(())
 }
 
-#[apply(backends)]
-fn read_test_vectors_tree_operations(backend: &impl OpenMlsCryptoProvider) {
+#[apply(providers)]
+fn read_test_vectors_tree_operations(provider: &impl OpenMlsProvider) {
     let _ = pretty_env_logger::try_init();
     log::debug!("Reading test vectors ...");
 
     let tests: Vec<TestElement> = read("test_vectors/tree-operations.json");
 
     for test_vector in tests {
-        match run_test_vector(test_vector, backend) {
+        match run_test_vector(test_vector, provider) {
             Ok(_) => {}
             Err(e) => panic!("Error while checking tree operations test vector.\n{e:?}"),
         }

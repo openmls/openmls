@@ -6,7 +6,6 @@
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     types::{Ciphersuite, HpkeCiphertext, HpkeKeyPair},
-    OpenMlsCryptoProvider,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -30,6 +29,8 @@ use crate::{
     },
     versions::ProtocolVersion,
 };
+#[cfg(test)]
+use openmls_traits::random::OpenMlsRand;
 
 pub mod codec;
 pub mod external_proposals;
@@ -294,16 +295,15 @@ impl PathSecret {
     /// Derives a node secret which in turn is used to derive an HpkeKeyPair.
     pub(crate) fn derive_key_pair(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -> Result<EncryptionKeyPair, LibraryError> {
         let node_secret = self
             .path_secret
-            .kdf_expand_label(backend, "node", &[], ciphersuite.hash_length())
+            .kdf_expand_label(crypto, "node", &[], ciphersuite.hash_length())
             .map_err(LibraryError::unexpected_crypto_error)?;
-        let HpkeKeyPair { public, private } = backend
-            .crypto()
-            .derive_hpke_keypair(ciphersuite.hpke_config(), node_secret.as_slice());
+        let HpkeKeyPair { public, private } =
+            crypto.derive_hpke_keypair(ciphersuite.hpke_config(), node_secret.as_slice());
 
         Ok((HpkePublicKey::from(public), private).into())
     }
@@ -311,12 +311,12 @@ impl PathSecret {
     /// Derives a path secret.
     pub(crate) fn derive_path_secret(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -> Result<Self, LibraryError> {
         let path_secret = self
             .path_secret
-            .kdf_expand_label(backend, "path", &[], ciphersuite.hash_length())
+            .kdf_expand_label(crypto, "path", &[], ciphersuite.hash_length())
             .map_err(LibraryError::unexpected_crypto_error)?;
         Ok(Self { path_secret })
     }
@@ -325,13 +325,13 @@ impl PathSecret {
     /// `group_context`.
     pub(crate) fn encrypt(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         public_key: &EncryptionKey,
         group_context: &[u8],
     ) -> Result<HpkeCiphertext, LibraryError> {
         public_key.encrypt(
-            backend,
+            crypto,
             ciphersuite,
             group_context,
             self.path_secret.as_slice(),
@@ -350,7 +350,7 @@ impl PathSecret {
     ///
     /// ValSem203: Path secrets must decrypt correctly
     pub(crate) fn decrypt(
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         version: ProtocolVersion,
         ciphertext: &HpkeCiphertext,
@@ -359,7 +359,7 @@ impl PathSecret {
     ) -> Result<PathSecret, PathSecretError> {
         // ValSem203: Path secrets must decrypt correctly
         private_key
-            .decrypt(backend, ciphersuite, version, ciphertext, group_context)
+            .decrypt(crypto, ciphersuite, version, ciphertext, group_context)
             .map(|path_secret| Self { path_secret })
             .map_err(|e| e.into())
     }
@@ -462,18 +462,14 @@ impl GroupSecrets {
 impl GroupSecrets {
     pub fn random_encoded(
         ciphersuite: Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
+        rng: &impl OpenMlsRand,
         version: ProtocolVersion,
     ) -> Result<Vec<u8>, tls_codec::Error> {
-        use openmls_traits::random::OpenMlsRand;
-
         let psk_id = PreSharedKeyId::new(
             ciphersuite,
-            backend.rand(),
+            rng,
             Psk::External(ExternalPsk::new(
-                backend
-                    .rand()
-                    .random_vec(ciphersuite.hash_length())
+                rng.random_vec(ciphersuite.hash_length())
                     .expect("Not enough randomness."),
             )),
         )
@@ -481,9 +477,9 @@ impl GroupSecrets {
         let psks = vec![psk_id];
 
         GroupSecrets::new_encoded(
-            &JoinerSecret::random(ciphersuite, backend, version),
+            &JoinerSecret::random(ciphersuite, rng, version),
             Some(&PathSecret {
-                path_secret: Secret::random(ciphersuite, backend, version)
+                path_secret: Secret::random(ciphersuite, rng, version)
                     .expect("Not enough randomness."),
             }),
             &psks,

@@ -1,6 +1,6 @@
 [package]
 name = "interop_client"
-version = "0.2.0-pre.3"
+version = "0.2.0"
 authors = ["OpenMLS Authors"]
 edition = "2021"
 
@@ -24,6 +24,6 @@ clap_derive = "4.1"
 serde = { version = "^1.0", features = ["derive"] }
 serde_json = "^1.0"
 tls_codec = { workspace = true }
-openmls_basic_credential = { version = "0.2.0-pre.3", path = "../basic_credential" }
+openmls_basic_credential = { version = "0.2.0", path = "../basic_credential" }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

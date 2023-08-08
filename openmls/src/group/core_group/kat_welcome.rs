@@ -20,7 +20,7 @@
 //!     decrypted GroupContext
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, OpenMlsProvider};
 use serde::{self, Deserialize, Serialize};
 use tls_codec::Serialize as TlsSerialize;
 
@@ -109,7 +109,7 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
         .is_test(true)
         .try_init();
 
-    let backend = OpenMlsRustCrypto::default();
+    let provider = OpenMlsRustCrypto::default();
 
     // ---------------------------------------------------------------------------------------------
 
@@ -155,7 +155,7 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
     // ---------------------------------------------------------------------------------------------
 
     // TODO(#1259)
-    if !backend
+    if !provider
         .crypto()
         .supported_ciphersuites()
         .contains(&cipher_suite)
@@ -171,15 +171,15 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
         private_key: init_priv,
     };
 
-    backend
+    provider
         .key_store()
         .store(
-            key_package.hash_ref(backend.crypto()).unwrap().as_slice(),
+            key_package.hash_ref(provider.crypto()).unwrap().as_slice(),
             &key_package,
         )
         .unwrap();
 
-    backend
+    provider
         .key_store()
         .store::<HpkePrivateKey>(
             key_package.hpke_init_key().as_slice(),
@@ -193,7 +193,7 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
     let encrypted_group_secrets = CoreGroup::find_key_package_from_welcome_secrets(
         key_package_bundle
             .key_package()
-            .hash_ref(backend.crypto())
+            .hash_ref(provider.crypto())
             .unwrap(),
         welcome.secrets(),
     )
@@ -206,7 +206,7 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
         encrypted_group_secrets.encrypted_group_secrets(),
         welcome.encrypted_group_info(),
         welcome.ciphersuite(),
-        backend.crypto(),
+        provider.crypto(),
     )
     .unwrap();
     println!("{group_secrets:?}");
@@ -215,14 +215,14 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
     let psk_secret = {
         let resumption_psk_store = ResumptionPskStore::new(1024);
 
-        let psks = load_psks(backend.key_store(), &resumption_psk_store, &[]).unwrap();
+        let psks = load_psks(provider.key_store(), &resumption_psk_store, &[]).unwrap();
 
-        PskSecret::new(&backend, cipher_suite, psks).unwrap()
+        PskSecret::new(provider.crypto(), cipher_suite, psks).unwrap()
     };
 
     let mut key_schedule = KeySchedule::init(
         welcome.ciphersuite(),
-        &backend,
+        provider.crypto(),
         &group_secrets.joiner_secret,
         psk_secret,
     )
@@ -231,9 +231,9 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
     let group_info: GroupInfo = {
         let verifiable_group_info: VerifiableGroupInfo = {
             let (welcome_key, welcome_nonce) = key_schedule
-                .welcome(&backend)
+                .welcome(provider.crypto())
                 .unwrap()
-                .derive_welcome_key_nonce(&backend)
+                .derive_welcome_key_nonce(provider.crypto())
                 .unwrap();
 
             VerifiableGroupInfo::try_from_ciphertext(
@@ -241,14 +241,14 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
                 &welcome_nonce,
                 welcome.encrypted_group_info(),
                 &[],
-                &backend,
+                provider.crypto(),
             )
             .unwrap()
         };
         println!("{verifiable_group_info:?}");
 
         verifiable_group_info
-            .verify(backend.crypto(), &signer_pub)
+            .verify(provider.crypto(), &signer_pub)
             .unwrap()
     };
     println!("{group_info:?}");
@@ -262,11 +262,11 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
     let serialized_group_context = group_context.tls_serialize_detached().unwrap();
 
     key_schedule
-        .add_context(&backend, &serialized_group_context)
+        .add_context(provider.crypto(), &serialized_group_context)
         .unwrap();
 
     let (_group_epoch_secrets, message_secrets) = {
-        let epoch_secrets = key_schedule.epoch_secrets(&backend).unwrap();
+        let epoch_secrets = key_schedule.epoch_secrets(provider.crypto()).unwrap();
 
         epoch_secrets.split_secrets(
             serialized_group_context.to_vec(),
@@ -277,7 +277,7 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
 
     let confirmation_tag = message_secrets
         .confirmation_key()
-        .tag(&backend, group_context.confirmed_transcript_hash())
+        .tag(provider.crypto(), group_context.confirmed_transcript_hash())
         .unwrap();
 
     assert_eq!(&confirmation_tag, group_info.confirmation_tag());

@@ -15,12 +15,12 @@ mod test_unmerged_leaves;
 
 /// Pathological example taken from ...
 ///   https://github.com/mlswg/mls-protocol/issues/690#issue-1244086547.
-#[apply(ciphersuites_and_backends)]
+#[apply(ciphersuites_and_providers)]
 fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
     ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
+    provider: &impl OpenMlsProvider,
 ) {
-    let _ = backend; // get rid of warning
+    let _ = provider; // get rid of warning
     let crypto_config = CryptoConfig::with_default_version(ciphersuite);
     let mls_group_config = MlsGroupConfig::builder()
         .crypto_config(crypto_config)
@@ -32,21 +32,24 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
         credential_with_key_and_signer: CredentialWithKeyAndSigner,
         key_package: KeyPackage,
         // FIXME: the own_leaf_index from the group is beeing computed incorrectly, so we can't use
-        // the backend from the function parameter. #1221
-        backend: OpenMlsRustCrypto,
+        // the provider from the function parameter. #1221
+        provider: OpenMlsRustCrypto,
     }
 
     fn create_member(
         ciphersuite: Ciphersuite,
-        backend: OpenMlsRustCrypto,
+        provider: OpenMlsRustCrypto,
         name: Vec<u8>,
     ) -> Member {
-        let credential_with_key_and_signer =
-            generate_credential_with_key(name.clone(), ciphersuite.signature_algorithm(), &backend);
+        let credential_with_key_and_signer = generate_credential_with_key(
+            name.clone(),
+            ciphersuite.signature_algorithm(),
+            &provider,
+        );
         let key_package = KeyPackage::builder()
             .build(
                 CryptoConfig::with_default_version(ciphersuite),
-                &backend,
+                &provider,
                 &credential_with_key_and_signer.signer,
                 credential_with_key_and_signer.credential_with_key.clone(),
             )
@@ -56,7 +59,7 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
             id: name,
             credential_with_key_and_signer,
             key_package,
-            backend,
+            provider,
         }
     }
 
@@ -89,7 +92,7 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
 
     // `A` creates a group with `B`, `C`, and `D` ...
     let mut alice_group = MlsGroup::new(
-        &alice.backend,
+        &alice.provider,
         &alice.credential_with_key_and_signer.signer,
         &mls_group_config,
         alice
@@ -102,13 +105,13 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
 
     let (_, welcome, _group_info) = alice_group
         .add_members(
-            &alice.backend,
+            &alice.provider,
             &alice.credential_with_key_and_signer.signer,
             &[bob.key_package, charlie.key_package, dave.key_package],
         )
         .expect("Adding members failed.");
 
-    alice_group.merge_pending_commit(&alice.backend).unwrap();
+    alice_group.merge_pending_commit(&alice.provider).unwrap();
     alice_group.print_ratchet_tree("Alice (after add_members)");
 
     // ---------------------------------------------------------------------------------------------
@@ -116,7 +119,7 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
     // ... and then `C` removes `A` and `B`.
     let mut charlie_group = {
         MlsGroup::new_from_welcome(
-            &charlie.backend,
+            &charlie.provider,
             &mls_group_config,
             welcome.into_welcome().unwrap(),
             None,
@@ -129,14 +132,14 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
     let bob = get_member_leaf_index(&charlie_group, &bob.id);
     charlie_group
         .remove_members(
-            &charlie.backend,
+            &charlie.provider,
             &charlie.credential_with_key_and_signer.signer,
             &[alice, bob],
         )
         .expect("Removal of members failed.");
 
     charlie_group
-        .merge_pending_commit(&charlie.backend)
+        .merge_pending_commit(&charlie.provider)
         .unwrap();
     charlie_group.print_ratchet_tree("Charlie (after remove)");
 
@@ -156,7 +159,7 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
 
     charlie_group
         .create_message(
-            &charlie.backend,
+            &charlie.provider,
             &charlie.credential_with_key_and_signer.signer,
             b"Hello, World!".as_slice(),
         )
