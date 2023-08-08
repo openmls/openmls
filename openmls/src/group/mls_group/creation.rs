@@ -134,11 +134,13 @@ impl MlsGroup {
         };
 
         // Delete the [`KeyPackage`] and the corresponding private key from the
-        // key store
-        key_package_bundle
-            .key_package
-            .delete(provider)
-            .map_err(WelcomeError::KeyStoreError)?;
+        // key store, but only if it doesn't have a last resort extension.
+        if !key_package_bundle.key_package().last_resort() {
+            key_package_bundle
+                .key_package
+                .delete(provider)
+                .map_err(WelcomeError::KeyStoreError)?;
+        }
 
         let mut group = CoreGroup::new_from_welcome(
             welcome,
