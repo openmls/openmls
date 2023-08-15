@@ -14,9 +14,6 @@ use openmls_traits::{
 
 use p256::ecdsa::{signature::Signer as P256Signer, Signature, SigningKey};
 
-// See https://github.com/rust-analyzer/rust-analyzer/issues/7243
-// for the rust-analyzer issue with the following line.
-use ed25519_dalek::Signer as DalekSigner;
 use rand::rngs::OsRng;
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
@@ -52,7 +49,7 @@ impl Signer for SignatureKeyPair {
                 Ok(signature.to_der().to_bytes().into())
             }
             SignatureScheme::ED25519 => {
-                let k = ed25519_dalek::Keypair::from_bytes(&self.private)
+                let k = ed25519_dalek::SigningKey::try_from(self.private.as_slice())
                     .map_err(|_| Error::SigningError)?;
                 let signature = k.sign(payload);
                 Ok(signature.to_bytes().into())
@@ -90,11 +87,9 @@ impl SignatureKeyPair {
                 (k.to_bytes().as_slice().into(), pk)
             }
             SignatureScheme::ED25519 => {
-                let k = ed25519_dalek::Keypair::generate(&mut rand_07::rngs::OsRng).to_bytes();
-                let pk = k[ed25519_dalek::SECRET_KEY_LENGTH..].to_vec();
-                // full key here because we need it to sign...
-                let sk_pk = k.into();
-                (sk_pk, pk)
+                let sk = ed25519_dalek::SigningKey::generate(&mut OsRng);
+                let pk = sk.verifying_key().to_bytes().into();
+                (sk.to_bytes().into(), pk)
             }
             _ => return Err(CryptoError::UnsupportedSignatureScheme),
         };

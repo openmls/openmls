@@ -15,9 +15,8 @@ tls_codec = { workspace = true }
 serde = "1.0"
 
 # Rust Crypto
-ed25519-dalek = { version = "1.0" }
+ed25519-dalek = { version = "2.0", features = ["rand_core"] }
 p256 = { version = "0.13" }
-rand-07 = {version = "0.7", package = "rand" } # only needed because of ed25519-dalek
 rand = "0.8"
 
 [features]

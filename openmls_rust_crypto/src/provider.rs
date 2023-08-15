@@ -21,10 +21,7 @@ use openmls_traits::{
     },
 };
 use p256::{
-    ecdsa::{
-        signature::{Signer, Verifier},
-        Signature, SigningKey, VerifyingKey,
-    },
+    ecdsa::{signature::Verifier, Signature, SigningKey, VerifyingKey},
     EncodedPoint,
 };
 use rand::{RngCore, SeedableRng};
@@ -235,12 +232,13 @@ impl OpenMlsCrypto for RustCrypto {
                 Ok((k.to_bytes().as_slice().into(), pk))
             }
             SignatureScheme::ED25519 => {
-                // XXX: We can't use our RNG here
-                let k = ed25519_dalek::Keypair::generate(&mut rand_07::rngs::OsRng).to_bytes();
-                let pk = k[ed25519_dalek::SECRET_KEY_LENGTH..].to_vec();
-                // full key here because we need it to sign...
-                let sk_pk = k.into();
-                Ok((sk_pk, pk))
+                let mut rng = self
+                    .rng
+                    .write()
+                    .map_err(|_| CryptoError::InsufficientRandomness)?;
+                let sk = ed25519_dalek::SigningKey::generate(&mut *rng);
+                let pk = sk.verifying_key().to_bytes().into();
+                Ok((sk.to_bytes().into(), pk))
             }
             _ => Err(CryptoError::UnsupportedSignatureScheme),
         }
@@ -266,7 +264,7 @@ impl OpenMlsCrypto for RustCrypto {
                 .map_err(|_| CryptoError::InvalidSignature)
             }
             SignatureScheme::ED25519 => {
-                let k = ed25519_dalek::PublicKey::from_bytes(pk)
+                let k = ed25519_dalek::VerifyingKey::try_from(pk)
                     .map_err(|_| CryptoError::CryptoLibraryError)?;
                 if signature.len() != ed25519_dalek::SIGNATURE_LENGTH {
                     return Err(CryptoError::CryptoLibraryError);
@@ -294,7 +292,7 @@ impl OpenMlsCrypto for RustCrypto {
                 Ok(signature.to_der().to_bytes().into())
             }
             SignatureScheme::ED25519 => {
-                let k = ed25519_dalek::Keypair::from_bytes(key)
+                let k = ed25519_dalek::SigningKey::try_from(key)
                     .map_err(|_| CryptoError::CryptoLibraryError)?;
                 let signature = k.sign(data);
                 Ok(signature.to_bytes().into())
