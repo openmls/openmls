@@ -2,12 +2,10 @@ use std::sync::RwLock;
 
 use aes_gcm::{
     aead::{Aead, Payload},
-    Aes128Gcm, Aes256Gcm, NewAead,
+    Aes128Gcm, Aes256Gcm, KeyInit,
 };
 use chacha20poly1305::ChaCha20Poly1305;
-// See https://github.com/rust-analyzer/rust-analyzer/issues/7243
-// for the rust-analyzer issue with the following line.
-use ed25519_dalek::Signer as DalekSigner;
+use ed25519_dalek::Signer;
 use hkdf::Hkdf;
 use hpke::Hpke;
 use hpke_rs_crypto::types as hpke_types;
