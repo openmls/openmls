@@ -215,16 +215,7 @@ pub fn run_test_vector(
     let sender_index = LeafNodeIndex::new(1);
 
     // Set up the group, unfortunately we can't do without.
-    let signature_private_key = match ciphersuite {
-        Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
-        | Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519 => {
-            let mut private = hex_to_bytes(&test.signature_priv);
-            private.append(&mut hex_to_bytes(&test.signature_pub));
-            private
-        }
-        Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256 => hex_to_bytes(&test.signature_priv),
-        _ => unimplemented!(),
-    };
+    let signature_private_key = hex_to_bytes(&test.signature_priv);
     let random_own_signature_key =
         SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
     let random_own_signature_key = random_own_signature_key.public();
@@ -253,18 +244,7 @@ pub fn run_test_vector(
         // Set up the group, unfortunately we can't do without.
         let credential =
             Credential::new(b"This is not needed".to_vec(), CredentialType::Basic).unwrap();
-        let signature_private_key = match ciphersuite {
-            Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
-            | Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519 => {
-                let mut private = hex_to_bytes(&test.signature_priv);
-                private.append(&mut hex_to_bytes(&test.signature_pub));
-                private
-            }
-            Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256 => {
-                hex_to_bytes(&test.signature_priv)
-            }
-            _ => unimplemented!(),
-        };
+        let signature_private_key = hex_to_bytes(&test.signature_priv);
         let random_own_signature_key =
             SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
         let random_own_signature_key = random_own_signature_key.public();
