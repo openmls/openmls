@@ -7,32 +7,41 @@ use openmls::prelude::*;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::OpenMlsCryptoProvider;
 use tls_codec::TlsByteVecU8;
+use serde_json_any_key::*;
+
+use crate::openmls_rust_persistent_crypto::OpenMlsRustPersistentCrypto;
 
 use super::{backend::Backend, conversation::Conversation, identity::Identity};
 
 const CIPHERSUITE: Ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Contact {
     username: String,
     id: Vec<u8>,
     // We store multiple here but always only use the first one right now.
     #[allow(dead_code)]
-    public_keys: ClientKeyPackages,
+    public_keys: ClientKeyPackages, 
 }
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Group {
     group_name: String,
     conversation: Conversation,
     mls_group: RefCell<MlsGroup>,
 }
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct User {
     pub(crate) username: String,
+    #[serde(with = "any_key_map")]
     pub(crate) contacts: HashMap<Vec<u8>, Contact>,
-    pub(crate) groups: RefCell<HashMap<Vec<u8>, Group>>,
+    pub(crate) groups: RefCell<HashMap<String, Group>>,
     pub(crate) identity: RefCell<Identity>,
+    #[serde(skip)] 
     backend: Backend,
-    crypto: OpenMlsRustCrypto,
+    #[serde(skip)]
+    crypto: OpenMlsRustPersistentCrypto,
 }
 
 #[derive(PartialEq)]
@@ -44,7 +53,7 @@ pub enum PostUpdateActions {
 impl User {
     /// Create a new user with the given name and a fresh set of credentials.
     pub fn new(username: String) -> Self {
-        let crypto = OpenMlsRustCrypto::default();
+        let crypto = OpenMlsRustPersistentCrypto::default();
         let out = Self {
             username: username.clone(),
             groups: RefCell::new(HashMap::new()),
@@ -54,6 +63,32 @@ impl User {
             crypto,
         };
         out
+    }
+
+    pub fn recover(user_name: String) -> Self {
+        let input_file = "openmls_cli_".to_owned() + user_name.as_str();
+        let input_path = "/tmp/".to_owned() + input_file.as_str() + ".json"; 
+        let text = std::fs::read_to_string(&input_path).unwrap();
+
+        // Parse the string into a dynamically-typed JSON structure.
+        let mut user: User = serde_json::from_str(&text).unwrap();
+        user.crypto.recover_keystore(user_name.clone());
+        return user;
+    }
+
+    pub fn persist(&self) {
+        let output_file = "openmls_cli_".to_owned() + self.username.as_str();
+        let output_path = "/tmp/".to_owned() + output_file.as_str() + ".json"; 
+        match serde_json::to_string_pretty(&self) {
+            Ok(s) => 
+            std::fs::write(
+                output_path,
+                s,
+            )
+            .unwrap(),
+            Err(e) => log::error!("Error serializing user: {:?}", e.to_string()),
+        }
+        self.crypto.persist_keystore(self.username.clone());
     }
 
     /// Add a key package to the user identity and return the pair [key package hash ref , key package]
@@ -139,7 +174,7 @@ impl User {
     /// Return the last 100 messages sent to the group.
     pub fn read_msgs(&self, group_name: String) -> Result<Option<Vec<String>>, String> {
         let groups = self.groups.borrow();
-        groups.get(group_name.as_bytes()).map_or_else(
+        groups.get(&group_name).map_or_else(
             || Err("Unknown group".to_string()),
             |g| Ok(g.conversation.get(100).map(|messages| messages.to_vec())),
         )
@@ -165,7 +200,7 @@ impl User {
     /// Send an application message to the group.
     pub fn send_msg(&self, msg: &str, group: String) -> Result<(), String> {
         let groups = self.groups.borrow();
-        let group = match groups.get(group.as_bytes()) {
+        let group = match groups.get(&group) {
             Some(g) => g,
             None => return Err("Unknown group".to_string()),
         };
@@ -204,7 +239,7 @@ impl User {
             let processed_message: ProcessedMessage;
             let mut groups = self.groups.borrow_mut();
 
-            let group = match groups.get_mut(message.group_id().as_slice()) {
+            let group = match groups.get_mut(str::from_utf8(message.group_id().as_slice()).unwrap()) {
                 Some(g) => g,
                 None => {
                     log::error!(
@@ -280,7 +315,7 @@ impl User {
                                 match p.1 {
                                     Some(gid) => {
                                         let mut grps = self.groups.borrow_mut();
-                                        grps.remove_entry(gid.as_slice());
+                                        grps.remove_entry(str::from_utf8(gid.as_slice()).unwrap());
                                     }
                                     None => log::debug!(
                                         "update::Error post update remove must have a group id"
@@ -368,18 +403,22 @@ impl User {
             conversation: Conversation::default(),
             mls_group: RefCell::new(mls_group),
         };
+
         if self
-            .groups
-            .borrow_mut()
-            .insert(group_id.to_vec(), group)
-            .is_some()
-        {
+        .groups
+        .borrow()
+        .contains_key(&name) {
             panic!("Group '{}' existed already", name);
         }
+
+        self
+            .groups
+            .borrow_mut()
+            .insert(name, group);
     }
 
     /// Invite user with the given name to the group.
-    pub fn invite(&mut self, name: String, group: String) -> Result<(), String> {
+    pub fn invite(&mut self, name: String, group_name: String) -> Result<(), String> {
         // First we need to get the key package for {id} from the DS.
         let contact = match self.contacts.values().find(|c| c.username == name) {
             Some(v) => v,
@@ -390,11 +429,10 @@ impl User {
         let joiner_key_package = self.backend.consume_key_package(&contact.id).unwrap();
 
         // Build a proposal with this key package and do the MLS bits.
-        let group_id = group.as_bytes();
         let mut groups = self.groups.borrow_mut();
-        let group = match groups.get_mut(group_id) {
+        let group = match groups.get_mut(&group_name) {
             Some(g) => g,
-            None => return Err(format!("No group with name {group} known.")),
+            None => return Err(format!("No group with name {group_name} known.")),
         };
 
         let (out_messages, welcome, _group_info) = group
@@ -411,7 +449,7 @@ impl User {
         This must be done before the member invitation is locally committed.
         It avoids the invited member to receive the commit message (which is in the previous group epoch).*/
         log::trace!("Sending commit");
-        let group = groups.get_mut(group_id).unwrap(); // XXX: not cool.
+        let group = groups.get_mut(&group_name).unwrap(); // XXX: not cool.
         let group_recipients = self.recipients(group);
 
         let msg = GroupMessage::new(out_messages.into(), &group_recipients);
@@ -434,13 +472,12 @@ impl User {
     }
 
     /// Remove user with the given name from the group.
-    pub fn remove(&mut self, name: String, group: String) -> Result<(), String> {
+    pub fn remove(&mut self, name: String, group_name: String) -> Result<(), String> {
         // Get the group ID
-        let group_id = group.as_bytes();
         let mut groups = self.groups.borrow_mut();
-        let group = match groups.get_mut(group_id) {
+        let group = match groups.get_mut(&group_name) {
             Some(g) => g,
-            None => return Err(format!("No group with name {group} known.")),
+            None => return Err(format!("No group with name {group_name} known.")),
         };
 
         // Get the client leaf index
@@ -459,7 +496,7 @@ impl User {
 
         // First, send the MlsMessage remove commit to the group.
         log::trace!("Sending commit");
-        let group = groups.get_mut(group_id).unwrap(); // XXX: not cool.
+        let group = groups.get_mut(&group_name).unwrap(); // XXX: not cool.
         let group_recipients = self.recipients(group);
 
         let msg = GroupMessage::new(remove_message.into(), &group_recipients);
@@ -509,7 +546,7 @@ impl User {
 
         log::trace!("   {}", group_name);
 
-        match self.groups.borrow_mut().insert(group_id, group) {
+        match self.groups.borrow_mut().insert(group_name, group) {
             Some(old) => Err(format!("Overrode the group {:?}", old.group_name)),
             None => Ok(()),
         }

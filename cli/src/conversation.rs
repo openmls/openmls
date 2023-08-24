@@ -1,5 +1,7 @@
+use serde::{Serialize, Deserialize};
+
 /// A conversation is a list of messages (strings).
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Serialize, Deserialize)]
 pub struct Conversation {
     messages: Vec<String>,
 }

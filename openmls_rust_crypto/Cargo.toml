@@ -22,9 +22,10 @@ rand-07 = {version = "0.7", package = "rand" } # only needed because of ed25519-
 p256 = { version = "0.13" }
 hkdf = { version = "0.12" }
 rand = "0.8"
-rand_chacha = { version = "0.3" }
+rand_chacha = { version = "0.3.1" }
 hpke = { version = "0.1.1", package = "hpke-rs", default-features = false, features = ["hazmat", "serialization"] }
 hpke-rs-crypto = { version = "0.1.2" }
 hpke-rs-rust-crypto = { version = "0.1.2" }
 tls_codec = { workspace = true }
 thiserror = "1.0"
+serde = { version = "^1.0", features = ["derive"] }

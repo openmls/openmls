@@ -6,10 +6,13 @@ use std::io::{stdin, stdout, StdoutLock, Write};
 use termion::input::TermRead;
 
 mod backend;
-mod conversation;
 mod identity;
 mod networking;
 mod user;
+mod openmls_rust_persistent_crypto;
+mod persistent_key_store;
+
+mod conversation;
 
 const HELP: &str = "
 >>> Available commands:
@@ -70,6 +73,25 @@ fn main() {
                 .unwrap();
             continue;
         }
+
+        if let Some(client_name) = op.strip_prefix("persist ") {
+            if let Some(client) = &mut client {
+                client.persist();
+                stdout
+                    .write_all(format!("persisted client {client_name}\n\n").as_bytes())
+                    .unwrap();
+                continue;
+            }
+        }
+
+        if let Some(client_name) = op.strip_prefix("recover ") {
+            client = Some(user::User::recover(client_name.to_string()));
+            stdout
+                .write_all(format!("recovered client {client_name}\n\n").as_bytes())
+                .unwrap();
+            continue;
+        }
+
 
         // Create a new KeyPackage.
         if op == "create kp" {

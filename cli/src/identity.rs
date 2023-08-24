@@ -4,15 +4,20 @@ use openmls::prelude::{config::CryptoConfig, *};
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::OpenMlsCryptoProvider;
+use serde_json_any_key::*;
 
+use crate::openmls_rust_persistent_crypto::OpenMlsRustPersistentCrypto;
+
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Identity {
+    #[serde(with = "any_key_map")]
     pub(crate) kp: HashMap<Vec<u8>, KeyPackage>,
     pub(crate) credential_with_key: CredentialWithKey,
     pub(crate) signer: SignatureKeyPair,
 }
 
 impl Identity {
-    pub(crate) fn new(ciphersuite: Ciphersuite, crypto: &OpenMlsRustCrypto, id: &[u8]) -> Self {
+    pub(crate) fn new(ciphersuite: Ciphersuite, crypto: &OpenMlsRustPersistentCrypto, id: &[u8]) -> Self {
         let credential = Credential::new(id.to_vec(), CredentialType::Basic).unwrap();
         let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
         let credential_with_key = CredentialWithKey {
@@ -51,7 +56,7 @@ impl Identity {
     pub fn add_key_package(
         &mut self,
         ciphersuite: Ciphersuite,
-        crypto: &OpenMlsRustCrypto,
+        crypto: &OpenMlsRustPersistentCrypto,
     ) -> KeyPackage {
         let key_package = KeyPackage::builder()
             .build(
