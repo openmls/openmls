@@ -2,7 +2,7 @@ use std::io::Write;
 
 use itertools::iproduct;
 use openmls_traits::{
-    crypto::OpenMlsCrypto, random::OpenMlsRand, types::Ciphersuite, OpenMlsCryptoProvider,
+    crypto::OpenMlsCrypto, random::OpenMlsRand, types::Ciphersuite, OpenMlsProvider,
 };
 use rstest::*;
 use rstest_reuse::{self, *};
@@ -25,19 +25,19 @@ use crate::{
     *,
 };
 
-#[apply(backends)]
-fn padding(backend: &impl OpenMlsCryptoProvider) {
+#[apply(providers)]
+fn padding(provider: &impl OpenMlsProvider) {
     // Create a test config for a single client supporting all possible
     // ciphersuites.
     let alice_config = TestClientConfig {
         name: "alice",
-        ciphersuites: backend.crypto().supported_ciphersuites(),
+        ciphersuites: provider.crypto().supported_ciphersuites(),
     };
 
     let mut test_group_configs = Vec::new();
 
     // Create a group config for each ciphersuite.
-    for &ciphersuite in backend.crypto().supported_ciphersuites().iter() {
+    for &ciphersuite in provider.crypto().supported_ciphersuites().iter() {
         let test_group = TestGroupConfig {
             ciphersuite,
             config: CoreGroupConfig::default(),
@@ -53,7 +53,7 @@ fn padding(backend: &impl OpenMlsCryptoProvider) {
     };
 
     // Initialize the test setup according to config.
-    let test_setup = setup(test_setup_config, backend);
+    let test_setup = setup(test_setup_config, provider);
 
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients
@@ -76,7 +76,7 @@ fn padding(backend: &impl OpenMlsCryptoProvider) {
                         &aad,
                         &message,
                         padding_size,
-                        backend,
+                        provider,
                         &credential.signer,
                     )
                     .expect("An unexpected error occurred.");
@@ -98,8 +98,8 @@ fn padding(backend: &impl OpenMlsCryptoProvider) {
 }
 
 /// Check that PrivateMessageContent's padding field is verified to be all-zero.
-#[apply(ciphersuites_and_backends)]
-fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[apply(ciphersuites_and_providers)]
+fn bad_padding(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let tests = {
         // { 2^i } ∪ { 2^i +- 1 }
         let padding_sizes = [
@@ -120,14 +120,14 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         let alice_credential_with_keys = generate_credential_with_key(
             b"Alice".to_vec(),
             ciphersuite.signature_algorithm(),
-            backend,
+            provider,
         );
 
         let sender = Sender::build_member(LeafNodeIndex::new(654));
 
         let group_context = GroupContext::new(
             ciphersuite,
-            GroupId::random(backend),
+            GroupId::random(provider.rand()),
             1,
             vec![],
             vec![],
@@ -137,7 +137,7 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         let plaintext = {
             let plaintext_tbs = FramedContentTbs::new(
                 WireFormat::PrivateMessage,
-                GroupId::random(backend),
+                GroupId::random(provider.rand()),
                 1,
                 sender,
                 vec![1, 2, 3].into(),
@@ -151,9 +151,9 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         };
 
         let mut message_secrets =
-            MessageSecrets::random(ciphersuite, backend, LeafNodeIndex::new(0));
+            MessageSecrets::random(ciphersuite, provider.rand(), LeafNodeIndex::new(0));
 
-        let encryption_secret_bytes = backend
+        let encryption_secret_bytes = provider
             .rand()
             .random_vec(ciphersuite.hash_length())
             .unwrap();
@@ -214,11 +214,16 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
             let secret_type = SecretType::from(&plaintext.content().content_type());
             let (generation, (ratchet_key, ratchet_nonce)) = message_secrets
                 .secret_tree_mut()
-                .secret_for_encryption(ciphersuite, backend, LeafNodeIndex::new(0), secret_type)
+                .secret_for_encryption(
+                    ciphersuite,
+                    provider.crypto(),
+                    LeafNodeIndex::new(0),
+                    secret_type,
+                )
                 .unwrap();
 
             // Sample reuse guard uniformly at random.
-            let reuse_guard: ReuseGuard = ReuseGuard::try_from_random(backend).unwrap();
+            let reuse_guard: ReuseGuard = ReuseGuard::try_from_random(provider.rand()).unwrap();
 
             // Prepare the nonce by xoring with the reuse guard.
             let prepared_nonce = ratchet_nonce.xor_with_reuse_guard(&reuse_guard);
@@ -271,7 +276,7 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
 
             let ciphertext = ratchet_key
                 .aead_seal(
-                    backend,
+                    provider.crypto(),
                     &padded,
                     &private_message_content_aad_bytes,
                     &prepared_nonce,
@@ -280,12 +285,12 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
             // Derive the sender data key from the key schedule using the ciphertext.
             let sender_data_key = message_secrets
                 .sender_data_secret()
-                .derive_aead_key(backend, &ciphertext)
+                .derive_aead_key(provider.crypto(), &ciphertext)
                 .unwrap();
             // Derive initial nonce from the key schedule using the ciphertext.
             let sender_data_nonce = message_secrets
                 .sender_data_secret()
-                .derive_aead_nonce(ciphersuite, backend, &ciphertext)
+                .derive_aead_nonce(ciphersuite, provider.crypto(), &ciphertext)
                 .unwrap();
             // Compute sender data nonce by xoring reuse guard and key schedule
             // nonce as per spec.
@@ -301,7 +306,7 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
             // Encrypt the sender data
             let encrypted_sender_data = sender_data_key
                 .aead_seal(
-                    backend,
+                    provider.crypto(),
                     &sender_data.tls_serialize_detached().unwrap(),
                     &mls_sender_data_aad_bytes,
                     &sender_data_nonce,
@@ -323,12 +328,12 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         let tampered_ciphertext: PrivateMessageIn = tampered_ciphertext.into();
 
         let sender_data = tampered_ciphertext
-            .sender_data(&message_secrets, backend, ciphersuite)
+            .sender_data(&message_secrets, provider.crypto(), ciphersuite)
             .expect("Could not decrypt sender data.");
 
         let verifiable_plaintext_result = tampered_ciphertext.to_verifiable_content(
             ciphersuite,
-            backend,
+            provider.crypto(),
             &mut message_secrets,
             LeafNodeIndex::new(0),
             &SenderRatchetConfiguration::default(),

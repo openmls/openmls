@@ -1,4 +1,4 @@
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::crypto::OpenMlsCrypto;
 use tls_codec::Serialize;
 
 use crate::{
@@ -132,7 +132,7 @@ impl PublicGroup {
     ///  - ValSem246 (as part of ValSem010)
     pub fn process_message(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         message: impl Into<ProtocolMessage>,
     ) -> Result<ProcessedMessage, ProcessMessageError> {
         let protocol_message = message.into();
@@ -152,7 +152,7 @@ impl PublicGroup {
                     self.group_context()
                         .tls_serialize_detached()
                         .map_err(LibraryError::missing_bound_check)?,
-                    backend,
+                    crypto,
                 )?
             }
         };
@@ -160,7 +160,7 @@ impl PublicGroup {
         let unverified_message = self
             .parse_message(decrypted_message, None)
             .map_err(ProcessMessageError::from)?;
-        self.process_unverified_message(backend, unverified_message, &self.proposal_store)
+        self.process_unverified_message(crypto, unverified_message, &self.proposal_store)
     }
 }
 
@@ -194,7 +194,7 @@ impl PublicGroup {
     ///  - ValSem246 (as part of ValSem010)
     pub(crate) fn process_unverified_message(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         unverified_message: UnverifiedMessage,
         proposal_store: &ProposalStore,
     ) -> Result<ProcessedMessage, ProcessMessageError> {
@@ -202,7 +202,7 @@ impl PublicGroup {
         //  - ValSem010
         //  - ValSem246 (as part of ValSem010)
         let (content, credential) =
-            unverified_message.verify(self.ciphersuite(), backend.crypto(), self.version())?;
+            unverified_message.verify(self.ciphersuite(), crypto, self.version())?;
 
         match content.sender() {
             Sender::Member(_) | Sender::NewMemberCommit | Sender::NewMemberProposal => {
@@ -218,7 +218,7 @@ impl PublicGroup {
                     FramedContentBody::Proposal(_) => {
                         let proposal = Box::new(QueuedProposal::from_authenticated_content_by_ref(
                             self.ciphersuite(),
-                            backend,
+                            crypto,
                             content,
                         )?);
                         if matches!(sender, Sender::NewMemberProposal) {
@@ -228,7 +228,7 @@ impl PublicGroup {
                         }
                     }
                     FramedContentBody::Commit(_) => {
-                        let staged_commit = self.stage_commit(&content, proposal_store, backend)?;
+                        let staged_commit = self.stage_commit(&content, proposal_store, crypto)?;
                         ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))
                     }
                 };
@@ -253,7 +253,7 @@ impl PublicGroup {
                         let content = ProcessedMessageContent::ProposalMessage(Box::new(
                             QueuedProposal::from_authenticated_content_by_ref(
                                 self.ciphersuite(),
-                                backend,
+                                crypto,
                                 content,
                             )?,
                         ));

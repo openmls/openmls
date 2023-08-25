@@ -5,7 +5,7 @@
 //! for more description on the test vectors.
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{random::OpenMlsRand, types::SignatureScheme, OpenMlsCryptoProvider};
+use openmls_traits::{random::OpenMlsRand, types::SignatureScheme, OpenMlsProvider};
 use rand::{rngs::OsRng, RngCore};
 use serde::{self, Deserialize, Serialize};
 use thiserror::Error;
@@ -138,7 +138,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
 
     // Let's create a group
     let mut alice_group = CoreGroup::builder(
-        GroupId::random(&crypto),
+        GroupId::random(crypto.rand()),
         CryptoConfig::with_default_version(ciphersuite),
         alice_credential_with_key_and_signer
             .credential_with_key
@@ -151,7 +151,11 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     let alice_ratchet_tree = alice_group.public_group().export_ratchet_tree();
 
     let alice_group_info = alice_group
-        .export_group_info(&crypto, &alice_credential_with_key_and_signer.signer, true)
+        .export_group_info(
+            crypto.rand(),
+            &alice_credential_with_key_and_signer.signer,
+            true,
+        )
         .unwrap();
 
     let alice_leaf_node = {
@@ -249,7 +253,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     let mut proposal_store = ProposalStore::from_queued_proposal(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
-            &crypto,
+            crypto.crypto(),
             add_proposal_content.clone(),
         )
         .unwrap(),
@@ -350,7 +354,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
 
         group_secrets: GroupSecrets::random_encoded(
             ciphersuite,
-            &crypto,
+            crypto.rand(),
             ProtocolVersion::default(),
         )
         .unwrap(),

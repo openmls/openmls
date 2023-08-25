@@ -4,7 +4,7 @@ use std::{cell::RefCell, collections::HashMap};
 
 use ds_lib::{ClientKeyPackages, GroupMessage};
 use openmls::prelude::*;
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::OpenMlsProvider;
 use serde_json_any_key::*;
 use tls_codec::TlsByteVecU8;
 

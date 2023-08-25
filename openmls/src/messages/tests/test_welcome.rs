@@ -1,7 +1,7 @@
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
-    crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider,
+    crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsProvider,
 };
 use rstest::*;
 use rstest_reuse::{self, *};
@@ -34,8 +34,8 @@ use crate::{
 /// the encrypted group info. As the group info is part of the decryption context of the encrypted
 /// group info, it is not possible to generate a matching encrypted group context with different
 /// parameters.
-#[apply(ciphersuites_and_backends)]
-fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[apply(ciphersuites_and_providers)]
+fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let _ = pretty_env_logger::try_init();
 
     // We need a ciphersuite that is different from the current one to create
@@ -47,22 +47,22 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, backend: &impl OpenMl
         _ => Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
     };
 
-    let group_id = GroupId::random(backend);
+    let group_id = GroupId::random(provider.rand());
     let mls_group_config = MlsGroupConfigBuilder::new()
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_signature_key) =
-        crate::group::test_core_group::setup_client("Alice", ciphersuite, backend);
+        crate::group::test_core_group::setup_client("Alice", ciphersuite, provider);
     let (_bob_credential, bob_kpb, _bob_signer, _bob_signature_key) =
-        crate::group::test_core_group::setup_client("Bob", ciphersuite, backend);
+        crate::group::test_core_group::setup_client("Bob", ciphersuite, provider);
 
     let bob_kp = bob_kpb.key_package();
     let bob_private_key = bob_kpb.private_key();
 
     // === Alice creates a group  and adds Bob ===
     let mut alice_group = MlsGroup::new_with_group_id(
-        backend,
+        provider,
         &alice_signer,
         &mls_group_config,
         group_id,
@@ -71,11 +71,11 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, backend: &impl OpenMl
     .expect("An unexpected error occurred.");
 
     let (_queued_message, welcome, _group_info) = alice_group
-        .add_members(backend, &alice_signer, &[bob_kp.clone()])
+        .add_members(provider, &alice_signer, &[bob_kp.clone()])
         .expect("Could not add member to group.");
 
     alice_group
-        .merge_pending_commit(backend)
+        .merge_pending_commit(provider)
         .expect("error merging pending commit");
 
     let mut welcome = welcome.into_welcome().expect("Unexpected message type.");
@@ -92,7 +92,7 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, backend: &impl OpenMl
         welcome.encrypted_group_info(),
         egs.encrypted_group_secrets(),
         ciphersuite,
-        backend.crypto(),
+        provider.crypto(),
     )
     .expect("Could not decrypt group secrets.");
     let group_secrets = GroupSecrets::tls_deserialize(&mut group_secrets_bytes.as_slice())
@@ -104,24 +104,30 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, backend: &impl OpenMl
     let psk_secret = {
         let resumption_psk_store = ResumptionPskStore::new(1024);
 
-        let psks = load_psks(backend.key_store(), &resumption_psk_store, &[]).unwrap();
+        let psks = load_psks(provider.key_store(), &resumption_psk_store, &[]).unwrap();
 
-        PskSecret::new(backend, ciphersuite, psks).unwrap()
+        PskSecret::new(provider.crypto(), ciphersuite, psks).unwrap()
     };
 
     // Create key schedule
-    let key_schedule = KeySchedule::init(ciphersuite, backend, &joiner_secret, psk_secret)
-        .expect("Could not create KeySchedule.");
+    let key_schedule =
+        KeySchedule::init(ciphersuite, provider.crypto(), &joiner_secret, psk_secret)
+            .expect("Could not create KeySchedule.");
 
     // Derive welcome key & nonce from the key schedule
     let (welcome_key, welcome_nonce) = key_schedule
-        .welcome(backend)
+        .welcome(provider.crypto())
         .expect("Using the key schedule in the wrong state")
-        .derive_welcome_key_nonce(backend)
+        .derive_welcome_key_nonce(provider.crypto())
         .expect("Could not derive welcome key and nonce.");
 
     let group_info_bytes = welcome_key
-        .aead_open(backend, welcome.encrypted_group_info(), &[], &welcome_nonce)
+        .aead_open(
+            provider.crypto(),
+            welcome.encrypted_group_info(),
+            &[],
+            &welcome_nonce,
+        )
         .expect("Could not decrypt GroupInfo.");
     let mut verifiable_group_info =
         VerifiableGroupInfo::tls_deserialize(&mut group_info_bytes.as_slice()).unwrap();
@@ -137,21 +143,26 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, backend: &impl OpenMl
     let verifiable_group_info_bytes = verifiable_group_info.tls_serialize_detached().unwrap();
 
     let encrypted_verifiable_group_info = welcome_key
-        .aead_seal(backend, &verifiable_group_info_bytes, &[], &welcome_nonce)
+        .aead_seal(
+            provider.crypto(),
+            &verifiable_group_info_bytes,
+            &[],
+            &welcome_nonce,
+        )
         .unwrap();
 
     welcome.encrypted_group_info = encrypted_verifiable_group_info.into();
 
     // Create backup of encryption keypair, s.t. we can process the welcome a second time after failing.
     let encryption_keypair = EncryptionKeyPair::read_from_key_store(
-        backend,
+        provider,
         bob_kpb.key_package().leaf_node().encryption_key(),
     )
     .unwrap();
 
     // Bob tries to join the group
     let err = MlsGroup::new_from_welcome(
-        backend,
+        provider,
         &mls_group_config,
         welcome,
         Some(alice_group.export_ratchet_tree().into()),
@@ -167,22 +178,24 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, backend: &impl OpenMl
 
     // We need to store the key package and its encryption key again because it
     // has been consumed already.
-    backend
+    provider
         .key_store()
         .store(
-            bob_kp.hash_ref(backend.crypto()).unwrap().as_slice(),
+            bob_kp.hash_ref(provider.crypto()).unwrap().as_slice(),
             bob_kp,
         )
         .unwrap();
-    backend
+    provider
         .key_store()
         .store::<HpkePrivateKey>(bob_kp.hpke_init_key().as_slice(), bob_private_key)
         .unwrap();
 
-    encryption_keypair.write_to_key_store(backend).unwrap();
+    encryption_keypair
+        .write_to_key_store(provider.key_store())
+        .unwrap();
 
     let _group = MlsGroup::new_from_welcome(
-        backend,
+        provider,
         &mls_group_config,
         original_welcome,
         Some(alice_group.export_ratchet_tree().into()),
@@ -190,17 +203,17 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, backend: &impl OpenMl
     .expect("Error creating group from a valid Welcome.");
 }
 
-#[apply(ciphersuites_and_backends)]
-fn test_welcome_msg(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    test_welcome_message(ciphersuite, backend);
+#[apply(ciphersuites_and_providers)]
+fn test_welcome_msg(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+    test_welcome_message(ciphersuite, provider);
 }
 
-fn test_welcome_message(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_welcome_message(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // We use this dummy group info in all test cases.
     let group_info_tbs = {
         let group_context = GroupContext::new(
             ciphersuite,
-            GroupId::random(backend),
+            GroupId::random(provider.rand()),
             123,
             vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
             vec![1, 1, 1],
@@ -225,13 +238,13 @@ fn test_welcome_message(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         .expect("Error signing GroupInfo");
 
     // Generate key and nonce for the symmetric cipher.
-    let welcome_key = AeadKey::random(ciphersuite, backend.rand());
-    let welcome_nonce = AeadNonce::random(backend);
+    let welcome_key = AeadKey::random(ciphersuite, provider.rand());
+    let welcome_nonce = AeadNonce::random(provider.rand());
 
     // Generate receiver key pair.
-    let receiver_key_pair = backend.crypto().derive_hpke_keypair(
+    let receiver_key_pair = provider.crypto().derive_hpke_keypair(
         ciphersuite.hpke_config(),
-        Secret::random(ciphersuite, backend, None)
+        Secret::random(ciphersuite, provider.rand(), None)
             .expect("Not enough randomness.")
             .as_slice(),
     );
@@ -246,7 +259,7 @@ fn test_welcome_message(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             hpke_context,
             group_secrets,
             ciphersuite,
-            backend.crypto(),
+            provider.crypto(),
         )
         .unwrap(),
     }];
@@ -254,7 +267,7 @@ fn test_welcome_message(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     // Encrypt the group info.
     let encrypted_group_info = welcome_key
         .aead_seal(
-            backend,
+            provider.crypto(),
             &group_info
                 .tls_serialize_detached()
                 .expect("An unexpected error occurred."),
@@ -284,7 +297,7 @@ fn test_welcome_message(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             hpke_context,
             &secret.encrypted_group_secrets,
             ciphersuite,
-            backend.crypto(),
+            provider.crypto(),
         )
         .expect("Error decrypting valid ciphertext in Welcome message test.");
         assert_eq!(&group_secrets[..], &ptxt[..]);

@@ -9,7 +9,6 @@ use openmls_traits::{
     crypto::OpenMlsCrypto,
     random::OpenMlsRand,
     types::{AeadType, Ciphersuite, CryptoError, SignatureScheme},
-    OpenMlsCryptoProvider,
 };
 use signable::SignedStruct;
 

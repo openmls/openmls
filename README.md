@@ -4,14 +4,14 @@
 [![OpenMLS List][list-image]][list-link]
 
 [![Tests & Checks][gh-tests-image]](https://github.com/openmls/openmls/actions/workflows/tests.yml?branch=main)
-[![ARM64 Build Status][drone-image]](https://cloud.drone.io/openmls/openmls)
+<!-- Disabled until the drone CI is fixed in #1094 [![ARM64 Build Status][drone-image]](https://cloud.drone.io/openmls/openmls) -->
 [![codecov][codecov-image]](https://codecov.io/gh/openmls/openmls)
 
 [![Docs][docs-release-badge]][docs-release-link]
 [![Book][book-release-badge]][book-release-link]
 ![Rust Version][rustc-image]
 
-*OpenMLS* is a Rust implementation of [Messaging Layer Security](https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md).
+*OpenMLS* is a Rust implementation of the Messaging Layer Security (MLS) protocol, as specified in [RFC 9420](https://datatracker.ietf.org/doc/html/rfc9420).
 <!-- The introduction of the book imports the lines up until here (line 14), excluding the headline and separately the lines below (starting from line 20). If the line numbers change here, please modify the imported lines in the book.-->
 
 It is a software library that can serve as a building block in applications that require end-to-end encryption of messages.
@@ -33,8 +33,10 @@ OpenMLS is built and tested on the Github CI for the following rust targets.
 - i686-pc-windows-msvc
 - x86_64-apple-darwin
 
-Additionally, we're building and testing aarch64-unknown-linux-gnu on
-[drone.io](https://cloud.drone.io/openmls/openmls).
+<!-- Disabled until #1094 is fixed. Additionally, we're building and testing aarch64-unknown-linux-gnu on
+[drone.io](https://cloud.drone.io/openmls/openmls). -->
+
+### Unsupported, but built on CI
 
 The Github CI also builds (but doesn't test) the following rust targets.
 
@@ -54,7 +56,7 @@ OpenMLS supports 32 bit platforms and above.
 
 OpenMLS does not implement its own cryptographic primitives. Instead, it relies
 on existing implementations of the cryptographic primitives used by MLS. There
-are two different cryptography backends implemented right now. But consumers
+are two different cryptography providers implemented right now. But consumers
 can bring their own implementation. See [traits](https://github.com/openmls/openmls/tree/main/traits) for more
 details.
 

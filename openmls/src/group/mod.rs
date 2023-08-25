@@ -12,7 +12,7 @@ use crate::extensions::*;
 #[cfg(test)]
 use crate::utils::*;
 
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::OpenMlsProvider;
 use serde::{Deserialize, Serialize};
 use tls_codec::*;
 
@@ -70,13 +70,9 @@ impl GroupId {
     /// Create a new (random) group ID.
     ///
     /// Group IDs should be random and not be misused as, e.g., a group name.
-    pub fn random(backend: &impl OpenMlsCryptoProvider) -> Self {
+    pub fn random(rng: &impl OpenMlsRand) -> Self {
         Self {
-            value: backend
-                .rand()
-                .random_vec(16)
-                .expect("Not enough randomness.")
-                .into(),
+            value: rng.random_vec(16).expect("Not enough randomness.").into(),
         }
     }
 
