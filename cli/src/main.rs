@@ -6,19 +6,21 @@ use std::io::{stdin, stdout, StdoutLock, Write};
 use termion::input::TermRead;
 
 mod backend;
+mod conversation;
 mod identity;
 mod networking;
-mod user;
 mod openmls_rust_persistent_crypto;
 mod persistent_key_store;
-
-mod conversation;
+mod user;
 
 const HELP: &str = "
 >>> Available commands:
 >>>     - update                                update the client state
 >>>     - reset                                 reset the server
 >>>     - register {client name}                register a new client
+>>>     - save {client name}                    serialize and save the client state
+>>>     - load {client name}                    load and deserialize the client state as a new client
+>>>     - autosave                              enable automatic save of the current client state upon each update
 >>>     - create kp                             create a new key package
 >>>     - create group {group name}             create a new group
 >>>     - group {group name}                    group operations
@@ -74,24 +76,13 @@ fn main() {
             continue;
         }
 
-        if let Some(client_name) = op.strip_prefix("persist ") {
-            if let Some(client) = &mut client {
-                client.persist();
-                stdout
-                    .write_all(format!("persisted client {client_name}\n\n").as_bytes())
-                    .unwrap();
-                continue;
-            }
-        }
-
-        if let Some(client_name) = op.strip_prefix("recover ") {
-            client = Some(user::User::recover(client_name.to_string()));
+        if let Some(client_name) = op.strip_prefix("load ") {
+            client = Some(user::User::load(client_name.to_string()));
             stdout
                 .write_all(format!("recovered client {client_name}\n\n").as_bytes())
                 .unwrap();
             continue;
         }
-
 
         // Create a new KeyPackage.
         if op == "create kp" {
@@ -100,6 +91,39 @@ fn main() {
                 client.create_kp();
                 stdout
                     .write_all(b" >>> New key package created\n\n")
+                    .unwrap();
+            } else {
+                stdout
+                    .write_all(b" >>> No client to update :(\n\n")
+                    .unwrap();
+            }
+            continue;
+        }
+
+        // Save the current client state.
+        if op == "save" {
+            if let Some(client) = &mut client {
+                // client.create_kp().unwrap();
+                client.save();
+                let name = &client.username;
+                stdout
+                    .write_all(format!(" >>> client {name} state saved\n\n").as_bytes())
+                    .unwrap();
+            } else {
+                stdout
+                    .write_all(b" >>> No client to update :(\n\n")
+                    .unwrap();
+            }
+            continue;
+        }
+        // Enable automatic saving of the client state.
+        if op == "autosave" {
+            if let Some(client) = &mut client {
+                // client.create_kp().unwrap();
+                client.enable_auto_save();
+                let name = &client.username;
+                stdout
+                    .write_all(format!(" >>> autosave enabled for client {name} \n\n").as_bytes())
                     .unwrap();
             } else {
                 stdout

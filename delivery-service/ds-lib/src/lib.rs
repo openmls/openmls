@@ -31,7 +31,17 @@ pub struct ClientInfo {
 /// This is a tuple struct holding a vector of `(Vec<u8>, KeyPackage)` tuples,
 /// where the first value is the key package hash (output of `KeyPackage::hash`)
 /// and the second value is the corresponding key package.
-#[derive(Debug, Default, Clone, PartialEq, TlsSerialize, TlsDeserialize, TlsSize, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug,
+    Default,
+    Clone,
+    PartialEq,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsSize,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 pub struct ClientKeyPackages(pub TlsVecU32<(TlsByteVecU8, KeyPackageIn)>);
 
 impl ClientInfo {

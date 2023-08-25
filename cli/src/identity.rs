@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use openmls::prelude::{config::CryptoConfig, *};
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::OpenMlsCryptoProvider;
 use serde_json_any_key::*;
 
@@ -17,7 +16,11 @@ pub struct Identity {
 }
 
 impl Identity {
-    pub(crate) fn new(ciphersuite: Ciphersuite, crypto: &OpenMlsRustPersistentCrypto, id: &[u8]) -> Self {
+    pub(crate) fn new(
+        ciphersuite: Ciphersuite,
+        crypto: &OpenMlsRustPersistentCrypto,
+        id: &[u8],
+    ) -> Self {
         let credential = Credential::new(id.to_vec(), CredentialType::Basic).unwrap();
         let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
         let credential_with_key = CredentialWithKey {

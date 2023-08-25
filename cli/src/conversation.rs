@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// A conversation is a list of messages (strings).
 #[derive(Default, Debug, Serialize, Deserialize)]
