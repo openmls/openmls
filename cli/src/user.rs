@@ -1,5 +1,8 @@
 use std::borrow::Borrow;
-use std::str;
+use std::fs::File;
+use std::io::{BufWriter, BufReader};
+use std::path::PathBuf;
+use std::{str, env};
 use std::{cell::RefCell, collections::HashMap};
 
 use ds_lib::{ClientKeyPackages, GroupMessage};
@@ -43,6 +46,8 @@ pub struct User {
     #[serde(skip)]
     crypto: OpenMlsRustPersistentCrypto,
     #[serde(skip)]
+    password: Option<String>,
+    #[serde(skip)]
     autosave_enabled: bool,
 }
 
@@ -63,30 +68,85 @@ impl User {
             identity: RefCell::new(Identity::new(CIPHERSUITE, &crypto, username.as_bytes())),
             backend: Backend::default(),
             crypto,
+            password: None,
             autosave_enabled: false,
         };
         out
     }
 
-    pub fn load(user_name: String) -> Self {
-        let input_file = "openmls_cli_".to_owned() + user_name.as_str();
-        let input_path = "/tmp/".to_owned() + input_file.as_str() + ".json";
-        let text = std::fs::read_to_string(&input_path).unwrap();
+    fn get_file_path(user_name: &String) -> PathBuf {
+        let output_file_name = "openmls_cli_".to_owned() + user_name.as_str() + ".json";
+        let tmp_folder = env::temp_dir();
+        let ks_path = tmp_folder.join(output_file_name);
+        return ks_path;
+    }
 
-        // Parse the string into a dynamically-typed JSON structure.
-        let mut user: User = serde_json::from_str(&text).unwrap();
-        user.crypto.load_keystore(user_name.clone());
+    fn ciphered_load(mut input_file: &File, password: &String) -> Self {
+        // Load file into a string.
+        let cocoon = cocoon::Cocoon::new(password.as_bytes());
+
+        let data = cocoon.parse(&mut input_file).unwrap();
+        let text = String::from_utf8(data).expect("Found invalid UTF-8");
+
+        let user: User = serde_json::from_str(&text).unwrap();
         return user;
     }
 
-    pub fn save(&self) {
-        let output_file = "openmls_cli_".to_owned() + self.username.as_str();
-        let output_path = "/tmp/".to_owned() + output_file.as_str() + ".json";
+    fn unciphered_load(input_file: &File) -> Self {
+        // Prepare file reader.
+        let reader = BufReader::new(input_file);
+        // Read the JSON contents of the file as an instance of `User`.
+        let user: User = serde_json::from_reader(reader).unwrap();
+        return user;
+    }
+
+    pub fn load(user_name: String, password: Option<String>) -> Self {
+        let input_path = User::get_file_path(&user_name);
+        let input_file = File::open(input_path).unwrap();
+        let mut user = match &password {
+            None => User::unciphered_load(&input_file),
+            Some(p) => User::ciphered_load(&input_file, &p),
+        };
+        user.set_password(password.clone());
+        user.crypto.load_keystore(user_name, password);
+        return user;
+    }
+
+    fn ciphered_save(&self, mut output_file: &File, password: &String) {
+        let cocoon = cocoon::Cocoon::new(password.as_bytes());
+        
         match serde_json::to_string_pretty(&self) {
-            Ok(s) => std::fs::write(output_path, s).unwrap(),
+            Ok(s) => cocoon.dump(s.into_bytes(), &mut output_file).unwrap(),
+            Err(e) => log::error!("Error serializing user keystore: {:?}", e.to_string()),
+        }
+    }
+
+    fn unciphered_save(&self, output_file: &File) {
+        let writer = BufWriter::new(output_file);
+        match serde_json::to_writer_pretty(writer, &self) {
+            Ok(()) => log::info!("User serialized"),
             Err(e) => log::error!("Error serializing user: {:?}", e.to_string()),
         }
-        self.crypto.save_keystore(self.username.clone());
+    }
+
+    pub fn save(&self) {
+        let output_path = User::get_file_path(&self.username);
+        let output_file = File::create(output_path).unwrap();
+        match &self.password {
+            None => self.unciphered_save(&output_file),
+            Some(p) => self.ciphered_save(&output_file, &p),
+        }
+        self.crypto.save_keystore(self.username.clone(), self.password.clone());
+    }
+
+    pub fn set_password(&mut self, password: Option<String>) {
+        match &self.password {
+            None => self.password = password,
+            Some(p) => {
+                self.password = Some(p.to_string());
+                self.save();
+            },
+        }
     }
 
     pub fn enable_auto_save(&mut self) {

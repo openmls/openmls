@@ -19,7 +19,8 @@ const HELP: &str = "
 >>>     - reset                                 reset the server
 >>>     - register {client name}                register a new client
 >>>     - save {client name}                    serialize and save the client state
->>>     - load {client name}                    load and deserialize the client state as a new client
+>>>     - set_pwd {password}                    set/update the password for saving the client state
+>>>     - load {client name}[@{password}]       load and deserialize the client state as a new client (optionally using a password)
 >>>     - autosave                              enable automatic save of the current client state upon each update
 >>>     - create kp                             create a new key package
 >>>     - create group {group name}             create a new group
@@ -76,18 +77,26 @@ fn main() {
             continue;
         }
 
-        if let Some(client_name) = op.strip_prefix("load ") {
-            client = Some(user::User::load(client_name.to_string()));
-            stdout
+        if let Some(load_opts) = op.strip_prefix("load ") {
+            let load_opts: Vec<&str> = load_opts.split('@').collect();
+            let mut password: Option<String> = None;
+            if let Some(client_name) = load_opts.get(0) {
+                if load_opts.len() > 1 {
+                    if let Some(pwd) = load_opts.get(1) {
+                        password = Some(pwd.to_string());
+                    }
+                }
+                client = Some(user::User::load(client_name.to_string(), password));
+                stdout
                 .write_all(format!("recovered client {client_name}\n\n").as_bytes())
                 .unwrap();
+            }
             continue;
         }
 
         // Create a new KeyPackage.
         if op == "create kp" {
             if let Some(client) = &mut client {
-                // client.create_kp().unwrap();
                 client.create_kp();
                 stdout
                     .write_all(b" >>> New key package created\n\n")
@@ -100,6 +109,24 @@ fn main() {
             continue;
         }
 
+        // Set the current client password.
+        if let Some(password) = op.strip_prefix("set_pwd ") {
+            if let Some(client) = &mut client {
+                if !password.is_empty() {
+                    client.set_password(Some(password.to_string()));
+                    let name = &client.username;
+                    stdout
+                        .write_all(format!(" >>> client {name} password set\n\n").as_bytes())
+                        .unwrap();
+                }
+            } else {
+                stdout
+                    .write_all(b" >>> No client to update :(\n\n")
+                    .unwrap();
+            }
+            continue;
+        }
+        
         // Save the current client state.
         if op == "save" {
             if let Some(client) = &mut client {
@@ -116,6 +143,7 @@ fn main() {
             }
             continue;
         }
+
         // Enable automatic saving of the client state.
         if op == "autosave" {
             if let Some(client) = &mut client {
