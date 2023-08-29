@@ -1,4 +1,5 @@
 use std::borrow::Borrow;
+use std::collections::HashSet;
 use std::fs::File;
 use std::io::{BufWriter, BufReader};
 use std::path::PathBuf;
@@ -39,7 +40,9 @@ pub struct User {
     pub(crate) username: String,
     #[serde(with = "any_key_map")]
     pub(crate) contacts: HashMap<Vec<u8>, Contact>,
+    #[serde(skip)]
     pub(crate) groups: RefCell<HashMap<String, Group>>,
+    group_list: HashSet<String>,
     pub(crate) identity: RefCell<Identity>,
     #[serde(skip)]
     backend: Backend,
@@ -64,6 +67,7 @@ impl User {
         let out = Self {
             username: username.clone(),
             groups: RefCell::new(HashMap::new()),
+            group_list: HashSet::new(),
             contacts: HashMap::new(),
             identity: RefCell::new(Identity::new(CIPHERSUITE, &crypto, username.as_bytes())),
             backend: Backend::default(),
@@ -107,8 +111,19 @@ impl User {
             None => User::unciphered_load(&input_file),
             Some(p) => User::ciphered_load(&input_file, &p),
         };
+
         user.set_password(password.clone());
         user.crypto.load_keystore(user_name, password);
+        let groups = user.groups.get_mut() ;
+        for group_name in &user.group_list {
+            let mlsgroup = MlsGroup::load(&GroupId::from_slice(group_name.as_bytes()), user.crypto.key_store());
+            let grp = Group {
+                            mls_group: RefCell::new(mlsgroup.unwrap()),
+                            group_name: group_name.clone(),
+                            conversation: Conversation::default(),
+            };
+            groups.insert(group_name.clone(), grp);
+        }
         return user;
     }
 
@@ -129,13 +144,21 @@ impl User {
         }
     }
 
-    pub fn save(&self) {
+    pub fn save(&mut self) {
         let output_path = User::get_file_path(&self.username);
         let output_file = File::create(output_path).unwrap();
+
+        let groups = self.groups.get_mut();
+        for (group_name, group) in groups {
+            self.group_list.replace(group_name.clone());
+            group.mls_group.borrow_mut().save(self.crypto.key_store()).unwrap();
+        }
+
         match &self.password {
             None => self.unciphered_save(&output_file),
             Some(p) => self.ciphered_save(&output_file, &p),
         }
+        
         self.crypto.save_keystore(self.username.clone(), self.password.clone());
     }
 
