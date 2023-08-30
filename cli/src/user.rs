@@ -92,7 +92,7 @@ impl User {
     pub fn key_packages(&self) -> Vec<(Vec<u8>, KeyPackage)> {
         // clone first !
         let kpgs = self.identity.borrow().kp.clone();
-        Vec::from_iter(kpgs.into_iter())
+        Vec::from_iter(kpgs)
     }
 
     pub fn register(&self) {
