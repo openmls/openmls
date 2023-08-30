@@ -81,49 +81,61 @@ impl User {
         return ks_path;
     }
 
-    fn ciphered_load(mut input_file: &File, password: &String) -> Self {
+    fn ciphered_load(mut input_file: &File, password: &String) -> Result<Self, String> {
         // Load file into a string.
         let cocoon = cocoon::Cocoon::new(password.as_bytes());
 
-        let data = cocoon.parse(&mut input_file).unwrap();
-        let text = String::from_utf8(data).expect("Found invalid UTF-8");
-
-        let user: User = serde_json::from_str(&text).unwrap();
-        return user;
+        match cocoon.parse(&mut input_file) {
+            Ok(data) => {
+                let text = String::from_utf8(data).expect("Found invalid UTF-8");
+                match serde_json::from_str(&text) {
+                    Ok(user) => return user,
+                    Err(e) => return Result::Err(e.to_string()),
+                }
+            }
+            Err(_) => return Result::Err("Error parsing file with cocoon !".to_string()),
+        };
     }
 
-    fn unciphered_load(input_file: &File) -> Self {
+    fn unciphered_load(input_file: &File) -> Result<Self, String> {
         // Prepare file reader.
         let reader = BufReader::new(input_file);
         // Read the JSON contents of the file as an instance of `User`.
-        let user: User = serde_json::from_reader(reader).unwrap();
-        return user;
+        match serde_json::from_reader(reader) {
+            Ok(user) => return user,
+            Err(e) => return Result::Err(e.to_string()),
+        }
     }
 
-    pub fn load(user_name: String, password: Option<String>) -> Self {
+    pub fn load(user_name: String, password: Option<String>) -> Result<Self, String> {
         let input_path = User::get_file_path(&user_name);
         let input_file = File::open(input_path).unwrap();
-        let mut user = match &password {
+        let user_result = match &password {
             None => User::unciphered_load(&input_file),
             Some(p) => User::ciphered_load(&input_file, &p),
         };
 
-        user.set_password(password.clone());
-        user.crypto.load_keystore(user_name, password);
-        let groups = user.groups.get_mut();
-        for group_name in &user.group_list {
-            let mlsgroup = MlsGroup::load(
-                &GroupId::from_slice(group_name.as_bytes()),
-                user.crypto.key_store(),
-            );
-            let grp = Group {
-                mls_group: RefCell::new(mlsgroup.unwrap()),
-                group_name: group_name.clone(),
-                conversation: Conversation::default(),
-            };
-            groups.insert(group_name.clone(), grp);
+        if user_result.is_ok() {
+            let mut user = user_result.ok().unwrap();
+            user.set_password(password.clone());
+            user.crypto.load_keystore(user_name, password);
+            let groups = user.groups.get_mut();
+            for group_name in &user.group_list {
+                let mlsgroup = MlsGroup::load(
+                    &GroupId::from_slice(group_name.as_bytes()),
+                    user.crypto.key_store(),
+                );
+                let grp = Group {
+                    mls_group: RefCell::new(mlsgroup.unwrap()),
+                    group_name: group_name.clone(),
+                    conversation: Conversation::default(),
+                };
+                groups.insert(group_name.clone(), grp);
+            }
+            return Ok(user);
         }
-        return user;
+
+        user_result
     }
 
     fn ciphered_save(&self, mut output_file: &File, password: &String) {

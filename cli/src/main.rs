@@ -86,10 +86,19 @@ fn main() {
                         password = Some(pwd.to_string());
                     }
                 }
-                client = Some(user::User::load(client_name.to_string(), password));
-                stdout
-                    .write_all(format!("recovered client {client_name}\n\n").as_bytes())
-                    .unwrap();
+                match user::User::load(client_name.to_string(), password) {
+                    Ok(user) => {
+                        client = Some(user);
+                        stdout
+                            .write_all(format!("recovered client {client_name}\n\n").as_bytes())
+                            .unwrap();
+                    }
+                    Err(e) => stdout
+                        .write_all(
+                            format!("Error recovering client {client_name} : {e}\n\n").as_bytes(),
+                        )
+                        .unwrap(),
+                }
             }
             continue;
         }
