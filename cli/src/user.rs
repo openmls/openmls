@@ -1,10 +1,9 @@
 use std::borrow::Borrow;
 use std::collections::HashSet;
 use std::fs::File;
-use std::io::{BufWriter, BufReader};
+use std::io::{BufReader, BufWriter};
 use std::path::PathBuf;
-use std::{str, env};
-use std::{cell::RefCell, collections::HashMap};
+use std::{cell::RefCell, collections::HashMap, env, str};
 
 use ds_lib::{ClientKeyPackages, GroupMessage};
 use openmls::prelude::*;
@@ -23,9 +22,6 @@ const CIPHERSUITE: Ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA2
 pub struct Contact {
     username: String,
     id: Vec<u8>,
-    // We store multiple here but always only use the first one right now.
-    #[allow(dead_code)]
-    public_keys: ClientKeyPackages,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -114,13 +110,16 @@ impl User {
 
         user.set_password(password.clone());
         user.crypto.load_keystore(user_name, password);
-        let groups = user.groups.get_mut() ;
+        let groups = user.groups.get_mut();
         for group_name in &user.group_list {
-            let mlsgroup = MlsGroup::load(&GroupId::from_slice(group_name.as_bytes()), user.crypto.key_store());
+            let mlsgroup = MlsGroup::load(
+                &GroupId::from_slice(group_name.as_bytes()),
+                user.crypto.key_store(),
+            );
             let grp = Group {
-                            mls_group: RefCell::new(mlsgroup.unwrap()),
-                            group_name: group_name.clone(),
-                            conversation: Conversation::default(),
+                mls_group: RefCell::new(mlsgroup.unwrap()),
+                group_name: group_name.clone(),
+                conversation: Conversation::default(),
             };
             groups.insert(group_name.clone(), grp);
         }
@@ -129,7 +128,7 @@ impl User {
 
     fn ciphered_save(&self, mut output_file: &File, password: &String) {
         let cocoon = cocoon::Cocoon::new(password.as_bytes());
-        
+
         match serde_json::to_string_pretty(&self) {
             Ok(s) => cocoon.dump(s.into_bytes(), &mut output_file).unwrap(),
             Err(e) => log::error!("Error serializing user keystore: {:?}", e.to_string()),
@@ -151,15 +150,20 @@ impl User {
         let groups = self.groups.get_mut();
         for (group_name, group) in groups {
             self.group_list.replace(group_name.clone());
-            group.mls_group.borrow_mut().save(self.crypto.key_store()).unwrap();
+            group
+                .mls_group
+                .borrow_mut()
+                .save(self.crypto.key_store())
+                .unwrap();
         }
 
         match &self.password {
             None => self.unciphered_save(&output_file),
             Some(p) => self.ciphered_save(&output_file, &p),
         }
-        
-        self.crypto.save_keystore(self.username.clone(), self.password.clone());
+
+        self.crypto
+            .save_keystore(self.username.clone(), self.password.clone());
     }
 
     pub fn set_password(&mut self, password: Option<String>) {
@@ -168,7 +172,7 @@ impl User {
             Some(p) => {
                 self.password = Some(p.to_string());
                 self.save();
-            },
+            }
         }
     }
 
@@ -443,7 +447,6 @@ impl User {
                         c.id.clone(),
                         Contact {
                             username: c.client_name,
-                            public_keys: c.key_packages,
                             id: c.id,
                         },
                     )

@@ -1,7 +1,14 @@
 use cocoon;
 use openmls_traits::key_store::{MlsEntity, OpenMlsKeyStore};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, env, fs::File, sync::RwLock, path::PathBuf, io::{BufWriter, BufReader}};
+use std::{
+    collections::HashMap,
+    env,
+    fs::File,
+    io::{BufReader, BufWriter},
+    path::PathBuf,
+    sync::RwLock,
+};
 
 #[derive(Debug, Default)]
 pub struct PersistentKeyStore {
@@ -75,7 +82,7 @@ impl PersistentKeyStore {
                 .insert(base64::encode(key), base64::encode(value));
         }
         let cocoon = cocoon::Cocoon::new(password.as_bytes());
-        
+
         match serde_json::to_string_pretty(&ser_ks) {
             Ok(s) => cocoon.dump(s.into_bytes(), &mut output_file).unwrap(),
             Err(e) => log::error!("Error serializing user keystore: {:?}", e.to_string()),
@@ -91,7 +98,7 @@ impl PersistentKeyStore {
                 .values
                 .insert(base64::encode(key), base64::encode(value));
         }
-        
+
         match serde_json::to_writer_pretty(writer, &ser_ks) {
             Ok(()) => log::info!("User keystore serialized"),
             Err(e) => log::error!("Error serializing user keystore: {:?}", e.to_string()),

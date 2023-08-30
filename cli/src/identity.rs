@@ -5,7 +5,6 @@ use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::OpenMlsProvider;
 use serde_json_any_key::*;
 
-
 use super::openmls_rust_persistent_crypto::OpenMlsRustPersistentCrypto;
 
 #[derive(serde::Serialize, serde::Deserialize)]

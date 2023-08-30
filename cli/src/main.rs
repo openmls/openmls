@@ -88,8 +88,8 @@ fn main() {
                 }
                 client = Some(user::User::load(client_name.to_string(), password));
                 stdout
-                .write_all(format!("recovered client {client_name}\n\n").as_bytes())
-                .unwrap();
+                    .write_all(format!("recovered client {client_name}\n\n").as_bytes())
+                    .unwrap();
             }
             continue;
         }
@@ -126,7 +126,7 @@ fn main() {
             }
             continue;
         }
-        
+
         // Save the current client state.
         if op == "save" {
             if let Some(client) = &mut client {
