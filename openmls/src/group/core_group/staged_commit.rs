@@ -321,8 +321,8 @@ impl CoreGroup {
                 // From the old and new keys, keep the ones that are still relevant in the new epoch.
                 let epoch_keypairs: Vec<EncryptionKeyPair> = old_epoch_keypairs
                     .into_iter()
-                    .chain(state.new_keypairs.into_iter())
-                    .chain(leaf_keypair.into_iter())
+                    .chain(state.new_keypairs)
+                    .chain(leaf_keypair)
                     .filter(|keypair| new_owned_encryption_keys.contains(keypair.public_key()))
                     .collect();
                 // We should have private keys for all owned encryption keys.

@@ -449,8 +449,7 @@ impl ProposalQueue {
                         &sender,
                     )
                 })
-                .collect::<Result<Vec<QueuedProposal>, _>>()?
-                .into_iter(),
+                .collect::<Result<Vec<QueuedProposal>, _>>()?,
         );
 
         // Parse proposals and build adds and member list
