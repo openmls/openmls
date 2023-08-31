@@ -125,21 +125,25 @@ impl User {
                 if user_result.is_ok() {
                     let mut user = user_result.ok().unwrap();
                     user.set_password(password.clone());
-                    user.crypto.load_keystore(user_name, password);
-                    let groups = user.groups.get_mut();
-                    for group_name in &user.group_list {
-                        let mlsgroup = MlsGroup::load(
-                            &GroupId::from_slice(group_name.as_bytes()),
-                            user.crypto.key_store(),
-                        );
-                        let grp = Group {
-                            mls_group: RefCell::new(mlsgroup.unwrap()),
-                            group_name: group_name.clone(),
-                            conversation: Conversation::default(),
-                        };
-                        groups.insert(group_name.clone(), grp);
+                    match user.crypto.load_keystore(user_name, password) {
+                        Ok(_) => {
+                            let groups = user.groups.get_mut();
+                            for group_name in &user.group_list {
+                                let mlsgroup = MlsGroup::load(
+                                    &GroupId::from_slice(group_name.as_bytes()),
+                                    user.crypto.key_store(),
+                                );
+                                let grp = Group {
+                                    mls_group: RefCell::new(mlsgroup.unwrap()),
+                                    group_name: group_name.clone(),
+                                    conversation: Conversation::default(),
+                                };
+                                groups.insert(group_name.clone(), grp);
+                            }
+                            return Ok(user);
+                        }
+                        Err(e) => Err(e),
                     }
-                    return Ok(user);
                 } else {
                     return user_result;
                 }
@@ -184,8 +188,13 @@ impl User {
                     Some(p) => self.ciphered_save(&output_file, &p),
                 }
 
-                self.crypto
-                    .save_keystore(self.username.clone(), self.password.clone());
+                match self
+                    .crypto
+                    .save_keystore(self.username.clone(), self.password.clone())
+                {
+                    Ok(_) => log::info!("User state saved"),
+                    Err(e) => log::error!("Error saving user state : {:?}", e.to_string()),
+                }
             }
         }
     }

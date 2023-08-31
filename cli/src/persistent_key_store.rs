@@ -74,7 +74,7 @@ impl PersistentKeyStore {
         return ks_path;
     }
 
-    fn ciphered_save(&self, mut output_file: &File, password: String) {
+    fn ciphered_save(&self, mut output_file: &File, password: String) -> Result<(), String> {
         let mut ser_ks = SerializableKeyStore::default();
         for (key, value) in &*self.values.read().unwrap() {
             ser_ks
@@ -85,17 +85,14 @@ impl PersistentKeyStore {
 
         match serde_json::to_string_pretty(&ser_ks) {
             Ok(s) => match cocoon.dump(s.into_bytes(), &mut output_file) {
-                Ok(_) => (),
-                Err(_) => log::error!("Error dumping user keystore with cocoon"),
+                Ok(_) => Ok(()),
+                Err(_) => Err("Error dumping user keystore with cocoon".to_string()),
             },
-            Err(e) => log::error!(
-                "Error serializing user keystore in json: {:?}",
-                e.to_string()
-            ),
+            Err(e) => Err(e.to_string()),
         }
     }
 
-    fn unciphered_save(&self, output_file: &File) {
+    fn unciphered_save(&self, output_file: &File) -> Result<(), String> {
         let writer = BufWriter::new(output_file);
 
         let mut ser_ks = SerializableKeyStore::default();
@@ -106,12 +103,12 @@ impl PersistentKeyStore {
         }
 
         match serde_json::to_writer_pretty(writer, &ser_ks) {
-            Ok(()) => log::info!("User keystore serialized"),
-            Err(e) => log::error!("Error serializing user keystore: {:?}", e.to_string()),
+            Ok(()) => Ok(()),
+            Err(e) => Err(e.to_string()),
         }
     }
 
-    pub fn save(&self, user_name: String, password: Option<String>) {
+    pub fn save(&self, user_name: String, password: Option<String>) -> Result<(), String> {
         let ks_output_path = PersistentKeyStore::get_file_path(&user_name);
 
         match File::create(ks_output_path) {
@@ -119,11 +116,11 @@ impl PersistentKeyStore {
                 None => self.unciphered_save(&output_file),
                 Some(p) => self.ciphered_save(&output_file, p),
             },
-            Err(e) => log::error!("Error creating file {:?}", e.to_string()),
+            Err(e) => Err(e.to_string()),
         }
     }
 
-    fn ciphered_load(&self, mut input_file: &File, password: String) {
+    fn ciphered_load(&self, mut input_file: &File, password: String) -> Result<(), String> {
         // Load file into a string.
         let cocoon = cocoon::Cocoon::new(password.as_bytes());
 
@@ -131,27 +128,22 @@ impl PersistentKeyStore {
             Ok(data) => {
                 let text = String::from_utf8(data).expect("Found invalid UTF-8");
 
-                match serde_json::from_str::<SerializableKeyStore>(&text) {
-                    Err(e) => log::error!(
-                        "Error deserializing user keystore from json: {:?}",
-                        e.to_string()
-                    ),
-                    Ok(ser_ks) => {
-                        let mut ks_map = self.values.write().unwrap();
-                        for (key, value) in ser_ks.values {
-                            ks_map.insert(
-                                base64::decode(key).unwrap(),
-                                base64::decode(value).unwrap(),
-                            );
-                        }
+                let ser_ks = serde_json::from_str::<SerializableKeyStore>(&text);
+                if ser_ks.is_err() {
+                    Err(ser_ks.err().unwrap().to_string())
+                } else {
+                    let mut ks_map = self.values.write().unwrap();
+                    for (key, value) in ser_ks.unwrap().values {
+                        ks_map.insert(base64::decode(key).unwrap(), base64::decode(value).unwrap());
                     }
-                };
+                    Ok(())
+                }
             }
-            Err(_) => log::error!("Error parsing user keystore with cocoon"),
+            Err(_) => Err("Error parsing user keystore with cocoon".to_string()),
         }
     }
 
-    fn unciphered_load(&mut self, input_file: &File) {
+    fn unciphered_load(&mut self, input_file: &File) -> Result<(), String> {
         // Prepare file reader.
         let reader = BufReader::new(input_file);
 
@@ -162,15 +154,13 @@ impl PersistentKeyStore {
                 for (key, value) in ser_ks.values {
                     ks_map.insert(base64::decode(key).unwrap(), base64::decode(value).unwrap());
                 }
+                Ok(())
             }
-            Err(e) => log::error!(
-                "Error deserializing user keystore to json: {:?}",
-                e.to_string()
-            ),
+            Err(e) => Err(e.to_string()),
         }
     }
 
-    pub fn load(&mut self, user_name: String, password: Option<String>) {
+    pub fn load(&mut self, user_name: String, password: Option<String>) -> Result<(), String> {
         let ks_input_path = PersistentKeyStore::get_file_path(&user_name);
 
         match File::open(ks_input_path) {
@@ -178,7 +168,7 @@ impl PersistentKeyStore {
                 None => self.unciphered_load(&input_file),
                 Some(p) => self.ciphered_load(&input_file, p),
             },
-            Err(e) => log::error!("Error opening file {:?}", e.to_string()),
+            Err(e) => Err(e.to_string()),
         }
     }
 }
