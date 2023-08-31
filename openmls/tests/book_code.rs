@@ -1012,12 +1012,12 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     }
 
     // Should fail because you cannot remove yourself from a group
-    assert_eq!(
+    assert!(matches!(
         bob_group.commit_to_pending_proposals(provider, &bob_signature_keys),
         Err(CommitToPendingProposalsError::CreateCommitError(
             CreateCommitError::CannotRemoveSelf
         ))
-    );
+    ));
 
     let (queued_message, _welcome_option, _group_info) = alice_group
         .commit_to_pending_proposals(provider, &alice_signature_keys)
@@ -1283,18 +1283,18 @@ fn test_empty_input_errors(ciphersuite: Ciphersuite, provider: &impl OpenMlsProv
     )
     .expect("An unexpected error occurred.");
 
-    assert_eq!(
+    assert!(matches!(
         alice_group
             .add_members(provider, &alice_signature_keys, &[])
             .expect_err("No EmptyInputError when trying to pass an empty slice to `add_members`."),
         AddMembersError::EmptyInput(EmptyInputError::AddMembers)
-    );
-    assert_eq!(
+    ));
+    assert!(matches!(
         alice_group
             .remove_members(provider, &alice_signature_keys, &[])
             .expect_err(
                 "No EmptyInputError when trying to pass an empty slice to `remove_members`."
             ),
         RemoveMembersError::EmptyInput(EmptyInputError::RemoveMembers)
-    );
+    ));
 }

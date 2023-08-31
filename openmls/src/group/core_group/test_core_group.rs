@@ -183,10 +183,10 @@ fn test_failed_groupinfo_decryption(ciphersuite: Ciphersuite, provider: &impl Op
     )
     .expect_err("Creation of core group from a broken Welcome was successful.");
 
-    assert_eq!(
+    assert!(matches!(
         error,
         WelcomeError::GroupSecrets(GroupSecretsError::DecryptionFailed)
-    )
+    ))
 }
 
 /// Test what happens if the KEM ciphertext for the receiver in the UpdatePath

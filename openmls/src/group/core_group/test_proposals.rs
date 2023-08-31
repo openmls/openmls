@@ -304,10 +304,10 @@ fn test_required_unsupported_proposals(ciphersuite: Ciphersuite, provider: &impl
     .expect_err(
         "CoreGroup creation must fail because AppAck proposals aren't supported in OpenMLS yet.",
     );
-    assert_eq!(
+    assert!(matches!(
         e,
         CoreGroupBuildError::PublicGroupBuildError(PublicGroupBuildError::UnsupportedProposalType)
-    )
+    ))
 }
 
 #[apply(ciphersuites_and_providers)]
