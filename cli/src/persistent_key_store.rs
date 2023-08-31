@@ -1,4 +1,3 @@
-use cocoon;
 use openmls_traits::key_store::{MlsEntity, OpenMlsKeyStore};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -74,24 +73,6 @@ impl PersistentKeyStore {
         return ks_path;
     }
 
-    fn ciphered_save(&self, mut output_file: &File, password: String) -> Result<(), String> {
-        let mut ser_ks = SerializableKeyStore::default();
-        for (key, value) in &*self.values.read().unwrap() {
-            ser_ks
-                .values
-                .insert(base64::encode(key), base64::encode(value));
-        }
-        let cocoon = cocoon::Cocoon::new(password.as_bytes());
-
-        match serde_json::to_string_pretty(&ser_ks) {
-            Ok(s) => match cocoon.dump(s.into_bytes(), &mut output_file) {
-                Ok(_) => Ok(()),
-                Err(_) => Err("Error dumping user keystore with cocoon".to_string()),
-            },
-            Err(e) => Err(e.to_string()),
-        }
-    }
-
     fn unciphered_save(&self, output_file: &File) -> Result<(), String> {
         let writer = BufWriter::new(output_file);
 
@@ -108,38 +89,12 @@ impl PersistentKeyStore {
         }
     }
 
-    pub fn save(&self, user_name: String, password: Option<String>) -> Result<(), String> {
+    pub fn save(&self, user_name: String) -> Result<(), String> {
         let ks_output_path = PersistentKeyStore::get_file_path(&user_name);
 
         match File::create(ks_output_path) {
-            Ok(output_file) => match password {
-                None => self.unciphered_save(&output_file),
-                Some(p) => self.ciphered_save(&output_file, p),
-            },
+            Ok(output_file) => self.unciphered_save(&output_file),
             Err(e) => Err(e.to_string()),
-        }
-    }
-
-    fn ciphered_load(&self, mut input_file: &File, password: String) -> Result<(), String> {
-        // Load file into a string.
-        let cocoon = cocoon::Cocoon::new(password.as_bytes());
-
-        match cocoon.parse(&mut input_file) {
-            Ok(data) => {
-                let text = String::from_utf8(data).expect("Found invalid UTF-8");
-
-                let ser_ks = serde_json::from_str::<SerializableKeyStore>(&text);
-                if ser_ks.is_err() {
-                    Err(ser_ks.err().unwrap().to_string())
-                } else {
-                    let mut ks_map = self.values.write().unwrap();
-                    for (key, value) in ser_ks.unwrap().values {
-                        ks_map.insert(base64::decode(key).unwrap(), base64::decode(value).unwrap());
-                    }
-                    Ok(())
-                }
-            }
-            Err(_) => Err("Error parsing user keystore with cocoon".to_string()),
         }
     }
 
@@ -160,14 +115,11 @@ impl PersistentKeyStore {
         }
     }
 
-    pub fn load(&mut self, user_name: String, password: Option<String>) -> Result<(), String> {
+    pub fn load(&mut self, user_name: String) -> Result<(), String> {
         let ks_input_path = PersistentKeyStore::get_file_path(&user_name);
 
         match File::open(ks_input_path) {
-            Ok(input_file) => match password {
-                None => self.unciphered_load(&input_file),
-                Some(p) => self.ciphered_load(&input_file, p),
-            },
+            Ok(input_file) => self.unciphered_load(&input_file),
             Err(e) => Err(e.to_string()),
         }
     }

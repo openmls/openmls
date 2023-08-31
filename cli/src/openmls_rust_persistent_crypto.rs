@@ -32,15 +32,11 @@ impl OpenMlsProvider for OpenMlsRustPersistentCrypto {
 }
 
 impl OpenMlsRustPersistentCrypto {
-    pub fn save_keystore(&self, user_name: String, password: Option<String>) -> Result<(), String> {
-        self.key_store.save(user_name, password)
+    pub fn save_keystore(&self, user_name: String) -> Result<(), String> {
+        self.key_store.save(user_name)
     }
 
-    pub fn load_keystore(
-        &mut self,
-        user_name: String,
-        password: Option<String>,
-    ) -> Result<(), String> {
-        self.key_store.load(user_name, password)
+    pub fn load_keystore(&mut self, user_name: String) -> Result<(), String> {
+        self.key_store.load(user_name)
     }
 }

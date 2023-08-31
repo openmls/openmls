@@ -16,46 +16,6 @@ This repository provides default implementations
 
 It further holds the following crates that are used for testing.
 
-### Linux Build
-To build openmls, some additional packages may be required. 
-
-#### Bare metal
-Install rustup:
-```
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-rustup update
-rustup target add x86_64-unknown-linux-gnu
-```
-
-Install needed packages:
-```
-sudo apt-get install -y build-essential
-sudo apt-get install -y curl
-sudo apt-get install -y pkg-config
-sudo apt-get install -y autoconf
-sudo apt-get install -y make
-sudo apt-get install -y cmake
-sudo apt-get install -y libssl-dev
-sudo apt-get install -y protobuf-compiler
-sudo apt-get install -y ninja-build
-sudo apt-get install -y clang
-```
-
-Then inside openmls repository folder run:
-```
-cargo build
-```
-
-#### Using docker
-It is also possible to use the provided Dockerfile.
-
-Within openmls repository folder run:
-```
-docker build -t devenv/rust:1.0 .
-docker run -v /path/to/openmls_repository_folder:/opt -it devenv/rust:1.0
-cd /opt
-cargo build
-```
 ### Delivery Service
 
 A basic [delivery service](https://messaginglayersecurity.rocks/mls-architecture/draft-ietf-mls-architecture.html#name-delivery-service) can be found in [delivery-service/ds](https://github.com/openmls/openmls/tree/main//delivery-service/ds/).

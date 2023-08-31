@@ -45,8 +45,6 @@ pub struct User {
     #[serde(skip)]
     crypto: OpenMlsRustPersistentCrypto,
     #[serde(skip)]
-    password: Option<String>,
-    #[serde(skip)]
     autosave_enabled: bool,
 }
 
@@ -68,7 +66,6 @@ impl User {
             identity: RefCell::new(Identity::new(CIPHERSUITE, &crypto, username.as_bytes())),
             backend: Backend::default(),
             crypto,
-            password: None,
             autosave_enabled: false,
         };
         out
@@ -79,22 +76,6 @@ impl User {
         let tmp_folder = env::temp_dir();
         let ks_path = tmp_folder.join(output_file_name);
         return ks_path;
-    }
-
-    fn ciphered_load(mut input_file: &File, password: &String) -> Result<Self, String> {
-        // Load file into a string.
-        let cocoon = cocoon::Cocoon::new(password.as_bytes());
-
-        match cocoon.parse(&mut input_file) {
-            Ok(data) => {
-                let text = String::from_utf8(data).expect("Found invalid UTF-8");
-                match serde_json::from_str::<User>(&text) {
-                    Ok(user) => return Ok(user),
-                    Err(e) => return Result::Err(e.to_string()),
-                }
-            }
-            Err(_) => return Result::Err("Error parsing file with cocoon !".to_string()),
-        };
     }
 
     fn unciphered_load(input_file: &File) -> Result<Self, String> {
@@ -108,7 +89,7 @@ impl User {
         }
     }
 
-    pub fn load(user_name: String, password: Option<String>) -> Result<Self, String> {
+    pub fn load(user_name: String) -> Result<Self, String> {
         let input_path = User::get_file_path(&user_name);
 
         match File::open(input_path) {
@@ -117,15 +98,11 @@ impl User {
                 return Err(e.to_string());
             }
             Ok(input_file) => {
-                let user_result = match &password {
-                    None => User::unciphered_load(&input_file),
-                    Some(p) => User::ciphered_load(&input_file, &p),
-                };
+                let user_result = User::unciphered_load(&input_file);
 
                 if user_result.is_ok() {
                     let mut user = user_result.ok().unwrap();
-                    user.set_password(password.clone());
-                    match user.crypto.load_keystore(user_name, password) {
+                    match user.crypto.load_keystore(user_name) {
                         Ok(_) => {
                             let groups = user.groups.get_mut();
                             for group_name in &user.group_list {
@@ -148,15 +125,6 @@ impl User {
                     return user_result;
                 }
             }
-        }
-    }
-
-    fn ciphered_save(&self, mut output_file: &File, password: &String) {
-        let cocoon = cocoon::Cocoon::new(password.as_bytes());
-
-        match serde_json::to_string_pretty(&self) {
-            Ok(s) => cocoon.dump(s.into_bytes(), &mut output_file).unwrap(),
-            Err(e) => log::error!("Error serializing user keystore: {:?}", e.to_string()),
         }
     }
 
@@ -183,28 +151,12 @@ impl User {
                         .unwrap();
                 }
 
-                match &self.password {
-                    None => self.unciphered_save(&output_file),
-                    Some(p) => self.ciphered_save(&output_file, &p),
-                }
+                self.unciphered_save(&output_file);
 
-                match self
-                    .crypto
-                    .save_keystore(self.username.clone(), self.password.clone())
-                {
+                match self.crypto.save_keystore(self.username.clone()) {
                     Ok(_) => log::info!("User state saved"),
                     Err(e) => log::error!("Error saving user state : {:?}", e.to_string()),
                 }
-            }
-        }
-    }
-
-    pub fn set_password(&mut self, password: Option<String>) {
-        match &self.password {
-            None => self.password = password,
-            Some(p) => {
-                self.password = Some(p.to_string());
-                self.save();
             }
         }
     }
