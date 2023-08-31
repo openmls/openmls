@@ -178,7 +178,7 @@ impl CoreGroup {
                 })?;
             vec![leaf_keypair]
                 .into_iter()
-                .chain(path_keypairs.into_iter())
+                .chain(path_keypairs)
                 .collect()
         } else {
             vec![leaf_keypair]

@@ -347,7 +347,7 @@ fn bad_padding(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
                 Err(MessageDecryptionError::MalformedContent)
             );
         } else {
-            assert!(matches!(verifiable_plaintext_result, Ok(_)))
+            assert!(verifiable_plaintext_result.is_ok())
         }
     }
 }

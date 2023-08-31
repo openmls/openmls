@@ -141,7 +141,11 @@ fn external_remove_proposal_should_remove_member(
         .process_message(provider, bob_external_remove_proposal)
         .unwrap();
     // commit the proposal
-    let ProcessedMessageContent::ProposalMessage(remove_proposal) = processed_message.into_content() else { panic!("Not a remove proposal");};
+    let ProcessedMessageContent::ProposalMessage(remove_proposal) =
+        processed_message.into_content()
+    else {
+        panic!("Not a remove proposal");
+    };
     alice_group.store_pending_proposal(*remove_proposal);
     alice_group
         .commit_to_pending_proposals(provider, &alice_credential.signer)
@@ -163,7 +167,11 @@ fn external_remove_proposal_should_remove_member(
         .process_message(provider, invalid_bob_external_remove_proposal)
         .unwrap();
     // commit the proposal
-    let ProcessedMessageContent::ProposalMessage(remove_proposal) = processed_message.into_content() else { panic!("Not a remove proposal");};
+    let ProcessedMessageContent::ProposalMessage(remove_proposal) =
+        processed_message.into_content()
+    else {
+        panic!("Not a remove proposal");
+    };
     alice_group.store_pending_proposal(*remove_proposal);
     assert_eq!(
         alice_group

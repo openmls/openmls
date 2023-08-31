@@ -253,7 +253,6 @@ impl MlsGroupTestSetup {
             }
             CodecUse::StructMessages => welcome,
         };
-        if self.use_codec == CodecUse::SerializedMessages {}
         let clients = self.clients.read().expect("An unexpected error occurred.");
         for egs in welcome.secrets() {
             let client_id = self
