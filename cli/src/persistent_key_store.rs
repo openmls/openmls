@@ -131,11 +131,21 @@ impl PersistentKeyStore {
             Ok(data) => {
                 let text = String::from_utf8(data).expect("Found invalid UTF-8");
 
-                let ser_ks = serde_json::from_str::<SerializableKeyStore>(&text).unwrap();
-                let mut ks_map = self.values.write().unwrap();
-                for (key, value) in ser_ks.values {
-                    ks_map.insert(base64::decode(key).unwrap(), base64::decode(value).unwrap());
-                }
+                match serde_json::from_str::<SerializableKeyStore>(&text) {
+                    Err(e) => log::error!(
+                        "Error deserializing user keystore from json: {:?}",
+                        e.to_string()
+                    ),
+                    Ok(ser_ks) => {
+                        let mut ks_map = self.values.write().unwrap();
+                        for (key, value) in ser_ks.values {
+                            ks_map.insert(
+                                base64::decode(key).unwrap(),
+                                base64::decode(value).unwrap(),
+                            );
+                        }
+                    }
+                };
             }
             Err(_) => log::error!("Error parsing user keystore with cocoon"),
         }

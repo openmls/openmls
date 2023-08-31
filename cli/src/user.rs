@@ -88,8 +88,8 @@ impl User {
         match cocoon.parse(&mut input_file) {
             Ok(data) => {
                 let text = String::from_utf8(data).expect("Found invalid UTF-8");
-                match serde_json::from_str(&text) {
-                    Ok(user) => return user,
+                match serde_json::from_str::<User>(&text) {
+                    Ok(user) => return Ok(user),
                     Err(e) => return Result::Err(e.to_string()),
                 }
             }
@@ -100,42 +100,51 @@ impl User {
     fn unciphered_load(input_file: &File) -> Result<Self, String> {
         // Prepare file reader.
         let reader = BufReader::new(input_file);
+
         // Read the JSON contents of the file as an instance of `User`.
-        match serde_json::from_reader(reader) {
-            Ok(user) => return user,
+        match serde_json::from_reader::<BufReader<&File>, User>(reader) {
+            Ok(user) => return Ok(user),
             Err(e) => return Result::Err(e.to_string()),
         }
     }
 
     pub fn load(user_name: String, password: Option<String>) -> Result<Self, String> {
         let input_path = User::get_file_path(&user_name);
-        let input_file = File::open(input_path).unwrap();
-        let user_result = match &password {
-            None => User::unciphered_load(&input_file),
-            Some(p) => User::ciphered_load(&input_file, &p),
-        };
 
-        if user_result.is_ok() {
-            let mut user = user_result.ok().unwrap();
-            user.set_password(password.clone());
-            user.crypto.load_keystore(user_name, password);
-            let groups = user.groups.get_mut();
-            for group_name in &user.group_list {
-                let mlsgroup = MlsGroup::load(
-                    &GroupId::from_slice(group_name.as_bytes()),
-                    user.crypto.key_store(),
-                );
-                let grp = Group {
-                    mls_group: RefCell::new(mlsgroup.unwrap()),
-                    group_name: group_name.clone(),
-                    conversation: Conversation::default(),
-                };
-                groups.insert(group_name.clone(), grp);
+        match File::open(input_path) {
+            Err(e) => {
+                log::error!("Error loading user state: {:?}", e.to_string());
+                return Err(e.to_string());
             }
-            return Ok(user);
-        }
+            Ok(input_file) => {
+                let user_result = match &password {
+                    None => User::unciphered_load(&input_file),
+                    Some(p) => User::ciphered_load(&input_file, &p),
+                };
 
-        user_result
+                if user_result.is_ok() {
+                    let mut user = user_result.ok().unwrap();
+                    user.set_password(password.clone());
+                    user.crypto.load_keystore(user_name, password);
+                    let groups = user.groups.get_mut();
+                    for group_name in &user.group_list {
+                        let mlsgroup = MlsGroup::load(
+                            &GroupId::from_slice(group_name.as_bytes()),
+                            user.crypto.key_store(),
+                        );
+                        let grp = Group {
+                            mls_group: RefCell::new(mlsgroup.unwrap()),
+                            group_name: group_name.clone(),
+                            conversation: Conversation::default(),
+                        };
+                        groups.insert(group_name.clone(), grp);
+                    }
+                    return Ok(user);
+                } else {
+                    return user_result;
+                }
+            }
+        }
     }
 
     fn ciphered_save(&self, mut output_file: &File, password: &String) {
@@ -157,25 +166,28 @@ impl User {
 
     pub fn save(&mut self) {
         let output_path = User::get_file_path(&self.username);
-        let output_file = File::create(output_path).unwrap();
+        match File::create(output_path) {
+            Err(e) => log::error!("Error saving user state: {:?}", e.to_string()),
+            Ok(output_file) => {
+                let groups = self.groups.get_mut();
+                for (group_name, group) in groups {
+                    self.group_list.replace(group_name.clone());
+                    group
+                        .mls_group
+                        .borrow_mut()
+                        .save(self.crypto.key_store())
+                        .unwrap();
+                }
 
-        let groups = self.groups.get_mut();
-        for (group_name, group) in groups {
-            self.group_list.replace(group_name.clone());
-            group
-                .mls_group
-                .borrow_mut()
-                .save(self.crypto.key_store())
-                .unwrap();
+                match &self.password {
+                    None => self.unciphered_save(&output_file),
+                    Some(p) => self.ciphered_save(&output_file, &p),
+                }
+
+                self.crypto
+                    .save_keystore(self.username.clone(), self.password.clone());
+            }
         }
-
-        match &self.password {
-            None => self.unciphered_save(&output_file),
-            Some(p) => self.ciphered_save(&output_file, &p),
-        }
-
-        self.crypto
-            .save_keystore(self.username.clone(), self.password.clone());
     }
 
     pub fn set_password(&mut self, password: Option<String>) {
