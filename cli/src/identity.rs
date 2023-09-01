@@ -3,13 +3,15 @@ use std::collections::HashMap;
 use openmls::prelude::{config::CryptoConfig, *};
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::OpenMlsProvider;
-use serde_json_any_key::*;
 
-use super::openmls_rust_persistent_crypto::OpenMlsRustPersistentCrypto;
+use super::{openmls_rust_persistent_crypto::OpenMlsRustPersistentCrypto, serialize_any_hashmap};
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct Identity {
-    #[serde(with = "any_key_map")]
+    #[serde(
+        serialize_with = "serialize_any_hashmap::serialize_hashmap",
+        deserialize_with = "serialize_any_hashmap::deserialize_hashmap"
+    )]
     pub(crate) kp: HashMap<Vec<u8>, KeyPackage>,
     pub(crate) credential_with_key: CredentialWithKey,
     pub(crate) signer: SignatureKeyPair,
