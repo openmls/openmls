@@ -193,10 +193,8 @@ impl SecretTree {
             return Ok(());
         }
 
-        let leaf_node = self.get_node(index.into())?;
-
         // If we don't have a secret in the leaf node, we derive it
-        if leaf_node.is_none() {
+        if self.get_node(index.into())?.is_none() {
             // Collect empty nodes in the direct path until a non-empty node is
             // found
             let mut empty_nodes: Vec<ParentNodeIndex> = Vec::new();
@@ -276,9 +274,7 @@ impl SecretTree {
             .ok_or(SecretTreeError::IndexOutOfBounds)? = Some(application_sender_ratchet);
 
         // Delete leaf node
-        self.set_node(index.into(), None)?;
-
-        Ok(())
+        self.set_node(index.into(), None)
     }
 
     /// Return RatchetSecrets for a given index and generation. This should be
@@ -444,8 +440,7 @@ impl SecretTree {
         )?;
 
         // Delete parent node
-        self.set_node(index_in_tree.into(), None)?;
-        Ok(())
+        self.set_node(index_in_tree.into(), None)
     }
 
     fn get_node(&self, index: TreeNodeIndex) -> Result<Option<&SecretTreeNode>, SecretTreeError> {
