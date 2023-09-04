@@ -68,11 +68,7 @@ impl OpenMlsKeyStore for PersistentKeyStore {
 
 impl PersistentKeyStore {
     fn get_file_path(user_name: &String) -> PathBuf {
-        return file_helpers::get_file_path(
-            &"openmls_cli_".to_string(),
-            user_name,
-            Some("_ks".to_string()),
-        );
+        return file_helpers::get_file_path(&("openmls_cli_".to_owned() + user_name + "_ks.json"));
     }
 
     fn save_to_file(&self, output_file: &File) -> Result<(), String> {
