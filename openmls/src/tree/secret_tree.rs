@@ -305,11 +305,7 @@ impl SecretTree {
             log::trace!("   initialize sender ratchets");
             self.initialize_sender_ratchets(ciphersuite, crypto, index)?;
         }
-        match self
-            .ratchet_mut(index, secret_type)?
-            .as_mut()
-            .ok_or(SecretTreeError::IndexOutOfBounds)?
-        {
+        match self.ratchet_mut(index, secret_type)? {
             SenderRatchet::EncryptionRatchet(_) => {
                 log::error!("This is the wrong ratchet type.");
                 Err(SecretTreeError::RatchetTypeError)
@@ -333,11 +329,7 @@ impl SecretTree {
         if self.ratchet_opt(index, secret_type)?.is_none() {
             self.initialize_sender_ratchets(ciphersuite, crypto, index)?;
         }
-        match self
-            .ratchet_mut(index, secret_type)?
-            .as_mut()
-            .ok_or(SecretTreeError::IndexOutOfBounds)?
-        {
+        match self.ratchet_mut(index, secret_type)? {
             SenderRatchet::DecryptionRatchet(_) => {
                 log::error!("Invalid ratchet type. Got decryption, expected encryption.");
                 Err(SecretTreeError::RatchetTypeError)
@@ -354,13 +346,14 @@ impl SecretTree {
         &mut self,
         index: LeafNodeIndex,
         secret_type: SecretType,
-    ) -> Result<&mut Option<SenderRatchet>, SecretTreeError> {
+    ) -> Result<&mut SenderRatchet, SecretTreeError> {
         let sender_ratchets = match secret_type {
             SecretType::HandshakeSecret => &mut self.handshake_sender_ratchets,
             SecretType::ApplicationSecret => &mut self.application_sender_ratchets,
         };
         sender_ratchets
             .get_mut(index.usize())
+            .and_then(|r| r.as_mut())
             .ok_or(SecretTreeError::IndexOutOfBounds)
     }
 
@@ -394,11 +387,7 @@ impl SecretTree {
             ciphersuite
         );
         let hash_len = ciphersuite.hash_length();
-        let node_secret = match &self
-            .parent_nodes
-            .get(index_in_tree.usize())
-            .ok_or(SecretTreeError::IndexOutOfBounds)?
-        {
+        let node_secret = match &self.get_node(index_in_tree.into())? {
             Some(node) => &node.secret,
             // This function only gets called top to bottom, so this should not happen
             None => {
