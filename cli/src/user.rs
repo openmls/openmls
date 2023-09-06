@@ -395,6 +395,8 @@ impl User {
                                     Some(gid) => {
                                         let mut grps = self.groups.borrow_mut();
                                         grps.remove_entry(str::from_utf8(gid.as_slice()).unwrap());
+                                        self.group_list
+                                            .remove(str::from_utf8(gid.as_slice()).unwrap());
                                     }
                                     None => log::debug!(
                                         "update::Error post update remove must have a group id"
