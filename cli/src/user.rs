@@ -11,8 +11,9 @@ use openmls_traits::OpenMlsProvider;
 use tls_codec::TlsByteVecU8;
 
 use super::{
-    backend::Backend, conversation::Conversation, file_helpers, identity::Identity,
-    openmls_rust_persistent_crypto::OpenMlsRustPersistentCrypto, serialize_any_hashmap,
+    backend::Backend, conversation::Conversation, conversation::ConversationMessage, file_helpers,
+    identity::Identity, openmls_rust_persistent_crypto::OpenMlsRustPersistentCrypto,
+    serialize_any_hashmap,
 };
 
 const CIPHERSUITE: Ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
@@ -250,11 +251,18 @@ impl User {
     }
 
     /// Return the last 100 messages sent to the group.
-    pub fn read_msgs(&self, group_name: String) -> Result<Option<Vec<String>>, String> {
+    pub fn read_msgs(
+        &self,
+        group_name: String,
+    ) -> Result<Option<Vec<ConversationMessage>>, String> {
         let groups = self.groups.borrow();
         groups.get(&group_name).map_or_else(
             || Err("Unknown group".to_string()),
-            |g| Ok(g.conversation.get(100).map(|messages| messages.to_vec())),
+            |g| {
+                Ok(g.conversation
+                    .get(100)
+                    .map(|messages: &[crate::conversation::ConversationMessage]| messages.to_vec()))
+            },
         )
     }
 
@@ -305,10 +313,13 @@ impl User {
     /// Update the user. This involves:
     /// * retrieving all new messages from the server
     /// * update the contacts with all other clients known to the server
-    pub fn update(&mut self, group_name: Option<String>) -> Result<Vec<String>, String> {
+    pub fn update(
+        &mut self,
+        group_name: Option<String>,
+    ) -> Result<Vec<ConversationMessage>, String> {
         log::debug!("Updating {} ...", self.username);
 
-        let mut messages_out = Vec::new();
+        let mut messages_out: Vec<ConversationMessage> = Vec::new();
 
         let mut process_protocol_message = |message: ProtocolMessage| -> Result<
             (PostUpdateActions, Option<GroupId>),
@@ -340,14 +351,26 @@ impl User {
                     return Err("error".to_string());
                 }
             };
+
+            let processed_message_credential: Credential = processed_message.credential().clone();
+
             match processed_message.into_content() {
                 ProcessedMessageContent::ApplicationMessage(application_message) => {
-                    let application_message =
-                        String::from_utf8(application_message.into_bytes()).unwrap();
+                    let sender_name =
+                        match self.contacts.get(processed_message_credential.identity()) {
+                            Some(c) => &c.username,
+                            None => panic!("There's a member in the group we don't know."),
+                        };
+                    let conversation_message = ConversationMessage::new(
+                        String::from_utf8(application_message.into_bytes())
+                            .unwrap()
+                            .clone(),
+                        sender_name.to_string(),
+                    );
                     if group_name.is_none() || group_name.clone().unwrap() == group.group_name {
-                        messages_out.push(application_message.clone());
+                        messages_out.push(conversation_message.clone());
                     }
-                    group.conversation.add(application_message);
+                    group.conversation.add(conversation_message);
                 }
                 ProcessedMessageContent::ProposalMessage(_proposal_ptr) => {
                     // intentionally left blank.

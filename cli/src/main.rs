@@ -39,9 +39,9 @@ fn update(client: &mut user::User, group_id: Option<String>, stdout: &mut Stdout
     if !messages.is_empty() {
         stdout.write_all(b"     New messages:\n\n").unwrap();
     }
-    messages.iter().for_each(|m| {
+    messages.iter().for_each(|cm| {
         stdout
-            .write_all(format!("         {m}\n").as_bytes())
+            .write_all(format!("         {0} from {1}\n", cm.message, cm.author).as_bytes())
             .unwrap();
     });
     stdout.write_all(b"\n").unwrap();
