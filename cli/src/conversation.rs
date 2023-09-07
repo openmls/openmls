@@ -6,7 +6,7 @@ pub struct Conversation {
     messages: Vec<ConversationMessage>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 pub struct ConversationMessage {
     pub author: String,
     pub message: String,
