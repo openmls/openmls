@@ -1,3 +1,6 @@
+pub const VERIFIED: bool = true;
+pub const UNVERIFIED: bool = false;
+
 // === The folowing functions aren't necessarily cryptographically secure!
 
 #[cfg(any(feature = "test-utils", test))]

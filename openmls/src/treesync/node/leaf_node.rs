@@ -21,6 +21,7 @@ use crate::{
     group::{config::CryptoConfig, GroupId},
     key_packages::{KeyPackage, Lifetime},
     treesync::errors::PublicTreeError,
+    utils::{UNVERIFIED, VERIFIED},
     versions::ProtocolVersion,
 };
 
@@ -74,12 +75,14 @@ pub(crate) struct NewLeafNodeParams {
 ///     opaque signature<V>;
 /// } LeafNode;
 /// ```
-// TODO(#1242): Do not derive `TlsDeserialize`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsSize)]
-pub struct LeafNode {
+pub struct BaseLeafNode<const VERIFIED: bool> {
     payload: LeafNodePayload,
     signature: Signature,
 }
+
+pub type LeafNode = BaseLeafNode<VERIFIED>;
+pub type LeafNodeIn = BaseLeafNode<UNVERIFIED>;
 
 impl LeafNode {
     /// Create a new [`LeafNode`].
@@ -657,14 +660,6 @@ impl TreePosition {
 
 const LEAF_NODE_SIGNATURE_LABEL: &str = "LeafNodeTBS";
 
-#[derive(
-    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
-)]
-pub struct LeafNodeIn {
-    payload: LeafNodePayload,
-    signature: Signature,
-}
-
 impl LeafNodeIn {
     pub(crate) fn into_verifiable_leaf_node(self) -> VerifiableLeafNode {
         match self.payload.leaf_node_source {
@@ -915,4 +910,15 @@ pub enum LeafNodeGenerationError<KeyStoreError> {
     /// Error storing leaf private key in key store.
     #[error("Error storing leaf private key in key store.")]
     KeyStoreError(KeyStoreError),
+}
+
+impl tls_codec::Deserialize for LeafNodeIn {
+    fn tls_deserialize<R: std::io::Read>(bytes: &mut R) -> Result<Self, tls_codec::Error>
+    where
+        Self: Sized,
+    {
+        let payload = LeafNodePayload::tls_deserialize(bytes)?;
+        let signature = Signature::tls_deserialize(bytes)?;
+        Ok(Self { payload, signature })
+    }
 }
