@@ -310,6 +310,48 @@ impl User {
         Ok(())
     }
 
+    /// Update the user clients list.
+    /// It updates the contacts with all the clients known by the server
+    fn update_clients(&mut self) {
+        match self.backend.list_clients() {
+            Ok(mut v) => {
+                for c in v.drain(..) {
+                    let client_id = c.id.clone();
+                    log::debug!(
+                        "update::Processing client for contact {:?}",
+                        str::from_utf8(&client_id).unwrap()
+                    );
+                    if c.id != self.identity.borrow().identity()
+                        && self
+                            .contacts
+                            .insert(
+                                c.id.clone(),
+                                Contact {
+                                    username: c.client_name,
+                                    id: c.id,
+                                },
+                            )
+                            .is_some()
+                    {
+                        log::debug!(
+                            "update::added client to contact {:?}",
+                            str::from_utf8(&client_id).unwrap()
+                        );
+                        log::trace!("Updated client {}", "");
+                    }
+                }
+            }
+            Err(e) => log::debug!("update_clients::Error reading clients from DS: {:?}", e),
+        }
+        log::debug!("update::Processing clients done, contact list is:");
+        for contact_id in self.contacts.borrow().keys() {
+            log::debug!(
+                "update::Parsing contact {:?}",
+                str::from_utf8(contact_id).unwrap()
+            );
+        }
+    }
+
     /// Update the user. This involves:
     /// * retrieving all new messages from the server
     /// * update the contacts with all other clients known to the server
@@ -356,11 +398,45 @@ impl User {
 
             match processed_message.into_content() {
                 ProcessedMessageContent::ApplicationMessage(application_message) => {
-                    let sender_name =
-                        match self.contacts.get(processed_message_credential.identity()) {
-                            Some(c) => &c.username,
-                            None => panic!("There's a member in the group we don't know."),
-                        };
+                    let sender_name = match self
+                        .contacts
+                        .get(processed_message_credential.identity())
+                    {
+                        Some(c) => c.username.clone(),
+                        None => {
+                            // Contact list is not updated right now, get the identity from the mls_group member
+                            let mut user_id: String = String::new();
+                            for Member {
+                                index: _,
+                                encryption_key: _,
+                                signature_key,
+                                credential,
+                            } in mls_group.members()
+                            {
+                                if self
+                                    .identity
+                                    .borrow()
+                                    .credential_with_key
+                                    .signature_key
+                                    .as_slice()
+                                    != signature_key.as_slice()
+                                {
+                                    if processed_message_credential.identity()
+                                        == credential.identity()
+                                    {
+                                        log::debug!("update::Processing ApplicationMessage read sender name from credential identity for group {} ", group.group_name);
+                                        user_id = str::from_utf8(credential.identity())
+                                            .unwrap()
+                                            .to_owned()
+                                    }
+                                }
+                            }
+                            user_id
+                        }
+                    };
+                    if sender_name.is_empty() {
+                        panic!("We received a message from an unknown member group !");
+                    }
                     let conversation_message = ConversationMessage::new(
                         String::from_utf8(application_message.into_bytes())
                             .unwrap()
@@ -442,38 +518,7 @@ impl User {
         }
         log::debug!("update::Processing messages done");
 
-        for c in self.backend.list_clients()?.drain(..) {
-            let client_id = c.id.clone();
-            log::debug!(
-                "update::Processing client for contact {:?}",
-                str::from_utf8(&client_id).unwrap()
-            );
-            if c.id != self.identity.borrow().identity()
-                && self
-                    .contacts
-                    .insert(
-                        c.id.clone(),
-                        Contact {
-                            username: c.client_name,
-                            id: c.id,
-                        },
-                    )
-                    .is_some()
-            {
-                log::debug!(
-                    "update::added client to contact {:?}",
-                    str::from_utf8(&client_id).unwrap()
-                );
-                log::trace!("Updated client {}", "");
-            }
-        }
-        log::debug!("update::Processing clients done, contact list is:");
-        for contact_id in self.contacts.borrow().keys() {
-            log::debug!(
-                "update::Parsing contact {:?}",
-                str::from_utf8(contact_id).unwrap()
-            );
-        }
+        self.update_clients();
 
         self.autosave();
 
