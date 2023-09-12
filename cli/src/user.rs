@@ -643,7 +643,7 @@ impl User {
             .mls_group
             .borrow_mut()
             .remove_members(&self.crypto, &self.identity.borrow().signer, &[leaf_index])
-            .map_err(|e| format!("Failed to add member to group - {e}"))?;
+            .map_err(|e| format!("Failed to remove member from group - {e}"))?;
 
         // First, send the MlsMessage remove commit to the group.
         log::trace!("Sending commit");
