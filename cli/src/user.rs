@@ -405,38 +405,28 @@ impl User {
                         Some(c) => c.username.clone(),
                         None => {
                             // Contact list is not updated right now, get the identity from the mls_group member
-                            let mut user_id: String = String::new();
-                            for Member {
-                                index: _,
-                                encryption_key: _,
-                                signature_key,
-                                credential,
-                            } in mls_group.members()
-                            {
-                                if self
-                                    .identity
-                                    .borrow()
-                                    .credential_with_key
-                                    .signature_key
-                                    .as_slice()
-                                    != signature_key.as_slice()
+                            let user_id = mls_group.members().find_map(|m| {
+                                if m.credential.identity()
+                                    == processed_message_credential.identity()
+                                    && (self
+                                        .identity
+                                        .borrow()
+                                        .credential_with_key
+                                        .signature_key
+                                        .as_slice()
+                                        != m.signature_key.as_slice())
                                 {
-                                    if processed_message_credential.identity()
-                                        == credential.identity()
-                                    {
-                                        log::debug!("update::Processing ApplicationMessage read sender name from credential identity for group {} ", group.group_name);
-                                        user_id = str::from_utf8(credential.identity())
-                                            .unwrap()
-                                            .to_owned()
-                                    }
+                                    log::debug!("update::Processing ApplicationMessage read sender name from credential identity for group {} ", group.group_name);
+                                    Some(
+                                        str::from_utf8(m.credential.identity()).unwrap().to_owned(),
+                                    )
+                                } else {
+                                    None
                                 }
-                            }
-                            user_id
+                            });
+                            user_id.unwrap_or("".to_owned())
                         }
                     };
-                    if sender_name.is_empty() {
-                        panic!("We received a message from an unknown member group !");
-                    }
                     let conversation_message = ConversationMessage::new(
                         String::from_utf8(application_message.into_bytes())
                             .unwrap()
