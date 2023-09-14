@@ -39,9 +39,9 @@ fn update(client: &mut user::User, group_id: Option<String>, stdout: &mut Stdout
     if !messages.is_empty() {
         stdout.write_all(b"     New messages:\n\n").unwrap();
     }
-    messages.iter().for_each(|m| {
+    messages.iter().for_each(|cm| {
         stdout
-            .write_all(format!("         {m}\n").as_bytes())
+            .write_all(format!("         {0} from {1}\n", cm.message, cm.author).as_bytes())
             .unwrap();
     });
     stdout.write_all(b"\n").unwrap();
@@ -325,7 +325,10 @@ fn basic_test() {
     // Check that Client 1 received the message
     assert_eq!(
         client_1.read_msgs("MLS Discussions".to_string()).unwrap(),
-        Some(vec![MESSAGE_1.into()])
+        Some(vec![conversation::ConversationMessage::new(
+            MESSAGE_1.to_owned(),
+            "Client2".to_owned(),
+        )])
     );
 
     // Client 2 adds Client 3 to the group.
@@ -351,11 +354,17 @@ fn basic_test() {
     // Check that Client 2 and Client 3 received the message
     assert_eq!(
         client_2.read_msgs("MLS Discussions".to_string()).unwrap(),
-        Some(vec![MESSAGE_2.into()])
+        Some(vec![conversation::ConversationMessage::new(
+            MESSAGE_2.to_owned(),
+            "Client1".to_owned(),
+        )])
     );
     assert_eq!(
         client_3.read_msgs("MLS Discussions".to_string()).unwrap(),
-        Some(vec![MESSAGE_2.into()])
+        Some(vec![conversation::ConversationMessage::new(
+            MESSAGE_2.to_owned(),
+            "Client1".to_owned(),
+        )])
     );
 
     // Client 3 sends a message.
@@ -371,10 +380,16 @@ fn basic_test() {
     // Check that Client 1 and Client 2 received the message
     assert_eq!(
         client_1.read_msgs("MLS Discussions".to_string()).unwrap(),
-        Some(vec![MESSAGE_1.into(), MESSAGE_3.into()])
+        Some(vec![
+            conversation::ConversationMessage::new(MESSAGE_1.to_owned(), "Client2".to_owned()),
+            conversation::ConversationMessage::new(MESSAGE_3.to_owned(), "Client3".to_owned())
+        ])
     );
     assert_eq!(
         client_2.read_msgs("MLS Discussions".to_string()).unwrap(),
-        Some(vec![MESSAGE_2.into(), MESSAGE_3.into()])
+        Some(vec![
+            conversation::ConversationMessage::new(MESSAGE_2.to_owned(), "Client1".to_owned()),
+            conversation::ConversationMessage::new(MESSAGE_3.to_owned(), "Client3".to_owned())
+        ])
     );
 }

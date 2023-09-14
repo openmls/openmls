@@ -11,8 +11,9 @@ use openmls_traits::OpenMlsProvider;
 use tls_codec::TlsByteVecU8;
 
 use super::{
-    backend::Backend, conversation::Conversation, file_helpers, identity::Identity,
-    openmls_rust_persistent_crypto::OpenMlsRustPersistentCrypto, serialize_any_hashmap,
+    backend::Backend, conversation::Conversation, conversation::ConversationMessage, file_helpers,
+    identity::Identity, openmls_rust_persistent_crypto::OpenMlsRustPersistentCrypto,
+    serialize_any_hashmap,
 };
 
 const CIPHERSUITE: Ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
@@ -250,11 +251,18 @@ impl User {
     }
 
     /// Return the last 100 messages sent to the group.
-    pub fn read_msgs(&self, group_name: String) -> Result<Option<Vec<String>>, String> {
+    pub fn read_msgs(
+        &self,
+        group_name: String,
+    ) -> Result<Option<Vec<ConversationMessage>>, String> {
         let groups = self.groups.borrow();
         groups.get(&group_name).map_or_else(
             || Err("Unknown group".to_string()),
-            |g| Ok(g.conversation.get(100).map(|messages| messages.to_vec())),
+            |g| {
+                Ok(g.conversation
+                    .get(100)
+                    .map(|messages: &[crate::conversation::ConversationMessage]| messages.to_vec()))
+            },
         )
     }
 
@@ -302,13 +310,58 @@ impl User {
         Ok(())
     }
 
+    /// Update the user clients list.
+    /// It updates the contacts with all the clients known by the server
+    fn update_clients(&mut self) {
+        match self.backend.list_clients() {
+            Ok(mut v) => {
+                for c in v.drain(..) {
+                    let client_id = c.id.clone();
+                    log::debug!(
+                        "update::Processing client for contact {:?}",
+                        str::from_utf8(&client_id).unwrap()
+                    );
+                    if c.id != self.identity.borrow().identity()
+                        && self
+                            .contacts
+                            .insert(
+                                c.id.clone(),
+                                Contact {
+                                    username: c.client_name,
+                                    id: c.id,
+                                },
+                            )
+                            .is_some()
+                    {
+                        log::debug!(
+                            "update::added client to contact {:?}",
+                            str::from_utf8(&client_id).unwrap()
+                        );
+                        log::trace!("Updated client {}", "");
+                    }
+                }
+            }
+            Err(e) => log::debug!("update_clients::Error reading clients from DS: {:?}", e),
+        }
+        log::debug!("update::Processing clients done, contact list is:");
+        for contact_id in self.contacts.borrow().keys() {
+            log::debug!(
+                "update::Parsing contact {:?}",
+                str::from_utf8(contact_id).unwrap()
+            );
+        }
+    }
+
     /// Update the user. This involves:
     /// * retrieving all new messages from the server
     /// * update the contacts with all other clients known to the server
-    pub fn update(&mut self, group_name: Option<String>) -> Result<Vec<String>, String> {
+    pub fn update(
+        &mut self,
+        group_name: Option<String>,
+    ) -> Result<Vec<ConversationMessage>, String> {
         log::debug!("Updating {} ...", self.username);
 
-        let mut messages_out = Vec::new();
+        let mut messages_out: Vec<ConversationMessage> = Vec::new();
 
         let mut process_protocol_message = |message: ProtocolMessage| -> Result<
             (PostUpdateActions, Option<GroupId>),
@@ -340,14 +393,50 @@ impl User {
                     return Err("error".to_string());
                 }
             };
+
+            let processed_message_credential: Credential = processed_message.credential().clone();
+
             match processed_message.into_content() {
                 ProcessedMessageContent::ApplicationMessage(application_message) => {
-                    let application_message =
-                        String::from_utf8(application_message.into_bytes()).unwrap();
+                    let sender_name = match self
+                        .contacts
+                        .get(processed_message_credential.identity())
+                    {
+                        Some(c) => c.username.clone(),
+                        None => {
+                            // Contact list is not updated right now, get the identity from the mls_group member
+                            let user_id = mls_group.members().find_map(|m| {
+                                if m.credential.identity()
+                                    == processed_message_credential.identity()
+                                    && (self
+                                        .identity
+                                        .borrow()
+                                        .credential_with_key
+                                        .signature_key
+                                        .as_slice()
+                                        != m.signature_key.as_slice())
+                                {
+                                    log::debug!("update::Processing ApplicationMessage read sender name from credential identity for group {} ", group.group_name);
+                                    Some(
+                                        str::from_utf8(m.credential.identity()).unwrap().to_owned(),
+                                    )
+                                } else {
+                                    None
+                                }
+                            });
+                            user_id.unwrap_or("".to_owned())
+                        }
+                    };
+                    let conversation_message = ConversationMessage::new(
+                        String::from_utf8(application_message.into_bytes())
+                            .unwrap()
+                            .clone(),
+                        sender_name.to_string(),
+                    );
                     if group_name.is_none() || group_name.clone().unwrap() == group.group_name {
-                        messages_out.push(application_message.clone());
+                        messages_out.push(conversation_message.clone());
                     }
-                    group.conversation.add(application_message);
+                    group.conversation.add(conversation_message);
                 }
                 ProcessedMessageContent::ProposalMessage(_proposal_ptr) => {
                     // intentionally left blank.
@@ -419,38 +508,7 @@ impl User {
         }
         log::debug!("update::Processing messages done");
 
-        for c in self.backend.list_clients()?.drain(..) {
-            let client_id = c.id.clone();
-            log::debug!(
-                "update::Processing client for contact {:?}",
-                str::from_utf8(&client_id).unwrap()
-            );
-            if c.id != self.identity.borrow().identity()
-                && self
-                    .contacts
-                    .insert(
-                        c.id.clone(),
-                        Contact {
-                            username: c.client_name,
-                            id: c.id,
-                        },
-                    )
-                    .is_some()
-            {
-                log::debug!(
-                    "update::added client to contact {:?}",
-                    str::from_utf8(&client_id).unwrap()
-                );
-                log::trace!("Updated client {}", "");
-            }
-        }
-        log::debug!("update::Processing clients done, contact list is:");
-        for contact_id in self.contacts.borrow().keys() {
-            log::debug!(
-                "update::Parsing contact {:?}",
-                str::from_utf8(contact_id).unwrap()
-            );
-        }
+        self.update_clients();
 
         self.autosave();
 
@@ -575,7 +633,7 @@ impl User {
             .mls_group
             .borrow_mut()
             .remove_members(&self.crypto, &self.identity.borrow().signer, &[leaf_index])
-            .map_err(|e| format!("Failed to add member to group - {e}"))?;
+            .map_err(|e| format!("Failed to remove member from group - {e}"))?;
 
         // First, send the MlsMessage remove commit to the group.
         log::trace!("Sending commit");
