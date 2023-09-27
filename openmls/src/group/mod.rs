@@ -47,7 +47,8 @@ use openmls_traits::random::OpenMlsRand;
 #[cfg(any(feature = "test-utils", test))]
 pub use proposals::*;
 
-/// A group ID. The group ID is chosen by the creator of the group and should be globally unique.
+/// A group ID. The group ID is chosen by the creator of the group and should be
+/// globally unique.
 #[derive(
     Clone,
     Debug,
@@ -59,6 +60,7 @@ pub use proposals::*;
     Deserialize,
     Serialize,
     TlsDeserialize,
+    TlsDeserializeBytes,
     TlsSerialize,
     TlsSize,
 )]
@@ -78,7 +80,8 @@ impl GroupId {
 
     /// Create a group ID from a byte slice.
     ///
-    /// This should be used only if the group ID is chosen by an entity that ensures uniqueness.
+    /// This should be used only if the group ID is chosen by an entity that
+    /// ensures uniqueness.
     pub fn from_slice(bytes: &[u8]) -> Self {
         GroupId {
             value: bytes.into(),
@@ -97,7 +100,8 @@ impl GroupId {
 }
 
 /// Group epoch. Internally this is stored as a `u64`.
-/// The group epoch is incremented with every valid Commit that is merged into the group state.
+/// The group epoch is incremented with every valid Commit that is merged into
+/// the group state.
 #[derive(
     Clone,
     Copy,
@@ -110,6 +114,7 @@ impl GroupId {
     Deserialize,
     Serialize,
     TlsDeserialize,
+    TlsDeserializeBytes,
     TlsSerialize,
     TlsSize,
 )]

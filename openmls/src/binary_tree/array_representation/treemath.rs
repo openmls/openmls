@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 
 use serde::{Deserialize, Serialize};
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
 pub(crate) const MAX_TREE_SIZE: u32 = 1 << 30;
 pub(crate) const MIN_TREE_SIZE: u32 = 1;
@@ -19,6 +19,7 @@ pub(crate) const MIN_TREE_SIZE: u32 = 1;
     Serialize,
     Deserialize,
     TlsDeserialize,
+    TlsDeserializeBytes,
     TlsSerialize,
     TlsSize,
 )]

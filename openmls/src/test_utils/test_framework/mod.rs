@@ -219,7 +219,8 @@ impl MlsGroupTestSetup {
         client.identity(&group.group_id)
     }
 
-    /// Convert an identity in the tree into the corresponding key package reference.
+    /// Convert an identity in the tree into the corresponding key package
+    /// reference.
     pub fn identity_by_id(&self, id: &[u8], group: &Group) -> Option<Vec<u8>> {
         let (_, id) = group
             .members
@@ -292,14 +293,17 @@ impl MlsGroupTestSetup {
                 let mls_message_out: MlsMessageOut = message.clone().into();
                 let serialized_message = mls_message_out.tls_serialize_detached()?;
 
-                MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())?
+                <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(
+                    &mut serialized_message.as_slice(),
+                )?
             }
             CodecUse::StructMessages => message.clone(),
         }
         .into_protocol_message()
         .expect("Unexptected message type.");
         let clients = self.clients.read().expect("An unexpected error occurred.");
-        // Distribute message to all members, except to the sender in the case of application messages
+        // Distribute message to all members, except to the sender in the case of
+        // application messages
         let results: Result<Vec<_>, _> = group
             .members
             .par_iter()

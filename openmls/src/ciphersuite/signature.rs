@@ -1,8 +1,9 @@
 //! Signatures.
 //!
-//! This module contains structs for creating signature keys, issuing signatures and verifying them.
+//! This module contains structs for creating signature keys, issuing signatures
+//! and verifying them.
 
-use tls_codec::Serialize;
+use tls_codec::{Serialize, TlsDeserializeBytes};
 
 use super::{LABEL_PREFIX, *};
 
@@ -53,7 +54,17 @@ impl From<(&str, &[u8])> for SignContent {
 
 /// A public signature key.
 #[derive(
-    Eq, PartialEq, Hash, Debug, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    Eq,
+    PartialEq,
+    Hash,
+    Debug,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
 )]
 pub struct SignaturePublicKey {
     pub(in crate::ciphersuite) value: VLBytes,
@@ -76,8 +87,9 @@ impl From<&[u8]> for SignaturePublicKey {
 }
 
 impl SignaturePublicKey {
-    /// Convert the "raw" signature into an enriched form, [OpenMlsSignaturePublicKey], that
-    /// already contains the signature scheme.
+    /// Convert the "raw" signature into an enriched form,
+    /// [OpenMlsSignaturePublicKey], that already contains the signature
+    /// scheme.
     pub fn into_signature_public_key_enriched(
         self,
         signature_scheme: SignatureScheme,

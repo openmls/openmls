@@ -4,7 +4,7 @@ use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::Ciphersuite;
 use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
 use thiserror::Error;
-use tls_codec::{Deserialize, Serialize, TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{DeserializeBytes, Serialize, Size, TlsDeserialize, TlsSerialize, TlsSize};
 
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -19,11 +19,12 @@ use crate::{
 
 const SIGNATURE_GROUP_INFO_LABEL: &str = "GroupInfoTBS";
 
-/// A type that represents a group info of which the signature has not been verified.
-/// It implements the [`Verifiable`] trait and can be turned into a group info by calling
-/// `verify(...)` with the signature key of the [`Credential`](crate::credentials::Credential).
-/// When receiving a serialized group info, it can only be deserialized into a
-/// [`VerifiableGroupInfo`], which can then be turned into a group info as described above.
+/// A type that represents a group info of which the signature has not been
+/// verified. It implements the [`Verifiable`] trait and can be turned into a
+/// group info by calling `verify(...)` with the signature key of the
+/// [`Credential`](crate::credentials::Credential). When receiving a serialized
+/// group info, it can only be deserialized into a [`VerifiableGroupInfo`],
+/// which can then be turned into a group info as described above.
 #[derive(Debug, PartialEq, Clone, TlsDeserialize, TlsSize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(TlsSerialize))]
 pub struct VerifiableGroupInfo {
@@ -74,8 +75,10 @@ impl VerifiableGroupInfo {
         let mut verifiable_group_info_plaintext_slice = verifiable_group_info_plaintext.as_slice();
 
         let verifiable_group_info =
-            VerifiableGroupInfo::tls_deserialize(&mut verifiable_group_info_plaintext_slice)
-                .map_err(|_| GroupInfoError::Malformed)?;
+            <VerifiableGroupInfo as tls_codec::Deserialize>::tls_deserialize(
+                &mut verifiable_group_info_plaintext_slice,
+            )
+            .map_err(|_| GroupInfoError::Malformed)?;
 
         if !verifiable_group_info_plaintext_slice.is_empty() {
             return Err(GroupInfoError::Malformed);
@@ -86,21 +89,24 @@ impl VerifiableGroupInfo {
 
     /// Get (unverified) ciphersuite of the verifiable group info.
     ///
-    /// Note: This method should only be used when necessary to verify the group info signature.
+    /// Note: This method should only be used when necessary to verify the group
+    /// info signature.
     pub fn ciphersuite(&self) -> Ciphersuite {
         self.payload.group_context.ciphersuite()
     }
 
     /// Get (unverified) signer of the verifiable group info.
     ///
-    /// Note: This method should only be used when necessary to verify the group info signature.
+    /// Note: This method should only be used when necessary to verify the group
+    /// info signature.
     pub(crate) fn signer(&self) -> LeafNodeIndex {
         self.payload.signer
     }
 
     /// Get (unverified) extensions of the verifiable group info.
     ///
-    /// Note: This method should only be used when necessary to verify the group info signature.
+    /// Note: This method should only be used when necessary to verify the group
+    /// info signature.
     pub(crate) fn extensions(&self) -> &Extensions {
         &self.payload.extensions
     }
@@ -133,6 +139,21 @@ impl From<VerifiableGroupInfo> for GroupInfo {
             payload: vgi.payload,
             signature: vgi.signature,
         }
+    }
+}
+
+impl DeserializeBytes for VerifiableGroupInfo {
+    fn tls_deserialize(bytes: &[u8]) -> Result<(Self, &[u8]), tls_codec::Error>
+    where
+        Self: Sized,
+    {
+        let mut bytes_reader = bytes;
+        let group_info =
+            <VerifiableGroupInfo as tls_codec::Deserialize>::tls_deserialize(&mut bytes_reader)?;
+        let remainder = bytes
+            .get(group_info.tls_serialized_len()..)
+            .ok_or(tls_codec::Error::EndOfStream)?;
+        Ok((group_info, remainder))
     }
 }
 

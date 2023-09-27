@@ -3,7 +3,7 @@
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
-use tls_codec::{Deserialize, Serialize};
+use tls_codec::Serialize;
 
 use rstest::*;
 use rstest_reuse::{self, *};
@@ -126,10 +126,12 @@ fn test_valsem002(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut plaintext = MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())
-        .expect("Could not deserialize message.")
-        .into_plaintext()
-        .expect("Message was not a plaintext.");
+    let mut plaintext = <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(
+        &mut serialized_message.as_slice(),
+    )
+    .expect("Could not deserialize message.")
+    .into_plaintext()
+    .expect("Message was not a plaintext.");
 
     let original_message = plaintext.clone();
 
@@ -196,10 +198,12 @@ fn test_valsem003(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let current_epoch = alice_group.epoch();
 
     let serialized_message = message.tls_serialize_detached().unwrap();
-    let mut plaintext = MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())
-        .expect("Could not deserialize message.")
-        .into_plaintext()
-        .expect("Message was not a plaintext.");
+    let mut plaintext = <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(
+        &mut serialized_message.as_slice(),
+    )
+    .expect("Could not deserialize message.")
+    .into_plaintext()
+    .expect("Message was not a plaintext.");
 
     let original_message = plaintext.clone();
 
@@ -238,7 +242,8 @@ fn test_valsem003(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         unreachable!();
     }
 
-    // Processing a commit twice should fail i.e. an epoch can only be used once in a commit message
+    // Processing a commit twice should fail i.e. an epoch can only be used once in
+    // a commit message
     let process_twice = bob_group.process_message(provider, original_message);
     assert_eq!(
         process_twice.unwrap_err(),
@@ -266,17 +271,20 @@ fn test_valsem004(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut plaintext = MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())
-        .expect("Could not deserialize message.")
-        .into_plaintext()
-        .expect("Message was not a plaintext.");
+    let mut plaintext = <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(
+        &mut serialized_message.as_slice(),
+    )
+    .expect("Could not deserialize message.")
+    .into_plaintext()
+    .expect("Message was not a plaintext.");
 
     let original_message = plaintext.clone();
 
     let random_sender = Sender::build_member(LeafNodeIndex::new(987));
     plaintext.set_sender(random_sender);
 
-    // The membership tag is checked before the sender, so we need to re-calculate it and set it
+    // The membership tag is checked before the sender, so we need to re-calculate
+    // it and set it
     plaintext
         .set_membership_tag(
             provider.crypto(),
@@ -322,16 +330,19 @@ fn test_valsem005(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut plaintext = MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())
-        .expect("Could not deserialize message.")
-        .into_plaintext()
-        .expect("Message was not a plaintext.");
+    let mut plaintext = <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(
+        &mut serialized_message.as_slice(),
+    )
+    .expect("Could not deserialize message.")
+    .into_plaintext()
+    .expect("Message was not a plaintext.");
 
     let original_message = plaintext.clone();
 
     plaintext.set_content(FramedContentBody::Application(vec![1, 2, 3].into()));
 
-    // The membership tag is checked before verifying content encryption, so we need to re-calculate it and set it
+    // The membership tag is checked before verifying content encryption, so we need
+    // to re-calculate it and set it
     plaintext
         .set_membership_tag(
             provider.crypto(),
@@ -377,10 +388,12 @@ fn test_valsem006(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut ciphertext = MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())
-        .expect("Could not deserialize message.")
-        .into_ciphertext()
-        .expect("Message was not a plaintext.");
+    let mut ciphertext = <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(
+        &mut serialized_message.as_slice(),
+    )
+    .expect("Could not deserialize message.")
+    .into_ciphertext()
+    .expect("Message was not a plaintext.");
 
     let original_message = ciphertext.clone();
 
@@ -425,10 +438,12 @@ fn test_valsem007(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut plaintext = MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())
-        .expect("Could not deserialize message.")
-        .into_plaintext()
-        .expect("Message was not a plaintext.");
+    let mut plaintext = <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(
+        &mut serialized_message.as_slice(),
+    )
+    .expect("Could not deserialize message.")
+    .into_plaintext()
+    .expect("Message was not a plaintext.");
 
     let original_message = plaintext.clone();
 
@@ -472,10 +487,12 @@ fn test_valsem008(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut plaintext = MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())
-        .expect("Could not deserialize message.")
-        .into_plaintext()
-        .expect("Message was not a plaintext.");
+    let mut plaintext = <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(
+        &mut serialized_message.as_slice(),
+    )
+    .expect("Could not deserialize message.")
+    .into_plaintext()
+    .expect("Message was not a plaintext.");
 
     let original_message = plaintext.clone();
 
@@ -521,16 +538,19 @@ fn test_valsem009(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut plaintext = MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())
-        .expect("Could not deserialize message.")
-        .into_plaintext()
-        .expect("Message was not a plaintext.");
+    let mut plaintext = <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(
+        &mut serialized_message.as_slice(),
+    )
+    .expect("Could not deserialize message.")
+    .into_plaintext()
+    .expect("Message was not a plaintext.");
 
     let original_message = plaintext.clone();
 
     plaintext.set_confirmation_tag(None);
 
-    // The membership tag covers the confirmation tag, so we need to re-calculate it and set it
+    // The membership tag covers the confirmation tag, so we need to re-calculate it
+    // and set it
     plaintext
         .set_membership_tag(
             provider.crypto(),
@@ -577,17 +597,20 @@ fn test_valsem010(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut plaintext = MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())
-        .expect("Could not deserialize message.")
-        .into_plaintext()
-        .expect("Message was not a plaintext.");
+    let mut plaintext = <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(
+        &mut serialized_message.as_slice(),
+    )
+    .expect("Could not deserialize message.")
+    .into_plaintext()
+    .expect("Message was not a plaintext.");
 
     let original_message = plaintext.clone();
 
     // Invalidate signature
     plaintext.invalidate_signature();
 
-    // The membership tag covers the signature, so we need to re-calculate it and set it
+    // The membership tag covers the signature, so we need to re-calculate it and
+    // set it
     plaintext
         .set_membership_tag(
             provider.crypto(),

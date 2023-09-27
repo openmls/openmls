@@ -267,7 +267,8 @@ fn wire_format_checks(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider)
         )
         .expect("Could not decrypt PrivateMessage.");
 
-    // We expect the signature to fail since the original content was signed with a different wire format.
+    // We expect the signature to fail since the original content was signed with a
+    // different wire format.
     let result: Result<AuthenticatedContentIn, SignatureError> =
         verifiable_plaintext.verify(provider.crypto(), &pk);
 
@@ -747,7 +748,7 @@ fn key_package_version(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider
         .tls_serialize_detached()
         .expect("An unexpected error occurred.");
 
-    let err = MlsMessageIn::tls_deserialize(&mut encoded.as_slice())
+    let err = <MlsMessageIn as Deserialize>::tls_deserialize(&mut encoded.as_slice())
         .expect_err("Deserialization should have failed.");
 
     // Expect a decoding  error

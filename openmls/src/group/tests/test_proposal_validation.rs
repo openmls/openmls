@@ -7,7 +7,7 @@ use openmls_traits::{
 };
 use rstest::*;
 use rstest_reuse::{self, *};
-use tls_codec::{Deserialize, Serialize};
+use tls_codec::Serialize;
 
 use super::utils::{
     generate_credential_with_key, generate_key_package, resign_message, CredentialWithKeyAndSigner,
@@ -32,7 +32,8 @@ use crate::{
     versions::ProtocolVersion,
 };
 
-/// Helper function to generate and output CredentialWithKeyAndSigner and KeyPackage
+/// Helper function to generate and output CredentialWithKeyAndSigner and
+/// KeyPackage
 fn generate_credential_with_key_and_key_package(
     identity: Vec<u8>,
     ciphersuite: Ciphersuite,
@@ -223,7 +224,8 @@ enum KeyUniqueness {
     PositiveDifferentKey,
     /// Negative Case: the proposals have the same key.
     NegativeSameKey,
-    /// Positive Case: the proposals have the same key but it has remove so its valid
+    /// Positive Case: the proposals have the same key but it has remove so its
+    /// valid
     PositiveSameKeyWithRemove,
 }
 
@@ -335,10 +337,12 @@ fn test_valsem101a(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let plaintext = MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
-        .expect("Could not deserialize message.")
-        .into_plaintext()
-        .expect("Message was not a plaintext.");
+    let plaintext = <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(
+        &mut serialized_update.as_slice(),
+    )
+    .expect("Could not deserialize message.")
+    .into_plaintext()
+    .expect("Message was not a plaintext.");
 
     // Keep the original plaintext for positive test later.
     let original_plaintext = plaintext.clone();
@@ -389,9 +393,10 @@ fn test_valsem101a(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         ))
     );
 
-    let original_update_plaintext =
-        MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
-            .expect("Could not deserialize message.");
+    let original_update_plaintext = <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(
+        &mut serialized_update.as_slice(),
+    )
+    .expect("Could not deserialize message.");
 
     // Positive case
     bob_group
@@ -493,10 +498,12 @@ fn test_valsem102(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let plaintext = MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
-        .expect("Could not deserialize message.")
-        .into_plaintext()
-        .expect("Message was not a plaintext.");
+    let plaintext = <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(
+        &mut serialized_update.as_slice(),
+    )
+    .expect("Could not deserialize message.")
+    .into_plaintext()
+    .expect("Message was not a plaintext.");
 
     // Keep the original plaintext for positive test later.
     let original_plaintext = plaintext.clone();
@@ -541,9 +548,10 @@ fn test_valsem102(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         ))
     );
 
-    let original_update_plaintext =
-        MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
-            .expect("Could not deserialize message.");
+    let original_update_plaintext = <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(
+        &mut serialized_update.as_slice(),
+    )
+    .expect("Could not deserialize message.");
 
     // Positive case
     bob_group
@@ -675,7 +683,8 @@ fn test_valsem101b(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         }
     }
 
-    // TODO #1187: This part of the test needs to be adapted to the new parent hashes.
+    // TODO #1187: This part of the test needs to be adapted to the new parent
+    // hashes.
     /* for alice_and_bob_share_keys in [
         KeyUniqueness::NegativeSameKey,
         KeyUniqueness::PositiveSameKeyWithRemove,
@@ -890,10 +899,12 @@ fn test_valsem103_valsem104(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let plaintext = MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
-        .expect("Could not deserialize message.")
-        .into_plaintext()
-        .expect("Message was not a plaintext.");
+    let plaintext = <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(
+        &mut serialized_update.as_slice(),
+    )
+    .expect("Could not deserialize message.")
+    .into_plaintext()
+    .expect("Message was not a plaintext.");
 
     // Keep the original plaintext for positive test later.
     let original_plaintext = plaintext.clone();
@@ -956,9 +967,10 @@ fn test_valsem103_valsem104(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
         ))
     );
 
-    let original_update_plaintext =
-        MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
-            .expect("Could not deserialize message.");
+    let original_update_plaintext = <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(
+        &mut serialized_update.as_slice(),
+    )
+    .expect("Could not deserialize message.");
 
     // Positive case
     bob_group
@@ -1166,7 +1178,8 @@ fn test_valsem105(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             // Reset alice's group state for the next test case.
             alice_group.clear_pending_commit();
         }
-        // Now we create a valid commit and add the proposal afterwards. Once by value, once by reference.
+        // Now we create a valid commit and add the proposal afterwards. Once by value,
+        // once by reference.
         alice_group.clear_pending_proposals();
 
         // Create the Commit.
@@ -1176,10 +1189,12 @@ fn test_valsem105(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             .tls_serialize_detached()
             .unwrap();
 
-        let plaintext = MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
-            .unwrap()
-            .into_plaintext()
-            .unwrap();
+        let plaintext = <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(
+            &mut serialized_update.as_slice(),
+        )
+        .unwrap()
+        .into_plaintext()
+        .unwrap();
 
         // Keep the original plaintext for positive test later.
         let original_plaintext = plaintext.clone();
@@ -1303,8 +1318,10 @@ fn test_valsem105(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             };
 
             let original_update_plaintext =
-                MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
-                    .expect("Could not deserialize message.");
+                <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(
+                    &mut serialized_update.as_slice(),
+                )
+                .expect("Could not deserialize message.");
 
             // Positive case
             bob_group
@@ -1321,14 +1338,17 @@ fn test_valsem105(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 /// Removed member must be unique among proposals
 #[apply(ciphersuites_and_providers)]
 fn test_valsem107(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
-    // Helper function to unwrap a commit with a single proposal from an mls message.
+    // Helper function to unwrap a commit with a single proposal from an mls
+    // message.
     fn unwrap_specific_commit(commit_ref_remove: MlsMessageOut) -> Commit {
         let serialized_message = commit_ref_remove.tls_serialize_detached().unwrap();
 
-        let plaintext = MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())
-            .unwrap()
-            .into_plaintext()
-            .unwrap();
+        let plaintext = <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(
+            &mut serialized_message.as_slice(),
+        )
+        .unwrap()
+        .into_plaintext()
+        .unwrap();
 
         let commit_content = if let FramedContentBody::Commit(commit) = plaintext.content() {
             commit.clone()
@@ -1496,7 +1516,8 @@ fn test_valsem108(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let _ = alice_group
         .commit_to_pending_proposals(provider, &alice_credential_with_key_and_signer.signer)
         .expect("No error while committing empty proposals");
-    // FIXME: #1098 This shouldn't be necessary. Something is broken in the state logic.
+    // FIXME: #1098 This shouldn't be necessary. Something is broken in the state
+    // logic.
     alice_group.clear_pending_commit();
 
     // Creating the proposal should fail already because the member is not known.
@@ -1539,10 +1560,12 @@ fn test_valsem108(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let plaintext = MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
-        .expect("Could not deserialize message.")
-        .into_plaintext()
-        .expect("Message was not a plaintext.");
+    let plaintext = <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(
+        &mut serialized_update.as_slice(),
+    )
+    .expect("Could not deserialize message.")
+    .into_plaintext()
+    .expect("Message was not a plaintext.");
 
     // Keep the original plaintext for positive test later.
     let original_plaintext = plaintext.clone();
@@ -1577,9 +1600,10 @@ fn test_valsem108(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         ))
     );
 
-    let original_update_plaintext =
-        MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
-            .expect("Could not deserialize message.");
+    let original_update_plaintext = <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(
+        &mut serialized_update.as_slice(),
+    )
+    .expect("Could not deserialize message.");
 
     // Positive case
     bob_group
@@ -1683,10 +1707,12 @@ fn test_valsem110(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let plaintext = MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
-        .expect("Could not deserialize message.")
-        .into_plaintext()
-        .expect("Message was not a plaintext.");
+    let plaintext = <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(
+        &mut serialized_update.as_slice(),
+    )
+    .expect("Could not deserialize message.")
+    .into_plaintext()
+    .expect("Message was not a plaintext.");
 
     let original_plaintext = plaintext.clone();
 
@@ -1774,10 +1800,12 @@ fn test_valsem111(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .tls_serialize_detached()
         .expect("error serializing plaintext");
 
-    let plaintext = MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())
-        .expect("Could not deserialize message.")
-        .into_plaintext()
-        .expect("Message was not a plaintext.");
+    let plaintext = <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(
+        &mut serialized_message.as_slice(),
+    )
+    .expect("Could not deserialize message.")
+    .into_plaintext()
+    .expect("Message was not a plaintext.");
 
     let commit_content = if let FramedContentBody::Commit(commit) = plaintext.content() {
         commit.clone()
@@ -1792,10 +1820,12 @@ fn test_valsem111(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let plaintext = MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
-        .expect("Could not deserialize message.")
-        .into_plaintext()
-        .expect("Message was not a plaintext.");
+    let plaintext = <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(
+        &mut serialized_update.as_slice(),
+    )
+    .expect("Could not deserialize message.")
+    .into_plaintext()
+    .expect("Message was not a plaintext.");
 
     // Keep the original plaintext for positive test later.
     let original_plaintext = plaintext.clone();
@@ -1848,10 +1878,12 @@ fn test_valsem111(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let plaintext = MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
-        .expect("Could not deserialize message.")
-        .into_plaintext()
-        .expect("Message was not a plaintext.");
+    let plaintext = <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(
+        &mut serialized_update.as_slice(),
+    )
+    .expect("Could not deserialize message.")
+    .into_plaintext()
+    .expect("Message was not a plaintext.");
 
     // Keep the original plaintext for positive test later.
     let original_plaintext = plaintext.clone();
@@ -1884,9 +1916,10 @@ fn test_valsem111(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         ))
     );
 
-    let original_update_plaintext =
-        MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
-            .expect("Could not deserialize message.");
+    let original_update_plaintext = <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(
+        &mut serialized_update.as_slice(),
+    )
+    .expect("Could not deserialize message.");
 
     // Positive case
     bob_group
@@ -1923,10 +1956,12 @@ fn test_valsem112(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .tls_serialize_detached()
         .expect("error serializing plaintext");
 
-    let mut plaintext = MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
-        .expect("Could not deserialize message.")
-        .into_plaintext()
-        .expect("Message was not a plaintext.");
+    let mut plaintext = <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize(
+        &mut serialized_update.as_slice(),
+    )
+    .expect("Could not deserialize message.")
+    .into_plaintext()
+    .expect("Message was not a plaintext.");
 
     assert!(plaintext.sender().is_member());
 
@@ -1972,7 +2007,8 @@ fn test_valsem401_valsem402(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
     let alice_provider = OpenMlsRustCrypto::default();
     let bob_provider = OpenMlsRustCrypto::default();
 
-    // TODO(#1354): This is currently not tested because we can't easily create invalid commits.
+    // TODO(#1354): This is currently not tested because we can't easily create
+    // invalid commits.
     let bad_psks: [(Vec<PreSharedKeyId>, ProcessMessageError); 0] = [
         // // ValSem401
         // (

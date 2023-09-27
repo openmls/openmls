@@ -14,15 +14,16 @@
 //!   * Decrypt the encrypted group info
 //! * Verify the signature on the decrypted group info using `signer_pub`
 //! * Verify the `confirmation_tag` in the decrypted group info:
-//!   * Initialize a key schedule epoch using the decrypted `joiner_secret` and no PSKs
-//!   * Recompute a candidate `confirmation_tag` value using the `confirmation_key`
-//!     from the key schedule epoch and the `confirmed_transcript_hash` from the
-//!     decrypted GroupContext
+//!   * Initialize a key schedule epoch using the decrypted `joiner_secret` and
+//!     no PSKs
+//!   * Recompute a candidate `confirmation_tag` value using the
+//!     `confirmation_key` from the key schedule epoch and the
+//!     `confirmed_transcript_hash` from the decrypted GroupContext
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, OpenMlsProvider};
 use serde::{self, Deserialize, Serialize};
-use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize};
+use tls_codec::Serialize as TlsSerialize;
 
 use crate::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
@@ -126,7 +127,10 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
 
     let key_package: KeyPackage = {
         let mls_message_key_package =
-            MlsMessageIn::tls_deserialize_exact(test_vector.key_package).unwrap();
+            <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize_exact(
+                test_vector.key_package,
+            )
+            .unwrap();
 
         match mls_message_key_package.body {
             MlsMessageInBody::KeyPackage(key_package) => key_package.into(),
@@ -137,7 +141,9 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
     println!("{key_package:?}");
 
     let welcome: Welcome = {
-        let mls_message_welcome = MlsMessageIn::tls_deserialize_exact(test_vector.welcome).unwrap();
+        let mls_message_welcome =
+            <MlsMessageIn as tls_codec::Deserialize>::tls_deserialize_exact(test_vector.welcome)
+                .unwrap();
 
         match mls_message_welcome.body {
             MlsMessageInBody::Welcome(welcome) => welcome,
@@ -250,8 +256,11 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
 
     // * Verify the confirmation_tag in the decrypted group info:
     //
-    //   * Initialize a key schedule epoch using the decrypted joiner_secret and no PSKs
-    //   * Recompute a candidate confirmation_tag value using the confirmation_key from the key schedule epoch and the confirmed_transcript_hash from the decrypted GroupContext
+    //   * Initialize a key schedule epoch using the decrypted joiner_secret and no
+    //     PSKs
+    //   * Recompute a candidate confirmation_tag value using the confirmation_key
+    //     from the key schedule epoch and the confirmed_transcript_hash from the
+    //     decrypted GroupContext
     let group_context = GroupContext::from(group_info.clone());
 
     let serialized_group_context = group_context.tls_serialize_detached().unwrap();

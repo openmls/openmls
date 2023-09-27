@@ -10,7 +10,9 @@ use crate::{
 };
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
-use tls_codec::{Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{
+    DeserializeBytes, Serialize as TlsSerializeTrait, Size, TlsDeserialize, TlsSerialize, TlsSize,
+};
 
 use super::{
     errors::KeyPackageVerifyError, KeyPackage, KeyPackageTbs, SIGNATURE_KEY_PACKAGE_LABEL,
@@ -179,8 +181,8 @@ impl KeyPackageIn {
         Ok(key_package)
     }
 
-    /// Returns true if the protocol version is supported by this key package and
-    /// false otherwise.
+    /// Returns true if the protocol version is supported by this key package
+    /// and false otherwise.
     pub(crate) fn version_is_supported(&self, protocol_version: ProtocolVersion) -> bool {
         self.payload.protocol_version == protocol_version
     }
@@ -227,5 +229,19 @@ impl From<KeyPackageIn> for KeyPackage {
             payload: value.payload.into(),
             signature: value.signature,
         }
+    }
+}
+
+impl DeserializeBytes for KeyPackageIn {
+    fn tls_deserialize(bytes: &[u8]) -> Result<(Self, &[u8]), tls_codec::Error>
+    where
+        Self: Sized,
+    {
+        let mut bytes_reader = bytes;
+        let payload = <KeyPackageIn as tls_codec::Deserialize>::tls_deserialize(&mut bytes_reader)?;
+        let bytes = bytes
+            .get(payload.tls_serialized_len()..)
+            .ok_or(tls_codec::Error::EndOfStream)?;
+        Ok((payload, bytes))
     }
 }

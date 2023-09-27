@@ -2,8 +2,8 @@
 //!
 //!
 //! Some MLS messages refer to other MLS objects by hash.  For example, Welcome
-//! messages refer to KeyPackages for the members being welcomed, and Commits refer
-//! to Proposals they cover.  These identifiers are computed as follows:
+//! messages refer to KeyPackages for the members being welcomed, and Commits
+//! refer to Proposals they cover.  These identifiers are computed as follows:
 //!
 //! ```text
 //! opaque HashReference<V>;
@@ -22,14 +22,15 @@
 //! ```
 //!
 //! For a KeyPackageRef, the `value` input is the encoded KeyPackage, and the
-//! ciphersuite specified in the KeyPackage determines the hash function used.  For a
-//! ProposalRef, the `value` input is the PublicMessage carrying the proposal, and
-//! the hash function is determined by the group's ciphersuite.
+//! ciphersuite specified in the KeyPackage determines the hash function used.
+//! For a ProposalRef, the `value` input is the PublicMessage carrying the
+//! proposal, and the hash function is determined by the group's ciphersuite.
 
 use openmls_traits::{crypto::OpenMlsCrypto, types::CryptoError};
 use serde::{Deserialize, Serialize};
 use tls_codec::{
-    Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize, VLByteSlice, VLBytes,
+    Serialize as TlsSerializeTrait, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
+    VLByteSlice, VLBytes,
 };
 
 use super::Ciphersuite;
@@ -48,6 +49,7 @@ const PROPOSAL_REF_LABEL: &[u8; 26] = b"MLS 1.0 Proposal Reference";
     PartialOrd,
     Deserialize,
     TlsDeserialize,
+    TlsDeserializeBytes,
     TlsSerialize,
     TlsSize,
 )]
