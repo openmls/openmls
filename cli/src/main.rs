@@ -7,8 +7,12 @@ use termion::input::TermRead;
 
 mod backend;
 mod conversation;
+mod file_helpers;
 mod identity;
 mod networking;
+mod openmls_rust_persistent_crypto;
+mod persistent_key_store;
+mod serialize_any_hashmap;
 mod user;
 
 const HELP: &str = "
@@ -16,6 +20,9 @@ const HELP: &str = "
 >>>     - update                                update the client state
 >>>     - reset                                 reset the server
 >>>     - register {client name}                register a new client
+>>>     - save {client name}                    serialize and save the client state
+>>>     - load {client name}                    load and deserialize the client state as a new client
+>>>     - autosave                              enable automatic save of the current client state upon each update
 >>>     - create kp                             create a new key package
 >>>     - create group {group name}             create a new group
 >>>     - group {group name}                    group operations
@@ -32,9 +39,9 @@ fn update(client: &mut user::User, group_id: Option<String>, stdout: &mut Stdout
     if !messages.is_empty() {
         stdout.write_all(b"     New messages:\n\n").unwrap();
     }
-    messages.iter().for_each(|m| {
+    messages.iter().for_each(|cm| {
         stdout
-            .write_all(format!("         {m}\n").as_bytes())
+            .write_all(format!("         {0} from {1}\n", cm.message, cm.author).as_bytes())
             .unwrap();
     });
     stdout.write_all(b"\n").unwrap();
@@ -71,13 +78,61 @@ fn main() {
             continue;
         }
 
+        if let Some(client_name) = op.strip_prefix("load ") {
+            match user::User::load(client_name.to_string()) {
+                Ok(user) => {
+                    client = Some(user);
+                    stdout
+                        .write_all(format!("recovered client {client_name}\n\n").as_bytes())
+                        .unwrap();
+                }
+                Err(e) => stdout
+                    .write_all(
+                        format!("Error recovering client {client_name} : {e}\n\n").as_bytes(),
+                    )
+                    .unwrap(),
+            }
+            continue;
+        }
+
         // Create a new KeyPackage.
         if op == "create kp" {
             if let Some(client) = &mut client {
-                // client.create_kp().unwrap();
                 client.create_kp();
                 stdout
                     .write_all(b" >>> New key package created\n\n")
+                    .unwrap();
+            } else {
+                stdout
+                    .write_all(b" >>> No client to update :(\n\n")
+                    .unwrap();
+            }
+            continue;
+        }
+
+        // Save the current client state.
+        if op == "save" {
+            if let Some(client) = &mut client {
+                client.save();
+                let name = &client.username;
+                stdout
+                    .write_all(format!(" >>> client {name} state saved\n\n").as_bytes())
+                    .unwrap();
+            } else {
+                stdout
+                    .write_all(b" >>> No client to update :(\n\n")
+                    .unwrap();
+            }
+            continue;
+        }
+
+        // Enable automatic saving of the client state.
+        if op == "autosave" {
+            if let Some(client) = &mut client {
+                client.enable_auto_save();
+                let name = &client.username;
+                stdout
+                    .write_all(format!(" >>> autosave enabled for client {name} \n\n").as_bytes())
                     .unwrap();
             } else {
                 stdout
@@ -270,7 +325,10 @@ fn basic_test() {
     // Check that Client 1 received the message
     assert_eq!(
         client_1.read_msgs("MLS Discussions".to_string()).unwrap(),
-        Some(vec![MESSAGE_1.into()])
+        Some(vec![conversation::ConversationMessage::new(
+            MESSAGE_1.to_owned(),
+            "Client2".to_owned(),
+        )])
     );
 
     // Client 2 adds Client 3 to the group.
@@ -296,11 +354,17 @@ fn basic_test() {
     // Check that Client 2 and Client 3 received the message
     assert_eq!(
         client_2.read_msgs("MLS Discussions".to_string()).unwrap(),
-        Some(vec![MESSAGE_2.into()])
+        Some(vec![conversation::ConversationMessage::new(
+            MESSAGE_2.to_owned(),
+            "Client1".to_owned(),
+        )])
     );
     assert_eq!(
         client_3.read_msgs("MLS Discussions".to_string()).unwrap(),
-        Some(vec![MESSAGE_2.into()])
+        Some(vec![conversation::ConversationMessage::new(
+            MESSAGE_2.to_owned(),
+            "Client1".to_owned(),
+        )])
     );
 
     // Client 3 sends a message.
@@ -316,10 +380,16 @@ fn basic_test() {
     // Check that Client 1 and Client 2 received the message
     assert_eq!(
         client_1.read_msgs("MLS Discussions".to_string()).unwrap(),
-        Some(vec![MESSAGE_1.into(), MESSAGE_3.into()])
+        Some(vec![
+            conversation::ConversationMessage::new(MESSAGE_1.to_owned(), "Client2".to_owned()),
+            conversation::ConversationMessage::new(MESSAGE_3.to_owned(), "Client3".to_owned())
+        ])
     );
     assert_eq!(
         client_2.read_msgs("MLS Discussions".to_string()).unwrap(),
-        Some(vec![MESSAGE_2.into(), MESSAGE_3.into()])
+        Some(vec![
+            conversation::ConversationMessage::new(MESSAGE_2.to_owned(), "Client1".to_owned()),
+            conversation::ConversationMessage::new(MESSAGE_3.to_owned(), "Client3".to_owned())
+        ])
     );
 }

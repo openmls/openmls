@@ -26,7 +26,7 @@ where
 }
 
 /// The Key Store trait
-pub trait OpenMlsKeyStore: Send + Sync {
+pub trait OpenMlsKeyStore {
     /// The error type returned by the [`OpenMlsKeyStore`].
     type Error: std::error::Error + std::fmt::Debug;
 

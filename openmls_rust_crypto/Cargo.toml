@@ -30,3 +30,4 @@ hpke-rs-crypto = { version = "0.1.2" }
 hpke-rs-rust-crypto = { version = "0.1.2" }
 tls_codec = { workspace = true }
 thiserror = "1.0"
+serde = { version = "^1.0", features = ["derive"] }
