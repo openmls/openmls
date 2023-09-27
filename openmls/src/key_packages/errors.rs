@@ -56,7 +56,7 @@ pub enum KeyPackageNewError<KeyStoreError> {
     #[error("The ciphersuite does not match the signature scheme.")]
     CiphersuiteSignatureSchemeMismatch,
     /// Accessing the key store failed.
-    #[error("Accessing the key store failed.")]
+    #[error("Accessing the key store failed: {0}")]
     KeyStoreError(KeyStoreError),
     /// See [`SignatureError`] for more details.
     #[error(transparent)]
