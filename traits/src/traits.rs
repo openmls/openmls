@@ -13,7 +13,7 @@ pub mod types;
 ///
 /// An implementation of this trait must be passed in to the public OpenMLS API
 /// to perform randomness generation, cryptographic operations, and key storage.
-pub trait OpenMlsProvider: Send + Sync {
+pub trait OpenMlsProvider {
     type CryptoProvider: crypto::OpenMlsCrypto;
     type RandProvider: random::OpenMlsRand;
     type KeyStoreProvider: key_store::OpenMlsKeyStore;
