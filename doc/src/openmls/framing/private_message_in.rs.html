@@ -278,12 +278,6 @@
 <a href="#278" id="278">278</a>
 <a href="#279" id="279">279</a>
 <a href="#280" id="280">280</a>
-<a href="#281" id="281">281</a>
-<a href="#282" id="282">282</a>
-<a href="#283" id="283">283</a>
-<a href="#284" id="284">284</a>
-<a href="#285" id="285">285</a>
-<a href="#286" id="286">286</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
 <span class="kw">use </span>openmls_traits::types::Ciphersuite;
 <span class="kw">use </span>tls_codec::{Deserialize, Serialize, TlsDeserialize, TlsSerialize, TlsSize};
@@ -374,7 +368,8 @@
             .map_err(|<span class="kw">_</span>| MessageDecryptionError::MalformedContent)
     }
 
-    <span class="doccomment">/// Decrypt this [`PrivateMessage`] and return the [`PrivateMessageContentIn`].
+    <span class="doccomment">/// Decrypt this [`PrivateMessage`] and return the
+    /// [`PrivateMessageContentIn`].
     </span><span class="attr">#[inline]
     </span><span class="kw">fn </span>decrypt(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -422,8 +417,9 @@
         .map_err(|<span class="kw">_</span>| MessageDecryptionError::MalformedContent)
     }
 
-    <span class="doccomment">/// This function decrypts a [`PrivateMessage`] into a [`VerifiableAuthenticatedContent`].
-    /// In order to get an [`FramedContent`] the result must be verified.
+    <span class="doccomment">/// This function decrypts a [`PrivateMessage`] into a
+    /// [`VerifiableAuthenticatedContent`]. In order to get an
+    /// [`FramedContent`] the result must be verified.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>to_verifiable_content(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         ciphersuite: Ciphersuite,
@@ -531,14 +527,6 @@
     // as `deserialize_ciphertext_content`.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) content: FramedContentBodyIn,
     <span class="kw">pub</span>(<span class="kw">crate</span>) auth: FramedContentAuthData,
-}
-
-<span class="attr">#[derive(TlsSerialize, TlsSize)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>PrivateContentAad&lt;<span class="lifetime">&#39;a</span>&gt; {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) group_id: GroupId,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) epoch: GroupEpoch,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) content_type: ContentType,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) authenticated_data: VLByteSlice&lt;<span class="lifetime">&#39;a</span>&gt;,
 }
 
 <span class="comment">// The following `From` implementation( breaks abstraction layers and MUST
