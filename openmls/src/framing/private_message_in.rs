@@ -88,7 +88,8 @@ impl PrivateMessageIn {
             .map_err(|_| MessageDecryptionError::MalformedContent)
     }
 
-    /// Decrypt this [`PrivateMessage`] and return the [`PrivateMessageContentIn`].
+    /// Decrypt this [`PrivateMessage`] and return the
+    /// [`PrivateMessageContentIn`].
     #[inline]
     fn decrypt(
         &self,
@@ -136,8 +137,9 @@ impl PrivateMessageIn {
         .map_err(|_| MessageDecryptionError::MalformedContent)
     }
 
-    /// This function decrypts a [`PrivateMessage`] into a [`VerifiableAuthenticatedContent`].
-    /// In order to get an [`FramedContent`] the result must be verified.
+    /// This function decrypts a [`PrivateMessage`] into a
+    /// [`VerifiableAuthenticatedContent`]. In order to get an
+    /// [`FramedContent`] the result must be verified.
     pub(crate) fn to_verifiable_content(
         &self,
         ciphersuite: Ciphersuite,
@@ -245,14 +247,6 @@ pub(crate) struct PrivateMessageContentIn {
     // as `deserialize_ciphertext_content`.
     pub(crate) content: FramedContentBodyIn,
     pub(crate) auth: FramedContentAuthData,
-}
-
-#[derive(TlsSerialize, TlsSize)]
-pub(crate) struct PrivateContentAad<'a> {
-    pub(crate) group_id: GroupId,
-    pub(crate) epoch: GroupEpoch,
-    pub(crate) content_type: ContentType,
-    pub(crate) authenticated_data: VLByteSlice<'a>,
 }
 
 // The following `From` implementation( breaks abstraction layers and MUST
