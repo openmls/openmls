@@ -75,7 +75,10 @@ impl LibraryError {
     /// A custom error (typically to avoid an unwrap())
     pub(crate) fn custom(s: &'static str) -> Self {
         #[cfg(feature = "backtrace")]
-        let display_string = format!("Error description: {s}\n Backtrace:\n{:?}", backtrace::Backtrace::new());
+        let display_string = format!(
+            "Error description: {s}\n Backtrace:\n{:?}",
+            backtrace::Backtrace::new()
+        );
         #[cfg(not(feature = "backtrace"))]
         let display_string = format!("Error description: {s}");
 
