@@ -189,6 +189,11 @@
 <a href="#189" id="189">189</a>
 <a href="#190" id="190">190</a>
 <a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # OpenMLS Errors
 //!
 //! Each module has their own errors it is returning. This module will defines
@@ -227,8 +232,7 @@
 //! All errors derive [`thiserror::Error`](https://docs.rs/thiserror/latest/thiserror/) as well as
 //! [`Debug`](`std::fmt::Debug`), [`PartialEq`](`std::cmp::PartialEq`), and [`Clone`](`std::clone::Clone`).
 
-</span><span class="kw">use </span>backtrace::Backtrace;
-<span class="kw">use </span>openmls_traits::types::CryptoError;
+</span><span class="kw">use </span>openmls_traits::types::CryptoError;
 <span class="kw">use </span>std::fmt::Display;
 <span class="kw">use </span>thiserror::Error;
 <span class="kw">use </span>tls_codec::Error <span class="kw">as </span>TlsCodecError;
@@ -266,8 +270,14 @@
 <span class="kw">impl </span>LibraryError {
     <span class="doccomment">/// A custom error (typically to avoid an unwrap())
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>custom(s: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>bt = Backtrace::new();
-        <span class="kw">let </span>display_string = <span class="macro">format!</span>(<span class="string">&quot;Error description: {s}\n Backtrace:\n{bt:?}&quot;</span>);
+        <span class="attr">#[cfg(feature = <span class="string">&quot;backtrace&quot;</span>)]
+        </span><span class="kw">let </span>display_string = <span class="macro">format!</span>(
+            <span class="string">&quot;Error description: {s}\n Backtrace:\n{:?}&quot;</span>,
+            backtrace::Backtrace::new()
+        );
+        <span class="attr">#[cfg(not(feature = <span class="string">&quot;backtrace&quot;</span>))]
+        </span><span class="kw">let </span>display_string = <span class="macro">format!</span>(<span class="string">&quot;Error description: {s}&quot;</span>);
+
         <span class="self">Self </span>{
             internal: InternalLibraryError::Custom(display_string),
         }
