@@ -36,7 +36,6 @@
 //! All errors derive [`thiserror::Error`](https://docs.rs/thiserror/latest/thiserror/) as well as
 //! [`Debug`](`std::fmt::Debug`), [`PartialEq`](`std::cmp::PartialEq`), and [`Clone`](`std::clone::Clone`).
 
-use backtrace::Backtrace;
 use openmls_traits::types::CryptoError;
 use std::fmt::Display;
 use thiserror::Error;
@@ -75,8 +74,14 @@ pub struct LibraryError {
 impl LibraryError {
     /// A custom error (typically to avoid an unwrap())
     pub(crate) fn custom(s: &'static str) -> Self {
-        let bt = Backtrace::new();
-        let display_string = format!("Error description: {s}\n Backtrace:\n{bt:?}");
+        #[cfg(feature = "backtrace")]
+        let display_string = format!(
+            "Error description: {s}\n Backtrace:\n{:?}",
+            backtrace::Backtrace::new()
+        );
+        #[cfg(not(feature = "backtrace"))]
+        let display_string = format!("Error description: {s}");
+
         Self {
             internal: InternalLibraryError::Custom(display_string),
         }
