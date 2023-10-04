@@ -14,9 +14,7 @@ use super::{
 };
 
 use std::io::{Read, Write};
-use tls_codec::{
-    Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, TlsSerialize, TlsSize,
-};
+use tls_codec::{Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait};
 
 /// [`PublicMessageIn`] is a framing structure for MLS messages. It can contain
 /// Proposals, Commits and application messages.
@@ -208,31 +206,6 @@ impl From<PublicMessageIn> for FramedContentTbsIn {
     }
 }
 
-// === Helper structs ===
-
-/// 9.2 Transcript Hashes
-///
-/// ```c
-/// // draft-ietf-mls-protocol-16
-///
-/// struct {
-///    WireFormat wire_format;
-///    FramedContent content; /* with content_type == commit */
-///    opaque signature<V>;
-///} ConfirmedTranscriptHashInput;
-/// ```
-#[derive(TlsSerialize, TlsSize)]
-pub(crate) struct ConfirmedTranscriptHashInput<'a> {
-    pub(super) wire_format: WireFormat,
-    pub(super) mls_content: &'a FramedContentIn,
-    pub(super) signature: &'a Signature,
-}
-
-#[derive(TlsSerialize, TlsSize)]
-pub(crate) struct InterimTranscriptHashInput<'a> {
-    pub(crate) confirmation_tag: &'a ConfirmationTag,
-}
-
 impl<'a> TryFrom<&'a PublicMessageIn> for InterimTranscriptHashInput<'a> {
     type Error = &'static str;
 
@@ -241,12 +214,6 @@ impl<'a> TryFrom<&'a PublicMessageIn> for InterimTranscriptHashInput<'a> {
             Some(confirmation_tag) => Ok(InterimTranscriptHashInput { confirmation_tag }),
             None => Err("PublicMessage needs to contain a confirmation tag."),
         }
-    }
-}
-
-impl<'a> From<&'a ConfirmationTag> for InterimTranscriptHashInput<'a> {
-    fn from(confirmation_tag: &'a ConfirmationTag) -> Self {
-        InterimTranscriptHashInput { confirmation_tag }
     }
 }
 
