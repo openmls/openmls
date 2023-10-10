@@ -410,8 +410,6 @@ pub(crate) fn common_direct_path(
     y: LeafNodeIndex,
     size: TreeSize,
 ) -> Vec<ParentNodeIndex> {
-    let x = x;
-    let y = y;
     let mut x_path = direct_path(x, size);
     let mut y_path = direct_path(y, size);
     x_path.reverse();
