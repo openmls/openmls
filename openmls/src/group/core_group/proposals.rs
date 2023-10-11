@@ -19,8 +19,8 @@ use crate::{
     utils::vector_converter,
 };
 
-/// A [ProposalStore] can store the standalone proposals that are received from the DS
-/// in between two commit messages.
+/// A [ProposalStore] can store the standalone proposals that are received from
+/// the DS in between two commit messages.
 #[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(test, derive(Clone))]
 pub struct ProposalStore {
@@ -53,8 +53,8 @@ impl ProposalStore {
         self.queued_proposals.clear();
     }
 
-    /// Removes a proposal from the store using its reference. It will return None if it wasn't
-    /// found in the store.
+    /// Removes a proposal from the store using its reference. It will return
+    /// None if it wasn't found in the store.
     pub(crate) fn remove(&mut self, proposal_ref: ProposalRef) -> Option<()> {
         let index = self
             .queued_proposals
@@ -129,8 +129,9 @@ impl QueuedProposal {
 
     /// Creates a new [QueuedProposal] from a [Proposal] and [Sender]
     ///
-    /// Note: We should calculate the proposal ref by hashing the authenticated content but can't do
-    /// this here without major refactoring. Thus, we use an internal `from_raw_proposal` hash.
+    /// Note: We should calculate the proposal ref by hashing the authenticated
+    /// content but can't do this here without major refactoring. Thus, we
+    /// use an internal `from_raw_proposal` hash.
     pub(crate) fn from_proposal_and_sender(
         ciphersuite: Ciphersuite,
         crypto: &impl OpenMlsCrypto,
@@ -196,8 +197,8 @@ impl OrderedProposalRefs {
     }
 }
 
-/// Proposal queue that helps filtering and sorting Proposals received during one
-/// epoch. The Proposals are stored in a `HashMap` which maps Proposal
+/// Proposal queue that helps filtering and sorting Proposals received during
+/// one epoch. The Proposals are stored in a `HashMap` which maps Proposal
 /// references to Proposals, such that, given a reference, a proposal can be
 /// accessed efficiently. To enable iteration over the queue in order, the
 /// `ProposalQueue` also contains a vector of `ProposalRef`s.
@@ -213,12 +214,13 @@ pub(crate) struct ProposalQueue {
 }
 
 impl ProposalQueue {
-    /// Returns `true` if the [`ProposalQueue`] is empty. Otherwise returns `false`.
+    /// Returns `true` if the [`ProposalQueue`] is empty. Otherwise returns
+    /// `false`.
     pub(crate) fn is_empty(&self) -> bool {
         self.proposal_references.is_empty()
     }
-    /// Returns a new `QueuedProposalQueue` from proposals that were committed and
-    /// don't need filtering.
+    /// Returns a new `QueuedProposalQueue` from proposals that were committed
+    /// and don't need filtering.
     /// This functions does the following checks:
     ///  - ValSem200
     pub(crate) fn from_committed_proposals(
@@ -409,8 +411,8 @@ impl ProposalQueue {
     /// - Check for presence of Removes and delete Updates
     /// - Only keep the last Update
     ///
-    /// Return a [`ProposalQueue`] and a bool that indicates whether Updates for the
-    /// own node were included
+    /// Return a [`ProposalQueue`] and a bool that indicates whether Updates for
+    /// the own node were included
     pub(crate) fn filter_proposals<'a>(
         ciphersuite: Ciphersuite,
         crypto: &impl OpenMlsCrypto,
@@ -469,7 +471,7 @@ impl ProposalQueue {
                     if leaf_index != own_index {
                         members
                             .entry(leaf_index)
-                            .or_insert_with(Member::default)
+                            .or_default()
                             .updates
                             .push(queued_proposal.clone());
                     } else {
@@ -482,7 +484,7 @@ impl ProposalQueue {
                     let removed = remove_proposal.removed();
                     members
                         .entry(removed)
-                        .or_insert_with(Member::default)
+                        .or_default()
                         .updates
                         .push(queued_proposal.clone());
                     let proposal_reference = queued_proposal.proposal_reference();
