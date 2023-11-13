@@ -253,7 +253,7 @@ fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
     let last_resort = Extension::LastResort(LastResortExtension::default());
 
     // Build a KeyPackage with a last resort extension
-    let credential = Credential::new(b"Test".to_vec(), CredentialType::Basic).unwrap();
+    let credential = Credential::new(b"Bob".to_vec(), CredentialType::Basic).unwrap();
     let signer =
         openmls_basic_credential::SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
@@ -312,7 +312,7 @@ fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
     )
     .expect("An unexpected error occurred.");
 
-    // === Alice adds Bob & Charlie ===
+    // === Alice adds Bob ===
 
     let (_message, welcome, _group_info) = alice_group
         .add_members(
@@ -332,7 +332,7 @@ fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
     )
     .expect("An unexpected error occurred.");
 
-    // This should now have deleted the KP from the store
+    // This should not have deleted the KP from the store
     let kp: Option<KeyPackage> = provider.key_store().read(
         kp.hash_ref(provider.crypto())
             .expect("error hashing kp")

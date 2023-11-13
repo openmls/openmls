@@ -3,7 +3,7 @@ use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 use super::{Deserialize, Serialize};
 
 /// ```c
-/// // draft-ietf-mls-extensions-1
+/// // draft-ietf-mls-extensions-03
 /// struct {} LastResort;
 /// ```
 #[derive(
