@@ -7,13 +7,22 @@ use super::{Deserialize, Serialize};
 /// struct {} LastResort;
 /// ```
 #[derive(
-    PartialEq, Eq, Clone, Debug, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    PartialEq,
+    Eq,
+    Clone,
+    Debug,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsSize,
+    Default,
 )]
 pub struct LastResortExtension {}
 
 impl LastResortExtension {
     /// Create a new `external_pub` extension.
     pub fn new() -> Self {
-        Self {}
+        Self::default()
     }
 }
