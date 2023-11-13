@@ -21,7 +21,7 @@ use super::{Deserialize, Serialize};
 pub struct LastResortExtension {}
 
 impl LastResortExtension {
-    /// Create a new `external_pub` extension.
+    /// Create a new `last_resort` extension.
     pub fn new() -> Self {
         Self::default()
     }
