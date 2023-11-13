@@ -3,17 +3,20 @@
 //! Proper testing is done through the public APIs.
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::key_store::OpenMlsKeyStore;
 use tls_codec::{Deserialize, Serialize};
 
 use super::*;
 use crate::{
     credentials::*,
     framing::*,
-    group::{errors::*, *},
+    group::{config::CryptoConfig, errors::*, *},
     key_packages::*,
     messages::proposals::ProposalType,
+    prelude::Capabilities,
     schedule::psk::store::ResumptionPskStore,
     test_utils::*,
+    versions::ProtocolVersion,
 };
 
 #[test]
@@ -206,7 +209,8 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
 
 #[test]
 fn required_capabilities() {
-    // A raw required capabilities extension with the default values for openmls (none).
+    // A raw required capabilities extension with the default values for openmls
+    // (none).
     let extension_bytes = vec![0, 3, 3, 0, 0, 0];
 
     let ext = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::default());
@@ -242,4 +246,97 @@ fn required_capabilities() {
 
     assert_eq!(ext, ext_decoded);
     assert_eq!(extension_bytes, encoded);
+}
+
+#[apply(ciphersuites_and_providers)]
+fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+    let last_resort = Extension::LastResort(LastResortExtension::default());
+
+    // Build a KeyPackage with a last resort extension
+    let credential = Credential::new(b"Bob".to_vec(), CredentialType::Basic).unwrap();
+    let signer =
+        openmls_basic_credential::SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+
+    let extensions = Extensions::single(last_resort);
+    let crypto_config = CryptoConfig::with_default_version(ciphersuite);
+    let capabilities = Capabilities::new(
+        None,
+        None,
+        // Add last resort extension as supported extension
+        Some(&[ExtensionType::LastResort]),
+        None,
+        None,
+    );
+    let kp = KeyPackage::builder()
+        .key_package_extensions(extensions)
+        .leaf_node_capabilities(capabilities)
+        .build(
+            crypto_config,
+            provider,
+            &signer,
+            CredentialWithKey {
+                credential: credential.clone(),
+                signature_key: signer.to_public_vec().into(),
+            },
+        )
+        .expect("error building key package with last resort extension");
+    assert!(kp.last_resort());
+    let encoded_kp = kp
+        .tls_serialize_detached()
+        .expect("error encoding key package with last resort extension");
+    let decoded_kp = KeyPackageIn::tls_deserialize(&mut encoded_kp.as_slice())
+        .expect("error decoding key package with last resort extension")
+        .validate(provider.crypto(), ProtocolVersion::default())
+        .expect("error validating key package with last resort extension");
+    assert!(decoded_kp.last_resort());
+
+    // If we join a group using a last resort KP, it shouldn't be deleted from the
+    // provider.
+
+    let alice_credential_with_key_and_signer = tests::utils::generate_credential_with_key(
+        "Alice".into(),
+        ciphersuite.signature_algorithm(),
+        provider,
+    );
+
+    let mls_group_config = MlsGroupConfigBuilder::new()
+        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .build();
+
+    // === Alice creates a group ===
+    let mut alice_group = MlsGroup::new(
+        provider,
+        &alice_credential_with_key_and_signer.signer,
+        &mls_group_config,
+        alice_credential_with_key_and_signer.credential_with_key,
+    )
+    .expect("An unexpected error occurred.");
+
+    // === Alice adds Bob ===
+
+    let (_message, welcome, _group_info) = alice_group
+        .add_members(
+            provider,
+            &alice_credential_with_key_and_signer.signer,
+            &[kp.clone()],
+        )
+        .expect("An unexpected error occurred.");
+
+    alice_group.merge_pending_commit(provider).unwrap();
+
+    let _bob_group = MlsGroup::new_from_welcome(
+        provider,
+        &mls_group_config,
+        welcome.into_welcome().expect("Unexpected MLS message"),
+        Some(alice_group.export_ratchet_tree().into()),
+    )
+    .expect("An unexpected error occurred.");
+
+    // This should not have deleted the KP from the store
+    let kp: Option<KeyPackage> = provider.key_store().read(
+        kp.hash_ref(provider.crypto())
+            .expect("error hashing kp")
+            .as_slice(),
+    );
+    assert!(kp.is_some());
 }

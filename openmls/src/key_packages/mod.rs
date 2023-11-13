@@ -376,6 +376,11 @@ impl KeyPackage {
     pub fn hpke_init_key(&self) -> &HpkePublicKey {
         &self.payload.init_key
     }
+
+    /// Check if this KeyPackage is a last resort key package.
+    pub fn last_resort(&self) -> bool {
+        self.payload.extensions.contains(ExtensionType::LastResort)
+    }
 }
 
 /// Crate visible `KeyPackage` functions.
