@@ -575,16 +575,34 @@
 <a href="#575" id="575">575</a>
 <a href="#576" id="576">576</a>
 <a href="#577" id="577">577</a>
+<a href="#578" id="578">578</a>
+<a href="#579" id="579">579</a>
+<a href="#580" id="580">580</a>
+<a href="#581" id="581">581</a>
+<a href="#582" id="582">582</a>
+<a href="#583" id="583">583</a>
+<a href="#584" id="584">584</a>
+<a href="#585" id="585">585</a>
+<a href="#586" id="586">586</a>
+<a href="#587" id="587">587</a>
+<a href="#588" id="588">588</a>
+<a href="#589" id="589">589</a>
+<a href="#590" id="590">590</a>
+<a href="#591" id="591">591</a>
+<a href="#592" id="592">592</a>
+<a href="#593" id="593">593</a>
+<a href="#594" id="594">594</a>
+<a href="#595" id="595">595</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Extensions
 //!
 //! In MLS, extensions appear in the following places:
-//! - In [`KeyPackages`](`crate::key_packages`), to describe client capabilities and aspects of their
-//!   participation in the group.
+//! - In [`KeyPackages`](`crate::key_packages`), to describe client capabilities
+//!   and aspects of their participation in the group.
 //! - In the `GroupInfo`, to tell new members of a group what parameters are
-//!   being used by the group, and to provide any additional details required
-//!   to join the group.
-//! - In the `GroupContext` object, to ensure that all members of the group
-//!   have the same view of the parameters in use.
+//!   being used by the group, and to provide any additional details required to
+//!   join the group.
+//! - In the `GroupContext` object, to ensure that all members of the group have
+//!   the same view of the parameters in use.
 //!
 //! Note that `GroupInfo` and `GroupContext` are not exposed in OpenMLS&#39; public
 //! API.
@@ -608,6 +626,7 @@
 <span class="kw">mod </span>codec;
 <span class="kw">mod </span>external_pub_extension;
 <span class="kw">mod </span>external_sender_extension;
+<span class="kw">mod </span>last_resort;
 <span class="kw">mod </span>ratchet_tree_extension;
 <span class="kw">mod </span>required_capabilities;
 <span class="kw">use </span>errors::<span class="kw-2">*</span>;
@@ -621,6 +640,7 @@
 <span class="kw">pub use </span>external_sender_extension::{
     ExternalSender, ExternalSendersExtension, SenderExtensionIndex,
 };
+<span class="kw">pub use </span>last_resort::LastResortExtension;
 <span class="kw">pub use </span>ratchet_tree_extension::RatchetTreeExtension;
 <span class="kw">pub use </span>required_capabilities::RequiredCapabilitiesExtension;
 
@@ -648,8 +668,8 @@
     /// application-defined identifier to a KeyPackage.
     </span>ApplicationId,
 
-    <span class="doccomment">/// The ratchet tree extensions provides the whole public state of the ratchet
-    /// tree.
+    <span class="doccomment">/// The ratchet tree extensions provides the whole public state of the
+    /// ratchet tree.
     </span>RatchetTree,
 
     <span class="doccomment">/// The required capabilities extension defines the configuration of a group
@@ -663,6 +683,10 @@
     <span class="doccomment">/// Group context extension that contains the credentials and signature keys
     /// of senders that are permitted to send external proposals to the group.
     </span>ExternalSenders,
+
+    <span class="doccomment">/// KeyPackage extension that marks a KeyPackage for use in a last resort
+    /// scenario.
+    </span>LastResort,
 
     <span class="doccomment">/// A currently unknown extension type.
     </span>Unknown(u16),
@@ -702,6 +726,7 @@
             <span class="number">3 </span>=&gt; ExtensionType::RequiredCapabilities,
             <span class="number">4 </span>=&gt; ExtensionType::ExternalPub,
             <span class="number">5 </span>=&gt; ExtensionType::ExternalSenders,
+            <span class="number">10 </span>=&gt; ExtensionType::LastResort,
             unknown =&gt; ExtensionType::Unknown(unknown),
         }
     }
@@ -715,6 +740,7 @@
             ExtensionType::RequiredCapabilities =&gt; <span class="number">3</span>,
             ExtensionType::ExternalPub =&gt; <span class="number">4</span>,
             ExtensionType::ExternalSenders =&gt; <span class="number">5</span>,
+            ExtensionType::LastResort =&gt; <span class="number">10</span>,
             ExtensionType::Unknown(unknown) =&gt; unknown,
         }
     }
@@ -730,6 +756,7 @@
                 | ExtensionType::RequiredCapabilities
                 | ExtensionType::ExternalPub
                 | ExtensionType::ExternalSenders
+                | ExtensionType::LastResort
         )
     }
 }
@@ -759,11 +786,14 @@
     <span class="doccomment">/// A [`RequiredCapabilitiesExtension`]
     </span>RequiredCapabilities(RequiredCapabilitiesExtension),
 
-    <span class="doccomment">/// A [`ExternalPubExtension`]
+    <span class="doccomment">/// An [`ExternalPubExtension`]
     </span>ExternalPub(ExternalPubExtension),
 
-    <span class="doccomment">/// A [`ExternalPubExtension`]
+    <span class="doccomment">/// An [`ExternalSendersExtension`]
     </span>ExternalSenders(ExternalSendersExtension),
+
+    <span class="doccomment">/// A [`LastResortExtension`]
+    </span>LastResort(LastResortExtension),
 
     <span class="doccomment">/// A currently unknown extension.
     </span>Unknown(u16, UnknownExtension),
@@ -811,7 +841,8 @@
 
     <span class="doccomment">/// Create an extension list with multiple extensions.
     ///
-    /// This function will fail when the list of extensions contains duplicate extension types.
+    /// This function will fail when the list of extensions contains duplicate
+    /// extension types.
     </span><span class="kw">pub fn </span>from_vec(extensions: Vec&lt;Extension&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, InvalidExtensionError&gt; {
         extensions.try_into()
     }
@@ -823,7 +854,8 @@
 
     <span class="doccomment">/// Add an extension to the extension list.
     ///
-    /// Returns an error when there already is an extension with the same extension type.
+    /// Returns an error when there already is an extension with the same
+    /// extension type.
     </span><span class="kw">pub fn </span>add(<span class="kw-2">&amp;mut </span><span class="self">self</span>, extension: Extension) -&gt; <span class="prelude-ty">Result</span>&lt;(), InvalidExtensionError&gt; {
         <span class="kw">if </span><span class="self">self</span>.contains(extension.extension_type()) {
             <span class="kw">return </span><span class="prelude-val">Err</span>(InvalidExtensionError::Duplicate);
@@ -845,7 +877,8 @@
 
     <span class="doccomment">/// Remove an extension from the extension list.
     ///
-    /// Returns the removed extension or `None` when there is no extension with the given extension type.
+    /// Returns the removed extension or `None` when there is no extension with
+    /// the given extension type.
     </span><span class="kw">pub fn </span>remove(<span class="kw-2">&amp;mut </span><span class="self">self</span>, extension_type: ExtensionType) -&gt; <span class="prelude-ty">Option</span>&lt;Extension&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(pos) = <span class="self">self
             </span>.unique
@@ -858,7 +891,8 @@
         </span>}
     }
 
-    <span class="doccomment">/// Returns `true` iff the extension list contains an extension with the given extension type.
+    <span class="doccomment">/// Returns `true` iff the extension list contains an extension with the
+    /// given extension type.
     </span><span class="kw">pub fn </span>contains(<span class="kw-2">&amp;</span><span class="self">self</span>, extension_type: ExtensionType) -&gt; bool {
         <span class="self">self</span>.unique
             .iter()
@@ -912,7 +946,8 @@
             })
     }
 
-    <span class="doccomment">/// Get a reference to the [`RequiredCapabilitiesExtension`] if there is any.
+    <span class="doccomment">/// Get a reference to the [`RequiredCapabilitiesExtension`] if there is
+    /// any.
     </span><span class="kw">pub fn </span>required_capabilities(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>RequiredCapabilitiesExtension&gt; {
         <span class="self">self</span>.find_by_type(ExtensionType::RequiredCapabilities)
             .and_then(|e| <span class="kw">match </span>e {
@@ -966,8 +1001,8 @@
     }
 
     <span class="doccomment">/// Get a reference to this extension as [`RequiredCapabilitiesExtension`].
-    /// Returns an [`ExtensionError::InvalidExtensionType`] error if called on an
-    /// [`Extension`] that&#39;s not a [`RequiredCapabilitiesExtension`].
+    /// Returns an [`ExtensionError::InvalidExtensionType`] error if called on
+    /// an [`Extension`] that&#39;s not a [`RequiredCapabilitiesExtension`].
     </span><span class="kw">pub fn </span>as_required_capabilities_extension(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>RequiredCapabilitiesExtension, ExtensionError&gt; {
@@ -980,8 +1015,8 @@
     }
 
     <span class="doccomment">/// Get a reference to this extension as [`ExternalPubExtension`].
-    /// Returns an [`ExtensionError::InvalidExtensionType`] error if called on an
-    /// [`Extension`] that&#39;s not a [`ExternalPubExtension`].
+    /// Returns an [`ExtensionError::InvalidExtensionType`] error if called on
+    /// an [`Extension`] that&#39;s not a [`ExternalPubExtension`].
     </span><span class="kw">pub fn </span>as_external_pub_extension(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>ExternalPubExtension, ExtensionError&gt; {
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::ExternalPub(e) =&gt; <span class="prelude-val">Ok</span>(e),
@@ -992,8 +1027,8 @@
     }
 
     <span class="doccomment">/// Get a reference to this extension as [`ExternalSendersExtension`].
-    /// Returns an [`ExtensionError::InvalidExtensionType`] error if called on an
-    /// [`Extension`] that&#39;s not a [`ExternalSendersExtension`].
+    /// Returns an [`ExtensionError::InvalidExtensionType`] error if called on
+    /// an [`Extension`] that&#39;s not a [`ExternalSendersExtension`].
     </span><span class="kw">pub fn </span>as_external_senders_extension(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>ExternalSendersExtension, ExtensionError&gt; {
@@ -1014,6 +1049,7 @@
             Extension::RequiredCapabilities(<span class="kw">_</span>) =&gt; ExtensionType::RequiredCapabilities,
             Extension::ExternalPub(<span class="kw">_</span>) =&gt; ExtensionType::ExternalPub,
             Extension::ExternalSenders(<span class="kw">_</span>) =&gt; ExtensionType::ExternalSenders,
+            Extension::LastResort(<span class="kw">_</span>) =&gt; ExtensionType::LastResort,
             Extension::Unknown(kind, <span class="kw">_</span>) =&gt; ExtensionType::Unknown(<span class="kw-2">*</span>kind),
         }
     }

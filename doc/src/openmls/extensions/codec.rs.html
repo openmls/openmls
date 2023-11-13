@@ -117,6 +117,13 @@
 <a href="#117" id="117">117</a>
 <a href="#118" id="118">118</a>
 <a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::io::{Read, Write};
 
 <span class="kw">use </span>tls_codec::{Deserialize, Serialize, Size, VLBytes};
@@ -126,6 +133,8 @@
     ExternalSendersExtension, RatchetTreeExtension, RequiredCapabilitiesExtension,
     UnknownExtension,
 };
+
+<span class="kw">use </span><span class="kw">super</span>::last_resort::LastResortExtension;
 
 <span class="kw">fn </span>vlbytes_len_len(length: usize) -&gt; usize {
     <span class="kw">if </span>length &lt; <span class="number">0x40 </span>{
@@ -153,6 +162,7 @@
             Extension::RequiredCapabilities(e) =&gt; e.tls_serialized_len(),
             Extension::ExternalPub(e) =&gt; e.tls_serialized_len(),
             Extension::ExternalSenders(e) =&gt; e.tls_serialized_len(),
+            Extension::LastResort(e) =&gt; e.tls_serialized_len(),
             Extension::Unknown(<span class="kw">_</span>, e) =&gt; e.<span class="number">0</span>.len(),
         };
 
@@ -184,6 +194,7 @@
             Extension::RequiredCapabilities(e) =&gt; e.tls_serialize(<span class="kw-2">&amp;mut </span>extension_data),
             Extension::ExternalPub(e) =&gt; e.tls_serialize(<span class="kw-2">&amp;mut </span>extension_data),
             Extension::ExternalSenders(e) =&gt; e.tls_serialize(<span class="kw-2">&amp;mut </span>extension_data),
+            Extension::LastResort(e) =&gt; e.tls_serialize(<span class="kw-2">&amp;mut </span>extension_data),
             Extension::Unknown(<span class="kw">_</span>, e) =&gt; extension_data
                 .write_all(e.<span class="number">0</span>.as_slice())
                 .map(|<span class="kw">_</span>| e.<span class="number">0</span>.len())
@@ -230,6 +241,9 @@
             ExtensionType::ExternalSenders =&gt; Extension::ExternalSenders(
                 ExternalSendersExtension::tls_deserialize(<span class="kw-2">&amp;mut </span>extension_data)<span class="question-mark">?</span>,
             ),
+            ExtensionType::LastResort =&gt; {
+                Extension::LastResort(LastResortExtension::tls_deserialize(<span class="kw-2">&amp;mut </span>extension_data)<span class="question-mark">?</span>)
+            }
             ExtensionType::Unknown(unknown) =&gt; {
                 Extension::Unknown(unknown, UnknownExtension(extension_data.to_vec()))
             }
