@@ -34,6 +34,6 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Build workspace
-        run: cargo build --workspace --all-targets
+        run: cargo build --workspace --all-targets --exclude openmls-fuzz
       - name: Test workspace
         run: cargo test --workspace --all-targets --exclude=openmls --exclude openmls-fuzz
