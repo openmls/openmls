@@ -8,6 +8,8 @@ use crate::extensions::{
     UnknownExtension,
 };
 
+use super::last_resort::LastResortExtension;
+
 fn vlbytes_len_len(length: usize) -> usize {
     if length < 0x40 {
         1
@@ -34,6 +36,7 @@ impl Size for Extension {
             Extension::RequiredCapabilities(e) => e.tls_serialized_len(),
             Extension::ExternalPub(e) => e.tls_serialized_len(),
             Extension::ExternalSenders(e) => e.tls_serialized_len(),
+            Extension::LastResort(e) => e.tls_serialized_len(),
             Extension::Unknown(_, e) => e.0.len(),
         };
 
@@ -65,6 +68,7 @@ impl Serialize for Extension {
             Extension::RequiredCapabilities(e) => e.tls_serialize(&mut extension_data),
             Extension::ExternalPub(e) => e.tls_serialize(&mut extension_data),
             Extension::ExternalSenders(e) => e.tls_serialize(&mut extension_data),
+            Extension::LastResort(e) => e.tls_serialize(&mut extension_data),
             Extension::Unknown(_, e) => extension_data
                 .write_all(e.0.as_slice())
                 .map(|_| e.0.len())
@@ -111,6 +115,9 @@ impl Deserialize for Extension {
             ExtensionType::ExternalSenders => Extension::ExternalSenders(
                 ExternalSendersExtension::tls_deserialize(&mut extension_data)?,
             ),
+            ExtensionType::LastResort => {
+                Extension::LastResort(LastResortExtension::tls_deserialize(&mut extension_data)?)
+            }
             ExtensionType::Unknown(unknown) => {
                 Extension::Unknown(unknown, UnknownExtension(extension_data.to_vec()))
             }

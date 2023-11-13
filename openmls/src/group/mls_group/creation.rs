@@ -17,7 +17,8 @@ use crate::{
 impl MlsGroup {
     // === Group creation ===
 
-    /// Creates a new group with the creator as the only member (and a random group ID).
+    /// Creates a new group with the creator as the only member (and a random
+    /// group ID).
     ///
     /// This function removes the private key corresponding to the
     /// `key_package` from the key store.
@@ -36,7 +37,8 @@ impl MlsGroup {
         )
     }
 
-    /// Creates a new group with a given group ID with the creator as the only member.
+    /// Creates a new group with a given group ID with the creator as the only
+    /// member.
     pub fn new_with_group_id<KeyStore: OpenMlsKeyStore>(
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
@@ -134,11 +136,15 @@ impl MlsGroup {
         };
 
         // Delete the [`KeyPackage`] and the corresponding private key from the
-        // key store
-        key_package_bundle
-            .key_package
-            .delete(provider)
-            .map_err(WelcomeError::KeyStoreError)?;
+        // key store, but only if it doesn't have a last resort extension.
+        if !key_package_bundle.key_package().last_resort() {
+            key_package_bundle
+                .key_package
+                .delete(provider)
+                .map_err(WelcomeError::KeyStoreError)?;
+        } else {
+            log::debug!("Key package has last resort extension, not deleting");
+        }
 
         let mut group = CoreGroup::new_from_welcome(
             welcome,
@@ -174,8 +180,8 @@ impl MlsGroup {
     /// group info. For more information on the external init process,
     /// please see Section 11.2.1 in the MLS specification.
     ///
-    /// Note: If there is a group member in the group with the same identity as us,
-    /// this will create a remove proposal.
+    /// Note: If there is a group member in the group with the same identity as
+    /// us, this will create a remove proposal.
     pub fn join_by_external_commit(
         provider: &impl OpenMlsProvider,
         signer: &impl Signer,
