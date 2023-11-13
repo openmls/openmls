@@ -93,6 +93,11 @@ impl MlsGroupConfig {
         self.use_ratchet_tree_extension
     }
 
+    /// Returns the [`MlsGroupConfig`] required capabilities extension.
+    pub fn required_capabilities(&self) -> &RequiredCapabilitiesExtension {
+        &self.required_capabilities
+    }
+
     /// Returns the [`MlsGroupConfig`] sender ratchet configuration.
     pub fn sender_ratchet_configuration(&self) -> &SenderRatchetConfiguration {
         &self.sender_ratchet_configuration
@@ -175,6 +180,15 @@ impl MlsGroupConfigBuilder {
     /// Sets the `use_ratchet_tree_extension` property of the MlsGroupConfig.
     pub fn use_ratchet_tree_extension(mut self, use_ratchet_tree_extension: bool) -> Self {
         self.config.use_ratchet_tree_extension = use_ratchet_tree_extension;
+        self
+    }
+
+    /// Sets the `required_capabilities` property of the MlsGroupConfig.
+    pub fn required_capabilities(
+        mut self,
+        required_capabilities: RequiredCapabilitiesExtension,
+    ) -> Self {
+        self.config.required_capabilities = required_capabilities;
         self
     }
 

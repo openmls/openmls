@@ -1,13 +1,13 @@
 //! # Extensions
 //!
 //! In MLS, extensions appear in the following places:
-//! - In [`KeyPackages`](`crate::key_packages`), to describe client capabilities and aspects of their
-//!   participation in the group.
+//! - In [`KeyPackages`](`crate::key_packages`), to describe client capabilities
+//!   and aspects of their participation in the group.
 //! - In the `GroupInfo`, to tell new members of a group what parameters are
-//!   being used by the group, and to provide any additional details required
-//!   to join the group.
-//! - In the `GroupContext` object, to ensure that all members of the group
-//!   have the same view of the parameters in use.
+//!   being used by the group, and to provide any additional details required to
+//!   join the group.
+//! - In the `GroupContext` object, to ensure that all members of the group have
+//!   the same view of the parameters in use.
 //!
 //! Note that `GroupInfo` and `GroupContext` are not exposed in OpenMLS' public
 //! API.
@@ -31,6 +31,7 @@ mod application_id_extension;
 mod codec;
 mod external_pub_extension;
 mod external_sender_extension;
+mod last_resort;
 mod ratchet_tree_extension;
 mod required_capabilities;
 use errors::*;
@@ -44,6 +45,7 @@ pub use external_pub_extension::ExternalPubExtension;
 pub use external_sender_extension::{
     ExternalSender, ExternalSendersExtension, SenderExtensionIndex,
 };
+pub use last_resort::LastResortExtension;
 pub use ratchet_tree_extension::RatchetTreeExtension;
 pub use required_capabilities::RequiredCapabilitiesExtension;
 
@@ -71,8 +73,8 @@ pub enum ExtensionType {
     /// application-defined identifier to a KeyPackage.
     ApplicationId,
 
-    /// The ratchet tree extensions provides the whole public state of the ratchet
-    /// tree.
+    /// The ratchet tree extensions provides the whole public state of the
+    /// ratchet tree.
     RatchetTree,
 
     /// The required capabilities extension defines the configuration of a group
@@ -86,6 +88,10 @@ pub enum ExtensionType {
     /// Group context extension that contains the credentials and signature keys
     /// of senders that are permitted to send external proposals to the group.
     ExternalSenders,
+
+    /// KeyPackage extension that marks a KeyPackage for use in a last resort
+    /// scenario.
+    LastResort,
 
     /// A currently unknown extension type.
     Unknown(u16),
@@ -125,6 +131,7 @@ impl From<u16> for ExtensionType {
             3 => ExtensionType::RequiredCapabilities,
             4 => ExtensionType::ExternalPub,
             5 => ExtensionType::ExternalSenders,
+            10 => ExtensionType::LastResort,
             unknown => ExtensionType::Unknown(unknown),
         }
     }
@@ -138,6 +145,7 @@ impl From<ExtensionType> for u16 {
             ExtensionType::RequiredCapabilities => 3,
             ExtensionType::ExternalPub => 4,
             ExtensionType::ExternalSenders => 5,
+            ExtensionType::LastResort => 10,
             ExtensionType::Unknown(unknown) => unknown,
         }
     }
@@ -153,6 +161,7 @@ impl ExtensionType {
                 | ExtensionType::RequiredCapabilities
                 | ExtensionType::ExternalPub
                 | ExtensionType::ExternalSenders
+                | ExtensionType::LastResort
         )
     }
 }
@@ -182,11 +191,14 @@ pub enum Extension {
     /// A [`RequiredCapabilitiesExtension`]
     RequiredCapabilities(RequiredCapabilitiesExtension),
 
-    /// A [`ExternalPubExtension`]
+    /// An [`ExternalPubExtension`]
     ExternalPub(ExternalPubExtension),
 
-    /// A [`ExternalPubExtension`]
+    /// An [`ExternalSendersExtension`]
     ExternalSenders(ExternalSendersExtension),
+
+    /// A [`LastResortExtension`]
+    LastResort(LastResortExtension),
 
     /// A currently unknown extension.
     Unknown(u16, UnknownExtension),
@@ -234,7 +246,8 @@ impl Extensions {
 
     /// Create an extension list with multiple extensions.
     ///
-    /// This function will fail when the list of extensions contains duplicate extension types.
+    /// This function will fail when the list of extensions contains duplicate
+    /// extension types.
     pub fn from_vec(extensions: Vec<Extension>) -> Result<Self, InvalidExtensionError> {
         extensions.try_into()
     }
@@ -246,7 +259,8 @@ impl Extensions {
 
     /// Add an extension to the extension list.
     ///
-    /// Returns an error when there already is an extension with the same extension type.
+    /// Returns an error when there already is an extension with the same
+    /// extension type.
     pub fn add(&mut self, extension: Extension) -> Result<(), InvalidExtensionError> {
         if self.contains(extension.extension_type()) {
             return Err(InvalidExtensionError::Duplicate);
@@ -268,7 +282,8 @@ impl Extensions {
 
     /// Remove an extension from the extension list.
     ///
-    /// Returns the removed extension or `None` when there is no extension with the given extension type.
+    /// Returns the removed extension or `None` when there is no extension with
+    /// the given extension type.
     pub fn remove(&mut self, extension_type: ExtensionType) -> Option<Extension> {
         if let Some(pos) = self
             .unique
@@ -281,7 +296,8 @@ impl Extensions {
         }
     }
 
-    /// Returns `true` iff the extension list contains an extension with the given extension type.
+    /// Returns `true` iff the extension list contains an extension with the
+    /// given extension type.
     pub fn contains(&self, extension_type: ExtensionType) -> bool {
         self.unique
             .iter()
@@ -335,7 +351,8 @@ impl Extensions {
             })
     }
 
-    /// Get a reference to the [`RequiredCapabilitiesExtension`] if there is any.
+    /// Get a reference to the [`RequiredCapabilitiesExtension`] if there is
+    /// any.
     pub fn required_capabilities(&self) -> Option<&RequiredCapabilitiesExtension> {
         self.find_by_type(ExtensionType::RequiredCapabilities)
             .and_then(|e| match e {
@@ -389,8 +406,8 @@ impl Extension {
     }
 
     /// Get a reference to this extension as [`RequiredCapabilitiesExtension`].
-    /// Returns an [`ExtensionError::InvalidExtensionType`] error if called on an
-    /// [`Extension`] that's not a [`RequiredCapabilitiesExtension`].
+    /// Returns an [`ExtensionError::InvalidExtensionType`] error if called on
+    /// an [`Extension`] that's not a [`RequiredCapabilitiesExtension`].
     pub fn as_required_capabilities_extension(
         &self,
     ) -> Result<&RequiredCapabilitiesExtension, ExtensionError> {
@@ -403,8 +420,8 @@ impl Extension {
     }
 
     /// Get a reference to this extension as [`ExternalPubExtension`].
-    /// Returns an [`ExtensionError::InvalidExtensionType`] error if called on an
-    /// [`Extension`] that's not a [`ExternalPubExtension`].
+    /// Returns an [`ExtensionError::InvalidExtensionType`] error if called on
+    /// an [`Extension`] that's not a [`ExternalPubExtension`].
     pub fn as_external_pub_extension(&self) -> Result<&ExternalPubExtension, ExtensionError> {
         match self {
             Self::ExternalPub(e) => Ok(e),
@@ -415,8 +432,8 @@ impl Extension {
     }
 
     /// Get a reference to this extension as [`ExternalSendersExtension`].
-    /// Returns an [`ExtensionError::InvalidExtensionType`] error if called on an
-    /// [`Extension`] that's not a [`ExternalSendersExtension`].
+    /// Returns an [`ExtensionError::InvalidExtensionType`] error if called on
+    /// an [`Extension`] that's not a [`ExternalSendersExtension`].
     pub fn as_external_senders_extension(
         &self,
     ) -> Result<&ExternalSendersExtension, ExtensionError> {
@@ -437,6 +454,7 @@ impl Extension {
             Extension::RequiredCapabilities(_) => ExtensionType::RequiredCapabilities,
             Extension::ExternalPub(_) => ExtensionType::ExternalPub,
             Extension::ExternalSenders(_) => ExtensionType::ExternalSenders,
+            Extension::LastResort(_) => ExtensionType::LastResort,
             Extension::Unknown(kind, _) => ExtensionType::Unknown(*kind),
         }
     }
