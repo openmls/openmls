@@ -322,6 +322,8 @@ fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
         )
         .expect("An unexpected error occurred.");
 
+    alice_group.merge_pending_commit(provider).unwrap();
+
     let _bob_group = MlsGroup::new_from_welcome(
         provider,
         &mls_group_config,
