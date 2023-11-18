@@ -13,8 +13,9 @@ readme = "README.md"
 path = "src/traits.rs"
 
 [features]
-default = []
+default = ["std"]
 test-utils = []
+std = []
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
