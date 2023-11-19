@@ -20,7 +20,5 @@ p256 = { version = "0.13" }
 rand = "0.8"
 
 [features]
-default = ["std"]
 clonable = []     # Make the keys clonable
 test-utils = []   # Only use for tests!
-std = []

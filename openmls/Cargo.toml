@@ -32,7 +32,7 @@ rstest = { version = "^0.16", optional = true }
 rstest_reuse = { version = "0.4", optional = true }
 
 [features]
-default = ["backtrace", "std"]
+default = ["backtrace"]
 crypto-subtle = [] # Enable subtle crypto APIs that have to be used with care.
 test-utils = [
     "dep:serde_json",
@@ -45,7 +45,6 @@ test-utils = [
 ]
 crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
 content-debug = [] # ☣️ Enable logging of sensitive message content
-std = []
 
 [dev-dependencies]
 backtrace = "0.3"
