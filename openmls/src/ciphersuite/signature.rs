@@ -1,14 +1,24 @@
 //! Signatures.
 //!
-//! This module contains structs for creating signature keys, issuing signatures and verifying them.
+//! This module contains structs for creating signature keys, issuing signatures
+//! and verifying them.
 
-use tls_codec::Serialize;
+use tls_codec::{Serialize, TlsDeserializeBytes};
 
 use super::{LABEL_PREFIX, *};
 
 /// Signature.
 #[derive(
-    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
+    TlsDeserializeBytes,
 )]
 pub struct Signature {
     value: VLBytes,
@@ -76,8 +86,9 @@ impl From<&[u8]> for SignaturePublicKey {
 }
 
 impl SignaturePublicKey {
-    /// Convert the "raw" signature into an enriched form, [OpenMlsSignaturePublicKey], that
-    /// already contains the signature scheme.
+    /// Convert the "raw" signature into an enriched form,
+    /// [OpenMlsSignaturePublicKey], that already contains the signature
+    /// scheme.
     pub fn into_signature_public_key_enriched(
         self,
         signature_scheme: SignatureScheme,
