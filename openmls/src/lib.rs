@@ -159,6 +159,10 @@ pub use rstest_reuse;
 #[macro_use]
 pub mod test_utils;
 
+#[cfg(test)]
+//#[macro_use]
+pub mod kat_vl;
+
 // === Modules ===
 
 #[macro_use]
