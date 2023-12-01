@@ -12,8 +12,12 @@ readme = "README.md"
 [dependencies]
 openmls_traits = { version = "0.2.0", path = "../traits" }
 openmls_memory_keystore = { version = "0.2.0", path = "../memory_keystore" }
-# Rust Crypto dependencies
+hpke = { version = "0.2.0-pre.1", package = "hpke-rs", default-features = false, features = [
+    "hazmat",
+    "serialization",
+] }
 sha2 = { version = "0.10" }
+# Rust Crypto dependencies
 aes-gcm = { version = "0.10" }
 chacha20poly1305 = { version = "0.10" }
 hmac = { version = "0.12" }
@@ -22,12 +26,8 @@ p256 = { version = "0.13" }
 hkdf = { version = "0.12" }
 rand = "0.8"
 rand_chacha = { version = "0.3" }
-hpke = { version = "0.1.1", package = "hpke-rs", default-features = false, features = [
-    "hazmat",
-    "serialization",
-] }
-hpke-rs-crypto = { version = "0.1.2" }
-hpke-rs-rust-crypto = { version = "0.1.2" }
+hpke-rs-crypto = { version = "0.2.0-pre.1" }
+hpke-rs-rust-crypto = { version = "0.2.0-pre.1" }
 tls_codec = { workspace = true }
 thiserror = "1.0"
 serde = { version = "^1.0", features = ["derive"] }
