@@ -184,6 +184,9 @@
 <a href="#184" id="184">184</a>
 <a href="#185" id="185">185</a>
 <a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
 </pre></div><pre class="rust"><code><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../README.md&quot;</span>)]
 </span><span class="doccomment">//! ## Quick Start
 //! For a quick start to learn how OpenMLS works here&#39;s the basic code to set
@@ -344,6 +347,9 @@
 <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
 #[macro_use]
 </span><span class="kw">pub mod </span>test_utils;
+
+<span class="attr">#[cfg(test)]
+</span><span class="kw">pub mod </span>kat_vl;
 
 <span class="comment">// === Modules ===
 
