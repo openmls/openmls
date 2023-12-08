@@ -1,0 +1,369 @@
+use std::time::{SystemTime, UNIX_EPOCH};
+
+use openmls_traits::signatures::Signer;
+use tls_codec::{Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize};
+
+use super::{Deserialize, Serialize};
+use crate::{
+    ciphersuite::{
+        signable::{Signable, SignatureError, SignedStruct, Verifiable, VerifiedStruct},
+        signature::Signature,
+    },
+    credentials::Credential,
+};
+
+/// # Protected Metadata
+///
+/// ```c
+/// struct {
+///   opaque signer_application_id<V>;
+///   Credential signer_credential;
+///   SignaturePublicKey signature_key;
+///   uint64 signing_time;
+///   opaque metadata<V>;
+///   /* SignWithLabel(., "ProtectedMetadataTBS",ProtectedMetadata) */
+///   opaque signature<V>;
+/// } ProtectedMetadata;
+/// ```
+///
+/// This extension must be verified by the application every time it is set or
+/// changed.
+/// The application **MUST** verify that
+/// * the signature is valid
+/// * the credential has been valid at `signing_time`
+/// * the `signer_application_id` is equal to the `creator_application_id`.
+///
+/// FIXME: This should NOT be deserializable. But we need to change more code for
+///        that to be possible.
+#[derive(
+    PartialEq, Eq, Clone, Debug, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
+pub struct ProtectedMetadata {
+    payload: ProtectedMetadataTbs,
+    signature: Signature,
+}
+
+impl ProtectedMetadata {
+    /// Create a new protected metadata extension and sign it.
+    pub fn new(
+        signer: &impl Signer,
+        signer_application_id: Vec<u8>,
+        signer_credential: Credential,
+        signature_key: Vec<u8>,
+        metadata: Vec<u8>,
+    ) -> Result<Self, SignatureError> {
+        let tbs = ProtectedMetadataTbs::new(
+            signer_application_id,
+            signer_credential,
+            signature_key,
+            metadata,
+        );
+        tbs.sign(signer)
+    }
+
+    /// Get the signer application ID as slice.
+    pub fn signer_application_id(&self) -> &[u8] {
+        self.payload.signer_application_id.as_ref()
+    }
+
+    /// Get the signer [`Credential`].
+    pub fn signer_credential(&self) -> &Credential {
+        &self.payload.signer_credential
+    }
+
+    /// Get the signature key as slize.
+    pub fn signature_key(&self) -> &[u8] {
+        self.payload.signature_key.as_ref()
+    }
+
+    /// Get the signing time as UNIX timestamp.
+    pub fn signing_time(&self) -> u64 {
+        self.payload.signing_time
+    }
+
+    /// Get the serialized metadata as slice.
+    ///
+    /// This is opaque to OpenMLS. The caller must handle it appropriately.
+    pub fn metadata(&self) -> &[u8] {
+        self.payload.metadata.as_ref()
+    }
+}
+
+impl SignedStruct<ProtectedMetadataTbs> for ProtectedMetadata {
+    fn from_payload(payload: ProtectedMetadataTbs, signature: Signature) -> Self {
+        ProtectedMetadata { payload, signature }
+    }
+}
+
+/// # Protected Metadata
+///
+/// ```c
+/// /* SignWithLabel(., "ProtectedMetadataTBS",ProtectedMetadata) */
+/// struct {
+///   opaque signer_application_id<V>;
+///   Credential signer_credential;
+///   SignaturePublicKey signature_key;
+///   uint64 signing_time;
+///   opaque metadata<V>;
+/// } ProtectedMetadataTBS;
+/// ```
+#[derive(
+    PartialEq, Eq, Clone, Debug, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]
+pub struct ProtectedMetadataTbs {
+    signer_application_id: Vec<u8>,
+    signer_credential: Credential,
+    signature_key: Vec<u8>,
+    signing_time: u64,
+    metadata: Vec<u8>,
+}
+
+impl ProtectedMetadataTbs {
+    /// Create a protected metadata extension tbs.
+    fn new(
+        signer_application_id: Vec<u8>,
+        signer_credential: Credential,
+        signature_key: Vec<u8>,
+        metadata: impl Into<Vec<u8>>,
+    ) -> Self {
+        Self {
+            signer_application_id,
+            signer_credential,
+            signature_key,
+            signing_time: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("SystemTime before UNIX EPOCH!")
+                .as_secs(),
+            metadata: metadata.into(),
+        }
+    }
+}
+
+const SIGNATURE_LABEL: &str = "ProtectedMetadataTbs";
+
+impl Signable for ProtectedMetadataTbs {
+    type SignedOutput = ProtectedMetadata;
+
+    fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
+        self.tls_serialize_detached()
+    }
+
+    fn label(&self) -> &str {
+        SIGNATURE_LABEL
+    }
+}
+
+/// XXX: This really should not be implemented on [`ProtectedMetadata`] but on
+/// the verifiable version.
+mod verifiable {
+    use super::*;
+
+    impl Verifiable for ProtectedMetadata {
+        fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
+            self.payload.tls_serialize_detached()
+        }
+
+        fn signature(&self) -> &Signature {
+            &self.signature
+        }
+
+        fn label(&self) -> &str {
+            SIGNATURE_LABEL
+        }
+    }
+
+    mod private_mod {
+        #[derive(Default)]
+        pub struct Seal;
+    }
+
+    impl VerifiedStruct<ProtectedMetadata> for ProtectedMetadata {
+        type SealingType = private_mod::Seal;
+
+        fn from_verifiable(v: ProtectedMetadata, _seal: Self::SealingType) -> Self {
+            Self {
+                payload: v.payload,
+                signature: v.signature,
+            }
+        }
+    }
+}
+
+mod xmtp_lib {
+    use super::*;
+
+    #[derive(
+        PartialEq, Eq, Clone, Debug, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    )]
+    #[repr(u8)]
+    pub enum ConversationType {
+        OneOnOne = 1,
+        Group,
+    }
+
+    #[derive(
+        PartialEq, Eq, Clone, Debug, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    )]
+    #[repr(u8)]
+    pub enum MemberModificationPolicy {
+        #[tls_codec(discriminant = 1)]
+        NoOne(),
+        Anyone(),
+        Creator(),
+        Admins(Vec<Admin>),
+    }
+
+    #[derive(
+        PartialEq, Eq, Clone, Debug, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    )]
+    pub struct Admin {
+        application_id: Vec<u8>,
+    }
+
+    impl From<Vec<u8>> for Admin {
+        fn from(application_id: Vec<u8>) -> Self {
+            Self { application_id }
+        }
+    }
+
+    impl From<&[u8]> for Admin {
+        fn from(application_id: &[u8]) -> Self {
+            Self {
+                application_id: application_id.to_vec(),
+            }
+        }
+    }
+
+    /// # XMTP Metadata
+    #[derive(
+        PartialEq, Eq, Clone, Debug, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    )]
+    pub struct XmtpMetadata {
+        version: u16,
+        conversation_type: ConversationType,
+        creator_application_id: Vec<u8>,
+        add_policy: MemberModificationPolicy,
+        remove_policy: MemberModificationPolicy,
+    }
+
+    impl XmtpMetadata {
+        /// Generate a new metadata struct.
+        pub fn new(
+            version: u16,
+            conversation_type: ConversationType,
+            creator_application_id: Vec<u8>,
+            add_policy: MemberModificationPolicy,
+            remove_policy: MemberModificationPolicy,
+        ) -> Self {
+            Self {
+                version,
+                conversation_type,
+                creator_application_id,
+                add_policy,
+                remove_policy,
+            }
+        }
+
+        /// Get the version of this metadata.
+        pub fn version(&self) -> u16 {
+            self.version
+        }
+
+        /// Get the [`ConversationType`].
+        pub fn conversation_type(&self) -> &ConversationType {
+            &self.conversation_type
+        }
+
+        /// Get the application ID of the creator as a slice.
+        pub fn creator_application_id(&self) -> &[u8] {
+            self.creator_application_id.as_ref()
+        }
+
+        /// Get the [`MemberModificationPolicy`] for adding members to the group.
+        pub fn add_policy(&self) -> &MemberModificationPolicy {
+            &self.add_policy
+        }
+
+        /// Get the [`MemberModificationPolicy`] for removing members from the group.
+        pub fn remove_policy(&self) -> &MemberModificationPolicy {
+            &self.remove_policy
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use tls_codec::{Deserialize, Serialize};
+
+    use crate::{
+        credentials::test_utils::new_credential, extensions::protected_metadata::ProtectedMetadata,
+        prelude_test::OpenMlsSignaturePublicKey, test_utils::*,
+    };
+
+    use super::{
+        xmtp_lib::{ConversationType, MemberModificationPolicy, XmtpMetadata},
+        *,
+    };
+
+    #[test]
+    fn serialize_metadata() {
+        let metadata = XmtpMetadata::new(
+            6,
+            ConversationType::Group,
+            b"MetadataTestAppId".to_vec(),
+            MemberModificationPolicy::Anyone(),
+            MemberModificationPolicy::Admins(vec![b"admin1"[..].into(), b"admin2"[..].into()]),
+        );
+        let serialized = metadata.tls_serialize_detached().unwrap();
+        let deserialized = XmtpMetadata::tls_deserialize_exact(serialized).unwrap();
+        assert_eq!(deserialized, metadata);
+    }
+
+    #[apply(ciphersuites_and_providers)]
+    fn serialize_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+        let creator_application_id = b"MetadataTestAppId".to_vec();
+
+        // Create metadata
+        let metadata = XmtpMetadata::new(
+            6,
+            ConversationType::Group,
+            creator_application_id.clone(),
+            MemberModificationPolicy::Anyone(),
+            MemberModificationPolicy::Admins(vec![b"admin1"[..].into(), b"admin2"[..].into()]),
+        );
+
+        // Setup crypto
+        let (credential_with_key, signer) = new_credential(
+            provider,
+            b"Kreator",
+            crate::credentials::CredentialType::Basic,
+            ciphersuite.signature_algorithm(),
+        );
+        let signature_key =
+            OpenMlsSignaturePublicKey::new(signer.public().into(), ciphersuite.into()).unwrap();
+
+        let signer_application_id = creator_application_id.clone();
+        let extension = ProtectedMetadata::new(
+            &signer,
+            signer_application_id,
+            credential_with_key.credential.clone(),
+            signature_key.as_slice().to_vec(),
+            metadata.tls_serialize_detached().unwrap(),
+        )
+        .unwrap();
+
+        // serialize and deserialize + verify
+        let serialized = extension.tls_serialize_detached().unwrap();
+        let unverified = ProtectedMetadata::tls_deserialize_exact(serialized).unwrap();
+        let deserialized: ProtectedMetadata = unverified
+            .verify(provider.crypto(), &signature_key)
+            .unwrap();
+        assert_eq!(deserialized, extension);
+
+        let xmtp_metadata = XmtpMetadata::tls_deserialize_exact(deserialized.metadata()).unwrap();
+        assert_eq!(
+            xmtp_metadata.add_policy(),
+            &MemberModificationPolicy::Anyone()
+        );
+    }
+}
