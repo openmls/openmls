@@ -70,6 +70,8 @@ pub enum ProposalIn {
     //             was moved to `draft-ietf-mls-extensions-00`.
     #[tls_codec(discriminant = 8)]
     AppAck(AppAckProposal),
+    DeviceAdd(AddProposalIn),
+    DeviceRemoveProposal(RemoveProposal),
 }
 
 impl ProposalIn {
@@ -84,6 +86,8 @@ impl ProposalIn {
             ProposalIn::ExternalInit(_) => ProposalType::ExternalInit,
             ProposalIn::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,
             ProposalIn::AppAck(_) => ProposalType::AppAck,
+            ProposalIn::DeviceAdd(_) => ProposalType::DeviceAdd,
+            ProposalIn::DeviceRemoveProposal(_) => ProposalType::DeviceRemove,
         }
     }
 
@@ -117,6 +121,10 @@ impl ProposalIn {
                 Proposal::GroupContextExtensions(group_context_extension)
             }
             ProposalIn::AppAck(app_ack) => Proposal::AppAck(app_ack),
+            ProposalIn::DeviceAdd(add) => {
+                Proposal::DeviceAdd(add.validate(crypto, protocol_version, ciphersuite)?)
+            }
+            ProposalIn::DeviceRemoveProposal(remove) => Proposal::DeviceRemove(remove),
         })
     }
 }
@@ -294,6 +302,8 @@ impl From<ProposalIn> for crate::messages::proposals::Proposal {
                 Self::GroupContextExtensions(group_context_extension)
             }
             ProposalIn::AppAck(app_ack) => Self::AppAck(app_ack),
+            ProposalIn::DeviceAdd(add) => Self::DeviceAdd(add.into()),
+            ProposalIn::DeviceRemoveProposal(remove) => Self::DeviceRemove(remove),
         }
     }
 }
@@ -311,6 +321,8 @@ impl From<crate::messages::proposals::Proposal> for ProposalIn {
                 Self::GroupContextExtensions(group_context_extension)
             }
             Proposal::AppAck(app_ack) => Self::AppAck(app_ack),
+            Proposal::DeviceAdd(add) => Self::DeviceAdd(add.into()),
+            Proposal::DeviceRemove(remove) => Self::DeviceRemoveProposal(remove),
         }
     }
 }

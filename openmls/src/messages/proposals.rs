@@ -79,6 +79,8 @@ pub enum ProposalType {
     ExternalInit,
     GroupContextExtensions,
     AppAck,
+    DeviceAdd,
+    DeviceRemove,
     Unknown(u16),
 }
 
@@ -144,6 +146,8 @@ impl From<u16> for ProposalType {
             6 => ProposalType::ExternalInit,
             7 => ProposalType::GroupContextExtensions,
             8 => ProposalType::AppAck,
+            9 => ProposalType::DeviceAdd,
+            10 => ProposalType::DeviceRemove,
             unknown => ProposalType::Unknown(unknown),
         }
     }
@@ -160,6 +164,8 @@ impl From<ProposalType> for u16 {
             ProposalType::ExternalInit => 6,
             ProposalType::GroupContextExtensions => 7,
             ProposalType::AppAck => 8,
+            ProposalType::DeviceAdd => 9,
+            ProposalType::DeviceRemove => 10,
             ProposalType::Unknown(unknown) => unknown,
         }
     }
@@ -208,6 +214,8 @@ pub enum Proposal {
     //             was moved to `draft-ietf-mls-extensions-00`.
     #[tls_codec(discriminant = 8)]
     AppAck(AppAckProposal),
+    DeviceAdd(AddProposal),
+    DeviceRemove(RemoveProposal),
 }
 
 impl Proposal {
@@ -222,6 +230,8 @@ impl Proposal {
             Proposal::ExternalInit(_) => ProposalType::ExternalInit,
             Proposal::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,
             Proposal::AppAck(_) => ProposalType::AppAck,
+            Proposal::DeviceAdd(_) => ProposalType::DeviceAdd,
+            Proposal::DeviceRemove(_) => ProposalType::DeviceRemove,
         }
     }
 

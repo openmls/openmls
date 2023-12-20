@@ -457,7 +457,7 @@ impl ProposalQueue {
         // Parse proposals and build adds and member list
         for queued_proposal in queued_proposal_list {
             match queued_proposal.proposal {
-                Proposal::Add(_) => {
+                Proposal::Add(_) | Proposal::DeviceAdd(_) => {
                     adds.add(queued_proposal.proposal_reference());
                     proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
@@ -480,7 +480,8 @@ impl ProposalQueue {
                     let proposal_reference = queued_proposal.proposal_reference();
                     proposal_pool.insert(proposal_reference, queued_proposal);
                 }
-                Proposal::Remove(ref remove_proposal) => {
+                Proposal::Remove(ref remove_proposal)
+                | Proposal::DeviceRemove(ref remove_proposal) => {
                     let removed = remove_proposal.removed();
                     members
                         .entry(removed)
