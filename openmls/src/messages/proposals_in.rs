@@ -20,9 +20,9 @@ use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 use super::proposals::{
-    AddProposal, AppAckProposal, ExternalInitProposal, GroupContextExtensionProposal,
-    PreSharedKeyProposal, Proposal, ProposalOrRef, ProposalType, ReInitProposal, RemoveProposal,
-    UpdateProposal,
+    AddProposal, AppAckProposal, DeviceAddProposal, DeviceRemoveProposal, ExternalInitProposal,
+    GroupContextExtensionProposal, PreSharedKeyProposal, Proposal, ProposalOrRef, ProposalType,
+    ReInitProposal, RemoveProposal, UpdateProposal,
 };
 
 /// Proposal.
@@ -70,8 +70,8 @@ pub enum ProposalIn {
     //             was moved to `draft-ietf-mls-extensions-00`.
     #[tls_codec(discriminant = 8)]
     AppAck(AppAckProposal),
-    DeviceAdd(AddProposalIn),
-    DeviceRemoveProposal(RemoveProposal),
+    DeviceAdd(DeviceAddProposalIn),
+    DeviceRemove(DeviceRemoveProposal),
 }
 
 impl ProposalIn {
@@ -87,7 +87,7 @@ impl ProposalIn {
             ProposalIn::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,
             ProposalIn::AppAck(_) => ProposalType::AppAck,
             ProposalIn::DeviceAdd(_) => ProposalType::DeviceAdd,
-            ProposalIn::DeviceRemoveProposal(_) => ProposalType::DeviceRemove,
+            ProposalIn::DeviceRemove(_) => ProposalType::DeviceRemove,
         }
     }
 
@@ -124,7 +124,7 @@ impl ProposalIn {
             ProposalIn::DeviceAdd(add) => {
                 Proposal::DeviceAdd(add.validate(crypto, protocol_version, ciphersuite)?)
             }
-            ProposalIn::DeviceRemoveProposal(remove) => Proposal::DeviceRemove(remove),
+            ProposalIn::DeviceRemove(remove) => Proposal::DeviceRemove(remove),
         })
     }
 }
@@ -164,6 +164,37 @@ impl AddProposalIn {
             return Err(ValidationError::InvalidAddProposalCiphersuite);
         }
         Ok(AddProposal { key_package })
+    }
+}
+
+/// Device add proposal input.
+///
+/// See [`DeviceAddProposal`].
+#[derive(
+    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]
+pub struct DeviceAddProposalIn {
+    key_package: KeyPackageIn,
+    pub(crate) metadata: Vec<u8>,
+}
+
+impl DeviceAddProposalIn {
+    /// Returns a [`AddProposal`] after successful validation.
+    pub(crate) fn validate(
+        self,
+        crypto: &impl OpenMlsCrypto,
+        protocol_version: ProtocolVersion,
+        ciphersuite: Ciphersuite,
+    ) -> Result<DeviceAddProposal, ValidationError> {
+        let key_package = self.key_package.validate(crypto, protocol_version)?;
+        // Verify that the ciphersuite is valid
+        if key_package.ciphersuite() != ciphersuite {
+            return Err(ValidationError::InvalidAddProposalCiphersuite);
+        }
+        Ok(DeviceAddProposal {
+            key_package,
+            metadata: self.metadata,
+        })
     }
 }
 
@@ -269,6 +300,27 @@ impl From<crate::messages::proposals::AddProposal> for AddProposalIn {
     }
 }
 
+// The following `From` implementation breaks abstraction layers and MUST
+// NOT be made available outside of tests or "test-utils".
+#[cfg(any(feature = "test-utils", test))]
+impl From<DeviceAddProposalIn> for crate::messages::proposals::DeviceAddProposal {
+    fn from(value: DeviceAddProposalIn) -> Self {
+        Self {
+            key_package: value.key_package.into(),
+            metadata: value.metadata,
+        }
+    }
+}
+
+impl From<crate::messages::proposals::DeviceAddProposal> for DeviceAddProposalIn {
+    fn from(value: crate::messages::proposals::DeviceAddProposal) -> Self {
+        Self {
+            key_package: value.key_package.into(),
+            metadata: value.metadata,
+        }
+    }
+}
+
 // The following `From` implementation( breaks abstraction layers and MUST
 // NOT be made available outside of tests or "test-utils".
 #[cfg(any(feature = "test-utils", test))]
@@ -303,7 +355,7 @@ impl From<ProposalIn> for crate::messages::proposals::Proposal {
             }
             ProposalIn::AppAck(app_ack) => Self::AppAck(app_ack),
             ProposalIn::DeviceAdd(add) => Self::DeviceAdd(add.into()),
-            ProposalIn::DeviceRemoveProposal(remove) => Self::DeviceRemove(remove),
+            ProposalIn::DeviceRemove(remove) => Self::DeviceRemove(remove),
         }
     }
 }
@@ -322,7 +374,7 @@ impl From<crate::messages::proposals::Proposal> for ProposalIn {
             }
             Proposal::AppAck(app_ack) => Self::AppAck(app_ack),
             Proposal::DeviceAdd(add) => Self::DeviceAdd(add.into()),
-            Proposal::DeviceRemove(remove) => Self::DeviceRemoveProposal(remove),
+            Proposal::DeviceRemove(remove) => Self::DeviceRemove(remove),
         }
     }
 }
