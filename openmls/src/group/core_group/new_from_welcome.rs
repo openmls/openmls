@@ -30,9 +30,11 @@ impl CoreGroup {
             key_package_bundle.key_package.leaf_node().encryption_key(),
         )
         .ok_or(WelcomeError::NoMatchingEncryptionKey)?;
-        leaf_keypair
-            .delete_from_key_store(provider.key_store())
-            .map_err(|_| WelcomeError::NoMatchingEncryptionKey)?;
+        if !key_package_bundle.key_package.last_resort() {
+            leaf_keypair
+                .delete_from_key_store(provider.key_store())
+                .map_err(|_| WelcomeError::NoMatchingEncryptionKey)?;
+        }
 
         let ciphersuite = welcome.ciphersuite();
 
