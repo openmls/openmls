@@ -921,3 +921,35 @@ fn group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         group_alice.export_secret(provider.crypto(), "export test", &[], exporter_length);
     assert!(alice_exporter.is_err())
 }
+
+/// Test if group context extensions are included in the group when adding them during the build process.
+#[apply(ciphersuites_and_providers)]
+fn group_context_extension_inclusion(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+    let alice_credential_with_keys = generate_credential_with_key(
+        b"Alice".to_vec(),
+        ciphersuite.signature_algorithm(),
+        provider,
+    );
+
+    let extension = Extension::Unknown(0xFF00, UnknownExtension(vec![0u8]));
+    let required_capabilities =
+        RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xFF00)], &[], &[]);
+    println!(
+        "Running test checking extension support in public group builder for required capabilities: {:?}",
+        required_capabilities
+    );
+
+    // === Alice creates a group ===
+    let group_alice = CoreGroup::builder(
+        GroupId::random(provider.rand()),
+        CryptoConfig::with_default_version(ciphersuite),
+        alice_credential_with_keys.credential_with_key.clone(),
+    )
+    .with_group_context_extensions(Extensions::single(extension.clone()))
+    .with_required_capabilities(required_capabilities)
+    .build(provider, &alice_credential_with_keys.signer)
+    .expect("Error creating CoreGroup.");
+
+    let group_extensions = group_alice.group_context_extensions();
+    assert!(group_extensions.contains(extension.extension_type()));
+}

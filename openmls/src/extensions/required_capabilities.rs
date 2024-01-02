@@ -75,18 +75,20 @@ impl RequiredCapabilitiesExtension {
         self.credential_types.as_slice()
     }
 
-    /// Check if all extension and proposal types are supported.
+    /// Check if all proposal types are supported.
     pub(crate) fn check_support(&self) -> Result<(), ExtensionError> {
-        for extension in self.extension_types() {
-            if !extension.is_supported() {
-                return Err(ExtensionError::UnsupportedExtensionType);
-            }
-        }
         for proposal in self.proposal_types() {
             if !proposal.is_supported() {
                 return Err(ExtensionError::UnsupportedProposalType);
             }
         }
         Ok(())
+    }
+
+    pub(crate) fn add_extension_type(&mut self, extension_type: ExtensionType) {
+        if self.extension_types.contains(&extension_type) {
+            return;
+        }
+        self.extension_types.push(extension_type);
     }
 }

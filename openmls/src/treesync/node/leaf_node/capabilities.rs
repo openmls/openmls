@@ -6,7 +6,9 @@ use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 use super::LeafNode;
 use crate::{
     credentials::CredentialType,
-    extensions::{Extension, ExtensionType, Extensions, RequiredCapabilitiesExtension},
+    extensions::{
+        default_extensions, Extension, ExtensionType, Extensions, RequiredCapabilitiesExtension,
+    },
     messages::proposals::ProposalType,
     treesync::errors::LeafNodeValidationError,
     versions::ProtocolVersion,
@@ -205,11 +207,6 @@ pub(super) fn default_ciphersuites() -> Vec<Ciphersuite> {
     ]
 }
 
-/// All extensions defined in the MLS spec are considered "default" by the spec.
-pub(super) fn default_extensions() -> Vec<ExtensionType> {
-    vec![ExtensionType::ApplicationId]
-}
-
 /// All proposals defined in the MLS spec are considered "default" by the spec.
 pub(super) fn default_proposals() -> Vec<ProposalType> {
     vec![
@@ -218,6 +215,7 @@ pub(super) fn default_proposals() -> Vec<ProposalType> {
         ProposalType::Remove,
         ProposalType::PreSharedKey,
         ProposalType::Reinit,
+        ProposalType::ExternalInit,
         ProposalType::GroupContextExtensions,
     ]
 }

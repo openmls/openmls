@@ -17,15 +17,12 @@ use crate::{
     },
     credentials::{Credential, CredentialWithKey},
     error::LibraryError,
-    extensions::{ExtensionType, Extensions},
+    extensions::{default_extensions, ExtensionType, Extensions},
     group::{config::CryptoConfig, GroupId},
     key_packages::{KeyPackage, Lifetime},
-    treesync::errors::PublicTreeError,
+    treesync::errors::{LeafNodeValidationError, PublicTreeError},
     versions::ProtocolVersion,
 };
-
-#[cfg(test)]
-use crate::treesync::errors::LeafNodeValidationError;
 
 mod capabilities;
 mod codec;
@@ -385,6 +382,20 @@ impl LeafNode {
             .contains(extension_type)
             || default_extensions().iter().any(|et| et == extension_type)
     }
+
+    /// Check whether the this leaf node supports all the required extensions
+    /// in the provided list.
+    pub(crate) fn check_extension_support(
+        &self,
+        extensions: &[ExtensionType],
+    ) -> Result<(), LeafNodeValidationError> {
+        for required in extensions.iter() {
+            if !self.supports_extension(required) {
+                return Err(LeafNodeValidationError::UnsupportedExtensions);
+            }
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -413,20 +424,6 @@ impl LeafNode {
     /// Return a mutable reference to [`Capabilities`].
     pub fn capabilities_mut(&mut self) -> &mut Capabilities {
         &mut self.payload.capabilities
-    }
-
-    /// Check whether the this leaf node supports all the required extensions
-    /// in the provided list.
-    pub(crate) fn check_extension_support(
-        &self,
-        extensions: &[ExtensionType],
-    ) -> Result<(), LeafNodeValidationError> {
-        for required in extensions.iter() {
-            if !self.supports_extension(required) {
-                return Err(LeafNodeValidationError::UnsupportedExtensions);
-            }
-        }
-        Ok(())
     }
 }
 

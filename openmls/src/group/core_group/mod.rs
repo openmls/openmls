@@ -59,7 +59,7 @@ use crate::{
     credentials::*,
     error::LibraryError,
     framing::{mls_auth_content::AuthenticatedContent, *},
-    group::{config::CryptoConfig, *},
+    group::{config::CryptoConfig, public_group::errors::PublicGroupBuildError, *},
     key_packages::*,
     messages::{
         group_info::{GroupInfo, GroupInfoTBS, VerifiableGroupInfo},
@@ -188,6 +188,18 @@ impl CoreGroupBuilder {
             .with_required_capabilities(required_capabilities);
         self
     }
+
+    /// Set the group context extensions of the [`CoreGroup`]. Any non-default
+    /// extensions are additionally added to the group's required capabilities.
+    pub(crate) fn with_group_context_extensions(
+        mut self,
+        group_context_extensions: Extensions,
+    ) -> Self {
+        self.public_group_builder = self
+            .public_group_builder
+            .with_group_context_extensions(group_context_extensions);
+        self
+    }
     /// Set the [`ExternalSendersExtension`] of the [`CoreGroup`].
     pub(crate) fn with_external_senders(
         mut self,
@@ -294,6 +306,20 @@ impl CoreGroupBuilder {
             own_leaf_index: LeafNodeIndex::new(0),
             resumption_psk_store,
         };
+
+        let extensions = group
+            .group_context_extensions()
+            .iter()
+            .map(|e| e.extension_type())
+            .collect::<Vec<ExtensionType>>();
+        group
+            .own_leaf_node()?
+            .check_extension_support(&extensions)
+            .map_err(|_| {
+                CoreGroupBuildError::PublicGroupBuildError(
+                    PublicGroupBuildError::UnsupportedExtensionType,
+                )
+            })?;
 
         // Store the private key of the own leaf in the key store as an epoch keypair.
         group
@@ -643,7 +669,6 @@ impl CoreGroup {
     }
 
     /// Get the group context extensions.
-    #[cfg(test)]
     pub(crate) fn group_context_extensions(&self) -> &Extensions {
         self.public_group.group_context().extensions()
     }

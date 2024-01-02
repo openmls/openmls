@@ -325,10 +325,10 @@ fn test_required_extension_key_package_mismatch(
         setup_client("Bob", ciphersuite, provider);
     let bob_key_package = bob_key_package_bundle.key_package();
 
-    // Set required capabilities
+    // Set required capabilities to two non-default extensions.
     let extensions = &[
-        ExtensionType::RequiredCapabilities,
-        ExtensionType::ApplicationId,
+        ExtensionType::Unknown(0xFF00),
+        ExtensionType::Unknown(0xFF01),
     ];
     let proposals = &[
         ProposalType::GroupContextExtensions,

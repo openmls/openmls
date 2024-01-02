@@ -97,6 +97,25 @@ pub enum ExtensionType {
     Unknown(u16),
 }
 
+/// List of default extensions as defined in Section 7.2. of RFC 9420.
+pub(super) fn default_extensions() -> Vec<ExtensionType> {
+    vec![
+        ExtensionType::ApplicationId,
+        ExtensionType::RatchetTree,
+        ExtensionType::RequiredCapabilities,
+        ExtensionType::ExternalPub,
+        ExtensionType::ExternalSenders,
+    ]
+}
+
+impl ExtensionType {
+    /// Returns `true` iff this extension type is a default extension as defined
+    /// in Section 7.2. of RFC 9420.
+    pub fn is_default_extension(&self) -> bool {
+        default_extensions().contains(self)
+    }
+}
+
 impl tls_codec::Size for ExtensionType {
     fn tls_serialized_len(&self) -> usize {
         2
@@ -148,21 +167,6 @@ impl From<ExtensionType> for u16 {
             ExtensionType::LastResort => 10,
             ExtensionType::Unknown(unknown) => unknown,
         }
-    }
-}
-
-impl ExtensionType {
-    /// Check whether an [`ExtensionType`] is supported or not.
-    pub fn is_supported(&self) -> bool {
-        matches!(
-            self,
-            ExtensionType::ApplicationId
-                | ExtensionType::RatchetTree
-                | ExtensionType::RequiredCapabilities
-                | ExtensionType::ExternalPub
-                | ExtensionType::ExternalSenders
-                | ExtensionType::LastResort
-        )
     }
 }
 

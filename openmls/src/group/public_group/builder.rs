@@ -25,6 +25,7 @@ pub(crate) struct TempBuilderPG1 {
     lifetime: Option<Lifetime>,
     required_capabilities: Option<RequiredCapabilitiesExtension>,
     external_senders: Option<ExternalSendersExtension>,
+    group_context_extensions: Option<Extensions>,
     leaf_extensions: Option<Extensions>,
 }
 
@@ -39,6 +40,38 @@ impl TempBuilderPG1 {
         required_capabilities: RequiredCapabilitiesExtension,
     ) -> Self {
         self.required_capabilities = Some(required_capabilities);
+        self
+    }
+
+    /// Set's the group context extensions of the group. Any non-standard
+    /// extensions are also added to the required capabilities.
+    pub(crate) fn with_group_context_extensions(
+        mut self,
+        group_context_extensions: Extensions,
+    ) -> Self {
+        if let Some(ref mut required_capabilities) = &mut self.required_capabilities {
+            for extension in group_context_extensions.iter() {
+                if !extension.extension_type().is_default_extension() {
+                    required_capabilities.add_extension_type(extension.extension_type())
+                }
+            }
+        } else {
+            let required_extension_types = group_context_extensions
+                .iter()
+                .filter_map(|e| {
+                    let e_type = e.extension_type();
+                    if !e_type.is_default_extension() {
+                        Some(e_type)
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>();
+            let required_capabilities =
+                RequiredCapabilitiesExtension::new(&required_extension_types, &[], &[]);
+            self.required_capabilities = Some(required_capabilities);
+        }
+        self.group_context_extensions = Some(group_context_extensions);
         self
     }
 
@@ -87,17 +120,16 @@ impl TempBuilderPG1 {
             _ => LibraryError::custom("Unexpected ExtensionError").into(),
         })?;
         let required_capabilities = Extension::RequiredCapabilities(required_capabilities);
-        let extensions =
-            if let Some(ext_senders) = self.external_senders.map(Extension::ExternalSenders) {
-                vec![required_capabilities, ext_senders]
-            } else {
-                vec![required_capabilities]
-            };
+        let mut extensions = self.group_context_extensions.unwrap_or_default();
+        extensions.add_or_replace(required_capabilities);
+        if let Some(ext_senders) = self.external_senders.map(Extension::ExternalSenders) {
+            extensions.add_or_replace(ext_senders);
+        };
         let group_context = GroupContext::create_initial_group_context(
             self.crypto_config.ciphersuite,
             self.group_id,
             treesync.tree_hash().to_vec(),
-            Extensions::from_vec(extensions)?,
+            extensions,
         );
         let next_builder = TempBuilderPG2 {
             treesync,
@@ -172,6 +204,7 @@ impl PublicGroup {
             required_capabilities: None,
             external_senders: None,
             leaf_extensions: None,
+            group_context_extensions: None,
         }
     }
 }
