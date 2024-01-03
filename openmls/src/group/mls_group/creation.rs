@@ -16,8 +16,8 @@ use crate::{
 impl MlsGroup {
     // === Group creation ===
 
-    /// Creates an [`MlsGroupBuilder`], which can be used to configure and build
-    /// a new group.
+    /// Creates a builder which can be used to configure and build
+    /// a new [`MlsGroup`].
     pub fn builder() -> MlsGroupBuilder {
         MlsGroupBuilder::new()
     }

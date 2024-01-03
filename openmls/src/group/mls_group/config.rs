@@ -57,18 +57,22 @@ pub struct MlsGroupConfig {
 }
 
 impl MlsGroupConfig {
+    /// Returns a builder for [`MlsGroupConfig`].
     pub fn builder() -> MlsGroupConfigBuilder {
         MlsGroupConfigBuilder::new()
     }
 
+    /// Returns the wire format policy set in this  [`MlsGroupConfig`].
     pub fn wire_format_policy(&self) -> WireFormatPolicy {
         self.wire_format_policy
     }
 
+    /// Returns the padding size set in this  [`MlsGroupConfig`].
     pub fn padding_size(&self) -> usize {
         self.padding_size
     }
 
+    /// Returns the [`SenderRatchetConfiguration`] set in this  [`MlsGroupConfig`].
     pub fn sender_ratchet_configuration(&self) -> &SenderRatchetConfiguration {
         &self.sender_ratchet_configuration
     }
@@ -91,42 +95,50 @@ pub struct MlsGroupPattern {
     pub(crate) mls_group_config: MlsGroupConfig,
 }
 
+/// Builder struct for an [`MlsGroupConfig`].
 pub struct MlsGroupConfigBuilder {
     mls_group_config: MlsGroupConfig,
 }
 
 impl MlsGroupConfigBuilder {
+    /// Creates a new builder with default values.
     pub fn new() -> Self {
         Self {
             mls_group_config: MlsGroupConfig::default(),
         }
     }
 
+    /// Sets the `wire_format` property of the [`MlsGroupConfig`].
     pub fn wire_format_policy(mut self, wire_format_policy: WireFormatPolicy) -> Self {
         self.mls_group_config.wire_format_policy = wire_format_policy;
         self
     }
 
+    /// Sets the `padding_size` property of the [`MlsGroupConfig`].
     pub fn padding_size(mut self, padding_size: usize) -> Self {
         self.mls_group_config.padding_size = padding_size;
         self
     }
 
+    /// Sets the `max_past_epochs` property of the [`MlsGroupConfig`].
     pub fn max_past_epochs(mut self, max_past_epochs: usize) -> Self {
         self.mls_group_config.max_past_epochs = max_past_epochs;
         self
     }
 
+    /// Sets the `number_of_resumption_psks` property of the [`MlsGroupConfig`].
     pub fn number_of_resumption_psks(mut self, number_of_resumption_psks: usize) -> Self {
         self.mls_group_config.number_of_resumption_psks = number_of_resumption_psks;
         self
     }
 
+    /// Sets the `use_ratchet_tree_extension` property of the [`MlsGroupConfig`].
     pub fn use_ratchet_tree_extension(mut self, use_ratchet_tree_extension: bool) -> Self {
         self.mls_group_config.use_ratchet_tree_extension = use_ratchet_tree_extension;
         self
     }
 
+    /// Sets the `sender_ratchet_configuration` property of the [`MlsGroupConfig`].
     pub fn sender_ratchet_configuration(
         mut self,
         sender_ratchet_configuration: SenderRatchetConfiguration,
@@ -135,6 +147,7 @@ impl MlsGroupConfigBuilder {
         self
     }
 
+    /// Finalizes the builder and returns an [`MlsGroupConfig`].
     pub fn build(self) -> MlsGroupConfig {
         self.mls_group_config
     }
@@ -207,6 +220,7 @@ impl MlsGroupPattern {
             .build()
     }
 
+    /// Returns the [`MlsGroupConfig`] of groups created with this pattern.
     pub fn mls_group_config(&self) -> &MlsGroupConfig {
         &self.mls_group_config
     }
