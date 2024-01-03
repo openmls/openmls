@@ -934,10 +934,6 @@ fn group_context_extension_inclusion(ciphersuite: Ciphersuite, provider: &impl O
     let extension = Extension::Unknown(0xFF00, UnknownExtension(vec![0u8]));
     let required_capabilities =
         RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xFF00)], &[], &[]);
-    println!(
-        "Running test checking extension support in public group builder for required capabilities: {:?}",
-        required_capabilities
-    );
 
     // === Alice creates a group ===
     let group_alice = CoreGroup::builder(
