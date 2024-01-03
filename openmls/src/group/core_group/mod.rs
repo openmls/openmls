@@ -913,6 +913,8 @@ impl CoreGroup {
             path: path_computation_result.encrypted_path,
         };
 
+        let new_leaf_node_option = commit.path.as_ref().map(|p| p.leaf_node().clone());
+
         // Build AuthenticatedContent
         let mut authenticated_content = AuthenticatedContent::commit(
             *params.framing_parameters(),
@@ -1075,6 +1077,7 @@ impl CoreGroup {
             // The committer is not allowed to include their own update
             // proposal, so there is no extra keypair to store here.
             None,
+            new_leaf_node_option,
         );
         let staged_commit = StagedCommit::new(
             proposal_queue,

@@ -340,6 +340,10 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
         if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
             alice_processed_message.into_content()
         {
+            // Get the committer's new leaf node
+            let alice_new_leaf = staged_commit.update_path_leaf_node().unwrap();
+            assert!(alice_new_leaf.credential() == &bob_credential.credential);
+
             alice_group
                 .merge_staged_commit(provider, *staged_commit)
                 .unwrap();

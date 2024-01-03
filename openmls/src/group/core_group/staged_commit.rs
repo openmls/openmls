@@ -153,66 +153,76 @@ impl CoreGroup {
         }
 
         // Determine if Commit has a path
-        let (commit_secret, new_keypairs, new_leaf_keypair_option) = if let Some(path) =
-            commit.path.clone()
-        {
-            // Update the public group
-            // ValSem202: Path must be the right length
-            diff.apply_received_update_path(provider.crypto(), ciphersuite, sender_index, &path)?;
+        let (commit_secret, new_keypairs, new_leaf_keypair_option, new_leaf_node_option) =
+            if let Some(path) = commit.path.clone() {
+                // Update the public group
+                // ValSem202: Path must be the right length
+                diff.apply_received_update_path(
+                    provider.crypto(),
+                    ciphersuite,
+                    sender_index,
+                    &path,
+                )?;
 
-            // Update group context
-            diff.update_group_context(provider.crypto())?;
+                // Update group context
+                diff.update_group_context(provider.crypto())?;
 
-            let decryption_keypairs: Vec<&EncryptionKeyPair> = old_epoch_keypairs
-                .iter()
-                .chain(leaf_node_keypairs.iter())
-                .collect();
+                let decryption_keypairs: Vec<&EncryptionKeyPair> = old_epoch_keypairs
+                    .iter()
+                    .chain(leaf_node_keypairs.iter())
+                    .collect();
 
-            // ValSem203: Path secrets must decrypt correctly
-            // ValSem204: Public keys from Path must be verified and match the private keys from the direct path
-            let (new_keypairs, commit_secret) = diff.decrypt_path(
-                provider.crypto(),
-                &decryption_keypairs,
-                self.own_leaf_index(),
-                sender_index,
-                path.nodes(),
-                &apply_proposals_values.exclusion_list(),
-            )?;
+                // ValSem203: Path secrets must decrypt correctly
+                // ValSem204: Public keys from Path must be verified and match the private keys from the direct path
+                let (new_keypairs, commit_secret) = diff.decrypt_path(
+                    provider.crypto(),
+                    &decryption_keypairs,
+                    self.own_leaf_index(),
+                    sender_index,
+                    path.nodes(),
+                    &apply_proposals_values.exclusion_list(),
+                )?;
 
-            // Check if one of our update proposals was applied. If so, we
-            // need to store that keypair separately, because after merging
-            // it needs to be removed from the key store separately and in
-            // addition to the removal of the keypairs of the previous
-            // epoch.
-            let new_leaf_keypair_option = if let Some(leaf) = diff.leaf(self.own_leaf_index()) {
-                leaf_node_keypairs.into_iter().find_map(|keypair| {
-                    if leaf.encryption_key() == keypair.public_key() {
-                        Some(keypair)
-                    } else {
-                        None
-                    }
-                })
+                // Check if one of our update proposals was applied. If so, we
+                // need to store that keypair separately, because after merging
+                // it needs to be removed from the key store separately and in
+                // addition to the removal of the keypairs of the previous
+                // epoch.
+                let new_leaf_keypair_option = if let Some(leaf) = diff.leaf(self.own_leaf_index()) {
+                    leaf_node_keypairs.into_iter().find_map(|keypair| {
+                        if leaf.encryption_key() == keypair.public_key() {
+                            Some(keypair)
+                        } else {
+                            None
+                        }
+                    })
+                } else {
+                    // We should have an own leaf at this point.
+                    debug_assert!(false);
+                    None
+                };
+                (
+                    commit_secret,
+                    new_keypairs,
+                    new_leaf_keypair_option,
+                    Some(path.leaf_node().clone()),
+                )
             } else {
-                // We should have an own leaf at this point.
-                debug_assert!(false);
-                None
+                if apply_proposals_values.path_required {
+                    // ValSem201
+                    return Err(StageCommitError::RequiredPathNotFound);
+                }
+
+                // Even if there is no path, we have to update the group context.
+                diff.update_group_context(provider.crypto())?;
+
+                (
+                    CommitSecret::zero_secret(ciphersuite, self.version()),
+                    vec![],
+                    None,
+                    None,
+                )
             };
-            (commit_secret, new_keypairs, new_leaf_keypair_option)
-        } else {
-            if apply_proposals_values.path_required {
-                // ValSem201
-                return Err(StageCommitError::RequiredPathNotFound);
-            }
-
-            // Even if there is no path, we have to update the group context.
-            diff.update_group_context(provider.crypto())?;
-
-            (
-                CommitSecret::zero_secret(ciphersuite, self.version()),
-                vec![],
-                None,
-            )
-        };
 
         // Update the confirmed transcript hash before we compute the confirmation tag.
         diff.update_confirmed_transcript_hash(provider.crypto(), mls_content)?;
@@ -269,6 +279,7 @@ impl CoreGroup {
                 staged_diff,
                 new_keypairs,
                 new_leaf_keypair_option,
+                new_leaf_node_option,
             )));
 
         Ok(StagedCommit::new(proposal_queue, staged_commit_state))
@@ -451,6 +462,15 @@ impl StagedCommit {
             None
         }
     }
+
+    /// Returns the [`LeafNode`] of the update path if any.
+    pub fn update_path_leaf_node(&self) -> Option<&LeafNode> {
+        if let StagedCommitState::GroupMember(ref state) = &self.state {
+            state.new_leaf_option.as_ref()
+        } else {
+            None
+        }
+    }
 }
 
 /// This struct is used internally by [StagedCommit] to encapsulate all the modified group state.
@@ -461,6 +481,7 @@ pub(crate) struct MemberStagedCommitState {
     staged_diff: StagedPublicGroupDiff,
     new_keypairs: Vec<EncryptionKeyPair>,
     new_leaf_keypair_option: Option<EncryptionKeyPair>,
+    new_leaf_option: Option<LeafNode>,
 }
 
 impl MemberStagedCommitState {
@@ -470,6 +491,7 @@ impl MemberStagedCommitState {
         staged_diff: StagedPublicGroupDiff,
         new_keypairs: Vec<EncryptionKeyPair>,
         new_leaf_keypair_option: Option<EncryptionKeyPair>,
+        new_leaf_option: Option<LeafNode>,
     ) -> Self {
         Self {
             group_epoch_secrets,
@@ -477,6 +499,7 @@ impl MemberStagedCommitState {
             staged_diff,
             new_keypairs,
             new_leaf_keypair_option,
+            new_leaf_option,
         }
     }
 
