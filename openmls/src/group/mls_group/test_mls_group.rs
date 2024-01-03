@@ -95,7 +95,7 @@ fn remover(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     let mut bob_group = MlsGroup::new_from_welcome(
         provider,
-        &mls_group_pattern.mls_group_config(),
+        mls_group_pattern.mls_group_config(),
         welcome.into_welcome().expect("Unexpected message type."),
         Some(alice_group.export_ratchet_tree().into()),
     )
@@ -130,7 +130,7 @@ fn remover(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     let mut charlie_group = MlsGroup::new_from_welcome(
         provider,
-        &mls_group_pattern.mls_group_config(),
+        mls_group_pattern.mls_group_config(),
         welcome.into_welcome().expect("Unexpected message type."),
         Some(bob_group.export_ratchet_tree().into()),
     )
@@ -461,7 +461,7 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, provider: &impl OpenMlsPr
 
     let mut bob_group = MlsGroup::new_from_welcome(
         provider,
-        &mls_group_pattern.mls_group_config(),
+        mls_group_pattern.mls_group_config(),
         welcome_option
             .expect("no welcome after commit")
             .into_welcome()
@@ -542,7 +542,7 @@ fn key_package_deletion(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
     // === Bob joins the group ===
     let _bob_group = MlsGroup::new_from_welcome(
         provider,
-        &mls_group_pattern.mls_group_config(),
+        mls_group_pattern.mls_group_config(),
         welcome.into_welcome().expect("Unexpected message type."),
         Some(alice_group.export_ratchet_tree().into()),
     )
@@ -605,7 +605,7 @@ fn remove_prosposal_by_ref(ciphersuite: Ciphersuite, provider: &impl OpenMlsProv
     alice_group.merge_pending_commit(provider).unwrap();
     let mut bob_group = MlsGroup::new_from_welcome(
         provider,
-        &mls_group_pattern.mls_group_config(),
+        mls_group_pattern.mls_group_config(),
         welcome.into_welcome().unwrap(),
         Some(alice_group.export_ratchet_tree().into()),
     )

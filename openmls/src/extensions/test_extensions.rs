@@ -326,7 +326,7 @@ fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
 
     let _bob_group = MlsGroup::new_from_welcome(
         provider,
-        &mls_group_pattern.mls_group_config(),
+        mls_group_pattern.mls_group_config(),
         welcome.into_welcome().expect("Unexpected MLS message"),
         Some(alice_group.export_ratchet_tree().into()),
     )

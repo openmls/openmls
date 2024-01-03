@@ -81,7 +81,7 @@ fn receive_message(
 
     let mut bob_group = MlsGroup::new_from_welcome(
         provider,
-        &mls_group_config.mls_group_config(),
+        mls_group_config.mls_group_config(),
         welcome.into_welcome().expect("Unexpected message type."),
         None,
     )

@@ -286,7 +286,7 @@ impl PassiveClient {
     ) {
         let group = MlsGroup::new_from_welcome(
             &self.provider,
-            &self.group_config.mls_group_config(),
+            self.group_config.mls_group_config(),
             mls_message_welcome.into_welcome().unwrap(),
             ratchet_tree,
         )

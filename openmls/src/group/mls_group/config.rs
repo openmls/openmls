@@ -96,6 +96,7 @@ pub struct MlsGroupPattern {
 }
 
 /// Builder struct for an [`MlsGroupConfig`].
+#[derive(Default)]
 pub struct MlsGroupConfigBuilder {
     mls_group_config: MlsGroupConfig,
 }

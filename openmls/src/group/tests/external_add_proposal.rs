@@ -90,7 +90,7 @@ fn validation_test_setup(
 
     let bob_group = MlsGroup::new_from_welcome(
         provider,
-        &mls_group_pattern.mls_group_config(),
+        mls_group_pattern.mls_group_config(),
         welcome.into_welcome().expect("Unexpected message type."),
         Some(alice_group.export_ratchet_tree().into()),
     )
@@ -200,7 +200,7 @@ fn external_add_proposal_should_succeed(ciphersuite: Ciphersuite, provider: &imp
             .build();
         let charlie_group = MlsGroup::new_from_welcome(
             provider,
-            &cfg.mls_group_config(),
+            cfg.mls_group_config(),
             welcome.unwrap().into_welcome().unwrap(),
             Some(alice_group.export_ratchet_tree().into()),
         )

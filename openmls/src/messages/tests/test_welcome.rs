@@ -163,7 +163,7 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, provider: &impl OpenM
     // Bob tries to join the group
     let err = MlsGroup::new_from_welcome(
         provider,
-        &mls_group_config.mls_group_config(),
+        mls_group_config.mls_group_config(),
         welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
@@ -196,7 +196,7 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, provider: &impl OpenM
 
     let _group = MlsGroup::new_from_welcome(
         provider,
-        &mls_group_config.mls_group_config(),
+        mls_group_config.mls_group_config(),
         original_welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )

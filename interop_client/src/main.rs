@@ -826,7 +826,7 @@ impl MlsClient for MlsClientImpl {
             .build();
         interop_group
             .group
-            .set_configuration(&mls_group_pattern.mls_group_config());
+            .set_configuration(mls_group_pattern.mls_group_config());
         let (proposal, _) = interop_group
             .group
             .propose_add_member(
@@ -876,7 +876,7 @@ impl MlsClient for MlsClientImpl {
             .build();
         interop_group
             .group
-            .set_configuration(&mls_group_pattern.mls_group_config());
+            .set_configuration(mls_group_pattern.mls_group_config());
         let (proposal, _) = interop_group
             .group
             .propose_self_update(
@@ -932,7 +932,7 @@ impl MlsClient for MlsClientImpl {
             .build();
         interop_group
             .group
-            .set_configuration(&mls_group_pattern.mls_group_config());
+            .set_configuration(mls_group_pattern.mls_group_config());
         trace!("   prepared remove");
 
         let (proposal, _) = interop_group

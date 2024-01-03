@@ -133,7 +133,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 
         let mut bob_group = MlsGroup::new_from_welcome(
             provider,
-            &mls_group_pattern.mls_group_config(),
+            mls_group_pattern.mls_group_config(),
             welcome.into_welcome().expect("Unexpected message type."),
             Some(alice_group.export_ratchet_tree().into()),
         )
@@ -349,7 +349,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 
         let mut charlie_group = MlsGroup::new_from_welcome(
             provider,
-            &mls_group_pattern.mls_group_config(),
+            mls_group_pattern.mls_group_config(),
             welcome.into_welcome().expect("Unexpected message type."),
             Some(bob_group.export_ratchet_tree().into()),
         )
@@ -700,7 +700,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
         // Bob creates a new group
         let mut bob_group = MlsGroup::new_from_welcome(
             provider,
-            &mls_group_pattern.mls_group_config(),
+            mls_group_pattern.mls_group_config(),
             welcome_option
                 .expect("Welcome was not returned")
                 .into_welcome()
@@ -892,7 +892,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 
         let mut bob_group = MlsGroup::new_from_welcome(
             provider,
-            &mls_group_pattern.mls_group_config(),
+            mls_group_pattern.mls_group_config(),
             welcome.into_welcome().expect("Unexpected message type."),
             Some(alice_group.export_ratchet_tree().into()),
         )
@@ -1132,7 +1132,7 @@ fn mls_group_ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl Op
         // === Bob joins using the ratchet tree extension ===
         let _bob_group = MlsGroup::new_from_welcome(
             provider,
-            &mls_group_pattern.mls_group_config(),
+            mls_group_pattern.mls_group_config(),
             welcome.into_welcome().expect("Unexpected message type."),
             None,
         )
@@ -1184,7 +1184,7 @@ fn mls_group_ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl Op
         // === Bob tries to join without the ratchet tree extension ===
         let error = MlsGroup::new_from_welcome(
             provider,
-            &mls_group_config.mls_group_config(),
+            mls_group_config.mls_group_config(),
             welcome.into_welcome().expect("Unexpected message type."),
             None,
         )
