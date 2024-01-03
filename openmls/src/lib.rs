@@ -88,7 +88,7 @@
 //! let mut sasha_group = MlsGroup::new(
 //!     provider,
 //!     &sasha_signer,
-//!     &MlsGroupConfig::default(),
+//!     &MlsGroupPattern::default(),
 //!     sasha_credential_with_key,
 //! )
 //! .expect("An unexpected error occurred.");

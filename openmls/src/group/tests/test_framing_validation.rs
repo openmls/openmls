@@ -60,7 +60,7 @@ fn validation_test_setup(
     );
 
     // Define the MlsGroup configuration
-    let mls_group_config = MlsGroupConfig::builder()
+    let mls_group_pattern = MlsGroupPattern::builder()
         .wire_format_policy(wire_format_policy)
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
@@ -69,7 +69,7 @@ fn validation_test_setup(
     let mut alice_group = MlsGroup::new_with_group_id(
         provider,
         &alice_credential.signer,
-        &mls_group_config,
+        &mls_group_pattern,
         group_id,
         alice_credential.credential_with_key.clone(),
     )
@@ -90,7 +90,7 @@ fn validation_test_setup(
 
     let bob_group = MlsGroup::new_from_welcome(
         provider,
-        &mls_group_config,
+        &mls_group_pattern.mls_group_config(),
         welcome.into_welcome().expect("Unexpected message type."),
         Some(alice_group.export_ratchet_tree().into()),
     )

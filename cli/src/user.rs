@@ -526,7 +526,7 @@ impl User {
 
         // NOTE: Since the DS currently doesn't distribute copies of the group's ratchet
         // tree, we need to include the ratchet_tree_extension.
-        let group_config = MlsGroupConfig::builder()
+        let group_config = MlsGroupPattern::builder()
             .use_ratchet_tree_extension(true)
             .build();
 
@@ -672,11 +672,16 @@ impl User {
         }
         // NOTE: Since the DS currently doesn't distribute copies of the group's ratchet
         // tree, we need to include the ratchet_tree_extension.
-        let group_config = MlsGroupConfig::builder()
+        let group_pattern = MlsGroupPattern::builder()
             .use_ratchet_tree_extension(true)
             .build();
-        let mut mls_group = MlsGroup::new_from_welcome(&self.crypto, &group_config, welcome, None)
-            .expect("Failed to create MlsGroup");
+        let mut mls_group = MlsGroup::new_from_welcome(
+            &self.crypto,
+            &group_pattern.mls_group_config(),
+            welcome,
+            None,
+        )
+        .expect("Failed to create MlsGroup");
 
         let group_id = mls_group.group_id().to_vec();
         // XXX: Use Welcome's encrypted_group_info field to store group_name.

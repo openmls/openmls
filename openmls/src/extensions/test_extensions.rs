@@ -299,7 +299,7 @@ fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
         provider,
     );
 
-    let mls_group_config = MlsGroupConfigBuilder::new()
+    let mls_group_pattern = MlsGroupPatternBuilder::new()
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 
@@ -307,7 +307,7 @@ fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
     let mut alice_group = MlsGroup::new(
         provider,
         &alice_credential_with_key_and_signer.signer,
-        &mls_group_config,
+        &mls_group_pattern,
         alice_credential_with_key_and_signer.credential_with_key,
     )
     .expect("An unexpected error occurred.");
@@ -326,7 +326,7 @@ fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
 
     let _bob_group = MlsGroup::new_from_welcome(
         provider,
-        &mls_group_config,
+        &mls_group_pattern.mls_group_config(),
         welcome.into_welcome().expect("Unexpected MLS message"),
         Some(alice_group.export_ratchet_tree().into()),
     )

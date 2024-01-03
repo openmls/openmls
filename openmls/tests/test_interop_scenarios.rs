@@ -20,7 +20,7 @@ fn one_to_one_join(ciphersuite: Ciphersuite) {
     println!("Testing ciphersuite {ciphersuite:?}");
     let number_of_clients = 2;
     let setup = MlsGroupTestSetup::new(
-        MlsGroupConfig::test_default(ciphersuite),
+        MlsGroupPattern::test_default(ciphersuite),
         number_of_clients,
         CodecUse::StructMessages,
     );
@@ -66,7 +66,7 @@ fn three_party_join(ciphersuite: Ciphersuite) {
 
     let number_of_clients = 3;
     let setup = MlsGroupTestSetup::new(
-        MlsGroupConfig::test_default(ciphersuite),
+        MlsGroupPattern::test_default(ciphersuite),
         number_of_clients,
         CodecUse::StructMessages,
     );
@@ -121,7 +121,7 @@ fn multiple_joins(ciphersuite: Ciphersuite) {
 
     let number_of_clients = 3;
     let setup = MlsGroupTestSetup::new(
-        MlsGroupConfig::test_default(ciphersuite),
+        MlsGroupPattern::test_default(ciphersuite),
         number_of_clients,
         CodecUse::StructMessages,
     );
@@ -168,7 +168,7 @@ fn update(ciphersuite: Ciphersuite) {
 
     let number_of_clients = 2;
     let setup = MlsGroupTestSetup::new(
-        MlsGroupConfig::test_default(ciphersuite),
+        MlsGroupPattern::test_default(ciphersuite),
         number_of_clients,
         CodecUse::StructMessages,
     );
@@ -210,7 +210,7 @@ fn remove(ciphersuite: Ciphersuite) {
 
     let number_of_clients = 2;
     let setup = MlsGroupTestSetup::new(
-        MlsGroupConfig::test_default(ciphersuite),
+        MlsGroupPattern::test_default(ciphersuite),
         number_of_clients,
         CodecUse::StructMessages,
     );
@@ -265,7 +265,7 @@ fn large_group_lifecycle(ciphersuite: Ciphersuite) {
     // "Large" is 20 for now.
     let number_of_clients = 20;
     let setup = MlsGroupTestSetup::new(
-        MlsGroupConfig::test_default(ciphersuite),
+        MlsGroupPattern::test_default(ciphersuite),
         number_of_clients,
         CodecUse::StructMessages,
     );

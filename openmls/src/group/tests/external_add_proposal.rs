@@ -36,7 +36,7 @@ fn new_test_group(
         generate_credential_with_key(identity.into(), ciphersuite.signature_algorithm(), provider);
 
     // Define the MlsGroup configuration
-    let mls_group_config = MlsGroupConfig::builder()
+    let mls_group_config = MlsGroupPattern::builder()
         .wire_format_policy(wire_format_policy)
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
@@ -83,14 +83,14 @@ fn validation_test_setup(
         .expect("error merging pending commit");
 
     // Define the MlsGroup configuration
-    let mls_group_config = MlsGroupConfig::builder()
+    let mls_group_pattern = MlsGroupPattern::builder()
         .wire_format_policy(wire_format_policy)
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 
     let bob_group = MlsGroup::new_from_welcome(
         provider,
-        &mls_group_config,
+        &mls_group_pattern.mls_group_config(),
         welcome.into_welcome().expect("Unexpected message type."),
         Some(alice_group.export_ratchet_tree().into()),
     )
@@ -194,13 +194,13 @@ fn external_add_proposal_should_succeed(ciphersuite: Ciphersuite, provider: &imp
         assert_eq!(bob_group.members().count(), 3);
 
         // Finally, Charlie can join with the Welcome
-        let cfg = MlsGroupConfig::builder()
+        let cfg = MlsGroupPattern::builder()
             .wire_format_policy(policy)
             .crypto_config(CryptoConfig::with_default_version(ciphersuite))
             .build();
         let charlie_group = MlsGroup::new_from_welcome(
             provider,
-            &cfg,
+            &cfg.mls_group_config(),
             welcome.unwrap().into_welcome().unwrap(),
             Some(alice_group.export_ratchet_tree().into()),
         )

@@ -22,7 +22,7 @@ fn test_mls_group_persistence(ciphersuite: Ciphersuite, provider: &impl OpenMlsP
         setup_client("Alice", ciphersuite, provider);
 
     // Define the MlsGroup configuration
-    let mls_group_config = MlsGroupConfig::test_default(ciphersuite);
+    let mls_group_config = MlsGroupPattern::test_default(ciphersuite);
 
     // === Alice creates a group ===
     let mut alice_group = MlsGroup::new_with_group_id(
@@ -70,7 +70,7 @@ fn remover(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         setup_client("Charly", ciphersuite, provider);
 
     // Define the MlsGroup configuration
-    let mls_group_config = MlsGroupConfigBuilder::new()
+    let mls_group_pattern = MlsGroupPatternBuilder::new()
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 
@@ -78,7 +78,7 @@ fn remover(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let mut alice_group = MlsGroup::new_with_group_id(
         provider,
         &alice_signer,
-        &mls_group_config,
+        &mls_group_pattern,
         group_id,
         alice_credential_with_key,
     )
@@ -95,7 +95,7 @@ fn remover(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     let mut bob_group = MlsGroup::new_from_welcome(
         provider,
-        &mls_group_config,
+        &mls_group_pattern.mls_group_config(),
         welcome.into_welcome().expect("Unexpected message type."),
         Some(alice_group.export_ratchet_tree().into()),
     )
@@ -130,7 +130,7 @@ fn remover(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     let mut charlie_group = MlsGroup::new_from_welcome(
         provider,
-        &mls_group_config,
+        &mls_group_pattern.mls_group_config(),
         welcome.into_welcome().expect("Unexpected message type."),
         Some(bob_group.export_ratchet_tree().into()),
     )
@@ -207,7 +207,7 @@ fn export_secret(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         setup_client("Alice", ciphersuite, provider);
 
     // Define the MlsGroup configuration
-    let mls_group_config = MlsGroupConfig::test_default(ciphersuite);
+    let mls_group_config = MlsGroupPattern::test_default(ciphersuite);
 
     // === Alice creates a group ===
     let alice_group = MlsGroup::new_with_group_id(
@@ -240,7 +240,7 @@ fn export_secret(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 #[apply(ciphersuites_and_providers)]
 fn test_invalid_plaintext(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // Some basic setup functions for the MlsGroup.
-    let mls_group_config = MlsGroupConfig::test_default(ciphersuite);
+    let mls_group_config = MlsGroupPattern::test_default(ciphersuite);
 
     let number_of_clients = 20;
     let setup = MlsGroupTestSetup::new(
@@ -344,13 +344,13 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, provider: &impl OpenMlsPr
         setup_client("Bob", ciphersuite, provider);
 
     // Define the MlsGroup configuration
-    let mls_group_config = MlsGroupConfig::test_default(ciphersuite);
+    let mls_group_pattern = MlsGroupPattern::test_default(ciphersuite);
 
     // === Alice creates a group ===
     let mut alice_group = MlsGroup::new_with_group_id(
         provider,
         &alice_signer,
-        &mls_group_config,
+        &mls_group_pattern,
         group_id,
         alice_credential_with_key,
     )
@@ -461,7 +461,7 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, provider: &impl OpenMlsPr
 
     let mut bob_group = MlsGroup::new_from_welcome(
         provider,
-        &mls_group_config,
+        &mls_group_pattern.mls_group_config(),
         welcome_option
             .expect("no welcome after commit")
             .into_welcome()
@@ -518,7 +518,7 @@ fn key_package_deletion(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
     let bob_key_package = bob_kpb.key_package();
 
     // Define the MlsGroup configuration
-    let mls_group_config = MlsGroupConfigBuilder::new()
+    let mls_group_pattern = MlsGroupPatternBuilder::new()
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 
@@ -526,7 +526,7 @@ fn key_package_deletion(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
     let mut alice_group = MlsGroup::new_with_group_id(
         provider,
         &alice_signer,
-        &mls_group_config,
+        &mls_group_pattern,
         group_id,
         alice_credential_with_key,
     )
@@ -542,7 +542,7 @@ fn key_package_deletion(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
     // === Bob joins the group ===
     let _bob_group = MlsGroup::new_from_welcome(
         provider,
-        &mls_group_config,
+        &mls_group_pattern.mls_group_config(),
         welcome.into_welcome().expect("Unexpected message type."),
         Some(alice_group.export_ratchet_tree().into()),
     )
@@ -584,7 +584,7 @@ fn remove_prosposal_by_ref(ciphersuite: Ciphersuite, provider: &impl OpenMlsProv
     let charlie_key_package = charlie_kpb.key_package();
 
     // Define the MlsGroup configuration
-    let mls_group_config = MlsGroupConfigBuilder::new()
+    let mls_group_pattern = MlsGroupPatternBuilder::new()
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 
@@ -592,7 +592,7 @@ fn remove_prosposal_by_ref(ciphersuite: Ciphersuite, provider: &impl OpenMlsProv
     let mut alice_group = MlsGroup::new_with_group_id(
         provider,
         &alice_signer,
-        &mls_group_config,
+        &mls_group_pattern,
         group_id,
         alice_credential_with_key,
     )
@@ -605,7 +605,7 @@ fn remove_prosposal_by_ref(ciphersuite: Ciphersuite, provider: &impl OpenMlsProv
     alice_group.merge_pending_commit(provider).unwrap();
     let mut bob_group = MlsGroup::new_from_welcome(
         provider,
-        &mls_group_config,
+        &mls_group_pattern.mls_group_config(),
         welcome.into_welcome().unwrap(),
         Some(alice_group.export_ratchet_tree().into()),
     )

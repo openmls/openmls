@@ -148,7 +148,7 @@ async fn test_list_clients() {
 #[actix_rt::test]
 async fn test_group() {
     let crypto = &OpenMlsRustCrypto::default();
-    let mls_group_config = MlsGroupConfig::default();
+    let mls_group_pattern = MlsGroupPattern::default();
     let data = web::Data::new(DsData::default());
     let app = test::init_service(
         App::new()
@@ -257,7 +257,7 @@ async fn test_group() {
     let mut group = MlsGroup::new_with_group_id(
         crypto,
         &signer_1,
-        &mls_group_config,
+        &mls_group_pattern,
         group_id,
         credential_with_key_1,
     )
@@ -317,7 +317,7 @@ async fn test_group() {
 
     let mut group_on_client2 = MlsGroup::new_from_welcome(
         crypto,
-        &mls_group_config,
+        &mls_group_pattern.mls_group_config(),
         welcome_msg
             .into_welcome()
             .expect("Unexpected message type."),

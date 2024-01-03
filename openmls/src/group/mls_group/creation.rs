@@ -16,6 +16,12 @@ use crate::{
 impl MlsGroup {
     // === Group creation ===
 
+    /// Creates an [`MlsGroupBuilder`], which can be used to configure and build
+    /// a new group.
+    pub fn builder() -> MlsGroupBuilder {
+        MlsGroupBuilder::new()
+    }
+
     /// Creates a new group with the creator as the only member (and a random
     /// group ID).
     ///
@@ -24,7 +30,7 @@ impl MlsGroup {
     pub fn new<KeyStore: OpenMlsKeyStore>(
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
-        mls_group_config: &MlsGroupConfig,
+        mls_group_config: &MlsGroupPattern,
         credential_with_key: CredentialWithKey,
     ) -> Result<Self, NewGroupError<KeyStore::Error>> {
         MlsGroupBuilder::new().build_internal(
@@ -40,7 +46,7 @@ impl MlsGroup {
     pub fn new_with_group_id<KeyStore: OpenMlsKeyStore>(
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
-        mls_group_config: &MlsGroupConfig,
+        mls_group_config: &MlsGroupPattern,
         group_id: GroupId,
         credential_with_key: CredentialWithKey,
     ) -> Result<Self, NewGroupError<KeyStore::Error>> {

@@ -2,7 +2,7 @@
 
 To join a group with an external commit message, a new `MlsGroup` can be instantiated directly from the `GroupInfo`.
 The `GroupInfo`/Ratchet Tree should be shared over a secure channel.
-If the RatchetTree extension is not in the required capabilities, then the ratchet tree needs to be provided.
+If the RatchetTree extension is not included in the `GroupInfo` as a `GroupInfoExtension`, then the ratchet tree needs to be provided.
 
 The `GroupInfo` can be obtained either from a call to `export_group_info`from the `MlsGroup`:
 
@@ -16,7 +16,7 @@ Or from a call to a function that results in a staged commit:
 {{#include ../../../openmls/tests/book_code.rs:alice_exports_group_info}}
 ```
 
-Calling `join_by_external_commit` will join the group and leave it with a commit pending to be merged.
+Calling `join_by_external_commit` requires an `MlsGroupConfig` (see [Group patterns and configuration](./group_config.md) for more details). The function creates an `MlsGroup` and leave it with a commit pending to be merged.
 
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code.rs:charlie_joins_external_commit}}

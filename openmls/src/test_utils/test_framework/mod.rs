@@ -108,7 +108,7 @@ pub struct MlsGroupTestSetup {
     pub groups: RwLock<HashMap<GroupId, Group>>,
     // This maps key package hashes to client ids.
     pub waiting_for_welcome: RwLock<HashMap<Vec<u8>, Vec<u8>>>,
-    pub default_mgc: MlsGroupConfig,
+    pub default_mgp: MlsGroupPattern,
     /// Flag to indicate if messages should be serialized and de-serialized as
     /// part of message distribution
     pub use_codec: CodecUse,
@@ -132,10 +132,14 @@ pub struct MlsGroupTestSetup {
 
 impl MlsGroupTestSetup {
     /// Create a new `MlsGroupTestSetup` with the given default
-    /// `MlsGroupConfig` and the given number of clients. For lifetime
+    /// `MlsGroupPattern` and the given number of clients. For lifetime
     /// reasons, `create_clients` has to be called in addition with the same
     /// number of clients.
-    pub fn new(default_mgc: MlsGroupConfig, number_of_clients: usize, use_codec: CodecUse) -> Self {
+    pub fn new(
+        default_mgc: MlsGroupPattern,
+        number_of_clients: usize,
+        use_codec: CodecUse,
+    ) -> Self {
         let mut clients = HashMap::new();
         for i in 0..number_of_clients {
             let identity = i.to_be_bytes().to_vec();
@@ -175,7 +179,7 @@ impl MlsGroupTestSetup {
             clients: RwLock::new(clients),
             groups,
             waiting_for_welcome,
-            default_mgc,
+            default_mgp: default_mgc,
             use_codec,
         }
     }
@@ -453,7 +457,7 @@ impl MlsGroupTestSetup {
             .read()
             .expect("An unexpected error occurred.");
         let mut groups = self.groups.write().expect("An unexpected error occurred.");
-        let group_id = group_creator.create_group(self.default_mgc.clone(), ciphersuite)?;
+        let group_id = group_creator.create_group(self.default_mgp.clone(), ciphersuite)?;
         let creator_groups = group_creator
             .groups
             .read()
@@ -469,7 +473,7 @@ impl MlsGroupTestSetup {
             group_id: group_id.clone(),
             members: member_ids,
             ciphersuite,
-            group_config: self.default_mgc.clone(),
+            group_config: self.default_mgp.mls_group_config.clone(),
             public_tree,
             exporter_secret,
         };

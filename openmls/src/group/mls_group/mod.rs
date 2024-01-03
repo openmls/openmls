@@ -149,7 +149,7 @@ pub enum MlsGroupState {
 /// more information.
 #[derive(Debug)]
 pub struct MlsGroup {
-    // The group configuration. See `MlsGroupCongig` for more information.
+    // The group configuration. See [`MlsGroupConfig`] for more information.
     mls_group_config: MlsGroupConfig,
     // the internal `CoreGroup` used for lower level operations. See `CoreGroup` for more
     // information.

@@ -79,12 +79,12 @@ impl Client {
         Ok(key_package)
     }
 
-    /// Create a group with the given [MlsGroupConfig] and [Ciphersuite], and return the created [GroupId].
+    /// Create a group with the given [MlsGroupPattern] and [Ciphersuite], and return the created [GroupId].
     ///
     /// Returns an error if the client doesn't support the `ciphersuite`.
     pub fn create_group(
         &self,
-        mls_group_config: MlsGroupConfig,
+        mls_group_config: MlsGroupPattern,
         ciphersuite: Ciphersuite,
     ) -> Result<GroupId, ClientError> {
         let credential_with_key = self
@@ -113,7 +113,7 @@ impl Client {
     }
 
     /// Join a group based on the given `welcome` and `ratchet_tree`. The group
-    /// is created with the given `MlsGroupConfig`. Throws an error if no
+    /// is created with the given `MlsGroupPattern`. Throws an error if no
     /// `KeyPackage` exists matching the `Welcome`, if the client doesn't
     /// support the ciphersuite, or if an error occurs processing the `Welcome`.
     pub fn join_group(

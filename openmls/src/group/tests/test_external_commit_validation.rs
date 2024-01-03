@@ -753,7 +753,7 @@ mod utils {
         group::{
             config::CryptoConfig,
             tests::utils::{generate_credential_with_key, CredentialWithKeyAndSigner},
-            MlsGroup, MlsGroupConfig, WireFormatPolicy,
+            MlsGroup, MlsGroupPattern, WireFormatPolicy,
         },
     };
 
@@ -783,7 +783,7 @@ mod utils {
             generate_credential_with_key("Bob".into(), ciphersuite.signature_algorithm(), provider);
 
         // Define the MlsGroup configuration
-        let mls_group_config = MlsGroupConfig::builder()
+        let mls_group_config = MlsGroupPattern::builder()
             .wire_format_policy(wire_format_policy)
             .crypto_config(CryptoConfig::with_default_version(ciphersuite))
             .build();

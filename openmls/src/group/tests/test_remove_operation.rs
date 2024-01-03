@@ -61,7 +61,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, provider: &impl Open
         );
 
         // Define the MlsGroup configuration
-        let mls_group_config = MlsGroupConfigBuilder::new()
+        let mls_group_config = MlsGroupPatternBuilder::new()
             .crypto_config(CryptoConfig::with_default_version(ciphersuite))
             .build();
 
@@ -92,7 +92,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, provider: &impl Open
 
         let mut bob_group = MlsGroup::new_from_welcome(
             &bob_provider,
-            &mls_group_config,
+            &mls_group_config.mls_group_config(),
             welcome.clone(),
             Some(alice_group.export_ratchet_tree().into()),
         )
@@ -100,7 +100,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, provider: &impl Open
 
         let mut charlie_group = MlsGroup::new_from_welcome(
             &charlie_provider,
-            &mls_group_config,
+            &mls_group_config.mls_group_config(),
             welcome,
             Some(alice_group.export_ratchet_tree().into()),
         )
