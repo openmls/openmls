@@ -1,13 +1,12 @@
 use openmls_traits::signatures::Signer;
 
-use super::*;
+use super::{builder::MlsGroupBuilder, *};
 use crate::{
     ciphersuite::HpkePrivateKey,
     credentials::CredentialWithKey,
     group::{
         core_group::create_commit_params::CreateCommitParams,
-        errors::{CoreGroupBuildError, ExternalCommitError, WelcomeError},
-        public_group::errors::PublicGroupBuildError,
+        errors::{ExternalCommitError, WelcomeError},
     },
     messages::group_info::{GroupInfo, VerifiableGroupInfo},
     schedule::psk::store::ResumptionPskStore,
@@ -28,12 +27,11 @@ impl MlsGroup {
         mls_group_config: &MlsGroupConfig,
         credential_with_key: CredentialWithKey,
     ) -> Result<Self, NewGroupError<KeyStore::Error>> {
-        Self::new_with_group_id(
+        MlsGroupBuilder::new().build_internal(
             provider,
             signer,
-            mls_group_config,
-            GroupId::random(provider.rand()),
             credential_with_key,
+            Some(mls_group_config.clone()),
         )
     }
 
@@ -46,59 +44,14 @@ impl MlsGroup {
         group_id: GroupId,
         credential_with_key: CredentialWithKey,
     ) -> Result<Self, NewGroupError<KeyStore::Error>> {
-        // TODO #751
-        let group_config = CoreGroupConfig {
-            add_ratchet_tree_extension: mls_group_config.use_ratchet_tree_extension,
-        };
-
-        let mut group = CoreGroup::builder(
-            group_id,
-            mls_group_config.crypto_config,
-            credential_with_key,
-        )
-        .with_config(group_config)
-        .with_required_capabilities(mls_group_config.required_capabilities.clone())
-        .with_external_senders(mls_group_config.external_senders.clone())
-        .with_max_past_epoch_secrets(mls_group_config.max_past_epochs)
-        .with_lifetime(*mls_group_config.lifetime())
-        .build(provider, signer)
-        .map_err(|e| match e {
-            CoreGroupBuildError::LibraryError(e) => e.into(),
-            // We don't support PSKs yet
-            CoreGroupBuildError::Psk(e) => {
-                log::debug!("Unexpected PSK error: {:?}", e);
-                LibraryError::custom("Unexpected PSK error").into()
-            }
-            CoreGroupBuildError::KeyStoreError(e) => NewGroupError::KeyStoreError(e),
-            CoreGroupBuildError::PublicGroupBuildError(e) => match e {
-                PublicGroupBuildError::LibraryError(e) => e.into(),
-                PublicGroupBuildError::UnsupportedProposalType => {
-                    NewGroupError::UnsupportedProposalType
-                }
-                PublicGroupBuildError::UnsupportedExtensionType => {
-                    NewGroupError::UnsupportedExtensionType
-                }
-                PublicGroupBuildError::InvalidExtensions(e) => NewGroupError::InvalidExtensions(e),
-            },
-        })?;
-
-        // We already add a resumption PSK for epoch 0 to make things more unified.
-        let resumption_psk = group.group_epoch_secrets().resumption_psk();
-        group
-            .resumption_psk_store
-            .add(group.context().epoch(), resumption_psk.clone());
-
-        let mls_group = MlsGroup {
-            mls_group_config: mls_group_config.clone(),
-            group,
-            proposal_store: ProposalStore::new(),
-            own_leaf_nodes: vec![],
-            aad: vec![],
-            group_state: MlsGroupState::Operational,
-            state_changed: InnerState::Changed,
-        };
-
-        Ok(mls_group)
+        MlsGroupBuilder::new()
+            .with_group_id(group_id)
+            .build_internal(
+                provider,
+                signer,
+                credential_with_key,
+                Some(mls_group_config.clone()),
+            )
     }
 
     /// Creates a new group from a [`Welcome`] message. Returns an error

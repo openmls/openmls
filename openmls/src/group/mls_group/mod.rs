@@ -19,6 +19,7 @@ use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsProv
 
 // Private
 mod application;
+mod builder;
 mod creation;
 mod exporting;
 mod updates;
