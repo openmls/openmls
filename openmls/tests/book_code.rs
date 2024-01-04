@@ -171,7 +171,6 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         let _ignore_mut_warning = &mut alice_group;
 
         // ANCHOR: alice_create_group_with_builder
-
         let mut alice_group = MlsGroup::builder()
             .padding_size(100)
             .sender_ratchet_configuration(SenderRatchetConfiguration::new(
