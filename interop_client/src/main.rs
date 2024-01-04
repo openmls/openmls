@@ -818,15 +818,13 @@ impl MlsClient for MlsClientImpl {
         // Note: We just use some values here that make live testing work.
         //       There is nothing special about the used numbers and they
         //       can be increased (or decreased) depending on the available scenarios.
-        let mls_group_pattern = MlsGroupPattern::builder()
+        let mls_group_config = MlsGroupConfig::builder()
             .use_ratchet_tree_extension(true)
             .max_past_epochs(32)
             .number_of_resumption_psks(32)
             .wire_format_policy(interop_group.wire_format_policy)
             .build();
-        interop_group
-            .group
-            .set_configuration(mls_group_pattern.mls_group_config());
+        interop_group.group.set_configuration(&mls_group_config);
         let (proposal, _) = interop_group
             .group
             .propose_add_member(
@@ -868,15 +866,13 @@ impl MlsClient for MlsClientImpl {
         // Note: We just use some values here that make live testing work.
         //       There is nothing special about the used numbers and they
         //       can be increased (or decreased) depending on the available scenarios.
-        let mls_group_pattern = MlsGroupPattern::builder()
+        let mls_group_config = MlsGroupConfig::builder()
             .max_past_epochs(32)
             .number_of_resumption_psks(32)
             .use_ratchet_tree_extension(true)
             .wire_format_policy(interop_group.wire_format_policy)
             .build();
-        interop_group
-            .group
-            .set_configuration(mls_group_pattern.mls_group_config());
+        interop_group.group.set_configuration(&mls_group_config);
         let (proposal, _) = interop_group
             .group
             .propose_self_update(
@@ -924,15 +920,13 @@ impl MlsClient for MlsClientImpl {
         // Note: We just use some values here that make live testing work.
         //       There is nothing special about the used numbers and they
         //       can be increased (or decreased) depending on the available scenarios.
-        let mls_group_pattern = MlsGroupPattern::builder()
+        let mls_group_config = MlsGroupConfig::builder()
             .max_past_epochs(32)
             .number_of_resumption_psks(32)
             .use_ratchet_tree_extension(true)
             .wire_format_policy(interop_group.wire_format_policy)
             .build();
-        interop_group
-            .group
-            .set_configuration(mls_group_pattern.mls_group_config());
+        interop_group.group.set_configuration(&mls_group_config);
         trace!("   prepared remove");
 
         let (proposal, _) = interop_group

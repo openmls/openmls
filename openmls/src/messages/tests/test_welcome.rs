@@ -15,7 +15,7 @@ use crate::{
     extensions::Extensions,
     group::{
         config::CryptoConfig, errors::WelcomeError, GroupContext, GroupId, MlsGroup,
-        MlsGroupPatternBuilder,
+        MlsGroupPattern,
     },
     messages::{
         group_info::{GroupInfoTBS, VerifiableGroupInfo},
@@ -48,7 +48,7 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, provider: &impl OpenM
     };
 
     let group_id = GroupId::random(provider.rand());
-    let mls_group_config = MlsGroupPatternBuilder::new()
+    let mls_group_pattern = MlsGroupPattern::builder()
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 
@@ -64,7 +64,7 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, provider: &impl OpenM
     let mut alice_group = MlsGroup::new_with_group_id(
         provider,
         &alice_signer,
-        &mls_group_config,
+        &mls_group_pattern,
         group_id,
         alice_credential_with_key,
     )
@@ -163,7 +163,7 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, provider: &impl OpenM
     // Bob tries to join the group
     let err = MlsGroup::new_from_welcome(
         provider,
-        mls_group_config.mls_group_config(),
+        mls_group_pattern.mls_group_config(),
         welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
@@ -196,7 +196,7 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, provider: &impl OpenM
 
     let _group = MlsGroup::new_from_welcome(
         provider,
-        mls_group_config.mls_group_config(),
+        mls_group_pattern.mls_group_config(),
         original_welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )

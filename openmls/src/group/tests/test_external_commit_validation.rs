@@ -783,7 +783,7 @@ mod utils {
             generate_credential_with_key("Bob".into(), ciphersuite.signature_algorithm(), provider);
 
         // Define the MlsGroup configuration
-        let mls_group_config = MlsGroupPattern::builder()
+        let mls_group_pattern = MlsGroupPattern::builder()
             .wire_format_policy(wire_format_policy)
             .crypto_config(CryptoConfig::with_default_version(ciphersuite))
             .build();
@@ -792,7 +792,7 @@ mod utils {
         let alice_group = MlsGroup::new(
             provider,
             &alice_credential.signer,
-            &mls_group_config,
+            &mls_group_pattern,
             alice_credential.credential_with_key.clone(),
         )
         .unwrap();

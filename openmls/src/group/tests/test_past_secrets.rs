@@ -40,7 +40,7 @@ fn test_past_secrets_in_group(ciphersuite: Ciphersuite, provider: &impl OpenMlsP
 
         // Define the MlsGroup configuration
 
-        let mls_group_config = MlsGroupPattern::builder()
+        let mls_group_pattern = MlsGroupPattern::builder()
             .max_past_epochs(max_epochs / 2)
             .crypto_config(CryptoConfig::with_default_version(ciphersuite))
             .build();
@@ -49,7 +49,7 @@ fn test_past_secrets_in_group(ciphersuite: Ciphersuite, provider: &impl OpenMlsP
         let mut alice_group = MlsGroup::new_with_group_id(
             provider,
             &alice_credential_with_keys.signer,
-            &mls_group_config,
+            &mls_group_pattern,
             group_id.clone(),
             alice_credential_with_keys.credential_with_key.clone(),
         )
@@ -70,7 +70,7 @@ fn test_past_secrets_in_group(ciphersuite: Ciphersuite, provider: &impl OpenMlsP
 
         let mut bob_group = MlsGroup::new_from_welcome(
             provider,
-            mls_group_config.mls_group_config(),
+            mls_group_pattern.mls_group_config(),
             welcome.into_welcome().expect("Unexpected message type."),
             Some(alice_group.export_ratchet_tree().into()),
         )

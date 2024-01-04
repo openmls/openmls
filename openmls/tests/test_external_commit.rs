@@ -9,7 +9,7 @@ fn create_alice_group(
     provider: &impl OpenMlsProvider,
     use_ratchet_tree_extension: bool,
 ) -> (MlsGroup, CredentialWithKey, SignatureKeyPair) {
-    let group_config = MlsGroupPatternBuilder::new()
+    let group_config = MlsGroupPattern::builder()
         .use_ratchet_tree_extension(use_ratchet_tree_extension)
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();

@@ -20,7 +20,7 @@ pub struct MlsGroupBuilder {
 }
 
 impl MlsGroupBuilder {
-    pub fn new() -> Self {
+    pub(super) fn new() -> Self {
         Self::default()
     }
 

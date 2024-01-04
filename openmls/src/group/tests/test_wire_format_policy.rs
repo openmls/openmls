@@ -74,14 +74,13 @@ fn receive_message(
         .merge_pending_commit(provider)
         .expect("error merging pending commit");
 
-    let mls_group_config = MlsGroupPattern::builder()
+    let mls_group_config = MlsGroupConfig::builder()
         .wire_format_policy(alice_group.configuration().wire_format_policy())
-        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 
     let mut bob_group = MlsGroup::new_from_welcome(
         provider,
-        mls_group_config.mls_group_config(),
+        &mls_group_config,
         welcome.into_welcome().expect("Unexpected message type."),
         None,
     )

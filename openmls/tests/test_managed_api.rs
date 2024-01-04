@@ -8,10 +8,10 @@ use openmls::{
 #[apply(ciphersuites)]
 fn test_mls_group_api(ciphersuite: Ciphersuite) {
     // Some basic setup functions for the MlsGroup.
-    let mls_group_config = MlsGroupPattern::test_default(ciphersuite);
+    let mls_group_pattern = MlsGroupPattern::test_default(ciphersuite);
     let number_of_clients = 20;
     let setup = MlsGroupTestSetup::new(
-        mls_group_config,
+        mls_group_pattern,
         number_of_clients,
         CodecUse::SerializedMessages,
     );

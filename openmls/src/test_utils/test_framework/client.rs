@@ -84,7 +84,7 @@ impl Client {
     /// Returns an error if the client doesn't support the `ciphersuite`.
     pub fn create_group(
         &self,
-        mls_group_config: MlsGroupPattern,
+        mls_group_pattern: MlsGroupPattern,
         ciphersuite: Ciphersuite,
     ) -> Result<GroupId, ClientError> {
         let credential_with_key = self
@@ -101,7 +101,7 @@ impl Client {
         let group_state = MlsGroup::new(
             &self.crypto,
             &signer,
-            &mls_group_config,
+            &mls_group_pattern,
             credential_with_key.clone(),
         )?;
         let group_id = group_state.group_id().clone();

@@ -30,14 +30,14 @@ impl MlsGroup {
     pub fn new<KeyStore: OpenMlsKeyStore>(
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
-        mls_group_config: &MlsGroupPattern,
+        mls_group_pattern: &MlsGroupPattern,
         credential_with_key: CredentialWithKey,
     ) -> Result<Self, NewGroupError<KeyStore::Error>> {
         MlsGroupBuilder::new().build_internal(
             provider,
             signer,
             credential_with_key,
-            Some(mls_group_config.clone()),
+            Some(mls_group_pattern.clone()),
         )
     }
 
@@ -46,7 +46,7 @@ impl MlsGroup {
     pub fn new_with_group_id<KeyStore: OpenMlsKeyStore>(
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
-        mls_group_config: &MlsGroupPattern,
+        mls_group_pattern: &MlsGroupPattern,
         group_id: GroupId,
         credential_with_key: CredentialWithKey,
     ) -> Result<Self, NewGroupError<KeyStore::Error>> {
@@ -56,7 +56,7 @@ impl MlsGroup {
                 provider,
                 signer,
                 credential_with_key,
-                Some(mls_group_config.clone()),
+                Some(mls_group_pattern.clone()),
             )
     }
 

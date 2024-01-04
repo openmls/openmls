@@ -61,7 +61,7 @@ fn create_group_with_members<KeyStore: OpenMlsKeyStore>(
     let mut alice_group = MlsGroup::new_with_group_id(
         provider,
         &alice_credential_with_key_and_signer.signer,
-        &MlsGroupPatternBuilder::new()
+        &MlsGroupPattern::builder()
             .crypto_config(CryptoConfig::with_default_version(ciphersuite))
             .build(),
         GroupId::from_slice(b"Alice's Friends"),
@@ -106,7 +106,7 @@ fn new_test_group(
         generate_credential_with_key(identity.into(), ciphersuite.signature_algorithm(), provider);
 
     // Define the MlsGroup configuration
-    let mls_group_config = MlsGroupPattern::builder()
+    let mls_group_pattern = MlsGroupPattern::builder()
         .wire_format_policy(wire_format_policy)
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
@@ -115,7 +115,7 @@ fn new_test_group(
         MlsGroup::new_with_group_id(
             provider,
             &credential_with_key_and_signer.signer,
-            &mls_group_config,
+            &mls_group_pattern,
             group_id,
             credential_with_key_and_signer.credential_with_key.clone(),
         )
@@ -155,14 +155,13 @@ fn validation_test_setup(
     alice_group.merge_pending_commit(provider).unwrap();
 
     // Define the MlsGroup configuration
-    let mls_group_config = MlsGroupPattern::builder()
+    let mls_group_config = MlsGroupConfig::builder()
         .wire_format_policy(wire_format_policy)
-        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 
     let bob_group = MlsGroup::new_from_welcome(
         provider,
-        mls_group_config.mls_group_config(),
+        &mls_group_config,
         welcome.into_welcome().unwrap(),
         Some(alice_group.export_ratchet_tree().into()),
     )
@@ -611,7 +610,7 @@ fn test_valsem101b(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         let mut alice_group = MlsGroup::new_with_group_id(
             provider,
             &alice_credential_with_key.signer,
-            &MlsGroupPatternBuilder::new()
+            &MlsGroupPattern::builder()
                 .crypto_config(CryptoConfig::with_default_version(ciphersuite))
                 .build(),
             GroupId::from_slice(b"Alice's Friends"),

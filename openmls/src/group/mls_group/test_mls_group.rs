@@ -70,7 +70,7 @@ fn remover(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         setup_client("Charly", ciphersuite, provider);
 
     // Define the MlsGroup configuration
-    let mls_group_pattern = MlsGroupPatternBuilder::new()
+    let mls_group_pattern = MlsGroupPattern::builder()
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 
@@ -207,13 +207,13 @@ fn export_secret(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         setup_client("Alice", ciphersuite, provider);
 
     // Define the MlsGroup configuration
-    let mls_group_config = MlsGroupPattern::test_default(ciphersuite);
+    let mls_group_pattern = MlsGroupPattern::test_default(ciphersuite);
 
     // === Alice creates a group ===
     let alice_group = MlsGroup::new_with_group_id(
         provider,
         &alice_signer,
-        &mls_group_config,
+        &mls_group_pattern,
         group_id,
         alice_credential_with_key,
     )
@@ -240,11 +240,11 @@ fn export_secret(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 #[apply(ciphersuites_and_providers)]
 fn test_invalid_plaintext(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // Some basic setup functions for the MlsGroup.
-    let mls_group_config = MlsGroupPattern::test_default(ciphersuite);
+    let mls_group_pattern = MlsGroupPattern::test_default(ciphersuite);
 
     let number_of_clients = 20;
     let setup = MlsGroupTestSetup::new(
-        mls_group_config,
+        mls_group_pattern,
         number_of_clients,
         CodecUse::StructMessages,
     );
@@ -518,7 +518,7 @@ fn key_package_deletion(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
     let bob_key_package = bob_kpb.key_package();
 
     // Define the MlsGroup configuration
-    let mls_group_pattern = MlsGroupPatternBuilder::new()
+    let mls_group_pattern = MlsGroupPattern::builder()
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 
@@ -584,7 +584,7 @@ fn remove_prosposal_by_ref(ciphersuite: Ciphersuite, provider: &impl OpenMlsProv
     let charlie_key_package = charlie_kpb.key_package();
 
     // Define the MlsGroup configuration
-    let mls_group_pattern = MlsGroupPatternBuilder::new()
+    let mls_group_pattern = MlsGroupPattern::builder()
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 

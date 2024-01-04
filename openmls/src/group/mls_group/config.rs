@@ -103,7 +103,7 @@ pub struct MlsGroupConfigBuilder {
 
 impl MlsGroupConfigBuilder {
     /// Creates a new builder with default values.
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self {
             mls_group_config: MlsGroupConfig::default(),
         }
@@ -235,7 +235,7 @@ pub struct MlsGroupPatternBuilder {
 
 impl MlsGroupPatternBuilder {
     /// Creates a new builder with default values.
-    pub fn new() -> Self {
+    fn new() -> Self {
         MlsGroupPatternBuilder {
             pattern: MlsGroupPattern::default(),
         }

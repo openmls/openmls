@@ -136,7 +136,7 @@ impl MlsGroupTestSetup {
     /// reasons, `create_clients` has to be called in addition with the same
     /// number of clients.
     pub fn new(
-        default_mgc: MlsGroupPattern,
+        default_mgp: MlsGroupPattern,
         number_of_clients: usize,
         use_codec: CodecUse,
     ) -> Self {
@@ -179,7 +179,7 @@ impl MlsGroupTestSetup {
             clients: RwLock::new(clients),
             groups,
             waiting_for_welcome,
-            default_mgp: default_mgc,
+            default_mgp,
             use_codec,
         }
     }

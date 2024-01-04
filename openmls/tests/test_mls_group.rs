@@ -1047,14 +1047,14 @@ fn test_empty_input_errors(ciphersuite: Ciphersuite, provider: &impl OpenMlsProv
         ciphersuite.signature_algorithm(),
     );
 
-    // Define the MlsGroup configuration
-    let mls_group_config = MlsGroupPattern::test_default(ciphersuite);
+    // Define the MlsGroup pattern
+    let mls_group_pattern = MlsGroupPattern::test_default(ciphersuite);
 
     // === Alice creates a group ===
     let mut alice_group = MlsGroup::new_with_group_id(
         provider,
         &alice_signer,
-        &mls_group_config,
+        &mls_group_pattern,
         group_id,
         alice_credential,
     )
@@ -1164,13 +1164,13 @@ fn mls_group_ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl Op
             &bob_signer,
         );
 
-        let mls_group_config = MlsGroupPattern::test_default(ciphersuite);
+        let mls_group_pattern = MlsGroupPattern::test_default(ciphersuite);
 
         // === Alice creates a group ===
         let mut alice_group = MlsGroup::new_with_group_id(
             provider,
             &alice_signer,
-            &mls_group_config,
+            &mls_group_pattern,
             group_id,
             alice_credential.clone(),
         )
@@ -1184,7 +1184,7 @@ fn mls_group_ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl Op
         // === Bob tries to join without the ratchet tree extension ===
         let error = MlsGroup::new_from_welcome(
             provider,
-            mls_group_config.mls_group_config(),
+            mls_group_pattern.mls_group_config(),
             welcome.into_welcome().expect("Unexpected message type."),
             None,
         )

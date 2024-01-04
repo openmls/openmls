@@ -299,7 +299,7 @@ fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
         provider,
     );
 
-    let mls_group_pattern = MlsGroupPatternBuilder::new()
+    let mls_group_pattern = MlsGroupPattern::builder()
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 
