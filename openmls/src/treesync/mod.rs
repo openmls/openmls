@@ -437,10 +437,7 @@ impl TreeSync {
         // Set the leaf indices in all the leaves and convert the node types.
         for (node_index, node_option) in ratchet_tree.0.into_iter().enumerate() {
             let ts_node_option: TreeNode<TreeSyncLeafNode, TreeSyncParentNode> = match node_option {
-                Some(node) => {
-                    let node = node.clone();
-                    TreeSyncNode::from(node).into()
-                }
+                Some(node) => TreeSyncNode::from(node).into(),
                 None => {
                     if node_index % 2 == 0 {
                         TreeNode::Leaf(TreeSyncLeafNode::blank())
