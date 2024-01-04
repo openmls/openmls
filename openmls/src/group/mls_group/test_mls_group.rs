@@ -430,7 +430,7 @@ fn test_commit_with_update_path_leaf_node(
     assert!(_welcome_option.is_none());
     assert!(_group_info.is_none());
 
-    // There should be a pending commit after issueing a self-update commit.
+    // There should be a pending commit after issuing a self-update commit.
     let alice_pending_commit = alice_group
         .pending_commit()
         .expect("alice should have the self-update as pending commit");
@@ -452,7 +452,7 @@ fn test_commit_with_update_path_leaf_node(
 
     // === transfer message to bob and process it ===
 
-    // this requires serializing and deserizing
+    // this requires serializing and deserializing
     let mut wire_msg = Vec::<u8>::new();
     commit_msg
         .tls_serialize(&mut wire_msg)
