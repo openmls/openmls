@@ -692,7 +692,7 @@ fn builder_pattern(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         &test_sender_ratchet_config
     );
     assert_eq!(group_config.wire_format_policy(), test_wire_format_policy);
-    assert_eq!(group_config.use_ratchet_tree_extension, true);
+    assert!(group_config.use_ratchet_tree_extension);
     assert_eq!(group_config.max_past_epochs, test_max_past_epochs);
     assert_eq!(
         group_config.number_of_resumption_psks,
