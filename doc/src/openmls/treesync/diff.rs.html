@@ -1109,13 +1109,13 @@
     <span class="doccomment">/// Find and return the index of either the left-most blank leaf, or, if
     /// there are no blank leaves, the leaf count.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>free_leaf_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; LeafNodeIndex {
-        <span class="kw">let </span>leaf_count = <span class="self">self</span>.diff.leaves().count() <span class="kw">as </span>u32;
-
+        <span class="kw">let </span><span class="kw-2">mut </span>leaf_count = <span class="number">0</span>;
         <span class="comment">// Search for blank leaves in existing leaves
         </span><span class="kw">for </span>(leaf_index, leaf_id) <span class="kw">in </span><span class="self">self</span>.diff.leaves() {
             <span class="kw">if </span>leaf_id.node().is_none() {
                 <span class="kw">return </span>leaf_index;
             }
+            leaf_count += <span class="number">1</span>;
         }
 
         <span class="comment">// Return the next free virtual blank leaf
