@@ -907,6 +907,11 @@ impl CoreGroup {
                 PathComputationResult::default()
             };
 
+        let update_path_leaf_node = path_computation_result
+            .encrypted_path
+            .as_ref()
+            .map(|path| path.leaf_node().clone());
+
         // Create commit message
         let commit = Commit {
             proposals: proposal_reference_list,
@@ -1075,6 +1080,7 @@ impl CoreGroup {
             // The committer is not allowed to include their own update
             // proposal, so there is no extra keypair to store here.
             None,
+            update_path_leaf_node,
         );
         let staged_commit = StagedCommit::new(
             proposal_queue,
