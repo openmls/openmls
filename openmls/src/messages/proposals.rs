@@ -430,6 +430,10 @@ impl GroupContextExtensionProposal {
     pub(crate) fn new(extensions: Extensions) -> Self {
         Self { extensions }
     }
+
+    pub(crate) fn extensions(&self) -> &Extensions {
+        &self.extensions
+    }
 }
 
 // Crate-only types

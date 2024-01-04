@@ -5,6 +5,7 @@ use tls_codec::{Deserialize, Serialize};
 
 use crate::{
     binary_tree::LeafNodeIndex,
+    credentials::Credential,
     framing::*,
     group::{config::CryptoConfig, errors::*, *},
     key_packages::*,
@@ -14,6 +15,10 @@ use crate::{
     },
     test_utils::*,
 };
+
+fn noop_authentication_service(_cred: &Credential) -> bool {
+    true
+}
 
 #[apply(ciphersuites_and_providers)]
 fn test_mls_group_persistence(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
@@ -251,7 +256,7 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
     );
     // Create a basic group with more than 4 members to create a tree with intermediate nodes.
     let group_id = setup
-        .create_random_group(10, ciphersuite)
+        .create_random_group(10, ciphersuite, &noop_authentication_service)
         .expect("An unexpected error occurred.");
     let mut groups = setup.groups.write().expect("An unexpected error occurred.");
     let group = groups
@@ -311,7 +316,12 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
     let error = setup
         // We're the "no_client" id to prevent the original sender from treating
         // this message as his own and merging the pending commit.
-        .distribute_to_members("no_client".as_bytes(), group, &msg_invalid_signature.into())
+        .distribute_to_members(
+            "no_client".as_bytes(),
+            group,
+            &msg_invalid_signature.into(),
+            &noop_authentication_service,
+        )
         .expect_err("No error when distributing message with invalid signature.");
 
     assert_eq!(
@@ -324,7 +334,12 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
     let error = setup
         // We're the "no_client" id to prevent the original sender from treating
         // this message as his own and merging the pending commit.
-        .distribute_to_members("no_client".as_bytes(), group, &msg_invalid_sender.into())
+        .distribute_to_members(
+            "no_client".as_bytes(),
+            group,
+            &msg_invalid_sender.into(),
+            &noop_authentication_service,
+        )
         .expect_err("No error when distributing message with invalid signature.");
 
     assert_eq!(

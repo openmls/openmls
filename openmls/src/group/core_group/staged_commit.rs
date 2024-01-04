@@ -435,6 +435,11 @@ impl StagedCommit {
         self.staged_proposal_queue.psk_proposals()
     }
 
+    /// Returns an iterator over all [`QueuedProposal`]s.
+    pub(crate) fn queued_proposals(&self) -> impl Iterator<Item = &QueuedProposal> {
+        self.staged_proposal_queue.queued_proposals()
+    }
+
     /// Returns the leaf node of the (optional) update path.
     pub fn update_path_leaf_node(&self) -> Option<&LeafNode> {
         match self.state {
@@ -445,9 +450,42 @@ impl StagedCommit {
         }
     }
 
-    /// Returns an iterator over all [`QueuedProposal`]s.
-    pub(crate) fn queued_proposals(&self) -> impl Iterator<Item = &QueuedProposal> {
-        self.staged_proposal_queue.queued_proposals()
+    pub fn credentials_to_verify(&self) -> impl Iterator<Item = &Credential> {
+        let update_path_leaf_node_cred = if let Some(node) = self.update_path_leaf_node() {
+            vec![node.credential()]
+        } else {
+            vec![]
+        };
+
+        update_path_leaf_node_cred.into_iter().chain(
+            self.queued_proposals()
+                .map(|proposal: &QueuedProposal| match proposal.proposal() {
+                    Proposal::Update(update_proposal) => {
+                        vec![update_proposal.leaf_node().credential()]
+                    }
+                    Proposal::Add(add_proposal) => {
+                        vec![add_proposal.key_package().leaf_node().credential()]
+                    }
+                    Proposal::GroupContextExtensions(gce_proposal) => gce_proposal
+                        .extensions()
+                        .iter()
+                        .map(|extension| {
+                            match extension {
+                                Extension::ExternalSenders(external_senders) => external_senders
+                                    .iter()
+                                    .map(|external_sender| external_sender.credential())
+                                    .collect(),
+                                _ => vec![],
+                            }
+                            .into_iter()
+                        })
+                        .flatten()
+                        .collect(),
+                    _ => vec![],
+                })
+                .into_iter()
+                .flatten(),
+        )
     }
 
     /// Returns `true` if the member was removed through a proposal covered by this Commit message
