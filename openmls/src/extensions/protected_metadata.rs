@@ -189,108 +189,6 @@ mod verifiable {
     }
 }
 
-mod xmtp_lib {
-    use super::*;
-
-    #[derive(
-        PartialEq, Eq, Clone, Debug, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
-    )]
-    #[repr(u8)]
-    pub enum ConversationType {
-        OneOnOne = 1,
-        Group,
-    }
-
-    #[derive(
-        PartialEq, Eq, Clone, Debug, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
-    )]
-    #[repr(u8)]
-    pub enum MemberModificationPolicy {
-        #[tls_codec(discriminant = 1)]
-        NoOne(),
-        Anyone(),
-        Creator(),
-        Admins(Vec<Admin>),
-    }
-
-    #[derive(
-        PartialEq, Eq, Clone, Debug, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
-    )]
-    pub struct Admin {
-        application_id: Vec<u8>,
-    }
-
-    impl From<Vec<u8>> for Admin {
-        fn from(application_id: Vec<u8>) -> Self {
-            Self { application_id }
-        }
-    }
-
-    impl From<&[u8]> for Admin {
-        fn from(application_id: &[u8]) -> Self {
-            Self {
-                application_id: application_id.to_vec(),
-            }
-        }
-    }
-
-    /// # XMTP Metadata
-    #[derive(
-        PartialEq, Eq, Clone, Debug, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
-    )]
-    pub struct XmtpMetadata {
-        version: u16,
-        conversation_type: ConversationType,
-        creator_application_id: Vec<u8>,
-        add_policy: MemberModificationPolicy,
-        remove_policy: MemberModificationPolicy,
-    }
-
-    impl XmtpMetadata {
-        /// Generate a new metadata struct.
-        pub fn new(
-            version: u16,
-            conversation_type: ConversationType,
-            creator_application_id: Vec<u8>,
-            add_policy: MemberModificationPolicy,
-            remove_policy: MemberModificationPolicy,
-        ) -> Self {
-            Self {
-                version,
-                conversation_type,
-                creator_application_id,
-                add_policy,
-                remove_policy,
-            }
-        }
-
-        /// Get the version of this metadata.
-        pub fn version(&self) -> u16 {
-            self.version
-        }
-
-        /// Get the [`ConversationType`].
-        pub fn conversation_type(&self) -> &ConversationType {
-            &self.conversation_type
-        }
-
-        /// Get the application ID of the creator as a slice.
-        pub fn creator_application_id(&self) -> &[u8] {
-            self.creator_application_id.as_ref()
-        }
-
-        /// Get the [`MemberModificationPolicy`] for adding members to the group.
-        pub fn add_policy(&self) -> &MemberModificationPolicy {
-            &self.add_policy
-        }
-
-        /// Get the [`MemberModificationPolicy`] for removing members from the group.
-        pub fn remove_policy(&self) -> &MemberModificationPolicy {
-            &self.remove_policy
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use tls_codec::{Deserialize, Serialize};
@@ -300,37 +198,14 @@ mod tests {
         prelude_test::OpenMlsSignaturePublicKey, test_utils::*,
     };
 
-    use super::{
-        xmtp_lib::{ConversationType, MemberModificationPolicy, XmtpMetadata},
-        *,
-    };
-
-    #[test]
-    fn serialize_metadata() {
-        let metadata = XmtpMetadata::new(
-            6,
-            ConversationType::Group,
-            b"MetadataTestAppId".to_vec(),
-            MemberModificationPolicy::Anyone(),
-            MemberModificationPolicy::Admins(vec![b"admin1"[..].into(), b"admin2"[..].into()]),
-        );
-        let serialized = metadata.tls_serialize_detached().unwrap();
-        let deserialized = XmtpMetadata::tls_deserialize_exact(serialized).unwrap();
-        assert_eq!(deserialized, metadata);
-    }
+    use super::*;
 
     #[apply(ciphersuites_and_providers)]
     fn serialize_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         let creator_application_id = b"MetadataTestAppId".to_vec();
 
         // Create metadata
-        let metadata = XmtpMetadata::new(
-            6,
-            ConversationType::Group,
-            creator_application_id.clone(),
-            MemberModificationPolicy::Anyone(),
-            MemberModificationPolicy::Admins(vec![b"admin1"[..].into(), b"admin2"[..].into()]),
-        );
+        let metadata = vec![1, 2, 3];
 
         // Setup crypto
         let (credential_with_key, signer) = new_credential(
@@ -348,7 +223,7 @@ mod tests {
             signer_application_id,
             credential_with_key.credential.clone(),
             signature_key.as_slice().to_vec(),
-            metadata.tls_serialize_detached().unwrap(),
+            metadata.clone(),
         )
         .unwrap();
 
@@ -360,10 +235,7 @@ mod tests {
             .unwrap();
         assert_eq!(deserialized, extension);
 
-        let xmtp_metadata = XmtpMetadata::tls_deserialize_exact(deserialized.metadata()).unwrap();
-        assert_eq!(
-            xmtp_metadata.add_policy(),
-            &MemberModificationPolicy::Anyone()
-        );
+        let xmtp_metadata = deserialized.metadata();
+        assert_eq!(xmtp_metadata, metadata);
     }
 }
