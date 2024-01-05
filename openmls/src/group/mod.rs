@@ -29,10 +29,9 @@ pub(crate) mod errors;
 pub use core_group::proposals::*;
 pub use core_group::staged_commit::StagedCommit;
 pub use errors::*;
-pub use group_context::*;
+pub use group_context::GroupContext;
 pub use mls_group::config::*;
 pub use mls_group::membership::*;
-pub use mls_group::processing::*;
 pub use mls_group::*;
 pub use public_group::*;
 
@@ -41,11 +40,7 @@ pub use public_group::*;
 pub(crate) use core_group::create_commit_params::*;
 #[cfg(any(feature = "test-utils", test))]
 pub(crate) mod tests;
-#[cfg(any(feature = "test-utils", test))]
-pub use group_context::GroupContext;
 use openmls_traits::random::OpenMlsRand;
-#[cfg(any(feature = "test-utils", test))]
-pub use proposals::*;
 
 /// A group ID. The group ID is chosen by the creator of the group and should be globally unique.
 #[derive(

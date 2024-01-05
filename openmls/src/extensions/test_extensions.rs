@@ -8,6 +8,7 @@ use tls_codec::{Deserialize, Serialize};
 
 use super::*;
 use crate::{
+    ciphersuite::HpkePrivateKey,
     credentials::*,
     framing::*,
     group::{config::CryptoConfig, errors::*, *},
@@ -16,6 +17,7 @@ use crate::{
     prelude::Capabilities,
     schedule::psk::store::ResumptionPskStore,
     test_utils::*,
+    treesync::node::encryption_keys::EncryptionKeyPair,
     versions::ProtocolVersion,
 };
 
@@ -324,7 +326,7 @@ fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
 
     alice_group.merge_pending_commit(provider).unwrap();
 
-    let _bob_group = MlsGroup::new_from_welcome(
+    let mut bob_group = MlsGroup::new_from_welcome(
         provider,
         &mls_group_config,
         welcome.into_welcome().expect("Unexpected MLS message"),
@@ -332,11 +334,31 @@ fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
     )
     .expect("An unexpected error occurred.");
 
-    // This should not have deleted the KP from the store
+    // === Bob sends a commit ==
+
+    let (_message, _welcome, _group_info) = bob_group
+        .self_update(provider, &signer)
+        .expect("An unexpected error occurred.");
+    bob_group
+        .merge_pending_commit(provider)
+        .expect("An unexpected error occurred.");
+
+    // This should not have deleted the KP or private keys from the store
     let kp: Option<KeyPackage> = provider.key_store().read(
         kp.hash_ref(provider.crypto())
             .expect("error hashing kp")
             .as_slice(),
     );
     assert!(kp.is_some());
+
+    let kp = kp.unwrap();
+
+    let leaf_keypair =
+        EncryptionKeyPair::read_from_key_store(provider, kp.leaf_node().encryption_key());
+    assert!(leaf_keypair.is_some());
+
+    let private_key = provider
+        .key_store()
+        .read::<HpkePrivateKey>(kp.hpke_init_key().as_slice());
+    assert!(private_key.is_some());
 }
