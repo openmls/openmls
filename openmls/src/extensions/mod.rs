@@ -251,10 +251,9 @@ impl DeserializeBytes for Extensions {
     where
         Self: Sized,
     {
-        let (candidate, remainder) = Vec::<Extension>::tls_deserialize_bytes(bytes)?;
-        Extensions::try_from(candidate)
-            .map_err(|_| Error::DecodingError("Found duplicate extensions".into()))
-            .map(|ext| (ext, remainder))
+        let extensions = Extensions::tls_deserialize(&mut bytes.as_ref())?;
+        let remainder = &bytes[extensions.tls_serialized_len()..];
+        Ok((extensions, remainder))
     }
 }
 
