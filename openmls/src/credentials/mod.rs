@@ -25,7 +25,7 @@
 use std::io::{Read, Write};
 
 use serde::{Deserialize, Serialize};
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
+use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes};
 
 // Private
 mod codec;
@@ -237,7 +237,16 @@ impl From<MlsCredentialType> for Credential {
 /// OpenMLS provides an implementation of signature keys for convenience in the
 /// `openmls_basic_credential` crate.
 #[derive(
-    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
 )]
 pub struct BasicCredential {
     identity: VLBytes,

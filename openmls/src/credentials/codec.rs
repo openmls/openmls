@@ -42,3 +42,25 @@ impl tls_codec::Deserialize for Credential {
         }
     }
 }
+
+impl tls_codec::DeserializeBytes for Credential {
+    fn tls_deserialize_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), tls_codec::Error>
+    where
+        Self: Sized,
+    {
+        let (val, bytes) = u16::tls_deserialize_bytes(bytes)?;
+        let credential_type = CredentialType::from(val);
+        match credential_type {
+            CredentialType::Basic => {
+                let (basic_credential, bytes) = BasicCredential::tls_deserialize_bytes(bytes)?;
+                Ok((
+                    Credential::from(MlsCredentialType::Basic(basic_credential)),
+                    bytes,
+                ))
+            }
+            _ => Err(tls_codec::Error::DecodingError(format!(
+                "{credential_type:?} can not be deserialized."
+            ))),
+        }
+    }
+}

@@ -1,9 +1,6 @@
-use tls_codec::{Deserialize, DeserializeBytes, Size, TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
-use super::{
-    leaf_node::LeafNodePayload,
-    parent_node::{UnmergedLeaves, UnmergedLeavesError},
-};
+use super::parent_node::{UnmergedLeaves, UnmergedLeavesError};
 
 /// Node type. Can be either `Leaf` or `Parent`.
 #[derive(PartialEq, Clone, Copy, Debug, TlsSerialize, TlsDeserialize, TlsSize)]
@@ -26,21 +23,5 @@ impl tls_codec::Deserialize for UnmergedLeaves {
                 tls_codec::Error::DecodingError("Unmerged leaves not sorted".into())
             }
         })
-    }
-}
-
-impl DeserializeBytes for LeafNodePayload {
-    fn tls_deserialize_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), tls_codec::Error>
-    where
-        Self: Sized,
-    {
-        let mut bytes_reader = bytes;
-        let result = LeafNodePayload::tls_deserialize(&mut bytes_reader)?;
-        let remainder = bytes.get(result.tls_serialized_len()..).ok_or_else(|| {
-            tls_codec::Error::DecodingError(
-                "Not enough bytes to deserialize LeafNodePayload".into(),
-            )
-        })?;
-        Ok((result, remainder))
     }
 }

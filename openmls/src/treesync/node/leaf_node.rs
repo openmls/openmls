@@ -2,8 +2,8 @@
 use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsProvider};
 use serde::{Deserialize, Serialize};
 use tls_codec::{
-    conditionally_deserializable, Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize,
-    TlsSize, VLBytes,
+    conditionally_deserializable, Serialize as TlsSerializeTrait, TlsDeserialize,
+    TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes,
 };
 
 #[cfg(test)]
@@ -517,7 +517,16 @@ impl LeafNode {
 /// } LeafNode;
 /// ```
 #[derive(
-    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsSize,
+    TlsDeserializeBytes,
 )]
 pub(super) struct LeafNodePayload {
     encryption_key: EncryptionKey,

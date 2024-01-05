@@ -63,7 +63,17 @@ impl From<(&str, &[u8])> for SignContent {
 
 /// A public signature key.
 #[derive(
-    Eq, PartialEq, Hash, Debug, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    Eq,
+    PartialEq,
+    Hash,
+    Debug,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
 )]
 pub struct SignaturePublicKey {
     pub(in crate::ciphersuite) value: VLBytes,
