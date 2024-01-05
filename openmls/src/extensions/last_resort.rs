@@ -1,4 +1,4 @@
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
 use super::{Deserialize, Serialize};
 
@@ -15,6 +15,7 @@ use super::{Deserialize, Serialize};
     Deserialize,
     TlsSerialize,
     TlsDeserialize,
+    TlsDeserializeBytes,
     TlsSize,
     Default,
 )]

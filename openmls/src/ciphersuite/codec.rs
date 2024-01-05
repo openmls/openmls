@@ -3,27 +3,41 @@
 
 use std::io::{Read, Write};
 
+use ::tls_codec::Error;
+use tls_codec::{Deserialize, DeserializeBytes, Serialize, Size};
+
 use crate::ciphersuite::*;
 
-impl tls_codec::Size for Secret {
+impl Size for Secret {
     fn tls_serialized_len(&self) -> usize {
         self.value.tls_serialized_len()
     }
 }
 
-impl tls_codec::Serialize for Secret {
-    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, ::tls_codec::Error> {
+impl Serialize for Secret {
+    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, Error> {
         self.value.tls_serialize(writer)
     }
 }
 
-impl tls_codec::Deserialize for Secret {
-    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, ::tls_codec::Error> {
+impl Deserialize for Secret {
+    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, Error> {
         let value = Vec::tls_deserialize(bytes)?;
         Ok(Secret {
             value: value.into(),
             mls_version: ProtocolVersion::default(),
             ciphersuite: Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
         })
+    }
+}
+
+impl DeserializeBytes for Secret {
+    fn tls_deserialize_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), Error>
+    where
+        Self: Sized,
+    {
+        let secret = Secret::tls_deserialize(&mut bytes.as_ref())?;
+        let remainder = &bytes[secret.tls_serialized_len()..];
+        Ok((secret, remainder))
     }
 }

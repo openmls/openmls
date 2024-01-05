@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
 use crate::{ciphersuite::SignaturePublicKey, credentials::Credential};
 
@@ -13,7 +13,16 @@ use crate::{ciphersuite::SignaturePublicKey, credentials::Credential};
 /// } ExternalSender;
 /// ```
 #[derive(
-    Clone, PartialEq, Eq, Debug, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    Clone,
+    PartialEq,
+    Eq,
+    Debug,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
 )]
 pub struct ExternalSender {
     signature_key: SignaturePublicKey,
@@ -47,7 +56,17 @@ impl ExternalSender {
 pub type ExternalSendersExtension = Vec<ExternalSender>;
 /// Identifies an external sender in the `ExternalSendersExtension`.
 #[derive(
-    Debug, PartialEq, Eq, Copy, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    Debug,
+    PartialEq,
+    Eq,
+    Copy,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
 )]
 pub struct SenderExtensionIndex(u32);
 

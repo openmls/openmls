@@ -25,7 +25,10 @@
 use std::io::{Read, Write};
 
 use serde::{Deserialize, Serialize};
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
+use tls_codec::{
+    Deserialize as TlsDeserializeTrait, DeserializeBytes, Error, Serialize as TlsSerializeTrait,
+    Size, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes,
+};
 
 // Private
 mod codec;
@@ -80,14 +83,14 @@ pub enum CredentialType {
     Unknown(u16),
 }
 
-impl tls_codec::Size for CredentialType {
+impl Size for CredentialType {
     fn tls_serialized_len(&self) -> usize {
         2
     }
 }
 
-impl tls_codec::Deserialize for CredentialType {
-    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error>
+impl TlsDeserializeTrait for CredentialType {
+    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, Error>
     where
         Self: Sized,
     {
@@ -98,11 +101,22 @@ impl tls_codec::Deserialize for CredentialType {
     }
 }
 
-impl tls_codec::Serialize for CredentialType {
-    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+impl TlsSerializeTrait for CredentialType {
+    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, Error> {
         writer.write_all(&u16::from(*self).to_be_bytes())?;
 
         Ok(2)
+    }
+}
+
+impl DeserializeBytes for CredentialType {
+    fn tls_deserialize_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), Error>
+    where
+        Self: Sized,
+    {
+        let credential_type = CredentialType::tls_deserialize(&mut bytes.as_ref())?;
+        let remainder = &bytes[credential_type.tls_serialized_len()..];
+        Ok((credential_type, remainder))
     }
 }
 
@@ -237,7 +251,16 @@ impl From<MlsCredentialType> for Credential {
 /// OpenMLS provides an implementation of signature keys for convenience in the
 /// `openmls_basic_credential` crate.
 #[derive(
-    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
 )]
 pub struct BasicCredential {
     identity: VLBytes,

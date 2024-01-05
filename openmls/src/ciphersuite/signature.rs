@@ -8,7 +8,16 @@ use super::{LABEL_PREFIX, *};
 
 /// Signature.
 #[derive(
-    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
 )]
 pub struct Signature {
     value: VLBytes,
@@ -30,7 +39,7 @@ impl From<Vec<u8>> for Signature {
 ///     opaque content<V> = Content;
 /// } SignContent;
 /// ```
-#[derive(Debug, Clone, TlsSerialize, TlsDeserialize, TlsSize)]
+#[derive(Debug, Clone, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize)]
 pub struct SignContent {
     label: VLBytes,
     content: VLBytes,
@@ -53,7 +62,17 @@ impl From<(&str, &[u8])> for SignContent {
 
 /// A public signature key.
 #[derive(
-    Eq, PartialEq, Hash, Debug, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    Eq,
+    PartialEq,
+    Hash,
+    Debug,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
 )]
 pub struct SignaturePublicKey {
     pub(in crate::ciphersuite) value: VLBytes,

@@ -5,7 +5,7 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use thiserror::Error;
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
 // Public types
 
@@ -29,6 +29,7 @@ use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
     Serialize,
     Deserialize,
     TlsDeserialize,
+    TlsDeserializeBytes,
     TlsSerialize,
     TlsSize,
 )]
