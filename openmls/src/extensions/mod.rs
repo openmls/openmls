@@ -50,7 +50,7 @@ pub use last_resort::LastResortExtension;
 pub use ratchet_tree_extension::RatchetTreeExtension;
 pub use required_capabilities::RequiredCapabilitiesExtension;
 
-use self::protected_metadata::ProtectedMetadata;
+pub use protected_metadata::ProtectedMetadata;
 
 #[cfg(test)]
 mod test_extensions;
