@@ -15,9 +15,9 @@ resolver = "2"
 
 # Central dependency management for some crates
 [workspace.dependencies]
-tls_codec = { version = "0.4.0-pre.2", features = [
+tls_codec = { version = "0.4.0", features = [
     "derive",
     "serde",
     "mls",
     "conditional_deserialization",
-], git = 'https://github.com/kkohbrok/formats.git', branch = "konrad/pub_macro" }
+] }
