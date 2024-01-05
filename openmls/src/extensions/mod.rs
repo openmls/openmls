@@ -394,7 +394,7 @@ impl Extensions {
 
     /// Get a reference to the [`ProtectedMetadata`] if there is any.
     pub fn protected_metadata(&self) -> Option<&ProtectedMetadata> {
-        self.find_by_type(ExtensionType::ExternalSenders)
+        self.find_by_type(ExtensionType::ProtectedMetadata)
             .and_then(|e| match e {
                 Extension::ProtectedMetadata(e) => Some(e),
                 _ => None,
