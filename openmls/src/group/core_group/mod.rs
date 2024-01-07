@@ -211,6 +211,7 @@ impl CoreGroupBuilder {
         self
     }
 
+    /// Set the `group_context_extensions` of the [`CoreGroup`].
     pub fn with_group_context_extensions(mut self, extensions: Extensions) -> Self {
         self.public_group_builder = self
             .public_group_builder
