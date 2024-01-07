@@ -211,6 +211,13 @@ impl CoreGroupBuilder {
         self
     }
 
+    pub fn with_group_context_extensions(mut self, extensions: Extensions) -> Self {
+        self.public_group_builder = self
+            .public_group_builder
+            .with_group_context_extensions(extensions);
+        self
+    }
+
     /// Build the [`CoreGroup`].
     /// Any values that haven't been set in the builder are set to their default
     /// values (which might be random).

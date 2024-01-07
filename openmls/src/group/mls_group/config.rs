@@ -60,6 +60,8 @@ pub struct MlsGroupConfig {
     pub(crate) lifetime: Lifetime,
     /// Ciphersuite and protocol version
     pub(crate) crypto_config: CryptoConfig,
+    // Other extensions
+    pub(crate) group_context_extensions: Extensions,
 }
 
 impl MlsGroupConfig {
@@ -116,6 +118,10 @@ impl MlsGroupConfig {
     /// Returns the [`CryptoConfig`].
     pub fn crypto_config(&self) -> &CryptoConfig {
         &self.crypto_config
+    }
+
+    pub fn group_context_extensions(&self) -> &Extensions {
+        &self.group_context_extensions
     }
 
     #[cfg(any(feature = "test-utils", test))]
@@ -217,6 +223,11 @@ impl MlsGroupConfigBuilder {
     /// Sets the `external_senders` property of the MlsGroupConfig.
     pub fn external_senders(mut self, external_senders: ExternalSendersExtension) -> Self {
         self.config.external_senders = external_senders;
+        self
+    }
+
+    pub fn group_context_extensions(mut self, extensions: Extensions) -> Self {
+        self.config.group_context_extensions = extensions;
         self
     }
 
