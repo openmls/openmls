@@ -93,18 +93,17 @@ impl TempBuilderPG1 {
             _ => LibraryError::custom("Unexpected ExtensionError").into(),
         })?;
         let required_capabilities = Extension::RequiredCapabilities(required_capabilities);
-        let mut extensions =
-            if let Some(ext_senders) = self.external_senders.map(Extension::ExternalSenders) {
-                Extensions::from_vec(vec![required_capabilities, ext_senders])
-            } else {
-                Extensions::from_vec(vec![required_capabilities])
-            }?;
 
+        let mut extensions = Extensions::from_vec(vec![required_capabilities])?;
+        if let Some(ext_senders) = self.external_senders.map(Extension::ExternalSenders) {
+            extensions.add(ext_senders)?;
+        }
         if let Some(group_context_extensions) = self.group_context_extensions {
             for extension in group_context_extensions.iter() {
                 extensions.add(extension.clone())?;
             }
         }
+
         let group_context = GroupContext::create_initial_group_context(
             self.crypto_config.ciphersuite,
             self.group_id,
