@@ -9,8 +9,8 @@ use std::collections::HashSet;
 
 use openmls::prelude::*;
 use tls_codec::{
-    TlsByteSliceU16, TlsByteVecU16, TlsByteVecU32, TlsByteVecU8, TlsDeserialize, TlsSerialize,
-    TlsSize, TlsVecU32,
+    TlsByteSliceU16, TlsByteVecU16, TlsByteVecU32, TlsByteVecU8, TlsDeserialize,
+    TlsDeserializeBytes, TlsSerialize, TlsSize, TlsVecU32,
 };
 
 /// Information about a client.
@@ -38,6 +38,7 @@ pub struct ClientInfo {
     PartialEq,
     TlsSerialize,
     TlsDeserialize,
+    TlsDeserializeBytes,
     TlsSize,
     serde::Serialize,
     serde::Deserialize,

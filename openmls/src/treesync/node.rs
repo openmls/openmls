@@ -2,7 +2,7 @@
 //! variants of the enum are `LeafNode` and [`ParentNode`], both of which are
 //! defined in the respective [`leaf_node`] and [`parent_node`] submodules.
 use serde::{Deserialize, Serialize};
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
 use self::{leaf_node::LeafNodeIn, parent_node::ParentNode};
 
@@ -37,7 +37,16 @@ pub enum Node {
 }
 
 #[derive(
-    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSize, TlsDeserialize, TlsSerialize,
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsSize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
 )]
 #[repr(u8)]
 pub enum NodeIn {

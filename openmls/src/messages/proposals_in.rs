@@ -17,7 +17,7 @@ use crate::{
 
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
 use super::proposals::{
     AddProposal, AppAckProposal, ExternalInitProposal, GroupContextExtensionProposal,
@@ -46,7 +46,15 @@ use super::proposals::{
 /// ```
 #[allow(clippy::large_enum_variant)]
 #[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSize, TlsSerialize, TlsDeserialize,
+    Debug,
+    PartialEq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsSize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
 )]
 #[allow(missing_docs)]
 #[repr(u16)]
@@ -132,7 +140,15 @@ impl ProposalIn {
 /// } Add;
 /// ```
 #[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    Debug,
+    PartialEq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
 )]
 pub struct AddProposalIn {
     key_package: KeyPackageIn,
@@ -171,7 +187,16 @@ impl AddProposalIn {
 /// } Update;
 /// ```
 #[derive(
-    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
 )]
 pub struct UpdateProposalIn {
     leaf_node: LeafNodeIn,
@@ -214,7 +239,15 @@ impl UpdateProposalIn {
 
 /// Type of Proposal, either by value or by reference.
 #[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    Debug,
+    PartialEq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
 )]
 #[repr(u8)]
 #[allow(missing_docs)]

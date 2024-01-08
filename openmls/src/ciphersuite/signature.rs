@@ -16,9 +16,9 @@ use super::{LABEL_PREFIX, *};
     Serialize,
     Deserialize,
     TlsDeserialize,
+    TlsDeserializeBytes,
     TlsSerialize,
     TlsSize,
-    TlsDeserializeBytes,
 )]
 pub struct Signature {
     value: VLBytes,
@@ -40,7 +40,7 @@ impl From<Vec<u8>> for Signature {
 ///     opaque content<V> = Content;
 /// } SignContent;
 /// ```
-#[derive(Debug, Clone, TlsSerialize, TlsDeserialize, TlsSize)]
+#[derive(Debug, Clone, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize)]
 pub struct SignContent {
     label: VLBytes,
     content: VLBytes,

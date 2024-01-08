@@ -76,7 +76,9 @@ impl EncryptionKey {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize)]
+#[derive(
+    Clone, Serialize, Deserialize, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
+)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub(crate) struct EncryptionPrivateKey {
     key: HpkePrivateKey,
@@ -147,7 +149,9 @@ impl From<HpkePublicKey> for EncryptionKey {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
+)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub(crate) struct EncryptionKeyPair {
     public_key: EncryptionKey,

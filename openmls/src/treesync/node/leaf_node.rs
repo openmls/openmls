@@ -525,8 +525,8 @@ impl LeafNode {
     Deserialize,
     TlsSerialize,
     TlsDeserialize,
-    TlsSize,
     TlsDeserializeBytes,
+    TlsSize,
 )]
 pub(super) struct LeafNodePayload {
     encryption_key: EncryptionKey,
@@ -538,7 +538,16 @@ pub(super) struct LeafNodePayload {
 }
 
 #[derive(
-    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
 )]
 #[repr(u8)]
 pub enum LeafNodeSource {

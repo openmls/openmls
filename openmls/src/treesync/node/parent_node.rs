@@ -6,7 +6,7 @@ use openmls_traits::types::{Ciphersuite, HpkeCiphertext};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use thiserror::*;
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
+use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes};
 
 use super::encryption_keys::{EncryptionKey, EncryptionKeyPair};
 use crate::{
@@ -22,7 +22,16 @@ use crate::{
 /// parent hash and unmerged leaves. Additionally, it may contain the private
 /// key corresponding to the public key.
 #[derive(
-    Debug, Eq, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    Debug,
+    Eq,
+    PartialEq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
 )]
 pub struct ParentNode {
     pub(super) encryption_key: EncryptionKey,

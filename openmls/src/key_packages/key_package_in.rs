@@ -10,7 +10,9 @@ use crate::{
 };
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
-use tls_codec::{Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{
+    Serialize as TlsSerializeTrait, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
+};
 
 use super::{
     errors::KeyPackageVerifyError, KeyPackage, KeyPackageTbs, SIGNATURE_KEY_PACKAGE_LABEL,
@@ -70,7 +72,15 @@ mod private_mod {
 /// } KeyPackageTBS;
 /// ```
 #[derive(
-    Debug, Clone, PartialEq, TlsSize, TlsSerialize, TlsDeserialize, Serialize, Deserialize,
+    Debug,
+    Clone,
+    PartialEq,
+    TlsSize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    Serialize,
+    Deserialize,
 )]
 struct KeyPackageTbsIn {
     protocol_version: ProtocolVersion,
@@ -82,7 +92,15 @@ struct KeyPackageTbsIn {
 
 /// The key package struct.
 #[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    Debug,
+    PartialEq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
 )]
 pub struct KeyPackageIn {
     payload: KeyPackageTbsIn,
