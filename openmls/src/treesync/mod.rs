@@ -35,7 +35,7 @@ use openmls_traits::{
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
 use self::{
     diff::{StagedTreeSyncDiff, TreeSyncDiff},
@@ -217,7 +217,16 @@ impl RatchetTree {
 /// A ratchet tree made of unverified nodes. This is used for deserialization
 /// and verification.
 #[derive(
-    PartialEq, Eq, Clone, Debug, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    PartialEq,
+    Eq,
+    Clone,
+    Debug,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
 )]
 pub struct RatchetTreeIn(Vec<Option<NodeIn>>);
 

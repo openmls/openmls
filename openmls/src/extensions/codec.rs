@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 
-use tls_codec::{Deserialize, Serialize, Size, VLBytes};
+use tls_codec::{Deserialize, DeserializeBytes, Serialize, Size, VLBytes};
 
 use crate::extensions::{
     ApplicationIdExtension, Extension, ExtensionType, ExternalPubExtension,
@@ -122,5 +122,17 @@ impl Deserialize for Extension {
                 Extension::Unknown(unknown, UnknownExtension(extension_data.to_vec()))
             }
         })
+    }
+}
+
+impl DeserializeBytes for Extension {
+    fn tls_deserialize_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), tls_codec::Error>
+    where
+        Self: Sized,
+    {
+        let mut bytes_ref = bytes;
+        let extension = Extension::tls_deserialize(&mut bytes_ref)?;
+        let remainder = &bytes[extension.tls_serialized_len()..];
+        Ok((extension, remainder))
     }
 }

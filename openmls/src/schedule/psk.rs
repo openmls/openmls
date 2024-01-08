@@ -38,6 +38,7 @@ use crate::{
     Deserialize,
     Serialize,
     TlsDeserialize,
+    TlsDeserializeBytes,
     TlsSerialize,
     TlsSize,
 )]
@@ -67,6 +68,7 @@ pub enum ResumptionPskUsage {
     Deserialize,
     Serialize,
     TlsDeserialize,
+    TlsDeserializeBytes,
     TlsSerialize,
     TlsSize,
 )]
@@ -90,7 +92,7 @@ impl ExternalPsk {
 
 /// Contains the secret part of the PSK as well as the
 /// public part that is used as a marker for injection into the key schedule.
-#[derive(Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize)]
+#[derive(Serialize, Deserialize, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize)]
 pub(crate) struct PskBundle {
     secret: Secret,
 }
@@ -110,6 +112,7 @@ impl MlsEntity for PskBundle {
     Deserialize,
     Serialize,
     TlsDeserialize,
+    TlsDeserializeBytes,
     TlsSerialize,
     TlsSize,
 )]
@@ -156,6 +159,7 @@ impl ResumptionPsk {
     Deserialize,
     Serialize,
     TlsDeserialize,
+    TlsDeserializeBytes,
     TlsSerialize,
     TlsSize,
 )]
@@ -216,6 +220,7 @@ pub enum PskType {
     Deserialize,
     Serialize,
     TlsDeserialize,
+    TlsDeserializeBytes,
     TlsSerialize,
     TlsSize,
 )]
