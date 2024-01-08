@@ -450,6 +450,7 @@ impl StagedCommit {
         }
     }
 
+    /// Returns the credentials that the caller needs to verify are valid.
     pub fn credentials_to_verify(&self) -> impl Iterator<Item = &Credential> {
         let update_path_leaf_node_cred = if let Some(node) = self.update_path_leaf_node() {
             vec![node.credential()]
@@ -461,10 +462,10 @@ impl StagedCommit {
             self.queued_proposals()
                 .map(|proposal: &QueuedProposal| match proposal.proposal() {
                     Proposal::Update(update_proposal) => {
-                        vec![update_proposal.leaf_node().credential()]
+                        vec![update_proposal.leaf_node().credential()].into_iter()
                     }
                     Proposal::Add(add_proposal) => {
-                        vec![add_proposal.key_package().leaf_node().credential()]
+                        vec![add_proposal.key_package().leaf_node().credential()].into_iter()
                     }
                     Proposal::GroupContextExtensions(gce_proposal) => gce_proposal
                         .extensions()
@@ -480,10 +481,16 @@ impl StagedCommit {
                             .into_iter()
                         })
                         .flatten()
-                        .collect(),
-                    _ => vec![],
+                        // TODO: ideally we wouldn't collect in between here, but the match arms
+                        //       have to all return the same type. We solve this by having them all
+                        //       be vec::IntoIter, but it would be nice if we just didn't have to
+                        //       do this.
+                        //       It might be possible to solve this by letting all match arms
+                        //       evaluate to a dyn Iterator.
+                        .collect::<Vec<_>>()
+                        .into_iter(),
+                    _ => vec![].into_iter(),
                 })
-                .into_iter()
                 .flatten(),
         )
     }
