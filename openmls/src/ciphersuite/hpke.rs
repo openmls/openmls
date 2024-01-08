@@ -39,7 +39,7 @@ use openmls_traits::{
     types::{Ciphersuite, CryptoError, HpkeCiphertext},
 };
 use thiserror::Error;
-use tls_codec::{Serialize, TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
+use tls_codec::{Serialize, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes};
 
 use super::LABEL_PREFIX;
 
@@ -68,7 +68,7 @@ impl From<CryptoError> for Error {
     }
 }
 
-#[derive(Debug, Clone, TlsSerialize, TlsDeserialize, TlsSize)]
+#[derive(Debug, Clone, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize)]
 pub struct EncryptContext {
     label: VLBytes,
     context: VLBytes,

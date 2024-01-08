@@ -1,8 +1,10 @@
 use std::io::Read;
 
+use tls_codec::{Deserialize, DeserializeBytes, Error, Serialize, Size};
+
 use super::*;
 
-impl tls_codec::Size for Credential {
+impl Size for Credential {
     #[inline]
     fn tls_serialized_len(&self) -> usize {
         self.credential_type.tls_serialized_len()
@@ -13,32 +15,44 @@ impl tls_codec::Size for Credential {
     }
 }
 
-impl tls_codec::Serialize for Credential {
-    fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+impl Serialize for Credential {
+    fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, Error> {
         match &self.credential {
             MlsCredentialType::Basic(basic_credential) => {
                 let written = CredentialType::Basic.tls_serialize(writer)?;
                 basic_credential.tls_serialize(writer).map(|l| l + written)
             }
             // TODO #134: implement encoding for X509 certificates
-            MlsCredentialType::X509(_) => Err(tls_codec::Error::EncodingError(
+            MlsCredentialType::X509(_) => Err(Error::EncodingError(
                 "X509 certificates are not yet implemented.".to_string(),
             )),
         }
     }
 }
 
-impl tls_codec::Deserialize for Credential {
-    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
+impl Deserialize for Credential {
+    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, Error> {
         let val = u16::tls_deserialize(bytes)?;
         let credential_type = CredentialType::from(val);
         match credential_type {
             CredentialType::Basic => Ok(Credential::from(MlsCredentialType::Basic(
                 BasicCredential::tls_deserialize(bytes)?,
             ))),
-            _ => Err(tls_codec::Error::DecodingError(format!(
+            _ => Err(Error::DecodingError(format!(
                 "{credential_type:?} can not be deserialized."
             ))),
         }
+    }
+}
+
+impl DeserializeBytes for Credential {
+    fn tls_deserialize_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), Error>
+    where
+        Self: Sized,
+    {
+        let mut bytes_ref = bytes;
+        let credential = Credential::tls_deserialize(&mut bytes_ref)?;
+        let remainder = &bytes[credential.tls_serialized_len()..];
+        Ok((credential, remainder))
     }
 }

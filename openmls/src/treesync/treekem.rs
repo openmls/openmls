@@ -12,7 +12,7 @@ use openmls_traits::{
 };
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
 use super::{
     diff::TreeSyncDiff,
@@ -240,7 +240,16 @@ pub(crate) struct DecryptPathParams<'a> {
 /// } UpdatePathNode;
 /// ```
 #[derive(
-    Debug, Eq, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug,
+    Eq,
+    PartialEq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
 )]
 pub struct UpdatePathNode {
     pub(super) public_key: EncryptionKey,
@@ -363,7 +372,16 @@ impl UpdatePath {
 }
 
 #[derive(
-    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
 )]
 pub struct UpdatePathIn {
     leaf_node: LeafNodeIn,

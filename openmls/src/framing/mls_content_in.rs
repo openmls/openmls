@@ -22,7 +22,7 @@ use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
 use tls_codec::{
     Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, Size, TlsDeserialize,
-    TlsSerialize, TlsSize, VLBytes,
+    TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes,
 };
 
 /// ```c
@@ -37,7 +37,15 @@ use tls_codec::{
 /// } FramedContent;
 /// ```
 #[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    Debug,
+    PartialEq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
 )]
 pub(crate) struct FramedContentIn {
     pub(super) group_id: GroupId,
@@ -91,7 +99,15 @@ impl From<AuthenticatedContentIn> for FramedContentIn {
 /// } FramedContent;
 /// ```
 #[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    Debug,
+    PartialEq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
 )]
 #[repr(u8)]
 pub(crate) enum FramedContentBodyIn {

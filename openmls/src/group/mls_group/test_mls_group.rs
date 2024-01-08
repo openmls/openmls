@@ -1,6 +1,7 @@
 use core_group::test_core_group::setup_client;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsProvider};
+use tls_codec::{Deserialize, Serialize};
 
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -333,6 +334,185 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
         )),
         error
     );
+}
+
+#[apply(ciphersuites_and_providers)]
+fn test_commit_with_update_path_leaf_node(
+    ciphersuite: Ciphersuite,
+    provider: &impl OpenMlsProvider,
+) {
+    let group_id = GroupId::from_slice(b"Test Group");
+
+    let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
+        setup_client("Alice", ciphersuite, provider);
+    let (_bob_credential, bob_kpb, _bob_signer, _bob_pk) =
+        setup_client("Bob", ciphersuite, provider);
+
+    // Define the MlsGroup configuration
+    let mls_group_config = MlsGroupConfig::test_default(ciphersuite);
+
+    // === Alice creates a group ===
+    let mut alice_group = MlsGroup::new_with_group_id(
+        provider,
+        &alice_signer,
+        &mls_group_config,
+        group_id,
+        alice_credential_with_key.clone(),
+    )
+    .expect("An unexpected error occurred.");
+
+    // There should be no pending commit after group creation.
+    assert!(alice_group.pending_commit().is_none());
+
+    let bob_key_package = bob_kpb.key_package();
+
+    // === Alice adds Bob to the group ===
+    let (proposal, _) = alice_group
+        .propose_add_member(provider, &alice_signer, bob_key_package)
+        .expect("error creating self-update proposal");
+
+    let alice_processed_message = alice_group
+        .process_message(provider, proposal.into_protocol_message().unwrap())
+        .expect("Could not process messages.");
+    assert!(alice_group.pending_commit().is_none());
+
+    if let ProcessedMessageContent::ProposalMessage(staged_proposal) =
+        alice_processed_message.into_content()
+    {
+        alice_group.store_pending_proposal(*staged_proposal);
+    } else {
+        unreachable!("Expected a StagedCommit.");
+    }
+
+    println!("\nCreating commit with add proposal.");
+    let (_msg, welcome_option, _group_info) = alice_group
+        .self_update(provider, &alice_signer)
+        .expect("error creating self-update commit");
+    println!("Done creating commit.");
+
+    // Merging the pending commit should clear the pending commit and we should
+    // end up in the same state as bob.
+    alice_group
+        .merge_pending_commit(provider)
+        .expect("error merging pending commit");
+    assert!(alice_group.pending_commit().is_none());
+    assert!(alice_group.pending_proposals().next().is_none());
+
+    let mut bob_group = MlsGroup::new_from_welcome(
+        provider,
+        &mls_group_config,
+        welcome_option
+            .expect("no welcome after commit")
+            .into_welcome()
+            .expect("Unexpected message type."),
+        Some(alice_group.export_ratchet_tree().into()),
+    )
+    .expect("error creating group from welcome");
+
+    assert_eq!(
+        bob_group.export_ratchet_tree(),
+        alice_group.export_ratchet_tree()
+    );
+    assert_eq!(
+        bob_group.export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length()),
+        alice_group.export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
+    );
+    // Bob is added and the state aligns.
+
+    // === Make a new, empty commit and check that the leaf node credentials match ===
+
+    println!("\nCreating commit with add proposal.");
+    let (commit_msg, _welcome_option, _group_info) = alice_group
+        .self_update(provider, &alice_signer)
+        .expect("error creating self-update commit");
+    println!("Done creating commit.");
+
+    // empty commits should only produce a single message
+    assert!(_welcome_option.is_none());
+    assert!(_group_info.is_none());
+
+    // There should be a pending commit after issuing a self-update commit.
+    let alice_pending_commit = alice_group
+        .pending_commit()
+        .expect("alice should have the self-update as pending commit");
+
+    // The credential on the update_path leaf node should be set and be the same as alice's
+    // credential
+    let alice_update_path_leaf_node = alice_pending_commit
+        .update_path_leaf_node()
+        .expect("expected alice's staged commit to have an update path");
+    assert_eq!(
+        alice_update_path_leaf_node.credential(),
+        &alice_credential_with_key.credential
+    );
+
+    // great, they match! now commit
+    alice_group
+        .merge_pending_commit(provider)
+        .expect("alice failed to merge the pending empty commit");
+
+    // === transfer message to bob and process it ===
+
+    // this requires serializing and deserializing
+    let mut wire_msg = Vec::<u8>::new();
+    commit_msg
+        .tls_serialize(&mut wire_msg)
+        .expect("alice failed serializing her message");
+    let msg_in = MlsMessageIn::tls_deserialize(&mut &wire_msg[..])
+        .expect("bob failed deserializing alice's message");
+
+    // neither party should have pending proposals
+    assert!(alice_group.pending_proposals().next().is_none());
+    assert!(bob_group.pending_proposals().next().is_none());
+
+    // neither should have pending commits after merging and before processing
+    assert!(bob_group.pending_commit().is_none());
+    assert!(alice_group.pending_commit().is_none());
+
+    // further process the deserialized message
+    let processed_message = bob_group
+        .process_message(provider, msg_in)
+        .expect("bob failed processing alice's message");
+
+    // the processed message must be a staged commit message
+    assert!(matches!(
+        processed_message.content(),
+        ProcessedMessageContent::StagedCommitMessage(_)
+    ));
+
+    if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+        processed_message.into_content()
+    {
+        // bob must check the credential in the leaf node of the update_path of alice's commit
+        let bob_update_path_leaf_node = staged_commit
+            .update_path_leaf_node()
+            .expect("staged commit received by bob should carry an update path with a leaf node");
+        assert_eq!(
+            bob_update_path_leaf_node.credential(),
+            &alice_credential_with_key.credential
+        );
+
+        // bob merges alice's message
+        bob_group
+            .merge_staged_commit(provider, *staged_commit)
+            .expect("bob failed merging alice's empty commit (staged)");
+
+        // finally, the state should match
+        assert_eq!(
+            bob_group.export_ratchet_tree(),
+            alice_group.export_ratchet_tree()
+        );
+        assert_eq!(
+            bob_group.export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length()),
+            alice_group.export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
+        );
+    } else {
+        unreachable!()
+    }
+
+    // neither should have pending commits after merging and processing
+    assert!(bob_group.pending_commit().is_none());
+    assert!(alice_group.pending_commit().is_none());
 }
 
 #[apply(ciphersuites_and_providers)]
