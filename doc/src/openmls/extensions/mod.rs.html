@@ -593,6 +593,34 @@
 <a href="#593" id="593">593</a>
 <a href="#594" id="594">594</a>
 <a href="#595" id="595">595</a>
+<a href="#596" id="596">596</a>
+<a href="#597" id="597">597</a>
+<a href="#598" id="598">598</a>
+<a href="#599" id="599">599</a>
+<a href="#600" id="600">600</a>
+<a href="#601" id="601">601</a>
+<a href="#602" id="602">602</a>
+<a href="#603" id="603">603</a>
+<a href="#604" id="604">604</a>
+<a href="#605" id="605">605</a>
+<a href="#606" id="606">606</a>
+<a href="#607" id="607">607</a>
+<a href="#608" id="608">608</a>
+<a href="#609" id="609">609</a>
+<a href="#610" id="610">610</a>
+<a href="#611" id="611">611</a>
+<a href="#612" id="612">612</a>
+<a href="#613" id="613">613</a>
+<a href="#614" id="614">614</a>
+<a href="#615" id="615">615</a>
+<a href="#616" id="616">616</a>
+<a href="#617" id="617">617</a>
+<a href="#618" id="618">618</a>
+<a href="#619" id="619">619</a>
+<a href="#620" id="620">620</a>
+<a href="#621" id="621">621</a>
+<a href="#622" id="622">622</a>
+<a href="#623" id="623">623</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Extensions
 //!
 //! In MLS, extensions appear in the following places:
@@ -643,6 +671,10 @@
 <span class="kw">pub use </span>last_resort::LastResortExtension;
 <span class="kw">pub use </span>ratchet_tree_extension::RatchetTreeExtension;
 <span class="kw">pub use </span>required_capabilities::RequiredCapabilitiesExtension;
+<span class="kw">use </span>tls_codec::{
+    Deserialize <span class="kw">as </span>TlsDeserializeTrait, DeserializeBytes, Error, Serialize <span class="kw">as </span>TlsSerializeTrait,
+    Size, TlsSize,
+};
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test_extensions;
@@ -692,14 +724,14 @@
     </span>Unknown(u16),
 }
 
-<span class="kw">impl </span>tls_codec::Size <span class="kw">for </span>ExtensionType {
+<span class="kw">impl </span>Size <span class="kw">for </span>ExtensionType {
     <span class="kw">fn </span>tls_serialized_len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         <span class="number">2
     </span>}
 }
 
-<span class="kw">impl </span>tls_codec::Deserialize <span class="kw">for </span>ExtensionType {
-    <span class="kw">fn </span>tls_deserialize&lt;R: Read&gt;(bytes: <span class="kw-2">&amp;mut </span>R) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, tls_codec::Error&gt;
+<span class="kw">impl </span>TlsDeserializeTrait <span class="kw">for </span>ExtensionType {
+    <span class="kw">fn </span>tls_deserialize&lt;R: Read&gt;(bytes: <span class="kw-2">&amp;mut </span>R) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Error&gt;
     <span class="kw">where
         </span><span class="self">Self</span>: Sized,
     {
@@ -710,8 +742,20 @@
     }
 }
 
-<span class="kw">impl </span>tls_codec::Serialize <span class="kw">for </span>ExtensionType {
-    <span class="kw">fn </span>tls_serialize&lt;W: Write&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, writer: <span class="kw-2">&amp;mut </span>W) -&gt; <span class="prelude-ty">Result</span>&lt;usize, tls_codec::Error&gt; {
+<span class="kw">impl </span>DeserializeBytes <span class="kw">for </span>ExtensionType {
+    <span class="kw">fn </span>tls_deserialize_bytes(bytes: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, <span class="kw-2">&amp;</span>[u8]), Error&gt;
+    <span class="kw">where
+        </span><span class="self">Self</span>: Sized,
+    {
+        <span class="kw">let </span><span class="kw-2">mut </span>bytes_ref = bytes;
+        <span class="kw">let </span>extension_type = ExtensionType::tls_deserialize(<span class="kw-2">&amp;mut </span>bytes_ref)<span class="question-mark">?</span>;
+        <span class="kw">let </span>remainder = <span class="kw-2">&amp;</span>bytes[extension_type.tls_serialized_len()..];
+        <span class="prelude-val">Ok</span>((extension_type, remainder))
+    }
+}
+
+<span class="kw">impl </span>TlsSerializeTrait <span class="kw">for </span>ExtensionType {
+    <span class="kw">fn </span>tls_serialize&lt;W: Write&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, writer: <span class="kw-2">&amp;mut </span>W) -&gt; <span class="prelude-ty">Result</span>&lt;usize, Error&gt; {
         writer.write_all(<span class="kw-2">&amp;</span>u16::from(<span class="kw-2">*</span><span class="self">self</span>).to_be_bytes())<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(<span class="number">2</span>)
@@ -804,25 +848,37 @@
 </span><span class="kw">pub struct </span>UnknownExtension(<span class="kw">pub </span>Vec&lt;u8&gt;);
 
 <span class="doccomment">/// A list of extensions with unique extension types.
-</span><span class="attr">#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize, tls_codec::TlsSize)]
+</span><span class="attr">#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSize)]
 </span><span class="kw">pub struct </span>Extensions {
     unique: Vec&lt;Extension&gt;,
 }
 
-<span class="kw">impl </span>tls_codec::Serialize <span class="kw">for </span>Extensions {
-    <span class="kw">fn </span>tls_serialize&lt;W: Write&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, writer: <span class="kw-2">&amp;mut </span>W) -&gt; <span class="prelude-ty">Result</span>&lt;usize, tls_codec::Error&gt; {
+<span class="kw">impl </span>TlsSerializeTrait <span class="kw">for </span>Extensions {
+    <span class="kw">fn </span>tls_serialize&lt;W: Write&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, writer: <span class="kw-2">&amp;mut </span>W) -&gt; <span class="prelude-ty">Result</span>&lt;usize, Error&gt; {
         <span class="self">self</span>.unique.tls_serialize(writer)
     }
 }
 
-<span class="kw">impl </span>tls_codec::Deserialize <span class="kw">for </span>Extensions {
-    <span class="kw">fn </span>tls_deserialize&lt;R: Read&gt;(bytes: <span class="kw-2">&amp;mut </span>R) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, tls_codec::Error&gt;
+<span class="kw">impl </span>TlsDeserializeTrait <span class="kw">for </span>Extensions {
+    <span class="kw">fn </span>tls_deserialize&lt;R: Read&gt;(bytes: <span class="kw-2">&amp;mut </span>R) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Error&gt;
     <span class="kw">where
         </span><span class="self">Self</span>: Sized,
     {
         <span class="kw">let </span>candidate: Vec&lt;Extension&gt; = Vec::tls_deserialize(bytes)<span class="question-mark">?</span>;
         Extensions::try_from(candidate)
-            .map_err(|<span class="kw">_</span>| tls_codec::Error::DecodingError(<span class="string">&quot;Found duplicate extensions&quot;</span>.into()))
+            .map_err(|<span class="kw">_</span>| Error::DecodingError(<span class="string">&quot;Found duplicate extensions&quot;</span>.into()))
+    }
+}
+
+<span class="kw">impl </span>DeserializeBytes <span class="kw">for </span>Extensions {
+    <span class="kw">fn </span>tls_deserialize_bytes(bytes: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, <span class="kw-2">&amp;</span>[u8]), Error&gt;
+    <span class="kw">where
+        </span><span class="self">Self</span>: Sized,
+    {
+        <span class="kw">let </span><span class="kw-2">mut </span>bytes_ref = bytes;
+        <span class="kw">let </span>extensions = Extensions::tls_deserialize(<span class="kw-2">&amp;mut </span>bytes_ref)<span class="question-mark">?</span>;
+        <span class="kw">let </span>remainder = <span class="kw-2">&amp;</span>bytes[extensions.tls_serialized_len()..];
+        <span class="prelude-val">Ok</span>((extensions, remainder))
     }
 }
 

@@ -43,12 +43,16 @@
 <a href="#43" id="43">43</a>
 <a href="#44" id="44">44</a>
 <a href="#45" id="45">45</a>
+<a href="#46" id="46">46</a>
+<a href="#47" id="47">47</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// 7.1 Content Authentication
 ///
 /// opaque MAC&lt;V&gt;;
-</span><span class="attr">#[derive(Debug, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize)]
+</span><span class="attr">#[derive(
+    Debug, Clone, Serialize, Deserialize, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
+)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>Mac {
     <span class="kw">pub</span>(<span class="kw">crate</span>) mac_value: VLBytes,
 }

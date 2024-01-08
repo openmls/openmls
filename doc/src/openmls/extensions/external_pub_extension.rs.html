@@ -74,7 +74,16 @@
 <a href="#74" id="74">74</a>
 <a href="#75" id="75">75</a>
 <a href="#76" id="76">76</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+<a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
 <span class="kw">use super</span>::{Deserialize, Serialize};
 <span class="kw">use </span><span class="kw">crate</span>::ciphersuite::HpkePublicKey;
@@ -86,7 +95,16 @@
 /// } ExternalPub;
 /// ```
 </span><span class="attr">#[derive(
-    PartialEq, Eq, Clone, Debug, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    PartialEq,
+    Eq,
+    Clone,
+    Debug,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
 )]
 </span><span class="kw">pub struct </span>ExternalPubExtension {
     external_pub: HpkePublicKey,

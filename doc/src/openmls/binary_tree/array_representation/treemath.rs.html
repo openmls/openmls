@@ -463,10 +463,11 @@
 <a href="#463" id="463">463</a>
 <a href="#464" id="464">464</a>
 <a href="#465" id="465">465</a>
+<a href="#466" id="466">466</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 
 <span class="kw">use </span>serde::{Deserialize, Serialize};
-<span class="kw">use </span>tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+<span class="kw">use </span>tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MAX_TREE_SIZE: u32 = <span class="number">1 </span>&lt;&lt; <span class="number">30</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIN_TREE_SIZE: u32 = <span class="number">1</span>;
@@ -484,6 +485,7 @@
     Serialize,
     Deserialize,
     TlsDeserialize,
+    TlsDeserializeBytes,
     TlsSerialize,
     TlsSize,
 )]

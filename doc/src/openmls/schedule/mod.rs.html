@@ -1346,7 +1346,7 @@
 
 </span><span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::<span class="kw-2">*</span>};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
-<span class="kw">use </span>tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+<span class="kw">use </span>tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
 <span class="kw">use crate</span>::{
     binary_tree::array_representation::{LeafNodeIndex, TreeSize},
@@ -1568,7 +1568,7 @@
     }
 }
 
-<span class="attr">#[derive(Debug, TlsDeserialize, TlsSerialize, TlsSize)]
+<span class="attr">#[derive(Debug, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>JoinerSecret {
     secret: Secret,
 }

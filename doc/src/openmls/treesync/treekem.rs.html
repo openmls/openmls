@@ -426,6 +426,24 @@
 <a href="#426" id="426">426</a>
 <a href="#427" id="427">427</a>
 <a href="#428" id="428">428</a>
+<a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Module to encrypt and decrypt update paths for a [`TreeSyncDiff`] instance.
 //!
 //! # About
@@ -440,7 +458,7 @@
 };
 <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
-<span class="kw">use </span>tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+<span class="kw">use </span>tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
 <span class="kw">use super</span>::{
     diff::TreeSyncDiff,
@@ -668,7 +686,16 @@
 /// } UpdatePathNode;
 /// ```
 </span><span class="attr">#[derive(
-    Debug, Eq, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug,
+    Eq,
+    PartialEq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
 )]
 </span><span class="kw">pub struct </span>UpdatePathNode {
     <span class="kw">pub</span>(<span class="kw">super</span>) public_key: EncryptionKey,
@@ -791,7 +818,16 @@
 }
 
 <span class="attr">#[derive(
-    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
 )]
 </span><span class="kw">pub struct </span>UpdatePathIn {
     leaf_node: LeafNodeIn,

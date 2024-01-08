@@ -547,6 +547,11 @@
 <a href="#547" id="547">547</a>
 <a href="#548" id="548">548</a>
 <a href="#549" id="549">549</a>
+<a href="#550" id="550">550</a>
+<a href="#551" id="551">551</a>
+<a href="#552" id="552">552</a>
+<a href="#553" id="553">553</a>
+<a href="#554" id="554">554</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Preshared keys.
 
 </span><span class="kw">use </span>openmls_traits::{
@@ -587,6 +592,7 @@
     Deserialize,
     Serialize,
     TlsDeserialize,
+    TlsDeserializeBytes,
     TlsSerialize,
     TlsSize,
 )]
@@ -616,6 +622,7 @@
     Deserialize,
     Serialize,
     TlsDeserialize,
+    TlsDeserializeBytes,
     TlsSerialize,
     TlsSize,
 )]
@@ -639,7 +646,7 @@
 
 <span class="doccomment">/// Contains the secret part of the PSK as well as the
 /// public part that is used as a marker for injection into the key schedule.
-</span><span class="attr">#[derive(Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize)]
+</span><span class="attr">#[derive(Serialize, Deserialize, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>PskBundle {
     secret: Secret,
 }
@@ -659,6 +666,7 @@
     Deserialize,
     Serialize,
     TlsDeserialize,
+    TlsDeserializeBytes,
     TlsSerialize,
     TlsSize,
 )]
@@ -705,6 +713,7 @@
     Deserialize,
     Serialize,
     TlsDeserialize,
+    TlsDeserializeBytes,
     TlsSerialize,
     TlsSize,
 )]
@@ -765,6 +774,7 @@
     Deserialize,
     Serialize,
     TlsDeserialize,
+    TlsDeserializeBytes,
     TlsSerialize,
     TlsSize,
 )]

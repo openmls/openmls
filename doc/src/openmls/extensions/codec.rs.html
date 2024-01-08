@@ -124,9 +124,21 @@
 <a href="#124" id="124">124</a>
 <a href="#125" id="125">125</a>
 <a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::io::{Read, Write};
 
-<span class="kw">use </span>tls_codec::{Deserialize, Serialize, Size, VLBytes};
+<span class="kw">use </span>tls_codec::{Deserialize, DeserializeBytes, Serialize, Size, VLBytes};
 
 <span class="kw">use </span><span class="kw">crate</span>::extensions::{
     ApplicationIdExtension, Extension, ExtensionType, ExternalPubExtension,
@@ -248,6 +260,18 @@
                 Extension::Unknown(unknown, UnknownExtension(extension_data.to_vec()))
             }
         })
+    }
+}
+
+<span class="kw">impl </span>DeserializeBytes <span class="kw">for </span>Extension {
+    <span class="kw">fn </span>tls_deserialize_bytes(bytes: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, <span class="kw-2">&amp;</span>[u8]), tls_codec::Error&gt;
+    <span class="kw">where
+        </span><span class="self">Self</span>: Sized,
+    {
+        <span class="kw">let </span><span class="kw-2">mut </span>bytes_ref = bytes;
+        <span class="kw">let </span>extension = Extension::tls_deserialize(<span class="kw-2">&amp;mut </span>bytes_ref)<span class="question-mark">?</span>;
+        <span class="kw">let </span>remainder = <span class="kw-2">&amp;</span>bytes[extension.tls_serialized_len()..];
+        <span class="prelude-val">Ok</span>((extension, remainder))
     }
 }
 </code></pre></div></section></main></body></html>

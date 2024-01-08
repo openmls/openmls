@@ -114,10 +114,20 @@
 <a href="#114" id="114">114</a>
 <a href="#115" id="115">115</a>
 <a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::time::{SystemTime, UNIX_EPOCH};
 
 <span class="kw">use </span>serde::{Deserialize, Serialize};
-<span class="kw">use </span>tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+<span class="kw">use </span>tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
 <span class="doccomment">/// This value is used as the default lifetime if no default  lifetime is configured.
 /// The value is in seconds and amounts to 3 * 28 Days, i.e. about 3 months.
@@ -151,7 +161,17 @@
 /// } Lifetime;
 /// ```
 </span><span class="attr">#[derive(
-    PartialEq, Eq, Copy, Clone, Debug, TlsSerialize, TlsSize, TlsDeserialize, Serialize, Deserialize,
+    PartialEq,
+    Eq,
+    Copy,
+    Clone,
+    Debug,
+    TlsSerialize,
+    TlsSize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    Serialize,
+    Deserialize,
 )]
 </span><span class="kw">pub struct </span>Lifetime {
     not_before: u64,

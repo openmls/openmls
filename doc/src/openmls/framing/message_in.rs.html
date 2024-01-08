@@ -330,7 +330,7 @@
 ///     }
 /// } MLSMessage;
 /// ```
-</span><span class="attr">#[derive(Debug, PartialEq, Clone, TlsDeserialize, TlsSize)]
+</span><span class="attr">#[derive(Debug, PartialEq, Clone, TlsDeserialize, TlsDeserializeBytes, TlsSize)]
 #[cfg_attr(feature = <span class="string">&quot;test-utils&quot;</span>, derive(TlsSerialize))]
 #[repr(u16)]
 </span><span class="kw">pub enum </span>MlsMessageInBody {

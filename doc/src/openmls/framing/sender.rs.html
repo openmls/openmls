@@ -121,12 +121,21 @@
 <a href="#121" id="121">121</a>
 <a href="#122" id="122">122</a>
 <a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # The sender of a message.
 
 </span><span class="kw">use crate</span>::{binary_tree::array_representation::LeafNodeIndex, extensions::SenderExtensionIndex};
 
 <span class="kw">use super</span>::<span class="kw-2">*</span>;
-<span class="kw">use </span>tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+<span class="kw">use </span>tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
 <span class="doccomment">/// All possible sender types according to the MLS protocol spec.
 ///
@@ -156,7 +165,16 @@
 /// } Sender;
 /// ```
 </span><span class="attr">#[derive(
-    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
 )]
 #[repr(u8)]
 </span><span class="kw">pub enum </span>Sender {
@@ -200,7 +218,7 @@
     }
 }
 
-<span class="attr">#[derive(Clone, TlsDeserialize, TlsSerialize, TlsSize)]
+<span class="attr">#[derive(Clone, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize)]
 #[cfg_attr(test, derive(Debug))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MlsSenderData {
     <span class="kw">pub</span>(<span class="kw">crate</span>) leaf_index: LeafNodeIndex,
@@ -223,7 +241,7 @@
     }
 }
 
-<span class="attr">#[derive(Clone, TlsDeserialize, TlsSerialize, TlsSize)]
+<span class="attr">#[derive(Clone, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MlsSenderDataAad {
     <span class="kw">pub</span>(<span class="kw">crate</span>) group_id: GroupId,
     <span class="kw">pub</span>(<span class="kw">crate</span>) epoch: GroupEpoch,

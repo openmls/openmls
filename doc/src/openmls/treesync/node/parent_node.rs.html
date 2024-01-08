@@ -252,6 +252,15 @@
 <a href="#252" id="252">252</a>
 <a href="#253" id="253">253</a>
 <a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the [`ParentNode`] struct, its implementation, as well
 //! as the [`PlainUpdatePathNode`], a helper struct for the creation of
 //! [`UpdatePathNode`] instances.
@@ -260,7 +269,7 @@
 <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>thiserror::<span class="kw-2">*</span>;
-<span class="kw">use </span>tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
+<span class="kw">use </span>tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes};
 
 <span class="kw">use </span><span class="kw">super</span>::encryption_keys::{EncryptionKey, EncryptionKeyPair};
 <span class="kw">use crate</span>::{
@@ -276,7 +285,16 @@
 /// parent hash and unmerged leaves. Additionally, it may contain the private
 /// key corresponding to the public key.
 </span><span class="attr">#[derive(
-    Debug, Eq, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    Debug,
+    Eq,
+    PartialEq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
 )]
 </span><span class="kw">pub struct </span>ParentNode {
     <span class="kw">pub</span>(<span class="kw">super</span>) encryption_key: EncryptionKey,

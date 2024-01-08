@@ -575,6 +575,91 @@
 <a href="#575" id="575">575</a>
 <a href="#576" id="576">576</a>
 <a href="#577" id="577">577</a>
+<a href="#578" id="578">578</a>
+<a href="#579" id="579">579</a>
+<a href="#580" id="580">580</a>
+<a href="#581" id="581">581</a>
+<a href="#582" id="582">582</a>
+<a href="#583" id="583">583</a>
+<a href="#584" id="584">584</a>
+<a href="#585" id="585">585</a>
+<a href="#586" id="586">586</a>
+<a href="#587" id="587">587</a>
+<a href="#588" id="588">588</a>
+<a href="#589" id="589">589</a>
+<a href="#590" id="590">590</a>
+<a href="#591" id="591">591</a>
+<a href="#592" id="592">592</a>
+<a href="#593" id="593">593</a>
+<a href="#594" id="594">594</a>
+<a href="#595" id="595">595</a>
+<a href="#596" id="596">596</a>
+<a href="#597" id="597">597</a>
+<a href="#598" id="598">598</a>
+<a href="#599" id="599">599</a>
+<a href="#600" id="600">600</a>
+<a href="#601" id="601">601</a>
+<a href="#602" id="602">602</a>
+<a href="#603" id="603">603</a>
+<a href="#604" id="604">604</a>
+<a href="#605" id="605">605</a>
+<a href="#606" id="606">606</a>
+<a href="#607" id="607">607</a>
+<a href="#608" id="608">608</a>
+<a href="#609" id="609">609</a>
+<a href="#610" id="610">610</a>
+<a href="#611" id="611">611</a>
+<a href="#612" id="612">612</a>
+<a href="#613" id="613">613</a>
+<a href="#614" id="614">614</a>
+<a href="#615" id="615">615</a>
+<a href="#616" id="616">616</a>
+<a href="#617" id="617">617</a>
+<a href="#618" id="618">618</a>
+<a href="#619" id="619">619</a>
+<a href="#620" id="620">620</a>
+<a href="#621" id="621">621</a>
+<a href="#622" id="622">622</a>
+<a href="#623" id="623">623</a>
+<a href="#624" id="624">624</a>
+<a href="#625" id="625">625</a>
+<a href="#626" id="626">626</a>
+<a href="#627" id="627">627</a>
+<a href="#628" id="628">628</a>
+<a href="#629" id="629">629</a>
+<a href="#630" id="630">630</a>
+<a href="#631" id="631">631</a>
+<a href="#632" id="632">632</a>
+<a href="#633" id="633">633</a>
+<a href="#634" id="634">634</a>
+<a href="#635" id="635">635</a>
+<a href="#636" id="636">636</a>
+<a href="#637" id="637">637</a>
+<a href="#638" id="638">638</a>
+<a href="#639" id="639">639</a>
+<a href="#640" id="640">640</a>
+<a href="#641" id="641">641</a>
+<a href="#642" id="642">642</a>
+<a href="#643" id="643">643</a>
+<a href="#644" id="644">644</a>
+<a href="#645" id="645">645</a>
+<a href="#646" id="646">646</a>
+<a href="#647" id="647">647</a>
+<a href="#648" id="648">648</a>
+<a href="#649" id="649">649</a>
+<a href="#650" id="650">650</a>
+<a href="#651" id="651">651</a>
+<a href="#652" id="652">652</a>
+<a href="#653" id="653">653</a>
+<a href="#654" id="654">654</a>
+<a href="#655" id="655">655</a>
+<a href="#656" id="656">656</a>
+<a href="#657" id="657">657</a>
+<a href="#658" id="658">658</a>
+<a href="#659" id="659">659</a>
+<a href="#660" id="660">660</a>
+<a href="#661" id="661">661</a>
+<a href="#662" id="662">662</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Proposals
 //!
 //! This module defines all the different types of Proposals.
@@ -587,7 +672,10 @@
 <span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>thiserror::Error;
-<span class="kw">use </span>tls_codec::{Serialize <span class="kw">as </span>TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
+<span class="kw">use </span>tls_codec::{
+    Deserialize <span class="kw">as </span>TlsDeserializeTrait, DeserializeBytes, Error, Serialize <span class="kw">as </span>TlsSerializeTrait,
+    Size, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes,
+};
 
 <span class="kw">use crate</span>::{
     binary_tree::array_representation::LeafNodeIndex,
@@ -659,14 +747,14 @@
     Unknown(u16),
 }
 
-<span class="kw">impl </span>tls_codec::Size <span class="kw">for </span>ProposalType {
+<span class="kw">impl </span>Size <span class="kw">for </span>ProposalType {
     <span class="kw">fn </span>tls_serialized_len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         <span class="number">2
     </span>}
 }
 
-<span class="kw">impl </span>tls_codec::Deserialize <span class="kw">for </span>ProposalType {
-    <span class="kw">fn </span>tls_deserialize&lt;R: Read&gt;(bytes: <span class="kw-2">&amp;mut </span>R) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, tls_codec::Error&gt;
+<span class="kw">impl </span>TlsDeserializeTrait <span class="kw">for </span>ProposalType {
+    <span class="kw">fn </span>tls_deserialize&lt;R: Read&gt;(bytes: <span class="kw-2">&amp;mut </span>R) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Error&gt;
     <span class="kw">where
         </span><span class="self">Self</span>: Sized,
     {
@@ -677,11 +765,23 @@
     }
 }
 
-<span class="kw">impl </span>tls_codec::Serialize <span class="kw">for </span>ProposalType {
-    <span class="kw">fn </span>tls_serialize&lt;W: Write&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, writer: <span class="kw-2">&amp;mut </span>W) -&gt; <span class="prelude-ty">Result</span>&lt;usize, tls_codec::Error&gt; {
+<span class="kw">impl </span>TlsSerializeTrait <span class="kw">for </span>ProposalType {
+    <span class="kw">fn </span>tls_serialize&lt;W: Write&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, writer: <span class="kw-2">&amp;mut </span>W) -&gt; <span class="prelude-ty">Result</span>&lt;usize, Error&gt; {
         writer.write_all(<span class="kw-2">&amp;</span>u16::from(<span class="kw-2">*</span><span class="self">self</span>).to_be_bytes())<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(<span class="number">2</span>)
+    }
+}
+
+<span class="kw">impl </span>DeserializeBytes <span class="kw">for </span>ProposalType {
+    <span class="kw">fn </span>tls_deserialize_bytes(bytes: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, <span class="kw-2">&amp;</span>[u8]), Error&gt;
+    <span class="kw">where
+        </span><span class="self">Self</span>: Sized,
+    {
+        <span class="kw">let </span><span class="kw-2">mut </span>bytes_ref = bytes;
+        <span class="kw">let </span>proposal_type = ProposalType::tls_deserialize(<span class="kw-2">&amp;mut </span>bytes_ref)<span class="question-mark">?</span>;
+        <span class="kw">let </span>remainder = <span class="kw-2">&amp;</span>bytes[proposal_type.tls_serialized_len()..];
+        <span class="prelude-val">Ok</span>((proposal_type, remainder))
     }
 }
 
@@ -868,7 +968,16 @@
 /// } Remove;
 /// ```
 </span><span class="attr">#[derive(
-    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
 )]
 </span><span class="kw">pub struct </span>RemoveProposal {
     <span class="kw">pub</span>(<span class="kw">crate</span>) removed: LeafNodeIndex,
@@ -893,7 +1002,16 @@
 /// } PreSharedKey;
 /// ```
 </span><span class="attr">#[derive(
-    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
 )]
 </span><span class="kw">pub struct </span>PreSharedKeyProposal {
     psk: PreSharedKeyId,
@@ -929,7 +1047,16 @@
 /// } ReInit;
 /// ```
 </span><span class="attr">#[derive(
-    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
 )]
 </span><span class="kw">pub struct </span>ReInitProposal {
     <span class="kw">pub</span>(<span class="kw">crate</span>) group_id: GroupId,
@@ -950,7 +1077,16 @@
 /// } ExternalInit;
 /// ```
 </span><span class="attr">#[derive(
-    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
 )]
 </span><span class="kw">pub struct </span>ExternalInitProposal {
     kem_output: VLBytes,
@@ -977,7 +1113,15 @@
 ///
 /// This is not yet supported.
 </span><span class="attr">#[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug,
+    PartialEq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
 )]
 </span><span class="kw">pub struct </span>AppAckProposal {
     received_ranges: Vec&lt;MessageRange&gt;,
@@ -995,7 +1139,16 @@
 /// } GroupContextExtensions;
 /// ```
 </span><span class="attr">#[derive(
-    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
 )]
 </span><span class="kw">pub struct </span>GroupContextExtensionProposal {
     extensions: Extensions,
@@ -1032,7 +1185,16 @@
 /// We only implement the values (1, 2), other values are not valid
 /// and will yield `ProposalOrRefTypeError::UnknownValue` when decoded.
 </span><span class="attr">#[derive(
-    PartialEq, Clone, Copy, Debug, TlsSerialize, TlsDeserialize, TlsSize, Serialize, Deserialize,
+    PartialEq,
+    Clone,
+    Copy,
+    Debug,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
+    Serialize,
+    Deserialize,
 )]
 #[repr(u8)]
 </span><span class="kw">pub enum </span>ProposalOrRefType {
@@ -1114,7 +1276,15 @@
 /// } MessageRange;
 /// ```
 </span><span class="attr">#[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug,
+    PartialEq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
 )]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MessageRange {
     sender: KeyPackageRef,

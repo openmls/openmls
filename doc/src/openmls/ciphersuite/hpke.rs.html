@@ -197,7 +197,7 @@
     types::{Ciphersuite, CryptoError, HpkeCiphertext},
 };
 <span class="kw">use </span>thiserror::Error;
-<span class="kw">use </span>tls_codec::{Serialize, TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
+<span class="kw">use </span>tls_codec::{Serialize, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes};
 
 <span class="kw">use </span><span class="kw">super</span>::LABEL_PREFIX;
 
@@ -226,7 +226,7 @@
     }
 }
 
-<span class="attr">#[derive(Debug, Clone, TlsSerialize, TlsDeserialize, TlsSize)]
+<span class="attr">#[derive(Debug, Clone, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize)]
 </span><span class="kw">pub struct </span>EncryptContext {
     label: VLBytes,
     context: VLBytes,

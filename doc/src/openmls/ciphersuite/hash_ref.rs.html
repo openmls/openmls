@@ -136,6 +136,8 @@
 <a href="#136" id="136">136</a>
 <a href="#137" id="137">137</a>
 <a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Hash References
 //!
 //!
@@ -167,7 +169,8 @@
 </span><span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::CryptoError};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>tls_codec::{
-    Serialize <span class="kw">as </span>TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize, VLByteSlice, VLBytes,
+    Serialize <span class="kw">as </span>TlsSerializeTrait, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
+    VLByteSlice, VLBytes,
 };
 
 <span class="kw">use </span><span class="kw">super</span>::Ciphersuite;
@@ -186,6 +189,7 @@
     PartialOrd,
     Deserialize,
     TlsDeserialize,
+    TlsDeserializeBytes,
     TlsSerialize,
     TlsSize,
 )]

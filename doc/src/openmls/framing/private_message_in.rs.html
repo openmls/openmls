@@ -278,9 +278,15 @@
 <a href="#278" id="278">278</a>
 <a href="#279" id="279">279</a>
 <a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
 <span class="kw">use </span>openmls_traits::types::Ciphersuite;
-<span class="kw">use </span>tls_codec::{Deserialize, Serialize, TlsDeserialize, TlsSerialize, TlsSize};
+<span class="kw">use </span>tls_codec::{
+    Deserialize, Serialize, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
+};
 
 <span class="kw">use super</span>::{
     codec::deserialize_ciphertext_content, mls_auth_content::FramedContentAuthData,
@@ -311,7 +317,9 @@
 ///     opaque ciphertext&lt;V&gt;;
 /// } PrivateMessage;
 /// ```
-</span><span class="attr">#[derive(Debug, PartialEq, Eq, Clone, TlsSerialize, TlsSize, TlsDeserialize)]
+</span><span class="attr">#[derive(
+    Debug, PartialEq, Eq, Clone, TlsSerialize, TlsSize, TlsDeserialize, TlsDeserializeBytes,
+)]
 </span><span class="kw">pub struct </span>PrivateMessageIn {
     group_id: GroupId,
     epoch: GroupEpoch,

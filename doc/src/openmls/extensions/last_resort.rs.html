@@ -26,7 +26,8 @@
 <a href="#26" id="26">26</a>
 <a href="#27" id="27">27</a>
 <a href="#28" id="28">28</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+<a href="#29" id="29">29</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
 <span class="kw">use super</span>::{Deserialize, Serialize};
 
@@ -43,6 +44,7 @@
     Deserialize,
     TlsSerialize,
     TlsDeserialize,
+    TlsDeserializeBytes,
     TlsSize,
     Default,
 )]

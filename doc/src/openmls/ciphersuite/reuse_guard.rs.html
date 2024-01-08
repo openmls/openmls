@@ -24,7 +24,7 @@
 <span class="doccomment">/// Re-use guard size.
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>REUSE_GUARD_BYTES: usize = <span class="number">4</span>;
 
-<span class="attr">#[derive(Debug, Clone, Copy, TlsSerialize, TlsDeserialize, TlsSize)]
+<span class="attr">#[derive(Debug, Clone, Copy, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 </span><span class="kw">pub struct </span>ReuseGuard {
     <span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::ciphersuite) value: [u8; REUSE_GUARD_BYTES],

@@ -178,16 +178,16 @@
 identifiers.</p>
 <p><strong>AEADs</strong></p>
 <p>The following AEADs are defined.</p>
-<pre><code class="language-rust no_run noplayground">#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
+<pre><code class="language-rust no_run noplayground">use crate::key_store::{MlsEntity, MlsEntityId};
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
 #[repr(u16)]
 /// AEAD types
 pub enum AeadType {
     /// AES GCM 128
     Aes128Gcm = 0x0001,
 
-    /// AES GCM 256
-    Aes256Gcm = 0x0002,
-</code></pre>
+    /// AES GCM 256</code></pre>
 <p>An AEAD provides the following functions to get the according values for each
 algorithm.</p>
 <ul>
@@ -197,11 +197,11 @@ algorithm.</p>
 </ul>
 <p><strong>Hashing</strong></p>
 <p>The following hash algorithms are defined.</p>
-<pre><code class="language-rust no_run noplayground">#[repr(u8)]
+<pre><code class="language-rust no_run noplayground">
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[repr(u8)]
 #[allow(non_camel_case_types)]
-/// Hash types
-pub enum HashType {
-    Sha2_256 = 0x04,</code></pre>
+/// Hash types</code></pre>
 <p>A hash algorithm provides the following functions to get the according values for each
 algorithm.</p>
 <ul>
@@ -209,7 +209,10 @@ algorithm.</p>
 </ul>
 <p><strong>Signatures</strong></p>
 <p>The following signature schemes are defined.</p>
-<pre><code class="language-rust no_run noplayground">    TlsSize,
+<pre><code class="language-rust no_run noplayground">    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
 )]
 #[repr(u16)]
 pub enum SignatureScheme {
@@ -217,15 +220,15 @@ pub enum SignatureScheme {
     ECDSA_SECP256R1_SHA256 = 0x0403,
     /// ECDSA_SECP384R1_SHA384
     ECDSA_SECP384R1_SHA384 = 0x0503,
-    /// ECDSA_SECP521R1_SHA512
-    ECDSA_SECP521R1_SHA512 = 0x0603,
-    /// ED25519
-    ED25519 = 0x0807,</code></pre>
+    /// ECDSA_SECP521R1_SHA512</code></pre>
 <h1 id="hpke-types"><a class="header" href="#hpke-types">HPKE Types</a></h1>
 <p>The HPKE implementation is part of the crypto provider as well.
 The crate, therefore, defines the necessary types too.</p>
 <p>The HPKE algorithms are defined as follows.</p>
-<pre><code class="language-rust no_run noplayground">/// Convenience tuple struct for an HPKE configuration.
+<pre><code class="language-rust no_run noplayground">
+// === HPKE === //
+
+/// Convenience tuple struct for an HPKE configuration.
 #[derive(Debug)]
 pub struct HpkeConfig(pub HpkeKemType, pub HpkeKdfType, pub HpkeAeadType);
 
@@ -237,21 +240,21 @@ pub enum HpkeKemType {
     DhKemP256 = 0x0010,
 
     /// DH KEM on P384
-    DhKemP384 = 0x0011,
+    DhKemP384 = 0x0011,</code></pre>
+<pre><code class="language-rust no_run noplayground">    /// DH KEM on x25519
+    DhKem25519 = 0x0020,
 
-    /// DH KEM on P521
-    DhKemP521 = 0x0012,</code></pre>
-<pre><code class="language-rust no_run noplayground">    /// DH KEM on x448
+    /// DH KEM on x448
     DhKem448 = 0x0021,
 }
 
 /// KDF Types for HPKE
 #[derive(PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
-#[repr(u16)]
-pub enum HpkeKdfType {
-    /// HKDF SHA 256
-    HkdfSha256 = 0x0001,</code></pre>
-<pre><code class="language-rust no_run noplayground">    /// HKDF SHA 512
+#[repr(u16)]</code></pre>
+<pre><code class="language-rust no_run noplayground">    /// HKDF SHA 384
+    HkdfSha384 = 0x0002,
+
+    /// HKDF SHA 512
     HkdfSha512 = 0x0003,
 }
 
@@ -260,19 +263,16 @@ pub enum HpkeKdfType {
 #[repr(u16)]
 pub enum HpkeAeadType {
     /// AES GCM 128
-    AesGcm128 = 0x0001,
-
-    /// AES GCM 256
-    AesGcm256 = 0x0002,</code></pre>
+    AesGcm128 = 0x0001,</code></pre>
 <p>In addition, helper structs for <code>HpkeCiphertext</code> and <code>HpkeKeyPair</code> are defined.</p>
-<pre><code class="language-rust no_run noplayground">///     opaque kem_output&lt;V&gt;;
-///     opaque ciphertext&lt;V&gt;;
-/// } HPKECiphertext;
-/// ```</code></pre>
-<pre><code class="language-rust no_run noplayground">pub struct HpkeCiphertext {
-    pub kem_output: VLBytes,
-    pub ciphertext: VLBytes,
-}</code></pre>
+<pre><code class="language-rust no_run noplayground">///
+/// ```text
+/// struct {
+///     opaque kem_output&lt;V&gt;;</code></pre>
+<pre><code class="language-rust no_run noplayground">#[derive(
+    Debug,
+    PartialEq,
+    Eq,</code></pre>
 
                     </main>
 
