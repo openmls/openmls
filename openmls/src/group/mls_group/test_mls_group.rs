@@ -349,13 +349,13 @@ fn test_commit_with_update_path_leaf_node(
         setup_client("Bob", ciphersuite, provider);
 
     // Define the MlsGroup configuration
-    let mls_group_config = MlsGroupConfig::test_default(ciphersuite);
+    let mls_group_pattern = MlsGroupPattern::test_default(ciphersuite);
 
     // === Alice creates a group ===
     let mut alice_group = MlsGroup::new_with_group_id(
         provider,
         &alice_signer,
-        &mls_group_config,
+        &mls_group_pattern,
         group_id,
         alice_credential_with_key.clone(),
     )
@@ -400,7 +400,7 @@ fn test_commit_with_update_path_leaf_node(
 
     let mut bob_group = MlsGroup::new_from_welcome(
         provider,
-        &mls_group_config,
+        mls_group_pattern.mls_group_config(),
         welcome_option
             .expect("no welcome after commit")
             .into_welcome()
