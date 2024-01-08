@@ -50,7 +50,8 @@ impl DeserializeBytes for Credential {
     where
         Self: Sized,
     {
-        let credential = Credential::tls_deserialize(&mut bytes.as_ref())?;
+        let mut bytes_ref = bytes;
+        let credential = Credential::tls_deserialize(&mut bytes_ref)?;
         let remainder = &bytes[credential.tls_serialized_len()..];
         Ok((credential, remainder))
     }

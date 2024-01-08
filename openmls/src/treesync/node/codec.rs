@@ -36,7 +36,8 @@ impl DeserializeBytes for UnmergedLeaves {
     where
         Self: Sized,
     {
-        let unmerged_leaves = UnmergedLeaves::tls_deserialize(&mut bytes.as_ref())?;
+        let mut bytes_ref = bytes;
+        let unmerged_leaves = UnmergedLeaves::tls_deserialize(&mut bytes_ref)?;
         let remainder = &bytes[unmerged_leaves.tls_serialized_len()..];
         Ok((unmerged_leaves, remainder))
     }

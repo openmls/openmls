@@ -36,7 +36,8 @@ impl DeserializeBytes for Secret {
     where
         Self: Sized,
     {
-        let secret = Secret::tls_deserialize(&mut bytes.as_ref())?;
+        let mut bytes_ref = bytes;
+        let secret = Secret::tls_deserialize(&mut bytes_ref)?;
         let remainder = &bytes[secret.tls_serialized_len()..];
         Ok((secret, remainder))
     }

@@ -116,7 +116,8 @@ impl DeserializeBytes for ProposalType {
     where
         Self: Sized,
     {
-        let proposal_type = ProposalType::tls_deserialize(&mut bytes.as_ref())?;
+        let mut bytes_ref = bytes;
+        let proposal_type = ProposalType::tls_deserialize(&mut bytes_ref)?;
         let remainder = &bytes[proposal_type.tls_serialized_len()..];
         Ok((proposal_type, remainder))
     }
