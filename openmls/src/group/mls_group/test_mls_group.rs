@@ -5,7 +5,6 @@ use tls_codec::{Deserialize, Serialize};
 
 use crate::{
     binary_tree::LeafNodeIndex,
-    credentials::Credential,
     framing::*,
     group::{config::CryptoConfig, errors::*, *},
     key_packages::*,
