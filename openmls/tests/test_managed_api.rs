@@ -21,7 +21,7 @@ fn test_mls_group_api(ciphersuite: Ciphersuite) {
     );
 
     let group_id = setup
-        .create_random_group(3, ciphersuite, &noop_authentication_service)
+        .create_random_group(3, ciphersuite, noop_authentication_service)
         .expect("An unexpected error occurred.");
     let mut groups = setup.groups.write().expect("An unexpected error occurred.");
     let group = groups
@@ -52,10 +52,10 @@ fn test_mls_group_api(ciphersuite: Ciphersuite) {
             group,
             &remover_id,
             &[LeafNodeIndex::new(target_index)],
-            &noop_authentication_service,
+            noop_authentication_service,
         )
         .expect("An unexpected error occurred.");
 
     // Check that all group members agree on the same group state.
-    setup.check_group_states(group, &noop_authentication_service);
+    setup.check_group_states(group, noop_authentication_service);
 }

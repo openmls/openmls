@@ -59,7 +59,7 @@ fn one_to_one_join(ciphersuite: Ciphersuite) {
         .expect("Error adding Bob");
 
     // Check that group members agree on a group state.
-    setup.check_group_states(group, &noop_authentication_service);
+    setup.check_group_states(group, noop_authentication_service);
 }
 
 // # 3-party join
@@ -127,7 +127,7 @@ fn three_party_join(ciphersuite: Ciphersuite) {
         .expect("Error adding Charly");
 
     // Check that group members agree on a group state.
-    setup.check_group_states(group, &noop_authentication_service);
+    setup.check_group_states(group, noop_authentication_service);
 }
 
 // # Multiple joins at once
@@ -179,7 +179,7 @@ fn multiple_joins(ciphersuite: Ciphersuite) {
         .expect("Error adding Bob and Charly");
 
     // Check that group members agree on a group state.
-    setup.check_group_states(group, &noop_authentication_service);
+    setup.check_group_states(group, noop_authentication_service);
 }
 
 // TODO #192, #286, #289: The external join test should go here.
@@ -203,7 +203,7 @@ fn update(ciphersuite: Ciphersuite) {
 
     // Create a group with two members. Includes the process of adding Bob.
     let group_id = setup
-        .create_random_group(2, ciphersuite, &noop_authentication_service)
+        .create_random_group(2, ciphersuite, noop_authentication_service)
         .expect("Error while trying to create group.");
     let mut groups = setup.groups.write().expect("An unexpected error occurred.");
     let group = groups
@@ -227,7 +227,7 @@ fn update(ciphersuite: Ciphersuite) {
         .expect("Error self-updating.");
 
     // Check that group members agree on a group state.
-    setup.check_group_states(group, &noop_authentication_service);
+    setup.check_group_states(group, noop_authentication_service);
 }
 
 // # Remove
@@ -251,7 +251,7 @@ fn remove(ciphersuite: Ciphersuite) {
 
     // Create a group with two members. Includes the process of adding Bob.
     let group_id = setup
-        .create_random_group(2, ciphersuite, &noop_authentication_service)
+        .create_random_group(2, ciphersuite, noop_authentication_service)
         .expect("Error while trying to create group.");
     let mut groups = setup.groups.write().expect("An unexpected error occurred.");
     let group = groups
@@ -274,12 +274,12 @@ fn remove(ciphersuite: Ciphersuite) {
             group,
             &alice_id,
             &[LeafNodeIndex::new(bob_index)],
-            &noop_authentication_service,
+            noop_authentication_service,
         )
         .expect("Error removing Bob from the group.");
 
     // Check that group members agree on a group state.
-    setup.check_group_states(group, &noop_authentication_service);
+    setup.check_group_states(group, noop_authentication_service);
 }
 
 // TODO #141, #284: The external PSK, resumption and re-init tests should go
@@ -309,7 +309,7 @@ fn large_group_lifecycle(ciphersuite: Ciphersuite) {
     // a one-person group and then adding new members in bunches of up to 5,
     // each bunch by a random group member.
     let group_id = setup
-        .create_random_group(number_of_clients, ciphersuite, &noop_authentication_service)
+        .create_random_group(number_of_clients, ciphersuite, noop_authentication_service)
         .expect("Error while trying to create group.");
     let mut groups = setup.groups.write().expect("An unexpected error occurred.");
     let group = groups
@@ -345,13 +345,13 @@ fn large_group_lifecycle(ciphersuite: Ciphersuite) {
                 group,
                 &remover_id.1,
                 &[LeafNodeIndex::new(target_id.0)],
-                &noop_authentication_service,
+                noop_authentication_service,
             )
             .expect("Error while removing group member.");
         group_members = group.members().collect::<Vec<(u32, Vec<u8>)>>();
-        setup.check_group_states(group, &noop_authentication_service);
+        setup.check_group_states(group, noop_authentication_service);
     }
 
     // Check that group members agree on a group state.
-    setup.check_group_states(group, &noop_authentication_service);
+    setup.check_group_states(group, noop_authentication_service);
 }
