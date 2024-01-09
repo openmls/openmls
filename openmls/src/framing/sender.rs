@@ -3,7 +3,7 @@
 use crate::{binary_tree::array_representation::LeafNodeIndex, extensions::SenderExtensionIndex};
 
 use super::*;
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
 /// All possible sender types according to the MLS protocol spec.
 ///
@@ -33,7 +33,16 @@ use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 /// } Sender;
 /// ```
 #[derive(
-    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
 )]
 #[repr(u8)]
 pub enum Sender {
@@ -77,7 +86,7 @@ impl Sender {
     }
 }
 
-#[derive(Clone, TlsDeserialize, TlsSerialize, TlsSize)]
+#[derive(Clone, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize)]
 #[cfg_attr(test, derive(Debug))]
 pub(crate) struct MlsSenderData {
     pub(crate) leaf_index: LeafNodeIndex,
@@ -100,7 +109,7 @@ impl MlsSenderData {
     }
 }
 
-#[derive(Clone, TlsDeserialize, TlsSerialize, TlsSize)]
+#[derive(Clone, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize)]
 pub(crate) struct MlsSenderDataAad {
     pub(crate) group_id: GroupId,
     pub(crate) epoch: GroupEpoch,

@@ -10,7 +10,10 @@ use std::io::{Read, Write};
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use tls_codec::{Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
+use tls_codec::{
+    Deserialize as TlsDeserializeTrait, DeserializeBytes, Error, Serialize as TlsSerializeTrait,
+    Size, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes,
+};
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
@@ -82,14 +85,14 @@ pub enum ProposalType {
     Unknown(u16),
 }
 
-impl tls_codec::Size for ProposalType {
+impl Size for ProposalType {
     fn tls_serialized_len(&self) -> usize {
         2
     }
 }
 
-impl tls_codec::Deserialize for ProposalType {
-    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error>
+impl TlsDeserializeTrait for ProposalType {
+    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, Error>
     where
         Self: Sized,
     {
@@ -100,11 +103,23 @@ impl tls_codec::Deserialize for ProposalType {
     }
 }
 
-impl tls_codec::Serialize for ProposalType {
-    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+impl TlsSerializeTrait for ProposalType {
+    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, Error> {
         writer.write_all(&u16::from(*self).to_be_bytes())?;
 
         Ok(2)
+    }
+}
+
+impl DeserializeBytes for ProposalType {
+    fn tls_deserialize_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), Error>
+    where
+        Self: Sized,
+    {
+        let mut bytes_ref = bytes;
+        let proposal_type = ProposalType::tls_deserialize(&mut bytes_ref)?;
+        let remainder = &bytes[proposal_type.tls_serialized_len()..];
+        Ok((proposal_type, remainder))
     }
 }
 
@@ -291,7 +306,16 @@ impl UpdateProposal {
 /// } Remove;
 /// ```
 #[derive(
-    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
 )]
 pub struct RemoveProposal {
     pub(crate) removed: LeafNodeIndex,
@@ -316,7 +340,16 @@ impl RemoveProposal {
 /// } PreSharedKey;
 /// ```
 #[derive(
-    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
 )]
 pub struct PreSharedKeyProposal {
     psk: PreSharedKeyId,
@@ -352,7 +385,16 @@ impl PreSharedKeyProposal {
 /// } ReInit;
 /// ```
 #[derive(
-    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
 )]
 pub struct ReInitProposal {
     pub(crate) group_id: GroupId,
@@ -373,7 +415,16 @@ pub struct ReInitProposal {
 /// } ExternalInit;
 /// ```
 #[derive(
-    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
 )]
 pub struct ExternalInitProposal {
     kem_output: VLBytes,
@@ -400,7 +451,15 @@ impl From<Vec<u8>> for ExternalInitProposal {
 ///
 /// This is not yet supported.
 #[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug,
+    PartialEq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
 )]
 pub struct AppAckProposal {
     received_ranges: Vec<MessageRange>,
@@ -418,7 +477,16 @@ pub struct AppAckProposal {
 /// } GroupContextExtensions;
 /// ```
 #[derive(
-    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
 )]
 pub struct GroupContextExtensionProposal {
     extensions: Extensions,
@@ -459,7 +527,16 @@ impl GroupContextExtensionProposal {
 /// We only implement the values (1, 2), other values are not valid
 /// and will yield `ProposalOrRefTypeError::UnknownValue` when decoded.
 #[derive(
-    PartialEq, Clone, Copy, Debug, TlsSerialize, TlsDeserialize, TlsSize, Serialize, Deserialize,
+    PartialEq,
+    Clone,
+    Copy,
+    Debug,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
+    Serialize,
+    Deserialize,
 )]
 #[repr(u8)]
 pub enum ProposalOrRefType {
@@ -541,7 +618,15 @@ impl ProposalRef {
 /// } MessageRange;
 /// ```
 #[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug,
+    PartialEq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
 )]
 pub(crate) struct MessageRange {
     sender: KeyPackageRef,

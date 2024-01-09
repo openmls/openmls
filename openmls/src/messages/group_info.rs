@@ -4,7 +4,9 @@ use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::Ciphersuite;
 use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
 use thiserror::Error;
-use tls_codec::{Deserialize, Serialize, TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{
+    Deserialize, Serialize, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
+};
 
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -24,7 +26,7 @@ const SIGNATURE_GROUP_INFO_LABEL: &str = "GroupInfoTBS";
 /// `verify(...)` with the signature key of the [`Credential`](crate::credentials::Credential).
 /// When receiving a serialized group info, it can only be deserialized into a
 /// [`VerifiableGroupInfo`], which can then be turned into a group info as described above.
-#[derive(Debug, PartialEq, Clone, TlsDeserialize, TlsSize)]
+#[derive(Debug, PartialEq, Clone, TlsDeserialize, TlsDeserializeBytes, TlsSize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(TlsSerialize))]
 pub struct VerifiableGroupInfo {
     payload: GroupInfoTBS,
@@ -208,7 +210,15 @@ impl From<GroupInfo> for GroupContext {
 /// } GroupInfoTBS;
 /// ```
 #[derive(
-    Debug, PartialEq, Clone, TlsDeserialize, TlsSerialize, TlsSize, SerdeSerialize, SerdeDeserialize,
+    Debug,
+    PartialEq,
+    Clone,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
+    SerdeSerialize,
+    SerdeDeserialize,
 )]
 pub(crate) struct GroupInfoTBS {
     group_context: GroupContext,

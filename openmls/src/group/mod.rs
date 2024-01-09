@@ -54,6 +54,7 @@ use openmls_traits::random::OpenMlsRand;
     Deserialize,
     Serialize,
     TlsDeserialize,
+    TlsDeserializeBytes,
     TlsSerialize,
     TlsSize,
 )]
@@ -105,6 +106,7 @@ impl GroupId {
     Deserialize,
     Serialize,
     TlsDeserialize,
+    TlsDeserializeBytes,
     TlsSerialize,
     TlsSize,
 )]

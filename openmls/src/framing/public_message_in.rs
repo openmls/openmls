@@ -218,7 +218,7 @@ impl<'a> TryFrom<&'a PublicMessageIn> for InterimTranscriptHashInput<'a> {
 }
 
 impl TlsDeserializeTrait for PublicMessageIn {
-    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
+    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, Error> {
         let content = FramedContentIn::tls_deserialize(bytes)?;
         let auth = FramedContentAuthData::deserialize(bytes, content.body.content_type())?;
         let membership_tag = if content.sender.is_member() {
@@ -228,6 +228,18 @@ impl TlsDeserializeTrait for PublicMessageIn {
         };
 
         Ok(PublicMessageIn::new(content, auth, membership_tag))
+    }
+}
+
+impl DeserializeBytes for PublicMessageIn {
+    fn tls_deserialize_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), Error>
+    where
+        Self: Sized,
+    {
+        let mut bytes_ref = bytes;
+        let message = PublicMessageIn::tls_deserialize(&mut bytes_ref)?;
+        let remainder = &bytes[message.tls_serialized_len()..];
+        Ok((message, remainder))
     }
 }
 

@@ -29,7 +29,16 @@ use crate::{
 /// state agreed upon by each member of the group.
 ///```
 #[derive(
-    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
 )]
 pub struct GroupContext {
     protocol_version: ProtocolVersion,
