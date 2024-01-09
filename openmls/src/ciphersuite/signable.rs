@@ -105,6 +105,8 @@ pub trait VerifiedStruct {}
 /// struct implementing them aren't well defined. Not that both traits define an
 /// `unsigned_payload` function.
 pub trait Verifiable: Sized {
+    /// The type used for representing the verified data. Must implement the marker trait
+    /// [`VerifiedStruct`].
     type VerifiedStruct: VerifiedStruct;
 
     /// Return the unsigned, serialized payload that should be verified.
