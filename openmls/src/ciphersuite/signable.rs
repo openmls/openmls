@@ -53,32 +53,6 @@ pub trait SignedStruct<T> {
     fn from_payload(payload: T, signature: Signature) -> Self;
 }
 
-/// This trait must be implemented by all structs that contain a verified
-/// self-signature.
-pub trait VerifiedStruct<T> {
-    /// This type is used to prevent users of the trait from bypassing `verify`
-    /// by simply calling `from_verifiable`. `Seal` should be a dummy type
-    /// defined in a private module as follows:
-    /// ```
-    /// mod private_mod {
-    ///     pub struct Seal;
-    ///
-    ///     impl Default for Seal {
-    ///         fn default() -> Self {
-    ///             Seal {}
-    ///         }
-    ///     }
-    /// }
-    /// ```
-    type SealingType: Default;
-
-    /// Build a verified struct version from the payload struct. This function
-    /// is only meant to be called by the implementation of the `Verifiable`
-    /// trait corresponding to this `VerifiedStruct`.
-    #[doc(hidden)]
-    fn from_verifiable(verifiable: T, _seal: Self::SealingType) -> Self;
-}
-
 /// The `Signable` trait is implemented by all struct that are being signed.
 /// The implementation has to provide the `unsigned_payload` function.
 pub trait Signable: Sized {
@@ -117,6 +91,10 @@ pub trait Signable: Sized {
     }
 }
 
+/// This marker trait must be implemented by all structs that contain a verified
+/// self-signature.
+pub trait VerifiedStruct {}
+
 /// The verifiable trait must be implemented by any struct that is signed with
 /// a credential. The actual `verify` method is provided.
 /// The `unsigned_payload` and `signature` functions have to be implemented for
@@ -127,6 +105,8 @@ pub trait Signable: Sized {
 /// struct implementing them aren't well defined. Not that both traits define an
 /// `unsigned_payload` function.
 pub trait Verifiable: Sized {
+    type VerifiedStruct: VerifiedStruct;
+
     /// Return the unsigned, serialized payload that should be verified.
     fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error>;
 
@@ -137,22 +117,17 @@ pub trait Verifiable: Sized {
     fn label(&self) -> &str;
 
     /// Verifies the payload against the given `credential`.
-    /// The signature is fetched via the [`Verifiable::signature()`] function and
-    /// the payload via [`Verifiable::unsigned_payload()`].
+    /// Usually this is implemented by first checking that `self.verify_no_out()`
+    /// does not returnl an error, and then converting the value into
+    /// `Self::VerifiedStruct`.
     ///
     /// Returns `Ok(Self::VerifiedOutput)` if the signature is valid and
     /// `CredentialError::InvalidSignature` otherwise.
-    fn verify<T>(
+    fn verify(
         self,
         crypto: &impl OpenMlsCrypto,
         pk: &OpenMlsSignaturePublicKey,
-    ) -> Result<T, SignatureError>
-    where
-        T: VerifiedStruct<Self>,
-    {
-        verify(crypto, &self, pk)?;
-        Ok(T::from_verifiable(self, T::SealingType::default()))
-    }
+    ) -> Result<Self::VerifiedStruct, SignatureError>;
 
     /// Verifies the payload against the given `credential`.
     /// The signature is fetched via the [`Verifiable::signature()`] function and
@@ -165,32 +140,24 @@ pub trait Verifiable: Sized {
         crypto: &impl OpenMlsCrypto,
         pk: &OpenMlsSignaturePublicKey,
     ) -> Result<(), SignatureError> {
-        verify(crypto, self, pk)
+        let payload = self
+            .unsigned_payload()
+            .map_err(|_| SignatureError::VerificationError)?;
+        let sign_content = SignContent::new(self.label(), payload.into());
+        let payload = match sign_content.tls_serialize_detached() {
+            Ok(p) => p,
+            Err(e) => {
+                log::error!("Serializing SignContent failed, {:?}", e);
+                return Err(SignatureError::VerificationError);
+            }
+        };
+        crypto
+            .verify_signature(
+                pk.signature_scheme(),
+                &payload,
+                pk.as_slice(),
+                self.signature().value(),
+            )
+            .map_err(|_| SignatureError::VerificationError)
     }
-}
-
-fn verify(
-    crypto: &impl OpenMlsCrypto,
-    verifiable: &impl Verifiable,
-    pk: &OpenMlsSignaturePublicKey,
-) -> Result<(), SignatureError> {
-    let payload = verifiable
-        .unsigned_payload()
-        .map_err(|_| SignatureError::VerificationError)?;
-    let sign_content = SignContent::new(verifiable.label(), payload.into());
-    let payload = match sign_content.tls_serialize_detached() {
-        Ok(p) => p,
-        Err(e) => {
-            log::error!("Serializing SignContent failed, {:?}", e);
-            return Err(SignatureError::VerificationError);
-        }
-    };
-    crypto
-        .verify_signature(
-            pk.signature_scheme(),
-            &payload,
-            pk.as_slice(),
-            verifiable.signature().value(),
-        )
-        .map_err(|_| SignatureError::VerificationError)
 }

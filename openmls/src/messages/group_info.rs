@@ -272,6 +272,8 @@ impl SignedStruct<GroupInfoTBS> for GroupInfo {
 }
 
 impl Verifiable for VerifiableGroupInfo {
+    type VerifiedStruct = GroupInfo;
+
     fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
         self.payload.tls_serialize_detached()
     }
@@ -283,20 +285,18 @@ impl Verifiable for VerifiableGroupInfo {
     fn label(&self) -> &str {
         SIGNATURE_GROUP_INFO_LABEL
     }
-}
 
-impl VerifiedStruct<VerifiableGroupInfo> for GroupInfo {
-    type SealingType = private_mod::Seal;
-
-    fn from_verifiable(v: VerifiableGroupInfo, _seal: Self::SealingType) -> Self {
-        Self {
-            payload: v.payload,
-            signature: v.signature,
-        }
+    fn verify(
+        self,
+        crypto: &impl OpenMlsCrypto,
+        pk: &crate::prelude_test::OpenMlsSignaturePublicKey,
+    ) -> Result<Self::VerifiedStruct, crate::prelude_test::signable::SignatureError> {
+        self.verify_no_out(crypto, pk)?;
+        Ok(GroupInfo {
+            payload: self.payload,
+            signature: self.signature,
+        })
     }
 }
 
-mod private_mod {
-    #[derive(Default)]
-    pub struct Seal;
-}
+impl VerifiedStruct for GroupInfo {}
