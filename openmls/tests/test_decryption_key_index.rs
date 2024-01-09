@@ -2,15 +2,11 @@
 use openmls::{
     prelude::*,
     test_utils::{
-        test_framework::{ActionType, CodecUse, MlsGroupTestSetup},
+        test_framework::{noop_authentication_service, ActionType, CodecUse, MlsGroupTestSetup},
         *,
     },
     *,
 };
-
-fn noop_authentication_service(_cred: &Credential) -> bool {
-    true
-}
 
 #[apply(ciphersuites)]
 fn decryption_key_index_computation(ciphersuite: Ciphersuite) {

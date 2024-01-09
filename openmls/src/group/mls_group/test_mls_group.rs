@@ -11,14 +11,11 @@ use crate::{
     key_packages::*,
     messages::proposals::*,
     test_utils::test_framework::{
-        errors::ClientError, ActionType::Commit, CodecUse, MlsGroupTestSetup,
+        errors::ClientError, noop_authentication_service, ActionType::Commit, CodecUse,
+        MlsGroupTestSetup,
     },
     test_utils::*,
 };
-
-fn noop_authentication_service(_cred: &Credential) -> bool {
-    true
-}
 
 #[apply(ciphersuites_and_providers)]
 fn test_mls_group_persistence(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {

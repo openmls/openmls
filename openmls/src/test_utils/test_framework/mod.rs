@@ -751,3 +751,10 @@ impl MlsGroupTestSetup {
         Ok(())
     }
 }
+
+// This function signature is used in the callback for credential validation.
+// This particular function just accepts any credential. If you want to validate
+// credentials in your test, don't use this.
+pub fn noop_authentication_service(_cred: &Credential) -> bool {
+    true
+}

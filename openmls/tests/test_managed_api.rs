@@ -1,13 +1,11 @@
 use openmls::{
     prelude::*,
-    test_utils::test_framework::{ActionType, CodecUse, MlsGroupTestSetup},
+    test_utils::test_framework::{
+        noop_authentication_service, ActionType, CodecUse, MlsGroupTestSetup,
+    },
     test_utils::*,
     *,
 };
-
-fn noop_authentication_service(_cred: &Credential) -> bool {
-    true
-}
 
 #[apply(ciphersuites)]
 fn test_mls_group_api(ciphersuite: Ciphersuite) {
