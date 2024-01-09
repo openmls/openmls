@@ -57,6 +57,7 @@ impl MlsGroup {
             credential_with_key,
         )
         .with_config(group_config)
+        .with_group_context_extensions(mls_group_config.group_context_extensions.clone())
         .with_required_capabilities(mls_group_config.required_capabilities.clone())
         .with_external_senders(mls_group_config.external_senders.clone())
         .with_max_past_epoch_secrets(mls_group_config.max_past_epochs)
