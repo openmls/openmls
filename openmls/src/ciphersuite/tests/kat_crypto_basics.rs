@@ -171,8 +171,8 @@ impl Verifiable for ParsedSignWithLabel {
     fn verify(
         self,
         crypto: &impl openmls_traits::crypto::OpenMlsCrypto,
-        pk: &crate::prelude_test::OpenMlsSignaturePublicKey,
-    ) -> Result<Self::VerifiedStruct, crate::prelude_test::signable::SignatureError> {
+        pk: &crate::ciphersuite::OpenMlsSignaturePublicKey,
+    ) -> Result<Self::VerifiedStruct, crate::ciphersuite::signable::SignatureError> {
         self.verify_no_out(crypto, pk)?;
         Ok(())
     }
