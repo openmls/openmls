@@ -120,6 +120,11 @@ impl Member {
             credential,
         }
     }
+
+    /// Get the credential of the member
+    pub fn credential(&self) -> &Credential {
+        &self.credential
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]

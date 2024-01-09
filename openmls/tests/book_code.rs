@@ -63,6 +63,11 @@ fn generate_key_package(
     // ANCHOR_END: create_key_package
 }
 
+// This is a placeholder so the call in the sample code looks nice
+fn validate_credential(cred: &Credential) -> bool {
+    true
+}
+
 /// This test simulates various group operations like Add, Update, Remove in a
 /// small group
 ///  - Alice creates a group
@@ -226,6 +231,15 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     .expect("Error joining group from Welcome");
     // ANCHOR_END: bob_joins_with_welcome
 
+    // ANCHOR: welcome_validate_credentials
+    // Check that all credentials are valid.
+    // The validate_credential function is a placeholder for the application-defined
+    // validation function.
+    for member in bob_group.members() {
+        assert!(validate_credential(member.credential()))
+    }
+    // ANCHOR_END: welcome_validate_credentials
+
     // ANCHOR: alice_exports_group_info
     let verifiable_group_info = alice_group
         .export_group_info(provider.crypto(), &alice_signature_keys, true)
@@ -284,6 +298,17 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .process_message(provider, protocol_message)
         .expect("Could not process message.");
     // ANCHOR_END: process_message
+    // ANCHOR: staged_commit_validate_credentials
+    if let ProcessedMessageContent::StagedCommitMessage(staged_commit) = processed_message.content()
+    {
+        // Check that all credentials are valid.
+        // The validate_credential function is a placeholder for the application-defined
+        // validation function.
+        for cred in staged_commit.credentials_to_verify() {
+            assert!(validate_credential(cred));
+        }
+    }
+    // ANCHOR_END: staged_commit_validate_credentials
 
     // Check that we received the correct message
     // ANCHOR: inspect_application_message
