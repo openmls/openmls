@@ -120,7 +120,7 @@ pub trait Verifiable: Sized {
 
     /// Verifies the payload against the given `credential`.
     /// Usually this is implemented by first checking that `self.verify_no_out()`
-    /// does not returnl an error, and then converting the value into
+    /// does not return an error, and then converting the value into
     /// `Self::VerifiedStruct`.
     ///
     /// Returns `Ok(Self::VerifiedOutput)` if the signature is valid and
