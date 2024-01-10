@@ -4,11 +4,11 @@ use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 #[derive(
     PartialEq, Eq, Clone, Debug, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
-pub struct MutableMetadata {
+pub struct Metadata {
     metadata: Vec<u8>,
 }
 
-impl MutableMetadata {
+impl Metadata {
     pub fn new(metadata: Vec<u8>) -> Self {
         Self { metadata }
     }

@@ -32,7 +32,7 @@ mod codec;
 mod external_pub_extension;
 mod external_sender_extension;
 mod last_resort;
-mod mutable_metadata;
+mod metadata;
 mod protected_metadata;
 mod ratchet_tree_extension;
 mod required_capabilities;
@@ -53,7 +53,7 @@ pub use required_capabilities::RequiredCapabilitiesExtension;
 
 pub use protected_metadata::ProtectedMetadata;
 
-use self::mutable_metadata::MutableMetadata;
+pub use metadata::Metadata;
 
 #[cfg(test)]
 mod test_extensions;
@@ -103,7 +103,7 @@ pub enum ExtensionType {
     /// extension
     ProtectedMetadata,
 
-    MutableMetadata,
+    Metadata,
 
     /// A currently unknown extension type.
     Unknown(u16),
@@ -145,7 +145,7 @@ impl From<u16> for ExtensionType {
             5 => ExtensionType::ExternalSenders,
             10 => ExtensionType::LastResort,
             11 => ExtensionType::ProtectedMetadata,
-            0xf001 => ExtensionType::MutableMetadata,
+            0xf001 => ExtensionType::Metadata,
             unknown => ExtensionType::Unknown(unknown),
         }
     }
@@ -161,7 +161,7 @@ impl From<ExtensionType> for u16 {
             ExtensionType::ExternalSenders => 5,
             ExtensionType::LastResort => 10,
             ExtensionType::ProtectedMetadata => 11,
-            ExtensionType::MutableMetadata => 0xf001,
+            ExtensionType::Metadata => 0xf001,
             ExtensionType::Unknown(unknown) => unknown,
         }
     }
@@ -179,7 +179,7 @@ impl ExtensionType {
                 | ExtensionType::ExternalSenders
                 | ExtensionType::LastResort
                 | ExtensionType::ProtectedMetadata
-                | ExtensionType::MutableMetadata
+                | ExtensionType::Metadata
         )
     }
 }
@@ -221,7 +221,7 @@ pub enum Extension {
     /// A [`ProtectedMetadata`] extension
     ProtectedMetadata(ProtectedMetadata),
 
-    MutableMetadata(MutableMetadata),
+    Metadata(Metadata),
 
     /// A currently unknown extension.
     Unknown(u16, UnknownExtension),
@@ -410,6 +410,14 @@ impl Extensions {
                 _ => None,
             })
     }
+
+    pub fn metadata(&self) -> Option<&Metadata> {
+        self.find_by_type(ExtensionType::Metadata)
+            .and_then(|e| match e {
+                Extension::Metadata(e) => Some(e),
+                _ => None,
+            })
+    }
 }
 
 impl Extension {
@@ -500,7 +508,7 @@ impl Extension {
             Extension::ExternalSenders(_) => ExtensionType::ExternalSenders,
             Extension::LastResort(_) => ExtensionType::LastResort,
             Extension::ProtectedMetadata(_) => ExtensionType::ProtectedMetadata,
-            Extension::MutableMetadata(_) => ExtensionType::MutableMetadata,
+            Extension::Metadata(_) => ExtensionType::Metadata,
             Extension::Unknown(kind, _) => ExtensionType::Unknown(*kind),
         }
     }
