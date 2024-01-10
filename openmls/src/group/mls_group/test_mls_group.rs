@@ -360,7 +360,7 @@ fn test_verify_staged_commit_credentials(
         setup_client("Bob", ciphersuite, provider);
 
     // Define the MlsGroup configuration
-    let mls_group_config = MlsGroupConfig::test_default(ciphersuite);
+    let mls_group_config = MlsGroupCreateConfig::test_default(ciphersuite);
 
     // === Alice creates a group ===
     let mut alice_group = MlsGroup::new_with_group_id(
@@ -409,7 +409,7 @@ fn test_verify_staged_commit_credentials(
 
     let mut bob_group = MlsGroup::new_from_welcome(
         provider,
-        &mls_group_config,
+        mls_group_config.join_config(),
         welcome_option
             .expect("no welcome after commit")
             .into_welcome()
