@@ -946,6 +946,11 @@
 <a href="#946" id="946">946</a>
 <a href="#947" id="947">947</a>
 <a href="#948" id="948">948</a>
+<a href="#949" id="949">949</a>
+<a href="#950" id="950">950</a>
+<a href="#951" id="951">951</a>
+<a href="#952" id="952">952</a>
+<a href="#953" id="953">953</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the [`LeafNode`] struct and its implementation.
 </span><span class="kw">use </span>openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsProvider};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -982,12 +987,6 @@
 <span class="kw">mod </span>codec;
 
 <span class="kw">pub use </span>capabilities::<span class="kw-2">*</span>;
-
-<span class="doccomment">/// Private module to ensure protection.
-</span><span class="kw">mod </span>private_mod {
-    <span class="attr">#[derive(Default)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>Seal;
-}
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>NewLeafNodeParams {
     <span class="kw">pub</span>(<span class="kw">crate</span>) config: CryptoConfig,
@@ -1738,6 +1737,8 @@
 }
 
 <span class="kw">impl </span>Verifiable <span class="kw">for </span>VerifiableKeyPackageLeafNode {
+    <span class="kw">type </span>VerifiedStruct = LeafNode;
+
     <span class="kw">fn </span>unsigned_payload(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, tls_codec::Error&gt; {
         <span class="self">self</span>.payload.tls_serialize_detached()
     }
@@ -1749,18 +1750,21 @@
     <span class="kw">fn </span>label(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
         LEAF_NODE_SIGNATURE_LABEL
     }
-}
 
-<span class="kw">impl </span>VerifiedStruct&lt;VerifiableKeyPackageLeafNode&gt; <span class="kw">for </span>LeafNode {
-    <span class="kw">fn </span>from_verifiable(verifiable: VerifiableKeyPackageLeafNode, _seal: <span class="self">Self</span>::SealingType) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            payload: verifiable.payload,
-            signature: verifiable.signature,
-        }
+    <span class="kw">fn </span>verify(
+        <span class="self">self</span>,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>openmls_traits::crypto::OpenMlsCrypto,
+        pk: <span class="kw-2">&amp;</span><span class="kw">crate</span>::ciphersuite::OpenMlsSignaturePublicKey,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>::VerifiedStruct, <span class="kw">crate</span>::ciphersuite::signable::SignatureError&gt; {
+        <span class="self">self</span>.verify_no_out(crypto, pk)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(LeafNode {
+            payload: <span class="self">self</span>.payload,
+            signature: <span class="self">self</span>.signature,
+        })
     }
-
-    <span class="kw">type </span>SealingType = private_mod::Seal;
 }
+
+<span class="kw">impl </span>VerifiedStruct <span class="kw">for </span>LeafNode {}
 
 <span class="attr">#[derive(Debug, Clone, PartialEq, Eq)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>VerifiableUpdateLeafNode {
@@ -1780,6 +1784,8 @@
 }
 
 <span class="kw">impl </span>Verifiable <span class="kw">for </span>VerifiableUpdateLeafNode {
+    <span class="kw">type </span>VerifiedStruct = LeafNode;
+
     <span class="kw">fn </span>unsigned_payload(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, tls_codec::Error&gt; {
         <span class="kw">let </span>tree_info_tbs = <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.tree_position {
             <span class="prelude-val">Some</span>(tree_position) =&gt; TreeInfoTbs::Commit(tree_position.clone()),
@@ -1799,17 +1805,18 @@
     <span class="kw">fn </span>label(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
         LEAF_NODE_SIGNATURE_LABEL
     }
-}
 
-<span class="kw">impl </span>VerifiedStruct&lt;VerifiableUpdateLeafNode&gt; <span class="kw">for </span>LeafNode {
-    <span class="kw">fn </span>from_verifiable(verifiable: VerifiableUpdateLeafNode, _seal: <span class="self">Self</span>::SealingType) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            payload: verifiable.payload,
-            signature: verifiable.signature,
-        }
+    <span class="kw">fn </span>verify(
+        <span class="self">self</span>,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>openmls_traits::crypto::OpenMlsCrypto,
+        pk: <span class="kw-2">&amp;</span><span class="kw">crate</span>::ciphersuite::OpenMlsSignaturePublicKey,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>::VerifiedStruct, <span class="kw">crate</span>::ciphersuite::signable::SignatureError&gt; {
+        <span class="self">self</span>.verify_no_out(crypto, pk)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(LeafNode {
+            payload: <span class="self">self</span>.payload,
+            signature: <span class="self">self</span>.signature,
+        })
     }
-
-    <span class="kw">type </span>SealingType = private_mod::Seal;
 }
 
 <span class="attr">#[derive(Debug, Clone, PartialEq, Eq)]
@@ -1830,6 +1837,8 @@
 }
 
 <span class="kw">impl </span>Verifiable <span class="kw">for </span>VerifiableCommitLeafNode {
+    <span class="kw">type </span>VerifiedStruct = LeafNode;
+
     <span class="kw">fn </span>unsigned_payload(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, tls_codec::Error&gt; {
         <span class="kw">let </span>tree_info_tbs = <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.tree_position {
             <span class="prelude-val">Some</span>(tree_position) =&gt; TreeInfoTbs::Commit(tree_position.clone()),
@@ -1850,17 +1859,18 @@
     <span class="kw">fn </span>label(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
         LEAF_NODE_SIGNATURE_LABEL
     }
-}
 
-<span class="kw">impl </span>VerifiedStruct&lt;VerifiableCommitLeafNode&gt; <span class="kw">for </span>LeafNode {
-    <span class="kw">fn </span>from_verifiable(verifiable: VerifiableCommitLeafNode, _seal: <span class="self">Self</span>::SealingType) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            payload: verifiable.payload,
-            signature: verifiable.signature,
-        }
+    <span class="kw">fn </span>verify(
+        <span class="self">self</span>,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>openmls_traits::crypto::OpenMlsCrypto,
+        pk: <span class="kw-2">&amp;</span><span class="kw">crate</span>::ciphersuite::OpenMlsSignaturePublicKey,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>::VerifiedStruct, <span class="kw">crate</span>::ciphersuite::signable::SignatureError&gt; {
+        <span class="self">self</span>.verify_no_out(crypto, pk)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(LeafNode {
+            payload: <span class="self">self</span>.payload,
+            signature: <span class="self">self</span>.signature,
+        })
     }
-
-    <span class="kw">type </span>SealingType = private_mod::Seal;
 }
 
 <span class="kw">impl </span>Signable <span class="kw">for </span>LeafNodeTbs {

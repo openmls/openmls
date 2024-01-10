@@ -247,6 +247,7 @@
 <a href="#247" id="247">247</a>
 <a href="#248" id="248">248</a>
 <a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Incoming KeyPackages. This modules contains deserialization and validation
 //! of KeyPackages.
 
@@ -254,7 +255,7 @@
     ciphersuite::{signable::<span class="kw-2">*</span>, <span class="kw-2">*</span>},
     credentials::<span class="kw-2">*</span>,
     extensions::Extensions,
-    treesync::node::leaf_node::{LeafNode, LeafNodeIn, VerifiableLeafNode},
+    treesync::node::leaf_node::{LeafNodeIn, VerifiableLeafNode},
     versions::ProtocolVersion,
 };
 <span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
@@ -280,6 +281,8 @@
 }
 
 <span class="kw">impl </span>Verifiable <span class="kw">for </span>VerifiableKeyPackage {
+    <span class="kw">type </span>VerifiedStruct = KeyPackage;
+
     <span class="kw">fn </span>unsigned_payload(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, tls_codec::Error&gt; {
         <span class="self">self</span>.payload.tls_serialize_detached()
     }
@@ -291,23 +294,22 @@
     <span class="kw">fn </span>label(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
         SIGNATURE_KEY_PACKAGE_LABEL
     }
-}
 
-<span class="kw">impl </span>VerifiedStruct&lt;VerifiableKeyPackage&gt; <span class="kw">for </span>KeyPackage {
-    <span class="kw">type </span>SealingType = private_mod::Seal;
+    <span class="kw">fn </span>verify(
+        <span class="self">self</span>,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+        pk: <span class="kw-2">&amp;</span>OpenMlsSignaturePublicKey,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>::VerifiedStruct, SignatureError&gt; {
+        <span class="self">self</span>.verify_no_out(crypto, pk)<span class="question-mark">?</span>;
 
-    <span class="kw">fn </span>from_verifiable(verifiable: VerifiableKeyPackage, _seal: <span class="self">Self</span>::SealingType) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            payload: verifiable.payload,
-            signature: verifiable.signature,
-        }
+        <span class="prelude-val">Ok</span>(KeyPackage {
+            payload: <span class="self">self</span>.payload,
+            signature: <span class="self">self</span>.signature,
+        })
     }
 }
 
-<span class="kw">mod </span>private_mod {
-    <span class="attr">#[derive(Default)]
-    </span><span class="kw">pub struct </span>Seal;
-}
+<span class="kw">impl </span>VerifiedStruct <span class="kw">for </span>KeyPackage {}
 
 <span class="doccomment">/// The unsigned payload of a key package.
 ///
@@ -392,7 +394,7 @@
 
         <span class="kw">let </span>leaf_node = <span class="kw">match </span>leaf_node {
             VerifiableLeafNode::KeyPackage(leaf_node) =&gt; leaf_node
-                .verify::&lt;LeafNode&gt;(crypto, signature_key)
+                .verify(crypto, signature_key)
                 .map_err(|<span class="kw">_</span>| KeyPackageVerifyError::InvalidLeafNodeSignature)<span class="question-mark">?</span>,
             <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(KeyPackageVerifyError::InvalidLeafNodeSourceType),
         };
@@ -417,7 +419,7 @@
 
         <span class="comment">// Verify the KeyPackage signature
         </span><span class="kw">let </span>key_package = VerifiableKeyPackage::new(key_package_tbs, <span class="self">self</span>.signature)
-            .verify::&lt;KeyPackage&gt;(crypto, signature_key)
+            .verify(crypto, signature_key)
             .map_err(|<span class="kw">_</span>| KeyPackageVerifyError::InvalidSignature)<span class="question-mark">?</span>;
 
         <span class="comment">// Extension included in the extensions or leaf_node.extensions fields
