@@ -1,8 +1,8 @@
-# Group patterns and configuration
+# Group configuration
 
-Two very similar structs can help configure groups upon their creation: `MlsGroupConfig` and `MlsGroupPattern`.
+Two very similar structs can help configure groups upon their creation: `MlsGroupJoinConfig` and `MlsGroupCreateConfig`.
 
-`MlsGroupConfig` contains the following runtime-relevant configuration options for an `MlsGroup` and can be set on a per-client basis when a group is joined.
+`MlsGroupJoinConfig` contains the following runtime-relevant configuration options for an `MlsGroup` and can be set on a per-client basis when a group is joined.
 
 | Name                           | Type                            | Explanation                                                                                      |
 | ------------------------------ | ------------------------------- | ------------------------------------------------------------------------------------------------ |
@@ -13,23 +13,23 @@ Two very similar structs can help configure groups upon their creation: `MlsGrou
 | `use_ratchet_tree_extension`   | `bool`                          | Flag indicating the Ratchet Tree Extension should be used. The default is `false`.               |
 | `sender_ratchet_configuration` | `SenderRatchetConfiguration`    | Sender ratchet configuration.                                                                    |
 
-`MlsGroupPattern` contains an `MlsGroupConfig`, as well as a few additional parameters that are part of the group state that is agreed-upon by all group members. It can be set at the time of a group's creation and contains the following additional configuration options.
+`MlsGroupCreateConfig` contains an `MlsGroupJoinConfig`, as well as a few additional parameters that are part of the group state that is agreed-upon by all group members. It can be set at the time of a group's creation and contains the following additional configuration options.
 
 | Name                           | Type                            | Explanation                                                                                      |
 | ------------------------------ | ------------------------------- | ------------------------------------------------------------------------------------------------ |
 | `required_capabilities`        | `RequiredCapabilitiesExtension` | Required capabilities (extensions and proposal types).                                           |
 | `external_senders`             | `ExternalSendersExtensions`     | List credentials of non-group members that are allowed to send proposals to the group.           |
 
-Both group config and group patterns can be specified by using the struct's builder pattern, or choosing their default values. The default value contains safe values for all parameters and is suitable for scenarios without particular requirements.
+Both ways of group configurations can be specified by using the struct's builder pattern, or choosing their default values. The default value contains safe values for all parameters and is suitable for scenarios without particular requirements.
 
-Example configuration:
+Example join configuration:
 
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code.rs:mls_group_config_example}}
 ```
 
-Example pattern:
+Example create configuration:
 
 ```rust,no_run,noplayground
-{{#include ../../../openmls/tests/book_code.rs:mls_group_pattern_example}}
+{{#include ../../../openmls/tests/book_code.rs:mls_group_create_config_example}}
 ```

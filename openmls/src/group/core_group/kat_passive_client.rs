@@ -118,7 +118,7 @@ pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
         return;
     }
 
-    let group_config = MlsGroupConfig::builder()
+    let group_config = MlsGroupJoinConfig::builder()
         .use_ratchet_tree_extension(true)
         .wire_format_policy(WireFormatPolicy::new(
             OutgoingWireFormatPolicy::AlwaysPlaintext,
@@ -201,13 +201,13 @@ fn test_write_vectors() {
 
 struct PassiveClient {
     provider: OpenMlsRustCrypto,
-    group_config: MlsGroupConfig,
+    group_config: MlsGroupJoinConfig,
     group: Option<MlsGroup>,
 }
 
 impl PassiveClient {
     fn new(
-        group_config: MlsGroupConfig,
+        group_config: MlsGroupJoinConfig,
         ciphersuite: Ciphersuite,
         psks: Vec<ExternalPskTest>,
     ) -> Self {
@@ -340,7 +340,7 @@ impl PassiveClient {
 }
 
 pub fn generate_test_vector(cipher_suite: Ciphersuite) -> PassiveClientWelcomeTestVector {
-    let group_config = MlsGroupPattern::builder()
+    let group_config = MlsGroupCreateConfig::builder()
         .crypto_config(CryptoConfig::with_default_version(cipher_suite))
         .use_ratchet_tree_extension(true)
         .build();

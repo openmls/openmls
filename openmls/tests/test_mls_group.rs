@@ -79,7 +79,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 
         // Define the MlsGroup configuration
 
-        let mls_group_pattern = MlsGroupPattern::builder()
+        let mls_group_create_config = MlsGroupCreateConfig::builder()
             .wire_format_policy(*wire_format_policy)
             .crypto_config(CryptoConfig::with_default_version(ciphersuite))
             .build();
@@ -88,7 +88,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
         let mut alice_group = MlsGroup::new_with_group_id(
             provider,
             &alice_signer,
-            &mls_group_pattern,
+            &mls_group_create_config,
             group_id.clone(),
             alice_credential.clone(),
         )
@@ -133,7 +133,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 
         let mut bob_group = MlsGroup::new_from_welcome(
             provider,
-            mls_group_pattern.mls_group_config(),
+            mls_group_create_config.mls_group_config(),
             welcome.into_welcome().expect("Unexpected message type."),
             Some(alice_group.export_ratchet_tree().into()),
         )
@@ -349,7 +349,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 
         let mut charlie_group = MlsGroup::new_from_welcome(
             provider,
-            mls_group_pattern.mls_group_config(),
+            mls_group_create_config.mls_group_config(),
             welcome.into_welcome().expect("Unexpected message type."),
             Some(bob_group.export_ratchet_tree().into()),
         )
@@ -700,7 +700,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
         // Bob creates a new group
         let mut bob_group = MlsGroup::new_from_welcome(
             provider,
-            mls_group_pattern.mls_group_config(),
+            mls_group_create_config.mls_group_config(),
             welcome_option
                 .expect("Welcome was not returned")
                 .into_welcome()
@@ -892,7 +892,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 
         let mut bob_group = MlsGroup::new_from_welcome(
             provider,
-            mls_group_pattern.mls_group_config(),
+            mls_group_create_config.mls_group_config(),
             welcome.into_welcome().expect("Unexpected message type."),
             Some(alice_group.export_ratchet_tree().into()),
         )
@@ -968,7 +968,7 @@ fn addition_order(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
         // Define the MlsGroup configuration
 
-        let mls_group_config = MlsGroupPattern::builder()
+        let mls_group_config = MlsGroupCreateConfig::builder()
             .wire_format_policy(*wire_format_policy)
             .crypto_config(CryptoConfig::with_default_version(ciphersuite))
             .build();
@@ -1047,14 +1047,14 @@ fn test_empty_input_errors(ciphersuite: Ciphersuite, provider: &impl OpenMlsProv
         ciphersuite.signature_algorithm(),
     );
 
-    // Define the MlsGroup pattern
-    let mls_group_pattern = MlsGroupPattern::test_default(ciphersuite);
+    // Define the MlsGroupCreateConfig
+    let mls_group_create_config = MlsGroupCreateConfig::test_default(ciphersuite);
 
     // === Alice creates a group ===
     let mut alice_group = MlsGroup::new_with_group_id(
         provider,
         &alice_signer,
-        &mls_group_pattern,
+        &mls_group_create_config,
         group_id,
         alice_credential,
     )
@@ -1108,7 +1108,7 @@ fn mls_group_ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl Op
             &bob_signer,
         );
 
-        let mls_group_pattern = MlsGroupPattern::builder()
+        let mls_group_create_config = MlsGroupCreateConfig::builder()
             .wire_format_policy(*wire_format_policy)
             .use_ratchet_tree_extension(true)
             .crypto_config(CryptoConfig::with_default_version(ciphersuite))
@@ -1118,7 +1118,7 @@ fn mls_group_ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl Op
         let mut alice_group = MlsGroup::new_with_group_id(
             provider,
             &alice_signer,
-            &mls_group_pattern,
+            &mls_group_create_config,
             group_id.clone(),
             alice_credential.clone(),
         )
@@ -1132,7 +1132,7 @@ fn mls_group_ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl Op
         // === Bob joins using the ratchet tree extension ===
         let _bob_group = MlsGroup::new_from_welcome(
             provider,
-            mls_group_pattern.mls_group_config(),
+            mls_group_create_config.mls_group_config(),
             welcome.into_welcome().expect("Unexpected message type."),
             None,
         )
@@ -1164,13 +1164,13 @@ fn mls_group_ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl Op
             &bob_signer,
         );
 
-        let mls_group_pattern = MlsGroupPattern::test_default(ciphersuite);
+        let mls_group_create_config = MlsGroupCreateConfig::test_default(ciphersuite);
 
         // === Alice creates a group ===
         let mut alice_group = MlsGroup::new_with_group_id(
             provider,
             &alice_signer,
-            &mls_group_pattern,
+            &mls_group_create_config,
             group_id,
             alice_credential.clone(),
         )
@@ -1184,7 +1184,7 @@ fn mls_group_ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl Op
         // === Bob tries to join without the ratchet tree extension ===
         let error = MlsGroup::new_from_welcome(
             provider,
-            mls_group_pattern.mls_group_config(),
+            mls_group_create_config.mls_group_config(),
             welcome.into_welcome().expect("Unexpected message type."),
             None,
         )

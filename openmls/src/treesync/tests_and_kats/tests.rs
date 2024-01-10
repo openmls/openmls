@@ -3,7 +3,7 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use crate::{
     group::{
         tests::utils::{generate_credential_with_key, CredentialWithKeyAndSigner},
-        MlsGroup, MlsGroupPattern,
+        MlsGroup, MlsGroupCreateConfig,
     },
     key_packages::KeyPackage,
     prelude::*,
@@ -22,7 +22,7 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
 ) {
     let _ = provider; // get rid of warning
     let crypto_config = CryptoConfig::with_default_version(ciphersuite);
-    let mls_group_pattern = MlsGroupPattern::builder()
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
         .crypto_config(crypto_config)
         .use_ratchet_tree_extension(true)
         .build();
@@ -94,7 +94,7 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
     let mut alice_group = MlsGroup::new(
         &alice.provider,
         &alice.credential_with_key_and_signer.signer,
-        &mls_group_pattern,
+        &mls_group_create_config,
         alice
             .credential_with_key_and_signer
             .credential_with_key
@@ -120,7 +120,7 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
     let mut charlie_group = {
         MlsGroup::new_from_welcome(
             &charlie.provider,
-            mls_group_pattern.mls_group_config(),
+            mls_group_create_config.mls_group_config(),
             welcome.into_welcome().unwrap(),
             None,
         )

@@ -753,7 +753,7 @@ mod utils {
         group::{
             config::CryptoConfig,
             tests::utils::{generate_credential_with_key, CredentialWithKeyAndSigner},
-            MlsGroup, MlsGroupPattern, WireFormatPolicy,
+            MlsGroup, MlsGroupCreateConfig, WireFormatPolicy,
         },
     };
 
@@ -783,7 +783,7 @@ mod utils {
             generate_credential_with_key("Bob".into(), ciphersuite.signature_algorithm(), provider);
 
         // Define the MlsGroup configuration
-        let mls_group_pattern = MlsGroupPattern::builder()
+        let mls_group_create_config = MlsGroupCreateConfig::builder()
             .wire_format_policy(wire_format_policy)
             .crypto_config(CryptoConfig::with_default_version(ciphersuite))
             .build();
@@ -792,7 +792,7 @@ mod utils {
         let alice_group = MlsGroup::new(
             provider,
             &alice_credential.signer,
-            &mls_group_pattern,
+            &mls_group_create_config,
             alice_credential.credential_with_key.clone(),
         )
         .unwrap();

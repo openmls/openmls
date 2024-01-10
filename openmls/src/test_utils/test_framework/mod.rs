@@ -60,7 +60,7 @@ pub struct Group {
     pub group_id: GroupId,
     pub members: Vec<(usize, Vec<u8>)>,
     pub ciphersuite: Ciphersuite,
-    pub group_config: MlsGroupConfig,
+    pub group_config: MlsGroupJoinConfig,
     pub public_tree: RatchetTree,
     pub exporter_secret: Vec<u8>,
 }
@@ -108,7 +108,7 @@ pub struct MlsGroupTestSetup {
     pub groups: RwLock<HashMap<GroupId, Group>>,
     // This maps key package hashes to client ids.
     pub waiting_for_welcome: RwLock<HashMap<Vec<u8>, Vec<u8>>>,
-    pub default_mgp: MlsGroupPattern,
+    pub default_mgp: MlsGroupCreateConfig,
     /// Flag to indicate if messages should be serialized and de-serialized as
     /// part of message distribution
     pub use_codec: CodecUse,
@@ -132,11 +132,11 @@ pub struct MlsGroupTestSetup {
 
 impl MlsGroupTestSetup {
     /// Create a new `MlsGroupTestSetup` with the given default
-    /// `MlsGroupPattern` and the given number of clients. For lifetime
+    /// `MlsGroupCreateConfig` and the given number of clients. For lifetime
     /// reasons, `create_clients` has to be called in addition with the same
     /// number of clients.
     pub fn new(
-        default_mgp: MlsGroupPattern,
+        default_mgp: MlsGroupCreateConfig,
         number_of_clients: usize,
         use_codec: CodecUse,
     ) -> Self {

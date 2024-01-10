@@ -16,7 +16,7 @@ Or from a call to a function that results in a staged commit:
 {{#include ../../../openmls/tests/book_code.rs:alice_exports_group_info}}
 ```
 
-Calling `join_by_external_commit` requires an `MlsGroupConfig` (see [Group patterns and configuration](./group_config.md) for more details). The function creates an `MlsGroup` and leave it with a commit pending to be merged.
+Calling `join_by_external_commit` requires an `MlsGroupJoinConfig` (see [Group configuration](./group_config.md) for more details). The function creates an `MlsGroup` and leave it with a commit pending to be merged.
 
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code.rs:charlie_joins_external_commit}}

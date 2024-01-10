@@ -149,8 +149,8 @@ pub enum MlsGroupState {
 /// more information.
 #[derive(Debug)]
 pub struct MlsGroup {
-    // The group configuration. See [`MlsGroupConfig`] for more information.
-    mls_group_config: MlsGroupConfig,
+    // The group configuration. See [`MlsGroupJoinConfig`] for more information.
+    mls_group_config: MlsGroupJoinConfig,
     // the internal `CoreGroup` used for lower level operations. See `CoreGroup` for more
     // information.
     group: CoreGroup,
@@ -177,12 +177,12 @@ impl MlsGroup {
     // === Configuration ===
 
     /// Returns the configuration.
-    pub fn configuration(&self) -> &MlsGroupConfig {
+    pub fn configuration(&self) -> &MlsGroupJoinConfig {
         &self.mls_group_config
     }
 
     /// Sets the configuration.
-    pub fn set_configuration(&mut self, mls_group_config: &MlsGroupConfig) {
+    pub fn set_configuration(&mut self, mls_group_config: &MlsGroupJoinConfig) {
         self.mls_group_config = mls_group_config.clone();
 
         // Since the state of the group might be changed, arm the state flag
