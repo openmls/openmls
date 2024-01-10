@@ -8,7 +8,10 @@ use crate::extensions::{
     UnknownExtension,
 };
 
-use super::{last_resort::LastResortExtension, protected_metadata::ProtectedMetadata};
+use super::{
+    last_resort::LastResortExtension, mutable_metadata::MutableMetadata,
+    protected_metadata::ProtectedMetadata,
+};
 
 fn vlbytes_len_len(length: usize) -> usize {
     if length < 0x40 {
@@ -38,6 +41,7 @@ impl Size for Extension {
             Extension::ExternalSenders(e) => e.tls_serialized_len(),
             Extension::LastResort(e) => e.tls_serialized_len(),
             Extension::ProtectedMetadata(e) => e.tls_serialized_len(),
+            Extension::MutableMetadata(e) => e.tls_serialized_len(),
             Extension::Unknown(_, e) => e.0.len(),
         };
 
@@ -71,6 +75,7 @@ impl Serialize for Extension {
             Extension::ExternalSenders(e) => e.tls_serialize(&mut extension_data),
             Extension::LastResort(e) => e.tls_serialize(&mut extension_data),
             Extension::ProtectedMetadata(e) => e.tls_serialize(&mut extension_data),
+            Extension::MutableMetadata(e) => e.tls_serialize(&mut extension_data),
             Extension::Unknown(_, e) => extension_data
                 .write_all(e.0.as_slice())
                 .map(|_| e.0.len())
@@ -123,6 +128,9 @@ impl Deserialize for Extension {
             ExtensionType::ProtectedMetadata => Extension::ProtectedMetadata(
                 ProtectedMetadata::tls_deserialize(&mut extension_data)?,
             ),
+            ExtensionType::MutableMetadata => {
+                Extension::MutableMetadata(MutableMetadata::tls_deserialize(&mut extension_data)?)
+            }
             ExtensionType::Unknown(unknown) => {
                 Extension::Unknown(unknown, UnknownExtension(extension_data.to_vec()))
             }
