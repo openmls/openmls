@@ -1,6 +1,6 @@
 # Creating groups
 
-Before a group can be created, a group configuration (`MlsGroupConfiguration`) needs to be defined. The default values of configuration parameters are picked for safety. However, check all parameters carefully to ascertain if they match your implementation's requirements. See [Group configuration](group_config.md) for more details.
+There are two ways to create a group: Either by building an `MlsGroup` directly, or by using an `MlsGroupCreateConfig`. The former is slightly simpler, while the latter allows the creating of multiple groups using the same configuration. See [Group configuration](./group_config.md) for more details on group parameters.
 
 In addition to the group configuration, the client should define all supported and required extensions for the group. The negotiation mechanism for extension in MLS consists in setting an initial list of extensions at group creation time and choosing key packages of subsequent new members accordingly.
 
@@ -10,10 +10,16 @@ In practice, the supported and required extensions are set by adding them to the
 {{#include ../../../openmls/tests/book_code.rs:create_key_package}}
 ```
 
-After that, the group can be created:
+After that, the group can be created either using a config:
 
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code.rs:alice_create_group}}
+```
+
+... or using the builder pattern:
+
+```rust,no_run,noplayground
+{{#include ../../../openmls/tests/book_code.rs:alice_create_group_with_builder}}
 ```
 
 Note: Every group is assigned a random group ID during creation. The group ID cannot be changed and remains immutable throughout the group's lifetime. Choosing it randomly makes sure that the group ID doesn't collide with any other group ID in the same system.

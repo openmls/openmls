@@ -118,8 +118,7 @@ pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
         return;
     }
 
-    let group_config = MlsGroupConfig::builder()
-        .crypto_config(CryptoConfig::with_default_version(cipher_suite))
+    let group_config = MlsGroupJoinConfig::builder()
         .use_ratchet_tree_extension(true)
         .wire_format_policy(WireFormatPolicy::new(
             OutgoingWireFormatPolicy::AlwaysPlaintext,
@@ -128,7 +127,11 @@ pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
         .number_of_resumption_psks(16)
         .build();
 
-    let mut passive_client = PassiveClient::new(group_config, test_vector.external_psks.clone());
+    let mut passive_client = PassiveClient::new(
+        group_config,
+        cipher_suite,
+        test_vector.external_psks.clone(),
+    );
 
     passive_client.inject_key_package(
         test_vector.key_package,
@@ -198,12 +201,16 @@ fn test_write_vectors() {
 
 struct PassiveClient {
     provider: OpenMlsRustCrypto,
-    group_config: MlsGroupConfig,
+    group_config: MlsGroupJoinConfig,
     group: Option<MlsGroup>,
 }
 
 impl PassiveClient {
-    fn new(group_config: MlsGroupConfig, psks: Vec<ExternalPskTest>) -> Self {
+    fn new(
+        group_config: MlsGroupJoinConfig,
+        ciphersuite: Ciphersuite,
+        psks: Vec<ExternalPskTest>,
+    ) -> Self {
         let provider = OpenMlsRustCrypto::default();
 
         // Load all PSKs into key store.
@@ -213,7 +220,7 @@ impl PassiveClient {
             // The nonce is not saved, so it can be empty...
             let psk_id = PreSharedKeyId::external(psk.psk_id, vec![]);
             psk_id
-                .write_to_key_store(&provider, group_config.crypto_config.ciphersuite, &psk.psk)
+                .write_to_key_store(&provider, ciphersuite, &psk.psk)
                 .unwrap();
         }
 
@@ -333,7 +340,7 @@ impl PassiveClient {
 }
 
 pub fn generate_test_vector(cipher_suite: Ciphersuite) -> PassiveClientWelcomeTestVector {
-    let group_config = MlsGroupConfig::builder()
+    let group_config = MlsGroupCreateConfig::builder()
         .crypto_config(CryptoConfig::with_default_version(cipher_suite))
         .use_ratchet_tree_extension(true)
         .build();
