@@ -2,7 +2,7 @@
 use openmls::{
     prelude::*,
     test_utils::{
-        test_framework::{ActionType, CodecUse, MlsGroupTestSetup},
+        test_framework::{noop_authentication_service, ActionType, CodecUse, MlsGroupTestSetup},
         *,
     },
     *,
@@ -20,9 +20,10 @@ fn decryption_key_index_computation(ciphersuite: Ciphersuite) {
         number_of_clients,
         CodecUse::StructMessages,
     );
+
     // Create a basic group with more than 4 members to create a tree with intermediate nodes.
     let group_id = setup
-        .create_random_group(10, ciphersuite)
+        .create_random_group(10, ciphersuite, noop_authentication_service)
         .expect("An unexpected error occurred.");
     let mut groups = setup.groups.write().expect("An unexpected error occurred.");
     let group = groups
@@ -45,6 +46,7 @@ fn decryption_key_index_computation(ciphersuite: Ciphersuite) {
             group,
             remover_id,
             &[LeafNodeIndex::new(2)],
+            noop_authentication_service,
         )
         .expect("An unexpected error occurred.");
 
@@ -64,11 +66,12 @@ fn decryption_key_index_computation(ciphersuite: Ciphersuite) {
             group,
             remover_id,
             &[LeafNodeIndex::new(3)],
+            noop_authentication_service,
         )
         .expect("An unexpected error occurred.");
 
     // Since the decryption failure doesn't cause a panic, but only an error
     // message in the callback, we also have to check that the group states
     // match for all group members.
-    setup.check_group_states(group);
+    setup.check_group_states(group, noop_authentication_service);
 }

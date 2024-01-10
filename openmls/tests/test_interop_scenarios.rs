@@ -1,6 +1,8 @@
 use openmls::{
     prelude::*,
-    test_utils::test_framework::{ActionType, CodecUse, MlsGroupTestSetup},
+    test_utils::test_framework::{
+        noop_authentication_service, ActionType, CodecUse, MlsGroupTestSetup,
+    },
     test_utils::*,
     *,
 };
@@ -45,11 +47,17 @@ fn one_to_one_join(ciphersuite: Ciphersuite) {
         .expect("An unexpected error occurred.");
 
     setup
-        .add_clients(ActionType::Commit, group, &alice_id, bob_id)
+        .add_clients(
+            ActionType::Commit,
+            group,
+            &alice_id,
+            bob_id,
+            &noop_authentication_service,
+        )
         .expect("Error adding Bob");
 
     // Check that group members agree on a group state.
-    setup.check_group_states(group);
+    setup.check_group_states(group, noop_authentication_service);
 }
 
 // # 3-party join
@@ -92,7 +100,13 @@ fn three_party_join(ciphersuite: Ciphersuite) {
 
     // Create the add commit and deliver the welcome.
     setup
-        .add_clients(ActionType::Commit, group, &alice_id, bob_id)
+        .add_clients(
+            ActionType::Commit,
+            group,
+            &alice_id,
+            bob_id,
+            &noop_authentication_service,
+        )
         .expect("Error adding Bob");
 
     // A vector including Charly's id.
@@ -101,11 +115,17 @@ fn three_party_join(ciphersuite: Ciphersuite) {
         .expect("An unexpected error occurred.");
 
     setup
-        .add_clients(ActionType::Commit, group, &alice_id, charly_id)
+        .add_clients(
+            ActionType::Commit,
+            group,
+            &alice_id,
+            charly_id,
+            &noop_authentication_service,
+        )
         .expect("Error adding Charly");
 
     // Check that group members agree on a group state.
-    setup.check_group_states(group);
+    setup.check_group_states(group, noop_authentication_service);
 }
 
 // # Multiple joins at once
@@ -147,11 +167,17 @@ fn multiple_joins(ciphersuite: Ciphersuite) {
 
     // Create the add commit and deliver the welcome.
     setup
-        .add_clients(ActionType::Commit, group, &alice_id, bob_charly_id)
+        .add_clients(
+            ActionType::Commit,
+            group,
+            &alice_id,
+            bob_charly_id,
+            &noop_authentication_service,
+        )
         .expect("Error adding Bob and Charly");
 
     // Check that group members agree on a group state.
-    setup.check_group_states(group);
+    setup.check_group_states(group, noop_authentication_service);
 }
 
 // TODO #192, #286, #289: The external join test should go here.
@@ -175,7 +201,7 @@ fn update(ciphersuite: Ciphersuite) {
 
     // Create a group with two members. Includes the process of adding Bob.
     let group_id = setup
-        .create_random_group(2, ciphersuite)
+        .create_random_group(2, ciphersuite, noop_authentication_service)
         .expect("Error while trying to create group.");
     let mut groups = setup.groups.write().expect("An unexpected error occurred.");
     let group = groups
@@ -189,11 +215,17 @@ fn update(ciphersuite: Ciphersuite) {
 
     // Let Alice create an update with a self-generated KeyPackageBundle.
     setup
-        .self_update(ActionType::Commit, group, &alice_id, None)
+        .self_update(
+            ActionType::Commit,
+            group,
+            &alice_id,
+            None,
+            &noop_authentication_service,
+        )
         .expect("Error self-updating.");
 
     // Check that group members agree on a group state.
-    setup.check_group_states(group);
+    setup.check_group_states(group, noop_authentication_service);
 }
 
 // # Remove
@@ -217,7 +249,7 @@ fn remove(ciphersuite: Ciphersuite) {
 
     // Create a group with two members. Includes the process of adding Bob.
     let group_id = setup
-        .create_random_group(2, ciphersuite)
+        .create_random_group(2, ciphersuite, noop_authentication_service)
         .expect("Error while trying to create group.");
     let mut groups = setup.groups.write().expect("An unexpected error occurred.");
     let group = groups
@@ -240,11 +272,12 @@ fn remove(ciphersuite: Ciphersuite) {
             group,
             &alice_id,
             &[LeafNodeIndex::new(bob_index)],
+            noop_authentication_service,
         )
         .expect("Error removing Bob from the group.");
 
     // Check that group members agree on a group state.
-    setup.check_group_states(group);
+    setup.check_group_states(group, noop_authentication_service);
 }
 
 // TODO #141, #284: The external PSK, resumption and re-init tests should go
@@ -274,7 +307,7 @@ fn large_group_lifecycle(ciphersuite: Ciphersuite) {
     // a one-person group and then adding new members in bunches of up to 5,
     // each bunch by a random group member.
     let group_id = setup
-        .create_random_group(number_of_clients, ciphersuite)
+        .create_random_group(number_of_clients, ciphersuite, noop_authentication_service)
         .expect("Error while trying to create group.");
     let mut groups = setup.groups.write().expect("An unexpected error occurred.");
     let group = groups
@@ -287,7 +320,13 @@ fn large_group_lifecycle(ciphersuite: Ciphersuite) {
     // delivered to each member.
     for (_, member_id) in &group_members {
         setup
-            .self_update(ActionType::Commit, group, member_id, None)
+            .self_update(
+                ActionType::Commit,
+                group,
+                member_id,
+                None,
+                &noop_authentication_service,
+            )
             .expect("Error while updating group.")
     }
 
@@ -304,12 +343,13 @@ fn large_group_lifecycle(ciphersuite: Ciphersuite) {
                 group,
                 &remover_id.1,
                 &[LeafNodeIndex::new(target_id.0)],
+                noop_authentication_service,
             )
             .expect("Error while removing group member.");
         group_members = group.members().collect::<Vec<(u32, Vec<u8>)>>();
-        setup.check_group_states(group);
+        setup.check_group_states(group, noop_authentication_service);
     }
 
     // Check that group members agree on a group state.
-    setup.check_group_states(group);
+    setup.check_group_states(group, noop_authentication_service);
 }
