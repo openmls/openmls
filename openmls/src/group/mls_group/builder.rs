@@ -2,7 +2,7 @@ use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, OpenMlsProv
 
 use crate::{
     credentials::CredentialWithKey,
-    extensions::ExternalSendersExtension,
+    extensions::{Extensions, ExternalSendersExtension},
     group::{
         config::CryptoConfig, public_group::errors::PublicGroupBuildError, CoreGroup,
         CoreGroupBuildError, CoreGroupConfig, GroupId, MlsGroupCreateConfig,
@@ -196,6 +196,14 @@ impl MlsGroupBuilder {
         self.mls_group_create_config_builder = self
             .mls_group_create_config_builder
             .external_senders(external_senders);
+        self
+    }
+
+    /// Sets the initial group context extensions
+    pub fn with_group_context_extensions(mut self, extensions: Extensions) -> Self {
+        self.mls_group_create_config_builder = self
+            .mls_group_create_config_builder
+            .with_group_context_extensions(extensions);
         self
     }
 }

@@ -93,6 +93,8 @@ pub struct MlsGroupCreateConfig {
     pub(crate) crypto_config: CryptoConfig,
     /// Configuration parameters relevant to group operation at runtime
     pub(crate) join_config: MlsGroupJoinConfig,
+    /// List of initial group context extensions
+    pub(crate) group_context_extensions: Extensions,
 }
 
 /// Builder struct for an [`MlsGroupJoinConfig`].
@@ -314,6 +316,12 @@ impl MlsGroupCreateConfigBuilder {
     /// Sets the `external_senders` property of the MlsGroupCreateConfig.
     pub fn external_senders(mut self, external_senders: ExternalSendersExtension) -> Self {
         self.config.external_senders = external_senders;
+        self
+    }
+
+    /// Sets the initial group context extensions
+    pub fn with_group_context_extensions(mut self, extensions: Extensions) -> Self {
+        self.config.group_context_extensions = extensions;
         self
     }
 
