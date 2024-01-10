@@ -277,7 +277,7 @@
 //! let mut sasha_group = MlsGroup::new(
 //!     provider,
 //!     &amp;sasha_signer,
-//!     &amp;MlsGroupConfig::default(),
+//!     &amp;MlsGroupCreateConfig::default(),
 //!     sasha_credential_with_key,
 //! )
 //! .expect(&quot;An unexpected error occurred.&quot;);
@@ -313,7 +313,7 @@
 //! // Now Maxim can join the group.
 //!  let mut maxim_group = MlsGroup::new_from_welcome(
 //!     provider,
-//!     &amp;MlsGroupConfig::default(),
+//!     &amp;MlsGroupJoinConfig::default(),
 //!     welcome,
 //!     // The public tree is need and transferred out of band.
 //!     // It is also possible to use the [`RatchetTreeExtension`]

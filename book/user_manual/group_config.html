@@ -174,28 +174,43 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="group-configuration"><a class="header" href="#group-configuration">Group configuration</a></h1>
-<p>The group configuration can be specified by building a <code>MlsGroupConfig</code> object or choosing the default value. The default value contains safe values for all parameters and is suitable for scenarios without particular requirements.</p>
-<p>The following parameters can be set:</p>
+<p>Two very similar structs can help configure groups upon their creation: <code>MlsGroupJoinConfig</code> and <code>MlsGroupCreateConfig</code>.</p>
+<p><code>MlsGroupJoinConfig</code> contains the following runtime-relevant configuration options for an <code>MlsGroup</code> and can be set on a per-client basis when a group is joined.</p>
 <div class="table-wrapper"><table><thead><tr><th>Name</th><th>Type</th><th>Explanation</th></tr></thead><tbody>
 <tr><td><code>wire_format_policy</code></td><td><code>WireFormatPolicy</code></td><td>Defines the wire format policy for outgoing and incoming handshake messages.</td></tr>
 <tr><td><code>padding_size</code></td><td><code>usize</code></td><td>Size of padding in bytes. The default is 0.</td></tr>
 <tr><td><code>max_past_epochs</code></td><td><code>usize</code></td><td>Maximum number of past epochs for which application messages can be decrypted. The default is 0.</td></tr>
 <tr><td><code>number_of_resumption_psks</code></td><td><code>usize</code></td><td>Number of resumption psks to keep. The default is 0.</td></tr>
 <tr><td><code>use_ratchet_tree_extension</code></td><td><code>bool</code></td><td>Flag indicating the Ratchet Tree Extension should be used. The default is <code>false</code>.</td></tr>
-<tr><td><code>required_capabilities</code></td><td><code>RequiredCapabilitiesExtension</code></td><td>Required capabilities (extensions and proposal types).</td></tr>
 <tr><td><code>sender_ratchet_configuration</code></td><td><code>SenderRatchetConfiguration</code></td><td>Sender ratchet configuration.</td></tr>
 </tbody></table>
 </div>
-<p>Example configuration:</p>
-<pre><code class="language-rust no_run noplayground">    let mls_group_config = MlsGroupConfig::builder()
+<p><code>MlsGroupCreateConfig</code> contains an <code>MlsGroupJoinConfig</code>, as well as a few additional parameters that are part of the group state that is agreed-upon by all group members. It can be set at the time of a group's creation and contains the following additional configuration options.</p>
+<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Type</th><th>Explanation</th></tr></thead><tbody>
+<tr><td><code>required_capabilities</code></td><td><code>RequiredCapabilitiesExtension</code></td><td>Required capabilities (extensions and proposal types).</td></tr>
+<tr><td><code>external_senders</code></td><td><code>ExternalSendersExtensions</code></td><td>List credentials of non-group members that are allowed to send proposals to the group.</td></tr>
+</tbody></table>
+</div>
+<p>Both ways of group configurations can be specified by using the struct's builder pattern, or choosing their default values. The default value contains safe values for all parameters and is suitable for scenarios without particular requirements.</p>
+<p>Example join configuration:</p>
+<pre><code class="language-rust no_run noplayground">    let mls_group_config = MlsGroupJoinConfig::builder()
+        .padding_size(100)
+        .sender_ratchet_configuration(SenderRatchetConfiguration::new(
+            10,   // out_of_order_tolerance
+            2000, // maximum_forward_distance
+        ))
+        .use_ratchet_tree_extension(true)
+        .build();</code></pre>
+<p>Example create configuration:</p>
+<pre><code class="language-rust no_run noplayground">    let mls_group_create_config = MlsGroupCreateConfig::builder()
         .padding_size(100)
         .sender_ratchet_configuration(SenderRatchetConfiguration::new(
             10,   // out_of_order_tolerance
             2000, // maximum_forward_distance
         ))
         .external_senders(vec![ExternalSender::new(
-            ds_credential_with_key.signature_key,
-            ds_credential_with_key.credential,
+            ds_credential_with_key.signature_key.clone(),
+            ds_credential_with_key.credential.clone(),
         )])
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .use_ratchet_tree_extension(true)

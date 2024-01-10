@@ -437,6 +437,7 @@
 <a href="#437" id="437">437</a>
 <a href="#438" id="438">438</a>
 <a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! MLS Group
 //!
 //! This module contains [`MlsGroup`] and its submodules.
@@ -458,6 +459,7 @@
 
 <span class="comment">// Private
 </span><span class="kw">mod </span>application;
+<span class="kw">mod </span>builder;
 <span class="kw">mod </span>creation;
 <span class="kw">mod </span>exporting;
 <span class="kw">mod </span>updates;
@@ -587,8 +589,8 @@
 /// more information.
 </span><span class="attr">#[derive(Debug)]
 </span><span class="kw">pub struct </span>MlsGroup {
-    <span class="comment">// The group configuration. See `MlsGroupCongig` for more information.
-    </span>mls_group_config: MlsGroupConfig,
+    <span class="comment">// The group configuration. See [`MlsGroupJoinConfig`] for more information.
+    </span>mls_group_config: MlsGroupJoinConfig,
     <span class="comment">// the internal `CoreGroup` used for lower level operations. See `CoreGroup` for more
     // information.
     </span>group: CoreGroup,
@@ -615,12 +617,12 @@
     <span class="comment">// === Configuration ===
 
     </span><span class="doccomment">/// Returns the configuration.
-    </span><span class="kw">pub fn </span>configuration(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>MlsGroupConfig {
+    </span><span class="kw">pub fn </span>configuration(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>MlsGroupJoinConfig {
         <span class="kw-2">&amp;</span><span class="self">self</span>.mls_group_config
     }
 
     <span class="doccomment">/// Sets the configuration.
-    </span><span class="kw">pub fn </span>set_configuration(<span class="kw-2">&amp;mut </span><span class="self">self</span>, mls_group_config: <span class="kw-2">&amp;</span>MlsGroupConfig) {
+    </span><span class="kw">pub fn </span>set_configuration(<span class="kw-2">&amp;mut </span><span class="self">self</span>, mls_group_config: <span class="kw-2">&amp;</span>MlsGroupJoinConfig) {
         <span class="self">self</span>.mls_group_config = mls_group_config.clone();
 
         <span class="comment">// Since the state of the group might be changed, arm the state flag

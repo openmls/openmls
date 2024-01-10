@@ -208,13 +208,13 @@ part of an update that someone else committed for them. The key material in the 
 <p>OpenMLS can address 3 scenarios:</p>
 <ul>
 <li>
-<p>The Delivery Service cannot guarantee that application messages from one epoch are sent before the beginning of the next epoch. To address this, applications can configure their groups to keep the necessary key material around for past epochs by setting the <code>max_past_epochs</code> field in the <code>MlsGroupConfig</code> to the desired number of epochs.</p>
+<p>The Delivery Service cannot guarantee that application messages from one epoch are sent before the beginning of the next epoch. To address this, applications can configure their groups to keep the necessary key material around for past epochs by setting the <code>max_past_epochs</code> field in the <code>MlsGroupCreateConfig</code> to the desired number of epochs.</p>
 </li>
 <li>
-<p>The Delivery Service cannot guarantee that application messages will arrive in order within the same epoch. To address this, applications can configure the <code>out_of_order_tolerance</code> parameter of the <code>SenderRatchetConfiguration</code>. The configuration can be set as the <code>sender_ratchet_configuration</code> parameter of the <code>MlsGroupConfig</code>.</p>
+<p>The Delivery Service cannot guarantee that application messages will arrive in order within the same epoch. To address this, applications can configure the <code>out_of_order_tolerance</code> parameter of the <code>SenderRatchetConfiguration</code>. The configuration can be set as the <code>sender_ratchet_configuration</code> parameter of the <code>MlsGroupCreateConfig</code>.</p>
 </li>
 <li>
-<p>The Delivery Service cannot guarantee that application messages won't be dropped within the same epoch. To address this, applications can configure the <code>maximum_forward_distance</code> parameter of the <code>SenderRatchetConfiguration</code>. The configuration can be set as the <code>sender_ratchet_configuration</code> parameter of the <code>MlsGroupConfig</code>.</p>
+<p>The Delivery Service cannot guarantee that application messages won't be dropped within the same epoch. To address this, applications can configure the <code>maximum_forward_distance</code> parameter of the <code>SenderRatchetConfiguration</code>. The configuration can be set as the <code>sender_ratchet_configuration</code> parameter of the <code>MlsGroupCreateConfig</code>.</p>
 </li>
 </ul>
 

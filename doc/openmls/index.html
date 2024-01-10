@@ -143,7 +143,7 @@ up to parties and have them create a group.</p>
 </span><span class="kw">let </span><span class="kw-2">mut </span>sasha_group = MlsGroup::new(
     provider,
     <span class="kw-2">&amp;</span>sasha_signer,
-    <span class="kw-2">&amp;</span>MlsGroupConfig::default(),
+    <span class="kw-2">&amp;</span>MlsGroupCreateConfig::default(),
     sasha_credential_with_key,
 )
 .expect(<span class="string">&quot;An unexpected error occurred.&quot;</span>);
@@ -179,7 +179,7 @@ up to parties and have them create a group.</p>
 <span class="comment">// Now Maxim can join the group.
  </span><span class="kw">let </span><span class="kw-2">mut </span>maxim_group = MlsGroup::new_from_welcome(
     provider,
-    <span class="kw-2">&amp;</span>MlsGroupConfig::default(),
+    <span class="kw-2">&amp;</span>MlsGroupJoinConfig::default(),
     welcome,
     <span class="comment">// The public tree is need and transferred out of band.
     // It is also possible to use the [`RatchetTreeExtension`]

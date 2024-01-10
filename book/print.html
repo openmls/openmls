@@ -296,34 +296,49 @@ OpenMLS provides a simple implementation of <a href="https://github.com/openmls/
 <p>This will also store the private key for the key package in the key store.</p>
 <p>All functions and structs related to key packages can be found in the <a href="https://docs.rs/crate/openmls/latest/key_packages/index.html"><code>key_packages</code></a> module.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="group-configuration"><a class="header" href="#group-configuration">Group configuration</a></h1>
-<p>The group configuration can be specified by building a <code>MlsGroupConfig</code> object or choosing the default value. The default value contains safe values for all parameters and is suitable for scenarios without particular requirements.</p>
-<p>The following parameters can be set:</p>
+<p>Two very similar structs can help configure groups upon their creation: <code>MlsGroupJoinConfig</code> and <code>MlsGroupCreateConfig</code>.</p>
+<p><code>MlsGroupJoinConfig</code> contains the following runtime-relevant configuration options for an <code>MlsGroup</code> and can be set on a per-client basis when a group is joined.</p>
 <div class="table-wrapper"><table><thead><tr><th>Name</th><th>Type</th><th>Explanation</th></tr></thead><tbody>
 <tr><td><code>wire_format_policy</code></td><td><code>WireFormatPolicy</code></td><td>Defines the wire format policy for outgoing and incoming handshake messages.</td></tr>
 <tr><td><code>padding_size</code></td><td><code>usize</code></td><td>Size of padding in bytes. The default is 0.</td></tr>
 <tr><td><code>max_past_epochs</code></td><td><code>usize</code></td><td>Maximum number of past epochs for which application messages can be decrypted. The default is 0.</td></tr>
 <tr><td><code>number_of_resumption_psks</code></td><td><code>usize</code></td><td>Number of resumption psks to keep. The default is 0.</td></tr>
 <tr><td><code>use_ratchet_tree_extension</code></td><td><code>bool</code></td><td>Flag indicating the Ratchet Tree Extension should be used. The default is <code>false</code>.</td></tr>
-<tr><td><code>required_capabilities</code></td><td><code>RequiredCapabilitiesExtension</code></td><td>Required capabilities (extensions and proposal types).</td></tr>
 <tr><td><code>sender_ratchet_configuration</code></td><td><code>SenderRatchetConfiguration</code></td><td>Sender ratchet configuration.</td></tr>
 </tbody></table>
 </div>
-<p>Example configuration:</p>
-<pre><code class="language-rust no_run noplayground">    let mls_group_config = MlsGroupConfig::builder()
+<p><code>MlsGroupCreateConfig</code> contains an <code>MlsGroupJoinConfig</code>, as well as a few additional parameters that are part of the group state that is agreed-upon by all group members. It can be set at the time of a group's creation and contains the following additional configuration options.</p>
+<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Type</th><th>Explanation</th></tr></thead><tbody>
+<tr><td><code>required_capabilities</code></td><td><code>RequiredCapabilitiesExtension</code></td><td>Required capabilities (extensions and proposal types).</td></tr>
+<tr><td><code>external_senders</code></td><td><code>ExternalSendersExtensions</code></td><td>List credentials of non-group members that are allowed to send proposals to the group.</td></tr>
+</tbody></table>
+</div>
+<p>Both ways of group configurations can be specified by using the struct's builder pattern, or choosing their default values. The default value contains safe values for all parameters and is suitable for scenarios without particular requirements.</p>
+<p>Example join configuration:</p>
+<pre><code class="language-rust no_run noplayground">    let mls_group_config = MlsGroupJoinConfig::builder()
+        .padding_size(100)
+        .sender_ratchet_configuration(SenderRatchetConfiguration::new(
+            10,   // out_of_order_tolerance
+            2000, // maximum_forward_distance
+        ))
+        .use_ratchet_tree_extension(true)
+        .build();</code></pre>
+<p>Example create configuration:</p>
+<pre><code class="language-rust no_run noplayground">    let mls_group_create_config = MlsGroupCreateConfig::builder()
         .padding_size(100)
         .sender_ratchet_configuration(SenderRatchetConfiguration::new(
             10,   // out_of_order_tolerance
             2000, // maximum_forward_distance
         ))
         .external_senders(vec![ExternalSender::new(
-            ds_credential_with_key.signature_key,
-            ds_credential_with_key.credential,
+            ds_credential_with_key.signature_key.clone(),
+            ds_credential_with_key.credential.clone(),
         )])
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .use_ratchet_tree_extension(true)
         .build();</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="creating-groups"><a class="header" href="#creating-groups">Creating groups</a></h1>
-<p>Before a group can be created, a group configuration (<code>MlsGroupConfiguration</code>) needs to be defined. The default values of configuration parameters are picked for safety. However, check all parameters carefully to ascertain if they match your implementation's requirements. See <a href="user_manual/group_config.html">Group configuration</a> for more details.</p>
+<p>There are two ways to create a group: Either by building an <code>MlsGroup</code> directly, or by using an <code>MlsGroupCreateConfig</code>. The former is slightly simpler, while the latter allows the creating of multiple groups using the same configuration. See <a href="user_manual/./group_config.html">Group configuration</a> for more details on group parameters.</p>
 <p>In addition to the group configuration, the client should define all supported and required extensions for the group. The negotiation mechanism for extension in MLS consists in setting an initial list of extensions at group creation time and choosing key packages of subsequent new members accordingly.</p>
 <p>In practice, the supported and required extensions are set by adding them to the initial <code>KeyPackage</code> of the creator:</p>
 <pre><code class="language-rust no_run noplayground">    // Create the key package
@@ -336,14 +351,29 @@ OpenMLS provides a simple implementation of <a href="https://github.com/openmls/
             credential_with_key,
         )
         .unwrap()</code></pre>
-<p>After that, the group can be created:</p>
+<p>After that, the group can be created either using a config:</p>
 <pre><code class="language-rust no_run noplayground">    let mut alice_group = MlsGroup::new(
         provider,
         &amp;alice_signature_keys,
-        &amp;mls_group_config,
+        &amp;mls_group_create_config,
         alice_credential.clone(),
     )
     .expect(&quot;An unexpected error occurred.&quot;);</code></pre>
+<p>... or using the builder pattern:</p>
+<pre><code class="language-rust no_run noplayground">        let mut alice_group = MlsGroup::builder()
+            .padding_size(100)
+            .sender_ratchet_configuration(SenderRatchetConfiguration::new(
+                10,   // out_of_order_tolerance
+                2000, // maximum_forward_distance
+            ))
+            .external_senders(vec![ExternalSender::new(
+                ds_credential_with_key.signature_key,
+                ds_credential_with_key.credential,
+            )])
+            .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+            .use_ratchet_tree_extension(true)
+            .build(provider, &amp;alice_signature_keys, alice_credential.clone())
+            .expect(&quot;An unexpected error occurred.&quot;);</code></pre>
 <p>Note: Every group is assigned a random group ID during creation. The group ID cannot be changed and remains immutable throughout the group's lifetime. Choosing it randomly makes sure that the group ID doesn't collide with any other group ID in the same system.</p>
 <p>If someone else already gave you a group ID, e.g., a provider server, you can also create a group using a specific group ID:</p>
 <pre><code class="language-rust no_run noplayground">        // Some specific group ID generated by someone else.
@@ -352,14 +382,13 @@ OpenMLS provides a simple implementation of <a href="https://github.com/openmls/
         let mut alice_group = MlsGroup::new_with_group_id(
             provider,
             &amp;alice_signature_keys,
-            &amp;mls_group_config,
+            &amp;mls_group_create_config,
             group_id,
             alice_credential.clone(),
         )
         .expect(&quot;An unexpected error occurred.&quot;);</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="join-a-group-from-a-welcome-message"><a class="header" href="#join-a-group-from-a-welcome-message">Join a group from a Welcome message</a></h1>
-<p>To join a group from a <code>Welcome</code> message, a new <code>MlsGroup</code> can be instantiated directly from the <code>Welcome</code> message.
-If the group configuration does not use the ratchet tree extension, the ratchet tree needs to be provided.</p>
+<p>To join a group from a <code>Welcome</code> message, a new <code>MlsGroup</code> can be instantiated directly from the <code>Welcome</code> message and an <code>MlsGroupJoinConfig</code> (see <a href="user_manual/./group_config.html">Group configuration</a> for more details).  If the group configuration does not use the ratchet tree extension, the ratchet tree needs to be provided.</p>
 <pre><code class="language-rust no_run noplayground">    let mut bob_group = MlsGroup::new_from_welcome(
         provider,
         &amp;mls_group_config,
@@ -416,7 +445,7 @@ Note that in this scenario it is up to the application to define a proper author
 
             let bob_group = MlsGroup::new_from_welcome(
                 provider,
-                &amp;mls_group_config,
+                mls_group_create_config.join_config(),
                 welcome
                     .unwrap()
                     .into_welcome()
@@ -1148,13 +1177,13 @@ part of an update that someone else committed for them. The key material in the 
 <p>OpenMLS can address 3 scenarios:</p>
 <ul>
 <li>
-<p>The Delivery Service cannot guarantee that application messages from one epoch are sent before the beginning of the next epoch. To address this, applications can configure their groups to keep the necessary key material around for past epochs by setting the <code>max_past_epochs</code> field in the <code>MlsGroupConfig</code> to the desired number of epochs.</p>
+<p>The Delivery Service cannot guarantee that application messages from one epoch are sent before the beginning of the next epoch. To address this, applications can configure their groups to keep the necessary key material around for past epochs by setting the <code>max_past_epochs</code> field in the <code>MlsGroupCreateConfig</code> to the desired number of epochs.</p>
 </li>
 <li>
-<p>The Delivery Service cannot guarantee that application messages will arrive in order within the same epoch. To address this, applications can configure the <code>out_of_order_tolerance</code> parameter of the <code>SenderRatchetConfiguration</code>. The configuration can be set as the <code>sender_ratchet_configuration</code> parameter of the <code>MlsGroupConfig</code>.</p>
+<p>The Delivery Service cannot guarantee that application messages will arrive in order within the same epoch. To address this, applications can configure the <code>out_of_order_tolerance</code> parameter of the <code>SenderRatchetConfiguration</code>. The configuration can be set as the <code>sender_ratchet_configuration</code> parameter of the <code>MlsGroupCreateConfig</code>.</p>
 </li>
 <li>
-<p>The Delivery Service cannot guarantee that application messages won't be dropped within the same epoch. To address this, applications can configure the <code>maximum_forward_distance</code> parameter of the <code>SenderRatchetConfiguration</code>. The configuration can be set as the <code>sender_ratchet_configuration</code> parameter of the <code>MlsGroupConfig</code>.</p>
+<p>The Delivery Service cannot guarantee that application messages won't be dropped within the same epoch. To address this, applications can configure the <code>maximum_forward_distance</code> parameter of the <code>SenderRatchetConfiguration</code>. The configuration can be set as the <code>sender_ratchet_configuration</code> parameter of the <code>MlsGroupCreateConfig</code>.</p>
 </li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="release-management"><a class="header" href="#release-management">Release management</a></h1>
