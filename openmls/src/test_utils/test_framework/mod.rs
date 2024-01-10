@@ -473,7 +473,7 @@ impl MlsGroupTestSetup {
             group_id: group_id.clone(),
             members: member_ids,
             ciphersuite,
-            group_config: self.default_mgp.mls_group_config.clone(),
+            group_config: self.default_mgp.join_config.clone(),
             public_tree,
             exporter_secret,
         };

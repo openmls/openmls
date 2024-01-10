@@ -120,7 +120,7 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
     let mut charlie_group = {
         MlsGroup::new_from_welcome(
             &charlie.provider,
-            mls_group_create_config.mls_group_config(),
+            mls_group_create_config.join_config(),
             welcome.into_welcome().unwrap(),
             None,
         )

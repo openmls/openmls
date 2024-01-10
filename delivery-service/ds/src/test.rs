@@ -317,7 +317,7 @@ async fn test_group() {
 
     let mut group_on_client2 = MlsGroup::new_from_welcome(
         crypto,
-        mls_group_create_config.mls_group_config(),
+        mls_group_create_config.join_config(),
         welcome_msg
             .into_welcome()
             .expect("Unexpected message type."),

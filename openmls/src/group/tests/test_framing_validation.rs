@@ -90,7 +90,7 @@ fn validation_test_setup(
 
     let bob_group = MlsGroup::new_from_welcome(
         provider,
-        mls_group_create_config.mls_group_config(),
+        mls_group_create_config.join_config(),
         welcome.into_welcome().expect("Unexpected message type."),
         Some(alice_group.export_ratchet_tree().into()),
     )

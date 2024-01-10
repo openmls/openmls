@@ -60,7 +60,7 @@ impl MlsGroupBuilder {
         // TODO #751
         let group_config = CoreGroupConfig {
             add_ratchet_tree_extension: mls_group_create_config
-                .mls_group_config
+                .join_config
                 .use_ratchet_tree_extension,
         };
 
@@ -72,7 +72,7 @@ impl MlsGroupBuilder {
         .with_config(group_config)
         .with_required_capabilities(mls_group_create_config.required_capabilities.clone())
         .with_external_senders(mls_group_create_config.external_senders.clone())
-        .with_max_past_epoch_secrets(mls_group_create_config.mls_group_config.max_past_epochs)
+        .with_max_past_epoch_secrets(mls_group_create_config.join_config.max_past_epochs)
         .with_lifetime(*mls_group_create_config.lifetime())
         .build(provider, signer)
         .map_err(|e| match e {
@@ -102,7 +102,7 @@ impl MlsGroupBuilder {
             .add(group.context().epoch(), resumption_psk.clone());
 
         let mls_group = MlsGroup {
-            mls_group_config: mls_group_create_config.mls_group_config.clone(),
+            mls_group_config: mls_group_create_config.join_config.clone(),
             group,
             proposal_store: ProposalStore::new(),
             own_leaf_nodes: vec![],

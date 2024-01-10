@@ -95,7 +95,7 @@ fn validation_test_setup(
 
     let bob_group = MlsGroup::new_from_welcome(
         provider,
-        mls_group_create_config.mls_group_config(),
+        mls_group_create_config.join_config(),
         welcome.clone(),
         Some(alice_group.export_ratchet_tree().into()),
     )
@@ -103,7 +103,7 @@ fn validation_test_setup(
 
     let charlie_group = MlsGroup::new_from_welcome(
         provider,
-        mls_group_create_config.mls_group_config(),
+        mls_group_create_config.join_config(),
         welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
