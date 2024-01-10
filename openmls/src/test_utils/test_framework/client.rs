@@ -134,10 +134,11 @@ impl Client {
     /// Have the client process the given messages. Returns an error if an error
     /// occurs during message processing or if no group exists for one of the
     /// messages.
-    pub fn receive_messages_for_group(
+    pub fn receive_messages_for_group<AS: Fn(&Credential) -> bool>(
         &self,
         message: &ProtocolMessage,
         sender_id: &[u8],
+        authentication_service: &AS,
     ) -> Result<(), ClientError> {
         let mut group_states = self.groups.write().expect("An unexpected error occurred.");
         let group_id = message.group_id();
@@ -163,6 +164,14 @@ impl Client {
                     group_state.store_pending_proposal(*staged_proposal);
                 }
                 ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
+                    for credential in staged_commit.credentials_to_verify() {
+                        if !authentication_service(credential) {
+                            println!(
+                                "authentication service callback denied credential {credential:?}"
+                            );
+                            return Err(ClientError::NoMatchingCredential);
+                        }
+                    }
                     group_state.merge_staged_commit(&self.crypto, *staged_commit)?;
                 }
             }
