@@ -92,4 +92,9 @@ pub enum InvalidExtensionError {
     /// The specified extension could not be found.
     #[error("The specified extension could not be found.")]
     NotFound,
+    /// The provided extension list contains an extension that is not allowed in group contexts
+    #[error(
+        "The provided extension list contains an extension that is not allowed in group contexts."
+    )]
+    IllegalInGroupContext,
 }

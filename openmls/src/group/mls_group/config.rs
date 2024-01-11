@@ -29,7 +29,7 @@
 
 use super::*;
 use crate::{
-    group::config::CryptoConfig, key_packages::Lifetime,
+    extensions::errors::InvalidExtensionError, group::config::CryptoConfig, key_packages::Lifetime,
     tree::sender_ratchet::SenderRatchetConfiguration,
 };
 use serde::{Deserialize, Serialize};
@@ -93,6 +93,8 @@ pub struct MlsGroupCreateConfig {
     pub(crate) crypto_config: CryptoConfig,
     /// Configuration parameters relevant to group operation at runtime
     pub(crate) join_config: MlsGroupJoinConfig,
+    /// List of initial group context extensions
+    pub(crate) group_context_extensions: Extensions,
 }
 
 /// Builder struct for an [`MlsGroupJoinConfig`].
@@ -200,6 +202,13 @@ impl MlsGroupCreateConfig {
         &self.external_senders
     }
 
+    /// Returns the [`Extensions`] set as the initial group context.
+    /// This does not contain the initial group context extensions
+    /// added from builder calls to `external_senders` or `required_capabilities`.
+    pub fn group_context_extensions(&self) -> &Extensions {
+        &self.group_context_extensions
+    }
+
     /// Returns the [`MlsGroupCreateConfig`] lifetime configuration.
     pub fn lifetime(&self) -> &Lifetime {
         &self.lifetime
@@ -228,7 +237,7 @@ impl MlsGroupCreateConfig {
 }
 
 /// Builder for an [`MlsGroupCreateConfig`].
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct MlsGroupCreateConfigBuilder {
     config: MlsGroupCreateConfig,
 }
@@ -315,6 +324,25 @@ impl MlsGroupCreateConfigBuilder {
     pub fn external_senders(mut self, external_senders: ExternalSendersExtension) -> Self {
         self.config.external_senders = external_senders;
         self
+    }
+
+    /// Sets initial group context extensions. Note that RequiredCapabilities
+    /// extensions will be overwritten, and should be set using a call to
+    /// `required_capabilities`. If `ExternalSenders` extensions are provided
+    /// both in this call, and a call to `external_senders`, only the one from
+    /// the call to `external_senders` will be included.
+    pub fn with_group_context_extensions(
+        mut self,
+        extensions: Extensions,
+    ) -> Result<Self, InvalidExtensionError> {
+        let is_valid_in_group_context = extensions.application_id().is_none()
+            && extensions.ratchet_tree().is_none()
+            && extensions.external_pub().is_none();
+        if !is_valid_in_group_context {
+            return Err(InvalidExtensionError::IllegalInGroupContext);
+        }
+        self.config.group_context_extensions = extensions;
+        Ok(self)
     }
 
     /// Finalizes the builder and retursn an `[MlsGroupCreateConfig`].
