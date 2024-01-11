@@ -51,9 +51,8 @@ pub use last_resort::LastResortExtension;
 pub use ratchet_tree_extension::RatchetTreeExtension;
 pub use required_capabilities::RequiredCapabilitiesExtension;
 
-pub use protected_metadata::ProtectedMetadata;
-
 pub use metadata::Metadata;
+pub use protected_metadata::ProtectedMetadata;
 
 #[cfg(test)]
 mod test_extensions;
@@ -103,6 +102,7 @@ pub enum ExtensionType {
     /// extension
     ProtectedMetadata,
 
+    /// Metadata extension for policies and other metadata. GroupContext Extension.
     Metadata,
 
     /// A currently unknown extension type.
@@ -221,6 +221,7 @@ pub enum Extension {
     /// A [`ProtectedMetadata`] extension
     ProtectedMetadata(ProtectedMetadata),
 
+    // A [`Metadata`] extension
     Metadata(Metadata),
 
     /// A currently unknown extension.
