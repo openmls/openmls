@@ -101,7 +101,7 @@ impl<'a> PublicGroupDiff<'a> {
         // After we've processed the path, we can update the group context s.t.
         // the updated group context is used for path secret encryption. Note
         // that we have not yet updated the confirmed transcript hash.
-        self.update_group_context(provider.crypto())?;
+        self.update_group_context(provider.crypto(), None)?;
 
         let serialized_group_context = self
             .group_context()

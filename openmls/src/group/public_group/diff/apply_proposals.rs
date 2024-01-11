@@ -18,6 +18,7 @@ pub(crate) struct ApplyProposalsValues {
     pub(crate) invitation_list: Vec<(LeafNodeIndex, AddProposal)>,
     pub(crate) presharedkeys: Vec<PreSharedKeyId>,
     pub(crate) external_init_proposal_option: Option<ExternalInitProposal>,
+    pub(crate) extensions: Option<Extensions>,
 }
 
 impl ApplyProposalsValues {
@@ -140,6 +141,18 @@ impl<'a> PublicGroupDiff<'a> {
             })
             .collect();
 
+        // TODO validation: - only up to one of these is allowed
+        //                  - check that all members support the extensions
+        // apply group context extension proposal
+        let extensions = proposal_queue
+            .filtered_by_type(ProposalType::GroupContextExtensions)
+            .take(1)
+            .map(|queued_proposal| match queued_proposal.proposal() {
+                Proposal::GroupContextExtensions(extensions) => extensions.extensions().clone(),
+                _ => unreachable!(),
+            })
+            .next();
+
         let proposals_require_path = proposal_queue
             .queued_proposals()
             .any(|p| p.proposal().is_path_required());
@@ -159,6 +172,7 @@ impl<'a> PublicGroupDiff<'a> {
             invitation_list,
             presharedkeys,
             external_init_proposal_option,
+            extensions,
         })
     }
 }

@@ -903,7 +903,7 @@ impl CoreGroup {
             } else {
                 // If path is not needed, update the group context and return
                 // empty path processing results
-                diff.update_group_context(provider.crypto())?;
+                diff.update_group_context(provider.crypto(), apply_proposals_values.extensions.clone())?;
                 PathComputationResult::default()
             };
 

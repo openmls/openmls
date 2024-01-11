@@ -1002,6 +1002,49 @@ fn remove_prosposal_by_ref(ciphersuite: Ciphersuite, provider: &impl OpenMlsProv
         _ => unreachable!("Expected a StagedCommit."),
     }
 }
+//
+// Test that the builder pattern accurately configures the new group.
+#[apply(ciphersuites_and_providers)]
+fn group_context_extensions_proposal(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+    let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
+        setup_client("Alice", ciphersuite, provider);
+
+    // === Alice creates a group ===
+    let mut alice_group = MlsGroup::builder()
+        .build(provider, &alice_signer, alice_credential_with_key)
+        .expect("error creating group using builder");
+
+    let required_capabilities = alice_group
+        .group()
+        .group_context_extensions()
+        .required_capabilities()
+        .expect("couldn't get required_capabilities");
+
+    // no required extensions
+    assert!(required_capabilities.extension_types().is_empty());
+
+    let new_extensions = Extensions::from_vec(vec![Extension::RequiredCapabilities(
+        RequiredCapabilitiesExtension::new(&[ExtensionType::RequiredCapabilities], &[], &[]),
+    )])
+    .expect("failed to build new extensions list");
+
+    let _ = alice_group
+        .propose_group_context_extensions(provider, new_extensions, &alice_signer)
+        .expect("failed to build group context extensions proposal");
+
+    alice_group
+        .commit_to_pending_proposals(provider, &alice_signer)
+        .expect("failed to commit to pending proposals");
+
+    let required_capabilities = alice_group
+        .group()
+        .group_context_extensions()
+        .required_capabilities()
+        .expect("couldn't get required_capabilities");
+
+    // has required_capabilities as required capability
+    assert!(required_capabilities.extension_types() == &[ExtensionType::RequiredCapabilities]);
+}
 
 // Test that the builder pattern accurately configures the new group.
 #[apply(ciphersuites_and_providers)]
