@@ -29,7 +29,7 @@
 
 use super::*;
 use crate::{
-    group::config::CryptoConfig, key_packages::Lifetime,
+    extensions::errors::InvalidExtensionError, group::config::CryptoConfig, key_packages::Lifetime,
     tree::sender_ratchet::SenderRatchetConfiguration,
 };
 use serde::{Deserialize, Serialize};
@@ -326,10 +326,23 @@ impl MlsGroupCreateConfigBuilder {
         self
     }
 
-    /// Sets the initial group context extensions
-    pub fn with_group_context_extensions(mut self, extensions: Extensions) -> Self {
+    /// Sets initial group context extensions. Note that RequiredCapabilities
+    /// extensions will be overwritten, and should be set using a call to
+    /// `required_capabilities`. If `ExternalSenders` extensions are provided
+    /// both in this call, and a call to `external_senders`, only the one from
+    /// the call to `external_senders` will be included.
+    pub fn with_group_context_extensions(
+        mut self,
+        extensions: Extensions,
+    ) -> Result<Self, InvalidExtensionError> {
+        let is_valid_in_group_context = extensions.application_id().is_none()
+            && extensions.ratchet_tree().is_none()
+            && extensions.external_pub().is_none();
+        if !is_valid_in_group_context {
+            return Err(InvalidExtensionError::IllegalInGroupContext);
+        }
         self.config.group_context_extensions = extensions;
-        self
+        Ok(self)
     }
 
     /// Finalizes the builder and retursn an `[MlsGroupCreateConfig`].

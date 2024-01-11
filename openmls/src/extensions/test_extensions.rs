@@ -262,6 +262,7 @@ fn with_group_context_extensions(ciphersuite: Ciphersuite, provider: &impl OpenM
 
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .with_group_context_extensions(extensions)
+        .expect("failed to apply extensions at group config builder")
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 

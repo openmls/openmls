@@ -2,7 +2,7 @@ use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, OpenMlsProv
 
 use crate::{
     credentials::CredentialWithKey,
-    extensions::{Extensions, ExternalSendersExtension},
+    extensions::{errors::InvalidExtensionError, Extensions, ExternalSendersExtension},
     group::{
         config::CryptoConfig, public_group::errors::PublicGroupBuildError, CoreGroup,
         CoreGroupBuildError, CoreGroupConfig, GroupId, MlsGroupCreateConfig,
@@ -72,7 +72,7 @@ impl MlsGroupBuilder {
         .with_config(group_config)
         .with_required_capabilities(mls_group_create_config.required_capabilities.clone())
         .with_external_senders(mls_group_create_config.external_senders.clone())
-        .with_group_context_extensions(mls_group_create_config.group_context_extensions.clone())
+        .with_group_context_extensions(mls_group_create_config.group_context_extensions.clone())?
         .with_max_past_epoch_secrets(mls_group_create_config.join_config.max_past_epochs)
         .with_lifetime(*mls_group_create_config.lifetime())
         .build(provider, signer)
@@ -201,10 +201,13 @@ impl MlsGroupBuilder {
     }
 
     /// Sets the initial group context extensions
-    pub fn with_group_context_extensions(mut self, extensions: Extensions) -> Self {
+    pub fn with_group_context_extensions(
+        mut self,
+        extensions: Extensions,
+    ) -> Result<Self, InvalidExtensionError> {
         self.mls_group_create_config_builder = self
             .mls_group_create_config_builder
-            .with_group_context_extensions(extensions);
-        self
+            .with_group_context_extensions(extensions)?;
+        Ok(self)
     }
 }
