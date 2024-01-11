@@ -29,3 +29,11 @@ If someone else already gave you a group ID, e.g., a provider server, you can al
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code.rs:alice_create_group_with_group_id}}
 ```
+
+The Builder provides methods for setting required capabilities and external senders.
+The information passed into these lands in the group context, in the form of extensions.
+Should the user want to add further extensions, they can use the `with_group_context_extensions` method:
+
+```rust,no_run,noplayground
+{{#include ../../../openmls/tests/book_code.rs:alice_create_group_with_builder_with_extensions}}
+```
