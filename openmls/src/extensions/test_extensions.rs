@@ -13,7 +13,8 @@ use crate::{
     group::{config::CryptoConfig, errors::*, *},
     key_packages::*,
     messages::proposals::ProposalType,
-    prelude::Capabilities,
+    prelude::{Capabilities, RatchetTreeIn},
+    prelude_test::HpkePublicKey,
     schedule::psk::store::ResumptionPskStore,
     test_utils::*,
     versions::ProtocolVersion,
@@ -282,6 +283,88 @@ fn with_group_context_extensions(ciphersuite: Ciphersuite, provider: &impl OpenM
         .find_by_type(ExtensionType::Unknown(0xf023))
         .expect("failed to get test extensions from group context");
     assert_eq!(found_test_extension, &test_extension);
+}
+
+#[apply(ciphersuites_and_providers)]
+fn wrong_extension_with_group_context_extensions(
+    ciphersuite: Ciphersuite,
+    provider: &impl OpenMlsProvider,
+) {
+    // Extension types that are known to not be allowed here:
+    // - application id
+    // - external pub
+    // - ratchet tree
+
+    let alice_credential_with_key_and_signer = tests::utils::generate_credential_with_key(
+        "Alice".into(),
+        ciphersuite.signature_algorithm(),
+        provider,
+    );
+
+    let crypto_config = CryptoConfig::with_default_version(ciphersuite);
+
+    // create an extension that we can check for later
+    let test_extension = Extension::ApplicationId(ApplicationIdExtension::new(&[0xca, 0xfe]));
+    let extensions = Extensions::single(test_extension.clone());
+
+    let err = MlsGroup::builder()
+        .with_group_context_extensions(extensions.clone())
+        .expect_err("builder accepted non-group-context extension");
+
+    assert_eq!(err, InvalidExtensionError::IllegalInGroupContext);
+    let err = PublicGroup::builder(
+        GroupId::from_slice(&[0xbe, 0xef]),
+        crypto_config,
+        alice_credential_with_key_and_signer
+            .credential_with_key
+            .clone(),
+    )
+    .with_group_context_extensions(extensions)
+    .expect_err("builder accepted non-group-context extension");
+
+    assert_eq!(err, InvalidExtensionError::IllegalInGroupContext);
+    // create an extension that we can check for later
+    let test_extension =
+        Extension::ExternalPub(ExternalPubExtension::new(HpkePublicKey::new(vec![])));
+    let extensions = Extensions::single(test_extension.clone());
+
+    let err = MlsGroup::builder()
+        .with_group_context_extensions(extensions.clone())
+        .expect_err("builder accepted non-group-context extension");
+    assert_eq!(err, InvalidExtensionError::IllegalInGroupContext);
+
+    let err = PublicGroup::builder(
+        GroupId::from_slice(&[0xbe, 0xef]),
+        crypto_config,
+        alice_credential_with_key_and_signer
+            .credential_with_key
+            .clone(),
+    )
+    .with_group_context_extensions(extensions)
+    .expect_err("builder accepted non-group-context extension");
+    assert_eq!(err, InvalidExtensionError::IllegalInGroupContext);
+
+    // create an extension that we can check for later
+    let test_extension = Extension::RatchetTree(RatchetTreeExtension::new(
+        RatchetTreeIn::from_nodes(vec![]).into(),
+    ));
+    let extensions = Extensions::single(test_extension.clone());
+
+    let err = MlsGroup::builder()
+        .with_group_context_extensions(extensions.clone())
+        .expect_err("builder accepted non-group-context extension");
+    assert_eq!(err, InvalidExtensionError::IllegalInGroupContext);
+
+    let err = PublicGroup::builder(
+        GroupId::from_slice(&[0xbe, 0xef]),
+        crypto_config,
+        alice_credential_with_key_and_signer
+            .credential_with_key
+            .clone(),
+    )
+    .with_group_context_extensions(extensions)
+    .expect_err("builder accepted non-group-context extension");
+    assert_eq!(err, InvalidExtensionError::IllegalInGroupContext);
 }
 
 #[apply(ciphersuites_and_providers)]

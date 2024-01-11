@@ -211,15 +211,9 @@ impl CoreGroupBuilder {
         mut self,
         extensions: Extensions,
     ) -> Result<Self, InvalidExtensionError> {
-        let is_valid_in_group_context = extensions.application_id().is_none()
-            && extensions.ratchet_tree().is_none()
-            && extensions.external_pub().is_none();
-        if !is_valid_in_group_context {
-            return Err(InvalidExtensionError::IllegalInGroupContext);
-        }
         self.public_group_builder = self
             .public_group_builder
-            .with_group_context_extensions(extensions);
+            .with_group_context_extensions(extensions)?;
         Ok(self)
     }
 

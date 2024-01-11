@@ -5,8 +5,8 @@ use crate::{
     credentials::CredentialWithKey,
     error::LibraryError,
     extensions::{
-        errors::ExtensionError, Extension, Extensions, ExternalSendersExtension,
-        RequiredCapabilitiesExtension,
+        errors::{ExtensionError, InvalidExtensionError},
+        Extension, Extensions, ExternalSendersExtension, RequiredCapabilitiesExtension,
     },
     group::{config::CryptoConfig, GroupContext, GroupId},
     key_packages::Lifetime,
@@ -18,6 +18,7 @@ use crate::{
     },
 };
 
+#[derive(Debug)]
 pub(crate) struct TempBuilderPG1 {
     group_id: GroupId,
     crypto_config: CryptoConfig,
@@ -53,9 +54,18 @@ impl TempBuilderPG1 {
         self
     }
 
-    pub(crate) fn with_group_context_extensions(mut self, extensions: Extensions) -> Self {
+    pub(crate) fn with_group_context_extensions(
+        mut self,
+        extensions: Extensions,
+    ) -> Result<Self, InvalidExtensionError> {
+        let is_valid_in_group_context = extensions.application_id().is_none()
+            && extensions.ratchet_tree().is_none()
+            && extensions.external_pub().is_none();
+        if !is_valid_in_group_context {
+            return Err(InvalidExtensionError::IllegalInGroupContext);
+        }
         self.group_context_extensions = Some(extensions);
-        self
+        Ok(self)
     }
 
     pub(crate) fn get_secrets(

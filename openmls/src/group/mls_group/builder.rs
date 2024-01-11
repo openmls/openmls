@@ -13,7 +13,7 @@ use crate::{
 
 use super::{InnerState, MlsGroup, MlsGroupState};
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct MlsGroupBuilder {
     group_id: Option<GroupId>,
     mls_group_create_config_builder: MlsGroupCreateConfigBuilder,

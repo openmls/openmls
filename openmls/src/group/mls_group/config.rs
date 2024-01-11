@@ -237,7 +237,7 @@ impl MlsGroupCreateConfig {
 }
 
 /// Builder for an [`MlsGroupCreateConfig`].
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct MlsGroupCreateConfigBuilder {
     config: MlsGroupCreateConfig,
 }
