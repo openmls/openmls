@@ -358,7 +358,7 @@
     </span>UnsupportedExtensionType,
     <span class="doccomment">/// Invalid extensions set in configuration
     </span><span class="attr">#[error(<span class="string">&quot;Invalid extensions set in configuration&quot;</span>)]
-    </span>InvalidExtensions(InvalidExtensionError),
+    </span>InvalidExtensions(<span class="attr">#[from] </span>InvalidExtensionError),
 }
 
 <span class="doccomment">/// EmptyInput error

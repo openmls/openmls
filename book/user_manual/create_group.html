@@ -223,6 +223,25 @@
             alice_credential.clone(),
         )
         .expect(&quot;An unexpected error occurred.&quot;);</code></pre>
+<p>The Builder provides methods for setting required capabilities and external senders.
+The information passed into these lands in the group context, in the form of extensions.
+Should the user want to add further extensions, they can use the <code>with_group_context_extensions</code> method:</p>
+<pre><code class="language-rust no_run noplayground">        // we are adding an external senders list as an example.
+        let extensions =
+            Extensions::from_vec(vec![Extension::ExternalSenders(external_senders_list)])
+                .expect(&quot;failed to create extensions list&quot;);
+
+        let mut alice_group = MlsGroup::builder()
+            .padding_size(100)
+            .sender_ratchet_configuration(SenderRatchetConfiguration::new(
+                10,   // out_of_order_tolerance
+                2000, // maximum_forward_distance
+            ))
+            .with_group_context_extensions(extensions) // NB: the builder method returns a Result
+            .expect(&quot;failed to apply group context extensions&quot;)
+            .use_ratchet_tree_extension(true)
+            .build(provider, &amp;alice_signature_keys, alice_credential.clone())
+            .expect(&quot;An unexpected error occurred.&quot;);</code></pre>
 
                     </main>
 

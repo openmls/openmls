@@ -440,6 +440,34 @@
 <a href="#440" id="440">440</a>
 <a href="#441" id="441">441</a>
 <a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
+<a href="#452" id="452">452</a>
+<a href="#453" id="453">453</a>
+<a href="#454" id="454">454</a>
+<a href="#455" id="455">455</a>
+<a href="#456" id="456">456</a>
+<a href="#457" id="457">457</a>
+<a href="#458" id="458">458</a>
+<a href="#459" id="459">459</a>
+<a href="#460" id="460">460</a>
+<a href="#461" id="461">461</a>
+<a href="#462" id="462">462</a>
+<a href="#463" id="463">463</a>
+<a href="#464" id="464">464</a>
+<a href="#465" id="465">465</a>
+<a href="#466" id="466">466</a>
+<a href="#467" id="467">467</a>
+<a href="#468" id="468">468</a>
+<a href="#469" id="469">469</a>
+<a href="#470" id="470">470</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Configuration module for [`MlsGroup`] configurations.
 //!
 //! ## Building an MlsGroupCreateConfig
@@ -471,7 +499,7 @@
 
 </span><span class="kw">use super</span>::<span class="kw-2">*</span>;
 <span class="kw">use crate</span>::{
-    group::config::CryptoConfig, key_packages::Lifetime,
+    extensions::errors::InvalidExtensionError, group::config::CryptoConfig, key_packages::Lifetime,
     tree::sender_ratchet::SenderRatchetConfiguration,
 };
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -535,6 +563,8 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) crypto_config: CryptoConfig,
     <span class="doccomment">/// Configuration parameters relevant to group operation at runtime
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) join_config: MlsGroupJoinConfig,
+    <span class="doccomment">/// List of initial group context extensions
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) group_context_extensions: Extensions,
 }
 
 <span class="doccomment">/// Builder struct for an [`MlsGroupJoinConfig`].
@@ -642,6 +672,13 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>.external_senders
     }
 
+    <span class="doccomment">/// Returns the [`Extensions`] set as the initial group context.
+    /// This does not contain the initial group context extensions
+    /// added from builder calls to `external_senders` or `required_capabilities`.
+    </span><span class="kw">pub fn </span>group_context_extensions(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Extensions {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.group_context_extensions
+    }
+
     <span class="doccomment">/// Returns the [`MlsGroupCreateConfig`] lifetime configuration.
     </span><span class="kw">pub fn </span>lifetime(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Lifetime {
         <span class="kw-2">&amp;</span><span class="self">self</span>.lifetime
@@ -670,7 +707,7 @@
 }
 
 <span class="doccomment">/// Builder for an [`MlsGroupCreateConfig`].
-</span><span class="attr">#[derive(Default)]
+</span><span class="attr">#[derive(Default, Debug)]
 </span><span class="kw">pub struct </span>MlsGroupCreateConfigBuilder {
     config: MlsGroupCreateConfig,
 }
@@ -758,6 +795,25 @@
         <span class="self">self</span>.config.external_senders = external_senders;
         <span class="self">self
     </span>}
+
+    <span class="doccomment">/// Sets initial group context extensions. Note that RequiredCapabilities
+    /// extensions will be overwritten, and should be set using a call to
+    /// `required_capabilities`. If `ExternalSenders` extensions are provided
+    /// both in this call, and a call to `external_senders`, only the one from
+    /// the call to `external_senders` will be included.
+    </span><span class="kw">pub fn </span>with_group_context_extensions(
+        <span class="kw-2">mut </span><span class="self">self</span>,
+        extensions: Extensions,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, InvalidExtensionError&gt; {
+        <span class="kw">let </span>is_valid_in_group_context = extensions.application_id().is_none()
+            &amp;&amp; extensions.ratchet_tree().is_none()
+            &amp;&amp; extensions.external_pub().is_none();
+        <span class="kw">if </span>!is_valid_in_group_context {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(InvalidExtensionError::IllegalInGroupContext);
+        }
+        <span class="self">self</span>.config.group_context_extensions = extensions;
+        <span class="prelude-val">Ok</span>(<span class="self">self</span>)
+    }
 
     <span class="doccomment">/// Finalizes the builder and retursn an `[MlsGroupCreateConfig`].
     </span><span class="kw">pub fn </span>build(<span class="self">self</span>) -&gt; MlsGroupCreateConfig {

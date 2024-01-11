@@ -93,6 +93,11 @@
 <a href="#93" id="93">93</a>
 <a href="#94" id="94">94</a>
 <a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Extension errors.
 //!
 //! An `ExtensionError` is thrown when an extension is invalid (for example when
@@ -187,5 +192,10 @@
     <span class="doccomment">/// The specified extension could not be found.
     </span><span class="attr">#[error(<span class="string">&quot;The specified extension could not be found.&quot;</span>)]
     </span>NotFound,
+    <span class="doccomment">/// The provided extension list contains an extension that is not allowed in group contexts
+    </span><span class="attr">#[error(
+        <span class="string">&quot;The provided extension list contains an extension that is not allowed in group contexts.&quot;
+    </span>)]
+    </span>IllegalInGroupContext,
 }
 </code></pre></div></section></main></body></html>

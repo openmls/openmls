@@ -199,11 +199,23 @@
 <a href="#199" id="199">199</a>
 <a href="#200" id="200">200</a>
 <a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, OpenMlsProvider};
 
 <span class="kw">use crate</span>::{
     credentials::CredentialWithKey,
-    extensions::ExternalSendersExtension,
+    extensions::{errors::InvalidExtensionError, Extensions, ExternalSendersExtension},
     group::{
         config::CryptoConfig, public_group::errors::PublicGroupBuildError, CoreGroup,
         CoreGroupBuildError, CoreGroupConfig, GroupId, MlsGroupCreateConfig,
@@ -214,7 +226,7 @@
 
 <span class="kw">use super</span>::{InnerState, MlsGroup, MlsGroupState};
 
-<span class="attr">#[derive(Default)]
+<span class="attr">#[derive(Default, Debug)]
 </span><span class="kw">pub struct </span>MlsGroupBuilder {
     group_id: <span class="prelude-ty">Option</span>&lt;GroupId&gt;,
     mls_group_create_config_builder: MlsGroupCreateConfigBuilder,
@@ -273,7 +285,8 @@
         .with_config(group_config)
         .with_required_capabilities(mls_group_create_config.required_capabilities.clone())
         .with_external_senders(mls_group_create_config.external_senders.clone())
-        .with_max_past_epoch_secrets(mls_group_create_config.join_config.max_past_epochs)
+        .with_group_context_extensions(mls_group_create_config.group_context_extensions.clone())<span class="question-mark">?
+        </span>.with_max_past_epoch_secrets(mls_group_create_config.join_config.max_past_epochs)
         .with_lifetime(<span class="kw-2">*</span>mls_group_create_config.lifetime())
         .build(provider, signer)
         .map_err(|e| <span class="kw">match </span>e {
@@ -399,5 +412,16 @@
             .external_senders(external_senders);
         <span class="self">self
     </span>}
+
+    <span class="doccomment">/// Sets the initial group context extensions
+    </span><span class="kw">pub fn </span>with_group_context_extensions(
+        <span class="kw-2">mut </span><span class="self">self</span>,
+        extensions: Extensions,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, InvalidExtensionError&gt; {
+        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
+            </span>.mls_group_create_config_builder
+            .with_group_context_extensions(extensions)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="self">self</span>)
+    }
 }
 </code></pre></div></section></main></body></html>
