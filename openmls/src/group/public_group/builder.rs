@@ -26,6 +26,7 @@ pub(crate) struct TempBuilderPG1 {
     required_capabilities: Option<RequiredCapabilitiesExtension>,
     external_senders: Option<ExternalSendersExtension>,
     leaf_extensions: Option<Extensions>,
+    group_context_extensions: Option<Extensions>,
 }
 
 impl TempBuilderPG1 {
@@ -49,6 +50,11 @@ impl TempBuilderPG1 {
         if !external_senders.is_empty() {
             self.external_senders = Some(external_senders);
         }
+        self
+    }
+
+    pub(crate) fn with_group_context_extensions(mut self, extensions: Extensions) -> Self {
+        self.group_context_extensions = Some(extensions);
         self
     }
 
@@ -87,17 +93,22 @@ impl TempBuilderPG1 {
             _ => LibraryError::custom("Unexpected ExtensionError").into(),
         })?;
         let required_capabilities = Extension::RequiredCapabilities(required_capabilities);
-        let extensions =
-            if let Some(ext_senders) = self.external_senders.map(Extension::ExternalSenders) {
-                vec![required_capabilities, ext_senders]
-            } else {
-                vec![required_capabilities]
-            };
+
+        let mut group_context_extensions = if let Some(exts) = self.group_context_extensions {
+            exts
+        } else {
+            Extensions::empty()
+        };
+        group_context_extensions.add_or_replace(required_capabilities);
+        if let Some(ext_senders) = self.external_senders {
+            group_context_extensions.add_or_replace(Extension::ExternalSenders(ext_senders));
+        }
+
         let group_context = GroupContext::create_initial_group_context(
             self.crypto_config.ciphersuite,
             self.group_id,
             treesync.tree_hash().to_vec(),
-            Extensions::from_vec(extensions)?,
+            group_context_extensions,
         );
         let next_builder = TempBuilderPG2 {
             treesync,
@@ -172,6 +183,7 @@ impl PublicGroup {
             required_capabilities: None,
             external_senders: None,
             leaf_extensions: None,
+            group_context_extensions: None,
         }
     }
 }

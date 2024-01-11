@@ -202,6 +202,13 @@ impl MlsGroupCreateConfig {
         &self.external_senders
     }
 
+    /// Returns the [`Extensions`] set as the initial group context.
+    /// This does not contain the initial group context extensions
+    /// added from builder calls to `external_senders` or `required_capabilities`.
+    pub fn group_context_extensions(&self) -> &Extensions {
+        &self.group_context_extensions
+    }
+
     /// Returns the [`MlsGroupCreateConfig`] lifetime configuration.
     pub fn lifetime(&self) -> &Lifetime {
         &self.lifetime
