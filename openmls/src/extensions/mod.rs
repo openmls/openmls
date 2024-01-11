@@ -160,8 +160,8 @@ impl From<u16> for ExtensionType {
             4 => ExtensionType::ExternalPub,
             5 => ExtensionType::ExternalSenders,
             10 => ExtensionType::LastResort,
-            11 => ExtensionType::ProtectedMetadata,
             0xf001 => ExtensionType::Metadata,
+            0xf002 => ExtensionType::ProtectedMetadata,
             unknown => ExtensionType::Unknown(unknown),
         }
     }
@@ -176,8 +176,8 @@ impl From<ExtensionType> for u16 {
             ExtensionType::ExternalPub => 4,
             ExtensionType::ExternalSenders => 5,
             ExtensionType::LastResort => 10,
-            ExtensionType::ProtectedMetadata => 11,
             ExtensionType::Metadata => 0xf001,
+            ExtensionType::ProtectedMetadata => 0xf002,
             ExtensionType::Unknown(unknown) => unknown,
         }
     }
