@@ -9,10 +9,10 @@ members = [
     "memory_keystore",
     "delivery-service/ds",
     "delivery-service/ds-lib",
-    "basic_credential"
+    "basic_credential",
 ]
 resolver = "2"
 
 # Central dependency management for some crates
 [workspace.dependencies]
-tls_codec = { version = "0.3.0", features = ["derive", "serde", "mls"] }
+tls_codec = { version = "0.4.0", features = ["derive", "serde", "mls"] }

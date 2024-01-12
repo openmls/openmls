@@ -88,7 +88,7 @@
 //! let mut sasha_group = MlsGroup::new(
 //!     provider,
 //!     &sasha_signer,
-//!     &MlsGroupConfig::default(),
+//!     &MlsGroupCreateConfig::default(),
 //!     sasha_credential_with_key,
 //! )
 //! .expect("An unexpected error occurred.");
@@ -124,7 +124,7 @@
 //! // Now Maxim can join the group.
 //!  let mut maxim_group = MlsGroup::new_from_welcome(
 //!     provider,
-//!     &MlsGroupConfig::default(),
+//!     &MlsGroupJoinConfig::default(),
 //!     welcome,
 //!     // The public tree is need and transferred out of band.
 //!     // It is also possible to use the [`RatchetTreeExtension`]
@@ -158,6 +158,9 @@ pub use rstest_reuse;
 #[cfg(any(feature = "test-utils", test))]
 #[macro_use]
 pub mod test_utils;
+
+#[cfg(test)]
+pub mod kat_vl;
 
 // === Modules ===
 

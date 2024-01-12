@@ -109,7 +109,17 @@ pub(crate) mod test_framing;
 /// | 0x0005          | mls_key_package          | Y           | RFC XXXX  |
 /// | 0xf000 - 0xffff | Reserved for Private Use | N/A         | RFC XXXX  |
 #[derive(
-    PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    PartialEq,
+    Eq,
+    Clone,
+    Copy,
+    Debug,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
 )]
 #[repr(u16)]
 pub enum WireFormat {
@@ -160,7 +170,17 @@ impl<'a> FramingParameters<'a> {
 /// } ContentType;
 /// ```
 #[derive(
-    PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    PartialEq,
+    Eq,
+    Clone,
+    Copy,
+    Debug,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
 )]
 #[repr(u8)]
 pub enum ContentType {

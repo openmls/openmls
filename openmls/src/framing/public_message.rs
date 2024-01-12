@@ -6,7 +6,9 @@
 use std::io::Write;
 
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
-use tls_codec::{Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{
+    Serialize as TlsSerializeTrait, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
+};
 
 use super::{
     mls_auth_content::{AuthenticatedContent, FramedContentAuthData},
@@ -17,7 +19,15 @@ use crate::{error::LibraryError, versions::ProtocolVersion};
 
 /// Wrapper around a `Mac` used for type safety.
 #[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    Debug,
+    PartialEq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
 )]
 pub(crate) struct MembershipTag(pub(crate) Mac);
 

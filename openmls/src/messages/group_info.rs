@@ -4,7 +4,9 @@ use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::Ciphersuite;
 use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
 use thiserror::Error;
-use tls_codec::{Deserialize, Serialize, TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{
+    Deserialize, Serialize, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
+};
 
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -24,7 +26,7 @@ const SIGNATURE_GROUP_INFO_LABEL: &str = "GroupInfoTBS";
 /// `verify(...)` with the signature key of the [`Credential`](crate::credentials::Credential).
 /// When receiving a serialized group info, it can only be deserialized into a
 /// [`VerifiableGroupInfo`], which can then be turned into a group info as described above.
-#[derive(Debug, PartialEq, Clone, TlsDeserialize, TlsSize)]
+#[derive(Debug, PartialEq, Clone, TlsDeserialize, TlsDeserializeBytes, TlsSize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(TlsSerialize))]
 pub struct VerifiableGroupInfo {
     payload: GroupInfoTBS,
@@ -208,7 +210,15 @@ impl From<GroupInfo> for GroupContext {
 /// } GroupInfoTBS;
 /// ```
 #[derive(
-    Debug, PartialEq, Clone, TlsDeserialize, TlsSerialize, TlsSize, SerdeSerialize, SerdeDeserialize,
+    Debug,
+    PartialEq,
+    Clone,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
+    SerdeSerialize,
+    SerdeDeserialize,
 )]
 pub(crate) struct GroupInfoTBS {
     group_context: GroupContext,
@@ -262,6 +272,8 @@ impl SignedStruct<GroupInfoTBS> for GroupInfo {
 }
 
 impl Verifiable for VerifiableGroupInfo {
+    type VerifiedStruct = GroupInfo;
+
     fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
         self.payload.tls_serialize_detached()
     }
@@ -273,20 +285,18 @@ impl Verifiable for VerifiableGroupInfo {
     fn label(&self) -> &str {
         SIGNATURE_GROUP_INFO_LABEL
     }
-}
 
-impl VerifiedStruct<VerifiableGroupInfo> for GroupInfo {
-    type SealingType = private_mod::Seal;
-
-    fn from_verifiable(v: VerifiableGroupInfo, _seal: Self::SealingType) -> Self {
-        Self {
-            payload: v.payload,
-            signature: v.signature,
-        }
+    fn verify(
+        self,
+        crypto: &impl OpenMlsCrypto,
+        pk: &crate::ciphersuite::OpenMlsSignaturePublicKey,
+    ) -> Result<Self::VerifiedStruct, crate::ciphersuite::signable::SignatureError> {
+        self.verify_no_out(crypto, pk)?;
+        Ok(GroupInfo {
+            payload: self.payload,
+            signature: self.signature,
+        })
     }
 }
 
-mod private_mod {
-    #[derive(Default)]
-    pub struct Seal;
-}
+impl VerifiedStruct for GroupInfo {}

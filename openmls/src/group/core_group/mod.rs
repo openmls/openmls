@@ -58,6 +58,7 @@ use crate::{
     ciphersuite::{signable::Signable, HpkePublicKey},
     credentials::*,
     error::LibraryError,
+    extensions::errors::InvalidExtensionError,
     framing::{mls_auth_content::AuthenticatedContent, *},
     group::{config::CryptoConfig, *},
     key_packages::*,
@@ -200,6 +201,22 @@ impl CoreGroupBuilder {
         }
         self
     }
+
+    /// Sets initial group context extensions. Note that RequiredCapabilities
+    /// extensions will be overwritten, and should be set using a call to
+    /// `required_capabilities`. If `ExternalSenders` extensions are provided
+    /// both in this call, and a call to `external_senders`, only the one from
+    /// the call to `external_senders` will be included.
+    pub(crate) fn with_group_context_extensions(
+        mut self,
+        extensions: Extensions,
+    ) -> Result<Self, InvalidExtensionError> {
+        self.public_group_builder = self
+            .public_group_builder
+            .with_group_context_extensions(extensions)?;
+        Ok(self)
+    }
+
     /// Set the number of past epochs the group should keep secrets.
     pub fn with_max_past_epoch_secrets(mut self, max_past_epochs: usize) -> Self {
         self.max_past_epochs = max_past_epochs;
@@ -907,6 +924,11 @@ impl CoreGroup {
                 PathComputationResult::default()
             };
 
+        let update_path_leaf_node = path_computation_result
+            .encrypted_path
+            .as_ref()
+            .map(|path| path.leaf_node().clone());
+
         // Create commit message
         let commit = Commit {
             proposals: proposal_reference_list,
@@ -1075,6 +1097,7 @@ impl CoreGroup {
             // The committer is not allowed to include their own update
             // proposal, so there is no extra keypair to store here.
             None,
+            update_path_leaf_node,
         );
         let staged_commit = StagedCommit::new(
             proposal_queue,

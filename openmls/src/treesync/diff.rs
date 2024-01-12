@@ -199,13 +199,13 @@ impl<'a> TreeSyncDiff<'a> {
     /// Find and return the index of either the left-most blank leaf, or, if
     /// there are no blank leaves, the leaf count.
     pub(crate) fn free_leaf_index(&self) -> LeafNodeIndex {
-        let leaf_count = self.diff.leaves().count() as u32;
-
+        let mut leaf_count = 0;
         // Search for blank leaves in existing leaves
         for (leaf_index, leaf_id) in self.diff.leaves() {
             if leaf_id.node().is_none() {
                 return leaf_index;
             }
+            leaf_count += 1;
         }
 
         // Return the next free virtual blank leaf

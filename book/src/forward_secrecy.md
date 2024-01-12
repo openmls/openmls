@@ -46,8 +46,8 @@ When an encrypted message is received, the corresponding decryption key is deriv
 
 OpenMLS can address 3 scenarios:
 
-- The Delivery Service cannot guarantee that application messages from one epoch are sent before the beginning of the next epoch. To address this, applications can configure their groups to keep the necessary key material around for past epochs by setting the `max_past_epochs` field in the `MlsGroupConfig` to the desired number of epochs.
+- The Delivery Service cannot guarantee that application messages from one epoch are sent before the beginning of the next epoch. To address this, applications can configure their groups to keep the necessary key material around for past epochs by setting the `max_past_epochs` field in the `MlsGroupCreateConfig` to the desired number of epochs.
 
-- The Delivery Service cannot guarantee that application messages will arrive in order within the same epoch. To address this, applications can configure the `out_of_order_tolerance` parameter of the `SenderRatchetConfiguration`. The configuration can be set as the `sender_ratchet_configuration` parameter of the `MlsGroupConfig`.
+- The Delivery Service cannot guarantee that application messages will arrive in order within the same epoch. To address this, applications can configure the `out_of_order_tolerance` parameter of the `SenderRatchetConfiguration`. The configuration can be set as the `sender_ratchet_configuration` parameter of the `MlsGroupCreateConfig`.
 
-- The Delivery Service cannot guarantee that application messages won't be dropped within the same epoch. To address this, applications can configure the `maximum_forward_distance` parameter of the `SenderRatchetConfiguration`. The configuration can be set as the `sender_ratchet_configuration` parameter of the `MlsGroupConfig`.
+- The Delivery Service cannot guarantee that application messages won't be dropped within the same epoch. To address this, applications can configure the `maximum_forward_distance` parameter of the `SenderRatchetConfiguration`. The configuration can be set as the `sender_ratchet_configuration` parameter of the `MlsGroupCreateConfig`.

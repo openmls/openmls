@@ -9,7 +9,7 @@ fn create_alice_group(
     provider: &impl OpenMlsProvider,
     use_ratchet_tree_extension: bool,
 ) -> (MlsGroup, CredentialWithKey, SignatureKeyPair) {
-    let group_config = MlsGroupConfigBuilder::new()
+    let group_config = MlsGroupCreateConfig::builder()
         .use_ratchet_tree_extension(use_ratchet_tree_extension)
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
@@ -88,9 +88,7 @@ fn test_external_commit(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
             &bob_signature_keys,
             None,
             verifiable_group_info,
-            &MlsGroupConfigBuilder::new()
-                .crypto_config(CryptoConfig::with_default_version(ciphersuite))
-                .build(),
+            &MlsGroupJoinConfig::default(),
             b"",
             bob_credential,
         )
@@ -111,9 +109,7 @@ fn test_external_commit(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
             &bob_signature_keys,
             None,
             verifiable_group_info_broken,
-            &MlsGroupConfigBuilder::new()
-                .crypto_config(CryptoConfig::with_default_version(ciphersuite))
-                .build(),
+            &MlsGroupJoinConfig::default(),
             b"",
             bob_credential,
         )
@@ -155,9 +151,7 @@ fn test_group_info(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         &bob_signature_keys,
         None,
         verifiable_group_info,
-        &MlsGroupConfigBuilder::new()
-            .crypto_config(CryptoConfig::with_default_version(ciphersuite))
-            .build(),
+        &MlsGroupJoinConfig::default(),
         b"",
         bob_credential,
     )
@@ -208,9 +202,7 @@ fn test_group_info(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         &bob_signature_keys,
         None,
         verifiable_group_info,
-        &MlsGroupConfigBuilder::new()
-            .crypto_config(CryptoConfig::with_default_version(ciphersuite))
-            .build(),
+        &MlsGroupJoinConfig::default(),
         b"",
         bob_credential,
     )

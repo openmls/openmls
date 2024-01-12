@@ -1,4 +1,4 @@
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
+use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes};
 
 use super::{Deserialize, Serialize};
 
@@ -8,7 +8,16 @@ use super::{Deserialize, Serialize};
 /// The application id extension allows applications to add an explicit,
 /// application-defined identifier to a KeyPackage.
 #[derive(
-    PartialEq, Eq, Clone, Debug, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    PartialEq,
+    Eq,
+    Clone,
+    Debug,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
 )]
 pub struct ApplicationIdExtension {
     key_id: VLBytes,
