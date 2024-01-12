@@ -158,7 +158,7 @@ impl Signable for ProtectedMetadataTbs {
 mod verifiable {
     use openmls_traits::crypto::OpenMlsCrypto;
 
-    use crate::prelude_test::OpenMlsSignaturePublicKey;
+    use crate::prelude::OpenMlsSignaturePublicKey;
 
     use super::*;
 
