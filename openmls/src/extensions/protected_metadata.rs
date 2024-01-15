@@ -156,9 +156,15 @@ impl Signable for ProtectedMetadataTbs {
 /// XXX: This really should not be implemented on [`ProtectedMetadata`] but on
 /// the verifiable version.
 mod verifiable {
+    use openmls_traits::crypto::OpenMlsCrypto;
+
+    use crate::prelude::OpenMlsSignaturePublicKey;
+
     use super::*;
 
     impl Verifiable for ProtectedMetadata {
+        type VerifiedStruct = ProtectedMetadata;
+
         fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
             self.payload.tls_serialize_detached()
         }
@@ -170,22 +176,21 @@ mod verifiable {
         fn label(&self) -> &str {
             SIGNATURE_LABEL
         }
+
+        fn verify(
+            self,
+            _crypto: &impl OpenMlsCrypto,
+            _pk: &OpenMlsSignaturePublicKey,
+        ) -> Result<Self::VerifiedStruct, SignatureError> {
+            Ok(self)
+        }
     }
+
+    impl VerifiedStruct for ProtectedMetadata {}
 
     mod private_mod {
         #[derive(Default)]
         pub struct Seal;
-    }
-
-    impl VerifiedStruct<ProtectedMetadata> for ProtectedMetadata {
-        type SealingType = private_mod::Seal;
-
-        fn from_verifiable(v: ProtectedMetadata, _seal: Self::SealingType) -> Self {
-            Self {
-                payload: v.payload,
-                signature: v.signature,
-            }
-        }
     }
 }
 

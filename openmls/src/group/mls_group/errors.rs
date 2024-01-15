@@ -38,7 +38,7 @@ pub enum NewGroupError<KeyStoreError> {
     UnsupportedExtensionType,
     /// Invalid extensions set in configuration
     #[error("Invalid extensions set in configuration")]
-    InvalidExtensions(InvalidExtensionError),
+    InvalidExtensions(#[from] InvalidExtensionError),
 }
 
 /// EmptyInput error

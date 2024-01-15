@@ -7,7 +7,7 @@ use openmls_traits::{
     OpenMlsProvider,
 };
 use serde::{Deserialize, Serialize};
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
+use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes};
 
 use crate::{
     ciphersuite::{hpke, HpkePrivateKey, HpkePublicKey, Secret},
@@ -19,7 +19,17 @@ use crate::{
 /// [`EncryptionKey`] contains an HPKE public key that allows the encryption of
 /// path secrets in MLS commits.
 #[derive(
-    Debug, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize, PartialEq, Eq, Hash,
+    Debug,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
+    PartialEq,
+    Eq,
+    Hash,
 )]
 pub struct EncryptionKey {
     key: HpkePublicKey,
@@ -66,7 +76,9 @@ impl EncryptionKey {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize)]
+#[derive(
+    Clone, Serialize, Deserialize, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
+)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub(crate) struct EncryptionPrivateKey {
     key: HpkePrivateKey,
@@ -137,7 +149,9 @@ impl From<HpkePublicKey> for EncryptionKey {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
+)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub(crate) struct EncryptionKeyPair {
     public_key: EncryptionKey,

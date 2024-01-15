@@ -1,7 +1,7 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
 /// This value is used as the default lifetime if no default  lifetime is configured.
 /// The value is in seconds and amounts to 3 * 28 Days, i.e. about 3 months.
@@ -35,7 +35,17 @@ const MAX_LEAF_NODE_LIFETIME_RANGE_SECONDS: u64 =
 /// } Lifetime;
 /// ```
 #[derive(
-    PartialEq, Eq, Copy, Clone, Debug, TlsSerialize, TlsSize, TlsDeserialize, Serialize, Deserialize,
+    PartialEq,
+    Eq,
+    Copy,
+    Clone,
+    Debug,
+    TlsSerialize,
+    TlsSize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    Serialize,
+    Deserialize,
 )]
 pub struct Lifetime {
     not_before: u64,

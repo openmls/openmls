@@ -49,6 +49,10 @@ pub use external_sender_extension::{
 pub use last_resort::LastResortExtension;
 pub use ratchet_tree_extension::RatchetTreeExtension;
 pub use required_capabilities::RequiredCapabilitiesExtension;
+use tls_codec::{
+    Deserialize as TlsDeserializeTrait, DeserializeBytes, Error, Serialize as TlsSerializeTrait,
+    Size, TlsSize,
+};
 
 pub use protected_metadata::ProtectedMetadata;
 
@@ -104,14 +108,14 @@ pub enum ExtensionType {
     Unknown(u16),
 }
 
-impl tls_codec::Size for ExtensionType {
+impl Size for ExtensionType {
     fn tls_serialized_len(&self) -> usize {
         2
     }
 }
 
-impl tls_codec::Deserialize for ExtensionType {
-    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error>
+impl TlsDeserializeTrait for ExtensionType {
+    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, Error>
     where
         Self: Sized,
     {
@@ -122,8 +126,20 @@ impl tls_codec::Deserialize for ExtensionType {
     }
 }
 
-impl tls_codec::Serialize for ExtensionType {
-    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+impl DeserializeBytes for ExtensionType {
+    fn tls_deserialize_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), Error>
+    where
+        Self: Sized,
+    {
+        let mut bytes_ref = bytes;
+        let extension_type = ExtensionType::tls_deserialize(&mut bytes_ref)?;
+        let remainder = &bytes[extension_type.tls_serialized_len()..];
+        Ok((extension_type, remainder))
+    }
+}
+
+impl TlsSerializeTrait for ExtensionType {
+    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, Error> {
         writer.write_all(&u16::from(*self).to_be_bytes())?;
 
         Ok(2)
@@ -222,25 +238,37 @@ pub enum Extension {
 pub struct UnknownExtension(pub Vec<u8>);
 
 /// A list of extensions with unique extension types.
-#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize, tls_codec::TlsSize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSize)]
 pub struct Extensions {
     unique: Vec<Extension>,
 }
 
-impl tls_codec::Serialize for Extensions {
-    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+impl TlsSerializeTrait for Extensions {
+    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, Error> {
         self.unique.tls_serialize(writer)
     }
 }
 
-impl tls_codec::Deserialize for Extensions {
-    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error>
+impl TlsDeserializeTrait for Extensions {
+    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, Error>
     where
         Self: Sized,
     {
         let candidate: Vec<Extension> = Vec::tls_deserialize(bytes)?;
         Extensions::try_from(candidate)
-            .map_err(|_| tls_codec::Error::DecodingError("Found duplicate extensions".into()))
+            .map_err(|_| Error::DecodingError("Found duplicate extensions".into()))
+    }
+}
+
+impl DeserializeBytes for Extensions {
+    fn tls_deserialize_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), Error>
+    where
+        Self: Sized,
+    {
+        let mut bytes_ref = bytes;
+        let extensions = Extensions::tls_deserialize(&mut bytes_ref)?;
+        let remainder = &bytes[extensions.tls_serialized_len()..];
+        Ok((extensions, remainder))
     }
 }
 

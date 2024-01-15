@@ -123,7 +123,7 @@
 
 use openmls_traits::{crypto::OpenMlsCrypto, types::*};
 use serde::{Deserialize, Serialize};
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
 use crate::{
     binary_tree::array_representation::{LeafNodeIndex, TreeSize},
@@ -345,7 +345,7 @@ impl InitSecret {
     }
 }
 
-#[derive(Debug, TlsDeserialize, TlsSerialize, TlsSize)]
+#[derive(Debug, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize)]
 pub(crate) struct JoinerSecret {
     secret: Secret,
 }
