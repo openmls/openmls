@@ -1,7 +1,10 @@
 //! This module contains the [`LeafNode`] struct and its implementation.
 use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsProvider};
 use serde::{Deserialize, Serialize};
-use tls_codec::{Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
+use tls_codec::{
+    Serialize as TlsSerializeTrait, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
+    VLBytes,
+};
 
 #[cfg(test)]
 use openmls_traits::key_store::OpenMlsKeyStore;
@@ -31,12 +34,6 @@ mod capabilities;
 mod codec;
 
 pub use capabilities::*;
-
-/// Private module to ensure protection.
-mod private_mod {
-    #[derive(Default)]
-    pub(crate) struct Seal;
-}
 
 pub(crate) struct NewLeafNodeParams {
     pub(crate) config: CryptoConfig,
@@ -509,7 +506,16 @@ impl LeafNode {
 /// } LeafNode;
 /// ```
 #[derive(
-    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
 )]
 struct LeafNodePayload {
     encryption_key: EncryptionKey,
@@ -521,7 +527,16 @@ struct LeafNodePayload {
 }
 
 #[derive(
-    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
 )]
 #[repr(u8)]
 pub enum LeafNodeSource {
@@ -658,7 +673,16 @@ impl TreePosition {
 const LEAF_NODE_SIGNATURE_LABEL: &str = "LeafNodeTBS";
 
 #[derive(
-    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
 )]
 pub struct LeafNodeIn {
     payload: LeafNodePayload,
@@ -760,6 +784,8 @@ impl VerifiableKeyPackageLeafNode {
 }
 
 impl Verifiable for VerifiableKeyPackageLeafNode {
+    type VerifiedStruct = LeafNode;
+
     fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
         self.payload.tls_serialize_detached()
     }
@@ -771,18 +797,21 @@ impl Verifiable for VerifiableKeyPackageLeafNode {
     fn label(&self) -> &str {
         LEAF_NODE_SIGNATURE_LABEL
     }
-}
 
-impl VerifiedStruct<VerifiableKeyPackageLeafNode> for LeafNode {
-    fn from_verifiable(verifiable: VerifiableKeyPackageLeafNode, _seal: Self::SealingType) -> Self {
-        Self {
-            payload: verifiable.payload,
-            signature: verifiable.signature,
-        }
+    fn verify(
+        self,
+        crypto: &impl openmls_traits::crypto::OpenMlsCrypto,
+        pk: &crate::ciphersuite::OpenMlsSignaturePublicKey,
+    ) -> Result<Self::VerifiedStruct, crate::ciphersuite::signable::SignatureError> {
+        self.verify_no_out(crypto, pk)?;
+        Ok(LeafNode {
+            payload: self.payload,
+            signature: self.signature,
+        })
     }
-
-    type SealingType = private_mod::Seal;
 }
+
+impl VerifiedStruct for LeafNode {}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct VerifiableUpdateLeafNode {
@@ -802,6 +831,8 @@ impl VerifiableUpdateLeafNode {
 }
 
 impl Verifiable for VerifiableUpdateLeafNode {
+    type VerifiedStruct = LeafNode;
+
     fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
         let tree_info_tbs = match &self.tree_position {
             Some(tree_position) => TreeInfoTbs::Commit(tree_position.clone()),
@@ -821,17 +852,18 @@ impl Verifiable for VerifiableUpdateLeafNode {
     fn label(&self) -> &str {
         LEAF_NODE_SIGNATURE_LABEL
     }
-}
 
-impl VerifiedStruct<VerifiableUpdateLeafNode> for LeafNode {
-    fn from_verifiable(verifiable: VerifiableUpdateLeafNode, _seal: Self::SealingType) -> Self {
-        Self {
-            payload: verifiable.payload,
-            signature: verifiable.signature,
-        }
+    fn verify(
+        self,
+        crypto: &impl openmls_traits::crypto::OpenMlsCrypto,
+        pk: &crate::ciphersuite::OpenMlsSignaturePublicKey,
+    ) -> Result<Self::VerifiedStruct, crate::ciphersuite::signable::SignatureError> {
+        self.verify_no_out(crypto, pk)?;
+        Ok(LeafNode {
+            payload: self.payload,
+            signature: self.signature,
+        })
     }
-
-    type SealingType = private_mod::Seal;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -852,6 +884,8 @@ impl VerifiableCommitLeafNode {
 }
 
 impl Verifiable for VerifiableCommitLeafNode {
+    type VerifiedStruct = LeafNode;
+
     fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
         let tree_info_tbs = match &self.tree_position {
             Some(tree_position) => TreeInfoTbs::Commit(tree_position.clone()),
@@ -872,17 +906,18 @@ impl Verifiable for VerifiableCommitLeafNode {
     fn label(&self) -> &str {
         LEAF_NODE_SIGNATURE_LABEL
     }
-}
 
-impl VerifiedStruct<VerifiableCommitLeafNode> for LeafNode {
-    fn from_verifiable(verifiable: VerifiableCommitLeafNode, _seal: Self::SealingType) -> Self {
-        Self {
-            payload: verifiable.payload,
-            signature: verifiable.signature,
-        }
+    fn verify(
+        self,
+        crypto: &impl openmls_traits::crypto::OpenMlsCrypto,
+        pk: &crate::ciphersuite::OpenMlsSignaturePublicKey,
+    ) -> Result<Self::VerifiedStruct, crate::ciphersuite::signable::SignatureError> {
+        self.verify_no_out(crypto, pk)?;
+        Ok(LeafNode {
+            payload: self.payload,
+            signature: self.signature,
+        })
     }
-
-    type SealingType = private_mod::Seal;
 }
 
 impl Signable for LeafNodeTbs {

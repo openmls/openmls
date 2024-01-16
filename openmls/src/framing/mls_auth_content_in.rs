@@ -24,12 +24,6 @@ use crate::{
 #[cfg(doc)]
 use super::{PrivateMessageIn, PublicMessageIn};
 
-/// Private module to ensure protection of [`AuthenticatedContent`].
-mod private_mod {
-    #[derive(Default)]
-    pub(crate) struct Seal;
-}
-
 /// 6 Message Framing
 ///
 /// ```c
@@ -194,6 +188,8 @@ impl VerifiableAuthenticatedContentIn {
 }
 
 impl Verifiable for VerifiableAuthenticatedContentIn {
+    type VerifiedStruct = AuthenticatedContentIn;
+
     fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
         self.tbs.tls_serialize_detached()
     }
@@ -205,19 +201,22 @@ impl Verifiable for VerifiableAuthenticatedContentIn {
     fn label(&self) -> &str {
         "FramedContentTBS"
     }
-}
 
-impl VerifiedStruct<VerifiableAuthenticatedContentIn> for AuthenticatedContentIn {
-    fn from_verifiable(v: VerifiableAuthenticatedContentIn, _seal: Self::SealingType) -> Self {
-        AuthenticatedContentIn {
-            wire_format: v.tbs.wire_format,
-            content: v.tbs.content,
-            auth: v.auth,
-        }
+    fn verify(
+        self,
+        crypto: &impl OpenMlsCrypto,
+        pk: &OpenMlsSignaturePublicKey,
+    ) -> Result<Self::VerifiedStruct, signable::SignatureError> {
+        self.verify_no_out(crypto, pk)?;
+        Ok(AuthenticatedContentIn {
+            wire_format: self.tbs.wire_format,
+            content: self.tbs.content,
+            auth: self.auth,
+        })
     }
-
-    type SealingType = private_mod::Seal;
 }
+
+impl VerifiedStruct for AuthenticatedContentIn {}
 
 impl SignedStruct<FramedContentTbsIn> for AuthenticatedContentIn {
     fn from_payload(tbs: FramedContentTbsIn, signature: Signature) -> Self {

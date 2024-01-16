@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 
 use serde::{Deserialize, Serialize};
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
 pub(crate) const MAX_TREE_SIZE: u32 = 1 << 30;
 pub(crate) const MIN_TREE_SIZE: u32 = 1;
@@ -19,7 +19,7 @@ pub(crate) const MIN_TREE_SIZE: u32 = 1;
     Serialize,
     Deserialize,
     TlsDeserialize,
-    tls_codec::TlsDeserializeBytes,
+    TlsDeserializeBytes,
     TlsSerialize,
     TlsSize,
 )]
@@ -411,8 +411,6 @@ pub(crate) fn common_direct_path(
     y: LeafNodeIndex,
     size: TreeSize,
 ) -> Vec<ParentNodeIndex> {
-    let x = x;
-    let y = y;
     let mut x_path = direct_path(x, size);
     let mut y_path = direct_path(y, size);
     x_path.reverse();

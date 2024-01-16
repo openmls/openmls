@@ -1,6 +1,6 @@
 use openmls_traits::types::{Ciphersuite, VerifiableCiphersuite};
 use serde::{Deserialize, Serialize};
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
 #[cfg(doc)]
 use super::LeafNode;
@@ -24,7 +24,16 @@ use crate::{
 /// } Capabilities;
 /// ```
 #[derive(
-    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
 )]
 pub struct Capabilities {
     pub(super) versions: Vec<ProtocolVersion>,

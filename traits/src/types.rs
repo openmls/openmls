@@ -5,7 +5,9 @@
 use std::ops::Deref;
 
 use serde::{Deserialize, Serialize};
-use tls_codec::{SecretVLBytes, TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
+use tls_codec::{
+    SecretVLBytes, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes,
+};
 
 use crate::key_store::{MlsEntity, MlsEntityId};
 
@@ -86,7 +88,7 @@ impl HashType {
     Deserialize,
     TlsSerialize,
     TlsDeserialize,
-    tls_codec::TlsDeserializeBytes,
+    TlsDeserializeBytes,
     TlsSize,
 )]
 #[repr(u16)]
@@ -233,7 +235,7 @@ pub enum HpkeAeadType {
     Deserialize,
     TlsSerialize,
     TlsDeserialize,
-    tls_codec::TlsDeserializeBytes,
+    TlsDeserializeBytes,
     TlsSize,
     Hash,
 )]
@@ -250,8 +252,8 @@ pub struct HpkeCiphertext {
     serde::Deserialize,
     TlsSerialize,
     TlsDeserialize,
+    TlsDeserializeBytes,
     TlsSize,
-    tls_codec::TlsDeserializeBytes,
 )]
 #[cfg_attr(feature = "test-utils", derive(PartialEq, Eq))]
 #[serde(transparent)]
@@ -310,7 +312,17 @@ impl From<Vec<u8>> for ExporterSecret {
 ///
 /// Used to accept unknown values, e.g., in `Capabilities`.
 #[derive(
-    Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
 )]
 pub struct VerifiableCiphersuite(u16);
 
@@ -341,6 +353,7 @@ impl From<Ciphersuite> for VerifiableCiphersuite {
     Serialize,
     Deserialize,
     TlsDeserialize,
+    TlsDeserializeBytes,
     TlsSerialize,
     TlsSize,
 )]

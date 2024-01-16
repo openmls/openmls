@@ -5,8 +5,8 @@ use crate::{
     credentials::CredentialWithKey,
     error::LibraryError,
     extensions::{
-        errors::ExtensionError, Extension, Extensions, ExternalSendersExtension,
-        RequiredCapabilitiesExtension,
+        errors::{ExtensionError, InvalidExtensionError},
+        Extension, Extensions, ExternalSendersExtension, RequiredCapabilitiesExtension,
     },
     group::{config::CryptoConfig, GroupContext, GroupId},
     key_packages::Lifetime,
@@ -18,6 +18,7 @@ use crate::{
     },
 };
 
+#[derive(Debug)]
 pub(crate) struct TempBuilderPG1 {
     group_id: GroupId,
     crypto_config: CryptoConfig,
@@ -27,6 +28,7 @@ pub(crate) struct TempBuilderPG1 {
     external_senders: Option<ExternalSendersExtension>,
     leaf_extensions: Option<Extensions>,
     leaf_capabilities: Option<Capabilities>,
+    group_context_extensions: Option<Extensions>,
 }
 
 impl TempBuilderPG1 {
@@ -66,6 +68,20 @@ impl TempBuilderPG1 {
         self
     }
 
+    pub(crate) fn with_group_context_extensions(
+        mut self,
+        extensions: Extensions,
+    ) -> Result<Self, InvalidExtensionError> {
+        let is_valid_in_group_context = extensions.application_id().is_none()
+            && extensions.ratchet_tree().is_none()
+            && extensions.external_pub().is_none();
+        if !is_valid_in_group_context {
+            return Err(InvalidExtensionError::IllegalInGroupContext);
+        }
+        self.group_context_extensions = Some(extensions);
+        Ok(self)
+    }
+
     pub(crate) fn get_secrets(
         self,
         provider: &impl OpenMlsProvider,
@@ -102,17 +118,22 @@ impl TempBuilderPG1 {
             _ => LibraryError::custom("Unexpected ExtensionError").into(),
         })?;
         let required_capabilities = Extension::RequiredCapabilities(required_capabilities);
-        let extensions =
-            if let Some(ext_senders) = self.external_senders.map(Extension::ExternalSenders) {
-                vec![required_capabilities, ext_senders]
-            } else {
-                vec![required_capabilities]
-            };
+
+        let mut group_context_extensions = if let Some(exts) = self.group_context_extensions {
+            exts
+        } else {
+            Extensions::empty()
+        };
+        group_context_extensions.add_or_replace(required_capabilities);
+        if let Some(ext_senders) = self.external_senders {
+            group_context_extensions.add_or_replace(Extension::ExternalSenders(ext_senders));
+        }
+
         let group_context = GroupContext::create_initial_group_context(
             self.crypto_config.ciphersuite,
             self.group_id,
             treesync.tree_hash().to_vec(),
-            Extensions::from_vec(extensions)?,
+            group_context_extensions,
         );
         let next_builder = TempBuilderPG2 {
             treesync,
@@ -188,6 +209,7 @@ impl PublicGroup {
             external_senders: None,
             leaf_extensions: None,
             leaf_capabilities: None,
+            group_context_extensions: None,
         }
     }
 }

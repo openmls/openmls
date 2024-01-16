@@ -83,8 +83,8 @@ impl User {
 
         // Read the JSON contents of the file as an instance of `User`.
         match serde_json::from_reader::<BufReader<&File>, User>(reader) {
-            Ok(user) => return Ok(user),
-            Err(e) => return Result::Err(e.to_string()),
+            Ok(user) => Ok(user),
+            Err(e) => Result::Err(e.to_string()),
         }
     }
 
@@ -94,7 +94,7 @@ impl User {
         match File::open(input_path) {
             Err(e) => {
                 log::error!("Error loading user state: {:?}", e.to_string());
-                return Err(e.to_string());
+                Err(e.to_string())
             }
             Ok(input_file) => {
                 let user_result = User::load_from_file(&input_file);
@@ -116,12 +116,12 @@ impl User {
                                 };
                                 groups.insert(group_name.clone(), grp);
                             }
-                            return Ok(user);
+                            Ok(user)
                         }
                         Err(e) => Err(e),
                     }
                 } else {
-                    return user_result;
+                    user_result
                 }
             }
         }
@@ -170,7 +170,8 @@ impl User {
         }
     }
 
-    /// Add a key package to the user identity and return the pair [key package hash ref , key package]
+    /// Add a key package to the user identity and return the pair [key package
+    /// hash ref , key package]
     pub fn add_key_package(&self) -> (Vec<u8>, KeyPackage) {
         let kp = self
             .identity
@@ -404,7 +405,8 @@ impl User {
                     {
                         Some(c) => c.username.clone(),
                         None => {
-                            // Contact list is not updated right now, get the identity from the mls_group member
+                            // Contact list is not updated right now, get the identity from the
+                            // mls_group member
                             let user_id = mls_group.members().find_map(|m| {
                                 if m.credential.identity()
                                     == processed_message_credential.identity()
@@ -524,7 +526,7 @@ impl User {
 
         // NOTE: Since the DS currently doesn't distribute copies of the group's ratchet
         // tree, we need to include the ratchet_tree_extension.
-        let group_config = MlsGroupConfig::builder()
+        let group_config = MlsGroupCreateConfig::builder()
             .use_ratchet_tree_extension(true)
             .build();
 
@@ -670,7 +672,7 @@ impl User {
         }
         // NOTE: Since the DS currently doesn't distribute copies of the group's ratchet
         // tree, we need to include the ratchet_tree_extension.
-        let group_config = MlsGroupConfig::builder()
+        let group_config = MlsGroupJoinConfig::builder()
             .use_ratchet_tree_extension(true)
             .build();
         let mut mls_group = MlsGroup::new_from_welcome(&self.crypto, &group_config, welcome, None)

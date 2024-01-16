@@ -1,0 +1,58 @@
+[
+    {
+      "vlbytes_header": "00",
+      "length": 0
+    },
+    {
+      "vlbytes_header": "0d",
+      "length": 13
+    },
+    {
+      "vlbytes_header": "36",
+      "length": 54
+    },
+    {
+      "vlbytes_header": "3f",
+      "length": 63
+    },
+    {
+      "vlbytes_header": "4040",
+      "length": 64
+    },
+    {
+      "vlbytes_header": "40ff",
+      "length": 255
+    },
+    {
+      "vlbytes_header": "4185",
+      "length": 389
+    },
+    {
+      "vlbytes_header": "4aaa",
+      "length": 2730
+    },
+    {
+      "vlbytes_header": "4fff",
+      "length": 4095
+    },
+    {
+      "vlbytes_header": "7fff",
+      "length": 16383
+    },
+    {
+      "vlbytes_header": "80004000",
+      "length": 16384
+    },
+    {
+      "vlbytes_header": "8000beef",
+      "length": 48879
+    },
+    {
+      "vlbytes_header": "8000dead",
+      "length": 57005
+    },
+    {
+      "vlbytes_header": "bfffffff",
+      "length": 1073741823
+    }
+  ]

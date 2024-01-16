@@ -11,7 +11,7 @@ use crate::{
     },
     group::{
         config::CryptoConfig, test_core_group::setup_client, GroupId, MlsGroup,
-        MlsGroupConfigBuilder, ProposalStore, StagedCommit, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        MlsGroupCreateConfig, ProposalStore, StagedCommit, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     messages::proposals::Proposal,
 };
@@ -31,7 +31,7 @@ fn public_group(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     // Define the MlsGroup configuration
     // Set plaintext wire format policy s.t. the public group can track changes.
-    let mls_group_config = MlsGroupConfigBuilder::new()
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
@@ -40,7 +40,7 @@ fn public_group(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let mut alice_group = MlsGroup::new_with_group_id(
         provider,
         &alice_signer,
-        &mls_group_config,
+        &mls_group_create_config,
         group_id,
         alice_credential_with_key,
     )
@@ -95,7 +95,7 @@ fn public_group(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     let mut bob_group = MlsGroup::new_from_welcome(
         provider,
-        &mls_group_config,
+        mls_group_create_config.join_config(),
         welcome.into_welcome().expect("Unexpected message type."),
         Some(alice_group.export_ratchet_tree().into()),
     )
@@ -139,7 +139,7 @@ fn public_group(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     let mut charlie_group = MlsGroup::new_from_welcome(
         provider,
-        &mls_group_config,
+        mls_group_create_config.join_config(),
         welcome.into_welcome().expect("Unexpected message type."),
         Some(bob_group.export_ratchet_tree().into()),
     )

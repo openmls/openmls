@@ -154,6 +154,8 @@ impl SignedStruct<SignWithLabelTest> for MySignature {
 }
 
 impl Verifiable for ParsedSignWithLabel {
+    type VerifiedStruct = ();
+
     fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
         Ok(self.content.clone())
     }
@@ -165,14 +167,19 @@ impl Verifiable for ParsedSignWithLabel {
     fn label(&self) -> &str {
         &self.label
     }
+
+    fn verify(
+        self,
+        crypto: &impl openmls_traits::crypto::OpenMlsCrypto,
+        pk: &crate::ciphersuite::OpenMlsSignaturePublicKey,
+    ) -> Result<Self::VerifiedStruct, crate::ciphersuite::signable::SignatureError> {
+        self.verify_no_out(crypto, pk)?;
+        Ok(())
+    }
 }
 
 // Dummy implementation
-impl VerifiedStruct<ParsedSignWithLabel> for () {
-    type SealingType = u8;
-
-    fn from_verifiable(_: ParsedSignWithLabel, _seal: Self::SealingType) -> Self {}
-}
+impl VerifiedStruct for () {}
 
 impl Signable for ParsedSignWithLabel {
     type SignedOutput = MySignature;
@@ -294,7 +301,7 @@ pub fn run_test_vector(
         // verify signature
         parsed
             .clone()
-            .verify::<()>(
+            .verify(
                 provider.crypto(),
                 &OpenMlsSignaturePublicKey::new(
                     public.clone().into(),
@@ -307,7 +314,7 @@ pub fn run_test_vector(
         // verify own signature
         parsed.signature = my_signature.0;
         parsed
-            .verify::<()>(
+            .verify(
                 provider.crypto(),
                 &OpenMlsSignaturePublicKey::new(public.into(), ciphersuite.signature_algorithm())
                     .unwrap(),

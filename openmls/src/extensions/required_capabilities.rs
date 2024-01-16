@@ -1,4 +1,4 @@
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
 use crate::{credentials::CredentialType, messages::proposals::ProposalType};
 
@@ -37,6 +37,7 @@ use super::{Deserialize, ExtensionError, ExtensionType, Serialize};
     Deserialize,
     TlsSerialize,
     TlsDeserialize,
+    TlsDeserializeBytes,
     TlsSize,
 )]
 pub struct RequiredCapabilitiesExtension {

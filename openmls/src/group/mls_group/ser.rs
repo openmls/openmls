@@ -17,7 +17,7 @@ use serde::{
 )]
 #[derive(Serialize, Deserialize)]
 pub struct SerializedMlsGroup {
-    mls_group_config: MlsGroupConfig,
+    mls_group_config: MlsGroupJoinConfig,
     group: CoreGroup,
     proposal_store: ProposalStore,
     own_leaf_nodes: Vec<LeafNode>,

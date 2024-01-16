@@ -1,6 +1,8 @@
 use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::Ciphersuite;
-use tls_codec::{Deserialize, Serialize, TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{
+    Deserialize, Serialize, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
+};
 
 use super::{
     codec::deserialize_ciphertext_content, mls_auth_content::FramedContentAuthData,
@@ -31,7 +33,9 @@ use super::*;
 ///     opaque ciphertext<V>;
 /// } PrivateMessage;
 /// ```
-#[derive(Debug, PartialEq, Eq, Clone, TlsSerialize, TlsSize, TlsDeserialize)]
+#[derive(
+    Debug, PartialEq, Eq, Clone, TlsSerialize, TlsSize, TlsDeserialize, TlsDeserializeBytes,
+)]
 pub struct PrivateMessageIn {
     group_id: GroupId,
     epoch: GroupEpoch,
@@ -88,7 +92,8 @@ impl PrivateMessageIn {
             .map_err(|_| MessageDecryptionError::MalformedContent)
     }
 
-    /// Decrypt this [`PrivateMessage`] and return the [`PrivateMessageContentIn`].
+    /// Decrypt this [`PrivateMessage`] and return the
+    /// [`PrivateMessageContentIn`].
     #[inline]
     fn decrypt(
         &self,
@@ -136,8 +141,9 @@ impl PrivateMessageIn {
         .map_err(|_| MessageDecryptionError::MalformedContent)
     }
 
-    /// This function decrypts a [`PrivateMessage`] into a [`VerifiableAuthenticatedContent`].
-    /// In order to get an [`FramedContent`] the result must be verified.
+    /// This function decrypts a [`PrivateMessage`] into a
+    /// [`VerifiableAuthenticatedContent`]. In order to get an
+    /// [`FramedContent`] the result must be verified.
     pub(crate) fn to_verifiable_content(
         &self,
         ciphersuite: Ciphersuite,
@@ -245,14 +251,6 @@ pub(crate) struct PrivateMessageContentIn {
     // as `deserialize_ciphertext_content`.
     pub(crate) content: FramedContentBodyIn,
     pub(crate) auth: FramedContentAuthData,
-}
-
-#[derive(TlsSerialize, TlsSize)]
-pub(crate) struct PrivateContentAad<'a> {
-    pub(crate) group_id: GroupId,
-    pub(crate) epoch: GroupEpoch,
-    pub(crate) content_type: ContentType,
-    pub(crate) authenticated_data: VLByteSlice<'a>,
 }
 
 // The following `From` implementation( breaks abstraction layers and MUST

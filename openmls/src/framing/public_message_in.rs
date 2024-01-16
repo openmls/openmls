@@ -14,9 +14,7 @@ use super::{
 };
 
 use std::io::{Read, Write};
-use tls_codec::{
-    Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, TlsSerialize, TlsSize,
-};
+use tls_codec::{Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait};
 
 /// [`PublicMessageIn`] is a framing structure for MLS messages. It can contain
 /// Proposals, Commits and application messages.
@@ -208,31 +206,6 @@ impl From<PublicMessageIn> for FramedContentTbsIn {
     }
 }
 
-// === Helper structs ===
-
-/// 9.2 Transcript Hashes
-///
-/// ```c
-/// // draft-ietf-mls-protocol-16
-///
-/// struct {
-///    WireFormat wire_format;
-///    FramedContent content; /* with content_type == commit */
-///    opaque signature<V>;
-///} ConfirmedTranscriptHashInput;
-/// ```
-#[derive(TlsSerialize, TlsSize)]
-pub(crate) struct ConfirmedTranscriptHashInput<'a> {
-    pub(super) wire_format: WireFormat,
-    pub(super) mls_content: &'a FramedContentIn,
-    pub(super) signature: &'a Signature,
-}
-
-#[derive(TlsSerialize, TlsSize)]
-pub(crate) struct InterimTranscriptHashInput<'a> {
-    pub(crate) confirmation_tag: &'a ConfirmationTag,
-}
-
 impl<'a> TryFrom<&'a PublicMessageIn> for InterimTranscriptHashInput<'a> {
     type Error = &'static str;
 
@@ -244,14 +217,8 @@ impl<'a> TryFrom<&'a PublicMessageIn> for InterimTranscriptHashInput<'a> {
     }
 }
 
-impl<'a> From<&'a ConfirmationTag> for InterimTranscriptHashInput<'a> {
-    fn from(confirmation_tag: &'a ConfirmationTag) -> Self {
-        InterimTranscriptHashInput { confirmation_tag }
-    }
-}
-
 impl TlsDeserializeTrait for PublicMessageIn {
-    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
+    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, Error> {
         let content = FramedContentIn::tls_deserialize(bytes)?;
         let auth = FramedContentAuthData::deserialize(bytes, content.body.content_type())?;
         let membership_tag = if content.sender.is_member() {
@@ -261,6 +228,18 @@ impl TlsDeserializeTrait for PublicMessageIn {
         };
 
         Ok(PublicMessageIn::new(content, auth, membership_tag))
+    }
+}
+
+impl DeserializeBytes for PublicMessageIn {
+    fn tls_deserialize_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), Error>
+    where
+        Self: Sized,
+    {
+        let mut bytes_ref = bytes;
+        let message = PublicMessageIn::tls_deserialize(&mut bytes_ref)?;
+        let remainder = &bytes[message.tls_serialized_len()..];
+        Ok((message, remainder))
     }
 }
 

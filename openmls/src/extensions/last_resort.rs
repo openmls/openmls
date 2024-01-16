@@ -1,19 +1,29 @@
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
 use super::{Deserialize, Serialize};
 
 /// ```c
-/// // draft-ietf-mls-extensions-1
+/// // draft-ietf-mls-extensions-03
 /// struct {} LastResort;
 /// ```
 #[derive(
-    PartialEq, Eq, Clone, Debug, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    PartialEq,
+    Eq,
+    Clone,
+    Debug,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
+    Default,
 )]
 pub struct LastResortExtension {}
 
 impl LastResortExtension {
-    /// Create a new `external_pub` extension.
+    /// Create a new `last_resort` extension.
     pub fn new() -> Self {
-        Self {}
+        Self::default()
     }
 }

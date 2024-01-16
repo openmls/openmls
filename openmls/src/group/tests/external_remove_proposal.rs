@@ -27,7 +27,7 @@ fn new_test_group(
         generate_credential_with_key(identity.into(), ciphersuite.signature_algorithm(), provider);
 
     // Define the MlsGroup configuration
-    let mls_group_config = MlsGroupConfig::builder()
+    let mls_group_config = MlsGroupCreateConfig::builder()
         .wire_format_policy(wire_format_policy)
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .external_senders(external_senders)

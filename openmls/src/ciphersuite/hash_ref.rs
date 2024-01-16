@@ -29,7 +29,8 @@
 use openmls_traits::{crypto::OpenMlsCrypto, types::CryptoError};
 use serde::{Deserialize, Serialize};
 use tls_codec::{
-    Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize, VLByteSlice, VLBytes,
+    Serialize as TlsSerializeTrait, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
+    VLByteSlice, VLBytes,
 };
 
 use super::Ciphersuite;
@@ -48,7 +49,7 @@ const PROPOSAL_REF_LABEL: &[u8; 26] = b"MLS 1.0 Proposal Reference";
     PartialOrd,
     Deserialize,
     TlsDeserialize,
-    tls_codec::TlsDeserializeBytes,
+    TlsDeserializeBytes,
     TlsSerialize,
     TlsSize,
 )]

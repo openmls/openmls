@@ -60,7 +60,7 @@ pub struct Group {
     pub group_id: GroupId,
     pub members: Vec<(usize, Vec<u8>)>,
     pub ciphersuite: Ciphersuite,
-    pub group_config: MlsGroupConfig,
+    pub group_config: MlsGroupJoinConfig,
     pub public_tree: RatchetTree,
     pub exporter_secret: Vec<u8>,
 }
@@ -108,7 +108,7 @@ pub struct MlsGroupTestSetup {
     pub groups: RwLock<HashMap<GroupId, Group>>,
     // This maps key package hashes to client ids.
     pub waiting_for_welcome: RwLock<HashMap<Vec<u8>, Vec<u8>>>,
-    pub default_mgc: MlsGroupConfig,
+    pub default_mgp: MlsGroupCreateConfig,
     /// Flag to indicate if messages should be serialized and de-serialized as
     /// part of message distribution
     pub use_codec: CodecUse,
@@ -132,10 +132,14 @@ pub struct MlsGroupTestSetup {
 
 impl MlsGroupTestSetup {
     /// Create a new `MlsGroupTestSetup` with the given default
-    /// `MlsGroupConfig` and the given number of clients. For lifetime
+    /// `MlsGroupCreateConfig` and the given number of clients. For lifetime
     /// reasons, `create_clients` has to be called in addition with the same
     /// number of clients.
-    pub fn new(default_mgc: MlsGroupConfig, number_of_clients: usize, use_codec: CodecUse) -> Self {
+    pub fn new(
+        default_mgp: MlsGroupCreateConfig,
+        number_of_clients: usize,
+        use_codec: CodecUse,
+    ) -> Self {
         let mut clients = HashMap::new();
         for i in 0..number_of_clients {
             let identity = i.to_be_bytes().to_vec();
@@ -175,7 +179,7 @@ impl MlsGroupTestSetup {
             clients: RwLock::new(clients),
             groups,
             waiting_for_welcome,
-            default_mgc,
+            default_mgp,
             use_codec,
         }
     }
@@ -278,13 +282,14 @@ impl MlsGroupTestSetup {
     /// Distribute a set of messages sent by the sender with identity
     /// `sender_id` to their intended recipients in group `Group`. This function
     /// also verifies that all members of that group agree on the public tree.
-    pub fn distribute_to_members(
+    pub fn distribute_to_members<AS: Fn(&Credential) -> bool>(
         &self,
         // We need the sender to know a group member that we know can not have
         // been removed from the group.
         sender_id: &[u8],
         group: &mut Group,
         message: &MlsMessageIn,
+        authentication_service: &AS,
     ) -> Result<(), ClientError> {
         // Test serialization if mandated by config
         let message: ProtocolMessage = match self.use_codec {
@@ -304,7 +309,7 @@ impl MlsGroupTestSetup {
         // Distribute message to all members, except to the sender in the case of application messages
         let results: Result<Vec<_>, _> = group
             .members
-            .par_iter()
+            .iter()
             .filter_map(|(_index, member_id)| {
                 if message.content_type() == ContentType::Application && member_id == sender_id {
                     None
@@ -318,7 +323,7 @@ impl MlsGroupTestSetup {
                     .expect("An unexpected error occurred.")
                     .read()
                     .expect("An unexpected error occurred.");
-                member.receive_messages_for_group(&message, sender_id)
+                member.receive_messages_for_group(&message, sender_id, &authentication_service)
             })
             .collect();
 
@@ -354,7 +359,11 @@ impl MlsGroupTestSetup {
     /// each group member encrypt an application message and delivers all of
     /// these messages to all other members. This function panics if any of the
     /// above tests fail.
-    pub fn check_group_states(&self, group: &mut Group) {
+    pub fn check_group_states<AS: Fn(&Credential) -> bool>(
+        &self,
+        group: &mut Group,
+        authentication_service: AS,
+    ) {
         let clients = self.clients.read().expect("An unexpected error occurred.");
         let messages = group
             .members
@@ -395,7 +404,7 @@ impl MlsGroupTestSetup {
             .collect::<Vec<(Vec<u8>, MlsMessageOut)>>();
         drop(clients);
         for (sender_id, message) in messages {
-            self.distribute_to_members(&sender_id, group, &message.into())
+            self.distribute_to_members(&sender_id, group, &message.into(), &authentication_service)
                 .expect("Error sending messages to clients while checking group states.");
         }
     }
@@ -455,7 +464,7 @@ impl MlsGroupTestSetup {
             .read()
             .expect("An unexpected error occurred.");
         let mut groups = self.groups.write().expect("An unexpected error occurred.");
-        let group_id = group_creator.create_group(self.default_mgc.clone(), ciphersuite)?;
+        let group_id = group_creator.create_group(self.default_mgp.clone(), ciphersuite)?;
         let creator_groups = group_creator
             .groups
             .read()
@@ -471,7 +480,7 @@ impl MlsGroupTestSetup {
             group_id: group_id.clone(),
             members: member_ids,
             ciphersuite,
-            group_config: self.default_mgc.clone(),
+            group_config: self.default_mgp.join_config.clone(),
             public_tree,
             exporter_secret,
         };
@@ -480,10 +489,11 @@ impl MlsGroupTestSetup {
     }
 
     /// Create a random group of size `group_size` and return the `GroupId`
-    pub fn create_random_group(
+    pub fn create_random_group<AS: Fn(&Credential) -> bool>(
         &self,
         target_group_size: usize,
         ciphersuite: Ciphersuite,
+        authentication_service: AS,
     ) -> Result<GroupId, SetupError> {
         // Create the initial group.
         let group_id = self.create_group(ciphersuite)?;
@@ -503,7 +513,13 @@ impl MlsGroupTestSetup {
             // Add between 1 and 5 new members.
             let number_of_adds = ((OsRng.next_u32() as usize) % 5 % new_members.len()) + 1;
             let members_to_add = new_members.drain(0..number_of_adds).collect();
-            self.add_clients(ActionType::Commit, group, &adder_id.1, members_to_add)?;
+            self.add_clients(
+                ActionType::Commit,
+                group,
+                &adder_id.1,
+                members_to_add,
+                &authentication_service,
+            )?;
         }
         Ok(group_id)
     }
@@ -511,12 +527,13 @@ impl MlsGroupTestSetup {
     /// Have the client with identity `client_id` either propose or commit
     /// (depending on `action_type`) a self update in group `group`. Will throw
     /// an error if the client is not actually a member of group `group`.
-    pub fn self_update(
+    pub fn self_update<AS: Fn(&Credential) -> bool>(
         &self,
         action_type: ActionType,
         group: &mut Group,
         client_id: &[u8],
         leaf_node: Option<LeafNode>,
+        authentication_service: &AS,
     ) -> Result<(), SetupError> {
         let clients = self.clients.read().expect("An unexpected error occurred.");
         let client = clients
@@ -526,7 +543,12 @@ impl MlsGroupTestSetup {
             .expect("An unexpected error occurred.");
         let (messages, welcome_option, _) =
             client.self_update(action_type, &group.group_id, leaf_node)?;
-        self.distribute_to_members(&client.identity, group, &messages.into())?;
+        self.distribute_to_members(
+            &client.identity,
+            group,
+            &messages.into(),
+            authentication_service,
+        )?;
         if let Some(welcome) = welcome_option {
             self.deliver_welcome(welcome, group)?;
         }
@@ -539,12 +561,13 @@ impl MlsGroupTestSetup {
     /// * the `adder` is not part of the group
     /// * the `addee` is already part of the group
     /// * the `addee` doesn't support the group's ciphersuite.
-    pub fn add_clients(
+    pub fn add_clients<AS: Fn(&Credential) -> bool>(
         &self,
         action_type: ActionType,
         group: &mut Group,
         adder_id: &[u8],
         addees: Vec<Vec<u8>>,
+        authentication_service: &AS,
     ) -> Result<(), SetupError> {
         let clients = self.clients.read().expect("An unexpected error occurred.");
         let adder = clients
@@ -572,7 +595,7 @@ impl MlsGroupTestSetup {
         let (messages, welcome_option, _) =
             adder.add_members(action_type, &group.group_id, &key_packages)?;
         for message in messages {
-            self.distribute_to_members(adder_id, group, &message.into())?;
+            self.distribute_to_members(adder_id, group, &message.into(), authentication_service)?;
         }
         if let Some(welcome) = welcome_option {
             self.deliver_welcome(welcome, group)?;
@@ -584,12 +607,13 @@ impl MlsGroupTestSetup {
     /// removal the `target_members` from the Group `group`. If the `remover` or
     /// one of the `target_members` is not part of the group, it returns an
     /// error.
-    pub fn remove_clients(
+    pub fn remove_clients<AS: Fn(&Credential) -> bool>(
         &self,
         action_type: ActionType,
         group: &mut Group,
         remover_id: &[u8],
         target_members: &[LeafNodeIndex],
+        authentication_service: AS,
     ) -> Result<(), SetupError> {
         let clients = self.clients.read().expect("An unexpected error occurred.");
         let remover = clients
@@ -600,7 +624,12 @@ impl MlsGroupTestSetup {
         let (messages, welcome_option, _) =
             remover.remove_members(action_type, &group.group_id, target_members)?;
         for message in messages {
-            self.distribute_to_members(remover_id, group, &message.into())?;
+            self.distribute_to_members(
+                remover_id,
+                group,
+                &message.into(),
+                &authentication_service,
+            )?;
         }
         if let Some(welcome) = welcome_option {
             self.deliver_welcome(welcome, group)?;
@@ -611,7 +640,11 @@ impl MlsGroupTestSetup {
     /// This function picks a random member of group `group` and has them
     /// perform a random commit- or proposal action. TODO #133: This won't work
     /// yet due to the missing proposal validation.
-    pub fn perform_random_operation(&self, group: &mut Group) -> Result<(), SetupError> {
+    pub fn perform_random_operation<AS: Fn(&Credential) -> bool>(
+        &self,
+        group: &mut Group,
+        authentication_service: &AS,
+    ) -> Result<(), SetupError> {
         // Who's going to do it?
         let member_id = group.random_group_member();
         println!("Member performing the operation: {member_id:?}");
@@ -628,7 +661,13 @@ impl MlsGroupTestSetup {
         match operation_type {
             0 => {
                 println!("Performing a self-update with action type: {action_type:?}");
-                self.self_update(action_type, group, &member_id.1, None)?;
+                self.self_update(
+                    action_type,
+                    group,
+                    &member_id.1,
+                    None,
+                    authentication_service,
+                )?;
             }
             1 => {
                 // If it's a single-member group, don't remove anyone.
@@ -685,6 +724,7 @@ impl MlsGroupTestSetup {
                         group,
                         &member_id.1,
                         &target_member_leaf_indices,
+                        authentication_service,
                     )?
                 };
             }
@@ -703,11 +743,24 @@ impl MlsGroupTestSetup {
                         .expect("An unexpected error occurred.");
                     println!("{action_type:?}: Adding new clients: {new_member_ids:?}");
                     // Have the adder add them to the group.
-                    self.add_clients(action_type, group, &member_id.1, new_member_ids)?;
+                    self.add_clients(
+                        action_type,
+                        group,
+                        &member_id.1,
+                        new_member_ids,
+                        authentication_service,
+                    )?;
                 }
             }
             _ => return Err(SetupError::Unknown),
         };
         Ok(())
     }
+}
+
+// This function signature is used in the callback for credential validation.
+// This particular function just accepts any credential. If you want to validate
+// credentials in your test, don't use this.
+pub fn noop_authentication_service(_cred: &Credential) -> bool {
+    true
 }

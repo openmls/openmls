@@ -35,7 +35,7 @@ use openmls_traits::{
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use tls_codec::{Size, TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
 use self::{
     diff::{StagedTreeSyncDiff, TreeSyncDiff},
@@ -217,7 +217,16 @@ impl RatchetTree {
 /// A ratchet tree made of unverified nodes. This is used for deserialization
 /// and verification.
 #[derive(
-    PartialEq, Eq, Clone, Debug, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    PartialEq,
+    Eq,
+    Clone,
+    Debug,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
 )]
 pub struct RatchetTreeIn(Vec<Option<NodeIn>>);
 
@@ -451,10 +460,7 @@ impl TreeSync {
         // Set the leaf indices in all the leaves and convert the node types.
         for (node_index, node_option) in ratchet_tree.0.into_iter().enumerate() {
             let ts_node_option: TreeNode<TreeSyncLeafNode, TreeSyncParentNode> = match node_option {
-                Some(node) => {
-                    let node = node.clone();
-                    TreeSyncNode::from(node).into()
-                }
+                Some(node) => TreeSyncNode::from(node).into(),
                 None => {
                     if node_index % 2 == 0 {
                         TreeNode::Leaf(TreeSyncLeafNode::blank())

@@ -57,7 +57,9 @@ use self::{proposals::*, proposals_in::ProposalOrRefIn};
 ///   opaque encrypted_group_info<V>;
 /// } Welcome;
 /// ```
-#[derive(Clone, Debug, Eq, PartialEq, TlsDeserialize, TlsSerialize, TlsSize)]
+#[derive(
+    Clone, Debug, Eq, PartialEq, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
+)]
 pub struct Welcome {
     cipher_suite: Ciphersuite,
     secrets: Vec<EncryptedGroupSecrets>,
@@ -104,7 +106,9 @@ impl Welcome {
 /// EncryptedGroupSecrets
 ///
 /// This is part of a [`Welcome`] message. It can be used to correlate the correct secrets with each new member.
-#[derive(Clone, Debug, Eq, PartialEq, TlsDeserialize, TlsSerialize, TlsSize)]
+#[derive(
+    Clone, Debug, Eq, PartialEq, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
+)]
 pub struct EncryptedGroupSecrets {
     /// Key package reference of the new member
     new_member: KeyPackageRef,
@@ -170,7 +174,15 @@ impl Commit {
 }
 
 #[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug,
+    PartialEq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
 )]
 pub(crate) struct CommitIn {
     proposals: Vec<ProposalOrRefIn>,
@@ -266,7 +278,15 @@ impl From<Commit> for CommitIn {
 /// Confirmation tag field of PublicMessage. For type safety this is a wrapper
 /// around a `Mac`.
 #[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug,
+    PartialEq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
 )]
 pub struct ConfirmationTag(pub(crate) Mac);
 
@@ -279,7 +299,9 @@ pub struct ConfirmationTag(pub(crate) Mac);
 ///   opaque path_secret<1..255>;
 /// } PathSecret;
 /// ```
-#[derive(Debug, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize)]
+#[derive(
+    Debug, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize,
+)]
 #[cfg_attr(any(feature = "test-utils", test), derive(PartialEq, Clone))]
 pub(crate) struct PathSecret {
     pub(crate) path_secret: Secret,
@@ -383,7 +405,7 @@ pub(crate) enum PathSecretError {
 ///   PreSharedKeyID psks<V>;
 /// } GroupSecrets;
 /// ```
-#[derive(Debug, TlsDeserialize, TlsSize)]
+#[derive(Debug, TlsDeserialize, TlsDeserializeBytes, TlsSize)]
 pub(crate) struct GroupSecrets {
     pub(crate) joiner_secret: JoinerSecret,
     pub(crate) path_secret: Option<PathSecret>,

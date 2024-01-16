@@ -1,6 +1,8 @@
 use openmls::{
     prelude::*,
-    test_utils::test_framework::{ActionType, CodecUse, MlsGroupTestSetup},
+    test_utils::test_framework::{
+        noop_authentication_service, ActionType, CodecUse, MlsGroupTestSetup,
+    },
     test_utils::*,
     *,
 };
@@ -8,16 +10,16 @@ use openmls::{
 #[apply(ciphersuites)]
 fn test_mls_group_api(ciphersuite: Ciphersuite) {
     // Some basic setup functions for the MlsGroup.
-    let mls_group_config = MlsGroupConfig::test_default(ciphersuite);
+    let mls_group_create_config = MlsGroupCreateConfig::test_default(ciphersuite);
     let number_of_clients = 20;
     let setup = MlsGroupTestSetup::new(
-        mls_group_config,
+        mls_group_create_config,
         number_of_clients,
         CodecUse::SerializedMessages,
     );
 
     let group_id = setup
-        .create_random_group(3, ciphersuite)
+        .create_random_group(3, ciphersuite, noop_authentication_service)
         .expect("An unexpected error occurred.");
     let mut groups = setup.groups.write().expect("An unexpected error occurred.");
     let group = groups
@@ -30,7 +32,13 @@ fn test_mls_group_api(ciphersuite: Ciphersuite) {
         .random_new_members_for_group(group, 2)
         .expect("An unexpected error occurred.");
     setup
-        .add_clients(ActionType::Commit, group, &adder_id, new_members)
+        .add_clients(
+            ActionType::Commit,
+            group,
+            &adder_id,
+            new_members,
+            &noop_authentication_service,
+        )
         .expect("An unexpected error occurred.");
 
     // Remove a member
@@ -42,9 +50,10 @@ fn test_mls_group_api(ciphersuite: Ciphersuite) {
             group,
             &remover_id,
             &[LeafNodeIndex::new(target_index)],
+            noop_authentication_service,
         )
         .expect("An unexpected error occurred.");
 
     // Check that all group members agree on the same group state.
-    setup.check_group_states(group);
+    setup.check_group_states(group, noop_authentication_service);
 }
