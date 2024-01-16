@@ -12,6 +12,7 @@ use crate::{
 use super::*;
 
 /// This struct contain the return values of the `apply_proposals()` function
+#[derive(Debug)]
 pub(crate) struct ApplyProposalsValues {
     pub(crate) path_required: bool,
     pub(crate) self_removed: bool,
@@ -144,7 +145,6 @@ impl<'a> PublicGroupDiff<'a> {
         // apply group context extension proposal
         let extensions = proposal_queue
             .filtered_by_type(ProposalType::GroupContextExtensions)
-            .take(1)
             .map(|queued_proposal| match queued_proposal.proposal() {
                 Proposal::GroupContextExtensions(extensions) => extensions.extensions().clone(),
                 _ => unreachable!(),

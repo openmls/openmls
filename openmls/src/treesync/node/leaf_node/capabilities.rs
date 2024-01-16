@@ -216,7 +216,13 @@ pub(super) fn default_ciphersuites() -> Vec<Ciphersuite> {
 
 /// All extensions defined in the MLS spec are considered "default" by the spec.
 pub(super) fn default_extensions() -> Vec<ExtensionType> {
-    vec![ExtensionType::ApplicationId]
+    vec![
+        ExtensionType::ApplicationId,
+        ExtensionType::RatchetTree,
+        ExtensionType::RequiredCapabilities,
+        ExtensionType::ExternalPub,
+        ExtensionType::ExternalSenders,
+    ]
 }
 
 /// All proposals defined in the MLS spec are considered "default" by the spec.

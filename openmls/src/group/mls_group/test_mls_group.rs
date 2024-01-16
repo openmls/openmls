@@ -1032,13 +1032,19 @@ fn group_context_extensions_proposal(ciphersuite: Ciphersuite, provider: &impl O
         .propose_group_context_extensions(provider, new_extensions, &alice_signer)
         .expect("failed to build group context extensions proposal");
 
+    assert!(alice_group.pending_proposals().next().is_some());
+
     alice_group
         .commit_to_pending_proposals(provider, &alice_signer)
         .expect("failed to commit to pending proposals");
 
-    let required_capabilities = alice_group
-        .group()
-        .group_context_extensions()
+    alice_group
+        .merge_pending_commit(provider)
+        .expect("error merging pending commit");
+
+    let gces = alice_group.group().group_context_extensions();
+
+    let required_capabilities = gces
         .required_capabilities()
         .expect("couldn't get required_capabilities");
 

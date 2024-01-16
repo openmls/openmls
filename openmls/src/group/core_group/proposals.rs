@@ -507,7 +507,7 @@ impl ProposalQueue {
                     }
                 }
                 Proposal::GroupContextExtensions(_) => {
-                    // TODO: Validate proposal?
+                    valid_proposals.add(queued_proposal.proposal_reference());
                     proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
                 Proposal::AppAck(_) => unimplemented!("See #291"),
