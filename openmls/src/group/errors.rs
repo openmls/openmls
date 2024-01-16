@@ -189,6 +189,11 @@ pub enum StageCommitError {
     /// See [`UpdatePathError`] for more details.
     #[error(transparent)]
     VerifiedUpdatePathError(#[from] UpdatePathError),
+    /// See [`GroupContextExtensionsProposalValidationError`] for more details.
+    #[error(transparent)]
+    GroupContextExtensionsProposalValidationError(
+        #[from] GroupContextExtensionsProposalValidationError,
+    ),
 }
 
 /// Create commit error
@@ -527,4 +532,15 @@ pub enum MergeCommitError<KeyStoreError> {
     /// Error accessing the key store.
     #[error("Error accessing the key store.")]
     KeyStoreError(KeyStoreError),
+}
+
+/// Error validation a GroupContextExtensions proposal.
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum GroupContextExtensionsProposalValidationError {
+    #[error("Commit has more than one GroupContextExtensions proposal")]
+    TooManyGCEProposals,
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error(transparent)]
+    ExtensionNotSupportedByAllMembers(#[from] LeafNodeValidationError),
 }

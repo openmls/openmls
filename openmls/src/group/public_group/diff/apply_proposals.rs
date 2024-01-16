@@ -141,8 +141,6 @@ impl<'a> PublicGroupDiff<'a> {
             })
             .collect();
 
-        // TODO validation: - only up to one of these is allowed
-        //                  - check that all members support the extensions
         // apply group context extension proposal
         let extensions = proposal_queue
             .filtered_by_type(ProposalType::GroupContextExtensions)

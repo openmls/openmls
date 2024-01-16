@@ -1043,7 +1043,7 @@ fn group_context_extensions_proposal(ciphersuite: Ciphersuite, provider: &impl O
         .expect("couldn't get required_capabilities");
 
     // has required_capabilities as required capability
-    assert!(required_capabilities.extension_types() == &[ExtensionType::RequiredCapabilities]);
+    assert!(required_capabilities.extension_types() == [ExtensionType::RequiredCapabilities]);
 }
 
 // Test that the builder pattern accurately configures the new group.
