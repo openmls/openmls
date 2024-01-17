@@ -205,20 +205,6 @@ impl KeyPackageIn {
     }
 }
 
-impl DeserializeBytes for KeyPackageIn {
-    fn tls_deserialize(bytes: &[u8]) -> Result<(Self, &[u8]), tls_codec::Error>
-    where
-        Self: Sized,
-    {
-        let mut bytes_reader = bytes;
-        let payload = <KeyPackageIn as tls_codec::Deserialize>::tls_deserialize(&mut bytes_reader)?;
-        let bytes = bytes
-            .get(payload.tls_serialized_len()..)
-            .ok_or(tls_codec::Error::EndOfStream)?;
-        Ok((payload, bytes))
-    }
-}
-
 #[cfg(any(feature = "test-utils", test))]
 impl From<KeyPackageTbsIn> for KeyPackageTbs {
     fn from(value: KeyPackageTbsIn) -> Self {

@@ -2,7 +2,7 @@
 //!
 //! This module contains the encoding and decoding logic for Proposals.
 
-use tls_codec::{Deserialize, Serialize, Size};
+use tls_codec::{Deserialize, DeserializeBytes, Serialize, Size};
 
 use super::{
     proposals::{
@@ -121,5 +121,17 @@ impl Deserialize for ProposalIn {
             )),
         };
         Ok(proposal)
+    }
+}
+
+impl DeserializeBytes for ProposalIn {
+    fn tls_deserialize_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), tls_codec::Error>
+    where
+        Self: Sized,
+    {
+        let mut bytes_ref = bytes;
+        let proposal = ProposalIn::tls_deserialize(&mut bytes_ref)?;
+        let remainder = &bytes[proposal.tls_serialized_len()..];
+        Ok((proposal, remainder))
     }
 }

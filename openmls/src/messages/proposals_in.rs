@@ -45,17 +45,7 @@ use super::proposals::{
 /// } Proposal;
 /// ```
 #[allow(clippy::large_enum_variant)]
-#[derive(
-    Debug,
-    PartialEq,
-    Clone,
-    Serialize,
-    Deserialize,
-    TlsSize,
-    TlsSerialize,
-    TlsDeserialize,
-    TlsDeserializeBytes,
-)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 #[allow(missing_docs)]
 #[repr(u16)]
 pub enum ProposalIn {

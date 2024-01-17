@@ -106,11 +106,7 @@ impl GroupId {
     Deserialize,
     Serialize,
     TlsDeserialize,
-<<<<<<< HEAD
-    tls_codec::TlsDeserializeBytes,
-=======
     TlsDeserializeBytes,
->>>>>>> main
     TlsSerialize,
     TlsSize,
 )]

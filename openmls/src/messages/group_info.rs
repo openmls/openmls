@@ -115,21 +115,6 @@ impl VerifiableGroupInfo {
     }
 }
 
-impl tls_codec::DeserializeBytes for VerifiableGroupInfo {
-    fn tls_deserialize(bytes: &[u8]) -> Result<(Self, &[u8]), tls_codec::Error>
-    where
-        Self: Sized,
-    {
-        let mut bytes_reader = bytes;
-        let group_info =
-            <VerifiableGroupInfo as tls_codec::Deserialize>::tls_deserialize(&mut bytes_reader)?;
-        let remainder = bytes
-            .get(group_info.tls_serialized_len()..)
-            .ok_or(tls_codec::Error::EndOfStream)?;
-        Ok((group_info, remainder))
-    }
-}
-
 #[cfg(test)]
 impl VerifiableGroupInfo {
     pub(crate) fn payload_mut(&mut self) -> &mut GroupInfoTBS {

@@ -257,20 +257,6 @@ impl RatchetTreeIn {
     }
 }
 
-impl tls_codec::DeserializeBytes for RatchetTreeIn {
-    fn tls_deserialize(bytes: &[u8]) -> Result<(Self, &[u8]), tls_codec::Error>
-    where
-        Self: Sized,
-    {
-        let mut bytes_reader = bytes;
-        let nodes = <RatchetTreeIn as tls_codec::Deserialize>::tls_deserialize(&mut bytes_reader)?;
-        let remainder = bytes
-            .get(nodes.tls_serialized_len()..)
-            .ok_or(tls_codec::Error::EndOfStream)?;
-        Ok((nodes, remainder))
-    }
-}
-
 impl From<RatchetTree> for RatchetTreeIn {
     fn from(ratchet_tree: RatchetTree) -> Self {
         RatchetTreeIn::from_ratchet_tree(ratchet_tree)

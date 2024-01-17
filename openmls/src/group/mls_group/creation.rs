@@ -158,8 +158,6 @@ impl MlsGroup {
             .framing_parameters(framing_parameters)
             .proposal_store(&proposal_store)
             .credential_with_key(credential_with_key)
-            .leaf_capabilities(Some(mls_group_config.leaf_node_capabilities.clone()))
-            .leaf_extensions(Some(mls_group_config.leaf_node_extensions.clone()))
             .build();
         let (mut group, create_commit_result) = CoreGroup::join_by_external_commit(
             provider,

@@ -75,8 +75,8 @@ impl MlsGroupBuilder {
         .with_group_context_extensions(mls_group_create_config.group_context_extensions.clone())?
         .with_max_past_epoch_secrets(mls_group_create_config.join_config.max_past_epochs)
         .with_lifetime(*mls_group_create_config.lifetime())
-        .with_leaf_node_capabilities(mls_group_config.leaf_node_capabilities.clone())
-        .with_leaf_node_extensions(mls_group_config.leaf_node_extensions.clone())
+        .with_leaf_node_capabilities(mls_group_create_config.leaf_node_capabilities.clone())
+        .with_leaf_node_extensions(mls_group_create_config.leaf_node_extensions.clone())
         .build(provider, signer)
         .map_err(|e| match e {
             CoreGroupBuildError::LibraryError(e) => e.into(),

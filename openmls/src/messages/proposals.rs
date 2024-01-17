@@ -220,7 +220,16 @@ pub enum Proposal {
 
 /// A unknown/unparsed extension represented by raw bytes.
 #[derive(
-    PartialEq, Eq, Clone, Debug, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    PartialEq,
+    Eq,
+    Clone,
+    Debug,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
 )]
 pub struct UnknownProposal(pub VLBytes);
 

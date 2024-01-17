@@ -30,7 +30,7 @@
 use super::*;
 use crate::{
     extensions::errors::InvalidExtensionError, group::config::CryptoConfig, key_packages::Lifetime,
-    tree::sender_ratchet::SenderRatchetConfiguration,
+    tree::sender_ratchet::SenderRatchetConfiguration, treesync::node::leaf_node::Capabilities,
 };
 use serde::{Deserialize, Serialize};
 

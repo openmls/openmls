@@ -78,7 +78,7 @@ impl Deserialize for MlsMessageIn {
 }
 
 impl DeserializeBytes for MlsMessageIn {
-    fn tls_deserialize(bytes: &[u8]) -> Result<(Self, &[u8]), Error>
+    fn tls_deserialize_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), Error>
     where
         Self: Sized,
     {
