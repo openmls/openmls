@@ -36,6 +36,7 @@ pub(crate) struct PathComputationResult {
 }
 
 impl<'a> PublicGroupDiff<'a> {
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn compute_path<KeyStore: OpenMlsKeyStore>(
         &mut self,
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
