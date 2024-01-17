@@ -169,6 +169,10 @@
 <a href="#169" id="169">169</a>
 <a href="#170" id="170">170</a>
 <a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Group Context
 //!
 //! TODO: #779
@@ -328,6 +332,10 @@
     <span class="doccomment">/// Return the confirmed transcript hash.
     </span><span class="kw">pub fn </span>confirmed_transcript_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
         <span class="self">self</span>.confirmed_transcript_hash.as_slice()
+    }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>set_extensions(<span class="kw-2">&amp;mut </span><span class="self">self</span>, extensions: Extensions) {
+        <span class="self">self</span>.extensions = extensions;
     }
 
     <span class="doccomment">/// Return the extensions.

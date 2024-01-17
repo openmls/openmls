@@ -247,6 +247,11 @@
 <a href="#247" id="247">247</a>
 <a href="#248" id="248">248</a>
 <a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Public group diffs
 //!
 //! This module contains the [`PublicGroupDiff`] struct, as well as the
@@ -262,6 +267,7 @@
 <span class="kw">use crate</span>::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
     error::LibraryError,
+    extensions::Extensions,
     framing::{mls_auth_content::AuthenticatedContent, public_message::InterimTranscriptHashInput},
     group::GroupContext,
     messages::{proposals::AddProposal, ConfirmationTag, EncryptedGroupSecrets},
@@ -450,6 +456,7 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>update_group_context(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+        extensions: <span class="prelude-ty">Option</span>&lt;Extensions&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), LibraryError&gt; {
         <span class="comment">// Calculate tree hash
         </span><span class="kw">let </span>new_tree_hash = <span class="self">self
@@ -457,6 +464,9 @@
             .compute_tree_hashes(crypto, <span class="self">self</span>.group_context().ciphersuite())<span class="question-mark">?</span>;
         <span class="self">self</span>.group_context.update_tree_hash(new_tree_hash);
         <span class="self">self</span>.group_context.increment_epoch();
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(extensions) = extensions {
+            <span class="self">self</span>.group_context.set_extensions(extensions);
+        }
         <span class="prelude-val">Ok</span>(())
     }
 

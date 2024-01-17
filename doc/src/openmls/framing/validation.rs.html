@@ -405,6 +405,7 @@
 <a href="#405" id="405">405</a>
 <a href="#406" id="406">406</a>
 <a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Validation steps for incoming messages
 //!
 //! ```text
@@ -462,6 +463,7 @@
 ///  - ValSem005
 ///  - ValSem007
 ///  - ValSem009
+</span><span class="attr">#[derive(Debug)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>DecryptedMessage {
     verifiable_content: VerifiableAuthenticatedContentIn,
 }

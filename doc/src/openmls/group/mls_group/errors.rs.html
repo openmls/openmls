@@ -318,6 +318,12 @@
 <a href="#318" id="318">318</a>
 <a href="#319" id="319">319</a>
 <a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # MlsGroup errors
 //!
 //! This module defines the public errors that can be returned from all calls
@@ -330,9 +336,12 @@
 <span class="kw">use crate</span>::{
     error::LibraryError,
     extensions::errors::InvalidExtensionError,
-    group::errors::{
-        CreateAddProposalError, CreateCommitError, MergeCommitError, StageCommitError,
-        ValidationError,
+    group::{
+        errors::{
+            CreateAddProposalError, CreateCommitError, MergeCommitError, StageCommitError,
+            ValidationError,
+        },
+        CreateGroupContextExtProposalError,
     },
     schedule::errors::PskError,
     treesync::errors::{LeafNodeValidationError, PublicTreeError},
@@ -637,5 +646,8 @@
     <span class="doccomment">/// See [`ValidationError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>ValidationError(<span class="attr">#[from] </span>ValidationError),
+    <span class="doccomment">/// See [`CreateGroupContextExtProposalError`] for more details.
+    </span><span class="attr">#[error(transparent)]
+    </span>CreateGroupContextExtProposalError(<span class="attr">#[from] </span>CreateGroupContextExtProposalError),
 }
 </code></pre></div></section></main></body></html>

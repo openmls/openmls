@@ -295,6 +295,12 @@
 <a href="#295" id="295">295</a>
 <a href="#296" id="296">296</a>
 <a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::types::{Ciphersuite, VerifiableCiphersuite};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
@@ -434,7 +440,7 @@
         </span><span class="kw">if </span>required_capabilities
             .extension_types()
             .iter()
-            .any(|e| !<span class="self">self</span>.extensions().contains(e))
+            .any(|e| !(<span class="self">self</span>.extensions().contains(e) || default_extensions().contains(e)))
         {
             <span class="kw">return </span><span class="prelude-val">Err</span>(LeafNodeValidationError::UnsupportedExtensions);
         }
@@ -442,7 +448,7 @@
         </span><span class="kw">if </span>required_capabilities
             .proposal_types()
             .iter()
-            .any(|p| !<span class="self">self</span>.proposals().contains(p))
+            .any(|p| !(<span class="self">self</span>.proposals().contains(p) || default_proposals().contains(p)))
         {
             <span class="kw">return </span><span class="prelude-val">Err</span>(LeafNodeValidationError::UnsupportedProposals);
         }
@@ -450,7 +456,7 @@
         </span><span class="kw">if </span>required_capabilities
             .credential_types()
             .iter()
-            .any(|c| !<span class="self">self</span>.credentials().contains(c))
+            .any(|c| !(<span class="self">self</span>.credentials().contains(c) || default_credentials().contains(c)))
         {
             <span class="kw">return </span><span class="prelude-val">Err</span>(LeafNodeValidationError::UnsupportedCredentials);
         }
@@ -513,7 +519,13 @@
 
 <span class="doccomment">/// All extensions defined in the MLS spec are considered &quot;default&quot; by the spec.
 </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>default_extensions() -&gt; Vec&lt;ExtensionType&gt; {
-    <span class="macro">vec!</span>[ExtensionType::ApplicationId]
+    <span class="macro">vec!</span>[
+        ExtensionType::ApplicationId,
+        ExtensionType::RatchetTree,
+        ExtensionType::RequiredCapabilities,
+        ExtensionType::ExternalPub,
+        ExtensionType::ExternalSenders,
+    ]
 }
 
 <span class="doccomment">/// All proposals defined in the MLS spec are considered &quot;default&quot; by the spec.

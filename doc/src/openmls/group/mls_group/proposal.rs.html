@@ -350,6 +350,7 @@
 <a href="#350" id="350">350</a>
 <a href="#351" id="351">351</a>
 <a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::{
     key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite, OpenMlsProvider,
 };
@@ -680,10 +681,11 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposalError&lt;()&gt;&gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>proposal = <span class="self">self
-            </span>.group
-            .create_group_context_ext_proposal(<span class="self">self</span>.framing_parameters(), extensions, signer)
-            .unwrap();
+        <span class="kw">let </span>proposal = <span class="self">self</span>.group.create_group_context_ext_proposal(
+            <span class="self">self</span>.framing_parameters(),
+            extensions,
+            signer,
+        )<span class="question-mark">?</span>;
 
         <span class="kw">let </span>queued_proposal = QueuedProposal::from_authenticated_content_by_ref(
             <span class="self">self</span>.ciphersuite(),

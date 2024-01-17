@@ -528,6 +528,29 @@
 <a href="#528" id="528">528</a>
 <a href="#529" id="529">529</a>
 <a href="#530" id="530">530</a>
+<a href="#531" id="531">531</a>
+<a href="#532" id="532">532</a>
+<a href="#533" id="533">533</a>
+<a href="#534" id="534">534</a>
+<a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
+<a href="#539" id="539">539</a>
+<a href="#540" id="540">540</a>
+<a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
+<a href="#544" id="544">544</a>
+<a href="#545" id="545">545</a>
+<a href="#546" id="546">546</a>
+<a href="#547" id="547">547</a>
+<a href="#548" id="548">548</a>
+<a href="#549" id="549">549</a>
+<a href="#550" id="550">550</a>
+<a href="#551" id="551">551</a>
+<a href="#552" id="552">552</a>
+<a href="#553" id="553">553</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # MLS group errors
 //!
 //! This module contains errors that originate at lower levels and are partially re-exported in errors thrown by functions of the `MlsGroup` API.
@@ -719,6 +742,11 @@
     <span class="doccomment">/// See [`UpdatePathError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>VerifiedUpdatePathError(<span class="attr">#[from] </span>UpdatePathError),
+    <span class="doccomment">/// See [`GroupContextExtensionsProposalValidationError`] for more details.
+    </span><span class="attr">#[error(transparent)]
+    </span>GroupContextExtensionsProposalValidationError(
+        <span class="attr">#[from] </span>GroupContextExtensionsProposalValidationError,
+    ),
 }
 
 <span class="doccomment">/// Create commit error
@@ -763,6 +791,11 @@
     <span class="doccomment">/// See [`InvalidExtensionError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>InvalidExtensionError(<span class="attr">#[from] </span>InvalidExtensionError),
+    <span class="doccomment">/// See [`GroupContextExtensionsProposalValidationError`] for more details.
+    </span><span class="attr">#[error(transparent)]
+    </span>GroupContextExtensionsProposalValidationError(
+        <span class="attr">#[from] </span>GroupContextExtensionsProposalValidationError,
+    ),
 }
 
 <span class="doccomment">/// Validation error
@@ -1030,16 +1063,13 @@
 
 <span class="doccomment">/// Create group context ext proposal error
 </span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>CreateGroupContextExtProposalError {
+</span><span class="kw">pub enum </span>CreateGroupContextExtProposalError {
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
     <span class="doccomment">/// See [`KeyPackageExtensionSupportError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>KeyPackageExtensionSupport(<span class="attr">#[from] </span>KeyPackageExtensionSupportError),
-    <span class="doccomment">/// See [`TreeSyncError`] for more details.
-    </span><span class="attr">#[error(transparent)]
-    </span>TreeSyncError(<span class="attr">#[from] </span>TreeSyncError),
     <span class="doccomment">/// See [`ExtensionError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>Extension(<span class="attr">#[from] </span>ExtensionError),
@@ -1057,5 +1087,21 @@
     <span class="doccomment">/// Error accessing the key store.
     </span><span class="attr">#[error(<span class="string">&quot;Error accessing the key store.&quot;</span>)]
     </span>KeyStoreError(KeyStoreError),
+}
+
+<span class="doccomment">/// Error validation a GroupContextExtensions proposal.
+</span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub enum </span>GroupContextExtensionsProposalValidationError {
+    <span class="doccomment">/// Commit has more than one GroupContextExtensions proposal.
+    </span><span class="attr">#[error(<span class="string">&quot;Commit has more than one GroupContextExtensions proposal.&quot;</span>)]
+    </span>TooManyGCEProposals,
+    <span class="doccomment">/// See [`LibraryError`] for more details.
+    </span><span class="attr">#[error(transparent)]
+    </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
+    <span class="doccomment">/// The new extensions set contails extensions that are not supported by all group members.
+    </span><span class="attr">#[error(
+        <span class="string">&quot;The new extensions set contails extensions that are not supported by all group members.&quot;
+    </span>)]
+    </span>ExtensionNotSupportedByAllMembers,
 }
 </code></pre></div></section></main></body></html>

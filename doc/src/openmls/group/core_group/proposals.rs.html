@@ -645,6 +645,7 @@
 <a href="#645" id="645">645</a>
 <a href="#646" id="646">646</a>
 <a href="#647" id="647">647</a>
+<a href="#648" id="648">648</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::{hash_map::Entry, HashMap, HashSet};
 
 <span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
@@ -1154,8 +1155,8 @@
                     }
                 }
                 Proposal::GroupContextExtensions(<span class="kw">_</span>) =&gt; {
-                    <span class="comment">// TODO: Validate proposal?
-                    </span>proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
+                    valid_proposals.add(queued_proposal.proposal_reference());
+                    proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
                 Proposal::AppAck(<span class="kw">_</span>) =&gt; <span class="macro">unimplemented!</span>(<span class="string">&quot;See #291&quot;</span>),
             }
@@ -1177,10 +1178,11 @@
         <span class="comment">// Only retain `adds` and `valid_proposals`
         </span><span class="kw">let </span><span class="kw-2">mut </span>proposal_queue = ProposalQueue::default();
         <span class="kw">for </span>proposal_reference <span class="kw">in </span>adds.iter().chain(valid_proposals.iter()) {
-            proposal_queue.add(<span class="kw">match </span>proposal_pool.get(proposal_reference) {
-                <span class="prelude-val">Some</span>(queued_proposal) =&gt; queued_proposal.clone(),
-                <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalQueueError::ProposalNotFound),
-            });
+            <span class="kw">let </span>queued_proposal = proposal_pool
+                .get(proposal_reference)
+                .cloned()
+                .ok_or(ProposalQueueError::ProposalNotFound)<span class="question-mark">?</span>;
+            proposal_queue.add(queued_proposal);
         }
         <span class="prelude-val">Ok</span>((proposal_queue, contains_own_updates))
     }
