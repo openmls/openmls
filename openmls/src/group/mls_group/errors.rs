@@ -10,9 +10,12 @@ use thiserror::Error;
 use crate::{
     error::LibraryError,
     extensions::errors::InvalidExtensionError,
-    group::errors::{
-        CreateAddProposalError, CreateCommitError, MergeCommitError, StageCommitError,
-        ValidationError,
+    group::{
+        errors::{
+            CreateAddProposalError, CreateCommitError, MergeCommitError, StageCommitError,
+            ValidationError,
+        },
+        CreateGroupContextExtProposalError,
     },
     schedule::errors::PskError,
     treesync::errors::{LeafNodeValidationError, PublicTreeError},
@@ -317,4 +320,7 @@ pub enum ProposalError<KeyStoreError> {
     /// See [`ValidationError`] for more details.
     #[error(transparent)]
     ValidationError(#[from] ValidationError),
+    /// See [`CreateGroupContextExtProposalError`] for more details.
+    #[error(transparent)]
+    CreateGroupContextExtProposalError(#[from] CreateGroupContextExtProposalError),
 }

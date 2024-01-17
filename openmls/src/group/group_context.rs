@@ -159,6 +159,10 @@ impl GroupContext {
         self.confirmed_transcript_hash.as_slice()
     }
 
+    pub(crate) fn set_extensions(&mut self, extensions: Extensions) {
+        self.extensions = extensions;
+    }
+
     /// Return the extensions.
     pub fn extensions(&self) -> &Extensions {
         &self.extensions

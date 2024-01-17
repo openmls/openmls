@@ -452,10 +452,9 @@ impl CoreGroup {
             let required_capabilities = required_extension.as_required_capabilities_extension()?;
             // Ensure we support all the capabilities.
             required_capabilities.check_support()?;
-            // TODO #566/#1361: This needs to be re-enabled once we support GCEs
-            /* self.own_leaf_node()?
-            .capabilities()
-            .supports_required_capabilities(required_capabilities)?; */
+            self.own_leaf_node()?
+                .capabilities()
+                .supports_required_capabilities(required_capabilities)?;
 
             // Ensure that all other leaf nodes support all the required
             // extensions as well.
@@ -890,6 +889,11 @@ impl CoreGroup {
                 .validate_update_proposals(&proposal_queue, *sender_index)?;
         }
 
+        // ValSem208
+        // ValSem209
+        self.public_group
+            .validate_group_context_extensions_proposal(&proposal_queue)?;
+
         // Make a copy of the public group to apply proposals safely
         let mut diff = self.public_group.empty_diff();
 
@@ -915,12 +919,13 @@ impl CoreGroup {
                     apply_proposals_values.exclusion_list(),
                     params.commit_type(),
                     signer,
-                    params.take_credential_with_key()
+                    params.take_credential_with_key(),
+                    apply_proposals_values.extensions.clone()
                 )?
             } else {
                 // If path is not needed, update the group context and return
                 // empty path processing results
-                diff.update_group_context(provider.crypto())?;
+                diff.update_group_context(provider.crypto(), apply_proposals_values.extensions.clone())?;
                 PathComputationResult::default()
             };
 

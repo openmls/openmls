@@ -165,7 +165,10 @@ impl CoreGroup {
                 )?;
 
                 // Update group context
-                diff.update_group_context(provider.crypto())?;
+                diff.update_group_context(
+                    provider.crypto(),
+                    apply_proposals_values.extensions.clone(),
+                )?;
 
                 let decryption_keypairs: Vec<&EncryptionKeyPair> = old_epoch_keypairs
                     .iter()
@@ -221,7 +224,10 @@ impl CoreGroup {
                 }
 
                 // Even if there is no path, we have to update the group context.
-                diff.update_group_context(provider.crypto())?;
+                diff.update_group_context(
+                    provider.crypto(),
+                    apply_proposals_values.extensions.clone(),
+                )?;
 
                 (
                     CommitSecret::zero_secret(ciphersuite, self.version()),
