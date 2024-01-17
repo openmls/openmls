@@ -226,7 +226,7 @@ impl<L: Clone + Debug + Default, P: Clone + Debug + Default> ABinaryTree<L, P> {
 
 /// Binary Tree error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum ABinaryTreeError {
+pub(crate) enum ABinaryTreeError {
     /// Adding nodes exceeds the maximum possible size of the tree.
     #[error("Adding nodes exceeds the maximum possible size of the tree.")]
     OutOfRange,

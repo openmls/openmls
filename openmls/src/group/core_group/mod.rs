@@ -435,10 +435,9 @@ impl CoreGroup {
             let required_capabilities = required_extension.as_required_capabilities_extension()?;
             // Ensure we support all the capabilities.
             required_capabilities.check_support()?;
-            // TODO #566/#1361: This needs to be re-enabled once we support GCEs
-            /* self.own_leaf_node()?
-            .capabilities()
-            .supports_required_capabilities(required_capabilities)?; */
+            self.own_leaf_node()?
+                .capabilities()
+                .supports_required_capabilities(required_capabilities)?;
 
             // Ensure that all other leaf nodes support all the required
             // extensions as well.

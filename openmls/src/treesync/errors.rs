@@ -81,7 +81,7 @@ pub enum ApplyUpdatePathError {
 #[allow(dead_code)]
 /// TreeSync error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum TreeSyncError {
+pub(crate) enum TreeSyncError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -119,7 +119,7 @@ pub enum TreeSyncError {
 
 /// Derive path error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum DerivePathError {
+pub(crate) enum DerivePathError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -166,7 +166,7 @@ pub(crate) enum TreeSyncParentHashError {
 
 /// TreeSync parent hash error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum TreeSyncDiffError {
+pub(crate) enum TreeSyncDiffError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),

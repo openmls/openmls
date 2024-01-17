@@ -137,7 +137,7 @@ impl Capabilities {
         if required_capabilities
             .extension_types()
             .iter()
-            .any(|e| !self.extensions().contains(e))
+            .any(|e| !(self.extensions().contains(e) || default_extensions().contains(e)))
         {
             return Err(LeafNodeValidationError::UnsupportedExtensions);
         }
@@ -145,7 +145,7 @@ impl Capabilities {
         if required_capabilities
             .proposal_types()
             .iter()
-            .any(|p| !self.proposals().contains(p))
+            .any(|p| !(self.proposals().contains(p) || default_proposals().contains(p)))
         {
             return Err(LeafNodeValidationError::UnsupportedProposals);
         }
@@ -153,7 +153,7 @@ impl Capabilities {
         if required_capabilities
             .credential_types()
             .iter()
-            .any(|c| !self.credentials().contains(c))
+            .any(|c| !(self.credentials().contains(c) || default_credentials().contains(c)))
         {
             return Err(LeafNodeValidationError::UnsupportedCredentials);
         }

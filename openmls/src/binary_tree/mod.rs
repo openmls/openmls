@@ -23,5 +23,5 @@ mod test_binary_tree;
 pub(crate) type MlsBinaryTree<L, P> = ABinaryTree<L, P>;
 pub(crate) type MlsBinaryTreeDiff<'a, L, P> = AbDiff<'a, L, P>;
 pub(crate) type StagedMlsBinaryTreeDiff<L, P> = StagedAbDiff<L, P>;
-pub type MlsBinaryTreeError = ABinaryTreeError;
-pub type MlsBinaryTreeDiffError = ABinaryTreeDiffError;
+pub(crate) type MlsBinaryTreeError = ABinaryTreeError;
+pub(crate) type MlsBinaryTreeDiffError = ABinaryTreeDiffError;
