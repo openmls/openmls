@@ -507,7 +507,7 @@ impl ProposalQueue {
                     }
                 }
                 Proposal::GroupContextExtensions(_) => {
-                    // TODO: Validate proposal?
+                    valid_proposals.add(queued_proposal.proposal_reference());
                     proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
                 Proposal::AppAck(_) => unimplemented!("See #291"),
@@ -530,10 +530,11 @@ impl ProposalQueue {
         // Only retain `adds` and `valid_proposals`
         let mut proposal_queue = ProposalQueue::default();
         for proposal_reference in adds.iter().chain(valid_proposals.iter()) {
-            proposal_queue.add(match proposal_pool.get(proposal_reference) {
-                Some(queued_proposal) => queued_proposal.clone(),
-                None => return Err(ProposalQueueError::ProposalNotFound),
-            });
+            let queued_proposal = proposal_pool
+                .get(proposal_reference)
+                .cloned()
+                .ok_or(ProposalQueueError::ProposalNotFound)?;
+            proposal_queue.add(queued_proposal);
         }
         Ok((proposal_queue, contains_own_updates))
     }

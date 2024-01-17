@@ -328,10 +328,11 @@ impl MlsGroup {
     ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<()>> {
         self.is_operational()?;
 
-        let proposal = self
-            .group
-            .create_group_context_ext_proposal(self.framing_parameters(), extensions, signer)
-            .unwrap();
+        let proposal = self.group.create_group_context_ext_proposal(
+            self.framing_parameters(),
+            extensions,
+            signer,
+        )?;
 
         let queued_proposal = QueuedProposal::from_authenticated_content_by_ref(
             self.ciphersuite(),
