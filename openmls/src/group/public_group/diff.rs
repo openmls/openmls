@@ -211,7 +211,6 @@ impl<'a> PublicGroupDiff<'a> {
         self.group_context.update_tree_hash(new_tree_hash);
         self.group_context.increment_epoch();
         if let Some(extensions) = extensions {
-            // TODO validate extensions are allowed here
             self.group_context.set_extensions(extensions);
         }
         Ok(())
