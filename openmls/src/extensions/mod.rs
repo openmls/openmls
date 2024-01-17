@@ -160,8 +160,8 @@ impl From<u16> for ExtensionType {
             4 => ExtensionType::ExternalPub,
             5 => ExtensionType::ExternalSenders,
             10 => ExtensionType::LastResort,
+            0xf000 => ExtensionType::ProtectedMetadata,
             0xf001 => ExtensionType::Metadata,
-            0xf002 => ExtensionType::ProtectedMetadata,
             unknown => ExtensionType::Unknown(unknown),
         }
     }
@@ -176,8 +176,8 @@ impl From<ExtensionType> for u16 {
             ExtensionType::ExternalPub => 4,
             ExtensionType::ExternalSenders => 5,
             ExtensionType::LastResort => 10,
+            ExtensionType::ProtectedMetadata => 0xf000,
             ExtensionType::Metadata => 0xf001,
-            ExtensionType::ProtectedMetadata => 0xf002,
             ExtensionType::Unknown(unknown) => unknown,
         }
     }
@@ -642,7 +642,7 @@ mod test {
 
     #[test]
     fn that_unknown_extensions_are_de_serialized_correctly() {
-        let extension_types = [0x0000u16, 0x0A0A, 0x7A7A, 0xF000, 0xFFFF];
+        let extension_types = [0x0000u16, 0x0A0A, 0x7A7A, 0xF100, 0xFFFF];
         let extension_datas = [vec![], vec![0], vec![1, 2, 3]];
 
         for extension_type in extension_types.into_iter() {
