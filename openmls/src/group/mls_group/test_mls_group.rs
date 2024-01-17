@@ -1059,7 +1059,7 @@ fn group_context_extensions_proposal(ciphersuite: Ciphersuite, provider: &impl O
     // === committing to two group context extensions should fail
 
     alice_group
-        .propose_group_context_extensions(provider, new_extensions.clone(), &alice_signer)
+        .propose_group_context_extensions(provider, new_extensions, &alice_signer)
         .expect("failed to build group context extensions proposal");
 
     // the proposals need to be different or they will be deduplicated
@@ -1074,6 +1074,19 @@ fn group_context_extensions_proposal(ciphersuite: Ciphersuite, provider: &impl O
         .expect_err(
             "expected error when committing to multiple group context extensions proposals",
         );
+
+    // === can't update required required_capabilities to extensions that existing group members
+    //       are not capable of
+
+    // contains unsupported extension
+    let new_extensions = Extensions::from_vec(vec![Extension::RequiredCapabilities(
+        RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xf042)], &[], &[]),
+    )])
+    .expect("failed to build new extensions list");
+
+    alice_group
+        .propose_group_context_extensions(provider, new_extensions, &alice_signer)
+        .expect_err("expected an error building GCE proposal with bad required_capabilities");
 
     // TODO: we need to test that processing a commit with multiple group context extensions
     //       proposal also fails. however, we can't generate this commit, because our functions for

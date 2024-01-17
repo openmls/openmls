@@ -531,7 +531,7 @@ impl PublicGroup {
                         .map(|ext| ext.extension_type())
                         .collect();
 
-                    self.check_extension_support(&ext_type_list).map_err(GroupContextExtensionsProposalValidationError::ExtensionNotSupportedByAllMembers)?
+                    self.check_extension_support(&ext_type_list).map_err(|_| GroupContextExtensionsProposalValidationError::ExtensionNotSupportedByAllMembers)?
                 }
                 _ => {
                     return Err(GroupContextExtensionsProposalValidationError::LibraryError(

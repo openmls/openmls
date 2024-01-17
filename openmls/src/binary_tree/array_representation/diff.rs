@@ -400,7 +400,7 @@ impl<'a, L: Clone + Debug + Default, P: Clone + Debug + Default> AbDiff<'a, L, P
 
 /// Binary Tree Diff error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub(crate) enum ABinaryTreeDiffError {
+pub enum ABinaryTreeDiffError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),

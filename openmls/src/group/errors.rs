@@ -510,7 +510,7 @@ pub(crate) enum CoreGroupParseMessageError {
 
 /// Create group context ext proposal error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub(crate) enum CreateGroupContextExtProposalError {
+pub enum CreateGroupContextExtProposalError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -542,10 +542,15 @@ pub enum MergeCommitError<KeyStoreError> {
 /// Error validation a GroupContextExtensions proposal.
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum GroupContextExtensionsProposalValidationError {
-    #[error("Commit has more than one GroupContextExtensions proposal")]
+    /// Commit has more than one GroupContextExtensions proposal.
+    #[error("Commit has more than one GroupContextExtensions proposal.")]
     TooManyGCEProposals,
+    /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    #[error(transparent)]
-    ExtensionNotSupportedByAllMembers(#[from] LeafNodeValidationError),
+    /// The new extensions set contails extensions that are not supported by all group members.
+    #[error(
+        "The new extensions set contails extensions that are not supported by all group members."
+    )]
+    ExtensionNotSupportedByAllMembers,
 }

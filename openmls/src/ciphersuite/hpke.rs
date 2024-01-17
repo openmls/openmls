@@ -45,7 +45,7 @@ use super::LABEL_PREFIX;
 
 /// HPKE labeled encryption errors.
 #[derive(Error, Debug, PartialEq, Clone)]
-pub(crate) enum Error {
+pub enum Error {
     /// Error while serializing content. This should only happen if a bounds check was missing.
     #[error(
         "Error while serializing content. This should only happen if a bounds check was missing."
