@@ -170,6 +170,30 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         // Silence "unused variable" and "does not need to be mutable" warnings.
         let _ignore_mut_warning = &mut alice_group;
 
+        let external_senders_list = vec![];
+
+        // ANCHOR: alice_create_group_with_builder_with_extensions
+        // we are adding an external senders list as an example.
+        let extensions =
+            Extensions::from_vec(vec![Extension::ExternalSenders(external_senders_list)])
+                .expect("failed to create extensions list");
+
+        let mut alice_group = MlsGroup::builder()
+            .padding_size(100)
+            .sender_ratchet_configuration(SenderRatchetConfiguration::new(
+                10,   // out_of_order_tolerance
+                2000, // maximum_forward_distance
+            ))
+            .with_group_context_extensions(extensions) // NB: the builder method returns a Result
+            .expect("failed to apply group context extensions")
+            .use_ratchet_tree_extension(true)
+            .build(provider, &alice_signature_keys, alice_credential.clone())
+            .expect("An unexpected error occurred.");
+        // ANCHOR_END: alice_create_group_with_builder_with_extensions
+
+        // Silence "unused variable" and "does not need to be mutable" warnings.
+        let _ignore_mut_warning = &mut alice_group;
+
         // ANCHOR: alice_create_group_with_builder
         let mut alice_group = MlsGroup::builder()
             .padding_size(100)
