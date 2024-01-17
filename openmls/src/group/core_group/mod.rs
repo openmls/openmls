@@ -873,6 +873,11 @@ impl CoreGroup {
                 .validate_update_proposals(&proposal_queue, *sender_index)?;
         }
 
+        // ValSem208
+        // ValSem209
+        self.public_group
+            .validate_group_context_extensions_proposal(&proposal_queue)?;
+
         // Make a copy of the public group to apply proposals safely
         let mut diff = self.public_group.empty_diff();
 

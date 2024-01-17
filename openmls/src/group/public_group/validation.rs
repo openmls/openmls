@@ -516,13 +516,12 @@ impl PublicGroup {
 
     /// Returns a [`LeafNodeValidationError`] if an [`ExtensionType`]
     /// in `extensions` is not supported by a leaf in this tree.
-    pub(super) fn validate_group_context_extensions_proposal(
+    pub(crate) fn validate_group_context_extensions_proposal(
         &self,
         proposal_queue: &ProposalQueue,
     ) -> Result<(), GroupContextExtensionsProposalValidationError> {
         let mut iter = proposal_queue.filtered_by_type(ProposalType::GroupContextExtensions);
 
-        //
         match iter.next() {
             Some(queued_proposal) => match queued_proposal.proposal() {
                 Proposal::GroupContextExtensions(extensions) => {

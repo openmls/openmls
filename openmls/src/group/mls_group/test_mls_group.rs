@@ -721,7 +721,7 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, provider: &impl OpenMlsPr
     // Let's add bob
     let (proposal, _) = alice_group
         .propose_add_member(provider, &alice_signer, bob_key_package)
-        .expect("error creating self-update proposal");
+        .expect("error creating add-bob proposal");
 
     let alice_processed_message = alice_group
         .process_message(provider, proposal.into_protocol_message().unwrap())
@@ -1028,11 +1028,16 @@ fn group_context_extensions_proposal(ciphersuite: Ciphersuite, provider: &impl O
     )])
     .expect("failed to build new extensions list");
 
-    let _ = alice_group
-        .propose_group_context_extensions(provider, new_extensions, &alice_signer)
+    let new_extensions_2 = Extensions::from_vec(vec![Extension::RequiredCapabilities(
+        RequiredCapabilitiesExtension::new(&[ExtensionType::RatchetTree], &[], &[]),
+    )])
+    .expect("failed to build new extensions list");
+
+    alice_group
+        .propose_group_context_extensions(provider, new_extensions.clone(), &alice_signer)
         .expect("failed to build group context extensions proposal");
 
-    assert!(alice_group.pending_proposals().next().is_some());
+    assert_eq!(alice_group.pending_proposals().count(), 1);
 
     alice_group
         .commit_to_pending_proposals(provider, &alice_signer)
@@ -1042,14 +1047,37 @@ fn group_context_extensions_proposal(ciphersuite: Ciphersuite, provider: &impl O
         .merge_pending_commit(provider)
         .expect("error merging pending commit");
 
-    let gces = alice_group.group().group_context_extensions();
-
-    let required_capabilities = gces
+    let required_capabilities = alice_group
+        .group()
+        .group_context_extensions()
         .required_capabilities()
         .expect("couldn't get required_capabilities");
 
     // has required_capabilities as required capability
     assert!(required_capabilities.extension_types() == [ExtensionType::RequiredCapabilities]);
+
+    // === committing to two group context extensions should fail
+
+    alice_group
+        .propose_group_context_extensions(provider, new_extensions.clone(), &alice_signer)
+        .expect("failed to build group context extensions proposal");
+
+    // the proposals need to be different or they will be deduplicated
+    alice_group
+        .propose_group_context_extensions(provider, new_extensions_2, &alice_signer)
+        .expect("failed to build group context extensions proposal");
+
+    assert_eq!(alice_group.pending_proposals().count(), 2);
+
+    alice_group
+        .commit_to_pending_proposals(provider, &alice_signer)
+        .expect_err(
+            "expected error when committing to multiple group context extensions proposals",
+        );
+
+    // TODO: we need to test that processing a commit with multiple group context extensions
+    //       proposal also fails. however, we can't generate this commit, because our functions for
+    //       constructing commits does not permit it.
 }
 
 // Test that the builder pattern accurately configures the new group.

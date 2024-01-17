@@ -238,6 +238,11 @@ pub enum CreateCommitError<KeyStoreError> {
     /// See [`InvalidExtensionError`] for more details.
     #[error(transparent)]
     InvalidExtensionError(#[from] InvalidExtensionError),
+    /// See [`GroupContextExtensionsProposalValidationError`] for more details.
+    #[error(transparent)]
+    GroupContextExtensionsProposalValidationError(
+        #[from] GroupContextExtensionsProposalValidationError,
+    ),
 }
 
 /// Validation error
