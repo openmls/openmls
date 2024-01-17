@@ -29,7 +29,7 @@ use crate::{
 /// This extension must be verified by the application every time it is set or
 /// changed.
 /// The application **MUST** verify that
-/// * the signature is valid
+/// * the signature is valid (using `verify_no_out` on this.)
 /// * the credential has been valid at `signing_time`
 /// * the `signer_application_id` is equal to the `creator_application_id`.
 ///
@@ -179,9 +179,10 @@ mod verifiable {
 
         fn verify(
             self,
-            _crypto: &impl OpenMlsCrypto,
-            _pk: &OpenMlsSignaturePublicKey,
+            crypto: &impl OpenMlsCrypto,
+            pk: &OpenMlsSignaturePublicKey,
         ) -> Result<Self::VerifiedStruct, SignatureError> {
+            self.verify_no_out(crypto, pk)?;
             Ok(self)
         }
     }
@@ -234,13 +235,16 @@ mod tests {
 
         // serialize and deserialize + verify
         let serialized = extension.tls_serialize_detached().unwrap();
-        let unverified = ProtectedMetadata::tls_deserialize_exact(serialized).unwrap();
-        let deserialized: ProtectedMetadata = unverified
-            .verify(provider.crypto(), &signature_key)
+        let protected_metadata = ProtectedMetadata::tls_deserialize_exact(serialized).unwrap();
+        protected_metadata
+            .verify_no_out(provider.crypto(), &signature_key)
             .unwrap();
-        assert_eq!(deserialized, extension);
+        assert_eq!(protected_metadata, extension);
 
-        let xmtp_metadata = deserialized.metadata();
+        // XXX: Application has to
+        // * the credential has been valid at `signing_time`
+
+        let xmtp_metadata = protected_metadata.metadata();
         assert_eq!(xmtp_metadata, metadata);
     }
 }
