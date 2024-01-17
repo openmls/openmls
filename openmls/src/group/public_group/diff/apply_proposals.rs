@@ -145,11 +145,12 @@ impl<'a> PublicGroupDiff<'a> {
         // apply group context extension proposal
         let extensions = proposal_queue
             .filtered_by_type(ProposalType::GroupContextExtensions)
-            .map(|queued_proposal| match queued_proposal.proposal() {
-                Proposal::GroupContextExtensions(extensions) => extensions.extensions().clone(),
-                _ => unreachable!(),
-            })
-            .next();
+            .find_map(|queued_proposal| match queued_proposal.proposal() {
+                Proposal::GroupContextExtensions(extensions) => {
+                    Some(extensions.extensions().clone())
+                }
+                _ => None,
+            });
 
         let proposals_require_path = proposal_queue
             .queued_proposals()

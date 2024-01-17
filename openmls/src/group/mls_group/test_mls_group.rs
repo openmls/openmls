@@ -1023,15 +1023,13 @@ fn group_context_extensions_proposal(ciphersuite: Ciphersuite, provider: &impl O
     // no required extensions
     assert!(required_capabilities.extension_types().is_empty());
 
-    let new_extensions = Extensions::from_vec(vec![Extension::RequiredCapabilities(
+    let new_extensions = Extensions::single(Extension::RequiredCapabilities(
         RequiredCapabilitiesExtension::new(&[ExtensionType::RequiredCapabilities], &[], &[]),
-    )])
-    .expect("failed to build new extensions list");
+    ));
 
-    let new_extensions_2 = Extensions::from_vec(vec![Extension::RequiredCapabilities(
+    let new_extensions_2 = Extensions::single(Extension::RequiredCapabilities(
         RequiredCapabilitiesExtension::new(&[ExtensionType::RatchetTree], &[], &[]),
-    )])
-    .expect("failed to build new extensions list");
+    ));
 
     alice_group
         .propose_group_context_extensions(provider, new_extensions.clone(), &alice_signer)
@@ -1079,10 +1077,9 @@ fn group_context_extensions_proposal(ciphersuite: Ciphersuite, provider: &impl O
     //       are not capable of
 
     // contains unsupported extension
-    let new_extensions = Extensions::from_vec(vec![Extension::RequiredCapabilities(
+    let new_extensions = Extensions::single(Extension::RequiredCapabilities(
         RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xf042)], &[], &[]),
-    )])
-    .expect("failed to build new extensions list");
+    ));
 
     alice_group
         .propose_group_context_extensions(provider, new_extensions, &alice_signer)
@@ -1090,7 +1087,7 @@ fn group_context_extensions_proposal(ciphersuite: Ciphersuite, provider: &impl O
 
     // TODO: we need to test that processing a commit with multiple group context extensions
     //       proposal also fails. however, we can't generate this commit, because our functions for
-    //       constructing commits does not permit it.
+    //       constructing commits does not permit it. See #1476
 }
 
 // Test that the builder pattern accurately configures the new group.
