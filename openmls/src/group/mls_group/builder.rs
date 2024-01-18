@@ -2,13 +2,16 @@ use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, OpenMlsProv
 
 use crate::{
     credentials::CredentialWithKey,
-    extensions::{errors::InvalidExtensionError, Extensions, ExternalSendersExtension},
+    error::LibraryError,
+    extensions::{errors::InvalidExtensionError, Extensions},
     group::{
         config::CryptoConfig, public_group::errors::PublicGroupBuildError, CoreGroup,
         CoreGroupBuildError, CoreGroupConfig, GroupId, MlsGroupCreateConfig,
         MlsGroupCreateConfigBuilder, NewGroupError, ProposalStore, WireFormatPolicy,
     },
-    prelude::{Capabilities, LibraryError, Lifetime, SenderRatchetConfiguration},
+    key_packages::Lifetime,
+    tree::sender_ratchet::SenderRatchetConfiguration,
+    treesync::node::leaf_node::Capabilities,
 };
 
 use super::{InnerState, MlsGroup, MlsGroupState};
@@ -70,8 +73,6 @@ impl MlsGroupBuilder {
             credential_with_key,
         )
         .with_config(group_config)
-        .with_required_capabilities(mls_group_create_config.required_capabilities.clone())
-        .with_external_senders(mls_group_create_config.external_senders.clone())
         .with_group_context_extensions(mls_group_create_config.group_context_extensions.clone())?
         .with_leaf_node_extensions(mls_group_create_config.leaf_node_extensions.clone())?
         .with_capabilities(mls_group_create_config.capabilities.clone())
@@ -194,22 +195,6 @@ impl MlsGroupBuilder {
         self
     }
 
-    /// Sets the `external_senders` property of the MlsGroup.
-    pub fn external_senders(mut self, external_senders: ExternalSendersExtension) -> Self {
-        self.mls_group_create_config_builder = self
-            .mls_group_create_config_builder
-            .external_senders(external_senders);
-        self
-    }
-
-    /// Sets the group creator's [`Capabilities`]
-    pub fn with_capabilities(mut self, capabilities: Capabilities) -> Self {
-        self.mls_group_create_config_builder = self
-            .mls_group_create_config_builder
-            .capabilities(capabilities);
-        self
-    }
-
     /// Sets the initial group context extensions
     pub fn with_group_context_extensions(
         mut self,
@@ -230,5 +215,13 @@ impl MlsGroupBuilder {
             .mls_group_create_config_builder
             .with_leaf_node_extensions(extensions)?;
         Ok(self)
+    }
+
+    /// Sets the group creator's [`Capabilities`]
+    pub fn with_capabilities(mut self, capabilities: Capabilities) -> Self {
+        self.mls_group_create_config_builder = self
+            .mls_group_create_config_builder
+            .capabilities(capabilities);
+        self
     }
 }

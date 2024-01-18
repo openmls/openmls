@@ -1016,14 +1016,12 @@ fn group_context_extensions_proposal(ciphersuite: Ciphersuite, provider: &impl O
         .build(provider, &alice_signer, alice_credential_with_key)
         .expect("error creating group using builder");
 
-    let required_capabilities = alice_group
+    // No required capabilities, so no specifically required extensions.
+    assert!(alice_group
         .group()
         .group_context_extensions()
         .required_capabilities()
-        .expect("couldn't get required_capabilities");
-
-    // no required extensions
-    assert!(required_capabilities.extension_types().is_empty());
+        .is_none());
 
     let new_extensions = Extensions::single(Extension::RequiredCapabilities(
         RequiredCapabilitiesExtension::new(&[ExtensionType::RequiredCapabilities], &[], &[]),
@@ -1128,7 +1126,10 @@ fn builder_pattern(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .with_group_id(test_group_id.clone())
         .padding_size(test_padding_size)
         .sender_ratchet_configuration(test_sender_ratchet_config.clone())
-        .external_senders(test_external_senders.clone())
+        .with_group_context_extensions(Extensions::single(Extension::ExternalSenders(
+            test_external_senders.clone(),
+        )))
+        .unwrap()
         .crypto_config(test_crypto_config)
         .with_wire_format_policy(test_wire_format_policy)
         .lifetime(test_lifetime)
