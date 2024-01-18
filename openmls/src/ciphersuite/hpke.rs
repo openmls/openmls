@@ -90,7 +90,7 @@ impl From<(&str, &[u8])> for EncryptContext {
 }
 
 /// Encrypt to an HPKE key with a label.
-pub(crate) fn encrypt_with_label(
+pub fn encrypt_with_label(
     public_key: &[u8],
     label: &str,
     context: &[u8],
@@ -123,7 +123,7 @@ pub(crate) fn encrypt_with_label(
 }
 
 /// Decrypt with HPKE and label.
-pub(crate) fn decrypt_with_label(
+pub fn decrypt_with_label(
     private_key: &[u8],
     label: &str,
     context: &[u8],
