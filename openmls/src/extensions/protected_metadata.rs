@@ -246,5 +246,7 @@ mod tests {
 
         let xmtp_metadata = protected_metadata.metadata();
         assert_eq!(xmtp_metadata, metadata);
+
+        // But really, the extension must never be modified.
     }
 }

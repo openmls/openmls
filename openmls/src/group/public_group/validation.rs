@@ -525,6 +525,22 @@ impl PublicGroup {
         match iter.next() {
             Some(queued_proposal) => match queued_proposal.proposal() {
                 Proposal::GroupContextExtensions(extensions) => {
+                    // Ensure that the [`ProtectedMetadata`] extension did not change.
+                    if let Some(new_protected_metadata) =
+                        extensions.extensions().protected_metadata()
+                    {
+                        // Get existing extension.
+                        if let Some(old_protected_metadata) =
+                            self.group_context.extensions().protected_metadata()
+                        {
+                            // If the extension changed, or there hasn't been one before,
+                            // this proposal is invalid.
+                            if new_protected_metadata != old_protected_metadata {
+                                return Err(GroupContextExtensionsProposalValidationError::ChangedProtectedMetadata);
+                            }
+                        }
+                    }
+
                     let ext_type_list: Vec<_> = extensions
                         .extensions()
                         .iter()

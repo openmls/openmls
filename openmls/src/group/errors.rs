@@ -550,4 +550,7 @@ pub enum GroupContextExtensionsProposalValidationError {
         "The new extensions set contails extensions that are not supported by all group members."
     )]
     ExtensionNotSupportedByAllMembers,
+    /// Proposal changes the protected metadata extension, which is not allowed.
+    #[error("Proposal changes the protected metadata extension, which is not allowed.")]
+    ChangedProtectedMetadata,
 }

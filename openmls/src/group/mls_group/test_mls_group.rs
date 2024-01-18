@@ -1090,6 +1090,127 @@ fn group_context_extensions_proposal(ciphersuite: Ciphersuite, provider: &impl O
     //       constructing commits does not permit it. See #1476
 }
 
+/// Test that the protected metadata can't be changed.
+#[apply(ciphersuites_and_providers)]
+fn protected_metadata(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+    let (alice_credential_with_key, _alice_kpb, alice_signer, alice_pk) =
+        setup_client("Alice", ciphersuite, provider);
+
+    let capabilities = Capabilities::new(
+        None,
+        None,
+        // Add last resort extension as supported extension
+        Some(&[ExtensionType::LastResort]),
+        None,
+        None,
+    );
+    let kp = KeyPackage::builder()
+        .key_package_extensions(extensions)
+        .leaf_node_capabilities(capabilities)
+        .build(
+            crypto_config,
+            provider,
+            &signer,
+            CredentialWithKey {
+                credential: credential.clone(),
+                signature_key: signer.to_public_vec().into(),
+            },
+        )
+        .expect("error building key package with last resort extension");
+
+    // === Alice creates a group ===
+    let mut protected_metadata_extension = Extensions::single(Extension::ProtectedMetadata(
+        ProtectedMetadata::new(
+            &alice_signer,
+            "Alice App ID".into(),
+            alice_credential_with_key.credential.clone(),
+            alice_pk.as_slice().to_vec(),
+            "Metadata".into(),
+        )
+        .unwrap(),
+    ));
+    protected_metadata_extension.add(Extension::Req);
+
+    let mut alice_group = MlsGroup::builder()
+        .with_group_context_extensions(protected_metadata_extension)
+        .unwrap()
+        .build(provider, &alice_signer, alice_credential_with_key.clone())
+        .expect("error creating group using builder");
+
+    let changed_protected_metadata_extension = Extensions::single(Extension::ProtectedMetadata(
+        ProtectedMetadata::new(
+            &alice_signer,
+            "Alice App ID".into(),
+            alice_credential_with_key.credential.clone(),
+            alice_pk.as_slice().to_vec(),
+            "Metadata".into(),
+        )
+        .unwrap(),
+    ));
+
+    alice_group
+        .propose_group_context_extensions(
+            provider,
+            changed_protected_metadata_extension,
+            &alice_signer,
+        )
+        .expect("failed to build group context extensions proposal");
+
+    assert_eq!(alice_group.pending_proposals().count(), 1);
+
+    alice_group
+        .commit_to_pending_proposals(provider, &alice_signer)
+        .expect("failed to commit to pending proposals");
+
+    alice_group
+        .merge_pending_commit(provider)
+        .expect("error merging pending commit");
+
+    // let required_capabilities = alice_group
+    //     .group()
+    //     .group_context_extensions()
+    //     .required_capabilities()
+    //     .expect("couldn't get required_capabilities");
+
+    // // has required_capabilities as required capability
+    // assert!(required_capabilities.extension_types() == [ExtensionType::RequiredCapabilities]);
+
+    // // === committing to two group context extensions should fail
+
+    // alice_group
+    //     .propose_group_context_extensions(provider, protected_metadata_extension, &alice_signer)
+    //     .expect("failed to build group context extensions proposal");
+
+    // // the proposals need to be different or they will be deduplicated
+    // alice_group
+    //     .propose_group_context_extensions(provider, new_extensions_2, &alice_signer)
+    //     .expect("failed to build group context extensions proposal");
+
+    // assert_eq!(alice_group.pending_proposals().count(), 2);
+
+    // alice_group
+    //     .commit_to_pending_proposals(provider, &alice_signer)
+    //     .expect_err(
+    //         "expected error when committing to multiple group context extensions proposals",
+    //     );
+
+    // // === can't update required required_capabilities to extensions that existing group members
+    // //       are not capable of
+
+    // // contains unsupported extension
+    // let new_extensions = Extensions::single(Extension::RequiredCapabilities(
+    //     RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xf042)], &[], &[]),
+    // ));
+
+    // alice_group
+    //     .propose_group_context_extensions(provider, new_extensions, &alice_signer)
+    //     .expect_err("expected an error building GCE proposal with bad required_capabilities");
+
+    // // TODO: we need to test that processing a commit with multiple group context extensions
+    // //       proposal also fails. however, we can't generate this commit, because our functions for
+    // //       constructing commits does not permit it. See #1476
+}
+
 // Test that the builder pattern accurately configures the new group.
 #[apply(ciphersuites_and_providers)]
 fn builder_pattern(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
