@@ -329,7 +329,8 @@ fn test_required_extension_key_package_mismatch(
 
     // Set required capabilities
     let extensions = &[ExtensionType::Unknown(0xff00)];
-    let proposals = &[ProposalType::Unknown(0xff00)];
+    // We don't support unknown proposals (yet)
+    let proposals = &[];
     let credentials = &[CredentialType::Basic];
     let required_capabilities =
         RequiredCapabilitiesExtension::new(extensions, proposals, credentials);
@@ -339,7 +340,10 @@ fn test_required_extension_key_package_mismatch(
         CryptoConfig::with_default_version(ciphersuite),
         alice_credential,
     )
-    .with_required_capabilities(required_capabilities)
+    .with_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
+        required_capabilities,
+    )))
+    .expect("error adding group context extensions")
     .build(provider, &alice_signer)
     .expect("Error creating CoreGroup.");
 
