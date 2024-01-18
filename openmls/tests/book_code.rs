@@ -133,10 +133,13 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             10,   // out_of_order_tolerance
             2000, // maximum_forward_distance
         ))
-        .external_senders(vec![ExternalSender::new(
-            ds_credential_with_key.signature_key.clone(),
-            ds_credential_with_key.credential.clone(),
-        )])
+        .with_group_context_extensions(Extensions::single(Extension::ExternalSenders(vec![
+            ExternalSender::new(
+                ds_credential_with_key.signature_key.clone(),
+                ds_credential_with_key.credential.clone(),
+            ),
+        ])))
+        .expect("error adding external senders extension to group context extensions")
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .use_ratchet_tree_extension(true)
         .build();
@@ -201,10 +204,6 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
                 10,   // out_of_order_tolerance
                 2000, // maximum_forward_distance
             ))
-            .external_senders(vec![ExternalSender::new(
-                ds_credential_with_key.signature_key,
-                ds_credential_with_key.credential,
-            )])
             .crypto_config(CryptoConfig::with_default_version(ciphersuite))
             .use_ratchet_tree_extension(true)
             .build(provider, &alice_signature_keys, alice_credential.clone())
