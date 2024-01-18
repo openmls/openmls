@@ -307,11 +307,7 @@ impl MlsGroupCreateConfigBuilder {
         self
     }
 
-    /// Sets initial group context extensions. Note that RequiredCapabilities
-    /// extensions will be overwritten, and should be set using a call to
-    /// `required_capabilities`. If `ExternalSenders` extensions are provided
-    /// both in this call, and a call to `external_senders`, only the one from
-    /// the call to `external_senders` will be included.
+    /// Sets initial group context extensions.
     pub fn with_group_context_extensions(
         mut self,
         extensions: Extensions,
