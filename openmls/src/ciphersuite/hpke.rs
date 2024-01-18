@@ -45,7 +45,7 @@ use super::LABEL_PREFIX;
 
 /// HPKE labeled encryption errors.
 #[derive(Error, Debug, PartialEq, Clone)]
-pub(crate) enum Error {
+pub enum Error {
     /// Error while serializing content. This should only happen if a bounds check was missing.
     #[error(
         "Error while serializing content. This should only happen if a bounds check was missing."
@@ -68,12 +68,14 @@ impl From<CryptoError> for Error {
     }
 }
 
+/// Context for HPKE encryption
 #[derive(Debug, Clone, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize)]
 pub struct EncryptContext {
     label: VLBytes,
     context: VLBytes,
 }
 
+/// Context for HPKE encryption
 impl EncryptContext {
     /// Create a new [`EncryptContext`] from a string label and the content bytes.
     pub fn new(label: &str, context: VLBytes) -> Self {
@@ -90,7 +92,7 @@ impl From<(&str, &[u8])> for EncryptContext {
 }
 
 /// Encrypt to an HPKE key with a label.
-pub(crate) fn encrypt_with_label(
+pub fn encrypt_with_label(
     public_key: &[u8],
     label: &str,
     context: &[u8],
@@ -123,7 +125,7 @@ pub(crate) fn encrypt_with_label(
 }
 
 /// Decrypt with HPKE and label.
-pub(crate) fn decrypt_with_label(
+pub fn decrypt_with_label(
     private_key: &[u8],
     label: &str,
     context: &[u8],
