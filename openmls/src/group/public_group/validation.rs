@@ -6,7 +6,8 @@ use std::collections::{BTreeSet, HashSet};
 use openmls_traits::types::VerifiableCiphersuite;
 
 use super::PublicGroup;
-#[cfg(test)]
+use crate::group::GroupContextExtensionsProposalValidationError;
+use crate::prelude::LibraryError;
 use crate::treesync::errors::LeafNodeValidationError;
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
@@ -518,7 +519,42 @@ impl PublicGroup {
 
     /// Returns a [`LeafNodeValidationError`] if an [`ExtensionType`]
     /// in `extensions` is not supported by a leaf in this tree.
-    #[cfg(test)]
+    pub(crate) fn validate_group_context_extensions_proposal(
+        &self,
+        proposal_queue: &ProposalQueue,
+    ) -> Result<(), GroupContextExtensionsProposalValidationError> {
+        let mut iter = proposal_queue.filtered_by_type(ProposalType::GroupContextExtensions);
+
+        match iter.next() {
+            Some(queued_proposal) => match queued_proposal.proposal() {
+                Proposal::GroupContextExtensions(extensions) => {
+                    let ext_type_list: Vec<_> = extensions
+                        .extensions()
+                        .iter()
+                        .map(|ext| ext.extension_type())
+                        .collect();
+
+                    self.check_extension_support(&ext_type_list).map_err(|_| GroupContextExtensionsProposalValidationError::ExtensionNotSupportedByAllMembers)?
+                }
+                _ => {
+                    return Err(GroupContextExtensionsProposalValidationError::LibraryError(
+                        LibraryError::custom(
+                            "found non-gce proposal when filtered for gce proposals",
+                        ),
+                    ))
+                }
+            },
+            None => return Ok(()),
+        }
+
+        match iter.next() {
+            Some(_) => Err(GroupContextExtensionsProposalValidationError::TooManyGCEProposals),
+            None => Ok(()),
+        }
+    }
+
+    /// Returns a [`LeafNodeValidationError`] if an [`ExtensionType`]
+    /// in `extensions` is not supported by a leaf in this tree.
     pub(crate) fn check_extension_support(
         &self,
         extensions: &[crate::extensions::ExtensionType],

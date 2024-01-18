@@ -48,6 +48,7 @@ impl<'a> PublicGroupDiff<'a> {
         credential_with_key: Option<CredentialWithKey>,
         leaf_node_extensions_option: Option<Extensions>,
         leaf_node_capabilities_option: Option<Capabilities>,
+        extensions: Option<Extensions>,
     ) -> Result<PathComputationResult, CreateCommitError<KeyStore::Error>> {
         let version = self.group_context().protocol_version();
         let ciphersuite = self.group_context().ciphersuite();
@@ -109,7 +110,7 @@ impl<'a> PublicGroupDiff<'a> {
         // After we've processed the path, we can update the group context s.t.
         // the updated group context is used for path secret encryption. Note
         // that we have not yet updated the confirmed transcript hash.
-        self.update_group_context(provider.crypto())?;
+        self.update_group_context(provider.crypto(), extensions)?;
 
         let serialized_group_context = self
             .group_context()

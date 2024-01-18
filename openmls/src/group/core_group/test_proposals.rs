@@ -22,7 +22,6 @@ use crate::{
     messages::proposals::{AddProposal, Proposal, ProposalOrRef, ProposalType},
     schedule::psk::store::ResumptionPskStore,
     test_utils::*,
-    treesync::errors::LeafNodeValidationError,
     versions::ProtocolVersion,
 };
 
@@ -299,7 +298,10 @@ fn test_required_unsupported_proposals(ciphersuite: Ciphersuite, provider: &impl
         CryptoConfig::with_default_version(ciphersuite),
         alice_credential,
     )
-    .with_required_capabilities(required_capabilities)
+    .with_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
+        required_capabilities,
+    )))
+    .unwrap()
     .build(provider, &alice_signer)
     .expect_err(
         "CoreGroup creation must fail because AppAck proposals aren't supported in OpenMLS yet.",
@@ -308,58 +310,6 @@ fn test_required_unsupported_proposals(ciphersuite: Ciphersuite, provider: &impl
         e,
         CoreGroupBuildError::PublicGroupBuildError(PublicGroupBuildError::UnsupportedProposalType)
     ))
-}
-
-#[apply(ciphersuites_and_providers)]
-fn test_required_extension_key_package_mismatch(
-    ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
-) {
-    // Basic group setup.
-    let group_aad = b"Alice's test group";
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
-
-    let (alice_credential, _, alice_signer, _alice_pk) =
-        setup_client("Alice", ciphersuite, provider);
-    let (_bob_credential_with_key, bob_key_package_bundle, _, _) =
-        setup_client("Bob", ciphersuite, provider);
-    let bob_key_package = bob_key_package_bundle.key_package();
-
-    // Set required capabilities
-    let extensions = &[
-        ExtensionType::RequiredCapabilities,
-        ExtensionType::ApplicationId,
-    ];
-    let proposals = &[
-        ProposalType::GroupContextExtensions,
-        ProposalType::Add,
-        ProposalType::Remove,
-        ProposalType::Update,
-    ];
-    let credentials = &[CredentialType::Basic];
-    let required_capabilities =
-        RequiredCapabilitiesExtension::new(extensions, proposals, credentials);
-
-    let alice_group = CoreGroup::builder(
-        GroupId::random(provider.rand()),
-        CryptoConfig::with_default_version(ciphersuite),
-        alice_credential,
-    )
-    .with_required_capabilities(required_capabilities)
-    .build(provider, &alice_signer)
-    .expect("Error creating CoreGroup.");
-
-    let e = alice_group
-        .create_add_proposal(
-            framing_parameters,
-            bob_key_package.clone(),
-            &alice_signer,
-        )
-        .expect_err("Proposal was created even though the key package didn't support the required extensions.");
-    assert_eq!(
-        e,
-        CreateAddProposalError::LeafNodeValidation(LeafNodeValidationError::UnsupportedExtensions)
-    );
 }
 
 #[apply(ciphersuites_and_providers)]
@@ -392,7 +342,10 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, provider: &impl OpenM
         CryptoConfig::with_default_version(ciphersuite),
         alice_credential,
     )
-    .with_required_capabilities(required_capabilities)
+    .with_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
+        required_capabilities,
+    )))
+    .unwrap()
     .build(provider, &alice_signer)
     .expect("Error creating CoreGroup.");
 
@@ -470,7 +423,10 @@ fn test_group_context_extension_proposal_fails(
         CryptoConfig::with_default_version(ciphersuite),
         alice_credential,
     )
-    .with_required_capabilities(required_capabilities)
+    .with_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
+        required_capabilities,
+    )))
+    .unwrap()
     .build(provider, &alice_signer)
     .expect("Error creating CoreGroup.");
 

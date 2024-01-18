@@ -3,7 +3,7 @@
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
-use tls_codec::{Deserialize, Serialize};
+use tls_codec::Serialize;
 
 use rstest::*;
 use rstest_reuse::{self, *};

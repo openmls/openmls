@@ -55,6 +55,7 @@ use super::{
 ///  - ValSem005
 ///  - ValSem007
 ///  - ValSem009
+#[derive(Debug)]
 pub(crate) struct DecryptedMessage {
     verifiable_content: VerifiableAuthenticatedContentIn,
 }

@@ -87,6 +87,9 @@ impl PublicGroup {
         // ValSem107
         // ValSem108
         self.validate_remove_proposals(&proposal_queue)?;
+        // ValSem208
+        // ValSem209
+        self.validate_group_context_extensions_proposal(&proposal_queue)?;
         // ValSem401
         // ValSem402
         // ValSem403
@@ -226,7 +229,7 @@ impl PublicGroup {
         };
 
         // Update group context
-        diff.update_group_context(crypto)?;
+        diff.update_group_context(crypto, apply_proposals_values.extensions.clone())?;
 
         // Update the confirmed transcript hash before we compute the confirmation tag.
         diff.update_confirmed_transcript_hash(crypto, mls_content)?;
