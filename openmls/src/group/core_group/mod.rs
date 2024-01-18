@@ -190,7 +190,7 @@ impl CoreGroupBuilder {
             .with_required_capabilities(required_capabilities);
         self
     }
-    /// Set the [`Capabilities`] of the [`CoreGroup`].
+    /// Set the [`Capabilities`] of the group's creator.
     pub(crate) fn with_capabilities(mut self, capabilities: Capabilities) -> Self {
         self.public_group_builder = self.public_group_builder.with_capabilities(capabilities);
         self

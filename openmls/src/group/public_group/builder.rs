@@ -84,7 +84,7 @@ impl TempBuilderPG1 {
             .iter()
             .all(|e| matches!(e.extension_type(), ExtensionType::Unknown(_)));
         if !is_valid_in_leaf_node {
-            return Err(InvalidExtensionError::IllegalInGroupContext);
+            return Err(InvalidExtensionError::IllegalInLeafNodes);
         }
         self.leaf_node_extensions = extensions;
         Ok(self)
