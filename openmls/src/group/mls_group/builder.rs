@@ -221,6 +221,7 @@ impl MlsGroupBuilder {
         Ok(self)
     }
 
+    /// Sets the initial leaf node extensions
     pub fn with_leaf_node_extensions(
         mut self,
         extensions: Extensions,
