@@ -189,6 +189,8 @@
 <div class="table-wrapper"><table><thead><tr><th>Name</th><th>Type</th><th>Explanation</th></tr></thead><tbody>
 <tr><td><code>required_capabilities</code></td><td><code>RequiredCapabilitiesExtension</code></td><td>Required capabilities (extensions and proposal types).</td></tr>
 <tr><td><code>external_senders</code></td><td><code>ExternalSendersExtensions</code></td><td>List credentials of non-group members that are allowed to send proposals to the group.</td></tr>
+<tr><td><code>capabilities</code> .</td><td><code>Capabilities</code></td><td>Lists the capabilities of the group's creator.</td></tr>
+<tr><td><code>leaf_extensions</code> .</td><td><code>Extensions</code></td><td>Extensions to be included in the group creator's leaf</td></tr>
 </tbody></table>
 </div>
 <p>Both ways of group configurations can be specified by using the struct's builder pattern, or choosing their default values. The default value contains safe values for all parameters and is suitable for scenarios without particular requirements.</p>
@@ -208,11 +210,24 @@
             10,   // out_of_order_tolerance
             2000, // maximum_forward_distance
         ))
+        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .capabilities(Capabilities::new(
+            None, // Defaults to the group's protocol version
+            None, // Defaults to the group's ciphersuite
+            None, // Defaults to all basic extension types
+            None, // Defaults to all basic proposal types
+            Some(&amp;[CredentialType::Basic]),
+        ))
+        // Example leaf extension
+        .with_leaf_node_extensions(Extensions::single(Extension::Unknown(
+            0xff00,
+            UnknownExtension(vec![0, 1, 2, 3]),
+        )))
+        .expect(&quot;failed to configure leaf extensions&quot;)
         .external_senders(vec![ExternalSender::new(
             ds_credential_with_key.signature_key.clone(),
             ds_credential_with_key.credential.clone(),
         )])
-        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .use_ratchet_tree_extension(true)
         .build();</code></pre>
 

@@ -1171,6 +1171,23 @@
 <a href="#1171" id="1171">1171</a>
 <a href="#1172" id="1172">1172</a>
 <a href="#1173" id="1173">1173</a>
+<a href="#1174" id="1174">1174</a>
+<a href="#1175" id="1175">1175</a>
+<a href="#1176" id="1176">1176</a>
+<a href="#1177" id="1177">1177</a>
+<a href="#1178" id="1178">1178</a>
+<a href="#1179" id="1179">1179</a>
+<a href="#1180" id="1180">1180</a>
+<a href="#1181" id="1181">1181</a>
+<a href="#1182" id="1182">1182</a>
+<a href="#1183" id="1183">1183</a>
+<a href="#1184" id="1184">1184</a>
+<a href="#1185" id="1185">1185</a>
+<a href="#1186" id="1186">1186</a>
+<a href="#1187" id="1187">1187</a>
+<a href="#1188" id="1188">1188</a>
+<a href="#1189" id="1189">1189</a>
+<a href="#1190" id="1190">1190</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -1212,6 +1229,7 @@
 
 <span class="kw">use </span><span class="self">self</span>::{
     create_commit_params::{CommitType, CreateCommitParams},
+    node::leaf_node::Capabilities,
     past_secrets::MessageSecretsStore,
     staged_commit::{MemberStagedCommitState, StagedCommit, StagedCommitState},
 };
@@ -1362,6 +1380,11 @@
             .with_required_capabilities(required_capabilities);
         <span class="self">self
     </span>}
+    <span class="doccomment">/// Set the [`Capabilities`] of the group&#39;s creator.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>with_capabilities(<span class="kw-2">mut </span><span class="self">self</span>, capabilities: Capabilities) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.public_group_builder = <span class="self">self</span>.public_group_builder.with_capabilities(capabilities);
+        <span class="self">self
+    </span>}
     <span class="doccomment">/// Set the [`ExternalSendersExtension`] of the [`CoreGroup`].
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>with_external_senders(
         <span class="kw-2">mut </span><span class="self">self</span>,
@@ -1387,6 +1410,17 @@
         <span class="self">self</span>.public_group_builder = <span class="self">self
             </span>.public_group_builder
             .with_group_context_extensions(extensions)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="self">self</span>)
+    }
+
+    <span class="doccomment">/// Sets extensions of the group creator&#39;s [`LeafNode`].
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>with_leaf_node_extensions(
+        <span class="kw-2">mut </span><span class="self">self</span>,
+        extensions: Extensions,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, InvalidExtensionError&gt; {
+        <span class="self">self</span>.public_group_builder = <span class="self">self
+            </span>.public_group_builder
+            .with_leaf_node_extensions(extensions)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="self">self</span>)
     }
 

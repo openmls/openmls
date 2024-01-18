@@ -98,6 +98,11 @@
 <a href="#98" id="98">98</a>
 <a href="#99" id="99">99</a>
 <a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Extension errors.
 //!
 //! An `ExtensionError` is thrown when an extension is invalid (for example when
@@ -197,5 +202,10 @@
         <span class="string">&quot;The provided extension list contains an extension that is not allowed in group contexts.&quot;
     </span>)]
     </span>IllegalInGroupContext,
+    <span class="doccomment">/// The provided extension list contains an extension that is not allowed in leaf nodes
+    </span><span class="attr">#[error(
+        <span class="string">&quot;The provided extension list contains an extension that is not allowed in leaf nodes.&quot;
+    </span>)]
+    </span>IllegalInLeafNodes,
 }
 </code></pre></div></section></main></body></html>
