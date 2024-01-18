@@ -68,14 +68,14 @@ impl From<CryptoError> for Error {
     }
 }
 
-// Context for HPKE encryption
+/// Context for HPKE encryption
 #[derive(Debug, Clone, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize)]
 pub struct EncryptContext {
     label: VLBytes,
     context: VLBytes,
 }
 
-// Context for HPKE encryption
+/// Context for HPKE encryption
 impl EncryptContext {
     /// Create a new [`EncryptContext`] from a string label and the content bytes.
     pub fn new(label: &str, context: VLBytes) -> Self {
