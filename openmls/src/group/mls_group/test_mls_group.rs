@@ -1162,3 +1162,38 @@ fn builder_pattern(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .expect("leaf doesn't have a lifetime");
     assert_eq!(lifetime, &test_lifetime);
 }
+
+// Test that unknown group context and leaf node extensions can be used in groups
+#[apply(ciphersuites_and_providers)]
+fn unknown_extensions(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+    let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
+        setup_client("Alice", ciphersuite, provider);
+
+    let unknown_gc_extension = Extension::Unknown(0xff00, UnknownExtension(vec![0, 1, 2, 3]));
+    let unknown_leaf_extension = Extension::Unknown(0xff01, UnknownExtension(vec![4, 5, 6, 7]));
+    let required_capabilities = Extension::RequiredCapabilities(
+        RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xff00)], &[], &[]),
+    );
+    let test_gc_extensions = Extensions::from_vec(vec![
+        unknown_gc_extension.clone(),
+        required_capabilities.clone(),
+    ])
+    .expect("error creating group context extensions");
+
+    // === Alice creates a group ===
+    let alice_group = MlsGroup::builder()
+        .with_leaf_node_extensions(Extensions::single(unknown_leaf_extension.clone()))
+        .with_group_context_extensions(test_gc_extensions.clone())
+        .expect("error adding unknown extension to builder")
+        .build(provider, &alice_signer, alice_credential_with_key)
+        .expect("error creating group using builder");
+
+    // Check that everything was added successfully
+    let group_context = alice_group.export_group_context();
+    assert_eq!(group_context.extensions(), &test_gc_extensions);
+    let leaf_node = alice_group.own_leaf().expect("error getting own leaf");
+    assert_eq!(
+        leaf_node.extensions(),
+        &Extensions::single(unknown_leaf_extension)
+    );
+}
