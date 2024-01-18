@@ -1107,6 +1107,9 @@ fn builder_pattern(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         alice_credential_with_key.signature_key.clone(),
         alice_credential_with_key.credential.clone(),
     )];
+    let test_required_capabilities = Extension::RequiredCapabilities(
+        RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xff00)], &[], &[]),
+    );
     let test_crypto_config = CryptoConfig::with_default_version(ciphersuite);
     let test_sender_ratchet_config = SenderRatchetConfiguration::new(10, 2000);
     let test_max_past_epochs = 10;
@@ -1135,6 +1138,8 @@ fn builder_pattern(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .use_ratchet_tree_extension(true)
         .max_past_epochs(test_max_past_epochs)
         .number_of_resumption_psks(test_number_of_resumption_psks)
+        .with_group_context_extensions(Extensions::single(test_required_capabilities.clone()))
+        .expect("error adding group context extension to builder")
         .with_leaf_node_extensions(test_leaf_extensions.clone())
         .unwrap()
         .with_capabilities(test_capabilities.clone())
@@ -1171,6 +1176,8 @@ fn builder_pattern(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         version: group_context.protocol_version(),
     };
     assert_eq!(crypto_config, test_crypto_config);
+    let extensions = group_context.extensions();
+    assert_eq!(extensions, &Extensions::single(test_required_capabilities));
     let lifetime = alice_group
         .own_leaf()
         .expect("error getting own leaf")
@@ -1203,8 +1210,24 @@ fn unknown_extensions(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider)
 
     let unknown_gc_extension = Extension::Unknown(0xff00, UnknownExtension(vec![0, 1, 2, 3]));
     let unknown_leaf_extension = Extension::Unknown(0xff01, UnknownExtension(vec![4, 5, 6, 7]));
-    let required_capabilities = Extension::RequiredCapabilities(
-        RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xff00)], &[], &[]),
+    let required_capabilities =
+        Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
+            &[
+                ExtensionType::Unknown(0xff00),
+                ExtensionType::Unknown(0xff01),
+            ],
+            &[],
+            &[],
+        ));
+    let capabilities = Capabilities::new(
+        None,
+        None,
+        Some(&[
+            ExtensionType::Unknown(0xff00),
+            ExtensionType::Unknown(0xff01),
+        ]),
+        None,
+        None,
     );
     let test_gc_extensions = Extensions::from_vec(vec![
         unknown_gc_extension.clone(),
@@ -1213,8 +1236,10 @@ fn unknown_extensions(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider)
     .expect("error creating group context extensions");
 
     // === Alice creates a group ===
-    let alice_group = MlsGroup::builder()
+    let mut alice_group = MlsGroup::builder()
+        .with_capabilities(capabilities.clone())
         .with_leaf_node_extensions(Extensions::single(unknown_leaf_extension.clone()))
+        .expect("error adding unknown leaf extension to builder")
         .with_group_context_extensions(test_gc_extensions.clone())
         .expect("error adding unknown extension to builder")
         .build(provider, &alice_signer, alice_credential_with_key)
@@ -1228,4 +1253,33 @@ fn unknown_extensions(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider)
         leaf_node.extensions(),
         &Extensions::single(unknown_leaf_extension)
     );
+
+    // Now let's add Bob to the group and make sure that he joins the group successfully
+
+    // === Alice adds Bob ===
+    let (bob_credential_with_key, _bob_kpb, bob_signer, _bob_pk) =
+        setup_client("Bob", ciphersuite, provider);
+
+    // Generate a KP that supports the unknown extensions
+    let config = CryptoConfig {
+        ciphersuite,
+        version: crate::versions::ProtocolVersion::default(),
+    };
+    let bob_key_package = KeyPackage::builder()
+        .leaf_node_capabilities(capabilities)
+        .build(config, provider, &bob_signer, bob_credential_with_key)
+        .expect("error building key package");
+
+    // alice adds bob and bob processes the welcome
+    let (_, welcome, _) = alice_group
+        .add_members(provider, &alice_signer, &[bob_key_package.clone()])
+        .unwrap();
+    alice_group.merge_pending_commit(provider).unwrap();
+    let mut bob_group = MlsGroup::new_from_welcome(
+        provider,
+        &MlsGroupJoinConfig::default(),
+        welcome.into_welcome().unwrap(),
+        Some(alice_group.export_ratchet_tree().into()),
+    )
+    .unwrap();
 }

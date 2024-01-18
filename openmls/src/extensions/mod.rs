@@ -167,21 +167,6 @@ impl From<ExtensionType> for u16 {
     }
 }
 
-impl ExtensionType {
-    /// Check whether an [`ExtensionType`] is supported or not.
-    pub fn is_supported(&self) -> bool {
-        matches!(
-            self,
-            ExtensionType::ApplicationId
-                | ExtensionType::RatchetTree
-                | ExtensionType::RequiredCapabilities
-                | ExtensionType::ExternalPub
-                | ExtensionType::ExternalSenders
-                | ExtensionType::LastResort
-        )
-    }
-}
-
 /// # Extension
 ///
 /// An extension is one of the [`Extension`] enum values.
