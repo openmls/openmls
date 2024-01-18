@@ -74,6 +74,7 @@ pub struct EncryptContext {
     context: VLBytes,
 }
 
+// Context for HPKE encryption
 impl EncryptContext {
     /// Create a new [`EncryptContext`] from a string label and the content bytes.
     pub fn new(label: &str, context: VLBytes) -> Self {
