@@ -2,13 +2,16 @@ use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, OpenMlsProv
 
 use crate::{
     credentials::CredentialWithKey,
+    error::LibraryError,
     extensions::{errors::InvalidExtensionError, Extensions},
     group::{
         config::CryptoConfig, public_group::errors::PublicGroupBuildError, CoreGroup,
         CoreGroupBuildError, CoreGroupConfig, GroupId, MlsGroupCreateConfig,
         MlsGroupCreateConfigBuilder, NewGroupError, ProposalStore, WireFormatPolicy,
     },
-    prelude::{LibraryError, Lifetime, SenderRatchetConfiguration},
+    key_packages::Lifetime,
+    tree::sender_ratchet::SenderRatchetConfiguration,
+    treesync::node::leaf_node::Capabilities,
 };
 
 use super::{InnerState, MlsGroup, MlsGroupState};
@@ -71,6 +74,8 @@ impl MlsGroupBuilder {
         )
         .with_config(group_config)
         .with_group_context_extensions(mls_group_create_config.group_context_extensions.clone())?
+        .with_leaf_node_extensions(mls_group_create_config.leaf_node_extensions.clone())?
+        .with_capabilities(mls_group_create_config.capabilities.clone())
         .with_max_past_epoch_secrets(mls_group_create_config.join_config.max_past_epochs)
         .with_lifetime(*mls_group_create_config.lifetime())
         .build(provider, signer)
@@ -199,5 +204,24 @@ impl MlsGroupBuilder {
             .mls_group_create_config_builder
             .with_group_context_extensions(extensions)?;
         Ok(self)
+    }
+
+    /// Sets the initial leaf node extensions
+    pub fn with_leaf_node_extensions(
+        mut self,
+        extensions: Extensions,
+    ) -> Result<Self, InvalidExtensionError> {
+        self.mls_group_create_config_builder = self
+            .mls_group_create_config_builder
+            .with_leaf_node_extensions(extensions)?;
+        Ok(self)
+    }
+
+    /// Sets the group creator's [`Capabilities`]
+    pub fn with_capabilities(mut self, capabilities: Capabilities) -> Self {
+        self.mls_group_create_config_builder = self
+            .mls_group_create_config_builder
+            .capabilities(capabilities);
+        self
     }
 }

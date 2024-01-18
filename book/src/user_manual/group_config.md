@@ -18,6 +18,8 @@ Two very similar structs can help configure groups upon their creation: `MlsGrou
 | Name                           | Type                            | Explanation                                                                                      |
 | ------------------------------ | ------------------------------- | ------------------------------------------------------------------------------------------------ |
 | `group_context_extensions`     | `Extensions`                    | Optional group-level extensions, e.g. `RequiredCapabilitiesExtension`.                           |
+| `capabilities` .               | `Capabilities`                  | Lists the capabilities of the group's creator.                                                   |
+| `leaf_extensions` .            | `Extensions`                    | Extensions to be included in the group creator's leaf                                            |
 
 Both ways of group configurations can be specified by using the struct's builder pattern, or choosing their default values. The default value contains safe values for all parameters and is suitable for scenarios without particular requirements.
 

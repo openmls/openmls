@@ -141,6 +141,19 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         ])))
         .expect("error adding external senders extension to group context extensions")
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .capabilities(Capabilities::new(
+            None, // Defaults to the group's protocol version
+            None, // Defaults to the group's ciphersuite
+            None, // Defaults to all basic extension types
+            None, // Defaults to all basic proposal types
+            Some(&[CredentialType::Basic]),
+        ))
+        // Example leaf extension
+        .with_leaf_node_extensions(Extensions::single(Extension::Unknown(
+            0xff00,
+            UnknownExtension(vec![0, 1, 2, 3]),
+        )))
+        .expect("failed to configure leaf extensions")
         .use_ratchet_tree_extension(true)
         .build();
     // ANCHOR_END: mls_group_create_config_example

@@ -30,7 +30,7 @@
 use super::*;
 use crate::{
     extensions::errors::InvalidExtensionError, group::config::CryptoConfig, key_packages::Lifetime,
-    tree::sender_ratchet::SenderRatchetConfiguration,
+    tree::sender_ratchet::SenderRatchetConfiguration, treesync::node::leaf_node::Capabilities,
 };
 use serde::{Deserialize, Serialize};
 
@@ -83,6 +83,8 @@ impl MlsGroupJoinConfig {
 /// more information about the different configuration values.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MlsGroupCreateConfig {
+    /// Capabilities advertised in the creator's leaf node
+    pub(crate) capabilities: Capabilities,
     /// Lifetime of the own leaf node
     pub(crate) lifetime: Lifetime,
     /// Ciphersuite and protocol version
@@ -91,6 +93,8 @@ pub struct MlsGroupCreateConfig {
     pub(crate) join_config: MlsGroupJoinConfig,
     /// List of initial group context extensions
     pub(crate) group_context_extensions: Extensions,
+    /// List of initial leaf node extensions
+    pub(crate) leaf_node_extensions: Extensions,
 }
 
 /// Builder struct for an [`MlsGroupJoinConfig`].
@@ -275,6 +279,12 @@ impl MlsGroupCreateConfigBuilder {
         self
     }
 
+    /// Sets the `capabilities` of the group creator's leaf node.
+    pub fn capabilities(mut self, capabilities: Capabilities) -> Self {
+        self.config.capabilities = capabilities;
+        self
+    }
+
     /// Sets the `sender_ratchet_configuration` property of the MlsGroupCreateConfig.
     /// See [`SenderRatchetConfiguration`] for more information.
     pub fn sender_ratchet_configuration(
@@ -313,6 +323,23 @@ impl MlsGroupCreateConfigBuilder {
             return Err(InvalidExtensionError::IllegalInGroupContext);
         }
         self.config.group_context_extensions = extensions;
+        Ok(self)
+    }
+
+    /// Sets extensions of the group creator's [`LeafNode`].
+    pub fn with_leaf_node_extensions(
+        mut self,
+        extensions: Extensions,
+    ) -> Result<Self, InvalidExtensionError> {
+        // None of the default extensions are leaf node extensions, so only
+        // unknown extensions can be leaf node extensions.
+        let is_valid_in_leaf_node = extensions
+            .iter()
+            .all(|e| matches!(e.extension_type(), ExtensionType::Unknown(_)));
+        if !is_valid_in_leaf_node {
+            return Err(InvalidExtensionError::IllegalInLeafNodes);
+        }
+        self.config.leaf_node_extensions = extensions;
         Ok(self)
     }
 

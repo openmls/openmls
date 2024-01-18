@@ -8,7 +8,7 @@ use crate::{
         errors::{ExtensionError, InvalidExtensionError},
         Extensions,
     },
-    group::{config::CryptoConfig, GroupContext, GroupId},
+    group::{config::CryptoConfig, ExtensionType, GroupContext, GroupId},
     key_packages::Lifetime,
     messages::ConfirmationTag,
     schedule::CommitSecret,
@@ -24,13 +24,19 @@ pub(crate) struct TempBuilderPG1 {
     crypto_config: CryptoConfig,
     credential_with_key: CredentialWithKey,
     lifetime: Option<Lifetime>,
-    leaf_extensions: Extensions,
+    capabilities: Option<Capabilities>,
+    leaf_node_extensions: Extensions,
     group_context_extensions: Extensions,
 }
 
 impl TempBuilderPG1 {
     pub(crate) fn with_lifetime(mut self, lifetime: Lifetime) -> Self {
         self.lifetime = Some(lifetime);
+        self
+    }
+
+    pub(crate) fn with_capabilities(mut self, capabilities: Capabilities) -> Self {
+        self.capabilities = Some(capabilities);
         self
     }
 
@@ -45,6 +51,22 @@ impl TempBuilderPG1 {
             return Err(InvalidExtensionError::IllegalInGroupContext);
         }
         self.group_context_extensions = extensions;
+        Ok(self)
+    }
+
+    pub(crate) fn with_leaf_node_extensions(
+        mut self,
+        extensions: Extensions,
+    ) -> Result<Self, InvalidExtensionError> {
+        // None of the default extensions are leaf node extensions, so only
+        // unknown extensions can be leaf node extensions.
+        let is_valid_in_leaf_node = extensions
+            .iter()
+            .all(|e| matches!(e.extension_type(), ExtensionType::Unknown(_)));
+        if !is_valid_in_leaf_node {
+            return Err(InvalidExtensionError::IllegalInLeafNodes);
+        }
+        self.leaf_node_extensions = extensions;
         Ok(self)
     }
 
@@ -78,13 +100,13 @@ impl TempBuilderPG1 {
             } else {
                 (None, None, None)
             };
-        let capabilities = Capabilities::new(
+        let capabilities = self.capabilities.unwrap_or(Capabilities::new(
             Some(&[self.crypto_config.version]),
             Some(&[self.crypto_config.ciphersuite]),
             required_extensions,
             required_proposals,
             required_credentials,
-        );
+        ));
         let (treesync, commit_secret, leaf_keypair) = TreeSync::new(
             provider,
             signer,
@@ -92,7 +114,7 @@ impl TempBuilderPG1 {
             self.credential_with_key,
             self.lifetime.unwrap_or_default(),
             capabilities,
-            self.leaf_extensions,
+            self.leaf_node_extensions,
         )?;
 
         let group_context = GroupContext::create_initial_group_context(
@@ -171,7 +193,8 @@ impl PublicGroup {
             crypto_config,
             credential_with_key,
             lifetime: None,
-            leaf_extensions: Extensions::empty(),
+            capabilities: None,
+            leaf_node_extensions: Extensions::empty(),
             group_context_extensions: Extensions::empty(),
         }
     }
