@@ -187,8 +187,7 @@
 </div>
 <p><code>MlsGroupCreateConfig</code> contains an <code>MlsGroupJoinConfig</code>, as well as a few additional parameters that are part of the group state that is agreed-upon by all group members. It can be set at the time of a group's creation and contains the following additional configuration options.</p>
 <div class="table-wrapper"><table><thead><tr><th>Name</th><th>Type</th><th>Explanation</th></tr></thead><tbody>
-<tr><td><code>required_capabilities</code></td><td><code>RequiredCapabilitiesExtension</code></td><td>Required capabilities (extensions and proposal types).</td></tr>
-<tr><td><code>external_senders</code></td><td><code>ExternalSendersExtensions</code></td><td>List credentials of non-group members that are allowed to send proposals to the group.</td></tr>
+<tr><td><code>group_context_extensions</code></td><td><code>Extensions</code></td><td>Optional group-level extensions, e.g. <code>RequiredCapabilitiesExtension</code>.</td></tr>
 <tr><td><code>capabilities</code> .</td><td><code>Capabilities</code></td><td>Lists the capabilities of the group's creator.</td></tr>
 <tr><td><code>leaf_extensions</code> .</td><td><code>Extensions</code></td><td>Extensions to be included in the group creator's leaf</td></tr>
 </tbody></table>
@@ -210,6 +209,13 @@
             10,   // out_of_order_tolerance
             2000, // maximum_forward_distance
         ))
+        .with_group_context_extensions(Extensions::single(Extension::ExternalSenders(vec![
+            ExternalSender::new(
+                ds_credential_with_key.signature_key.clone(),
+                ds_credential_with_key.credential.clone(),
+            ),
+        ])))
+        .expect(&quot;error adding external senders extension to group context extensions&quot;)
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .capabilities(Capabilities::new(
             None, // Defaults to the group's protocol version
@@ -224,10 +230,6 @@
             UnknownExtension(vec![0, 1, 2, 3]),
         )))
         .expect(&quot;failed to configure leaf extensions&quot;)
-        .external_senders(vec![ExternalSender::new(
-            ds_credential_with_key.signature_key.clone(),
-            ds_credential_with_key.credential.clone(),
-        )])
         .use_ratchet_tree_extension(true)
         .build();</code></pre>
 

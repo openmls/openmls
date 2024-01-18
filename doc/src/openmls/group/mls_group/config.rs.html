@@ -462,39 +462,6 @@
 <a href="#462" id="462">462</a>
 <a href="#463" id="463">463</a>
 <a href="#464" id="464">464</a>
-<a href="#465" id="465">465</a>
-<a href="#466" id="466">466</a>
-<a href="#467" id="467">467</a>
-<a href="#468" id="468">468</a>
-<a href="#469" id="469">469</a>
-<a href="#470" id="470">470</a>
-<a href="#471" id="471">471</a>
-<a href="#472" id="472">472</a>
-<a href="#473" id="473">473</a>
-<a href="#474" id="474">474</a>
-<a href="#475" id="475">475</a>
-<a href="#476" id="476">476</a>
-<a href="#477" id="477">477</a>
-<a href="#478" id="478">478</a>
-<a href="#479" id="479">479</a>
-<a href="#480" id="480">480</a>
-<a href="#481" id="481">481</a>
-<a href="#482" id="482">482</a>
-<a href="#483" id="483">483</a>
-<a href="#484" id="484">484</a>
-<a href="#485" id="485">485</a>
-<a href="#486" id="486">486</a>
-<a href="#487" id="487">487</a>
-<a href="#488" id="488">488</a>
-<a href="#489" id="489">489</a>
-<a href="#490" id="490">490</a>
-<a href="#491" id="491">491</a>
-<a href="#492" id="492">492</a>
-<a href="#493" id="493">493</a>
-<a href="#494" id="494">494</a>
-<a href="#495" id="495">495</a>
-<a href="#496" id="496">496</a>
-<a href="#497" id="497">497</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Configuration module for [`MlsGroup`] configurations.
 //!
 //! ## Building an MlsGroupCreateConfig
@@ -580,12 +547,8 @@
 /// more information about the different configuration values.
 </span><span class="attr">#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>MlsGroupCreateConfig {
-    <span class="doccomment">/// Required capabilities (extensions and proposal types)
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) required_capabilities: RequiredCapabilitiesExtension,
     <span class="doccomment">/// Capabilities advertised in the creator&#39;s leaf node
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) capabilities: Capabilities,
-    <span class="doccomment">/// Senders authorized to send external remove proposals
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) external_senders: ExternalSendersExtension,
     <span class="doccomment">/// Lifetime of the own leaf node
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) lifetime: Lifetime,
     <span class="doccomment">/// Ciphersuite and protocol version
@@ -688,19 +651,9 @@
         <span class="self">self</span>.join_config.use_ratchet_tree_extension
     }
 
-    <span class="doccomment">/// Returns the [`MlsGroupCreateConfig`] required capabilities extension.
-    </span><span class="kw">pub fn </span>required_capabilities(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>RequiredCapabilitiesExtension {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.required_capabilities
-    }
-
     <span class="doccomment">/// Returns the [`MlsGroupCreateConfig`] sender ratchet configuration.
     </span><span class="kw">pub fn </span>sender_ratchet_configuration(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>SenderRatchetConfiguration {
         <span class="kw-2">&amp;</span><span class="self">self</span>.join_config.sender_ratchet_configuration
-    }
-
-    <span class="doccomment">/// Returns the [`MlsGroupCreateConfig`] external senders extension
-    </span><span class="kw">pub fn </span>external_senders(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ExternalSendersExtension {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.external_senders
     }
 
     <span class="doccomment">/// Returns the [`Extensions`] set as the initial group context.
@@ -790,15 +743,6 @@
         <span class="self">self
     </span>}
 
-    <span class="doccomment">/// Sets the `required_capabilities` property of the MlsGroupCreateConfig.
-    </span><span class="kw">pub fn </span>required_capabilities(
-        <span class="kw-2">mut </span><span class="self">self</span>,
-        required_capabilities: RequiredCapabilitiesExtension,
-    ) -&gt; <span class="self">Self </span>{
-        <span class="self">self</span>.config.required_capabilities = required_capabilities;
-        <span class="self">self
-    </span>}
-
     <span class="doccomment">/// Sets the `capabilities` of the group creator&#39;s leaf node.
     </span><span class="kw">pub fn </span>capabilities(<span class="kw-2">mut </span><span class="self">self</span>, capabilities: Capabilities) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.config.capabilities = capabilities;
@@ -827,17 +771,7 @@
         <span class="self">self
     </span>}
 
-    <span class="doccomment">/// Sets the `external_senders` property of the MlsGroupCreateConfig.
-    </span><span class="kw">pub fn </span>external_senders(<span class="kw-2">mut </span><span class="self">self</span>, external_senders: ExternalSendersExtension) -&gt; <span class="self">Self </span>{
-        <span class="self">self</span>.config.external_senders = external_senders;
-        <span class="self">self
-    </span>}
-
-    <span class="doccomment">/// Sets initial group context extensions. Note that RequiredCapabilities
-    /// extensions will be overwritten, and should be set using a call to
-    /// `required_capabilities`. If `ExternalSenders` extensions are provided
-    /// both in this call, and a call to `external_senders`, only the one from
-    /// the call to `external_senders` will be included.
+    <span class="doccomment">/// Sets initial group context extensions.
     </span><span class="kw">pub fn </span>with_group_context_extensions(
         <span class="kw-2">mut </span><span class="self">self</span>,
         extensions: Extensions,

@@ -199,29 +199,6 @@
 <a href="#199" id="199">199</a>
 <a href="#200" id="200">200</a>
 <a href="#201" id="201">201</a>
-<a href="#202" id="202">202</a>
-<a href="#203" id="203">203</a>
-<a href="#204" id="204">204</a>
-<a href="#205" id="205">205</a>
-<a href="#206" id="206">206</a>
-<a href="#207" id="207">207</a>
-<a href="#208" id="208">208</a>
-<a href="#209" id="209">209</a>
-<a href="#210" id="210">210</a>
-<a href="#211" id="211">211</a>
-<a href="#212" id="212">212</a>
-<a href="#213" id="213">213</a>
-<a href="#214" id="214">214</a>
-<a href="#215" id="215">215</a>
-<a href="#216" id="216">216</a>
-<a href="#217" id="217">217</a>
-<a href="#218" id="218">218</a>
-<a href="#219" id="219">219</a>
-<a href="#220" id="220">220</a>
-<a href="#221" id="221">221</a>
-<a href="#222" id="222">222</a>
-<a href="#223" id="223">223</a>
-<a href="#224" id="224">224</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer, OpenMlsProvider};
 
 <span class="kw">use super</span>::{errors::PublicGroupBuildError, PublicGroup};
@@ -230,7 +207,7 @@
     error::LibraryError,
     extensions::{
         errors::{ExtensionError, InvalidExtensionError},
-        Extension, Extensions, ExternalSendersExtension, RequiredCapabilitiesExtension,
+        Extensions,
     },
     group::{config::CryptoConfig, ExtensionType, GroupContext, GroupId},
     key_packages::Lifetime,
@@ -248,9 +225,7 @@
     crypto_config: CryptoConfig,
     credential_with_key: CredentialWithKey,
     lifetime: <span class="prelude-ty">Option</span>&lt;Lifetime&gt;,
-    required_capabilities: <span class="prelude-ty">Option</span>&lt;RequiredCapabilitiesExtension&gt;,
     capabilities: <span class="prelude-ty">Option</span>&lt;Capabilities&gt;,
-    external_senders: <span class="prelude-ty">Option</span>&lt;ExternalSendersExtension&gt;,
     leaf_node_extensions: Extensions,
     group_context_extensions: Extensions,
 }
@@ -261,26 +236,8 @@
         <span class="self">self
     </span>}
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>with_required_capabilities(
-        <span class="kw-2">mut </span><span class="self">self</span>,
-        required_capabilities: RequiredCapabilitiesExtension,
-    ) -&gt; <span class="self">Self </span>{
-        <span class="self">self</span>.required_capabilities = <span class="prelude-val">Some</span>(required_capabilities);
-        <span class="self">self
-    </span>}
-
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>with_capabilities(<span class="kw-2">mut </span><span class="self">self</span>, capabilities: Capabilities) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.capabilities = <span class="prelude-val">Some</span>(capabilities);
-        <span class="self">self
-    </span>}
-
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>with_external_senders(
-        <span class="kw-2">mut </span><span class="self">self</span>,
-        external_senders: ExternalSendersExtension,
-    ) -&gt; <span class="self">Self </span>{
-        <span class="kw">if </span>!external_senders.is_empty() {
-            <span class="self">self</span>.external_senders = <span class="prelude-val">Some</span>(external_senders);
-        }
         <span class="self">self
     </span>}
 
@@ -319,21 +276,37 @@
         provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(TempBuilderPG2, CommitSecret, EncryptionKeyPair), PublicGroupBuildError&gt; {
-        <span class="comment">// Capabilities are either provided by the builder or a minimal set of
-        // capabilities is created from the crypto config and the required
-        // capabilities
-        </span><span class="kw">let </span>capabilities = <span class="self">self</span>.capabilities.unwrap_or(Capabilities::new(
+        <span class="comment">// If there are no capabilities, we want to provide a default version
+        // plus anything in the required capabilities.
+        </span><span class="kw">let </span>(required_extensions, required_proposals, required_credentials) =
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(required_capabilities) =
+                <span class="self">self</span>.group_context_extensions.required_capabilities()
+            {
+                <span class="comment">// Also, while we&#39;re at it, check if we support all required
+                // capabilities ourselves.
+                </span>required_capabilities.check_support().map_err(|e| <span class="kw">match </span>e {
+                    ExtensionError::UnsupportedProposalType =&gt; {
+                        PublicGroupBuildError::UnsupportedProposalType
+                    }
+                    ExtensionError::UnsupportedExtensionType =&gt; {
+                        PublicGroupBuildError::UnsupportedExtensionType
+                    }
+                    <span class="kw">_ </span>=&gt; LibraryError::custom(<span class="string">&quot;Unexpected ExtensionError&quot;</span>).into(),
+                })<span class="question-mark">?</span>;
+                (
+                    <span class="prelude-val">Some</span>(required_capabilities.extension_types()),
+                    <span class="prelude-val">Some</span>(required_capabilities.proposal_types()),
+                    <span class="prelude-val">Some</span>(required_capabilities.credential_types()),
+                )
+            } <span class="kw">else </span>{
+                (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>)
+            };
+        <span class="kw">let </span>capabilities = <span class="self">self</span>.capabilities.unwrap_or(Capabilities::new(
             <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>[<span class="self">self</span>.crypto_config.version]),
             <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>[<span class="self">self</span>.crypto_config.ciphersuite]),
-            <span class="self">self</span>.required_capabilities
-                .as_ref()
-                .map(|re| re.extension_types()),
-            <span class="self">self</span>.required_capabilities
-                .as_ref()
-                .map(|re| re.proposal_types()),
-            <span class="self">self</span>.required_capabilities
-                .as_ref()
-                .map(|re| re.credential_types()),
+            required_extensions,
+            required_proposals,
+            required_credentials,
         ));
         <span class="kw">let </span>(treesync, commit_secret, leaf_keypair) = TreeSync::new(
             provider,
@@ -344,29 +317,12 @@
             capabilities,
             <span class="self">self</span>.leaf_node_extensions,
         )<span class="question-mark">?</span>;
-        <span class="kw">let </span>required_capabilities = <span class="self">self</span>.required_capabilities.unwrap_or_default();
-        required_capabilities.check_support().map_err(|e| <span class="kw">match </span>e {
-            ExtensionError::UnsupportedProposalType =&gt; {
-                PublicGroupBuildError::UnsupportedProposalType
-            }
-            ExtensionError::UnsupportedExtensionType =&gt; {
-                PublicGroupBuildError::UnsupportedExtensionType
-            }
-            <span class="kw">_ </span>=&gt; LibraryError::custom(<span class="string">&quot;Unexpected ExtensionError&quot;</span>).into(),
-        })<span class="question-mark">?</span>;
-        <span class="kw">let </span>required_capabilities = Extension::RequiredCapabilities(required_capabilities);
-
-        <span class="kw">let </span><span class="kw-2">mut </span>group_context_extensions = <span class="self">self</span>.group_context_extensions;
-        group_context_extensions.add_or_replace(required_capabilities);
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(ext_senders) = <span class="self">self</span>.external_senders {
-            group_context_extensions.add_or_replace(Extension::ExternalSenders(ext_senders));
-        }
 
         <span class="kw">let </span>group_context = GroupContext::create_initial_group_context(
             <span class="self">self</span>.crypto_config.ciphersuite,
             <span class="self">self</span>.group_id,
             treesync.tree_hash().to_vec(),
-            group_context_extensions,
+            <span class="self">self</span>.group_context_extensions,
         );
         <span class="kw">let </span>next_builder = TempBuilderPG2 {
             treesync,
@@ -438,9 +394,7 @@
             crypto_config,
             credential_with_key,
             lifetime: <span class="prelude-val">None</span>,
-            required_capabilities: <span class="prelude-val">None</span>,
             capabilities: <span class="prelude-val">None</span>,
-            external_senders: <span class="prelude-val">None</span>,
             leaf_node_extensions: Extensions::empty(),
             group_context_extensions: Extensions::empty(),
         }
