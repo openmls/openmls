@@ -68,6 +68,7 @@ impl From<CryptoError> for Error {
     }
 }
 
+// Context for HPKE encryption
 #[derive(Debug, Clone, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize)]
 pub struct EncryptContext {
     label: VLBytes,
