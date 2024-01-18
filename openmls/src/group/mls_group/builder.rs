@@ -8,7 +8,7 @@ use crate::{
         CoreGroupBuildError, CoreGroupConfig, GroupId, MlsGroupCreateConfig,
         MlsGroupCreateConfigBuilder, NewGroupError, ProposalStore, WireFormatPolicy,
     },
-    prelude::{LibraryError, Lifetime, SenderRatchetConfiguration},
+    prelude::{Capabilities, LibraryError, Lifetime, SenderRatchetConfiguration},
 };
 
 use super::{InnerState, MlsGroup, MlsGroupState};
@@ -73,6 +73,8 @@ impl MlsGroupBuilder {
         .with_required_capabilities(mls_group_create_config.required_capabilities.clone())
         .with_external_senders(mls_group_create_config.external_senders.clone())
         .with_group_context_extensions(mls_group_create_config.group_context_extensions.clone())?
+        .with_leaf_node_extensions(mls_group_create_config.leaf_node_extensions.clone())?
+        .with_capabilities(mls_group_create_config.capabilities.clone())
         .with_max_past_epoch_secrets(mls_group_create_config.join_config.max_past_epochs)
         .with_lifetime(*mls_group_create_config.lifetime())
         .build(provider, signer)
@@ -200,6 +202,14 @@ impl MlsGroupBuilder {
         self
     }
 
+    /// Sets the group creator's [`Capabilities`]
+    pub fn with_capabilities(mut self, capabilities: Capabilities) -> Self {
+        self.mls_group_create_config_builder = self
+            .mls_group_create_config_builder
+            .capabilities(capabilities);
+        self
+    }
+
     /// Sets the initial group context extensions
     pub fn with_group_context_extensions(
         mut self,
@@ -208,6 +218,16 @@ impl MlsGroupBuilder {
         self.mls_group_create_config_builder = self
             .mls_group_create_config_builder
             .with_group_context_extensions(extensions)?;
+        Ok(self)
+    }
+
+    pub fn with_leaf_node_extensions(
+        mut self,
+        extensions: Extensions,
+    ) -> Result<Self, InvalidExtensionError> {
+        self.mls_group_create_config_builder = self
+            .mls_group_create_config_builder
+            .with_leaf_node_extensions(extensions)?;
         Ok(self)
     }
 }

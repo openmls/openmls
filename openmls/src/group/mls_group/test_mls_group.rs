@@ -5,10 +5,12 @@ use tls_codec::{Deserialize, Serialize};
 
 use crate::{
     binary_tree::LeafNodeIndex,
+    extensions::errors::InvalidExtensionError,
     framing::*,
     group::{config::CryptoConfig, errors::*, *},
     key_packages::*,
     messages::proposals::*,
+    prelude::Capabilities,
     test_utils::test_framework::{
         errors::ClientError, noop_authentication_service, ActionType::Commit, CodecUse,
         MlsGroupTestSetup,
@@ -1022,6 +1024,17 @@ fn builder_pattern(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let test_sender_ratchet_config = SenderRatchetConfiguration::new(10, 2000);
     let test_max_past_epochs = 10;
     let test_number_of_resumption_psks = 5;
+    let test_capabilities = Capabilities::new(
+        None,
+        None,
+        Some(&[ExtensionType::Unknown(0xff00)]),
+        None,
+        None,
+    );
+    let test_leaf_extensions = Extensions::single(Extension::Unknown(
+        0xff00,
+        UnknownExtension(vec![0x00, 0x01, 0x02]),
+    ));
 
     // === Alice creates a group ===
     let alice_group = MlsGroup::builder()
@@ -1035,6 +1048,9 @@ fn builder_pattern(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .use_ratchet_tree_extension(true)
         .max_past_epochs(test_max_past_epochs)
         .number_of_resumption_psks(test_number_of_resumption_psks)
+        .with_leaf_node_extensions(test_leaf_extensions.clone())
+        .unwrap()
+        .with_capabilities(test_capabilities.clone())
         .build(provider, &alice_signer, alice_credential_with_key)
         .expect("error creating group using builder");
 
@@ -1074,4 +1090,20 @@ fn builder_pattern(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .life_time()
         .expect("leaf doesn't have a lifetime");
     assert_eq!(lifetime, &test_lifetime);
+    let own_leaf = alice_group.own_leaf_node().expect("can't find own leaf");
+    let capabilities = own_leaf.capabilities();
+    assert_eq!(capabilities, &test_capabilities);
+    let leaf_extensions = own_leaf.extensions();
+    assert_eq!(leaf_extensions, &test_leaf_extensions);
+
+    // Make sure that building with an invalid leaf node extension fails
+    let invalid_leaf_extensions =
+        Extensions::single(Extension::ApplicationId(ApplicationIdExtension::new(&[
+            0x00, 0x01, 0x02,
+        ])));
+
+    let builder_err = MlsGroup::builder()
+        .with_leaf_node_extensions(invalid_leaf_extensions)
+        .expect_err("successfully built group with invalid leaf extensions");
+    assert_eq!(builder_err, InvalidExtensionError::IllegalInLeafNodes);
 }

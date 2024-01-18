@@ -97,4 +97,9 @@ pub enum InvalidExtensionError {
         "The provided extension list contains an extension that is not allowed in group contexts."
     )]
     IllegalInGroupContext,
+    /// The provided extension list contains an extension that is not allowed in leaf nodes
+    #[error(
+        "The provided extension list contains an extension that is not allowed in leaf nodes."
+    )]
+    IllegalInLeafNodes,
 }
