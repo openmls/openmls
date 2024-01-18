@@ -17,8 +17,7 @@ Two very similar structs can help configure groups upon their creation: `MlsGrou
 
 | Name                           | Type                            | Explanation                                                                                      |
 | ------------------------------ | ------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `required_capabilities`        | `RequiredCapabilitiesExtension` | Required capabilities (extensions and proposal types).                                           |
-| `external_senders`             | `ExternalSendersExtensions`     | List credentials of non-group members that are allowed to send proposals to the group.           |
+| `group_context_extensions`     | `Extensions`                    | Optional group-level extensions, e.g. `RequiredCapabilitiesExtension`.                           |
 | `capabilities` .               | `Capabilities`                  | Lists the capabilities of the group's creator.                                                   |
 | `leaf_extensions` .            | `Extensions`                    | Extensions to be included in the group creator's leaf                                            |
 

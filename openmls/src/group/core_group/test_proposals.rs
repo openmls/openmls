@@ -298,7 +298,10 @@ fn test_required_unsupported_proposals(ciphersuite: Ciphersuite, provider: &impl
         CryptoConfig::with_default_version(ciphersuite),
         alice_credential,
     )
-    .with_required_capabilities(required_capabilities)
+    .with_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
+        required_capabilities,
+    )))
+    .unwrap()
     .build(provider, &alice_signer)
     .expect_err(
         "CoreGroup creation must fail because AppAck proposals aren't supported in OpenMLS yet.",
@@ -385,7 +388,10 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, provider: &impl OpenM
         CryptoConfig::with_default_version(ciphersuite),
         alice_credential,
     )
-    .with_required_capabilities(required_capabilities)
+    .with_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
+        required_capabilities,
+    )))
+    .unwrap()
     .build(provider, &alice_signer)
     .expect("Error creating CoreGroup.");
 
@@ -463,7 +469,10 @@ fn test_group_context_extension_proposal_fails(
         CryptoConfig::with_default_version(ciphersuite),
         alice_credential,
     )
-    .with_required_capabilities(required_capabilities)
+    .with_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
+        required_capabilities,
+    )))
+    .unwrap()
     .build(provider, &alice_signer)
     .expect("Error creating CoreGroup.");
 
