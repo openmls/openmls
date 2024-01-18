@@ -1275,11 +1275,11 @@ fn unknown_extensions(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider)
         .add_members(provider, &alice_signer, &[bob_key_package.clone()])
         .unwrap();
     alice_group.merge_pending_commit(provider).unwrap();
-    let mut bob_group = MlsGroup::new_from_welcome(
+    let _bob_group = MlsGroup::new_from_welcome(
         provider,
         &MlsGroupJoinConfig::default(),
         welcome.into_welcome().unwrap(),
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .unwrap();
+    .expect("Error creating group from Welcome");
 }
