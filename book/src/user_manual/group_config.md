@@ -17,8 +17,7 @@ Two very similar structs can help configure groups upon their creation: `MlsGrou
 
 | Name                           | Type                            | Explanation                                                                                      |
 | ------------------------------ | ------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `required_capabilities`        | `RequiredCapabilitiesExtension` | Required capabilities (extensions and proposal types).                                           |
-| `external_senders`             | `ExternalSendersExtensions`     | List credentials of non-group members that are allowed to send proposals to the group.           |
+| `group_context_extensions`     | `Extensions`                    | Optional group-level extensions, e.g. `RequiredCapabilitiesExtension`.                           |
 
 Both ways of group configurations can be specified by using the struct's builder pattern, or choosing their default values. The default value contains safe values for all parameters and is suitable for scenarios without particular requirements.
 
