@@ -189,6 +189,11 @@ pub enum StageCommitError {
     /// See [`UpdatePathError`] for more details.
     #[error(transparent)]
     VerifiedUpdatePathError(#[from] UpdatePathError),
+    /// See [`GroupContextExtensionsProposalValidationError`] for more details.
+    #[error(transparent)]
+    GroupContextExtensionsProposalValidationError(
+        #[from] GroupContextExtensionsProposalValidationError,
+    ),
 }
 
 /// Create commit error
@@ -233,6 +238,11 @@ pub enum CreateCommitError<KeyStoreError> {
     /// See [`InvalidExtensionError`] for more details.
     #[error(transparent)]
     InvalidExtensionError(#[from] InvalidExtensionError),
+    /// See [`GroupContextExtensionsProposalValidationError`] for more details.
+    #[error(transparent)]
+    GroupContextExtensionsProposalValidationError(
+        #[from] GroupContextExtensionsProposalValidationError,
+    ),
 }
 
 /// Validation error
@@ -500,16 +510,13 @@ pub(crate) enum CoreGroupParseMessageError {
 
 /// Create group context ext proposal error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub(crate) enum CreateGroupContextExtProposalError {
+pub enum CreateGroupContextExtProposalError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
     /// See [`KeyPackageExtensionSupportError`] for more details.
     #[error(transparent)]
     KeyPackageExtensionSupport(#[from] KeyPackageExtensionSupportError),
-    /// See [`TreeSyncError`] for more details.
-    #[error(transparent)]
-    TreeSyncError(#[from] TreeSyncError),
     /// See [`ExtensionError`] for more details.
     #[error(transparent)]
     Extension(#[from] ExtensionError),
@@ -527,4 +534,20 @@ pub enum MergeCommitError<KeyStoreError> {
     /// Error accessing the key store.
     #[error("Error accessing the key store.")]
     KeyStoreError(KeyStoreError),
+}
+
+/// Error validation a GroupContextExtensions proposal.
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum GroupContextExtensionsProposalValidationError {
+    /// Commit has more than one GroupContextExtensions proposal.
+    #[error("Commit has more than one GroupContextExtensions proposal.")]
+    TooManyGCEProposals,
+    /// See [`LibraryError`] for more details.
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    /// The new extensions set contails extensions that are not supported by all group members.
+    #[error(
+        "The new extensions set contails extensions that are not supported by all group members."
+    )]
+    ExtensionNotSupportedByAllMembers,
 }

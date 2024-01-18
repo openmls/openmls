@@ -7,6 +7,7 @@ use crate::{
     binary_tree::LeafNodeIndex,
     credentials::CredentialWithKey,
     error::LibraryError,
+    extensions::Extensions,
     group::{
         config::CryptoConfig, core_group::create_commit_params::CommitType,
         errors::CreateCommitError,
@@ -35,6 +36,7 @@ pub(crate) struct PathComputationResult {
 }
 
 impl<'a> PublicGroupDiff<'a> {
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn compute_path<KeyStore: OpenMlsKeyStore>(
         &mut self,
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
@@ -43,6 +45,7 @@ impl<'a> PublicGroupDiff<'a> {
         commit_type: CommitType,
         signer: &impl Signer,
         credential_with_key: Option<CredentialWithKey>,
+        extensions: Option<Extensions>,
     ) -> Result<PathComputationResult, CreateCommitError<KeyStore::Error>> {
         let version = self.group_context().protocol_version();
         let ciphersuite = self.group_context().ciphersuite();
@@ -101,7 +104,7 @@ impl<'a> PublicGroupDiff<'a> {
         // After we've processed the path, we can update the group context s.t.
         // the updated group context is used for path secret encryption. Note
         // that we have not yet updated the confirmed transcript hash.
-        self.update_group_context(provider.crypto())?;
+        self.update_group_context(provider.crypto(), extensions)?;
 
         let serialized_group_context = self
             .group_context()

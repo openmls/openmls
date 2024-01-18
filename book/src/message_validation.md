@@ -80,6 +80,8 @@ The following is a list of the individual semantic validation steps performed by
 | `ValSem205`    | Confirmation tag must be successfully verified                                         | ✅          | ✅     | `openmls/src/group/tests/test_commit_validation.rs` |
 | `ValSem206`    | Path leaf node encryption key must be unique among proposals & members                 | ✅          | ✅     | `openmls/src/group/tests/test_commit_validation.rs` |
 | `ValSem207`    | Path encryption keys must be unique among proposals & members                          | ✅          | ✅     | `openmls/src/group/tests/test_commit_validation.rs` |
+| `ValSem208`    | Only one GroupContextExtensions proposal in a commit                                   | ✅          |        |                                                     |
+| `ValSem209`    | GroupContextExtensions proposals may only contain extensions support by all members    | ✅          |        |                                                     |
 
 ### External Commit message validation
 
