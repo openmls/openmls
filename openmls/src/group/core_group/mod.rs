@@ -39,6 +39,7 @@ use tls_codec::Serialize as TlsSerializeTrait;
 
 use self::{
     create_commit_params::{CommitType, CreateCommitParams},
+    node::leaf_node::Capabilities,
     past_secrets::MessageSecretsStore,
     staged_commit::{MemberStagedCommitState, StagedCommit, StagedCommitState},
 };
@@ -189,6 +190,11 @@ impl CoreGroupBuilder {
             .with_required_capabilities(required_capabilities);
         self
     }
+    /// Set the [`Capabilities`] of the group's creator.
+    pub(crate) fn with_capabilities(mut self, capabilities: Capabilities) -> Self {
+        self.public_group_builder = self.public_group_builder.with_capabilities(capabilities);
+        self
+    }
     /// Set the [`ExternalSendersExtension`] of the [`CoreGroup`].
     pub(crate) fn with_external_senders(
         mut self,
@@ -214,6 +220,17 @@ impl CoreGroupBuilder {
         self.public_group_builder = self
             .public_group_builder
             .with_group_context_extensions(extensions)?;
+        Ok(self)
+    }
+
+    /// Sets extensions of the group creator's [`LeafNode`].
+    pub(crate) fn with_leaf_node_extensions(
+        mut self,
+        extensions: Extensions,
+    ) -> Result<Self, InvalidExtensionError> {
+        self.public_group_builder = self
+            .public_group_builder
+            .with_leaf_node_extensions(extensions)?;
         Ok(self)
     }
 

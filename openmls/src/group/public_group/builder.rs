@@ -8,7 +8,7 @@ use crate::{
         errors::{ExtensionError, InvalidExtensionError},
         Extension, Extensions, ExternalSendersExtension, RequiredCapabilitiesExtension,
     },
-    group::{config::CryptoConfig, GroupContext, GroupId},
+    group::{config::CryptoConfig, ExtensionType, GroupContext, GroupId},
     key_packages::Lifetime,
     messages::ConfirmationTag,
     schedule::CommitSecret,
@@ -25,9 +25,10 @@ pub(crate) struct TempBuilderPG1 {
     credential_with_key: CredentialWithKey,
     lifetime: Option<Lifetime>,
     required_capabilities: Option<RequiredCapabilitiesExtension>,
+    capabilities: Option<Capabilities>,
     external_senders: Option<ExternalSendersExtension>,
-    leaf_extensions: Option<Extensions>,
-    group_context_extensions: Option<Extensions>,
+    leaf_node_extensions: Extensions,
+    group_context_extensions: Extensions,
 }
 
 impl TempBuilderPG1 {
@@ -41,6 +42,11 @@ impl TempBuilderPG1 {
         required_capabilities: RequiredCapabilitiesExtension,
     ) -> Self {
         self.required_capabilities = Some(required_capabilities);
+        self
+    }
+
+    pub(crate) fn with_capabilities(mut self, capabilities: Capabilities) -> Self {
+        self.capabilities = Some(capabilities);
         self
     }
 
@@ -64,7 +70,23 @@ impl TempBuilderPG1 {
         if !is_valid_in_group_context {
             return Err(InvalidExtensionError::IllegalInGroupContext);
         }
-        self.group_context_extensions = Some(extensions);
+        self.group_context_extensions = extensions;
+        Ok(self)
+    }
+
+    pub(crate) fn with_leaf_node_extensions(
+        mut self,
+        extensions: Extensions,
+    ) -> Result<Self, InvalidExtensionError> {
+        // None of the default extensions are leaf node extensions, so only
+        // unknown extensions can be leaf node extensions.
+        let is_valid_in_leaf_node = extensions
+            .iter()
+            .all(|e| matches!(e.extension_type(), ExtensionType::Unknown(_)));
+        if !is_valid_in_leaf_node {
+            return Err(InvalidExtensionError::IllegalInLeafNodes);
+        }
+        self.leaf_node_extensions = extensions;
         Ok(self)
     }
 
@@ -73,24 +95,30 @@ impl TempBuilderPG1 {
         provider: &impl OpenMlsProvider,
         signer: &impl Signer,
     ) -> Result<(TempBuilderPG2, CommitSecret, EncryptionKeyPair), PublicGroupBuildError> {
-        let capabilities = self
-            .required_capabilities
-            .as_ref()
-            .map(|re| re.extension_types());
+        // Capabilities are either provided by the builder or a minimal set of
+        // capabilities is created from the crypto config and the required
+        // capabilities
+        let capabilities = self.capabilities.unwrap_or(Capabilities::new(
+            Some(&[self.crypto_config.version]),
+            Some(&[self.crypto_config.ciphersuite]),
+            self.required_capabilities
+                .as_ref()
+                .map(|re| re.extension_types()),
+            self.required_capabilities
+                .as_ref()
+                .map(|re| re.proposal_types()),
+            self.required_capabilities
+                .as_ref()
+                .map(|re| re.credential_types()),
+        ));
         let (treesync, commit_secret, leaf_keypair) = TreeSync::new(
             provider,
             signer,
             self.crypto_config,
             self.credential_with_key,
             self.lifetime.unwrap_or_default(),
-            Capabilities::new(
-                Some(&[self.crypto_config.version]), // TODO: Allow more versions
-                Some(&[self.crypto_config.ciphersuite]), // TODO: allow more ciphersuites
-                capabilities,
-                None,
-                None,
-            ),
-            self.leaf_extensions.unwrap_or(Extensions::empty()),
+            capabilities,
+            self.leaf_node_extensions,
         )?;
         let required_capabilities = self.required_capabilities.unwrap_or_default();
         required_capabilities.check_support().map_err(|e| match e {
@@ -104,11 +132,7 @@ impl TempBuilderPG1 {
         })?;
         let required_capabilities = Extension::RequiredCapabilities(required_capabilities);
 
-        let mut group_context_extensions = if let Some(exts) = self.group_context_extensions {
-            exts
-        } else {
-            Extensions::empty()
-        };
+        let mut group_context_extensions = self.group_context_extensions;
         group_context_extensions.add_or_replace(required_capabilities);
         if let Some(ext_senders) = self.external_senders {
             group_context_extensions.add_or_replace(Extension::ExternalSenders(ext_senders));
@@ -191,9 +215,10 @@ impl PublicGroup {
             credential_with_key,
             lifetime: None,
             required_capabilities: None,
+            capabilities: None,
             external_senders: None,
-            leaf_extensions: None,
-            group_context_extensions: None,
+            leaf_node_extensions: Extensions::empty(),
+            group_context_extensions: Extensions::empty(),
         }
     }
 }

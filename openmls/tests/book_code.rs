@@ -133,11 +133,24 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             10,   // out_of_order_tolerance
             2000, // maximum_forward_distance
         ))
+        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .capabilities(Capabilities::new(
+            None, // Defaults to the group's protocol version
+            None, // Defaults to the group's ciphersuite
+            None, // Defaults to all basic extension types
+            None, // Defaults to all basic proposal types
+            Some(&[CredentialType::Basic]),
+        ))
+        // Example leaf extension
+        .with_leaf_node_extensions(Extensions::single(Extension::Unknown(
+            0xff00,
+            UnknownExtension(vec![0, 1, 2, 3]),
+        )))
+        .expect("failed to configure leaf extensions")
         .external_senders(vec![ExternalSender::new(
             ds_credential_with_key.signature_key.clone(),
             ds_credential_with_key.credential.clone(),
         )])
-        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .use_ratchet_tree_extension(true)
         .build();
     // ANCHOR_END: mls_group_create_config_example
