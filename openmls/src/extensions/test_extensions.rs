@@ -252,6 +252,45 @@ fn required_capabilities() {
 }
 
 #[apply(ciphersuites_and_providers)]
+fn test_metadata(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+    // Create credentials and keys
+    let alice_credential_with_key_and_signer = tests::utils::generate_credential_with_key(
+        b"Alice".into(),
+        ciphersuite.signature_algorithm(),
+        provider,
+    );
+
+    // example metadata (opaque data -- test hex string is "1cedc0ffee")
+    let metadata = vec![0x1c, 0xed, 0xc0, 0xff, 0xee];
+    let ext = Extension::Metadata(Metadata::new(metadata.clone()));
+    let extensions = Extensions::from_vec(vec![ext]).expect("could not build extensions struct");
+
+    let config = MlsGroupCreateConfig::builder()
+        .with_group_context_extensions(extensions)
+        .unwrap()
+        .build();
+
+    // === Alice creates a group with the ratchet tree extension ===
+    let alice_group = MlsGroup::new(
+        provider,
+        &alice_credential_with_key_and_signer.signer,
+        &config,
+        alice_credential_with_key_and_signer
+            .credential_with_key
+            .clone(),
+    )
+    .expect("failed to build group");
+
+    let got_metadata = alice_group
+        .export_group_context()
+        .extensions()
+        .metadata()
+        .expect("failed to read group metadata");
+
+    assert_eq!(got_metadata.metadata(), &metadata);
+}
+
+#[apply(ciphersuites_and_providers)]
 fn with_group_context_extensions(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // create an extension that we can check for later
     let test_extension = Extension::Unknown(0xf023, UnknownExtension(vec![0xca, 0xfe]));
@@ -367,44 +406,6 @@ fn wrong_extension_with_group_context_extensions(
     .with_group_context_extensions(extensions)
     .expect_err("builder accepted non-group-context extension");
     assert_eq!(err, InvalidExtensionError::IllegalInGroupContext);
-}
-
-fn test_metadata(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
-    // Create credentials and keys
-    //let (alice_credential_with_key, alice_signature_keys) =
-    let alice_credential_with_key_and_signer = tests::utils::generate_credential_with_key(
-        b"Alice".into(),
-        ciphersuite.signature_algorithm(),
-        provider,
-    );
-
-    // example metadata (opaque data -- test hex string is "1cedc0ffee")
-    let metadata = vec![0x1c, 0xed, 0xc0, 0xff, 0xee];
-    let ext = Extension::Metadata(Metadata::new(metadata.clone()));
-    let extensions = Extensions::from_vec(vec![ext]).expect("could not build extensions struct");
-
-    let config = MlsGroupConfig::builder()
-        .group_context_extensions(extensions)
-        .build();
-
-    // === Alice creates a group with the ratchet tree extension ===
-    let alice_group = MlsGroup::new(
-        provider,
-        &alice_credential_with_key_and_signer.signer,
-        &config,
-        alice_credential_with_key_and_signer
-            .credential_with_key
-            .clone(),
-    )
-    .expect("failed to build group");
-
-    let got_metadata = alice_group
-        .export_group_context()
-        .extensions()
-        .metadata()
-        .expect("failed to read group metadata");
-
-    assert_eq!(got_metadata.metadata(), &metadata);
 }
 
 #[apply(ciphersuites_and_providers)]
