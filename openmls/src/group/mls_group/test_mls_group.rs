@@ -1217,30 +1217,20 @@ fn unknown_extensions(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider)
 
     let unknown_gc_extension = Extension::Unknown(0xff00, UnknownExtension(vec![0, 1, 2, 3]));
     let unknown_leaf_extension = Extension::Unknown(0xff01, UnknownExtension(vec![4, 5, 6, 7]));
+    let unknown_kp_extension = Extension::Unknown(0xff02, UnknownExtension(vec![8, 9, 10, 11]));
+    let required_extensions = &[
+        ExtensionType::Unknown(0xff00),
+        ExtensionType::Unknown(0xff01),
+    ];
     let required_capabilities =
-        Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
-            &[
-                ExtensionType::Unknown(0xff00),
-                ExtensionType::Unknown(0xff01),
-            ],
-            &[],
-            &[],
-        ));
-    let capabilities = Capabilities::new(
-        None,
-        None,
-        Some(&[
-            ExtensionType::Unknown(0xff00),
-            ExtensionType::Unknown(0xff01),
-        ]),
-        None,
-        None,
-    );
+        Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(&[], &[], &[]));
+    let capabilities = Capabilities::new(None, None, Some(required_extensions), None, None);
     let test_gc_extensions = Extensions::from_vec(vec![
         unknown_gc_extension.clone(),
         required_capabilities.clone(),
     ])
     .expect("error creating group context extensions");
+    let test_kp_extensions = Extensions::single(unknown_kp_extension.clone());
 
     // === Alice creates a group ===
     let config = CryptoConfig {
@@ -1275,15 +1265,21 @@ fn unknown_extensions(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider)
     // Generate a KP that supports the unknown extensions
     let bob_key_package = KeyPackage::builder()
         .leaf_node_capabilities(capabilities)
+        .key_package_extensions(test_kp_extensions.clone())
         .build(config, provider, &bob_signer, bob_credential_with_key)
         .expect("error building key package");
+
+    assert_eq!(
+        bob_key_package.extensions(),
+        &Extensions::single(unknown_kp_extension)
+    );
 
     // alice adds bob and bob processes the welcome
     let (_, welcome, _) = alice_group
         .add_members(provider, &alice_signer, &[bob_key_package.clone()])
         .unwrap();
     alice_group.merge_pending_commit(provider).unwrap();
-    let _bob_group = MlsGroup::new_from_welcome(
+    let bob_group = MlsGroup::new_from_welcome(
         provider,
         &MlsGroupJoinConfig::default(),
         welcome.into_welcome().unwrap(),

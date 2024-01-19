@@ -37,4 +37,4 @@ Example create configuration:
 
 ## Unknown extensions
 
-Some extensions carry data, but don't alter the behaviour of the protocol (e.g.  the application_id extension). OpenMLS allows the use of arbitrary such extensions both in the group context and in leaf nodes. Such extensions can be instantiated and retrieved through the use of the `UnknownExtension` struct and the `ExtensionType::Unknown` extension type. Such "unknown" extensions are handled transparently by OpenMLS, but can be used by the application, e.g. to have a group agree on pieces of data.
+Some extensions carry data, but don't alter the behaviour of the protocol (e.g.  the application_id extension). OpenMLS allows the use of arbitrary such extensions in the group context, key packages and leaf nodes. Such extensions can be instantiated and retrieved through the use of the `UnknownExtension` struct and the `ExtensionType::Unknown` extension type. Such "unknown" extensions are handled transparently by OpenMLS, but can be used by the application, e.g. to have a group agree on pieces of data.
