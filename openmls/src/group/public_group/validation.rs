@@ -525,6 +525,22 @@ impl PublicGroup {
         match iter.next() {
             Some(queued_proposal) => match queued_proposal.proposal() {
                 Proposal::GroupContextExtensions(extensions) => {
+                    // Ensure that the [`ImmutableMetadata`] extension did not change.
+                    if let Some(new_immutable_metadata) =
+                        extensions.extensions().immutable_metadata()
+                    {
+                        // Get existing extension.
+                        if let Some(old_immutable_metadata) =
+                            self.group_context.extensions().immutable_metadata()
+                        {
+                            // If the extension changed, or there hasn't been one before,
+                            // this proposal is invalid.
+                            if new_immutable_metadata != old_immutable_metadata {
+                                return Err(GroupContextExtensionsProposalValidationError::ChangedImmutableMetadata);
+                            }
+                        }
+                    }
+
                     let ext_type_list: Vec<_> = extensions
                         .extensions()
                         .iter()
