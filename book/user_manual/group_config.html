@@ -232,6 +232,8 @@
         .expect(&quot;failed to configure leaf extensions&quot;)
         .use_ratchet_tree_extension(true)
         .build();</code></pre>
+<h2 id="unknown-extensions"><a class="header" href="#unknown-extensions">Unknown extensions</a></h2>
+<p>Some extensions carry data, but don't alter the behaviour of the protocol (e.g.  the application_id extension). OpenMLS allows the use of arbitrary such extensions in the group context, key packages and leaf nodes. Such extensions can be instantiated and retrieved through the use of the <code>UnknownExtension</code> struct and the <code>ExtensionType::Unknown</code> extension type. Such &quot;unknown&quot; extensions are handled transparently by OpenMLS, but can be used by the application, e.g. to have a group agree on pieces of data.</p>
 
                     </main>
 

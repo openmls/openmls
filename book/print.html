@@ -354,6 +354,8 @@ OpenMLS provides a simple implementation of <a href="https://github.com/openmls/
         .expect(&quot;failed to configure leaf extensions&quot;)
         .use_ratchet_tree_extension(true)
         .build();</code></pre>
+<h2 id="unknown-extensions"><a class="header" href="#unknown-extensions">Unknown extensions</a></h2>
+<p>Some extensions carry data, but don't alter the behaviour of the protocol (e.g.  the application_id extension). OpenMLS allows the use of arbitrary such extensions in the group context, key packages and leaf nodes. Such extensions can be instantiated and retrieved through the use of the <code>UnknownExtension</code> struct and the <code>ExtensionType::Unknown</code> extension type. Such &quot;unknown&quot; extensions are handled transparently by OpenMLS, but can be used by the application, e.g. to have a group agree on pieces of data.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="creating-groups"><a class="header" href="#creating-groups">Creating groups</a></h1>
 <p>There are two ways to create a group: Either by building an <code>MlsGroup</code> directly, or by using an <code>MlsGroupCreateConfig</code>. The former is slightly simpler, while the latter allows the creating of multiple groups using the same configuration. See <a href="user_manual/./group_config.html">Group configuration</a> for more details on group parameters.</p>
 <p>In addition to the group configuration, the client should define all supported and required extensions for the group. The negotiation mechanism for extension in MLS consists in setting an initial list of extensions at group creation time and choosing key packages of subsequent new members accordingly.</p>
