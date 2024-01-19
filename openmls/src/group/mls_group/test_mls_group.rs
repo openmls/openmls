@@ -1274,12 +1274,13 @@ fn unknown_extensions(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider)
         &Extensions::single(unknown_kp_extension)
     );
 
-    // alice adds bob and bob processes the welcome
+    // alice adds bob and bob processes the welcome to ensure that the unknown
+    // extensions are processed correctly
     let (_, welcome, _) = alice_group
         .add_members(provider, &alice_signer, &[bob_key_package.clone()])
         .unwrap();
     alice_group.merge_pending_commit(provider).unwrap();
-    let bob_group = MlsGroup::new_from_welcome(
+    let _bob_group = MlsGroup::new_from_welcome(
         provider,
         &MlsGroupJoinConfig::default(),
         welcome.into_welcome().unwrap(),
