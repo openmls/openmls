@@ -254,7 +254,6 @@ fn required_capabilities() {
 #[apply(ciphersuites_and_providers)]
 fn test_metadata(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // Create credentials and keys
-    //let (alice_credential_with_key, alice_signature_keys) =
     let alice_credential_with_key_and_signer = tests::utils::generate_credential_with_key(
         b"Alice".into(),
         ciphersuite.signature_algorithm(),
@@ -266,8 +265,9 @@ fn test_metadata(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let ext = Extension::Metadata(Metadata::new(metadata.clone()));
     let extensions = Extensions::from_vec(vec![ext]).expect("could not build extensions struct");
 
-    let config = MlsGroupConfig::builder()
-        .group_context_extensions(extensions)
+    let config = MlsGroupCreateConfig::builder()
+        .with_group_context_extensions(extensions)
+        .unwrap()
         .build();
 
     // === Alice creates a group with the ratchet tree extension ===
