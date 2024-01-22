@@ -9,4 +9,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 openmls = {path = "../openmls/"}
+openmls_traits = {path = "../traits/"}
+openmls_rust_crypto = {path = "../openmls_rust_crypto/"}
 wasm-bindgen = "0.2.90"
+getrandom = {  features = [ "js" ] }
