@@ -17,8 +17,9 @@ Two very similar structs can help configure groups upon their creation: `MlsGrou
 
 | Name                           | Type                            | Explanation                                                                                      |
 | ------------------------------ | ------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `required_capabilities`        | `RequiredCapabilitiesExtension` | Required capabilities (extensions and proposal types).                                           |
-| `external_senders`             | `ExternalSendersExtensions`     | List credentials of non-group members that are allowed to send proposals to the group.           |
+| `group_context_extensions`     | `Extensions`                    | Optional group-level extensions, e.g. `RequiredCapabilitiesExtension`.                           |
+| `capabilities` .               | `Capabilities`                  | Lists the capabilities of the group's creator.                                                   |
+| `leaf_extensions` .            | `Extensions`                    | Extensions to be included in the group creator's leaf                                            |
 
 Both ways of group configurations can be specified by using the struct's builder pattern, or choosing their default values. The default value contains safe values for all parameters and is suitable for scenarios without particular requirements.
 
@@ -33,3 +34,7 @@ Example create configuration:
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code.rs:mls_group_create_config_example}}
 ```
+
+## Unknown extensions
+
+Some extensions carry data, but don't alter the behaviour of the protocol (e.g.  the application_id extension). OpenMLS allows the use of arbitrary such extensions in the group context, key packages and leaf nodes. Such extensions can be instantiated and retrieved through the use of the `UnknownExtension` struct and the `ExtensionType::Unknown` extension type. Such "unknown" extensions are handled transparently by OpenMLS, but can be used by the application, e.g. to have a group agree on pieces of data.
