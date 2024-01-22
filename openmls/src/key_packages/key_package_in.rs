@@ -4,18 +4,15 @@
 use crate::{
     ciphersuite::{signable::*, *},
     credentials::*,
-    extensions::Extensions,
-    treesync::node::leaf_node::{LeafNodeIn, VerifiableLeafNode},
+    treesync::node::leaf_node::VerifiableLeafNode,
     versions::ProtocolVersion,
 };
-use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
-use serde::{Deserialize, Serialize};
-use tls_codec::{
-    Serialize as TlsSerializeTrait, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
-};
+use openmls_traits::crypto::OpenMlsCrypto;
+use tls_codec::Serialize as TlsSerializeTrait;
 
 use super::{
-    errors::KeyPackageVerifyError, KeyPackage, KeyPackageTbs, SIGNATURE_KEY_PACKAGE_LABEL,
+    errors::KeyPackageVerifyError, KeyPackage, KeyPackageIn, KeyPackageTbs, KeyPackageTbsIn,
+    SIGNATURE_KEY_PACKAGE_LABEL,
 };
 
 /// Intermediary struct for deserialization of a [`KeyPackageIn`].
@@ -60,53 +57,6 @@ impl Verifiable for VerifiableKeyPackage {
 }
 
 impl VerifiedStruct for KeyPackage {}
-
-/// The unsigned payload of a key package.
-///
-/// ```text
-/// struct {
-///     ProtocolVersion version;
-///     CipherSuite cipher_suite;
-///     HPKEPublicKey init_key;
-///     LeafNode leaf_node;
-///     Extension extensions<V>;
-/// } KeyPackageTBS;
-/// ```
-#[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    TlsSize,
-    TlsSerialize,
-    TlsDeserialize,
-    TlsDeserializeBytes,
-    Serialize,
-    Deserialize,
-)]
-struct KeyPackageTbsIn {
-    protocol_version: ProtocolVersion,
-    ciphersuite: Ciphersuite,
-    init_key: HpkePublicKey,
-    leaf_node: LeafNodeIn,
-    extensions: Extensions,
-}
-
-/// The key package struct.
-#[derive(
-    Debug,
-    PartialEq,
-    Clone,
-    Serialize,
-    Deserialize,
-    TlsSerialize,
-    TlsDeserialize,
-    TlsDeserializeBytes,
-    TlsSize,
-)]
-pub struct KeyPackageIn {
-    payload: KeyPackageTbsIn,
-    signature: Signature,
-}
 
 impl KeyPackageIn {
     /// Returns a [`CredentialWithKey`] from the unverified payload
