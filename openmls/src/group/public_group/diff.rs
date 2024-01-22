@@ -13,6 +13,7 @@ use super::PublicGroup;
 use crate::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
     error::LibraryError,
+    extensions::Extensions,
     framing::{mls_auth_content::AuthenticatedContent, public_message::InterimTranscriptHashInput},
     group::GroupContext,
     messages::{proposals::AddProposal, ConfirmationTag, EncryptedGroupSecrets},
@@ -201,6 +202,7 @@ impl<'a> PublicGroupDiff<'a> {
     pub(crate) fn update_group_context(
         &mut self,
         crypto: &impl OpenMlsCrypto,
+        extensions: Option<Extensions>,
     ) -> Result<(), LibraryError> {
         // Calculate tree hash
         let new_tree_hash = self
@@ -208,6 +210,9 @@ impl<'a> PublicGroupDiff<'a> {
             .compute_tree_hashes(crypto, self.group_context().ciphersuite())?;
         self.group_context.update_tree_hash(new_tree_hash);
         self.group_context.increment_epoch();
+        if let Some(extensions) = extensions {
+            self.group_context.set_extensions(extensions);
+        }
         Ok(())
     }
 

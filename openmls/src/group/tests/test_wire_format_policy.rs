@@ -28,7 +28,7 @@ fn create_group(
         generate_credential_with_key("Alice".into(), ciphersuite.signature_algorithm(), provider);
 
     // Define the MlsGroup configuration
-    let mls_group_config = MlsGroupConfig::builder()
+    let mls_group_config = MlsGroupCreateConfig::builder()
         .wire_format_policy(wire_format_policy)
         .use_ratchet_tree_extension(true)
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
@@ -74,9 +74,8 @@ fn receive_message(
         .merge_pending_commit(provider)
         .expect("error merging pending commit");
 
-    let mls_group_config = MlsGroupConfig::builder()
+    let mls_group_config = MlsGroupJoinConfig::builder()
         .wire_format_policy(alice_group.configuration().wire_format_policy())
-        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 
     let mut bob_group = MlsGroup::new_from_welcome(

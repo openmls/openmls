@@ -10,9 +10,12 @@ use thiserror::Error;
 use crate::{
     error::LibraryError,
     extensions::errors::InvalidExtensionError,
-    group::errors::{
-        CreateAddProposalError, CreateCommitError, MergeCommitError, StageCommitError,
-        ValidationError,
+    group::{
+        errors::{
+            CreateAddProposalError, CreateCommitError, MergeCommitError, StageCommitError,
+            ValidationError,
+        },
+        CreateGroupContextExtProposalError,
     },
     schedule::errors::PskError,
     treesync::errors::{LeafNodeValidationError, PublicTreeError},
@@ -38,7 +41,7 @@ pub enum NewGroupError<KeyStoreError> {
     UnsupportedExtensionType,
     /// Invalid extensions set in configuration
     #[error("Invalid extensions set in configuration")]
-    InvalidExtensions(InvalidExtensionError),
+    InvalidExtensions(#[from] InvalidExtensionError),
 }
 
 /// EmptyInput error
@@ -317,4 +320,7 @@ pub enum ProposalError<KeyStoreError> {
     /// See [`ValidationError`] for more details.
     #[error(transparent)]
     ValidationError(#[from] ValidationError),
+    /// See [`CreateGroupContextExtProposalError`] for more details.
+    #[error(transparent)]
+    CreateGroupContextExtProposalError(#[from] CreateGroupContextExtProposalError),
 }

@@ -17,7 +17,7 @@ use openmls::{
     credentials::{Credential, CredentialType, CredentialWithKey},
     framing::{MlsMessageIn, MlsMessageInBody, MlsMessageOut, ProcessedMessageContent},
     group::{
-        GroupEpoch, GroupId, MlsGroup, MlsGroupConfig, WireFormatPolicy,
+        GroupEpoch, GroupId, MlsGroup, MlsGroupCreateConfig, MlsGroupJoinConfig, WireFormatPolicy,
         PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     key_packages::KeyPackage,
@@ -230,7 +230,7 @@ impl MlsClient for MlsClientImpl {
         // Note: We just use some values here that make live testing work.
         //       There is nothing special about the used numbers and they
         //       can be increased (or decreased) depending on the available scenarios.
-        let mls_group_config = MlsGroupConfig::builder()
+        let mls_group_config = MlsGroupCreateConfig::builder()
             .crypto_config(CryptoConfig::with_default_version(ciphersuite))
             .max_past_epochs(32)
             .number_of_resumption_psks(32)
@@ -375,7 +375,7 @@ impl MlsClient for MlsClientImpl {
         // Note: We just use some values here that make live testing work.
         //       There is nothing special about the used numbers and they
         //       can be increased (or decreased) depending on the available scenarios.
-        let mls_group_config = MlsGroupConfig::builder()
+        let mls_group_config = MlsGroupJoinConfig::builder()
             .max_past_epochs(32)
             .number_of_resumption_psks(32)
             .sender_ratchet_configuration(SenderRatchetConfiguration::default())
@@ -521,7 +521,7 @@ impl MlsClient for MlsClientImpl {
             let mls_group_config = {
                 let wire_format_policy = wire_format_policy(request.encrypt_handshake);
 
-                MlsGroupConfig::builder()
+                MlsGroupJoinConfig::builder()
                     .max_past_epochs(32)
                     .number_of_resumption_psks(32)
                     .sender_ratchet_configuration(SenderRatchetConfiguration::default())
@@ -818,7 +818,7 @@ impl MlsClient for MlsClientImpl {
         // Note: We just use some values here that make live testing work.
         //       There is nothing special about the used numbers and they
         //       can be increased (or decreased) depending on the available scenarios.
-        let mls_group_config = MlsGroupConfig::builder()
+        let mls_group_config = MlsGroupJoinConfig::builder()
             .use_ratchet_tree_extension(true)
             .max_past_epochs(32)
             .number_of_resumption_psks(32)
@@ -866,7 +866,7 @@ impl MlsClient for MlsClientImpl {
         // Note: We just use some values here that make live testing work.
         //       There is nothing special about the used numbers and they
         //       can be increased (or decreased) depending on the available scenarios.
-        let mls_group_config = MlsGroupConfig::builder()
+        let mls_group_config = MlsGroupJoinConfig::builder()
             .max_past_epochs(32)
             .number_of_resumption_psks(32)
             .use_ratchet_tree_extension(true)
@@ -920,7 +920,7 @@ impl MlsClient for MlsClientImpl {
         // Note: We just use some values here that make live testing work.
         //       There is nothing special about the used numbers and they
         //       can be increased (or decreased) depending on the available scenarios.
-        let mls_group_config = MlsGroupConfig::builder()
+        let mls_group_config = MlsGroupJoinConfig::builder()
             .max_past_epochs(32)
             .number_of_resumption_psks(32)
             .use_ratchet_tree_extension(true)

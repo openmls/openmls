@@ -13,7 +13,8 @@ use crate::{
     group::{config::CryptoConfig, errors::*, *},
     key_packages::*,
     messages::proposals::ProposalType,
-    prelude::Capabilities,
+    prelude::{Capabilities, RatchetTreeIn},
+    prelude_test::HpkePublicKey,
     schedule::psk::store::ResumptionPskStore,
     test_utils::*,
     versions::ProtocolVersion,
@@ -249,6 +250,124 @@ fn required_capabilities() {
 }
 
 #[apply(ciphersuites_and_providers)]
+fn with_group_context_extensions(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+    // create an extension that we can check for later
+    let test_extension = Extension::Unknown(0xf023, UnknownExtension(vec![0xca, 0xfe]));
+    let extensions = Extensions::single(test_extension.clone());
+
+    let alice_credential_with_key_and_signer = tests::utils::generate_credential_with_key(
+        "Alice".into(),
+        ciphersuite.signature_algorithm(),
+        provider,
+    );
+
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .with_group_context_extensions(extensions)
+        .expect("failed to apply extensions at group config builder")
+        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .build();
+
+    // === Alice creates a group ===
+    let alice_group = MlsGroup::new(
+        provider,
+        &alice_credential_with_key_and_signer.signer,
+        &mls_group_create_config,
+        alice_credential_with_key_and_signer.credential_with_key,
+    )
+    .expect("An unexpected error occurred.");
+
+    // === Group contains extension ===
+    let found_test_extension = alice_group
+        .export_group_context()
+        .extensions()
+        .find_by_type(ExtensionType::Unknown(0xf023))
+        .expect("failed to get test extensions from group context");
+    assert_eq!(found_test_extension, &test_extension);
+}
+
+#[apply(ciphersuites_and_providers)]
+fn wrong_extension_with_group_context_extensions(
+    ciphersuite: Ciphersuite,
+    provider: &impl OpenMlsProvider,
+) {
+    // Extension types that are known to not be allowed here:
+    // - application id
+    // - external pub
+    // - ratchet tree
+
+    let alice_credential_with_key_and_signer = tests::utils::generate_credential_with_key(
+        "Alice".into(),
+        ciphersuite.signature_algorithm(),
+        provider,
+    );
+
+    let crypto_config = CryptoConfig::with_default_version(ciphersuite);
+
+    // create an extension that we can check for later
+    let test_extension = Extension::ApplicationId(ApplicationIdExtension::new(&[0xca, 0xfe]));
+    let extensions = Extensions::single(test_extension.clone());
+
+    let err = MlsGroup::builder()
+        .with_group_context_extensions(extensions.clone())
+        .expect_err("builder accepted non-group-context extension");
+
+    assert_eq!(err, InvalidExtensionError::IllegalInGroupContext);
+    let err = PublicGroup::builder(
+        GroupId::from_slice(&[0xbe, 0xef]),
+        crypto_config,
+        alice_credential_with_key_and_signer
+            .credential_with_key
+            .clone(),
+    )
+    .with_group_context_extensions(extensions)
+    .expect_err("builder accepted non-group-context extension");
+
+    assert_eq!(err, InvalidExtensionError::IllegalInGroupContext);
+    // create an extension that we can check for later
+    let test_extension =
+        Extension::ExternalPub(ExternalPubExtension::new(HpkePublicKey::new(vec![])));
+    let extensions = Extensions::single(test_extension.clone());
+
+    let err = MlsGroup::builder()
+        .with_group_context_extensions(extensions.clone())
+        .expect_err("builder accepted non-group-context extension");
+    assert_eq!(err, InvalidExtensionError::IllegalInGroupContext);
+
+    let err = PublicGroup::builder(
+        GroupId::from_slice(&[0xbe, 0xef]),
+        crypto_config,
+        alice_credential_with_key_and_signer
+            .credential_with_key
+            .clone(),
+    )
+    .with_group_context_extensions(extensions)
+    .expect_err("builder accepted non-group-context extension");
+    assert_eq!(err, InvalidExtensionError::IllegalInGroupContext);
+
+    // create an extension that we can check for later
+    let test_extension = Extension::RatchetTree(RatchetTreeExtension::new(
+        RatchetTreeIn::from_nodes(vec![]).into(),
+    ));
+    let extensions = Extensions::single(test_extension.clone());
+
+    let err = MlsGroup::builder()
+        .with_group_context_extensions(extensions.clone())
+        .expect_err("builder accepted non-group-context extension");
+    assert_eq!(err, InvalidExtensionError::IllegalInGroupContext);
+
+    let err = PublicGroup::builder(
+        GroupId::from_slice(&[0xbe, 0xef]),
+        crypto_config,
+        alice_credential_with_key_and_signer
+            .credential_with_key
+            .clone(),
+    )
+    .with_group_context_extensions(extensions)
+    .expect_err("builder accepted non-group-context extension");
+    assert_eq!(err, InvalidExtensionError::IllegalInGroupContext);
+}
+
+#[apply(ciphersuites_and_providers)]
 fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let last_resort = Extension::LastResort(LastResortExtension::default());
 
@@ -299,7 +418,7 @@ fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
         provider,
     );
 
-    let mls_group_config = MlsGroupConfigBuilder::new()
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 
@@ -307,7 +426,7 @@ fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
     let mut alice_group = MlsGroup::new(
         provider,
         &alice_credential_with_key_and_signer.signer,
-        &mls_group_config,
+        &mls_group_create_config,
         alice_credential_with_key_and_signer.credential_with_key,
     )
     .expect("An unexpected error occurred.");
@@ -326,7 +445,7 @@ fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
 
     let _bob_group = MlsGroup::new_from_welcome(
         provider,
-        &mls_group_config,
+        mls_group_create_config.join_config(),
         welcome.into_welcome().expect("Unexpected MLS message"),
         Some(alice_group.export_ratchet_tree().into()),
     )

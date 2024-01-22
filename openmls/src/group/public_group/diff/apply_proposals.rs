@@ -12,12 +12,14 @@ use crate::{
 use super::*;
 
 /// This struct contain the return values of the `apply_proposals()` function
+#[derive(Debug)]
 pub(crate) struct ApplyProposalsValues {
     pub(crate) path_required: bool,
     pub(crate) self_removed: bool,
     pub(crate) invitation_list: Vec<(LeafNodeIndex, AddProposal)>,
     pub(crate) presharedkeys: Vec<PreSharedKeyId>,
     pub(crate) external_init_proposal_option: Option<ExternalInitProposal>,
+    pub(crate) extensions: Option<Extensions>,
 }
 
 impl ApplyProposalsValues {
@@ -140,6 +142,16 @@ impl<'a> PublicGroupDiff<'a> {
             })
             .collect();
 
+        // apply group context extension proposal
+        let extensions = proposal_queue
+            .filtered_by_type(ProposalType::GroupContextExtensions)
+            .find_map(|queued_proposal| match queued_proposal.proposal() {
+                Proposal::GroupContextExtensions(extensions) => {
+                    Some(extensions.extensions().clone())
+                }
+                _ => None,
+            });
+
         let proposals_require_path = proposal_queue
             .queued_proposals()
             .any(|p| p.proposal().is_path_required());
@@ -159,6 +171,7 @@ impl<'a> PublicGroupDiff<'a> {
             invitation_list,
             presharedkeys,
             external_init_proposal_option,
+            extensions,
         })
     }
 }

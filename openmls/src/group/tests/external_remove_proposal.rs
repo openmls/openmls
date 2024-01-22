@@ -27,10 +27,13 @@ fn new_test_group(
         generate_credential_with_key(identity.into(), ciphersuite.signature_algorithm(), provider);
 
     // Define the MlsGroup configuration
-    let mls_group_config = MlsGroupConfig::builder()
+    let mls_group_config = MlsGroupCreateConfig::builder()
         .wire_format_policy(wire_format_policy)
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
-        .external_senders(external_senders)
+        .with_group_context_extensions(Extensions::single(Extension::ExternalSenders(
+            external_senders,
+        )))
+        .unwrap()
         .build();
 
     (
@@ -336,6 +339,6 @@ fn external_remove_proposal_should_fail_when_no_external_senders(
         .unwrap_err();
     assert_eq!(
         error,
-        ProcessMessageError::ValidationError(ValidationError::NoExternalSendersExtension)
+        ProcessMessageError::ValidationError(ValidationError::UnauthorizedExternalSender)
     );
 }

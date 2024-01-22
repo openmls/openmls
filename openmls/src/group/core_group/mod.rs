@@ -39,6 +39,7 @@ use tls_codec::Serialize as TlsSerializeTrait;
 
 use self::{
     create_commit_params::{CommitType, CreateCommitParams},
+    node::leaf_node::Capabilities,
     past_secrets::MessageSecretsStore,
     staged_commit::{MemberStagedCommitState, StagedCommit, StagedCommitState},
 };
@@ -58,6 +59,7 @@ use crate::{
     ciphersuite::{signable::Signable, HpkePublicKey},
     credentials::*,
     error::LibraryError,
+    extensions::errors::InvalidExtensionError,
     framing::{mls_auth_content::AuthenticatedContent, *},
     group::{config::CryptoConfig, *},
     key_packages::*,
@@ -178,28 +180,39 @@ impl CoreGroupBuilder {
         self.psk_ids = psk_ids;
         self
     }
-    /// Set the [`RequiredCapabilitiesExtension`] of the [`CoreGroup`].
-    pub(crate) fn with_required_capabilities(
+
+    /// Set the [`Capabilities`] of the group's creator.
+    pub(crate) fn with_capabilities(mut self, capabilities: Capabilities) -> Self {
+        self.public_group_builder = self.public_group_builder.with_capabilities(capabilities);
+        self
+    }
+
+    /// Sets initial group context extensions. Note that RequiredCapabilities
+    /// extensions will be overwritten, and should be set using a call to
+    /// `required_capabilities`. If `ExternalSenders` extensions are provided
+    /// both in this call, and a call to `external_senders`, only the one from
+    /// the call to `external_senders` will be included.
+    pub(crate) fn with_group_context_extensions(
         mut self,
-        required_capabilities: RequiredCapabilitiesExtension,
-    ) -> Self {
+        extensions: Extensions,
+    ) -> Result<Self, InvalidExtensionError> {
         self.public_group_builder = self
             .public_group_builder
-            .with_required_capabilities(required_capabilities);
-        self
+            .with_group_context_extensions(extensions)?;
+        Ok(self)
     }
-    /// Set the [`ExternalSendersExtension`] of the [`CoreGroup`].
-    pub(crate) fn with_external_senders(
+
+    /// Sets extensions of the group creator's [`LeafNode`].
+    pub(crate) fn with_leaf_node_extensions(
         mut self,
-        external_senders: ExternalSendersExtension,
-    ) -> Self {
-        if !external_senders.is_empty() {
-            self.public_group_builder = self
-                .public_group_builder
-                .with_external_senders(external_senders);
-        }
-        self
+        extensions: Extensions,
+    ) -> Result<Self, InvalidExtensionError> {
+        self.public_group_builder = self
+            .public_group_builder
+            .with_leaf_node_extensions(extensions)?;
+        Ok(self)
     }
+
     /// Set the number of past epochs the group should keep secrets.
     pub fn with_max_past_epoch_secrets(mut self, max_past_epochs: usize) -> Self {
         self.max_past_epochs = max_past_epochs;
@@ -435,10 +448,9 @@ impl CoreGroup {
             let required_capabilities = required_extension.as_required_capabilities_extension()?;
             // Ensure we support all the capabilities.
             required_capabilities.check_support()?;
-            // TODO #566/#1361: This needs to be re-enabled once we support GCEs
-            /* self.own_leaf_node()?
-            .capabilities()
-            .supports_required_capabilities(required_capabilities)?; */
+            self.own_leaf_node()?
+                .capabilities()
+                .supports_required_capabilities(required_capabilities)?;
 
             // Ensure that all other leaf nodes support all the required
             // extensions as well.
@@ -873,6 +885,11 @@ impl CoreGroup {
                 .validate_update_proposals(&proposal_queue, *sender_index)?;
         }
 
+        // ValSem208
+        // ValSem209
+        self.public_group
+            .validate_group_context_extensions_proposal(&proposal_queue)?;
+
         // Make a copy of the public group to apply proposals safely
         let mut diff = self.public_group.empty_diff();
 
@@ -898,12 +915,13 @@ impl CoreGroup {
                     apply_proposals_values.exclusion_list(),
                     params.commit_type(),
                     signer,
-                    params.take_credential_with_key()
+                    params.take_credential_with_key(),
+                    apply_proposals_values.extensions.clone()
                 )?
             } else {
                 // If path is not needed, update the group context and return
                 // empty path processing results
-                diff.update_group_context(provider.crypto())?;
+                diff.update_group_context(provider.crypto(), apply_proposals_values.extensions.clone())?;
                 PathComputationResult::default()
             };
 
