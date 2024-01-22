@@ -538,6 +538,8 @@ impl PublicGroup {
                             if new_immutable_metadata != old_immutable_metadata {
                                 return Err(GroupContextExtensionsProposalValidationError::ChangedImmutableMetadata);
                             }
+                        } else {
+                            return Err(GroupContextExtensionsProposalValidationError::ChangedImmutableMetadata);
                         }
                     }
 
