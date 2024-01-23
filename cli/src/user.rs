@@ -196,6 +196,8 @@ impl User {
             credential,
         } in mls_group.members()
         {
+            let credential =
+                BasicCredential::tls_deserialize_exact(credential.serialized_credential()).unwrap();
             if credential.identity() == name.as_bytes() {
                 return Ok(index);
             }
@@ -237,6 +239,9 @@ impl User {
                 .as_slice()
                 != signature_key.as_slice()
             {
+                let credential =
+                    BasicCredential::tls_deserialize_exact(credential.serialized_credential())
+                        .unwrap();
                 log::debug!(
                     "Searching for contact {:?}",
                     str::from_utf8(credential.identity()).unwrap()
@@ -399,6 +404,10 @@ impl User {
 
             match processed_message.into_content() {
                 ProcessedMessageContent::ApplicationMessage(application_message) => {
+                    let processed_message_credential = BasicCredential::tls_deserialize_exact(
+                        processed_message_credential.serialized_credential(),
+                    )
+                    .unwrap();
                     let sender_name = match self
                         .contacts
                         .get(processed_message_credential.identity())
@@ -408,7 +417,11 @@ impl User {
                             // Contact list is not updated right now, get the identity from the
                             // mls_group member
                             let user_id = mls_group.members().find_map(|m| {
-                                if m.credential.identity()
+                                let m_credential = BasicCredential::tls_deserialize_exact(
+                                    m.credential.serialized_credential(),
+                                )
+                                .unwrap();
+                                if m_credential.identity()
                                     == processed_message_credential.identity()
                                     && (self
                                         .identity
@@ -420,7 +433,7 @@ impl User {
                                 {
                                     log::debug!("update::Processing ApplicationMessage read sender name from credential identity for group {} ", group.group_name);
                                     Some(
-                                        str::from_utf8(m.credential.identity()).unwrap().to_owned(),
+                                        str::from_utf8(m_credential.identity()).unwrap().to_owned(),
                                     )
                                 } else {
                                     None

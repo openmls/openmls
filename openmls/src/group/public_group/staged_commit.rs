@@ -68,11 +68,6 @@ impl PublicGroup {
             }
         })?;
 
-        let commit_update_leaf_node = commit
-            .path()
-            .as_ref()
-            .map(|update_path| update_path.leaf_node().clone());
-
         // Validate the staged proposals by doing the following checks:
         // ValSem101
         // ValSem102
@@ -116,7 +111,7 @@ impl PublicGroup {
                 // ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
                 // ValSem243: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
                 //            leaf are identical to the ones in the path KeyPackage.
-                self.validate_external_commit(&proposal_queue, commit_update_leaf_node.as_ref())?;
+                self.validate_external_commit(&proposal_queue)?;
             }
         }
 

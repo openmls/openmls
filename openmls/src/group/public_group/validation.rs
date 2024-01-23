@@ -25,7 +25,6 @@ use crate::{
         Commit,
     },
     schedule::errors::PskError,
-    treesync::node::leaf_node::LeafNode,
 };
 
 impl PublicGroup {
@@ -462,7 +461,6 @@ impl PublicGroup {
     pub(super) fn validate_external_commit(
         &self,
         proposal_queue: &ProposalQueue,
-        path_leaf_node: Option<&LeafNode>,
     ) -> Result<(), ExternalCommitValidationError> {
         let count_external_init_proposals = proposal_queue
             .filtered_by_type(ProposalType::ExternalInit)
@@ -488,29 +486,12 @@ impl PublicGroup {
             return Err(ExternalCommitValidationError::InvalidInlineProposals);
         }
 
-        let remove_proposals = proposal_queue.filtered_by_type(ProposalType::Remove);
-        for proposal in remove_proposals {
-            if proposal.proposal_or_ref_type() == ProposalOrRefType::Proposal {
-                if let Proposal::Remove(remove_proposal) = proposal.proposal() {
-                    let removed_leaf = remove_proposal.removed();
+        // If a Remove proposal is present,
+        // the credential in the LeafNode MUST present a set of
+        // identifiers that is acceptable to the application for
+        // the removed participant.
+        // This MUST be checked by the application.
 
-                    if let Some(new_leaf) = path_leaf_node {
-                        // ValSem243: External Commit, inline Remove Proposal:
-                        //            The identity and the endpoint_id of the
-                        //            removed leaf are identical to the ones
-                        //            in the path leaf node.
-                        let removed_leaf = self
-                            .treesync()
-                            .leaf(removed_leaf)
-                            .ok_or(ExternalCommitValidationError::UnknownMemberRemoval)?;
-                        if removed_leaf.credential().identity() != new_leaf.credential().identity()
-                        {
-                            return Err(ExternalCommitValidationError::InvalidRemoveProposal);
-                        }
-                    };
-                }
-            }
-        }
         Ok(())
     }
 

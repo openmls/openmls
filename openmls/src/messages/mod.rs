@@ -165,11 +165,6 @@ impl Commit {
     pub fn has_path(&self) -> bool {
         self.path.is_some()
     }
-
-    /// Returns the update path of the Commit if it has one.
-    pub(crate) fn path(&self) -> &Option<UpdatePath> {
-        &self.path
-    }
 }
 
 #[derive(

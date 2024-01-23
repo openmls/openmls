@@ -50,7 +50,11 @@ impl ClientInfo {
     /// key packages with corresponding hashes.
     pub fn new(client_name: String, mut key_packages: Vec<(Vec<u8>, KeyPackageIn)>) -> Self {
         let key_package: KeyPackage = KeyPackage::from(key_packages[0].1.clone());
-        let id = key_package.leaf_node().credential().identity().to_vec();
+        let id = key_package
+            .leaf_node()
+            .credential()
+            .serialized_credential()
+            .to_vec();
         Self {
             client_name,
             id,

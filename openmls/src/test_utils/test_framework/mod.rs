@@ -147,7 +147,7 @@ impl MlsGroupTestSetup {
             let crypto = OpenMlsRustCrypto::default();
             let mut credentials = HashMap::new();
             for ciphersuite in crypto.crypto().supported_ciphersuites().iter() {
-                let credential = Credential::new(identity.clone(), CredentialType::Basic).unwrap();
+                let credential = BasicCredential::new_credential(identity.clone());
                 let signature_keys =
                     SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
                 signature_keys.store(crypto.key_store()).unwrap();
@@ -343,7 +343,12 @@ impl MlsGroupTestSetup {
             .map(
                 |Member {
                      index, credential, ..
-                 }| { (index.usize(), credential.identity().to_vec()) },
+                 }| {
+                    let credential =
+                        BasicCredential::tls_deserialize_exact(credential.serialized_credential())
+                            .unwrap();
+                    (index.usize(), credential.identity().to_vec())
+                },
             )
             .collect();
         group.public_tree = sender_group.export_ratchet_tree();

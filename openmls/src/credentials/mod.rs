@@ -179,6 +179,7 @@ pub struct Certificate {
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct Credential {
     serialized_credential: VLBytes,
+    credential_type: CredentialType,
 }
 
 impl tls_codec::Size for Credential {
@@ -189,25 +190,31 @@ impl tls_codec::Size for Credential {
 
 impl tls_codec::Serialize for Credential {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, Error> {
-        writer.write_all(self.serialized_credential.as_slice());
+        writer.write_all(self.serialized_credential.as_slice())?;
         Ok(self.serialized_credential.as_ref().len())
     }
 }
 
 impl tls_codec::Deserialize for Credential {
     fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, Error> {
+        let credential_type = CredentialType::tls_deserialize(bytes)?;
         Ok(Self {
             serialized_credential: VLBytes::tls_deserialize(bytes)?,
+            credential_type,
         })
     }
 }
 
 impl tls_codec::DeserializeBytes for Credential {
     fn tls_deserialize_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), Error> {
+        // XXX: ?
         let (serialized_credential, remainder) = VLBytes::tls_deserialize_bytes(bytes)?;
+        let (credential_type, _) =
+            CredentialType::tls_deserialize_bytes(serialized_credential.as_slice())?;
         Ok((
             Self {
                 serialized_credential,
+                credential_type,
             },
             remainder,
         ))
@@ -216,9 +223,8 @@ impl tls_codec::DeserializeBytes for Credential {
 
 impl Credential {
     /// Returns the credential type.
-    pub fn credential_type(&self) -> Result<CredentialType, Error> {
-        CredentialType::tls_deserialize_bytes(self.serialized_credential.as_slice())
-            .map(|(ct, _)| ct)
+    pub fn credential_type(&self) -> CredentialType {
+        self.credential_type
     }
 
     /// Creates and returns a new [`Credential`] of the given
@@ -228,6 +234,7 @@ impl Credential {
     pub fn new(serialized_credential: Vec<u8>) -> Self {
         Self {
             serialized_credential: serialized_credential.into(),
+            credential_type: CredentialType::Basic,
         }
     }
 
@@ -280,7 +287,13 @@ impl BasicCredential {
         Credential {
             // This can't error, because we know the struct above will always serialize
             serialized_credential: cred.tls_serialize_detached().unwrap().into(),
+            credential_type: CredentialType::Basic,
         }
+    }
+
+    /// Get the identity of this basic credential as byte slice.
+    pub fn identity(&self) -> &[u8] {
+        self.identity.as_slice()
     }
 }
 
