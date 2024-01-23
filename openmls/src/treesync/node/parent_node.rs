@@ -66,8 +66,12 @@ impl PlainUpdatePathNode {
         public_keys: &[EncryptionKey],
         group_context: &[u8],
     ) -> Result<UpdatePathNode, LibraryError> {
+        #[cfg(target_arch = "wasm32")]
+        let public_keys = public_keys.iter();
+        #[cfg(not(target_arch = "wasm32"))]
+        let public_keys = public_keys.par_iter();
+
         public_keys
-            .par_iter()
             .map(|pk| {
                 self.path_secret
                     .encrypt(crypto, ciphersuite, pk, group_context)
@@ -131,8 +135,13 @@ impl ParentNode {
         );
 
         // Iterate over the path secrets and derive a key pair
+
+        #[cfg(not(target_arch = "wasm32"))]
+        let path_secrets = path_secrets.into_par_iter();
+        #[cfg(target_arch = "wasm32")]
+        let path_secrets = path_secrets.into_iter();
+
         let (path_with_keypairs, update_path_nodes): PathDerivationResults = path_secrets
-            .into_par_iter()
             .zip(path_indices)
             .map(|(path_secret, index)| {
                 // Derive a key pair from the path secret. This includes the

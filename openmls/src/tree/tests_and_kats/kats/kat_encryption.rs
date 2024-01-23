@@ -841,7 +841,8 @@ fn read_test_vectors_encryption(provider: &impl OpenMlsProvider) {
     let _ = pretty_env_logger::try_init();
     log::debug!("Reading test vectors ...");
 
-    let tests: Vec<EncryptionTestVector> = read("test_vectors/kat_encryption_openmls.json");
+    let tests: Vec<EncryptionTestVector> =
+        read_json!("../../../../test_vectors/kat_encryption_openmls.json");
 
     for test_vector in tests {
         match run_test_vector(test_vector, provider) {
