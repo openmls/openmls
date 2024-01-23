@@ -89,10 +89,7 @@ mod test {
     use tls_codec::{Deserialize, Serialize};
 
     use super::*;
-    use crate::{
-        credentials::{BasicCredential, CredentialType},
-        test_utils::*,
-    };
+    use crate::{credentials::BasicCredential, test_utils::*};
 
     #[apply(ciphersuites)]
     fn test_serialize_deserialize(ciphersuite: Ciphersuite) {

@@ -64,19 +64,14 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
     }
 
     fn get_member_leaf_index(group: &MlsGroup, target_id: &[u8]) -> LeafNodeIndex {
-        group.members().for_each(|member| {
-            println!(
-                "member: {}, index: {:?}, target: {}, own_leaf_index: {:?}",
-                String::from_utf8_lossy(member.credential.identity()),
-                member.index,
-                String::from_utf8_lossy(target_id),
-                group.own_leaf_index()
-            );
-        });
         group
             .members()
             .find_map(|member| {
-                if member.credential.identity() == target_id {
+                let credential = BasicCredential::tls_deserialize_exact(
+                    member.credential.serialized_credential(),
+                )
+                .unwrap();
+                if credential.identity() == target_id {
                     Some(member.index)
                 } else {
                     None

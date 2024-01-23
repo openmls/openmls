@@ -1,7 +1,7 @@
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{crypto::OpenMlsCrypto, types::HpkeCiphertext, OpenMlsProvider};
-use tls_codec::Serialize;
+use tls_codec::{Deserialize, Serialize};
 
 use crate::{
     binary_tree::*,
@@ -26,12 +26,8 @@ pub(crate) fn setup_alice_group(
     OpenMlsSignaturePublicKey,
 ) {
     // Create credentials and keys
-    let (alice_credential_with_key, alice_signature_keys) = test_utils::new_credential(
-        provider,
-        b"Alice",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
+    let (alice_credential_with_key, alice_signature_keys) =
+        test_utils::new_credential(provider, b"Alice", ciphersuite.signature_algorithm());
     let pk = OpenMlsSignaturePublicKey::new(
         alice_signature_keys.to_public_vec().into(),
         ciphersuite.signature_algorithm(),
@@ -89,12 +85,8 @@ fn test_failed_groupinfo_decryption(ciphersuite: Ciphersuite, provider: &impl Op
     });
 
     // Create credentials and keys
-    let (alice_credential_with_key, alice_signature_keys) = test_utils::new_credential(
-        provider,
-        b"Alice",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
+    let (alice_credential_with_key, alice_signature_keys) =
+        test_utils::new_credential(provider, b"Alice", ciphersuite.signature_algorithm());
 
     let key_package_bundle = KeyPackageBundle::new(
         provider,
@@ -300,18 +292,10 @@ fn setup_alice_bob(
     SignatureKeyPair,
 ) {
     // Create credentials and keys
-    let (alice_credential_with_key, alice_signer) = test_utils::new_credential(
-        provider,
-        b"Alice",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
-    let (bob_credential_with_key, bob_signer) = test_utils::new_credential(
-        provider,
-        b"Bob",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
+    let (alice_credential_with_key, alice_signer) =
+        test_utils::new_credential(provider, b"Alice", ciphersuite.signature_algorithm());
+    let (bob_credential_with_key, bob_signer) =
+        test_utils::new_credential(provider, b"Bob", ciphersuite.signature_algorithm());
 
     // Generate Bob's KeyPackage
     let bob_key_package_bundle =
@@ -535,12 +519,8 @@ fn test_own_commit_processing(ciphersuite: Ciphersuite, provider: &impl OpenMlsP
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
     // Create credentials and keys
-    let (alice_credential_with_key, alice_signature_keys) = test_utils::new_credential(
-        provider,
-        b"Alice",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
+    let (alice_credential_with_key, alice_signature_keys) =
+        test_utils::new_credential(provider, b"Alice", ciphersuite.signature_algorithm());
 
     // === Alice creates a group ===
     let alice_group = CoreGroup::builder(
@@ -579,12 +559,8 @@ pub(crate) fn setup_client(
     SignatureKeyPair,
     OpenMlsSignaturePublicKey,
 ) {
-    let (credential_with_key, signature_keys) = test_utils::new_credential(
-        provider,
-        id.as_bytes(),
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
+    let (credential_with_key, signature_keys) =
+        test_utils::new_credential(provider, id.as_bytes(), ciphersuite.signature_algorithm());
     let pk = OpenMlsSignaturePublicKey::new(
         signature_keys.to_public_vec().into(),
         ciphersuite.signature_algorithm(),
@@ -682,7 +658,12 @@ fn test_proposal_application_after_self_was_removed(
                  index: _,
                  credential,
                  ..
-             }| credential.identity() == b"Bob",
+             }| {
+                let credential =
+                    BasicCredential::tls_deserialize_exact(credential.serialized_credential())
+                        .unwrap();
+                credential.identity() == b"Bob"
+            },
         )
         .expect("Couldn't find Bob in tree.")
         .index;
@@ -769,25 +750,43 @@ fn test_proposal_application_after_self_was_removed(
         // Note that we can't compare encryption keys for Bob because they
         // didn't get updated.
         assert_eq!(alice_member.index, bob_member.index);
-        assert_eq!(
-            alice_member.credential.identity(),
-            bob_member.credential.identity()
-        );
+
+        let alice_credential =
+            BasicCredential::tls_deserialize_exact(alice_member.credential.serialized_credential())
+                .unwrap();
+        let bob_credential =
+            BasicCredential::tls_deserialize_exact(bob_member.credential.serialized_credential())
+                .unwrap();
+        let charlie_credential = BasicCredential::tls_deserialize_exact(
+            charlie_member.credential.serialized_credential(),
+        )
+        .unwrap();
+        assert_eq!(alice_credential.identity(), bob_credential.identity());
         assert_eq!(alice_member.signature_key, bob_member.signature_key);
         assert_eq!(charlie_member.index, bob_member.index);
-        assert_eq!(
-            charlie_member.credential.identity(),
-            bob_member.credential.identity()
-        );
+        assert_eq!(charlie_credential.identity(), bob_credential.identity());
         assert_eq!(charlie_member.signature_key, bob_member.signature_key);
         assert_eq!(charlie_member.encryption_key, alice_member.encryption_key);
     }
 
     let mut bob_members = bob_group.public_group().members();
 
-    assert_eq!(bob_members.next().unwrap().credential.identity(), b"Alice");
-    assert_eq!(
-        bob_members.next().unwrap().credential.identity(),
-        b"Charlie"
-    );
+    let bob_next_credential = BasicCredential::tls_deserialize_exact(
+        bob_members
+            .next()
+            .unwrap()
+            .credential
+            .serialized_credential(),
+    )
+    .unwrap();
+    assert_eq!(bob_next_credential.identity(), b"Alice");
+    let bob_next_credential = BasicCredential::tls_deserialize_exact(
+        bob_members
+            .next()
+            .unwrap()
+            .credential
+            .serialized_credential(),
+    )
+    .unwrap();
+    assert_eq!(bob_next_credential.identity(), b"Charlie");
 }

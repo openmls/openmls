@@ -16,6 +16,8 @@ use crate::{
     },
 };
 
+use super::BasicCredential;
+
 const TEST_VECTORS_PATH_READ: &[&str] = &[
     "test_vectors/passive-client-welcome.json",
     "test_vectors/passive-client-random.json",
@@ -550,7 +552,11 @@ fn propose_remove(
 ) -> TestProposal {
     let remove = group
         .members()
-        .find(|Member { credential, .. }| credential.identity() == remove_identity)
+        .find(|Member { credential, .. }| {
+            let credential =
+                BasicCredential::tls_deserialize_exact(credential.serialized_credential()).unwrap();
+            credential.identity() == remove_identity
+        })
         .unwrap()
         .index;
 

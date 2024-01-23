@@ -11,7 +11,7 @@ fn generate_credential(
     identity: Vec<u8>,
     signature_scheme: SignatureScheme,
 ) -> (CredentialWithKey, SignatureKeyPair) {
-    let credential = Credential::new(identity, CredentialType::Basic).unwrap();
+    let credential = BasicCredential::new_credential(identity);
     let signature_keys = SignatureKeyPair::new(signature_scheme).unwrap();
     let credential_with_key = CredentialWithKey {
         credential,
@@ -79,7 +79,11 @@ async fn test_list_clients() {
     let crypto = &OpenMlsRustCrypto::default();
     let (credential_with_key, signer) =
         generate_credential(client_name.into(), SignatureScheme::from(ciphersuite));
-    let client_id = credential_with_key.credential.identity().to_vec();
+    let credential = BasicCredential::tls_deserialize_exact(
+        credential_with_key.credential.serialized_credential(),
+    )
+    .unwrap();
+    let client_id = credential.identity().to_vec();
     let client_key_package = generate_key_package(
         ciphersuite,
         credential_with_key.clone(),
@@ -195,7 +199,12 @@ async fn test_group() {
             )],
         );
         key_packages.push(client_key_package);
-        client_ids.push(credential_with_key.credential.identity().to_vec());
+
+        let credential = BasicCredential::tls_deserialize_exact(
+            credential_with_key.credential.serialized_credential(),
+        )
+        .unwrap();
+        client_ids.push(credential.identity().to_vec());
         credentials_with_key.push(credential_with_key);
         signers.push(signer);
         let req = test::TestRequest::post()

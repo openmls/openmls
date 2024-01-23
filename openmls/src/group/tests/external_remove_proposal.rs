@@ -1,8 +1,10 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use rstest::*;
 use rstest_reuse::{self, *};
+use tls_codec::Deserialize;
 
 use crate::{
+    credentials::BasicCredential,
     framing::*,
     group::{config::CryptoConfig, *},
     messages::external_proposals::*,
@@ -125,7 +127,12 @@ fn external_remove_proposal_should_remove_member(
     // get Bob's index
     let bob_index = alice_group
         .members()
-        .find(|member| member.credential.identity() == b"Bob")
+        .find(|member| {
+            let credential =
+                BasicCredential::tls_deserialize_exact(member.credential.serialized_credential())
+                    .unwrap();
+            credential.identity() == b"Bob"
+        })
         .map(|member| member.index)
         .unwrap();
     // Now Delivery Service wants to (already) remove Bob
@@ -219,7 +226,12 @@ fn external_remove_proposal_should_fail_when_invalid_external_senders_index(
     // get Bob's index
     let bob_index = alice_group
         .members()
-        .find(|member| member.credential.identity() == b"Bob")
+        .find(|member| {
+            let credential =
+                BasicCredential::tls_deserialize_exact(member.credential.serialized_credential())
+                    .unwrap();
+            credential.identity() == b"Bob"
+        })
         .map(|member| member.index)
         .unwrap();
     // Now Delivery Service wants to (already) remove Bob with invalid sender index
@@ -277,7 +289,12 @@ fn external_remove_proposal_should_fail_when_invalid_signature(
     // get Bob's index
     let bob_index = alice_group
         .members()
-        .find(|member| member.credential.identity() == b"Bob")
+        .find(|member| {
+            let credential =
+                BasicCredential::tls_deserialize_exact(member.credential.serialized_credential())
+                    .unwrap();
+            credential.identity() == b"Bob"
+        })
         .map(|member| member.index)
         .unwrap();
     // Now Delivery Service wants to (already) remove Bob with invalid sender index
@@ -319,7 +336,12 @@ fn external_remove_proposal_should_fail_when_no_external_senders(
     // get Bob's index
     let bob_index = alice_group
         .members()
-        .find(|member| member.credential.identity() == b"Bob")
+        .find(|member| {
+            let credential =
+                BasicCredential::tls_deserialize_exact(member.credential.serialized_credential())
+                    .unwrap();
+            credential.identity() == b"Bob"
+        })
         .map(|member| member.index)
         .unwrap();
     // Now Delivery Service wants to remove Bob with invalid sender index but there's no extension
