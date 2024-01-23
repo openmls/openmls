@@ -673,7 +673,6 @@ impl CoreGroup {
     }
 
     /// Get the group context extensions.
-    #[cfg(test)]
     pub(crate) fn group_context_extensions(&self) -> &Extensions {
         self.public_group.group_context().extensions()
     }
