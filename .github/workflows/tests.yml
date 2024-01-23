@@ -66,4 +66,4 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt update && sudo apt install nodejs
-          cargo test $TEST_MODE -p openmls --verbose --target wasm32-unknown-unknown
+          cargo test $TEST_MODE -p openmls --verbose --target wasm32-unknown-unknown -F js
