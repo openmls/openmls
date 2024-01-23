@@ -25,8 +25,6 @@
 use serde::Deserialize;
 use tls_codec::{Deserialize as TlsDeserialize, VLBytes};
 
-use crate::test_utils::read;
-
 #[derive(Deserialize)]
 struct TestElement {
     #[serde(with = "hex")]
@@ -57,7 +55,7 @@ fn read_test_vectors_deserialize() {
     let _ = pretty_env_logger::try_init();
     log::debug!("Reading test vectors ...");
 
-    let tests: Vec<TestElement> = read("test_vectors/deserialization.json");
+    let tests: Vec<TestElement> = read_json!("../test_vectors/deserialization.json");
 
     for test_vector in tests {
         match run_test_vector(test_vector) {

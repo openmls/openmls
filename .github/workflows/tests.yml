@@ -62,3 +62,8 @@ jobs:
         run: |
           sudo apt update && sudo apt install gcc-multilib
           cargo test $TEST_MODE -p openmls --verbose --target i686-unknown-linux-gnu
+      - name Tests Wasm32 on linux
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt update && sudo apt install nodejs
+          cargo test $TEST_MODE -p openmls --verbose --target wasm32-unknown-unknown

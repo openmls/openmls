@@ -187,3 +187,9 @@ mod tree;
 
 /// Single place, re-exporting the most used public functions.
 pub mod prelude;
+
+// this is a workaround, see https://github.com/la10736/rstest/issues/211#issuecomment-1701238125
+#[cfg(any(test, feature = "test-utils"))]
+pub mod wasm {
+    pub use wasm_bindgen_test::wasm_bindgen_test as test;
+}

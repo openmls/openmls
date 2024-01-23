@@ -186,7 +186,7 @@ pub fn run_test_vector(test_vector: TreeMathTestVector) -> Result<(), TmTestVect
 
 #[test]
 fn read_test_vectors_tm() {
-    let tests: Vec<TreeMathTestVector> = read("test_vectors/tree-math.json");
+    let tests: Vec<TreeMathTestVector> = read_json!("../../../test_vectors/tree-math.json");
     for test_vector in tests {
         match run_test_vector(test_vector) {
             Ok(_) => {}
