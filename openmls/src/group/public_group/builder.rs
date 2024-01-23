@@ -87,9 +87,6 @@ impl TempBuilderPG1 {
                     ExtensionError::UnsupportedProposalType => {
                         PublicGroupBuildError::UnsupportedProposalType
                     }
-                    ExtensionError::UnsupportedExtensionType => {
-                        PublicGroupBuildError::UnsupportedExtensionType
-                    }
                     _ => LibraryError::custom("Unexpected ExtensionError").into(),
                 })?;
                 (

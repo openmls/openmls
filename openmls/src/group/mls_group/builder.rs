@@ -93,9 +93,6 @@ impl MlsGroupBuilder {
                 PublicGroupBuildError::UnsupportedProposalType => {
                     NewGroupError::UnsupportedProposalType
                 }
-                PublicGroupBuildError::UnsupportedExtensionType => {
-                    NewGroupError::UnsupportedExtensionType
-                }
                 PublicGroupBuildError::InvalidExtensions(e) => NewGroupError::InvalidExtensions(e),
             },
         })?;

@@ -19,9 +19,6 @@ pub enum ExtensionError {
     /// Unsupported proposal type in required capabilities.
     #[error("Unsupported proposal type in required capabilities.")]
     UnsupportedProposalType,
-    /// Unsupported extension type in required capabilities.
-    #[error("Unsupported extension type in required capabilities.")]
-    UnsupportedExtensionType,
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
