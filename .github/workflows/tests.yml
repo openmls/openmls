@@ -44,17 +44,17 @@ jobs:
           else
             echo "TEST_MODE=--release" >> $GITHUB_ENV
           fi
-      - name: Tests
-        if: matrix.os != 'windows-latest'
-        run: cargo test $TEST_MODE -p openmls --verbose
-
-      - name: Install Wasm runner deps
-        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
       - name: Tests Wasm32 on linux
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt update && sudo apt install nodejs
-          cargo test $TEST_MODE -p openmls --verbose --target wasm32-unknown-unknown -F js
+          cargo install wasm-bindgen-cli
+          export CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=$HOME/.cargo/bin/wasm-bindgen-test-runner
+          cargo test $TEST_MODE -p openmls -vv --target wasm32-unknown-unknown -F js
+
+      - name: Tests
+        if: matrix.os != 'windows-latest'
+        run: cargo test $TEST_MODE -p openmls --verbose
 
       # Test 32 bit builds on windows
       - name: Tests 32bit windows debug

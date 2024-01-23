@@ -3,6 +3,7 @@
 //! [`UpdatePathNode`] instances.
 use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::{Ciphersuite, HpkeCiphertext};
+#[cfg(not(target_arch = "wasm32"))]
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use thiserror::*;
