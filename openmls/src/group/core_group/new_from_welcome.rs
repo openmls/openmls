@@ -99,9 +99,6 @@ impl CoreGroup {
         if let Some(required_capabilities) =
             verifiable_group_info.extensions().required_capabilities()
         {
-            required_capabilities
-                .check_support()
-                .map_err(|_| WelcomeError::UnsupportedCapability)?;
             // Also check that our key package actually supports the extensions.
             // Per spec the sender must have checked this. But you never know.
             key_package_bundle

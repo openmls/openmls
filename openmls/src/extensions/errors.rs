@@ -16,9 +16,6 @@ use thiserror::Error;
 /// Extension error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum ExtensionError {
-    /// Unsupported proposal type in required capabilities.
-    #[error("Unsupported proposal type in required capabilities.")]
-    UnsupportedProposalType,
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),

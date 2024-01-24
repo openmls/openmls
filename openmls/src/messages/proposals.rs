@@ -124,21 +124,6 @@ impl DeserializeBytes for ProposalType {
 }
 
 impl ProposalType {
-    /// Check whether a proposal type is supported or not. Returns `true`
-    /// if a proposal is supported and `false` otherwise.
-    pub fn is_supported(&self) -> bool {
-        matches!(
-            self,
-            ProposalType::Add
-                | ProposalType::Update
-                | ProposalType::Remove
-                | ProposalType::PreSharedKey
-                | ProposalType::Reinit
-                | ProposalType::ExternalInit
-                | ProposalType::GroupContextExtensions
-        )
-    }
-
     /// Returns `true` if the proposal type requires a path and `false`
     pub fn is_path_required(&self) -> bool {
         matches!(

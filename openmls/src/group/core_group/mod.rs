@@ -936,7 +936,7 @@ impl CoreGroup {
                     params.take_leaf_extensions(),
                     params.take_leaf_capabilities(),
                     apply_proposals_values.extensions.clone()
-                )?
+                )? 
             } else {
                 // If path is not needed, update the group context and return
                 // empty path processing results

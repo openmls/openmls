@@ -161,6 +161,8 @@ pub struct Certificate {
     cert_data: Vec<u8>,
 }
 
+/// A credential that contains a (pseudonymous) identity, some metadata, as well
+/// as an encrypted signature.
 #[derive(
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsSize, TlsDeserialize,
 )]
@@ -174,6 +176,7 @@ pub struct InfraCredential {
 }
 
 impl InfraCredential {
+    /// Create a new [`InfraCredential`].
     pub fn new(
         identity: Vec<u8>,
         expiration_data: Lifetime,
@@ -190,22 +193,27 @@ impl InfraCredential {
         }
     }
 
+    /// Returns the identity of a given credential.
     pub fn identity(&self) -> &[u8] {
         self.identity.as_ref()
     }
 
+    /// Returns the expiration data of a given credential.
     pub fn expiration_data(&self) -> Lifetime {
         self.expiration_data
     }
 
+    /// Returns the credential ciphersuite of a given credential.
     pub fn credential_ciphersuite(&self) -> SignatureScheme {
         self.credential_ciphersuite
     }
 
+    /// Returns the verifying key of a given credential.
     pub fn verifying_key(&self) -> &SignaturePublicKey {
         &self.verifying_key
     }
 
+    /// Returns the encrypted signature of a given credential.
     pub fn encrypted_signature(&self) -> &VLBytes {
         &self.encrypted_signature
     }
@@ -295,6 +303,7 @@ impl Credential {
         }
     }
 
+    /// Returns the [`MlsCredentialType`] of a given credential.
     pub fn mls_credential_type(&self) -> &MlsCredentialType {
         &self.credential
     }

@@ -365,6 +365,7 @@ impl ProcessedMessage {
         self
     }
 
+    /// Returns the new credential of the message, if any.
     pub fn new_credential_option(&self) -> Option<&Credential> {
         self.new_credential_option.as_ref()
     }
