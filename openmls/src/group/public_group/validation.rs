@@ -522,25 +522,17 @@ impl PublicGroup {
     ) -> Result<(), GroupContextExtensionsProposalValidationError> {
         let mut iter = proposal_queue.filtered_by_type(ProposalType::GroupContextExtensions);
 
-        match iter.next() {
-            Some(queued_proposal) => match queued_proposal.proposal() {
+        if let Some(queued_proposal) = iter.next() {
+            match queued_proposal.proposal() {
                 Proposal::GroupContextExtensions(extensions) => {
-                    // Ensure that the [`ImmutableMetadata`] extension did not change.
-                    if let Some(new_immutable_metadata) =
-                        extensions.extensions().immutable_metadata()
-                    {
-                        // Get existing extension.
-                        if let Some(old_immutable_metadata) =
-                            self.group_context.extensions().immutable_metadata()
-                        {
-                            // If the extension changed, or there hasn't been one before,
-                            // this proposal is invalid.
-                            if new_immutable_metadata != old_immutable_metadata {
-                                return Err(GroupContextExtensionsProposalValidationError::ChangedImmutableMetadata);
-                            }
-                        } else {
-                            return Err(GroupContextExtensionsProposalValidationError::ChangedImmutableMetadata);
-                        }
+                    // Check that immutable metadata didn't change and wasn't added or removed.
+                    let new_immutable_metadata = extensions.extensions().immutable_metadata();
+                    let current_immutable_metadata =
+                        self.group_context.extensions().immutable_metadata();
+                    if new_immutable_metadata != current_immutable_metadata {
+                        return Err(
+                            GroupContextExtensionsProposalValidationError::ChangedImmutableMetadata,
+                        );
                     }
 
                     let ext_type_list: Vec<_> = extensions
@@ -558,10 +550,10 @@ impl PublicGroup {
                         ),
                     ))
                 }
-            },
-            None => return Ok(()),
+            }
         }
 
+        // make sure that there is at most one proposal of this type
         match iter.next() {
             Some(_) => Err(GroupContextExtensionsProposalValidationError::TooManyGCEProposals),
             None => Ok(()),
