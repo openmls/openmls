@@ -32,7 +32,7 @@ rstest = { version = "^0.16", optional = true }
 rstest_reuse = { version = "0.4", optional = true }
 wasm-bindgen-test = {version = "0.3.40", optional = true}
 getrandom = {version = "0.2.12", optional = true, features = [ "js" ]}
-fluvio-wasm-timer = "0.2.5"
+fluvio-wasm-timer = {version = "0.2.5", optional = true}
 
 [features]
 default = ["backtrace"]
@@ -49,7 +49,7 @@ test-utils = [
 ]
 crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
 content-debug = [] # ☣️ Enable logging of sensitive message content
-js = ["dep:getrandom"] # enable js randomness source for provider
+js = ["dep:getrandom", "dep:fluvio-wasm-timer"] # enable js randomness source for provider
 
 [dev-dependencies]
 backtrace = "0.3"

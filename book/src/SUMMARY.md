@@ -17,6 +17,7 @@
   - [Processing incoming messages](user_manual/processing.md)
   - [Persistence of group state](user_manual/persistence.md)
   - [Credential validation](user_manual/credential_validation.md)
+  - [WebAssembly](user_manual/wasm.md)
 - [Traits & External Types](./traits/README.md)
   - [Traits](./traits/traits.md)
   - [Types](./traits/types.md)
