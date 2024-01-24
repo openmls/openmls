@@ -465,7 +465,6 @@ impl CoreGroup {
         if let Some(required_extension) = required_extension {
             let required_capabilities = required_extension.as_required_capabilities_extension()?;
             // Ensure we support all the capabilities.
-            required_capabilities.check_support()?;
             self.own_leaf_node()?
                 .capabilities()
                 .supports_required_capabilities(required_capabilities)?;
