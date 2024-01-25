@@ -1017,7 +1017,7 @@ fn immutable_metadata(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider)
         Extensions::single(Extension::ImmutableMetadata(metadata.clone()));
 
     // === Create a Group with Metadata ===
-    let var_name = Capabilities::new(
+    let capabilities = Capabilities::new(
         None,
         None,
         Some(&[ExtensionType::ImmutableMetadata]),
@@ -1027,7 +1027,7 @@ fn immutable_metadata(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider)
     let mut group_with_metadata = MlsGroup::builder()
         .with_group_context_extensions(extensions_with_metadata.clone())
         .expect("error when setting initial metadata group extension")
-        .with_capabilities(var_name)
+        .with_capabilities(capabilities)
         .build(provider, &alice_signer, alice_credential_with_key.clone())
         .expect("error creating group using builder");
 

@@ -438,6 +438,7 @@ impl Extensions {
             })
     }
 
+    /// Get a reference to the mutable [`Metadata`] if there is any.
     pub fn metadata(&self) -> Option<&Metadata> {
         self.find_by_type(ExtensionType::Metadata)
             .and_then(|e| match e {
@@ -515,7 +516,7 @@ impl Extension {
     /// Get a reference to this extension as immutable [`Metadata`].
     /// Returns an [`ExtensionError::InvalidExtensionType`] error if called on
     /// an [`Extension`] that's not an immutable [`Metadata`] extension.
-    pub fn as_protected_metadata_extension(&self) -> Result<&Metadata, ExtensionError> {
+    pub fn as_immutable_metadata_extension(&self) -> Result<&Metadata, ExtensionError> {
         match self {
             Self::ImmutableMetadata(e) => Ok(e),
             _ => Err(ExtensionError::InvalidExtensionType(
