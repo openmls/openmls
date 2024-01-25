@@ -261,12 +261,23 @@
 <a href="#261" id="261">261</a>
 <a href="#262" id="262">262</a>
 <a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the [`ParentNode`] struct, its implementation, as well
 //! as the [`PlainUpdatePathNode`], a helper struct for the creation of
 //! [`UpdatePathNode`] instances.
 </span><span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
 <span class="kw">use </span>openmls_traits::types::{Ciphersuite, HpkeCiphertext};
-<span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
+<span class="attr">#[cfg(not(target_arch = <span class="string">&quot;wasm32&quot;</span>))]
+</span><span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>thiserror::<span class="kw-2">*</span>;
 <span class="kw">use </span>tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes};
@@ -329,8 +340,12 @@
         public_keys: <span class="kw-2">&amp;</span>[EncryptionKey],
         group_context: <span class="kw-2">&amp;</span>[u8],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;UpdatePathNode, LibraryError&gt; {
+        <span class="attr">#[cfg(target_arch = <span class="string">&quot;wasm32&quot;</span>)]
+        </span><span class="kw">let </span>public_keys = public_keys.iter();
+        <span class="attr">#[cfg(not(target_arch = <span class="string">&quot;wasm32&quot;</span>))]
+        </span><span class="kw">let </span>public_keys = public_keys.par_iter();
+
         public_keys
-            .par_iter()
             .map(|pk| {
                 <span class="self">self</span>.path_secret
                     .encrypt(crypto, ciphersuite, pk, group_context)
@@ -394,8 +409,13 @@
         );
 
         <span class="comment">// Iterate over the path secrets and derive a key pair
-        </span><span class="kw">let </span>(path_with_keypairs, update_path_nodes): PathDerivationResults = path_secrets
-            .into_par_iter()
+
+        </span><span class="attr">#[cfg(not(target_arch = <span class="string">&quot;wasm32&quot;</span>))]
+        </span><span class="kw">let </span>path_secrets = path_secrets.into_par_iter();
+        <span class="attr">#[cfg(target_arch = <span class="string">&quot;wasm32&quot;</span>)]
+        </span><span class="kw">let </span>path_secrets = path_secrets.into_iter();
+
+        <span class="kw">let </span>(path_with_keypairs, update_path_nodes): PathDerivationResults = path_secrets
             .zip(path_indices)
             .map(|(path_secret, index)| {
                 <span class="comment">// Derive a key pair from the path secret. This includes the

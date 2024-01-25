@@ -444,6 +444,12 @@
 <a href="#444" id="444">444</a>
 <a href="#445" id="445">445</a>
 <a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
+<a href="#452" id="452">452</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Module to encrypt and decrypt update paths for a [`TreeSyncDiff`] instance.
 //!
 //! # About
@@ -456,7 +462,8 @@
     crypto::OpenMlsCrypto,
     types::{Ciphersuite, HpkeCiphertext},
 };
-<span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
+<span class="attr">#[cfg(not(target_arch = <span class="string">&quot;wasm32&quot;</span>))]
+</span><span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
@@ -516,8 +523,13 @@
         </span><span class="macro">debug_assert_eq!</span>(copath_resolutions.len(), path.len());
 
         <span class="comment">// Encrypt the secrets
-        </span>path.par_iter()
-            .zip(copath_resolutions.par_iter())
+
+        </span><span class="attr">#[cfg(not(target_arch = <span class="string">&quot;wasm32&quot;</span>))]
+        </span><span class="kw">let </span>resolved_path = path.par_iter().zip(copath_resolutions.par_iter());
+        <span class="attr">#[cfg(target_arch = <span class="string">&quot;wasm32&quot;</span>)]
+        </span><span class="kw">let </span>resolved_path = path.iter().zip(copath_resolutions.iter());
+
+        resolved_path
             .map(|(node, resolution)| node.encrypt(crypto, ciphersuite, resolution, group_context))
             .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;UpdatePathNode&gt;, LibraryError&gt;&gt;()
     }
