@@ -5,10 +5,12 @@ use tls_codec::{Deserialize, Serialize};
 
 use crate::{
     binary_tree::LeafNodeIndex,
+    extensions::errors::InvalidExtensionError,
     framing::*,
     group::{config::CryptoConfig, errors::*, *},
     key_packages::*,
     messages::proposals::*,
+    prelude::Capabilities,
     test_utils::test_framework::{
         errors::ClientError, noop_authentication_service, ActionType::Commit, CodecUse,
         MlsGroupTestSetup,
@@ -721,7 +723,7 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, provider: &impl OpenMlsPr
     // Let's add bob
     let (proposal, _) = alice_group
         .propose_add_member(provider, &alice_signer, bob_key_package)
-        .expect("error creating self-update proposal");
+        .expect("error creating add-bob proposal");
 
     let alice_processed_message = alice_group
         .process_message(provider, proposal.into_protocol_message().unwrap())
@@ -1002,6 +1004,91 @@ fn remove_prosposal_by_ref(ciphersuite: Ciphersuite, provider: &impl OpenMlsProv
         _ => unreachable!("Expected a StagedCommit."),
     }
 }
+//
+// Test that the builder pattern accurately configures the new group.
+#[apply(ciphersuites_and_providers)]
+fn group_context_extensions_proposal(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+    let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
+        setup_client("Alice", ciphersuite, provider);
+
+    // === Alice creates a group ===
+    let mut alice_group = MlsGroup::builder()
+        .build(provider, &alice_signer, alice_credential_with_key)
+        .expect("error creating group using builder");
+
+    // No required capabilities, so no specifically required extensions.
+    assert!(alice_group
+        .group()
+        .group_context_extensions()
+        .required_capabilities()
+        .is_none());
+
+    let new_extensions = Extensions::single(Extension::RequiredCapabilities(
+        RequiredCapabilitiesExtension::new(&[ExtensionType::RequiredCapabilities], &[], &[]),
+    ));
+
+    let new_extensions_2 = Extensions::single(Extension::RequiredCapabilities(
+        RequiredCapabilitiesExtension::new(&[ExtensionType::RatchetTree], &[], &[]),
+    ));
+
+    alice_group
+        .propose_group_context_extensions(provider, new_extensions.clone(), &alice_signer)
+        .expect("failed to build group context extensions proposal");
+
+    assert_eq!(alice_group.pending_proposals().count(), 1);
+
+    alice_group
+        .commit_to_pending_proposals(provider, &alice_signer)
+        .expect("failed to commit to pending proposals");
+
+    alice_group
+        .merge_pending_commit(provider)
+        .expect("error merging pending commit");
+
+    let required_capabilities = alice_group
+        .group()
+        .group_context_extensions()
+        .required_capabilities()
+        .expect("couldn't get required_capabilities");
+
+    // has required_capabilities as required capability
+    assert!(required_capabilities.extension_types() == [ExtensionType::RequiredCapabilities]);
+
+    // === committing to two group context extensions should fail
+
+    alice_group
+        .propose_group_context_extensions(provider, new_extensions, &alice_signer)
+        .expect("failed to build group context extensions proposal");
+
+    // the proposals need to be different or they will be deduplicated
+    alice_group
+        .propose_group_context_extensions(provider, new_extensions_2, &alice_signer)
+        .expect("failed to build group context extensions proposal");
+
+    assert_eq!(alice_group.pending_proposals().count(), 2);
+
+    alice_group
+        .commit_to_pending_proposals(provider, &alice_signer)
+        .expect_err(
+            "expected error when committing to multiple group context extensions proposals",
+        );
+
+    // === can't update required required_capabilities to extensions that existing group members
+    //       are not capable of
+
+    // contains unsupported extension
+    let new_extensions = Extensions::single(Extension::RequiredCapabilities(
+        RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xf042)], &[], &[]),
+    ));
+
+    alice_group
+        .propose_group_context_extensions(provider, new_extensions, &alice_signer)
+        .expect_err("expected an error building GCE proposal with bad required_capabilities");
+
+    // TODO: we need to test that processing a commit with multiple group context extensions
+    //       proposal also fails. however, we can't generate this commit, because our functions for
+    //       constructing commits does not permit it. See #1476
+}
 
 // Test that the builder pattern accurately configures the new group.
 #[apply(ciphersuites_and_providers)]
@@ -1014,27 +1101,51 @@ fn builder_pattern(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let test_lifetime = Lifetime::new(3600);
     let test_wire_format_policy = PURE_CIPHERTEXT_WIRE_FORMAT_POLICY;
     let test_padding_size = 100;
-    let test_external_senders = vec![ExternalSender::new(
+    let test_external_senders = Extension::ExternalSenders(vec![ExternalSender::new(
         alice_credential_with_key.signature_key.clone(),
         alice_credential_with_key.credential.clone(),
-    )];
+    )]);
+    let test_required_capabilities = Extension::RequiredCapabilities(
+        RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xff00)], &[], &[]),
+    );
+    let test_gc_extensions = Extensions::from_vec(vec![
+        test_external_senders.clone(),
+        test_required_capabilities.clone(),
+    ])
+    .expect("error creating group context extensions");
+
     let test_crypto_config = CryptoConfig::with_default_version(ciphersuite);
     let test_sender_ratchet_config = SenderRatchetConfiguration::new(10, 2000);
     let test_max_past_epochs = 10;
     let test_number_of_resumption_psks = 5;
+    let test_capabilities = Capabilities::new(
+        None,
+        None,
+        Some(&[ExtensionType::Unknown(0xff00)]),
+        None,
+        None,
+    );
+    let test_leaf_extensions = Extensions::single(Extension::Unknown(
+        0xff00,
+        UnknownExtension(vec![0x00, 0x01, 0x02]),
+    ));
 
     // === Alice creates a group ===
     let alice_group = MlsGroup::builder()
         .with_group_id(test_group_id.clone())
         .padding_size(test_padding_size)
         .sender_ratchet_configuration(test_sender_ratchet_config.clone())
-        .external_senders(test_external_senders.clone())
+        .with_group_context_extensions(test_gc_extensions.clone())
+        .expect("error adding group context extension to builder")
         .crypto_config(test_crypto_config)
         .with_wire_format_policy(test_wire_format_policy)
         .lifetime(test_lifetime)
         .use_ratchet_tree_extension(true)
         .max_past_epochs(test_max_past_epochs)
         .number_of_resumption_psks(test_number_of_resumption_psks)
+        .with_leaf_node_extensions(test_leaf_extensions.clone())
+        .expect("error adding leaf node extension to builder")
+        .with_capabilities(test_capabilities.clone())
         .build(provider, &alice_signer, alice_credential_with_key)
         .expect("error creating group using builder");
 
@@ -1061,17 +1172,119 @@ fn builder_pattern(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let external_senders = group_context
         .extensions()
         .external_senders()
-        .expect("error getting external senders");
-    assert_eq!(external_senders, &test_external_senders);
+        .expect("error getting external senders")
+        .to_vec();
+    assert_eq!(
+        Extension::ExternalSenders(external_senders),
+        test_external_senders
+    );
     let crypto_config = CryptoConfig {
         ciphersuite,
         version: group_context.protocol_version(),
     };
     assert_eq!(crypto_config, test_crypto_config);
+    let extensions = group_context.extensions();
+    assert_eq!(extensions, &test_gc_extensions);
     let lifetime = alice_group
         .own_leaf()
         .expect("error getting own leaf")
         .life_time()
         .expect("leaf doesn't have a lifetime");
     assert_eq!(lifetime, &test_lifetime);
+    let own_leaf = alice_group.own_leaf_node().expect("can't find own leaf");
+    let capabilities = own_leaf.capabilities();
+    assert_eq!(capabilities, &test_capabilities);
+    let leaf_extensions = own_leaf.extensions();
+    assert_eq!(leaf_extensions, &test_leaf_extensions);
+
+    // Make sure that building with an invalid leaf node extension fails
+    let invalid_leaf_extensions =
+        Extensions::single(Extension::ApplicationId(ApplicationIdExtension::new(&[
+            0x00, 0x01, 0x02,
+        ])));
+
+    let builder_err = MlsGroup::builder()
+        .with_leaf_node_extensions(invalid_leaf_extensions)
+        .expect_err("successfully built group with invalid leaf extensions");
+    assert_eq!(builder_err, InvalidExtensionError::IllegalInLeafNodes);
+}
+
+// Test that unknown group context and leaf node extensions can be used in groups
+#[apply(ciphersuites_and_providers)]
+fn unknown_extensions(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+    let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
+        setup_client("Alice", ciphersuite, provider);
+
+    let unknown_gc_extension = Extension::Unknown(0xff00, UnknownExtension(vec![0, 1, 2, 3]));
+    let unknown_leaf_extension = Extension::Unknown(0xff01, UnknownExtension(vec![4, 5, 6, 7]));
+    let unknown_kp_extension = Extension::Unknown(0xff02, UnknownExtension(vec![8, 9, 10, 11]));
+    let required_extensions = &[
+        ExtensionType::Unknown(0xff00),
+        ExtensionType::Unknown(0xff01),
+    ];
+    let required_capabilities =
+        Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(&[], &[], &[]));
+    let capabilities = Capabilities::new(None, None, Some(required_extensions), None, None);
+    let test_gc_extensions = Extensions::from_vec(vec![
+        unknown_gc_extension.clone(),
+        required_capabilities.clone(),
+    ])
+    .expect("error creating group context extensions");
+    let test_kp_extensions = Extensions::single(unknown_kp_extension.clone());
+
+    // === Alice creates a group ===
+    let config = CryptoConfig {
+        ciphersuite,
+        version: crate::versions::ProtocolVersion::default(),
+    };
+    let mut alice_group = MlsGroup::builder()
+        .crypto_config(config)
+        .with_capabilities(capabilities.clone())
+        .with_leaf_node_extensions(Extensions::single(unknown_leaf_extension.clone()))
+        .expect("error adding unknown leaf extension to builder")
+        .with_group_context_extensions(test_gc_extensions.clone())
+        .expect("error adding unknown extension to builder")
+        .build(provider, &alice_signer, alice_credential_with_key)
+        .expect("error creating group using builder");
+
+    // Check that everything was added successfully
+    let group_context = alice_group.export_group_context();
+    assert_eq!(group_context.extensions(), &test_gc_extensions);
+    let leaf_node = alice_group.own_leaf().expect("error getting own leaf");
+    assert_eq!(
+        leaf_node.extensions(),
+        &Extensions::single(unknown_leaf_extension)
+    );
+
+    // Now let's add Bob to the group and make sure that he joins the group successfully
+
+    // === Alice adds Bob ===
+    let (bob_credential_with_key, _bob_kpb, bob_signer, _bob_pk) =
+        setup_client("Bob", ciphersuite, provider);
+
+    // Generate a KP that supports the unknown extensions
+    let bob_key_package = KeyPackage::builder()
+        .leaf_node_capabilities(capabilities)
+        .key_package_extensions(test_kp_extensions.clone())
+        .build(config, provider, &bob_signer, bob_credential_with_key)
+        .expect("error building key package");
+
+    assert_eq!(
+        bob_key_package.extensions(),
+        &Extensions::single(unknown_kp_extension)
+    );
+
+    // alice adds bob and bob processes the welcome to ensure that the unknown
+    // extensions are processed correctly
+    let (_, welcome, _) = alice_group
+        .add_members(provider, &alice_signer, &[bob_key_package.clone()])
+        .unwrap();
+    alice_group.merge_pending_commit(provider).unwrap();
+    let _bob_group = MlsGroup::new_from_welcome(
+        provider,
+        &MlsGroupJoinConfig::default(),
+        welcome.into_welcome().unwrap(),
+        Some(alice_group.export_ratchet_tree().into()),
+    )
+    .expect("Error creating group from Welcome");
 }

@@ -30,7 +30,7 @@
 use super::*;
 use crate::{
     extensions::errors::InvalidExtensionError, group::config::CryptoConfig, key_packages::Lifetime,
-    tree::sender_ratchet::SenderRatchetConfiguration,
+    tree::sender_ratchet::SenderRatchetConfiguration, treesync::node::leaf_node::Capabilities,
 };
 use serde::{Deserialize, Serialize};
 
@@ -83,10 +83,8 @@ impl MlsGroupJoinConfig {
 /// more information about the different configuration values.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MlsGroupCreateConfig {
-    /// Required capabilities (extensions and proposal types)
-    pub(crate) required_capabilities: RequiredCapabilitiesExtension,
-    /// Senders authorized to send external remove proposals
-    pub(crate) external_senders: ExternalSendersExtension,
+    /// Capabilities advertised in the creator's leaf node
+    pub(crate) capabilities: Capabilities,
     /// Lifetime of the own leaf node
     pub(crate) lifetime: Lifetime,
     /// Ciphersuite and protocol version
@@ -95,6 +93,8 @@ pub struct MlsGroupCreateConfig {
     pub(crate) join_config: MlsGroupJoinConfig,
     /// List of initial group context extensions
     pub(crate) group_context_extensions: Extensions,
+    /// List of initial leaf node extensions
+    pub(crate) leaf_node_extensions: Extensions,
 }
 
 /// Builder struct for an [`MlsGroupJoinConfig`].
@@ -187,19 +187,9 @@ impl MlsGroupCreateConfig {
         self.join_config.use_ratchet_tree_extension
     }
 
-    /// Returns the [`MlsGroupCreateConfig`] required capabilities extension.
-    pub fn required_capabilities(&self) -> &RequiredCapabilitiesExtension {
-        &self.required_capabilities
-    }
-
     /// Returns the [`MlsGroupCreateConfig`] sender ratchet configuration.
     pub fn sender_ratchet_configuration(&self) -> &SenderRatchetConfiguration {
         &self.join_config.sender_ratchet_configuration
-    }
-
-    /// Returns the [`MlsGroupCreateConfig`] external senders extension
-    pub fn external_senders(&self) -> &ExternalSendersExtension {
-        &self.external_senders
     }
 
     /// Returns the [`Extensions`] set as the initial group context.
@@ -289,12 +279,9 @@ impl MlsGroupCreateConfigBuilder {
         self
     }
 
-    /// Sets the `required_capabilities` property of the MlsGroupCreateConfig.
-    pub fn required_capabilities(
-        mut self,
-        required_capabilities: RequiredCapabilitiesExtension,
-    ) -> Self {
-        self.config.required_capabilities = required_capabilities;
+    /// Sets the `capabilities` of the group creator's leaf node.
+    pub fn capabilities(mut self, capabilities: Capabilities) -> Self {
+        self.config.capabilities = capabilities;
         self
     }
 
@@ -320,17 +307,7 @@ impl MlsGroupCreateConfigBuilder {
         self
     }
 
-    /// Sets the `external_senders` property of the MlsGroupCreateConfig.
-    pub fn external_senders(mut self, external_senders: ExternalSendersExtension) -> Self {
-        self.config.external_senders = external_senders;
-        self
-    }
-
-    /// Sets initial group context extensions. Note that RequiredCapabilities
-    /// extensions will be overwritten, and should be set using a call to
-    /// `required_capabilities`. If `ExternalSenders` extensions are provided
-    /// both in this call, and a call to `external_senders`, only the one from
-    /// the call to `external_senders` will be included.
+    /// Sets initial group context extensions.
     pub fn with_group_context_extensions(
         mut self,
         extensions: Extensions,
@@ -342,6 +319,23 @@ impl MlsGroupCreateConfigBuilder {
             return Err(InvalidExtensionError::IllegalInGroupContext);
         }
         self.config.group_context_extensions = extensions;
+        Ok(self)
+    }
+
+    /// Sets extensions of the group creator's [`LeafNode`].
+    pub fn with_leaf_node_extensions(
+        mut self,
+        extensions: Extensions,
+    ) -> Result<Self, InvalidExtensionError> {
+        // None of the default extensions are leaf node extensions, so only
+        // unknown extensions can be leaf node extensions.
+        let is_valid_in_leaf_node = extensions
+            .iter()
+            .all(|e| matches!(e.extension_type(), ExtensionType::Unknown(_)));
+        if !is_valid_in_leaf_node {
+            return Err(InvalidExtensionError::IllegalInLeafNodes);
+        }
+        self.config.leaf_node_extensions = extensions;
         Ok(self)
     }
 
