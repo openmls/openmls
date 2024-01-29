@@ -38,7 +38,6 @@ impl Size for Extension {
             Extension::ExternalSenders(e) => e.tls_serialized_len(),
             Extension::LastResort(e) => e.tls_serialized_len(),
             Extension::ImmutableMetadata(e) => e.tls_serialized_len(),
-            Extension::Metadata(e) => e.tls_serialized_len(),
             Extension::Unknown(_, e) => e.0.len(),
         };
 
@@ -72,7 +71,6 @@ impl Serialize for Extension {
             Extension::ExternalSenders(e) => e.tls_serialize(&mut extension_data),
             Extension::LastResort(e) => e.tls_serialize(&mut extension_data),
             Extension::ImmutableMetadata(e) => e.tls_serialize(&mut extension_data),
-            Extension::Metadata(e) => e.tls_serialize(&mut extension_data),
             Extension::Unknown(_, e) => extension_data
                 .write_all(e.0.as_slice())
                 .map(|_| e.0.len())
@@ -124,9 +122,6 @@ impl Deserialize for Extension {
             }
             ExtensionType::ImmutableMetadata => {
                 Extension::ImmutableMetadata(Metadata::tls_deserialize(&mut extension_data)?)
-            }
-            ExtensionType::Metadata => {
-                Extension::Metadata(Metadata::tls_deserialize(&mut extension_data)?)
             }
             ExtensionType::Unknown(unknown) => {
                 Extension::Unknown(unknown, UnknownExtension(extension_data.to_vec()))

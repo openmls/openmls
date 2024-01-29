@@ -104,9 +104,6 @@ pub enum ExtensionType {
     /// This can only be set on creation of the group.
     ImmutableMetadata,
 
-    /// Metadata extension for policies and other metadata. GroupContext Extension.
-    Metadata,
-
     /// A currently unknown extension type.
     Unknown(u16),
 }
@@ -159,7 +156,6 @@ impl From<u16> for ExtensionType {
             5 => ExtensionType::ExternalSenders,
             10 => ExtensionType::LastResort,
             0xf000 => ExtensionType::ImmutableMetadata,
-            0xf001 => ExtensionType::Metadata,
             unknown => ExtensionType::Unknown(unknown),
         }
     }
@@ -175,7 +171,6 @@ impl From<ExtensionType> for u16 {
             ExtensionType::ExternalSenders => 5,
             ExtensionType::LastResort => 10,
             ExtensionType::ImmutableMetadata => 0xf000,
-            ExtensionType::Metadata => 0xf001,
             ExtensionType::Unknown(unknown) => unknown,
         }
     }
@@ -193,7 +188,6 @@ impl ExtensionType {
                 | ExtensionType::ExternalSenders
                 | ExtensionType::LastResort
                 | ExtensionType::ImmutableMetadata
-                | ExtensionType::Metadata
         )
     }
 }
@@ -234,9 +228,6 @@ pub enum Extension {
 
     /// An [`ImmutableMetadata`] extension
     ImmutableMetadata(Metadata),
-
-    // A [`Metadata`] extension
-    Metadata(Metadata),
 
     /// A currently unknown extension.
     Unknown(u16, UnknownExtension),
@@ -437,15 +428,6 @@ impl Extensions {
                 _ => None,
             })
     }
-
-    /// Get a reference to the mutable [`Metadata`] if there is any.
-    pub fn metadata(&self) -> Option<&Metadata> {
-        self.find_by_type(ExtensionType::Metadata)
-            .and_then(|e| match e {
-                Extension::Metadata(e) => Some(e),
-                _ => None,
-            })
-    }
 }
 
 impl Extension {
@@ -536,7 +518,6 @@ impl Extension {
             Extension::ExternalSenders(_) => ExtensionType::ExternalSenders,
             Extension::LastResort(_) => ExtensionType::LastResort,
             Extension::ImmutableMetadata(_) => ExtensionType::ImmutableMetadata,
-            Extension::Metadata(_) => ExtensionType::Metadata,
             Extension::Unknown(kind, _) => ExtensionType::Unknown(*kind),
         }
     }

@@ -262,7 +262,7 @@ fn test_metadata(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     // example metadata (opaque data -- test hex string is "1cedc0ffee")
     let metadata = vec![0x1c, 0xed, 0xc0, 0xff, 0xee];
-    let ext = Extension::Metadata(Metadata::new(metadata.clone()));
+    let ext = Extension::Unknown(0xf001, UnknownExtension(metadata.clone()));
     let extensions = Extensions::from_vec(vec![ext]).expect("could not build extensions struct");
 
     let config = MlsGroupCreateConfig::builder()
@@ -284,10 +284,14 @@ fn test_metadata(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let got_metadata = alice_group
         .export_group_context()
         .extensions()
-        .metadata()
+        .find_by_type(ExtensionType::Unknown(0xf001))
         .expect("failed to read group metadata");
 
-    assert_eq!(got_metadata.metadata(), &metadata);
+    if let Extension::Unknown(0xf001, UnknownExtension(got_metadata)) = got_metadata {
+        assert_eq!(got_metadata, &metadata);
+    } else {
+        panic!("metadata extension has wrong extension enum variant")
+    }
 }
 
 #[apply(ciphersuites_and_providers)]
