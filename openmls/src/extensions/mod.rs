@@ -226,7 +226,7 @@ pub enum Extension {
     /// A [`LastResortExtension`]
     LastResort(LastResortExtension),
 
-    /// An [`ImmutableMetadata`] extension
+    /// An immutable [`Metadata`] extension
     ImmutableMetadata(Metadata),
 
     /// A currently unknown extension.
