@@ -210,6 +210,7 @@ pub(crate) fn generate_group_candidate(
 // === Define provider per platform ===
 
 // This provider is currently used on all platforms
+pub use openmls_libcrux_crypto::Provider as OpenMlsLibcrux;
 pub use openmls_rust_crypto::OpenMlsRustCrypto;
 
 // === providers ===
@@ -218,6 +219,7 @@ pub use openmls_rust_crypto::OpenMlsRustCrypto;
 #[export]
 #[rstest(provider,
     case::rust_crypto(&OpenMlsRustCrypto::default()),
+    case::libcrux(&OpenMlsLibcrux::default()),
   )
 ]
 #[allow(non_snake_case)]
@@ -254,6 +256,9 @@ pub fn ciphersuites(ciphersuite: Ciphersuite) {}
     case::rust_crypto_MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519, &OpenMlsRustCrypto::default()),
     case::rust_crypto_MLS_128_DHKEMP256_AES128GCM_SHA256_P256(Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256, &OpenMlsRustCrypto::default()),
     case::rust_crypto_MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519, &OpenMlsRustCrypto::default()),
+    case::libcrux_MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519, &$crate::test_utils::OpenMlsLibcrux::default()),
+    case::libcrux_MLS_128_DHKEMP256_AES128GCM_SHA256_P256(Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256, &$crate::test_utils::OpenMlsLibcrux::default()),
+    case::libcrux_MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519, &$crate::test_utils::OpenMlsLibcrux::default()),
   )
 ]
 #[allow(non_snake_case)]

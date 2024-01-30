@@ -24,6 +24,7 @@ serde_json = { version = "1.0", optional = true }
 # Crypto providers required for KAT and testing - "test-utils" feature
 itertools = { version = "0.10", optional = true }
 openmls_rust_crypto = { version = "0.2.0", path = "../openmls_rust_crypto", optional = true }
+openmls_libcrux_crypto = { path = "../libcrux_crypto", optional = true }
 openmls_basic_credential = { version = "0.2.0", path = "../basic_credential", optional = true, features = [
     "clonable",
     "test-utils",
@@ -41,6 +42,7 @@ test-utils = [
     "dep:serde_json",
     "dep:itertools",
     "dep:openmls_rust_crypto",
+    "dep:openmls_libcrux_crypto",
     "dep:rand",
     "dep:rstest",
     "dep:rstest_reuse",

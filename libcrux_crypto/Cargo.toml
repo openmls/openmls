@@ -1,0 +1,14 @@
+[package]
+name = "openmls_libcrux_crypto"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+getrandom = "0.2.12"
+libcrux = { path = "../../../cryspen/libcrux/" }
+openmls_traits = {path = "../traits"}
+openmls_rust_crypto = {path = "../openmls_rust_crypto"}
+rand = "0.8.5"
+tls_codec.workspace = true
