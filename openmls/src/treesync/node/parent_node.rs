@@ -70,7 +70,7 @@ impl PlainUpdatePathNode {
         #[cfg(target_arch = "wasm32")]
         let public_keys = public_keys.iter();
         #[cfg(not(target_arch = "wasm32"))]
-        let public_keys = public_keys.par_iter();
+        let public_keys = public_keys.iter();
 
         public_keys
             .map(|pk| {
@@ -138,7 +138,7 @@ impl ParentNode {
         // Iterate over the path secrets and derive a key pair
 
         #[cfg(not(target_arch = "wasm32"))]
-        let path_secrets = path_secrets.into_par_iter();
+        let path_secrets = path_secrets.into_iter();
         #[cfg(target_arch = "wasm32")]
         let path_secrets = path_secrets.into_iter();
 

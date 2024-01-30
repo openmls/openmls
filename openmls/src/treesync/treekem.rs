@@ -73,7 +73,7 @@ impl<'a> TreeSyncDiff<'a> {
         // Encrypt the secrets
 
         #[cfg(not(target_arch = "wasm32"))]
-        let resolved_path = path.par_iter().zip(copath_resolutions.par_iter());
+        let resolved_path = path.iter().zip(copath_resolutions.iter());
         #[cfg(target_arch = "wasm32")]
         let resolved_path = path.iter().zip(copath_resolutions.iter());
 
