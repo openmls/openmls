@@ -10,7 +10,7 @@ use std::collections::HashSet;
 use openmls::prelude::*;
 use tls_codec::{
     TlsByteSliceU16, TlsByteVecU16, TlsByteVecU32, TlsByteVecU8, TlsDeserialize,
-    TlsDeserializeBytes, TlsSerialize, TlsSize, TlsVecU32,
+    TlsDeserializeBytes, TlsSerialize, TlsSize, TlsVecU32, VLBytes,
 };
 
 /// Information about a client.
@@ -50,14 +50,13 @@ impl ClientInfo {
     /// key packages with corresponding hashes.
     pub fn new(client_name: String, mut key_packages: Vec<(Vec<u8>, KeyPackageIn)>) -> Self {
         let key_package: KeyPackage = KeyPackage::from(key_packages[0].1.clone());
-        let id = key_package
-            .leaf_node()
-            .credential()
-            .serialized_content()
-            .to_vec();
+        let id = VLBytes::tls_deserialize_exact(
+            key_package.leaf_node().credential().serialized_content(),
+        )
+        .unwrap();
         Self {
             client_name,
-            id,
+            id: id.into(),
             key_packages: ClientKeyPackages(
                 key_packages
                     .drain(..)

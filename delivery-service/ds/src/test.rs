@@ -5,7 +5,7 @@ use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::types::SignatureScheme;
 use openmls_traits::OpenMlsProvider;
-use tls_codec::{TlsByteVecU8, TlsVecU16};
+use tls_codec::{TlsByteVecU8, TlsVecU16, VLBytes};
 
 fn generate_credential(
     identity: Vec<u8>,
@@ -79,11 +79,10 @@ async fn test_list_clients() {
     let crypto = &OpenMlsRustCrypto::default();
     let (credential_with_key, signer) =
         generate_credential(client_name.into(), SignatureScheme::from(ciphersuite));
-    let credential = BasicCredential::tls_deserialize_exact(
-        credential_with_key.credential.serialized_content(),
-    )
-    .unwrap();
-    let client_id = credential.identity().to_vec();
+    let identity =
+        VLBytes::tls_deserialize_exact(credential_with_key.credential.serialized_content())
+            .unwrap();
+    let client_id = identity.as_slice().to_vec();
     let client_key_package = generate_key_package(
         ciphersuite,
         credential_with_key.clone(),
@@ -200,11 +199,10 @@ async fn test_group() {
         );
         key_packages.push(client_key_package);
 
-        let credential = BasicCredential::tls_deserialize_exact(
-            credential_with_key.credential.serialized_content(),
-        )
-        .unwrap();
-        client_ids.push(credential.identity().to_vec());
+        let id =
+            VLBytes::tls_deserialize_exact(credential_with_key.credential.serialized_content())
+                .unwrap();
+        client_ids.push(id.as_slice().to_vec());
         credentials_with_key.push(credential_with_key);
         signers.push(signer);
         let req = test::TestRequest::post()
