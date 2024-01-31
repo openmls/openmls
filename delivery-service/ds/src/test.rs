@@ -80,7 +80,7 @@ async fn test_list_clients() {
     let (credential_with_key, signer) =
         generate_credential(client_name.into(), SignatureScheme::from(ciphersuite));
     let credential = BasicCredential::tls_deserialize_exact(
-        credential_with_key.credential.serialized_credential(),
+        credential_with_key.credential.serialized_content(),
     )
     .unwrap();
     let client_id = credential.identity().to_vec();
@@ -201,7 +201,7 @@ async fn test_group() {
         key_packages.push(client_key_package);
 
         let credential = BasicCredential::tls_deserialize_exact(
-            credential_with_key.credential.serialized_credential(),
+            credential_with_key.credential.serialized_content(),
         )
         .unwrap();
         client_ids.push(credential.identity().to_vec());

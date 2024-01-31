@@ -655,11 +655,10 @@ fn test_valsem101b(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
                 let bob_index = alice_group
                     .members()
                     .find_map(|member| {
-                        let credential = BasicCredential::tls_deserialize_exact(
-                            member.credential.serialized_credential(),
-                        )
-                        .unwrap();
-                        if credential.identity() == b"Bob" {
+                        let identity =
+                            VLBytes::tls_deserialize_exact(member.credential.serialized_content())
+                                .unwrap();
+                        if identity.as_slice() == b"Bob" {
                             Some(member.index)
                         } else {
                             None

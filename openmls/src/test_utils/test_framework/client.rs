@@ -342,7 +342,7 @@ impl Client {
         leaf.map(|l| {
             let credential = l.credential();
             let credential =
-                BasicCredential::tls_deserialize_exact(credential.serialized_credential()).unwrap();
+                BasicCredential::tls_deserialize_exact(credential.serialized_content()).unwrap();
             credential.identity().to_vec()
         })
     }

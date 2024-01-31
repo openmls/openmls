@@ -659,10 +659,9 @@ fn test_proposal_application_after_self_was_removed(
                  credential,
                  ..
              }| {
-                let credential =
-                    BasicCredential::tls_deserialize_exact(credential.serialized_credential())
-                        .unwrap();
-                credential.identity() == b"Bob"
+                let identity =
+                    VLBytes::tls_deserialize_exact(credential.serialized_content()).unwrap();
+                identity.as_slice() == b"Bob"
             },
         )
         .expect("Couldn't find Bob in tree.")
@@ -751,42 +750,28 @@ fn test_proposal_application_after_self_was_removed(
         // didn't get updated.
         assert_eq!(alice_member.index, bob_member.index);
 
-        let alice_credential =
-            BasicCredential::tls_deserialize_exact(alice_member.credential.serialized_credential())
-                .unwrap();
-        let bob_credential =
-            BasicCredential::tls_deserialize_exact(bob_member.credential.serialized_credential())
-                .unwrap();
-        let charlie_credential = BasicCredential::tls_deserialize_exact(
-            charlie_member.credential.serialized_credential(),
-        )
-        .unwrap();
-        assert_eq!(alice_credential.identity(), bob_credential.identity());
+        let alice_id =
+            VLBytes::tls_deserialize_exact(alice_member.credential.serialized_content()).unwrap();
+        let bob_id =
+            VLBytes::tls_deserialize_exact(bob_member.credential.serialized_content()).unwrap();
+        let charlie_id =
+            VLBytes::tls_deserialize_exact(charlie_member.credential.serialized_content()).unwrap();
+        assert_eq!(alice_id.as_slice(), bob_id.as_slice());
         assert_eq!(alice_member.signature_key, bob_member.signature_key);
         assert_eq!(charlie_member.index, bob_member.index);
-        assert_eq!(charlie_credential.identity(), bob_credential.identity());
+        assert_eq!(charlie_id.as_slice(), bob_id.as_slice());
         assert_eq!(charlie_member.signature_key, bob_member.signature_key);
         assert_eq!(charlie_member.encryption_key, alice_member.encryption_key);
     }
 
     let mut bob_members = bob_group.public_group().members();
 
-    let bob_next_credential = BasicCredential::tls_deserialize_exact(
-        bob_members
-            .next()
-            .unwrap()
-            .credential
-            .serialized_credential(),
-    )
-    .unwrap();
-    assert_eq!(bob_next_credential.identity(), b"Alice");
-    let bob_next_credential = BasicCredential::tls_deserialize_exact(
-        bob_members
-            .next()
-            .unwrap()
-            .credential
-            .serialized_credential(),
-    )
-    .unwrap();
-    assert_eq!(bob_next_credential.identity(), b"Charlie");
+    let bob_next_id =
+        VLBytes::tls_deserialize_exact(bob_members.next().unwrap().credential.serialized_content())
+            .unwrap();
+    assert_eq!(bob_next_id.as_slice(), b"Alice");
+    let bob_next_id =
+        VLBytes::tls_deserialize_exact(bob_members.next().unwrap().credential.serialized_content())
+            .unwrap();
+    assert_eq!(bob_next_id.as_slice(), b"Charlie");
 }

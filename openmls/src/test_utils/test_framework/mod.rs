@@ -344,10 +344,9 @@ impl MlsGroupTestSetup {
                 |Member {
                      index, credential, ..
                  }| {
-                    let credential =
-                        BasicCredential::tls_deserialize_exact(credential.serialized_credential())
-                            .unwrap();
-                    (index.usize(), credential.identity().to_vec())
+                    let identity =
+                        VLBytes::tls_deserialize_exact(credential.serialized_content()).unwrap();
+                    (index.usize(), identity.as_slice().to_vec())
                 },
             )
             .collect();

@@ -111,7 +111,6 @@ impl CoreGroup {
     ///  - ValSem240
     ///  - ValSem241
     ///  - ValSem242
-    ///  - ValSem243
     ///  - ValSem244
     /// Returns an error if the given commit was sent by the owner of this
     /// group.

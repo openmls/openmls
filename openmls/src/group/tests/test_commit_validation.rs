@@ -13,7 +13,6 @@ use super::utils::{
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::signable::Signable,
-    credentials::BasicCredential,
     framing::*,
     group::{config::CryptoConfig, *},
     messages::proposals::*,
@@ -766,10 +765,9 @@ fn test_partial_proposal_commit(ciphersuite: Ciphersuite, provider: &impl OpenMl
     let charlie_index = alice_group
         .members()
         .find(|m| {
-            let credential =
-                BasicCredential::tls_deserialize_exact(m.credential.serialized_credential())
-                    .unwrap();
-            credential.identity() == b"Charlie"
+            let identity =
+                VLBytes::tls_deserialize_exact(m.credential.serialized_content()).unwrap();
+            identity.as_slice() == b"Charlie"
         })
         .unwrap()
         .index;

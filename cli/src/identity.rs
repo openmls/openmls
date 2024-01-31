@@ -88,6 +88,6 @@ impl Identity {
 
     /// Get the plain identity as byte vector.
     pub fn identity(&self) -> &[u8] {
-        self.credential_with_key.credential.serialized_credential()
+        self.credential_with_key.credential.serialized_content()
     }
 }

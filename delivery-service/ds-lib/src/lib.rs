@@ -53,7 +53,7 @@ impl ClientInfo {
         let id = key_package
             .leaf_node()
             .credential()
-            .serialized_credential()
+            .serialized_content()
             .to_vec();
         Self {
             client_name,

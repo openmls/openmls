@@ -4,7 +4,6 @@ use rstest_reuse::{self, *};
 use tls_codec::Deserialize;
 
 use crate::{
-    credentials::BasicCredential,
     framing::*,
     group::{config::CryptoConfig, *},
     messages::external_proposals::*,
@@ -128,10 +127,9 @@ fn external_remove_proposal_should_remove_member(
     let bob_index = alice_group
         .members()
         .find(|member| {
-            let credential =
-                BasicCredential::tls_deserialize_exact(member.credential.serialized_credential())
-                    .unwrap();
-            credential.identity() == b"Bob"
+            let identity =
+                VLBytes::tls_deserialize_exact(member.credential.serialized_content()).unwrap();
+            identity.as_slice() == b"Bob"
         })
         .map(|member| member.index)
         .unwrap();
@@ -227,10 +225,9 @@ fn external_remove_proposal_should_fail_when_invalid_external_senders_index(
     let bob_index = alice_group
         .members()
         .find(|member| {
-            let credential =
-                BasicCredential::tls_deserialize_exact(member.credential.serialized_credential())
-                    .unwrap();
-            credential.identity() == b"Bob"
+            let identity =
+                VLBytes::tls_deserialize_exact(member.credential.serialized_content()).unwrap();
+            identity.as_slice() == b"Bob"
         })
         .map(|member| member.index)
         .unwrap();
@@ -290,10 +287,9 @@ fn external_remove_proposal_should_fail_when_invalid_signature(
     let bob_index = alice_group
         .members()
         .find(|member| {
-            let credential =
-                BasicCredential::tls_deserialize_exact(member.credential.serialized_credential())
-                    .unwrap();
-            credential.identity() == b"Bob"
+            let identity =
+                VLBytes::tls_deserialize_exact(member.credential.serialized_content()).unwrap();
+            identity.as_slice() == b"Bob"
         })
         .map(|member| member.index)
         .unwrap();
@@ -337,10 +333,9 @@ fn external_remove_proposal_should_fail_when_no_external_senders(
     let bob_index = alice_group
         .members()
         .find(|member| {
-            let credential =
-                BasicCredential::tls_deserialize_exact(member.credential.serialized_credential())
-                    .unwrap();
-            credential.identity() == b"Bob"
+            let identity =
+                VLBytes::tls_deserialize_exact(member.credential.serialized_content()).unwrap();
+            identity.as_slice() == b"Bob"
         })
         .map(|member| member.index)
         .unwrap();

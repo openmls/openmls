@@ -197,7 +197,7 @@ impl User {
         } in mls_group.members()
         {
             let credential =
-                BasicCredential::tls_deserialize_exact(credential.serialized_credential()).unwrap();
+                BasicCredential::tls_deserialize_exact(credential.serialized_content()).unwrap();
             if credential.identity() == name.as_bytes() {
                 return Ok(index);
             }
@@ -240,7 +240,7 @@ impl User {
                 != signature_key.as_slice()
             {
                 let credential =
-                    BasicCredential::tls_deserialize_exact(credential.serialized_credential())
+                    BasicCredential::tls_deserialize_exact(credential.serialized_content())
                         .unwrap();
                 log::debug!(
                     "Searching for contact {:?}",
@@ -405,7 +405,7 @@ impl User {
             match processed_message.into_content() {
                 ProcessedMessageContent::ApplicationMessage(application_message) => {
                     let processed_message_credential = BasicCredential::tls_deserialize_exact(
-                        processed_message_credential.serialized_credential(),
+                        processed_message_credential.serialized_content(),
                     )
                     .unwrap();
                     let sender_name = match self
@@ -418,7 +418,7 @@ impl User {
                             // mls_group member
                             let user_id = mls_group.members().find_map(|m| {
                                 let m_credential = BasicCredential::tls_deserialize_exact(
-                                    m.credential.serialized_credential(),
+                                    m.credential.serialized_content(),
                                 )
                                 .unwrap();
                                 if m_credential.identity()
