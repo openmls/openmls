@@ -108,7 +108,7 @@ fn read_test_vectors_ps(provider: &impl OpenMlsProvider) {
     let _ = pretty_env_logger::try_init();
     log::debug!("Reading test vectors ...");
 
-    let tests: Vec<TestElement> = read("test_vectors/psk_secret.json");
+    let tests: Vec<TestElement> = read_json!("../../test_vectors/psk_secret.json");
 
     for test_vector in tests {
         match run_test_vector(test_vector, provider) {

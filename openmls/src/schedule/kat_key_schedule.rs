@@ -13,7 +13,7 @@ use tls_codec::Serialize as TlsSerializeTrait;
 
 use super::{errors::KsTestVectorError, CommitSecret};
 #[cfg(test)]
-use crate::test_utils::{read, write};
+use crate::test_utils::write;
 use crate::{ciphersuite::*, extensions::Extensions, group::*, schedule::*, test_utils::*};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -258,7 +258,7 @@ fn write_test_vectors() {
 fn read_test_vectors_key_schedule(provider: &impl OpenMlsProvider) {
     let _ = pretty_env_logger::try_init();
 
-    let tests: Vec<KeyScheduleTestVector> = read("test_vectors/key-schedule.json");
+    let tests: Vec<KeyScheduleTestVector> = read_json!("../../test_vectors/key-schedule.json");
 
     for test_vector in tests {
         match run_test_vector(test_vector, provider) {

@@ -41,6 +41,15 @@ pub(crate) fn write(file_name: &str, obj: impl Serialize) {
     .expect("Error writing test vector file");
 }
 
+// the macro is used in other files, suppress false positive
+#[allow(unused_macros)]
+macro_rules! read_json {
+    ($file_name:expr) => {{
+        let data = include_str!($file_name);
+        serde_json::from_str(data).expect(&format!("Error reading file {}", $file_name))
+    }};
+}
+
 pub(crate) fn read<T: DeserializeOwned>(file_name: &str) -> T {
     let file = match File::open(file_name) {
         Ok(f) => f,
@@ -214,6 +223,7 @@ pub use openmls_rust_crypto::OpenMlsRustCrypto;
   )
 ]
 #[allow(non_snake_case)]
+#[cfg_attr(target_arch = "wasm32", openmls::wasm::test)]
 pub fn providers(provider: &impl OpenMlsProvider) {}
 
 // === Ciphersuites ===
@@ -235,6 +245,7 @@ pub fn providers(provider: &impl OpenMlsProvider) {}
     )
 )]
 #[allow(non_snake_case)]
+#[cfg_attr(target_arch = "wasm32", openmls::wasm::test)]
 pub fn ciphersuites(ciphersuite: Ciphersuite) {}
 
 // === Ciphersuites & providers ===
@@ -248,4 +259,5 @@ pub fn ciphersuites(ciphersuite: Ciphersuite) {}
   )
 ]
 #[allow(non_snake_case)]
+#[cfg_attr(target_arch = "wasm32", openmls::wasm::test)]
 pub fn ciphersuites_and_providers(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {}

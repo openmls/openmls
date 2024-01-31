@@ -40,9 +40,12 @@ use openmls_traits::{
     types::{Ciphersuite, HpkeKeyPair, SignatureScheme},
     OpenMlsProvider,
 };
-use rayon::prelude::*;
+
 use std::{collections::HashMap, sync::RwLock};
 use tls_codec::*;
+
+#[cfg(not(target_arch = "wasm32"))]
+use rayon::prelude::*;
 
 pub mod client;
 pub mod errors;
@@ -367,9 +370,13 @@ impl MlsGroupTestSetup {
         authentication_service: AS,
     ) {
         let clients = self.clients.read().expect("An unexpected error occurred.");
-        let messages = group
-            .members
-            .par_iter()
+
+        #[cfg(not(target_arch = "wasm32"))]
+        let group_members = group.members.par_iter();
+        #[cfg(target_arch = "wasm32")]
+        let group_members = group.members.iter();
+
+        let messages = group_members
             .filter_map(|(_, m_id)| {
                 let m = clients
                     .get(m_id)

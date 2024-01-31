@@ -49,14 +49,15 @@ pub(crate) fn setup_alice_group(
 fn test_core_group_persistence(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let (alice_group, _, _, _) = setup_alice_group(ciphersuite, provider);
 
-    let mut file_out = tempfile::NamedTempFile::new().expect("Could not create file");
+    // we need something that implements io::Write
+    let mut file_out: Vec<u8> = vec![];
     alice_group
         .save(&mut file_out)
         .expect("Could not write group state to file");
 
-    let file_in = file_out
-        .reopen()
-        .expect("Error re-opening serialized group state file");
+    // make it into a type that implements io::Read
+    let file_in: &[u8] = &file_out;
+
     let alice_group_deserialized =
         CoreGroup::load(file_in).expect("Could not deserialize mls group");
 

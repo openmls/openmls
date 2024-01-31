@@ -14,7 +14,7 @@ use crate::{
     messages::PathSecret,
     prelude_test::Secret,
     schedule::CommitSecret,
-    test_utils::{hex_to_bytes, read},
+    test_utils::hex_to_bytes,
     treesync::{
         node::encryption_keys::EncryptionKeyPair,
         treekem::{DecryptPathParams, UpdatePath, UpdatePathIn},
@@ -385,7 +385,7 @@ fn apply_update_path(
 #[test]
 fn read_test_vectors_treekem() {
     let _ = pretty_env_logger::try_init();
-    let tests: Vec<TreeKemTest> = read("test_vectors/treekem.json");
+    let tests: Vec<TreeKemTest> = read_json!("../../../../test_vectors/treekem.json");
 
     let provider = OpenMlsRustCrypto::default();
 
