@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 getrandom = "0.2.12"
-libcrux = { path = "../../../cryspen/libcrux/" }
+libcrux = { path = "../../../cryspen/libcrux/", features = ["rand"] }
 openmls_traits = {path = "../traits"}
 openmls_rust_crypto = {path = "../openmls_rust_crypto"}
 rand = "0.8.5"

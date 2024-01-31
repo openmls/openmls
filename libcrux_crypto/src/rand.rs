@@ -62,7 +62,7 @@ impl OpenMlsRand for RandProvider {
 
 impl Default for RandProvider {
     fn default() -> Self {
-        let mut seed = [0u8; 16];
+        let mut seed = [0u8; 256];
         getrandom::getrandom(&mut seed).unwrap();
         Self {
             drbg: RwLock::new(

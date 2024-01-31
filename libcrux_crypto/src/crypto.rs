@@ -19,7 +19,7 @@ pub struct CryptoProvider {
 
 impl Default for CryptoProvider {
     fn default() -> Self {
-        let mut seed = [0u8; 64];
+        let mut seed = [0u8; 16];
         getrandom::getrandom(&mut seed).unwrap();
         Self {
             drbg: RwLock::new(
@@ -144,8 +144,8 @@ impl OpenMlsCrypto for CryptoProvider {
         nonce: &[u8],
         aad: &[u8],
     ) -> Result<Vec<u8>, CryptoError> {
-        if ct_tag.len() < 16 {
-            return Err(CryptoError::AeadDecryptionError);
+        if ct_tag.len() < 16 || nonce.len() != 12 {
+            return Err(CryptoError::InvalidLength);
         }
 
         // TODO better way to split these?
@@ -210,10 +210,15 @@ impl OpenMlsCrypto for CryptoProvider {
         ptxt: &[u8],
     ) -> HpkeCiphertext {
         let config = hpke_config(config);
-        let randomness = vec![];
+        let randomness = {
+            let mut rng = self.drbg.write().unwrap();
+            rng.generate_vec(libcrux::hpke::kem::Nsk(config.1)).unwrap()
+        };
+
+        let pk_r = libcrux::hpke::kem::DeserializePublicKey(config.1, pk_r).unwrap();
 
         let libcrux::hpke::HPKECiphertext(kem_output, ciphertext) =
-            libcrux::hpke::HpkeSeal(config, pk_r, info, aad, ptxt, None, None, None, randomness)
+            libcrux::hpke::HpkeSeal(config, &pk_r, info, aad, ptxt, None, None, None, randomness)
                 .map_err(|e| match e {
                     libcrux::hpke::errors::HpkeError::ValidationError => {
                         CryptoError::InvalidPublicKey
@@ -289,9 +294,11 @@ impl OpenMlsCrypto for CryptoProvider {
             .generate_vec(libcrux::hpke::kem::Nsk(config.1))
             .map_err(|_| CryptoError::CryptoLibraryError)?;
 
+        let pk_r = libcrux::hpke::kem::DeserializePublicKey(config.1, pk_r).unwrap();
+
         libcrux::hpke::SendExport(
             config,
-            pk_r,
+            &pk_r,
             info,
             exporter_context.to_vec(),
             exporter_length,
@@ -377,14 +384,20 @@ fn aead_key(alg: AeadType, key: &[u8]) -> Result<libcrux::aead::Key, CryptoError
 
 fn sig(alg: SignatureScheme, sig: &[u8]) -> Result<libcrux::signature::Signature, CryptoError> {
     match alg {
-        SignatureScheme::ECDSA_SECP256R1_SHA256 => Ok(libcrux::signature::Signature::EcDsaP256(
-            libcrux::signature::EcDsaP256Signature::from_bytes(
-                sig.try_into().map_err(|_| CryptoError::InvalidSignature)?,
-                libcrux::signature::Algorithm::EcDsaP256(
-                    libcrux::signature::DigestAlgorithm::Sha256,
+        SignatureScheme::ECDSA_SECP256R1_SHA256 => {
+            let decoded: [u8; 64] = der_decode(sig)?
+                .try_into()
+                .map_err(|_| CryptoError::InvalidSignature)?;
+
+            Ok(libcrux::signature::Signature::EcDsaP256(
+                libcrux::signature::EcDsaP256Signature::from_bytes(
+                    decoded,
+                    libcrux::signature::Algorithm::EcDsaP256(
+                        libcrux::signature::DigestAlgorithm::Sha256,
+                    ),
                 ),
-            ),
-        )),
+            ))
+        }
         SignatureScheme::ED25519 => libcrux::signature::Ed25519Signature::from_slice(sig)
             .map(libcrux::signature::Signature::Ed25519)
             .map_err(|e| match e {
@@ -440,6 +453,144 @@ fn hpke_aead(aead: HpkeAeadType) -> libcrux::hpke::aead::AEAD {
         HpkeAeadType::ChaCha20Poly1305 => CruxAead::ChaCha20Poly1305,
         HpkeAeadType::Export => CruxAead::Export_only,
     }
+}
+
+// The length of the individual scalars. Since we only support ECDSA with P256,
+// this is 32. It would be great if libcrux were able to return the scalar
+// size of a given curve.
+const P256_SCALAR_LENGTH: usize = 32;
+
+// DER encoding INTEGER tag.
+const INTEGER_TAG: u8 = 0x02;
+
+// DER encoding SEQUENCE tag.
+const SEQUENCE_TAG: u8 = 0x30;
+
+// The following two traits (ReadU8, Writeu8)are inlined from the byteorder
+// crate to avoid a full dependency.
+impl<R: std::io::Read + ?Sized> ReadU8 for R {}
+
+pub trait ReadU8: std::io::Read {
+    /// A small helper function to read a u8 from a Reader.
+    #[inline]
+    fn read_u8(&mut self) -> std::io::Result<u8> {
+        let mut buf = [0; 1];
+        self.read_exact(&mut buf)?;
+        Ok(buf[0])
+    }
+}
+
+impl<W: std::io::Write + ?Sized> WriteU8 for W {}
+
+pub trait WriteU8: std::io::Write {
+    /// A small helper function to write a u8 to a Writer.
+    #[inline]
+    fn write_u8(&mut self, n: u8) -> std::io::Result<()> {
+        self.write_all(&[n])
+    }
+}
+
+/// This function takes a DER encoded ECDSA signature and decodes it to the
+/// bytes representing the concatenated scalars. If the decoding fails, it
+/// will throw a `CryptoError`.
+fn der_decode(mut signature_bytes: &[u8]) -> Result<Vec<u8>, CryptoError> {
+    // A small function to DER decode a single scalar.
+    fn decode_scalar<R: std::io::Read>(mut buffer: R) -> Result<Vec<u8>, CryptoError> {
+        // Check header bytes of encoded scalar.
+
+        // 1 byte INTEGER tag should be 0x02
+        let integer_tag = buffer
+            .read_u8()
+            .map_err(|_| CryptoError::SignatureDecodingError)?;
+        if integer_tag != INTEGER_TAG {
+            //log::error!("Error while decoding scalar: Couldn't find INTEGER tag.");
+            return Err(CryptoError::SignatureDecodingError);
+        };
+
+        // 1 byte length tag should be at most 0x21, i.e. 32 plus at most 1
+        // byte indicating that the integer is unsigned.
+        let mut scalar_length = buffer
+            .read_u8()
+            .map_err(|_| CryptoError::SignatureDecodingError)?
+            as usize;
+        if scalar_length > P256_SCALAR_LENGTH + 1 {
+            //log::error!("Error while decoding scalar: Scalar too long.");
+            return Err(CryptoError::SignatureDecodingError);
+        };
+
+        // If the scalar is 0x21 long, the first byte has to be 0x00,
+        // indicating that the following integer is unsigned. We can discard
+        // this byte safely. If it's not 0x00, the scalar is too large not
+        // thus not a valid point on the curve.
+        if scalar_length == P256_SCALAR_LENGTH + 1 {
+            if buffer
+                .read_u8()
+                .map_err(|_| CryptoError::SignatureDecodingError)?
+                != 0x00
+            {
+                //log::error!("Error while decoding scalar: Scalar too large or invalid encoding.");
+                return Err(CryptoError::SignatureDecodingError);
+            };
+            // Since we just read that byte, we decrease the length by 1.
+            scalar_length -= 1;
+        };
+
+        let mut scalar = vec![0; scalar_length];
+        buffer
+            .read_exact(&mut scalar)
+            .map_err(|_| CryptoError::SignatureDecodingError)?;
+
+        // The verification algorithm expects the scalars to be 32 bytes
+        // long, buffered with zeroes.
+        let mut padded_scalar = vec![0u8; P256_SCALAR_LENGTH - scalar_length];
+        padded_scalar.append(&mut scalar);
+
+        Ok(padded_scalar)
+    }
+
+    // Check header bytes:
+    // 1 byte SEQUENCE tag should be 0x30
+    let sequence_tag = signature_bytes
+        .read_u8()
+        .map_err(|_| CryptoError::SignatureDecodingError)?;
+    if sequence_tag != SEQUENCE_TAG {
+        //log::error!("Error while decoding DER encoded signature: Couldn't find SEQUENCE tag.");
+        return Err(CryptoError::SignatureDecodingError);
+    };
+
+    // At most 1 byte encoding the length of the scalars (short form DER
+    // length encoding). Length has to be encoded in the short form, as we
+    // expect the length not to exceed the maximum length of 70: Two times
+    // at most 32 (scalar value) + 1 byte integer tag + 1 byte length tag +
+    // at most 1 byte to indicating that the integer is unsigned.
+    let length = signature_bytes
+        .read_u8()
+        .map_err(|_| CryptoError::SignatureDecodingError)? as usize;
+    if length > 2 * (P256_SCALAR_LENGTH + 3) {
+        //log::error!("Error while decoding DER encoded signature: Signature too long.");
+        return Err(CryptoError::SignatureDecodingError);
+    }
+
+    // The remaining bytes should be equal to the encoded length.
+    if signature_bytes.len() != length {
+        //log::error!("Error while decoding DER encoded signature: Encoded length inaccurate.");
+        return Err(CryptoError::SignatureDecodingError);
+    }
+
+    let mut r = decode_scalar(&mut signature_bytes)?;
+    let mut s = decode_scalar(&mut signature_bytes)?;
+
+    // If there are bytes remaining, the encoded length was larger than the
+    // length of the individual scalars..
+    if !signature_bytes.is_empty() {
+        //log::error!("Error while decoding DER encoded signature: Encoded overall length does not match the sum of scalar lengths.");
+        return Err(CryptoError::SignatureDecodingError);
+    }
+
+    let mut out = Vec::with_capacity(2 * P256_SCALAR_LENGTH);
+    out.append(&mut r);
+    out.append(&mut s);
+    Ok(out)
 }
 
 struct GuardedRng<'a, Rng: RngCore>(RwLockWriteGuard<'a, Rng>);
