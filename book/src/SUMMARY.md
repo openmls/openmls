@@ -22,6 +22,7 @@
   - [Traits](./traits/traits.md)
   - [Types](./traits/types.md)
 - [Message Validation](./message_validation.md)
+- [App Validation](./app_validation.md)
 - [Performance](./performance.md)
 - [Forward Secrecy](./forward_secrecy.md)
 - [Release management](./release_management.md)

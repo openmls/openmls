@@ -201,7 +201,7 @@ impl tls_codec::Serialize for Credential {
 impl tls_codec::Deserialize for Credential {
     fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, Error> {
         // We can not deserialize arbitrary credentials because we don't know
-        // the structure of it. While we don't care, we still need to parse it
+        // their structure. While we don't care, we still need to parse it
         // in order to move the reader forward and read the values in the struct
         // after this credential.
 
@@ -260,6 +260,13 @@ impl Credential {
     /// vector.
     pub fn serialized_content(&self) -> &[u8] {
         self.serialized_credential_content.as_slice()
+    }
+
+    /// Get the credential, deserialized.
+    pub fn deserialized<T: tls_codec::Size + tls_codec::Deserialize>(
+        &self,
+    ) -> Result<T, tls_codec::Error> {
+        T::tls_deserialize_exact(&self.serialized_credential_content)
     }
 }
 
@@ -366,7 +373,7 @@ pub mod test_utils {
 
 #[cfg(test)]
 mod unit_tests {
-    use tls_codec::{Deserialize, DeserializeBytes, Serialize, VLBytes};
+    use tls_codec::{DeserializeBytes, Serialize, VLBytes};
 
     use super::{BasicCredential, Credential};
 
@@ -384,7 +391,7 @@ mod unit_tests {
             credential.serialized_content(),
             deserialized.serialized_content()
         );
-        let identity = VLBytes::tls_deserialize_exact(credential.serialized_content()).unwrap();
+        let identity: VLBytes = credential.deserialized().unwrap();
         assert_eq!(identity.as_slice(), b"identity");
     }
 }
