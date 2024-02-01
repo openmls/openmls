@@ -210,6 +210,7 @@ pub(crate) fn generate_group_candidate(
 // === Define provider per platform ===
 
 // This provider is currently used on all platforms
+#[cfg(feature = "libcrux-provider")]
 pub use openmls_libcrux_crypto::Provider as OpenMlsLibcrux;
 pub use openmls_rust_crypto::OpenMlsRustCrypto;
 
@@ -217,11 +218,15 @@ pub use openmls_rust_crypto::OpenMlsRustCrypto;
 
 #[template]
 #[export]
-#[rstest(provider,
+#[cfg_attr(feature = "libcrux-provider", rstest(provider,
     case::rust_crypto(&OpenMlsRustCrypto::default()),
     case::libcrux(&OpenMlsLibcrux::default()),
   )
-]
+)]
+#[cfg_attr(not(feature = "libcrux-provider"),rstest(provider,
+    case::rust_crypto(&OpenMlsRustCrypto::default()),
+  )
+)]
 #[allow(non_snake_case)]
 #[cfg_attr(target_arch = "wasm32", openmls::wasm::test)]
 pub fn providers(provider: &impl OpenMlsProvider) {}
@@ -252,7 +257,7 @@ pub fn ciphersuites(ciphersuite: Ciphersuite) {}
 
 #[template]
 #[export]
-#[rstest(ciphersuite, provider,
+#[cfg_attr(feature = "libcrux-provider", rstest(ciphersuite, provider,
     case::rust_crypto_MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519, &OpenMlsRustCrypto::default()),
     case::rust_crypto_MLS_128_DHKEMP256_AES128GCM_SHA256_P256(Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256, &OpenMlsRustCrypto::default()),
     case::rust_crypto_MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519, &OpenMlsRustCrypto::default()),
@@ -260,7 +265,13 @@ pub fn ciphersuites(ciphersuite: Ciphersuite) {}
     case::libcrux_MLS_128_DHKEMP256_AES128GCM_SHA256_P256(Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256, &$crate::test_utils::OpenMlsLibcrux::default()),
     case::libcrux_MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519, &$crate::test_utils::OpenMlsLibcrux::default()),
   )
-]
+)]
+#[cfg_attr(not(feature = "libcrux-provider"),rstest(ciphersuite, provider,
+    case::rust_crypto_MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519, &OpenMlsRustCrypto::default()),
+    case::rust_crypto_MLS_128_DHKEMP256_AES128GCM_SHA256_P256(Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256, &OpenMlsRustCrypto::default()),
+    case::rust_crypto_MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519, &OpenMlsRustCrypto::default()),
+  )
+)]
 #[allow(non_snake_case)]
 #[cfg_attr(target_arch = "wasm32", openmls::wasm::test)]
 pub fn ciphersuites_and_providers(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {}

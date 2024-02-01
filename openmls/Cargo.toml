@@ -42,13 +42,13 @@ test-utils = [
     "dep:serde_json",
     "dep:itertools",
     "dep:openmls_rust_crypto",
-    "dep:openmls_libcrux_crypto",
     "dep:rand",
     "dep:rstest",
     "dep:rstest_reuse",
     "dep:wasm-bindgen-test",
     "dep:openmls_basic_credential",
 ]
+libcrux-provider = ["dep:openmls_libcrux_crypto",]
 crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
 content-debug = [] # ☣️ Enable logging of sensitive message content
 js = ["dep:getrandom", "dep:fluvio-wasm-timer"] # enable js randomness source for provider
