@@ -10,6 +10,8 @@ fuzz/corpus
 fuzz/artifacts
 .cargo/
 
+wasm_bench/out-*
+
 # CLion IDE
 .idea
 *.iws
