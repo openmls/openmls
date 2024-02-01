@@ -3,7 +3,6 @@
 //! [`UpdatePathNode`] instances.
 use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::{Ciphersuite, HpkeCiphertext};
-#[cfg(not(target_arch = "wasm32"))]
 use serde::{Deserialize, Serialize};
 use thiserror::*;
 use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes};
