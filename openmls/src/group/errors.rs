@@ -542,12 +542,21 @@ pub enum GroupContextExtensionsProposalValidationError {
     /// Commit has more than one GroupContextExtensions proposal.
     #[error("Commit has more than one GroupContextExtensions proposal.")]
     TooManyGCEProposals,
+
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    /// The new extensions set contails extensions that are not supported by all group members.
+
+    /// The new extension types in required capabilties contails extensions that are not supported by all group members.
     #[error(
-        "The new extensions set contails extensions that are not supported by all group members."
+        "The new required capabilties contain extension types that are not supported by all group members."
     )]
-    ExtensionNotSupportedByAllMembers,
+    RequiredExtensionNotSupportedByAllMembers,
+
+    /// An extension in the group context extensions is not listed in the required capabilties'
+    /// extension types.
+    #[error(
+        "An extension in the group context extensions is not listed in the required capabilties' extension types."
+    )]
+    ExtensionNotInRequiredCapabilities,
 }

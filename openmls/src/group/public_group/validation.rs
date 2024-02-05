@@ -6,6 +6,7 @@ use std::collections::{BTreeSet, HashSet};
 use openmls_traits::types::VerifiableCiphersuite;
 
 use super::PublicGroup;
+use crate::extensions::RequiredCapabilitiesExtension;
 use crate::group::GroupContextExtensionsProposalValidationError;
 use crate::prelude::LibraryError;
 use crate::treesync::errors::LeafNodeValidationError;
@@ -525,13 +526,34 @@ impl PublicGroup {
         match iter.next() {
             Some(queued_proposal) => match queued_proposal.proposal() {
                 Proposal::GroupContextExtensions(extensions) => {
-                    let ext_type_list: Vec<_> = extensions
+                    let required_capabilities_in_proposal =
+                        extensions.extensions().required_capabilities();
+
+                    let default_required_capabilities =
+                        RequiredCapabilitiesExtension::new(&[], &[], &[]);
+
+                    let required_capabilities = match required_capabilities_in_proposal {
+                        Some(required_capabilities_new) => {
+                            // a required capabilities extension in the group context extensions is
+                            // only valid if all member support it.
+                            self.check_extension_support(&required_capabilities_new.extension_types()).map_err(|_| GroupContextExtensionsProposalValidationError::RequiredExtensionNotSupportedByAllMembers)?;
+                            required_capabilities_new
+                        }
+                        None => self
+                            .required_capabilities()
+                            .map(|required_capabilities| required_capabilities)
+                            .unwrap_or(&default_required_capabilities),
+                    };
+
+                    let extensions_are_in_required_capabilities: bool = extensions
                         .extensions()
                         .iter()
                         .map(|ext| ext.extension_type())
-                        .collect();
+                        .all(|ext_type| required_capabilities.supports_extension_type(ext_type));
 
-                    self.check_extension_support(&ext_type_list).map_err(|_| GroupContextExtensionsProposalValidationError::ExtensionNotSupportedByAllMembers)?
+                    if !extensions_are_in_required_capabilities {
+                        return Err(GroupContextExtensionsProposalValidationError::ExtensionNotInRequiredCapabilities);
+                    }
                 }
                 _ => {
                     return Err(GroupContextExtensionsProposalValidationError::LibraryError(
