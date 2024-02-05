@@ -536,12 +536,11 @@ impl PublicGroup {
                         Some(required_capabilities_new) => {
                             // a required capabilities extension in the group context extensions is
                             // only valid if all member support it.
-                            self.check_extension_support(&required_capabilities_new.extension_types()).map_err(|_| GroupContextExtensionsProposalValidationError::RequiredExtensionNotSupportedByAllMembers)?;
+                            self.check_extension_support(required_capabilities_new.extension_types()).map_err(|_| GroupContextExtensionsProposalValidationError::RequiredExtensionNotSupportedByAllMembers)?;
                             required_capabilities_new
                         }
                         None => self
                             .required_capabilities()
-                            .map(|required_capabilities| required_capabilities)
                             .unwrap_or(&default_required_capabilities),
                     };
 
