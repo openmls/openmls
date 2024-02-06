@@ -1,7 +1,7 @@
 use std::sync::{RwLock, RwLockWriteGuard};
 
 use libcrux::drbg::{Drbg, RngCore};
-use libcrux::hpke::{self, HPKECiphertext, HPKEConfig};
+use libcrux::hpke::{self, HPKEConfig};
 use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::{
     AeadType, Ciphersuite, CryptoError, ExporterSecret, HashType, HpkeAeadType, HpkeCiphertext,
@@ -13,6 +13,7 @@ use tls_codec::SecretVLBytes;
 
 const MAX_DATA_LEN: usize = 0x10000000;
 
+/// The libcrux-backed cryptography provider for OpenMLS
 pub struct CryptoProvider {
     drbg: RwLock<Drbg>,
 }
@@ -128,8 +129,7 @@ impl OpenMlsCrypto for CryptoProvider {
         let mut msg_ctx: Vec<u8> = data.to_vec();
         let tag = libcrux::aead::encrypt(&key, &mut msg_ctx, iv, aad).map_err(|e| match e {
             libcrux::aead::Error::UnsupportedAlgorithm => CryptoError::UnsupportedAeadAlgorithm,
-            libcrux::aead::Error::EncryptionError => CryptoError::CryptoLibraryError,
-            _ => unreachable!(),
+            _ => CryptoError::CryptoLibraryError,
         })?;
 
         msg_ctx.extend_from_slice(tag.as_ref());
@@ -148,7 +148,6 @@ impl OpenMlsCrypto for CryptoProvider {
             return Err(CryptoError::InvalidLength);
         }
 
-        // TODO better way to split these?
         let boundary = ct_tag.len() - 16;
         let mut c = ct_tag[..boundary].to_vec();
         let tag = &ct_tag[boundary..];
@@ -161,7 +160,7 @@ impl OpenMlsCrypto for CryptoProvider {
             libcrux::aead::Error::UnsupportedAlgorithm => CryptoError::UnsupportedAeadAlgorithm,
             libcrux::aead::Error::EncryptionError => CryptoError::AeadDecryptionError,
             libcrux::aead::Error::DecryptionFailed => CryptoError::AeadDecryptionError,
-            _ => unreachable!(),
+            _ => CryptoError::CryptoLibraryError,
         })?;
 
         Ok(c)
@@ -219,24 +218,6 @@ impl OpenMlsCrypto for CryptoProvider {
 
         let libcrux::hpke::HPKECiphertext(kem_output, ciphertext) =
             libcrux::hpke::HpkeSeal(config, &pk_r, info, aad, ptxt, None, None, None, randomness)
-                .map_err(|e| match e {
-                    libcrux::hpke::errors::HpkeError::ValidationError => {
-                        CryptoError::InvalidPublicKey
-                    }
-                    libcrux::hpke::errors::HpkeError::EncapError => {
-                        CryptoError::HpkeEncryptionError
-                    }
-                    libcrux::hpke::errors::HpkeError::UnsupportedAlgorithm => {
-                        CryptoError::CryptoLibraryError
-                    }
-                    libcrux::hpke::errors::HpkeError::InvalidParameters => {
-                        CryptoError::CryptoLibraryError
-                    }
-                    libcrux::hpke::errors::HpkeError::CryptoError => {
-                        CryptoError::CryptoLibraryError
-                    }
-                    _ => todo!(),
-                })
                 .unwrap();
 
         let kem_output = kem_output.into();
@@ -269,11 +250,7 @@ impl OpenMlsCrypto for CryptoProvider {
                 | libcrux::hpke::errors::HpkeError::ValidationError => {
                     CryptoError::HpkeDecryptionError
                 }
-                libcrux::hpke::errors::HpkeError::DeriveKeyPairError
-                | libcrux::hpke::errors::HpkeError::UnsupportedAlgorithm
-                | libcrux::hpke::errors::HpkeError::InvalidParameters
-                | libcrux::hpke::errors::HpkeError::CryptoError => CryptoError::CryptoLibraryError,
-                _ => unreachable!(),
+                _ => CryptoError::CryptoLibraryError,
             }
         })
     }
@@ -296,19 +273,12 @@ impl OpenMlsCrypto for CryptoProvider {
 
         let pk_r = libcrux::hpke::kem::DeserializePublicKey(config.1, pk_r).unwrap();
 
-        libcrux::hpke::SendExport(
-            config,
-            &pk_r,
-            info,
-            exporter_context.to_vec(),
-            exporter_length,
-            None,
-            None,
-            None,
-            randomness,
-        )
-        .map_err(|_| todo!())
-        .map(|HPKECiphertext(enc, exported)| (enc, exported.into()))
+        let (enc, ctx) = libcrux::hpke::SetupBaseS(config, &pk_r, info, randomness)
+            .map_err(|_| CryptoError::ReceiverSetupError)?;
+
+        libcrux::hpke::Context_Export(config, &ctx, exporter_context.to_vec(), exporter_length)
+            .map_err(|_| CryptoError::ExporterError)
+            .map(|exported| (enc, exported.into()))
     }
 
     fn hpke_setup_receiver_and_export(
@@ -322,19 +292,12 @@ impl OpenMlsCrypto for CryptoProvider {
     ) -> Result<ExporterSecret, CryptoError> {
         let config = hpke_config(config);
 
-        libcrux::hpke::ReceiveExport(
-            config,
-            enc,
-            sk_r,
-            info,
-            exporter_context.to_vec(),
-            exporter_length,
-            None,
-            None,
-            None,
-        )
-        .map_err(|_| todo!())
-        .map(|bytes| ExporterSecret::from(bytes))
+        let ctx = libcrux::hpke::SetupBaseR(config, enc, sk_r, info)
+            .map_err(|_| CryptoError::ReceiverSetupError)?;
+
+        libcrux::hpke::Context_Export(config, &ctx, exporter_context.to_vec(), exporter_length)
+            .map_err(|_| CryptoError::ExporterError)
+            .map(|bytes| ExporterSecret::from(bytes))
     }
 
     fn derive_hpke_keypair(&self, config: HpkeConfig, ikm: &[u8]) -> HpkeKeyPair {
@@ -402,7 +365,7 @@ fn sig(alg: SignatureScheme, sig: &[u8]) -> Result<libcrux::signature::Signature
             .map(libcrux::signature::Signature::Ed25519)
             .map_err(|e| match e {
                 libcrux::signature::Error::InvalidSignature => CryptoError::InvalidSignature,
-                _ => unreachable!(),
+                _ => CryptoError::CryptoLibraryError,
             }),
         _ => Err(CryptoError::UnsupportedSignatureScheme),
     }
@@ -503,7 +466,6 @@ fn der_decode(mut signature_bytes: &[u8]) -> Result<Vec<u8>, CryptoError> {
             .read_u8()
             .map_err(|_| CryptoError::SignatureDecodingError)?;
         if integer_tag != INTEGER_TAG {
-            //log::error!("Error while decoding scalar: Couldn't find INTEGER tag.");
             return Err(CryptoError::SignatureDecodingError);
         };
 
@@ -514,7 +476,6 @@ fn der_decode(mut signature_bytes: &[u8]) -> Result<Vec<u8>, CryptoError> {
             .map_err(|_| CryptoError::SignatureDecodingError)?
             as usize;
         if scalar_length > P256_SCALAR_LENGTH + 1 {
-            //log::error!("Error while decoding scalar: Scalar too long.");
             return Err(CryptoError::SignatureDecodingError);
         };
 
@@ -528,7 +489,6 @@ fn der_decode(mut signature_bytes: &[u8]) -> Result<Vec<u8>, CryptoError> {
                 .map_err(|_| CryptoError::SignatureDecodingError)?
                 != 0x00
             {
-                //log::error!("Error while decoding scalar: Scalar too large or invalid encoding.");
                 return Err(CryptoError::SignatureDecodingError);
             };
             // Since we just read that byte, we decrease the length by 1.
@@ -554,7 +514,6 @@ fn der_decode(mut signature_bytes: &[u8]) -> Result<Vec<u8>, CryptoError> {
         .read_u8()
         .map_err(|_| CryptoError::SignatureDecodingError)?;
     if sequence_tag != SEQUENCE_TAG {
-        //log::error!("Error while decoding DER encoded signature: Couldn't find SEQUENCE tag.");
         return Err(CryptoError::SignatureDecodingError);
     };
 
@@ -567,13 +526,11 @@ fn der_decode(mut signature_bytes: &[u8]) -> Result<Vec<u8>, CryptoError> {
         .read_u8()
         .map_err(|_| CryptoError::SignatureDecodingError)? as usize;
     if length > 2 * (P256_SCALAR_LENGTH + 3) {
-        //log::error!("Error while decoding DER encoded signature: Signature too long.");
         return Err(CryptoError::SignatureDecodingError);
     }
 
     // The remaining bytes should be equal to the encoded length.
     if signature_bytes.len() != length {
-        //log::error!("Error while decoding DER encoded signature: Encoded length inaccurate.");
         return Err(CryptoError::SignatureDecodingError);
     }
 
@@ -583,7 +540,6 @@ fn der_decode(mut signature_bytes: &[u8]) -> Result<Vec<u8>, CryptoError> {
     // If there are bytes remaining, the encoded length was larger than the
     // length of the individual scalars..
     if !signature_bytes.is_empty() {
-        //log::error!("Error while decoding DER encoded signature: Encoded overall length does not match the sum of scalar lengths.");
         return Err(CryptoError::SignatureDecodingError);
     }
 

@@ -3,10 +3,12 @@ use std::sync::RwLock;
 use libcrux::drbg::Drbg;
 use openmls_traits::random::OpenMlsRand;
 
+/// The libcrux-backed randomness provider for OpenMLS
 pub struct RandProvider {
     drbg: RwLock<Drbg>,
 }
 
+/// An error occurred when trying to generate a random value
 #[derive(Clone, Debug, PartialEq)]
 pub enum RandError {
     /// Invalid input.
@@ -29,7 +31,6 @@ impl std::fmt::Display for RandError {
 
 impl From<libcrux::drbg::Error> for RandError {
     fn from(value: libcrux::drbg::Error) -> Self {
-        println!("drbg error: {value}");
         match value {
             libcrux::drbg::Error::InvalidInput => RandError::InvalidInput,
             libcrux::drbg::Error::UnsupportedAlgorithm => RandError::UnsupportedAlgorithm,

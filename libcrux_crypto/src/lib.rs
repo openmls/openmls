@@ -7,6 +7,7 @@ pub use crypto::CryptoProvider;
 pub use rand::RandError;
 pub use rand::RandProvider;
 
+/// The libcrux-backed provider for OpenMLS.
 pub struct Provider {
     crypto: crypto::CryptoProvider,
     rand: rand::RandProvider,
