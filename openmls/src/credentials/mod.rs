@@ -213,12 +213,13 @@ impl tls_codec::Deserialize for Credential {
         // currently specified credentials and any other credential MUST be
         // encoded in a vector as well. Otherwise this implementation will
         // either crash or exhibit unexpected behaviour.
-        let (length, _) = tls_codec::read_variable_length(bytes)?;
+        let (length, _) = tls_codec::vlen::read_length(bytes)?;
         let mut actual_credential_content = vec![0u8; length];
         bytes.read_exact(&mut actual_credential_content)?;
 
         // Rebuild the credential again.
-        let mut serialized_credential = tls_codec::write_length(length)?;
+        let mut serialized_credential = Vec::new();
+        tls_codec::vlen::write_length(&mut serialized_credential, length)?;
         serialized_credential.append(&mut actual_credential_content);
 
         Ok(Self {
