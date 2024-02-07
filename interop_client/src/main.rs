@@ -15,7 +15,7 @@ use mls_interop_proto::mls_client;
 use openmls::{
     ciphersuite::HpkePrivateKey,
     credentials::{Credential, CredentialType, CredentialWithKey},
-    framing::{MlsMessageIn, MlsMessageInBody, MlsMessageOut, ProcessedMessageContent},
+    framing::{MlsMessageBodyIn, MlsMessageIn, MlsMessageOut, ProcessedMessageContent},
     group::{
         GroupEpoch, GroupId, MlsGroup, MlsGroupCreateConfig, MlsGroupJoinConfig, WireFormatPolicy,
         PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
@@ -489,8 +489,8 @@ impl MlsClient for MlsClientImpl {
                     MlsMessageIn::tls_deserialize(&mut request.group_info.as_slice()).unwrap();
 
                 match msg.extract() {
-                    MlsMessageInBody::GroupInfo(verifiable_group_info) => verifiable_group_info,
-                    other => panic!("Expected `MlsMessageInBody::GroupInfo`, got {other:?}."),
+                    MlsMessageBodyIn::GroupInfo(verifiable_group_info) => verifiable_group_info,
+                    other => panic!("Expected `MlsMessageBodyIn::GroupInfo`, got {other:?}."),
                 }
             };
             debug!("Got `VerifiableGroupInfo`.");
@@ -695,7 +695,10 @@ impl MlsClient for MlsClientImpl {
         debug!("Processing message.");
         let processed_message = interop_group
             .group
-            .process_message(&interop_group.crypto_provider, message)
+            .process_message(
+                &interop_group.crypto_provider,
+                message.try_into_protocol_message().unwrap(),
+            )
             .map_err(into_status)?;
         debug!("Processed.");
         trace!(?processed_message);
@@ -994,7 +997,10 @@ impl MlsClient for MlsClientImpl {
             }
             trace!("Processing proposal ...");
             let processed_message = group
-                .process_message(&interop_group.crypto_provider, message)
+                .process_message(
+                    &interop_group.crypto_provider,
+                    message.try_into_protocol_message().unwrap(),
+                )
                 .map_err(into_status)?;
             trace!("... done");
 
@@ -1173,7 +1179,10 @@ impl MlsClient for MlsClientImpl {
             }
             trace!("   processing proposal ...");
             let processed_message = group
-                .process_message(&interop_group.crypto_provider, message)
+                .process_message(
+                    &interop_group.crypto_provider,
+                    message.try_into_protocol_message().unwrap(),
+                )
                 .map_err(into_status)?;
             trace!("       done");
             match processed_message.into_content() {
@@ -1197,7 +1206,10 @@ impl MlsClient for MlsClientImpl {
 
         debug!("Processing message.");
         let processed_message = group
-            .process_message(&interop_group.crypto_provider, message)
+            .process_message(
+                &interop_group.crypto_provider,
+                message.try_into_protocol_message().unwrap(),
+            )
             .map_err(into_status)?;
         debug!("Processed.");
         trace!(?processed_message);
