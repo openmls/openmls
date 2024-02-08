@@ -19,11 +19,11 @@ corresponding group.
 
 `MlsMessageIn` can carry all MLS messages, but only `PrivateMessageIn` and
 `PublicMessageIn` are processed in the context of a group. In OpenMLS these two
-message types are combined into a `ProtocolMessage` `enum`. There 3 ways to
+message types are combined into a `ProtocolMessage` `enum`. There are 3 ways to
 extract the messages from an `MlsMessageIn`:
 
 1. `MlsMessageIn.try_into_protocol_message()` returns a `Result<ProtocolMessage, ProtocolMessageError>`
-2. `ProtocolMessage::try_from(m: MlsMessageIn)` retruns a `Result<ProtocolMessage, ProtocolMessageError>`
+2. `ProtocolMessage::try_from(m: MlsMessageIn)` returns a `Result<ProtocolMessage, ProtocolMessageError>`
 3. `MlsMessageIn.extract()` returns an `MlsMessageBodyIn` `enum` that has two
    variants for `PrivateMessageIn` and `PublicMessageIn`
 
