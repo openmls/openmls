@@ -32,7 +32,7 @@ mod codec;
 mod external_pub_extension;
 mod external_sender_extension;
 mod last_resort;
-mod protected_metadata;
+mod metadata;
 mod ratchet_tree_extension;
 mod required_capabilities;
 use errors::*;
@@ -54,7 +54,7 @@ use tls_codec::{
     Size, TlsSize,
 };
 
-pub use protected_metadata::ProtectedMetadata;
+pub use metadata::Metadata;
 
 #[cfg(test)]
 mod test_extensions;
@@ -100,9 +100,9 @@ pub enum ExtensionType {
     /// scenario.
     LastResort,
 
-    /// Protected metadata extension for policies of the group. GroupContext
-    /// extension
-    ProtectedMetadata,
+    /// Immutable metadata extension for the GroupContext.
+    /// This can only be set on creation of the group.
+    ImmutableMetadata,
 
     /// A currently unknown extension type.
     Unknown(u16),
@@ -155,7 +155,7 @@ impl From<u16> for ExtensionType {
             4 => ExtensionType::ExternalPub,
             5 => ExtensionType::ExternalSenders,
             10 => ExtensionType::LastResort,
-            11 => ExtensionType::ProtectedMetadata,
+            0xf000 => ExtensionType::ImmutableMetadata,
             unknown => ExtensionType::Unknown(unknown),
         }
     }
@@ -170,7 +170,7 @@ impl From<ExtensionType> for u16 {
             ExtensionType::ExternalPub => 4,
             ExtensionType::ExternalSenders => 5,
             ExtensionType::LastResort => 10,
-            ExtensionType::ProtectedMetadata => 11,
+            ExtensionType::ImmutableMetadata => 0xf000,
             ExtensionType::Unknown(unknown) => unknown,
         }
     }
@@ -187,7 +187,7 @@ impl ExtensionType {
                 | ExtensionType::ExternalPub
                 | ExtensionType::ExternalSenders
                 | ExtensionType::LastResort
-                | ExtensionType::ProtectedMetadata
+                | ExtensionType::ImmutableMetadata
         )
     }
 }
@@ -226,8 +226,8 @@ pub enum Extension {
     /// A [`LastResortExtension`]
     LastResort(LastResortExtension),
 
-    /// A [`ProtectedMetadata`] extension
-    ProtectedMetadata(ProtectedMetadata),
+    /// An immutable [`Metadata`] extension
+    ImmutableMetadata(Metadata),
 
     /// A currently unknown extension.
     Unknown(u16, UnknownExtension),
@@ -420,11 +420,11 @@ impl Extensions {
             })
     }
 
-    /// Get a reference to the [`ProtectedMetadata`] if there is any.
-    pub fn protected_metadata(&self) -> Option<&ProtectedMetadata> {
-        self.find_by_type(ExtensionType::ProtectedMetadata)
+    /// Get a reference to the immutable [`Metadata`] if there is any.
+    pub fn immutable_metadata(&self) -> Option<&Metadata> {
+        self.find_by_type(ExtensionType::ImmutableMetadata)
             .and_then(|e| match e {
-                Extension::ProtectedMetadata(e) => Some(e),
+                Extension::ImmutableMetadata(e) => Some(e),
                 _ => None,
             })
     }
@@ -495,14 +495,14 @@ impl Extension {
         }
     }
 
-    /// Get a reference to this extension as [`ProtectedMetadata`].
+    /// Get a reference to this extension as immutable [`Metadata`].
     /// Returns an [`ExtensionError::InvalidExtensionType`] error if called on
-    /// an [`Extension`] that's not a [`ProtectedMetadata`] extension.
-    pub fn as_protected_metadata_extension(&self) -> Result<&ProtectedMetadata, ExtensionError> {
+    /// an [`Extension`] that's not an immutable [`Metadata`] extension.
+    pub fn as_immutable_metadata_extension(&self) -> Result<&Metadata, ExtensionError> {
         match self {
-            Self::ProtectedMetadata(e) => Ok(e),
+            Self::ImmutableMetadata(e) => Ok(e),
             _ => Err(ExtensionError::InvalidExtensionType(
-                "This is not an ProtectedMetadata".into(),
+                "This is not an immutable metadata extensions".into(),
             )),
         }
     }
@@ -517,7 +517,7 @@ impl Extension {
             Extension::ExternalPub(_) => ExtensionType::ExternalPub,
             Extension::ExternalSenders(_) => ExtensionType::ExternalSenders,
             Extension::LastResort(_) => ExtensionType::LastResort,
-            Extension::ProtectedMetadata(_) => ExtensionType::ProtectedMetadata,
+            Extension::ImmutableMetadata(_) => ExtensionType::ImmutableMetadata,
             Extension::Unknown(kind, _) => ExtensionType::Unknown(*kind),
         }
     }
@@ -622,7 +622,7 @@ mod test {
 
     #[test]
     fn that_unknown_extensions_are_de_serialized_correctly() {
-        let extension_types = [0x0000u16, 0x0A0A, 0x7A7A, 0xF000, 0xFFFF];
+        let extension_types = [0x0000u16, 0x0A0A, 0x7A7A, 0xF100, 0xFFFF];
         let extension_datas = [vec![], vec![0], vec![1, 2, 3]];
 
         for extension_type in extension_types.into_iter() {

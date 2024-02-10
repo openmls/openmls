@@ -1004,7 +1004,132 @@ fn remove_prosposal_by_ref(ciphersuite: Ciphersuite, provider: &impl OpenMlsProv
         _ => unreachable!("Expected a StagedCommit."),
     }
 }
-//
+
+// Test that the builder pattern accurately configures the new group.
+#[apply(ciphersuites_and_providers)]
+fn immutable_metadata(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+    let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
+        setup_client("Alice", ciphersuite, provider);
+
+    let metadata = Metadata::new(b"this is a test group".to_vec());
+
+    let extensions_with_metadata =
+        Extensions::single(Extension::ImmutableMetadata(metadata.clone()));
+
+    // === Create a Group with Metadata ===
+    let capabilities = Capabilities::new(
+        None,
+        None,
+        Some(&[ExtensionType::ImmutableMetadata]),
+        None,
+        None,
+    );
+    let mut group_with_metadata = MlsGroup::builder()
+        .with_group_context_extensions(extensions_with_metadata.clone())
+        .expect("error when setting initial metadata group extension")
+        .with_capabilities(capabilities)
+        .build(provider, &alice_signer, alice_credential_with_key.clone())
+        .expect("error creating group using builder");
+
+    let got_metadata = group_with_metadata
+        .group()
+        .group_context_extensions()
+        .immutable_metadata()
+        .expect("error getting metadata from group");
+
+    // check we get back the same metadata we initially set
+    assert_eq!(got_metadata, &metadata);
+
+    // changing the metadata should fail
+    let new_metadata = Metadata::new(b"this is a not test group".to_vec());
+
+    let new_extensions_with_metadata =
+        Extensions::single(Extension::ImmutableMetadata(new_metadata.clone()));
+
+    group_with_metadata
+        .propose_group_context_extensions(provider, new_extensions_with_metadata, &alice_signer)
+        .expect("error proposing GCE proposal with same metadata");
+
+    assert_eq!(group_with_metadata.pending_proposals().count(), 1);
+
+    group_with_metadata
+        .commit_to_pending_proposals(provider, &alice_signer)
+        .expect_err("should not have been able to commit to proposal that changes metadata");
+
+    group_with_metadata.clear_pending_proposals();
+
+    assert_eq!(group_with_metadata.pending_proposals().count(), 0);
+
+    // using the same metadata should succeed
+    group_with_metadata
+        .propose_group_context_extensions(provider, extensions_with_metadata.clone(), &alice_signer)
+        .expect("error proposing GCE proposal with same metadata");
+
+    assert_eq!(group_with_metadata.pending_proposals().count(), 1);
+
+    group_with_metadata
+        .commit_to_pending_proposals(provider, &alice_signer)
+        .expect("failed to commit to pending proposals");
+
+    group_with_metadata
+        .merge_pending_commit(provider)
+        .expect("error merging pending commit");
+
+    let got_metadata = group_with_metadata
+        .group()
+        .group_context_extensions()
+        .immutable_metadata()
+        .expect("couldn't get immutable_metadata");
+
+    // check we get back the same metadata we initially set
+    assert_eq!(got_metadata, &metadata);
+
+    // === Create a Group without Metadata ===
+    let mut group_without_metadata = MlsGroup::builder()
+        .build(provider, &alice_signer, alice_credential_with_key)
+        .expect("error creating group using builder");
+
+    assert!(group_without_metadata
+        .group()
+        .group_context_extensions()
+        .immutable_metadata()
+        .is_none());
+
+    // changing the metadata should fail
+    let new_metadata = Metadata::new(b"this is a new metadata".to_vec());
+
+    let new_extensions_with_metadata =
+        Extensions::single(Extension::ImmutableMetadata(new_metadata.clone()));
+
+    group_without_metadata
+        .propose_group_context_extensions(provider, new_extensions_with_metadata, &alice_signer)
+        .expect("error proposing GCE proposal with metadata");
+
+    // since the GCEs are the same as befroe, the proposal handling logic "deduplicates" the proposal
+    // (with the implicit "identity proposal" I guess), so there isn't actually a proposal here
+    assert_eq!(group_with_metadata.pending_proposals().count(), 0);
+
+    // using the same metadata should succeed
+    group_without_metadata
+        .propose_group_context_extensions(provider, Extensions::empty(), &alice_signer)
+        .expect("error proposing GCE proposal with no metadata");
+
+    // since the GCEs are empty, the proposal handling logic "deduplicates" the proposal
+    // (with the implicit "identity proposal" I guess), so there isn't actually a proposal here
+    assert_eq!(group_with_metadata.pending_proposals().count(), 0);
+
+    // check we still get no metadata
+    assert!(group_without_metadata
+        .group()
+        .group_context_extensions()
+        .immutable_metadata()
+        .is_none());
+
+    // TODO: we need to test that processing an invalid commit also fails.
+    //       however, we can't generate this commit, because our functions for
+    //       constructing commits does not permit it. See #1476
+}
+
 // Test that the builder pattern accurately configures the new group.
 #[apply(ciphersuites_and_providers)]
 fn group_context_extensions_proposal(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
