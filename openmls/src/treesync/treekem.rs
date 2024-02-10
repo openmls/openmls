@@ -10,6 +10,7 @@ use openmls_traits::{
     crypto::OpenMlsCrypto,
     types::{Ciphersuite, HpkeCiphertext},
 };
+#[cfg(not(target_arch = "wasm32"))]
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
@@ -70,8 +71,13 @@ impl<'a> TreeSyncDiff<'a> {
         debug_assert_eq!(copath_resolutions.len(), path.len());
 
         // Encrypt the secrets
-        path.par_iter()
-            .zip(copath_resolutions.par_iter())
+
+        #[cfg(not(target_arch = "wasm32"))]
+        let resolved_path = path.par_iter().zip(copath_resolutions.par_iter());
+        #[cfg(target_arch = "wasm32")]
+        let resolved_path = path.iter().zip(copath_resolutions.iter());
+
+        resolved_path
             .map(|(node, resolution)| node.encrypt(crypto, ciphersuite, resolution, group_context))
             .collect::<Result<Vec<UpdatePathNode>, LibraryError>>()
     }

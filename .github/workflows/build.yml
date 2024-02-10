@@ -61,5 +61,9 @@ jobs:
           else
             echo "TEST_MODE=--release" >> $GITHUB_ENV
           fi
+      - name: Build (wasm)
+        if: matrix.arch == 'wasm32-unknown-unknown'
+        run: cargo build $TEST_MODE --verbose --target ${{ matrix.arch }} -p openmls -F js
       - name: Build
+        if: ${{ matrix.arch != 'wasm32-unknown-unknown'  }} 
         run: cargo build $TEST_MODE --verbose --target ${{ matrix.arch }} -p openmls

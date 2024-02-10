@@ -146,6 +146,9 @@
     target_pointer_width = "128"
 ))]
 
+#[cfg(all(target_arch = "wasm32", not(feature = "js")))]
+compile_error!("In order for OpenMLS to build for WebAssembly, JavaScript APIs must be available (for access to secure randomness and the current time). This can be signalled by setting the `js` feature on OpenMLS.");
+
 // === Testing ===
 
 /// Single place, re-exporting all structs and functions needed for integration tests
@@ -187,3 +190,9 @@ mod tree;
 
 /// Single place, re-exporting the most used public functions.
 pub mod prelude;
+
+// this is a workaround, see https://github.com/la10736/rstest/issues/211#issuecomment-1701238125
+#[cfg(any(test, feature = "test-utils"))]
+pub mod wasm {
+    pub use wasm_bindgen_test::wasm_bindgen_test as test;
+}

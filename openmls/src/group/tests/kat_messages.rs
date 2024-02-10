@@ -645,7 +645,7 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
 
 #[test]
 fn read_test_vectors_messages() {
-    let tests: Vec<MessagesTestVector> = read("test_vectors/messages.json");
+    let tests: Vec<MessagesTestVector> = read_json!("../../../test_vectors/messages.json");
 
     for test_vector in tests {
         match run_test_vector(test_vector) {

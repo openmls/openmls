@@ -400,7 +400,7 @@ fn read_test_vectors() {
 
     let provider = OpenMlsRustCrypto::default();
 
-    let tests: Vec<CryptoBasicsTestCase> = read("test_vectors/crypto-basics.json");
+    let tests: Vec<CryptoBasicsTestCase> = read_json!("../../../test_vectors/crypto-basics.json");
     for test in tests {
         match run_test_vector(test, &provider) {
             Ok(_) => {}
