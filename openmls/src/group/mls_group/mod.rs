@@ -90,7 +90,7 @@ impl From<PendingCommitState> for StagedCommit {
 ///
 /// * [`MlsGroupState::PendingCommit`]: This state is split into two possible
 /// sub-states, one for each Commit type:
-/// [`PendingCommitState::Member`] and [`PendingCommitState::Member`]:
+/// [`PendingCommitState::Member`] and [`PendingCommitState::External`]:
 ///
 ///   * If the client creates a commit for this group, the `PendingCommit` state
 ///   is entered with [`PendingCommitState::Member`] and with the [`StagedCommit`] as
