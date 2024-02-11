@@ -15,7 +15,7 @@ use tls_codec::{
 };
 
 use super::{
-    errors::KeyPackageVerifyError, KeyPackage, KeyPackageTbs, SIGNATURE_KEY_PACKAGE_LABEL,
+    errors::KeyPackageVerifyError, InitKey, KeyPackage, KeyPackageTbs, SIGNATURE_KEY_PACKAGE_LABEL,
 };
 
 /// Intermediary struct for deserialization of a [`KeyPackageIn`].
@@ -86,7 +86,7 @@ impl VerifiedStruct for KeyPackage {}
 struct KeyPackageTbsIn {
     protocol_version: ProtocolVersion,
     ciphersuite: Ciphersuite,
-    init_key: HpkePublicKey,
+    init_key: InitKey,
     leaf_node: LeafNodeIn,
     extensions: Extensions,
 }
@@ -155,7 +155,7 @@ impl KeyPackageIn {
         }
 
         // Verify that the encryption key and the init key are different
-        if leaf_node.encryption_key().key() == &self.payload.init_key {
+        if leaf_node.encryption_key().key() == self.payload.init_key.key() {
             return Err(KeyPackageVerifyError::InitKeyEqualsEncryptionKey);
         }
 
