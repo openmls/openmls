@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/schedule/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-9ee3a5e31a2afa3e.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0 (82e1608df 2023-12-21)" data-channel="1.75.0" data-search-js="search-8fbf244ebcf71464.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-9dd44ab47b99a0fb.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/schedule/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1242,7 +1243,7 @@
 //    commit_secret -&gt; KDF.Extract
 //                         |
 //                         V
-//                   DeriveSecret(., &quot;joiner&quot;)
+//                   DeriveSecret(., "joiner")
 //                         |
 //                         V
 //                    joiner_secret
@@ -1250,11 +1251,11 @@
 //                         V
 // psk_secret (or 0) -&gt; KDF.Extract (= intermediary_secret)
 //                         |
-//                         +--&gt; DeriveSecret(., &quot;welcome&quot;)
+//                         +--&gt; DeriveSecret(., "welcome")
 //                         |    = welcome_secret
 //                         |
 //                         V
-//                   ExpandWithLabel(., &quot;epoch&quot;, GroupContext_[n], KDF.Nh)
+//                   ExpandWithLabel(., "epoch", GroupContext_[n], KDF.Nh)
 //                         |
 //                         V
 //                    epoch_secret
@@ -1263,7 +1264,7 @@
 //                         |    = &lt;secret&gt;
 //                         |
 //                         V
-//                   DeriveSecret(., &quot;init&quot;)
+//                   DeriveSecret(., "init")
 //                         |
 //                         V
 //                   init_secret_[n]
@@ -1275,7 +1276,7 @@
 // out-of-order.
 //
 // ## The real key schedules
-// The key schedule as described in the spec isn&#39;t really one key schedule.
+// The key schedule as described in the spec isn't really one key schedule.
 // The `joiner_secret` is an intermediate value *and* an output value. This
 // must never be the case within a key schedule. The actual key schedule is
 // therefore only the second half starting with the `joiner_secret`, which
@@ -1284,7 +1285,7 @@
 // The `joiner_secret` is computed as
 //
 // ```text
-//     DeriveSecret(KDF.Extract(init_secret_[n-1], commit_secret), &quot;joiner&quot;)
+//     DeriveSecret(KDF.Extract(init_secret_[n-1], commit_secret), "joiner")
 // ```
 //
 // or
@@ -1296,7 +1297,7 @@
 //    commit_secret -&gt; KDF.Extract
 //                         |
 //                         V
-//                   DeriveSecret(., &quot;joiner&quot;)
+//                   DeriveSecret(., "joiner")
 //                         |
 //                         V
 //                    joiner_secret
@@ -1314,11 +1315,11 @@
 //                         V
 // psk_secret (or 0) -&gt; KDF.Extract
 //                         |
-//                         +--&gt; DeriveSecret(., &quot;welcome&quot;)
+//                         +--&gt; DeriveSecret(., "welcome")
 //                         |    = welcome_secret
 //                         |
 //                         V
-// GroupContext_[n] -&gt; ExpandWithLabel(., &quot;epoch&quot;, GroupContext_[n], KDF.Nh)
+// GroupContext_[n] -&gt; ExpandWithLabel(., "epoch", GroupContext_[n], KDF.Nh)
 //                         |
 //                         V
 //                    epoch_secret
@@ -1333,15 +1334,15 @@
 // ```text
 // | secret                  | label           |
 // |:------------------------|:----------------|
-// | `init_secret`           | &quot;init&quot;          |
-// | `sender_data_secret`    | &quot;sender data&quot;   |
-// | `encryption_secret`     | &quot;encryption&quot;    |
-// | `exporter_secret`       | &quot;exporter&quot;      |
-// | `epoch_authenticator`   | &quot;authentication&quot;|
-// | `external_secret`       | &quot;external&quot;      |
-// | `confirmation_key`      | &quot;confirm&quot;       |
-// | `membership_key`        | &quot;membership&quot;    |
-// | `resumption_psk`        | &quot;resumption&quot;    |
+// | `init_secret`           | "init"          |
+// | `sender_data_secret`    | "sender data"   |
+// | `encryption_secret`     | "encryption"    |
+// | `exporter_secret`       | "exporter"      |
+// | `epoch_authenticator`   | "authentication"|
+// | `external_secret`       | "external"      |
+// | `confirmation_key`      | "confirm"       |
+// | `membership_key`        | "membership"    |
+// | `resumption_psk`        | "resumption"    |
 // ```
 
 </span><span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::<span class="kw-2">*</span>};
@@ -1373,7 +1374,7 @@
 <span class="kw">use </span>psk::PskSecret;
 
 <span class="comment">// Tests
-</span><span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+</span><span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
 </span><span class="kw">pub mod </span>kat_key_schedule;
 <span class="attr">#[cfg(test)]
 </span><span class="kw">pub mod </span>kat_psk_secret;
@@ -1394,7 +1395,7 @@
 <span class="kw">impl </span>ResumptionPskSecret {
     <span class="doccomment">/// Derive an `ResumptionPsk` from an `EpochSecret`.
     </span><span class="kw">fn </span>new(crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto, epoch_secret: <span class="kw-2">&amp;</span>EpochSecret) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, CryptoError&gt; {
-        <span class="kw">let </span>secret = epoch_secret.secret.derive_secret(crypto, <span class="string">&quot;resumption&quot;</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>secret = epoch_secret.secret.derive_secret(crypto, <span class="string">"resumption"</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{ secret })
     }
 
@@ -1417,7 +1418,7 @@
     </span><span class="kw">fn </span>new(crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto, epoch_secret: <span class="kw-2">&amp;</span>EpochSecret) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, CryptoError&gt; {
         <span class="kw">let </span>secret = epoch_secret
             .secret
-            .derive_secret(crypto, <span class="string">&quot;authentication&quot;</span>)<span class="question-mark">?</span>;
+            .derive_secret(crypto, <span class="string">"authentication"</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{ secret })
     }
 
@@ -1431,7 +1432,7 @@
 
 </span><span class="attr">#[derive(Debug, Default, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
-#[cfg_attr(any(feature = <span class="string">&quot;test-utils&quot;</span>, test), derive(Clone))]
+#[cfg_attr(any(feature = <span class="string">"test-utils"</span>, test), derive(Clone))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>CommitSecret {
     secret: Secret,
 }
@@ -1453,15 +1454,15 @@
         }
     }
 
-    <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    <span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>random(ciphersuite: Ciphersuite, rng: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsRand) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             secret: Secret::random(ciphersuite, rng, <span class="prelude-val">None </span><span class="comment">/* MLS version */</span>)
-                .expect(<span class="string">&quot;Not enough randomness.&quot;</span>),
+                .expect(<span class="string">"Not enough randomness."</span>),
         }
     }
 
-    <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    <span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>as_slice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
         <span class="self">self</span>.secret.as_slice()
     }
@@ -1483,18 +1484,18 @@
 <span class="doccomment">/// Creates a string from the given MLS `ProtocolVersion` for the computation of
 /// the `init_secret` when creating or processing a commit with an external init
 /// proposal. TODO: #628.
-</span><span class="kw">fn </span>hpke_info_from_version(version: ProtocolVersion) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str {
+</span><span class="kw">fn </span>hpke_info_from_version(version: ProtocolVersion) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">'static </span>str {
     <span class="kw">match </span>version {
-        ProtocolVersion::Mls10 =&gt; <span class="string">&quot;MLS 1.0 external init secret&quot;</span>,
-        ProtocolVersion::Mls10Draft11 =&gt; <span class="string">&quot;&lt;OpenMLS reserved; Don&#39;t use this.&gt;&quot;</span>,
+        ProtocolVersion::Mls10 =&gt; <span class="string">"MLS 1.0 external init secret"</span>,
+        ProtocolVersion::Mls10Draft11 =&gt; <span class="string">"&lt;OpenMLS reserved; Don't use this.&gt;"</span>,
     }
 }
 
 <span class="kw">impl </span>InitSecret {
     <span class="doccomment">/// Derive an `InitSecret` from an `EpochSecret`.
     </span><span class="kw">fn </span>new(crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto, epoch_secret: EpochSecret) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, CryptoError&gt; {
-        <span class="kw">let </span>secret = epoch_secret.secret.derive_secret(crypto, <span class="string">&quot;init&quot;</span>)<span class="question-mark">?</span>;
-        <span class="macro">log_crypto!</span>(trace, <span class="string">&quot;Init secret: {:x?}&quot;</span>, secret);
+        <span class="kw">let </span>secret = epoch_secret.secret.derive_secret(crypto, <span class="string">"init"</span>)<span class="question-mark">?</span>;
+        <span class="macro">log_crypto!</span>(trace, <span class="string">"Init secret: {:x?}"</span>, secret);
         <span class="prelude-val">Ok</span>(InitSecret { secret })
     }
 
@@ -1555,14 +1556,14 @@
         })
     }
 
-    <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    <span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>clone(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             secret: <span class="self">self</span>.secret.clone(),
         }
     }
 
-    <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    <span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>as_slice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
         <span class="self">self</span>.secret.as_slice()
     }
@@ -1590,11 +1591,11 @@
         )<span class="question-mark">?</span>;
         <span class="kw">let </span>secret = intermediate_secret.kdf_expand_label(
             crypto,
-            <span class="string">&quot;joiner&quot;</span>,
+            <span class="string">"joiner"</span>,
             serialized_group_context,
             intermediate_secret.ciphersuite().hash_length(),
         )<span class="question-mark">?</span>;
-        <span class="macro">log_crypto!</span>(trace, <span class="string">&quot;Joiner secret: {:x?}&quot;</span>, secret);
+        <span class="macro">log_crypto!</span>(trace, <span class="string">"Joiner secret: {:x?}"</span>, secret);
         <span class="prelude-val">Ok</span>(JoinerSecret { secret })
     }
 
@@ -1603,7 +1604,7 @@
         <span class="self">self</span>.secret.config(ciphersuite, mls_version);
     }
 
-    <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    <span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>as_slice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
         <span class="self">self</span>.secret.as_slice()
     }
@@ -1615,7 +1616,7 @@
         version: ProtocolVersion,
     ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            secret: Secret::random(ciphersuite, rand, version).expect(<span class="string">&quot;Not enough randomness.&quot;</span>),
+            secret: Secret::random(ciphersuite, rand, version).expect(<span class="string">"Not enough randomness."</span>),
         }
     }
 }
@@ -1643,10 +1644,10 @@
         joiner_secret: <span class="kw-2">&amp;</span>JoinerSecret,
         psk: PskSecret,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
-        <span class="macro">log::debug!</span>(<span class="string">&quot;Initializing the key schedule with {:?} ...&quot;</span>, ciphersuite);
+        <span class="macro">log::debug!</span>(<span class="string">"Initializing the key schedule with {:?} ..."</span>, ciphersuite);
         <span class="macro">log_crypto!</span>(
             trace,
-            <span class="string">&quot;  joiner_secret: {:x?}&quot;</span>,
+            <span class="string">"  joiner_secret: {:x?}"</span>,
             joiner_secret.secret.as_slice()
         );
         <span class="kw">let </span>intermediate_secret = IntermediateSecret::new(crypto, joiner_secret, psk)
@@ -1666,7 +1667,7 @@
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;WelcomeSecret, KeyScheduleError&gt; {
         <span class="kw">if </span><span class="self">self</span>.state != State::Initial || <span class="self">self</span>.intermediate_secret.is_none() {
-            <span class="macro">log::error!</span>(<span class="string">&quot;Trying to derive a welcome secret while not in the initial state.&quot;</span>);
+            <span class="macro">log::error!</span>(<span class="string">"Trying to derive a welcome secret while not in the initial state."</span>);
             <span class="kw">return </span><span class="prelude-val">Err</span>(KeyScheduleError::InvalidState(ErrorState::Init));
         }
 
@@ -1674,7 +1675,7 @@
         </span><span class="kw">let </span>intermediate_secret = <span class="self">self
             </span>.intermediate_secret
             .as_ref()
-            .ok_or_else(|| LibraryError::custom(<span class="string">&quot;state machine error&quot;</span>))<span class="question-mark">?</span>;
+            .ok_or_else(|| LibraryError::custom(<span class="string">"state machine error"</span>))<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(WelcomeSecret::new(crypto, intermediate_secret)<span class="question-mark">?</span>)
     }
@@ -1686,12 +1687,12 @@
         serialized_group_context: <span class="kw-2">&amp;</span>[u8],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), KeyScheduleError&gt; {
         <span class="macro">log::trace!</span>(
-            <span class="string">&quot;Adding context to key schedule. {:?}&quot;</span>,
+            <span class="string">"Adding context to key schedule. {:?}"</span>,
             serialized_group_context
         );
         <span class="kw">if </span><span class="self">self</span>.state != State::Initial || <span class="self">self</span>.intermediate_secret.is_none() {
             <span class="macro">log::error!</span>(
-                <span class="string">&quot;Trying to add context to the key schedule while not in the initial state.&quot;
+                <span class="string">"Trying to add context to the key schedule while not in the initial state."
             </span>);
             <span class="kw">return </span><span class="prelude-val">Err</span>(KeyScheduleError::InvalidState(ErrorState::Init));
         }
@@ -1701,11 +1702,11 @@
         </span><span class="kw">let </span>intermediate_secret = <span class="self">self
             </span>.intermediate_secret
             .take()
-            .ok_or_else(|| LibraryError::custom(<span class="string">&quot;state machine error&quot;</span>))<span class="question-mark">?</span>;
+            .ok_or_else(|| LibraryError::custom(<span class="string">"state machine error"</span>))<span class="question-mark">?</span>;
 
         <span class="macro">log_crypto!</span>(
             trace,
-            <span class="string">&quot;  intermediate_secret: {:x?}&quot;</span>,
+            <span class="string">"  intermediate_secret: {:x?}"</span>,
             intermediate_secret.secret.as_slice()
         );
 
@@ -1727,7 +1728,7 @@
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;EpochSecrets, KeyScheduleError&gt; {
         <span class="kw">if </span><span class="self">self</span>.state != State::Context || <span class="self">self</span>.epoch_secret.is_none() {
-            <span class="macro">log::error!</span>(<span class="string">&quot;Trying to derive the epoch secrets while not in the right state.&quot;</span>);
+            <span class="macro">log::error!</span>(<span class="string">"Trying to derive the epoch secrets while not in the right state."</span>);
             <span class="kw">return </span><span class="prelude-val">Err</span>(KeyScheduleError::InvalidState(ErrorState::Context));
         }
         <span class="self">self</span>.state = State::Done;
@@ -1735,7 +1736,7 @@
         <span class="kw">let </span>epoch_secret = <span class="kw">match </span><span class="self">self</span>.epoch_secret.take() {
             <span class="prelude-val">Some</span>(epoch_secret) =&gt; epoch_secret,
             <span class="comment">// We can return a library error here, because there must be a mistake in the state machine
-            </span><span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(LibraryError::custom(<span class="string">&quot;state machine error&quot;</span>).into()),
+            </span><span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(LibraryError::custom(<span class="string">"state machine error"</span>).into()),
         };
 
         <span class="prelude-val">Ok</span>(EpochSecrets::new(crypto, epoch_secret)<span class="question-mark">?</span>)
@@ -1756,9 +1757,9 @@
         joiner_secret: <span class="kw-2">&amp;</span>JoinerSecret,
         psk: PskSecret,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, CryptoError&gt; {
-        <span class="macro">log_crypto!</span>(trace, <span class="string">&quot;PSK input: {:x?}&quot;</span>, psk.as_slice());
+        <span class="macro">log_crypto!</span>(trace, <span class="string">"PSK input: {:x?}"</span>, psk.as_slice());
         <span class="kw">let </span>secret = joiner_secret.secret.hkdf_extract(crypto, psk.secret())<span class="question-mark">?</span>;
-        <span class="macro">log_crypto!</span>(trace, <span class="string">&quot;Intermediate secret: {:x?}&quot;</span>, secret);
+        <span class="macro">log_crypto!</span>(trace, <span class="string">"Intermediate secret: {:x?}"</span>, secret);
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{ secret })
     }
 }
@@ -1775,8 +1776,8 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, CryptoError&gt; {
         <span class="kw">let </span>secret = intermediate_secret
             .secret
-            .derive_secret(crypto, <span class="string">&quot;welcome&quot;</span>)<span class="question-mark">?</span>;
-        <span class="macro">log_crypto!</span>(trace, <span class="string">&quot;Welcome secret: {:x?}&quot;</span>, secret);
+            .derive_secret(crypto, <span class="string">"welcome"</span>)<span class="question-mark">?</span>;
+        <span class="macro">log_crypto!</span>(trace, <span class="string">"Welcome secret: {:x?}"</span>, secret);
         <span class="prelude-val">Ok</span>(WelcomeSecret { secret })
     }
 
@@ -1794,13 +1795,13 @@
     <span class="doccomment">/// Derive a new AEAD key from a `WelcomeSecret`.
     </span><span class="kw">fn </span>derive_aead_key(<span class="kw-2">&amp;</span><span class="self">self</span>, crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto) -&gt; <span class="prelude-ty">Result</span>&lt;AeadKey, CryptoError&gt; {
         <span class="macro">log::trace!</span>(
-            <span class="string">&quot;WelcomeSecret.derive_aead_key with {}&quot;</span>,
+            <span class="string">"WelcomeSecret.derive_aead_key with {}"</span>,
             <span class="self">self</span>.secret.ciphersuite()
         );
         <span class="kw">let </span>aead_secret = <span class="self">self</span>.secret.kdf_expand_label(
             crypto,
-            <span class="string">&quot;key&quot;</span>,
-            <span class="string">b&quot;&quot;</span>,
+            <span class="string">"key"</span>,
+            <span class="string">b""</span>,
             <span class="self">self</span>.secret.ciphersuite().aead_key_length(),
         )<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(AeadKey::from_secret(aead_secret))
@@ -1810,14 +1811,14 @@
     </span><span class="kw">fn </span>derive_aead_nonce(<span class="kw-2">&amp;</span><span class="self">self</span>, crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto) -&gt; <span class="prelude-ty">Result</span>&lt;AeadNonce, CryptoError&gt; {
         <span class="kw">let </span>nonce_secret = <span class="self">self</span>.secret.kdf_expand_label(
             crypto,
-            <span class="string">&quot;nonce&quot;</span>,
-            <span class="string">b&quot;&quot;</span>,
+            <span class="string">"nonce"</span>,
+            <span class="string">b""</span>,
             <span class="self">self</span>.secret.ciphersuite().aead_nonce_length(),
         )<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(AeadNonce::from_secret(nonce_secret))
     }
 
-    <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    <span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>as_slice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
         <span class="self">self</span>.secret.as_slice()
     }
@@ -1825,7 +1826,7 @@
 
 <span class="doccomment">/// An intermediate secret in the key schedule, the `EpochSecret` is used to
 /// create an `EpochSecrets` object and is finally consumed when creating that
-/// epoch&#39;s `InitSecret`.
+/// epoch's `InitSecret`.
 </span><span class="kw">struct </span>EpochSecret {
     secret: Secret,
 }
@@ -1840,11 +1841,11 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, CryptoError&gt; {
         <span class="kw">let </span>secret = intermediate_secret.secret.kdf_expand_label(
             crypto,
-            <span class="string">&quot;epoch&quot;</span>,
+            <span class="string">"epoch"</span>,
             serialized_group_context,
             ciphersuite.hash_length(),
         )<span class="question-mark">?</span>;
-        <span class="macro">log_crypto!</span>(trace, <span class="string">&quot;Epoch secret: {:x?}&quot;</span>, secret);
+        <span class="macro">log_crypto!</span>(trace, <span class="string">"Epoch secret: {:x?}"</span>, secret);
         <span class="prelude-val">Ok</span>(EpochSecret { secret })
     }
 }
@@ -1859,7 +1860,7 @@
     <span class="doccomment">/// Derive an encryption secret from a reference to an `EpochSecret`.
     </span><span class="kw">fn </span>new(crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto, epoch_secret: <span class="kw-2">&amp;</span>EpochSecret) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, CryptoError&gt; {
         <span class="prelude-val">Ok</span>(EncryptionSecret {
-            secret: epoch_secret.secret.derive_secret(crypto, <span class="string">&quot;encryption&quot;</span>)<span class="question-mark">?</span>,
+            secret: epoch_secret.secret.derive_secret(crypto, <span class="string">"encryption"</span>)<span class="question-mark">?</span>,
         })
     }
 
@@ -1882,16 +1883,16 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>random(ciphersuite: Ciphersuite, rng: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsRand) -&gt; <span class="self">Self </span>{
         EncryptionSecret {
             secret: Secret::random(ciphersuite, rng, <span class="prelude-val">None </span><span class="comment">/* MLS version */</span>)
-                .expect(<span class="string">&quot;Not enough randomness.&quot;</span>),
+                .expect(<span class="string">"Not enough randomness."</span>),
         }
     }
 
-    <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    <span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>as_slice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
         <span class="self">self</span>.secret.as_slice()
     }
 
-    <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    <span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
     </span><span class="doccomment">/// Create a new secret from a byte vector.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_slice(
         bytes: <span class="kw-2">&amp;</span>[u8],
@@ -1914,11 +1915,11 @@
 <span class="kw">impl </span>ExporterSecret {
     <span class="doccomment">/// Derive an `ExporterSecret` from an `EpochSecret`.
     </span><span class="kw">fn </span>new(crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto, epoch_secret: <span class="kw-2">&amp;</span>EpochSecret) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, CryptoError&gt; {
-        <span class="kw">let </span>secret = epoch_secret.secret.derive_secret(crypto, <span class="string">&quot;exporter&quot;</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>secret = epoch_secret.secret.derive_secret(crypto, <span class="string">"exporter"</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(ExporterSecret { secret })
     }
 
-    <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    <span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>as_slice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
         <span class="self">self</span>.secret.as_slice()
     }
@@ -1938,7 +1939,7 @@
         <span class="prelude-val">Ok</span>(<span class="self">self
             </span>.secret
             .derive_secret(crypto, label)<span class="question-mark">?
-            </span>.kdf_expand_label(crypto, <span class="string">&quot;exported&quot;</span>, context_hash, key_length)<span class="question-mark">?
+            </span>.kdf_expand_label(crypto, <span class="string">"exported"</span>, context_hash, key_length)<span class="question-mark">?
             </span>.as_slice()
             .to_vec())
     }
@@ -1954,7 +1955,7 @@
 <span class="kw">impl </span>ExternalSecret {
     <span class="doccomment">/// Derive an `ExternalSecret` from an `EpochSecret`.
     </span><span class="kw">fn </span>new(crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto, epoch_secret: <span class="kw-2">&amp;</span>EpochSecret) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, CryptoError&gt; {
-        <span class="kw">let </span>secret = epoch_secret.secret.derive_secret(crypto, <span class="string">&quot;external&quot;</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>secret = epoch_secret.secret.derive_secret(crypto, <span class="string">"external"</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{ secret })
     }
 
@@ -1967,7 +1968,7 @@
         crypto.derive_hpke_keypair(ciphersuite.hpke_config(), <span class="self">self</span>.secret.as_slice())
     }
 
-    <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    <span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>as_slice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
         <span class="self">self</span>.secret.as_slice()
     }
@@ -1983,13 +1984,13 @@
 <span class="kw">impl </span>ConfirmationKey {
     <span class="doccomment">/// Derive an `ConfirmationKey` from an `EpochSecret`.
     </span><span class="kw">fn </span>new(crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto, epoch_secret: <span class="kw-2">&amp;</span>EpochSecret) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, CryptoError&gt; {
-        <span class="macro">log::debug!</span>(<span class="string">&quot;Computing confirmation key.&quot;</span>);
+        <span class="macro">log::debug!</span>(<span class="string">"Computing confirmation key."</span>);
         <span class="macro">log_crypto!</span>(
             trace,
-            <span class="string">&quot;  epoch_secret {:x?}&quot;</span>,
+            <span class="string">"  epoch_secret {:x?}"</span>,
             epoch_secret.secret.as_slice()
         );
-        <span class="kw">let </span>secret = epoch_secret.secret.derive_secret(crypto, <span class="string">&quot;confirm&quot;</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>secret = epoch_secret.secret.derive_secret(crypto, <span class="string">"confirm"</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{ secret })
     }
 
@@ -2006,9 +2007,9 @@
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         confirmed_transcript_hash: <span class="kw-2">&amp;</span>[u8],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ConfirmationTag, CryptoError&gt; {
-        <span class="macro">log::debug!</span>(<span class="string">&quot;Computing confirmation tag.&quot;</span>);
-        <span class="macro">log_crypto!</span>(trace, <span class="string">&quot;  confirmation key {:x?}&quot;</span>, <span class="self">self</span>.secret.as_slice());
-        <span class="macro">log_crypto!</span>(trace, <span class="string">&quot;  transcript hash  {:x?}&quot;</span>, confirmed_transcript_hash);
+        <span class="macro">log::debug!</span>(<span class="string">"Computing confirmation tag."</span>);
+        <span class="macro">log_crypto!</span>(trace, <span class="string">"  confirmation key {:x?}"</span>, <span class="self">self</span>.secret.as_slice());
+        <span class="macro">log_crypto!</span>(trace, <span class="string">"  transcript hash  {:x?}"</span>, confirmed_transcript_hash);
         <span class="prelude-val">Ok</span>(ConfirmationTag(Mac::new(
             crypto,
             <span class="kw-2">&amp;</span><span class="self">self</span>.secret,
@@ -2024,12 +2025,12 @@
     }
 }
 
-<span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+<span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
 </span><span class="kw">impl </span>ConfirmationKey {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>random(ciphersuite: Ciphersuite, rng: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsRand) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             secret: Secret::random(ciphersuite, rng, <span class="prelude-val">None </span><span class="comment">/* MLS version */</span>)
-                .expect(<span class="string">&quot;Not enough randomness.&quot;</span>),
+                .expect(<span class="string">"Not enough randomness."</span>),
         }
     }
 
@@ -2048,7 +2049,7 @@
 <span class="kw">impl </span>MembershipKey {
     <span class="doccomment">/// Derive an `MembershipKey` from an `EpochSecret`.
     </span><span class="kw">fn </span>new(crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto, epoch_secret: <span class="kw-2">&amp;</span>EpochSecret) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, CryptoError&gt; {
-        <span class="kw">let </span>secret = epoch_secret.secret.derive_secret(crypto, <span class="string">&quot;membership&quot;</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>secret = epoch_secret.secret.derive_secret(crypto, <span class="string">"membership"</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{ secret })
     }
 
@@ -2076,21 +2077,21 @@
         ))
     }
 
-    <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    <span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_secret(secret: Secret) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{ secret }
     }
 
-    <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    <span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>as_slice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
         <span class="self">self</span>.secret.as_slice()
     }
 
-    <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    <span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>random(ciphersuite: Ciphersuite, rng: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsRand) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             secret: Secret::random(ciphersuite, rng, <span class="prelude-val">None </span><span class="comment">/* MLS version */</span>)
-                .expect(<span class="string">&quot;Not enough randomness.&quot;</span>),
+                .expect(<span class="string">"Not enough randomness."</span>),
         }
     }
 }
@@ -2098,7 +2099,7 @@
 <span class="comment">// Get a ciphertext sample of `hash_length` from the ciphertext.
 </span><span class="kw">fn </span>ciphertext_sample(ciphersuite: Ciphersuite, ciphertext: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="kw-2">&amp;</span>[u8] {
     <span class="kw">let </span>sample_length = ciphersuite.hash_length();
-    <span class="macro">log::debug!</span>(<span class="string">&quot;Getting ciphertext sample of length {:?}&quot;</span>, sample_length);
+    <span class="macro">log::debug!</span>(<span class="string">"Getting ciphertext sample of length {:?}"</span>, sample_length);
     <span class="kw">if </span>ciphertext.len() &lt;= sample_length {
         ciphertext
     } <span class="kw">else </span>{
@@ -2109,7 +2110,7 @@
 <span class="doccomment">/// A key that can be used to derive an `AeadKey` and an `AeadNonce`.
 </span><span class="attr">#[derive(Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
-#[cfg_attr(any(feature = <span class="string">&quot;test-utils&quot;</span>, test), derive(Debug, Clone))]
+#[cfg_attr(any(feature = <span class="string">"test-utils"</span>, test), derive(Debug, Clone))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>SenderDataSecret {
     secret: Secret,
 }
@@ -2117,7 +2118,7 @@
 <span class="kw">impl </span>SenderDataSecret {
     <span class="doccomment">/// Derive an `ExporterSecret` from an `EpochSecret`.
     </span><span class="kw">fn </span>new(crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto, epoch_secret: <span class="kw-2">&amp;</span>EpochSecret) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, CryptoError&gt; {
-        <span class="kw">let </span>secret = epoch_secret.secret.derive_secret(crypto, <span class="string">&quot;sender data&quot;</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>secret = epoch_secret.secret.derive_secret(crypto, <span class="string">"sender data"</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(SenderDataSecret { secret })
     }
 
@@ -2129,12 +2130,12 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;AeadKey, CryptoError&gt; {
         <span class="kw">let </span>ciphertext_sample = ciphertext_sample(<span class="self">self</span>.secret.ciphersuite(), ciphertext);
         <span class="macro">log::debug!</span>(
-            <span class="string">&quot;SenderDataSecret::derive_aead_key ciphertext sample: {:x?}&quot;</span>,
+            <span class="string">"SenderDataSecret::derive_aead_key ciphertext sample: {:x?}"</span>,
             ciphertext_sample
         );
         <span class="kw">let </span>secret = <span class="self">self</span>.secret.kdf_expand_label(
             crypto,
-            <span class="string">&quot;key&quot;</span>,
+            <span class="string">"key"</span>,
             ciphertext_sample,
             <span class="self">self</span>.secret.ciphersuite().aead_key_length(),
         )<span class="question-mark">?</span>;
@@ -2150,32 +2151,32 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;AeadNonce, CryptoError&gt; {
         <span class="kw">let </span>ciphertext_sample = ciphertext_sample(ciphersuite, ciphertext);
         <span class="macro">log::debug!</span>(
-            <span class="string">&quot;SenderDataSecret::derive_aead_nonce ciphertext sample: {:x?}&quot;</span>,
+            <span class="string">"SenderDataSecret::derive_aead_nonce ciphertext sample: {:x?}"</span>,
             ciphertext_sample
         );
         <span class="kw">let </span>nonce_secret = <span class="self">self</span>.secret.kdf_expand_label(
             crypto,
-            <span class="string">&quot;nonce&quot;</span>,
+            <span class="string">"nonce"</span>,
             ciphertext_sample,
             ciphersuite.aead_nonce_length(),
         )<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(AeadNonce::from_secret(nonce_secret))
     }
 
-    <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    <span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>random(ciphersuite: Ciphersuite, rng: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsRand) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             secret: Secret::random(ciphersuite, rng, <span class="prelude-val">None </span><span class="comment">/* MLS version */</span>)
-                .expect(<span class="string">&quot;Not enough randomness.&quot;</span>),
+                .expect(<span class="string">"Not enough randomness."</span>),
         }
     }
 
-    <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    <span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>as_slice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
         <span class="self">self</span>.secret.as_slice()
     }
 
-    <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    <span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
     </span><span class="doccomment">/// Create a new secret from a byte vector.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_slice(
         bytes: <span class="kw-2">&amp;</span>[u8],
@@ -2189,20 +2190,20 @@
 }
 
 <span class="doccomment">/// The `EpochSecrets` contain keys (or secrets), which are accessible outside
-/// of the `KeySchedule` and which don&#39;t get consumed immediately upon first
+/// of the `KeySchedule` and which don't get consumed immediately upon first
 /// use.
 ///
 /// | Secret                  | Label           |
 /// |:------------------------|:----------------|
-/// | `init_secret`           | &quot;init&quot;          |
-/// | `sender_data_secret`    | &quot;sender data&quot;   |
-/// | `encryption_secret`     | &quot;encryption&quot;    |
-/// | `exporter_secret`       | &quot;exporter&quot;      |
-/// | `epoch_authenticator`   | &quot;authentication&quot;|
-/// | `external_secret`       | &quot;external&quot;      |
-/// | `confirmation_key`      | &quot;confirm&quot;       |
-/// | `membership_key`        | &quot;membership&quot;    |
-/// | `resumption_psk`        | &quot;resumption&quot;    |
+/// | `init_secret`           | "init"          |
+/// | `sender_data_secret`    | "sender data"   |
+/// | `encryption_secret`     | "encryption"    |
+/// | `exporter_secret`       | "exporter"      |
+/// | `epoch_authenticator`   | "authentication"|
+/// | `external_secret`       | "external"      |
+/// | `confirmation_key`      | "confirm"       |
+/// | `membership_key`        | "membership"    |
+/// | `resumption_psk`        | "resumption"    |
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>EpochSecrets {
     init_secret: InitSecret,
     sender_data_secret: SenderDataSecret,
@@ -2216,8 +2217,8 @@
 }
 
 <span class="kw">impl </span>std::fmt::Debug <span class="kw">for </span>EpochSecrets {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
-        f.write_str(<span class="string">&quot;EpochSecrets { *** }&quot;</span>)
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
+        f.write_str(<span class="string">"EpochSecrets { *** }"</span>)
     }
 }
 
@@ -2244,7 +2245,7 @@
 
 <span class="kw">impl </span>EpochSecrets {
     <span class="doccomment">/// Get the sender_data secret.
-    </span><span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    </span><span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>sender_data_secret(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>SenderDataSecret {
         <span class="kw-2">&amp;</span><span class="self">self</span>.sender_data_secret
     }
@@ -2255,19 +2256,19 @@
     }
 
     <span class="doccomment">/// Epoch authenticator
-    </span><span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    </span><span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>epoch_authenticator(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>EpochAuthenticator {
         <span class="kw-2">&amp;</span><span class="self">self</span>.epoch_authenticator
     }
 
     <span class="doccomment">/// Exporter secret
-    </span><span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    </span><span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>exporter_secret(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ExporterSecret {
         <span class="kw-2">&amp;</span><span class="self">self</span>.exporter_secret
     }
 
     <span class="doccomment">/// Membership key
-    </span><span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    </span><span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>membership_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>MembershipKey {
         <span class="kw-2">&amp;</span><span class="self">self</span>.membership_key
     }
@@ -2278,19 +2279,19 @@
     }
 
     <span class="doccomment">/// External secret
-    </span><span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    </span><span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>resumption_psk(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ResumptionPskSecret {
         <span class="kw-2">&amp;</span><span class="self">self</span>.resumption_psk
     }
 
     <span class="doccomment">/// Init secret
-    </span><span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    </span><span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>init_secret(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>InitSecret {
         <span class="kw-2">&amp;</span><span class="self">self</span>.init_secret
     }
 
     <span class="doccomment">/// Encryption secret
-    </span><span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    </span><span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encryption_secret(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>EncryptionSecret {
         <span class="kw-2">&amp;</span><span class="self">self</span>.encryption_secret
     }
@@ -2300,12 +2301,12 @@
     /// part of the `EpochSecrets`. Otherwise not.
     </span><span class="kw">fn </span>new(crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto, epoch_secret: EpochSecret) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, CryptoError&gt; {
         <span class="macro">log::debug!</span>(
-            <span class="string">&quot;Computing EpochSecrets from epoch secret with {}&quot;</span>,
+            <span class="string">"Computing EpochSecrets from epoch secret with {}"</span>,
             epoch_secret.secret.ciphersuite()
         );
         <span class="macro">log_crypto!</span>(
             trace,
-            <span class="string">&quot;  epoch_secret: {:x?}&quot;</span>,
+            <span class="string">"  epoch_secret: {:x?}"</span>,
             epoch_secret.secret.as_slice()
         );
         <span class="kw">let </span>sender_data_secret = SenderDataSecret::new(crypto, <span class="kw-2">&amp;</span>epoch_secret)<span class="question-mark">?</span>;
@@ -2317,7 +2318,7 @@
         <span class="kw">let </span>membership_key = MembershipKey::new(crypto, <span class="kw-2">&amp;</span>epoch_secret)<span class="question-mark">?</span>;
         <span class="kw">let </span>resumption_psk = ResumptionPskSecret::new(crypto, <span class="kw-2">&amp;</span>epoch_secret)<span class="question-mark">?</span>;
 
-        <span class="macro">log::trace!</span>(<span class="string">&quot;  Computing init secret.&quot;</span>);
+        <span class="macro">log::trace!</span>(<span class="string">"  Computing init secret."</span>);
         <span class="kw">let </span>init_secret = InitSecret::new(crypto, epoch_secret)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(EpochSecrets {
@@ -2395,8 +2396,8 @@
 }
 
 <span class="kw">impl </span>std::fmt::Debug <span class="kw">for </span>GroupEpochSecrets {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
-        f.write_str(<span class="string">&quot;GroupEpochSecrets { *** }&quot;</span>)
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
+        f.write_str(<span class="string">"GroupEpochSecrets { *** }"</span>)
     }
 }
 

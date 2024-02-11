@@ -178,13 +178,13 @@
 <p>Members can be added to the group atomically with the <code>.add_members()</code> function. The application needs to fetch the corresponding key packages from every new member from the Delivery Service first.</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, welcome, group_info) = alice_group
         .add_members(provider, &amp;alice_signature_keys, &amp;[bob_key_package])
-        .expect(&quot;Could not add members.&quot;);</code></pre>
+        .expect("Could not add members.");</code></pre>
 <p>The function returns the tuple <code>(MlsMessageOut, Welcome)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing group members. The <code>Welcome</code> message must be sent to the newly added members.</p>
 <h2 id="proposal"><a class="header" href="#proposal">Proposal</a></h2>
 <p>Members can also be added as a proposal (without the corresponding Commit message) by using the <code>.propose_add_member()</code> function:</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, _proposal_ref) = alice_group
         .propose_add_member(provider, &amp;alice_signature_keys, &amp;bob_key_package)
-        .expect(&quot;Could not create proposal to add Bob&quot;);</code></pre>
+        .expect("Could not create proposal to add Bob");</code></pre>
 <p>In this case, the function returns an <code>MlsMessageOut</code> that needs to be fanned out to existing group members.</p>
 <h2 id="external-proposal"><a class="header" href="#external-proposal">External proposal</a></h2>
 <p>Parties outside the group can also make proposals to add themselves to the group with an external proposal. Since those
@@ -195,7 +195,7 @@ proposals are crafted by outsiders, they are always plaintext messages.</p>
         alice_group.epoch(),
         &amp;bob_signature_keys,
     )
-    .expect(&quot;Could not create external Add proposal&quot;);</code></pre>
+    .expect("Could not create external Add proposal");</code></pre>
 <p>It is then up to the group members to validate the proposal and commit it.
 Note that in this scenario it is up to the application to define a proper authorization policy to grant the sender.</p>
 <pre><code class="language-rust no_run noplayground">    let alice_processed_message = alice_group
@@ -203,19 +203,19 @@ Note that in this scenario it is up to the application to define a proper author
             provider,
             proposal
                 .into_protocol_message()
-                .expect(&quot;Unexpected message type.&quot;),
+                .expect("Unexpected message type."),
         )
-        .expect(&quot;Could not process message.&quot;);
+        .expect("Could not process message.");
     match alice_processed_message.into_content() {
         ProcessedMessageContent::ExternalJoinProposalMessage(proposal) =&gt; {
             alice_group.store_pending_proposal(*proposal);
             let (_commit, welcome, _group_info) = alice_group
                 .commit_to_pending_proposals(provider, &amp;alice_signature_keys)
-                .expect(&quot;Could not commit&quot;);
+                .expect("Could not commit");
             assert_eq!(alice_group.members().count(), 1);
             alice_group
                 .merge_pending_commit(provider)
-                .expect(&quot;Could not merge commit&quot;);
+                .expect("Could not merge commit");
             assert_eq!(alice_group.members().count(), 2);
 
             let bob_group = MlsGroup::new_from_welcome(
@@ -224,10 +224,10 @@ Note that in this scenario it is up to the application to define a proper author
                 welcome
                     .unwrap()
                     .into_welcome()
-                    .expect(&quot;Unexpected message type.&quot;),
+                    .expect("Unexpected message type."),
                 None,
             )
-            .expect(&quot;Bob could not join the group&quot;);
+            .expect("Bob could not join the group");
             assert_eq!(bob_group.members().count(), 2);
         }
         _ =&gt; unreachable!(),

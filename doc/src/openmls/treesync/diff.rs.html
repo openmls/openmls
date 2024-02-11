@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/treesync/diff.rs`."><title>diff.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-9ee3a5e31a2afa3e.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0 (82e1608df 2023-12-21)" data-channel="1.75.0" data-search-js="search-8fbf244ebcf71464.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-9dd44ab47b99a0fb.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/treesync/diff.rs`."><title>diff.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -919,7 +920,7 @@
 //! instance.
 //!
 //!
-//! # Don&#39;t Panic!
+//! # Don't Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
 //! the implementation, a function will return an unrecoverable
@@ -991,19 +992,19 @@
 /// has to be turned into a [`StagedTreeSyncDiff`], upon which a number of
 /// checks are performed to ensure that the changes preseve the [`TreeSync`]
 /// invariants. See [`TreeSync`] for the list of invariants.
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>TreeSyncDiff&lt;<span class="lifetime">&#39;a</span>&gt; {
-    diff: MlsBinaryTreeDiff&lt;<span class="lifetime">&#39;a</span>, TreeSyncLeafNode, TreeSyncParentNode&gt;,
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>TreeSyncDiff&lt;<span class="lifetime">'a</span>&gt; {
+    diff: MlsBinaryTreeDiff&lt;<span class="lifetime">'a</span>, TreeSyncLeafNode, TreeSyncParentNode&gt;,
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; From&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>TreeSync&gt; <span class="kw">for </span>TreeSyncDiff&lt;<span class="lifetime">&#39;a</span>&gt; {
-    <span class="kw">fn </span>from(tree_sync: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>TreeSync) -&gt; <span class="self">Self </span>{
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; From&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>TreeSync&gt; <span class="kw">for </span>TreeSyncDiff&lt;<span class="lifetime">'a</span>&gt; {
+    <span class="kw">fn </span>from(tree_sync: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>TreeSync) -&gt; <span class="self">Self </span>{
         TreeSyncDiff {
             diff: tree_sync.tree.empty_diff(),
         }
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; TreeSyncDiff&lt;<span class="lifetime">&#39;a</span>&gt; {
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; TreeSyncDiff&lt;<span class="lifetime">'a</span>&gt; {
     <span class="doccomment">/// Filtered direct path, skips the nodes whose copath resolution is empty.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>filtered_direct_path(<span class="kw-2">&amp;</span><span class="self">self</span>, leaf_index: LeafNodeIndex) -&gt; Vec&lt;ParentNodeIndex&gt; {
         <span class="comment">// Full direct path
@@ -1056,7 +1057,7 @@
     <span class="doccomment">/// Trims the tree by shrinking it until the last full leaf is in the
     /// right part of the tree.
     </span><span class="kw">fn </span>trim_tree(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="comment">// Nothing to trim if there&#39;s only one leaf left.
+        <span class="comment">// Nothing to trim if there's only one leaf left.
         </span><span class="kw">if </span><span class="self">self</span>.leaf_count() == MIN_TREE_SIZE {
             <span class="kw">return</span>;
         }
@@ -1095,7 +1096,7 @@
         <span class="self">self</span>.diff.size()
     }
 
-    <span class="doccomment">/// Updates an existing leaf node and blanks the nodes in the updated leaf&#39;s
+    <span class="doccomment">/// Updates an existing leaf node and blanks the nodes in the updated leaf's
     /// direct path.
     ///
     /// Returns an error if the target leaf is blank or outside of the tree.
@@ -1208,7 +1209,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;UpdatePathResult, LibraryError&gt; {
         <span class="macro">debug_assert!</span>(
             <span class="self">self</span>.leaf(leaf_index).is_some(),
-            <span class="string">&quot;Tree diff is missing own leaf&quot;
+            <span class="string">"Tree diff is missing own leaf"
         </span>);
 
         <span class="kw">let </span>(path, update_path_nodes, keypairs, commit_secret) =
@@ -1218,7 +1219,7 @@
             <span class="self">self</span>.process_update_path(provider.crypto(), ciphersuite, leaf_index, path)<span class="question-mark">?</span>;
 
         <span class="self">self</span>.leaf_mut(leaf_index)
-            .ok_or_else(|| LibraryError::custom(<span class="string">&quot;Didn&#39;t find own leaf in diff.&quot;</span>))<span class="question-mark">?
+            .ok_or_else(|| LibraryError::custom(<span class="string">"Didn't find own leaf in diff."</span>))<span class="question-mark">?
             </span>.update_parent_hash(<span class="kw-2">&amp;</span>parent_hash, group_id, leaf_index, signer)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>((update_path_nodes, keypairs, commit_secret))
@@ -1310,7 +1311,7 @@
         }
 
         <span class="comment">// Set the node of the filtered direct path.
-        // Note, that the nodes here don&#39;t have a tree hash set.
+        // Note, that the nodes here don't have a tree hash set.
         // TODO #804
         </span><span class="kw">for </span>(index, node) <span class="kw">in </span>path.into_iter() {
             <span class="kw-2">*</span><span class="self">self</span>.diff.parent_mut(index) = node.into();
@@ -1358,7 +1359,7 @@
                 path_node.compute_parent_hash(crypto, ciphersuite, <span class="kw-2">&amp;</span>original_sibling_tree_hash<span class="question-mark">?</span>)<span class="question-mark">?</span>;
             previous_parent_hash = parent_hash
         }
-        <span class="comment">// The final hash is the one of the leaf&#39;s parent.
+        <span class="comment">// The final hash is the one of the leaf's parent.
         </span><span class="prelude-val">Ok</span>(previous_parent_hash)
     }
 
@@ -1375,11 +1376,11 @@
                 </span><span class="kw">if </span>excluded_indices.contains(<span class="kw-2">&amp;</span>leaf_index) {
                     <span class="macro">vec!</span>[]
                 } <span class="kw">else </span>{
-                    <span class="comment">// If it&#39;s not, return it as its resolution.
+                    <span class="comment">// If it's not, return it as its resolution.
                     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(leaf) = <span class="self">self</span>.diff.leaf(leaf_index).node() {
                         <span class="macro">vec!</span>[(TreeNodeIndex::Leaf(leaf_index), NodeReference::Leaf(leaf))]
                     } <span class="kw">else </span>{
-                        <span class="comment">// If it&#39;s a blank, return an empty vector.
+                        <span class="comment">// If it's a blank, return an empty vector.
                         </span><span class="macro">vec!</span>[]
                     }
                 }
@@ -1387,7 +1388,7 @@
             TreeNodeIndex::Parent(parent_index) =&gt; {
                 <span class="kw">match </span><span class="self">self</span>.diff.parent(parent_index).node() {
                     <span class="prelude-val">Some</span>(parent) =&gt; {
-                        <span class="comment">// If it&#39;s a non-blank parent node, get the unmerged
+                        <span class="comment">// If it's a non-blank parent node, get the unmerged
                         // leaves, exclude them as necessary and add the node to
                         // the resulting resolution.
                         </span><span class="kw">let </span><span class="kw-2">mut </span>resolution = <span class="macro">vec!</span>[(
@@ -1404,7 +1405,7 @@
                                         NodeReference::Leaf(leaf_node),
                                     ))
                                 } <span class="kw">else </span>{
-                                    <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>, <span class="string">&quot;Unmerged leaves should not be blank.&quot;</span>);
+                                    <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>, <span class="string">"Unmerged leaves should not be blank."</span>);
                                 }
                             }
                         }
@@ -1437,7 +1438,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         leaf_index: LeafNodeIndex,
     ) -&gt; Vec&lt;Vec&lt;(TreeNodeIndex, NodeReference)&gt;&gt; {
-        <span class="comment">// If we&#39;re the only node in the tree, there&#39;s no copath.
+        <span class="comment">// If we're the only node in the tree, there's no copath.
         </span><span class="kw">if </span><span class="self">self</span>.diff.leaf_count() == MIN_TREE_SIZE {
             <span class="kw">return </span><span class="macro">vec!</span>[];
         }
@@ -1458,7 +1459,7 @@
         leaf_index: LeafNodeIndex,
         exclusion_list: <span class="kw-2">&amp;</span>HashSet&lt;<span class="kw-2">&amp;</span>LeafNodeIndex&gt;,
     ) -&gt; Vec&lt;Vec&lt;(TreeNodeIndex, NodeReference)&gt;&gt; {
-        <span class="comment">// If we&#39;re the only node in the tree, there&#39;s no copath.
+        <span class="comment">// If we're the only node in the tree, there's no copath.
         </span><span class="kw">if </span><span class="self">self</span>.diff.leaf_count() == <span class="number">1 </span>{
             <span class="kw">return </span><span class="macro">vec!</span>[];
         }
@@ -1647,7 +1648,7 @@
     <span class="doccomment">/// Returns the position of the subtree root shared by both given indices in
     /// the direct path of `leaf_index_1`.
     ///
-    /// Returns a [LibraryError] if there&#39;s an error in the tree math computation.
+    /// Returns a [LibraryError] if there's an error in the tree math computation.
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>subtree_root_position(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         leaf_index_1: LeafNodeIndex,
@@ -1660,7 +1661,7 @@
             .iter()
             .position(|<span class="kw-2">&amp;</span>direct_path_node_index| direct_path_node_index == subtree_root_node_index)
             <span class="comment">// The shared subtree root has to be in the direct path of both nodes.
-            </span>.ok_or_else(|| LibraryError::custom(<span class="string">&quot;index should be in the direct path&quot;</span>).into())
+            </span>.ok_or_else(|| LibraryError::custom(<span class="string">"index should be in the direct path"</span>).into())
     }
 
     <span class="doccomment">/// Compute the position of the highest node in the tree in the filtered
@@ -1670,13 +1671,13 @@
     /// Returns the resulting position, as well as the private key of that node.
     /// Returns an error if the given `sender_leaf_index` is outside of the
     /// tree.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>decryption_key&lt;<span class="lifetime">&#39;private_key</span>&gt;(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>decryption_key&lt;<span class="lifetime">'private_key</span>&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         sender_leaf_index: LeafNodeIndex,
         excluded_indices: <span class="kw-2">&amp;</span>HashSet&lt;<span class="kw-2">&amp;</span>LeafNodeIndex&gt;,
-        owned_keys: <span class="kw-2">&amp;</span><span class="lifetime">&#39;private_key </span>[<span class="kw-2">&amp;</span>EncryptionKeyPair],
+        owned_keys: <span class="kw-2">&amp;</span><span class="lifetime">'private_key </span>[<span class="kw-2">&amp;</span>EncryptionKeyPair],
         leaf_index: LeafNodeIndex,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;</span><span class="lifetime">&#39;private_key </span>EncryptionPrivateKey, usize), TreeSyncDiffError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;</span><span class="lifetime">'private_key </span>EncryptionPrivateKey, usize), TreeSyncDiffError&gt; {
         <span class="comment">// Get the copath node of the sender that is in our direct path, as well
         // as its position in our direct path.
         </span><span class="kw">let </span>subtree_root_copath_node_id = <span class="self">self
@@ -1702,9 +1703,9 @@
                     .map(|keypair| (keypair, position))
             })
         {
-            <span class="macro">debug!</span>(<span class="string">&quot;Found fitting keypair in the filtered resolution:&quot;</span>);
-            <span class="macro">debug!</span>(<span class="string">&quot;* private key: {:x?}&quot;</span>, keypair.private_key());
-            <span class="macro">debug!</span>(<span class="string">&quot;* public key: {:x?}&quot;</span>, keypair.public_key());
+            <span class="macro">debug!</span>(<span class="string">"Found fitting keypair in the filtered resolution:"</span>);
+            <span class="macro">debug!</span>(<span class="string">"* private key: {:x?}"</span>, keypair.private_key());
+            <span class="macro">debug!</span>(<span class="string">"* public key: {:x?}"</span>, keypair.public_key());
 
             <span class="kw">return </span><span class="prelude-val">Ok</span>((keypair.private_key(), resolution_position));
         };
@@ -1762,7 +1763,7 @@
     }
 
     <span class="doccomment">/// Returns the filtered common path two leaf nodes share. If the leaves are
-    /// identical, the common path is the leaf&#39;s direct path.
+    /// identical, the common path is the leaf's direct path.
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>filtered_common_direct_path(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         leaf_index_1: LeafNodeIndex,
@@ -1796,7 +1797,7 @@
         <span class="kw">let </span>encryption_keys = <span class="kw">if let </span><span class="prelude-val">Some</span>(leaf) = <span class="self">self</span>.diff.leaf(leaf_index).node() {
             <span class="macro">vec!</span>[leaf.encryption_key()]
         } <span class="kw">else </span>{
-            <span class="comment">// If our own leaf is empty, we don&#39;t expect to own any other keys.
+            <span class="comment">// If our own leaf is empty, we don't expect to own any other keys.
             </span><span class="macro">vec!</span>[]
         };
         encryption_keys.into_iter().chain(

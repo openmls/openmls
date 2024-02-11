@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/error.rs`."><title>error.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-9ee3a5e31a2afa3e.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0 (82e1608df 2023-12-21)" data-channel="1.75.0" data-search-js="search-8fbf244ebcf71464.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-9dd44ab47b99a0fb.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/error.rs`."><title>error.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -269,21 +270,21 @@
 
 <span class="kw">impl </span>LibraryError {
     <span class="doccomment">/// A custom error (typically to avoid an unwrap())
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>custom(s: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str) -&gt; <span class="self">Self </span>{
-        <span class="attr">#[cfg(feature = <span class="string">&quot;backtrace&quot;</span>)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>custom(s: <span class="kw-2">&amp;</span><span class="lifetime">'static </span>str) -&gt; <span class="self">Self </span>{
+        <span class="attr">#[cfg(feature = <span class="string">"backtrace"</span>)]
         </span><span class="kw">let </span>display_string = <span class="macro">format!</span>(
-            <span class="string">&quot;Error description: {s}\n Backtrace:\n{:?}&quot;</span>,
+            <span class="string">"Error description: {s}\n Backtrace:\n{:?}"</span>,
             backtrace::Backtrace::new()
         );
-        <span class="attr">#[cfg(not(feature = <span class="string">&quot;backtrace&quot;</span>))]
-        </span><span class="kw">let </span>display_string = <span class="macro">format!</span>(<span class="string">&quot;Error description: {s}&quot;</span>);
+        <span class="attr">#[cfg(not(feature = <span class="string">"backtrace"</span>))]
+        </span><span class="kw">let </span>display_string = <span class="macro">format!</span>(<span class="string">"Error description: {s}"</span>);
 
         <span class="self">Self </span>{
             internal: InternalLibraryError::Custom(display_string),
         }
     }
 
-    <span class="doccomment">/// Used when encoding doesn&#39;t work because of missing bound checks
+    <span class="doccomment">/// Used when encoding doesn't work because of missing bound checks
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>missing_bound_check(e: TlsCodecError) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             internal: InternalLibraryError::MissingBoundsCheck(e),
@@ -299,8 +300,8 @@
 }
 
 <span class="kw">impl </span>Display <span class="kw">for </span>LibraryError {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
-        <span class="macro">write!</span>(f, <span class="string">&quot;{:?}&quot;</span>, <span class="self">self</span>.internal)
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
+        <span class="macro">write!</span>(f, <span class="string">"{:?}"</span>, <span class="self">self</span>.internal)
     }
 }
 
@@ -313,22 +314,22 @@
     <span class="doccomment">/// See [`CryptoError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>CryptoError(<span class="attr">#[from] </span>CryptoError),
-    <span class="attr">#[error(<span class="string">&quot;Custom library error: {0}&quot;</span>)]
+    <span class="attr">#[error(<span class="string">"Custom library error: {0}"</span>)]
     </span>Custom(String),
 }
 
 <span class="kw">impl </span>std::fmt::Debug <span class="kw">for </span>InternalLibraryError {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
         <span class="kw">match </span><span class="self">self </span>{
             InternalLibraryError::MissingBoundsCheck(e) =&gt; f
-                .debug_struct(<span class="string">&quot;InternalLibraryError&quot;</span>)
-                .field(<span class="string">&quot;MissingBoundsCheck&quot;</span>, e)
+                .debug_struct(<span class="string">"InternalLibraryError"</span>)
+                .field(<span class="string">"MissingBoundsCheck"</span>, e)
                 .finish(),
             InternalLibraryError::CryptoError(e) =&gt; f
-                .debug_struct(<span class="string">&quot;InternalLibraryError&quot;</span>)
-                .field(<span class="string">&quot;CryptoError&quot;</span>, e)
+                .debug_struct(<span class="string">"InternalLibraryError"</span>)
+                .field(<span class="string">"CryptoError"</span>, e)
                 .finish(),
-            InternalLibraryError::Custom(s) =&gt; <span class="macro">writeln!</span>(f, <span class="string">&quot;InternalLibraryError: {s}&quot;</span>),
+            InternalLibraryError::Custom(s) =&gt; <span class="macro">writeln!</span>(f, <span class="string">"InternalLibraryError: {s}"</span>),
         }
     }
 }
@@ -352,8 +353,8 @@
 <span class="kw">impl </span>std::error::Error <span class="kw">for </span>ErrorString {}
 
 <span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>ErrorString {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
-        f.write_fmt(<span class="macro">format_args!</span>(<span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.<span class="number">0</span>))
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
+        f.write_fmt(<span class="macro">format_args!</span>(<span class="string">"{}"</span>, <span class="self">self</span>.<span class="number">0</span>))
     }
 }
 
@@ -368,15 +369,15 @@
 Note to maintainers
 
 The thiserror crate does not add any documentation to enum variants and this needs to be done manually.
-The best way to do this if you don&#39;t want to duplicate the string manually is to use the following regex:
+The best way to do this if you don't want to duplicate the string manually is to use the following regex:
 
 Add comments for naked variants:
 
- ([,|{])\n(\s+)#\[error\(&quot;([a-z0-9 .,-_&#39;^:]+)&quot;\)\]
+ ([,|{])\n(\s+)#\[error\("([a-z0-9 .,-_'^:]+)"\)\]
 
  $1
  $2/// $3
- $2#[error(&quot;$3&quot;)]
+ $2#[error("$3")]
 
  Add comments for nested variants:
 

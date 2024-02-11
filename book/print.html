@@ -230,7 +230,7 @@ details.</p>
 <h2 id="maintenance--support"><a class="header" href="#maintenance--support">Maintenance &amp; Support</a></h2>
 <p>OpenMLS is maintained and developed by <a href="https://phnx.im">Phoenix R&amp;D</a> and <a href="https://cryspen.com">Cryspen</a>.</p>
 <h2 id="acknowledgements"><a class="header" href="#acknowledgements">Acknowledgements</a></h2>
-<p><a href="https://zulip.com/">Zulip</a> graciously provides the OpenMLS community with a &quot;Zulip Cloud Standard&quot; tier <a href="https://openmls.zulipchat.com">Zulip instance</a>.</p>
+<p><a href="https://zulip.com/">Zulip</a> graciously provides the OpenMLS community with a "Zulip Cloud Standard" tier <a href="https://openmls.zulipchat.com">Zulip instance</a>.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="user-manual"><a class="header" href="#user-manual">User manual</a></h1>
 <p>The user manual describes how to use the different parts of the OpenMLS API.</p>
 <h2 id="prerequisites"><a class="header" href="#prerequisites">Prerequisites</a></h2>
@@ -337,7 +337,7 @@ OpenMLS provides a simple implementation of <a href="https://github.com/openmls/
                 ds_credential_with_key.credential.clone(),
             ),
         ])))
-        .expect(&quot;error adding external senders extension to group context extensions&quot;)
+        .expect("error adding external senders extension to group context extensions")
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .capabilities(Capabilities::new(
             None, // Defaults to the group's protocol version
@@ -351,11 +351,11 @@ OpenMLS provides a simple implementation of <a href="https://github.com/openmls/
             0xff00,
             UnknownExtension(vec![0, 1, 2, 3]),
         )))
-        .expect(&quot;failed to configure leaf extensions&quot;)
+        .expect("failed to configure leaf extensions")
         .use_ratchet_tree_extension(true)
         .build();</code></pre>
 <h2 id="unknown-extensions"><a class="header" href="#unknown-extensions">Unknown extensions</a></h2>
-<p>Some extensions carry data, but don't alter the behaviour of the protocol (e.g.  the application_id extension). OpenMLS allows the use of arbitrary such extensions in the group context, key packages and leaf nodes. Such extensions can be instantiated and retrieved through the use of the <code>UnknownExtension</code> struct and the <code>ExtensionType::Unknown</code> extension type. Such &quot;unknown&quot; extensions are handled transparently by OpenMLS, but can be used by the application, e.g. to have a group agree on pieces of data.</p>
+<p>Some extensions carry data, but don't alter the behaviour of the protocol (e.g.  the application_id extension). OpenMLS allows the use of arbitrary such extensions in the group context, key packages and leaf nodes. Such extensions can be instantiated and retrieved through the use of the <code>UnknownExtension</code> struct and the <code>ExtensionType::Unknown</code> extension type. Such "unknown" extensions are handled transparently by OpenMLS, but can be used by the application, e.g. to have a group agree on pieces of data.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="creating-groups"><a class="header" href="#creating-groups">Creating groups</a></h1>
 <p>There are two ways to create a group: Either by building an <code>MlsGroup</code> directly, or by using an <code>MlsGroupCreateConfig</code>. The former is slightly simpler, while the latter allows the creating of multiple groups using the same configuration. See <a href="user_manual/./group_config.html">Group configuration</a> for more details on group parameters.</p>
 <p>In addition to the group configuration, the client should define all supported and required extensions for the group. The negotiation mechanism for extension in MLS consists in setting an initial list of extensions at group creation time and choosing key packages of subsequent new members accordingly.</p>
@@ -377,7 +377,7 @@ OpenMLS provides a simple implementation of <a href="https://github.com/openmls/
         &amp;mls_group_create_config,
         alice_credential.clone(),
     )
-    .expect(&quot;An unexpected error occurred.&quot;);</code></pre>
+    .expect("An unexpected error occurred.");</code></pre>
 <p>... or using the builder pattern:</p>
 <pre><code class="language-rust no_run noplayground">        let mut alice_group = MlsGroup::builder()
             .padding_size(100)
@@ -388,11 +388,11 @@ OpenMLS provides a simple implementation of <a href="https://github.com/openmls/
             .crypto_config(CryptoConfig::with_default_version(ciphersuite))
             .use_ratchet_tree_extension(true)
             .build(provider, &amp;alice_signature_keys, alice_credential.clone())
-            .expect(&quot;An unexpected error occurred.&quot;);</code></pre>
+            .expect("An unexpected error occurred.");</code></pre>
 <p>Note: Every group is assigned a random group ID during creation. The group ID cannot be changed and remains immutable throughout the group's lifetime. Choosing it randomly makes sure that the group ID doesn't collide with any other group ID in the same system.</p>
 <p>If someone else already gave you a group ID, e.g., a provider server, you can also create a group using a specific group ID:</p>
 <pre><code class="language-rust no_run noplayground">        // Some specific group ID generated by someone else.
-        let group_id = GroupId::from_slice(b&quot;123e4567e89b&quot;);
+        let group_id = GroupId::from_slice(b"123e4567e89b");
 
         let mut alice_group = MlsGroup::new_with_group_id(
             provider,
@@ -401,14 +401,14 @@ OpenMLS provides a simple implementation of <a href="https://github.com/openmls/
             group_id,
             alice_credential.clone(),
         )
-        .expect(&quot;An unexpected error occurred.&quot;);</code></pre>
+        .expect("An unexpected error occurred.");</code></pre>
 <p>The Builder provides methods for setting required capabilities and external senders.
 The information passed into these lands in the group context, in the form of extensions.
 Should the user want to add further extensions, they can use the <code>with_group_context_extensions</code> method:</p>
 <pre><code class="language-rust no_run noplayground">        // we are adding an external senders list as an example.
         let extensions =
             Extensions::from_vec(vec![Extension::ExternalSenders(external_senders_list)])
-                .expect(&quot;failed to create extensions list&quot;);
+                .expect("failed to create extensions list");
 
         let mut alice_group = MlsGroup::builder()
             .padding_size(100)
@@ -417,19 +417,19 @@ Should the user want to add further extensions, they can use the <code>with_grou
                 2000, // maximum_forward_distance
             ))
             .with_group_context_extensions(extensions) // NB: the builder method returns a Result
-            .expect(&quot;failed to apply group context extensions&quot;)
+            .expect("failed to apply group context extensions")
             .use_ratchet_tree_extension(true)
             .build(provider, &amp;alice_signature_keys, alice_credential.clone())
-            .expect(&quot;An unexpected error occurred.&quot;);</code></pre>
+            .expect("An unexpected error occurred.");</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="join-a-group-from-a-welcome-message"><a class="header" href="#join-a-group-from-a-welcome-message">Join a group from a Welcome message</a></h1>
 <p>To join a group from a <code>Welcome</code> message, a new <code>MlsGroup</code> can be instantiated directly from the <code>Welcome</code> message and an <code>MlsGroupJoinConfig</code> (see <a href="user_manual/./group_config.html">Group configuration</a> for more details).  If the group configuration does not use the ratchet tree extension, the ratchet tree needs to be provided.</p>
 <pre><code class="language-rust no_run noplayground">    let mut bob_group = MlsGroup::new_from_welcome(
         provider,
         &amp;mls_group_config,
-        welcome.into_welcome().expect(&quot;Unexpected message type.&quot;),
+        welcome.into_welcome().expect("Unexpected message type."),
         None, // We use the ratchet tree extension, so we don't provide a ratchet tree here
     )
-    .expect(&quot;Error joining group from Welcome&quot;);</code></pre>
+    .expect("Error joining group from Welcome");</code></pre>
 <p>Pay attention not to forward a Welcome message to a client before its associated commit has been accepted by the
 Delivery Service. Otherwise, you would end up with an invalid MLS group instance.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="adding-members-to-a-group"><a class="header" href="#adding-members-to-a-group">Adding members to a group</a></h1>
@@ -437,13 +437,13 @@ Delivery Service. Otherwise, you would end up with an invalid MLS group instance
 <p>Members can be added to the group atomically with the <code>.add_members()</code> function. The application needs to fetch the corresponding key packages from every new member from the Delivery Service first.</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, welcome, group_info) = alice_group
         .add_members(provider, &amp;alice_signature_keys, &amp;[bob_key_package])
-        .expect(&quot;Could not add members.&quot;);</code></pre>
+        .expect("Could not add members.");</code></pre>
 <p>The function returns the tuple <code>(MlsMessageOut, Welcome)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing group members. The <code>Welcome</code> message must be sent to the newly added members.</p>
 <h2 id="proposal"><a class="header" href="#proposal">Proposal</a></h2>
 <p>Members can also be added as a proposal (without the corresponding Commit message) by using the <code>.propose_add_member()</code> function:</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, _proposal_ref) = alice_group
         .propose_add_member(provider, &amp;alice_signature_keys, &amp;bob_key_package)
-        .expect(&quot;Could not create proposal to add Bob&quot;);</code></pre>
+        .expect("Could not create proposal to add Bob");</code></pre>
 <p>In this case, the function returns an <code>MlsMessageOut</code> that needs to be fanned out to existing group members.</p>
 <h2 id="external-proposal"><a class="header" href="#external-proposal">External proposal</a></h2>
 <p>Parties outside the group can also make proposals to add themselves to the group with an external proposal. Since those
@@ -454,7 +454,7 @@ proposals are crafted by outsiders, they are always plaintext messages.</p>
         alice_group.epoch(),
         &amp;bob_signature_keys,
     )
-    .expect(&quot;Could not create external Add proposal&quot;);</code></pre>
+    .expect("Could not create external Add proposal");</code></pre>
 <p>It is then up to the group members to validate the proposal and commit it.
 Note that in this scenario it is up to the application to define a proper authorization policy to grant the sender.</p>
 <pre><code class="language-rust no_run noplayground">    let alice_processed_message = alice_group
@@ -462,19 +462,19 @@ Note that in this scenario it is up to the application to define a proper author
             provider,
             proposal
                 .into_protocol_message()
-                .expect(&quot;Unexpected message type.&quot;),
+                .expect("Unexpected message type."),
         )
-        .expect(&quot;Could not process message.&quot;);
+        .expect("Could not process message.");
     match alice_processed_message.into_content() {
         ProcessedMessageContent::ExternalJoinProposalMessage(proposal) =&gt; {
             alice_group.store_pending_proposal(*proposal);
             let (_commit, welcome, _group_info) = alice_group
                 .commit_to_pending_proposals(provider, &amp;alice_signature_keys)
-                .expect(&quot;Could not commit&quot;);
+                .expect("Could not commit");
             assert_eq!(alice_group.members().count(), 1);
             alice_group
                 .merge_pending_commit(provider)
-                .expect(&quot;Could not merge commit&quot;);
+                .expect("Could not merge commit");
             assert_eq!(alice_group.members().count(), 2);
 
             let bob_group = MlsGroup::new_from_welcome(
@@ -483,10 +483,10 @@ Note that in this scenario it is up to the application to define a proper author
                 welcome
                     .unwrap()
                     .into_welcome()
-                    .expect(&quot;Unexpected message type.&quot;),
+                    .expect("Unexpected message type."),
                 None,
             )
-            .expect(&quot;Bob could not join the group&quot;);
+            .expect("Bob could not join the group");
             assert_eq!(bob_group.members().count(), 2);
         }
         _ =&gt; unreachable!(),
@@ -496,7 +496,7 @@ Note that in this scenario it is up to the application to define a proper author
 <p>Members can be removed from the group atomically with the <code>.remove_members()</code> function, which takes the <code>KeyPackageRef</code> of group member as input. References to the <code>KeyPackage</code>s of group members can be obtained using the <code>.members()</code> function, from which one can in turn compute the <code>KeyPackageRef</code> using their <code>.hash_ref()</code> function.</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, welcome_option, _group_info) = charlie_group
         .remove_members(provider, &amp;charlie_signature_keys, &amp;[bob_member.index])
-        .expect(&quot;Could not remove Bob from group.&quot;);</code></pre>
+        .expect("Could not remove Bob from group.");</code></pre>
 <p>The function returns the tuple <code>(MlsMessageOut, Option&lt;Welcome&gt;)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing group members.
 Even though members were removed in this operation, the Commit message could potentially also cover Add Proposals previously received in the epoch. Therefore the function can also optionally return a <code>Welcome</code> message. The <code>Welcome</code> message must be sent to the newly added members.</p>
 <h2 id="proposal-1"><a class="header" href="#proposal-1">Proposal</a></h2>
@@ -507,7 +507,7 @@ Even though members were removed in this operation, the Commit message could pot
             &amp;alice_signature_keys,
             charlie_group.own_leaf_index(),
         )
-        .expect(&quot;Could not create proposal to remove Charlie.&quot;);</code></pre>
+        .expect("Could not create proposal to remove Charlie.");</code></pre>
 <p>In this case, the function returns an <code>MlsMessageOut</code> that needs to be fanned out to existing group members.</p>
 <h2 id="getting-removed-from-a-group"><a class="header" href="#getting-removed-from-a-group">Getting removed from a group</a></h2>
 <p>A member is removed from a group if another member commits to a remove proposal targeting the member's leaf. Once the to-be-removed member merges that commit via <code>merge_staged_commit()</code>, all other proposals in that commit will still be applied, but the group will be marked as inactive afterward. The group remains usable, e.g., to examine the membership list after the final commit was processed, but it won't be possible to create or process new messages.</p>
@@ -517,11 +517,11 @@ Even though members were removed in this operation, the Commit message could pot
         let remove_proposal = staged_commit
             .remove_proposals()
             .next()
-            .expect(&quot;An unexpected error occurred.&quot;);
+            .expect("An unexpected error occurred.");
 
         // We construct a RemoveOperation enum to help us interpret the remove operation
         let remove_operation = RemoveOperation::new(remove_proposal, &amp;bob_group)
-            .expect(&quot;An unexpected Error occurred.&quot;);
+            .expect("An unexpected Error occurred.");
 
         match remove_operation {
             RemoveOperation::WeLeft =&gt; unreachable!(),
@@ -537,9 +537,9 @@ Even though members were removed in this operation, the Commit message could pot
         // Merge staged Commit
         bob_group
             .merge_staged_commit(provider, *staged_commit)
-            .expect(&quot;Error merging staged commit.&quot;);
+            .expect("Error merging staged commit.");
     } else {
-        unreachable!(&quot;Expected a StagedCommit.&quot;);
+        unreachable!("Expected a StagedCommit.");
     }
 
     // Check we didn't receive a Welcome message
@@ -549,8 +549,8 @@ Even though members were removed in this operation, the Commit message could pot
     assert!(!bob_group.is_active());
     let members = bob_group.members().collect::&lt;Vec&lt;Member&gt;&gt;();
     assert_eq!(members.len(), 2);
-    assert_eq!(members[0].credential.identity(), b&quot;Alice&quot;);
-    assert_eq!(members[1].credential.identity(), b&quot;Charlie&quot;);</code></pre>
+    assert_eq!(members[0].credential.identity(), b"Alice");
+    assert_eq!(members[1].credential.identity(), b"Charlie");</code></pre>
 <h2 id="external-proposal-1"><a class="header" href="#external-proposal-1">External Proposal</a></h2>
 <p>Parties outside the group can also make proposals to remove members as long as they are registered as part of the <code>ExternalSendersExtension</code> extension.
 Since those proposals are crafted by outsiders, they are always public messages.</p>
@@ -561,7 +561,7 @@ Since those proposals are crafted by outsiders, they are always public messages.
         &amp;ds_signature_keys,
         SenderExtensionIndex::new(0),
     )
-    .expect(&quot;Could not create external Remove proposal&quot;);</code></pre>
+    .expect("Could not create external Remove proposal");</code></pre>
 <p>It is then up to one of the group members to process the proposal and commit it.</p>
 <pre><code class="language-rust no_run noplayground"></code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="updating-own-key-package"><a class="header" href="#updating-own-key-package">Updating own key package</a></h1>
@@ -570,7 +570,7 @@ Since those proposals are crafted by outsiders, they are always public messages.
 The application can optionally provide a <code>KeyPackage</code> manually. If not, a key package will be created on the fly with the same extensions as the current one but with a fresh HPKE init key.</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, welcome_option, _group_info) = bob_group
         .self_update(provider, &amp;bob_signature_keys)
-        .expect(&quot;Could not update own key package.&quot;);</code></pre>
+        .expect("Could not update own key package.");</code></pre>
 <p>The function returns the tuple <code>(MlsMessageOut, Option&lt;Welcome&gt;)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing group members.
 Even though the member updates its own key package only in this operation, the Commit message could potentially also cover Add Proposals that were previously received in the epoch. Therefore the function can also optionally return a <code>Welcome</code> message. The <code>Welcome</code> message must be sent to the newly added members.</p>
 <h2 id="proposal-2"><a class="header" href="#proposal-2">Proposal</a></h2>
@@ -581,13 +581,13 @@ Even though the member updates its own key package only in this operation, the C
             &amp;alice_signature_keys,
             None, // We don't provide a leaf node, it will be created on the fly instead
         )
-        .expect(&quot;Could not create update proposal.&quot;);</code></pre>
+        .expect("Could not create update proposal.");</code></pre>
 <p>In this case, the function returns an <code>MlsMessageOut</code> that needs to be fanned out to existing group members.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="leaving-a-group"><a class="header" href="#leaving-a-group">Leaving a group</a></h1>
 <p>Members can indicate to other group members that they wish to leave the group using the <code>leave_group()</code> function, which creates a remove proposal targeting the member's own leaf. The member can't create a Commit message that covers this proposal, as that would violate the Post-compromise Security guarantees of MLS because the member would know the epoch secrets of the next epoch.</p>
 <pre><code class="language-rust no_run noplayground">    let queued_message = bob_group
         .leave_group(provider, &amp;bob_signature_keys)
-        .expect(&quot;Could not leave group&quot;);</code></pre>
+        .expect("Could not leave group");</code></pre>
 <p>After successfully sending the proposal to the DS for fanout, there is still the possibility that the remove proposal is not covered in the following commit. The member leaving the group thus has two options:</p>
 <ul>
 <li>tear down the local group state and ignore all subsequent messages for that group, or</li>
@@ -596,18 +596,18 @@ Even though the member updates its own key package only in this operation, the C
 <p>For details on creating Remove Proposals, see <a href="user_manual/remove_members.html">Removing members from a group</a>.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="creating-application-messages"><a class="header" href="#creating-application-messages">Creating application messages</a></h1>
 <p>Application messages are created from byte slices with the <code>.create_message()</code> function:</p>
-<pre><code class="language-rust no_run noplayground">    let message_alice = b&quot;Hi, I'm Alice!&quot;;
+<pre><code class="language-rust no_run noplayground">    let message_alice = b"Hi, I'm Alice!";
     let mls_message_out = alice_group
         .create_message(provider, &amp;alice_signature_keys, message_alice)
-        .expect(&quot;Error creating application message.&quot;);</code></pre>
+        .expect("Error creating application message.");</code></pre>
 <p>Note that the theoretical maximum length of application messages is 2^32 bytes. However, messages should be much shorter in practice unless the Delivery Service can cope with long messages.</p>
 <p>The function returns an <code>MlsMessageOut</code> that needs to be sent to the Delivery Service for fanout to other group members. To guarantee the best possible Forward Secrecy, the key material used to encrypt messages is immediately discarded after encryption. This means that the message author cannot decrypt application messages. If access to the message's content is required after creating the message, a copy of the plaintext message should be kept by the application.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="committing-to-pending-proposals"><a class="header" href="#committing-to-pending-proposals">Committing to pending proposals</a></h1>
-<p>During an epoch, members can create proposals that are not immediately committed. These proposals are called &quot;pending proposals&quot;. They will automatically be covered by any operation that creates a Commit message (like <code>.add_members(),</code> <code>.remove_members()</code>, etc.).</p>
+<p>During an epoch, members can create proposals that are not immediately committed. These proposals are called "pending proposals". They will automatically be covered by any operation that creates a Commit message (like <code>.add_members(),</code> <code>.remove_members()</code>, etc.).</p>
 <p>Some operations (like creating application messages) are not allowed as long as pending proposals exist for the current epoch. In that case, the application must first commit to the pending proposals by creating a Commit message that covers these proposals. This can be done with the <code>commit_to_pending_proposals()</code> function:</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, welcome_option, _group_info) = alice_group
         .commit_to_pending_proposals(provider, &amp;alice_signature_keys)
-        .expect(&quot;Could not commit to pending proposals.&quot;);</code></pre>
+        .expect("Could not commit to pending proposals.");</code></pre>
 <p>The function returns the tuple <code>(MlsMessageOut, Option&lt;Welcome&gt;)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing group members.
 If the Commit message also covers Add Proposals previously received in the epoch, a <code>Welcome</code> message is required to invite the new members. Therefore the function can also optionally return a <code>Welcome</code> message that must be sent to the newly added members.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="processing-incoming-messages"><a class="header" href="#processing-incoming-messages">Processing incoming messages</a></h1>
@@ -615,7 +615,7 @@ If the Commit message also covers Add Proposals previously received in the epoch
 <h2 id="deserializing-messages"><a class="header" href="#deserializing-messages">Deserializing messages</a></h2>
 <p>Incoming messages can be deserialized from byte slices into an <code>MlsMessageIn</code>:</p>
 <pre><code class="language-rust no_run noplayground">    let mls_message =
-        MlsMessageIn::tls_deserialize_exact(bytes).expect(&quot;Could not deserialize message.&quot;);</code></pre>
+        MlsMessageIn::tls_deserialize_exact(bytes).expect("Could not deserialize message.");</code></pre>
 <p>If the message is malformed, the function will fail with an error.</p>
 <h2 id="processing-messages"><a class="header" href="#processing-messages">Processing messages</a></h2>
 <p>In the next step, the message needs to be processed. If the message was
@@ -624,7 +624,7 @@ and semantic validation checks and verifies the message's signature:</p>
 <pre><code class="language-rust no_run noplayground">    let protocol_message: ProtocolMessage = mls_message.into();
     let processed_message = bob_group
         .process_message(provider, protocol_message)
-        .expect(&quot;Could not process message.&quot;);</code></pre>
+        .expect("Could not process message.");</code></pre>
 <h2 id="interpreting-the-processed-message"><a class="header" href="#interpreting-the-processed-message">Interpreting the processed message</a></h2>
 <p>In the last step, the message is ready for inspection. The <code>ProcessedMessage</code>
 obtained in the previous step exposes header fields such as group ID, epoch,
@@ -636,7 +636,7 @@ sender, and authenticated data. It also exposes the message's content. There are
         processed_message.into_content()
     {
         // Check the message
-        assert_eq!(application_message.into_bytes(), b&quot;Hi, I'm Alice!&quot;);
+        assert_eq!(application_message.into_bytes(), b"Hi, I'm Alice!");
     }</code></pre>
 <h3 id="proposals"><a class="header" href="#proposals">Proposals</a></h3>
 <p>Standalone proposals are returned as a <code>QueuedProposal</code>, indicating that they are pending proposals. The proposal can be inspected through the <code>.proposal()</code> function. After inspection, applications should store the pending proposal in the proposal store of the group:</p>
@@ -651,7 +651,7 @@ sender, and authenticated data. It also exposes the message's content. There are
                 &amp;bob_credential.credential
             );
         } else {
-            panic!(&quot;Expected an AddProposal.&quot;);
+            panic!("Expected an AddProposal.");
         }
 
         // Check that Alice added Bob
@@ -667,10 +667,10 @@ sender, and authenticated data. It also exposes the message's content. There are
 a proposal from the proposal store. This can be useful for example to roll back in case of errors.</p>
 <pre><code class="language-rust no_run noplayground">    let (_mls_message_out, proposal_ref) = alice_group
         .propose_add_member(provider, &amp;alice_signature_keys, &amp;bob_key_package)
-        .expect(&quot;Could not create proposal to add Bob&quot;);
+        .expect("Could not create proposal to add Bob");
     alice_group
         .remove_pending_proposal(proposal_ref)
-        .expect(&quot;The proposal was not found&quot;);</code></pre>
+        .expect("The proposal was not found");</code></pre>
 <h3 id="commit-messages"><a class="header" href="#commit-messages">Commit messages</a></h3>
 <p>Commit messages are returned as <code>StagedCommit</code> objects. The proposals they cover can be inspected through different functions, depending on the proposal type. After the application has inspected the <code>StagedCommit</code> and approved all the proposals it covers, the <code>StagedCommit</code> can be merged in the current group state by calling the <code>.merge_staged_commit()</code> function. For more details, see the <code>StagedCommit</code> documentation.</p>
 <pre><code class="language-rust no_run noplayground">    if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
@@ -680,7 +680,7 @@ a proposal from the proposal store. This can be useful for example to roll back 
         let remove = staged_commit
             .remove_proposals()
             .next()
-            .expect(&quot;Expected a proposal.&quot;);
+            .expect("Expected a proposal.");
         // Check that Bob was removed
         assert_eq!(
             remove.remove_proposal().removed(),
@@ -694,7 +694,7 @@ a proposal from the proposal store. This can be useful for example to roll back 
         // Merge staged commit
         alice_group
             .merge_staged_commit(provider, *staged_commit)
-            .expect(&quot;Error merging staged commit.&quot;);
+            .expect("Error merging staged commit.");
     }</code></pre>
 <h3 id="interpreting-remove-operations"><a class="header" href="#interpreting-remove-operations">Interpreting remove operations</a></h3>
 <p>Remove operations can have different meanings, such as:</p>
@@ -712,11 +712,11 @@ a proposal from the proposal store. This can be useful for example to roll back 
         let remove_proposal = staged_commit
             .remove_proposals()
             .next()
-            .expect(&quot;An unexpected error occurred.&quot;);
+            .expect("An unexpected error occurred.");
 
         // We construct a RemoveOperation enum to help us interpret the remove operation
         let remove_operation = RemoveOperation::new(remove_proposal, &amp;bob_group)
-            .expect(&quot;An unexpected Error occurred.&quot;);
+            .expect("An unexpected Error occurred.");
 
         match remove_operation {
             RemoveOperation::WeLeft =&gt; unreachable!(),
@@ -732,9 +732,9 @@ a proposal from the proposal store. This can be useful for example to roll back 
         // Merge staged Commit
         bob_group
             .merge_staged_commit(provider, *staged_commit)
-            .expect(&quot;Error merging staged commit.&quot;);
+            .expect("Error merging staged commit.");
     } else {
-        unreachable!(&quot;Expected a StagedCommit.&quot;);
+        unreachable!("Expected a StagedCommit.");
     }</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="persistence-of-group-data"><a class="header" href="#persistence-of-group-data">Persistence of Group Data</a></h1>
 <p>The state of a given <code>MlsGroup</code> instance can be written or read at any time using the <code>.save()</code> or <code>.load()</code> functions respectively. The functions take as input a struct implementing either the <code>Write</code> (<code>.save()</code>) or <code>Read</code> (<code>.load()</code>) trait.</p>
@@ -776,7 +776,7 @@ but note that the key used to store, read, and delete values in the key store ha
 to be provided as a byte slice.</p>
 <p>In the following examples, we have a <code>ciphersuite</code> and a <code>provider</code> (<code>OpenMlsCryptoProvider</code>).</p>
 <pre><code class="language-rust no_run noplayground">    // First we generate a credential and key package for our user.
-    let credential = Credential::new(b&quot;User ID&quot;.to_vec(), CredentialType::Basic).unwrap();
+    let credential = Credential::new(b"User ID".to_vec(), CredentialType::Basic).unwrap();
     let signature_keys = SignatureKeyPair::new(ciphersuite.into()).unwrap();
 
     let key_package = KeyPackage::builder()
@@ -794,7 +794,7 @@ to be provided as a byte slice.</p>
 <pre><code class="language-rust no_run noplayground">    // Delete the key package
     key_package
         .delete(provider)
-        .expect(&quot;Error deleting key package&quot;);</code></pre>
+        .expect("Error deleting key package");</code></pre>
 <p>Retrieving a value from the key store is as simple as calling <code>read</code>.
 In this example, we assume we got a <code>credential</code> where we want to retrieve the credential bundle, i.e., the private key material.</p>
 <pre><code class="language-rust no_run noplayground"></code></pre>
@@ -1231,7 +1231,7 @@ part of an update that someone else committed for them. The key material in the 
 <p>The versioning follows the Rust and semantic <a href="https://semver.org">versioning guidelines</a>.</p>
 <h2 id="release-notes"><a class="header" href="#release-notes">Release Notes</a></h2>
 <p>Release notes are published on GitHub with a full changelog and a discussion in
-the &quot;Release&quot; section.
+the "Release" section.
 In addition, the release notes are prepended to the CHANGELOG file in each crate's
 root folder.
 The entries in the CHANGELOG file should follow the <a href="https://keepachangelog.com/en/1.0.0/">keep a changelog guide</a>.</p>

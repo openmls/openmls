@@ -178,7 +178,7 @@
 <p>Members can be removed from the group atomically with the <code>.remove_members()</code> function, which takes the <code>KeyPackageRef</code> of group member as input. References to the <code>KeyPackage</code>s of group members can be obtained using the <code>.members()</code> function, from which one can in turn compute the <code>KeyPackageRef</code> using their <code>.hash_ref()</code> function.</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, welcome_option, _group_info) = charlie_group
         .remove_members(provider, &amp;charlie_signature_keys, &amp;[bob_member.index])
-        .expect(&quot;Could not remove Bob from group.&quot;);</code></pre>
+        .expect("Could not remove Bob from group.");</code></pre>
 <p>The function returns the tuple <code>(MlsMessageOut, Option&lt;Welcome&gt;)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing group members.
 Even though members were removed in this operation, the Commit message could potentially also cover Add Proposals previously received in the epoch. Therefore the function can also optionally return a <code>Welcome</code> message. The <code>Welcome</code> message must be sent to the newly added members.</p>
 <h2 id="proposal"><a class="header" href="#proposal">Proposal</a></h2>
@@ -189,7 +189,7 @@ Even though members were removed in this operation, the Commit message could pot
             &amp;alice_signature_keys,
             charlie_group.own_leaf_index(),
         )
-        .expect(&quot;Could not create proposal to remove Charlie.&quot;);</code></pre>
+        .expect("Could not create proposal to remove Charlie.");</code></pre>
 <p>In this case, the function returns an <code>MlsMessageOut</code> that needs to be fanned out to existing group members.</p>
 <h2 id="getting-removed-from-a-group"><a class="header" href="#getting-removed-from-a-group">Getting removed from a group</a></h2>
 <p>A member is removed from a group if another member commits to a remove proposal targeting the member's leaf. Once the to-be-removed member merges that commit via <code>merge_staged_commit()</code>, all other proposals in that commit will still be applied, but the group will be marked as inactive afterward. The group remains usable, e.g., to examine the membership list after the final commit was processed, but it won't be possible to create or process new messages.</p>
@@ -199,11 +199,11 @@ Even though members were removed in this operation, the Commit message could pot
         let remove_proposal = staged_commit
             .remove_proposals()
             .next()
-            .expect(&quot;An unexpected error occurred.&quot;);
+            .expect("An unexpected error occurred.");
 
         // We construct a RemoveOperation enum to help us interpret the remove operation
         let remove_operation = RemoveOperation::new(remove_proposal, &amp;bob_group)
-            .expect(&quot;An unexpected Error occurred.&quot;);
+            .expect("An unexpected Error occurred.");
 
         match remove_operation {
             RemoveOperation::WeLeft =&gt; unreachable!(),
@@ -219,9 +219,9 @@ Even though members were removed in this operation, the Commit message could pot
         // Merge staged Commit
         bob_group
             .merge_staged_commit(provider, *staged_commit)
-            .expect(&quot;Error merging staged commit.&quot;);
+            .expect("Error merging staged commit.");
     } else {
-        unreachable!(&quot;Expected a StagedCommit.&quot;);
+        unreachable!("Expected a StagedCommit.");
     }
 
     // Check we didn't receive a Welcome message
@@ -231,8 +231,8 @@ Even though members were removed in this operation, the Commit message could pot
     assert!(!bob_group.is_active());
     let members = bob_group.members().collect::&lt;Vec&lt;Member&gt;&gt;();
     assert_eq!(members.len(), 2);
-    assert_eq!(members[0].credential.identity(), b&quot;Alice&quot;);
-    assert_eq!(members[1].credential.identity(), b&quot;Charlie&quot;);</code></pre>
+    assert_eq!(members[0].credential.identity(), b"Alice");
+    assert_eq!(members[1].credential.identity(), b"Charlie");</code></pre>
 <h2 id="external-proposal"><a class="header" href="#external-proposal">External Proposal</a></h2>
 <p>Parties outside the group can also make proposals to remove members as long as they are registered as part of the <code>ExternalSendersExtension</code> extension.
 Since those proposals are crafted by outsiders, they are always public messages.</p>
@@ -243,7 +243,7 @@ Since those proposals are crafted by outsiders, they are always public messages.
         &amp;ds_signature_keys,
         SenderExtensionIndex::new(0),
     )
-    .expect(&quot;Could not create external Remove proposal&quot;);</code></pre>
+    .expect("Could not create external Remove proposal");</code></pre>
 <p>It is then up to one of the group members to process the proposal and commit it.</p>
 <pre><code class="language-rust no_run noplayground"></code></pre>
 

@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/schedule/psk.rs`."><title>psk.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-9ee3a5e31a2afa3e.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0 (82e1608df 2023-12-21)" data-channel="1.75.0" data-search-js="search-8fbf244ebcf71464.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-9dd44ab47b99a0fb.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/schedule/psk.rs`."><title>psk.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -602,11 +603,11 @@
     </span>Application = <span class="number">1</span>,
     <span class="doccomment">/// Resumption PSK used for group reinitialization.
     ///
-    /// Note: &quot;Resumption PSKs with usage `reinit` MUST NOT be used in other contexts (than reinitialization).&quot;
+    /// Note: "Resumption PSKs with usage `reinit` MUST NOT be used in other contexts (than reinitialization)."
     </span>Reinit = <span class="number">2</span>,
     <span class="doccomment">/// Resumption PSK used for subgroup branching.
     ///
-    /// Note: &quot;Resumption PSKs with usage `branch` MUST NOT be used in other contexts (than subgroup branching).&quot;
+    /// Note: "Resumption PSKs with usage `branch` MUST NOT be used in other contexts (than subgroup branching)."
     </span>Branch = <span class="number">3</span>,
 }
 
@@ -837,7 +838,7 @@
 
     </span><span class="doccomment">/// Save this `PreSharedKeyId` in the keystore.
     ///
-    /// Note: The nonce is not saved as it must be unique for each time it&#39;s being applied.
+    /// Note: The nonce is not saved as it must be unique for each time it's being applied.
     </span><span class="kw">pub fn </span>write_to_key_store&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
@@ -865,7 +866,7 @@
         };
 
         <span class="macro">log::trace!</span>(
-            <span class="string">&quot;keystore id: {:x?}&quot;</span>,
+            <span class="string">"keystore id: {:x?}"</span>,
             psk_id_with_empty_nonce.tls_serialize_detached()
         );
 
@@ -929,15 +930,15 @@
 /// } PSKLabel;
 /// ```
 </span><span class="attr">#[derive(TlsSerialize, TlsSize)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>PskLabel&lt;<span class="lifetime">&#39;a</span>&gt; {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) id: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>PreSharedKeyId,
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>PskLabel&lt;<span class="lifetime">'a</span>&gt; {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) id: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>PreSharedKeyId,
     <span class="kw">pub</span>(<span class="kw">crate</span>) index: u16,
     <span class="kw">pub</span>(<span class="kw">crate</span>) count: u16,
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; PskLabel&lt;<span class="lifetime">&#39;a</span>&gt; {
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; PskLabel&lt;<span class="lifetime">'a</span>&gt; {
     <span class="doccomment">/// Create a new `PskLabel`
-    </span><span class="kw">fn </span>new(id: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>PreSharedKeyId, index: u16, count: u16) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">fn </span>new(id: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>PreSharedKeyId, index: u16, count: u16) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{ id, index, count }
     }
 }
@@ -954,7 +955,7 @@
     ///
     /// ```text
     /// psk_extracted_[i] = KDF.Extract(0, psk_[i])
-    /// psk_input_[i] = ExpandWithLabel(psk_extracted_[i], &quot;derived psk&quot;, PSKLabel, KDF.Nh)
+    /// psk_input_[i] = ExpandWithLabel(psk_extracted_[i], "derived psk", PSKLabel, KDF.Nh)
     ///
     /// psk_secret_[0] = 0
     /// psk_secret_[i] = KDF.Extract(psk_input[i-1], psk_secret_[i-1])
@@ -965,7 +966,7 @@
         ciphersuite: Ciphersuite,
         psks: Vec&lt;(<span class="kw-2">&amp;</span>PreSharedKeyId, Secret)&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, PskError&gt; {
-        <span class="comment">// Check that we don&#39;t have too many PSKs
+        <span class="comment">// Check that we don't have too many PSKs
         </span><span class="kw">let </span>num_psks = u16::try_from(psks.len()).map_err(|<span class="kw">_</span>| PskError::TooManyKeys)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>mls_version = ProtocolVersion::default();
@@ -984,14 +985,14 @@
                     .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?
             </span>};
 
-            <span class="comment">// psk_input_[i] = ExpandWithLabel( psk_extracted_[i], &quot;derived psk&quot;, PSKLabel, KDF.Nh)
+            <span class="comment">// psk_input_[i] = ExpandWithLabel( psk_extracted_[i], "derived psk", PSKLabel, KDF.Nh)
             </span><span class="kw">let </span>psk_input = {
                 <span class="kw">let </span>psk_label = PskLabel::new(psk_id, index <span class="kw">as </span>u16, num_psks)
                     .tls_serialize_detached()
                     .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
 
                 psk_extracted
-                    .kdf_expand_label(crypto, <span class="string">&quot;derived psk&quot;</span>, <span class="kw-2">&amp;</span>psk_label, ciphersuite.hash_length())
+                    .kdf_expand_label(crypto, <span class="string">"derived psk"</span>, <span class="kw-2">&amp;</span>psk_label, ciphersuite.hash_length())
                     .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?
             </span>};
 
@@ -1009,28 +1010,28 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>.secret
     }
 
-    <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    <span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>as_slice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
         <span class="self">self</span>.secret.as_slice()
     }
 }
 
-<span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+<span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
 </span><span class="kw">impl </span>From&lt;Secret&gt; <span class="kw">for </span>PskSecret {
     <span class="kw">fn </span>from(secret: Secret) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{ secret }
     }
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>load_psks&lt;<span class="lifetime">&#39;p</span>&gt;(
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>load_psks&lt;<span class="lifetime">'p</span>&gt;(
     key_store: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsKeyStore,
     resumption_psk_store: <span class="kw-2">&amp;</span>ResumptionPskStore,
-    psk_ids: <span class="kw-2">&amp;</span><span class="lifetime">&#39;p </span>[PreSharedKeyId],
-) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;(<span class="kw-2">&amp;</span><span class="lifetime">&#39;p </span>PreSharedKeyId, Secret)&gt;, PskError&gt; {
+    psk_ids: <span class="kw-2">&amp;</span><span class="lifetime">'p </span>[PreSharedKeyId],
+) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;(<span class="kw-2">&amp;</span><span class="lifetime">'p </span>PreSharedKeyId, Secret)&gt;, PskError&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>psk_bundles = Vec::new();
 
     <span class="kw">for </span>psk_id <span class="kw">in </span>psk_ids.iter() {
-        <span class="macro">log_crypto!</span>(trace, <span class="string">&quot;PSK store {:?}&quot;</span>, resumption_psk_store);
+        <span class="macro">log_crypto!</span>(trace, <span class="string">"PSK store {:?}"</span>, resumption_psk_store);
 
         <span class="kw">match </span><span class="kw-2">&amp;</span>psk_id.psk {
             Psk::Resumption(resumption) =&gt; {

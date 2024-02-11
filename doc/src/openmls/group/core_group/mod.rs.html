@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/core_group/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-9ee3a5e31a2afa3e.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0 (82e1608df 2023-12-21)" data-channel="1.75.0" data-search-js="search-8fbf244ebcf71464.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-9dd44ab47b99a0fb.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/core_group/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1167,7 +1168,7 @@
 <a href="#1167" id="1167">1167</a>
 <a href="#1168" id="1168">1168</a>
 <a href="#1169" id="1169">1169</a>
-</pre></div><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!
+</pre></div><pre class="rust"><code><span class="doccomment">//! ### Don't Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
 //! the implementation, a function will return an unrecoverable `LibraryError`.
@@ -1266,13 +1267,13 @@
 <span class="doccomment">/// A member in the group is identified by this [`Member`] struct.
 </span><span class="attr">#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>Member {
-    <span class="doccomment">/// The member&#39;s leaf index in the ratchet tree.
+    <span class="doccomment">/// The member's leaf index in the ratchet tree.
     </span><span class="kw">pub </span>index: LeafNodeIndex,
-    <span class="doccomment">/// The member&#39;s credential.
+    <span class="doccomment">/// The member's credential.
     </span><span class="kw">pub </span>credential: Credential,
-    <span class="doccomment">/// The member&#39;s public HPHKE encryption key.
+    <span class="doccomment">/// The member's public HPHKE encryption key.
     </span><span class="kw">pub </span>encryption_key: Vec&lt;u8&gt;,
-    <span class="doccomment">/// The member&#39;s public signature key.
+    <span class="doccomment">/// The member's public signature key.
     </span><span class="kw">pub </span>signature_key: Vec&lt;u8&gt;,
 }
 
@@ -1350,7 +1351,7 @@
         <span class="self">self
     </span>}
 
-    <span class="doccomment">/// Set the [`Capabilities`] of the group&#39;s creator.
+    <span class="doccomment">/// Set the [`Capabilities`] of the group's creator.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>with_capabilities(<span class="kw-2">mut </span><span class="self">self</span>, capabilities: Capabilities) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.public_group_builder = <span class="self">self</span>.public_group_builder.with_capabilities(capabilities);
         <span class="self">self
@@ -1371,7 +1372,7 @@
         <span class="prelude-val">Ok</span>(<span class="self">self</span>)
     }
 
-    <span class="doccomment">/// Sets extensions of the group creator&#39;s [`LeafNode`].
+    <span class="doccomment">/// Sets extensions of the group creator's [`LeafNode`].
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>with_leaf_node_extensions(
         <span class="kw-2">mut </span><span class="self">self</span>,
         extensions: Extensions,
@@ -1394,7 +1395,7 @@
     </span>}
 
     <span class="doccomment">/// Build the [`CoreGroup`].
-    /// Any values that haven&#39;t been set in the builder are set to their default
+    /// Any values that haven't been set in the builder are set to their default
     /// values (which might be random).
     ///
     /// This function performs cryptographic operations and there requires an
@@ -1416,8 +1417,8 @@
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
 
-        <span class="macro">debug!</span>(<span class="string">&quot;Created group {:x?}&quot;</span>, public_group_builder.group_id());
-        <span class="macro">trace!</span>(<span class="string">&quot; &gt;&gt;&gt; with {:?}, {:?}&quot;</span>, ciphersuite, config);
+        <span class="macro">debug!</span>(<span class="string">"Created group {:x?}"</span>, public_group_builder.group_id());
+        <span class="macro">trace!</span>(<span class="string">" &gt;&gt;&gt; with {:?}, {:?}"</span>, ciphersuite, config);
         <span class="comment">// Derive an initial joiner secret based on the commit secret.
         // Derive an epoch secret from the joiner secret.
         // We use a random `InitSecret` for initialization.
@@ -1444,11 +1445,11 @@
             KeySchedule::init(ciphersuite, provider.crypto(), <span class="kw-2">&amp;</span>joiner_secret, psk_secret)<span class="question-mark">?</span>;
         key_schedule
             .add_context(provider.crypto(), <span class="kw-2">&amp;</span>serialized_group_context)
-            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Using the key schedule in the wrong state&quot;</span>))<span class="question-mark">?</span>;
+            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"Using the key schedule in the wrong state"</span>))<span class="question-mark">?</span>;
 
         <span class="kw">let </span>epoch_secrets = key_schedule
             .epoch_secrets(provider.crypto())
-            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Using the key schedule in the wrong state&quot;</span>))<span class="question-mark">?</span>;
+            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"Using the key schedule in the wrong state"</span>))<span class="question-mark">?</span>;
 
         <span class="kw">let </span>(group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
             serialized_group_context,
@@ -1537,7 +1538,7 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>create_update_proposal(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         framing_parameters: FramingParameters,
-        <span class="comment">// XXX: There&#39;s no need to own this. The [`UpdateProposal`] should
+        <span class="comment">// XXX: There's no need to own this. The [`UpdateProposal`] should
         //      operate on a reference to make this more efficient.
         </span>leaf_node: LeafNode,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
@@ -1714,7 +1715,7 @@
         key_length: usize,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ExporterError&gt; {
         <span class="kw">if </span>key_length &gt; u16::MAX.into() {
-            <span class="macro">log::error!</span>(<span class="string">&quot;Got a key that is larger than u16::MAX&quot;</span>);
+            <span class="macro">log::error!</span>(<span class="string">"Got a key that is larger than u16::MAX"</span>);
             <span class="kw">return </span><span class="prelude-val">Err</span>(ExporterError::KeyLengthTooLong);
         }
         <span class="prelude-val">Ok</span>(<span class="self">self
@@ -1750,7 +1751,7 @@
                 Extensions::from_vec(<span class="macro">vec!</span>[ratchet_tree_extension(), external_pub_extension()])
                     .map_err(|<span class="kw">_</span>| {
                         LibraryError::custom(
-                            <span class="string">&quot;There should not have been duplicate extensions here.&quot;</span>,
+                            <span class="string">"There should not have been duplicate extensions here."</span>,
                         )
                     })<span class="question-mark">?
             </span>} <span class="kw">else </span>{
@@ -1772,7 +1773,7 @@
         <span class="comment">// Sign to-be-signed group info.
         </span>group_info_tbs
             .sign(signer)
-            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Signing failed&quot;</span>))
+            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"Signing failed"</span>))
     }
 
     <span class="doccomment">/// Returns the epoch authenticator
@@ -1854,7 +1855,7 @@
         <span class="self">self</span>.own_leaf_index
     }
 
-    <span class="doccomment">/// Get the identity of the client&#39;s [`Credential`] owning this group.
+    <span class="doccomment">/// Get the identity of the client's [`Credential`] owning this group.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>own_identity(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[u8]&gt; {
         <span class="self">self</span>.public_group()
             .leaf(<span class="self">self</span>.own_leaf_index)
@@ -1931,11 +1932,11 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>own_leaf_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>LeafNode, LibraryError&gt; {
         <span class="self">self</span>.public_group()
             .leaf(<span class="self">self</span>.own_leaf_index())
-            .ok_or_else(|| LibraryError::custom(<span class="string">&quot;Tree has no own leaf.&quot;</span>))
+            .ok_or_else(|| LibraryError::custom(<span class="string">"Tree has no own leaf."</span>))
     }
 
-    <span class="doccomment">/// Store the given [`EncryptionKeyPair`]s in the `provider`&#39;s key store
-    /// indexed by this group&#39;s [`GroupId`] and [`GroupEpoch`].
+    <span class="doccomment">/// Store the given [`EncryptionKeyPair`]s in the `provider`'s key store
+    /// indexed by this group's [`GroupId`] and [`GroupEpoch`].
     ///
     /// Returns an error if access to the key store fails.
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>store_epoch_keypairs&lt;KeyStore: OpenMlsKeyStore&gt;(
@@ -1952,7 +1953,7 @@
     }
 
     <span class="doccomment">/// Read the [`EncryptionKeyPair`]s of this group and its current
-    /// [`GroupEpoch`] from the `provider`&#39;s key store.
+    /// [`GroupEpoch`] from the `provider`'s key store.
     ///
     /// Returns `None` if access to the key store fails.
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>read_epoch_keypairs&lt;KeyStore: OpenMlsKeyStore&gt;(
@@ -1970,7 +1971,7 @@
     }
 
     <span class="doccomment">/// Delete the [`EncryptionKeyPair`]s from the previous [`GroupEpoch`] from
-    /// the `provider`&#39;s key store.
+    /// the `provider`'s key store.
     ///
     /// Returns an error if access to the key store fails.
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>delete_previous_epoch_keypairs&lt;KeyStore: OpenMlsKeyStore&gt;(
@@ -2152,13 +2153,13 @@
 
         <span class="kw">let </span>welcome_secret = key_schedule
             .welcome(provider.crypto())
-            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Using the key schedule in the wrong state&quot;</span>))<span class="question-mark">?</span>;
+            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"Using the key schedule in the wrong state"</span>))<span class="question-mark">?</span>;
         key_schedule
             .add_context(provider.crypto(), <span class="kw-2">&amp;</span>serialized_provisional_group_context)
-            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Using the key schedule in the wrong state&quot;</span>))<span class="question-mark">?</span>;
+            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"Using the key schedule in the wrong state"</span>))<span class="question-mark">?</span>;
         <span class="kw">let </span>provisional_epoch_secrets = key_schedule
             .epoch_secrets(provider.crypto())
-            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Using the key schedule in the wrong state&quot;</span>))<span class="question-mark">?</span>;
+            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"Using the key schedule in the wrong state"</span>))<span class="question-mark">?</span>;
 
         <span class="comment">// Calculate the confirmation tag
         </span><span class="kw">let </span>confirmation_tag = provisional_epoch_secrets
@@ -2224,7 +2225,7 @@
                     provider.crypto(),
                     group_info
                         .as_ref()
-                        .ok_or_else(|| LibraryError::custom(<span class="string">&quot;GroupInfo was not computed&quot;</span>))<span class="question-mark">?
+                        .ok_or_else(|| LibraryError::custom(<span class="string">"GroupInfo was not computed"</span>))<span class="question-mark">?
                         </span>.tls_serialize_detached()
                         .map_err(LibraryError::missing_bound_check)<span class="question-mark">?
                         </span>.as_slice(),
@@ -2304,7 +2305,7 @@
     }
 }
 
-<span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+<span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
 </span><span class="kw">impl </span>CoreGroup {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>context_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>GroupContext {
         <span class="self">self</span>.public_group.context_mut()
@@ -2315,7 +2316,7 @@
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>print_ratchet_tree(<span class="kw-2">&amp;</span><span class="self">self</span>, message: <span class="kw-2">&amp;</span>str) {
-        <span class="macro">println!</span>(<span class="string">&quot;{}: {}&quot;</span>, message, <span class="self">self</span>.public_group().export_ratchet_tree());
+        <span class="macro">println!</span>(<span class="string">"{}: {}"</span>, message, <span class="self">self</span>.public_group().export_ratchet_tree());
     }
 
     <span class="attr">#[cfg(test)]

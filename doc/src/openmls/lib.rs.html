@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/lib.rs`."><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-9ee3a5e31a2afa3e.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0 (82e1608df 2023-12-21)" data-channel="1.75.0" data-search-js="search-8fbf244ebcf71464.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-9dd44ab47b99a0fb.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/lib.rs`."><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -196,9 +197,9 @@
 <a href="#196" id="196">196</a>
 <a href="#197" id="197">197</a>
 <a href="#198" id="198">198</a>
-</pre></div><pre class="rust"><code><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../README.md&quot;</span>)]
+</pre></div><pre class="rust"><code><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">"../README.md"</span>)]
 </span><span class="doccomment">//! ## Quick Start
-//! For a quick start to learn how OpenMLS works here&#39;s the basic code to set
+//! For a quick start to learn how OpenMLS works here's the basic code to set
 //! up to parties and have them create a group.
 //!
 //! ```
@@ -211,7 +212,7 @@
 //! // ... and the crypto provider to use.
 //! let provider = &amp;OpenMlsRustCrypto::default();
 //!
-//! // Now let&#39;s create two participants.
+//! // Now let's create two participants.
 //!
 //! // A helper to create and store credentials.
 //! fn generate_credential_with_key(
@@ -223,13 +224,13 @@
 //!     let credential = Credential::new(identity, credential_type).unwrap();
 //!     let signature_keys =
 //!         SignatureKeyPair::new(signature_algorithm)
-//!             .expect(&quot;Error generating a signature key pair.&quot;);
+//!             .expect("Error generating a signature key pair.");
 //!
 //!     // Store the signature key into the key store so OpenMLS has access
 //!     // to it.
 //!     signature_keys
 //!         .store(provider.key_store())
-//!         .expect(&quot;Error storing signature keys in key store.&quot;);
+//!         .expect("Error storing signature keys in key store.");
 //!     
 //!     (
 //!         CredentialWithKey {
@@ -263,14 +264,14 @@
 //!
 //! // First they need credentials to identify them
 //! let (sasha_credential_with_key, sasha_signer) = generate_credential_with_key(
-//!     &quot;Sasha&quot;.into(),
+//!     "Sasha".into(),
 //!     CredentialType::Basic,
 //!     ciphersuite.signature_algorithm(),
 //!     provider,
 //! );
 //!
 //! let (maxim_credential_with_key, maxim_signer) = generate_credential_with_key(
-//!     &quot;Maxim&quot;.into(),
+//!     "Maxim".into(),
 //!     CredentialType::Basic,
 //!     ciphersuite.signature_algorithm(),
 //!     provider,
@@ -289,34 +290,34 @@
 //!     &amp;MlsGroupCreateConfig::default(),
 //!     sasha_credential_with_key,
 //! )
-//! .expect(&quot;An unexpected error occurred.&quot;);
+//! .expect("An unexpected error occurred.");
 //!
 //! // ... and invites Maxim.
 //! // The key package has to be retrieved from Maxim in some way. Most likely
 //! // via a server storing key packages for users.
 //! let (mls_message_out, welcome_out, group_info) = sasha_group
 //!     .add_members(provider, &amp;sasha_signer, &amp;[maxim_key_package])
-//!     .expect(&quot;Could not add members.&quot;);
+//!     .expect("Could not add members.");
 //!
 //! // Sasha merges the pending commit that adds Maxim.
 //! sasha_group
 //!    .merge_pending_commit(provider)
-//!    .expect(&quot;error merging pending commit&quot;);
+//!    .expect("error merging pending commit");
 //!
 //! // Sascha serializes the [`MlsMessageOut`] containing the [`Welcome`].
 //! let serialized_welcome = welcome_out
 //!    .tls_serialize_detached()
-//!    .expect(&quot;Error serializing welcome&quot;);
+//!    .expect("Error serializing welcome");
 //!
 //! // Maxim can now de-serialize the message as an [`MlsMessageIn`] ...
 //! let mls_message_in = MlsMessageIn::tls_deserialize(&amp;mut serialized_welcome.as_slice())
-//!    .expect(&quot;An unexpected error occurred.&quot;);
+//!    .expect("An unexpected error occurred.");
 //!
 //! // ... and inspect the message.
 //! let welcome = match mls_message_in.extract() {
 //!    MlsMessageInBody::Welcome(welcome) =&gt; welcome,
-//!    // We know it&#39;s a welcome message, so we ignore all other cases.
-//!    _ =&gt; unreachable!(&quot;Unexpected message type.&quot;),
+//!    // We know it's a welcome message, so we ignore all other cases.
+//!    _ =&gt; unreachable!("Unexpected message type."),
 //! };
 //!
 //! // Now Maxim can join the group.
@@ -328,35 +329,35 @@
 //!     // It is also possible to use the [`RatchetTreeExtension`]
 //!     Some(sasha_group.export_ratchet_tree().into()),
 //!  )
-//!  .expect(&quot;Error joining group from Welcome&quot;);
+//!  .expect("Error joining group from Welcome");
 //! ```
 //!
-//! [//]: # &quot;links and badges&quot;
+//! [//]: # "links and badges"
 //! [user Manual]: https://openmls.tech/book
 </span><span class="attr">#![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(not(test), forbid(unsafe_code))]
-#![cfg_attr(not(feature = <span class="string">&quot;test-utils&quot;</span>), deny(missing_docs))]
+#![cfg_attr(not(feature = <span class="string">"test-utils"</span>), deny(missing_docs))]
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(rustdoc::private_intra_doc_links)]
 #![cfg(any(
-    target_pointer_width = <span class="string">&quot;32&quot;</span>,
-    target_pointer_width = <span class="string">&quot;64&quot;</span>,
-    target_pointer_width = <span class="string">&quot;128&quot;
+    target_pointer_width = <span class="string">"32"</span>,
+    target_pointer_width = <span class="string">"64"</span>,
+    target_pointer_width = <span class="string">"128"
 </span>))]
 
-#[cfg(all(target_arch = <span class="string">&quot;wasm32&quot;</span>, not(feature = <span class="string">&quot;js&quot;</span>)))]
-</span><span class="macro">compile_error!</span>(<span class="string">&quot;In order for OpenMLS to build for WebAssembly, JavaScript APIs must be available (for access to secure randomness and the current time). This can be signalled by setting the `js` feature on OpenMLS.&quot;</span>);
+#[cfg(all(target_arch = <span class="string">"wasm32"</span>, not(feature = <span class="string">"js"</span>)))]
+</span><span class="macro">compile_error!</span>(<span class="string">"In order for OpenMLS to build for WebAssembly, JavaScript APIs must be available (for access to secure randomness and the current time). This can be signalled by setting the `js` feature on OpenMLS."</span>);
 
 <span class="comment">// === Testing ===
 
 </span><span class="doccomment">/// Single place, re-exporting all structs and functions needed for integration tests
-</span><span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+</span><span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
 </span><span class="kw">pub mod </span>prelude_test;
 
-<span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+<span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
 </span><span class="kw">pub use </span>rstest_reuse;
 
-<span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+<span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
 #[macro_use]
 </span><span class="kw">pub mod </span>test_utils;
 
@@ -390,7 +391,7 @@
 </span><span class="kw">pub mod </span>prelude;
 
 <span class="comment">// this is a workaround, see https://github.com/la10736/rstest/issues/211#issuecomment-1701238125
-</span><span class="attr">#[cfg(any(test, feature = <span class="string">&quot;test-utils&quot;</span>))]
+</span><span class="attr">#[cfg(any(test, feature = <span class="string">"test-utils"</span>))]
 </span><span class="kw">pub mod </span>wasm {
     <span class="kw">pub use </span>wasm_bindgen_test::wasm_bindgen_test <span class="kw">as </span>test;
 }

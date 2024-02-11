@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/messages/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-9ee3a5e31a2afa3e.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0 (82e1608df 2023-12-21)" data-channel="1.75.0" data-search-js="search-8fbf244ebcf71464.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-9dd44ab47b99a0fb.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/messages/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -604,7 +605,7 @@
         <span class="self">self</span>.encrypted_group_info.as_slice()
     }
 
-    <span class="doccomment">/// Set the welcome&#39;s encrypted group info.
+    <span class="doccomment">/// Set the welcome's encrypted group info.
     </span><span class="attr">#[cfg(test)]
     </span><span class="kw">pub fn </span>set_encrypted_group_info(<span class="kw-2">&amp;mut </span><span class="self">self</span>, encrypted_group_info: Vec&lt;u8&gt;) {
         <span class="self">self</span>.encrypted_group_info = encrypted_group_info.into();
@@ -633,12 +634,12 @@
         }
     }
 
-    <span class="doccomment">/// Returns the encrypted group secrets&#39; new [`KeyPackageRef`].
+    <span class="doccomment">/// Returns the encrypted group secrets' new [`KeyPackageRef`].
     </span><span class="kw">pub fn </span>new_member(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; KeyPackageRef {
         <span class="self">self</span>.new_member.clone()
     }
 
-    <span class="doccomment">/// Returns a reference to the encrypted group secrets&#39; encrypted group secrets.
+    <span class="doccomment">/// Returns a reference to the encrypted group secrets' encrypted group secrets.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encrypted_group_secrets(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HpkeCiphertext {
         <span class="kw-2">&amp;</span><span class="self">self</span>.encrypted_group_secrets
     }
@@ -763,8 +764,8 @@
 }
 
 <span class="comment">// The following `From` implementation( breaks abstraction layers and MUST
-// NOT be made available outside of tests or &quot;test-utils&quot;.
-</span><span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+// NOT be made available outside of tests or "test-utils".
+</span><span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
 </span><span class="kw">impl </span>From&lt;CommitIn&gt; <span class="kw">for </span>Commit {
     <span class="kw">fn </span>from(commit: CommitIn) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
@@ -810,7 +811,7 @@
 </span><span class="attr">#[derive(
     Debug, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize,
 )]
-#[cfg_attr(any(feature = <span class="string">&quot;test-utils&quot;</span>, test), derive(PartialEq, Clone))]
+#[cfg_attr(any(feature = <span class="string">"test-utils"</span>, test), derive(PartialEq, Clone))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>PathSecret {
     <span class="kw">pub</span>(<span class="kw">crate</span>) path_secret: Secret,
 }
@@ -830,7 +831,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;EncryptionKeyPair, LibraryError&gt; {
         <span class="kw">let </span>node_secret = <span class="self">self
             </span>.path_secret
-            .kdf_expand_label(crypto, <span class="string">&quot;node&quot;</span>, <span class="kw-2">&amp;</span>[], ciphersuite.hash_length())
+            .kdf_expand_label(crypto, <span class="string">"node"</span>, <span class="kw-2">&amp;</span>[], ciphersuite.hash_length())
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
         <span class="kw">let </span>HpkeKeyPair { public, private } =
             crypto.derive_hpke_keypair(ciphersuite.hpke_config(), node_secret.as_slice());
@@ -846,7 +847,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
         <span class="kw">let </span>path_secret = <span class="self">self
             </span>.path_secret
-            .kdf_expand_label(crypto, <span class="string">&quot;path&quot;</span>, <span class="kw-2">&amp;</span>[], ciphersuite.hash_length())
+            .kdf_expand_label(crypto, <span class="string">"path"</span>, <span class="kw-2">&amp;</span>[], ciphersuite.hash_length())
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{ path_secret })
     }
@@ -921,20 +922,20 @@
 }
 
 <span class="attr">#[derive(TlsSerialize, TlsSize)]
-</span><span class="kw">struct </span>EncodedGroupSecrets&lt;<span class="lifetime">&#39;a</span>&gt; {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) joiner_secret: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>JoinerSecret,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) path_secret: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>PathSecret&gt;,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) psks: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[PreSharedKeyId],
+</span><span class="kw">struct </span>EncodedGroupSecrets&lt;<span class="lifetime">'a</span>&gt; {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) joiner_secret: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>JoinerSecret,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) path_secret: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>PathSecret&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) psks: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[PreSharedKeyId],
 }
 
 <span class="doccomment">/// Error related to group secrets.
 </span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
 </span><span class="kw">pub enum </span>GroupSecretsError {
     <span class="doccomment">/// Decryption failed.
-    </span><span class="attr">#[error(<span class="string">&quot;Decryption failed.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Decryption failed."</span>)]
     </span>DecryptionFailed,
     <span class="doccomment">/// Malformed.
-    </span><span class="attr">#[error(<span class="string">&quot;Malformed.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Malformed."</span>)]
     </span>Malformed,
 }
 
@@ -948,7 +949,7 @@
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, GroupSecretsError&gt; {
         <span class="kw">let </span>group_secrets_plaintext =
-            hpke::decrypt_with_label(skey, <span class="string">&quot;Welcome&quot;</span>, context, ciphertext, ciphersuite, crypto)
+            hpke::decrypt_with_label(skey, <span class="string">"Welcome"</span>, context, ciphertext, ciphersuite, crypto)
                 .map_err(|<span class="kw">_</span>| GroupSecretsError::DecryptionFailed)<span class="question-mark">?</span>;
 
         <span class="comment">// Note: This also checks that no extraneous data was encrypted.
@@ -961,10 +962,10 @@
     }
 
     <span class="doccomment">/// Create new encoded group secrets.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new_encoded&lt;<span class="lifetime">&#39;a</span>&gt;(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new_encoded&lt;<span class="lifetime">'a</span>&gt;(
         joiner_secret: <span class="kw-2">&amp;</span>JoinerSecret,
-        path_secret: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>PathSecret&gt;,
-        psks: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[PreSharedKeyId],
+        path_secret: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>PathSecret&gt;,
+        psks: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[PreSharedKeyId],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, tls_codec::Error&gt; {
         EncodedGroupSecrets {
             joiner_secret,
@@ -1000,17 +1001,17 @@
             rng,
             Psk::External(ExternalPsk::new(
                 rng.random_vec(ciphersuite.hash_length())
-                    .expect(<span class="string">&quot;Not enough randomness.&quot;</span>),
+                    .expect(<span class="string">"Not enough randomness."</span>),
             )),
         )
-        .expect(<span class="string">&quot;An unexpected error occurred.&quot;</span>);
+        .expect(<span class="string">"An unexpected error occurred."</span>);
         <span class="kw">let </span>psks = <span class="macro">vec!</span>[psk_id];
 
         GroupSecrets::new_encoded(
             <span class="kw-2">&amp;</span>JoinerSecret::random(ciphersuite, rng, version),
             <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>PathSecret {
                 path_secret: Secret::random(ciphersuite, rng, version)
-                    .expect(<span class="string">&quot;Not enough randomness.&quot;</span>),
+                    .expect(<span class="string">"Not enough randomness."</span>),
             }),
             <span class="kw-2">&amp;</span>psks,
         )

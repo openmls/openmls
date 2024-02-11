@@ -178,7 +178,7 @@
 <h2 id="deserializing-messages"><a class="header" href="#deserializing-messages">Deserializing messages</a></h2>
 <p>Incoming messages can be deserialized from byte slices into an <code>MlsMessageIn</code>:</p>
 <pre><code class="language-rust no_run noplayground">    let mls_message =
-        MlsMessageIn::tls_deserialize_exact(bytes).expect(&quot;Could not deserialize message.&quot;);</code></pre>
+        MlsMessageIn::tls_deserialize_exact(bytes).expect("Could not deserialize message.");</code></pre>
 <p>If the message is malformed, the function will fail with an error.</p>
 <h2 id="processing-messages"><a class="header" href="#processing-messages">Processing messages</a></h2>
 <p>In the next step, the message needs to be processed. If the message was
@@ -187,7 +187,7 @@ and semantic validation checks and verifies the message's signature:</p>
 <pre><code class="language-rust no_run noplayground">    let protocol_message: ProtocolMessage = mls_message.into();
     let processed_message = bob_group
         .process_message(provider, protocol_message)
-        .expect(&quot;Could not process message.&quot;);</code></pre>
+        .expect("Could not process message.");</code></pre>
 <h2 id="interpreting-the-processed-message"><a class="header" href="#interpreting-the-processed-message">Interpreting the processed message</a></h2>
 <p>In the last step, the message is ready for inspection. The <code>ProcessedMessage</code>
 obtained in the previous step exposes header fields such as group ID, epoch,
@@ -199,7 +199,7 @@ sender, and authenticated data. It also exposes the message's content. There are
         processed_message.into_content()
     {
         // Check the message
-        assert_eq!(application_message.into_bytes(), b&quot;Hi, I'm Alice!&quot;);
+        assert_eq!(application_message.into_bytes(), b"Hi, I'm Alice!");
     }</code></pre>
 <h3 id="proposals"><a class="header" href="#proposals">Proposals</a></h3>
 <p>Standalone proposals are returned as a <code>QueuedProposal</code>, indicating that they are pending proposals. The proposal can be inspected through the <code>.proposal()</code> function. After inspection, applications should store the pending proposal in the proposal store of the group:</p>
@@ -214,7 +214,7 @@ sender, and authenticated data. It also exposes the message's content. There are
                 &amp;bob_credential.credential
             );
         } else {
-            panic!(&quot;Expected an AddProposal.&quot;);
+            panic!("Expected an AddProposal.");
         }
 
         // Check that Alice added Bob
@@ -230,10 +230,10 @@ sender, and authenticated data. It also exposes the message's content. There are
 a proposal from the proposal store. This can be useful for example to roll back in case of errors.</p>
 <pre><code class="language-rust no_run noplayground">    let (_mls_message_out, proposal_ref) = alice_group
         .propose_add_member(provider, &amp;alice_signature_keys, &amp;bob_key_package)
-        .expect(&quot;Could not create proposal to add Bob&quot;);
+        .expect("Could not create proposal to add Bob");
     alice_group
         .remove_pending_proposal(proposal_ref)
-        .expect(&quot;The proposal was not found&quot;);</code></pre>
+        .expect("The proposal was not found");</code></pre>
 <h3 id="commit-messages"><a class="header" href="#commit-messages">Commit messages</a></h3>
 <p>Commit messages are returned as <code>StagedCommit</code> objects. The proposals they cover can be inspected through different functions, depending on the proposal type. After the application has inspected the <code>StagedCommit</code> and approved all the proposals it covers, the <code>StagedCommit</code> can be merged in the current group state by calling the <code>.merge_staged_commit()</code> function. For more details, see the <code>StagedCommit</code> documentation.</p>
 <pre><code class="language-rust no_run noplayground">    if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
@@ -243,7 +243,7 @@ a proposal from the proposal store. This can be useful for example to roll back 
         let remove = staged_commit
             .remove_proposals()
             .next()
-            .expect(&quot;Expected a proposal.&quot;);
+            .expect("Expected a proposal.");
         // Check that Bob was removed
         assert_eq!(
             remove.remove_proposal().removed(),
@@ -257,7 +257,7 @@ a proposal from the proposal store. This can be useful for example to roll back 
         // Merge staged commit
         alice_group
             .merge_staged_commit(provider, *staged_commit)
-            .expect(&quot;Error merging staged commit.&quot;);
+            .expect("Error merging staged commit.");
     }</code></pre>
 <h3 id="interpreting-remove-operations"><a class="header" href="#interpreting-remove-operations">Interpreting remove operations</a></h3>
 <p>Remove operations can have different meanings, such as:</p>
@@ -275,11 +275,11 @@ a proposal from the proposal store. This can be useful for example to roll back 
         let remove_proposal = staged_commit
             .remove_proposals()
             .next()
-            .expect(&quot;An unexpected error occurred.&quot;);
+            .expect("An unexpected error occurred.");
 
         // We construct a RemoveOperation enum to help us interpret the remove operation
         let remove_operation = RemoveOperation::new(remove_proposal, &amp;bob_group)
-            .expect(&quot;An unexpected Error occurred.&quot;);
+            .expect("An unexpected Error occurred.");
 
         match remove_operation {
             RemoveOperation::WeLeft =&gt; unreachable!(),
@@ -295,9 +295,9 @@ a proposal from the proposal store. This can be useful for example to roll back 
         // Merge staged Commit
         bob_group
             .merge_staged_commit(provider, *staged_commit)
-            .expect(&quot;Error merging staged commit.&quot;);
+            .expect("Error merging staged commit.");
     } else {
-        unreachable!(&quot;Expected a StagedCommit.&quot;);
+        unreachable!("Expected a StagedCommit.");
     }</code></pre>
 
                     </main>

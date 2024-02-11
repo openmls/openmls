@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/errors.rs`."><title>errors.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-9ee3a5e31a2afa3e.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0 (82e1608df 2023-12-21)" data-channel="1.75.0" data-search-js="search-8fbf244ebcf71464.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-9dd44ab47b99a0fb.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/errors.rs`."><title>errors.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -578,58 +579,58 @@
     </span><span class="attr">#[error(transparent)]
     </span>GroupSecrets(<span class="attr">#[from] </span>GroupSecretsError),
     <span class="doccomment">/// Private part of `init_key` not found in key store.
-    </span><span class="attr">#[error(<span class="string">&quot;Private part of `init_key` not found in key store.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Private part of `init_key` not found in key store."</span>)]
     </span>PrivateInitKeyNotFound,
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
-    <span class="doccomment">/// Ciphersuites in Welcome and key package bundle don&#39;t match.
-    </span><span class="attr">#[error(<span class="string">&quot;Ciphersuites in Welcome and key package bundle don&#39;t match.&quot;</span>)]
+    <span class="doccomment">/// Ciphersuites in Welcome and key package bundle don't match.
+    </span><span class="attr">#[error(<span class="string">"Ciphersuites in Welcome and key package bundle don't match."</span>)]
     </span>CiphersuiteMismatch,
     <span class="doccomment">/// See [`GroupInfoError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>GroupInfo(<span class="attr">#[from] </span>GroupInfoError),
     <span class="doccomment">/// No joiner secret found in the Welcome message.
-    </span><span class="attr">#[error(<span class="string">&quot;No joiner secret found in the Welcome message.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"No joiner secret found in the Welcome message."</span>)]
     </span>JoinerSecretNotFound,
     <span class="doccomment">/// No ratchet tree available to build initial tree after receiving a Welcome message.
-    </span><span class="attr">#[error(<span class="string">&quot;No ratchet tree available to build initial tree after receiving a Welcome message.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"No ratchet tree available to build initial tree after receiving a Welcome message."</span>)]
     </span>MissingRatchetTree,
     <span class="doccomment">/// The computed confirmation tag does not match the expected one.
-    </span><span class="attr">#[error(<span class="string">&quot;The computed confirmation tag does not match the expected one.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The computed confirmation tag does not match the expected one."</span>)]
     </span>ConfirmationTagMismatch,
     <span class="doccomment">/// The signature on the GroupInfo is not valid.
-    </span><span class="attr">#[error(<span class="string">&quot;The signature on the GroupInfo is not valid.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The signature on the GroupInfo is not valid."</span>)]
     </span>InvalidGroupInfoSignature,
-    <span class="doccomment">/// We don&#39;t support the version of the group we are trying to join.
-    </span><span class="attr">#[error(<span class="string">&quot;We don&#39;t support the version of the group we are trying to join.&quot;</span>)]
+    <span class="doccomment">/// We don't support the version of the group we are trying to join.
+    </span><span class="attr">#[error(<span class="string">"We don't support the version of the group we are trying to join."</span>)]
     </span>UnsupportedMlsVersion,
-    <span class="doccomment">/// We don&#39;t support all capabilities of the group.
-    </span><span class="attr">#[error(<span class="string">&quot;We don&#39;t support all capabilities of the group.&quot;</span>)]
+    <span class="doccomment">/// We don't support all capabilities of the group.
+    </span><span class="attr">#[error(<span class="string">"We don't support all capabilities of the group."</span>)]
     </span>UnsupportedCapability,
     <span class="doccomment">/// Sender not found in tree.
-    </span><span class="attr">#[error(<span class="string">&quot;Sender not found in tree.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Sender not found in tree."</span>)]
     </span>UnknownSender,
     <span class="doccomment">/// Malformed Welcome message.
-    </span><span class="attr">#[error(<span class="string">&quot;Malformed Welcome message.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Malformed Welcome message."</span>)]
     </span>MalformedWelcomeMessage,
     <span class="doccomment">/// Could not decrypt the Welcome message.
-    </span><span class="attr">#[error(<span class="string">&quot;Could not decrypt the Welcome message.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Could not decrypt the Welcome message."</span>)]
     </span>UnableToDecrypt,
     <span class="doccomment">/// Unsupported extensions found in the KeyPackage of another member.
-    </span><span class="attr">#[error(<span class="string">&quot;Unsupported extensions found in the KeyPackage of another member.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Unsupported extensions found in the KeyPackage of another member."</span>)]
     </span>UnsupportedExtensions,
     <span class="doccomment">/// See [`PskError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>Psk(<span class="attr">#[from] </span>PskError),
     <span class="doccomment">/// No matching encryption key was found in the key store.
-    </span><span class="attr">#[error(<span class="string">&quot;No matching encryption key was found in the key store.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"No matching encryption key was found in the key store."</span>)]
     </span>NoMatchingEncryptionKey,
     <span class="doccomment">/// No matching key package was found in the key store.
-    </span><span class="attr">#[error(<span class="string">&quot;No matching key package was found in the key store.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"No matching key package was found in the key store."</span>)]
     </span>NoMatchingKeyPackage,
     <span class="doccomment">/// Error accessing the key store.
-    </span><span class="attr">#[error(<span class="string">&quot;Error accessing the key store.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Error accessing the key store."</span>)]
     </span>KeyStoreError(KeyStoreError),
     <span class="doccomment">/// This error indicates the public tree is invalid. See [`PublicTreeError`] for more details.
     </span><span class="attr">#[error(transparent)]
@@ -650,29 +651,29 @@
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
     <span class="doccomment">/// No ratchet tree available to build initial tree.
-    </span><span class="attr">#[error(<span class="string">&quot;No ratchet tree available to build initial tree.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"No ratchet tree available to build initial tree."</span>)]
     </span>MissingRatchetTree,
     <span class="doccomment">/// No external_pub extension available to join group by external commit.
-    </span><span class="attr">#[error(<span class="string">&quot;No external_pub extension available to join group by external commit.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"No external_pub extension available to join group by external commit."</span>)]
     </span>MissingExternalPub,
-    <span class="doccomment">/// We don&#39;t support the ciphersuite of the group we are trying to join.
-    </span><span class="attr">#[error(<span class="string">&quot;We don&#39;t support the ciphersuite of the group we are trying to join.&quot;</span>)]
+    <span class="doccomment">/// We don't support the ciphersuite of the group we are trying to join.
+    </span><span class="attr">#[error(<span class="string">"We don't support the ciphersuite of the group we are trying to join."</span>)]
     </span>UnsupportedCiphersuite,
     <span class="doccomment">/// Sender not found in tree.
-    </span><span class="attr">#[error(<span class="string">&quot;Sender not found in tree.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Sender not found in tree."</span>)]
     </span>UnknownSender,
     <span class="doccomment">/// The signature over the given group info is invalid.
-    </span><span class="attr">#[error(<span class="string">&quot;The signature over the given group info is invalid.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The signature over the given group info is invalid."</span>)]
     </span>InvalidGroupInfoSignature,
     <span class="doccomment">/// Error creating external commit.
-    </span><span class="attr">#[error(<span class="string">&quot;Error creating external commit.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Error creating external commit."</span>)]
     </span>CommitError,
     <span class="doccomment">/// This error indicates the public tree is invalid. See
     /// [`CreationFromExternalError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>PublicGroupError(<span class="attr">#[from] </span>CreationFromExternalError),
     <span class="doccomment">/// Credential is missing from external commit.
-    </span><span class="attr">#[error(<span class="string">&quot;Credential is missing from external commit.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Credential is missing from external commit."</span>)]
     </span>MissingCredential,
 }
 
@@ -682,47 +683,47 @@
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
-    <span class="doccomment">/// The epoch of the group context and PublicMessage didn&#39;t match.
-    </span><span class="attr">#[error(<span class="string">&quot;The epoch of the group context and PublicMessage didn&#39;t match.&quot;</span>)]
+    <span class="doccomment">/// The epoch of the group context and PublicMessage didn't match.
+    </span><span class="attr">#[error(<span class="string">"The epoch of the group context and PublicMessage didn't match."</span>)]
     </span>EpochMismatch,
     <span class="doccomment">/// The Commit was created by this client.
-    </span><span class="attr">#[error(<span class="string">&quot;The Commit was created by this client.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The Commit was created by this client."</span>)]
     </span>OwnCommit,
     <span class="doccomment">/// stage_commit was called with an PublicMessage that is not a Commit.
-    </span><span class="attr">#[error(<span class="string">&quot;stage_commit was called with an PublicMessage that is not a Commit.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"stage_commit was called with an PublicMessage that is not a Commit."</span>)]
     </span>WrongPlaintextContentType,
     <span class="doccomment">/// Unable to verify the leaf node signature.
-    </span><span class="attr">#[error(<span class="string">&quot;Unable to verify the leaf node signature.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Unable to verify the leaf node signature."</span>)]
     </span>PathLeafNodeVerificationFailure,
     <span class="doccomment">/// Unable to determine commit path.
-    </span><span class="attr">#[error(<span class="string">&quot;Unable to determine commit path.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Unable to determine commit path."</span>)]
     </span>RequiredPathNotFound,
     <span class="doccomment">/// The confirmation Tag is missing.
-    </span><span class="attr">#[error(<span class="string">&quot;The confirmation Tag is missing.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The confirmation Tag is missing."</span>)]
     </span>ConfirmationTagMissing,
     <span class="doccomment">/// The confirmation tag is invalid.
-    </span><span class="attr">#[error(<span class="string">&quot;The confirmation tag is invalid.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The confirmation tag is invalid."</span>)]
     </span>ConfirmationTagMismatch,
-    <span class="doccomment">/// The committer can&#39;t remove themselves.
-    </span><span class="attr">#[error(<span class="string">&quot;The committer can&#39;t remove themselves.&quot;</span>)]
+    <span class="doccomment">/// The committer can't remove themselves.
+    </span><span class="attr">#[error(<span class="string">"The committer can't remove themselves."</span>)]
     </span>AttemptedSelfRemoval,
     <span class="doccomment">/// The proposal queue is missing a proposal for the commit.
-    </span><span class="attr">#[error(<span class="string">&quot;The proposal queue is missing a proposal for the commit.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The proposal queue is missing a proposal for the commit."</span>)]
     </span>MissingProposal,
     <span class="doccomment">/// Missing own key to apply proposal.
-    </span><span class="attr">#[error(<span class="string">&quot;Missing own key to apply proposal.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Missing own key to apply proposal."</span>)]
     </span>OwnKeyNotFound,
     <span class="doccomment">/// External Committer used the wrong index.
-    </span><span class="attr">#[error(<span class="string">&quot;External Committer used the wrong index.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"External Committer used the wrong index."</span>)]
     </span>InconsistentSenderIndex,
     <span class="doccomment">/// The sender is of type external, which is not valid.
-    </span><span class="attr">#[error(<span class="string">&quot;The sender is of type external, which is not valid.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The sender is of type external, which is not valid."</span>)]
     </span>SenderTypeExternal,
     <span class="doccomment">/// The sender is of type `NewMemberProposal`, which is not valid.
-    </span><span class="attr">#[error(<span class="string">&quot;The sender is of type NewMemberProposal, which is not valid.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The sender is of type NewMemberProposal, which is not valid."</span>)]
     </span>SenderTypeNewMemberProposal,
     <span class="doccomment">/// Too many new members: the tree is full.
-    </span><span class="attr">#[error(<span class="string">&quot;Too many new members: the tree is full.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Too many new members: the tree is full."</span>)]
     </span>TooManyNewMembers,
     <span class="doccomment">/// See [`ProposalValidationError`] for more details.
     </span><span class="attr">#[error(transparent)]
@@ -737,7 +738,7 @@
     </span><span class="attr">#[error(transparent)]
     </span>UpdatePathError(<span class="attr">#[from] </span>ApplyUpdatePathError),
     <span class="doccomment">/// Missing decryption key.
-    </span><span class="attr">#[error(<span class="string">&quot;Missing decryption key.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Missing decryption key."</span>)]
     </span>MissingDecryptionKey,
     <span class="doccomment">/// See [`UpdatePathError`] for more details.
     </span><span class="attr">#[error(transparent)]
@@ -756,16 +757,16 @@
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
     <span class="doccomment">/// Missing own key to apply proposal.
-    </span><span class="attr">#[error(<span class="string">&quot;Missing own key to apply proposal.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Missing own key to apply proposal."</span>)]
     </span>OwnKeyNotFound,
     <span class="doccomment">/// The Commit tried to remove self from the group. This is not possible.
-    </span><span class="attr">#[error(<span class="string">&quot;The Commit tried to remove self from the group. This is not possible.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The Commit tried to remove self from the group. This is not possible."</span>)]
     </span>CannotRemoveSelf,
     <span class="doccomment">/// The proposal queue is missing a proposal for the commit.
-    </span><span class="attr">#[error(<span class="string">&quot;The proposal queue is missing a proposal for the commit.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The proposal queue is missing a proposal for the commit."</span>)]
     </span>MissingProposal,
     <span class="doccomment">/// A proposal has the wrong sender type.
-    </span><span class="attr">#[error(<span class="string">&quot;A proposal has the wrong sender type.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"A proposal has the wrong sender type."</span>)]
     </span>WrongProposalSenderType,
     <span class="doccomment">/// See [`PskError`] for more details.
     </span><span class="attr">#[error(transparent)]
@@ -774,7 +775,7 @@
     </span><span class="attr">#[error(transparent)]
     </span>ProposalValidationError(<span class="attr">#[from] </span>ProposalValidationError),
     <span class="doccomment">/// Error interacting with the key store.
-    </span><span class="attr">#[error(<span class="string">&quot;Error interacting with the key store.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Error interacting with the key store."</span>)]
     </span>KeyStoreError(KeyStoreError),
     <span class="doccomment">/// See [`KeyPackageNewError`] for more details.
     </span><span class="attr">#[error(transparent)]
@@ -783,7 +784,7 @@
     </span><span class="attr">#[error(transparent)]
     </span>SignatureError(<span class="attr">#[from] </span>SignatureError),
     <span class="doccomment">/// Credential is missing from external commit.
-    </span><span class="attr">#[error(<span class="string">&quot;Credential is missing from external commit.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Credential is missing from external commit."</span>)]
     </span>MissingCredential,
     <span class="doccomment">/// This error indicates the public tree is invalid. See [`PublicTreeError`] for more details.
     </span><span class="attr">#[error(transparent)]
@@ -804,56 +805,56 @@
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
-    <span class="doccomment">/// Message group ID differs from the group&#39;s group ID.
-    </span><span class="attr">#[error(<span class="string">&quot;Message group ID differs from the group&#39;s group ID.&quot;</span>)]
+    <span class="doccomment">/// Message group ID differs from the group's group ID.
+    </span><span class="attr">#[error(<span class="string">"Message group ID differs from the group's group ID."</span>)]
     </span>WrongGroupId,
-    <span class="doccomment">/// Message epoch differs from the group&#39;s epoch.
-    </span><span class="attr">#[error(<span class="string">&quot;Message epoch differs from the group&#39;s epoch.&quot;</span>)]
+    <span class="doccomment">/// Message epoch differs from the group's epoch.
+    </span><span class="attr">#[error(<span class="string">"Message epoch differs from the group's epoch."</span>)]
     </span>WrongEpoch,
     <span class="doccomment">/// The PublicMessage is not a Commit despite the sender begin of type [NewMemberCommit](crate::prelude::Sender::NewMemberCommit).
-    </span><span class="attr">#[error(<span class="string">&quot;The PublicMessage is not a Commit despite the sender begin of type NewMemberCommit.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The PublicMessage is not a Commit despite the sender begin of type NewMemberCommit."</span>)]
     </span>NotACommit,
     <span class="doccomment">/// The PublicMessage is not an External Add Proposal despite the sender begin of type [NewMemberProposal](crate::prelude::Sender::NewMemberProposal).
-    </span><span class="attr">#[error(<span class="string">&quot;The PublicMessage is not an external Add proposal despite the sender begin of type NewMemberProposal.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The PublicMessage is not an external Add proposal despite the sender begin of type NewMemberProposal."</span>)]
     </span>NotAnExternalAddProposal,
-    <span class="doccomment">/// The Commit doesn&#39;t have a path despite the sender being of type NewMemberCommit.
-    </span><span class="attr">#[error(<span class="string">&quot;The Commit doesn&#39;t have a path despite the sender being of type NewMemberCommit.&quot;</span>)]
+    <span class="doccomment">/// The Commit doesn't have a path despite the sender being of type NewMemberCommit.
+    </span><span class="attr">#[error(<span class="string">"The Commit doesn't have a path despite the sender being of type NewMemberCommit."</span>)]
     </span>NoPath,
     <span class="doccomment">/// The PublicMessage contains an application message but was not encrypted.
-    </span><span class="attr">#[error(<span class="string">&quot;The PublicMessage contains an application message but was not encrypted.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The PublicMessage contains an application message but was not encrypted."</span>)]
     </span>UnencryptedApplicationMessage,
     <span class="doccomment">/// Sender is not part of the group.
-    </span><span class="attr">#[error(<span class="string">&quot;Sender is not part of the group.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Sender is not part of the group."</span>)]
     </span>UnknownMember,
     <span class="doccomment">/// Membership tag is missing.
-    </span><span class="attr">#[error(<span class="string">&quot;Membership tag is missing.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Membership tag is missing."</span>)]
     </span>MissingMembershipTag,
     <span class="doccomment">/// Membership tag is invalid.
-    </span><span class="attr">#[error(<span class="string">&quot;Membership tag is invalid.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Membership tag is invalid."</span>)]
     </span>InvalidMembershipTag,
     <span class="doccomment">/// The confirmation tag is missing.
-    </span><span class="attr">#[error(<span class="string">&quot;The confirmation tag is missing.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The confirmation tag is missing."</span>)]
     </span>MissingConfirmationTag,
     <span class="doccomment">/// Wrong wire format.
-    </span><span class="attr">#[error(<span class="string">&quot;Wrong wire format.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Wrong wire format."</span>)]
     </span>WrongWireFormat,
     <span class="doccomment">/// Verifying the signature failed.
-    </span><span class="attr">#[error(<span class="string">&quot;Verifying the signature failed.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Verifying the signature failed."</span>)]
     </span>InvalidSignature,
     <span class="doccomment">/// An application message was sent from an external sender.
-    </span><span class="attr">#[error(<span class="string">&quot;An application message was sent from an external sender.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"An application message was sent from an external sender."</span>)]
     </span>NonMemberApplicationMessage,
     <span class="doccomment">/// Could not decrypt the message
     </span><span class="attr">#[error(transparent)]
     </span>UnableToDecrypt(<span class="attr">#[from] </span>MessageDecryptionError),
     <span class="doccomment">/// The message is from an epoch too far in the past.
-    </span><span class="attr">#[error(<span class="string">&quot;The message is from an epoch too far in the past.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The message is from an epoch too far in the past."</span>)]
     </span>NoPastEpochData,
     <span class="doccomment">/// The provided external sender is not authorized to send external proposals
-    </span><span class="attr">#[error(<span class="string">&quot;The provided external sender is not authorized to send external proposals&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The provided external sender is not authorized to send external proposals"</span>)]
     </span>UnauthorizedExternalSender,
-    <span class="doccomment">/// The group doesn&#39;t contain external senders extension.
-    </span><span class="attr">#[error(<span class="string">&quot;The group doesn&#39;t contain external senders extension&quot;</span>)]
+    <span class="doccomment">/// The group doesn't contain external senders extension.
+    </span><span class="attr">#[error(<span class="string">"The group doesn't contain external senders extension"</span>)]
     </span>NoExternalSendersExtension,
     <span class="doccomment">/// The KeyPackage could not be validated.
     </span><span class="attr">#[error(transparent)]
@@ -862,20 +863,20 @@
     </span><span class="attr">#[error(transparent)]
     </span>UpdatePathError(<span class="attr">#[from] </span>UpdatePathError),
     <span class="doccomment">/// Invalid LeafNode signature.
-    </span><span class="attr">#[error(<span class="string">&quot;Invalid LeafNode signature.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Invalid LeafNode signature."</span>)]
     </span>InvalidLeafNodeSignature,
     <span class="doccomment">/// Invalid LeafNode source type
-    </span><span class="attr">#[error(<span class="string">&quot;Invalid LeafNode source type&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Invalid LeafNode source type"</span>)]
     </span>InvalidLeafNodeSourceType,
     <span class="doccomment">/// Invalid sender type.
-    </span><span class="attr">#[error(<span class="string">&quot;Invalid sender type&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Invalid sender type"</span>)]
     </span>InvalidSenderType,
     <span class="doccomment">/// The Commit includes update proposals from the committer.
-    </span><span class="attr">#[error(<span class="string">&quot;The Commit includes update proposals from the committer.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The Commit includes update proposals from the committer."</span>)]
     </span>CommitterIncludedOwnUpdate,
     <span class="doccomment">/// The ciphersuite in the KeyPackage of the Add proposal does not match the group context.
     </span><span class="attr">#[error(
-        <span class="string">&quot;The ciphersuite in the KeyPackage of the Add proposal does not match the group context.&quot;
+        <span class="string">"The ciphersuite in the KeyPackage of the Add proposal does not match the group context."
     </span>)]
     </span>InvalidAddProposalCiphersuite,
 }
@@ -887,38 +888,38 @@
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
     <span class="doccomment">/// The sender could not be matched to a member of the group.
-    </span><span class="attr">#[error(<span class="string">&quot;The sender could not be matched to a member of the group.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The sender could not be matched to a member of the group."</span>)]
     </span>UnknownMember,
     <span class="doccomment">/// Duplicate signature key in proposals and group.
-    </span><span class="attr">#[error(<span class="string">&quot;Duplicate signature key in proposals and group.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Duplicate signature key in proposals and group."</span>)]
     </span>DuplicateSignatureKey,
     <span class="doccomment">/// Duplicate encryption key in proposals and group.
-    </span><span class="attr">#[error(<span class="string">&quot;Duplicate encryption key in proposals and group.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Duplicate encryption key in proposals and group."</span>)]
     </span>DuplicateEncryptionKey,
     <span class="doccomment">/// Duplicate init key in proposals.
-    </span><span class="attr">#[error(<span class="string">&quot;Duplicate init key in proposals.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Duplicate init key in proposals."</span>)]
     </span>DuplicateInitKey,
     <span class="doccomment">/// The HPKE init and encryption keys are the same.
-    </span><span class="attr">#[error(<span class="string">&quot;The HPKE init and encryption keys are the same.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The HPKE init and encryption keys are the same."</span>)]
     </span>InitEncryptionKeyCollision,
     <span class="doccomment">/// Duplicate remove proposals for the same member.
-    </span><span class="attr">#[error(<span class="string">&quot;Duplicate remove proposals for the same member.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Duplicate remove proposals for the same member."</span>)]
     </span>DuplicateMemberRemoval,
     <span class="doccomment">/// The remove proposal referenced a non-existing member.
-    </span><span class="attr">#[error(<span class="string">&quot;The remove proposal referenced a non-existing member.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The remove proposal referenced a non-existing member."</span>)]
     </span>UnknownMemberRemoval,
     <span class="doccomment">/// Found an update from a non-member.
-    </span><span class="attr">#[error(<span class="string">&quot;Found an update from a non-member.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Found an update from a non-member."</span>)]
     </span>UpdateFromNonMember,
     <span class="doccomment">/// The Commit includes update proposals from the committer.
-    </span><span class="attr">#[error(<span class="string">&quot;The Commit includes update proposals from the committer.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The Commit includes update proposals from the committer."</span>)]
     </span>CommitterIncludedOwnUpdate,
     <span class="doccomment">/// The capabilities of the add proposal are insufficient for this group.
-    </span><span class="attr">#[error(<span class="string">&quot;The capabilities of the add proposal are insufficient for this group.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The capabilities of the add proposal are insufficient for this group."</span>)]
     </span>InsufficientCapabilities,
-    <span class="doccomment">/// The add proposal&#39;s ciphersuite or protocol version do not match the ones in the group context.
+    <span class="doccomment">/// The add proposal's ciphersuite or protocol version do not match the ones in the group context.
     </span><span class="attr">#[error(
-        <span class="string">&quot;The add proposal&#39;s ciphersuite or protocol version do not match the ones in the group context.&quot;
+        <span class="string">"The add proposal's ciphersuite or protocol version do not match the ones in the group context."
     </span>)]
     </span>InvalidAddProposalCiphersuiteOrVersion,
     <span class="doccomment">/// See [`PskError`] for more details.
@@ -933,30 +934,30 @@
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
     <span class="doccomment">/// No ExternalInit proposal found.
-    </span><span class="attr">#[error(<span class="string">&quot;No ExternalInit proposal found.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"No ExternalInit proposal found."</span>)]
     </span>NoExternalInitProposals,
     <span class="doccomment">/// Multiple ExternalInit proposal found.
-    </span><span class="attr">#[error(<span class="string">&quot;Multiple ExternalInit proposal found.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Multiple ExternalInit proposal found."</span>)]
     </span>MultipleExternalInitProposals,
     <span class="doccomment">/// Found inline Add or Update proposals.
-    </span><span class="attr">#[error(<span class="string">&quot;Found inline Add or Update proposals.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Found inline Add or Update proposals."</span>)]
     </span>InvalidInlineProposals,
     <span class="comment">// TODO #803: this seems unused
     </span><span class="doccomment">/// Found multiple inline Remove proposals.
-    </span><span class="attr">#[error(<span class="string">&quot;Found multiple inline Remove proposals.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Found multiple inline Remove proposals."</span>)]
     </span>MultipleRemoveProposals,
     <span class="doccomment">/// Remove proposal targets the wrong group member.
-    </span><span class="attr">#[error(<span class="string">&quot;Remove proposal targets the wrong group member.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Remove proposal targets the wrong group member."</span>)]
     </span>InvalidRemoveProposal,
     <span class="comment">// TODO #803: this seems unused
     </span><span class="doccomment">/// External Commit has to contain a path.
-    </span><span class="attr">#[error(<span class="string">&quot;External Commit has to contain a path.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"External Commit has to contain a path."</span>)]
     </span>NoPath,
     <span class="doccomment">/// The remove proposal referenced a non-existing member.
-    </span><span class="attr">#[error(<span class="string">&quot;The remove proposal referenced a non-existing member.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The remove proposal referenced a non-existing member."</span>)]
     </span>UnknownMemberRemoval,
     <span class="doccomment">/// External commit contains referenced proposal
-    </span><span class="attr">#[error(<span class="string">&quot;Found a referenced proposal in an External Commit.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Found a referenced proposal in an External Commit."</span>)]
     </span>ReferencedProposal,
 }
 
@@ -979,7 +980,7 @@
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
-    <span class="attr">#[error(<span class="string">&quot;The requested key length is not supported (too large).&quot;</span>)]
+    <span class="attr">#[error(<span class="string">"The requested key length is not supported (too large)."</span>)]
     </span>KeyLengthTooLong,
 }
 
@@ -990,7 +991,7 @@
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
     <span class="doccomment">/// Not all proposals in the Commit were found locally.
-    </span><span class="attr">#[error(<span class="string">&quot;Not all proposals in the Commit were found locally.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Not all proposals in the Commit were found locally."</span>)]
     </span>ProposalNotFound,
     <span class="doccomment">/// See [`SenderError`] for more details.
     </span><span class="attr">#[error(transparent)]
@@ -1005,10 +1006,10 @@
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
     <span class="doccomment">/// Not all proposals in the Commit were found locally.
-    </span><span class="attr">#[error(<span class="string">&quot;Not all proposals in the Commit were found locally.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Not all proposals in the Commit were found locally."</span>)]
     </span>ProposalNotFound,
     <span class="doccomment">/// The sender of a Commit tried to remove themselves.
-    </span><span class="attr">#[error(<span class="string">&quot;The sender of a Commit tried to remove themselves.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The sender of a Commit tried to remove themselves."</span>)]
     </span>SelfRemoval,
 }
 
@@ -1044,7 +1045,7 @@
     </span><span class="attr">#[error(transparent)]
     </span>Psk(<span class="attr">#[from] </span>PskError),
     <span class="doccomment">/// Error storing leaf private key in key store.
-    </span><span class="attr">#[error(<span class="string">&quot;Error storing leaf private key in key store.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Error storing leaf private key in key store."</span>)]
     </span>KeyStoreError(KeyStoreError),
 }
 
@@ -1085,7 +1086,7 @@
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
     <span class="doccomment">/// Error accessing the key store.
-    </span><span class="attr">#[error(<span class="string">&quot;Error accessing the key store.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Error accessing the key store."</span>)]
     </span>KeyStoreError(KeyStoreError),
 }
 
@@ -1093,14 +1094,14 @@
 </span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
 </span><span class="kw">pub enum </span>GroupContextExtensionsProposalValidationError {
     <span class="doccomment">/// Commit has more than one GroupContextExtensions proposal.
-    </span><span class="attr">#[error(<span class="string">&quot;Commit has more than one GroupContextExtensions proposal.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Commit has more than one GroupContextExtensions proposal."</span>)]
     </span>TooManyGCEProposals,
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
     <span class="doccomment">/// The new extensions set contails extensions that are not supported by all group members.
     </span><span class="attr">#[error(
-        <span class="string">&quot;The new extensions set contails extensions that are not supported by all group members.&quot;
+        <span class="string">"The new extensions set contails extensions that are not supported by all group members."
     </span>)]
     </span>ExtensionNotSupportedByAllMembers,
 }

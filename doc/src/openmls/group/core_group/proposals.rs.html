@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/core_group/proposals.rs`."><title>proposals.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-9ee3a5e31a2afa3e.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0 (82e1608df 2023-12-21)" data-channel="1.75.0" data-search-js="search-8fbf244ebcf71464.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-9dd44ab47b99a0fb.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/core_group/proposals.rs`."><title>proposals.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -702,7 +703,7 @@
     }
 
     <span class="doccomment">/// Removes a proposal from the store using its reference. It will return
-    /// None if it wasn&#39;t found in the store.
+    /// None if it wasn't found in the store.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>remove(<span class="kw-2">&amp;mut </span><span class="self">self</span>, proposal_ref: ProposalRef) -&gt; <span class="prelude-ty">Option</span>&lt;()&gt; {
         <span class="kw">let </span>index = <span class="self">self
             </span>.queued_proposals
@@ -761,11 +762,11 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
         <span class="kw">let </span>proposal = <span class="kw">match </span>public_message.content() {
             FramedContentBody::Proposal(p) =&gt; p,
-            <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(LibraryError::custom(<span class="string">&quot;Wrong content type&quot;</span>)),
+            <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(LibraryError::custom(<span class="string">"Wrong content type"</span>)),
         };
         <span class="kw">let </span>proposal_reference =
             ProposalRef::from_authenticated_content_by_ref(crypto, ciphersuite, <span class="kw-2">&amp;</span>public_message)
-                .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Could not calculate `ProposalRef`.&quot;</span>))<span class="question-mark">?</span>;
+                .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"Could not calculate `ProposalRef`."</span>))<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
             proposal: proposal.clone(), <span class="comment">// FIXME
@@ -778,7 +779,7 @@
     <span class="doccomment">/// Creates a new [QueuedProposal] from a [Proposal] and [Sender]
     ///
     /// Note: We should calculate the proposal ref by hashing the authenticated
-    /// content but can&#39;t do this here without major refactoring. Thus, we
+    /// content but can't do this here without major refactoring. Thus, we
     /// use an internal `from_raw_proposal` hash.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_proposal_and_sender(
         ciphersuite: Ciphersuite,
@@ -857,7 +858,7 @@
     </span>proposal_references: Vec&lt;ProposalRef&gt;,
     <span class="doccomment">/// `queued_proposals` contains the actual proposals in the queue. They are
     /// stored in a `HashMap` to allow for efficient access to the proposals.
-    </span><span class="attr">#[serde(with = <span class="string">&quot;vector_converter&quot;</span>)]
+    </span><span class="attr">#[serde(with = <span class="string">"vector_converter"</span>)]
     </span>queued_proposals: HashMap&lt;ProposalRef, QueuedProposal&gt;,
 }
 
@@ -868,7 +869,7 @@
         <span class="self">self</span>.proposal_references.is_empty()
     }
     <span class="doccomment">/// Returns a new `QueuedProposalQueue` from proposals that were committed
-    /// and don&#39;t need filtering.
+    /// and don't need filtering.
     /// This functions does the following checks:
     ///  - ValSem200
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_committed_proposals(
@@ -878,7 +879,7 @@
         proposal_store: <span class="kw-2">&amp;</span>ProposalStore,
         sender: <span class="kw-2">&amp;</span>Sender,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, FromCommittedProposalsError&gt; {
-        <span class="macro">log::debug!</span>(<span class="string">&quot;from_committed_proposals&quot;</span>);
+        <span class="macro">log::debug!</span>(<span class="string">"from_committed_proposals"</span>);
         <span class="comment">// Feed the `proposals_by_reference` in a `HashMap` so that we can easily
         // extract then by reference later
         </span><span class="kw">let </span><span class="kw-2">mut </span>proposals_by_reference_queue: HashMap&lt;ProposalRef, QueuedProposal&gt; = HashMap::new();
@@ -888,14 +889,14 @@
                 queued_proposal.clone(),
             );
         }
-        <span class="macro">log::trace!</span>(<span class="string">&quot;   known proposals:\n{:#?}&quot;</span>, proposals_by_reference_queue);
+        <span class="macro">log::trace!</span>(<span class="string">"   known proposals:\n{:#?}"</span>, proposals_by_reference_queue);
         <span class="comment">// Build the actual queue
         </span><span class="kw">let </span><span class="kw-2">mut </span>proposal_queue = ProposalQueue::default();
 
         <span class="comment">// Iterate over the committed proposals and insert the proposals in the queue
-        </span><span class="macro">log::trace!</span>(<span class="string">&quot;   committed proposals ...&quot;</span>);
+        </span><span class="macro">log::trace!</span>(<span class="string">"   committed proposals ..."</span>);
         <span class="kw">for </span>proposal_or_ref <span class="kw">in </span>committed_proposals.into_iter() {
-            <span class="macro">log::trace!</span>(<span class="string">&quot;       proposal_or_ref:\n{:#?}&quot;</span>, proposal_or_ref);
+            <span class="macro">log::trace!</span>(<span class="string">"       proposal_or_ref:\n{:#?}"</span>, proposal_or_ref);
             <span class="kw">let </span>queued_proposal = <span class="kw">match </span>proposal_or_ref {
                 ProposalOrRef::Proposal(proposal) =&gt; {
                     <span class="comment">// ValSem200
@@ -942,7 +943,7 @@
     <span class="doccomment">/// Add a new [QueuedProposal] to the queue
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>add(<span class="kw-2">&amp;mut </span><span class="self">self</span>, queued_proposal: QueuedProposal) {
         <span class="kw">let </span>proposal_reference = queued_proposal.proposal_reference();
-        <span class="comment">// Only add the proposal if it&#39;s not already there
+        <span class="comment">// Only add the proposal if it's not already there
         </span><span class="kw">if let </span>Entry::Vacant(entry) = <span class="self">self</span>.queued_proposals.entry(proposal_reference.clone()) {
             <span class="comment">// Add the proposal reference to ensure the correct order
             </span><span class="self">self</span>.proposal_references.push(proposal_reference);
@@ -1061,12 +1062,12 @@
     ///
     /// Return a [`ProposalQueue`] and a bool that indicates whether Updates for
     /// the own node were included
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>filter_proposals&lt;<span class="lifetime">&#39;a</span>&gt;(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>filter_proposals&lt;<span class="lifetime">'a</span>&gt;(
         ciphersuite: Ciphersuite,
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         sender: Sender,
-        proposal_store: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>ProposalStore,
-        inline_proposals: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[Proposal],
+        proposal_store: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>ProposalStore,
+        inline_proposals: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[Proposal],
         own_index: LeafNodeIndex,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, bool), ProposalQueueError&gt; {
         <span class="attr">#[derive(Clone, Default)]
@@ -1158,7 +1159,7 @@
                     valid_proposals.add(queued_proposal.proposal_reference());
                     proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
-                Proposal::AppAck(<span class="kw">_</span>) =&gt; <span class="macro">unimplemented!</span>(<span class="string">&quot;See #291&quot;</span>),
+                Proposal::AppAck(<span class="kw">_</span>) =&gt; <span class="macro">unimplemented!</span>(<span class="string">"See #291"</span>),
             }
         }
         <span class="comment">// Check for presence of Removes and delete Updates
@@ -1221,12 +1222,12 @@
 
 <span class="doccomment">/// A queued Add proposal
 </span><span class="attr">#[derive(PartialEq, Debug)]
-</span><span class="kw">pub struct </span>QueuedAddProposal&lt;<span class="lifetime">&#39;a</span>&gt; {
-    add_proposal: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>AddProposal,
-    sender: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Sender,
+</span><span class="kw">pub struct </span>QueuedAddProposal&lt;<span class="lifetime">'a</span>&gt; {
+    add_proposal: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>AddProposal,
+    sender: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Sender,
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; QueuedAddProposal&lt;<span class="lifetime">&#39;a</span>&gt; {
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; QueuedAddProposal&lt;<span class="lifetime">'a</span>&gt; {
     <span class="doccomment">/// Returns a reference to the proposal
     </span><span class="kw">pub fn </span>add_proposal(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>AddProposal {
         <span class="self">self</span>.add_proposal
@@ -1240,12 +1241,12 @@
 
 <span class="doccomment">/// A queued Remove proposal
 </span><span class="attr">#[derive(PartialEq, Eq, Debug)]
-</span><span class="kw">pub struct </span>QueuedRemoveProposal&lt;<span class="lifetime">&#39;a</span>&gt; {
-    remove_proposal: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>RemoveProposal,
-    sender: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Sender,
+</span><span class="kw">pub struct </span>QueuedRemoveProposal&lt;<span class="lifetime">'a</span>&gt; {
+    remove_proposal: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>RemoveProposal,
+    sender: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Sender,
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; QueuedRemoveProposal&lt;<span class="lifetime">&#39;a</span>&gt; {
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; QueuedRemoveProposal&lt;<span class="lifetime">'a</span>&gt; {
     <span class="doccomment">/// Returns a reference to the proposal
     </span><span class="kw">pub fn </span>remove_proposal(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>RemoveProposal {
         <span class="self">self</span>.remove_proposal
@@ -1259,12 +1260,12 @@
 
 <span class="doccomment">/// A queued Update proposal
 </span><span class="attr">#[derive(PartialEq, Eq, Debug)]
-</span><span class="kw">pub struct </span>QueuedUpdateProposal&lt;<span class="lifetime">&#39;a</span>&gt; {
-    update_proposal: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>UpdateProposal,
-    sender: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Sender,
+</span><span class="kw">pub struct </span>QueuedUpdateProposal&lt;<span class="lifetime">'a</span>&gt; {
+    update_proposal: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>UpdateProposal,
+    sender: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Sender,
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; QueuedUpdateProposal&lt;<span class="lifetime">&#39;a</span>&gt; {
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; QueuedUpdateProposal&lt;<span class="lifetime">'a</span>&gt; {
     <span class="doccomment">/// Returns a reference to the proposal
     </span><span class="kw">pub fn </span>update_proposal(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>UpdateProposal {
         <span class="self">self</span>.update_proposal
@@ -1278,12 +1279,12 @@
 
 <span class="doccomment">/// A queued PresharedKey proposal
 </span><span class="attr">#[derive(PartialEq, Eq, Debug)]
-</span><span class="kw">pub struct </span>QueuedPskProposal&lt;<span class="lifetime">&#39;a</span>&gt; {
-    psk_proposal: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>PreSharedKeyProposal,
-    sender: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Sender,
+</span><span class="kw">pub struct </span>QueuedPskProposal&lt;<span class="lifetime">'a</span>&gt; {
+    psk_proposal: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>PreSharedKeyProposal,
+    sender: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Sender,
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; QueuedPskProposal&lt;<span class="lifetime">&#39;a</span>&gt; {
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; QueuedPskProposal&lt;<span class="lifetime">'a</span>&gt; {
     <span class="doccomment">/// Returns a reference to the proposal
     </span><span class="kw">pub fn </span>psk_proposal(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>PreSharedKeyProposal {
         <span class="self">self</span>.psk_proposal

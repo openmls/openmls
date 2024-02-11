@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/key_packages/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-9ee3a5e31a2afa3e.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0 (82e1608df 2023-12-21)" data-channel="1.75.0" data-search-js="search-8fbf244ebcf71464.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-9dd44ab47b99a0fb.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/key_packages/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -726,19 +727,19 @@
 //!
 //! - A **protocol version** and ciphersuite that the client supports
 //! - A **public key** that others can use for key agreement
-//! - A **credential** authenticating the client&#39;s application-layer identity
+//! - A **credential** authenticating the client's application-layer identity
 //! - A list of **extensions** for the key package (see
 //!   [Extensions](`mod@crate::extensions`) for details)
 //!
 //! Key packages are intended to be used only once and SHOULD NOT be reused
-//! except in case of last resort, i.e. if there&#39;s no other key package
+//! except in case of last resort, i.e. if there's no other key package
 //! available. Clients MAY generate and publish multiple KeyPackages to support
 //! multiple ciphersuites.
 //!
 //! The value for HPKE init key MUST be a public key for the asymmetric
 //! encryption scheme defined by ciphersuite, and it MUST be unique among the
 //! set of key packages created by this client. The whole structure is signed
-//! using the client&#39;s signature key. A key package object with an invalid
+//! using the client's signature key. A key package object with an invalid
 //! signature field is considered malformed.
 //!
 //! ## Creating key package bundles
@@ -754,10 +755,10 @@
 //! let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
 //! let provider = OpenMlsRustCrypto::default();
 //!
-//! let credential = Credential::new(&quot;identity&quot;.into(), CredentialType::Basic).unwrap();
+//! let credential = Credential::new("identity".into(), CredentialType::Basic).unwrap();
 //! let signer =
 //!     SignatureKeyPair::new(ciphersuite.signature_algorithm())
-//!         .expect(&quot;Error generating a signature key pair.&quot;);
+//!         .expect("Error generating a signature key pair.");
 //! let credential_with_key = CredentialWithKey {
 //!     credential,
 //!     signature_key: signer.public().into(),
@@ -791,7 +792,7 @@
 //! let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
 //!
 //! let key_package_bytes = hex_to_bytes(
-//!         &quot;0001000120D4F26FCA6EF6B1CA2FDD8DCAA501730FB003323AD8C781490B94782771\
+//!         "0001000120D4F26FCA6EF6B1CA2FDD8DCAA501730FB003323AD8C781490B94782771\
 //!         B22216208E9BF17CE632EC753A9BFC624F275AA745ACD7316A5CF18B8E39CE71A80EE\
 //!         137205639176E415B378BA54B9E7C678FFAA860676CEFEDFA0DD3FF692F20AC7E2632\
 //!         0001086964656E74697479020001060001000200030200010C0001000200030004000\
@@ -799,14 +800,14 @@
 //!         B215D811BADB0BBBD78B582D42E5C3672085699DCA5F90DAA57BB74A3A973789E7006\
 //!         887FCE85F0E64C19C1F26C28B5752B3C3312FF3040040407B5A96167512061E78414F\
 //!         E3F29B89FF2A954CB8E0A6E976EA039E0A1A0AB91B80664BDDC62BC8CBE64BC9242C4\
-//!         CDC33F56A10E425A384AED029C23E1D467C0E&quot;);
+//!         CDC33F56A10E425A384AED029C23E1D467C0E");
 //!
 //! let key_package_in = KeyPackageIn::tls_deserialize(&amp;mut key_package_bytes.as_slice())
-//!     .expect(&quot;Could not deserialize KeyPackage&quot;);
+//!     .expect("Could not deserialize KeyPackage");
 //!
 //! let key_package = key_package_in
 //!     .validate(provider.crypto(), ProtocolVersion::Mls10)
-//!     .expect(&quot;Invalid KeyPackage&quot;);
+//!     .expect("Invalid KeyPackage");
 //! ```
 //!
 //! See [`KeyPackage`] for more details on how to use key packages.
@@ -921,7 +922,7 @@
     }
 }
 
-<span class="kw">const </span>SIGNATURE_KEY_PACKAGE_LABEL: <span class="kw-2">&amp;</span>str = <span class="string">&quot;KeyPackageTBS&quot;</span>;
+<span class="kw">const </span>SIGNATURE_KEY_PACKAGE_LABEL: <span class="kw-2">&amp;</span>str = <span class="string">"KeyPackageTBS"</span>;
 
 <span class="kw">impl </span>MlsEntity <span class="kw">for </span>KeyPackage {
     <span class="kw">const </span>ID: MlsEntityId = MlsEntityId::KeyPackage;
@@ -1005,7 +1006,7 @@
         leaf_node_extensions: Extensions,
         init_key: Vec&lt;u8&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, EncryptionKeyPair), KeyPackageNewError&lt;KeyStore::Error&gt;&gt; {
-        <span class="comment">// We don&#39;t need the private key here. It&#39;s stored in the key store for
+        <span class="comment">// We don't need the private key here. It's stored in the key store for
         // use later when creating a group with this key package.
 
         </span><span class="kw">let </span>new_leaf_node_params = NewLeafNodeParams {
@@ -1110,7 +1111,7 @@
 }
 
 <span class="doccomment">/// Helpers for testing.
-</span><span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+</span><span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
 #[allow(clippy::too_many_arguments)]
 </span><span class="kw">impl </span>KeyPackage {
     <span class="doccomment">/// Generate a new key package with a given init key
@@ -1181,7 +1182,7 @@
             .store::&lt;HpkePrivateKey&gt;(<span class="kw-2">&amp;</span>init_key.public, <span class="kw-2">&amp;</span>init_key.private)
             .map_err(KeyPackageNewError::KeyStoreError)<span class="question-mark">?</span>;
 
-        <span class="comment">// We don&#39;t need the private key here. It&#39;s stored in the key store for
+        <span class="comment">// We don't need the private key here. It's stored in the key store for
         // use later when creating a group with this key package.
         </span><span class="kw">let </span>leaf_node = LeafNode::create_new_with_key(
             encryption_key,

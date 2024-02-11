@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/mls_group/errors.rs`."><title>errors.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-9ee3a5e31a2afa3e.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0 (82e1608df 2023-12-21)" data-channel="1.75.0" data-search-js="search-8fbf244ebcf71464.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-9dd44ab47b99a0fb.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/mls_group/errors.rs`."><title>errors.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -354,19 +355,19 @@
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
     <span class="doccomment">/// No matching KeyPackage was found in the key store.
-    </span><span class="attr">#[error(<span class="string">&quot;No matching KeyPackage was found in the key store.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"No matching KeyPackage was found in the key store."</span>)]
     </span>NoMatchingKeyPackage,
     <span class="doccomment">/// Error accessing the key store.
-    </span><span class="attr">#[error(<span class="string">&quot;Error accessing the key store.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Error accessing the key store."</span>)]
     </span>KeyStoreError(KeyStoreError),
     <span class="doccomment">/// Unsupported proposal type in required capabilities.
-    </span><span class="attr">#[error(<span class="string">&quot;Unsupported proposal type in required capabilities.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Unsupported proposal type in required capabilities."</span>)]
     </span>UnsupportedProposalType,
     <span class="doccomment">/// Unsupported extension type in required capabilities.
-    </span><span class="attr">#[error(<span class="string">&quot;Unsupported extension type in required capabilities.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Unsupported extension type in required capabilities."</span>)]
     </span>UnsupportedExtensionType,
     <span class="doccomment">/// Invalid extensions set in configuration
-    </span><span class="attr">#[error(<span class="string">&quot;Invalid extensions set in configuration&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Invalid extensions set in configuration"</span>)]
     </span>InvalidExtensions(<span class="attr">#[from] </span>InvalidExtensionError),
 }
 
@@ -374,10 +375,10 @@
 </span><span class="attr">#[derive(Error, Debug, PartialEq, Eq, Clone)]
 </span><span class="kw">pub enum </span>EmptyInputError {
     <span class="doccomment">/// An empty list of KeyPackages was provided.
-    </span><span class="attr">#[error(<span class="string">&quot;An empty list of KeyPackages was provided.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"An empty list of KeyPackages was provided."</span>)]
     </span>AddMembers,
     <span class="doccomment">/// An empty list of KeyPackage references was provided.
-    </span><span class="attr">#[error(<span class="string">&quot;An empty list of KeyPackage references was provided.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"An empty list of KeyPackage references was provided."</span>)]
     </span>RemoveMembers,
 }
 
@@ -388,19 +389,19 @@
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
     <span class="doccomment">/// Tried to use a group after being evicted from it.
-    </span><span class="attr">#[error(<span class="string">&quot;Tried to use a group after being evicted from it.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Tried to use a group after being evicted from it."</span>)]
     </span>UseAfterEviction,
-    <span class="doccomment">/// Can&#39;t create message because a pending proposal exists.
-    </span><span class="attr">#[error(<span class="string">&quot;Can&#39;t create message because a pending proposal exists.&quot;</span>)]
+    <span class="doccomment">/// Can't create message because a pending proposal exists.
+    </span><span class="attr">#[error(<span class="string">"Can't create message because a pending proposal exists."</span>)]
     </span>PendingProposal,
-    <span class="doccomment">/// Can&#39;t execute operation because a pending commit exists.
-    </span><span class="attr">#[error(<span class="string">&quot;Can&#39;t execute operation because a pending commit exists.&quot;</span>)]
+    <span class="doccomment">/// Can't execute operation because a pending commit exists.
+    </span><span class="attr">#[error(<span class="string">"Can't execute operation because a pending commit exists."</span>)]
     </span>PendingCommit,
-    <span class="doccomment">/// Can&#39;t execute operation because there is no pending commit.
-    </span><span class="attr">#[error(<span class="string">&quot;Can&#39;t execute operation because there is no pending commit&quot;</span>)]
+    <span class="doccomment">/// Can't execute operation because there is no pending commit.
+    </span><span class="attr">#[error(<span class="string">"Can't execute operation because there is no pending commit"</span>)]
     </span>NoPendingCommit,
-    <span class="doccomment">/// Requested pending proposal hasn&#39;t been found in local pending proposals
-    </span><span class="attr">#[error(<span class="string">&quot;Requested pending proposal hasn&#39;t been found in local pending proposals.&quot;</span>)]
+    <span class="doccomment">/// Requested pending proposal hasn't been found in local pending proposals
+    </span><span class="attr">#[error(<span class="string">"Requested pending proposal hasn't been found in local pending proposals."</span>)]
     </span>PendingProposalNotFound,
 }
 
@@ -421,8 +422,8 @@
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
-    <span class="doccomment">/// The message&#39;s wire format is incompatible with the group&#39;s wire format policy.
-    </span><span class="attr">#[error(<span class="string">&quot;The message&#39;s wire format is incompatible with the group&#39;s wire format policy.&quot;</span>)]
+    <span class="doccomment">/// The message's wire format is incompatible with the group's wire format policy.
+    </span><span class="attr">#[error(<span class="string">"The message's wire format is incompatible with the group's wire format policy."</span>)]
     </span>IncompatibleWireFormat,
     <span class="doccomment">/// See [`ValidationError`] for more details.
     </span><span class="attr">#[error(transparent)]
@@ -430,17 +431,17 @@
     <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError),
-    <span class="doccomment">/// The message&#39;s signature is invalid.
-    </span><span class="attr">#[error(<span class="string">&quot;The message&#39;s signature is invalid.&quot;</span>)]
+    <span class="doccomment">/// The message's signature is invalid.
+    </span><span class="attr">#[error(<span class="string">"The message's signature is invalid."</span>)]
     </span>InvalidSignature,
     <span class="doccomment">/// See [`StageCommitError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>InvalidCommit(<span class="attr">#[from] </span>StageCommitError),
     <span class="doccomment">/// External application messages are not permitted.
-    </span><span class="attr">#[error(<span class="string">&quot;External application messages are not permitted.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"External application messages are not permitted."</span>)]
     </span>UnauthorizedExternalApplicationMessage,
     <span class="doccomment">/// The proposal is invalid for the Sender of type [External](crate::prelude::Sender::External)
-    </span><span class="attr">#[error(<span class="string">&quot;The proposal is invalid for the Sender of type External&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The proposal is invalid for the Sender of type External"</span>)]
     </span>UnsupportedProposalType,
 }
 
@@ -479,7 +480,7 @@
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
     <span class="doccomment">/// The new member does not support all required extensions.
-    </span><span class="attr">#[error(<span class="string">&quot;The new member does not support all required extensions.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The new member does not support all required extensions."</span>)]
     </span>UnsupportedExtensions,
     <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
     </span><span class="attr">#[error(transparent)]
@@ -499,7 +500,7 @@
     </span><span class="attr">#[error(transparent)]
     </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError),
     <span class="doccomment">/// The member that should be removed can not be found.
-    </span><span class="attr">#[error(<span class="string">&quot;The member that should be removed can not be found.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The member that should be removed can not be found."</span>)]
     </span>UnknownMember,
 }
 
@@ -519,7 +520,7 @@
     </span><span class="attr">#[error(transparent)]
     </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError),
     <span class="doccomment">/// The member that should be removed can not be found.
-    </span><span class="attr">#[error(<span class="string">&quot;The member that should be removed can not be found.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The member that should be removed can not be found."</span>)]
     </span>UnknownMember,
 }
 
@@ -547,7 +548,7 @@
     </span><span class="attr">#[error(transparent)]
     </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError),
     <span class="doccomment">/// Error accessing the key store.
-    </span><span class="attr">#[error(<span class="string">&quot;Error accessing the key store.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Error accessing the key store."</span>)]
     </span>KeyStoreError,
 }
 
@@ -562,7 +563,7 @@
     </span><span class="attr">#[error(transparent)]
     </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError),
     <span class="doccomment">/// Error accessing the key store.
-    </span><span class="attr">#[error(<span class="string">&quot;Error accessing the key store.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Error accessing the key store."</span>)]
     </span>KeyStoreError(KeyStoreError),
     <span class="doccomment">/// See [`PublicTreeError`] for more details.
     </span><span class="attr">#[error(transparent)]
@@ -601,7 +602,7 @@
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
     <span class="doccomment">/// The requested key length is too long.
-    </span><span class="attr">#[error(<span class="string">&quot;The requested key length is too long.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The requested key length is too long."</span>)]
     </span>KeyLengthTooLong,
     <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
     </span><span class="attr">#[error(transparent)]

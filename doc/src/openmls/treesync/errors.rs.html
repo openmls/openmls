@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/treesync/errors.rs`."><title>errors.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-9ee3a5e31a2afa3e.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0 (82e1608df 2023-12-21)" data-channel="1.75.0" data-search-js="search-8fbf244ebcf71464.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-9dd44ab47b99a0fb.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/treesync/errors.rs`."><title>errors.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -283,23 +284,23 @@
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
-    <span class="doccomment">/// The derived public key doesn&#39;t match the one in the tree.
-    </span><span class="attr">#[error(<span class="string">&quot;The derived public key doesn&#39;t match the one in the tree.&quot;</span>)]
+    <span class="doccomment">/// The derived public key doesn't match the one in the tree.
+    </span><span class="attr">#[error(<span class="string">"The derived public key doesn't match the one in the tree."</span>)]
     </span>PublicKeyMismatch,
     <span class="doccomment">/// Found two KeyPackages with the same public key.
-    </span><span class="attr">#[error(<span class="string">&quot;Found two KeyPackages with the same public key.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Found two KeyPackages with the same public key."</span>)]
     </span>DuplicateKeyPackage,
-    <span class="doccomment">/// Couldn&#39;t find our own key package in this tree.
-    </span><span class="attr">#[error(<span class="string">&quot;Couldn&#39;t find our own key package in this tree.&quot;</span>)]
+    <span class="doccomment">/// Couldn't find our own key package in this tree.
+    </span><span class="attr">#[error(<span class="string">"Couldn't find our own key package in this tree."</span>)]
     </span>MissingKeyPackage,
     <span class="doccomment">/// The tree is malformed.
-    </span><span class="attr">#[error(<span class="string">&quot;The tree is malformed.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The tree is malformed."</span>)]
     </span>MalformedTree,
     <span class="doccomment">/// A parent hash was invalid.
-    </span><span class="attr">#[error(<span class="string">&quot;A parent hash was invalid.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"A parent hash was invalid."</span>)]
     </span>InvalidParentHash,
     <span class="doccomment">/// An update failed because the provided credential has a different identity than the one in the leaf node.
-    </span><span class="attr">#[error(<span class="string">&quot;An update failed because the provided credential has a different identity than the one in the leaf node.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"An update failed because the provided credential has a different identity than the one in the leaf node."</span>)]
     </span>IdentityMismatch,
     <span class="doccomment">/// See [`SignatureError`] for more details.
     </span><span class="attr">#[error(transparent)]
@@ -312,31 +313,31 @@
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
-    <span class="doccomment">/// The length of the received update path and that of the sender&#39;s direct path do not match.
+    <span class="doccomment">/// The length of the received update path and that of the sender's direct path do not match.
     </span><span class="attr">#[error(
-        <span class="string">&quot;The length of the received update path and that of the sender&#39;s direct path do not match.&quot;
+        <span class="string">"The length of the received update path and that of the sender's direct path do not match."
     </span>)]
     </span>PathLengthMismatch,
     <span class="doccomment">/// The received update path and the derived nodes are not identical.
-    </span><span class="attr">#[error(<span class="string">&quot;The received update path and the derived nodes are not identical.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The received update path and the derived nodes are not identical."</span>)]
     </span>PathMismatch,
     <span class="doccomment">/// The parent hash of the ney key package is invalid.
-    </span><span class="attr">#[error(<span class="string">&quot;The parent hash of the ney key package is invalid.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The parent hash of the ney key package is invalid."</span>)]
     </span>ParentHashMismatch,
     <span class="doccomment">/// The parent hash of the ney key package is missing.
-    </span><span class="attr">#[error(<span class="string">&quot;The parent hash of the ney key package is missing.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The parent hash of the ney key package is missing."</span>)]
     </span>MissingParentHash,
     <span class="doccomment">/// Unable to decrypt the path node.
-    </span><span class="attr">#[error(<span class="string">&quot;Unable to decrypt the path node.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Unable to decrypt the path node."</span>)]
     </span>UnableToDecrypt,
     <span class="doccomment">/// Unable to find sender in tree.
-    </span><span class="attr">#[error(<span class="string">&quot;Unable to find sender in tree.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Unable to find sender in tree."</span>)]
     </span>MissingSender,
     <span class="doccomment">/// Tree is already at maximum size.
-    </span><span class="attr">#[error(<span class="string">&quot;Tree is already at maximum size.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Tree is already at maximum size."</span>)]
     </span>TreeFull,
     <span class="doccomment">/// External Committer used the wrong index.
-    </span><span class="attr">#[error(<span class="string">&quot;External Committer used the wrong index.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"External Committer used the wrong index."</span>)]
     </span>InconsistentSenderIndex,
 }
 
@@ -352,7 +353,7 @@
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
     <span class="doccomment">/// A requested leaf is not in the tree.
-    </span><span class="attr">#[error(<span class="string">&quot;The leaf does not exist in the tree.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The leaf does not exist in the tree."</span>)]
     </span>LeafNotInTree,
     <span class="doccomment">/// See [`TreeSyncSetPathError`] for more details.
     </span><span class="attr">#[error(transparent)]
@@ -373,13 +374,13 @@
     </span><span class="attr">#[error(transparent)]
     </span>CryptoError(<span class="attr">#[from] </span>CryptoError),
     <span class="doccomment">/// An extension type is not supported by a leaf in the tree.
-    </span><span class="attr">#[error(<span class="string">&quot;An extension type is not supported by a leaf in the tree.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"An extension type is not supported by a leaf in the tree."</span>)]
     </span>UnsupportedExtension,
     <span class="doccomment">/// A capability is not supported by a leaf in the tree.
-    </span><span class="attr">#[error(<span class="string">&quot;A capability is not supported by a leaf in the tree.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"A capability is not supported by a leaf in the tree."</span>)]
     </span>UnsupportedCapabilities,
     <span class="doccomment">/// A proposal is not supported by a leaf in the tree.
-    </span><span class="attr">#[error(<span class="string">&quot;A proposal is not supported by a leaf in the tree.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"A proposal is not supported by a leaf in the tree."</span>)]
     </span>UnsupportedProposal,
 }
 
@@ -389,8 +390,8 @@
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
-    <span class="doccomment">/// The derived public key doesn&#39;t match the one in the tree.
-    </span><span class="attr">#[error(<span class="string">&quot;The derived public key doesn&#39;t match the one in the tree.&quot;</span>)]
+    <span class="doccomment">/// The derived public key doesn't match the one in the tree.
+    </span><span class="attr">#[error(<span class="string">"The derived public key doesn't match the one in the tree."</span>)]
     </span>PublicKeyMismatch,
 }
 
@@ -401,7 +402,7 @@
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
     <span class="doccomment">/// The tree is full, we cannot add any more leaves.
-    </span><span class="attr">#[error(<span class="string">&quot;The tree is full, we cannot add any more leaves.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The tree is full, we cannot add any more leaves."</span>)]
     </span>TreeFull,
 }
 
@@ -426,7 +427,7 @@
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
     <span class="doccomment">/// Parent hash mismatch.
-    </span><span class="attr">#[error(<span class="string">&quot;Parent hash mismatch.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Parent hash mismatch."</span>)]
     </span>InvalidParentHash,
 }
 
@@ -437,7 +438,7 @@
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
     <span class="attr">#[error(
-        <span class="string">&quot;Couldn&#39;t find a fitting private key in the filtered resolution of the given leaf index.&quot;
+        <span class="string">"Couldn't find a fitting private key in the filtered resolution of the given leaf index."
     </span>)]
     </span>NoPrivateKeyFound,
     <span class="doccomment">/// See [`MlsBinaryTreeDiffError`] for more details.
@@ -473,39 +474,39 @@
 </span><span class="attr">#[derive(Clone, Debug, Error, Eq, PartialEq)]
 </span><span class="kw">pub enum </span>LeafNodeValidationError {
     <span class="doccomment">/// Lifetime is not acceptable.
-    </span><span class="attr">#[error(<span class="string">&quot;Lifetime is not acceptable.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Lifetime is not acceptable."</span>)]
     </span>Lifetime(LifetimeError),
     <span class="doccomment">/// Extensions are not acceptable.
-    </span><span class="attr">#[error(<span class="string">&quot;Extensions are not acceptable.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Extensions are not acceptable."</span>)]
     </span>UnsupportedExtensions,
     <span class="doccomment">/// Proposals are not acceptable.
-    </span><span class="attr">#[error(<span class="string">&quot;Proposals are not acceptable.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Proposals are not acceptable."</span>)]
     </span>UnsupportedProposals,
     <span class="doccomment">/// Credentials are not acceptable.
-    </span><span class="attr">#[error(<span class="string">&quot;Credentials are not acceptable.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Credentials are not acceptable."</span>)]
     </span>UnsupportedCredentials,
-    <span class="doccomment">/// The leaf node&#39;s credential type is not listed in the leaf node&#39;s capabilities.&quot;
-    </span><span class="attr">#[error(<span class="string">&quot;The leaf node&#39;s credential type is not listed in the leaf node&#39;s capabilities.&quot;</span>)]
+    <span class="doccomment">/// The leaf node's credential type is not listed in the leaf node's capabilities."
+    </span><span class="attr">#[error(<span class="string">"The leaf node's credential type is not listed in the leaf node's capabilities."</span>)]
     </span>CredentialNotInCapabilities,
-    <span class="doccomment">/// The leaf node&#39;s extension types are not (all) listed in the leaf node&#39;s capabilities.
+    <span class="doccomment">/// The leaf node's extension types are not (all) listed in the leaf node's capabilities.
     </span><span class="attr">#[error(
-        <span class="string">&quot;The leaf node&#39;s extension types are not (all) listed in the leaf node&#39;s capabilities.&quot;
+        <span class="string">"The leaf node's extension types are not (all) listed in the leaf node's capabilities."
     </span>)]
     </span>ExtensionsNotInCapabilities,
-    <span class="doccomment">/// The leaf node&#39;s signature key is already used in the group.
-    </span><span class="attr">#[error(<span class="string">&quot;The leaf node&#39;s signature key is already used in the group.&quot;</span>)]
+    <span class="doccomment">/// The leaf node's signature key is already used in the group.
+    </span><span class="attr">#[error(<span class="string">"The leaf node's signature key is already used in the group."</span>)]
     </span>SignatureKeyAlreadyInUse,
-    <span class="doccomment">/// The leaf node&#39;s encryption key is already used in the group.
-    </span><span class="attr">#[error(<span class="string">&quot;The leaf node&#39;s encryption key is already used in the group.&quot;</span>)]
+    <span class="doccomment">/// The leaf node's encryption key is already used in the group.
+    </span><span class="attr">#[error(<span class="string">"The leaf node's encryption key is already used in the group."</span>)]
     </span>EncryptionKeyAlreadyInUse,
     <span class="doccomment">/// The leaf node source is invalid in the given context.
-    </span><span class="attr">#[error(<span class="string">&quot;The leaf node source is invalid in the given context.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The leaf node source is invalid in the given context."</span>)]
     </span>InvalidLeafNodeSource,
     <span class="doccomment">/// The leaf node credential is not supported by all members in the group.
-    </span><span class="attr">#[error(<span class="string">&quot;The leaf node credential is not supported by all members in the group.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The leaf node credential is not supported by all members in the group."</span>)]
     </span>LeafNodeCredentialNotSupportedByMember,
     <span class="doccomment">/// The credential used by a member is not supported by this leaf node.
-    </span><span class="attr">#[error(<span class="string">&quot;The credential used by a member is not supported by this leaf node.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The credential used by a member is not supported by this leaf node."</span>)]
     </span>MemberCredentialNotSupportedByLeafNode,
 }
 
@@ -513,10 +514,10 @@
 </span><span class="attr">#[derive(Clone, Debug, Error, Eq, PartialEq)]
 </span><span class="kw">pub enum </span>LifetimeError {
     <span class="doccomment">/// Lifetime range is too wide.
-    </span><span class="attr">#[error(<span class="string">&quot;Lifetime range is too wide.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Lifetime range is too wide."</span>)]
     </span>RangeTooBig,
-    <span class="doccomment">/// Lifetime doesn&#39;t cover current time.
-    </span><span class="attr">#[error(<span class="string">&quot;Lifetime doesn&#39;t cover current time.&quot;</span>)]
+    <span class="doccomment">/// Lifetime doesn't cover current time.
+    </span><span class="attr">#[error(<span class="string">"Lifetime doesn't cover current time."</span>)]
     </span>NotCurrent,
 }
 
@@ -524,7 +525,7 @@
 </span><span class="attr">#[derive(Debug, Clone, PartialEq, Eq, Error)]
 </span><span class="kw">pub enum </span>UpdatePathError {
     <span class="doccomment">/// The update path contains an invalid type of leaf node.
-    </span><span class="attr">#[error(<span class="string">&quot;The update path contains an invalid type of leaf node.&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"The update path contains an invalid type of leaf node."</span>)]
     </span>InvalidType,
     <span class="doccomment">/// See [`SignatureError`] for more details.
     </span><span class="attr">#[error(transparent)]

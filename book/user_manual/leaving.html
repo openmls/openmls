@@ -177,7 +177,7 @@
 <p>Members can indicate to other group members that they wish to leave the group using the <code>leave_group()</code> function, which creates a remove proposal targeting the member's own leaf. The member can't create a Commit message that covers this proposal, as that would violate the Post-compromise Security guarantees of MLS because the member would know the epoch secrets of the next epoch.</p>
 <pre><code class="language-rust no_run noplayground">    let queued_message = bob_group
         .leave_group(provider, &amp;bob_signature_keys)
-        .expect(&quot;Could not leave group&quot;);</code></pre>
+        .expect("Could not leave group");</code></pre>
 <p>After successfully sending the proposal to the DS for fanout, there is still the possibility that the remove proposal is not covered in the following commit. The member leaving the group thus has two options:</p>
 <ul>
 <li>tear down the local group state and ignore all subsequent messages for that group, or</li>
