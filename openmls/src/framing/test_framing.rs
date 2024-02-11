@@ -588,10 +588,16 @@ fn unknown_sender(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     )
     .expect("Encryption error");
 
-    let received_message = group_charlie.decrypt(&enc_message.into(), provider, configuration);
+    let received_message = group_charlie.decrypt_message(
+        provider.crypto(),
+        ProtocolMessage::from(PrivateMessageIn::from(enc_message)),
+        configuration,
+    );
     assert_eq!(
         received_message.unwrap_err(),
-        MessageDecryptionError::SenderError(SenderError::UnknownSender)
+        ValidationError::UnableToDecrypt(MessageDecryptionError::SecretTreeError(
+            SecretTreeError::IndexOutOfBounds
+        ))
     );
 }
 

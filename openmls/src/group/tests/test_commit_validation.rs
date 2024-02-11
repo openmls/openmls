@@ -305,9 +305,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     let gce_proposal = || {
         queued(Proposal::GroupContextExtensions(
-            GroupContextExtensionProposal::new(
-                alice_group.group().group_context_extensions().clone(),
-            ),
+            GroupContextExtensionProposal::new(alice_group.group().context().extensions().clone()),
         ))
     };
 

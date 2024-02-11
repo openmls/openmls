@@ -129,8 +129,7 @@ impl PrivateMessage {
         )
     }
 
-    /// Internal function to encrypt content. The extra message header is only used
-    /// for tests. Otherwise, the data from the given `AuthenticatedContent` is used.
+    /// Internal function to encrypt content.
     fn encrypt_content(
         test_header: Option<MlsMessageHeader>,
         public_message: &AuthenticatedContent,
@@ -142,7 +141,7 @@ impl PrivateMessage {
         let sender_index = if let Some(index) = public_message.sender().as_member() {
             index
         } else {
-            return Err(MessageEncryptionError::SenderError(SenderError::NotAMember));
+            return Err(LibraryError::custom("Sender is not a member.").into());
         };
         // Take the provided header only if one is given and if this is indeed a test.
         let header = match test_header {

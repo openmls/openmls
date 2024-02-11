@@ -246,14 +246,14 @@ fn test_valsem242(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
                 group_id: alice_group.group_id().clone(),
                 version: Default::default(),
                 ciphersuite,
-                extensions: alice_group.group().group_context_extensions().clone(),
+                extensions: alice_group.group().context().extensions().clone(),
             }))
         };
 
         let gce_proposal = {
             ProposalOrRef::Proposal(Proposal::GroupContextExtensions(
                 GroupContextExtensionProposal::new(
-                    alice_group.group().group_context_extensions().clone(),
+                    alice_group.group().context().extensions().clone(),
                 ),
             ))
         };

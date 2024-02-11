@@ -118,7 +118,8 @@ fn external_remove_proposal_should_remove_member(
     // DS is an allowed external sender of the group
     assert!(alice_group
          .group()
-         .group_context_extensions()
+         .context()
+         .extensions()
          .iter()
          .any(|e| matches!(e, Extension::ExternalSenders(senders) if senders.iter().any(|s| s.credential() == &ds_credential_with_key.credential_with_key.credential) )));
 

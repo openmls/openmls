@@ -10,7 +10,7 @@ use crate::{
     ciphersuite::signable::SignatureError,
     error::LibraryError,
     extensions::errors::{ExtensionError, InvalidExtensionError},
-    framing::errors::{MessageDecryptionError, SenderError},
+    framing::errors::MessageDecryptionError,
     key_packages::errors::KeyPackageVerifyError,
     key_packages::errors::{KeyPackageExtensionSupportError, KeyPackageNewError},
     messages::{group_info::GroupInfoError, GroupSecretsError},
@@ -439,9 +439,9 @@ pub(crate) enum ProposalQueueError {
     /// Not all proposals in the Commit were found locally.
     #[error("Not all proposals in the Commit were found locally.")]
     ProposalNotFound,
-    /// See [`SenderError`] for more details.
-    #[error(transparent)]
-    SenderError(#[from] SenderError),
+    /// Update proposal from external sender.
+    #[error("Update proposal from external sender.")]
+    UpdateFromExternalSender,
 }
 
 /// Errors that can arise when creating a [`ProposalQueue`] from committed
@@ -457,25 +457,6 @@ pub(crate) enum FromCommittedProposalsError {
     /// The sender of a Commit tried to remove themselves.
     #[error("The sender of a Commit tried to remove themselves.")]
     SelfRemoval,
-}
-
-/// Creation proposal queue error
-#[derive(Error, Debug, PartialEq, Clone)]
-pub(crate) enum CreationProposalQueueError {
-    /// See [`LibraryError`] for more details.
-    #[error(transparent)]
-    LibraryError(#[from] LibraryError),
-    /// See [`SenderError`] for more details.
-    #[error(transparent)]
-    SenderError(#[from] SenderError),
-}
-
-// Apply proposals error
-#[derive(Error, Debug, PartialEq, Clone)]
-pub(crate) enum ApplyProposalsError {
-    /// See [`LibraryError`] for more details.
-    #[error(transparent)]
-    LibraryError(#[from] LibraryError),
 }
 
 // Core group build error
