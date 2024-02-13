@@ -552,6 +552,15 @@
 <a href="#551" id="551">551</a>
 <a href="#552" id="552">552</a>
 <a href="#553" id="553">553</a>
+<a href="#554" id="554">554</a>
+<a href="#555" id="555">555</a>
+<a href="#556" id="556">556</a>
+<a href="#557" id="557">557</a>
+<a href="#558" id="558">558</a>
+<a href="#559" id="559">559</a>
+<a href="#560" id="560">560</a>
+<a href="#561" id="561">561</a>
+<a href="#562" id="562">562</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # MLS group errors
 //!
 //! This module contains errors that originate at lower levels and are partially re-exported in errors thrown by functions of the `MlsGroup` API.
@@ -1096,13 +1105,22 @@
     <span class="doccomment">/// Commit has more than one GroupContextExtensions proposal.
     </span><span class="attr">#[error(<span class="string">"Commit has more than one GroupContextExtensions proposal."</span>)]
     </span>TooManyGCEProposals,
+
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
-    <span class="doccomment">/// The new extensions set contails extensions that are not supported by all group members.
+
+    <span class="doccomment">/// The new extension types in required capabilties contails extensions that are not supported by all group members.
     </span><span class="attr">#[error(
-        <span class="string">"The new extensions set contails extensions that are not supported by all group members."
+        <span class="string">"The new required capabilties contain extension types that are not supported by all group members."
     </span>)]
-    </span>ExtensionNotSupportedByAllMembers,
+    </span>RequiredExtensionNotSupportedByAllMembers,
+
+    <span class="doccomment">/// An extension in the group context extensions is not listed in the required capabilties'
+    /// extension types.
+    </span><span class="attr">#[error(
+        <span class="string">"An extension in the group context extensions is not listed in the required capabilties' extension types."
+    </span>)]
+    </span>ExtensionNotInRequiredCapabilities,
 }
 </code></pre></div></section></main></body></html>

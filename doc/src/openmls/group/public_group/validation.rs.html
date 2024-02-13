@@ -563,6 +563,34 @@
 <a href="#562" id="562">562</a>
 <a href="#563" id="563">563</a>
 <a href="#564" id="564">564</a>
+<a href="#565" id="565">565</a>
+<a href="#566" id="566">566</a>
+<a href="#567" id="567">567</a>
+<a href="#568" id="568">568</a>
+<a href="#569" id="569">569</a>
+<a href="#570" id="570">570</a>
+<a href="#571" id="571">571</a>
+<a href="#572" id="572">572</a>
+<a href="#573" id="573">573</a>
+<a href="#574" id="574">574</a>
+<a href="#575" id="575">575</a>
+<a href="#576" id="576">576</a>
+<a href="#577" id="577">577</a>
+<a href="#578" id="578">578</a>
+<a href="#579" id="579">579</a>
+<a href="#580" id="580">580</a>
+<a href="#581" id="581">581</a>
+<a href="#582" id="582">582</a>
+<a href="#583" id="583">583</a>
+<a href="#584" id="584">584</a>
+<a href="#585" id="585">585</a>
+<a href="#586" id="586">586</a>
+<a href="#587" id="587">587</a>
+<a href="#588" id="588">588</a>
+<a href="#589" id="589">589</a>
+<a href="#590" id="590">590</a>
+<a href="#591" id="591">591</a>
+<a href="#592" id="592">592</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains validation functions for incoming messages
 //! as defined in &lt;https://github.com/openmls/openmls/wiki/Message-validation&gt;
 
@@ -571,6 +599,7 @@
 <span class="kw">use </span>openmls_traits::types::VerifiableCiphersuite;
 
 <span class="kw">use </span><span class="kw">super</span>::PublicGroup;
+<span class="kw">use </span><span class="kw">crate</span>::extensions::RequiredCapabilitiesExtension;
 <span class="kw">use </span><span class="kw">crate</span>::group::GroupContextExtensionsProposalValidationError;
 <span class="kw">use </span><span class="kw">crate</span>::prelude::LibraryError;
 <span class="kw">use </span><span class="kw">crate</span>::treesync::errors::LeafNodeValidationError;
@@ -1085,19 +1114,50 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         proposal_queue: <span class="kw-2">&amp;</span>ProposalQueue,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), GroupContextExtensionsProposalValidationError&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>iter = proposal_queue.filtered_by_type(ProposalType::GroupContextExtensions);
+        <span class="kw">let </span>iter = proposal_queue.filtered_by_type(ProposalType::GroupContextExtensions);
 
-        <span class="kw">match </span>iter.next() {
-            <span class="prelude-val">Some</span>(queued_proposal) =&gt; <span class="kw">match </span>queued_proposal.proposal() {
+        <span class="kw">for </span>(i, queued_proposal) <span class="kw">in </span>iter.enumerate() {
+            <span class="comment">// There must at most be one group context extionsion proposal. Return an error if there are more
+            </span><span class="kw">if </span>i &gt; <span class="number">0 </span>{
+                <span class="kw">return </span><span class="prelude-val">Err</span>(GroupContextExtensionsProposalValidationError::TooManyGCEProposals);
+            }
+
+            <span class="kw">match </span>queued_proposal.proposal() {
                 Proposal::GroupContextExtensions(extensions) =&gt; {
-                    <span class="kw">let </span>ext_type_list: Vec&lt;<span class="kw">_</span>&gt; = extensions
+                    <span class="kw">let </span>required_capabilities_in_proposal =
+                        extensions.extensions().required_capabilities();
+
+                    <span class="comment">// Prepare the empty required capabilities in case there is no
+                    // RequiredCapabilitiesExtension in the proposal
+                    </span><span class="kw">let </span>default_required_capabilities =
+                        RequiredCapabilitiesExtension::new(<span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[]);
+
+                    <span class="comment">// If there is a RequiredCapabilitiesExtension in the proposal, validate it and
+                    // use that. Otherwise, use the empty default one.
+                    </span><span class="kw">let </span>required_capabilities = <span class="kw">match </span>required_capabilities_in_proposal {
+                        <span class="prelude-val">Some</span>(required_capabilities_new) =&gt; {
+                            <span class="comment">// If a group context extensions proposal updates the required capabilities, we
+                            // need to check that these are satisfied for all existing members of the group.
+                            </span><span class="self">self</span>.check_extension_support(required_capabilities_new.extension_types()).map_err(|<span class="kw">_</span>| GroupContextExtensionsProposalValidationError::RequiredExtensionNotSupportedByAllMembers)<span class="question-mark">?</span>;
+                            required_capabilities_new
+                        }
+                        <span class="prelude-val">None </span>=&gt; <span class="kw-2">&amp;</span>default_required_capabilities,
+                    };
+
+                    <span class="comment">// Make sure that all other extensions are known to be supported, by checking
+                    // that they are included in the required capabilities.
+                    </span><span class="kw">let </span>all_extensions_are_in_required_capabilities: bool = extensions
                         .extensions()
                         .iter()
                         .map(|ext| ext.extension_type())
-                        .collect();
+                        .all(|ext_type| {
+                            required_capabilities.requires_extension_type_support(ext_type)
+                        });
 
-                    <span class="self">self</span>.check_extension_support(<span class="kw-2">&amp;</span>ext_type_list).map_err(|<span class="kw">_</span>| GroupContextExtensionsProposalValidationError::ExtensionNotSupportedByAllMembers)<span class="question-mark">?
-                </span>}
+                    <span class="kw">if </span>!all_extensions_are_in_required_capabilities {
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(GroupContextExtensionsProposalValidationError::ExtensionNotInRequiredCapabilities);
+                    }
+                }
                 <span class="kw">_ </span>=&gt; {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(GroupContextExtensionsProposalValidationError::LibraryError(
                         LibraryError::custom(
@@ -1105,14 +1165,10 @@
                         ),
                     ))
                 }
-            },
-            <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(()),
+            }
         }
 
-        <span class="kw">match </span>iter.next() {
-            <span class="prelude-val">Some</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(GroupContextExtensionsProposalValidationError::TooManyGCEProposals),
-            <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Ok</span>(()),
-        }
+        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Returns a [`LeafNodeValidationError`] if an [`ExtensionType`]

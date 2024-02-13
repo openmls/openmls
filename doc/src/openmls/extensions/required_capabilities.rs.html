@@ -87,9 +87,20 @@
 <a href="#86" id="86">86</a>
 <a href="#87" id="87">87</a>
 <a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
-<span class="kw">use crate</span>::{credentials::CredentialType, messages::proposals::ProposalType};
+<span class="kw">use crate</span>::{
+    credentials::CredentialType, messages::proposals::ProposalType,
+    treesync::node::leaf_node::default_extensions,
+};
 
 <span class="kw">use super</span>::{Deserialize, ExtensionError, ExtensionType, Serialize};
 
@@ -163,6 +174,11 @@
     </span><span class="attr">#[allow(unused)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>credential_types(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[CredentialType] {
         <span class="self">self</span>.credential_types.as_slice()
+    }
+
+    <span class="doccomment">/// Checks whether support for the provided extension type is required.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>requires_extension_type_support(<span class="kw-2">&amp;</span><span class="self">self</span>, ext_type: ExtensionType) -&gt; bool {
+        <span class="self">self</span>.extension_types.contains(<span class="kw-2">&amp;</span>ext_type) || default_extensions().contains(<span class="kw-2">&amp;</span>ext_type)
     }
 
     <span class="doccomment">/// Check if all extension and proposal types are supported.
