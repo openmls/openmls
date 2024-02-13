@@ -544,15 +544,15 @@ impl PublicGroup {
                     let required_capabilities = match required_capabilities_in_proposal {
                         Some(required_capabilities_new) => {
                             // If a group context extensions proposal updates the required capabilities, we
-                            // need to chec that these are satisfied for all existing members of the group.
+                            // need to check that these are satisfied for all existing members of the group.
                             self.check_extension_support(required_capabilities_new.extension_types()).map_err(|_| GroupContextExtensionsProposalValidationError::RequiredExtensionNotSupportedByAllMembers)?;
                             required_capabilities_new
                         }
                         None => &default_required_capabilities,
                     };
 
-                    // Make sure that all other extensions are know to be supported, by checking
-                    // that they are required to be supported by the required capabilities.
+                    // Make sure that all other extensions are known to be supported, by checking
+                    // that they are included in the required capabilities.
                     let all_extensions_are_in_required_capabilities: bool = extensions
                         .extensions()
                         .iter()
