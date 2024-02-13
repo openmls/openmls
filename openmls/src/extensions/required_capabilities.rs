@@ -79,8 +79,8 @@ impl RequiredCapabilitiesExtension {
         self.credential_types.as_slice()
     }
 
-    /// Checks whether the provided extension type is supported.
-    pub(crate) fn supports_extension_type(&self, ext_type: ExtensionType) -> bool {
+    /// Checks whether support for the provided extension type is required.
+    pub(crate) fn requires_extension_type_support(&self, ext_type: ExtensionType) -> bool {
         self.extension_types.contains(&ext_type) || default_extensions().contains(&ext_type)
     }
 

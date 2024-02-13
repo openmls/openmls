@@ -521,36 +521,47 @@ impl PublicGroup {
         &self,
         proposal_queue: &ProposalQueue,
     ) -> Result<(), GroupContextExtensionsProposalValidationError> {
-        let mut iter = proposal_queue.filtered_by_type(ProposalType::GroupContextExtensions);
+        let iter = proposal_queue.filtered_by_type(ProposalType::GroupContextExtensions);
 
-        match iter.next() {
-            Some(queued_proposal) => match queued_proposal.proposal() {
+        for (i, queued_proposal) in iter.enumerate() {
+            // There may only be one group context extionsion proposal. Return an error if there are more
+            if i > 0 {
+                return Err(GroupContextExtensionsProposalValidationError::TooManyGCEProposals);
+            }
+
+            match queued_proposal.proposal() {
                 Proposal::GroupContextExtensions(extensions) => {
                     let required_capabilities_in_proposal =
                         extensions.extensions().required_capabilities();
 
+                    // Prepare the empty required capabilities in case there is no
+                    // RequiredCapabilitiesExtension in the proposal
                     let default_required_capabilities =
                         RequiredCapabilitiesExtension::new(&[], &[], &[]);
 
+                    // If there is a RequiredCapabilitiesExtension in the proposal, validate it and
+                    // use that. Otherwise, use the empty default one.
                     let required_capabilities = match required_capabilities_in_proposal {
                         Some(required_capabilities_new) => {
-                            // a required capabilities extension in the group context extensions is
-                            // only valid if all member support it.
+                            // If a group context extensions proposal updates the required capabilities, we
+                            // need to chec that these are satisfied for all existing members of the group.
                             self.check_extension_support(required_capabilities_new.extension_types()).map_err(|_| GroupContextExtensionsProposalValidationError::RequiredExtensionNotSupportedByAllMembers)?;
                             required_capabilities_new
                         }
-                        None => self
-                            .required_capabilities()
-                            .unwrap_or(&default_required_capabilities),
+                        None => &default_required_capabilities,
                     };
 
-                    let extensions_are_in_required_capabilities: bool = extensions
+                    // Make sure that all other extensions are know to be supported, by checking
+                    // that they are required to be supported by the required capabilities.
+                    let all_extensions_are_in_required_capabilities: bool = extensions
                         .extensions()
                         .iter()
                         .map(|ext| ext.extension_type())
-                        .all(|ext_type| required_capabilities.supports_extension_type(ext_type));
+                        .all(|ext_type| {
+                            required_capabilities.requires_extension_type_support(ext_type)
+                        });
 
-                    if !extensions_are_in_required_capabilities {
+                    if !all_extensions_are_in_required_capabilities {
                         return Err(GroupContextExtensionsProposalValidationError::ExtensionNotInRequiredCapabilities);
                     }
                 }
@@ -561,14 +572,17 @@ impl PublicGroup {
                         ),
                     ))
                 }
-            },
-            None => return Ok(()),
+            }
         }
 
-        match iter.next() {
-            Some(_) => Err(GroupContextExtensionsProposalValidationError::TooManyGCEProposals),
-            None => Ok(()),
-        }
+        Ok(())
+
+        // There may only be one group context extionsion proposal. Return an error if there are
+        // more
+        // match iter.next() {
+        //     Some(_) => Err(GroupContextExtensionsProposalValidationError::TooManyGCEProposals),
+        //     None => Ok(()),
+        //}
     }
 
     /// Returns a [`LeafNodeValidationError`] if an [`ExtensionType`]
