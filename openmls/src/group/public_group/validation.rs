@@ -576,13 +576,6 @@ impl PublicGroup {
         }
 
         Ok(())
-
-        // There may only be one group context extionsion proposal. Return an error if there are
-        // more
-        // match iter.next() {
-        //     Some(_) => Err(GroupContextExtensionsProposalValidationError::TooManyGCEProposals),
-        //     None => Ok(()),
-        //}
     }
 
     /// Returns a [`LeafNodeValidationError`] if an [`ExtensionType`]
