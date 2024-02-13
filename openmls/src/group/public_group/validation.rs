@@ -524,7 +524,7 @@ impl PublicGroup {
         let iter = proposal_queue.filtered_by_type(ProposalType::GroupContextExtensions);
 
         for (i, queued_proposal) in iter.enumerate() {
-            // There may only be one group context extionsion proposal. Return an error if there are more
+            // There must at most be one group context extionsion proposal. Return an error if there are more
             if i > 0 {
                 return Err(GroupContextExtensionsProposalValidationError::TooManyGCEProposals);
             }
