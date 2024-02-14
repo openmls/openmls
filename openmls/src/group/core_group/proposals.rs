@@ -8,9 +8,7 @@ use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::hash_ref::ProposalRef,
     error::LibraryError,
-    framing::{
-        mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, Sender, SenderError,
-    },
+    framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, Sender},
     group::errors::*,
     messages::proposals::{
         AddProposal, PreSharedKeyProposal, Proposal, ProposalOrRef, ProposalOrRefType,
@@ -469,7 +467,7 @@ impl ProposalQueue {
                     // ValSem112
                     let leaf_index = match queued_proposal.sender.clone() {
                         Sender::Member(hash_ref) => hash_ref,
-                        _ => return Err(ProposalQueueError::SenderError(SenderError::NotAMember)),
+                        _ => return Err(ProposalQueueError::UpdateFromExternalSender),
                     };
                     if leaf_index != own_index {
                         members

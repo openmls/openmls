@@ -31,9 +31,6 @@ pub enum MessageDecryptionError {
     /// See [`SecretTreeError`] for more details.
     #[error(transparent)]
     SecretTreeError(#[from] SecretTreeError),
-    /// See [`SenderError`] for more details.
-    #[error(transparent)]
-    SenderError(#[from] SenderError),
 }
 
 /// Message encryption error
@@ -48,23 +45,6 @@ pub(crate) enum MessageEncryptionError {
     /// See [`SecretTreeError`] for more details.
     #[error(transparent)]
     SecretTreeError(#[from] SecretTreeError),
-    /// See [`SenderError`] for more details.
-    #[error(transparent)]
-    SenderError(#[from] SenderError),
-}
-
-/// Sender error
-#[derive(Error, Debug, PartialEq, Clone)]
-pub enum SenderError {
-    /// See [`LibraryError`] for more details.
-    #[error(transparent)]
-    LibraryError(#[from] LibraryError),
-    /// The requested client is not a member of the group.
-    #[error("The requested client is not a member of the group.")]
-    NotAMember,
-    /// Unknown sender
-    #[error("Unknown sender")]
-    UnknownSender,
 }
 
 /// MlsMessage error

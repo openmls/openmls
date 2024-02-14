@@ -1024,7 +1024,8 @@ fn group_context_extensions_proposal(ciphersuite: Ciphersuite, provider: &impl O
     // No required capabilities, so no specifically required extensions.
     assert!(alice_group
         .group()
-        .group_context_extensions()
+        .context()
+        .extensions()
         .required_capabilities()
         .is_none());
 
@@ -1052,7 +1053,8 @@ fn group_context_extensions_proposal(ciphersuite: Ciphersuite, provider: &impl O
 
     let required_capabilities = alice_group
         .group()
-        .group_context_extensions()
+        .context()
+        .extensions()
         .required_capabilities()
         .expect("couldn't get required_capabilities");
 

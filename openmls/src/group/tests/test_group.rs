@@ -396,12 +396,14 @@ fn group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .into();
 
     let verifiable_plaintext = group_bob
-        .decrypt(
-            &mls_ciphertext_alice,
-            provider,
+        .decrypt_message(
+            provider.crypto(),
+            mls_ciphertext_alice.into(),
             &sender_ratchet_configuration,
         )
-        .expect("An unexpected error occurred.");
+        .expect("An unexpected error occurred.")
+        .verifiable_content()
+        .to_owned();
 
     let mls_plaintext_bob: AuthenticatedContentIn = verifiable_plaintext
         .verify(
@@ -726,12 +728,14 @@ fn group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     // Alice decrypts and verifies
     let verifiable_plaintext = group_alice
-        .decrypt(
-            &mls_ciphertext_charlie.clone(),
-            provider,
+        .decrypt_message(
+            provider.crypto(),
+            mls_ciphertext_charlie.clone().into(),
             &sender_ratchet_configuration,
         )
-        .expect("An unexpected error occurred.");
+        .expect("An unexpected error occurred.")
+        .verifiable_content()
+        .to_owned();
 
     let mls_plaintext_alice: AuthenticatedContentIn = verifiable_plaintext
         .verify(
@@ -750,12 +754,14 @@ fn group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     // Bob decrypts and verifies
     let verifiable_plaintext = group_bob
-        .decrypt(
-            &mls_ciphertext_charlie,
-            provider,
+        .decrypt_message(
+            provider.crypto(),
+            mls_ciphertext_charlie.into(),
             &sender_ratchet_configuration,
         )
-        .expect("An unexpected error occurred.");
+        .expect("An unexpected error occurred.")
+        .verifiable_content()
+        .to_owned();
 
     let mls_plaintext_bob: AuthenticatedContentIn = verifiable_plaintext
         .verify(

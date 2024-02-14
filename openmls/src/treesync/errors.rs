@@ -100,9 +100,7 @@ pub(crate) enum TreeSyncError {
     /// See [`PathSecretError`] for more details.
     #[error(transparent)]
     DerivationError(#[from] PathSecretError),
-    /// See [`SenderError`] for more details.
-    #[error(transparent)]
-    SenderError(#[from] SenderError),
+
     /// See [`CryptoError`] for more details.
     #[error(transparent)]
     CryptoError(#[from] CryptoError),
