@@ -246,12 +246,6 @@ impl InitKey {
     }
 }
 
-impl From<HpkePublicKey> for InitKey {
-    fn from(key: HpkePublicKey) -> Self {
-        Self { key }
-    }
-}
-
 impl From<Vec<u8>> for InitKey {
     fn from(key: Vec<u8>) -> Self {
         Self {
