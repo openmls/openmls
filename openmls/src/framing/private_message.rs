@@ -129,7 +129,8 @@ impl PrivateMessage {
         )
     }
 
-    /// Internal function to encrypt content.
+    /// Internal function to encrypt content. The extra message header is only used
+    /// for tests. Otherwise, the data from the given `AuthenticatedContent` is used.
     fn encrypt_content(
         test_header: Option<MlsMessageHeader>,
         public_message: &AuthenticatedContent,
