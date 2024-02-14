@@ -455,7 +455,7 @@
                     <span class="string">"  Ciphertext generation out of bounds {}\n\t{e:?}"</span>,
                     sender_data.generation
                 );
-                MessageDecryptionError::GenerationOutOfBound
+                MessageDecryptionError::SecretTreeError(e)
             })<span class="question-mark">?</span>;
         <span class="comment">// Prepare the nonce by xoring with the reuse guard.
         </span><span class="kw">let </span>prepared_nonce = ratchet_nonce.xor_with_reuse_guard(<span class="kw-2">&amp;</span>sender_data.reuse_guard);

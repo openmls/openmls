@@ -648,8 +648,6 @@
 <a href="#647" id="647">647</a>
 <a href="#648" id="648">648</a>
 <a href="#649" id="649">649</a>
-<a href="#650" id="650">650</a>
-<a href="#651" id="651">651</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::{hash_map::Entry, HashMap, HashSet};
 
 <span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
@@ -660,9 +658,7 @@
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::hash_ref::ProposalRef,
     error::LibraryError,
-    framing::{
-        mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, Sender, SenderError,
-    },
+    framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, Sender},
     group::errors::<span class="kw-2">*</span>,
     messages::proposals::{
         AddProposal, PreSharedKeyProposal, Proposal, ProposalOrRef, ProposalOrRefType,
@@ -1121,7 +1117,7 @@
                     // ValSem112
                     </span><span class="kw">let </span>leaf_index = <span class="kw">match </span>queued_proposal.sender.clone() {
                         Sender::Member(hash_ref) =&gt; hash_ref,
-                        <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalQueueError::SenderError(SenderError::NotAMember)),
+                        <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalQueueError::UpdateFromExternalSender),
                     };
                     <span class="kw">if </span>leaf_index != own_index {
                         members

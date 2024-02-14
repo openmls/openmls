@@ -1108,66 +1108,6 @@
 <a href="#1107" id="1107">1107</a>
 <a href="#1108" id="1108">1108</a>
 <a href="#1109" id="1109">1109</a>
-<a href="#1110" id="1110">1110</a>
-<a href="#1111" id="1111">1111</a>
-<a href="#1112" id="1112">1112</a>
-<a href="#1113" id="1113">1113</a>
-<a href="#1114" id="1114">1114</a>
-<a href="#1115" id="1115">1115</a>
-<a href="#1116" id="1116">1116</a>
-<a href="#1117" id="1117">1117</a>
-<a href="#1118" id="1118">1118</a>
-<a href="#1119" id="1119">1119</a>
-<a href="#1120" id="1120">1120</a>
-<a href="#1121" id="1121">1121</a>
-<a href="#1122" id="1122">1122</a>
-<a href="#1123" id="1123">1123</a>
-<a href="#1124" id="1124">1124</a>
-<a href="#1125" id="1125">1125</a>
-<a href="#1126" id="1126">1126</a>
-<a href="#1127" id="1127">1127</a>
-<a href="#1128" id="1128">1128</a>
-<a href="#1129" id="1129">1129</a>
-<a href="#1130" id="1130">1130</a>
-<a href="#1131" id="1131">1131</a>
-<a href="#1132" id="1132">1132</a>
-<a href="#1133" id="1133">1133</a>
-<a href="#1134" id="1134">1134</a>
-<a href="#1135" id="1135">1135</a>
-<a href="#1136" id="1136">1136</a>
-<a href="#1137" id="1137">1137</a>
-<a href="#1138" id="1138">1138</a>
-<a href="#1139" id="1139">1139</a>
-<a href="#1140" id="1140">1140</a>
-<a href="#1141" id="1141">1141</a>
-<a href="#1142" id="1142">1142</a>
-<a href="#1143" id="1143">1143</a>
-<a href="#1144" id="1144">1144</a>
-<a href="#1145" id="1145">1145</a>
-<a href="#1146" id="1146">1146</a>
-<a href="#1147" id="1147">1147</a>
-<a href="#1148" id="1148">1148</a>
-<a href="#1149" id="1149">1149</a>
-<a href="#1150" id="1150">1150</a>
-<a href="#1151" id="1151">1151</a>
-<a href="#1152" id="1152">1152</a>
-<a href="#1153" id="1153">1153</a>
-<a href="#1154" id="1154">1154</a>
-<a href="#1155" id="1155">1155</a>
-<a href="#1156" id="1156">1156</a>
-<a href="#1157" id="1157">1157</a>
-<a href="#1158" id="1158">1158</a>
-<a href="#1159" id="1159">1159</a>
-<a href="#1160" id="1160">1160</a>
-<a href="#1161" id="1161">1161</a>
-<a href="#1162" id="1162">1162</a>
-<a href="#1163" id="1163">1163</a>
-<a href="#1164" id="1164">1164</a>
-<a href="#1165" id="1165">1165</a>
-<a href="#1166" id="1166">1166</a>
-<a href="#1167" id="1167">1167</a>
-<a href="#1168" id="1168">1168</a>
-<a href="#1169" id="1169">1169</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! ### Don't Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -1203,7 +1143,9 @@
 </span><span class="kw">mod </span>test_proposals;
 
 <span class="kw">use </span>log::{debug, trace};
-<span class="kw">use </span>openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite};
+<span class="kw">use </span>openmls_traits::{
+    crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite,
+};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>tls_codec::Serialize <span class="kw">as </span>TlsSerializeTrait;
 
@@ -1252,9 +1194,6 @@
 </span><span class="kw">use </span><span class="kw">super</span>::errors::CreateGroupContextExtProposalError;
 <span class="attr">#[cfg(test)]
 </span><span class="kw">use </span><span class="kw">crate</span>::treesync::node::leaf_node::TreePosition;
-<span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
-<span class="attr">#[cfg(test)]
-</span><span class="kw">use </span>std::io::{Error, Read, Write};
 
 <span class="attr">#[derive(Debug)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>CreateCommitResult {
@@ -1339,11 +1278,13 @@
             public_group_builder,
         }
     }
+
     <span class="doccomment">/// Set the [`CoreGroupConfig`] of the [`CoreGroup`].
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>with_config(<span class="kw-2">mut </span><span class="self">self</span>, config: CoreGroupConfig) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.config = <span class="prelude-val">Some</span>(config);
         <span class="self">self
     </span>}
+
     <span class="doccomment">/// Set the [`Vec&lt;PreSharedKeyId&gt;`] of the [`CoreGroup`].
     </span><span class="attr">#[cfg(test)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>with_psk(<span class="kw-2">mut </span><span class="self">self</span>, psk_ids: Vec&lt;PreSharedKeyId&gt;) -&gt; <span class="self">Self </span>{
@@ -1388,6 +1329,7 @@
         <span class="self">self</span>.max_past_epochs = max_past_epochs;
         <span class="self">self
     </span>}
+
     <span class="doccomment">/// Set the [`Lifetime`] for the own leaf in the group.
     </span><span class="kw">pub fn </span>with_lifetime(<span class="kw-2">mut </span><span class="self">self</span>, lifetime: Lifetime) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.public_group_builder = <span class="self">self</span>.public_group_builder.with_lifetime(lifetime);
@@ -1487,8 +1429,7 @@
     }
 }
 
-<span class="doccomment">/// Public [`CoreGroup`] functions.
-</span><span class="kw">impl </span>CoreGroup {
+<span class="kw">impl </span>CoreGroup {
     <span class="doccomment">/// Get a builder for [`CoreGroup`].
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>builder(
         group_id: GroupId,
@@ -1601,44 +1542,6 @@
         )
     }
 
-    <span class="doccomment">/// Create a `GroupContextExtensions` proposal.
-    </span><span class="attr">#[cfg(test)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>create_group_context_ext_proposal(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        framing_parameters: FramingParameters,
-        extensions: Extensions,
-        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;AuthenticatedContent, CreateGroupContextExtProposalError&gt; {
-        <span class="comment">// Ensure that the group supports all the extensions that are wanted.
-
-        </span><span class="kw">let </span>required_extension = extensions
-            .iter()
-            .find(|extension| extension.extension_type() == ExtensionType::RequiredCapabilities);
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(required_extension) = required_extension {
-            <span class="kw">let </span>required_capabilities = required_extension.as_required_capabilities_extension()<span class="question-mark">?</span>;
-            <span class="comment">// Ensure we support all the capabilities.
-            </span>required_capabilities.check_support()<span class="question-mark">?</span>;
-            <span class="self">self</span>.own_leaf_node()<span class="question-mark">?
-                </span>.capabilities()
-                .supports_required_capabilities(required_capabilities)<span class="question-mark">?</span>;
-
-            <span class="comment">// Ensure that all other leaf nodes support all the required
-            // extensions as well.
-            </span><span class="self">self</span>.public_group()
-                .check_extension_support(required_capabilities.extension_types())<span class="question-mark">?</span>;
-        }
-        <span class="kw">let </span>proposal = GroupContextExtensionProposal::new(extensions);
-        <span class="kw">let </span>proposal = Proposal::GroupContextExtensions(proposal);
-        AuthenticatedContent::member_proposal(
-            framing_parameters,
-            <span class="self">self</span>.own_leaf_index(),
-            proposal,
-            <span class="self">self</span>.context(),
-            signer,
-        )
-        .map_err(|e| e.into())
-    }
-
     <span class="comment">// Create application message
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>create_application_message(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
@@ -1671,38 +1574,6 @@
             provider,
             <span class="self">self</span>.message_secrets_store.message_secrets_mut(),
             padding_size,
-        )
-    }
-
-    <span class="doccomment">/// Decrypt an PrivateMessage into an PublicMessage
-    </span><span class="attr">#[cfg(test)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>decrypt(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        private_message: <span class="kw-2">&amp;</span>PrivateMessageIn,
-        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
-        sender_ratchet_configuration: <span class="kw-2">&amp;</span>SenderRatchetConfiguration,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;VerifiableAuthenticatedContentIn, MessageDecryptionError&gt; {
-        <span class="kw">let </span>ciphersuite = <span class="self">self</span>.ciphersuite();
-        <span class="kw">let </span>message_secrets = <span class="self">self
-            </span>.message_secrets_mut(private_message.epoch())
-            .map_err(|<span class="kw">_</span>| MessageDecryptionError::AeadError)<span class="question-mark">?</span>;
-        <span class="kw">let </span>sender_data =
-            private_message.sender_data(message_secrets, provider.crypto(), ciphersuite)<span class="question-mark">?</span>;
-        <span class="kw">if </span><span class="self">self</span>.public_group().leaf(sender_data.leaf_index).is_none() {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(MessageDecryptionError::SenderError(
-                SenderError::UnknownSender,
-            ));
-        }
-        <span class="kw">let </span>message_secrets = <span class="self">self
-            </span>.message_secrets_mut(private_message.epoch())
-            .map_err(|<span class="kw">_</span>| MessageDecryptionError::AeadError)<span class="question-mark">?</span>;
-        private_message.to_verifiable_content(
-            ciphersuite,
-            provider.crypto(),
-            message_secrets,
-            sender_data.leaf_index,
-            sender_ratchet_configuration,
-            sender_data,
         )
     }
 
@@ -1786,19 +1657,6 @@
         <span class="self">self</span>.group_epoch_secrets().resumption_psk()
     }
 
-    <span class="doccomment">/// Loads the state from persisted state
-    </span><span class="attr">#[cfg(test)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>load&lt;R: Read&gt;(reader: R) -&gt; <span class="prelude-ty">Result</span>&lt;CoreGroup, Error&gt; {
-        serde_json::from_reader(reader).map_err(|e| e.into())
-    }
-
-    <span class="doccomment">/// Persists the state
-    </span><span class="attr">#[cfg(test)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>save&lt;W: Write&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, writer: <span class="kw-2">&amp;mut </span>W) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        <span class="kw">let </span>serialized_core_group = serde_json::to_string_pretty(<span class="self">self</span>)<span class="question-mark">?</span>;
-        writer.write_all(<span class="kw-2">&amp;</span>serialized_core_group.into_bytes())
-    }
-
     <span class="doccomment">/// Returns a reference to the public group.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>public_group(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>PublicGroup {
         <span class="kw-2">&amp;</span><span class="self">self</span>.public_group
@@ -1824,32 +1682,11 @@
         <span class="self">self</span>.public_group.group_id()
     }
 
-    <span class="doccomment">/// Get the group context extensions.
-    </span><span class="attr">#[cfg(test)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>group_context_extensions(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Extensions {
-        <span class="self">self</span>.public_group.group_context().extensions()
-    }
-
     <span class="doccomment">/// Get the required capabilities extension of this group.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>required_capabilities(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>RequiredCapabilitiesExtension&gt; {
         <span class="self">self</span>.public_group.required_capabilities()
     }
 
-    <span class="doccomment">/// Returns `true` if the group uses the ratchet tree extension anf `false
-    /// otherwise
-    </span><span class="attr">#[cfg(test)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>use_ratchet_tree_extension(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="self">self</span>.use_ratchet_tree_extension
-    }
-
-    <span class="attr">#[cfg(test)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>set_own_leaf_index(<span class="kw-2">&amp;mut </span><span class="self">self</span>, own_leaf_index: LeafNodeIndex) {
-        <span class="self">self</span>.own_leaf_index = own_leaf_index;
-    }
-}
-
-<span class="comment">// Private and crate functions
-</span><span class="kw">impl </span>CoreGroup {
     <span class="doccomment">/// Get the leaf index of this client.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>own_leaf_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; LeafNodeIndex {
         <span class="self">self</span>.own_leaf_index
@@ -2009,11 +1846,9 @@
             <span class="self">self</span>.own_leaf_index(),
         )
         .map_err(|e| <span class="kw">match </span>e {
-            <span class="kw">crate</span>::group::errors::ProposalQueueError::LibraryError(e) =&gt; e.into(),
-            <span class="kw">crate</span>::group::errors::ProposalQueueError::ProposalNotFound =&gt; {
-                CreateCommitError::MissingProposal
-            }
-            <span class="kw">crate</span>::group::errors::ProposalQueueError::SenderError(<span class="kw">_</span>) =&gt; {
+            ProposalQueueError::LibraryError(e) =&gt; e.into(),
+            ProposalQueueError::ProposalNotFound =&gt; CreateCommitError::MissingProposal,
+            ProposalQueueError::UpdateFromExternalSender =&gt; {
                 CreateCommitError::WrongProposalSenderType
             }
         })<span class="question-mark">?</span>;
@@ -2282,11 +2117,89 @@
             group_info: group_info.filter(|<span class="kw">_</span>| <span class="self">self</span>.use_ratchet_tree_extension),
         })
     }
+}
 
-    <span class="attr">#[cfg(test)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>own_tree_position(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; TreePosition {
+<span class="comment">// Test functions
+</span><span class="attr">#[cfg(test)]
+</span><span class="kw">impl </span>CoreGroup {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>create_group_context_ext_proposal(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        framing_parameters: FramingParameters,
+        extensions: Extensions,
+        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;AuthenticatedContent, CreateGroupContextExtProposalError&gt; {
+        <span class="comment">// Ensure that the group supports all the extensions that are wanted.
+        </span><span class="kw">let </span>required_extension = extensions
+            .iter()
+            .find(|extension| extension.extension_type() == ExtensionType::RequiredCapabilities);
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(required_extension) = required_extension {
+            <span class="kw">let </span>required_capabilities = required_extension.as_required_capabilities_extension()<span class="question-mark">?</span>;
+            <span class="comment">// Ensure we support all the capabilities.
+            </span>required_capabilities.check_support()<span class="question-mark">?</span>;
+            <span class="self">self</span>.own_leaf_node()<span class="question-mark">?
+                </span>.capabilities()
+                .supports_required_capabilities(required_capabilities)<span class="question-mark">?</span>;
+
+            <span class="comment">// Ensure that all other leaf nodes support all the required
+            // extensions as well.
+            </span><span class="self">self</span>.public_group()
+                .check_extension_support(required_capabilities.extension_types())<span class="question-mark">?</span>;
+        }
+        <span class="kw">let </span>proposal = GroupContextExtensionProposal::new(extensions);
+        <span class="kw">let </span>proposal = Proposal::GroupContextExtensions(proposal);
+        AuthenticatedContent::member_proposal(
+            framing_parameters,
+            <span class="self">self</span>.own_leaf_index(),
+            proposal,
+            <span class="self">self</span>.context(),
+            signer,
+        )
+        .map_err(|e| e.into())
+    }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>use_ratchet_tree_extension(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.use_ratchet_tree_extension
+    }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>set_own_leaf_index(<span class="kw-2">&amp;mut </span><span class="self">self</span>, own_leaf_index: LeafNodeIndex) {
+        <span class="self">self</span>.own_leaf_index = own_leaf_index;
+    }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>own_tree_position(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; TreePosition {
         TreePosition::new(<span class="self">self</span>.group_id().clone(), <span class="self">self</span>.own_leaf_index())
     }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>message_secrets_store(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>MessageSecretsStore {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.message_secrets_store
+    }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>set_group_context(<span class="kw-2">&amp;mut </span><span class="self">self</span>, group_context: GroupContext) {
+        <span class="self">self</span>.public_group.set_group_context(group_context)
+    }
+}
+
+<span class="comment">// Test and test-utils functions
+</span><span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
+</span><span class="kw">impl </span>CoreGroup {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>context_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>GroupContext {
+        <span class="self">self</span>.public_group.context_mut()
+    }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>message_secrets_test_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>MessageSecrets {
+        <span class="self">self</span>.message_secrets_store.message_secrets_mut()
+    }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>print_ratchet_tree(<span class="kw-2">&amp;</span><span class="self">self</span>, message: <span class="kw-2">&amp;</span>str) {
+        <span class="macro">println!</span>(<span class="string">"{}: {}"</span>, message, <span class="self">self</span>.public_group().export_ratchet_tree());
+    }
+}
+
+<span class="doccomment">/// Configuration for core group.
+</span><span class="attr">#[derive(Clone, Copy, Default, Debug)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>CoreGroupConfig {
+    <span class="doccomment">/// Flag whether to send the ratchet tree along with the `GroupInfo` or not.
+    /// Defaults to false.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) add_ratchet_tree_extension: bool,
 }
 
 <span class="doccomment">/// Composite key for key material of a client within an epoch
@@ -2303,38 +2216,5 @@
             .concat(),
         )
     }
-}
-
-<span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
-</span><span class="kw">impl </span>CoreGroup {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>context_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>GroupContext {
-        <span class="self">self</span>.public_group.context_mut()
-    }
-
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>message_secrets_test_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>MessageSecrets {
-        <span class="self">self</span>.message_secrets_store.message_secrets_mut()
-    }
-
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>print_ratchet_tree(<span class="kw-2">&amp;</span><span class="self">self</span>, message: <span class="kw-2">&amp;</span>str) {
-        <span class="macro">println!</span>(<span class="string">"{}: {}"</span>, message, <span class="self">self</span>.public_group().export_ratchet_tree());
-    }
-
-    <span class="attr">#[cfg(test)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>message_secrets_store(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>MessageSecretsStore {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.message_secrets_store
-    }
-
-    <span class="attr">#[cfg(test)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>set_group_context(<span class="kw-2">&amp;mut </span><span class="self">self</span>, group_context: GroupContext) {
-        <span class="self">self</span>.public_group.set_group_context(group_context)
-    }
-}
-
-<span class="doccomment">/// Configuration for core group.
-</span><span class="attr">#[derive(Clone, Copy, Default, Debug)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>CoreGroupConfig {
-    <span class="doccomment">/// Flag whether to send the ratchet tree along with the `GroupInfo` or not.
-    /// Defaults to false.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) add_ratchet_tree_extension: bool,
 }
 </code></pre></div></section></main></body></html>
