@@ -473,12 +473,12 @@ impl User {
         for message in self.backend.recv_msgs(self)?.drain(..) {
             log::debug!("Reading message format {:#?} ...", message.wire_format());
             match message.extract() {
-                MlsMessageInBody::Welcome(welcome) => {
+                MlsMessageBodyIn::Welcome(welcome) => {
                     // Join the group. (Later we should ask the user to
                     // approve first ...)
                     self.join_group(welcome)?;
                 }
-                MlsMessageInBody::PrivateMessage(message) => {
+                MlsMessageBodyIn::PrivateMessage(message) => {
                     match process_protocol_message(message.into()) {
                         Ok(p) => {
                             if p.0 == PostUpdateActions::Remove {
@@ -500,7 +500,7 @@ impl User {
                         }
                     };
                 }
-                MlsMessageInBody::PublicMessage(message) => {
+                MlsMessageBodyIn::PublicMessage(message) => {
                     if process_protocol_message(message.into()).is_err() {
                         continue;
                     }

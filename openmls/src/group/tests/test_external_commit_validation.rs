@@ -246,14 +246,14 @@ fn test_valsem242(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
                 group_id: alice_group.group_id().clone(),
                 version: Default::default(),
                 ciphersuite,
-                extensions: alice_group.group().group_context_extensions().clone(),
+                extensions: alice_group.group().context().extensions().clone(),
             }))
         };
 
         let gce_proposal = {
             ProposalOrRef::Proposal(Proposal::GroupContextExtensions(
                 GroupContextExtensionProposal::new(
-                    alice_group.group().group_context_extensions().clone(),
+                    alice_group.group().context().extensions().clone(),
                 ),
             ))
         };
@@ -740,7 +740,10 @@ fn test_pure_ciphertest(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 
     // Would fail if handshake message processing did not distinguish external messages
     assert!(alice_group
-        .process_message(provider, mls_message_in)
+        .process_message(
+            provider,
+            mls_message_in.try_into_protocol_message().unwrap()
+        )
         .is_ok());
 }
 

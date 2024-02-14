@@ -21,7 +21,7 @@ use crate::{
 };
 
 /// Before use with the [`MlsGroup`] API, the message has to be unpacked via
-/// `extract` to yield its [`MlsMessageInBody`].
+/// `extract` to yield its [`MlsMessageBodyIn`].
 ///
 /// ```c
 /// // draft-ietf-mls-protocol-17
@@ -38,12 +38,12 @@ use crate::{
 #[cfg_attr(feature = "test-utils", derive(TlsSerialize))]
 pub struct MlsMessageIn {
     pub(crate) version: ProtocolVersion,
-    pub(crate) body: MlsMessageInBody,
+    pub(crate) body: MlsMessageBodyIn,
 }
 
 /// MLSMessage (Body)
 ///
-/// Note: Because [`MlsMessageInBody`] already discriminates between
+/// Note: Because [`MlsMessageBodyIn`] already discriminates between
 /// `public_message`, `private_message`, etc., we don't use the `wire_format`
 /// field. This prevents inconsistent assignments where `wire_format`
 /// contradicts the variant given in `body`.
@@ -71,7 +71,7 @@ pub struct MlsMessageIn {
 #[derive(Debug, PartialEq, Clone, TlsDeserialize, TlsDeserializeBytes, TlsSize)]
 #[cfg_attr(feature = "test-utils", derive(TlsSerialize))]
 #[repr(u16)]
-pub enum MlsMessageInBody {
+pub enum MlsMessageBodyIn {
     /// Plaintext message
     #[tls_codec(discriminant = 1)]
     PublicMessage(PublicMessageIn),
@@ -97,24 +97,29 @@ impl MlsMessageIn {
     /// Returns the wire format.
     pub fn wire_format(&self) -> WireFormat {
         match self.body {
-            MlsMessageInBody::PrivateMessage(_) => WireFormat::PrivateMessage,
-            MlsMessageInBody::PublicMessage(_) => WireFormat::PublicMessage,
-            MlsMessageInBody::Welcome(_) => WireFormat::Welcome,
-            MlsMessageInBody::GroupInfo(_) => WireFormat::GroupInfo,
-            MlsMessageInBody::KeyPackage(_) => WireFormat::KeyPackage,
+            MlsMessageBodyIn::PrivateMessage(_) => WireFormat::PrivateMessage,
+            MlsMessageBodyIn::PublicMessage(_) => WireFormat::PublicMessage,
+            MlsMessageBodyIn::Welcome(_) => WireFormat::Welcome,
+            MlsMessageBodyIn::GroupInfo(_) => WireFormat::GroupInfo,
+            MlsMessageBodyIn::KeyPackage(_) => WireFormat::KeyPackage,
         }
     }
 
     /// Extract the content of an [`MlsMessageIn`] after deserialization for use
     /// with the [`MlsGroup`] API.
-    pub fn extract(self) -> MlsMessageInBody {
+    pub fn extract(self) -> MlsMessageBodyIn {
         self.body
+    }
+
+    /// Try to convert the message into a [`ProtocolMessage`].
+    pub fn try_into_protocol_message(self) -> Result<ProtocolMessage, ProtocolMessageError> {
+        self.try_into()
     }
 
     #[cfg(any(test, feature = "test-utils"))]
     pub fn into_keypackage(self) -> Option<crate::key_packages::KeyPackage> {
         match self.body {
-            MlsMessageInBody::KeyPackage(key_package) => {
+            MlsMessageBodyIn::KeyPackage(key_package) => {
                 debug_assert!(key_package.version_is_supported(self.version));
                 Some(key_package.into())
             }
@@ -125,7 +130,7 @@ impl MlsMessageIn {
     #[cfg(test)]
     pub(crate) fn into_plaintext(self) -> Option<PublicMessage> {
         match self.body {
-            MlsMessageInBody::PublicMessage(m) => Some(m.into()),
+            MlsMessageBodyIn::PublicMessage(m) => Some(m.into()),
             _ => None,
         }
     }
@@ -133,7 +138,7 @@ impl MlsMessageIn {
     #[cfg(test)]
     pub(crate) fn into_ciphertext(self) -> Option<PrivateMessageIn> {
         match self.body {
-            MlsMessageInBody::PrivateMessage(m) => Some(m),
+            MlsMessageBodyIn::PrivateMessage(m) => Some(m),
             _ => None,
         }
     }
@@ -144,7 +149,7 @@ impl MlsMessageIn {
     #[cfg(any(feature = "test-utils", test))]
     pub fn into_welcome(self) -> Option<Welcome> {
         match self.body {
-            MlsMessageInBody::Welcome(w) => Some(w),
+            MlsMessageBodyIn::Welcome(w) => Some(w),
             _ => None,
         }
     }
@@ -152,8 +157,8 @@ impl MlsMessageIn {
     #[cfg(any(feature = "test-utils", test))]
     pub fn into_protocol_message(self) -> Option<ProtocolMessage> {
         match self.body {
-            MlsMessageInBody::PublicMessage(m) => Some(m.into()),
-            MlsMessageInBody::PrivateMessage(m) => Some(m.into()),
+            MlsMessageBodyIn::PublicMessage(m) => Some(m.into()),
+            MlsMessageBodyIn::PrivateMessage(m) => Some(m.into()),
             _ => None,
         }
     }
@@ -161,7 +166,7 @@ impl MlsMessageIn {
     #[cfg(any(feature = "test-utils", test))]
     pub fn into_verifiable_group_info(self) -> Option<VerifiableGroupInfo> {
         match self.body {
-            MlsMessageInBody::GroupInfo(group_info) => Some(group_info),
+            MlsMessageBodyIn::GroupInfo(group_info) => Some(group_info),
             _ => None,
         }
     }
@@ -243,13 +248,14 @@ impl From<PublicMessageIn> for ProtocolMessage {
     }
 }
 
-#[cfg(any(feature = "test-utils", test))]
-impl From<MlsMessageIn> for ProtocolMessage {
-    fn from(msg: MlsMessageIn) -> Self {
+impl TryFrom<MlsMessageIn> for ProtocolMessage {
+    type Error = ProtocolMessageError;
+
+    fn try_from(msg: MlsMessageIn) -> Result<Self, Self::Error> {
         match msg.body {
-            MlsMessageInBody::PublicMessage(m) => ProtocolMessage::PublicMessage(m),
-            MlsMessageInBody::PrivateMessage(m) => ProtocolMessage::PrivateMessage(m),
-            _ => panic!("Wrong message type"),
+            MlsMessageBodyIn::PublicMessage(m) => Ok(ProtocolMessage::PublicMessage(m)),
+            MlsMessageBodyIn::PrivateMessage(m) => Ok(ProtocolMessage::PrivateMessage(m)),
+            _ => Err(ProtocolMessageError::WrongWireFormat),
         }
     }
 }

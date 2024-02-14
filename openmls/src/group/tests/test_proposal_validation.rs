@@ -26,7 +26,7 @@ use crate::{
         proposals::{AddProposal, Proposal, ProposalOrRef, RemoveProposal, UpdateProposal},
         Commit, Welcome,
     },
-    prelude::MlsMessageInBody,
+    prelude::MlsMessageBodyIn,
     schedule::PreSharedKeyId,
     treesync::{errors::ApplyUpdatePathError, node::leaf_node::Capabilities},
     versions::ProtocolVersion,
@@ -394,7 +394,12 @@ fn test_valsem101a(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     // Positive case
     bob_group
-        .process_message(provider, original_update_plaintext)
+        .process_message(
+            provider,
+            original_update_plaintext
+                .try_into_protocol_message()
+                .unwrap(),
+        )
         .expect("Unexpected error.");
 }
 
@@ -546,7 +551,12 @@ fn test_valsem102(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     // Positive case
     bob_group
-        .process_message(provider, original_update_plaintext)
+        .process_message(
+            provider,
+            original_update_plaintext
+                .try_into_protocol_message()
+                .unwrap(),
+        )
         .expect("Unexpected error.");
 }
 
@@ -963,7 +973,12 @@ fn test_valsem103_valsem104(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
 
     // Positive case
     bob_group
-        .process_message(provider, original_update_plaintext)
+        .process_message(
+            provider,
+            original_update_plaintext
+                .try_into_protocol_message()
+                .unwrap(),
+        )
         .expect("Unexpected error.");
 }
 
@@ -1309,7 +1324,12 @@ fn test_valsem105(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
             // Positive case
             bob_group
-                .process_message(provider, original_update_plaintext)
+                .process_message(
+                    provider,
+                    original_update_plaintext
+                        .try_into_protocol_message()
+                        .unwrap(),
+                )
                 .unwrap();
         }
 
@@ -1411,7 +1431,7 @@ fn test_valsem107(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             let mls_message_in = MlsMessageIn::from(ref_propose);
 
             let authenticated_content = match mls_message_in.body {
-                MlsMessageInBody::PublicMessage(ref public) => AuthenticatedContent::new(
+                MlsMessageBodyIn::PublicMessage(ref public) => AuthenticatedContent::new(
                     mls_message_in.wire_format(),
                     FramedContent::from(public.content.clone()),
                     public.auth.clone(),
@@ -1584,7 +1604,12 @@ fn test_valsem108(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     // Positive case
     bob_group
-        .process_message(provider, original_update_plaintext)
+        .process_message(
+            provider,
+            original_update_plaintext
+                .try_into_protocol_message()
+                .unwrap(),
+        )
         .expect("Unexpected error.");
 }
 
@@ -1646,7 +1671,10 @@ fn test_valsem110(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     // Have Alice process this proposal.
     if let ProcessedMessageContent::ProposalMessage(proposal) = alice_group
-        .process_message(provider, update_proposal)
+        .process_message(
+            provider,
+            update_proposal.try_into_protocol_message().unwrap(),
+        )
         .expect("error processing proposal")
         .into_content()
     {
@@ -1891,7 +1919,12 @@ fn test_valsem111(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     // Positive case
     bob_group
-        .process_message(provider, original_update_plaintext)
+        .process_message(
+            provider,
+            original_update_plaintext
+                .try_into_protocol_message()
+                .unwrap(),
+        )
         .expect("Unexpected error.");
 }
 

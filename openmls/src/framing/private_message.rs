@@ -142,7 +142,7 @@ impl PrivateMessage {
         let sender_index = if let Some(index) = public_message.sender().as_member() {
             index
         } else {
-            return Err(MessageEncryptionError::SenderError(SenderError::NotAMember));
+            return Err(LibraryError::custom("Sender is not a member.").into());
         };
         // Take the provided header only if one is given and if this is indeed a test.
         let header = match test_header {

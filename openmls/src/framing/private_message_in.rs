@@ -170,7 +170,7 @@ impl PrivateMessageIn {
                     "  Ciphertext generation out of bounds {}\n\t{e:?}",
                     sender_data.generation
                 );
-                MessageDecryptionError::GenerationOutOfBound
+                MessageDecryptionError::SecretTreeError(e)
             })?;
         // Prepare the nonce by xoring with the reuse guard.
         let prepared_nonce = ratchet_nonce.xor_with_reuse_guard(&sender_data.reuse_guard);

@@ -64,7 +64,6 @@ use crate::{
     credentials::CredentialWithKey,
     error::LibraryError,
     extensions::Extensions,
-    framing::SenderError,
     group::{config::CryptoConfig, GroupId, Member},
     key_packages::Lifetime,
     messages::{PathSecret, PathSecretError},
