@@ -180,11 +180,30 @@
 <pre><code class="language-rust no_run noplayground">    let mls_message =
         MlsMessageIn::tls_deserialize_exact(bytes).expect("Could not deserialize message.");</code></pre>
 <p>If the message is malformed, the function will fail with an error.</p>
-<h2 id="processing-messages"><a class="header" href="#processing-messages">Processing messages</a></h2>
-<p>In the next step, the message needs to be processed. If the message was
-encrypted, it will be decrypted automatically. This step performs all syntactic
-and semantic validation checks and verifies the message's signature:</p>
-<pre><code class="language-rust no_run noplayground">    let protocol_message: ProtocolMessage = mls_message.into();
+<h2 id="processing-messages-in-groups"><a class="header" href="#processing-messages-in-groups">Processing messages in groups</a></h2>
+<p>In the next step, the message needs to be processed in the context of the
+corresponding group.</p>
+<p><code>MlsMessageIn</code> can carry all MLS messages, but only <code>PrivateMessageIn</code> and
+<code>PublicMessageIn</code> are processed in the context of a group. In OpenMLS these two
+message types are combined into a <code>ProtocolMessage</code> <code>enum</code>. There are 3 ways to
+extract the messages from an <code>MlsMessageIn</code>:</p>
+<ol>
+<li><code>MlsMessageIn.try_into_protocol_message()</code> returns a <code>Result&lt;ProtocolMessage, ProtocolMessageError&gt;</code></li>
+<li><code>ProtocolMessage::try_from(m: MlsMessageIn)</code> returns a <code>Result&lt;ProtocolMessage, ProtocolMessageError&gt;</code></li>
+<li><code>MlsMessageIn.extract()</code> returns an <code>MlsMessageBodyIn</code> <code>enum</code> that has two
+variants for <code>PrivateMessageIn</code> and <code>PublicMessageIn</code></li>
+</ol>
+<p><code>MlsGroup.process_message()</code> accepts either a <code>ProtocolMessage</code>, a
+<code>PrivateMessageIn</code>, or a <code>PublicMessageIn</code> and processes the message.
+<code>ProtocolMessage.group_id()</code> exposes the group ID that can help the application
+find the right group.</p>
+<p>If the message was encrypted (i.e. if it was a <code>PrivateMessageIn</code>), it will be
+decrypted automatically. The processing performs all syntactic and semantic
+validation checks and verifies the message's signature. The function finally
+returns a <code>ProcessedMessage</code> object if all checks are successful.</p>
+<pre><code class="language-rust no_run noplayground">    let protocol_message: ProtocolMessage = mls_message
+        .try_into_protocol_message()
+        .expect("Expected a PublicMessage or a PrivateMessage");
     let processed_message = bob_group
         .process_message(provider, protocol_message)
         .expect("Could not process message.");</code></pre>

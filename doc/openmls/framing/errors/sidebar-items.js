@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["MessageDecryptionError","MlsMessageError","SecretTreeError","SenderError"]};
+window.SIDEBAR_ITEMS = {"enum":["MessageDecryptionError","MlsMessageError","ProtocolMessageError","SecretTreeError","SenderError"]};

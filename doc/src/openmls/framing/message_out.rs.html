@@ -238,12 +238,12 @@
 </span><span class="attr">#[derive(Debug, Clone, PartialEq, TlsSerialize, TlsSize)]
 </span><span class="kw">pub struct </span>MlsMessageOut {
     <span class="kw">pub</span>(<span class="kw">crate</span>) version: ProtocolVersion,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) body: MlsMessageOutBody,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) body: MlsMessageBodyOut,
 }
 
 <span class="doccomment">/// MLSMessage (Body)
 ///
-/// Note: Because [MlsMessageOutBody] already discriminates between
+/// Note: Because [MlsMessageBodyOut] already discriminates between
 /// `public_message`, `private_message`, etc., we don't use the
 /// `wire_format` field. This prevents inconsistent assignments
 /// where `wire_format` contradicts the variant given in `body`.
@@ -270,7 +270,7 @@
 /// ```
 </span><span class="attr">#[derive(Debug, PartialEq, Clone, TlsSerialize, TlsSize)]
 #[repr(u16)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>MlsMessageOutBody {
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>MlsMessageBodyOut {
     <span class="doccomment">/// Plaintext message
     </span><span class="attr">#[tls_codec(discriminant = <span class="number">1</span>)]
     </span>PublicMessage(PublicMessage),
@@ -299,7 +299,7 @@
             <span class="comment">// TODO #34: The version should be set explicitly here instead of
             // the default.
             </span>version: ProtocolVersion::default(),
-            body: MlsMessageOutBody::PublicMessage(public_message),
+            body: MlsMessageBodyOut::PublicMessage(public_message),
         }
     }
 }
@@ -310,7 +310,7 @@
             <span class="comment">// TODO #34: The version should be set explicitly here instead of
             // the default.
             </span>version: ProtocolVersion::default(),
-            body: MlsMessageOutBody::PrivateMessage(private_message),
+            body: MlsMessageBodyOut::PrivateMessage(private_message),
         }
     }
 }
@@ -319,7 +319,7 @@
     <span class="kw">fn </span>from(group_info: GroupInfo) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             version: group_info.group_context().protocol_version(),
-            body: MlsMessageOutBody::GroupInfo(group_info),
+            body: MlsMessageBodyOut::GroupInfo(group_info),
         }
     }
 }
@@ -328,7 +328,7 @@
     <span class="kw">fn </span>from(key_package: KeyPackage) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             version: key_package.protocol_version(),
-            body: MlsMessageOutBody::KeyPackage(key_package),
+            body: MlsMessageBodyOut::KeyPackage(key_package),
         }
     }
 }
@@ -342,7 +342,7 @@
     ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             version,
-            body: MlsMessageOutBody::PrivateMessage(private_message),
+            body: MlsMessageBodyOut::PrivateMessage(private_message),
         }
     }
 
@@ -351,7 +351,7 @@
     </span><span class="kw">pub fn </span>from_welcome(welcome: Welcome, version: ProtocolVersion) -&gt; <span class="self">Self </span>{
         MlsMessageOut {
             version,
-            body: MlsMessageOutBody::Welcome(welcome),
+            body: MlsMessageBodyOut::Welcome(welcome),
         }
     }
 
@@ -370,7 +370,7 @@
     </span><span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
     </span><span class="kw">pub fn </span>into_welcome(<span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Welcome&gt; {
         <span class="kw">match </span><span class="self">self</span>.body {
-            MlsMessageOutBody::Welcome(w) =&gt; <span class="prelude-val">Some</span>(w),
+            MlsMessageBodyOut::Welcome(w) =&gt; <span class="prelude-val">Some</span>(w),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         }
     }
@@ -380,8 +380,8 @@
         <span class="kw">let </span>mls_message_in: MlsMessageIn = <span class="self">self</span>.into();
 
         <span class="kw">match </span>mls_message_in.extract() {
-            MlsMessageInBody::PublicMessage(pm) =&gt; <span class="prelude-val">Some</span>(pm.into()),
-            MlsMessageInBody::PrivateMessage(pm) =&gt; <span class="prelude-val">Some</span>(pm.into()),
+            MlsMessageBodyIn::PublicMessage(pm) =&gt; <span class="prelude-val">Some</span>(pm.into()),
+            MlsMessageBodyIn::PrivateMessage(pm) =&gt; <span class="prelude-val">Some</span>(pm.into()),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         }
     }
@@ -389,7 +389,7 @@
     <span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
     </span><span class="kw">pub fn </span>into_verifiable_group_info(<span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;VerifiableGroupInfo&gt; {
         <span class="kw">match </span><span class="self">self</span>.body {
-            MlsMessageOutBody::GroupInfo(group_info) =&gt; {
+            MlsMessageBodyOut::GroupInfo(group_info) =&gt; {
                 <span class="prelude-val">Some</span>(group_info.into_verifiable_group_info())
             }
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
@@ -405,11 +405,11 @@
     <span class="kw">fn </span>from(mls_message: MlsMessageIn) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>version = mls_message.version;
         <span class="kw">let </span>body = <span class="kw">match </span>mls_message.body {
-            MlsMessageInBody::Welcome(w) =&gt; MlsMessageOutBody::Welcome(w),
-            MlsMessageInBody::GroupInfo(gi) =&gt; MlsMessageOutBody::GroupInfo(gi.into()),
-            MlsMessageInBody::KeyPackage(kp) =&gt; MlsMessageOutBody::KeyPackage(kp.into()),
-            MlsMessageInBody::PublicMessage(pm) =&gt; MlsMessageOutBody::PublicMessage(pm.into()),
-            MlsMessageInBody::PrivateMessage(pm) =&gt; MlsMessageOutBody::PrivateMessage(pm.into()),
+            MlsMessageBodyIn::Welcome(w) =&gt; MlsMessageBodyOut::Welcome(w),
+            MlsMessageBodyIn::GroupInfo(gi) =&gt; MlsMessageBodyOut::GroupInfo(gi.into()),
+            MlsMessageBodyIn::KeyPackage(kp) =&gt; MlsMessageBodyOut::KeyPackage(kp.into()),
+            MlsMessageBodyIn::PublicMessage(pm) =&gt; MlsMessageBodyOut::PublicMessage(pm.into()),
+            MlsMessageBodyIn::PrivateMessage(pm) =&gt; MlsMessageBodyOut::PrivateMessage(pm.into()),
         };
         <span class="self">Self </span>{ version, body }
     }
@@ -420,13 +420,13 @@
     <span class="kw">fn </span>from(mls_message_out: MlsMessageOut) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>version = mls_message_out.version;
         <span class="kw">let </span>body = <span class="kw">match </span>mls_message_out.body {
-            MlsMessageOutBody::PublicMessage(pm) =&gt; MlsMessageInBody::PublicMessage(pm.into()),
-            MlsMessageOutBody::PrivateMessage(pm) =&gt; MlsMessageInBody::PrivateMessage(pm.into()),
-            MlsMessageOutBody::Welcome(w) =&gt; MlsMessageInBody::Welcome(w),
-            MlsMessageOutBody::GroupInfo(gi) =&gt; {
-                MlsMessageInBody::GroupInfo(gi.into_verifiable_group_info())
+            MlsMessageBodyOut::PublicMessage(pm) =&gt; MlsMessageBodyIn::PublicMessage(pm.into()),
+            MlsMessageBodyOut::PrivateMessage(pm) =&gt; MlsMessageBodyIn::PrivateMessage(pm.into()),
+            MlsMessageBodyOut::Welcome(w) =&gt; MlsMessageBodyIn::Welcome(w),
+            MlsMessageBodyOut::GroupInfo(gi) =&gt; {
+                MlsMessageBodyIn::GroupInfo(gi.into_verifiable_group_info())
             }
-            MlsMessageOutBody::KeyPackage(kp) =&gt; MlsMessageInBody::KeyPackage(kp.into()),
+            MlsMessageBodyOut::KeyPackage(kp) =&gt; MlsMessageBodyIn::KeyPackage(kp.into()),
         };
         <span class="self">Self </span>{ version, body }
     }

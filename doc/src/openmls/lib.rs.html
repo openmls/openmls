@@ -315,7 +315,7 @@
 //!
 //! // ... and inspect the message.
 //! let welcome = match mls_message_in.extract() {
-//!    MlsMessageInBody::Welcome(welcome) =&gt; welcome,
+//!    MlsMessageBodyIn::Welcome(welcome) =&gt; welcome,
 //!    // We know it's a welcome message, so we ignore all other cases.
 //!    _ =&gt; unreachable!("Unexpected message type."),
 //! };

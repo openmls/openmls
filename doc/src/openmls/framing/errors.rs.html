@@ -78,6 +78,14 @@
 <a href="#77" id="77">77</a>
 <a href="#78" id="78">78</a>
 <a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Framing errors.
 //!
 //! This module contains errors related to message framing operations.
@@ -156,5 +164,13 @@
     <span class="doccomment">/// The message (or one of its parts) is too large to be encoded.
     </span><span class="attr">#[error(<span class="string">"The message (or one of its parts) is too large to be encoded."</span>)]
     </span>UnableToEncode,
+}
+
+<span class="doccomment">/// ProtocolMessage error
+</span><span class="attr">#[derive(Error, Debug, Clone)]
+</span><span class="kw">pub enum </span>ProtocolMessageError {
+    <span class="doccomment">/// Wrong wire format
+    </span><span class="attr">#[error(<span class="string">"Wrong wire format"</span>)]
+    </span>WrongWireFormat,
 }
 </code></pre></div></section></main></body></html>
