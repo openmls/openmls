@@ -1,15 +1,16 @@
 [workspace]
 members = [
-    "openmls",
-    "traits",
-    "openmls_rust_crypto",
-    "fuzz",
-    "cli",
-    "interop_client",
-    "memory_keystore",
-    "delivery-service/ds",
-    "delivery-service/ds-lib",
-    "basic_credential",
+  "openmls",
+  "traits",
+  "openmls_rust_crypto",
+  "fuzz",
+  "cli",
+  "interop_client",
+  "memory_keystore",
+  "delivery-service/ds",
+  "delivery-service/ds-lib",
+  "basic_credential",
+  "openmls-wasm",
 ]
 resolver = "2"
 
