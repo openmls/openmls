@@ -115,15 +115,17 @@ impl QueuedProposal {
             ProposalRef::from_authenticated_content_by_ref(crypto, ciphersuite, &public_message)
                 .map_err(|_| LibraryError::custom("Could not calculate `ProposalRef`."))?;
 
-        let proposal = match public_message.content() {
-            FramedContentBody::Proposal(p) => p.to_owned(),
+        let (body, sender) = public_message.into_body_and_sender();
+
+        let proposal = match body {
+            FramedContentBody::Proposal(p) => p,
             _ => return Err(LibraryError::custom("Wrong content type")),
         };
 
         Ok(Self {
             proposal,
             proposal_reference,
-            sender: public_message.sender().to_owned(),
+            sender,
             proposal_or_ref_type,
         })
     }
