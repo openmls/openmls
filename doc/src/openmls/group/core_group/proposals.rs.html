@@ -647,6 +647,9 @@
 <a href="#646" id="646">646</a>
 <a href="#647" id="647">647</a>
 <a href="#648" id="648">648</a>
+<a href="#649" id="649">649</a>
+<a href="#650" id="650">650</a>
+<a href="#651" id="651">651</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::{hash_map::Entry, HashMap, HashSet};
 
 <span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
@@ -760,18 +763,21 @@
         public_message: AuthenticatedContent,
         proposal_or_ref_type: ProposalOrRefType,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
-        <span class="kw">let </span>proposal = <span class="kw">match </span>public_message.content() {
-            FramedContentBody::Proposal(p) =&gt; p,
-            <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(LibraryError::custom(<span class="string">"Wrong content type"</span>)),
-        };
         <span class="kw">let </span>proposal_reference =
             ProposalRef::from_authenticated_content_by_ref(crypto, ciphersuite, <span class="kw-2">&amp;</span>public_message)
                 .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"Could not calculate `ProposalRef`."</span>))<span class="question-mark">?</span>;
 
+        <span class="kw">let </span>(body, sender) = public_message.into_body_and_sender();
+
+        <span class="kw">let </span>proposal = <span class="kw">match </span>body {
+            FramedContentBody::Proposal(p) =&gt; p,
+            <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(LibraryError::custom(<span class="string">"Wrong content type"</span>)),
+        };
+
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
-            proposal: proposal.clone(), <span class="comment">// FIXME
-            </span>proposal_reference,
-            sender: public_message.sender().clone(),
+            proposal,
+            proposal_reference,
+            sender,
             proposal_or_ref_type,
         })
     }

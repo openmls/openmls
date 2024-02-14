@@ -330,6 +330,11 @@
 <a href="#329" id="329">329</a>
 <a href="#330" id="330">330</a>
 <a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # MLS content authentication
 //!
 //! This module contains structs and implementation that pertain to content
@@ -597,6 +602,11 @@
     <span class="doccomment">/// Get the [`Sender`].
     </span><span class="kw">pub fn </span>sender(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Sender {
         <span class="kw-2">&amp;</span><span class="self">self</span>.content.sender
+    }
+
+    <span class="doccomment">/// Decompose into body and sender.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>into_body_and_sender(<span class="self">self</span>) -&gt; (FramedContentBody, Sender) {
+        (<span class="self">self</span>.content.body, <span class="self">self</span>.content.sender)
     }
 }
 
