@@ -266,6 +266,11 @@ impl AuthenticatedContent {
     pub fn sender(&self) -> &Sender {
         &self.content.sender
     }
+
+    /// Decompose into body and sender.
+    pub(crate) fn into_body_and_sender(self) -> (FramedContentBody, Sender) {
+        (self.content.body, self.content.sender)
+    }
 }
 
 #[cfg(test)]

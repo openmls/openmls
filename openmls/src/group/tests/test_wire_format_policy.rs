@@ -105,7 +105,7 @@ fn test_wire_policy_positive(ciphersuite: Ciphersuite, provider: &impl OpenMlsPr
             &alice_credential_with_key_and_signer.signer,
         );
         alice_group
-            .process_message(provider, message)
+            .process_message(provider, message.try_into_protocol_message().unwrap())
             .expect("An unexpected error occurred.");
     }
 }
@@ -134,7 +134,7 @@ fn test_wire_policy_negative(ciphersuite: Ciphersuite, provider: &impl OpenMlsPr
             &alice_credential_with_key_and_signer.signer,
         );
         let err = alice_group
-            .process_message(provider, message)
+            .process_message(provider, message.try_into_protocol_message().unwrap())
             .expect_err("An unexpected error occurred.");
         assert_eq!(err, ProcessMessageError::IncompatibleWireFormat);
     }

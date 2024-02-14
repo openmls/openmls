@@ -57,3 +57,11 @@ pub enum MlsMessageError {
     #[error("The message (or one of its parts) is too large to be encoded.")]
     UnableToEncode,
 }
+
+/// ProtocolMessage error
+#[derive(Error, Debug, Clone)]
+pub enum ProtocolMessageError {
+    /// Wrong wire format
+    #[error("Wrong wire format")]
+    WrongWireFormat,
+}

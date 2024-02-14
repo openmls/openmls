@@ -746,7 +746,7 @@ fn key_package_version(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider
 
     let message = MlsMessageOut {
         version: ProtocolVersion::Mls10,
-        body: MlsMessageOutBody::KeyPackage(key_package),
+        body: MlsMessageBodyOut::KeyPackage(key_package),
     };
 
     let encoded = message

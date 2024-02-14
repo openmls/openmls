@@ -276,7 +276,7 @@ async fn msg_send(mut body: Payload, data: web::Data<DsData>) -> impl Responder 
     let mut clients = unwrap_data!(data.clients.lock());
     let mut groups = unwrap_data!(data.groups.lock());
 
-    let protocol_msg: ProtocolMessage = group_msg.msg.clone().into();
+    let protocol_msg: ProtocolMessage = group_msg.msg.clone().try_into().unwrap();
 
     // Reject any handshake message that has an earlier epoch than the one we know
     // about.
