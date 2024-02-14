@@ -123,7 +123,7 @@ use openmls_traits::{
     OpenMlsProvider,
 };
 use serde::{Deserialize, Serialize};
-use tls_codec::{Serialize as TlsSerializeTrait, TlsSerialize, TlsSize};
+use tls_codec::{Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize};
 
 // Private
 use errors::*;
@@ -155,7 +155,9 @@ pub use lifetime::Lifetime;
 ///     Extension extensions<V>;
 /// } KeyPackageTBS;
 /// ```
-#[derive(Debug, Clone, PartialEq, TlsSize, TlsSerialize, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, TlsSize, TlsSerialize, Serialize, Deserialize, TlsDeserialize,
+)]
 struct KeyPackageTbs {
     protocol_version: ProtocolVersion,
     ciphersuite: Ciphersuite,
@@ -183,7 +185,7 @@ impl From<KeyPackage> for KeyPackageTbs {
 }
 
 /// The key package struct.
-#[derive(Debug, Clone, Serialize, Deserialize, TlsSize, TlsSerialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TlsSize, TlsSerialize, TlsDeserialize)]
 pub struct KeyPackage {
     payload: KeyPackageTbs,
     signature: Signature,
