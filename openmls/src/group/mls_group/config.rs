@@ -48,7 +48,7 @@ pub struct MlsGroupJoinConfig {
     /// Maximum number of past epochs for which application messages
     /// can be decrypted. The default is 0.
     pub(crate) max_past_epochs: usize,
-    /// Number of resumtion secrets to keep
+    /// Number of resumption secrets to keep
     pub(crate) number_of_resumption_psks: usize,
     /// Flag to indicate the Ratchet Tree Extension should be used
     pub(crate) use_ratchet_tree_extension: bool,
