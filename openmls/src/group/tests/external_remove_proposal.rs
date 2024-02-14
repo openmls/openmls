@@ -141,7 +141,12 @@ fn external_remove_proposal_should_remove_member(
 
     // Alice validates the message
     let processed_message = alice_group
-        .process_message(provider, bob_external_remove_proposal)
+        .process_message(
+            provider,
+            bob_external_remove_proposal
+                .try_into_protocol_message()
+                .unwrap(),
+        )
         .unwrap();
     // commit the proposal
     let ProcessedMessageContent::ProposalMessage(remove_proposal) =
@@ -167,7 +172,12 @@ fn external_remove_proposal_should_remove_member(
     .unwrap()
     .into();
     let processed_message = alice_group
-        .process_message(provider, invalid_bob_external_remove_proposal)
+        .process_message(
+            provider,
+            invalid_bob_external_remove_proposal
+                .try_into_protocol_message()
+                .unwrap(),
+        )
         .unwrap();
     // commit the proposal
     let ProcessedMessageContent::ProposalMessage(remove_proposal) =
@@ -235,7 +245,12 @@ fn external_remove_proposal_should_fail_when_invalid_external_senders_index(
 
     // Alice tries to validate the message and should fail as sender is invalid
     let error = alice_group
-        .process_message(provider, bob_external_remove_proposal)
+        .process_message(
+            provider,
+            bob_external_remove_proposal
+                .try_into_protocol_message()
+                .unwrap(),
+        )
         .unwrap_err();
     assert_eq!(
         error,
@@ -293,7 +308,12 @@ fn external_remove_proposal_should_fail_when_invalid_signature(
 
     // Alice tries to validate the message and should fail as sender is invalid
     let error = alice_group
-        .process_message(provider, bob_external_remove_proposal)
+        .process_message(
+            provider,
+            bob_external_remove_proposal
+                .try_into_protocol_message()
+                .unwrap(),
+        )
         .unwrap_err();
     assert_eq!(error, ProcessMessageError::InvalidSignature);
 }
@@ -335,7 +355,12 @@ fn external_remove_proposal_should_fail_when_no_external_senders(
 
     // Alice tries to validate the message and should fail as sender is invalid
     let error = alice_group
-        .process_message(provider, bob_external_remove_proposal)
+        .process_message(
+            provider,
+            bob_external_remove_proposal
+                .try_into_protocol_message()
+                .unwrap(),
+        )
         .unwrap_err();
     assert_eq!(
         error,

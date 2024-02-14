@@ -143,7 +143,7 @@ fn external_add_proposal_should_succeed(ciphersuite: Ciphersuite, provider: &imp
                 && matches!(msg.content(), FramedContentBody::Proposal(p) if p.proposal_type() == ProposalType::Add)
         };
         assert!(
-            matches!(proposal.body, MlsMessageOutBody::PublicMessage(ref msg) if verify_proposal(msg))
+            matches!(proposal.body, MlsMessageBodyOut::PublicMessage(ref msg) if verify_proposal(msg))
         );
 
         let msg = alice_group
@@ -285,7 +285,7 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
     )
     .unwrap();
 
-    if let MlsMessageOutBody::PublicMessage(plaintext) = &join_proposal.body {
+    if let MlsMessageBodyOut::PublicMessage(plaintext) = &join_proposal.body {
         // Make sure it's an add proposal...
         assert!(matches!(
             plaintext.content(),
@@ -309,7 +309,7 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
         .propose_remove_member(provider, &alice_signer, LeafNodeIndex::new(1))
         .map(|(out, _)| MlsMessageIn::from(out))
         .unwrap();
-    if let MlsMessageInBody::PublicMessage(mut plaintext) = remove_proposal.body {
+    if let MlsMessageBodyIn::PublicMessage(mut plaintext) = remove_proposal.body {
         plaintext.set_sender(Sender::NewMemberProposal);
         assert!(matches!(
             bob_group.process_message(provider, plaintext).unwrap_err(),
@@ -325,7 +325,7 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
         .propose_self_update(provider, &alice_signer, None)
         .map(|(out, _)| MlsMessageIn::from(out))
         .unwrap();
-    if let MlsMessageInBody::PublicMessage(mut plaintext) = update_proposal.body {
+    if let MlsMessageBodyIn::PublicMessage(mut plaintext) = update_proposal.body {
         plaintext.set_sender(Sender::NewMemberProposal);
         assert!(matches!(
             bob_group.process_message(provider, plaintext).unwrap_err(),

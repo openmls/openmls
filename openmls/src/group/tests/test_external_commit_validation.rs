@@ -740,7 +740,10 @@ fn test_pure_ciphertest(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 
     // Would fail if handshake message processing did not distinguish external messages
     assert!(alice_group
-        .process_message(provider, mls_message_in)
+        .process_message(
+            provider,
+            mls_message_in.try_into_protocol_message().unwrap()
+        )
         .is_ok());
 }
 
