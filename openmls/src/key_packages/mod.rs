@@ -109,7 +109,9 @@ use crate::{
     treesync::{
         node::{
             encryption_keys::EncryptionKeyPair,
-            leaf_node::{Capabilities, LeafNodeSource, NewLeafNodeParams, TreeInfoTbs},
+            leaf_node::{
+                BaseLeafNode, Capabilities, LeafNodeSource, NewLeafNodeParams, TreeInfoTbs,
+            },
         },
         LeafNode,
     },
@@ -123,7 +125,9 @@ use openmls_traits::{
     OpenMlsProvider,
 };
 use serde::{Deserialize, Serialize};
-use tls_codec::{Serialize as TlsSerializeTrait, TlsSerialize, TlsSize};
+use tls_codec::{
+    conditionally_deserializable, Serialize as TlsSerializeTrait, TlsSerialize, TlsSize,
+};
 
 // Private
 use errors::*;
@@ -139,7 +143,6 @@ mod lifetime;
 pub(crate) mod test_key_packages;
 
 // Public types
-pub use key_package_in::KeyPackageIn;
 pub use lifetime::Lifetime;
 
 /// The unsigned payload of a key package.
@@ -155,14 +158,19 @@ pub use lifetime::Lifetime;
 ///     Extension extensions<V>;
 /// } KeyPackageTBS;
 /// ```
+#[conditionally_deserializable]
 #[derive(Debug, Clone, PartialEq, TlsSize, TlsSerialize, Serialize, Deserialize)]
-struct KeyPackageTbs {
+pub(super) struct BaseKeyPackageTbs {
     protocol_version: ProtocolVersion,
     ciphersuite: Ciphersuite,
     init_key: HpkePublicKey,
-    leaf_node: LeafNode,
+    #[tls_codec(cd_field)]
+    leaf_node: BaseLeafNode,
     extensions: Extensions,
 }
+
+pub(super) type KeyPackageTbsIn = DeserializableBaseKeyPackageTbs;
+pub(super) type KeyPackageTbs = UndeserializableBaseKeyPackageTbs;
 
 impl Signable for KeyPackageTbs {
     type SignedOutput = KeyPackage;
@@ -183,13 +191,18 @@ impl From<KeyPackage> for KeyPackageTbs {
 }
 
 /// The key package struct.
+#[conditionally_deserializable]
 #[derive(Debug, Clone, Serialize, Deserialize, TlsSize, TlsSerialize)]
-pub struct KeyPackage {
-    payload: KeyPackageTbs,
+pub struct BaseKeyPackage {
+    #[tls_codec(cd_field)]
+    payload: BaseKeyPackageTbs,
     signature: Signature,
 }
 
-impl PartialEq for KeyPackage {
+pub type KeyPackageIn = BaseKeyPackage<true>;
+pub type KeyPackage = BaseKeyPackage<false>;
+
+impl<const DESERIALIZABLE: bool> PartialEq for BaseKeyPackage<DESERIALIZABLE> {
     fn eq(&self, other: &Self) -> bool {
         // We ignore the signature in the comparison. The same key package
         // may have different, valid signatures.

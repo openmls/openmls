@@ -2,8 +2,8 @@
 use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsProvider};
 use serde::{Deserialize, Serialize};
 use tls_codec::{
-    Serialize as TlsSerializeTrait, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
-    VLBytes,
+    conditionally_deserializable, Serialize as TlsSerializeTrait, TlsDeserialize,
+    TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes,
 };
 
 #[cfg(test)]
@@ -71,11 +71,15 @@ pub(crate) struct NewLeafNodeParams {
 /// } LeafNode;
 /// ```
 // TODO(#1242): Do not derive `TlsDeserialize`.
+#[conditionally_deserializable]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsSize)]
-pub struct LeafNode {
+pub struct BaseLeafNode {
     payload: LeafNodePayload,
     signature: Signature,
 }
+
+pub type LeafNode = UndeserializableBaseLeafNode;
+pub type LeafNodeIn = DeserializableBaseLeafNode;
 
 impl LeafNode {
     /// Create a new [`LeafNode`].
@@ -237,8 +241,8 @@ impl LeafNode {
 
     /// Update the `encryption_key` in this leaf node and re-signs it.
     ///
-    /// Optionally, a new leaf node can be provided to update more values such as
-    /// the credential.
+    /// Optionally, a new leaf node can be provided to update more values such
+    /// as the credential.
     pub(crate) fn update_and_re_sign(
         &mut self,
         new_encryption_key: impl Into<Option<EncryptionKey>>,
@@ -248,7 +252,8 @@ impl LeafNode {
         signer: &impl Signer,
     ) -> Result<(), PublicTreeError> {
         let tree_info = TreeInfoTbs::Update(TreePosition::new(group_id, leaf_index));
-        // TODO: If we could take out the leaf_node without cloning, this would all be nicer.
+        // TODO: If we could take out the leaf_node without cloning, this would all be
+        // nicer.
         let mut leaf_node_tbs = LeafNodeTbs::from(self.clone(), tree_info);
 
         // Update credential
@@ -516,7 +521,7 @@ impl LeafNode {
     TlsDeserializeBytes,
     TlsSize,
 )]
-struct LeafNodePayload {
+pub(super) struct LeafNodePayload {
     encryption_key: EncryptionKey,
     signature_key: SignaturePublicKey,
     credential: Credential,
@@ -616,7 +621,8 @@ impl LeafNodeTbs {
     }
 }
 
-/// Helper struct that holds additional information required to sign a leaf node.
+/// Helper struct that holds additional information required to sign a leaf
+/// node.
 ///
 /// ```c
 /// // draft-ietf-mls-protocol-17
@@ -670,23 +676,6 @@ impl TreePosition {
 }
 
 const LEAF_NODE_SIGNATURE_LABEL: &str = "LeafNodeTBS";
-
-#[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    Serialize,
-    Deserialize,
-    TlsSerialize,
-    TlsDeserialize,
-    TlsDeserializeBytes,
-    TlsSize,
-)]
-pub struct LeafNodeIn {
-    payload: LeafNodePayload,
-    signature: Signature,
-}
 
 impl LeafNodeIn {
     pub(crate) fn into_verifiable_leaf_node(self) -> VerifiableLeafNode {
