@@ -30,9 +30,16 @@ impl CoreGroup {
             key_package_bundle.key_package.leaf_node().encryption_key(),
         )
         .ok_or(WelcomeError::NoMatchingEncryptionKey)?;
-        leaf_keypair
+
+        // Delete the [`KeyPackage`] and the corresponding private key from the
+        // key store, but only if it doesn't have a last resort extension.
+        if !key_package_bundle.key_package().last_resort() {
+            leaf_keypair
             .delete_from_key_store(provider.key_store())
             .map_err(|_| WelcomeError::NoMatchingEncryptionKey)?;
+        } else {
+            log::debug!("Key package has last resort extension, not deleting");
+        }
 
         let ciphersuite = welcome.ciphersuite();
 
