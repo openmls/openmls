@@ -266,7 +266,7 @@
 };
 
 <span class="kw">use super</span>::{
-    errors::KeyPackageVerifyError, KeyPackage, KeyPackageTbs, SIGNATURE_KEY_PACKAGE_LABEL,
+    errors::KeyPackageVerifyError, InitKey, KeyPackage, KeyPackageTbs, SIGNATURE_KEY_PACKAGE_LABEL,
 };
 
 <span class="doccomment">/// Intermediary struct for deserialization of a [`KeyPackageIn`].
@@ -337,7 +337,7 @@
 </span><span class="kw">struct </span>KeyPackageTbsIn {
     protocol_version: ProtocolVersion,
     ciphersuite: Ciphersuite,
-    init_key: HpkePublicKey,
+    init_key: InitKey,
     leaf_node: LeafNodeIn,
     extensions: Extensions,
 }
@@ -406,7 +406,7 @@
         }
 
         <span class="comment">// Verify that the encryption key and the init key are different
-        </span><span class="kw">if </span>leaf_node.encryption_key().key() == <span class="kw-2">&amp;</span><span class="self">self</span>.payload.init_key {
+        </span><span class="kw">if </span>leaf_node.encryption_key().key() == <span class="self">self</span>.payload.init_key.key() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(KeyPackageVerifyError::InitKeyEqualsEncryptionKey);
         }
 
