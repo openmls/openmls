@@ -35,10 +35,12 @@ impl CoreGroup {
         // key store, but only if it doesn't have a last resort extension.
         if !key_package_bundle.key_package().last_resort() {
             leaf_keypair
-            .delete_from_key_store(provider.key_store())
-            .map_err(|_| WelcomeError::NoMatchingEncryptionKey)?;
+                .delete_from_key_store(provider.key_store())
+                .map_err(|_| WelcomeError::NoMatchingEncryptionKey)?;
         } else {
-            log::debug!("Found last resort extension, not deleting leaf encryption keypair from key store");
+            log::debug!(
+                "Found last resort extension, not deleting leaf encryption keypair from key store"
+            );
         }
 
         let ciphersuite = welcome.ciphersuite();
