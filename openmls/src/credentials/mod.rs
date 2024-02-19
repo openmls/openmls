@@ -165,6 +165,12 @@ pub struct Certificate {
 /// This struct contains MLS credential data, where the data depends on the
 /// type.
 ///
+/// **Note:** While the credential is opaque to OpenMLS, the library must know how
+///           to deserialize it. The implementation only works with credentials
+///           that are encoded as variable-sized vectors.
+///           Other credentials will cause OpenMLS either to crash or exhibit
+///           unexpected behaviour.
+///
 /// ```c
 /// struct {
 ///     CredentialType credential_type;

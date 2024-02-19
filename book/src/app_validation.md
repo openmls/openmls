@@ -2,7 +2,7 @@
 
 > **NOTE:** This chapter described the validation steps an application, using OpenMLS, has to perform for safe operation of the MLS protocol.
 >
-> **⚠️** This chapter is work in progress.
+> **⚠️** This chapter is work in progress (see [#1504](https://github.com/openmls/openmls/issues/1504)).
 
 ## Proposal Validation
 
