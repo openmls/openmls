@@ -163,7 +163,7 @@ pub struct Certificate {
 /// OpenMLS provides an implementation of the [`BasicCredential`].
 ///
 /// This struct contains MLS credential data, where the data depends on the
-/// type. The [`CredentialType`] always matches the [`MlsCredentialType`].
+/// type.
 ///
 /// ```c
 /// struct {
