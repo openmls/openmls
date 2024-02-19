@@ -288,7 +288,7 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
     // Right now the membership tag is verified first, wihich yields `VerificationError::InvalidMembershipTag`
     // error instead of a `CredentialError:InvalidSignature`.
     let mut msg_invalid_signature = mls_message.clone();
-    if let MlsMessageOutBody::PublicMessage(ref mut pt) = msg_invalid_signature.body {
+    if let MlsMessageBodyOut::PublicMessage(ref mut pt) = msg_invalid_signature.body {
         pt.invalidate_signature()
     };
 
@@ -296,7 +296,7 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
     let mut msg_invalid_sender = mls_message;
     let random_sender = Sender::build_member(LeafNodeIndex::new(987543210));
     match &mut msg_invalid_sender.body {
-        MlsMessageOutBody::PublicMessage(pt) => {
+        MlsMessageBodyOut::PublicMessage(pt) => {
             pt.set_sender(random_sender);
             pt.set_membership_tag(
                 provider.crypto(),
@@ -474,7 +474,7 @@ fn test_verify_staged_commit_credentials(
 
     // further process the deserialized message
     let processed_message = bob_group
-        .process_message(provider, msg_in)
+        .process_message(provider, msg_in.try_into_protocol_message().unwrap())
         .expect("bob failed processing alice's message");
 
     // the processed message must be a staged commit message
@@ -649,7 +649,7 @@ fn test_commit_with_update_path_leaf_node(
 
     // further process the deserialized message
     let processed_message = bob_group
-        .process_message(provider, msg_in)
+        .process_message(provider, msg_in.try_into_protocol_message().unwrap())
         .expect("bob failed processing alice's message");
 
     // the processed message must be a staged commit message
@@ -990,7 +990,12 @@ fn remove_prosposal_by_ref(ciphersuite: Ciphersuite, provider: &impl OpenMlsProv
         .commit_to_pending_proposals(provider, &alice_signer)
         .unwrap();
     let msg = bob_group
-        .process_message(provider, MlsMessageIn::from(commit))
+        .process_message(
+            provider,
+            MlsMessageIn::from(commit)
+                .try_into_protocol_message()
+                .unwrap(),
+        )
         .unwrap();
     match msg.into_content() {
         ProcessedMessageContent::StagedCommitMessage(commit) => {
@@ -1019,7 +1024,8 @@ fn group_context_extensions_proposal(ciphersuite: Ciphersuite, provider: &impl O
     // No required capabilities, so no specifically required extensions.
     assert!(alice_group
         .group()
-        .group_context_extensions()
+        .context()
+        .extensions()
         .required_capabilities()
         .is_none());
 
@@ -1047,7 +1053,8 @@ fn group_context_extensions_proposal(ciphersuite: Ciphersuite, provider: &impl O
 
     let required_capabilities = alice_group
         .group()
-        .group_context_extensions()
+        .context()
+        .extensions()
         .required_capabilities()
         .expect("couldn't get required_capabilities");
 

@@ -5,7 +5,7 @@ use serde::{self, Deserialize, Serialize};
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize};
 
 use crate::{
-    framing::{MlsMessageIn, MlsMessageInBody, MlsMessageOut, ProcessedMessageContent},
+    framing::{MlsMessageBodyIn, MlsMessageIn, MlsMessageOut, ProcessedMessageContent},
     group::{config::CryptoConfig, *},
     key_packages::*,
     schedule::psk::PreSharedKeyId,
@@ -242,7 +242,7 @@ impl PassiveClient {
             let mls_message_key_package = MlsMessageIn::tls_deserialize_exact(key_package).unwrap();
 
             match mls_message_key_package.body {
-                MlsMessageInBody::KeyPackage(key_package) => key_package.into(),
+                MlsMessageBodyIn::KeyPackage(key_package) => key_package.into(),
                 _ => panic!(),
             }
         };

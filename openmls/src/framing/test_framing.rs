@@ -560,10 +560,16 @@ fn unknown_sender(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     )
     .expect("Encryption error");
 
-    let received_message = group_charlie.decrypt(&enc_message.into(), provider, configuration);
+    let received_message = group_charlie.decrypt_message(
+        provider.crypto(),
+        ProtocolMessage::from(PrivateMessageIn::from(enc_message)),
+        configuration,
+    );
     assert_eq!(
         received_message.unwrap_err(),
-        MessageDecryptionError::SenderError(SenderError::UnknownSender)
+        ValidationError::UnableToDecrypt(MessageDecryptionError::SecretTreeError(
+            SecretTreeError::IndexOutOfBounds
+        ))
     );
 }
 
@@ -704,7 +710,7 @@ fn key_package_version(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider
 
     let message = MlsMessageOut {
         version: ProtocolVersion::Mls10,
-        body: MlsMessageOutBody::KeyPackage(key_package),
+        body: MlsMessageBodyOut::KeyPackage(key_package),
     };
 
     let encoded = message

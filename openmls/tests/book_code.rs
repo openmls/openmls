@@ -334,7 +334,9 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // ANCHOR_END: mls_message_in_from_bytes
 
     // ANCHOR: process_message
-    let protocol_message: ProtocolMessage = mls_message.into();
+    let protocol_message: ProtocolMessage = mls_message
+        .try_into_protocol_message()
+        .expect("Expected a PublicMessage or a PrivateMessage");
     let processed_message = bob_group
         .process_message(provider, protocol_message)
         .expect("Could not process message.");

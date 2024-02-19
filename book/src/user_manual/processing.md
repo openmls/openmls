@@ -12,11 +12,30 @@ Incoming messages can be deserialized from byte slices into an `MlsMessageIn`:
 
 If the message is malformed, the function will fail with an error.
 
-## Processing messages
+## Processing messages in groups
 
-In the next step, the message needs to be processed. If the message was
-encrypted, it will be decrypted automatically. This step performs all syntactic
-and semantic validation checks and verifies the message's signature:
+In the next step, the message needs to be processed in the context of the
+corresponding group.
+
+`MlsMessageIn` can carry all MLS messages, but only `PrivateMessageIn` and
+`PublicMessageIn` are processed in the context of a group. In OpenMLS these two
+message types are combined into a `ProtocolMessage` `enum`. There are 3 ways to
+extract the messages from an `MlsMessageIn`:
+
+1. `MlsMessageIn.try_into_protocol_message()` returns a `Result<ProtocolMessage, ProtocolMessageError>`
+2. `ProtocolMessage::try_from(m: MlsMessageIn)` returns a `Result<ProtocolMessage, ProtocolMessageError>`
+3. `MlsMessageIn.extract()` returns an `MlsMessageBodyIn` `enum` that has two
+   variants for `PrivateMessageIn` and `PublicMessageIn`
+
+`MlsGroup.process_message()` accepts either a `ProtocolMessage`, a
+`PrivateMessageIn`, or a `PublicMessageIn` and processes the message.
+`ProtocolMessage.group_id()` exposes the group ID that can help the application
+find the right group. 
+
+If the message was encrypted (i.e. if it was a `PrivateMessageIn`), it will be
+decrypted automatically. The processing performs all syntactic and semantic
+validation checks and verifies the message's signature. The function finally
+returns a `ProcessedMessage` object if all checks are successful.
 
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code.rs:process_message}}

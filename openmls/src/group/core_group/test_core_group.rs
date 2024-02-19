@@ -45,25 +45,6 @@ pub(crate) fn setup_alice_group(
     (group, alice_credential_with_key, alice_signature_keys, pk)
 }
 
-#[apply(ciphersuites_and_providers)]
-fn test_core_group_persistence(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
-    let (alice_group, _, _, _) = setup_alice_group(ciphersuite, provider);
-
-    // we need something that implements io::Write
-    let mut file_out: Vec<u8> = vec![];
-    alice_group
-        .save(&mut file_out)
-        .expect("Could not write group state to file");
-
-    // make it into a type that implements io::Read
-    let file_in: &[u8] = &file_out;
-
-    let alice_group_deserialized =
-        CoreGroup::load(file_in).expect("Could not deserialize mls group");
-
-    assert_eq!(alice_group, alice_group_deserialized);
-}
-
 /// This function flips the last byte of the ciphertext.
 pub fn flip_last_byte(ctxt: &mut HpkeCiphertext) {
     let mut last_bits = ctxt

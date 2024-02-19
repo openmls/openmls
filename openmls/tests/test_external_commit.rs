@@ -145,7 +145,7 @@ fn test_group_info(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     // let alice process bob's new client
     let msg = alice_group
-        .process_message(provider, msg)
+        .process_message(provider, msg.try_into_protocol_message().unwrap())
         .unwrap()
         .into_content();
     match msg {
@@ -161,7 +161,9 @@ fn test_group_info(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .unwrap()
         .into();
 
-    let msg = alice_group.process_message(provider, message).unwrap();
+    let msg = alice_group
+        .process_message(provider, message.try_into_protocol_message().unwrap())
+        .unwrap();
     let decrypted = match msg.into_content() {
         ProcessedMessageContent::ApplicationMessage(msg) => msg.into_bytes(),
         _ => panic!("Not an ApplicationMessage"),

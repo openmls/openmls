@@ -33,7 +33,9 @@ mod test_past_secrets;
 mod test_proposals;
 
 use log::{debug, trace};
-use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite};
+use openmls_traits::{
+    crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite,
+};
 use serde::{Deserialize, Serialize};
 use tls_codec::Serialize as TlsSerializeTrait;
 
@@ -82,9 +84,6 @@ use crate::{
 use super::errors::CreateGroupContextExtProposalError;
 #[cfg(test)]
 use crate::treesync::node::leaf_node::TreePosition;
-use openmls_traits::crypto::OpenMlsCrypto;
-#[cfg(test)]
-use std::io::{Error, Read, Write};
 
 #[derive(Debug)]
 pub(crate) struct CreateCommitResult {
@@ -169,11 +168,13 @@ impl CoreGroupBuilder {
             public_group_builder,
         }
     }
+
     /// Set the [`CoreGroupConfig`] of the [`CoreGroup`].
     pub(crate) fn with_config(mut self, config: CoreGroupConfig) -> Self {
         self.config = Some(config);
         self
     }
+
     /// Set the [`Vec<PreSharedKeyId>`] of the [`CoreGroup`].
     #[cfg(test)]
     pub(crate) fn with_psk(mut self, psk_ids: Vec<PreSharedKeyId>) -> Self {
@@ -218,6 +219,7 @@ impl CoreGroupBuilder {
         self.max_past_epochs = max_past_epochs;
         self
     }
+
     /// Set the [`Lifetime`] for the own leaf in the group.
     pub fn with_lifetime(mut self, lifetime: Lifetime) -> Self {
         self.public_group_builder = self.public_group_builder.with_lifetime(lifetime);
@@ -317,7 +319,6 @@ impl CoreGroupBuilder {
     }
 }
 
-/// Public [`CoreGroup`] functions.
 impl CoreGroup {
     /// Get a builder for [`CoreGroup`].
     pub(crate) fn builder(
@@ -431,44 +432,6 @@ impl CoreGroup {
         )
     }
 
-    /// Create a `GroupContextExtensions` proposal.
-    #[cfg(test)]
-    pub(crate) fn create_group_context_ext_proposal(
-        &self,
-        framing_parameters: FramingParameters,
-        extensions: Extensions,
-        signer: &impl Signer,
-    ) -> Result<AuthenticatedContent, CreateGroupContextExtProposalError> {
-        // Ensure that the group supports all the extensions that are wanted.
-
-        let required_extension = extensions
-            .iter()
-            .find(|extension| extension.extension_type() == ExtensionType::RequiredCapabilities);
-        if let Some(required_extension) = required_extension {
-            let required_capabilities = required_extension.as_required_capabilities_extension()?;
-            // Ensure we support all the capabilities.
-            required_capabilities.check_support()?;
-            self.own_leaf_node()?
-                .capabilities()
-                .supports_required_capabilities(required_capabilities)?;
-
-            // Ensure that all other leaf nodes support all the required
-            // extensions as well.
-            self.public_group()
-                .check_extension_support(required_capabilities.extension_types())?;
-        }
-        let proposal = GroupContextExtensionProposal::new(extensions);
-        let proposal = Proposal::GroupContextExtensions(proposal);
-        AuthenticatedContent::member_proposal(
-            framing_parameters,
-            self.own_leaf_index(),
-            proposal,
-            self.context(),
-            signer,
-        )
-        .map_err(|e| e.into())
-    }
-
     // Create application message
     pub(crate) fn create_application_message(
         &mut self,
@@ -501,38 +464,6 @@ impl CoreGroup {
             provider,
             self.message_secrets_store.message_secrets_mut(),
             padding_size,
-        )
-    }
-
-    /// Decrypt an PrivateMessage into an PublicMessage
-    #[cfg(test)]
-    pub(crate) fn decrypt(
-        &mut self,
-        private_message: &PrivateMessageIn,
-        provider: &impl OpenMlsProvider,
-        sender_ratchet_configuration: &SenderRatchetConfiguration,
-    ) -> Result<VerifiableAuthenticatedContentIn, MessageDecryptionError> {
-        let ciphersuite = self.ciphersuite();
-        let message_secrets = self
-            .message_secrets_mut(private_message.epoch())
-            .map_err(|_| MessageDecryptionError::AeadError)?;
-        let sender_data =
-            private_message.sender_data(message_secrets, provider.crypto(), ciphersuite)?;
-        if self.public_group().leaf(sender_data.leaf_index).is_none() {
-            return Err(MessageDecryptionError::SenderError(
-                SenderError::UnknownSender,
-            ));
-        }
-        let message_secrets = self
-            .message_secrets_mut(private_message.epoch())
-            .map_err(|_| MessageDecryptionError::AeadError)?;
-        private_message.to_verifiable_content(
-            ciphersuite,
-            provider.crypto(),
-            message_secrets,
-            sender_data.leaf_index,
-            sender_ratchet_configuration,
-            sender_data,
         )
     }
 
@@ -616,19 +547,6 @@ impl CoreGroup {
         self.group_epoch_secrets().resumption_psk()
     }
 
-    /// Loads the state from persisted state
-    #[cfg(test)]
-    pub(crate) fn load<R: Read>(reader: R) -> Result<CoreGroup, Error> {
-        serde_json::from_reader(reader).map_err(|e| e.into())
-    }
-
-    /// Persists the state
-    #[cfg(test)]
-    pub(crate) fn save<W: Write>(&self, writer: &mut W) -> Result<(), Error> {
-        let serialized_core_group = serde_json::to_string_pretty(self)?;
-        writer.write_all(&serialized_core_group.into_bytes())
-    }
-
     /// Returns a reference to the public group.
     pub(crate) fn public_group(&self) -> &PublicGroup {
         &self.public_group
@@ -654,32 +572,11 @@ impl CoreGroup {
         self.public_group.group_id()
     }
 
-    /// Get the group context extensions.
-    #[cfg(test)]
-    pub(crate) fn group_context_extensions(&self) -> &Extensions {
-        self.public_group.group_context().extensions()
-    }
-
     /// Get the required capabilities extension of this group.
     pub(crate) fn required_capabilities(&self) -> Option<&RequiredCapabilitiesExtension> {
         self.public_group.required_capabilities()
     }
 
-    /// Returns `true` if the group uses the ratchet tree extension anf `false
-    /// otherwise
-    #[cfg(test)]
-    pub(crate) fn use_ratchet_tree_extension(&self) -> bool {
-        self.use_ratchet_tree_extension
-    }
-
-    #[cfg(test)]
-    pub(crate) fn set_own_leaf_index(&mut self, own_leaf_index: LeafNodeIndex) {
-        self.own_leaf_index = own_leaf_index;
-    }
-}
-
-// Private and crate functions
-impl CoreGroup {
     /// Get the leaf index of this client.
     pub(crate) fn own_leaf_index(&self) -> LeafNodeIndex {
         self.own_leaf_index
@@ -832,11 +729,9 @@ impl CoreGroup {
             self.own_leaf_index(),
         )
         .map_err(|e| match e {
-            crate::group::errors::ProposalQueueError::LibraryError(e) => e.into(),
-            crate::group::errors::ProposalQueueError::ProposalNotFound => {
-                CreateCommitError::MissingProposal
-            }
-            crate::group::errors::ProposalQueueError::SenderError(_) => {
+            ProposalQueueError::LibraryError(e) => e.into(),
+            ProposalQueueError::ProposalNotFound => CreateCommitError::MissingProposal,
+            ProposalQueueError::UpdateFromExternalSender => {
                 CreateCommitError::WrongProposalSenderType
             }
         })?;
@@ -1105,11 +1000,89 @@ impl CoreGroup {
             group_info: group_info.filter(|_| self.use_ratchet_tree_extension),
         })
     }
+}
 
-    #[cfg(test)]
+// Test functions
+#[cfg(test)]
+impl CoreGroup {
+    pub(crate) fn create_group_context_ext_proposal(
+        &self,
+        framing_parameters: FramingParameters,
+        extensions: Extensions,
+        signer: &impl Signer,
+    ) -> Result<AuthenticatedContent, CreateGroupContextExtProposalError> {
+        // Ensure that the group supports all the extensions that are wanted.
+        let required_extension = extensions
+            .iter()
+            .find(|extension| extension.extension_type() == ExtensionType::RequiredCapabilities);
+        if let Some(required_extension) = required_extension {
+            let required_capabilities = required_extension.as_required_capabilities_extension()?;
+            // Ensure we support all the capabilities.
+            required_capabilities.check_support()?;
+            self.own_leaf_node()?
+                .capabilities()
+                .supports_required_capabilities(required_capabilities)?;
+
+            // Ensure that all other leaf nodes support all the required
+            // extensions as well.
+            self.public_group()
+                .check_extension_support(required_capabilities.extension_types())?;
+        }
+        let proposal = GroupContextExtensionProposal::new(extensions);
+        let proposal = Proposal::GroupContextExtensions(proposal);
+        AuthenticatedContent::member_proposal(
+            framing_parameters,
+            self.own_leaf_index(),
+            proposal,
+            self.context(),
+            signer,
+        )
+        .map_err(|e| e.into())
+    }
+
+    pub(crate) fn use_ratchet_tree_extension(&self) -> bool {
+        self.use_ratchet_tree_extension
+    }
+
+    pub(crate) fn set_own_leaf_index(&mut self, own_leaf_index: LeafNodeIndex) {
+        self.own_leaf_index = own_leaf_index;
+    }
+
     pub(crate) fn own_tree_position(&self) -> TreePosition {
         TreePosition::new(self.group_id().clone(), self.own_leaf_index())
     }
+
+    pub(crate) fn message_secrets_store(&self) -> &MessageSecretsStore {
+        &self.message_secrets_store
+    }
+
+    pub(crate) fn set_group_context(&mut self, group_context: GroupContext) {
+        self.public_group.set_group_context(group_context)
+    }
+}
+
+// Test and test-utils functions
+#[cfg(any(feature = "test-utils", test))]
+impl CoreGroup {
+    pub(crate) fn context_mut(&mut self) -> &mut GroupContext {
+        self.public_group.context_mut()
+    }
+
+    pub(crate) fn message_secrets_test_mut(&mut self) -> &mut MessageSecrets {
+        self.message_secrets_store.message_secrets_mut()
+    }
+
+    pub(crate) fn print_ratchet_tree(&self, message: &str) {
+        println!("{}: {}", message, self.public_group().export_ratchet_tree());
+    }
+}
+
+/// Configuration for core group.
+#[derive(Clone, Copy, Default, Debug)]
+pub(crate) struct CoreGroupConfig {
+    /// Flag whether to send the ratchet tree along with the `GroupInfo` or not.
+    /// Defaults to false.
+    pub(crate) add_ratchet_tree_extension: bool,
 }
 
 /// Composite key for key material of a client within an epoch
@@ -1126,37 +1099,4 @@ impl EpochKeypairId {
             .concat(),
         )
     }
-}
-
-#[cfg(any(feature = "test-utils", test))]
-impl CoreGroup {
-    pub(crate) fn context_mut(&mut self) -> &mut GroupContext {
-        self.public_group.context_mut()
-    }
-
-    pub(crate) fn message_secrets_test_mut(&mut self) -> &mut MessageSecrets {
-        self.message_secrets_store.message_secrets_mut()
-    }
-
-    pub(crate) fn print_ratchet_tree(&self, message: &str) {
-        println!("{}: {}", message, self.public_group().export_ratchet_tree());
-    }
-
-    #[cfg(test)]
-    pub(crate) fn message_secrets_store(&self) -> &MessageSecretsStore {
-        &self.message_secrets_store
-    }
-
-    #[cfg(test)]
-    pub(crate) fn set_group_context(&mut self, group_context: GroupContext) {
-        self.public_group.set_group_context(group_context)
-    }
-}
-
-/// Configuration for core group.
-#[derive(Clone, Copy, Default, Debug)]
-pub(crate) struct CoreGroupConfig {
-    /// Flag whether to send the ratchet tree along with the `GroupInfo` or not.
-    /// Defaults to false.
-    pub(crate) add_ratchet_tree_extension: bool,
 }
