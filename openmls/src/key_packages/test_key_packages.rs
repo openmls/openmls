@@ -130,7 +130,14 @@ fn key_package_validation(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
     let mut key_package = key_package_orig;
 
     // Set an invalid init key
-    key_package.set_init_key(key_package.leaf_node().encryption_key().key().clone());
+    key_package.set_init_key(InitKey::from(
+        key_package
+            .leaf_node()
+            .encryption_key()
+            .key()
+            .as_slice()
+            .to_vec(),
+    ));
 
     let encoded = key_package
         .tls_serialize_detached()
