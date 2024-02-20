@@ -217,8 +217,8 @@ impl tls_codec::Deserialize for Credential {
         // Now we don't know what we get unfortunately.
         // We assume that it is a variable-sized vector. This works for the
         // currently specified credentials and any other credential MUST be
-        // encoded in a vector as well. Otherwise this implementation will
-        // either crash or exhibit unexpected behaviour.
+        // encoded in a vector as well. Otherwise OpenMLS may fail later on
+        // or exhibit unexpected behaviour.
         let (length, _) = tls_codec::vlen::read_length(bytes)?;
         let mut actual_credential_content = vec![0u8; length];
         bytes.read_exact(&mut actual_credential_content)?;
@@ -322,9 +322,13 @@ impl BasicCredential {
         }
     }
 
-    /// Get the identity of this basic credential as byte slice.
-    pub fn identity(&self) -> &[u8] {
-        self.credential.serialized_content()
+    /// Get the identity of this basic credential as byte vector.
+    pub fn identity(&self) -> Vec<u8> {
+        // The unwrap here is safe because when we were able to build this
+        // basic credential, the value in the select statement must have been
+        // a variable-length byte vector.
+        let id: VLBytes = self.credential.deserialized().unwrap();
+        id.into()
     }
 }
 

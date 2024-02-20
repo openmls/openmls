@@ -1,9 +1,10 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use rstest::*;
 use rstest_reuse::{self, *};
-use tls_codec::Deserialize;
+use tls_codec::{Deserialize, Serialize};
 
 use crate::{
+    credentials::BasicCredential,
     framing::*,
     group::{config::CryptoConfig, *},
     messages::external_proposals::*,
@@ -128,9 +129,10 @@ fn external_remove_proposal_should_remove_member(
     let bob_index = alice_group
         .members()
         .find(|member| {
-            let identity =
-                VLBytes::tls_deserialize_exact(member.credential.serialized_content()).unwrap();
-            identity.as_slice() == b"Bob"
+            let serialized = member.credential.tls_serialize_detached().unwrap();
+            let credential = BasicCredential::tls_deserialize_exact(serialized).unwrap();
+            let identity = credential.identity();
+            identity == b"Bob"
         })
         .map(|member| member.index)
         .unwrap();
