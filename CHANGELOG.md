@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#1477](https://github.com/openmls/openmls/pull/1477): Allow setting leaf node extensions and capabilities of the group creator when creating an MlsGroup(Config)
 - [#1478](https://github.com/openmls/openmls/pull/1478): Remove explicit functions to set `RequiredCapabilitiesExtension` and `ExternalSendersExtension` when building an MlsGroup(Config) in favor of the more general function to set group context extensions
 - [#1479](https://github.com/openmls/openmls/pull/1479): Allow the use of extensions with `ExtensionType::Unknown` in group context, key packages and leaf nodes
+- [#1503](https://github.com/openmls/openmls/pull/1503): Fixed `CoreGroup` to check for `LastResortExtension` before deleting leaf encryption keypair from the key store; this allows the same `KeyPackage` (with last resort extension) to be used to join multiple groups
 
 ## 0.5.0 (XXXX-XX-XX)
 
