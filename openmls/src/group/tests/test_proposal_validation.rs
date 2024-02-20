@@ -434,7 +434,7 @@ fn test_valsem102(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
                     Extensions::empty(),
                     Capabilities::default(),
                     Extensions::empty(),
-                    charlie_key_package.hpke_init_key().as_slice().to_vec(),
+                    charlie_key_package.hpke_init_key().to_owned(),
                 )
                 .unwrap();
             }
@@ -839,11 +839,13 @@ fn test_valsem103_valsem104(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
                     .into_with_init_key(
                         CryptoConfig::with_default_version(ciphersuite),
                         &bob_credential_with_key.signer,
-                        bob_key_package
-                            .leaf_node()
-                            .encryption_key()
-                            .as_slice()
-                            .to_vec(),
+                        InitKey::from(
+                            bob_key_package
+                                .leaf_node()
+                                .encryption_key()
+                                .as_slice()
+                                .to_vec(),
+                        ),
                     )
                     .unwrap();
             }
