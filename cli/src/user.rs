@@ -244,7 +244,7 @@ impl User {
                         .unwrap();
                 log::debug!(
                     "Searching for contact {:?}",
-                    str::from_utf8(credential.identity()).unwrap()
+                    str::from_utf8(&credential.identity()).unwrap()
                 );
                 let contact = match self.contacts.get(&credential.identity().to_vec()) {
                     Some(c) => c.id.clone(),
@@ -410,7 +410,7 @@ impl User {
                     .unwrap();
                     let sender_name = match self
                         .contacts
-                        .get(processed_message_credential.identity())
+                        .get(&processed_message_credential.identity())
                     {
                         Some(c) => c.username.clone(),
                         None => {
@@ -433,7 +433,7 @@ impl User {
                                 {
                                     log::debug!("update::Processing ApplicationMessage read sender name from credential identity for group {} ", group.group_name);
                                     Some(
-                                        str::from_utf8(m_credential.identity()).unwrap().to_owned(),
+                                        str::from_utf8(&m_credential.identity()).unwrap().to_owned(),
                                     )
                                 } else {
                                     None
