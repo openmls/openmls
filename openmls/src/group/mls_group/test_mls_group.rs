@@ -1346,18 +1346,15 @@ fn join_multiple_groups_last_resort_extension(
         .merge_pending_commit(provider)
         .expect("error merging commit for alice's group");
     // charlie calls new_from_welcome(...) with alice's Welcome message; SHOULD SUCCEED
-    assert_eq!(
-        MlsGroup::new_from_welcome(
-            provider,
-            &MlsGroupJoinConfig::default(),
-            alice_welcome
-                .into_welcome()
-                .expect("error processing alice's welcome message"),
-            None,
-        )
-        .is_ok(),
-        true
-    );
+    assert!(MlsGroup::new_from_welcome(
+        provider,
+        &MlsGroupJoinConfig::default(),
+        alice_welcome
+            .into_welcome()
+            .expect("error processing alice's welcome message"),
+        None,
+    )
+    .is_ok());
     // bob calls add_members(...) with charlie's KeyPackage; produces Commit and Welcome messages
     let (_, bob_welcome, _) = bob_group
         .add_members(provider, &bob_signer, &[charlie_keypkg.clone()])
@@ -1366,17 +1363,14 @@ fn join_multiple_groups_last_resort_extension(
         .merge_pending_commit(provider)
         .expect("error merging commit for bob's group");
     // charlie calls new_from_welcome(...) with bob's Welcome message; SHOULD SUCCEED
-    assert_eq!(
-        MlsGroup::new_from_welcome(
-            provider,
-            &MlsGroupJoinConfig::default(),
-            bob_welcome
-                .into_welcome()
-                .expect("error processing bob's welcome message"),
-            None,
-        )
-        .is_ok(),
-        true
-    );
+    assert!(MlsGroup::new_from_welcome(
+        provider,
+        &MlsGroupJoinConfig::default(),
+        bob_welcome
+            .into_welcome()
+            .expect("error processing bob's welcome message"),
+        None,
+    )
+    .is_ok());
     // done :-)
 }
