@@ -78,7 +78,7 @@ up to parties and have them create a group.</p>
     signature_algorithm: SignatureScheme,
     provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
 ) -&gt; (CredentialWithKey, SignatureKeyPair) {
-    <span class="kw">let </span>credential = Credential::new(identity, credential_type).unwrap();
+    <span class="kw">let </span>credential = BasicCredential::new_credential(identity);
     <span class="kw">let </span>signature_keys =
         SignatureKeyPair::new(signature_algorithm)
             .expect(<span class="string">"Error generating a signature key pair."</span>);

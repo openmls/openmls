@@ -31,7 +31,7 @@ package bundle can be created as follows:</p>
 <span class="kw">let </span>ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
 <span class="kw">let </span>provider = OpenMlsRustCrypto::default();
 
-<span class="kw">let </span>credential = Credential::new(<span class="string">"identity"</span>.into(), CredentialType::Basic).unwrap();
+<span class="kw">let </span>credential = BasicCredential::new_credential(<span class="string">"identity"</span>.into());
 <span class="kw">let </span>signer =
     SignatureKeyPair::new(ciphersuite.signature_algorithm())
         .expect(<span class="string">"Error generating a signature key pair."</span>);

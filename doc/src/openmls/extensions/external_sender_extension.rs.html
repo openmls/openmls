@@ -209,7 +209,7 @@
     <span class="kw">use </span>tls_codec::{Deserialize, Serialize};
 
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use crate</span>::{credentials::CredentialType, test_utils::<span class="kw-2">*</span>};
+    <span class="kw">use crate</span>::{credentials::BasicCredential, test_utils::<span class="kw-2">*</span>};
 
     <span class="attr">#[apply(ciphersuites)]
     </span><span class="kw">fn </span>test_serialize_deserialize(ciphersuite: Ciphersuite) {
@@ -217,7 +217,7 @@
             <span class="kw">let </span><span class="kw-2">mut </span>external_sender_extensions = Vec::new();
 
             <span class="kw">for _ in </span><span class="number">0</span>..<span class="number">8 </span>{
-                <span class="kw">let </span>credential = Credential::new(<span class="string">b"Alice"</span>.to_vec(), CredentialType::Basic).unwrap();
+                <span class="kw">let </span>credential = BasicCredential::new_credential(<span class="string">b"Alice"</span>.to_vec());
                 <span class="kw">let </span>signature_keys =
                     SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 

@@ -570,27 +570,6 @@
 <a href="#569" id="569">569</a>
 <a href="#570" id="570">570</a>
 <a href="#571" id="571">571</a>
-<a href="#572" id="572">572</a>
-<a href="#573" id="573">573</a>
-<a href="#574" id="574">574</a>
-<a href="#575" id="575">575</a>
-<a href="#576" id="576">576</a>
-<a href="#577" id="577">577</a>
-<a href="#578" id="578">578</a>
-<a href="#579" id="579">579</a>
-<a href="#580" id="580">580</a>
-<a href="#581" id="581">581</a>
-<a href="#582" id="582">582</a>
-<a href="#583" id="583">583</a>
-<a href="#584" id="584">584</a>
-<a href="#585" id="585">585</a>
-<a href="#586" id="586">586</a>
-<a href="#587" id="587">587</a>
-<a href="#588" id="588">588</a>
-<a href="#589" id="589">589</a>
-<a href="#590" id="590">590</a>
-<a href="#591" id="591">591</a>
-<a href="#592" id="592">592</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains validation functions for incoming messages
 //! as defined in &lt;https://github.com/openmls/openmls/wiki/Message-validation&gt;
 
@@ -619,7 +598,6 @@
         Commit,
     },
     schedule::errors::PskError,
-    treesync::node::leaf_node::LeafNode,
 };
 
 <span class="kw">impl </span>PublicGroup {
@@ -1051,12 +1029,9 @@
     ///  - ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
     ///  - ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
     ///  - ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
-    ///  - ValSem243: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
-    ///               leaf are identical to the ones in the path KeyPackage.
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>validate_external_commit(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         proposal_queue: <span class="kw-2">&amp;</span>ProposalQueue,
-        path_leaf_node: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>LeafNode&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExternalCommitValidationError&gt; {
         <span class="kw">let </span>count_external_init_proposals = proposal_queue
             .filtered_by_type(ProposalType::ExternalInit)
@@ -1082,30 +1057,13 @@
             <span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitValidationError::InvalidInlineProposals);
         }
 
-        <span class="kw">let </span>remove_proposals = proposal_queue.filtered_by_type(ProposalType::Remove);
-        <span class="kw">for </span>proposal <span class="kw">in </span>remove_proposals {
-            <span class="kw">if </span>proposal.proposal_or_ref_type() == ProposalOrRefType::Proposal {
-                <span class="kw">if let </span>Proposal::Remove(remove_proposal) = proposal.proposal() {
-                    <span class="kw">let </span>removed_leaf = remove_proposal.removed();
+        <span class="comment">// If a Remove proposal is present,
+        // the credential in the LeafNode MUST present a set of
+        // identifiers that is acceptable to the application for
+        // the removed participant.
+        // This MUST be checked by the application.
 
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(new_leaf) = path_leaf_node {
-                        <span class="comment">// ValSem243: External Commit, inline Remove Proposal:
-                        //            The identity and the endpoint_id of the
-                        //            removed leaf are identical to the ones
-                        //            in the path leaf node.
-                        </span><span class="kw">let </span>removed_leaf = <span class="self">self
-                            </span>.treesync()
-                            .leaf(removed_leaf)
-                            .ok_or(ExternalCommitValidationError::UnknownMemberRemoval)<span class="question-mark">?</span>;
-                        <span class="kw">if </span>removed_leaf.credential().identity() != new_leaf.credential().identity()
-                        {
-                            <span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitValidationError::InvalidRemoveProposal);
-                        }
-                    };
-                }
-            }
-        }
-        <span class="prelude-val">Ok</span>(())
+        </span><span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Returns a [`LeafNodeValidationError`] if an [`ExtensionType`]

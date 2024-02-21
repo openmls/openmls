@@ -926,31 +926,6 @@
 <a href="#925" id="925">925</a>
 <a href="#926" id="926">926</a>
 <a href="#927" id="927">927</a>
-<a href="#928" id="928">928</a>
-<a href="#929" id="929">929</a>
-<a href="#930" id="930">930</a>
-<a href="#931" id="931">931</a>
-<a href="#932" id="932">932</a>
-<a href="#933" id="933">933</a>
-<a href="#934" id="934">934</a>
-<a href="#935" id="935">935</a>
-<a href="#936" id="936">936</a>
-<a href="#937" id="937">937</a>
-<a href="#938" id="938">938</a>
-<a href="#939" id="939">939</a>
-<a href="#940" id="940">940</a>
-<a href="#941" id="941">941</a>
-<a href="#942" id="942">942</a>
-<a href="#943" id="943">943</a>
-<a href="#944" id="944">944</a>
-<a href="#945" id="945">945</a>
-<a href="#946" id="946">946</a>
-<a href="#947" id="947">947</a>
-<a href="#948" id="948">948</a>
-<a href="#949" id="949">949</a>
-<a href="#950" id="950">950</a>
-<a href="#951" id="951">951</a>
-<a href="#952" id="952">952</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the [`LeafNode`] struct and its implementation.
 </span><span class="kw">use </span>openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsProvider};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -1415,21 +1390,6 @@
         <span class="self">self</span>.payload = leaf_node.payload;
         <span class="self">self</span>.signature = leaf_node.signature;
     }
-
-    <span class="doccomment">/// Re-signs a leaf node with a specific tree position.
-    </span><span class="attr">#[cfg(test)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>resign_with_position(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        leaf_index: LeafNodeIndex,
-        group_id: GroupId,
-        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
-    ) {
-        <span class="kw">let </span>tree_info_tbs = TreeInfoTbs::commit(group_id, leaf_index);
-        <span class="kw">let </span>leaf_node_tbs = LeafNodeTbs::from(<span class="self">self</span>.clone(), tree_info_tbs);
-        <span class="kw">let </span>leaf_node = leaf_node_tbs.sign(signer).unwrap();
-        <span class="self">self</span>.payload = leaf_node.payload;
-        <span class="self">self</span>.signature = leaf_node.signature;
-    }
 }
 
 <span class="doccomment">/// The payload of a [`LeafNode`]
@@ -1595,16 +1555,6 @@
     KeyPackage,
     Update(TreePosition),
     Commit(TreePosition),
-}
-
-<span class="kw">impl </span>TreeInfoTbs {
-    <span class="attr">#[cfg(test)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>commit(group_id: GroupId, leaf_index: LeafNodeIndex) -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>::Commit(TreePosition {
-            group_id,
-            leaf_index,
-        })
-    }
 }
 
 <span class="attr">#[derive(Debug, Clone, PartialEq, Eq, TlsSerialize, TlsSize)]
