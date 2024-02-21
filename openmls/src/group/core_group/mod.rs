@@ -582,13 +582,6 @@ impl CoreGroup {
         self.own_leaf_index
     }
 
-    /// Get the identity of the client's [`Credential`] owning this group.
-    pub(crate) fn own_identity(&self) -> Option<&[u8]> {
-        self.public_group()
-            .leaf(self.own_leaf_index)
-            .map(|node| node.credential().identity())
-    }
-
     /// Get a reference to the group epoch secrets from the group
     pub(crate) fn group_epoch_secrets(&self) -> &GroupEpochSecrets {
         &self.group_epoch_secrets

@@ -23,7 +23,7 @@ impl Identity {
         crypto: &OpenMlsRustPersistentCrypto,
         id: &[u8],
     ) -> Self {
-        let credential = Credential::new(id.to_vec(), CredentialType::Basic).unwrap();
+        let credential = BasicCredential::new_credential(id.to_vec());
         let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
         let credential_with_key = CredentialWithKey {
             credential,
@@ -88,6 +88,6 @@ impl Identity {
 
     /// Get the plain identity as byte vector.
     pub fn identity(&self) -> &[u8] {
-        self.credential_with_key.credential.identity()
+        self.credential_with_key.credential.serialized_content()
     }
 }

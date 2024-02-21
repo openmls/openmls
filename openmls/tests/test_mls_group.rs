@@ -5,6 +5,7 @@ use openmls::{
 };
 
 use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, OpenMlsProvider};
+use tls_codec::VLBytes;
 
 fn generate_key_package<KeyStore: OpenMlsKeyStore>(
     ciphersuite: Ciphersuite,
@@ -47,26 +48,14 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
         let group_id = GroupId::from_slice(b"Test Group");
 
         // Generate credentials with keys
-        let (alice_credential, alice_signer) = new_credential(
-            provider,
-            b"Alice",
-            CredentialType::Basic,
-            ciphersuite.signature_algorithm(),
-        );
+        let (alice_credential, alice_signer) =
+            new_credential(provider, b"Alice", ciphersuite.signature_algorithm());
 
-        let (bob_credential, bob_signer) = new_credential(
-            provider,
-            b"Bob",
-            CredentialType::Basic,
-            ciphersuite.signature_algorithm(),
-        );
+        let (bob_credential, bob_signer) =
+            new_credential(provider, b"Bob", ciphersuite.signature_algorithm());
 
-        let (charlie_credential, charlie_signer) = new_credential(
-            provider,
-            b"Charlie",
-            CredentialType::Basic,
-            ciphersuite.signature_algorithm(),
-        );
+        let (charlie_credential, charlie_signer) =
+            new_credential(provider, b"Charlie", ciphersuite.signature_algorithm());
 
         // Generate KeyPackages
         let bob_key_package = generate_key_package(
@@ -128,8 +117,12 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 
         // Check that Alice & Bob are the members of the group
         let members = alice_group.members().collect::<Vec<Member>>();
-        assert_eq!(members[0].credential.identity(), b"Alice");
-        assert_eq!(members[1].credential.identity(), b"Bob");
+        let credential0 =
+            VLBytes::tls_deserialize_exact(members[0].credential.serialized_content()).unwrap();
+        let credential1 =
+            VLBytes::tls_deserialize_exact(members[1].credential.serialized_content()).unwrap();
+        assert_eq!(credential0.as_slice(), b"Alice");
+        assert_eq!(credential1.as_slice(), b"Bob");
 
         let mut bob_group = MlsGroup::new_from_welcome(
             provider,
@@ -367,9 +360,15 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 
         // Check that Alice, Bob & Charlie are the members of the group
         let members = alice_group.members().collect::<Vec<Member>>();
-        assert_eq!(members[0].credential.identity(), b"Alice");
-        assert_eq!(members[1].credential.identity(), b"Bob");
-        assert_eq!(members[2].credential.identity(), b"Charlie");
+        let credential0 =
+            VLBytes::tls_deserialize_exact(members[0].credential.serialized_content()).unwrap();
+        let credential1 =
+            VLBytes::tls_deserialize_exact(members[1].credential.serialized_content()).unwrap();
+        let credential2 =
+            VLBytes::tls_deserialize_exact(members[2].credential.serialized_content()).unwrap();
+        assert_eq!(credential0.as_slice(), b"Alice");
+        assert_eq!(credential1.as_slice(), b"Bob");
+        assert_eq!(credential2.as_slice(), b"Charlie");
 
         // === Charlie sends a message to the group ===
         let message_charlie = b"Hi, I'm Charlie!";
@@ -562,8 +561,12 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 
         // Check that Alice & Charlie are the members of the group
         let members = alice_group.members().collect::<Vec<Member>>();
-        assert_eq!(members[0].credential.identity(), b"Alice");
-        assert_eq!(members[1].credential.identity(), b"Charlie");
+        let credential0 =
+            VLBytes::tls_deserialize_exact(members[0].credential.serialized_content()).unwrap();
+        let credential1 =
+            VLBytes::tls_deserialize_exact(members[1].credential.serialized_content()).unwrap();
+        assert_eq!(credential0.as_slice(), b"Alice");
+        assert_eq!(credential1.as_slice(), b"Charlie");
 
         // Check that Bob can no longer send messages
         assert!(bob_group
@@ -694,8 +697,12 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 
         // Check that Alice & Bob are the members of the group
         let members = alice_group.members().collect::<Vec<Member>>();
-        assert_eq!(members[0].credential.identity(), b"Alice");
-        assert_eq!(members[1].credential.identity(), b"Bob");
+        let credential0 =
+            VLBytes::tls_deserialize_exact(members[0].credential.serialized_content()).unwrap();
+        let credential1 =
+            VLBytes::tls_deserialize_exact(members[1].credential.serialized_content()).unwrap();
+        assert_eq!(credential0.as_slice(), b"Alice");
+        assert_eq!(credential1.as_slice(), b"Bob");
 
         // Bob creates a new group
         let mut bob_group = MlsGroup::new_from_welcome(
@@ -714,16 +721,24 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 
         // Check that Alice & Bob are the members of the group
         let members = alice_group.members().collect::<Vec<Member>>();
-        assert_eq!(members[0].credential.identity(), b"Alice");
-        assert_eq!(members[1].credential.identity(), b"Bob");
+        let credential0 =
+            VLBytes::tls_deserialize_exact(members[0].credential.serialized_content()).unwrap();
+        let credential1 =
+            VLBytes::tls_deserialize_exact(members[1].credential.serialized_content()).unwrap();
+        assert_eq!(credential0.as_slice(), b"Alice");
+        assert_eq!(credential1.as_slice(), b"Bob");
 
         // Make sure the group contains two members
         assert_eq!(bob_group.members().count(), 2);
 
         // Check that Alice & Bob are the members of the group
         let members = bob_group.members().collect::<Vec<Member>>();
-        assert_eq!(members[0].credential.identity(), b"Alice");
-        assert_eq!(members[1].credential.identity(), b"Bob");
+        let credential0 =
+            VLBytes::tls_deserialize_exact(members[0].credential.serialized_content()).unwrap();
+        let credential1 =
+            VLBytes::tls_deserialize_exact(members[1].credential.serialized_content()).unwrap();
+        assert_eq!(credential0.as_slice(), b"Alice");
+        assert_eq!(credential1.as_slice(), b"Bob");
 
         // === Alice sends a message to the group ===
         let message_alice = b"Hi, I'm Alice!";
@@ -859,7 +874,9 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 
         // Check that Alice is the only member of the group
         let members = alice_group.members().collect::<Vec<Member>>();
-        assert_eq!(members[0].credential.identity(), b"Alice");
+        let credential0 =
+            VLBytes::tls_deserialize_exact(members[0].credential.serialized_content()).unwrap();
+        assert_eq!(credential0.as_slice(), b"Alice");
 
         // === Save the group state ===
 
@@ -929,26 +946,14 @@ fn addition_order(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
         let group_id = GroupId::from_slice(b"Test Group");
         // Generate credentials with keys
-        let (alice_credential, alice_signer) = new_credential(
-            provider,
-            b"Alice",
-            CredentialType::Basic,
-            ciphersuite.signature_algorithm(),
-        );
+        let (alice_credential, alice_signer) =
+            new_credential(provider, b"Alice", ciphersuite.signature_algorithm());
 
-        let (bob_credential, bob_signer) = new_credential(
-            provider,
-            b"Bob",
-            CredentialType::Basic,
-            ciphersuite.signature_algorithm(),
-        );
+        let (bob_credential, bob_signer) =
+            new_credential(provider, b"Bob", ciphersuite.signature_algorithm());
 
-        let (charlie_credential, charlie_signer) = new_credential(
-            provider,
-            b"Charlie",
-            CredentialType::Basic,
-            ciphersuite.signature_algorithm(),
-        );
+        let (charlie_credential, charlie_signer) =
+            new_credential(provider, b"Charlie", ciphersuite.signature_algorithm());
 
         // Generate KeyPackages
         let bob_key_package = generate_key_package(
@@ -1028,9 +1033,13 @@ fn addition_order(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         // in the original API call. After merging, bob should be at index 1 and
         // charlie at index 2.
         let members = alice_group.members().collect::<Vec<Member>>();
-        assert_eq!(members[1].credential.identity(), b"Bob");
+        let credential1 =
+            VLBytes::tls_deserialize_exact(members[1].credential.serialized_content()).unwrap();
+        let credential2 =
+            VLBytes::tls_deserialize_exact(members[2].credential.serialized_content()).unwrap();
+        assert_eq!(credential1.as_slice(), b"Bob");
         assert_eq!(members[1].index, LeafNodeIndex::new(1));
-        assert_eq!(members[2].credential.identity(), b"Charlie");
+        assert_eq!(credential2.as_slice(), b"Charlie");
         assert_eq!(members[2].index, LeafNodeIndex::new(2));
     }
 }
@@ -1040,12 +1049,8 @@ fn test_empty_input_errors(ciphersuite: Ciphersuite, provider: &impl OpenMlsProv
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Generate credentials with keys
-    let (alice_credential, alice_signer) = new_credential(
-        provider,
-        b"Alice",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
+    let (alice_credential, alice_signer) =
+        new_credential(provider, b"Alice", ciphersuite.signature_algorithm());
 
     // Define the MlsGroupCreateConfig
     let mls_group_create_config = MlsGroupCreateConfig::test_default(ciphersuite);
@@ -1085,19 +1090,11 @@ fn mls_group_ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl Op
         // === Positive case: using the ratchet tree extension ===
 
         // Generate credentials
-        let (alice_credential, alice_signer) = new_credential(
-            provider,
-            b"Alice",
-            CredentialType::Basic,
-            ciphersuite.signature_algorithm(),
-        );
+        let (alice_credential, alice_signer) =
+            new_credential(provider, b"Alice", ciphersuite.signature_algorithm());
 
-        let (bob_credential, bob_signer) = new_credential(
-            provider,
-            b"Bob",
-            CredentialType::Basic,
-            ciphersuite.signature_algorithm(),
-        );
+        let (bob_credential, bob_signer) =
+            new_credential(provider, b"Bob", ciphersuite.signature_algorithm());
 
         // Generate KeyPackages
         let bob_key_package = generate_key_package(
@@ -1141,19 +1138,11 @@ fn mls_group_ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl Op
         // === Negative case: not using the ratchet tree extension ===
 
         // Generate credentials with keys
-        let (alice_credential, alice_signer) = new_credential(
-            provider,
-            b"Alice",
-            CredentialType::Basic,
-            ciphersuite.signature_algorithm(),
-        );
+        let (alice_credential, alice_signer) =
+            new_credential(provider, b"Alice", ciphersuite.signature_algorithm());
 
-        let (bob_credential, bob_signer) = new_credential(
-            provider,
-            b"Bob",
-            CredentialType::Basic,
-            ciphersuite.signature_algorithm(),
-        );
+        let (bob_credential, bob_signer) =
+            new_credential(provider, b"Bob", ciphersuite.signature_algorithm());
 
         // Generate KeyPackages
         let bob_key_package = generate_key_package(
