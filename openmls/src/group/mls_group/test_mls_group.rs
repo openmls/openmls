@@ -1295,3 +1295,82 @@ fn unknown_extensions(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider)
     )
     .expect("Error creating group from Welcome");
 }
+
+#[apply(ciphersuites_and_providers)]
+fn join_multiple_groups_last_resort_extension(
+    ciphersuite: Ciphersuite,
+    provider: &impl OpenMlsProvider,
+) {
+    // start with alice, bob, charlie, common config items
+    let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
+        setup_client("alice", ciphersuite, provider);
+    let (bob_credential_with_key, _bob_kpb, bob_signer, _bob_pk) =
+        setup_client("bob", ciphersuite, provider);
+    let (charlie_credential_with_key, _charlie_kpb, charlie_signer, _charlie_pk) =
+        setup_client("charlie", ciphersuite, provider);
+    let config = CryptoConfig {
+        ciphersuite,
+        version: crate::versions::ProtocolVersion::default(),
+    };
+    let leaf_capabilities =
+        Capabilities::new(None, None, Some(&[ExtensionType::LastResort]), None, None);
+    let keypkg_extensions = Extensions::single(Extension::LastResort(LastResortExtension::new()));
+    // alice creates MlsGroup
+    let mut alice_group = MlsGroup::builder()
+        .crypto_config(config)
+        .use_ratchet_tree_extension(true)
+        .build(provider, &alice_signer, alice_credential_with_key)
+        .expect("error creating group for alice using builder");
+    // bob creates MlsGroup
+    let mut bob_group = MlsGroup::builder()
+        .crypto_config(config)
+        .use_ratchet_tree_extension(true)
+        .build(provider, &bob_signer, bob_credential_with_key)
+        .expect("error creating group for bob using builder");
+    // charlie creates KeyPackage
+    let charlie_keypkg = KeyPackage::builder()
+        .leaf_node_capabilities(leaf_capabilities)
+        .key_package_extensions(keypkg_extensions.clone())
+        .build(
+            config,
+            provider,
+            &charlie_signer,
+            charlie_credential_with_key,
+        )
+        .expect("error building key package for charlie");
+    // alice calls add_members(...) with charlie's KeyPackage; produces Commit and Welcome messages
+    let (_, alice_welcome, _) = alice_group
+        .add_members(provider, &alice_signer, &[charlie_keypkg.clone()])
+        .expect("error adding charlie to alice's group");
+    alice_group
+        .merge_pending_commit(provider)
+        .expect("error merging commit for alice's group");
+    // charlie calls new_from_welcome(...) with alice's Welcome message; SHOULD SUCCEED
+    assert!(MlsGroup::new_from_welcome(
+        provider,
+        &MlsGroupJoinConfig::default(),
+        alice_welcome
+            .into_welcome()
+            .expect("error processing alice's welcome message"),
+        None,
+    )
+    .is_ok());
+    // bob calls add_members(...) with charlie's KeyPackage; produces Commit and Welcome messages
+    let (_, bob_welcome, _) = bob_group
+        .add_members(provider, &bob_signer, &[charlie_keypkg.clone()])
+        .expect("error adding charlie to bob's group");
+    bob_group
+        .merge_pending_commit(provider)
+        .expect("error merging commit for bob's group");
+    // charlie calls new_from_welcome(...) with bob's Welcome message; SHOULD SUCCEED
+    assert!(MlsGroup::new_from_welcome(
+        provider,
+        &MlsGroupJoinConfig::default(),
+        bob_welcome
+            .into_welcome()
+            .expect("error processing bob's welcome message"),
+        None,
+    )
+    .is_ok());
+    // done :-)
+}
