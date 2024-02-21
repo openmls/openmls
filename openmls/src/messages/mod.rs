@@ -167,6 +167,7 @@ impl Commit {
     }
 
     /// Returns the update path of the Commit if it has one.
+    #[cfg(test)]
     pub(crate) fn path(&self) -> &Option<UpdatePath> {
         &self.path
     }

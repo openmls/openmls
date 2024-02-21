@@ -228,11 +228,6 @@ impl MlsGroup {
             .ok_or_else(|| LibraryError::custom("Own leaf node missing").into())
     }
 
-    /// Get the identity of the client's [`Credential`] owning this group.
-    pub fn own_identity(&self) -> Option<&[u8]> {
-        self.group.own_identity()
-    }
-
     /// Returns the leaf index of the client in the tree owning this group.
     pub fn own_leaf_index(&self) -> LeafNodeIndex {
         self.group.own_leaf_index()

@@ -10,7 +10,7 @@ use openmls_traits::{
     types::{Ciphersuite, HpkeKeyPair, SignatureScheme},
     OpenMlsProvider,
 };
-use tls_codec::Serialize;
+use tls_codec::{Deserialize, Serialize};
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
@@ -338,6 +338,12 @@ impl Client {
     pub fn identity(&self, group_id: &GroupId) -> Option<Vec<u8>> {
         let groups = self.groups.read().unwrap();
         let group = groups.get(group_id).unwrap();
-        group.own_identity().map(|s| s.to_vec())
+        let leaf = group.own_leaf();
+        leaf.map(|l| {
+            let credential = l.credential();
+            let credential =
+                BasicCredential::tls_deserialize_exact(credential.serialized_content()).unwrap();
+            credential.identity().to_vec()
+        })
     }
 }
