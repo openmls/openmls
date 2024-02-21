@@ -243,6 +243,74 @@ fn export_secret(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 }
 
 #[apply(ciphersuites_and_providers)]
+fn staged_join(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+    let group_id = GroupId::from_slice(b"Test Group");
+
+    let (alice_credential_with_key, alice_kpb, alice_signer, _alice_pk) =
+        setup_client("Alice", ciphersuite, provider);
+    let (_bob_credential, bob_kpb, _bob_signer, _bob_pk) =
+        setup_client("Bob", ciphersuite, provider);
+
+    // Define the MlsGroup configuration
+    let mls_group_create_config = MlsGroupCreateConfig::test_default(ciphersuite);
+
+    // === Alice creates a group ===
+    let mut alice_group = MlsGroup::new_with_group_id(
+        provider,
+        &alice_signer,
+        &mls_group_create_config,
+        group_id,
+        alice_credential_with_key,
+    )
+    .expect("An unexpected error occurred.");
+
+    let (_queued_message, welcome, _group_info) = alice_group
+        .add_members(provider, &alice_signer, &[bob_kpb.key_package().clone()])
+        .expect("Could not add member to group.");
+
+    alice_group
+        .merge_pending_commit(provider)
+        .expect("couldn't merge commit that adds bob");
+
+    let join_config = mls_group_create_config.join_config();
+
+    let welcome = match welcome.body {
+        MlsMessageBodyOut::Welcome(welcome) => welcome,
+        _ => unreachable!(),
+    };
+
+    let staged_bob_group = StagedMlsGroup::new_from_welcome(
+        provider,
+        join_config,
+        welcome,
+        Some(alice_group.export_ratchet_tree().into()),
+    )
+    .expect("error creating staged mls group");
+
+    let welcome_sender = staged_bob_group
+        .welcome_sender()
+        .expect("couldn't determine sender of welcome");
+
+    assert_eq!(
+        welcome_sender.credential(),
+        alice_kpb.key_package().leaf_node().credential()
+    );
+
+    let bob_group = staged_bob_group
+        .into_group(provider)
+        .expect("error turning StagedMlsGroup into MlsGroup");
+
+    assert_eq!(
+        alice_group
+            .export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
+            .expect("An unexpected error occurred."),
+        bob_group
+            .export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
+            .expect("An unexpected error occurred.")
+    );
+}
+
+#[apply(ciphersuites_and_providers)]
 fn test_invalid_plaintext(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // Some basic setup functions for the MlsGroup.
     let mls_group_create_config = MlsGroupCreateConfig::test_default(ciphersuite);

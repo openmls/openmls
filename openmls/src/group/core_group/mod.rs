@@ -123,6 +123,37 @@ impl Member {
     }
 }
 
+/// A [`StagedCoreGroup`] can be inspected and then turned into a [`CoreGroup`].
+/// This allows checking who authored the Welcome message.
+#[derive(Debug)]
+pub(crate) struct StagedCoreGroup {
+    public_group: PublicGroup,
+    group_epoch_secrets: GroupEpochSecrets,
+    own_leaf_index: LeafNodeIndex,
+    // Group config.
+    // Set to true if the ratchet tree extension is added to the `GroupInfo`.
+    // Defaults to `false`.
+    use_ratchet_tree_extension: bool,
+    /// A [`MessageSecretsStore`] that stores message secrets.
+    /// By default this store has the length of 1, i.e. only the [`MessageSecrets`]
+    /// of the current epoch is kept.
+    /// If more secrets from past epochs should be kept in order to be
+    /// able to decrypt application messages from previous epochs, the size of
+    /// the store must be increased through [`max_past_epochs()`].
+    message_secrets_store: MessageSecretsStore,
+    // Resumption psk store. This is where the resumption psks are kept in a rollover list.
+    pub(crate) resumption_psk_store: ResumptionPskStore,
+
+    /// The [`VerifiableGroupInfo`] from the [`Welcome`] message.
+    verifiable_group_info: VerifiableGroupInfo,
+
+    /// The [`GroupSecrets`] from the [`Welcome`] message.
+    group_secrets: GroupSecrets,
+
+    /// The keypair used to decrypt the [`Welcome`] message.
+    leaf_keypair: EncryptionKeyPair,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq, Clone))]
 pub(crate) struct CoreGroup {

@@ -189,3 +189,100 @@ impl MlsGroup {
         ))
     }
 }
+
+impl StagedMlsGroup {
+    /// Creates a new staged group from a [`Welcome`] message. Returns an error
+    /// ([`WelcomeError::NoMatchingKeyPackage`]) if no [`KeyPackage`]
+    /// can be found.
+    /// Note: calling this function will consume the key material for decrypting the [`Welcome`]
+    /// message, even if the caller does not turn the [`StagedMlsGroup`] into an [`MlsGroup`].
+    // TODO: #1326 This should take an MlsMessage rather than a Welcome message.
+    pub fn new_from_welcome<KeyStore: OpenMlsKeyStore>(
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        mls_group_config: &MlsGroupJoinConfig,
+        welcome: Welcome,
+        ratchet_tree: Option<RatchetTreeIn>,
+    ) -> Result<Self, WelcomeError<KeyStore::Error>> {
+        let resumption_psk_store =
+            ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
+        let (key_package, _) = welcome
+            .secrets()
+            .iter()
+            .find_map(|egs| {
+                let new_member = egs.new_member();
+                let hash_ref = new_member.as_slice();
+                provider
+                    .key_store()
+                    .read(hash_ref)
+                    .map(|kp: KeyPackage| (kp, hash_ref.to_vec()))
+            })
+            .ok_or(WelcomeError::NoMatchingKeyPackage)?;
+
+        // TODO #751
+        let private_key = provider
+            .key_store()
+            .read::<HpkePrivateKey>(key_package.hpke_init_key().as_slice())
+            .ok_or(WelcomeError::NoMatchingKeyPackage)?;
+        let key_package_bundle = KeyPackageBundle {
+            key_package,
+            private_key,
+        };
+
+        // Delete the [`KeyPackage`] and the corresponding private key from the
+        // key store, but only if it doesn't have a last resort extension.
+        if !key_package_bundle.key_package().last_resort() {
+            key_package_bundle
+                .key_package
+                .delete(provider)
+                .map_err(WelcomeError::KeyStoreError)?;
+        } else {
+            log::debug!("Key package has last resort extension, not deleting");
+        }
+
+        let group = StagedCoreGroup::new_from_welcome(
+            welcome,
+            ratchet_tree,
+            key_package_bundle,
+            provider,
+            resumption_psk_store,
+        )?;
+
+        let mls_group = StagedMlsGroup {
+            mls_group_config: mls_group_config.clone(),
+            group,
+        };
+
+        Ok(mls_group)
+    }
+
+    /// Returns the [`LeafNodeIndex`] of the group member that authored the [`Welcome`] message.
+    pub fn welcome_sender_index(&self) -> LeafNodeIndex {
+        self.group.welcome_sender_index()
+    }
+
+    /// Returns the [`LeafNode`] of the group member that authored the [`Welcome`] message.
+    pub fn welcome_sender(&self) -> Result<&LeafNode, LibraryError> {
+        self.group.welcome_sender()
+    }
+
+    /// Consumes the [`StagedMlsGroup`] and returns the respective [`MlsGroup`].
+    pub fn into_group<KeyStore: OpenMlsKeyStore>(
+        self,
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+    ) -> Result<MlsGroup, WelcomeError<KeyStore::Error>> {
+        let mut group = self.group.into_core_group(provider)?;
+        group.set_max_past_epochs(self.mls_group_config.max_past_epochs);
+
+        let mls_group = MlsGroup {
+            mls_group_config: self.mls_group_config,
+            group,
+            proposal_store: ProposalStore::new(),
+            own_leaf_nodes: vec![],
+            aad: vec![],
+            group_state: MlsGroupState::Operational,
+            state_changed: InnerState::Changed,
+        };
+
+        Ok(mls_group)
+    }
+}
