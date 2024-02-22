@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [#1503](https://github.com/openmls/openmls/pull/1503): Fix `CoreGroup` to check for `LastResortExtension` before deleting leaf encryption keypair from the key store in `new_from_welcome`; this allows the same `KeyPackage` (with last resort extension) to be used to join multiple groups
 
-## 0.5.0 (XXXX-XX-XX)
+## 0.5.0 (2023-07-20)
 
 This release has many breaking API changes, a few of them are listed below:
 
