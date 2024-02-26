@@ -130,9 +130,9 @@ pub(crate) struct StagedCoreJoinFromWelcome {
     public_group: PublicGroup,
     group_epoch_secrets: GroupEpochSecrets,
     own_leaf_index: LeafNodeIndex,
-    // Group config.
-    // Set to true if the ratchet tree extension is added to the `GroupInfo`.
-    // Defaults to `false`.
+    /// Group config.
+    /// Set to true if the ratchet tree extension is added to the `GroupInfo`.
+    /// Defaults to `false`.
     use_ratchet_tree_extension: bool,
     /// A [`MessageSecretsStore`] that stores message secrets.
     /// By default this store has the length of 1, i.e. only the [`MessageSecrets`]
@@ -160,9 +160,9 @@ pub(crate) struct CoreGroup {
     public_group: PublicGroup,
     group_epoch_secrets: GroupEpochSecrets,
     own_leaf_index: LeafNodeIndex,
-    // Group config.
-    // Set to true if the ratchet tree extension is added to the `GroupInfo`.
-    // Defaults to `false`.
+    /// Group config.
+    /// Set to true if the ratchet tree extension is added to the `GroupInfo`.
+    /// Defaults to `false`.
     use_ratchet_tree_extension: bool,
     /// A [`MessageSecretsStore`] that stores message secrets.
     /// By default this store has the length of 1, i.e. only the [`MessageSecrets`]
