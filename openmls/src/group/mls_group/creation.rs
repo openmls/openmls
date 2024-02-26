@@ -190,7 +190,7 @@ impl MlsGroup {
     }
 }
 
-impl StagedMlsGroup {
+impl StagedMlsJoinFromWelcome {
     /// Creates a new staged group from a [`Welcome`] message. Returns an error
     /// ([`WelcomeError::NoMatchingKeyPackage`]) if no [`KeyPackage`]
     /// can be found.
@@ -239,7 +239,7 @@ impl StagedMlsGroup {
             log::debug!("Key package has last resort extension, not deleting");
         }
 
-        let group = StagedCoreGroup::new_from_welcome(
+        let group = StagedCoreJoinFromWelcome::new_from_welcome(
             welcome,
             ratchet_tree,
             key_package_bundle,
@@ -247,7 +247,7 @@ impl StagedMlsGroup {
             resumption_psk_store,
         )?;
 
-        let mls_group = StagedMlsGroup {
+        let mls_group = StagedMlsJoinFromWelcome {
             mls_group_config: mls_group_config.clone(),
             group,
         };
