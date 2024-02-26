@@ -434,13 +434,13 @@ pub enum InnerState {
     Persisted,
 }
 
-/// A [`StagedMlsGroup`] can be inspected and then turned into a [`MlsGroup`].
+/// A [`StagedMlsJoinFromWelcome`] can be inspected and then turned into a [`MlsGroup`].
 /// This allows checking who authored the Welcome message.
 #[derive(Debug)]
-pub struct StagedMlsGroup {
+pub struct StagedMlsJoinFromWelcome {
     // The group configuration. See [`MlsGroupJoinConfig`] for more information.
     mls_group_config: MlsGroupJoinConfig,
     // the internal `CoreGroup` used for lower level operations. See `CoreGroup` for more
     // information.
-    group: StagedCoreGroup,
+    group: StagedCoreJoinFromWelcome,
 }

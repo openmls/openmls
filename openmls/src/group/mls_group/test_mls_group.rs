@@ -279,7 +279,7 @@ fn staged_join(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         _ => unreachable!(),
     };
 
-    let staged_bob_group = StagedMlsGroup::new_from_welcome(
+    let staged_bob_group = StagedMlsJoinFromWelcome::new_from_welcome(
         provider,
         join_config,
         welcome,
