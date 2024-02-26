@@ -196,13 +196,17 @@ impl StagedMlsJoinFromWelcome {
     /// can be found.
     /// Note: calling this function will consume the key material for decrypting the [`Welcome`]
     /// message, even if the caller does not turn the [`StagedMlsGroup`] into an [`MlsGroup`].
-    // TODO: #1326 This should take an MlsMessage rather than a Welcome message.
     pub fn new_from_welcome<KeyStore: OpenMlsKeyStore>(
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         mls_group_config: &MlsGroupJoinConfig,
-        welcome: Welcome,
+        welcome: MlsMessageIn,
         ratchet_tree: Option<RatchetTreeIn>,
     ) -> Result<Self, WelcomeError<KeyStore::Error>> {
+        let welcome = match welcome.body {
+            MlsMessageBodyIn::Welcome(welcome) => welcome,
+            _ => return Err(WelcomeError::NotAWelcomeMessage),
+        };
+
         let resumption_psk_store =
             ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
         let (key_package, _) = welcome

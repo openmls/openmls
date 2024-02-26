@@ -274,15 +274,10 @@ fn staged_join(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     let join_config = mls_group_create_config.join_config();
 
-    let welcome = match welcome.body {
-        MlsMessageBodyOut::Welcome(welcome) => welcome,
-        _ => unreachable!(),
-    };
-
     let staged_bob_group = StagedMlsJoinFromWelcome::new_from_welcome(
         provider,
         join_config,
-        welcome,
+        welcome.into(),
         Some(alice_group.export_ratchet_tree().into()),
     )
     .expect("error creating staged mls group");
