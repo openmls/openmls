@@ -5,13 +5,13 @@ use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::types::SignatureScheme;
 use openmls_traits::OpenMlsProvider;
-use tls_codec::{TlsByteVecU8, TlsVecU16};
+use tls_codec::{TlsByteVecU8, TlsVecU16, VLBytes};
 
 fn generate_credential(
     identity: Vec<u8>,
     signature_scheme: SignatureScheme,
 ) -> (CredentialWithKey, SignatureKeyPair) {
-    let credential = Credential::new(identity, CredentialType::Basic).unwrap();
+    let credential = BasicCredential::new_credential(identity);
     let signature_keys = SignatureKeyPair::new(signature_scheme).unwrap();
     let credential_with_key = CredentialWithKey {
         credential,
@@ -79,7 +79,10 @@ async fn test_list_clients() {
     let crypto = &OpenMlsRustCrypto::default();
     let (credential_with_key, signer) =
         generate_credential(client_name.into(), SignatureScheme::from(ciphersuite));
-    let client_id = credential_with_key.credential.identity().to_vec();
+    let identity =
+        VLBytes::tls_deserialize_exact(credential_with_key.credential.serialized_content())
+            .unwrap();
+    let client_id = identity.as_slice().to_vec();
     let client_key_package = generate_key_package(
         ciphersuite,
         credential_with_key.clone(),
@@ -195,7 +198,11 @@ async fn test_group() {
             )],
         );
         key_packages.push(client_key_package);
-        client_ids.push(credential_with_key.credential.identity().to_vec());
+
+        let id =
+            VLBytes::tls_deserialize_exact(credential_with_key.credential.serialized_content())
+                .unwrap();
+        client_ids.push(id.as_slice().to_vec());
         credentials_with_key.push(credential_with_key);
         signers.push(signer);
         let req = test::TestRequest::post()
@@ -368,8 +375,8 @@ async fn test_group() {
         })
         .expect("Didn't get an MLS application message from the server.");
     let protocol_message: ProtocolMessage = match messages.remove(mls_message).extract() {
-        MlsMessageInBody::PrivateMessage(m) => m.into(),
-        MlsMessageInBody::PublicMessage(m) => m.into(),
+        MlsMessageBodyIn::PrivateMessage(m) => m.into(),
+        MlsMessageBodyIn::PublicMessage(m) => m.into(),
         _ => panic!("This is not an MLS message."),
     };
     assert!(messages.is_empty());

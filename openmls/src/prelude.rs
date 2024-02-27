@@ -23,7 +23,7 @@ pub use crate::extensions::{errors::*, *};
 
 // Framing
 pub use crate::framing::{
-    message_in::{MlsMessageIn, MlsMessageInBody, ProtocolMessage},
+    message_in::{MlsMessageBodyIn, MlsMessageIn, ProtocolMessage},
     message_out::MlsMessageOut,
     sender::Sender,
     validation::{ApplicationMessage, ProcessedMessage, ProcessedMessageContent},

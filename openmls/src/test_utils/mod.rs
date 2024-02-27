@@ -111,8 +111,10 @@ pub(crate) fn generate_group_candidate(
     provider: &impl OpenMlsProvider,
     use_store: bool,
 ) -> GroupCandidate {
+    use crate::credentials::BasicCredential;
+
     let credential_with_key_and_signer = {
-        let credential = Credential::new(identity.to_vec(), CredentialType::Basic).unwrap();
+        let credential = BasicCredential::new_credential(identity.to_vec());
 
         let signature_keypair = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 

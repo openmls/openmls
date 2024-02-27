@@ -27,12 +27,8 @@ use crate::{
 /// This tests serializing/deserializing PublicMessage
 #[apply(ciphersuites_and_providers)]
 fn codec_plaintext(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
-    let (_credential, signature_keys) = test_utils::new_credential(
-        provider,
-        b"Creator",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
+    let (_credential, signature_keys) =
+        test_utils::new_credential(provider, b"Creator", ciphersuite.signature_algorithm());
     let sender = Sender::build_member(LeafNodeIndex::new(987543210));
     let group_context = GroupContext::new(
         ciphersuite,
@@ -79,12 +75,8 @@ fn codec_plaintext(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 /// This tests serializing/deserializing PrivateMessage
 #[apply(ciphersuites_and_providers)]
 fn codec_ciphertext(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
-    let (_credential, signature_keys) = test_utils::new_credential(
-        provider,
-        b"Creator",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
+    let (_credential, signature_keys) =
+        test_utils::new_credential(provider, b"Creator", ciphersuite.signature_algorithm());
     let sender = Sender::build_member(LeafNodeIndex::new(0));
     let group_context = GroupContext::new(
         ciphersuite,
@@ -297,12 +289,8 @@ fn create_content(
     wire_format: WireFormat,
     provider: &impl OpenMlsProvider,
 ) -> (AuthenticatedContent, CredentialWithKey, SignatureKeyPair) {
-    let (credential, signature_keys) = test_utils::new_credential(
-        provider,
-        b"Creator",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
+    let (credential, signature_keys) =
+        test_utils::new_credential(provider, b"Creator", ciphersuite.signature_algorithm());
     let sender = Sender::build_member(LeafNodeIndex::new(0));
     let group_context = GroupContext::new(
         ciphersuite,
@@ -333,12 +321,8 @@ fn create_content(
 
 #[apply(ciphersuites_and_providers)]
 fn membership_tag(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
-    let (_credential, signature_keys) = test_utils::new_credential(
-        provider,
-        b"Creator",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
+    let (_credential, signature_keys) =
+        test_utils::new_credential(provider, b"Creator", ciphersuite.signature_algorithm());
     let group_context = GroupContext::new(
         ciphersuite,
         GroupId::random(provider.rand()),
@@ -394,24 +378,12 @@ fn unknown_sender(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let configuration = &SenderRatchetConfiguration::default();
 
     // Define credentials with keys
-    let (alice_credential, alice_signature_keys) = test_utils::new_credential(
-        provider,
-        b"Alice",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
-    let (bob_credential, bob_signature_keys) = test_utils::new_credential(
-        provider,
-        b"Bob",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
-    let (charlie_credential, charlie_signature_keys) = test_utils::new_credential(
-        provider,
-        b"Charlie",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
+    let (alice_credential, alice_signature_keys) =
+        test_utils::new_credential(provider, b"Alice", ciphersuite.signature_algorithm());
+    let (bob_credential, bob_signature_keys) =
+        test_utils::new_credential(provider, b"Bob", ciphersuite.signature_algorithm());
+    let (charlie_credential, charlie_signature_keys) =
+        test_utils::new_credential(provider, b"Charlie", ciphersuite.signature_algorithm());
 
     // Generate KeyPackages
     let bob_key_package_bundle =
@@ -588,10 +560,16 @@ fn unknown_sender(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     )
     .expect("Encryption error");
 
-    let received_message = group_charlie.decrypt(&enc_message.into(), provider, configuration);
+    let received_message = group_charlie.decrypt_message(
+        provider.crypto(),
+        ProtocolMessage::from(PrivateMessageIn::from(enc_message)),
+        configuration,
+    );
     assert_eq!(
         received_message.unwrap_err(),
-        MessageDecryptionError::SenderError(SenderError::UnknownSender)
+        ValidationError::UnableToDecrypt(MessageDecryptionError::SecretTreeError(
+            SecretTreeError::IndexOutOfBounds
+        ))
     );
 }
 
@@ -636,18 +614,10 @@ pub(crate) fn setup_alice_bob_group(
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
     // Create credentials and keys
-    let (alice_credential, alice_signature_keys) = test_utils::new_credential(
-        provider,
-        b"Alice",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
-    let (bob_credential, bob_signature_keys) = test_utils::new_credential(
-        provider,
-        b"Bob",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
+    let (alice_credential, alice_signature_keys) =
+        test_utils::new_credential(provider, b"Alice", ciphersuite.signature_algorithm());
+    let (bob_credential, bob_signature_keys) =
+        test_utils::new_credential(provider, b"Bob", ciphersuite.signature_algorithm());
 
     // Generate KeyPackages
     let bob_key_package_bundle = KeyPackageBundle::new(
@@ -740,7 +710,7 @@ fn key_package_version(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider
 
     let message = MlsMessageOut {
         version: ProtocolVersion::Mls10,
-        body: MlsMessageOutBody::KeyPackage(key_package),
+        body: MlsMessageBodyOut::KeyPackage(key_package),
     };
 
     let encoded = message
