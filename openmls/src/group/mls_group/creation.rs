@@ -128,7 +128,7 @@ impl StagedMlsJoinFromWelcome {
     /// ([`WelcomeError::NoMatchingKeyPackage`]) if no [`KeyPackage`]
     /// can be found.
     /// Note: calling this function will consume the key material for decrypting the [`Welcome`]
-    /// message, even if the caller does not turn the [`StagedMlsGroup`] into an [`MlsGroup`].
+    /// message, even if the caller does not turn the [`StagedMlsJoinFromWelcome`] into an [`MlsGroup`].
     pub fn new_from_welcome<KeyStore: OpenMlsKeyStore>(
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         mls_group_config: &MlsGroupJoinConfig,
