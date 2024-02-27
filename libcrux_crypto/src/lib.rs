@@ -8,20 +8,11 @@ pub use rand::RandError;
 pub use rand::RandProvider;
 
 /// The libcrux-backed provider for OpenMLS.
+#[derive(Default)]
 pub struct Provider {
     crypto: crypto::CryptoProvider,
     rand: rand::RandProvider,
     key_store: openmls_rust_crypto::MemoryKeyStore,
-}
-
-impl Default for Provider {
-    fn default() -> Self {
-        Self {
-            crypto: Default::default(),
-            rand: Default::default(),
-            key_store: Default::default(),
-        }
-    }
 }
 
 impl OpenMlsProvider for Provider {

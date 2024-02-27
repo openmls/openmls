@@ -300,7 +300,7 @@ impl OpenMlsCrypto for CryptoProvider {
 
         libcrux::hpke::Context_Export(config, &ctx, exporter_context.to_vec(), exporter_length)
             .map_err(|_| CryptoError::ExporterError)
-            .map(|bytes| ExporterSecret::from(bytes))
+            .map(ExporterSecret::from)
     }
 
     fn derive_hpke_keypair(&self, config: HpkeConfig, ikm: &[u8]) -> HpkeKeyPair {
