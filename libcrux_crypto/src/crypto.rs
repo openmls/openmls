@@ -128,7 +128,9 @@ impl OpenMlsCrypto for CryptoProvider {
 
         let mut msg_ctx: Vec<u8> = data.to_vec();
         let tag = libcrux::aead::encrypt(&key, &mut msg_ctx, iv, aad).map_err(|e| match e {
-            libcrux::aead::Error::UnsupportedAlgorithm => CryptoError::UnsupportedAeadAlgorithm,
+            libcrux::aead::EncryptError::InvalidArgument(
+                libcrux::aead::InvalidArgumentError::UnsupportedAlgorithm,
+            ) => CryptoError::UnsupportedAeadAlgorithm,
             _ => CryptoError::CryptoLibraryError,
         })?;
 
@@ -157,9 +159,10 @@ impl OpenMlsCrypto for CryptoProvider {
         let tag = libcrux::aead::Tag::from_slice(tag).expect("failed despite correct length");
 
         libcrux::aead::decrypt(&key, &mut c, iv, aad, &tag).map_err(|e| match e {
-            libcrux::aead::Error::UnsupportedAlgorithm => CryptoError::UnsupportedAeadAlgorithm,
-            libcrux::aead::Error::EncryptionError => CryptoError::AeadDecryptionError,
-            libcrux::aead::Error::DecryptionFailed => CryptoError::AeadDecryptionError,
+            libcrux::aead::DecryptError::InvalidArgument(
+                libcrux::aead::InvalidArgumentError::UnsupportedAlgorithm,
+            ) => CryptoError::UnsupportedAeadAlgorithm,
+            libcrux::aead::DecryptError::DecryptionFailed => CryptoError::AeadDecryptionError,
             _ => CryptoError::CryptoLibraryError,
         })?;
 

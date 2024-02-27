@@ -7,8 +7,8 @@ edition = "2021"
 
 [dependencies]
 getrandom = "0.2.12"
-libcrux = { git = "https://github.com/cryspen/libcrux", tag="v0.0.2-pre.2", features = ["rand"] }
-openmls_traits = {path = "../traits"}
-openmls_rust_crypto = {path = "../openmls_rust_crypto"}
+libcrux = { git = "https://github.com/cryspen/libcrux", features = ["rand"] }
+openmls_traits = { path = "../traits" }
+openmls_rust_crypto = { path = "../openmls_rust_crypto" }
 rand = "0.8.5"
 tls_codec.workspace = true
