@@ -1,5 +1,3 @@
-use std::os::fd::IntoRawFd;
-
 use core_group::test_core_group::setup_client;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsProvider};

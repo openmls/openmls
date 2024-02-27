@@ -294,7 +294,7 @@ impl PassiveClient {
         let group = StagedMlsJoinFromWelcome::new_from_welcome(
             &self.provider,
             &self.group_config,
-            mls_message_welcome.into(),
+            mls_message_welcome,
             ratchet_tree,
         )
         .unwrap()

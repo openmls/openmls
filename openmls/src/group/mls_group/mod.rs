@@ -11,7 +11,7 @@ use crate::{
     framing::{mls_auth_content::AuthenticatedContent, *},
     group::*,
     key_packages::{KeyPackage, KeyPackageBundle},
-    messages::{proposals::*, Welcome},
+    messages::proposals::*,
     schedule::ResumptionPskSecret,
     treesync::{node::leaf_node::LeafNode, RatchetTree},
 };

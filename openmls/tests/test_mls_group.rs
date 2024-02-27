@@ -5,7 +5,6 @@ use openmls::{
 };
 
 use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, OpenMlsProvider};
-use pretty_env_logger::init_custom_env;
 use tls_codec::VLBytes;
 
 fn generate_key_package<KeyStore: OpenMlsKeyStore>(
