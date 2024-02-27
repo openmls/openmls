@@ -1,4 +1,4 @@
-use std::sync::{RwLock, RwLockWriteGuard};
+use std::sync::{Mutex, MutexGuard};
 
 use libcrux::drbg::{Drbg, RngCore};
 use libcrux::hpke::{self, HPKEConfig};
@@ -15,7 +15,7 @@ const MAX_DATA_LEN: usize = 0x10000000;
 
 /// The libcrux-backed cryptography provider for OpenMLS
 pub struct CryptoProvider {
-    drbg: RwLock<Drbg>,
+    drbg: Mutex<Drbg>,
 }
 
 impl Default for CryptoProvider {
@@ -23,7 +23,7 @@ impl Default for CryptoProvider {
         let mut seed = [0u8; 16];
         getrandom::getrandom(&mut seed).unwrap();
         Self {
-            drbg: RwLock::new(
+            drbg: Mutex::new(
                 Drbg::new_with_entropy(libcrux::digest::Algorithm::Sha256, &seed).unwrap(),
             ),
         }
@@ -173,7 +173,7 @@ impl OpenMlsCrypto for CryptoProvider {
         let alg = sig_alg(alg)?;
         let mut rng = self
             .drbg
-            .write()
+            .lock()
             .map_err(|_| CryptoError::CryptoLibraryError)
             .map(GuardedRng)?;
 
@@ -195,7 +195,7 @@ impl OpenMlsCrypto for CryptoProvider {
         let alg = sig_alg(alg)?;
         let drbg = self
             .drbg
-            .write()
+            .lock()
             .map_err(|_| CryptoError::CryptoLibraryError)?;
 
         libcrux::signature::sign(alg, data, key, &mut GuardedRng(drbg))
@@ -213,7 +213,7 @@ impl OpenMlsCrypto for CryptoProvider {
     ) -> HpkeCiphertext {
         let config = hpke_config(config);
         let randomness = {
-            let mut rng = self.drbg.write().unwrap();
+            let mut rng = self.drbg.lock().unwrap();
             rng.generate_vec(libcrux::hpke::kem::Nsk(config.1)).unwrap()
         };
 
@@ -269,7 +269,7 @@ impl OpenMlsCrypto for CryptoProvider {
         let config = hpke_config(config);
         let randomness = self
             .drbg
-            .write()
+            .lock()
             .map_err(|_| CryptoError::CryptoLibraryError)?
             .generate_vec(libcrux::hpke::kem::Nsk(config.1))
             .map_err(|_| CryptoError::CryptoLibraryError)?;
@@ -552,7 +552,7 @@ fn der_decode(mut signature_bytes: &[u8]) -> Result<Vec<u8>, CryptoError> {
     Ok(out)
 }
 
-struct GuardedRng<'a, Rng: RngCore>(RwLockWriteGuard<'a, Rng>);
+struct GuardedRng<'a, Rng: RngCore>(MutexGuard<'a, Rng>);
 
 impl<'a, Rng: RngCore> RngCore for GuardedRng<'a, Rng> {
     fn next_u32(&mut self) -> u32 {
