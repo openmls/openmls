@@ -104,7 +104,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
         .merge_commit(provider, create_commit_result.staged_commit)
         .expect("error merging commit");
 
-    let bob_group = match CoreGroup::new_from_welcome(
+    let bob_group = StagedCoreJoinFromWelcome::new_from_welcome(
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
@@ -112,10 +112,10 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
         bob_key_package_bundle,
         provider,
         ResumptionPskStore::new(1024),
-    ) {
-        Ok(g) => g,
-        Err(e) => panic!("Could not join group with ratchet tree extension {e}"),
-    };
+    )
+    .unwrap_or_else(|e| panic!("Could not stage group join with ratchet tree extension: {e}"))
+    .into_core_group(provider)
+    .unwrap_or_else(|e| panic!("Could not join group with ratchet tree extension: {e}"));
 
     // Make sure the group state is the same
     assert_eq!(
@@ -182,7 +182,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
         .merge_commit(provider, create_commit_result.staged_commit)
         .expect("error merging commit");
 
-    let error = CoreGroup::new_from_welcome(
+    let error = StagedCoreJoinFromWelcome::new_from_welcome(
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
@@ -191,6 +191,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
         provider,
         ResumptionPskStore::new(1024),
     )
+    .and_then(|staged_join| staged_join.into_core_group(provider))
     .err();
 
     // We expect an error because the ratchet tree is missing

@@ -422,13 +422,14 @@ fn test_welcome_message_encoding(provider: &impl OpenMlsProvider) {
 
         // This makes Charlie decode the internals of the Welcome message, for
         // example the RatchetTreeExtension.
-        assert!(CoreGroup::new_from_welcome(
+        assert!(StagedCoreJoinFromWelcome::new_from_welcome(
             welcome,
             Some(group_state.public_group().export_ratchet_tree().into()),
             charlie_key_package_bundle,
             provider,
             ResumptionPskStore::new(1024),
         )
+        .and_then(|staged_join| staged_join.into_core_group(provider))
         .is_ok());
     }
 }

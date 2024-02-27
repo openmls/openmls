@@ -139,7 +139,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, provider: &impl OpenMls
     };
 
     // Bob creates group from Welcome
-    let group_bob = match CoreGroup::new_from_welcome(
+    let group_bob = StagedCoreJoinFromWelcome::new_from_welcome(
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
@@ -147,10 +147,9 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, provider: &impl OpenMls
         bob_key_package_bundle,
         provider,
         ResumptionPskStore::new(1024),
-    ) {
-        Ok(group) => group,
-        Err(e) => panic!("Error creating group from Welcome: {e:?}"),
-    };
+    )
+    .and_then(|staged_join| staged_join.into_core_group(provider))
+    .unwrap_or_else(|e| panic!("Error creating group from Welcome: {e:?}"));
 
     assert_eq!(
         group_alice.public_group().export_ratchet_tree(),
@@ -358,7 +357,7 @@ fn group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .expect("error merging own commits");
     let ratchet_tree = group_alice.public_group().export_ratchet_tree();
 
-    let mut group_bob = match CoreGroup::new_from_welcome(
+    let mut group_bob = match StagedCoreJoinFromWelcome::new_from_welcome(
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
@@ -366,7 +365,9 @@ fn group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         bob_key_package_bundle,
         provider,
         ResumptionPskStore::new(1024),
-    ) {
+    )
+    .and_then(|staged_join| staged_join.into_core_group(provider))
+    {
         Ok(group) => group,
         Err(e) => panic!("Error creating group from Welcome: {e:?}"),
     };
@@ -690,7 +691,7 @@ fn group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .expect("error merging own commits");
 
     let ratchet_tree = group_alice.public_group().export_ratchet_tree();
-    let mut group_charlie = match CoreGroup::new_from_welcome(
+    let mut group_charlie = match StagedCoreJoinFromWelcome::new_from_welcome(
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
@@ -698,7 +699,9 @@ fn group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         charlie_key_package_bundle,
         provider,
         ResumptionPskStore::new(1024),
-    ) {
+    )
+    .and_then(|staged_join| staged_join.into_core_group(provider))
+    {
         Ok(group) => group,
         Err(e) => panic!("Error creating group from Welcome: {e:?}"),
     };
