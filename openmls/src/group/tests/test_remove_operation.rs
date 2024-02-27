@@ -19,6 +19,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, provider: &impl Open
 
     // We define two test cases, one where the member is removed by another member
     // and one where the member leaves the group on its own
+    #[derive(Debug, Clone, Copy)]
     enum TestCase {
         Remove,
         Leave,
@@ -71,7 +72,9 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, provider: &impl Open
             &alice_credential_with_key_and_signer.signer,
             &mls_group_create_config,
             group_id,
-            alice_credential_with_key_and_signer.credential_with_key,
+            alice_credential_with_key_and_signer
+                .credential_with_key
+                .clone(),
         )
         .expect("An unexpected error occurred.");
 
@@ -88,23 +91,37 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, provider: &impl Open
             .merge_pending_commit(&alice_provider)
             .expect("error merging pending commit");
 
-        let welcome = welcome.into_welcome().expect("Unexpected message type.");
-
-        let mut bob_group = MlsGroup::new_from_welcome(
+        let mut bob_group = StagedMlsJoinFromWelcome::new_from_welcome(
             &bob_provider,
             mls_group_create_config.join_config(),
-            welcome.clone(),
+            welcome.clone().into(),
             Some(alice_group.export_ratchet_tree().into()),
         )
-        .expect("Error creating group from Welcome");
+        .expect("Error creating staged join from Welcome")
+        .into_group(provider)
+        .expect("Error creating group from staged join");
 
-        let mut charlie_group = MlsGroup::new_from_welcome(
+        // let mut charlie_group = MlsGroup::new_from_welcome(
+        //     &charlie_provider,
+        //     mls_group_create_config.join_config(),
+        //     welcome.into_welcome().unwrap(),
+        //     Some(alice_group.export_ratchet_tree().into()),
+        // )
+        // .expect("Error creating group from welcome");
+        //
+        //
+
+        let mut charlie_group = StagedMlsJoinFromWelcome::new_from_welcome(
             &charlie_provider,
             mls_group_create_config.join_config(),
-            welcome,
+            welcome.into(),
             Some(alice_group.export_ratchet_tree().into()),
         )
-        .expect("Error creating group from Welcome");
+        .expect("Error creating staged join from Welcome")
+        .into_group(provider)
+        .expect("Error creating group from staged join");
+
+        charlie_group.group().print_ratchet_tree("charlie's tree");
 
         // === Remove operation ===
 
@@ -246,8 +263,24 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, provider: &impl Open
 
         // === Remove operation from Charlie's perspective ===
 
+        charlie_group
+            .group()
+            .print_ratchet_tree("charlie's tree right before removing bob");
+
+        println!(
+            "alice cred: {:?}",
+            alice_credential_with_key_and_signer
+                .credential_with_key
+                .credential
+        );
+
+        println!("alice own leaf: {:?}", alice_group.own_leaf_node());
+        println!("{test_case:?}");
+
+        let protocol_message = message.into_protocol_message().unwrap();
+
         let charlie_processed_message = charlie_group
-            .process_message(&charlie_provider, message.into_protocol_message().unwrap())
+            .process_message(&charlie_provider, protocol_message)
             .expect("Could not process message.");
 
         match charlie_processed_message.into_content() {

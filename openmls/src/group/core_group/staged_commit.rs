@@ -173,6 +173,10 @@ impl CoreGroup {
                     .iter()
                     .chain(leaf_node_keypairs.iter())
                     .collect();
+                println!(
+                    "staging commit...\n    old_epoch_keypairs={:?}\n    decryption_keypairs={:?}",
+                    old_epoch_keypairs, decryption_keypairs
+                );
 
                 // ValSem203: Path secrets must decrypt correctly
                 // ValSem204: Public keys from Path must be verified and match the private keys from the direct path
@@ -185,6 +189,7 @@ impl CoreGroup {
                     &apply_proposals_values.exclusion_list(),
                 )?;
 
+                println!("staging commit...");
                 // Check if one of our update proposals was applied. If so, we
                 // need to store that keypair separately, because after merging
                 // it needs to be removed from the key store separately and in
@@ -203,12 +208,14 @@ impl CoreGroup {
                     debug_assert!(false);
                     None
                 };
+                println!("staging commit...");
 
                 // Return the leaf node in the update path so the credential can be validated.
                 // Since the diff has already been updated, this should be the same as the leaf
                 // at the sender index.
                 let update_path_leaf_node = Some(path.leaf_node().clone());
                 debug_assert_eq!(diff.leaf(sender_index), path.leaf_node().into());
+                println!("staging commit...");
 
                 (
                     commit_secret,

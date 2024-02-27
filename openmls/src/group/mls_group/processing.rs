@@ -28,6 +28,10 @@ impl MlsGroup {
         provider: &impl OpenMlsProvider,
         message: impl Into<ProtocolMessage>,
     ) -> Result<ProcessedMessage, ProcessMessageError> {
+        println!(
+            "MlsGroup::process_message self.own_leaf_nodes:{:?}",
+            self.own_leaf_nodes
+        );
         // Make sure we are still a member of the group
         if !self.is_active() {
             return Err(ProcessMessageError::GroupStateError(

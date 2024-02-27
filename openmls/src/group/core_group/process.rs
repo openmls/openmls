@@ -187,6 +187,8 @@ impl CoreGroup {
             .parse_message(decrypted_message, &self.message_secrets_store)
             .map_err(ProcessMessageError::from)?;
 
+        println!("CoreGroup::process_message: own_leaf_nodes={own_leaf_nodes:?}");
+
         // If this is a commit, we need to load the private key material we need for decryption.
         let (old_epoch_keypairs, leaf_node_keypairs) =
             if let ContentType::Commit = unverified_message.content_type() {
@@ -266,6 +268,7 @@ impl CoreGroup {
         provider: &impl OpenMlsProvider,
         own_leaf_nodes: &[LeafNode],
     ) -> Result<(Vec<EncryptionKeyPair>, Vec<EncryptionKeyPair>), StageCommitError> {
+        println!("reading keypairs...");
         // All keys from the previous epoch are potential decryption keypairs.
         let old_epoch_keypairs = self.read_epoch_keypairs(provider.key_store());
 

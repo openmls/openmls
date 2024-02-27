@@ -102,16 +102,31 @@ impl<'a> TreeSyncDiff<'a> {
         owned_keys: &[&EncryptionKeyPair],
         own_leaf_index: LeafNodeIndex,
     ) -> Result<(Vec<EncryptionKeyPair>, CommitSecret), ApplyUpdatePathError> {
+        println!("decrypt_path 1");
         let path_position = self
             .subtree_root_position(params.sender_leaf_index, own_leaf_index)
             .map_err(|_| LibraryError::custom("Expected own leaf to be in the tree"))?;
 
+        println!("decrypt_path 2");
         let update_path_node = params
             .update_path
             .get(path_position)
             // We know the update path has the right length through validation, therefore there must be an element at this position
             // TODO #804
             .ok_or_else(|| LibraryError::custom("Expected to find ciphertext in update path 1"))?;
+        println!("decrypt_path 3");
+
+        println!(
+            r#"before fail:
+              sender_index:{sender_index}
+              exclusion_list:{exclusion_list:?}
+              owned_keys:{owned_keys:?}
+              own_leaf_index:{own_leaf_index}
+            "#,
+            //self.export_ratchet_tree(),
+            sender_index = params.sender_leaf_index,
+            exclusion_list = params.exclusion_list,
+        );
 
         let (decryption_key, resolution_position) = self
             .decryption_key(
@@ -121,7 +136,13 @@ impl<'a> TreeSyncDiff<'a> {
                 own_leaf_index,
             )
             // TODO #804
-            .map_err(|_| LibraryError::custom("Expected sender to be in the tree"))?;
+            .map_err(|err| {
+                println!("real error: {err}");
+                LibraryError::custom("Expected sender to be in the tree")
+            })?;
+
+        println!("decrypt_path 4");
+
         let ciphertext = update_path_node
             .encrypted_path_secrets(resolution_position)
             // We know the update path has the right length through validation, therefore there must be a ciphertext at this position

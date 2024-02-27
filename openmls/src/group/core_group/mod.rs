@@ -700,6 +700,7 @@ impl CoreGroup {
             self.context().epoch().as_u64(),
             self.own_leaf_index(),
         );
+        println!("stored key {k:?} in {store:p}", k = k.0);
         store.store(&k.0, &keypair_references.to_vec())
     }
 
@@ -716,9 +717,16 @@ impl CoreGroup {
             self.context().epoch().as_u64(),
             self.own_leaf_index(),
         );
+        println!("group_id: {:?}", self.group_id());
+        println!("epoch: {:?}", self.context().epoch().as_u64());
+        println!("own_leaf_index: {:?}", self.own_leaf_index());
+        println!("epoch keypair id: {:?}", k.0);
         store
             .read::<Vec<EncryptionKeyPair>>(&k.0)
-            .unwrap_or_default()
+            .unwrap_or_else(|| {
+                println!("no key for {k:?} in {store:p}", k = k.0);
+                Default::default()
+            })
     }
 
     /// Delete the [`EncryptionKeyPair`]s from the previous [`GroupEpoch`] from

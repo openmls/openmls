@@ -87,12 +87,14 @@ fn validation_test_setup(
         .wire_format_policy(wire_format_policy)
         .build();
 
-    let bob_group = MlsGroup::new_from_welcome(
+    let bob_group = StagedMlsJoinFromWelcome::new_from_welcome(
         provider,
         &mls_group_config,
-        welcome.into_welcome().expect("Unexpected message type."),
+        welcome.into(),
         Some(alice_group.export_ratchet_tree().into()),
     )
+    .expect("error creating group from welcome")
+    .into_group(provider)
     .expect("error creating group from welcome");
 
     ProposalValidationTestSetup {
@@ -196,12 +198,14 @@ fn external_add_proposal_should_succeed(ciphersuite: Ciphersuite, provider: &imp
         let mls_group_config = MlsGroupJoinConfig::builder()
             .wire_format_policy(policy)
             .build();
-        let charlie_group = MlsGroup::new_from_welcome(
+        let charlie_group = StagedMlsJoinFromWelcome::new_from_welcome(
             provider,
             &mls_group_config,
-            welcome.unwrap().into_welcome().unwrap(),
+            welcome.unwrap().into(),
             Some(alice_group.export_ratchet_tree().into()),
         )
+        .unwrap()
+        .into_group(provider)
         .unwrap();
         assert_eq!(charlie_group.members().count(), 3);
     }
