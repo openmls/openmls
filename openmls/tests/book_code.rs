@@ -1326,9 +1326,13 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         welcome.into(),
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .expect("Could not create MlsStagedWelcome from Welcome")
-    .into_group(provider)
-    .expect("Could not create group from MlsStagedWelcome");
+    .expect("Could not create StagedWelcome from Welcome");
+
+    // Bob can inspect the staged welcome here
+
+    let mut bob_group = bob_staged_welcome
+        .into_group(provider)
+        .expect("Could not create group from StagedWelcome");
 
     assert_eq!(
         alice_group.export_secret(provider.crypto(), "before load", &[], 32),
