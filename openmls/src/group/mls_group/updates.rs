@@ -10,7 +10,7 @@ impl MlsGroup {
     ///
     /// If successful, it returns a tuple of [`MlsMessageOut`] (containing the
     /// commit), an optional [`MlsMessageOut`] (containing the [`Welcome`]) and the [GroupInfo].
-    /// The [Welcome] is [Some] when the queue of pending proposals contained
+    /// The [`Welcome`] is [Some] when the queue of pending proposals contained
     /// add proposals
     /// The [GroupInfo] is [Some] if the group has the `use_ratchet_tree_extension` flag set.
     ///
@@ -19,6 +19,8 @@ impl MlsGroup {
     /// TODO #1208 : The caller should be able to optionally provide a
     /// [`LeafNode`] here, so that things like extensions can be changed via
     /// commit.
+    ///
+    /// [`Welcome`]: crate::messages::Welcome
     // FIXME: #1217
     #[allow(clippy::type_complexity)]
     pub fn self_update<KeyStore: OpenMlsKeyStore>(

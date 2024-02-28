@@ -129,6 +129,8 @@ impl StagedWelcome {
     /// can be found.
     /// Note: calling this function will consume the key material for decrypting the [`Welcome`]
     /// message, even if the caller does not turn the [`MlsStagedWelcome`] into an [`MlsGroup`].
+    ///
+    /// [`Welcome`]: crate::messages::Welcome
     pub fn new_from_welcome<KeyStore: OpenMlsKeyStore>(
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         mls_group_config: &MlsGroupJoinConfig,
@@ -193,11 +195,15 @@ impl StagedWelcome {
     }
 
     /// Returns the [`LeafNodeIndex`] of the group member that authored the [`Welcome`] message.
+    ///
+    /// [`Welcome`]: crate::messages::Welcome
     pub fn welcome_sender_index(&self) -> LeafNodeIndex {
         self.group.welcome_sender_index()
     }
 
     /// Returns the [`LeafNode`] of the group member that authored the [`Welcome`] message.
+    ///
+    /// [`Welcome`]: crate::messages::Welcome
     pub fn welcome_sender(&self) -> Result<&LeafNode, LibraryError> {
         self.group.welcome_sender()
     }

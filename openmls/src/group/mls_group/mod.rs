@@ -17,10 +17,6 @@ use crate::{
 };
 use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsProvider};
 
-// this import is needed for doc comments
-#[allow(unused_imports)]
-use crate::messages::Welcome;
-
 // Private
 mod application;
 mod builder;

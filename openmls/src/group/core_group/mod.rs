@@ -130,10 +130,12 @@ pub(crate) struct StagedCoreWelcome {
     public_group: PublicGroup,
     group_epoch_secrets: GroupEpochSecrets,
     own_leaf_index: LeafNodeIndex,
+
     /// Group config.
     /// Set to true if the ratchet tree extension is added to the `GroupInfo`.
     /// Defaults to `false`.
     use_ratchet_tree_extension: bool,
+
     /// A [`MessageSecretsStore`] that stores message secrets.
     /// By default this store has the length of 1, i.e. only the [`MessageSecrets`]
     /// of the current epoch is kept.
@@ -141,7 +143,8 @@ pub(crate) struct StagedCoreWelcome {
     /// able to decrypt application messages from previous epochs, the size of
     /// the store must be increased through [`max_past_epochs()`].
     message_secrets_store: MessageSecretsStore,
-    // Resumption psk store. This is where the resumption psks are kept in a rollover list.
+
+    /// Resumption psk store. This is where the resumption psks are kept in a rollover list.
     pub(crate) resumption_psk_store: ResumptionPskStore,
 
     /// The [`VerifiableGroupInfo`] from the [`Welcome`] message.
