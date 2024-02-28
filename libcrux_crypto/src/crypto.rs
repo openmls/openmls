@@ -123,7 +123,10 @@ impl OpenMlsCrypto for CryptoProvider {
         }
 
         // only fails on wrong length
-        let iv = libcrux::aead::Iv::new(nonce).map_err(|_| CryptoError::InvalidLength)?;
+        let iv = libcrux::aead::Iv::new(nonce).map_err(|err| match err {
+            libcrux::aead::InvalidArgumentError::InvalidIv => CryptoError::InvalidLength,
+            _ => CryptoError::CryptoLibraryError,
+        })?;
         let key = aead_key(alg, key)?;
 
         let mut msg_ctx: Vec<u8> = data.to_vec();
