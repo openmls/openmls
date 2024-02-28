@@ -213,6 +213,27 @@ impl StagedCoreWelcome {
         let resumption_psk = group_epoch_secrets.resumption_psk();
         resumption_psk_store.add(public_group.group_context().epoch(), resumption_psk.clone());
 
+        let welcome_sender_index = verifiable_group_info.signer();
+        let path_keypairs = if let Some(path_secret) = group_secrets.path_secret {
+            let (path_keypairs, _commit_secret) = public_group
+                .derive_path_secrets(
+                    provider.crypto(),
+                    ciphersuite,
+                    path_secret.clone(),
+                    welcome_sender_index,
+                    own_leaf_index,
+                )
+                .map_err(|e| match e {
+                    DerivePathError::LibraryError(e) => e.into(),
+                    DerivePathError::PublicKeyMismatch => {
+                        WelcomeError::PublicTreeError(PublicTreeError::PublicKeyMismatch)
+                    }
+                })?;
+            Some(path_keypairs)
+        } else {
+            None
+        };
+
         let group = StagedCoreWelcome {
             public_group,
             group_epoch_secrets,
@@ -221,8 +242,8 @@ impl StagedCoreWelcome {
             message_secrets_store,
             resumption_psk_store,
             verifiable_group_info,
-            group_secrets,
             leaf_keypair,
+            path_keypairs,
         };
 
         Ok(group)
@@ -255,32 +276,14 @@ impl StagedCoreWelcome {
             use_ratchet_tree_extension,
             message_secrets_store,
             resumption_psk_store,
-            verifiable_group_info,
-            group_secrets,
             leaf_keypair,
+            path_keypairs,
+            ..
         } = self;
-
-        let ciphersuite = public_group.ciphersuite();
-        let welcome_sender_index = verifiable_group_info.signer();
-        let path_secret_option = group_secrets.path_secret;
 
         // If we got a path secret, derive the path (which also checks if the
         // public keys match) and store the derived keys in the key store.
-        let group_keypairs = if let Some(path_secret) = path_secret_option {
-            let (path_keypairs, _commit_secret) = public_group
-                .derive_path_secrets(
-                    provider.crypto(),
-                    ciphersuite,
-                    path_secret,
-                    welcome_sender_index,
-                    own_leaf_index,
-                )
-                .map_err(|e| match e {
-                    DerivePathError::LibraryError(e) => e.into(),
-                    DerivePathError::PublicKeyMismatch => {
-                        WelcomeError::PublicTreeError(PublicTreeError::PublicKeyMismatch)
-                    }
-                })?;
+        let group_keypairs = if let Some(path_keypairs) = path_keypairs {
             vec![leaf_keypair]
                 .into_iter()
                 .chain(path_keypairs)
