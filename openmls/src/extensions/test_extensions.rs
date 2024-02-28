@@ -113,9 +113,9 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
         provider,
         ResumptionPskStore::new(1024),
     )
-    .unwrap_or_else(|e| panic!("Could not stage group join with ratchet tree extension: {e}"))
+    .expect("Could not stage group join with ratchet tree extension")
     .into_core_group(provider)
-    .unwrap_or_else(|e| panic!("Could not join group with ratchet tree extension: {e}"));
+    .expect("Could not join group with ratchet tree extension");
 
     // Make sure the group state is the same
     assert_eq!(

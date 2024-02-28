@@ -186,12 +186,12 @@ impl StagedWelcome {
             resumption_psk_store,
         )?;
 
-        let mls_group = StagedWelcome {
+        let staged_welcome = StagedWelcome {
             mls_group_config: mls_group_config.clone(),
             group,
         };
 
-        Ok(mls_group)
+        Ok(staged_welcome)
     }
 
     /// Returns the [`LeafNodeIndex`] of the group member that authored the [`Welcome`] message.
