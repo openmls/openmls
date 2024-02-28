@@ -504,19 +504,22 @@ impl CoreGroup {
                     .group_epoch_secrets()
                     .external_secret()
                     .derive_external_keypair(crypto, self.ciphersuite())
+                    .map_err(LibraryError::unexpected_crypto_error)?
                     .public;
-                Extension::ExternalPub(ExternalPubExtension::new(HpkePublicKey::from(external_pub)))
+                Ok(Extension::ExternalPub(ExternalPubExtension::new(
+                    HpkePublicKey::from(external_pub),
+                )))
             };
 
             if with_ratchet_tree {
-                Extensions::from_vec(vec![ratchet_tree_extension(), external_pub_extension()])
+                Extensions::from_vec(vec![ratchet_tree_extension(), external_pub_extension()?])
                     .map_err(|_| {
                         LibraryError::custom(
                             "There should not have been duplicate extensions here.",
                         )
                     })?
             } else {
-                Extensions::single(external_pub_extension())
+                Extensions::single(external_pub_extension()?)
             }
         };
 
@@ -905,6 +908,7 @@ impl CoreGroup {
             let external_pub = provisional_epoch_secrets
                 .external_secret()
                 .derive_external_keypair(provider.crypto(), ciphersuite)
+                .map_err(LibraryError::unexpected_crypto_error)?
                 .public;
             let external_pub_extension =
                 Extension::ExternalPub(ExternalPubExtension::new(external_pub.into()));

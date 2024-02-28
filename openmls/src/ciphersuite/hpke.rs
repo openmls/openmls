@@ -115,7 +115,7 @@ pub(crate) fn encrypt_with_label(
         &context,
         &[],
         plaintext,
-    );
+    )?;
 
     log_crypto!(debug, "* ciphertext:  {:x?}", cipher);
 

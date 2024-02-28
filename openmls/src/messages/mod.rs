@@ -324,8 +324,9 @@ impl PathSecret {
             .path_secret
             .kdf_expand_label(crypto, "node", &[], ciphersuite.hash_length())
             .map_err(LibraryError::unexpected_crypto_error)?;
-        let HpkeKeyPair { public, private } =
-            crypto.derive_hpke_keypair(ciphersuite.hpke_config(), node_secret.as_slice());
+        let HpkeKeyPair { public, private } = crypto
+            .derive_hpke_keypair(ciphersuite.hpke_config(), node_secret.as_slice())
+            .map_err(LibraryError::unexpected_crypto_error)?;
 
         Ok((HpkePublicKey::from(public), private).into())
     }

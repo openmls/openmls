@@ -213,26 +213,34 @@ impl OpenMlsCrypto for CryptoProvider {
         info: &[u8],
         aad: &[u8],
         ptxt: &[u8],
-    ) -> HpkeCiphertext {
+    ) -> Result<HpkeCiphertext, CryptoError> {
         let config = hpke_config(config);
         let randomness = {
             let mut rng = self.drbg.lock().unwrap();
             rng.generate_vec(libcrux::hpke::kem::Nsk(config.1)).unwrap()
         };
 
-        let pk_r = libcrux::hpke::kem::DeserializePublicKey(config.1, pk_r).unwrap();
+        let pk_r = libcrux::hpke::kem::DeserializePublicKey(config.1, pk_r)
+            .map_err(|_| CryptoError::CryptoLibraryError)?;
 
         let libcrux::hpke::HPKECiphertext(kem_output, ciphertext) =
             libcrux::hpke::HpkeSeal(config, &pk_r, info, aad, ptxt, None, None, None, randomness)
-                .unwrap();
+                .map_err(|e| match e {
+                hpke::errors::HpkeError::ValidationError => CryptoError::InvalidPublicKey,
+                hpke::errors::HpkeError::UnsupportedAlgorithm => {
+                    CryptoError::UnsupportedCiphersuite
+                }
+                hpke::errors::HpkeError::InvalidParameters => CryptoError::InvalidLength,
+                _ => CryptoError::CryptoLibraryError,
+            })?;
 
         let kem_output = kem_output.into();
         let ciphertext = ciphertext.into();
 
-        HpkeCiphertext {
+        Ok(HpkeCiphertext {
             kem_output,
             ciphertext,
-        }
+        })
     }
 
     fn hpke_open(
@@ -306,15 +314,22 @@ impl OpenMlsCrypto for CryptoProvider {
             .map(ExporterSecret::from)
     }
 
-    fn derive_hpke_keypair(&self, config: HpkeConfig, ikm: &[u8]) -> HpkeKeyPair {
+    fn derive_hpke_keypair(
+        &self,
+        config: HpkeConfig,
+        ikm: &[u8],
+    ) -> Result<HpkeKeyPair, CryptoError> {
         let config = hpke_config(config);
         let HPKEConfig(_, alg, _, _) = config;
-        let (sk, pk) = hpke::kem::DeriveKeyPair(alg, ikm).unwrap(); // XXX return err
+        let (sk, pk) = hpke::kem::DeriveKeyPair(alg, ikm).map_err(|e| match e {
+            hpke::errors::HpkeError::InvalidParameters => CryptoError::InvalidLength,
+            _ => CryptoError::CryptoLibraryError,
+        })?;
 
-        HpkeKeyPair {
+        Ok(HpkeKeyPair {
             private: sk.into(),
             public: hpke::kem::SerializePublicKey(alg, pk),
-        }
+        })
     }
 }
 
