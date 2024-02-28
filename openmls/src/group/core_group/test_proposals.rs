@@ -16,7 +16,7 @@ use crate::{
         proposals::{ProposalQueue, ProposalStore, QueuedProposal},
         public_group::errors::PublicGroupBuildError,
         test_core_group::setup_client,
-        StagedCoreWelcome, CreateCommitParams, GroupContext, GroupId,
+        CreateCommitParams, GroupContext, GroupId, StagedCoreWelcome,
     },
     key_packages::{KeyPackageBundle, KeyPackageIn},
     messages::proposals::{AddProposal, Proposal, ProposalOrRef, ProposalType},
