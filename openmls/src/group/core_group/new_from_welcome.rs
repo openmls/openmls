@@ -219,7 +219,7 @@ impl StagedCoreWelcome {
                 .derive_path_secrets(
                     provider.crypto(),
                     ciphersuite,
-                    path_secret.clone(),
+                    path_secret,
                     welcome_sender_index,
                     own_leaf_index,
                 )
