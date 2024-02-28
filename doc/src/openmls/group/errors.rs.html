@@ -542,6 +542,9 @@
 <a href="#541" id="541">541</a>
 <a href="#542" id="542">542</a>
 <a href="#543" id="543">543</a>
+<a href="#544" id="544">544</a>
+<a href="#545" id="545">545</a>
+<a href="#546" id="546">546</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # MLS group errors
 //!
 //! This module contains errors that originate at lower levels and are partially re-exported in errors thrown by functions of the `MlsGroup` API.
@@ -601,6 +604,9 @@
     <span class="doccomment">/// Sender not found in tree.
     </span><span class="attr">#[error(<span class="string">"Sender not found in tree."</span>)]
     </span>UnknownSender,
+    <span class="doccomment">/// The provided message is not a Welcome message.
+    </span><span class="attr">#[error(<span class="string">"Not a Welcome message."</span>)]
+    </span>NotAWelcomeMessage,
     <span class="doccomment">/// Malformed Welcome message.
     </span><span class="attr">#[error(<span class="string">"Malformed Welcome message."</span>)]
     </span>MalformedWelcomeMessage,

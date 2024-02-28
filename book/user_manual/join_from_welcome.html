@@ -174,16 +174,23 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="join-a-group-from-a-welcome-message"><a class="header" href="#join-a-group-from-a-welcome-message">Join a group from a Welcome message</a></h1>
-<p>To join a group from a <code>Welcome</code> message, a new <code>MlsGroup</code> can be instantiated directly from the <code>Welcome</code> message and an <code>MlsGroupJoinConfig</code> (see <a href="./group_config.html">Group configuration</a> for more details).  If the group configuration does not use the ratchet tree extension, the ratchet tree needs to be provided.</p>
-<pre><code class="language-rust no_run noplayground">    let mut bob_group = MlsGroup::new_from_welcome(
-        provider,
-        &amp;mls_group_config,
-        welcome.into_welcome().expect("Unexpected message type."),
-        None, // We use the ratchet tree extension, so we don't provide a ratchet tree here
-    )
-    .expect("Error joining group from Welcome");</code></pre>
-<p>Pay attention not to forward a Welcome message to a client before its associated commit has been accepted by the
-Delivery Service. Otherwise, you would end up with an invalid MLS group instance.</p>
+<p>To join a group from a <code>Welcome</code> message, a new <code>MlsGroup</code> can be instantiated from
+the <code>MlsMessageIn</code> message containing the <code>Welcome</code> and an <code>MlsGroupJoinConfig</code>
+(see <a href="./group_config.html">Group configuration</a> for more details).  This is a
+two-step process: a <code>StagedWelcome</code> is constructed from the <code>Welcome</code>
+and can then be turned into an <code>MlsGroup</code>.  If the group configuration does not
+use the ratchet tree extension, the ratchet tree needs to be provided.</p>
+<pre><code class="language-rust no_run noplayground">    let staged_join =
+        StagedWelcome::new_from_welcome(provider, &amp;mls_group_config, welcome.into(), None)
+            .expect("Error constructing staged join");
+    let mut bob_group = staged_join
+        .into_group(provider)
+        .expect("Error joining group from StagedWelcome");</code></pre>
+<p>The reason for this two-phase process is to allow the recipient of a <code>Welcome</code>
+to inspect the message, e.g. to determine the identity of the sender.</p>
+<p>Pay attention not to forward a Welcome message to a client before its associated
+commit has been accepted by the Delivery Service.  Otherwise, you would end up
+with an invalid MLS group instance.</p>
 
                     </main>
 

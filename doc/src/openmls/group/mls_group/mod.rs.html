@@ -434,6 +434,17 @@
 <a href="#433" id="433">433</a>
 <a href="#434" id="434">434</a>
 <a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! MLS Group
 //!
 //! This module contains [`MlsGroup`] and its submodules.
@@ -447,7 +458,7 @@
     framing::{mls_auth_content::AuthenticatedContent, <span class="kw-2">*</span>},
     group::<span class="kw-2">*</span>,
     key_packages::{KeyPackage, KeyPackageBundle},
-    messages::{proposals::<span class="kw-2">*</span>, Welcome},
+    messages::proposals::<span class="kw-2">*</span>,
     schedule::ResumptionPskSecret,
     treesync::{node::leaf_node::LeafNode, RatchetTree},
 };
@@ -868,5 +879,16 @@
     </span>Changed,
     <span class="doccomment">/// The inner group state hasn't changed and doesn't need to be persisted.
     </span>Persisted,
+}
+
+<span class="doccomment">/// A [`StagedWelcome`] can be inspected and then turned into a [`MlsGroup`].
+/// This allows checking who authored the Welcome message.
+</span><span class="attr">#[derive(Debug)]
+</span><span class="kw">pub struct </span>StagedWelcome {
+    <span class="comment">// The group configuration. See [`MlsGroupJoinConfig`] for more information.
+    </span>mls_group_config: MlsGroupJoinConfig,
+    <span class="comment">// The internal `CoreGroup` used for lower level operations. See `CoreGroup` for more
+    // information.
+    </span>group: StagedCoreWelcome,
 }
 </code></pre></div></section></main></body></html>

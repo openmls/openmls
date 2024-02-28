@@ -175,6 +175,8 @@
 <a href="#174" id="174">174</a>
 <a href="#175" id="175">175</a>
 <a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Processing functions of an [`MlsGroup`] for incoming messages.
 
 </span><span class="kw">use </span>std::mem;
@@ -255,7 +257,9 @@
     ///
     /// Returns an error if there is a pending commit. Otherwise it returns a
     /// tuple of `Commit, Option&lt;Welcome&gt;, Option&lt;GroupInfo&gt;`, where `Commit`
-    /// and `Welcome` are MlsMessages of the type [`MlsMessageOut`].
+    /// and [`Welcome`] are MlsMessages of the type [`MlsMessageOut`].
+    ///
+    /// [`Welcome`]: crate::messages::Welcome
     </span><span class="comment">// FIXME: #1217
     </span><span class="attr">#[allow(clippy::type_complexity)]
     </span><span class="kw">pub fn </span>commit_to_pending_proposals&lt;KeyStore: OpenMlsKeyStore&gt;(

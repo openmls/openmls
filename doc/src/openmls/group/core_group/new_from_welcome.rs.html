@@ -268,6 +268,63 @@
 <a href="#267" id="267">267</a>
 <a href="#268" id="268">268</a>
 <a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>log::debug;
 <span class="kw">use </span>openmls_traits::key_store::OpenMlsKeyStore;
 
@@ -281,8 +338,12 @@
     },
 };
 
-<span class="kw">impl </span>CoreGroup {
-    <span class="comment">// Join a group from a welcome message
+<span class="kw">impl </span>StagedCoreWelcome {
+    <span class="doccomment">/// Create a staged join from a welcome message. The purpose of this type is to be able to
+    /// extract information, such as the identify of who created the welcome, before joining the
+    /// group.
+    /// Note: calling this function will consume the key material for decrypting the [`Welcome`]
+    /// message, even if the caller does not turn the [`StagedCoreWelcome`] into a [`CoreGroup`].
     </span><span class="kw">pub fn </span>new_from_welcome&lt;KeyStore: OpenMlsKeyStore&gt;(
         welcome: Welcome,
         ratchet_tree: <span class="prelude-ty">Option</span>&lt;RatchetTreeIn&gt;,
@@ -316,7 +377,7 @@
         <span class="kw">let </span>ciphersuite = welcome.ciphersuite();
 
         <span class="comment">// Find key_package in welcome secrets
-        </span><span class="kw">let </span>egs = <span class="kw">if let </span><span class="prelude-val">Some</span>(egs) = <span class="self">Self</span>::find_key_package_from_welcome_secrets(
+        </span><span class="kw">let </span>egs = <span class="kw">if let </span><span class="prelude-val">Some</span>(egs) = CoreGroup::find_key_package_from_welcome_secrets(
             key_package_bundle
                 .key_package()
                 .hash_ref(provider.crypto())<span class="question-mark">?</span>,
@@ -390,8 +451,6 @@
                 .supports_required_capabilities(required_capabilities)<span class="question-mark">?</span>;
         }
 
-        <span class="kw">let </span>path_secret_option = group_secrets.path_secret;
-
         <span class="comment">// Build the ratchet tree
 
         // Set nodes either from the extension or from the `nodes_option`.
@@ -407,14 +466,12 @@
                 },
             };
 
-        <span class="kw">let </span>welcome_sender_index = verifiable_group_info.signer();
-
         <span class="comment">// Since there is currently only the external pub extension, there is no
         // group info extension of interest here.
         </span><span class="kw">let </span>(public_group, _group_info_extensions) = PublicGroup::from_external(
             provider.crypto(),
             ratchet_tree,
-            verifiable_group_info,
+            verifiable_group_info.clone(),
             ProposalStore::new(),
         )<span class="question-mark">?</span>;
 
@@ -437,31 +494,6 @@
             .ok_or(WelcomeError::PublicTreeError(
                 PublicTreeError::MalformedTree,
             ))<span class="question-mark">?</span>;
-
-        <span class="comment">// If we got a path secret, derive the path (which also checks if the
-        // public keys match) and store the derived keys in the key store.
-        </span><span class="kw">let </span>group_keypairs = <span class="kw">if let </span><span class="prelude-val">Some</span>(path_secret) = path_secret_option {
-            <span class="kw">let </span>(path_keypairs, _commit_secret) = public_group
-                .derive_path_secrets(
-                    provider.crypto(),
-                    ciphersuite,
-                    path_secret,
-                    welcome_sender_index,
-                    own_leaf_index,
-                )
-                .map_err(|e| <span class="kw">match </span>e {
-                    DerivePathError::LibraryError(e) =&gt; e.into(),
-                    DerivePathError::PublicKeyMismatch =&gt; {
-                        WelcomeError::PublicTreeError(PublicTreeError::PublicKeyMismatch)
-                    }
-                })<span class="question-mark">?</span>;
-            <span class="macro">vec!</span>[leaf_keypair]
-                .into_iter()
-                .chain(path_keypairs)
-                .collect()
-        } <span class="kw">else </span>{
-            <span class="macro">vec!</span>[leaf_keypair]
-        };
 
         <span class="kw">let </span>(group_epoch_secrets, message_secrets) = {
             <span class="kw">let </span>serialized_group_context = public_group
@@ -508,21 +540,103 @@
         </span><span class="kw">let </span>resumption_psk = group_epoch_secrets.resumption_psk();
         resumption_psk_store.add(public_group.group_context().epoch(), resumption_psk.clone());
 
-        <span class="kw">let </span>group = CoreGroup {
+        <span class="kw">let </span>welcome_sender_index = verifiable_group_info.signer();
+        <span class="kw">let </span>path_keypairs = <span class="kw">if let </span><span class="prelude-val">Some</span>(path_secret) = group_secrets.path_secret {
+            <span class="kw">let </span>(path_keypairs, _commit_secret) = public_group
+                .derive_path_secrets(
+                    provider.crypto(),
+                    ciphersuite,
+                    path_secret,
+                    welcome_sender_index,
+                    own_leaf_index,
+                )
+                .map_err(|e| <span class="kw">match </span>e {
+                    DerivePathError::LibraryError(e) =&gt; e.into(),
+                    DerivePathError::PublicKeyMismatch =&gt; {
+                        WelcomeError::PublicTreeError(PublicTreeError::PublicKeyMismatch)
+                    }
+                })<span class="question-mark">?</span>;
+            <span class="prelude-val">Some</span>(path_keypairs)
+        } <span class="kw">else </span>{
+            <span class="prelude-val">None
+        </span>};
+
+        <span class="kw">let </span>group = StagedCoreWelcome {
             public_group,
             group_epoch_secrets,
             own_leaf_index,
             use_ratchet_tree_extension: enable_ratchet_tree_extension,
             message_secrets_store,
             resumption_psk_store,
+            verifiable_group_info,
+            leaf_keypair,
+            path_keypairs,
         };
+
+        <span class="prelude-val">Ok</span>(group)
+    }
+
+    <span class="doccomment">/// Returns the [`LeafNodeIndex`] of the group member that authored the [`Welcome`] message.
+    </span><span class="kw">pub fn </span>welcome_sender_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; LeafNodeIndex {
+        <span class="self">self</span>.verifiable_group_info.signer()
+    }
+
+    <span class="doccomment">/// Returns the [`LeafNode`] of the group member that authored the [`Welcome`] message.
+    </span><span class="kw">pub fn </span>welcome_sender(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>LeafNode, LibraryError&gt; {
+        <span class="kw">let </span>sender_index = <span class="self">self</span>.welcome_sender_index();
+        <span class="self">self</span>.public_group
+            .leaf(sender_index)
+            .ok_or(LibraryError::custom(
+                <span class="string">"no leaf with given welcome sender index exists"</span>,
+            ))
+    }
+
+    <span class="doccomment">/// Consumes the [`StagedCoreWelcome`] and returns the respective [`CoreGroup`].
+    </span><span class="kw">pub fn </span>into_core_group&lt;KeyStore: OpenMlsKeyStore&gt;(
+        <span class="self">self</span>,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;CoreGroup, WelcomeError&lt;KeyStore::Error&gt;&gt; {
+        <span class="kw">let </span><span class="self">Self </span>{
+            public_group,
+            group_epoch_secrets,
+            own_leaf_index,
+            use_ratchet_tree_extension,
+            message_secrets_store,
+            resumption_psk_store,
+            leaf_keypair,
+            path_keypairs,
+            ..
+        } = <span class="self">self</span>;
+
+        <span class="comment">// If we got a path secret, derive the path (which also checks if the
+        // public keys match) and store the derived keys in the key store.
+        </span><span class="kw">let </span>group_keypairs = <span class="kw">if let </span><span class="prelude-val">Some</span>(path_keypairs) = path_keypairs {
+            <span class="macro">vec!</span>[leaf_keypair]
+                .into_iter()
+                .chain(path_keypairs)
+                .collect()
+        } <span class="kw">else </span>{
+            <span class="macro">vec!</span>[leaf_keypair]
+        };
+
+        <span class="kw">let </span>group = CoreGroup {
+            public_group,
+            group_epoch_secrets,
+            own_leaf_index,
+            use_ratchet_tree_extension,
+            message_secrets_store,
+            resumption_psk_store,
+        };
+
         group
             .store_epoch_keypairs(provider.key_store(), group_keypairs.as_slice())
             .map_err(WelcomeError::KeyStoreError)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(group)
     }
+}
 
+<span class="kw">impl </span>CoreGroup {
     <span class="comment">// Helper functions
 
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>find_key_package_from_welcome_secrets(

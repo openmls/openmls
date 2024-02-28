@@ -1101,6 +1101,40 @@
 <a href="#1100" id="1100">1100</a>
 <a href="#1101" id="1101">1101</a>
 <a href="#1102" id="1102">1102</a>
+<a href="#1103" id="1103">1103</a>
+<a href="#1104" id="1104">1104</a>
+<a href="#1105" id="1105">1105</a>
+<a href="#1106" id="1106">1106</a>
+<a href="#1107" id="1107">1107</a>
+<a href="#1108" id="1108">1108</a>
+<a href="#1109" id="1109">1109</a>
+<a href="#1110" id="1110">1110</a>
+<a href="#1111" id="1111">1111</a>
+<a href="#1112" id="1112">1112</a>
+<a href="#1113" id="1113">1113</a>
+<a href="#1114" id="1114">1114</a>
+<a href="#1115" id="1115">1115</a>
+<a href="#1116" id="1116">1116</a>
+<a href="#1117" id="1117">1117</a>
+<a href="#1118" id="1118">1118</a>
+<a href="#1119" id="1119">1119</a>
+<a href="#1120" id="1120">1120</a>
+<a href="#1121" id="1121">1121</a>
+<a href="#1122" id="1122">1122</a>
+<a href="#1123" id="1123">1123</a>
+<a href="#1124" id="1124">1124</a>
+<a href="#1125" id="1125">1125</a>
+<a href="#1126" id="1126">1126</a>
+<a href="#1127" id="1127">1127</a>
+<a href="#1128" id="1128">1128</a>
+<a href="#1129" id="1129">1129</a>
+<a href="#1130" id="1130">1130</a>
+<a href="#1131" id="1131">1131</a>
+<a href="#1132" id="1132">1132</a>
+<a href="#1133" id="1133">1133</a>
+<a href="#1134" id="1134">1134</a>
+<a href="#1135" id="1135">1135</a>
+<a href="#1136" id="1136">1136</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! ### Don't Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -1226,15 +1260,49 @@
     }
 }
 
+<span class="doccomment">/// A [`StagedCoreWelcome`] can be inspected and then turned into a [`CoreGroup`].
+/// This allows checking who authored the Welcome message.
+</span><span class="attr">#[derive(Debug)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>StagedCoreWelcome {
+    public_group: PublicGroup,
+    group_epoch_secrets: GroupEpochSecrets,
+    own_leaf_index: LeafNodeIndex,
+
+    <span class="doccomment">/// Group config.
+    /// Set to true if the ratchet tree extension is added to the `GroupInfo`.
+    /// Defaults to `false`.
+    </span>use_ratchet_tree_extension: bool,
+
+    <span class="doccomment">/// A [`MessageSecretsStore`] that stores message secrets.
+    /// By default this store has the length of 1, i.e. only the [`MessageSecrets`]
+    /// of the current epoch is kept.
+    /// If more secrets from past epochs should be kept in order to be
+    /// able to decrypt application messages from previous epochs, the size of
+    /// the store must be increased through [`max_past_epochs()`].
+    </span>message_secrets_store: MessageSecretsStore,
+
+    <span class="doccomment">/// Resumption psk store. This is where the resumption psks are kept in a rollover list.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) resumption_psk_store: ResumptionPskStore,
+
+    <span class="doccomment">/// The [`VerifiableGroupInfo`] from the [`Welcome`] message.
+    </span>verifiable_group_info: VerifiableGroupInfo,
+
+    <span class="doccomment">/// The keypair used to decrypt the [`Welcome`] message.
+    </span>leaf_keypair: EncryptionKeyPair,
+
+    <span class="doccomment">/// If we got a path secret, these are the derived path keys.
+    </span>path_keypairs: <span class="prelude-ty">Option</span>&lt;Vec&lt;EncryptionKeyPair&gt;&gt;,
+}
+
 <span class="attr">#[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq, Clone))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>CoreGroup {
     public_group: PublicGroup,
     group_epoch_secrets: GroupEpochSecrets,
     own_leaf_index: LeafNodeIndex,
-    <span class="comment">// Group config.
-    // Set to true if the ratchet tree extension is added to the `GroupInfo`.
-    // Defaults to `false`.
+    <span class="doccomment">/// Group config.
+    /// Set to true if the ratchet tree extension is added to the `GroupInfo`.
+    /// Defaults to `false`.
     </span>use_ratchet_tree_extension: bool,
     <span class="doccomment">/// A [`MessageSecretsStore`] that stores message secrets.
     /// By default this store has the length of 1, i.e. only the [`MessageSecrets`]

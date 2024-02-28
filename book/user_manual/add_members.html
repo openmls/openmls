@@ -218,15 +218,14 @@ Note that in this scenario it is up to the application to define a proper author
                 .expect("Could not merge commit");
             assert_eq!(alice_group.members().count(), 2);
 
-            let bob_group = MlsGroup::new_from_welcome(
+            let bob_group = StagedWelcome::new_from_welcome(
                 provider,
                 mls_group_create_config.join_config(),
-                welcome
-                    .unwrap()
-                    .into_welcome()
-                    .expect("Unexpected message type."),
+                welcome.unwrap().into(),
                 None,
             )
+            .expect("Bob could not stage the the group join")
+            .into_group(provider)
             .expect("Bob could not join the group");
             assert_eq!(bob_group.members().count(), 2);
         }
