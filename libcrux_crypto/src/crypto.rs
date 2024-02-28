@@ -210,8 +210,12 @@ impl OpenMlsCrypto for CryptoProvider {
     ) -> Result<HpkeCiphertext, CryptoError> {
         let config = hpke_config(config);
         let randomness = {
-            let mut rng = self.drbg.lock().unwrap();
-            rng.generate_vec(libcrux::hpke::kem::Nsk(config.1)).unwrap()
+            let mut rng = self
+                .drbg
+                .lock()
+                .map_err(|_| CryptoError::CryptoLibraryError)?;
+            rng.generate_vec(libcrux::hpke::kem::Nsk(config.1))
+                .map_err(|_| CryptoError::CryptoLibraryError)?
         };
 
         let pk_r = libcrux::hpke::kem::DeserializePublicKey(config.1, pk_r)
@@ -279,7 +283,8 @@ impl OpenMlsCrypto for CryptoProvider {
             .generate_vec(libcrux::hpke::kem::Nsk(config.1))
             .map_err(|_| CryptoError::CryptoLibraryError)?;
 
-        let pk_r = libcrux::hpke::kem::DeserializePublicKey(config.1, pk_r).unwrap();
+        let pk_r = libcrux::hpke::kem::DeserializePublicKey(config.1, pk_r)
+            .map_err(|_| CryptoError::InvalidPublicKey)?;
 
         let (enc, ctx) = libcrux::hpke::SetupBaseS(config, &pk_r, info, randomness)
             .map_err(|_| CryptoError::ReceiverSetupError)?;
