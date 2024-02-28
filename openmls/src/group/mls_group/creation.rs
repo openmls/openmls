@@ -176,7 +176,7 @@ impl StagedMlsJoinFromWelcome {
             log::debug!("Key package has last resort extension, not deleting");
         }
 
-        let group = StagedCoreJoinFromWelcome::new_from_welcome(
+        let group = StagedCoreWelcome::new_from_welcome(
             welcome,
             ratchet_tree,
             key_package_bundle,

@@ -104,7 +104,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
         .merge_commit(provider, create_commit_result.staged_commit)
         .expect("error merging commit");
 
-    let bob_group = StagedCoreJoinFromWelcome::new_from_welcome(
+    let bob_group = StagedCoreWelcome::new_from_welcome(
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
@@ -182,7 +182,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
         .merge_commit(provider, create_commit_result.staged_commit)
         .expect("error merging commit");
 
-    let error = StagedCoreJoinFromWelcome::new_from_welcome(
+    let error = StagedCoreWelcome::new_from_welcome(
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),

@@ -148,7 +148,7 @@ fn test_failed_groupinfo_decryption(ciphersuite: Ciphersuite, provider: &impl Op
     // Now build the welcome message.
     let broken_welcome = Welcome::new(ciphersuite, broken_secrets, encrypted_group_info);
 
-    let error = StagedCoreJoinFromWelcome::new_from_welcome(
+    let error = StagedCoreWelcome::new_from_welcome(
         broken_welcome,
         None,
         key_package_bundle,
@@ -375,7 +375,7 @@ fn test_psks(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .expect("error merging pending commit");
     let ratchet_tree = alice_group.public_group().export_ratchet_tree();
 
-    let group_bob = StagedCoreJoinFromWelcome::new_from_welcome(
+    let group_bob = StagedCoreWelcome::new_from_welcome(
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
@@ -473,7 +473,7 @@ fn test_staged_commit_creation(ciphersuite: Ciphersuite, provider: &impl OpenMls
         .expect("error processing own staged commit");
 
     // === Bob joins the group using Alice's tree ===
-    let group_bob = StagedCoreJoinFromWelcome::new_from_welcome(
+    let group_bob = StagedCoreWelcome::new_from_welcome(
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
@@ -623,7 +623,7 @@ fn test_proposal_application_after_self_was_removed(
 
     let ratchet_tree = alice_group.public_group().export_ratchet_tree();
 
-    let mut bob_group = StagedCoreJoinFromWelcome::new_from_welcome(
+    let mut bob_group = StagedCoreWelcome::new_from_welcome(
         add_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
@@ -708,7 +708,7 @@ fn test_proposal_application_after_self_was_removed(
 
     let ratchet_tree = alice_group.public_group().export_ratchet_tree();
 
-    let charlie_group = StagedCoreJoinFromWelcome::new_from_welcome(
+    let charlie_group = StagedCoreWelcome::new_from_welcome(
         remove_add_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),

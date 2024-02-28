@@ -11,12 +11,12 @@ use crate::{
     },
 };
 
-impl StagedCoreJoinFromWelcome {
+impl StagedCoreWelcome {
     /// Create a staged join from a welcome message. The purpose of this type is to be able to
     /// extract information, such as the identify of who created the welcome, before joining the
     /// group.
     /// Note: calling this function will consume the key material for decrypting the [`Welcome`]
-    /// message, even if the caller does not turn the [`StagedCoreGroup`] into a [`CoreGroup`].
+    /// message, even if the caller does not turn the [`StagedCoreWelcome`] into a [`CoreGroup`].
     pub fn new_from_welcome<KeyStore: OpenMlsKeyStore>(
         welcome: Welcome,
         ratchet_tree: Option<RatchetTreeIn>,
@@ -213,7 +213,7 @@ impl StagedCoreJoinFromWelcome {
         let resumption_psk = group_epoch_secrets.resumption_psk();
         resumption_psk_store.add(public_group.group_context().epoch(), resumption_psk.clone());
 
-        let group = StagedCoreJoinFromWelcome {
+        let group = StagedCoreWelcome {
             public_group,
             group_epoch_secrets,
             own_leaf_index,
@@ -243,7 +243,7 @@ impl StagedCoreJoinFromWelcome {
             ))
     }
 
-    /// Consumes the [`StagedCoreGroup`] and returns the respective [`CoreGroup`].
+    /// Consumes the [`StagedCoreWelcome`] and returns the respective [`CoreGroup`].
     pub fn into_core_group<KeyStore: OpenMlsKeyStore>(
         self,
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,

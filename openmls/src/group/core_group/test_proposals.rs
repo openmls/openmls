@@ -16,7 +16,7 @@ use crate::{
         proposals::{ProposalQueue, ProposalStore, QueuedProposal},
         public_group::errors::PublicGroupBuildError,
         test_core_group::setup_client,
-        CreateCommitParams, GroupContext, GroupId, StagedCoreJoinFromWelcome,
+        StagedCoreWelcome, CreateCommitParams, GroupContext, GroupId,
     },
     key_packages::{KeyPackageBundle, KeyPackageIn},
     messages::proposals::{AddProposal, Proposal, ProposalOrRef, ProposalType},
@@ -430,7 +430,7 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, provider: &impl OpenM
 
     // Make sure that Bob can join the group with the required extension in place
     // and Bob's key package supporting them.
-    let _bob_group = StagedCoreJoinFromWelcome::new_from_welcome(
+    let _bob_group = StagedCoreWelcome::new_from_welcome(
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
@@ -511,7 +511,7 @@ fn test_group_context_extension_proposal_fails(
         .expect("error merging pending commit");
     let ratchet_tree = alice_group.public_group().export_ratchet_tree();
 
-    let _bob_group = StagedCoreJoinFromWelcome::new_from_welcome(
+    let _bob_group = StagedCoreWelcome::new_from_welcome(
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
@@ -597,7 +597,7 @@ fn test_group_context_extension_proposal(
 
     let ratchet_tree = alice_group.public_group().export_ratchet_tree();
 
-    let mut bob_group = StagedCoreJoinFromWelcome::new_from_welcome(
+    let mut bob_group = StagedCoreWelcome::new_from_welcome(
         create_commit_results
             .welcome_option
             .expect("An unexpected error occurred."),

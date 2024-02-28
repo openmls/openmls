@@ -438,7 +438,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .merge_commit(provider, create_commit_result.staged_commit)
         .expect("error merging pending commit");
 
-    let _group_bob = StagedCoreJoinFromWelcome::new_from_welcome(
+    let _group_bob = StagedCoreWelcome::new_from_welcome(
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
@@ -483,7 +483,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .merge_commit(provider, create_commit_result.staged_commit)
         .expect("error merging pending commit");
 
-    let mut group_charlie = StagedCoreJoinFromWelcome::new_from_welcome(
+    let mut group_charlie = StagedCoreWelcome::new_from_welcome(
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
@@ -681,7 +681,7 @@ pub(crate) fn setup_alice_bob_group(
 
     // We have to create Bob's group so he can process the commit with the
     // broken confirmation tag, because Alice can't process her own commit.
-    let group_bob = StagedCoreJoinFromWelcome::new_from_welcome(
+    let group_bob = StagedCoreWelcome::new_from_welcome(
         create_commit_result
             .welcome_option
             .expect("commit didn't return a welcome as expected"),

@@ -123,10 +123,10 @@ impl Member {
     }
 }
 
-/// A [`StagedCoreGroup`] can be inspected and then turned into a [`CoreGroup`].
+/// A [`StagedCoreWelcome`] can be inspected and then turned into a [`CoreGroup`].
 /// This allows checking who authored the Welcome message.
 #[derive(Debug)]
-pub(crate) struct StagedCoreJoinFromWelcome {
+pub(crate) struct StagedCoreWelcome {
     public_group: PublicGroup,
     group_epoch_secrets: GroupEpochSecrets,
     own_leaf_index: LeafNodeIndex,

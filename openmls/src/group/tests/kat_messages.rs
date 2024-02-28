@@ -291,7 +291,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
 
     let alice_welcome = create_commit_result.welcome_option.unwrap();
 
-    let mut receiver_group = StagedCoreJoinFromWelcome::new_from_welcome(
+    let mut receiver_group = StagedCoreWelcome::new_from_welcome(
         alice_welcome.clone(),
         Some(alice_group.public_group().export_ratchet_tree().into()),
         bob_key_package_bundle,

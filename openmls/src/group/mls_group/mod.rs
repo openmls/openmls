@@ -446,5 +446,5 @@ pub struct StagedMlsJoinFromWelcome {
     mls_group_config: MlsGroupJoinConfig,
     // The internal `CoreGroup` used for lower level operations. See `CoreGroup` for more
     // information.
-    group: StagedCoreJoinFromWelcome,
+    group: StagedCoreWelcome,
 }

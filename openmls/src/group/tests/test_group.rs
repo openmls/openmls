@@ -139,7 +139,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, provider: &impl OpenMls
     };
 
     // Bob creates group from Welcome
-    let group_bob = StagedCoreJoinFromWelcome::new_from_welcome(
+    let group_bob = StagedCoreWelcome::new_from_welcome(
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
@@ -357,7 +357,7 @@ fn group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .expect("error merging own commits");
     let ratchet_tree = group_alice.public_group().export_ratchet_tree();
 
-    let mut group_bob = match StagedCoreJoinFromWelcome::new_from_welcome(
+    let mut group_bob = match StagedCoreWelcome::new_from_welcome(
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
@@ -691,7 +691,7 @@ fn group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .expect("error merging own commits");
 
     let ratchet_tree = group_alice.public_group().export_ratchet_tree();
-    let mut group_charlie = match StagedCoreJoinFromWelcome::new_from_welcome(
+    let mut group_charlie = match StagedCoreWelcome::new_from_welcome(
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),

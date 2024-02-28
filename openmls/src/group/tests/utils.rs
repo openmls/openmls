@@ -256,7 +256,7 @@ pub(crate) fn setup(config: TestSetupConfig, provider: &impl OpenMlsProvider) ->
                     .remove(kpb_position);
                 // Create the local group state of the new member based on the
                 // Welcome.
-                let new_group = match StagedCoreJoinFromWelcome::new_from_welcome(
+                let new_group = match StagedCoreWelcome::new_from_welcome(
                     welcome.clone(),
                     Some(core_group.public_group().export_ratchet_tree().into()),
                     key_package_bundle,
