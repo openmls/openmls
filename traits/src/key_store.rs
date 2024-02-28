@@ -1,6 +1,10 @@
 //! # OpenMLS Key Store Trait
 
+use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+
 /// Sealed list of struct openmls manages (create/read/delete) through [OpenMlsKeyStore]
+#[derive(Debug, TlsSize, TlsSerialize, TlsDeserialize)]
+#[repr(u16)]
 pub enum MlsEntityId {
     SignatureKeyPair,
     HpkePrivateKey,
@@ -10,17 +14,16 @@ pub enum MlsEntityId {
     GroupState,
 }
 
-/// To implement by any struct owned by openmls aiming to be persisted in [OpenMlsKeyStore]
-pub trait MlsEntity: serde::Serialize + serde::de::DeserializeOwned {
+pub trait MlsEntity<const VERSION: u16>: serde::Serialize + serde::de::DeserializeOwned {
     /// Identifier used to downcast the actual entity within an [OpenMlsKeyStore] method.
     /// In case for example you need to select a SQL table depending on the entity type
     const ID: MlsEntityId;
 }
 
 /// Blanket impl for when you have to lookup a list of entities from the keystore
-impl<T> MlsEntity for Vec<T>
+impl<T, const VERSION: u16> MlsEntity<VERSION> for Vec<T>
 where
-    T: MlsEntity + std::fmt::Debug,
+    T: MlsEntity<VERSION> + std::fmt::Debug,
 {
     const ID: MlsEntityId = T::ID;
 }
@@ -34,7 +37,11 @@ pub trait OpenMlsKeyStore {
     /// serialization for ID `k`.
     ///
     /// Returns an error if storing fails.
-    fn store<V: MlsEntity>(&self, k: &[u8], v: &V) -> Result<(), Self::Error>
+    fn store<const VERSION: u16, V: MlsEntity<VERSION> + core::fmt::Debug>(
+        &self,
+        k: &[u8],
+        v: &V,
+    ) -> Result<(), Self::Error>
     where
         Self: Sized;
 
@@ -42,12 +49,15 @@ pub trait OpenMlsKeyStore {
     /// [`MlsEntity`] trait for deserialization.
     ///
     /// Returns [`None`] if no value is stored for `k` or reading fails.
-    fn read<V: MlsEntity>(&self, k: &[u8]) -> Option<V>
+    fn read<const VERSION: u16, V: MlsEntity<VERSION>>(&self, k: &[u8]) -> Option<V>
     where
         Self: Sized;
 
     /// Delete a value stored for ID `k`.
     ///
     /// Returns an error if storing fails.
-    fn delete<V: MlsEntity>(&self, k: &[u8]) -> Result<(), Self::Error>;
+    fn delete<const VERSION: u16, V: MlsEntity<VERSION>>(
+        &self,
+        k: &[u8],
+    ) -> Result<(), Self::Error>;
 }

@@ -92,12 +92,14 @@ impl ExternalPsk {
 
 /// Contains the secret part of the PSK as well as the
 /// public part that is used as a marker for injection into the key schedule.
-#[derive(Serialize, Deserialize, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize)]
+#[derive(
+    Serialize, Deserialize, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, Debug,
+)]
 pub(crate) struct PskBundle {
     secret: Secret,
 }
 
-impl MlsEntity for PskBundle {
+impl MlsEntity<1> for PskBundle {
     const ID: MlsEntityId = MlsEntityId::PskBundle;
 }
 
@@ -487,7 +489,7 @@ pub(crate) fn load_psks<'p>(
                 }
             }
             Psk::External(_) => {
-                if let Some(psk_bundle) = key_store.read::<PskBundle>(&psk_id.keystore_id()?) {
+                if let Some(psk_bundle) = key_store.read::<1, PskBundle>(&psk_id.keystore_id()?) {
                     psk_bundles.push((psk_id, psk_bundle.secret));
                 } else {
                     return Err(PskError::KeyNotFound);

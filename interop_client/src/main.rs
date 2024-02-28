@@ -317,7 +317,7 @@ impl MlsClient for MlsClientImpl {
             .unwrap();
         let private_key = crypto_provider
             .key_store()
-            .read::<HpkePrivateKey>(key_package.hpke_init_key().as_slice())
+            .read::<1, HpkePrivateKey>(key_package.hpke_init_key().as_slice())
             .unwrap();
 
         let encryption_key_pair =
@@ -423,7 +423,7 @@ impl MlsClient for MlsClientImpl {
         // The key is the public key.
         crypto_provider
             .key_store()
-            .store::<HpkePrivateKey>(my_key_package.hpke_init_key().as_slice(), &private_key)
+            .store::<1, HpkePrivateKey>(my_key_package.hpke_init_key().as_slice(), &private_key)
             .map_err(into_status)?;
 
         let welcome_msg = MlsMessageIn::tls_deserialize(&mut request.welcome.as_slice())

@@ -207,7 +207,7 @@ impl SignedStruct<KeyPackageTbs> for KeyPackage {
 
 const SIGNATURE_KEY_PACKAGE_LABEL: &str = "KeyPackageTBS";
 
-impl MlsEntity for KeyPackage {
+impl MlsEntity<1> for KeyPackage {
     const ID: MlsEntityId = MlsEntityId::KeyPackage;
 }
 
@@ -360,10 +360,10 @@ impl KeyPackage {
     ) -> Result<(), KeyStore::Error> {
         provider
             .key_store()
-            .delete::<Self>(self.hash_ref(provider.crypto()).unwrap().as_slice())?;
+            .delete::<1, Self>(self.hash_ref(provider.crypto()).unwrap().as_slice())?;
         provider
             .key_store()
-            .delete::<HpkePrivateKey>(self.hpke_init_key().as_slice())
+            .delete::<1, HpkePrivateKey>(self.hpke_init_key().as_slice())
     }
 
     /// Get a reference to the extensions of this key package.
@@ -498,7 +498,7 @@ impl KeyPackage {
         // The key is the public key.
         provider
             .key_store()
-            .store::<HpkePrivateKey>(&init_key.public, &init_key.private)
+            .store::<1, HpkePrivateKey>(&init_key.public, &init_key.private)
             .map_err(KeyPackageNewError::KeyStoreError)?;
 
         // We don't need the private key here. It's stored in the key store for
@@ -696,7 +696,7 @@ impl KeyPackageBuilder {
         // The key is the public key.
         provider
             .key_store()
-            .store::<HpkePrivateKey>(key_package.hpke_init_key().as_slice(), &init_private_key)
+            .store::<1, HpkePrivateKey>(key_package.hpke_init_key().as_slice(), &init_private_key)
             .map_err(KeyPackageNewError::KeyStoreError)?;
 
         Ok(key_package)
@@ -746,7 +746,7 @@ impl KeyPackageBundle {
             .unwrap();
         let private_key = provider
             .key_store()
-            .read::<HpkePrivateKey>(key_package.hpke_init_key().as_slice())
+            .read::<1, HpkePrivateKey>(key_package.hpke_init_key().as_slice())
             .unwrap();
         Self {
             key_package,

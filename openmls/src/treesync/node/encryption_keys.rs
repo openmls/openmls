@@ -149,11 +149,20 @@ impl From<HpkePublicKey> for EncryptionKey {
     }
 }
 
-#[derive(
-    Debug, Clone, Serialize, Deserialize, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
-)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub(crate) struct EncryptionKeyPair {
+    public_key: EncryptionKey,
+    private_key: EncryptionPrivateKey,
+    dummy: Vec<u8>, // some new field
+}
+
+/// Current version of the encryption key pair.
+pub(crate) const ENCRYPTION_KEY_PAIR_VERSION: u16 = 2;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
+pub(crate) struct EncryptionKeyPairv1 {
     public_key: EncryptionKey,
     private_key: EncryptionPrivateKey,
 }
@@ -179,12 +188,17 @@ impl EncryptionKeyPair {
     ///
     /// Returns `None` if the keypair cannot be read from the store.
     pub(crate) fn read_from_key_store(
-        provider: &impl OpenMlsProvider,
+        store: &impl OpenMlsKeyStore,
         encryption_key: &EncryptionKey,
     ) -> Option<EncryptionKeyPair> {
-        provider
-            .key_store()
-            .read(&encryption_key.to_bytes_with_prefix())
+        store.read(&encryption_key.to_bytes_with_prefix())
+    }
+
+    pub(crate) fn read_vec_from_key_store(
+        store: &impl OpenMlsKeyStore,
+        id: &[u8],
+    ) -> Option<Vec<EncryptionKeyPair>> {
+        store.read(id)
     }
 
     /// Delete the [`EncryptionKeyPair`] from the key store of the `provider`.
@@ -196,7 +210,14 @@ impl EncryptionKeyPair {
         &self,
         store: &KeyStore,
     ) -> Result<(), KeyStore::Error> {
-        store.delete::<Self>(&self.public_key().to_bytes_with_prefix())
+        store.delete::<ENCRYPTION_KEY_PAIR_VERSION, Self>(&self.public_key().to_bytes_with_prefix())
+    }
+
+    pub(crate) fn delete_vec_from_key_store<KeyStore: OpenMlsKeyStore>(
+        store: &KeyStore,
+        id: &[u8],
+    ) -> Result<(), KeyStore::Error> {
+        store.delete::<ENCRYPTION_KEY_PAIR_VERSION, Vec<Self>>(id)
     }
 
     pub(crate) fn public_key(&self) -> &EncryptionKey {
@@ -228,7 +249,8 @@ pub mod test_utils {
         provider: &impl OpenMlsProvider,
         encryption_key: &EncryptionKey,
     ) -> HpkeKeyPair {
-        let keys = EncryptionKeyPair::read_from_key_store(provider, encryption_key).unwrap();
+        let keys =
+            EncryptionKeyPair::read_from_key_store(provider.key_store(), encryption_key).unwrap();
 
         HpkeKeyPair {
             private: keys.private_key.key,
@@ -254,6 +276,7 @@ impl EncryptionKeyPair {
             private_key: EncryptionPrivateKey {
                 key: private_key.into(),
             },
+            dummy: vec![1, 2, 3],
         }
     }
 }
@@ -263,6 +286,7 @@ impl From<(HpkePublicKey, HpkePrivateKey)> for EncryptionKeyPair {
         Self {
             public_key: public_key.into(),
             private_key: private_key.into(),
+            dummy: vec![1, 2, 3],
         }
     }
 }
@@ -274,6 +298,7 @@ impl From<HpkeKeyPair> for EncryptionKeyPair {
         Self {
             public_key: public_bytes.into(),
             private_key: private_bytes.into(),
+            dummy: vec![1, 2, 3],
         }
     }
 }
@@ -283,10 +308,65 @@ impl From<(EncryptionKey, EncryptionPrivateKey)> for EncryptionKeyPair {
         Self {
             public_key,
             private_key,
+            dummy: vec![1, 2, 3],
         }
     }
 }
 
-impl MlsEntity for EncryptionKeyPair {
+impl MlsEntity<ENCRYPTION_KEY_PAIR_VERSION> for EncryptionKeyPair {
     const ID: MlsEntityId = MlsEntityId::EncryptionKeyPair;
+}
+
+impl MlsEntity<1> for EncryptionKeyPairv1 {
+    const ID: MlsEntityId = MlsEntityId::EncryptionKeyPair;
+}
+
+impl From<EncryptionKeyPairv1> for EncryptionKeyPair {
+    fn from(value: EncryptionKeyPairv1) -> Self {
+        Self {
+            public_key: value.public_key,
+            private_key: value.private_key,
+            dummy: vec![1, 2, 3],
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use openmls_rust_crypto::OpenMlsRustCrypto;
+    use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
+    use rstest::rstest;
+    use rstest_reuse::{self, *};
+
+    use crate::{group::config::CryptoConfig, versions::ProtocolVersion};
+
+    use super::EncryptionKeyPair;
+
+    #[apply(ciphersuites_and_providers)]
+    fn persistence(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+        let config = CryptoConfig {
+            ciphersuite,
+            version: ProtocolVersion::Mls10,
+        };
+
+        // Generate a new key pair
+        let kp = EncryptionKeyPair::random(provider, config).unwrap();
+
+        // Store it
+        kp.write_to_key_store(provider.key_store()).unwrap();
+
+        // Read it again
+        let read_kp =
+            EncryptionKeyPair::read_from_key_store(provider.key_store(), &kp.public_key).unwrap();
+
+        // Ensure it's the correct one
+        assert_eq!(kp, read_kp);
+
+        // Delete it
+        kp.delete_from_key_store(provider.key_store()).unwrap();
+
+        // It should be gone now
+        let e = EncryptionKeyPair::read_from_key_store(provider.key_store(), &kp.public_key);
+        assert!(e.is_none());
+    }
 }

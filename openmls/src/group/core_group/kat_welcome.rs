@@ -176,7 +176,7 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
 
     provider
         .key_store()
-        .store::<HpkePrivateKey>(
+        .store::<1, HpkePrivateKey>(
             key_package.hpke_init_key().as_slice(),
             key_package_bundle.private_key(),
         )

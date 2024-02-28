@@ -275,8 +275,11 @@ impl CoreGroup {
         let leaf_node_keypairs = own_leaf_nodes
             .iter()
             .map(|leaf_node| {
-                EncryptionKeyPair::read_from_key_store(provider, leaf_node.encryption_key())
-                    .ok_or(StageCommitError::MissingDecryptionKey)
+                EncryptionKeyPair::read_from_key_store(
+                    provider.key_store(),
+                    leaf_node.encryption_key(),
+                )
+                .ok_or(StageCommitError::MissingDecryptionKey)
             })
             .collect::<Result<Vec<EncryptionKeyPair>, StageCommitError>>()?;
 

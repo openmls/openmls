@@ -41,7 +41,7 @@ use tls_codec::Serialize as TlsSerializeTrait;
 
 use self::{
     create_commit_params::{CommitType, CreateCommitParams},
-    node::leaf_node::Capabilities,
+    node::{encryption_keys::ENCRYPTION_KEY_PAIR_VERSION, leaf_node::Capabilities},
     past_secrets::MessageSecretsStore,
     staged_commit::{MemberStagedCommitState, StagedCommit, StagedCommitState},
 };
@@ -685,9 +685,7 @@ impl CoreGroup {
             self.context().epoch().as_u64(),
             self.own_leaf_index(),
         );
-        store
-            .read::<Vec<EncryptionKeyPair>>(&k.0)
-            .unwrap_or_default()
+        EncryptionKeyPair::read_vec_from_key_store(store, &k.0).unwrap_or_default()
     }
 
     /// Delete the [`EncryptionKeyPair`]s from the previous [`GroupEpoch`] from
@@ -703,7 +701,7 @@ impl CoreGroup {
             self.context().epoch().as_u64() - 1,
             self.own_leaf_index(),
         );
-        store.delete::<Vec<EncryptionKeyPair>>(&k.0)
+        EncryptionKeyPair::delete_vec_from_key_store(store, &k.0)
     }
 
     pub(crate) fn create_commit<KeyStore: OpenMlsKeyStore>(

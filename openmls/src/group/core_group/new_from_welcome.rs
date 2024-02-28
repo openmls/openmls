@@ -26,7 +26,7 @@ impl CoreGroup {
         // TODO #1207: Key store access happens as early as possible so it can
         // be pulled up later more easily.
         let leaf_keypair = EncryptionKeyPair::read_from_key_store(
-            provider,
+            provider.key_store(),
             key_package_bundle.key_package.leaf_node().encryption_key(),
         )
         .ok_or(WelcomeError::NoMatchingEncryptionKey)?;

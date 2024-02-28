@@ -152,14 +152,14 @@ pub(crate) fn generate_group_candidate(
                 .unwrap();
 
             let encryption_keypair = EncryptionKeyPair::read_from_key_store(
-                provider,
+                provider.key_store(),
                 key_package.leaf_node().encryption_key(),
             )
             .unwrap();
             let init_keypair = {
                 let private = provider
                     .key_store()
-                    .read::<HpkePrivateKey>(key_package.hpke_init_key().as_slice())
+                    .read::<1, HpkePrivateKey>(key_package.hpke_init_key().as_slice())
                     .unwrap();
 
                 HpkeKeyPair {

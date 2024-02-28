@@ -269,7 +269,7 @@ impl PassiveClient {
         // Store init key.
         self.provider
             .key_store()
-            .store::<HpkePrivateKey>(
+            .store::<1, HpkePrivateKey>(
                 key_package.hpke_init_key().as_slice(),
                 key_package_bundle.private_key(),
             )

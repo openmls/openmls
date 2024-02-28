@@ -155,7 +155,7 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, provider: &impl OpenM
 
     // Create backup of encryption keypair, s.t. we can process the welcome a second time after failing.
     let encryption_keypair = EncryptionKeyPair::read_from_key_store(
-        provider,
+        provider.key_store(),
         bob_kpb.key_package().leaf_node().encryption_key(),
     )
     .unwrap();
@@ -187,7 +187,7 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, provider: &impl OpenM
         .unwrap();
     provider
         .key_store()
-        .store::<HpkePrivateKey>(bob_kp.hpke_init_key().as_slice(), bob_private_key)
+        .store::<1, HpkePrivateKey>(bob_kp.hpke_init_key().as_slice(), bob_private_key)
         .unwrap();
 
     encryption_keypair

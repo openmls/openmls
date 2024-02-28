@@ -910,7 +910,7 @@ fn key_package_deletion(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
     // TEST: The private key must be gone from the key store.
     assert!(provider
         .key_store()
-        .read::<HpkePrivateKey>(bob_key_package.hpke_init_key().as_slice())
+        .read::<1, HpkePrivateKey>(bob_key_package.hpke_init_key().as_slice())
         .is_none(),
         "The HPKE private key is still in the key store after creating a new group from the key package.");
 
@@ -918,7 +918,7 @@ fn key_package_deletion(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
     assert!(
         provider
             .key_store()
-            .read::<KeyPackage>(
+            .read::<1, KeyPackage>(
                 bob_key_package
                     .hash_ref(provider.crypto())
                     .unwrap()

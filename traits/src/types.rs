@@ -278,7 +278,7 @@ impl std::ops::Deref for HpkePrivateKey {
     }
 }
 
-impl MlsEntity for HpkePrivateKey {
+impl MlsEntity<1> for HpkePrivateKey {
     const ID: MlsEntityId = MlsEntityId::HpkePrivateKey;
 }
 

@@ -41,7 +41,7 @@ impl Into<MlsGroup> for SerializedMlsGroup {
     }
 }
 
-impl MlsEntity for MlsGroup {
+impl MlsEntity<1> for MlsGroup {
     const ID: MlsEntityId = MlsEntityId::GroupState;
 }
 

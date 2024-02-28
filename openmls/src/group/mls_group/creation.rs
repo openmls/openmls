@@ -87,7 +87,7 @@ impl MlsGroup {
         // TODO #751
         let private_key = provider
             .key_store()
-            .read::<HpkePrivateKey>(key_package.hpke_init_key().as_slice())
+            .read::<1, HpkePrivateKey>(key_package.hpke_init_key().as_slice())
             .ok_or(WelcomeError::NoMatchingKeyPackage)?;
         let key_package_bundle = KeyPackageBundle {
             key_package,

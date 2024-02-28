@@ -75,7 +75,7 @@ fn id(public_key: &[u8], signature_scheme: SignatureScheme) -> Vec<u8> {
     id
 }
 
-impl MlsEntity for SignatureKeyPair {
+impl MlsEntity<1> for SignatureKeyPair {
     const ID: MlsEntityId = MlsEntityId::SignatureKeyPair;
 }
 

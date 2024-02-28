@@ -13,3 +13,4 @@ readme = "README.md"
 openmls_traits = { version = "0.2.0", path = "../traits" }
 thiserror = "1.0"
 serde_json = "1.0"
+tls_codec = { workspace = true }
