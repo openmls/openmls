@@ -122,8 +122,14 @@ impl Client {
         welcome: Welcome,
         ratchet_tree: Option<RatchetTreeIn>,
     ) -> Result<(), ClientError> {
-        let new_group: MlsGroup =
-            MlsGroup::new_from_welcome(&self.crypto, &mls_group_config, welcome, ratchet_tree)?;
+        let welcome = MlsMessageOut::from_welcome(welcome, ProtocolVersion::default()).into();
+        let staged_join = StagedWelcome::new_from_welcome(
+            &self.crypto,
+            &mls_group_config,
+            welcome,
+            ratchet_tree,
+        )?;
+        let new_group = staged_join.into_group(&self.crypto)?;
         self.groups
             .write()
             .expect("An unexpected error occurred.")

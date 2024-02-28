@@ -122,6 +122,7 @@ impl<'a> TreeSyncDiff<'a> {
             )
             // TODO #804
             .map_err(|_| LibraryError::custom("Expected sender to be in the tree"))?;
+
         let ciphertext = update_path_node
             .encrypted_path_secrets(resolution_position)
             // We know the update path has the right length through validation, therefore there must be a ciphertext at this position

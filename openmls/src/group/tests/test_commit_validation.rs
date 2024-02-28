@@ -91,23 +91,25 @@ fn validation_test_setup(
         .merge_pending_commit(provider)
         .expect("error merging pending commit");
 
-    let welcome = welcome.into_welcome().expect("Unexpected message type.");
-
-    let bob_group = MlsGroup::new_from_welcome(
+    let bob_group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
-        welcome.clone(),
+        welcome.clone().into(),
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .expect("error creating group from welcome");
+    .expect("error creating staged join from welcome")
+    .into_group(provider)
+    .expect("error creating group from staged join");
 
-    let charlie_group = MlsGroup::new_from_welcome(
+    let charlie_group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
-        welcome,
+        welcome.into(),
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .expect("error creating group from welcome");
+    .expect("error creating staged join from welcome")
+    .into_group(provider)
+    .expect("error creating group from staged join");
 
     CommitValidationTestSetup {
         alice_group,

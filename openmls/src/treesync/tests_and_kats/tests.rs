@@ -112,12 +112,14 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
 
     // ... and then `C` removes `A` and `B`.
     let mut charlie_group = {
-        MlsGroup::new_from_welcome(
+        StagedWelcome::new_from_welcome(
             &charlie.provider,
             mls_group_create_config.join_config(),
-            welcome.into_welcome().unwrap(),
+            welcome.into(),
             None,
         )
+        .expect("Staging the join failed.")
+        .into_group(&charlie.provider)
         .expect("Joining the group failed.")
     };
     charlie_group.print_ratchet_tree("Charlie (after new)");

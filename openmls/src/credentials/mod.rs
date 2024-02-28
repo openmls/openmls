@@ -363,6 +363,8 @@ pub mod test_utils {
     /// The signature keys are stored in the key store.
     ///
     /// Returns the [`Credential`] and the [`SignatureKeyPair`].
+    ///
+    /// [`Credential`]: super::Credential
     pub fn new_credential(
         provider: &impl OpenMlsProvider,
         identity: &[u8],
