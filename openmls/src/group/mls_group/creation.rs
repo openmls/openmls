@@ -123,12 +123,12 @@ impl MlsGroup {
     }
 }
 
-impl StagedMlsJoinFromWelcome {
+impl StagedWelcome {
     /// Creates a new staged group from a [`Welcome`] message. Returns an error
     /// ([`WelcomeError::NoMatchingKeyPackage`]) if no [`KeyPackage`]
     /// can be found.
     /// Note: calling this function will consume the key material for decrypting the [`Welcome`]
-    /// message, even if the caller does not turn the [`StagedMlsJoinFromWelcome`] into an [`MlsGroup`].
+    /// message, even if the caller does not turn the [`MlsStagedWelcome`] into an [`MlsGroup`].
     pub fn new_from_welcome<KeyStore: OpenMlsKeyStore>(
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         mls_group_config: &MlsGroupJoinConfig,
@@ -184,7 +184,7 @@ impl StagedMlsJoinFromWelcome {
             resumption_psk_store,
         )?;
 
-        let mls_group = StagedMlsJoinFromWelcome {
+        let mls_group = StagedWelcome {
             mls_group_config: mls_group_config.clone(),
             group,
         };
@@ -202,7 +202,7 @@ impl StagedMlsJoinFromWelcome {
         self.group.welcome_sender()
     }
 
-    /// Consumes the [`StagedMlsJoinFromWelcome`] and returns the respective [`MlsGroup`].
+    /// Consumes the [`StagedWelcome`] and returns the respective [`MlsGroup`].
     pub fn into_group<KeyStore: OpenMlsKeyStore>(
         self,
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,

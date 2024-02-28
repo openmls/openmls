@@ -112,7 +112,7 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
 
     // ... and then `C` removes `A` and `B`.
     let mut charlie_group = {
-        StagedMlsJoinFromWelcome::new_from_welcome(
+        StagedWelcome::new_from_welcome(
             &charlie.provider,
             mls_group_create_config.join_config(),
             welcome.into(),

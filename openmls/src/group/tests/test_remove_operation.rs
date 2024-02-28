@@ -91,7 +91,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, provider: &impl Open
             .merge_pending_commit(&alice_provider)
             .expect("error merging pending commit");
 
-        let mut bob_group = StagedMlsJoinFromWelcome::new_from_welcome(
+        let mut bob_group = StagedWelcome::new_from_welcome(
             &bob_provider,
             mls_group_create_config.join_config(),
             welcome.clone().into(),
@@ -101,7 +101,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, provider: &impl Open
         .into_group(&bob_provider)
         .expect("Error creating group from staged join");
 
-        let mut charlie_group = StagedMlsJoinFromWelcome::new_from_welcome(
+        let mut charlie_group = StagedWelcome::new_from_welcome(
             &charlie_provider,
             mls_group_create_config.join_config(),
             welcome.into(),

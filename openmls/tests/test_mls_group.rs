@@ -124,15 +124,15 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
         assert_eq!(credential0.as_slice(), b"Alice");
         assert_eq!(credential1.as_slice(), b"Bob");
 
-        let mut bob_group = StagedMlsJoinFromWelcome::new_from_welcome(
+        let mut bob_group = StagedWelcome::new_from_welcome(
             provider,
             mls_group_create_config.join_config(),
             welcome.into(),
             Some(alice_group.export_ratchet_tree().into()),
         )
-        .expect("Error creating StagedMlsJoinFromWelcome from Welcome")
+        .expect("Error creating StagedWelcome from Welcome")
         .into_group(provider)
-        .expect("Error creating group from StagedMlsJoinFromWelcome");
+        .expect("Error creating group from StagedWelcome");
 
         // Make sure that both groups have the same members
         assert!(alice_group.members().eq(bob_group.members()));
@@ -342,7 +342,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
             unreachable!("Expected a StagedCommit.");
         }
 
-        let mut charlie_group = StagedMlsJoinFromWelcome::new_from_welcome(
+        let mut charlie_group = StagedWelcome::new_from_welcome(
             provider,
             mls_group_create_config.join_config(),
             welcome.into(),
@@ -709,7 +709,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
         assert_eq!(credential1.as_slice(), b"Bob");
 
         // Bob creates a new group
-        let mut bob_group = StagedMlsJoinFromWelcome::new_from_welcome(
+        let mut bob_group = StagedWelcome::new_from_welcome(
             provider,
             mls_group_create_config.join_config(),
             welcome_option.expect("Welcome was not returned").into(),
@@ -910,7 +910,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
             .merge_pending_commit(provider)
             .expect("error merging pending commit");
 
-        let mut bob_group = StagedMlsJoinFromWelcome::new_from_welcome(
+        let mut bob_group = StagedWelcome::new_from_welcome(
             provider,
             mls_group_create_config.join_config(),
             welcome.into(),
@@ -1132,7 +1132,7 @@ fn mls_group_ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl Op
             .unwrap();
 
         // === Bob joins using the ratchet tree extension ===
-        let _bob_group = StagedMlsJoinFromWelcome::new_from_welcome(
+        let _bob_group = StagedWelcome::new_from_welcome(
             provider,
             mls_group_create_config.join_config(),
             welcome.into(),
@@ -1178,7 +1178,7 @@ fn mls_group_ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl Op
             .unwrap();
 
         // === Bob tries to join without the ratchet tree extension ===
-        let error = StagedMlsJoinFromWelcome::new_from_welcome(
+        let error = StagedWelcome::new_from_welcome(
             provider,
             mls_group_create_config.join_config(),
             welcome.into(),

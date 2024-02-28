@@ -87,7 +87,7 @@ fn validation_test_setup(
         .wire_format_policy(wire_format_policy)
         .build();
 
-    let bob_group = StagedMlsJoinFromWelcome::new_from_welcome(
+    let bob_group = StagedWelcome::new_from_welcome(
         provider,
         &mls_group_config,
         welcome.into(),
@@ -198,7 +198,7 @@ fn external_add_proposal_should_succeed(ciphersuite: Ciphersuite, provider: &imp
         let mls_group_config = MlsGroupJoinConfig::builder()
             .wire_format_policy(policy)
             .build();
-        let charlie_group = StagedMlsJoinFromWelcome::new_from_welcome(
+        let charlie_group = StagedWelcome::new_from_welcome(
             provider,
             &mls_group_config,
             welcome.unwrap().into(),

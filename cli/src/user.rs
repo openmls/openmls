@@ -688,7 +688,7 @@ impl User {
         let group_config = MlsGroupJoinConfig::builder()
             .use_ratchet_tree_extension(true)
             .build();
-        let mut mls_group = StagedMlsJoinFromWelcome::new_from_welcome(
+        let mut mls_group = StagedWelcome::new_from_welcome(
             &self.crypto,
             &group_config,
             MlsMessageOut::from_welcome(welcome, ProtocolVersion::default()).into(),

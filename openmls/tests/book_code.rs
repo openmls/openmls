@@ -272,16 +272,12 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // ANCHOR_END: mls_group_config_example
 
     // ANCHOR: bob_joins_with_welcome
-    let staged_join = StagedMlsJoinFromWelcome::new_from_welcome(
-        provider,
-        &mls_group_config,
-        welcome.into(),
-        None,
-    )
-    .expect("Error constructing staged join");
+    let staged_join =
+        StagedWelcome::new_from_welcome(provider, &mls_group_config, welcome.into(), None)
+            .expect("Error constructing staged join");
     let mut bob_group = staged_join
         .into_group(provider)
-        .expect("Error joining group from StagedMlsJoinFromWelcome");
+        .expect("Error joining group from StagedWelcome");
     // ANCHOR_END: bob_joins_with_welcome
 
     // ANCHOR: alice_exports_group_info
@@ -537,13 +533,13 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         unreachable!("Expected a StagedCommit.");
     }
 
-    let mut charlie_group = StagedMlsJoinFromWelcome::new_from_welcome(
+    let mut charlie_group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
         welcome.into(),
         Some(bob_group.export_ratchet_tree().into()),
     )
-    .expect("Error building StagedMlsJoinFromWelcome")
+    .expect("Error building StagedWelcome")
     .into_group(provider)
     .expect("Error creating group from Welcome");
 
@@ -999,15 +995,15 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     assert_eq!(credential1.as_slice(), b"Bob");
 
     // Bob creates a new group
-    let mut bob_group = StagedMlsJoinFromWelcome::new_from_welcome(
+    let mut bob_group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
         welcome_option.expect("Welcome was not returned").into(),
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .expect("Error creating StagedMlsJoinFromWelcome")
+    .expect("Error creating StagedWelcome")
     .into_group(provider)
-    .expect("Error creating group from StagedMlsJoinFromWelcome");
+    .expect("Error creating group from StagedWelcome");
 
     // Make sure the group contains two members
     assert_eq!(alice_group.members().count(), 2);
@@ -1238,7 +1234,7 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
                 .expect("Could not merge commit");
             assert_eq!(alice_group.members().count(), 2);
 
-            let bob_group = StagedMlsJoinFromWelcome::new_from_welcome(
+            let bob_group = StagedWelcome::new_from_welcome(
                 provider,
                 mls_group_create_config.join_config(),
                 welcome.unwrap().into(),
@@ -1324,15 +1320,15 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .merge_pending_commit(provider)
         .expect("error merging pending commit");
 
-    let mut bob_group = StagedMlsJoinFromWelcome::new_from_welcome(
+    let bob_staged_welcome = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
         welcome.into(),
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .expect("Could not create StagedMlsJoinFromWelcome from Welcome")
+    .expect("Could not create MlsStagedWelcome from Welcome")
     .into_group(provider)
-    .expect("Could not create group from StagedMlsJoinFromWelcome");
+    .expect("Could not create group from MlsStagedWelcome");
 
     assert_eq!(
         alice_group.export_secret(provider.crypto(), "before load", &[], 32),

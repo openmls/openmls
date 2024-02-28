@@ -88,7 +88,7 @@ fn validation_test_setup(
         .merge_pending_commit(provider)
         .expect("error merging pending commit");
 
-    let bob_group = StagedMlsJoinFromWelcome::new_from_welcome(
+    let bob_group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
         welcome.into(),

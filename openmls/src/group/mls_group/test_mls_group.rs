@@ -98,7 +98,7 @@ fn remover(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .merge_pending_commit(provider)
         .expect("error merging pending commit");
 
-    let mut bob_group = StagedMlsJoinFromWelcome::new_from_welcome(
+    let mut bob_group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
         welcome.into(),
@@ -135,7 +135,7 @@ fn remover(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .merge_pending_commit(provider)
         .expect("error merging pending commit");
 
-    let mut charlie_group = StagedMlsJoinFromWelcome::new_from_welcome(
+    let mut charlie_group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
         welcome.into(),
@@ -278,7 +278,7 @@ fn staged_join(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     let join_config = mls_group_create_config.join_config();
 
-    let staged_bob_group = StagedMlsJoinFromWelcome::new_from_welcome(
+    let staged_bob_group = StagedWelcome::new_from_welcome(
         provider,
         join_config,
         welcome.into(),
@@ -476,7 +476,7 @@ fn test_verify_staged_commit_credentials(
     assert!(alice_group.pending_commit().is_none());
     assert!(alice_group.pending_proposals().next().is_none());
 
-    let mut bob_group = StagedMlsJoinFromWelcome::new_from_welcome(
+    let mut bob_group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_config.join_config(),
         welcome_option.expect("no welcome after commit").into(),
@@ -642,7 +642,7 @@ fn test_commit_with_update_path_leaf_node(
     assert!(alice_group.pending_commit().is_none());
     assert!(alice_group.pending_proposals().next().is_none());
 
-    let mut bob_group = StagedMlsJoinFromWelcome::new_from_welcome(
+    let mut bob_group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
         welcome_option.expect("no welcome after commit").into(),
@@ -883,7 +883,7 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, provider: &impl OpenMlsPr
         .expect("error merging pending commit");
     assert!(alice_group.pending_commit().is_none());
 
-    let mut bob_group = StagedMlsJoinFromWelcome::new_from_welcome(
+    let mut bob_group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
         welcome_option.expect("no welcome after commit").into(),
@@ -963,7 +963,7 @@ fn key_package_deletion(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
     alice_group.merge_pending_commit(provider).unwrap();
 
     // === Bob joins the group ===
-    let _bob_group = StagedMlsJoinFromWelcome::new_from_welcome(
+    let _bob_group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
         welcome.into(),
@@ -1028,7 +1028,7 @@ fn remove_prosposal_by_ref(ciphersuite: Ciphersuite, provider: &impl OpenMlsProv
         .add_members(provider, &alice_signer, &[bob_key_package])
         .unwrap();
     alice_group.merge_pending_commit(provider).unwrap();
-    let mut bob_group = StagedMlsJoinFromWelcome::new_from_welcome(
+    let mut bob_group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
         welcome.into(),
@@ -1355,7 +1355,7 @@ fn unknown_extensions(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider)
         .add_members(provider, &alice_signer, &[bob_key_package.clone()])
         .unwrap();
     alice_group.merge_pending_commit(provider).unwrap();
-    let _bob_group = StagedMlsJoinFromWelcome::new_from_welcome(
+    let _bob_group = StagedWelcome::new_from_welcome(
         provider,
         &MlsGroupJoinConfig::default(),
         welcome.into(),
@@ -1416,7 +1416,7 @@ fn join_multiple_groups_last_resort_extension(
         .merge_pending_commit(provider)
         .expect("error merging commit for alice's group");
     // charlie calls new_from_welcome(...) with alice's Welcome message; SHOULD SUCCEED
-    StagedMlsJoinFromWelcome::new_from_welcome(
+    StagedWelcome::new_from_welcome(
         provider,
         &MlsGroupJoinConfig::default(),
         alice_welcome.into(),
@@ -1434,7 +1434,7 @@ fn join_multiple_groups_last_resort_extension(
         .merge_pending_commit(provider)
         .expect("error merging commit for bob's group");
     // charlie calls new_from_welcome(...) with bob's Welcome message; SHOULD SUCCEED
-    StagedMlsJoinFromWelcome::new_from_welcome(
+    StagedWelcome::new_from_welcome(
         provider,
         &MlsGroupJoinConfig::default(),
         bob_welcome.into(),

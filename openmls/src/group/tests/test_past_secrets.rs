@@ -68,7 +68,7 @@ fn test_past_secrets_in_group(ciphersuite: Ciphersuite, provider: &impl OpenMlsP
             .merge_pending_commit(provider)
             .expect("error merging pending commit");
 
-        let mut bob_group = StagedMlsJoinFromWelcome::new_from_welcome(
+        let mut bob_group = StagedWelcome::new_from_welcome(
             provider,
             mls_group_create_config.join_config(),
             welcome.into(),

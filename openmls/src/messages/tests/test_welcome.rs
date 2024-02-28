@@ -16,7 +16,7 @@ use crate::{
     framing::MlsMessageOut,
     group::{
         config::CryptoConfig, errors::WelcomeError, GroupContext, GroupId, MlsGroup,
-        MlsGroupCreateConfig, StagedMlsJoinFromWelcome,
+        MlsGroupCreateConfig, StagedWelcome,
     },
     messages::{
         group_info::{GroupInfoTBS, VerifiableGroupInfo},
@@ -162,7 +162,7 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, provider: &impl OpenM
     .unwrap();
 
     // Bob tries to join the group
-    let err = StagedMlsJoinFromWelcome::new_from_welcome(
+    let err = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
         MlsMessageOut::from_welcome(welcome, ProtocolVersion::default()).into(),
@@ -195,7 +195,7 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, provider: &impl OpenM
         .write_to_key_store(provider.key_store())
         .unwrap();
 
-    let _group = StagedMlsJoinFromWelcome::new_from_welcome(
+    let _group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
         MlsMessageOut::from_welcome(original_welcome, ProtocolVersion::default()).into(),

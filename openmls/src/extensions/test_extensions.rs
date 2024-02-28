@@ -436,7 +436,7 @@ fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
 
     alice_group.merge_pending_commit(provider).unwrap();
 
-    let _bob_group = StagedMlsJoinFromWelcome::new_from_welcome(
+    let _bob_group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
         welcome.into(),

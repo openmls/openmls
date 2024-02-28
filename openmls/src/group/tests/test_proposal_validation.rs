@@ -159,7 +159,7 @@ fn validation_test_setup(
         .wire_format_policy(wire_format_policy)
         .build();
 
-    let bob_group = StagedMlsJoinFromWelcome::new_from_welcome(
+    let bob_group = StagedWelcome::new_from_welcome(
         provider,
         &mls_group_config,
         welcome.into(),

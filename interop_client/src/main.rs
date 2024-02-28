@@ -17,9 +17,8 @@ use openmls::{
     credentials::{BasicCredential, Credential, CredentialType, CredentialWithKey},
     framing::{MlsMessageBodyIn, MlsMessageIn, MlsMessageOut, ProcessedMessageContent},
     group::{
-        GroupEpoch, GroupId, MlsGroup, MlsGroupCreateConfig, MlsGroupJoinConfig,
-        StagedMlsJoinFromWelcome, WireFormatPolicy, PURE_CIPHERTEXT_WIRE_FORMAT_POLICY,
-        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        GroupEpoch, GroupId, MlsGroup, MlsGroupCreateConfig, MlsGroupJoinConfig, StagedWelcome,
+        WireFormatPolicy, PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     key_packages::KeyPackage,
     prelude::{config::CryptoConfig, Capabilities, ExtensionType, SenderRatchetConfiguration},
@@ -432,7 +431,7 @@ impl MlsClient for MlsClientImpl {
 
         let ratchet_tree = ratchet_tree_from_config(request.ratchet_tree.clone());
 
-        let group = StagedMlsJoinFromWelcome::new_from_welcome(
+        let group = StagedWelcome::new_from_welcome(
             &crypto_provider,
             &mls_group_config,
             welcome,

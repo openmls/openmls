@@ -16,7 +16,7 @@ use crate::{
     messages::proposals::Proposal,
 };
 
-use super::{super::mls_group::StagedMlsJoinFromWelcome, PublicGroup};
+use super::{super::mls_group::StagedWelcome, PublicGroup};
 
 #[apply(ciphersuites_and_providers)]
 fn public_group(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
@@ -93,7 +93,7 @@ fn public_group(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     // In the future, we'll use helper functions to skip the extraction steps above.
 
-    let mut bob_group = StagedMlsJoinFromWelcome::new_from_welcome(
+    let mut bob_group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
         welcome.into(),
@@ -139,7 +139,7 @@ fn public_group(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .merge_pending_commit(provider)
         .expect("error merging pending commit");
 
-    let mut charlie_group = StagedMlsJoinFromWelcome::new_from_welcome(
+    let mut charlie_group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
         welcome.into(),

@@ -115,7 +115,7 @@
 //!    .expect("An unexpected error occurred.");
 //!
 //! // Now Maxim can build a staged join for the group in order to inspect the welcome
-//! let maxim_staged_join = StagedMlsJoinFromWelcome::new_from_welcome(
+//! let maxim_staged_join = StagedWelcome::new_from_welcome(
 //!     provider,
 //!     &MlsGroupJoinConfig::default(),
 //!     welcome,

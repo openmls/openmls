@@ -322,7 +322,7 @@ async fn test_group() {
     assert_eq!(welcome_msg, welcome_message.into());
     assert!(messages.is_empty());
 
-    let mut group_on_client2 = StagedMlsJoinFromWelcome::new_from_welcome(
+    let mut group_on_client2 = StagedWelcome::new_from_welcome(
         crypto,
         mls_group_create_config.join_config(),
         welcome_msg.into(),
