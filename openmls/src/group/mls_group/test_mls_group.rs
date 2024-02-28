@@ -297,7 +297,7 @@ fn staged_join(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     let bob_group = staged_bob_group
         .into_group(provider)
-        .expect("error turning StagedMlsGroup into MlsGroup");
+        .expect("error turning StagedWelcom into MlsGroup");
 
     assert_eq!(
         alice_group
