@@ -3,7 +3,7 @@
 To join a group from a `Welcome` message, a new `MlsGroup` can be instantiated from
 the `MlsMessageIn` message containing the `Welcome` and an `MlsGroupJoinConfig`
 (see [Group configuration](./group_config.md) for more details).  This is a
-two-step process: a `StagingMlsJoinFromWelcome` is constructed from the `Welcome`
+two-step process: a `StagedWelcome` is constructed from the `Welcome`
 and can then be turned into an `MlsGroup`.  If the group configuration does not
 use the ratchet tree extension, the ratchet tree needs to be provided.
 

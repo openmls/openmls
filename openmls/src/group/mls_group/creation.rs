@@ -124,7 +124,7 @@ impl MlsGroup {
 }
 
 impl StagedWelcome {
-    /// Creates a new staged group from a [`Welcome`] message. Returns an error
+    /// Creates a new staged welcome from a [`Welcome`] message. Returns an error
     /// ([`WelcomeError::NoMatchingKeyPackage`]) if no [`KeyPackage`]
     /// can be found.
     /// Note: calling this function will consume the key material for decrypting the [`Welcome`]
