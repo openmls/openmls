@@ -128,7 +128,7 @@ impl StagedWelcome {
     /// ([`WelcomeError::NoMatchingKeyPackage`]) if no [`KeyPackage`]
     /// can be found.
     /// Note: calling this function will consume the key material for decrypting the [`Welcome`]
-    /// message, even if the caller does not turn the [`MlsStagedWelcome`] into an [`MlsGroup`].
+    /// message, even if the caller does not turn the [`StagedWelcome`] into an [`MlsGroup`].
     ///
     /// [`Welcome`]: crate::messages::Welcome
     pub fn new_from_welcome<KeyStore: OpenMlsKeyStore>(
