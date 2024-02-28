@@ -10,6 +10,8 @@ use openmls_traits::{
     crypto::OpenMlsCrypto,
     types::{Ciphersuite, HpkeCiphertext},
 };
+#[cfg(not(target_arch = "wasm32"))]
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
@@ -71,7 +73,7 @@ impl<'a> TreeSyncDiff<'a> {
         // Encrypt the secrets
 
         #[cfg(not(target_arch = "wasm32"))]
-        let resolved_path = path.iter().zip(copath_resolutions.iter());
+        let resolved_path = path.par_iter().zip(copath_resolutions.par_iter());
         #[cfg(target_arch = "wasm32")]
         let resolved_path = path.iter().zip(copath_resolutions.iter());
 

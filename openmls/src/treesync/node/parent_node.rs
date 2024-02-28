@@ -3,6 +3,8 @@
 //! [`UpdatePathNode`] instances.
 use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::{Ciphersuite, HpkeCiphertext};
+#[cfg(not(target_arch = "wasm32"))]
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use thiserror::*;
 use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes};
@@ -68,7 +70,7 @@ impl PlainUpdatePathNode {
         #[cfg(target_arch = "wasm32")]
         let public_keys = public_keys.iter();
         #[cfg(not(target_arch = "wasm32"))]
-        let public_keys = public_keys.iter();
+        let public_keys = public_keys.par_iter();
 
         public_keys
             .map(|pk| {
@@ -136,7 +138,7 @@ impl ParentNode {
         // Iterate over the path secrets and derive a key pair
 
         #[cfg(not(target_arch = "wasm32"))]
-        let path_secrets = path_secrets.into_iter();
+        let path_secrets = path_secrets.into_par_iter();
         #[cfg(target_arch = "wasm32")]
         let path_secrets = path_secrets.into_iter();
 
