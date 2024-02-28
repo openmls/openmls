@@ -11,8 +11,6 @@ use openmls_traits::types::{
 use rand::CryptoRng;
 use tls_codec::SecretVLBytes;
 
-const MAX_DATA_LEN: usize = 0x10000000;
-
 /// The libcrux-backed cryptography provider for OpenMLS
 pub struct CryptoProvider {
     drbg: Mutex<Drbg>,
@@ -118,10 +116,6 @@ impl OpenMlsCrypto for CryptoProvider {
         nonce: &[u8],
         aad: &[u8],
     ) -> Result<Vec<u8>, CryptoError> {
-        if data.len() > MAX_DATA_LEN {
-            return Err(CryptoError::TooMuchData);
-        }
-
         // only fails on wrong length
         let iv = libcrux::aead::Iv::new(nonce).map_err(|err| match err {
             libcrux::aead::InvalidArgumentError::InvalidIv => CryptoError::InvalidLength,
