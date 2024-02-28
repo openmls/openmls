@@ -111,8 +111,6 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, provider: &impl Open
         .into_group(&charlie_provider)
         .expect("Error creating group from staged join");
 
-        charlie_group.group().print_ratchet_tree("charlie's tree");
-
         // === Remove operation ===
 
         let alice_index = alice_group.own_leaf_index();
@@ -252,20 +250,6 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, provider: &impl Open
         }
 
         // === Remove operation from Charlie's perspective ===
-
-        charlie_group
-            .group()
-            .print_ratchet_tree("charlie's tree right before removing bob");
-
-        println!(
-            "alice cred: {:?}",
-            alice_credential_with_key_and_signer
-                .credential_with_key
-                .credential
-        );
-
-        println!("alice own leaf: {:?}", alice_group.own_leaf_node());
-        println!("{test_case:?}");
 
         let protocol_message = message.into_protocol_message().unwrap();
 
