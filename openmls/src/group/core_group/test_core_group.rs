@@ -148,13 +148,14 @@ fn test_failed_groupinfo_decryption(ciphersuite: Ciphersuite, provider: &impl Op
     // Now build the welcome message.
     let broken_welcome = Welcome::new(ciphersuite, broken_secrets, encrypted_group_info);
 
-    let error = CoreGroup::new_from_welcome(
+    let error = StagedCoreWelcome::new_from_welcome(
         broken_welcome,
         None,
         key_package_bundle,
         provider,
         ResumptionPskStore::new(1024),
     )
+    .and_then(|staged_join| staged_join.into_core_group(provider))
     .expect_err("Creation of core group from a broken Welcome was successful.");
 
     assert_eq!(
@@ -374,7 +375,7 @@ fn test_psks(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .expect("error merging pending commit");
     let ratchet_tree = alice_group.public_group().export_ratchet_tree();
 
-    let group_bob = CoreGroup::new_from_welcome(
+    let group_bob = StagedCoreWelcome::new_from_welcome(
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
@@ -383,6 +384,7 @@ fn test_psks(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         provider,
         ResumptionPskStore::new(1024),
     )
+    .and_then(|staged_join| staged_join.into_core_group(provider))
     .expect("Could not create new group from Welcome");
 
     // === Bob updates and commits ===
@@ -471,7 +473,7 @@ fn test_staged_commit_creation(ciphersuite: Ciphersuite, provider: &impl OpenMls
         .expect("error processing own staged commit");
 
     // === Bob joins the group using Alice's tree ===
-    let group_bob = CoreGroup::new_from_welcome(
+    let group_bob = StagedCoreWelcome::new_from_welcome(
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
@@ -480,6 +482,7 @@ fn test_staged_commit_creation(ciphersuite: Ciphersuite, provider: &impl OpenMls
         provider,
         ResumptionPskStore::new(1024),
     )
+    .and_then(|staged_join| staged_join.into_core_group(provider))
     .expect("An unexpected error occurred.");
 
     // Let's make sure we end up in the same group state.
@@ -620,7 +623,7 @@ fn test_proposal_application_after_self_was_removed(
 
     let ratchet_tree = alice_group.public_group().export_ratchet_tree();
 
-    let mut bob_group = CoreGroup::new_from_welcome(
+    let mut bob_group = StagedCoreWelcome::new_from_welcome(
         add_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
@@ -629,6 +632,7 @@ fn test_proposal_application_after_self_was_removed(
         provider,
         ResumptionPskStore::new(1024),
     )
+    .and_then(|staged_join| staged_join.into_core_group(provider))
     .expect("Error joining group.");
 
     // Alice adds Charlie and removes Bob in the same commit.
@@ -704,7 +708,7 @@ fn test_proposal_application_after_self_was_removed(
 
     let ratchet_tree = alice_group.public_group().export_ratchet_tree();
 
-    let charlie_group = CoreGroup::new_from_welcome(
+    let charlie_group = StagedCoreWelcome::new_from_welcome(
         remove_add_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
@@ -713,6 +717,7 @@ fn test_proposal_application_after_self_was_removed(
         provider,
         ResumptionPskStore::new(1024),
     )
+    .and_then(|staged_join| staged_join.into_core_group(provider))
     .expect("Error joining group.");
 
     // We can now check that Bob correctly processed his and applied the changes

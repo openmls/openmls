@@ -46,7 +46,7 @@ use self::{proposals::*, proposals_in::ProposalOrRefIn};
 ///
 /// This message is generated when a new member is added to a group.
 /// The invited member can use this message to join the group using
-/// [`MlsGroup::new_from_welcome()`](crate::group::mls_group::MlsGroup::new_from_welcome()).
+/// [`StagedWelcome::new_from_welcome()`](crate::group::mls_group::StagedWelcome::new_from_welcome()).
 ///
 /// ```c
 /// // draft-ietf-mls-protocol-17

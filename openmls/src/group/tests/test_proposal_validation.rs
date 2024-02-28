@@ -159,12 +159,14 @@ fn validation_test_setup(
         .wire_format_policy(wire_format_policy)
         .build();
 
-    let bob_group = MlsGroup::new_from_welcome(
+    let bob_group = StagedWelcome::new_from_welcome(
         provider,
         &mls_group_config,
-        welcome.into_welcome().unwrap(),
+        welcome.into(),
         Some(alice_group.export_ratchet_tree().into()),
     )
+    .unwrap()
+    .into_group(provider)
     .unwrap();
 
     ProposalValidationTestSetup {

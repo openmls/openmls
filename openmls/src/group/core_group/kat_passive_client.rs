@@ -291,12 +291,14 @@ impl PassiveClient {
         mls_message_welcome: MlsMessageIn,
         ratchet_tree: Option<RatchetTreeIn>,
     ) {
-        let group = MlsGroup::new_from_welcome(
+        let group = StagedWelcome::new_from_welcome(
             &self.provider,
             &self.group_config,
-            mls_message_welcome.into_welcome().unwrap(),
+            mls_message_welcome,
             ratchet_tree,
         )
+        .unwrap()
+        .into_group(&self.provider)
         .unwrap();
 
         self.group = Some(group);

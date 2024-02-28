@@ -57,6 +57,9 @@ pub enum WelcomeError<KeyStoreError> {
     /// Sender not found in tree.
     #[error("Sender not found in tree.")]
     UnknownSender,
+    /// The provided message is not a Welcome message.
+    #[error("Not a Welcome message.")]
+    NotAWelcomeMessage,
     /// Malformed Welcome message.
     #[error("Malformed Welcome message.")]
     MalformedWelcomeMessage,
