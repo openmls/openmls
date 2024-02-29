@@ -225,7 +225,11 @@ pub enum SignatureScheme {
 <p>The HPKE implementation is part of the crypto provider as well.
 The crate, therefore, defines the necessary types too.</p>
 <p>The HPKE algorithms are defined as follows.</p>
-<pre><code class="language-rust no_run noplayground">
+<pre><code class="language-rust no_run noplayground">    }
+}
+
+impl std::error::Error for CryptoError {}
+
 // === HPKE === //
 
 /// Convenience tuple struct for an HPKE configuration.
@@ -236,22 +240,22 @@ pub struct HpkeConfig(pub HpkeKemType, pub HpkeKdfType, pub HpkeAeadType);
 #[derive(PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
 #[repr(u16)]
 pub enum HpkeKemType {
-    /// DH KEM on P256
-    DhKemP256 = 0x0010,
+    /// DH KEM on P256</code></pre>
+<pre><code class="language-rust no_run noplayground">
+    /// DH KEM on P521
+    DhKemP521 = 0x0012,
 
-    /// DH KEM on P384
-    DhKemP384 = 0x0011,</code></pre>
-<pre><code class="language-rust no_run noplayground">    /// DH KEM on x25519
+    /// DH KEM on x25519
     DhKem25519 = 0x0020,
 
     /// DH KEM on x448
     DhKem448 = 0x0021,
-}
+}</code></pre>
+<pre><code class="language-rust no_run noplayground">pub enum HpkeKdfType {
+    /// HKDF SHA 256
+    HkdfSha256 = 0x0001,
 
-/// KDF Types for HPKE
-#[derive(PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
-#[repr(u16)]</code></pre>
-<pre><code class="language-rust no_run noplayground">    /// HKDF SHA 384
+    /// HKDF SHA 384
     HkdfSha384 = 0x0002,
 
     /// HKDF SHA 512
@@ -259,20 +263,16 @@ pub enum HpkeKemType {
 }
 
 /// AEAD Types for HPKE.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[repr(u16)]
-pub enum HpkeAeadType {
-    /// AES GCM 128
-    AesGcm128 = 0x0001,</code></pre>
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]</code></pre>
 <p>In addition, helper structs for <code>HpkeCiphertext</code> and <code>HpkeKeyPair</code> are defined.</p>
-<pre><code class="language-rust no_run noplayground">///
-/// ```text
-/// struct {
-///     opaque kem_output&lt;V&gt;;</code></pre>
-<pre><code class="language-rust no_run noplayground">#[derive(
-    Debug,
-    PartialEq,
-    Eq,</code></pre>
+<pre><code class="language-rust no_run noplayground">    Export = 0xFFFF,
+}
+
+/// 7.7. Update Paths</code></pre>
+<pre><code class="language-rust no_run noplayground">///     opaque kem_output&lt;V&gt;;
+///     opaque ciphertext&lt;V&gt;;
+/// } HPKECiphertext;
+/// ```</code></pre>
 
                     </main>
 

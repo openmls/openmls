@@ -509,6 +509,7 @@
 <a href="#508" id="508">508</a>
 <a href="#509" id="509">509</a>
 <a href="#510" id="510">510</a>
+<a href="#511" id="511">511</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Messages
 //!
 //! This module contains the types and implementations for Commit &amp; Welcome messages,
@@ -835,8 +836,9 @@
             </span>.path_secret
             .kdf_expand_label(crypto, <span class="string">"node"</span>, <span class="kw-2">&amp;</span>[], ciphersuite.hash_length())
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
-        <span class="kw">let </span>HpkeKeyPair { public, private } =
-            crypto.derive_hpke_keypair(ciphersuite.hpke_config(), node_secret.as_slice());
+        <span class="kw">let </span>HpkeKeyPair { public, private } = crypto
+            .derive_hpke_keypair(ciphersuite.hpke_config(), node_secret.as_slice())
+            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>((HpkePublicKey::from(public), private).into())
     }

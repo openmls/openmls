@@ -569,6 +569,7 @@
 <a href="#568" id="568">568</a>
 <a href="#569" id="569">569</a>
 <a href="#570" id="570">570</a>
+<a href="#571" id="571">571</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>core::fmt::Debug;
 <span class="kw">use </span>std::mem;
 
@@ -599,7 +600,8 @@
             </span><span class="kw">let </span>external_priv = epoch_secrets
                 .external_secret()
                 .derive_external_keypair(provider.crypto(), <span class="self">self</span>.ciphersuite())
-                .private;
+                .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?
+                </span>.private;
             <span class="kw">let </span>init_secret = InitSecret::from_kem_output(
                 provider.crypto(),
                 <span class="self">self</span>.ciphersuite(),

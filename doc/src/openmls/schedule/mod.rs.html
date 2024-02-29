@@ -1964,7 +1964,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         ciphersuite: Ciphersuite,
-    ) -&gt; HpkeKeyPair {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;HpkeKeyPair, CryptoError&gt; {
         crypto.derive_hpke_keypair(ciphersuite.hpke_config(), <span class="self">self</span>.secret.as_slice())
     }
 

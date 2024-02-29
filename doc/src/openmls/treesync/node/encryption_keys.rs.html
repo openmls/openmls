@@ -291,6 +291,7 @@
 <a href="#290" id="290">290</a>
 <a href="#291" id="291">291</a>
 <a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::fmt::Debug;
 
 <span class="kw">use </span>openmls_traits::{
@@ -509,7 +510,8 @@
         <span class="prelude-val">Ok</span>(provider
             .crypto()
             .derive_hpke_keypair(config.ciphersuite.hpke_config(), ikm.as_slice())
-            .into())
+            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?
+            </span>.into())
     }
 }
 

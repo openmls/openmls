@@ -84,6 +84,7 @@
 <a href="#83" id="83">83</a>
 <a href="#84" id="84">84</a>
 <a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
 <span class="kw">use super</span>::{Deserialize, Serialize};
@@ -140,21 +141,22 @@
             <span class="kw">let </span><span class="kw-2">mut </span>external_pub_extensions = Vec::new();
 
             <span class="kw">for _ in </span><span class="number">0</span>..<span class="number">8 </span>{
-                <span class="kw">let </span>hpke_public_key = {
-                    <span class="kw">let </span>ikm = Secret::random(
-                        Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-                        provider.rand(),
-                        ProtocolVersion::default(),
-                    )
-                    .unwrap();
-                    <span class="kw">let </span>init_key = provider.crypto().derive_hpke_keypair(
-                        Ciphersuite::hpke_config(
-                            <span class="kw-2">&amp;</span>Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-                        ),
-                        ikm.as_slice(),
-                    );
-                    init_key.public
-                };
+                <span class="kw">let </span>hpke_public_key =
+                    {
+                        <span class="kw">let </span>ikm = Secret::random(
+                            Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+                            provider.rand(),
+                            ProtocolVersion::default(),
+                        )
+                        .unwrap();
+                        <span class="kw">let </span>init_key = provider.crypto().derive_hpke_keypair(
+                            Ciphersuite::hpke_config(
+                                <span class="kw-2">&amp;</span>Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+                            ),
+                            ikm.as_slice(),
+                        ).expect(<span class="string">"error deriving hpke key pair"</span>);
+                        init_key.public
+                    };
 
                 external_pub_extensions.push(ExternalPubExtension::new(hpke_public_key.into()));
             }

@@ -755,6 +755,12 @@
 <a href="#754" id="754">754</a>
 <a href="#755" id="755">755</a>
 <a href="#756" id="756">756</a>
+<a href="#757" id="757">757</a>
+<a href="#758" id="758">758</a>
+<a href="#759" id="759">759</a>
+<a href="#760" id="760">760</a>
+<a href="#761" id="761">761</a>
+<a href="#762" id="762">762</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Key Packages
 //!
 //! Key packages are pre-published public keys that provide some information
@@ -1041,7 +1047,10 @@
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
         <span class="kw">let </span>init_key = provider
             .crypto()
-            .derive_hpke_keypair(config.ciphersuite.hpke_config(), ikm.as_slice());
+            .derive_hpke_keypair(config.ciphersuite.hpke_config(), ikm.as_slice())
+            .map_err(|e| {
+                KeyPackageNewError::LibraryError(LibraryError::unexpected_crypto_error(e))
+            })<span class="question-mark">?</span>;
         <span class="kw">let </span>(key_package, encryption_keypair) = <span class="self">Self</span>::new_from_keys(
             config,
             provider,
@@ -1249,7 +1258,10 @@
         </span><span class="kw">let </span>ikm = Secret::random(config.ciphersuite, provider.rand(), config.version).unwrap();
         <span class="kw">let </span>init_key = provider
             .crypto()
-            .derive_hpke_keypair(config.ciphersuite.hpke_config(), ikm.as_slice());
+            .derive_hpke_keypair(config.ciphersuite.hpke_config(), ikm.as_slice())
+            .map_err(|e| {
+                KeyPackageNewError::LibraryError(LibraryError::unexpected_crypto_error(e))
+            })<span class="question-mark">?</span>;
 
         <span class="comment">// Store the private part of the init_key into the key store.
         // The key is the public key.

@@ -1135,6 +1135,10 @@
 <a href="#1134" id="1134">1134</a>
 <a href="#1135" id="1135">1135</a>
 <a href="#1136" id="1136">1136</a>
+<a href="#1137" id="1137">1137</a>
+<a href="#1138" id="1138">1138</a>
+<a href="#1139" id="1139">1139</a>
+<a href="#1140" id="1140">1140</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! ### Don't Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -1675,19 +1679,22 @@
                     </span>.group_epoch_secrets()
                     .external_secret()
                     .derive_external_keypair(crypto, <span class="self">self</span>.ciphersuite())
-                    .public;
-                Extension::ExternalPub(ExternalPubExtension::new(HpkePublicKey::from(external_pub)))
+                    .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?
+                    </span>.public;
+                <span class="prelude-val">Ok</span>(Extension::ExternalPub(ExternalPubExtension::new(
+                    HpkePublicKey::from(external_pub),
+                )))
             };
 
             <span class="kw">if </span>with_ratchet_tree {
-                Extensions::from_vec(<span class="macro">vec!</span>[ratchet_tree_extension(), external_pub_extension()])
+                Extensions::from_vec(<span class="macro">vec!</span>[ratchet_tree_extension(), external_pub_extension()<span class="question-mark">?</span>])
                     .map_err(|<span class="kw">_</span>| {
                         LibraryError::custom(
                             <span class="string">"There should not have been duplicate extensions here."</span>,
                         )
                     })<span class="question-mark">?
             </span>} <span class="kw">else </span>{
-                Extensions::single(external_pub_extension())
+                Extensions::single(external_pub_extension()<span class="question-mark">?</span>)
             }
         };
 
@@ -2076,7 +2083,8 @@
             </span><span class="kw">let </span>external_pub = provisional_epoch_secrets
                 .external_secret()
                 .derive_external_keypair(provider.crypto(), ciphersuite)
-                .public;
+                .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?
+                </span>.public;
             <span class="kw">let </span>external_pub_extension =
                 Extension::ExternalPub(ExternalPubExtension::new(external_pub.into()));
             <span class="kw">let </span>other_extensions: Extensions = <span class="kw">if </span><span class="self">self</span>.use_ratchet_tree_extension {
