@@ -131,16 +131,12 @@ impl StagedWelcome {
     /// message, even if the caller does not turn the [`StagedWelcome`] into an [`MlsGroup`].
     ///
     /// [`Welcome`]: crate::messages::Welcome
-    pub fn new_from_welcome<KeyStore: OpenMlsKeyStore>(
+    pub fn new_from_welcome_body<KeyStore: OpenMlsKeyStore>(
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         mls_group_config: &MlsGroupJoinConfig,
-        welcome: MlsMessageIn,
+        welcome: crate::messages::Welcome,
         ratchet_tree: Option<RatchetTreeIn>,
     ) -> Result<Self, WelcomeError<KeyStore::Error>> {
-        let welcome = match welcome.body {
-            MlsMessageBodyIn::Welcome(welcome) => welcome,
-            _ => return Err(WelcomeError::NotAWelcomeMessage),
-        };
 
         let resumption_psk_store =
             ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
@@ -192,6 +188,26 @@ impl StagedWelcome {
         };
 
         Ok(staged_welcome)
+    }
+
+    /// Creates a new staged welcome from a [`MlsMessageIn`] message. Returns an error
+    /// ([`WelcomeError::NoMatchingKeyPackage`]) if no [`KeyPackage`]
+    /// can be found. Returns an error [`WelcomeError::NotAWelcomeMessage`] if the [`MlsMessageIn`] is not a welcome message.
+    /// Note: calling this function will consume the key material for decrypting the [`Welcome`]
+    /// message, even if the caller does not turn the [`StagedWelcome`] into an [`MlsGroup`].
+    ///
+    /// [`Welcome`]: crate::messages::Welcome
+    pub fn new_from_welcome<KeyStore: OpenMlsKeyStore>(
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        mls_group_config: &MlsGroupJoinConfig,
+        welcome: MlsMessageIn,
+        ratchet_tree: Option<RatchetTreeIn>,
+    ) -> Result<Self, WelcomeError<KeyStore::Error>> {
+        let welcome = match welcome.body {
+            MlsMessageBodyIn::Welcome(welcome) => welcome,
+            _ => return Err(WelcomeError::NotAWelcomeMessage),
+        };
+        Self::new_from_welcome_body(provider, mls_group_config, welcome, ratchet_tree)
     }
 
     /// Returns the [`LeafNodeIndex`] of the group member that authored the [`Welcome`] message.
