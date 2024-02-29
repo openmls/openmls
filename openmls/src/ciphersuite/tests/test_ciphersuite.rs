@@ -8,12 +8,15 @@ use crate::{ciphersuite::*, test_utils::*};
 #[apply(ciphersuites_and_providers)]
 fn test_hpke_seal_open(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let plaintext = &[1, 2, 3];
-    let kp = provider.crypto().derive_hpke_keypair(
-        ciphersuite.hpke_config(),
-        Secret::random(ciphersuite, provider.rand(), None)
-            .expect("Not enough randomness.")
-            .as_slice(),
-    );
+    let kp = provider
+        .crypto()
+        .derive_hpke_keypair(
+            ciphersuite.hpke_config(),
+            Secret::random(ciphersuite, provider.rand(), None)
+                .expect("Not enough randomness.")
+                .as_slice(),
+        )
+        .expect("error deriving hpke key pair");
     let ciphertext = hpke::encrypt_with_label(
         &kp.public,
         "label",

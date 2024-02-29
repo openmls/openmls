@@ -105,7 +105,7 @@ pub trait OpenMlsCrypto: Send + Sync {
         info: &[u8],
         aad: &[u8],
         ptxt: &[u8],
-    ) -> HpkeCiphertext;
+    ) -> Result<HpkeCiphertext, CryptoError>;
 
     /// HPKE single-shot decryption of `input` with `sk_r`, using `info` and
     /// `aad`.
@@ -144,5 +144,9 @@ pub trait OpenMlsCrypto: Send + Sync {
     ) -> Result<ExporterSecret, CryptoError>;
 
     /// Derive a new HPKE keypair from a given input key material.
-    fn derive_hpke_keypair(&self, config: HpkeConfig, ikm: &[u8]) -> HpkeKeyPair;
+    fn derive_hpke_keypair(
+        &self,
+        config: HpkeConfig,
+        ikm: &[u8],
+    ) -> Result<HpkeKeyPair, CryptoError>;
 }

@@ -284,7 +284,10 @@ impl KeyPackage {
             .map_err(LibraryError::unexpected_crypto_error)?;
         let init_key = provider
             .crypto()
-            .derive_hpke_keypair(config.ciphersuite.hpke_config(), ikm.as_slice());
+            .derive_hpke_keypair(config.ciphersuite.hpke_config(), ikm.as_slice())
+            .map_err(|e| {
+                KeyPackageNewError::LibraryError(LibraryError::unexpected_crypto_error(e))
+            })?;
         let (key_package, encryption_keypair) = Self::new_from_keys(
             config,
             provider,
@@ -492,7 +495,10 @@ impl KeyPackage {
         let ikm = Secret::random(config.ciphersuite, provider.rand(), config.version).unwrap();
         let init_key = provider
             .crypto()
-            .derive_hpke_keypair(config.ciphersuite.hpke_config(), ikm.as_slice());
+            .derive_hpke_keypair(config.ciphersuite.hpke_config(), ikm.as_slice())
+            .map_err(|e| {
+                KeyPackageNewError::LibraryError(LibraryError::unexpected_crypto_error(e))
+            })?;
 
         // Store the private part of the init_key into the key store.
         // The key is the public key.

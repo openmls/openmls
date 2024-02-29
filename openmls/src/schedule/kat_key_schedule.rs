@@ -137,7 +137,8 @@ fn generate(
     // Calculate external HPKE key pair
     let external_key_pair = epoch_secrets
         .external_secret()
-        .derive_external_keypair(crypto.crypto(), ciphersuite);
+        .derive_external_keypair(crypto.crypto(), ciphersuite)
+        .expect("An unexpected crypto error occurred.");
 
     (
         confirmed_transcript_hash,
@@ -443,7 +444,8 @@ pub fn run_test_vector(
         // Calculate external HPKE key pair
         let external_key_pair = epoch_secrets
             .external_secret()
-            .derive_external_keypair(provider.crypto(), ciphersuite);
+            .derive_external_keypair(provider.crypto(), ciphersuite)
+            .expect("an unexpected crypto error occurred");
         if hex_to_bytes(&epoch.external_pub) != external_key_pair.public {
             log::error!("  External public key mismatch");
             log::debug!(

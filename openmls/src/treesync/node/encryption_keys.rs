@@ -216,6 +216,7 @@ impl EncryptionKeyPair {
         Ok(provider
             .crypto()
             .derive_hpke_keypair(config.ciphersuite.hpke_config(), ikm.as_slice())
+            .map_err(LibraryError::unexpected_crypto_error)?
             .into())
     }
 }
