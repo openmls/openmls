@@ -11,7 +11,7 @@ use crate::{
     framing::{mls_auth_content::AuthenticatedContent, *},
     group::*,
     key_packages::{KeyPackage, KeyPackageBundle},
-    messages::{proposals::*, Welcome},
+    messages::proposals::*,
     schedule::ResumptionPskSecret,
     treesync::{node::leaf_node::LeafNode, RatchetTree},
 };
@@ -432,4 +432,15 @@ pub enum InnerState {
     Changed,
     /// The inner group state hasn't changed and doesn't need to be persisted.
     Persisted,
+}
+
+/// A [`StagedWelcome`] can be inspected and then turned into a [`MlsGroup`].
+/// This allows checking who authored the Welcome message.
+#[derive(Debug)]
+pub struct StagedWelcome {
+    // The group configuration. See [`MlsGroupJoinConfig`] for more information.
+    mls_group_config: MlsGroupJoinConfig,
+    // The internal `CoreGroup` used for lower level operations. See `CoreGroup` for more
+    // information.
+    group: StagedCoreWelcome,
 }

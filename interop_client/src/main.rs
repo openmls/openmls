@@ -17,8 +17,8 @@ use openmls::{
     credentials::{BasicCredential, Credential, CredentialType, CredentialWithKey},
     framing::{MlsMessageBodyIn, MlsMessageIn, MlsMessageOut, ProcessedMessageContent},
     group::{
-        GroupEpoch, GroupId, MlsGroup, MlsGroupCreateConfig, MlsGroupJoinConfig, WireFormatPolicy,
-        PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        GroupEpoch, GroupId, MlsGroup, MlsGroupCreateConfig, MlsGroupJoinConfig, StagedWelcome,
+        WireFormatPolicy, PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     key_packages::KeyPackage,
     prelude::{config::CryptoConfig, Capabilities, ExtensionType, SenderRatchetConfiguration},
@@ -426,18 +426,20 @@ impl MlsClient for MlsClientImpl {
             .store::<HpkePrivateKey>(my_key_package.hpke_init_key().as_slice(), &private_key)
             .map_err(into_status)?;
 
-        let welcome_msg = MlsMessageIn::tls_deserialize(&mut request.welcome.as_slice())
+        let welcome = MlsMessageIn::tls_deserialize(&mut request.welcome.as_slice())
             .map_err(|_| Status::aborted("failed to deserialize MlsMessage with a Welcome"))?;
-
-        let welcome = welcome_msg.into_welcome().ok_or(Status::invalid_argument(
-            "unable to get Welcome from MlsMessage",
-        ))?;
 
         let ratchet_tree = ratchet_tree_from_config(request.ratchet_tree.clone());
 
-        let group =
-            MlsGroup::new_from_welcome(&crypto_provider, &mls_group_config, welcome, ratchet_tree)
-                .map_err(into_status)?;
+        let group = StagedWelcome::new_from_welcome(
+            &crypto_provider,
+            &mls_group_config,
+            welcome,
+            ratchet_tree,
+        )
+        .map_err(into_status)?
+        .into_group(&crypto_provider)
+        .map_err(into_status)?;
 
         let interop_group = InteropGroup {
             wire_format_policy,

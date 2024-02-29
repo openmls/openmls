@@ -291,13 +291,14 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
 
     let alice_welcome = create_commit_result.welcome_option.unwrap();
 
-    let mut receiver_group = CoreGroup::new_from_welcome(
+    let mut receiver_group = StagedCoreWelcome::new_from_welcome(
         alice_welcome.clone(),
         Some(alice_group.public_group().export_ratchet_tree().into()),
         bob_key_package_bundle,
         &provider,
         ResumptionPskStore::new(1024),
     )
+    .and_then(|staged_join| staged_join.into_core_group(&provider))
     .expect("Error creating receiver group.");
 
     // Clone the secret tree to bypass FS restrictions
