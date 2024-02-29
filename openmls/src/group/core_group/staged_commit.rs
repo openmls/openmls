@@ -28,6 +28,7 @@ impl CoreGroup {
             let external_priv = epoch_secrets
                 .external_secret()
                 .derive_external_keypair(provider.crypto(), self.ciphersuite())
+                .map_err(LibraryError::unexpected_crypto_error)?
                 .private;
             let init_secret = InitSecret::from_kem_output(
                 provider.crypto(),

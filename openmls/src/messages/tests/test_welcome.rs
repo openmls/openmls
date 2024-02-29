@@ -245,12 +245,15 @@ fn test_welcome_message(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
     let welcome_nonce = AeadNonce::random(provider.rand());
 
     // Generate receiver key pair.
-    let receiver_key_pair = provider.crypto().derive_hpke_keypair(
-        ciphersuite.hpke_config(),
-        Secret::random(ciphersuite, provider.rand(), None)
-            .expect("Not enough randomness.")
-            .as_slice(),
-    );
+    let receiver_key_pair = provider
+        .crypto()
+        .derive_hpke_keypair(
+            ciphersuite.hpke_config(),
+            Secret::random(ciphersuite, provider.rand(), None)
+                .expect("Not enough randomness.")
+                .as_slice(),
+        )
+        .expect("Error deriving receiver key pair");
     let hpke_context = b"group info welcome test info";
     let group_secrets = b"these should be the group secrets";
     let new_member = KeyPackageRef::from_slice(&[0u8; 16]);
