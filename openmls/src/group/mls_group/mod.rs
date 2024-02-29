@@ -407,8 +407,7 @@ impl MlsGroup {
     }
 
     /// Clear the pending proposals.
-    #[cfg(test)]
-    pub(crate) fn clear_pending_proposals(&mut self) {
+    pub fn clear_pending_proposals(&mut self) {
         self.proposal_store.empty()
     }
 
