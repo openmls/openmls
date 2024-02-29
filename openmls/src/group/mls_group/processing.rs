@@ -72,6 +72,15 @@ impl MlsGroup {
         self.flag_state_change();
     }
 
+    /// Clears or empties the internal [ProposalStore]
+    pub fn clear_pending_proposals(&mut self) {
+        // Empty the internal ProposalStore
+        self.proposal_store.empty();
+
+        // Since the state of the group might be changed, arm the state flag
+        self.flag_state_change();
+    }
+
     /// Creates a Commit message that covers the pending proposals that are
     /// currently stored in the group's [ProposalStore]. The Commit message is
     /// created even if there are no valid pending proposals.
