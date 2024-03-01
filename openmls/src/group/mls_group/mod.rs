@@ -407,6 +407,11 @@ impl MlsGroup {
     }
 
     /// Clear the pending proposals.
+    ///
+    /// Warning: Once the pending proposals are cleared it will be impossible to process
+    /// a Commit message that references proposals those proposals. Only use this
+    /// function as a last resort, e.g. when a call to
+    /// `MlsGroup::commit_to_pending_proposals` fails.
     pub fn clear_pending_proposals(&mut self) {
         self.proposal_store.empty()
     }
