@@ -22,7 +22,7 @@
 //!     signature_algorithm: SignatureScheme,
 //!     provider: &impl OpenMlsProvider,
 //! ) -> (CredentialWithKey, SignatureKeyPair) {
-//!     let credential = Credential::new(identity, credential_type).unwrap();
+//!     let credential = BasicCredential::new_credential(identity);
 //!     let signature_keys =
 //!         SignatureKeyPair::new(signature_algorithm)
 //!             .expect("Error generating a signature key pair.");
@@ -111,26 +111,24 @@
 //!    .expect("Error serializing welcome");
 //!
 //! // Maxim can now de-serialize the message as an [`MlsMessageIn`] ...
-//! let mls_message_in = MlsMessageIn::tls_deserialize(&mut serialized_welcome.as_slice())
+//! let welcome = MlsMessageIn::tls_deserialize(&mut serialized_welcome.as_slice())
 //!    .expect("An unexpected error occurred.");
 //!
-//! // ... and inspect the message.
-//! let welcome = match mls_message_in.extract() {
-//!    MlsMessageInBody::Welcome(welcome) => welcome,
-//!    // We know it's a welcome message, so we ignore all other cases.
-//!    _ => unreachable!("Unexpected message type."),
-//! };
-//!
-//! // Now Maxim can join the group.
-//!  let mut maxim_group = MlsGroup::new_from_welcome(
+//! // Now Maxim can build a staged join for the group in order to inspect the welcome
+//! let maxim_staged_join = StagedWelcome::new_from_welcome(
 //!     provider,
 //!     &MlsGroupJoinConfig::default(),
 //!     welcome,
 //!     // The public tree is need and transferred out of band.
 //!     // It is also possible to use the [`RatchetTreeExtension`]
 //!     Some(sasha_group.export_ratchet_tree().into()),
-//!  )
-//!  .expect("Error joining group from Welcome");
+//! )
+//! .expect("Error creating a staged join from Welcome");
+//!
+//! // Finally, Maxim can create the group
+//! let mut maxim_group = maxim_staged_join
+//!     .into_group(provider)
+//!     .expect("Error creating the group from the staged join");
 //! ```
 //!
 //! [//]: # "links and badges"

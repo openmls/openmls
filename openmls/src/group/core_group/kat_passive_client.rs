@@ -5,7 +5,7 @@ use serde::{self, Deserialize, Serialize};
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize};
 
 use crate::{
-    framing::{MlsMessageIn, MlsMessageInBody, MlsMessageOut, ProcessedMessageContent},
+    framing::{MlsMessageBodyIn, MlsMessageIn, MlsMessageOut, ProcessedMessageContent},
     group::{config::CryptoConfig, *},
     key_packages::*,
     schedule::psk::PreSharedKeyId,
@@ -242,7 +242,7 @@ impl PassiveClient {
             let mls_message_key_package = MlsMessageIn::tls_deserialize_exact(key_package).unwrap();
 
             match mls_message_key_package.body {
-                MlsMessageInBody::KeyPackage(key_package) => key_package.into(),
+                MlsMessageBodyIn::KeyPackage(key_package) => key_package.into(),
                 _ => panic!(),
             }
         };
@@ -291,12 +291,14 @@ impl PassiveClient {
         mls_message_welcome: MlsMessageIn,
         ratchet_tree: Option<RatchetTreeIn>,
     ) {
-        let group = MlsGroup::new_from_welcome(
+        let group = StagedWelcome::new_from_welcome(
             &self.provider,
             &self.group_config,
-            mls_message_welcome.into_welcome().unwrap(),
+            mls_message_welcome,
             ratchet_tree,
         )
+        .unwrap()
+        .into_group(&self.provider)
         .unwrap();
 
         self.group = Some(group);
@@ -550,7 +552,10 @@ fn propose_remove(
 ) -> TestProposal {
     let remove = group
         .members()
-        .find(|Member { credential, .. }| credential.identity() == remove_identity)
+        .find(|Member { credential, .. }| {
+            let identity = VLBytes::tls_deserialize_exact(credential.serialized_content()).unwrap();
+            identity.as_slice() == remove_identity
+        })
         .unwrap()
         .index;
 

@@ -6,6 +6,7 @@ use std::collections::{BTreeSet, HashSet};
 use openmls_traits::types::VerifiableCiphersuite;
 
 use super::PublicGroup;
+use crate::extensions::RequiredCapabilitiesExtension;
 use crate::group::GroupContextExtensionsProposalValidationError;
 use crate::prelude::LibraryError;
 use crate::treesync::errors::LeafNodeValidationError;
@@ -25,7 +26,6 @@ use crate::{
         Commit,
     },
     schedule::errors::PskError,
-    treesync::node::leaf_node::LeafNode,
 };
 
 impl PublicGroup {
@@ -457,12 +457,9 @@ impl PublicGroup {
     ///  - ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
     ///  - ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
     ///  - ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
-    ///  - ValSem243: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
-    ///               leaf are identical to the ones in the path KeyPackage.
     pub(super) fn validate_external_commit(
         &self,
         proposal_queue: &ProposalQueue,
-        path_leaf_node: Option<&LeafNode>,
     ) -> Result<(), ExternalCommitValidationError> {
         let count_external_init_proposals = proposal_queue
             .filtered_by_type(ProposalType::ExternalInit)
@@ -488,29 +485,12 @@ impl PublicGroup {
             return Err(ExternalCommitValidationError::InvalidInlineProposals);
         }
 
-        let remove_proposals = proposal_queue.filtered_by_type(ProposalType::Remove);
-        for proposal in remove_proposals {
-            if proposal.proposal_or_ref_type() == ProposalOrRefType::Proposal {
-                if let Proposal::Remove(remove_proposal) = proposal.proposal() {
-                    let removed_leaf = remove_proposal.removed();
+        // If a Remove proposal is present,
+        // the credential in the LeafNode MUST present a set of
+        // identifiers that is acceptable to the application for
+        // the removed participant.
+        // This MUST be checked by the application.
 
-                    if let Some(new_leaf) = path_leaf_node {
-                        // ValSem243: External Commit, inline Remove Proposal:
-                        //            The identity and the endpoint_id of the
-                        //            removed leaf are identical to the ones
-                        //            in the path leaf node.
-                        let removed_leaf = self
-                            .treesync()
-                            .leaf(removed_leaf)
-                            .ok_or(ExternalCommitValidationError::UnknownMemberRemoval)?;
-                        if removed_leaf.credential().identity() != new_leaf.credential().identity()
-                        {
-                            return Err(ExternalCommitValidationError::InvalidRemoveProposal);
-                        }
-                    };
-                }
-            }
-        }
         Ok(())
     }
 
@@ -520,18 +500,49 @@ impl PublicGroup {
         &self,
         proposal_queue: &ProposalQueue,
     ) -> Result<(), GroupContextExtensionsProposalValidationError> {
-        let mut iter = proposal_queue.filtered_by_type(ProposalType::GroupContextExtensions);
+        let iter = proposal_queue.filtered_by_type(ProposalType::GroupContextExtensions);
 
-        match iter.next() {
-            Some(queued_proposal) => match queued_proposal.proposal() {
+        for (i, queued_proposal) in iter.enumerate() {
+            // There must at most be one group context extionsion proposal. Return an error if there are more
+            if i > 0 {
+                return Err(GroupContextExtensionsProposalValidationError::TooManyGCEProposals);
+            }
+
+            match queued_proposal.proposal() {
                 Proposal::GroupContextExtensions(extensions) => {
-                    let ext_type_list: Vec<_> = extensions
+                    let required_capabilities_in_proposal =
+                        extensions.extensions().required_capabilities();
+
+                    // Prepare the empty required capabilities in case there is no
+                    // RequiredCapabilitiesExtension in the proposal
+                    let default_required_capabilities =
+                        RequiredCapabilitiesExtension::new(&[], &[], &[]);
+
+                    // If there is a RequiredCapabilitiesExtension in the proposal, validate it and
+                    // use that. Otherwise, use the empty default one.
+                    let required_capabilities = match required_capabilities_in_proposal {
+                        Some(required_capabilities_new) => {
+                            // If a group context extensions proposal updates the required capabilities, we
+                            // need to check that these are satisfied for all existing members of the group.
+                            self.check_extension_support(required_capabilities_new.extension_types()).map_err(|_| GroupContextExtensionsProposalValidationError::RequiredExtensionNotSupportedByAllMembers)?;
+                            required_capabilities_new
+                        }
+                        None => &default_required_capabilities,
+                    };
+
+                    // Make sure that all other extensions are known to be supported, by checking
+                    // that they are included in the required capabilities.
+                    let all_extensions_are_in_required_capabilities: bool = extensions
                         .extensions()
                         .iter()
                         .map(|ext| ext.extension_type())
-                        .collect();
+                        .all(|ext_type| {
+                            required_capabilities.requires_extension_type_support(ext_type)
+                        });
 
-                    self.check_extension_support(&ext_type_list).map_err(|_| GroupContextExtensionsProposalValidationError::ExtensionNotSupportedByAllMembers)?
+                    if !all_extensions_are_in_required_capabilities {
+                        return Err(GroupContextExtensionsProposalValidationError::ExtensionNotInRequiredCapabilities);
+                    }
                 }
                 _ => {
                     return Err(GroupContextExtensionsProposalValidationError::LibraryError(
@@ -540,14 +551,10 @@ impl PublicGroup {
                         ),
                     ))
                 }
-            },
-            None => return Ok(()),
+            }
         }
 
-        match iter.next() {
-            Some(_) => Err(GroupContextExtensionsProposalValidationError::TooManyGCEProposals),
-            None => Ok(()),
-        }
+        Ok(())
     }
 
     /// Returns a [`LeafNodeValidationError`] if an [`ExtensionType`]

@@ -464,21 +464,6 @@ impl LeafNode {
         self.payload = leaf_node.payload;
         self.signature = leaf_node.signature;
     }
-
-    /// Re-signs a leaf node with a specific tree position.
-    #[cfg(test)]
-    pub(crate) fn resign_with_position(
-        &mut self,
-        leaf_index: LeafNodeIndex,
-        group_id: GroupId,
-        signer: &impl Signer,
-    ) {
-        let tree_info_tbs = TreeInfoTbs::commit(group_id, leaf_index);
-        let leaf_node_tbs = LeafNodeTbs::from(self.clone(), tree_info_tbs);
-        let leaf_node = leaf_node_tbs.sign(signer).unwrap();
-        self.payload = leaf_node.payload;
-        self.signature = leaf_node.signature;
-    }
 }
 
 /// The payload of a [`LeafNode`]
@@ -644,16 +629,6 @@ pub(crate) enum TreeInfoTbs {
     KeyPackage,
     Update(TreePosition),
     Commit(TreePosition),
-}
-
-impl TreeInfoTbs {
-    #[cfg(test)]
-    pub(crate) fn commit(group_id: GroupId, leaf_index: LeafNodeIndex) -> Self {
-        Self::Commit(TreePosition {
-            group_id,
-            leaf_index,
-        })
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, TlsSerialize, TlsSize)]

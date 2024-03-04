@@ -11,8 +11,12 @@ use crate::{
     },
 };
 
-impl CoreGroup {
-    // Join a group from a welcome message
+impl StagedCoreWelcome {
+    /// Create a staged join from a welcome message. The purpose of this type is to be able to
+    /// extract information, such as the identify of who created the welcome, before joining the
+    /// group.
+    /// Note: calling this function will consume the key material for decrypting the [`Welcome`]
+    /// message, even if the caller does not turn the [`StagedCoreWelcome`] into a [`CoreGroup`].
     pub fn new_from_welcome<KeyStore: OpenMlsKeyStore>(
         welcome: Welcome,
         ratchet_tree: Option<RatchetTreeIn>,
@@ -30,14 +34,23 @@ impl CoreGroup {
             key_package_bundle.key_package.leaf_node().encryption_key(),
         )
         .ok_or(WelcomeError::NoMatchingEncryptionKey)?;
-        leaf_keypair
-            .delete_from_key_store(provider.key_store())
-            .map_err(|_| WelcomeError::NoMatchingEncryptionKey)?;
+
+        // Delete the leaf encryption keypair from the
+        // key store, but only if it doesn't have a last resort extension.
+        if !key_package_bundle.key_package().last_resort() {
+            leaf_keypair
+                .delete_from_key_store(provider.key_store())
+                .map_err(|_| WelcomeError::NoMatchingEncryptionKey)?;
+        } else {
+            log::debug!(
+                "Found last resort extension, not deleting leaf encryption keypair from key store"
+            );
+        }
 
         let ciphersuite = welcome.ciphersuite();
 
         // Find key_package in welcome secrets
-        let egs = if let Some(egs) = Self::find_key_package_from_welcome_secrets(
+        let egs = if let Some(egs) = CoreGroup::find_key_package_from_welcome_secrets(
             key_package_bundle
                 .key_package()
                 .hash_ref(provider.crypto())?,
@@ -111,8 +124,6 @@ impl CoreGroup {
                 .supports_required_capabilities(required_capabilities)?;
         }
 
-        let path_secret_option = group_secrets.path_secret;
-
         // Build the ratchet tree
 
         // Set nodes either from the extension or from the `nodes_option`.
@@ -128,14 +139,12 @@ impl CoreGroup {
                 },
             };
 
-        let welcome_sender_index = verifiable_group_info.signer();
-
         // Since there is currently only the external pub extension, there is no
         // group info extension of interest here.
         let (public_group, _group_info_extensions) = PublicGroup::from_external(
             provider.crypto(),
             ratchet_tree,
-            verifiable_group_info,
+            verifiable_group_info.clone(),
             ProposalStore::new(),
         )?;
 
@@ -158,31 +167,6 @@ impl CoreGroup {
             .ok_or(WelcomeError::PublicTreeError(
                 PublicTreeError::MalformedTree,
             ))?;
-
-        // If we got a path secret, derive the path (which also checks if the
-        // public keys match) and store the derived keys in the key store.
-        let group_keypairs = if let Some(path_secret) = path_secret_option {
-            let (path_keypairs, _commit_secret) = public_group
-                .derive_path_secrets(
-                    provider.crypto(),
-                    ciphersuite,
-                    path_secret,
-                    welcome_sender_index,
-                    own_leaf_index,
-                )
-                .map_err(|e| match e {
-                    DerivePathError::LibraryError(e) => e.into(),
-                    DerivePathError::PublicKeyMismatch => {
-                        WelcomeError::PublicTreeError(PublicTreeError::PublicKeyMismatch)
-                    }
-                })?;
-            vec![leaf_keypair]
-                .into_iter()
-                .chain(path_keypairs)
-                .collect()
-        } else {
-            vec![leaf_keypair]
-        };
 
         let (group_epoch_secrets, message_secrets) = {
             let serialized_group_context = public_group
@@ -229,21 +213,103 @@ impl CoreGroup {
         let resumption_psk = group_epoch_secrets.resumption_psk();
         resumption_psk_store.add(public_group.group_context().epoch(), resumption_psk.clone());
 
-        let group = CoreGroup {
+        let welcome_sender_index = verifiable_group_info.signer();
+        let path_keypairs = if let Some(path_secret) = group_secrets.path_secret {
+            let (path_keypairs, _commit_secret) = public_group
+                .derive_path_secrets(
+                    provider.crypto(),
+                    ciphersuite,
+                    path_secret,
+                    welcome_sender_index,
+                    own_leaf_index,
+                )
+                .map_err(|e| match e {
+                    DerivePathError::LibraryError(e) => e.into(),
+                    DerivePathError::PublicKeyMismatch => {
+                        WelcomeError::PublicTreeError(PublicTreeError::PublicKeyMismatch)
+                    }
+                })?;
+            Some(path_keypairs)
+        } else {
+            None
+        };
+
+        let group = StagedCoreWelcome {
             public_group,
             group_epoch_secrets,
             own_leaf_index,
             use_ratchet_tree_extension: enable_ratchet_tree_extension,
             message_secrets_store,
             resumption_psk_store,
+            verifiable_group_info,
+            leaf_keypair,
+            path_keypairs,
         };
+
+        Ok(group)
+    }
+
+    /// Returns the [`LeafNodeIndex`] of the group member that authored the [`Welcome`] message.
+    pub fn welcome_sender_index(&self) -> LeafNodeIndex {
+        self.verifiable_group_info.signer()
+    }
+
+    /// Returns the [`LeafNode`] of the group member that authored the [`Welcome`] message.
+    pub fn welcome_sender(&self) -> Result<&LeafNode, LibraryError> {
+        let sender_index = self.welcome_sender_index();
+        self.public_group
+            .leaf(sender_index)
+            .ok_or(LibraryError::custom(
+                "no leaf with given welcome sender index exists",
+            ))
+    }
+
+    /// Consumes the [`StagedCoreWelcome`] and returns the respective [`CoreGroup`].
+    pub fn into_core_group<KeyStore: OpenMlsKeyStore>(
+        self,
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+    ) -> Result<CoreGroup, WelcomeError<KeyStore::Error>> {
+        let Self {
+            public_group,
+            group_epoch_secrets,
+            own_leaf_index,
+            use_ratchet_tree_extension,
+            message_secrets_store,
+            resumption_psk_store,
+            leaf_keypair,
+            path_keypairs,
+            ..
+        } = self;
+
+        // If we got a path secret, derive the path (which also checks if the
+        // public keys match) and store the derived keys in the key store.
+        let group_keypairs = if let Some(path_keypairs) = path_keypairs {
+            vec![leaf_keypair]
+                .into_iter()
+                .chain(path_keypairs)
+                .collect()
+        } else {
+            vec![leaf_keypair]
+        };
+
+        let group = CoreGroup {
+            public_group,
+            group_epoch_secrets,
+            own_leaf_index,
+            use_ratchet_tree_extension,
+            message_secrets_store,
+            resumption_psk_store,
+        };
+
         group
             .store_epoch_keypairs(provider.key_store(), group_keypairs.as_slice())
             .map_err(WelcomeError::KeyStoreError)?;
 
         Ok(group)
     }
+}
 
+impl CoreGroup {
     // Helper functions
 
     pub(crate) fn find_key_package_from_welcome_secrets(

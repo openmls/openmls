@@ -1,8 +1,10 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use rstest::*;
 use rstest_reuse::{self, *};
+use tls_codec::{Deserialize, Serialize};
 
 use crate::{
+    credentials::BasicCredential,
     framing::*,
     group::{config::CryptoConfig, *},
     messages::external_proposals::*,
@@ -118,14 +120,20 @@ fn external_remove_proposal_should_remove_member(
     // DS is an allowed external sender of the group
     assert!(alice_group
          .group()
-         .group_context_extensions()
+         .context()
+         .extensions()
          .iter()
          .any(|e| matches!(e, Extension::ExternalSenders(senders) if senders.iter().any(|s| s.credential() == &ds_credential_with_key.credential_with_key.credential) )));
 
     // get Bob's index
     let bob_index = alice_group
         .members()
-        .find(|member| member.credential.identity() == b"Bob")
+        .find(|member| {
+            let serialized = member.credential.tls_serialize_detached().unwrap();
+            let credential = BasicCredential::tls_deserialize_exact(serialized).unwrap();
+            let identity = credential.identity();
+            identity == b"Bob"
+        })
         .map(|member| member.index)
         .unwrap();
     // Now Delivery Service wants to (already) remove Bob
@@ -141,7 +149,12 @@ fn external_remove_proposal_should_remove_member(
 
     // Alice validates the message
     let processed_message = alice_group
-        .process_message(provider, bob_external_remove_proposal)
+        .process_message(
+            provider,
+            bob_external_remove_proposal
+                .try_into_protocol_message()
+                .unwrap(),
+        )
         .unwrap();
     // commit the proposal
     let ProcessedMessageContent::ProposalMessage(remove_proposal) =
@@ -167,7 +180,12 @@ fn external_remove_proposal_should_remove_member(
     .unwrap()
     .into();
     let processed_message = alice_group
-        .process_message(provider, invalid_bob_external_remove_proposal)
+        .process_message(
+            provider,
+            invalid_bob_external_remove_proposal
+                .try_into_protocol_message()
+                .unwrap(),
+        )
         .unwrap();
     // commit the proposal
     let ProcessedMessageContent::ProposalMessage(remove_proposal) =
@@ -219,7 +237,11 @@ fn external_remove_proposal_should_fail_when_invalid_external_senders_index(
     // get Bob's index
     let bob_index = alice_group
         .members()
-        .find(|member| member.credential.identity() == b"Bob")
+        .find(|member| {
+            let identity =
+                VLBytes::tls_deserialize_exact(member.credential.serialized_content()).unwrap();
+            identity.as_slice() == b"Bob"
+        })
         .map(|member| member.index)
         .unwrap();
     // Now Delivery Service wants to (already) remove Bob with invalid sender index
@@ -235,7 +257,12 @@ fn external_remove_proposal_should_fail_when_invalid_external_senders_index(
 
     // Alice tries to validate the message and should fail as sender is invalid
     let error = alice_group
-        .process_message(provider, bob_external_remove_proposal)
+        .process_message(
+            provider,
+            bob_external_remove_proposal
+                .try_into_protocol_message()
+                .unwrap(),
+        )
         .unwrap_err();
     assert_eq!(
         error,
@@ -277,7 +304,11 @@ fn external_remove_proposal_should_fail_when_invalid_signature(
     // get Bob's index
     let bob_index = alice_group
         .members()
-        .find(|member| member.credential.identity() == b"Bob")
+        .find(|member| {
+            let identity =
+                VLBytes::tls_deserialize_exact(member.credential.serialized_content()).unwrap();
+            identity.as_slice() == b"Bob"
+        })
         .map(|member| member.index)
         .unwrap();
     // Now Delivery Service wants to (already) remove Bob with invalid sender index
@@ -293,7 +324,12 @@ fn external_remove_proposal_should_fail_when_invalid_signature(
 
     // Alice tries to validate the message and should fail as sender is invalid
     let error = alice_group
-        .process_message(provider, bob_external_remove_proposal)
+        .process_message(
+            provider,
+            bob_external_remove_proposal
+                .try_into_protocol_message()
+                .unwrap(),
+        )
         .unwrap_err();
     assert_eq!(error, ProcessMessageError::InvalidSignature);
 }
@@ -319,7 +355,11 @@ fn external_remove_proposal_should_fail_when_no_external_senders(
     // get Bob's index
     let bob_index = alice_group
         .members()
-        .find(|member| member.credential.identity() == b"Bob")
+        .find(|member| {
+            let identity =
+                VLBytes::tls_deserialize_exact(member.credential.serialized_content()).unwrap();
+            identity.as_slice() == b"Bob"
+        })
         .map(|member| member.index)
         .unwrap();
     // Now Delivery Service wants to remove Bob with invalid sender index but there's no extension
@@ -335,7 +375,12 @@ fn external_remove_proposal_should_fail_when_no_external_senders(
 
     // Alice tries to validate the message and should fail as sender is invalid
     let error = alice_group
-        .process_message(provider, bob_external_remove_proposal)
+        .process_message(
+            provider,
+            bob_external_remove_proposal
+                .try_into_protocol_message()
+                .unwrap(),
+        )
         .unwrap_err();
     assert_eq!(
         error,

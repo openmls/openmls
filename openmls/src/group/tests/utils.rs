@@ -256,13 +256,15 @@ pub(crate) fn setup(config: TestSetupConfig, provider: &impl OpenMlsProvider) ->
                     .remove(kpb_position);
                 // Create the local group state of the new member based on the
                 // Welcome.
-                let new_group = match CoreGroup::new_from_welcome(
+                let new_group = match StagedCoreWelcome::new_from_welcome(
                     welcome.clone(),
                     Some(core_group.public_group().export_ratchet_tree().into()),
                     key_package_bundle,
                     provider,
                     ResumptionPskStore::new(1024),
-                ) {
+                )
+                .and_then(|staged_join| staged_join.into_core_group(provider))
+                {
                     Ok(group) => group,
                     Err(err) => panic!("Error creating new group from Welcome: {err:?}"),
                 };
@@ -333,7 +335,7 @@ pub(crate) fn generate_credential_with_key(
     provider: &impl OpenMlsProvider,
 ) -> CredentialWithKeyAndSigner {
     let (credential, signer) = {
-        let credential = Credential::new(identity, CredentialType::Basic).unwrap();
+        let credential = BasicCredential::new_credential(identity);
         let signature_keys = SignatureKeyPair::new(signature_scheme).unwrap();
         signature_keys.store(provider.key_store()).unwrap();
 

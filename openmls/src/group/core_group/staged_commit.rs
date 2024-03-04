@@ -28,6 +28,7 @@ impl CoreGroup {
             let external_priv = epoch_secrets
                 .external_secret()
                 .derive_external_keypair(provider.crypto(), self.ciphersuite())
+                .map_err(LibraryError::unexpected_crypto_error)?
                 .private;
             let init_secret = InitSecret::from_kem_output(
                 provider.crypto(),
@@ -111,7 +112,6 @@ impl CoreGroup {
     ///  - ValSem240
     ///  - ValSem241
     ///  - ValSem242
-    ///  - ValSem243
     ///  - ValSem244
     /// Returns an error if the given commit was sent by the owner of this
     /// group.

@@ -134,6 +134,7 @@ pub enum CryptoError {
     CryptoLibraryError,
     AeadDecryptionError,
     HpkeDecryptionError,
+    HpkeEncryptionError,
     UnsupportedSignatureScheme,
     KdfLabelTooLarge,
     KdfSerializationError,
@@ -151,6 +152,9 @@ pub enum CryptoError {
     ExporterError,
     UnsupportedCiphersuite,
     TlsSerializationError,
+    TooMuchData,
+    SigningError,
+    InvalidPublicKey,
 }
 
 impl std::fmt::Display for CryptoError {

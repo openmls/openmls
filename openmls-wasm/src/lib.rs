@@ -2,9 +2,9 @@ mod utils;
 
 use js_sys::Uint8Array;
 use openmls::{
-    credentials::{Credential, CredentialType, CredentialWithKey},
+    credentials::{BasicCredential, Credential, CredentialType, CredentialWithKey},
     framing::{MlsMessageIn, MlsMessageOut},
-    group::{config::CryptoConfig, GroupId, MlsGroup, MlsGroupJoinConfig},
+    group::{config::CryptoConfig, GroupId, MlsGroup, MlsGroupJoinConfig, StagedWelcome},
     key_packages::KeyPackage as OpenMlsKeyPackage,
     messages::Welcome,
     prelude::SignatureScheme,
@@ -68,7 +68,7 @@ impl Identity {
     pub fn new(provider: &Provider, name: &str) -> Result<Identity, JsError> {
         let signature_scheme = SignatureScheme::ED25519;
         let identity = name.bytes().collect();
-        let credential = Credential::new(identity, CredentialType::Basic).unwrap();
+        let credential = BasicCredential::new_credential(identity);
         let keypair = SignatureKeyPair::new(signature_scheme)?;
 
         keypair.store(provider.0.key_store())?;
@@ -154,10 +154,11 @@ impl Group {
         mut welcome: &[u8],
         ratchet_tree: RatchetTree,
     ) -> Result<Group, JsError> {
-        let welcome = Welcome::tls_deserialize(&mut welcome)?;
+        let welcome = MlsMessageIn::tls_deserialize(&mut welcome)?;
         let config = MlsGroupJoinConfig::builder().build();
         let mls_group =
-            MlsGroup::new_from_welcome(&provider.0, &config, welcome, Some(ratchet_tree.0))?;
+            StagedWelcome::new_from_welcome(&provider.0, &config, welcome, Some(ratchet_tree.0))?
+                .into_group(&provider.0)?;
 
         Ok(Group { mls_group })
     }
@@ -201,16 +202,16 @@ impl Group {
         let msg = MlsMessageIn::tls_deserialize(&mut msg).unwrap();
 
         let msg = match msg.extract() {
-            openmls::framing::MlsMessageInBody::PublicMessage(msg) => {
+            openmls::framing::MlsMessageBodyIn::PublicMessage(msg) => {
                 self.mls_group.process_message(provider.as_ref(), msg)?
             }
 
-            openmls::framing::MlsMessageInBody::PrivateMessage(msg) => {
+            openmls::framing::MlsMessageBodyIn::PrivateMessage(msg) => {
                 self.mls_group.process_message(provider.as_ref(), msg)?
             }
-            openmls::framing::MlsMessageInBody::Welcome(_) => todo!(),
-            openmls::framing::MlsMessageInBody::GroupInfo(_) => todo!(),
-            openmls::framing::MlsMessageInBody::KeyPackage(_) => todo!(),
+            openmls::framing::MlsMessageBodyIn::Welcome(_) => todo!(),
+            openmls::framing::MlsMessageBodyIn::GroupInfo(_) => todo!(),
+            openmls::framing::MlsMessageBodyIn::KeyPackage(_) => todo!(),
         };
 
         match msg.into_content() {
@@ -275,11 +276,17 @@ impl Group {
         mut welcome: &[u8],
         ratchet_tree: RatchetTree,
     ) -> Group {
-        let welcome = Welcome::tls_deserialize(&mut welcome).unwrap();
+        let welcome = MlsMessageIn::tls_deserialize(&mut welcome).unwrap();
         let config = MlsGroupJoinConfig::builder().build();
-        let mls_group =
-            MlsGroup::new_from_welcome(provider.as_ref(), &config, welcome, Some(ratchet_tree.0))
-                .unwrap();
+        let mls_group = StagedWelcome::new_from_welcome(
+            provider.as_ref(),
+            &config,
+            welcome,
+            Some(ratchet_tree.0),
+        )
+        .unwrap()
+        .into_group(provider.as_ref())
+        .unwrap();
 
         Group { mls_group }
     }
