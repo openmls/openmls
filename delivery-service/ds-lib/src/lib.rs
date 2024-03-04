@@ -12,8 +12,8 @@ use std::collections::HashSet;
 use messages::AuthToken;
 use openmls::prelude::*;
 use tls_codec::{
-    TlsByteSliceU16, TlsByteVecU16, TlsByteVecU32, TlsByteVecU8, TlsDeserialize,
-    TlsDeserializeBytes, TlsSerialize, TlsSize, TlsVecU32, VLBytes,
+    TlsByteVecU32, TlsByteVecU8, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
+    TlsVecU32, VLBytes,
 };
 
 /// Information about a client.
@@ -39,9 +39,15 @@ mod hashset_codec {
 
     use tls_codec::{Deserialize, Serialize};
 
-    pub fn tls_size(hashset: &HashSet<Vec<u8>>) -> usize {
-        tls_codec::vlen::write_length(writer, content_length)
-        hashset.len()
+    pub fn tls_serialized_len(hashset: &HashSet<Vec<u8>>) -> usize {
+        let hashset_len = hashset.len();
+        let length_encoding_bytes = match hashset_len {
+            0..=0x3f => 1,
+            0x40..=0x3fff => 2,
+            0x4000..=0x3fff_ffff => 4,
+            _ => 8,
+        };
+        hashset_len + length_encoding_bytes
     }
 
     pub fn tls_serialize<W>(
@@ -51,7 +57,6 @@ mod hashset_codec {
     where
         W: Write,
     {
-        let mut written = 0;
         let vec = hashset.iter().map(|v| v.as_slice()).collect::<Vec<_>>();
         vec.tls_serialize(writer)
     }
@@ -60,21 +65,6 @@ mod hashset_codec {
         let vec = Vec::<Vec<u8>>::tls_deserialize(bytes)?;
         Ok(vec.into_iter().collect::<HashSet<_>>())
     }
-
-    pub fn tls_serialized_len(hashset: &HashSet<Vec<u8>>) -> usize {
-        hashset.len() * std::mem::size_of::<u32>() + hashset.iter().map(|e| e.len()).sum::<usize>()
-    }
-}
-
-fn tls_serialize_hashset(
-    hashset: &HashSet<Vec<u8>>,
-    writer: &mut impl std::io::Write,
-) -> Result<usize, tls_codec::Error> {
-    let mut written = 0;
-    for e in hashset {
-        written += TlsByteVecU32::tls_serialize(&e.into(), writer)?;
-    }
-    Ok(written)
 }
 
 /// The DS returns a list of key packages for a client as `ClientKeyPackages`.

@@ -98,7 +98,7 @@ async fn test_list_clients() {
             .to_vec(),
         KeyPackageIn::from(client_key_package.clone()),
     )];
-    let client_data = ClientInfo::new(client_name.to_string(), client_key_package.clone());
+    let client_data = ClientInfo::new(client_key_package.clone());
     let req = test::TestRequest::post()
         .uri("/clients/register")
         .set_payload(Bytes::copy_from_slice(
@@ -186,17 +186,14 @@ async fn test_group() {
             crypto,
             &signer,
         );
-        let client_data = ClientInfo::new(
-            client_name.to_string(),
-            vec![(
-                client_key_package
-                    .hash_ref(crypto.crypto())
-                    .unwrap()
-                    .as_slice()
-                    .to_vec(),
-                client_key_package.clone().into(),
-            )],
-        );
+        let client_data = ClientInfo::new(vec![(
+            client_key_package
+                .hash_ref(crypto.crypto())
+                .unwrap()
+                .as_slice()
+                .to_vec(),
+            client_key_package.clone().into(),
+        )]);
         key_packages.push(client_key_package);
 
         let id =
