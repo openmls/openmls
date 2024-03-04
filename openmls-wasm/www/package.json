@@ -32,7 +32,7 @@
   "devDependencies": {
     "hello-wasm-pack": "^0.1.0",
     "webpack": "^5.88.2",
-    "webpack-cli": "^3.1.0",
+    "webpack-cli": "^5.1.4",
     "webpack-dev-server": "^3.1.5",
     "copy-webpack-plugin": "^5.0.0"
   }
