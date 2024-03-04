@@ -20,7 +20,6 @@ impl Backend {
         url.set_path("/clients/register");
 
         let client_info = ClientInfo::new(
-            user.username.clone(),
             user.key_packages()
                 .into_iter()
                 .map(|(b, kp)| (b, KeyPackageIn::from(kp)))

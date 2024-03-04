@@ -20,7 +20,6 @@ const CIPHERSUITE: Ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA2
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct Contact {
-    username: String,
     id: Vec<u8>,
 }
 
@@ -33,7 +32,6 @@ pub struct Group {
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct User {
-    pub(crate) username: String,
     #[serde(
         serialize_with = "serialize_any_hashmap::serialize_hashmap",
         deserialize_with = "serialize_any_hashmap::deserialize_hashmap"
@@ -61,7 +59,6 @@ impl User {
     pub fn new(username: String) -> Self {
         let crypto = OpenMlsRustPersistentCrypto::default();
         let out = Self {
-            username: username.clone(),
             groups: RefCell::new(HashMap::new()),
             group_list: HashSet::new(),
             contacts: HashMap::new(),
@@ -136,7 +133,7 @@ impl User {
     }
 
     pub fn save(&mut self) {
-        let output_path = User::get_file_path(&self.username);
+        let output_path = User::get_file_path(&self.identity);
         match File::create(output_path) {
             Err(e) => log::error!("Error saving user state: {:?}", e.to_string()),
             Ok(output_file) => {
@@ -330,13 +327,7 @@ impl User {
                     if c.id != self.identity.borrow().identity()
                         && self
                             .contacts
-                            .insert(
-                                c.id.clone(),
-                                Contact {
-                                    username: c.client_name,
-                                    id: c.id,
-                                },
-                            )
+                            .insert(c.id.clone(), Contact { id: c.id })
                             .is_some()
                     {
                         log::debug!(
@@ -365,7 +356,10 @@ impl User {
         &mut self,
         group_name: Option<String>,
     ) -> Result<Vec<ConversationMessage>, String> {
-        log::debug!("Updating {} ...", self.username);
+        log::debug!(
+            "Updating {} ...",
+            String::from_utf8_lossy(self.identity.borrow().identity())
+        );
 
         let mut messages_out: Vec<ConversationMessage> = Vec::new();
 
@@ -412,7 +406,7 @@ impl User {
                         .contacts
                         .get(&processed_message_credential.identity())
                     {
-                        Some(c) => c.username.clone(),
+                        Some(c) => c.id.clone(),
                         None => {
                             // Contact list is not updated right now, get the identity from the
                             // mls_group member

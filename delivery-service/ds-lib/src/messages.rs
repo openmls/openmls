@@ -1,0 +1,46 @@
+use rand::{thread_rng, Rng};
+use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+
+use crate::ClientKeyPackages;
+
+#[derive(Debug, Clone, TlsSize, TlsSerialize, TlsDeserialize, PartialEq)]
+pub struct AuthToken {
+    token: Vec<u8>,
+}
+
+impl Default for AuthToken {
+    fn default() -> Self {
+        Self::random()
+    }
+}
+
+impl AuthToken {
+    pub(super) fn random() -> Self {
+        let token = thread_rng().gen::<[u8; 32]>().to_vec();
+        Self { token }
+    }
+}
+
+#[derive(Debug, Clone, TlsSize, TlsSerialize, TlsDeserialize)]
+pub struct RegisterClientRequest {
+    pub key_packages: ClientKeyPackages,
+}
+
+pub struct RegisterClientErrorResponse {
+    pub message: String,
+}
+
+pub struct RegisterClientSuccessResponse {
+    pub token: AuthToken,
+}
+
+#[derive(Debug, Clone, TlsSize, TlsSerialize, TlsDeserialize)]
+pub struct PublishKeyPackagesRequest {
+    pub key_packages: ClientKeyPackages,
+    pub auth_token: AuthToken,
+}
+
+#[derive(Debug, Clone, TlsSize, TlsSerialize, TlsDeserialize)]
+pub struct RecvMessageRequest {
+    pub auth_token: AuthToken,
+}

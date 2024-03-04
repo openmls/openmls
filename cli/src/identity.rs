@@ -21,9 +21,9 @@ impl Identity {
     pub(crate) fn new(
         ciphersuite: Ciphersuite,
         crypto: &OpenMlsRustPersistentCrypto,
-        id: &[u8],
+        username: &[u8],
     ) -> Self {
-        let credential = BasicCredential::new_credential(id.to_vec());
+        let credential = BasicCredential::new_credential(username.to_vec());
         let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
         let credential_with_key = CredentialWithKey {
             credential,
