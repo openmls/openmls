@@ -1,0 +1,178 @@
+<html>
+  <head>
+    <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/water.css@2/out/light.css"
+    />
+    <style>
+      .row {
+        display: flex;
+      }
+
+      .column {
+        flex: 50%;
+        padding: 20px;
+      }
+    </style>
+    <!-- Note the usage of `type=module` here as this is an ES6 module -->
+    <script type="module">
+      import init from "./openmls_wasm.js";
+      // Initialise wasm context.
+      await init();
+    </script>
+  </head>
+  <body>
+    <script type="module">
+      function hex_to_bytes(hex) {
+        var typedArray = new Uint8Array(
+          hex.match(/[\da-f]{2}/gi).map(function (h) {
+            return parseInt(h, 16);
+          })
+        );
+        return typedArray;
+      }
+
+      function bytes_to_hex(bytes) {
+        return Array.from(bytes, function (byte) {
+          return ("0" + (byte & 0xff).toString(16)).slice(-2);
+        }).join("");
+      }
+
+      import init, { Identity, Provider, Group } from "./openmls_wasm.js";
+
+      {
+        {
+          /*  function hpke_seal() {
+        let info = new TextEncoder().encode(document.sender_form.info.value);
+        let aad = new TextEncoder().encode(document.sender_form.aad.value);
+        let pt = new TextEncoder().encode(document.sender_form.payload.value);
+        let pkR = hex_to_bytes(document.receiver_form.pkR.value);
+
+        let rand = new Uint8Array(32);
+        window.crypto.getRandomValues(rand);
+
+        let result = hpke_seal_base(pkR, info, aad, pt, rand);
+        let enc = new Uint8Array(result.slice(0, 32));
+        let ct = new Uint8Array(result.slice(32));
+
+        document.receiver_form.enc.value = bytes_to_hex(enc);
+        document.receiver_form.ct.value = bytes_to_hex(ct);
+      }
+      document.getElementById("hpke_seal").onclick = hpke_seal;
+
+      function hpke_open() {
+        try {
+          let skR = hex_to_bytes(document.receiver_form.skR.value);
+          let enc = hex_to_bytes(document.receiver_form.enc.value);
+          let ct = hex_to_bytes(document.receiver_form.ct.value);
+          let info = new TextEncoder().encode(document.sender_form.info.value);
+          let aad = new TextEncoder().encode(document.sender_form.aad.value);
+
+          let ptR = hpke_open_base(ct, enc, skR, info, aad);
+          let ptR_string = new TextDecoder().decode(ptR);
+          document.receiver_form.payload.value = ptR_string;
+        } catch {
+          document.receiver_form.payload.value = " ⚠️  Error";
+        }
+      }
+      document.getElementById("hpke_open").onclick = hpke_open;
+ */
+        }
+      }
+      function gen_receiver_kp() {
+        let rand = new Uint8Array(32);
+        window.crypto.getRandomValues(rand);
+        let provider = new Provider();
+        let bob_provider = new Provider();
+
+        let alice = new Identity(provider, "alice");
+        let bob = new Identity(bob_provider, "bob");
+
+        let group = Group.create_new(provider, alice, "chess club");
+        let bob_key_pkg = bob.key_package(bob_provider);
+        let add_msgs = group.propose_and_commit_add(
+          provider,
+          alice,
+          bob_key_pkg
+        );
+        let ratchet_tree = group.export_ratchet_tree();
+
+        let chess_club_bob = Group.join(
+          bob_provider,
+          add_msgs.welcome,
+          ratchet_tree
+        );
+
+        let bob_exported_key = chess_club_bob.export_key(
+          "chess_key",
+          UInt8Array([0x30], 32)
+        );
+        let alice_exported_key = group.export_key(
+          "chess_key",
+          UInt8Array([0x30], 32)
+        );
+
+        console.log(bob_exported_key);
+
+        {
+          {
+            /*  const receiver_sk_pk = hpke_key_gen(rand);
+        let skR = receiver_sk_pk.slice(0, 32);
+        let pkR = receiver_sk_pk.slice(32);
+        document.receiver_form.pkR.value = bytes_to_hex(pkR);
+        document.receiver_form.skR.value = bytes_to_hex(skR);  */
+          }
+        }
+      }
+      document.getElementById("gen_receiver_kp").onclick = gen_receiver_kp;
+    </script>
+
+    <div class="row">
+      <div class="column">
+        <h3>Sender</h3>
+        <br /><br />
+        <form name="sender_form" onsubmit="hpke_seal()">
+          <label for="info">Info</label>
+          <input name="info" id="info" />
+          <label for="aad">Additional Data</label>
+          <input name="aad" id="aad" />
+          <label for="payload">Payload</label>
+          <textarea
+            name="payload"
+            id="payload"
+            placeholder="The payload..."
+          ></textarea>
+          <button type="button" id="hpke_seal">HPKE Seal</button>
+        </form>
+      </div>
+      <div class="column">
+        <h3>Receiver</h3>
+        <form name="receiver_form">
+          <button type="button" id="gen_receiver_kp">Generate key pair</button>
+          <br />
+          <label for="pkR">Public Key</label>
+          <input name="pkR" id="pkR" />
+          <label for="skR">Private Key</label>
+          <input name="skR" id="skR" />
+          <br />
+          <hr />
+          <br />
+          <label for="enc">Encoded Shared Secret</label>
+          <input name="enc" id="enc" />
+          <label for="ct">Ciphertext</label>
+          <input name="ct" id="sct" /><br />
+          <button type="button" id="hpke_open">HPKE Open</button>
+          <br />
+          <label for="payload">Decrypted Payload</label>
+          <textarea
+            name="payload"
+            id="payload"
+            placeholder="The decrypted payload..."
+            readonly
+          ></textarea>
+        </form>
+      </div>
+    </div>
+  </body>
+</html>
