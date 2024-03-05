@@ -2,11 +2,10 @@ mod utils;
 
 use js_sys::Uint8Array;
 use openmls::{
-    credentials::{BasicCredential, Credential, CredentialType, CredentialWithKey},
+    credentials::{BasicCredential, CredentialWithKey},
     framing::{MlsMessageIn, MlsMessageOut},
     group::{config::CryptoConfig, GroupId, MlsGroup, MlsGroupJoinConfig, StagedWelcome},
     key_packages::KeyPackage as OpenMlsKeyPackage,
-    messages::Welcome,
     prelude::SignatureScheme,
     treesync::RatchetTreeIn,
     versions::ProtocolVersion,
@@ -35,6 +34,7 @@ static CRYPTO_CONFIG: CryptoConfig = CryptoConfig {
 };
 
 #[wasm_bindgen]
+#[derive(Default)]
 pub struct Provider(OpenMlsRustCrypto);
 
 impl AsRef<OpenMlsRustCrypto> for Provider {
@@ -47,7 +47,7 @@ impl AsRef<OpenMlsRustCrypto> for Provider {
 impl Provider {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
-        Self(openmls_rust_crypto::OpenMlsRustCrypto::default())
+        Self::default()
     }
 }
 
@@ -110,7 +110,9 @@ pub struct AddMessages {
     welcome: Uint8Array,
 }
 
-pub struct NativeAddMessages {
+#[cfg(test)]
+#[allow(dead_code)]
+struct NativeAddMessages {
     proposal: Vec<u8>,
     commit: Vec<u8>,
     welcome: Vec<u8>,
@@ -194,6 +196,12 @@ impl Group {
         })
     }
 
+    pub fn merge_pending_commit(&mut self, provider: &Provider) -> Result<(), JsError> {
+        self.mls_group
+            .merge_pending_commit(provider.as_ref())
+            .map_err(|e| e.into())
+    }
+
     pub fn process_message(
         &mut self,
         provider: &Provider,
@@ -236,15 +244,19 @@ impl Group {
         label: &str,
         context: &[u8],
         key_length: usize,
-    ) -> Vec<u8> {
+    ) -> Result<Vec<u8>, JsError> {
         self.mls_group
             .export_secret(provider.as_ref().crypto(), label, context, key_length)
-            .unwrap()
+            .map_err(|e| {
+                println!("export key error: {e}");
+                e.into()
+            })
     }
 }
 
+#[cfg(test)]
 impl Group {
-    pub fn native_propose_and_commit_add(
+    fn native_propose_and_commit_add(
         &mut self,
         provider: &Provider,
         sender: &Identity,
@@ -271,11 +283,7 @@ impl Group {
         })
     }
 
-    pub fn native_join(
-        provider: &Provider,
-        mut welcome: &[u8],
-        ratchet_tree: RatchetTree,
-    ) -> Group {
+    fn native_join(provider: &Provider, mut welcome: &[u8], ratchet_tree: RatchetTree) -> Group {
         let welcome = MlsMessageIn::tls_deserialize(&mut welcome).unwrap();
         let config = MlsGroupJoinConfig::builder().build();
         let mls_group = StagedWelcome::new_from_welcome(
@@ -319,6 +327,7 @@ fn mls_message_to_uint8array(msg: &MlsMessageOut) -> Uint8Array {
     unsafe { Uint8Array::new(&Uint8Array::view(&serialized)) }
 }
 
+#[cfg(test)]
 fn mls_message_to_u8vec(msg: &MlsMessageOut) -> Vec<u8> {
     // see https://github.com/rustwasm/wasm-bindgen/issues/1619#issuecomment-505065294
 
@@ -326,14 +335,15 @@ fn mls_message_to_u8vec(msg: &MlsMessageOut) -> Vec<u8> {
     msg.tls_serialize(&mut serialized).unwrap();
     serialized
 }
-fn js_error_to_string(e: JsError) -> String {
-    let v: JsValue = e.into();
-    v.as_string().unwrap()
-}
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn js_error_to_string(e: JsError) -> String {
+        let v: JsValue = e.into();
+        v.as_string().unwrap()
+    }
 
     #[test]
     fn basic() {
@@ -356,15 +366,23 @@ mod tests {
             .map_err(js_error_to_string)
             .unwrap();
 
+        chess_club_alice
+            .merge_pending_commit(&alice_provider)
+            .map_err(js_error_to_string)
+            .unwrap();
+
         let ratchet_tree = chess_club_alice.export_ratchet_tree();
 
         let chess_club_bob = Group::native_join(&bob_provider, &add_msgs.welcome, ratchet_tree);
 
-        let bob_exported_key = chess_club_bob.export_key(&bob_provider, "chess_key", &[0x30], 32);
-        let alice_exported_key =
-            chess_club_alice.export_key(&alice_provider, "chess_key", &[0x30], 32);
-
-        println!("{:?}", bob_exported_key);
+        let bob_exported_key = chess_club_bob
+            .export_key(&bob_provider, "chess_key", &[0x30], 32)
+            .map_err(js_error_to_string)
+            .unwrap();
+        let alice_exported_key = chess_club_alice
+            .export_key(&alice_provider, "chess_key", &[0x30], 32)
+            .map_err(js_error_to_string)
+            .unwrap();
 
         assert_eq!(bob_exported_key, alice_exported_key)
     }
