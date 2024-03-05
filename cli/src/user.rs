@@ -330,16 +330,20 @@ impl User {
     fn update_clients(&mut self) {
         match self.backend.list_clients() {
             Ok(mut v) => {
-                for c in v.drain(..) {
-                    let client_id = c.id.clone();
+                for client_id in v.drain(..) {
                     log::debug!(
                         "update::Processing client for contact {:?}",
                         str::from_utf8(&client_id).unwrap()
                     );
-                    if c.id != self.identity.borrow().identity()
+                    if client_id != self.identity.borrow().identity()
                         && self
                             .contacts
-                            .insert(c.id.clone(), Contact { id: c.id })
+                            .insert(
+                                client_id.clone(),
+                                Contact {
+                                    id: client_id.clone(),
+                                },
+                            )
                             .is_some()
                     {
                         log::debug!(

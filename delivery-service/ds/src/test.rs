@@ -132,13 +132,13 @@ async fn test_list_clients() {
     assert_eq!(response.status(), StatusCode::OK);
 
     let bytes = response.into_body().try_into_bytes().unwrap();
-    let client_info =
-        TlsVecU32::<ClientInfo>::tls_deserialize(&mut bytes.as_ref()).expect("Invalid client list");
+    let client_ids =
+        TlsVecU32::<Vec<u8>>::tls_deserialize(&mut bytes.as_ref()).expect("Invalid client list");
 
-    let expected = TlsVecU32::<ClientInfo>::new(vec![client_data]);
+    let expected = TlsVecU32::<Vec<u8>>::new(vec![client_data.id().to_vec()]);
 
     assert_eq!(
-        client_info.tls_serialize_detached().unwrap(),
+        client_ids.tls_serialize_detached().unwrap(),
         expected.tls_serialize_detached().unwrap()
     );
 

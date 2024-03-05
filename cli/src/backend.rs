@@ -48,12 +48,12 @@ impl Backend {
 
     /// Get a list of all clients with name, ID, and key packages from the
     /// server.
-    pub fn list_clients(&self) -> Result<Vec<ClientInfo>, String> {
+    pub fn list_clients(&self) -> Result<Vec<Vec<u8>>, String> {
         let mut url = self.ds_url.clone();
         url.set_path("/clients/list");
 
         let response = get(&url)?;
-        match TlsVecU32::<ClientInfo>::tls_deserialize(&mut response.as_slice()) {
+        match TlsVecU32::<Vec<u8>>::tls_deserialize(&mut response.as_slice()) {
             Ok(clients) => Ok(clients.into()),
             Err(e) => Err(format!("Error decoding server response: {e:?}")),
         }

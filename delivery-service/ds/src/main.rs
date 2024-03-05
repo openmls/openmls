@@ -135,10 +135,10 @@ async fn list_clients(_req: HttpRequest, data: web::Data<DsData>) -> impl Respon
     let clients = unwrap_data!(data.clients.lock());
 
     // XXX: we could encode while iterating to be less wasteful.
-    let clients: TlsVecU32<ClientInfo> = clients
+    let clients: TlsVecU32<Vec<u8>> = clients
         .values()
-        .cloned()
-        .collect::<Vec<ClientInfo>>()
+        .map(|c| c.id().to_vec())
+        .collect::<Vec<Vec<u8>>>()
         .into();
     let mut out_bytes = Vec::new();
     if clients.tls_serialize(&mut out_bytes).is_err() {
