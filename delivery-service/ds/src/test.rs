@@ -98,16 +98,32 @@ async fn test_list_clients() {
             .to_vec(),
         KeyPackageIn::from(client_key_package.clone()),
     )];
-    let client_data = ClientInfo::new(client_key_package.clone());
+    let mut client_data = ClientInfo::new(client_key_package.clone());
+    let body = RegisterClientRequest {
+        key_packages: ClientKeyPackages(
+            client_key_package
+                .clone()
+                .into_iter()
+                .map(|(b, kp)| (b.into(), kp))
+                .collect::<Vec<(TlsByteVecU8, KeyPackageIn)>>()
+                .into(),
+        ),
+    };
+
     let req = test::TestRequest::post()
         .uri("/clients/register")
         .set_payload(Bytes::copy_from_slice(
-            &client_data.tls_serialize_detached().unwrap(),
+            &body.tls_serialize_detached().unwrap(),
         ))
         .to_request();
 
     let response = test::call_service(&app, req).await;
     assert_eq!(response.status(), StatusCode::OK);
+    let response_body = RegisterClientSuccessResponse::tls_deserialize_exact(
+        response.into_body().try_into_bytes().unwrap(),
+    )
+    .unwrap();
+    client_data.auth_token = response_body.auth_token;
 
     // There should be Client1 now.
     let req = test::TestRequest::with_uri("/clients/list").to_request();
@@ -173,6 +189,7 @@ async fn test_group() {
     let mut credentials_with_key = Vec::new();
     let mut signers = Vec::new();
     let mut client_ids = Vec::new();
+    let mut client_data_vec = Vec::new();
     for client_name in clients.iter() {
         let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
         let (credential_with_key, signer) = generate_credential(
@@ -186,14 +203,16 @@ async fn test_group() {
             crypto,
             &signer,
         );
-        let client_data = ClientInfo::new(vec![(
+        let client_key_packages = (
             client_key_package
                 .hash_ref(crypto.crypto())
                 .unwrap()
                 .as_slice()
                 .to_vec(),
             client_key_package.clone().into(),
-        )]);
+        );
+
+        let mut client_data = ClientInfo::new(vec![(client_key_packages.clone())]);
         key_packages.push(client_key_package);
 
         let id =
@@ -202,14 +221,31 @@ async fn test_group() {
         client_ids.push(id.as_slice().to_vec());
         credentials_with_key.push(credential_with_key);
         signers.push(signer);
+
+        let body = RegisterClientRequest {
+            key_packages: ClientKeyPackages(
+                vec![client_key_packages.clone()]
+                    .into_iter()
+                    .map(|(b, kp)| (b.into(), kp))
+                    .collect::<Vec<(TlsByteVecU8, KeyPackageIn)>>()
+                    .into(),
+            ),
+        };
+
         let req = test::TestRequest::post()
             .uri("/clients/register")
             .set_payload(Bytes::copy_from_slice(
-                &client_data.tls_serialize_detached().unwrap(),
+                &body.tls_serialize_detached().unwrap(),
             ))
             .to_request();
         let response = test::call_service(&app, req).await;
         assert_eq!(response.status(), StatusCode::OK);
+        let response_body = RegisterClientSuccessResponse::tls_deserialize_exact(
+            response.into_body().try_into_bytes().unwrap(),
+        )
+        .unwrap();
+        client_data.auth_token = response_body.auth_token;
+        client_data_vec.push(client_data);
     }
 
     // Add an additional key package for Client2
@@ -242,10 +278,14 @@ async fn test_group() {
     // Publish key package to the DS for Client2
     let path = "/clients/key_packages/".to_string()
         + &base64::encode_config(&client_ids[1], base64::URL_SAFE);
+    let body = PublishKeyPackagesRequest {
+        key_packages: ckp,
+        auth_token: client_data_vec[1].auth_token.clone(),
+    };
     let req = test::TestRequest::post()
         .uri(&path)
         .set_payload(Bytes::copy_from_slice(
-            &ckp.tls_serialize_detached().unwrap(),
+            &body.tls_serialize_detached().unwrap(),
         ))
         .to_request();
 
@@ -301,8 +341,15 @@ async fn test_group() {
     assert_eq!(response.status(), StatusCode::OK);
 
     // There should be a welcome message now for Client2.
+    let body = RecvMessageRequest {
+        auth_token: client_data_vec[1].auth_token.clone(),
+    };
     let path = "/recv/".to_owned() + &base64::encode_config(clients[1], base64::URL_SAFE);
-    let req = test::TestRequest::with_uri(&path).to_request();
+    let req = test::TestRequest::with_uri(&path)
+        .set_payload(Bytes::copy_from_slice(
+            &body.tls_serialize_detached().unwrap(),
+        ))
+        .to_request();
     let response = test::call_service(&app, req).await;
     assert_eq!(response.status(), StatusCode::OK);
 
@@ -353,8 +400,15 @@ async fn test_group() {
     assert_eq!(response.status(), StatusCode::OK);
 
     // Client1 retrieves messages from the DS
+    let body = RecvMessageRequest {
+        auth_token: client_data_vec[0].auth_token.clone(),
+    };
     let path = "/recv/".to_owned() + &base64::encode_config(clients[0], base64::URL_SAFE);
-    let req = test::TestRequest::with_uri(&path).to_request();
+    let req = test::TestRequest::with_uri(&path)
+        .set_payload(Bytes::copy_from_slice(
+            &body.tls_serialize_detached().unwrap(),
+        ))
+        .to_request();
     let response = test::call_service(&app, req).await;
     assert_eq!(response.status(), StatusCode::OK);
 

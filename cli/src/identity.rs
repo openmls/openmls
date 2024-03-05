@@ -90,4 +90,11 @@ impl Identity {
     pub fn identity(&self) -> &[u8] {
         self.credential_with_key.credential.serialized_content()
     }
+
+    /// Get the plain identity as byte vector.
+    pub fn identity_as_string(&self) -> String {
+        std::str::from_utf8(self.credential_with_key.credential.serialized_content())
+            .unwrap()
+            .to_string()
+    }
 }

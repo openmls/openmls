@@ -1,9 +1,12 @@
 use rand::{thread_rng, Rng};
+use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 use crate::ClientKeyPackages;
 
-#[derive(Debug, Clone, TlsSize, TlsSerialize, TlsDeserialize, PartialEq)]
+#[derive(
+    Debug, Clone, TlsSize, TlsSerialize, TlsDeserialize, PartialEq, Serialize, Deserialize,
+)]
 pub struct AuthToken {
     token: Vec<u8>,
 }
@@ -30,8 +33,9 @@ pub struct RegisterClientErrorResponse {
     pub message: String,
 }
 
+#[derive(Debug, Clone, TlsSize, TlsSerialize, TlsDeserialize)]
 pub struct RegisterClientSuccessResponse {
-    pub token: AuthToken,
+    pub auth_token: AuthToken,
 }
 
 #[derive(Debug, Clone, TlsSize, TlsSerialize, TlsDeserialize)]

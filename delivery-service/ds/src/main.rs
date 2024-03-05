@@ -38,7 +38,10 @@ use std::sync::Mutex;
 use tls_codec::{Deserialize, Serialize, TlsSliceU16, TlsVecU32};
 
 use ds_lib::{
-    messages::{PublishKeyPackagesRequest, RecvMessageRequest, RegisterClientRequest},
+    messages::{
+        PublishKeyPackagesRequest, RecvMessageRequest, RegisterClientRequest,
+        RegisterClientSuccessResponse,
+    },
     *,
 };
 use openmls::prelude::*;
@@ -111,15 +114,18 @@ async fn register_client(mut body: Payload, data: web::Data<DsData>) -> impl Res
 
     log::debug!("Registering client: {:?}", new_client_info.id);
 
+    let response = RegisterClientSuccessResponse {
+        auth_token: new_client_info.auth_token.clone(),
+    };
+
     let mut clients = unwrap_data!(data.clients.lock());
     if clients.contains_key(&new_client_info.id) {
         return actix_web::HttpResponse::Conflict().finish();
-    } else {
-        let old = clients.insert(new_client_info.id.clone(), new_client_info);
-        assert!(old.is_none());
     }
+    let old = clients.insert(new_client_info.id.clone(), new_client_info);
+    assert!(old.is_none());
 
-    actix_web::HttpResponse::Ok().into()
+    actix_web::HttpResponse::Ok().body(response.tls_serialize_detached().unwrap())
 }
 
 /// Returns a list of clients with their names and IDs.
