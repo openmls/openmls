@@ -3,6 +3,9 @@ name = "openmls-wasm"
 version = "0.1.0"
 authors = ["Jan Winkelmann (keks) <jan@cryspen.com>"]
 edition = "2018"
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/openmls/openmls/tree/main/openmls-wasm"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
