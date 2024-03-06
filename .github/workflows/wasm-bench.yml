@@ -24,6 +24,6 @@ jobs:
       - name: Build and measure size of wasm bindings
         run: |
           cargo install wasm-pack
-          sudo apt update && sudo apt install wasm-opt
+          sudo apt update && sudo apt install binaryen
           export PATH=$PATH:$HOME/.cargo/bin
           ./openmls-wasm/check-size.sh
