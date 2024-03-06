@@ -16,11 +16,11 @@ fn criterion_kp_bundle(c: &mut Criterion, provider: &impl OpenMlsProvider) {
             move |b| {
                 b.iter_with_setup(
                     || {
-                        let credential = BasicCredential::new_credential(vec![1, 2, 3]);
+                        let credential = BasicCredential::new(vec![1, 2, 3]).unwrap();
                         let signer =
                             SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
                         let credential_with_key = CredentialWithKey {
-                            credential,
+                            credential: credential.into(),
                             signature_key: signer.to_public_vec().into(),
                         };
 

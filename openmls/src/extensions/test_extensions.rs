@@ -365,7 +365,7 @@ fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
     let last_resort = Extension::LastResort(LastResortExtension::default());
 
     // Build a KeyPackage with a last resort extension
-    let credential = BasicCredential::new_credential(b"Bob".to_vec());
+    let credential = BasicCredential::new(b"Bob".to_vec()).unwrap();
     let signer =
         openmls_basic_credential::SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
@@ -387,7 +387,7 @@ fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
             provider,
             &signer,
             CredentialWithKey {
-                credential: credential.clone(),
+                credential: credential.clone().into(),
                 signature_key: signer.to_public_vec().into(),
             },
         )
