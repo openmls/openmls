@@ -157,9 +157,7 @@ pub use lifetime::Lifetime;
 ///     Extension extensions<V>;
 /// } KeyPackageTBS;
 /// ```
-#[derive(
-    Debug, Clone, PartialEq, TlsSize, TlsSerialize, Serialize, Deserialize, TlsDeserialize,
-)]
+#[derive(Debug, Clone, PartialEq, TlsSize, TlsSerialize, Serialize, Deserialize)]
 struct KeyPackageTbs {
     protocol_version: ProtocolVersion,
     ciphersuite: Ciphersuite,
@@ -187,7 +185,7 @@ impl From<KeyPackage> for KeyPackageTbs {
 }
 
 /// The key package struct.
-#[derive(Debug, Clone, Serialize, Deserialize, TlsSize, TlsSerialize, TlsDeserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TlsSize, TlsSerialize)]
 pub struct KeyPackage {
     payload: KeyPackageTbs,
     signature: Signature,

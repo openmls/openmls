@@ -71,9 +71,7 @@ pub(crate) struct NewLeafNodeParams {
 /// } LeafNode;
 /// ```
 // TODO(#1242): Do not derive `TlsDeserialize`.
-#[derive(
-    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsSize, TlsDeserialize,
-)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsSize)]
 pub struct LeafNode {
     payload: LeafNodePayload,
     signature: Signature,
