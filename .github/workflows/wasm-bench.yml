@@ -12,7 +12,7 @@ env:
 
 
 jobs:
-  build:
+  measure-wasm-size:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
