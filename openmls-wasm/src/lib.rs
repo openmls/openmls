@@ -26,8 +26,13 @@ extern "C" {
     fn log(s: &str);
 }
 
+/// The ciphersuite used here. Fixed in order to reduce the binary size.
 static CIPHERSUITE: Ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519;
+
+/// The protocol version. We only support RFC MLS.
 static VERSION: ProtocolVersion = ProtocolVersion::Mls10;
+
+/// The config used in all calls that need a CryptoConfig, using hardcoded settings.
 static CRYPTO_CONFIG: CryptoConfig = CryptoConfig {
     ciphersuite: CIPHERSUITE,
     version: VERSION,
