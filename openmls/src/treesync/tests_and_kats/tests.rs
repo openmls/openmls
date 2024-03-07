@@ -1,4 +1,5 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
+use tls_codec::VLBytes;
 
 use crate::{
     group::{
@@ -64,19 +65,12 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
     }
 
     fn get_member_leaf_index(group: &MlsGroup, target_id: &[u8]) -> LeafNodeIndex {
-        group.members().for_each(|member| {
-            println!(
-                "member: {}, index: {:?}, target: {}, own_leaf_index: {:?}",
-                String::from_utf8_lossy(member.credential.identity()),
-                member.index,
-                String::from_utf8_lossy(target_id),
-                group.own_leaf_index()
-            );
-        });
         group
             .members()
             .find_map(|member| {
-                if member.credential.identity() == target_id {
+                let identity =
+                    VLBytes::tls_deserialize_exact(member.credential.serialized_content()).unwrap();
+                if identity.as_slice() == target_id {
                     Some(member.index)
                 } else {
                     None
@@ -118,12 +112,14 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
 
     // ... and then `C` removes `A` and `B`.
     let mut charlie_group = {
-        MlsGroup::new_from_welcome(
+        StagedWelcome::new_from_welcome(
             &charlie.provider,
             mls_group_create_config.join_config(),
-            welcome.into_welcome().unwrap(),
+            welcome.into(),
             None,
         )
+        .expect("Staging the join failed.")
+        .into_group(&charlie.provider)
         .expect("Joining the group failed.")
     };
     charlie_group.print_ratchet_tree("Charlie (after new)");

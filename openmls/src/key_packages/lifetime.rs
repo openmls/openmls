@@ -1,3 +1,6 @@
+#[cfg(target_arch = "wasm32")]
+use fluvio_wasm_timer::{SystemTime, UNIX_EPOCH};
+#[cfg(not(target_arch = "wasm32"))]
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};

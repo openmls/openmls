@@ -27,7 +27,7 @@ use tls_codec::Serialize as TlsSerialize;
 use crate::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
     ciphersuite::signable::Verifiable,
-    framing::{MlsMessageIn, MlsMessageInBody},
+    framing::{MlsMessageBodyIn, MlsMessageIn},
     group::*,
     key_packages::*,
     messages::*,
@@ -132,7 +132,7 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
             .unwrap();
 
         match mls_message_key_package.body {
-            MlsMessageInBody::KeyPackage(key_package) => key_package.into(),
+            MlsMessageBodyIn::KeyPackage(key_package) => key_package.into(),
             _ => return Err("Expected MLSMessage.wire_format == mls_key_package."),
         }
     };
@@ -145,7 +145,7 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
                 .unwrap();
 
         match mls_message_welcome.body {
-            MlsMessageInBody::Welcome(welcome) => welcome,
+            MlsMessageBodyIn::Welcome(welcome) => welcome,
             _ => return Err("Expected MLSMessage.wire_format == mls_welcome."),
         }
     };

@@ -1,0 +1,20 @@
+[package]
+name = "openmls_libcrux_crypto"
+version = "0.1.0"
+edition = "2021"
+authors = ["OpenMLS Authors"]
+description = "A crypto backend for OpenMLS based on libcrux implementing openmls_traits."
+license = "MIT"
+documentation = "https://docs.rs/openmls_libcrux_crypto"
+repository = "https://github.com/openmls/openmls/tree/main/openmls_libcrux_crypto"
+readme = "../README.md"
+
+[dependencies]
+getrandom = "0.2.12"
+libcrux = { git = "https://github.com/cryspen/libcrux", rev = "cb55a1f2eeccd6f4aeb47f9597f94e4633c16222", features = [
+  "rand",
+] }
+openmls_traits = { path = "../traits" }
+openmls_rust_crypto = { path = "../openmls_rust_crypto" }
+rand = "0.8.5"
+tls_codec.workspace = true

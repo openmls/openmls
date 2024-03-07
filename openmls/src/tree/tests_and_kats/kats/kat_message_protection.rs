@@ -68,7 +68,7 @@ use serde::{self, Deserialize, Serialize};
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
-    credentials::{Credential, CredentialType, CredentialWithKey},
+    credentials::{BasicCredential, CredentialWithKey},
     framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, *},
     group::*,
     schedule::{EncryptionSecret, SenderDataSecret},
@@ -107,11 +107,10 @@ pub struct MessageProtectionTest {
 
 fn generate_credential(
     identity: Vec<u8>,
-    credential_type: CredentialType,
     signature_algorithm: SignatureScheme,
     provider: &impl OpenMlsProvider,
 ) -> (CredentialWithKey, SignatureKeyPair) {
-    let credential = Credential::new(identity, credential_type).unwrap();
+    let credential = BasicCredential::new_credential(identity);
     let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
     signature_keys.store(provider.key_store()).unwrap();
 
@@ -133,7 +132,6 @@ fn group(
 
     let (credential_with_key, signer) = generate_credential(
         "Kreator".into(),
-        CredentialType::Basic,
         ciphersuite.signature_algorithm(),
         provider,
     );
@@ -159,7 +157,6 @@ fn receiver_group(
 
     let (credential_with_key, signer) = generate_credential(
         "Receiver".into(),
-        CredentialType::Basic,
         ciphersuite.signature_algorithm(),
         provider,
     );
@@ -242,8 +239,7 @@ pub fn run_test_vector(
         );
 
         // Set up the group, unfortunately we can't do without.
-        let credential =
-            Credential::new(b"This is not needed".to_vec(), CredentialType::Basic).unwrap();
+        let credential = BasicCredential::new_credential(b"This is not needed".to_vec());
         let signature_private_key = hex_to_bytes(&test.signature_priv);
         let random_own_signature_key =
             SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
@@ -265,7 +261,7 @@ pub fn run_test_vector(
         .build(provider, &signer)
         .unwrap();
 
-        let credential = Credential::new("Fake user".into(), CredentialType::Basic).unwrap();
+        let credential = BasicCredential::new_credential("Fake user".into());
         let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
         let bob_key_package_bundle = KeyPackageBundle::new(
             provider,
@@ -704,7 +700,8 @@ fn read_test_vectors_mp(provider: &impl OpenMlsProvider) {
     let _ = pretty_env_logger::try_init();
     log::debug!("Reading test vectors ...");
 
-    let tests: Vec<MessageProtectionTest> = read("test_vectors/message-protection.json");
+    let tests: Vec<MessageProtectionTest> =
+        read_json!("../../../../test_vectors/message-protection.json");
 
     for test_vector in tests {
         match run_test_vector(test_vector, provider) {

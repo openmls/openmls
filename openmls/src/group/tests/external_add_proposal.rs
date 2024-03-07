@@ -87,12 +87,14 @@ fn validation_test_setup(
         .wire_format_policy(wire_format_policy)
         .build();
 
-    let bob_group = MlsGroup::new_from_welcome(
+    let bob_group = StagedWelcome::new_from_welcome(
         provider,
         &mls_group_config,
-        welcome.into_welcome().expect("Unexpected message type."),
+        welcome.into(),
         Some(alice_group.export_ratchet_tree().into()),
     )
+    .expect("error creating group from welcome")
+    .into_group(provider)
     .expect("error creating group from welcome");
 
     ProposalValidationTestSetup {
@@ -143,7 +145,7 @@ fn external_add_proposal_should_succeed(ciphersuite: Ciphersuite, provider: &imp
                 && matches!(msg.content(), FramedContentBody::Proposal(p) if p.proposal_type() == ProposalType::Add)
         };
         assert!(
-            matches!(proposal.body, MlsMessageOutBody::PublicMessage(ref msg) if verify_proposal(msg))
+            matches!(proposal.body, MlsMessageBodyOut::PublicMessage(ref msg) if verify_proposal(msg))
         );
 
         let msg = alice_group
@@ -196,12 +198,14 @@ fn external_add_proposal_should_succeed(ciphersuite: Ciphersuite, provider: &imp
         let mls_group_config = MlsGroupJoinConfig::builder()
             .wire_format_policy(policy)
             .build();
-        let charlie_group = MlsGroup::new_from_welcome(
+        let charlie_group = StagedWelcome::new_from_welcome(
             provider,
             &mls_group_config,
-            welcome.unwrap().into_welcome().unwrap(),
+            welcome.unwrap().into(),
             Some(alice_group.export_ratchet_tree().into()),
         )
+        .unwrap()
+        .into_group(provider)
         .unwrap();
         assert_eq!(charlie_group.members().count(), 3);
     }
@@ -285,7 +289,7 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
     )
     .unwrap();
 
-    if let MlsMessageOutBody::PublicMessage(plaintext) = &join_proposal.body {
+    if let MlsMessageBodyOut::PublicMessage(plaintext) = &join_proposal.body {
         // Make sure it's an add proposal...
         assert!(matches!(
             plaintext.content(),
@@ -309,7 +313,7 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
         .propose_remove_member(provider, &alice_signer, LeafNodeIndex::new(1))
         .map(|(out, _)| MlsMessageIn::from(out))
         .unwrap();
-    if let MlsMessageInBody::PublicMessage(mut plaintext) = remove_proposal.body {
+    if let MlsMessageBodyIn::PublicMessage(mut plaintext) = remove_proposal.body {
         plaintext.set_sender(Sender::NewMemberProposal);
         assert!(matches!(
             bob_group.process_message(provider, plaintext).unwrap_err(),
@@ -325,7 +329,7 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
         .propose_self_update(provider, &alice_signer, None)
         .map(|(out, _)| MlsMessageIn::from(out))
         .unwrap();
-    if let MlsMessageInBody::PublicMessage(mut plaintext) = update_proposal.body {
+    if let MlsMessageBodyIn::PublicMessage(mut plaintext) = update_proposal.body {
         plaintext.set_sender(Sender::NewMemberProposal);
         assert!(matches!(
             bob_group.process_message(provider, plaintext).unwrap_err(),

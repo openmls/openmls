@@ -3,6 +3,7 @@ members = [
     "openmls",
     "traits",
     "openmls_rust_crypto",
+    "libcrux_crypto",
     "fuzz",
     "cli",
     "interop_client",
@@ -15,4 +16,8 @@ resolver = "2"
 
 # Central dependency management for some crates
 [workspace.dependencies]
-tls_codec = { version = "0.4.0", features = ["derive", "serde", "mls"] }
+tls_codec = { version = "0.4.2-pre.1", features = [
+    "derive",
+    "serde",
+    "mls",
+], git = "https://github.com/rustcrypto/formats" }

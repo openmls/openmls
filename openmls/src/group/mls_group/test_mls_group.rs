@@ -98,13 +98,15 @@ fn remover(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .merge_pending_commit(provider)
         .expect("error merging pending commit");
 
-    let mut bob_group = MlsGroup::new_from_welcome(
+    let mut bob_group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
-        welcome.into_welcome().expect("Unexpected message type."),
+        welcome.into(),
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .expect("Error creating group from Welcome");
+    .expect("Error creating staged join from Welcome")
+    .into_group(provider)
+    .expect("Error creating group from staged join");
 
     // === Bob adds Charlie ===
     let (queued_messages, welcome, _group_info) = bob_group
@@ -133,12 +135,14 @@ fn remover(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .merge_pending_commit(provider)
         .expect("error merging pending commit");
 
-    let mut charlie_group = MlsGroup::new_from_welcome(
+    let mut charlie_group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
-        welcome.into_welcome().expect("Unexpected message type."),
+        welcome.into(),
         Some(bob_group.export_ratchet_tree().into()),
     )
+    .expect("Error creating group from Welcome")
+    .into_group(provider)
     .expect("Error creating group from Welcome");
 
     // === Alice removes Bob & Charlie commits ===
@@ -243,6 +247,69 @@ fn export_secret(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 }
 
 #[apply(ciphersuites_and_providers)]
+fn staged_join(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+    let group_id = GroupId::from_slice(b"Test Group");
+
+    let (alice_credential_with_key, alice_kpb, alice_signer, _alice_pk) =
+        setup_client("Alice", ciphersuite, provider);
+    let (_bob_credential, bob_kpb, _bob_signer, _bob_pk) =
+        setup_client("Bob", ciphersuite, provider);
+
+    // Define the MlsGroup configuration
+    let mls_group_create_config = MlsGroupCreateConfig::test_default(ciphersuite);
+
+    // === Alice creates a group ===
+    let mut alice_group = MlsGroup::new_with_group_id(
+        provider,
+        &alice_signer,
+        &mls_group_create_config,
+        group_id,
+        alice_credential_with_key,
+    )
+    .expect("An unexpected error occurred.");
+
+    let (_queued_message, welcome, _group_info) = alice_group
+        .add_members(provider, &alice_signer, &[bob_kpb.key_package().clone()])
+        .expect("Could not add member to group.");
+
+    alice_group
+        .merge_pending_commit(provider)
+        .expect("couldn't merge commit that adds bob");
+
+    let join_config = mls_group_create_config.join_config();
+
+    let staged_bob_group = StagedWelcome::new_from_welcome(
+        provider,
+        join_config,
+        welcome.into(),
+        Some(alice_group.export_ratchet_tree().into()),
+    )
+    .expect("error creating staged mls group");
+
+    let welcome_sender = staged_bob_group
+        .welcome_sender()
+        .expect("couldn't determine sender of welcome");
+
+    assert_eq!(
+        welcome_sender.credential(),
+        alice_kpb.key_package().leaf_node().credential()
+    );
+
+    let bob_group = staged_bob_group
+        .into_group(provider)
+        .expect("error turning StagedWelcome into MlsGroup");
+
+    assert_eq!(
+        alice_group
+            .export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
+            .expect("An unexpected error occurred."),
+        bob_group
+            .export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
+            .expect("An unexpected error occurred.")
+    );
+}
+
+#[apply(ciphersuites_and_providers)]
 fn test_invalid_plaintext(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // Some basic setup functions for the MlsGroup.
     let mls_group_create_config = MlsGroupCreateConfig::test_default(ciphersuite);
@@ -288,7 +355,7 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
     // Right now the membership tag is verified first, wihich yields `VerificationError::InvalidMembershipTag`
     // error instead of a `CredentialError:InvalidSignature`.
     let mut msg_invalid_signature = mls_message.clone();
-    if let MlsMessageOutBody::PublicMessage(ref mut pt) = msg_invalid_signature.body {
+    if let MlsMessageBodyOut::PublicMessage(ref mut pt) = msg_invalid_signature.body {
         pt.invalidate_signature()
     };
 
@@ -296,7 +363,7 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
     let mut msg_invalid_sender = mls_message;
     let random_sender = Sender::build_member(LeafNodeIndex::new(987543210));
     match &mut msg_invalid_sender.body {
-        MlsMessageOutBody::PublicMessage(pt) => {
+        MlsMessageBodyOut::PublicMessage(pt) => {
             pt.set_sender(random_sender);
             pt.set_membership_tag(
                 provider.crypto(),
@@ -409,15 +476,14 @@ fn test_verify_staged_commit_credentials(
     assert!(alice_group.pending_commit().is_none());
     assert!(alice_group.pending_proposals().next().is_none());
 
-    let mut bob_group = MlsGroup::new_from_welcome(
+    let mut bob_group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_config.join_config(),
-        welcome_option
-            .expect("no welcome after commit")
-            .into_welcome()
-            .expect("Unexpected message type."),
+        welcome_option.expect("no welcome after commit").into(),
         Some(alice_group.export_ratchet_tree().into()),
     )
+    .expect("error creating group from welcome")
+    .into_group(provider)
     .expect("error creating group from welcome");
 
     assert_eq!(
@@ -474,7 +540,7 @@ fn test_verify_staged_commit_credentials(
 
     // further process the deserialized message
     let processed_message = bob_group
-        .process_message(provider, msg_in)
+        .process_message(provider, msg_in.try_into_protocol_message().unwrap())
         .expect("bob failed processing alice's message");
 
     // the processed message must be a staged commit message
@@ -576,15 +642,14 @@ fn test_commit_with_update_path_leaf_node(
     assert!(alice_group.pending_commit().is_none());
     assert!(alice_group.pending_proposals().next().is_none());
 
-    let mut bob_group = MlsGroup::new_from_welcome(
+    let mut bob_group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
-        welcome_option
-            .expect("no welcome after commit")
-            .into_welcome()
-            .expect("Unexpected message type."),
+        welcome_option.expect("no welcome after commit").into(),
         Some(alice_group.export_ratchet_tree().into()),
     )
+    .expect("error creating group from welcome")
+    .into_group(provider)
     .expect("error creating group from welcome");
 
     assert_eq!(
@@ -649,7 +714,7 @@ fn test_commit_with_update_path_leaf_node(
 
     // further process the deserialized message
     let processed_message = bob_group
-        .process_message(provider, msg_in)
+        .process_message(provider, msg_in.try_into_protocol_message().unwrap())
         .expect("bob failed processing alice's message");
 
     // the processed message must be a staged commit message
@@ -818,15 +883,14 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, provider: &impl OpenMlsPr
         .expect("error merging pending commit");
     assert!(alice_group.pending_commit().is_none());
 
-    let mut bob_group = MlsGroup::new_from_welcome(
+    let mut bob_group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
-        welcome_option
-            .expect("no welcome after commit")
-            .into_welcome()
-            .expect("Unexpected message type."),
+        welcome_option.expect("no welcome after commit").into(),
         Some(alice_group.export_ratchet_tree().into()),
     )
+    .expect("error creating group from welcome")
+    .into_group(provider)
     .expect("error creating group from welcome");
 
     assert_eq!(
@@ -899,13 +963,15 @@ fn key_package_deletion(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
     alice_group.merge_pending_commit(provider).unwrap();
 
     // === Bob joins the group ===
-    let _bob_group = MlsGroup::new_from_welcome(
+    let _bob_group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
-        welcome.into_welcome().expect("Unexpected message type."),
+        welcome.into(),
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .expect("Error creating group from Welcome");
+    .expect("Error creating staged join from Welcome")
+    .into_group(provider)
+    .expect("Error creating group from staged join");
 
     // TEST: The private key must be gone from the key store.
     assert!(provider
@@ -962,12 +1028,14 @@ fn remove_prosposal_by_ref(ciphersuite: Ciphersuite, provider: &impl OpenMlsProv
         .add_members(provider, &alice_signer, &[bob_key_package])
         .unwrap();
     alice_group.merge_pending_commit(provider).unwrap();
-    let mut bob_group = MlsGroup::new_from_welcome(
+    let mut bob_group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
-        welcome.into_welcome().unwrap(),
+        welcome.into(),
         Some(alice_group.export_ratchet_tree().into()),
     )
+    .unwrap()
+    .into_group(provider)
     .unwrap();
     // alice proposes to add charlie
     let (_, reference) = alice_group
@@ -990,7 +1058,12 @@ fn remove_prosposal_by_ref(ciphersuite: Ciphersuite, provider: &impl OpenMlsProv
         .commit_to_pending_proposals(provider, &alice_signer)
         .unwrap();
     let msg = bob_group
-        .process_message(provider, MlsMessageIn::from(commit))
+        .process_message(
+            provider,
+            MlsMessageIn::from(commit)
+                .try_into_protocol_message()
+                .unwrap(),
+        )
         .unwrap();
     match msg.into_content() {
         ProcessedMessageContent::StagedCommitMessage(commit) => {
@@ -1019,7 +1092,8 @@ fn group_context_extensions_proposal(ciphersuite: Ciphersuite, provider: &impl O
     // No required capabilities, so no specifically required extensions.
     assert!(alice_group
         .group()
-        .group_context_extensions()
+        .context()
+        .extensions()
         .required_capabilities()
         .is_none());
 
@@ -1047,7 +1121,8 @@ fn group_context_extensions_proposal(ciphersuite: Ciphersuite, provider: &impl O
 
     let required_capabilities = alice_group
         .group()
-        .group_context_extensions()
+        .context()
+        .extensions()
         .required_capabilities()
         .expect("couldn't get required_capabilities");
 
@@ -1280,11 +1355,93 @@ fn unknown_extensions(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider)
         .add_members(provider, &alice_signer, &[bob_key_package.clone()])
         .unwrap();
     alice_group.merge_pending_commit(provider).unwrap();
-    let _bob_group = MlsGroup::new_from_welcome(
+    let _bob_group = StagedWelcome::new_from_welcome(
         provider,
         &MlsGroupJoinConfig::default(),
-        welcome.into_welcome().unwrap(),
+        welcome.into(),
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .expect("Error creating group from Welcome");
+    .expect("Error creating staged join from Welcome")
+    .into_group(provider)
+    .expect("Error creating group from staged join");
+}
+
+#[apply(ciphersuites_and_providers)]
+fn join_multiple_groups_last_resort_extension(
+    ciphersuite: Ciphersuite,
+    provider: &impl OpenMlsProvider,
+) {
+    // start with alice, bob, charlie, common config items
+    let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
+        setup_client("alice", ciphersuite, provider);
+    let (bob_credential_with_key, _bob_kpb, bob_signer, _bob_pk) =
+        setup_client("bob", ciphersuite, provider);
+    let (charlie_credential_with_key, _charlie_kpb, charlie_signer, _charlie_pk) =
+        setup_client("charlie", ciphersuite, provider);
+    let config = CryptoConfig {
+        ciphersuite,
+        version: crate::versions::ProtocolVersion::default(),
+    };
+    let leaf_capabilities =
+        Capabilities::new(None, None, Some(&[ExtensionType::LastResort]), None, None);
+    let keypkg_extensions = Extensions::single(Extension::LastResort(LastResortExtension::new()));
+    // alice creates MlsGroup
+    let mut alice_group = MlsGroup::builder()
+        .crypto_config(config)
+        .use_ratchet_tree_extension(true)
+        .build(provider, &alice_signer, alice_credential_with_key)
+        .expect("error creating group for alice using builder");
+    // bob creates MlsGroup
+    let mut bob_group = MlsGroup::builder()
+        .crypto_config(config)
+        .use_ratchet_tree_extension(true)
+        .build(provider, &bob_signer, bob_credential_with_key)
+        .expect("error creating group for bob using builder");
+    // charlie creates KeyPackage
+    let charlie_keypkg = KeyPackage::builder()
+        .leaf_node_capabilities(leaf_capabilities)
+        .key_package_extensions(keypkg_extensions.clone())
+        .build(
+            config,
+            provider,
+            &charlie_signer,
+            charlie_credential_with_key,
+        )
+        .expect("error building key package for charlie");
+    // alice calls add_members(...) with charlie's KeyPackage; produces Commit and Welcome messages
+    let (_, alice_welcome, _) = alice_group
+        .add_members(provider, &alice_signer, &[charlie_keypkg.clone()])
+        .expect("error adding charlie to alice's group");
+    alice_group
+        .merge_pending_commit(provider)
+        .expect("error merging commit for alice's group");
+    // charlie calls new_from_welcome(...) with alice's Welcome message; SHOULD SUCCEED
+    StagedWelcome::new_from_welcome(
+        provider,
+        &MlsGroupJoinConfig::default(),
+        alice_welcome.into(),
+        None,
+    )
+    .expect("error creating staged join from welcome")
+    .into_group(provider)
+    .expect("error creating group from staged join");
+
+    // bob calls add_members(...) with charlie's KeyPackage; produces Commit and Welcome messages
+    let (_, bob_welcome, _) = bob_group
+        .add_members(provider, &bob_signer, &[charlie_keypkg.clone()])
+        .expect("error adding charlie to bob's group");
+    bob_group
+        .merge_pending_commit(provider)
+        .expect("error merging commit for bob's group");
+    // charlie calls new_from_welcome(...) with bob's Welcome message; SHOULD SUCCEED
+    StagedWelcome::new_from_welcome(
+        provider,
+        &MlsGroupJoinConfig::default(),
+        bob_welcome.into(),
+        None,
+    )
+    .expect("error creating staged join from welcome")
+    .into_group(provider)
+    .expect("error creating group from staged join");
+    // done :-)
 }

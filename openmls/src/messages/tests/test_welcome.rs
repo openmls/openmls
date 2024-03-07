@@ -13,9 +13,10 @@ use crate::{
         hash_ref::KeyPackageRef, hpke, signable::Signable, AeadKey, AeadNonce, Mac, Secret,
     },
     extensions::Extensions,
+    framing::MlsMessageOut,
     group::{
         config::CryptoConfig, errors::WelcomeError, GroupContext, GroupId, MlsGroup,
-        MlsGroupCreateConfig,
+        MlsGroupCreateConfig, StagedWelcome,
     },
     messages::{
         group_info::{GroupInfoTBS, VerifiableGroupInfo},
@@ -161,13 +162,13 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, provider: &impl OpenM
     .unwrap();
 
     // Bob tries to join the group
-    let err = MlsGroup::new_from_welcome(
+    let err = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
-        welcome,
+        MlsMessageOut::from_welcome(welcome, ProtocolVersion::default()).into(),
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .expect_err("Created a group from an invalid Welcome.");
+    .expect_err("Created a staged join from an invalid Welcome.");
 
     assert!(matches!(
         err,
@@ -194,13 +195,15 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, provider: &impl OpenM
         .write_to_key_store(provider.key_store())
         .unwrap();
 
-    let _group = MlsGroup::new_from_welcome(
+    let _group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
-        original_welcome,
+        MlsMessageOut::from_welcome(original_welcome, ProtocolVersion::default()).into(),
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .expect("Error creating group from a valid Welcome.");
+    .expect("Error creating staged join from a valid Welcome.")
+    .into_group(provider)
+    .expect("Error creating group from a valid staged join.");
 }
 
 #[apply(ciphersuites_and_providers)]
@@ -242,12 +245,15 @@ fn test_welcome_message(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
     let welcome_nonce = AeadNonce::random(provider.rand());
 
     // Generate receiver key pair.
-    let receiver_key_pair = provider.crypto().derive_hpke_keypair(
-        ciphersuite.hpke_config(),
-        Secret::random(ciphersuite, provider.rand(), None)
-            .expect("Not enough randomness.")
-            .as_slice(),
-    );
+    let receiver_key_pair = provider
+        .crypto()
+        .derive_hpke_keypair(
+            ciphersuite.hpke_config(),
+            Secret::random(ciphersuite, provider.rand(), None)
+                .expect("Not enough randomness.")
+                .as_slice(),
+        )
+        .expect("Error deriving receiver key pair");
     let hpke_context = b"group info welcome test info";
     let group_secrets = b"these should be the group secrets";
     let new_member = KeyPackageRef::from_slice(&[0u8; 16]);

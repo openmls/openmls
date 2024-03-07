@@ -11,7 +11,7 @@ use crate::{
     framing::{mls_auth_content::AuthenticatedContent, *},
     group::*,
     key_packages::{KeyPackage, KeyPackageBundle},
-    messages::{proposals::*, Welcome},
+    messages::proposals::*,
     schedule::ResumptionPskSecret,
     treesync::{node::leaf_node::LeafNode, RatchetTree},
 };
@@ -90,7 +90,7 @@ impl From<PendingCommitState> for StagedCommit {
 ///
 /// * [`MlsGroupState::PendingCommit`]: This state is split into two possible
 /// sub-states, one for each Commit type:
-/// [`PendingCommitState::Member`] and [`PendingCommitState::Member`]:
+/// [`PendingCommitState::Member`] and [`PendingCommitState::External`]:
 ///
 ///   * If the client creates a commit for this group, the `PendingCommit` state
 ///   is entered with [`PendingCommitState::Member`] and with the [`StagedCommit`] as
@@ -226,11 +226,6 @@ impl MlsGroup {
             .leaf(self.own_leaf_index())
             .map(|node| node.credential())
             .ok_or_else(|| LibraryError::custom("Own leaf node missing").into())
-    }
-
-    /// Get the identity of the client's [`Credential`] owning this group.
-    pub fn own_identity(&self) -> Option<&[u8]> {
-        self.group.own_identity()
     }
 
     /// Returns the leaf index of the client in the tree owning this group.
@@ -453,4 +448,15 @@ pub enum InnerState {
     Changed,
     /// The inner group state hasn't changed and doesn't need to be persisted.
     Persisted,
+}
+
+/// A [`StagedWelcome`] can be inspected and then turned into a [`MlsGroup`].
+/// This allows checking who authored the Welcome message.
+#[derive(Debug)]
+pub struct StagedWelcome {
+    // The group configuration. See [`MlsGroupJoinConfig`] for more information.
+    mls_group_config: MlsGroupJoinConfig,
+    // The internal `CoreGroup` used for lower level operations. See `CoreGroup` for more
+    // information.
+    group: StagedCoreWelcome,
 }

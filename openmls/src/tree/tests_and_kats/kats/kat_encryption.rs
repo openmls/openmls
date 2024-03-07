@@ -88,7 +88,7 @@ use thiserror::Error;
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
-    credentials::{Credential, CredentialType, CredentialWithKey},
+    credentials::{BasicCredential, CredentialWithKey},
     framing::{
         mls_auth_content::AuthenticatedContent, mls_auth_content_in::AuthenticatedContentIn,
         mls_content_in::FramedContentBodyIn, *,
@@ -139,11 +139,10 @@ pub struct EncryptionTestVector {
 
 fn generate_credential(
     identity: Vec<u8>,
-    credential_type: CredentialType,
     signature_algorithm: SignatureScheme,
     provider: &impl OpenMlsProvider,
 ) -> (CredentialWithKey, SignatureKeyPair) {
-    let credential = Credential::new(identity, credential_type).unwrap();
+    let credential = BasicCredential::new_credential(identity);
     let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
     signature_keys.store(provider.key_store()).unwrap();
 
@@ -165,7 +164,6 @@ fn group(
 
     let (credential_with_key, signer) = generate_credential(
         "Kreator".into(),
-        CredentialType::Basic,
         ciphersuite.signature_algorithm(),
         provider,
     );
@@ -191,7 +189,6 @@ fn receiver_group(
 
     let (credential_with_key, signer) = generate_credential(
         "Receiver".into(),
-        CredentialType::Basic,
         ciphersuite.signature_algorithm(),
         provider,
     );
@@ -841,7 +838,8 @@ fn read_test_vectors_encryption(provider: &impl OpenMlsProvider) {
     let _ = pretty_env_logger::try_init();
     log::debug!("Reading test vectors ...");
 
-    let tests: Vec<EncryptionTestVector> = read("test_vectors/kat_encryption_openmls.json");
+    let tests: Vec<EncryptionTestVector> =
+        read_json!("../../../../test_vectors/kat_encryption_openmls.json");
 
     for test_vector in tests {
         match run_test_vector(test_vector, provider) {

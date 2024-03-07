@@ -35,7 +35,6 @@ impl CoreGroup {
     ///  - ValSem240
     ///  - ValSem241
     ///  - ValSem242
-    ///  - ValSem243
     ///  - ValSem244
     ///  - ValSem246 (as part of ValSem010)
     pub(crate) fn process_unverified_message(
@@ -179,7 +178,6 @@ impl CoreGroup {
     ///  - ValSem240
     ///  - ValSem241
     ///  - ValSem242
-    ///  - ValSem243
     ///  - ValSem244
     ///  - ValSem245
     ///  - ValSem246 (as part of ValSem010)

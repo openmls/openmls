@@ -89,7 +89,7 @@ mod test {
     use tls_codec::{Deserialize, Serialize};
 
     use super::*;
-    use crate::{credentials::CredentialType, test_utils::*};
+    use crate::{credentials::BasicCredential, test_utils::*};
 
     #[apply(ciphersuites)]
     fn test_serialize_deserialize(ciphersuite: Ciphersuite) {
@@ -97,7 +97,7 @@ mod test {
             let mut external_sender_extensions = Vec::new();
 
             for _ in 0..8 {
-                let credential = Credential::new(b"Alice".to_vec(), CredentialType::Basic).unwrap();
+                let credential = BasicCredential::new_credential(b"Alice".to_vec());
                 let signature_keys =
                     SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
