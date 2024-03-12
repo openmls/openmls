@@ -36,12 +36,13 @@
 //! let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
 //! let provider = OpenMlsRustCrypto::default();
 //!
-//! let credential = BasicCredential::new_credential("identity".into());
+//! let credential = BasicCredential::new("identity".into())
+//!     .expect("Error creating a credential.");
 //! let signer =
 //!     SignatureKeyPair::new(ciphersuite.signature_algorithm())
 //!         .expect("Error generating a signature key pair.");
 //! let credential_with_key = CredentialWithKey {
-//!     credential,
+//!     credential: credential.into(),
 //!     signature_key: signer.public().into(),
 //! };
 //! let key_package = KeyPackage::builder()

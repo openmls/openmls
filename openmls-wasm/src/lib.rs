@@ -73,13 +73,13 @@ impl Identity {
     pub fn new(provider: &Provider, name: &str) -> Result<Identity, JsError> {
         let signature_scheme = SignatureScheme::ED25519;
         let identity = name.bytes().collect();
-        let credential = BasicCredential::new_credential(identity);
+        let credential = BasicCredential::new(identity)?;
         let keypair = SignatureKeyPair::new(signature_scheme)?;
 
         keypair.store(provider.0.key_store())?;
 
         let credential_with_key = CredentialWithKey {
-            credential,
+            credential: credential.into(),
             signature_key: keypair.public().into(),
         };
 
