@@ -24,7 +24,7 @@ signature field is considered malformed.</p>
 <p>Key package bundles are key packages including their private key. A key
 package bundle can be created as follows:</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>openmls::prelude::<span class="kw-2">*</span>;
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>openmls::prelude::{<span class="kw-2">*</span>, tls_codec::<span class="kw-2">*</span>};
 <span class="kw">use </span>openmls_rust_crypto::OpenMlsRustCrypto;
 <span class="kw">use </span>openmls_basic_credential::SignatureKeyPair;
 
@@ -55,7 +55,7 @@ package bundle can be created as follows:</p>
 <p>When getting key packages from another user the serialized bytes are parsed
 as follows;</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>openmls::prelude::<span class="kw-2">*</span>;
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>openmls::prelude::{<span class="kw-2">*</span>, tls_codec::<span class="kw-2">*</span>};
 <span class="kw">use </span>openmls::test_utils::hex_to_bytes;
 <span class="kw">use </span>openmls_rust_crypto::OpenMlsRustCrypto;
 

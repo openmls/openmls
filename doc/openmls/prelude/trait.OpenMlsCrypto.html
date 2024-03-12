@@ -8,14 +8,14 @@
         hash_type: <a class="enum" href="enum.HashType.html" title="enum openmls::prelude::HashType">HashType</a>,
         salt: &amp;[<a class="primitive" href="https://doc.rust-lang.org/1.76.0/std/primitive.u8.html">u8</a>],
         ikm: &amp;[<a class="primitive" href="https://doc.rust-lang.org/1.76.0/std/primitive.u8.html">u8</a>]
-    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.76.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;SecretVLBytes, <a class="enum" href="enum.CryptoError.html" title="enum openmls::prelude::CryptoError">CryptoError</a>&gt;;
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.76.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="struct.SecretVLBytes.html" title="struct openmls::prelude::SecretVLBytes">SecretVLBytes</a>, <a class="enum" href="enum.CryptoError.html" title="enum openmls::prelude::CryptoError">CryptoError</a>&gt;;
 <span class="item-spacer"></span>    fn <a href="#tymethod.hkdf_expand" class="fn">hkdf_expand</a>(
         &amp;self,
         hash_type: <a class="enum" href="enum.HashType.html" title="enum openmls::prelude::HashType">HashType</a>,
         prk: &amp;[<a class="primitive" href="https://doc.rust-lang.org/1.76.0/std/primitive.u8.html">u8</a>],
         info: &amp;[<a class="primitive" href="https://doc.rust-lang.org/1.76.0/std/primitive.u8.html">u8</a>],
         okm_len: <a class="primitive" href="https://doc.rust-lang.org/1.76.0/std/primitive.usize.html">usize</a>
-    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.76.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;SecretVLBytes, <a class="enum" href="enum.CryptoError.html" title="enum openmls::prelude::CryptoError">CryptoError</a>&gt;;
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.76.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="struct.SecretVLBytes.html" title="struct openmls::prelude::SecretVLBytes">SecretVLBytes</a>, <a class="enum" href="enum.CryptoError.html" title="enum openmls::prelude::CryptoError">CryptoError</a>&gt;;
 <span class="item-spacer"></span>    fn <a href="#tymethod.hash" class="fn">hash</a>(
         &amp;self,
         hash_type: <a class="enum" href="enum.HashType.html" title="enum openmls::prelude::HashType">HashType</a>,
@@ -100,7 +100,7 @@
     hash_type: <a class="enum" href="enum.HashType.html" title="enum openmls::prelude::HashType">HashType</a>,
     salt: &amp;[<a class="primitive" href="https://doc.rust-lang.org/1.76.0/std/primitive.u8.html">u8</a>],
     ikm: &amp;[<a class="primitive" href="https://doc.rust-lang.org/1.76.0/std/primitive.u8.html">u8</a>]
-) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.76.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;SecretVLBytes, <a class="enum" href="enum.CryptoError.html" title="enum openmls::prelude::CryptoError">CryptoError</a>&gt;</h4></section></summary><div class="docblock"><p>HKDF extract.</p>
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.76.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="struct.SecretVLBytes.html" title="struct openmls::prelude::SecretVLBytes">SecretVLBytes</a>, <a class="enum" href="enum.CryptoError.html" title="enum openmls::prelude::CryptoError">CryptoError</a>&gt;</h4></section></summary><div class="docblock"><p>HKDF extract.</p>
 <p>Returns an error if the <a href="enum.HashType.html" title="enum openmls::prelude::HashType"><code>HashType</code></a> is not supported.</p>
 </div></details><details class="toggle method-toggle" open><summary><section id="tymethod.hkdf_expand" class="method"><h4 class="code-header">fn <a href="#tymethod.hkdf_expand" class="fn">hkdf_expand</a>(
     &amp;self,
@@ -108,7 +108,7 @@
     prk: &amp;[<a class="primitive" href="https://doc.rust-lang.org/1.76.0/std/primitive.u8.html">u8</a>],
     info: &amp;[<a class="primitive" href="https://doc.rust-lang.org/1.76.0/std/primitive.u8.html">u8</a>],
     okm_len: <a class="primitive" href="https://doc.rust-lang.org/1.76.0/std/primitive.usize.html">usize</a>
-) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.76.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;SecretVLBytes, <a class="enum" href="enum.CryptoError.html" title="enum openmls::prelude::CryptoError">CryptoError</a>&gt;</h4></section></summary><div class="docblock"><p>HKDF expand.</p>
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.76.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="struct.SecretVLBytes.html" title="struct openmls::prelude::SecretVLBytes">SecretVLBytes</a>, <a class="enum" href="enum.CryptoError.html" title="enum openmls::prelude::CryptoError">CryptoError</a>&gt;</h4></section></summary><div class="docblock"><p>HKDF expand.</p>
 <p>Returns an error if the <a href="enum.HashType.html" title="enum openmls::prelude::HashType"><code>HashType</code></a> is not supported or the output length
 is too long.</p>
 </div></details><details class="toggle method-toggle" open><summary><section id="tymethod.hash" class="method"><h4 class="code-header">fn <a href="#tymethod.hash" class="fn">hash</a>(&amp;self, hash_type: <a class="enum" href="enum.HashType.html" title="enum openmls::prelude::HashType">HashType</a>, data: &amp;[<a class="primitive" href="https://doc.rust-lang.org/1.76.0/std/primitive.u8.html">u8</a>]) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.76.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="https://doc.rust-lang.org/1.76.0/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.76.0/std/primitive.u8.html">u8</a>&gt;, <a class="enum" href="enum.CryptoError.html" title="enum openmls::prelude::CryptoError">CryptoError</a>&gt;</h4></section></summary><div class="docblock"><p>Hash the <code>data</code>.</p>

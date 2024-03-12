@@ -21,9 +21,9 @@ processing functions.</p>
 <p>For the type-safety to work, it is important that <a href="trait.Signable.html" title="trait openmls::ciphersuite::signable::Signable"><code>Signable</code></a> and
 <a href="trait.SignedStruct.html" title="trait openmls::ciphersuite::signable::SignedStruct"><code>SignedStruct</code></a> are implemented by distinct structs. The same goes for
 <a href="trait.Verifiable.html" title="trait openmls::ciphersuite::signable::Verifiable"><code>Verifiable</code></a> and <a href="trait.VerifiedStruct.html" title="trait openmls::ciphersuite::signable::VerifiedStruct"><code>VerifiedStruct</code></a>. In addition, only the
-<a href="trait.SignedStruct.html" title="trait openmls::ciphersuite::signable::SignedStruct"><code>SignedStruct</code></a> should implement the <a href="../../prelude/trait.TlsSerializeTrait.html" title="trait openmls::prelude::TlsSerializeTrait"><code>tls_codec::Serialize</code></a> trait.
+<a href="trait.SignedStruct.html" title="trait openmls::ciphersuite::signable::SignedStruct"><code>SignedStruct</code></a> should implement the [<code>tls_codec::Serialize</code>] trait.
 Similarly, only the <a href="trait.Verifiable.html" title="trait openmls::ciphersuite::signable::Verifiable"><code>Verifiable</code></a> struct should implement the
-<a href="../../prelude/trait.TlsDeserializeTrait.html" title="trait openmls::prelude::TlsDeserializeTrait"><code>tls_codec::Deserialize</code></a> trait.</p>
+[<code>tls_codec::Deserialize</code>] trait.</p>
 </div></details><h2 id="enums" class="section-header"><a href="#enums">Enums</a></h2><ul class="item-table"><li><div class="item-name"><a class="enum" href="enum.SignatureError.html" title="enum openmls::ciphersuite::signable::SignatureError">SignatureError</a></div><div class="desc docblock-short">Signature generation and verification errors.
 The only information relayed with this error is whether the signature
 verification or generation failed.</div></li></ul><h2 id="traits" class="section-header"><a href="#traits">Traits</a></h2><ul class="item-table"><li><div class="item-name"><a class="trait" href="trait.Signable.html" title="trait openmls::ciphersuite::signable::Signable">Signable</a></div><div class="desc docblock-short">The <code>Signable</code> trait is implemented by all struct that are being signed.

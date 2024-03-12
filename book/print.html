@@ -983,54 +983,54 @@ pub enum SignatureScheme {
 <p>The HPKE implementation is part of the crypto provider as well.
 The crate, therefore, defines the necessary types too.</p>
 <p>The HPKE algorithms are defined as follows.</p>
-<pre><code class="language-rust no_run noplayground">    }
-}
-
-impl std::error::Error for CryptoError {}
-
-// === HPKE === //
-
-/// Convenience tuple struct for an HPKE configuration.
-#[derive(Debug)]
+<pre><code class="language-rust no_run noplayground">#[derive(Debug)]
 pub struct HpkeConfig(pub HpkeKemType, pub HpkeKdfType, pub HpkeAeadType);
 
 /// KEM Types for HPKE
 #[derive(PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
 #[repr(u16)]
 pub enum HpkeKemType {
-    /// DH KEM on P256</code></pre>
-<pre><code class="language-rust no_run noplayground">
+    /// DH KEM on P256
+    DhKemP256 = 0x0010,
+
+    /// DH KEM on P384
+    DhKemP384 = 0x0011,
+
     /// DH KEM on P521
     DhKemP521 = 0x0012,
+</code></pre>
+<pre><code class="language-rust no_run noplayground">    DhKem448 = 0x0021,
+}
 
-    /// DH KEM on x25519
-    DhKem25519 = 0x0020,
-
-    /// DH KEM on x448
-    DhKem448 = 0x0021,
-}</code></pre>
-<pre><code class="language-rust no_run noplayground">pub enum HpkeKdfType {
+/// KDF Types for HPKE
+#[derive(PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
+#[repr(u16)]
+pub enum HpkeKdfType {
     /// HKDF SHA 256
     HkdfSha256 = 0x0001,
-
-    /// HKDF SHA 384
-    HkdfSha384 = 0x0002,
-
-    /// HKDF SHA 512
-    HkdfSha512 = 0x0003,
+</code></pre>
+<pre><code class="language-rust no_run noplayground">    HkdfSha512 = 0x0003,
 }
 
 /// AEAD Types for HPKE.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]</code></pre>
-<p>In addition, helper structs for <code>HpkeCiphertext</code> and <code>HpkeKeyPair</code> are defined.</p>
-<pre><code class="language-rust no_run noplayground">    Export = 0xFFFF,
-}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[repr(u16)]
+pub enum HpkeAeadType {
+    /// AES GCM 128
+    AesGcm128 = 0x0001,
 
-/// 7.7. Update Paths</code></pre>
-<pre><code class="language-rust no_run noplayground">///     opaque kem_output&lt;V&gt;;
-///     opaque ciphertext&lt;V&gt;;
+    /// AES GCM 256
+    AesGcm256 = 0x0002,
+</code></pre>
+<p>In addition, helper structs for <code>HpkeCiphertext</code> and <code>HpkeKeyPair</code> are defined.</p>
+<pre><code class="language-rust no_run noplayground">///     opaque ciphertext&lt;V&gt;;
 /// } HPKECiphertext;
-/// ```</code></pre>
+/// ```
+#[derive(</code></pre>
+<pre><code class="language-rust no_run noplayground">    Clone,
+    Serialize,
+    Deserialize,
+    TlsSerialize,</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="message-validation"><a class="header" href="#message-validation">Message Validation</a></h1>
 <p>OpenMLS implements a variety of syntactical and semantical checks, both when parsing and processing incoming commits and when creating own commits.</p>
 <h2 id="validation-steps"><a class="header" href="#validation-steps">Validation steps</a></h2>
