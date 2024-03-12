@@ -29,7 +29,7 @@
 //! package bundle can be created as follows:
 //!
 //! ```
-//! use openmls::prelude::*;
+//! use openmls::prelude::{*, tls_codec::*};
 //! use openmls_rust_crypto::OpenMlsRustCrypto;
 //! use openmls_basic_credential::SignatureKeyPair;
 //!
@@ -65,7 +65,7 @@
 //! as follows;
 //!
 //! ```
-//! use openmls::prelude::*;
+//! use openmls::prelude::{*, tls_codec::*};
 //! use openmls::test_utils::hex_to_bytes;
 //! use openmls_rust_crypto::OpenMlsRustCrypto;
 //!

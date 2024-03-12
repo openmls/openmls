@@ -1,5 +1,5 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use tls_codec::VLBytes;
+use tls_codec::*;
 
 use crate::{
     group::{
