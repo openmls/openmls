@@ -6,9 +6,8 @@ use std::path::PathBuf;
 use std::{cell::RefCell, collections::HashMap, str};
 
 use ds_lib::{ClientKeyPackages, GroupMessage};
-use openmls::prelude::*;
+use openmls::prelude::{tls_codec::*, *};
 use openmls_traits::OpenMlsProvider;
-use tls_codec::TlsByteVecU8;
 
 use super::{
     backend::Backend, conversation::Conversation, conversation::ConversationMessage, file_helpers,
