@@ -7,11 +7,7 @@
 
 use std::collections::HashSet;
 
-use openmls::prelude::*;
-use tls_codec::{
-    TlsByteSliceU16, TlsByteVecU16, TlsByteVecU32, TlsByteVecU8, TlsDeserialize,
-    TlsDeserializeBytes, TlsSerialize, TlsSize, TlsVecU32, VLBytes,
-};
+use openmls::prelude::{tls_codec::*, *};
 
 /// Information about a client.
 /// To register a new client create a new `ClientInfo` and send it to
