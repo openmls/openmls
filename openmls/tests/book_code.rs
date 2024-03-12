@@ -1,5 +1,5 @@
 use openmls::{
-    prelude::{config::CryptoConfig, *},
+    prelude::{config::CryptoConfig, tls_codec::*, *},
     test_utils::*,
     *,
 };
