@@ -18,8 +18,10 @@ use crate::{
 
 const TEST_VECTORS_PATH_READ: &[&str] = &[
     "test_vectors/passive-client-welcome.json",
-    "test_vectors/passive-client-random.json",
-    "test_vectors/passive-client-handling-commit.json",
+    // FIXME #1529: The key packages are not valid anymore and the test vectors
+    //              need to be regenerated. See mlswg/mls-implementations#181
+    // "test_vectors/passive-client-random.json",
+    // "test_vectors/passive-client-handling-commit.json",
 ];
 const TEST_VECTOR_PATH_WRITE: &[&str] = &["test_vectors/passive-client-welcome-new.json"];
 const NUM_TESTS: usize = 25;
