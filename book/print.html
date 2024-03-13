@@ -258,7 +258,7 @@ Thus, to create a fresh <code>Credential</code>, the following inputs are requir
 <li><code>identity: Vec&lt;u8&gt;</code>: An octet string that uniquely identifies the client.</li>
 <li><code>credential_type: CredentialType</code>: The type of the credential, in this case <code>CredentialType::Basic</code>.</li>
 </ul>
-<pre><code class="language-rust no_run noplayground">    let credential = BasicCredential::new_credential(identity);</code></pre>
+<pre><code class="language-rust no_run noplayground">    let credential = BasicCredential::new(identity).unwrap();</code></pre>
 <p>After creating the credential bundle, clients should create keys for it.
 OpenMLS provides a simple implementation of <a href="https://github.com/openmls/openmls/tree/main/basic-credential"><code>BasicCredential</code></a> for tests and to demonstrate how to use credentials.</p>
 <pre><code class="language-rust no_run noplayground">    let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
@@ -805,7 +805,7 @@ but note that the key used to store, read, and delete values in the key store ha
 to be provided as a byte slice.</p>
 <p>In the following examples, we have a <code>ciphersuite</code> and a <code>provider</code> (<code>OpenMlsCryptoProvider</code>).</p>
 <pre><code class="language-rust no_run noplayground">    // First we generate a credential and key package for our user.
-    let credential = BasicCredential::new_credential(b"User ID".to_vec());
+    let credential = BasicCredential::new(b"User ID".to_vec()).unwrap();
     let signature_keys = SignatureKeyPair::new(ciphersuite.into()).unwrap();
 
     let key_package = KeyPackage::builder()
@@ -814,7 +814,7 @@ to be provided as a byte slice.</p>
             provider,
             &amp;signature_keys,
             CredentialWithKey {
-                credential,
+                credential: credential.into(),
                 signature_key: signature_keys.to_public_vec().into(),
             },
         )

@@ -195,6 +195,7 @@
 <a href="#194" id="194">194</a>
 <a href="#195" id="195">195</a>
 <a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
 </pre></div><pre class="rust"><code><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">"../README.md"</span>)]
 </span><span class="doccomment">//! ## Quick Start
 //! For a quick start to learn how OpenMLS works here's the basic code to set
@@ -219,7 +220,8 @@
 //!     signature_algorithm: SignatureScheme,
 //!     provider: &amp;impl OpenMlsProvider,
 //! ) -&gt; (CredentialWithKey, SignatureKeyPair) {
-//!     let credential = BasicCredential::new_credential(identity);
+//!     let credential = BasicCredential::new(identity)
+//!         .expect("Error creating a credential.");
 //!     let signature_keys =
 //!         SignatureKeyPair::new(signature_algorithm)
 //!             .expect("Error generating a signature key pair.");
@@ -232,7 +234,7 @@
 //!     
 //!     (
 //!         CredentialWithKey {
-//!             credential,
+//!             credential: credential.into(),
 //!             signature_key: signature_keys.public().into(),
 //!         },
 //!         signature_keys,

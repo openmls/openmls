@@ -761,6 +761,7 @@
 <a href="#760" id="760">760</a>
 <a href="#761" id="761">761</a>
 <a href="#762" id="762">762</a>
+<a href="#763" id="763">763</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Key Packages
 //!
 //! Key packages are pre-published public keys that provide some information
@@ -799,12 +800,13 @@
 //! let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
 //! let provider = OpenMlsRustCrypto::default();
 //!
-//! let credential = BasicCredential::new_credential("identity".into());
+//! let credential = BasicCredential::new("identity".into())
+//!     .expect("Error creating a credential.");
 //! let signer =
 //!     SignatureKeyPair::new(ciphersuite.signature_algorithm())
 //!         .expect("Error generating a signature key pair.");
 //! let credential_with_key = CredentialWithKey {
-//!     credential,
+//!     credential: credential.into(),
 //!     signature_key: signer.public().into(),
 //! };
 //! let key_package = KeyPackage::builder()

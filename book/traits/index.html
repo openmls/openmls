@@ -192,7 +192,7 @@ but note that the key used to store, read, and delete values in the key store ha
 to be provided as a byte slice.</p>
 <p>In the following examples, we have a <code>ciphersuite</code> and a <code>provider</code> (<code>OpenMlsCryptoProvider</code>).</p>
 <pre><code class="language-rust no_run noplayground">    // First we generate a credential and key package for our user.
-    let credential = BasicCredential::new_credential(b"User ID".to_vec());
+    let credential = BasicCredential::new(b"User ID".to_vec()).unwrap();
     let signature_keys = SignatureKeyPair::new(ciphersuite.into()).unwrap();
 
     let key_package = KeyPackage::builder()
@@ -201,7 +201,7 @@ to be provided as a byte slice.</p>
             provider,
             &amp;signature_keys,
             CredentialWithKey {
-                credential,
+                credential: credential.into(),
                 signature_key: signature_keys.to_public_vec().into(),
             },
         )

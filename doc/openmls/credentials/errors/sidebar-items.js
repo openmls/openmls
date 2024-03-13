@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["CredentialError"]};
+window.SIDEBAR_ITEMS = {"enum":["BasicCredentialError","CredentialError"]};

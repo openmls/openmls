@@ -585,9 +585,9 @@
         <span class="kw">let </span>credentials = <span class="macro">vec!</span>[
             CredentialType::Basic,
             CredentialType::X509,
-            CredentialType::Unknown(<span class="number">0x0000</span>),
-            CredentialType::Unknown(<span class="number">0x7A7A</span>),
-            CredentialType::Unknown(<span class="number">0xFFFF</span>),
+            CredentialType::Other(<span class="number">0x0000</span>),
+            CredentialType::Other(<span class="number">0x7A7A</span>),
+            CredentialType::Other(<span class="number">0xFFFF</span>),
         ];
 
         <span class="kw">let </span>expected = Capabilities {

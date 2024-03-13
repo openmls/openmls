@@ -217,13 +217,13 @@
             <span class="kw">let </span><span class="kw-2">mut </span>external_sender_extensions = Vec::new();
 
             <span class="kw">for _ in </span><span class="number">0</span>..<span class="number">8 </span>{
-                <span class="kw">let </span>credential = BasicCredential::new_credential(<span class="string">b"Alice"</span>.to_vec());
+                <span class="kw">let </span>credential = BasicCredential::new(<span class="string">b"Alice"</span>.to_vec()).unwrap();
                 <span class="kw">let </span>signature_keys =
                     SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
                 external_sender_extensions.push(ExternalSender {
                     signature_key: signature_keys.to_public_vec().into(),
-                    credential,
+                    credential: credential.into(),
                 });
             }
 
