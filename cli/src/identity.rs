@@ -23,10 +23,10 @@ impl Identity {
         crypto: &OpenMlsRustPersistentCrypto,
         id: &[u8],
     ) -> Self {
-        let credential = BasicCredential::new_credential(id.to_vec());
+        let credential = BasicCredential::new(id.to_vec()).unwrap();
         let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
         let credential_with_key = CredentialWithKey {
-            credential,
+            credential: credential.into(),
             signature_key: signature_keys.to_public_vec().into(),
         };
         signature_keys.store(crypto.key_store()).unwrap();
