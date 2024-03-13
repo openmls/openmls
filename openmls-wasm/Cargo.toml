@@ -1,7 +1,7 @@
 [package]
 name = "openmls-wasm"
 version = "0.1.0"
-authors = ["Jan Winkelmann (keks) <jan@cryspen.com>"]
+authors = ["OpenMLS Authors"]
 edition = "2018"
 license = "MIT"
 readme = "README.md"
@@ -31,7 +31,3 @@ js-sys = "0.3.68"
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.34"
-
-[profile.release]
-# Tell `rustc` to optimize for small code size.
-opt-level = "s"
