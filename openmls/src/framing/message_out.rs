@@ -53,7 +53,7 @@ pub struct MlsMessageOut {
 /// ```
 #[derive(Debug, PartialEq, Clone, TlsSerialize, TlsSize)]
 #[repr(u16)]
-pub(crate) enum MlsMessageBodyOut {
+pub enum MlsMessageBodyOut {
     /// Plaintext message
     #[tls_codec(discriminant = 1)]
     PublicMessage(PublicMessage),
@@ -142,6 +142,11 @@ impl MlsMessageOut {
     pub fn to_bytes(&self) -> Result<Vec<u8>, MlsMessageError> {
         self.tls_serialize_detached()
             .map_err(|_| MlsMessageError::UnableToEncode)
+    }
+
+    /// Returns a reference to the contents of this [`MlsMessageOut`].
+    pub fn body(&self) -> &MlsMessageBodyOut {
+        &self.body
     }
 }
 

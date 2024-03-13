@@ -110,13 +110,13 @@ fn generate_credential(
     signature_algorithm: SignatureScheme,
     provider: &impl OpenMlsProvider,
 ) -> (CredentialWithKey, SignatureKeyPair) {
-    let credential = BasicCredential::new_credential(identity);
+    let credential = BasicCredential::new(identity).unwrap();
     let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
     signature_keys.store(provider.key_store()).unwrap();
 
     (
         CredentialWithKey {
-            credential,
+            credential: credential.into(),
             signature_key: signature_keys.to_public_vec().into(),
         },
         signature_keys,
@@ -239,7 +239,7 @@ pub fn run_test_vector(
         );
 
         // Set up the group, unfortunately we can't do without.
-        let credential = BasicCredential::new_credential(b"This is not needed".to_vec());
+        let credential = BasicCredential::new(b"This is not needed".to_vec()).unwrap();
         let signature_private_key = hex_to_bytes(&test.signature_priv);
         let random_own_signature_key =
             SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
@@ -254,21 +254,21 @@ pub fn run_test_vector(
             group_context.group_id().clone(),
             CryptoConfig::with_default_version(ciphersuite),
             CredentialWithKey {
-                credential,
+                credential: credential.into(),
                 signature_key: random_own_signature_key.into(),
             },
         )
         .build(provider, &signer)
         .unwrap();
 
-        let credential = BasicCredential::new_credential("Fake user".into());
+        let credential = BasicCredential::new("Fake user".into()).unwrap();
         let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
         let bob_key_package_bundle = KeyPackageBundle::new(
             provider,
             &signature_keys,
             ciphersuite,
             CredentialWithKey {
-                credential,
+                credential: credential.into(),
                 signature_key: hex_to_bytes(&test.signature_pub).into(),
             },
         );

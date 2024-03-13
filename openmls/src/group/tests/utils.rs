@@ -335,7 +335,7 @@ pub(crate) fn generate_credential_with_key(
     provider: &impl OpenMlsProvider,
 ) -> CredentialWithKeyAndSigner {
     let (credential, signer) = {
-        let credential = BasicCredential::new_credential(identity);
+        let credential = BasicCredential::new(identity).unwrap();
         let signature_keys = SignatureKeyPair::new(signature_scheme).unwrap();
         signature_keys.store(provider.key_store()).unwrap();
 
@@ -346,7 +346,7 @@ pub(crate) fn generate_credential_with_key(
 
     CredentialWithKeyAndSigner {
         credential_with_key: CredentialWithKey {
-            credential,
+            credential: credential.into(),
             signature_key: signature_key.into(),
         },
         signer,

@@ -304,6 +304,11 @@ impl MlsGroup {
         }
     }
 
+    /// Get a reference to the group context [`Extensions`] of this [`MlsGroup`].
+    pub fn extensions(&self) -> &Extensions {
+        self.group.public_group().group_context().extensions()
+    }
+
     // === Load & save ===
 
     /// Loads the state from persisted state.
