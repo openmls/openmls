@@ -104,8 +104,7 @@ use crate::{
     },
     credentials::*,
     error::LibraryError,
-    extensions::ExtensionType,
-    extensions::Extensions,
+    extensions::{Extension, ExtensionType, Extensions, LastResortExtension},
     group::config::CryptoConfig,
     treesync::{
         node::{
@@ -605,6 +604,7 @@ pub struct KeyPackageBuilder {
     key_package_extensions: Option<Extensions>,
     leaf_node_capabilities: Option<Capabilities>,
     leaf_node_extensions: Option<Extensions>,
+    last_resort: bool,
 }
 
 impl KeyPackageBuilder {
@@ -615,6 +615,7 @@ impl KeyPackageBuilder {
             key_package_extensions: None,
             leaf_node_capabilities: None,
             leaf_node_extensions: None,
+            last_resort: false,
         }
     }
 
@@ -630,6 +631,12 @@ impl KeyPackageBuilder {
         self
     }
 
+    /// Mark the key package as a last-resort key package via a [`LastResortExtension`].
+    pub fn mark_as_last_resort(mut self) -> Self {
+        self.last_resort = true;
+        self
+    }
+
     /// Set the leaf node capabilities.
     pub fn leaf_node_capabilities(mut self, capabilities: Capabilities) -> Self {
         self.leaf_node_capabilities.replace(capabilities);
@@ -642,13 +649,27 @@ impl KeyPackageBuilder {
         self
     }
 
+    /// Ensure that a last-resort extension is present in the key package if the
+    /// `last_resort` flag is set.
+    fn ensure_last_resort(&mut self) {
+        if self.last_resort {
+            let last_resort_extension = Extension::LastResort(LastResortExtension::default());
+            if let Some(extensions) = self.key_package_extensions.as_mut() {
+                extensions.add_or_replace(last_resort_extension);
+            } else {
+                self.key_package_extensions = Some(Extensions::single(last_resort_extension));
+            }
+        }
+    }
+
     pub(crate) fn build_without_key_storage<KeyStore: OpenMlsKeyStore>(
-        self,
+        mut self,
         config: CryptoConfig,
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
     ) -> Result<KeyPackageCreationResult, KeyPackageNewError<KeyStore::Error>> {
+        self.ensure_last_resort();
         KeyPackage::create(
             config,
             provider,
@@ -663,12 +684,13 @@ impl KeyPackageBuilder {
 
     /// Finalize and build the key package.
     pub fn build<KeyStore: OpenMlsKeyStore>(
-        self,
+        mut self,
         config: CryptoConfig,
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
     ) -> Result<KeyPackage, KeyPackageNewError<KeyStore::Error>> {
+        self.ensure_last_resort();
         let KeyPackageCreationResult {
             key_package,
             encryption_keypair,
