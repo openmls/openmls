@@ -445,6 +445,11 @@
 <a href="#444" id="444">444</a>
 <a href="#445" id="445">445</a>
 <a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! MLS Group
 //!
 //! This module contains [`MlsGroup`] and its submodules.
@@ -733,6 +738,11 @@
             }
             MlsGroupState::Operational | MlsGroupState::Inactive =&gt; (),
         }
+    }
+
+    <span class="doccomment">/// Get a reference to the group context [`Extensions`] of this [`MlsGroup`].
+    </span><span class="kw">pub fn </span>extensions(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Extensions {
+        <span class="self">self</span>.group.public_group().group_context().extensions()
     }
 
     <span class="comment">// === Load &amp; save ===

@@ -438,7 +438,7 @@
 
 <span class="kw">impl </span>PublicMessage {
     <span class="doccomment">/// Returns the [`ContentType`] of the message.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>content_type(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ContentType {
+    </span><span class="kw">pub fn </span>content_type(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ContentType {
         <span class="self">self</span>.content.body.content_type()
     }
 

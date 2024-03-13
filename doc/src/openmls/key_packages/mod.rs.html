@@ -762,6 +762,28 @@
 <a href="#761" id="761">761</a>
 <a href="#762" id="762">762</a>
 <a href="#763" id="763">763</a>
+<a href="#764" id="764">764</a>
+<a href="#765" id="765">765</a>
+<a href="#766" id="766">766</a>
+<a href="#767" id="767">767</a>
+<a href="#768" id="768">768</a>
+<a href="#769" id="769">769</a>
+<a href="#770" id="770">770</a>
+<a href="#771" id="771">771</a>
+<a href="#772" id="772">772</a>
+<a href="#773" id="773">773</a>
+<a href="#774" id="774">774</a>
+<a href="#775" id="775">775</a>
+<a href="#776" id="776">776</a>
+<a href="#777" id="777">777</a>
+<a href="#778" id="778">778</a>
+<a href="#779" id="779">779</a>
+<a href="#780" id="780">780</a>
+<a href="#781" id="781">781</a>
+<a href="#782" id="782">782</a>
+<a href="#783" id="783">783</a>
+<a href="#784" id="784">784</a>
+<a href="#785" id="785">785</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Key Packages
 //!
 //! Key packages are pre-published public keys that provide some information
@@ -868,8 +890,7 @@
     },
     credentials::<span class="kw-2">*</span>,
     error::LibraryError,
-    extensions::ExtensionType,
-    extensions::Extensions,
+    extensions::{Extension, ExtensionType, Extensions, LastResortExtension},
     group::config::CryptoConfig,
     treesync::{
         node::{
@@ -1369,6 +1390,7 @@
     key_package_extensions: <span class="prelude-ty">Option</span>&lt;Extensions&gt;,
     leaf_node_capabilities: <span class="prelude-ty">Option</span>&lt;Capabilities&gt;,
     leaf_node_extensions: <span class="prelude-ty">Option</span>&lt;Extensions&gt;,
+    last_resort: bool,
 }
 
 <span class="kw">impl </span>KeyPackageBuilder {
@@ -1379,6 +1401,7 @@
             key_package_extensions: <span class="prelude-val">None</span>,
             leaf_node_capabilities: <span class="prelude-val">None</span>,
             leaf_node_extensions: <span class="prelude-val">None</span>,
+            last_resort: <span class="bool-val">false</span>,
         }
     }
 
@@ -1394,6 +1417,12 @@
         <span class="self">self
     </span>}
 
+    <span class="doccomment">/// Mark the key package as a last-resort key package via a [`LastResortExtension`].
+    </span><span class="kw">pub fn </span>mark_as_last_resort(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.last_resort = <span class="bool-val">true</span>;
+        <span class="self">self
+    </span>}
+
     <span class="doccomment">/// Set the leaf node capabilities.
     </span><span class="kw">pub fn </span>leaf_node_capabilities(<span class="kw-2">mut </span><span class="self">self</span>, capabilities: Capabilities) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.leaf_node_capabilities.replace(capabilities);
@@ -1406,13 +1435,27 @@
         <span class="self">self
     </span>}
 
+    <span class="doccomment">/// Ensure that a last-resort extension is present in the key package if the
+    /// `last_resort` flag is set.
+    </span><span class="kw">fn </span>ensure_last_resort(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">if </span><span class="self">self</span>.last_resort {
+            <span class="kw">let </span>last_resort_extension = Extension::LastResort(LastResortExtension::default());
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(extensions) = <span class="self">self</span>.key_package_extensions.as_mut() {
+                extensions.add_or_replace(last_resort_extension);
+            } <span class="kw">else </span>{
+                <span class="self">self</span>.key_package_extensions = <span class="prelude-val">Some</span>(Extensions::single(last_resort_extension));
+            }
+        }
+    }
+
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>build_without_key_storage&lt;KeyStore: OpenMlsKeyStore&gt;(
-        <span class="self">self</span>,
+        <span class="kw-2">mut </span><span class="self">self</span>,
         config: CryptoConfig,
         provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         credential_with_key: CredentialWithKey,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;KeyPackageCreationResult, KeyPackageNewError&lt;KeyStore::Error&gt;&gt; {
+        <span class="self">self</span>.ensure_last_resort();
         KeyPackage::create(
             config,
             provider,
@@ -1427,12 +1470,13 @@
 
     <span class="doccomment">/// Finalize and build the key package.
     </span><span class="kw">pub fn </span>build&lt;KeyStore: OpenMlsKeyStore&gt;(
-        <span class="self">self</span>,
+        <span class="kw-2">mut </span><span class="self">self</span>,
         config: CryptoConfig,
         provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         credential_with_key: CredentialWithKey,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;KeyPackage, KeyPackageNewError&lt;KeyStore::Error&gt;&gt; {
+        <span class="self">self</span>.ensure_last_resort();
         <span class="kw">let </span>KeyPackageCreationResult {
             key_package,
             encryption_keypair,

@@ -301,6 +301,11 @@
 <a href="#300" id="300">300</a>
 <a href="#301" id="301">301</a>
 <a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains all types related to group info handling.
 
 </span><span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
@@ -470,9 +475,14 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>.payload.group_context
     }
 
-    <span class="doccomment">/// Returns the extensions.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>extensions(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Extensions {
+    <span class="doccomment">/// Returns the [`GroupInfo`] extensions.
+    </span><span class="kw">pub fn </span>extensions(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Extensions {
         <span class="kw-2">&amp;</span><span class="self">self</span>.payload.extensions
+    }
+
+    <span class="doccomment">/// Returns the [`GroupInfo`] extensions.
+    </span><span class="kw">pub fn </span>signature(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Signature {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.signature
     }
 
     <span class="doccomment">/// Returns the confirmation tag.

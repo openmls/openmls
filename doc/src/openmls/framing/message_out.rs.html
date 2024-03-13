@@ -215,6 +215,11 @@
 <a href="#214" id="214">214</a>
 <a href="#215" id="215">215</a>
 <a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! MLS Message (Output)
 //!
 //! This module defines the [`MlsMessageOut`] structs which implements the
@@ -270,7 +275,7 @@
 /// ```
 </span><span class="attr">#[derive(Debug, PartialEq, Clone, TlsSerialize, TlsSize)]
 #[repr(u16)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>MlsMessageBodyOut {
+</span><span class="kw">pub enum </span>MlsMessageBodyOut {
     <span class="doccomment">/// Plaintext message
     </span><span class="attr">#[tls_codec(discriminant = <span class="number">1</span>)]
     </span>PublicMessage(PublicMessage),
@@ -359,6 +364,11 @@
     </span><span class="kw">pub fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, MlsMessageError&gt; {
         <span class="self">self</span>.tls_serialize_detached()
             .map_err(|<span class="kw">_</span>| MlsMessageError::UnableToEncode)
+    }
+
+    <span class="doccomment">/// Returns a reference to the contents of this [`MlsMessageOut`].
+    </span><span class="kw">pub fn </span>body(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>MlsMessageBodyOut {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.body
     }
 }
 
