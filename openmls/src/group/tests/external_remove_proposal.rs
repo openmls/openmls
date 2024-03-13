@@ -1,7 +1,7 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use rstest::*;
 use rstest_reuse::{self, *};
-use tls_codec::{Deserialize, Serialize};
+use tls_codec::Deserialize;
 
 use crate::{
     credentials::BasicCredential,
@@ -129,8 +129,7 @@ fn external_remove_proposal_should_remove_member(
     let bob_index = alice_group
         .members()
         .find(|member| {
-            let serialized = member.credential.tls_serialize_detached().unwrap();
-            let credential = BasicCredential::tls_deserialize_exact(serialized).unwrap();
+            let credential = BasicCredential::try_from(&member.credential).unwrap();
             let identity = credential.identity();
             identity == b"Bob"
         })

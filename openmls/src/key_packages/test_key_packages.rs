@@ -10,7 +10,7 @@ pub(crate) fn key_package(
     ciphersuite: Ciphersuite,
     provider: &impl OpenMlsProvider,
 ) -> (KeyPackage, Credential, SignatureKeyPair) {
-    let credential = BasicCredential::new_credential(b"Sasha".to_vec());
+    let credential = BasicCredential::new(b"Sasha".to_vec()).unwrap();
     let signer = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
     // Generate a valid KeyPackage.
@@ -23,13 +23,13 @@ pub(crate) fn key_package(
             provider,
             &signer,
             CredentialWithKey {
-                credential: credential.clone(),
+                credential: credential.clone().into(),
                 signature_key: signer.to_public_vec().into(),
             },
         )
         .expect("An unexpected error occurred.");
 
-    (key_package, credential, signer)
+    (key_package, credential.into(), signer)
 }
 
 #[apply(ciphersuites_and_providers)]
@@ -59,7 +59,7 @@ fn serialization(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
 #[apply(ciphersuites_and_providers)]
 fn application_id_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
-    let credential = BasicCredential::new_credential(b"Sasha".to_vec());
+    let credential = BasicCredential::new(b"Sasha".to_vec()).unwrap();
     let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
     // Generate a valid KeyPackage.
@@ -77,7 +77,7 @@ fn application_id_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
             &signature_keys,
             CredentialWithKey {
                 signature_key: signature_keys.to_public_vec().into(),
-                credential,
+                credential: credential.into(),
             },
         )
         .expect("An unexpected error occurred.");
