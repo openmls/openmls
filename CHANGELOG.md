@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- [#1516](https://github.com/openmls/openmls/pull/1516): Add `MlsGroup::clear_pending_proposals` to the public API; this allows users to clear a group's internal `ProposalStore`
+
 ### Changed
 
 - [#1464](https://github.com/openmls/openmls/pull/1464): Add builder pattern for `MlsGroup`; split `MlsGroupJoinConfig` into `MlsGroupCreateConfig` and `MlsGroupJoinConfig`
