@@ -155,7 +155,7 @@ fn key_package_validation(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
 /// the last resort flag is set during the build process.
 #[apply(ciphersuites_and_providers)]
 fn last_resort_key_package(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
-    let credential = BasicCredential::new_credential(b"Sasha".to_vec());
+    let credential = Credential::from(BasicCredential::new(b"Sasha".to_vec()).unwrap());
     let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
     // build without any other extensions
