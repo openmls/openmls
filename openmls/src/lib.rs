@@ -4,7 +4,7 @@
 //! up to parties and have them create a group.
 //!
 //! ```
-//! use openmls::prelude::{*, config::CryptoConfig};
+//! use openmls::prelude::{*, config::CryptoConfig, tls_codec::*};
 //! use openmls_rust_crypto::{OpenMlsRustCrypto};
 //! use openmls_basic_credential::SignatureKeyPair;
 //!
@@ -22,7 +22,8 @@
 //!     signature_algorithm: SignatureScheme,
 //!     provider: &impl OpenMlsProvider,
 //! ) -> (CredentialWithKey, SignatureKeyPair) {
-//!     let credential = BasicCredential::new_credential(identity);
+//!     let credential = BasicCredential::new(identity)
+//!         .expect("Error creating a credential.");
 //!     let signature_keys =
 //!         SignatureKeyPair::new(signature_algorithm)
 //!             .expect("Error generating a signature key pair.");
@@ -35,7 +36,7 @@
 //!     
 //!     (
 //!         CredentialWithKey {
-//!             credential,
+//!             credential: credential.into(),
 //!             signature_key: signature_keys.public().into(),
 //!         },
 //!         signature_keys,

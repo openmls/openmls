@@ -10,7 +10,7 @@ pub(crate) fn key_package(
     ciphersuite: Ciphersuite,
     provider: &impl OpenMlsProvider,
 ) -> (KeyPackage, Credential, SignatureKeyPair) {
-    let credential = BasicCredential::new_credential(b"Sasha".to_vec());
+    let credential = BasicCredential::new(b"Sasha".to_vec()).unwrap();
     let signer = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
     // Generate a valid KeyPackage.
@@ -23,13 +23,13 @@ pub(crate) fn key_package(
             provider,
             &signer,
             CredentialWithKey {
-                credential: credential.clone(),
+                credential: credential.clone().into(),
                 signature_key: signer.to_public_vec().into(),
             },
         )
         .expect("An unexpected error occurred.");
 
-    (key_package, credential, signer)
+    (key_package, credential.into(), signer)
 }
 
 #[apply(ciphersuites_and_providers)]
@@ -59,7 +59,7 @@ fn serialization(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
 #[apply(ciphersuites_and_providers)]
 fn application_id_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
-    let credential = BasicCredential::new_credential(b"Sasha".to_vec());
+    let credential = BasicCredential::new(b"Sasha".to_vec()).unwrap();
     let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
     // Generate a valid KeyPackage.
@@ -77,7 +77,7 @@ fn application_id_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
             &signature_keys,
             CredentialWithKey {
                 signature_key: signature_keys.to_public_vec().into(),
-                credential,
+                credential: credential.into(),
             },
         )
         .expect("An unexpected error occurred.");
@@ -149,4 +149,71 @@ fn key_package_validation(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
 
     // Expect an invalid init/encryption key error
     assert_eq!(err, KeyPackageVerifyError::InitKeyEqualsEncryptionKey);
+}
+
+/// Test that a key package is correctly built with a last resort extension when
+/// the last resort flag is set during the build process.
+#[apply(ciphersuites_and_providers)]
+fn last_resort_key_package(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+    let credential = Credential::from(BasicCredential::new(b"Sasha".to_vec()).unwrap());
+    let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+
+    // build without any other extensions
+    let key_package = KeyPackage::builder()
+        .mark_as_last_resort()
+        .build(
+            CryptoConfig {
+                ciphersuite,
+                version: ProtocolVersion::default(),
+            },
+            provider,
+            &signature_keys,
+            CredentialWithKey {
+                signature_key: signature_keys.to_public_vec().into(),
+                credential: credential.clone(),
+            },
+        )
+        .expect("An unexpected error occurred.");
+    assert!(key_package.last_resort());
+
+    // build with empty extensions
+    let key_package = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .mark_as_last_resort()
+        .build(
+            CryptoConfig {
+                ciphersuite,
+                version: ProtocolVersion::default(),
+            },
+            provider,
+            &signature_keys,
+            CredentialWithKey {
+                signature_key: signature_keys.to_public_vec().into(),
+                credential: credential.clone(),
+            },
+        )
+        .expect("An unexpected error occurred.");
+    assert!(key_package.last_resort());
+
+    // build with extension
+    let key_package = KeyPackage::builder()
+        .key_package_extensions(Extensions::single(Extension::Unknown(
+            0xFF00,
+            UnknownExtension(vec![0x00]),
+        )))
+        .mark_as_last_resort()
+        .build(
+            CryptoConfig {
+                ciphersuite,
+                version: ProtocolVersion::default(),
+            },
+            provider,
+            &signature_keys,
+            CredentialWithKey {
+                signature_key: signature_keys.to_public_vec().into(),
+                credential,
+            },
+        )
+        .expect("An unexpected error occurred.");
+    assert!(key_package.last_resort());
 }

@@ -1,0 +1,29 @@
+name: wasm-bench
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+
+jobs:
+  measure-wasm-size:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Install the required target
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          target: ${{ matrix.arch }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Build and measure size of wasm bindings
+        run: |
+          cargo install wasm-pack
+          sudo apt update && sudo apt install binaryen
+          export PATH=$PATH:$HOME/.cargo/bin
+          ./openmls-wasm/check-size.sh

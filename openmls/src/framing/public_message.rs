@@ -122,7 +122,7 @@ impl From<AuthenticatedContent> for PublicMessage {
 
 impl PublicMessage {
     /// Returns the [`ContentType`] of the message.
-    pub(crate) fn content_type(&self) -> ContentType {
+    pub fn content_type(&self) -> ContentType {
         self.content.body.content_type()
     }
 

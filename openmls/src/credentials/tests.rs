@@ -37,7 +37,7 @@ fn that_unknown_credential_types_are_de_serialized_correctly() {
         let got = CredentialType::tls_deserialize_exact(&test).unwrap();
 
         match got {
-            CredentialType::Unknown(got_proposal_type) => {
+            CredentialType::Other(got_proposal_type) => {
                 assert_eq!(credential_type, got_proposal_type);
             }
             other => panic!("Expected `CredentialType::Unknown`, got `{:?}`.", other),

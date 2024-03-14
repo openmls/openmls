@@ -7,7 +7,7 @@ use openmls_traits::{
 };
 use rstest::*;
 use rstest_reuse::{self, *};
-use tls_codec::Serialize;
+use tls_codec::{Deserialize, Serialize};
 
 use super::utils::{
     generate_credential_with_key, generate_key_package, resign_message, CredentialWithKeyAndSigner,
@@ -357,7 +357,7 @@ fn test_valsem101a(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             provider,
             &charlie_credential_with_key.signer,
             CredentialWithKey {
-                credential: BasicCredential::new_credential(b"Dave".to_vec()),
+                credential: BasicCredential::new(b"Dave".to_vec()).unwrap().into(),
                 signature_key: charlie_credential_with_key
                     .credential_with_key
                     .signature_key,
@@ -605,7 +605,7 @@ fn test_valsem101b(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             }
             .map(|(name, keypair)| CredentialWithKeyAndSigner {
                 credential_with_key: CredentialWithKey {
-                    credential: BasicCredential::new_credential(name.into()),
+                    credential: BasicCredential::new(name.into()).unwrap().into(),
                     signature_key: keypair.to_public_vec().into(),
                 },
                 signer: keypair,

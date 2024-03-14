@@ -281,38 +281,6 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 }
 
 #[apply(ciphersuites_and_providers)]
-fn test_required_unsupported_proposals(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
-    let (alice_credential, _, alice_signer, _alice_pk) =
-        setup_client("Alice", ciphersuite, provider);
-
-    // Set required capabilities
-    let extensions = &[];
-    let proposals = &[ProposalType::GroupContextExtensions, ProposalType::AppAck];
-    let credentials = &[CredentialType::Basic];
-    let required_capabilities =
-        RequiredCapabilitiesExtension::new(extensions, proposals, credentials);
-
-    // This must fail because we don't actually support AppAck proposals
-    let e = CoreGroup::builder(
-        GroupId::random(provider.rand()),
-        CryptoConfig::with_default_version(ciphersuite),
-        alice_credential,
-    )
-    .with_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
-        required_capabilities,
-    )))
-    .unwrap()
-    .build(provider, &alice_signer)
-    .expect_err(
-        "CoreGroup creation must fail because AppAck proposals aren't supported in OpenMLS yet.",
-    );
-    assert!(matches!(
-        e,
-        CoreGroupBuildError::PublicGroupBuildError(PublicGroupBuildError::UnsupportedProposalType)
-    ))
-}
-
-#[apply(ciphersuites_and_providers)]
 fn test_required_extension_key_package_mismatch(
     ciphersuite: Ciphersuite,
     provider: &impl OpenMlsProvider,

@@ -1,5 +1,5 @@
 use openmls::{
-    prelude::{config::CryptoConfig, *},
+    prelude::{config::CryptoConfig, tls_codec::*, *},
     test_utils::*,
     *,
 };
@@ -26,7 +26,7 @@ fn generate_credential(
     provider: &impl OpenMlsProvider,
 ) -> (CredentialWithKey, SignatureKeyPair) {
     // ANCHOR: create_basic_credential
-    let credential = BasicCredential::new_credential(identity);
+    let credential = BasicCredential::new(identity).unwrap();
     // ANCHOR_END: create_basic_credential
     // ANCHOR: create_credential_keys
     let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
@@ -35,7 +35,7 @@ fn generate_credential(
 
     (
         CredentialWithKey {
-            credential,
+            credential: credential.into(),
             signature_key: signature_keys.to_public_vec().into(),
         },
         signature_keys,

@@ -484,43 +484,6 @@ impl CoreGroup {
         )
     }
 
-    /// Create a `GroupContextExtensions` proposal.
-    #[cfg(test)]
-    pub(crate) fn create_group_context_ext_proposal(
-        &self,
-        framing_parameters: FramingParameters,
-        extensions: Extensions,
-        signer: &impl Signer,
-    ) -> Result<AuthenticatedContent, CreateGroupContextExtProposalError> {
-        // Ensure that the group supports all the extensions that are wanted.
-
-        let required_extension = extensions
-            .iter()
-            .find(|extension| extension.extension_type() == ExtensionType::RequiredCapabilities);
-        if let Some(required_extension) = required_extension {
-            let required_capabilities = required_extension.as_required_capabilities_extension()?;
-            // Ensure we support all the capabilities.
-            self.own_leaf_node()?
-                .capabilities()
-                .supports_required_capabilities(required_capabilities)?;
-
-            // Ensure that all other leaf nodes support all the required
-            // extensions as well.
-            self.public_group()
-                .check_extension_support(required_capabilities.extension_types())?;
-        }
-        let proposal = GroupContextExtensionProposal::new(extensions);
-        let proposal = Proposal::GroupContextExtensions(proposal);
-        AuthenticatedContent::member_proposal(
-            framing_parameters,
-            self.own_leaf_index(),
-            proposal,
-            self.context(),
-            signer,
-        )
-        .map_err(|e| e.into())
-    }
-
     // Create application message
     pub(crate) fn create_application_message(
         &mut self,
@@ -662,11 +625,6 @@ impl CoreGroup {
     /// Get the group ID
     pub(crate) fn group_id(&self) -> &GroupId {
         self.public_group.group_id()
-    }
-
-    /// Get the group context extensions.
-    pub(crate) fn group_context_extensions(&self) -> &Extensions {
-        self.public_group.group_context().extensions()
     }
 
     /// Get the required capabilities extension of this group.
@@ -1118,7 +1076,6 @@ impl CoreGroup {
         if let Some(required_extension) = required_extension {
             let required_capabilities = required_extension.as_required_capabilities_extension()?;
             // Ensure we support all the capabilities.
-            required_capabilities.check_support()?;
             self.own_leaf_node()?
                 .capabilities()
                 .supports_required_capabilities(required_capabilities)?;
