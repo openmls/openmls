@@ -159,10 +159,15 @@ fn validation_test_setup(
         .wire_format_policy(wire_format_policy)
         .build();
 
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome
+        .into_welcome()
+        .expect("expected message to be a welcome");
+
     let bob_group = StagedWelcome::new_from_welcome(
         provider,
         &mls_group_config,
-        welcome.into(),
+        welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
     .unwrap()

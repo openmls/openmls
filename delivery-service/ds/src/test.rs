@@ -322,10 +322,15 @@ async fn test_group() {
     assert_eq!(welcome_msg, welcome_message.into());
     assert!(messages.is_empty());
 
+    let welcome = match welcome_msg.body() {
+        MlsMessageBodyOut::Welcome(welcome) => welcome,
+        other => panic!("expected a welcome message, got {:?}", other),
+    };
+
     let mut group_on_client2 = StagedWelcome::new_from_welcome(
         crypto,
         mls_group_create_config.join_config(),
-        welcome_msg.into(),
+        welcome.clone(),
         Some(group.export_ratchet_tree().into()), // delivered out of band
     )
     .expect("Error creating staged join from Welcome")

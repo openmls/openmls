@@ -680,15 +680,11 @@ impl User {
         let group_config = MlsGroupJoinConfig::builder()
             .use_ratchet_tree_extension(true)
             .build();
-        let mut mls_group = StagedWelcome::new_from_welcome(
-            &self.crypto,
-            &group_config,
-            MlsMessageOut::from_welcome(welcome, ProtocolVersion::default()).into(),
-            None,
-        )
-        .expect("Failed to create staged join")
-        .into_group(&self.crypto)
-        .expect("Failed to create MlsGroup");
+        let mut mls_group =
+            StagedWelcome::new_from_welcome(&self.crypto, &group_config, welcome, None)
+                .expect("Failed to create staged join")
+                .into_group(&self.crypto)
+                .expect("Failed to create MlsGroup");
 
         let group_id = mls_group.group_id().to_vec();
         // XXX: Use Welcome's encrypted_group_info field to store group_name.

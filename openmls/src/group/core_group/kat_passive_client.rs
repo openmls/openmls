@@ -293,10 +293,14 @@ impl PassiveClient {
         mls_message_welcome: MlsMessageIn,
         ratchet_tree: Option<RatchetTreeIn>,
     ) {
+        let welcome = mls_message_welcome
+            .into_welcome()
+            .expect("expected a welcome");
+
         let group = StagedWelcome::new_from_welcome(
             &self.provider,
             &self.group_config,
-            mls_message_welcome,
+            welcome,
             ratchet_tree,
         )
         .unwrap()
