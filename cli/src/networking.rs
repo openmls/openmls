@@ -2,7 +2,7 @@ use ds_lib::messages::AuthToken;
 use reqwest::{self, blocking::Client, StatusCode};
 use url::Url;
 
-use tls_codec::Serialize;
+use openmls::prelude::tls_codec::Serialize;
 
 // TODO: return objects not bytes.
 

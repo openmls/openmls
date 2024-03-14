@@ -7,9 +7,8 @@ use std::{cell::RefCell, collections::HashMap, str};
 
 use ds_lib::messages::AuthToken;
 use ds_lib::{ClientKeyPackages, GroupMessage};
-use openmls::prelude::*;
+use openmls::prelude::{tls_codec::*, *};
 use openmls_traits::OpenMlsProvider;
-use tls_codec::TlsByteVecU8;
 
 use super::{
     backend::Backend, conversation::Conversation, conversation::ConversationMessage, file_helpers,
@@ -202,8 +201,7 @@ impl User {
             credential,
         } in mls_group.members()
         {
-            let credential =
-                BasicCredential::tls_deserialize_exact(credential.serialized_content()).unwrap();
+            let credential = BasicCredential::try_from(&credential).unwrap();
             if credential.identity() == name.as_bytes() {
                 return Ok(index);
             }
@@ -248,12 +246,10 @@ impl User {
                 .as_slice()
                 != signature_key.as_slice()
             {
-                let credential =
-                    BasicCredential::tls_deserialize_exact(credential.serialized_content())
-                        .unwrap();
+                let credential = BasicCredential::try_from(&credential).unwrap();
                 log::debug!(
                     "Searching for contact {:?}",
-                    str::from_utf8(&credential.identity()).unwrap()
+                    str::from_utf8(credential.identity()).unwrap()
                 );
                 let contact = match self.contacts.get(&credential.identity().to_vec()) {
                     Some(c) => c.id.clone(),
@@ -407,21 +403,15 @@ impl User {
 
         let message_out = match processed_message.into_content() {
             ProcessedMessageContent::ApplicationMessage(application_message) => {
-                let processed_message_credential = BasicCredential::tls_deserialize_exact(
-                    processed_message_credential.serialized_content(),
-                )
-                .unwrap();
-                let sender_name = match self.contacts.get(&processed_message_credential.identity())
-                {
+                let processed_message_credential =
+                    BasicCredential::try_from(&processed_message_credential).unwrap();
+                let sender_name = match self.contacts.get(processed_message_credential.identity()) {
                     Some(c) => c.id.clone(),
                     None => {
                         // Contact list is not updated right now, get the identity from the
                         // mls_group member
                         let user_id = mls_group.members().find_map(|m| {
-                                let m_credential = BasicCredential::tls_deserialize_exact(
-                                    m.credential.serialized_content(),
-                                )
-                                .unwrap();
+                                let m_credential = BasicCredential::try_from(&m.credential).unwrap();
                                 if m_credential.identity()
                                     == processed_message_credential.identity()
                                     && (self
@@ -434,7 +424,7 @@ impl User {
                                 {
                                     log::debug!("update::Processing ApplicationMessage read sender name from credential identity for group {} ", group.group_name);
                                     Some(
-                                        str::from_utf8(&m_credential.identity()).unwrap().to_owned(),
+                                        str::from_utf8(m_credential.identity()).unwrap().to_owned(),
                                     )
                                 } else {
                                     None

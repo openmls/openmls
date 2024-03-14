@@ -346,9 +346,7 @@ impl Client {
         let group = groups.get(group_id).unwrap();
         let leaf = group.own_leaf();
         leaf.map(|l| {
-            let credential = l.credential();
-            let credential =
-                BasicCredential::tls_deserialize_exact(credential.serialized_content()).unwrap();
+            let credential = BasicCredential::try_from(l.credential()).unwrap();
             credential.identity().to_vec()
         })
     }

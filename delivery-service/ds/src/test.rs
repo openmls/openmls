@@ -11,10 +11,10 @@ fn generate_credential(
     identity: Vec<u8>,
     signature_scheme: SignatureScheme,
 ) -> (CredentialWithKey, SignatureKeyPair) {
-    let credential = BasicCredential::new_credential(identity);
+    let credential = BasicCredential::new(identity).unwrap();
     let signature_keys = SignatureKeyPair::new(signature_scheme).unwrap();
     let credential_with_key = CredentialWithKey {
-        credential,
+        credential: credential.into(),
         signature_key: signature_keys.to_public_vec().into(),
     };
 

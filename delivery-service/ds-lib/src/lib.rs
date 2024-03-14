@@ -10,11 +10,8 @@ pub mod messages;
 use std::collections::HashSet;
 
 use messages::AuthToken;
+use openmls::prelude::tls_codec::*;
 use openmls::prelude::*;
-use tls_codec::{
-    TlsByteVecU32, TlsByteVecU8, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
-    TlsVecU32, VLBytes,
-};
 
 /// Information about a client.
 /// To register a new client create a new `ClientInfo` and send it to
@@ -37,7 +34,7 @@ mod hashset_codec {
         io::{Read, Write},
     };
 
-    use tls_codec::{Deserialize, Serialize};
+    use crate::tls_codec::{self, Deserialize, Serialize};
 
     pub fn tls_serialized_len(hashset: &HashSet<Vec<u8>>) -> usize {
         let hashset_len = hashset.len();
