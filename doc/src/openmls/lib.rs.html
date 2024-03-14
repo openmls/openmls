@@ -196,6 +196,13 @@
 <a href="#195" id="195">195</a>
 <a href="#196" id="196">196</a>
 <a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
 </pre></div><pre class="rust"><code><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">"../README.md"</span>)]
 </span><span class="doccomment">//! ## Quick Start
 //! For a quick start to learn how OpenMLS works here's the basic code to set
@@ -310,8 +317,15 @@
 //!    .expect("Error serializing welcome");
 //!
 //! // Maxim can now de-serialize the message as an [`MlsMessageIn`] ...
-//! let welcome = MlsMessageIn::tls_deserialize(&amp;mut serialized_welcome.as_slice())
+//! let mls_message_in = MlsMessageIn::tls_deserialize(&amp;mut serialized_welcome.as_slice())
 //!    .expect("An unexpected error occurred.");
+//!
+//! // ... and inspect the message.
+//! let welcome = match mls_message_in.extract() {
+//!    MlsMessageBodyIn::Welcome(welcome) =&gt; welcome,
+//!    // We know it's a welcome message, so we ignore all other cases.
+//!    _ =&gt; unreachable!("Unexpected message type."),
+//! };
 //!
 //! // Now Maxim can build a staged join for the group in order to inspect the welcome
 //! let maxim_staged_join = StagedWelcome::new_from_welcome(

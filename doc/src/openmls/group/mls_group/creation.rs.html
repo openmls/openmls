@@ -228,8 +228,6 @@
 <a href="#227" id="227">227</a>
 <a href="#228" id="228">228</a>
 <a href="#229" id="229">229</a>
-<a href="#230" id="230">230</a>
-<a href="#231" id="231">231</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::signatures::Signer;
 
 <span class="kw">use super</span>::{builder::MlsGroupBuilder, <span class="kw-2">*</span>};
@@ -240,7 +238,10 @@
         core_group::create_commit_params::CreateCommitParams,
         errors::{ExternalCommitError, WelcomeError},
     },
-    messages::group_info::{GroupInfo, VerifiableGroupInfo},
+    messages::{
+        group_info::{GroupInfo, VerifiableGroupInfo},
+        Welcome,
+    },
     schedule::psk::store::ResumptionPskStore,
     treesync::RatchetTreeIn,
 };
@@ -366,14 +367,9 @@
     </span><span class="kw">pub fn </span>new_from_welcome&lt;KeyStore: OpenMlsKeyStore&gt;(
         provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
         mls_group_config: <span class="kw-2">&amp;</span>MlsGroupJoinConfig,
-        welcome: MlsMessageIn,
+        welcome: Welcome,
         ratchet_tree: <span class="prelude-ty">Option</span>&lt;RatchetTreeIn&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, WelcomeError&lt;KeyStore::Error&gt;&gt; {
-        <span class="kw">let </span>welcome = <span class="kw">match </span>welcome.body {
-            MlsMessageBodyIn::Welcome(welcome) =&gt; welcome,
-            <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(WelcomeError::NotAWelcomeMessage),
-        };
-
         <span class="kw">let </span>resumption_psk_store =
             ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
         <span class="kw">let </span>(key_package, <span class="kw">_</span>) = welcome

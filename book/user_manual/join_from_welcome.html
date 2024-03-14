@@ -180,9 +180,8 @@ the <code>MlsMessageIn</code> message containing the <code>Welcome</code> and an
 two-step process: a <code>StagedWelcome</code> is constructed from the <code>Welcome</code>
 and can then be turned into an <code>MlsGroup</code>.  If the group configuration does not
 use the ratchet tree extension, the ratchet tree needs to be provided.</p>
-<pre><code class="language-rust no_run noplayground">    let staged_join =
-        StagedWelcome::new_from_welcome(provider, &amp;mls_group_config, welcome.into(), None)
-            .expect("Error constructing staged join");
+<pre><code class="language-rust no_run noplayground">    let staged_join = StagedWelcome::new_from_welcome(provider, &amp;mls_group_config, welcome, None)
+        .expect("Error constructing staged join");
     let mut bob_group = staged_join
         .into_group(provider)
         .expect("Error joining group from StagedWelcome");</code></pre>
