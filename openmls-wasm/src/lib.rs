@@ -3,7 +3,7 @@ mod utils;
 use js_sys::Uint8Array;
 use openmls::{
     credentials::{BasicCredential, CredentialWithKey},
-    framing::{MlsMessageIn, MlsMessageOut},
+    framing::{MlsMessageBodyIn, MlsMessageIn, MlsMessageOut},
     group::{config::CryptoConfig, GroupId, MlsGroup, MlsGroupJoinConfig, StagedWelcome},
     key_packages::KeyPackage as OpenMlsKeyPackage,
     prelude::SignatureScheme,
@@ -161,12 +161,12 @@ impl Group {
         mut welcome: &[u8],
         ratchet_tree: RatchetTree,
     ) -> Result<Group, JsError> {
-        let welcome = MlsMessageIn::tls_deserialize(&mut welcome)?;
-        let welcome = welcome
-            .into_welcome()
-            .ok_or(openmls::error::ErrorString::from(
-                "expected a message of type welcome",
-            ))?;
+        let welcome = match MlsMessageIn::tls_deserialize(&mut welcome)?.extract() {
+            MlsMessageBodyIn::Welcome(welcome) => Ok(welcome),
+            other => Err(openmls::error::ErrorString::from(format!(
+                "expected a message of type welcome, got {other:?}",
+            ))),
+        }?;
         let config = MlsGroupJoinConfig::builder().build();
         let mls_group =
             StagedWelcome::new_from_welcome(&provider.0, &config, welcome, Some(ratchet_tree.0))?

@@ -1485,14 +1485,9 @@ fn join_multiple_groups_last_resort_extension(
     let bob_welcome = bob_welcome
         .into_welcome()
         .expect("expected message to be a welcome");
-    StagedWelcome::new_from_welcome(
-        provider,
-        &MlsGroupJoinConfig::default(),
-        bob_welcome.into(),
-        None,
-    )
-    .expect("error creating staged join from welcome")
-    .into_group(provider)
-    .expect("error creating group from staged join");
+    StagedWelcome::new_from_welcome(provider, &MlsGroupJoinConfig::default(), bob_welcome, None)
+        .expect("error creating staged join from welcome")
+        .into_group(provider)
+        .expect("error creating group from staged join");
     // done :-)
 }
