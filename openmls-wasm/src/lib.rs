@@ -162,6 +162,11 @@ impl Group {
         ratchet_tree: RatchetTree,
     ) -> Result<Group, JsError> {
         let welcome = MlsMessageIn::tls_deserialize(&mut welcome)?;
+        let welcome = welcome
+            .into_welcome()
+            .ok_or(openmls::error::ErrorString::from(
+                "expected a message of type welcome",
+            ))?;
         let config = MlsGroupJoinConfig::builder().build();
         let mls_group =
             StagedWelcome::new_from_welcome(&provider.0, &config, welcome, Some(ratchet_tree.0))?
@@ -289,7 +294,10 @@ impl Group {
     }
 
     fn native_join(provider: &Provider, mut welcome: &[u8], ratchet_tree: RatchetTree) -> Group {
-        let welcome = MlsMessageIn::tls_deserialize(&mut welcome).unwrap();
+        let welcome = MlsMessageIn::tls_deserialize(&mut welcome)
+            .unwrap()
+            .into_welcome()
+            .expect("expected a message of type welcome");
         let config = MlsGroupJoinConfig::builder().build();
         let mls_group = StagedWelcome::new_from_welcome(
             provider.as_ref(),

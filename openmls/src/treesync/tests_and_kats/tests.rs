@@ -104,6 +104,10 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
             &[bob.key_package, charlie.key_package, dave.key_package],
         )
         .expect("Adding members failed.");
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome
+        .into_welcome()
+        .expect("expected message to be a welcome");
 
     alice_group.merge_pending_commit(&alice.provider).unwrap();
     alice_group.print_ratchet_tree("Alice (after add_members)");
@@ -115,7 +119,7 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
         StagedWelcome::new_from_welcome(
             &charlie.provider,
             mls_group_create_config.join_config(),
-            welcome.into(),
+            welcome,
             None,
         )
         .expect("Staging the join failed.")

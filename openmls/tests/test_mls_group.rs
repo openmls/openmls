@@ -124,10 +124,15 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
         assert_eq!(credential0.as_slice(), b"Alice");
         assert_eq!(credential1.as_slice(), b"Bob");
 
+        let welcome: MlsMessageIn = welcome.into();
+        let welcome = welcome
+            .into_welcome()
+            .expect("expected the message to be a welcome message");
+
         let mut bob_group = StagedWelcome::new_from_welcome(
             provider,
             mls_group_create_config.join_config(),
-            welcome.into(),
+            welcome,
             Some(alice_group.export_ratchet_tree().into()),
         )
         .expect("Error creating StagedWelcome from Welcome")
@@ -342,10 +347,15 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
             unreachable!("Expected a StagedCommit.");
         }
 
+        let welcome: MlsMessageIn = welcome.into();
+        let welcome = welcome
+            .into_welcome()
+            .expect("expected the message to be a welcome message");
+
         let mut charlie_group = StagedWelcome::new_from_welcome(
             provider,
             mls_group_create_config.join_config(),
-            welcome.into(),
+            welcome,
             Some(bob_group.export_ratchet_tree().into()),
         )
         .expect("Error creating staged join from Welcome")
@@ -708,11 +718,16 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
         assert_eq!(credential0.as_slice(), b"Alice");
         assert_eq!(credential1.as_slice(), b"Bob");
 
+        let welcome: MlsMessageIn = welcome_option.expect("Welcome was not returned").into();
+        let welcome = welcome
+            .into_welcome()
+            .expect("expected the message to be a welcome message");
+
         // Bob creates a new group
         let mut bob_group = StagedWelcome::new_from_welcome(
             provider,
             mls_group_create_config.join_config(),
-            welcome_option.expect("Welcome was not returned").into(),
+            welcome,
             Some(alice_group.export_ratchet_tree().into()),
         )
         .expect("Error creating staged join from Welcome")
@@ -910,10 +925,15 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
             .merge_pending_commit(provider)
             .expect("error merging pending commit");
 
+        let welcome: MlsMessageIn = welcome.into();
+        let welcome = welcome
+            .into_welcome()
+            .expect("expected the message to be a welcome message");
+
         let mut bob_group = StagedWelcome::new_from_welcome(
             provider,
             mls_group_create_config.join_config(),
-            welcome.into(),
+            welcome,
             Some(alice_group.export_ratchet_tree().into()),
         )
         .expect("Could not create staged join from Welcome")
@@ -1131,11 +1151,16 @@ fn mls_group_ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl Op
             .add_members(provider, &alice_signer, &[bob_key_package.clone()])
             .unwrap();
 
+        let welcome: MlsMessageIn = welcome.into();
+        let welcome = welcome
+            .into_welcome()
+            .expect("expected the message to be a welcome message");
+
         // === Bob joins using the ratchet tree extension ===
         let _bob_group = StagedWelcome::new_from_welcome(
             provider,
             mls_group_create_config.join_config(),
-            welcome.into(),
+            welcome,
             None,
         )
         .expect("Error creating staged join from Welcome")
@@ -1177,11 +1202,16 @@ fn mls_group_ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl Op
             .add_members(provider, &alice_signer, &[bob_key_package])
             .unwrap();
 
+        let welcome: MlsMessageIn = welcome.into();
+        let welcome = welcome
+            .into_welcome()
+            .expect("expected the message to be a welcome message");
+
         // === Bob tries to join without the ratchet tree extension ===
         let error = StagedWelcome::new_from_welcome(
             provider,
             mls_group_create_config.join_config(),
-            welcome.into(),
+            welcome,
             None,
         )
         .expect_err("Could join a group without a ratchet tree");
