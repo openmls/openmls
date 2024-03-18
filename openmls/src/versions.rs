@@ -38,8 +38,6 @@ impl Default for ProtocolVersion {
 
 impl From<u16> for ProtocolVersion {
     /// Convert an integer to the corresponding protocol version.
-    ///
-    /// Panics if the protocol version is not supported.
     fn from(v: u16) -> Self {
         match v {
             1 => ProtocolVersion::Mls10,
