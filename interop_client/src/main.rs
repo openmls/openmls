@@ -292,7 +292,7 @@ impl MlsClient for MlsClientImpl {
 
         let key_package = KeyPackage::builder()
             .leaf_node_capabilities(Capabilities::new(
-                Some(&[ProtocolVersion::Mls10, ProtocolVersion::Mls10Draft11]),
+                Some(&[ProtocolVersion::Mls10, ProtocolVersion::Other(999)]),
                 Some(&[
                     Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
                     Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,

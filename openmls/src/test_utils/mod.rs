@@ -26,6 +26,7 @@ use crate::{
     treesync::node::encryption_keys::{EncryptionKeyPair, EncryptionPrivateKey},
 };
 
+pub mod frankenstein;
 pub mod test_framework;
 
 pub(crate) fn write(file_name: &str, obj: impl Serialize) {

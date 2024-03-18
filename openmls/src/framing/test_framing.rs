@@ -20,6 +20,7 @@ use crate::{
     },
     key_packages::{test_key_packages::key_package, KeyPackageBundle},
     schedule::psk::{store::ResumptionPskStore, PskSecret},
+    test_utils::frankenstein::*,
     tree::{secret_tree::SecretTree, sender_ratchet::SenderRatchetConfiguration},
     versions::ProtocolVersion,
 };
@@ -706,14 +707,16 @@ pub(crate) fn setup_alice_bob_group(
 /// Test divergent protocol versions in KeyPackages
 #[apply(ciphersuites_and_providers)]
 fn key_package_version(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
-    let (mut key_package, _, _) = key_package(ciphersuite, provider);
+    let (key_package, _, _) = key_package(ciphersuite, provider);
+
+    let mut franken_key_package = FrankenKeyPackage::from(key_package);
 
     // Set an invalid protocol version
-    key_package.set_version(ProtocolVersion::Mls10Draft11);
+    franken_key_package.payload.protocol_version = 999;
 
-    let message = MlsMessageOut {
-        version: ProtocolVersion::Mls10,
-        body: MlsMessageBodyOut::KeyPackage(key_package),
+    let message = FrankenMlsMessage {
+        version: 1,
+        body: FrankenMlsMessageBody::KeyPackage(franken_key_package),
     };
 
     let encoded = message

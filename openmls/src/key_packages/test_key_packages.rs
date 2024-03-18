@@ -107,16 +107,12 @@ fn key_package_validation(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
 
     // === Protocol version ===
 
-    let mut key_package = key_package_orig.clone();
-
+    let mut franken_key_package = frankenstein::FrankenKeyPackage::from(key_package_orig.clone());
     // Set an invalid protocol version
-    key_package.set_version(ProtocolVersion::Mls10Draft11);
+    franken_key_package.payload.protocol_version = 999;
 
-    let encoded = key_package
-        .tls_serialize_detached()
-        .expect("An unexpected error occurred.");
+    let key_package_in = KeyPackageIn::from(franken_key_package);
 
-    let key_package_in = KeyPackageIn::tls_deserialize(&mut encoded.as_slice()).unwrap();
     let err = key_package_in
         .validate(provider.crypto(), ProtocolVersion::Mls10)
         .unwrap_err();
@@ -126,23 +122,17 @@ fn key_package_validation(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
 
     // === Init/encryption key ===
 
-    let mut key_package = key_package_orig;
-
+    let mut franken_key_package = frankenstein::FrankenKeyPackage::from(key_package_orig);
     // Set an invalid init key
-    key_package.set_init_key(InitKey::from(
-        key_package
-            .leaf_node()
-            .encryption_key()
-            .key()
-            .as_slice()
-            .to_vec(),
-    ));
+    franken_key_package.payload.init_key = franken_key_package
+        .payload
+        .leaf_node
+        .payload
+        .encryption_key
+        .clone();
 
-    let encoded = key_package
-        .tls_serialize_detached()
-        .expect("An unexpected error occurred.");
+    let key_package_in = KeyPackageIn::from(franken_key_package);
 
-    let key_package_in = KeyPackageIn::tls_deserialize(&mut encoded.as_slice()).unwrap();
     let err = key_package_in
         .validate(provider.crypto(), ProtocolVersion::Mls10)
         .unwrap_err();

@@ -255,7 +255,7 @@ mod tests {
 
     #[test]
     fn that_unknown_capabilities_are_de_serialized_correctly() {
-        let versions = vec![ProtocolVersion::Mls10, ProtocolVersion::Mls10Draft11];
+        let versions = vec![ProtocolVersion::Mls10, ProtocolVersion::Other(999)];
         let ciphersuites = vec![
             Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519.into(),
             Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256.into(),
