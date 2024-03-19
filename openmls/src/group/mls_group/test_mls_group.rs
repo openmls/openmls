@@ -1121,8 +1121,20 @@ fn immutable_metadata(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider)
 
     let metadata = Metadata::new(b"this is a test group".to_vec());
 
-    let extensions_with_metadata =
-        Extensions::single(Extension::ImmutableMetadata(metadata.clone()));
+    let required_capabilities_extension = RequiredCapabilitiesExtension::new(
+        &[
+            ExtensionType::RequiredCapabilities,
+            ExtensionType::ImmutableMetadata,
+        ],
+        &[],
+        &[],
+    );
+
+    let extensions_with_metadata = Extensions::from_vec(vec![
+        Extension::ImmutableMetadata(metadata.clone()),
+        Extension::RequiredCapabilities(required_capabilities_extension),
+    ])
+    .unwrap();
 
     // === Create a Group with Metadata ===
     let capabilities = Capabilities::new(
