@@ -539,8 +539,11 @@ pub enum GroupContextExtensionsProposalValidationError {
     /// Proposal changes the immutable metadata extension, which is not allowed.
     #[error("Proposal changes the immutable metadata extension, which is not allowed.")]
     ChangedImmutableMetadata,
-    /// The required extension is not supported by all members
-    #[error("Required extension is not supported by all members of the group")]
+
+    /// The new extension types in required capabilties contails extensions that are not supported by all group members.
+    #[error(
+        "The new required capabilties contain extension types that are not supported by all group members."
+    )]
     RequiredExtensionNotSupportedByAllMembers,
 
     /// An extension in the group context extensions is not listed in the required capabilties'
