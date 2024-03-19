@@ -604,7 +604,8 @@ impl CoreGroup {
         self.public_group.group_context()
     }
 
-    pub fn group_context_extensions(&self) -> &Extensions {
+    #[cfg(test)]
+    pub(crate) fn group_context_extensions(&self) -> &Extensions {
         self.context().extensions()
     }
 
