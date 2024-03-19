@@ -484,7 +484,7 @@ fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
     let welcome: MlsMessageIn = welcome.into();
     let welcome = welcome.into_welcome().expect("expected a welcome");
 
-    let _bob_group = StagedWelcome::new_from_welcome(
+    let bob_group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
         welcome,
