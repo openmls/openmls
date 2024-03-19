@@ -19,3 +19,6 @@ test-utils = []
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 tls_codec = { workspace = true }
+
+[dev-dependencies]
+serde_json = "1.0"
