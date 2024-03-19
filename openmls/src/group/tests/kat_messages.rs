@@ -120,39 +120,39 @@ pub struct MessagesTestVector {
 }
 
 pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
-    let crypto = OpenMlsRustCrypto::default();
+    let provider = OpenMlsRustCrypto::default();
 
     let alice_credential_with_key_and_signer = generate_credential_with_key(
         b"Alice".to_vec(),
         SignatureScheme::from(ciphersuite),
-        &crypto,
+        &provider,
     );
 
     // Create a proposal to update the user's key package.
     let alice_key_package = generate_key_package(
         ciphersuite,
         Extensions::default(),
-        &crypto,
+        &provider,
         alice_credential_with_key_and_signer.clone(),
     );
 
     // Let's create a group
     let mut alice_group = CoreGroup::builder(
-        GroupId::random(crypto.rand()),
+        GroupId::random(provider.rand()),
         CryptoConfig::with_default_version(ciphersuite),
         alice_credential_with_key_and_signer
             .credential_with_key
             .clone(),
     )
     .with_max_past_epoch_secrets(2)
-    .build(&crypto, &alice_credential_with_key_and_signer.signer)
+    .build(&provider, &alice_credential_with_key_and_signer.signer)
     .unwrap();
 
     let alice_ratchet_tree = alice_group.public_group().export_ratchet_tree();
 
     let alice_group_info = alice_group
         .export_group_info(
-            crypto.rand(),
+            provider.rand(),
             &alice_credential_with_key_and_signer.signer,
             true,
         )
@@ -182,7 +182,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
             capabilities,
             Extensions::default(),
             TreeInfoTbs::Update(alice_group.own_tree_position()),
-            &crypto,
+            &provider,
             &alice_credential_with_key_and_signer.signer.clone(),
         )
         .unwrap()
@@ -193,11 +193,14 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     };
 
     // Bob
-    let bob_credential_with_key_and_signer =
-        generate_credential_with_key(b"Bob".to_vec(), SignatureScheme::from(ciphersuite), &crypto);
+    let bob_credential_with_key_and_signer = generate_credential_with_key(
+        b"Bob".to_vec(),
+        SignatureScheme::from(ciphersuite),
+        &provider,
+    );
 
     let bob_key_package_bundle = KeyPackageBundle::new(
-        &crypto,
+        &provider,
         &bob_credential_with_key_and_signer.signer,
         ciphersuite,
         bob_credential_with_key_and_signer.credential_with_key,
@@ -216,9 +219,12 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     let psk_proposal = {
         let psk_id = PreSharedKeyId::new(
             ciphersuite,
-            crypto.rand(),
+            provider.rand(),
             Psk::External(ExternalPsk::new(
-                crypto.rand().random_vec(ciphersuite.hash_length()).unwrap(),
+                provider
+                    .rand()
+                    .random_vec(ciphersuite.hash_length())
+                    .unwrap(),
             )),
         )
         .unwrap();
@@ -253,7 +259,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     let mut proposal_store = ProposalStore::from_queued_proposal(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
-            crypto.crypto(),
+            provider.crypto(),
             add_proposal_content.clone(),
         )
         .unwrap(),
@@ -265,13 +271,13 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     let create_commit_result = alice_group
         .create_commit(
             params,
-            &crypto,
+            &provider,
             &alice_credential_with_key_and_signer.signer,
         )
         .unwrap();
     alice_group
         .merge_staged_commit(
-            &crypto,
+            &provider,
             create_commit_result.staged_commit,
             &mut proposal_store,
         )
@@ -285,13 +291,14 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
 
     let alice_welcome = create_commit_result.welcome_option.unwrap();
 
-    let mut receiver_group = CoreGroup::new_from_welcome(
+    let mut receiver_group = StagedCoreWelcome::new_from_welcome(
         alice_welcome.clone(),
         Some(alice_group.public_group().export_ratchet_tree().into()),
         bob_key_package_bundle,
-        &crypto,
+        &provider,
         ResumptionPskStore::new(1024),
     )
+    .and_then(|staged_join| staged_join.into_core_group(&provider))
     .expect("Error creating receiver group.");
 
     // Clone the secret tree to bypass FS restrictions
@@ -300,18 +307,20 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
             b"aad",
             b"msg",
             random_u8() as usize,
-            &crypto,
+            &provider,
             &alice_credential_with_key_and_signer.signer,
         )
         .unwrap();
     // Replace the secret tree
     let verifiable_public_message_application: VerifiableAuthenticatedContentIn = receiver_group
-        .decrypt(
-            &private_message_application.into(),
-            &crypto,
+        .decrypt_message(
+            provider.crypto(),
+            ProtocolMessage::from(PrivateMessageIn::from(private_message_application)),
             &SenderRatchetConfiguration::default(),
         )
-        .unwrap();
+        .unwrap()
+        .verifiable_content()
+        .to_owned();
     let mls_content_application: AuthenticatedContent =
         AuthenticatedContentIn::from(verifiable_public_message_application).into();
 
@@ -338,7 +347,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     commit_pt.set_membership_tag_test(random_membership_tag);
 
     let private_message = alice_group
-        .encrypt(encryption_target, random_u8() as usize, &crypto)
+        .encrypt(encryption_target, random_u8() as usize, &provider)
         .unwrap();
 
     MessagesTestVector {
@@ -354,7 +363,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
 
         group_secrets: GroupSecrets::random_encoded(
             ciphersuite,
-            crypto.rand(),
+            provider.rand(),
             ProtocolVersion::default(),
         )
         .unwrap(),

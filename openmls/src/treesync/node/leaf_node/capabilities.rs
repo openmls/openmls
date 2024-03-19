@@ -215,7 +215,7 @@ pub(super) fn default_ciphersuites() -> Vec<Ciphersuite> {
 }
 
 /// All extensions defined in the MLS spec are considered "default" by the spec.
-pub(super) fn default_extensions() -> Vec<ExtensionType> {
+pub(crate) fn default_extensions() -> Vec<ExtensionType> {
     vec![
         ExtensionType::ApplicationId,
         ExtensionType::RatchetTree,
@@ -281,9 +281,9 @@ mod tests {
         let credentials = vec![
             CredentialType::Basic,
             CredentialType::X509,
-            CredentialType::Unknown(0x0000),
-            CredentialType::Unknown(0x7A7A),
-            CredentialType::Unknown(0xFFFF),
+            CredentialType::Other(0x0000),
+            CredentialType::Other(0x7A7A),
+            CredentialType::Other(0xFFFF),
         ];
 
         let expected = Capabilities {

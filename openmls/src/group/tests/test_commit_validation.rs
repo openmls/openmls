@@ -91,23 +91,30 @@ fn validation_test_setup(
         .merge_pending_commit(provider)
         .expect("error merging pending commit");
 
-    let welcome = welcome.into_welcome().expect("Unexpected message type.");
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome
+        .into_welcome()
+        .expect("expected message to be a welcome");
 
-    let bob_group = MlsGroup::new_from_welcome(
+    let bob_group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
         welcome.clone(),
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .expect("error creating group from welcome");
+    .expect("error creating staged join from welcome")
+    .into_group(provider)
+    .expect("error creating group from staged join");
 
-    let charlie_group = MlsGroup::new_from_welcome(
+    let charlie_group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
         welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .expect("error creating group from welcome");
+    .expect("error creating staged join from welcome")
+    .into_group(provider)
+    .expect("error creating group from staged join");
 
     CommitValidationTestSetup {
         alice_group,
@@ -305,9 +312,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     let gce_proposal = || {
         queued(Proposal::GroupContextExtensions(
-            GroupContextExtensionProposal::new(
-                alice_group.group().group_context_extensions().clone(),
-            ),
+            GroupContextExtensionProposal::new(alice_group.group().context().extensions().clone()),
         ))
     };
 
@@ -489,7 +494,12 @@ fn test_valsem202(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     // Positive case
     bob_group
-        .process_message(provider, original_update_plaintext)
+        .process_message(
+            provider,
+            original_update_plaintext
+                .try_into_protocol_message()
+                .unwrap(),
+        )
         .expect("Unexpected error.");
 }
 
@@ -562,7 +572,12 @@ fn test_valsem203(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     // Positive case
     bob_group
-        .process_message(provider, original_update_plaintext)
+        .process_message(
+            provider,
+            original_update_plaintext
+                .try_into_protocol_message()
+                .unwrap(),
+        )
         .expect("Unexpected error.");
 }
 
@@ -681,7 +696,12 @@ fn test_valsem204(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     // Positive case
     bob_group
-        .process_message(provider, original_update_plaintext)
+        .process_message(
+            provider,
+            original_update_plaintext
+                .try_into_protocol_message()
+                .unwrap(),
+        )
         .expect("Unexpected error.");
 }
 
@@ -764,7 +784,11 @@ fn test_partial_proposal_commit(ciphersuite: Ciphersuite, provider: &impl OpenMl
 
     let charlie_index = alice_group
         .members()
-        .find(|m| m.credential.identity() == b"Charlie")
+        .find(|m| {
+            let identity =
+                VLBytes::tls_deserialize_exact(m.credential.serialized_content()).unwrap();
+            identity.as_slice() == b"Charlie"
+        })
         .unwrap()
         .index;
 
@@ -773,7 +797,9 @@ fn test_partial_proposal_commit(ciphersuite: Ciphersuite, provider: &impl OpenMl
         .propose_remove_member(provider, &alice_credential.signer, charlie_index)
         .map(|(out, _)| MlsMessageIn::from(out))
         .unwrap();
-    let proposal_1 = bob_group.process_message(provider, proposal_1).unwrap();
+    let proposal_1 = bob_group
+        .process_message(provider, proposal_1.try_into_protocol_message().unwrap())
+        .unwrap();
     match proposal_1.into_content() {
         ProcessedMessageContent::ProposalMessage(p) => bob_group.store_pending_proposal(*p),
         _ => unreachable!(),
@@ -784,7 +810,9 @@ fn test_partial_proposal_commit(ciphersuite: Ciphersuite, provider: &impl OpenMl
         .propose_self_update(provider, &alice_credential.signer, None)
         .map(|(out, _)| MlsMessageIn::from(out))
         .unwrap();
-    let proposal_2 = bob_group.process_message(provider, proposal_2).unwrap();
+    let proposal_2 = bob_group
+        .process_message(provider, proposal_2.try_into_protocol_message().unwrap())
+        .unwrap();
     match proposal_2.into_content() {
         ProcessedMessageContent::ProposalMessage(p) => bob_group.store_pending_proposal(*p),
         _ => unreachable!(),

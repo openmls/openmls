@@ -88,12 +88,19 @@ fn validation_test_setup(
         .merge_pending_commit(provider)
         .expect("error merging pending commit");
 
-    let bob_group = MlsGroup::new_from_welcome(
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome
+        .into_welcome()
+        .expect("expected message to be a welcome");
+
+    let bob_group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
-        welcome.into_welcome().expect("Unexpected message type."),
+        welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
+    .expect("error creating bob's group from welcome")
+    .into_group(provider)
     .expect("error creating bob's group from welcome");
 
     ValidationTestSetup {

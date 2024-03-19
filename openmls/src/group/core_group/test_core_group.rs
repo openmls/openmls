@@ -1,7 +1,7 @@
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{crypto::OpenMlsCrypto, types::HpkeCiphertext, OpenMlsProvider};
-use tls_codec::Serialize;
+use tls_codec::{Deserialize, Serialize};
 
 use crate::{
     binary_tree::*,
@@ -26,12 +26,8 @@ pub(crate) fn setup_alice_group(
     OpenMlsSignaturePublicKey,
 ) {
     // Create credentials and keys
-    let (alice_credential_with_key, alice_signature_keys) = test_utils::new_credential(
-        provider,
-        b"Alice",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
+    let (alice_credential_with_key, alice_signature_keys) =
+        test_utils::new_credential(provider, b"Alice", ciphersuite.signature_algorithm());
     let pk = OpenMlsSignaturePublicKey::new(
         alice_signature_keys.to_public_vec().into(),
         ciphersuite.signature_algorithm(),
@@ -47,25 +43,6 @@ pub(crate) fn setup_alice_group(
     .build(provider, &alice_signature_keys)
     .expect("Error creating group.");
     (group, alice_credential_with_key, alice_signature_keys, pk)
-}
-
-#[apply(ciphersuites_and_providers)]
-fn test_core_group_persistence(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
-    let (alice_group, _, _, _) = setup_alice_group(ciphersuite, provider);
-
-    // we need something that implements io::Write
-    let mut file_out: Vec<u8> = vec![];
-    alice_group
-        .save(&mut file_out)
-        .expect("Could not write group state to file");
-
-    // make it into a type that implements io::Read
-    let file_in: &[u8] = &file_out;
-
-    let alice_group_deserialized =
-        CoreGroup::load(file_in).expect("Could not deserialize mls group");
-
-    assert_eq!(alice_group, alice_group_deserialized);
 }
 
 /// This function flips the last byte of the ciphertext.
@@ -90,12 +67,8 @@ fn test_failed_groupinfo_decryption(ciphersuite: Ciphersuite, provider: &impl Op
     });
 
     // Create credentials and keys
-    let (alice_credential_with_key, alice_signature_keys) = test_utils::new_credential(
-        provider,
-        b"Alice",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
+    let (alice_credential_with_key, alice_signature_keys) =
+        test_utils::new_credential(provider, b"Alice", ciphersuite.signature_algorithm());
 
     let key_package_bundle = KeyPackageBundle::new(
         provider,
@@ -127,12 +100,15 @@ fn test_failed_groupinfo_decryption(ciphersuite: Ciphersuite, provider: &impl Op
     let welcome_nonce = AeadNonce::random(provider.rand());
 
     // Generate receiver key pair.
-    let receiver_key_pair = provider.crypto().derive_hpke_keypair(
-        ciphersuite.hpke_config(),
-        Secret::random(ciphersuite, provider.rand(), None)
-            .expect("Not enough randomness.")
-            .as_slice(),
-    );
+    let receiver_key_pair = provider
+        .crypto()
+        .derive_hpke_keypair(
+            ciphersuite.hpke_config(),
+            Secret::random(ciphersuite, provider.rand(), None)
+                .expect("Not enough randomness.")
+                .as_slice(),
+        )
+        .expect("error deriving receiver hpke key pair");
     let hpke_context = b"group info welcome test info";
     let group_secrets = b"these should be the group secrets";
     let mut encrypted_group_secrets = hpke::encrypt_with_label(
@@ -175,13 +151,14 @@ fn test_failed_groupinfo_decryption(ciphersuite: Ciphersuite, provider: &impl Op
     // Now build the welcome message.
     let broken_welcome = Welcome::new(ciphersuite, broken_secrets, encrypted_group_info);
 
-    let error = CoreGroup::new_from_welcome(
+    let error = StagedCoreWelcome::new_from_welcome(
         broken_welcome,
         None,
         key_package_bundle,
         provider,
         ResumptionPskStore::new(1024),
     )
+    .and_then(|staged_join| staged_join.into_core_group(provider))
     .expect_err("Creation of core group from a broken Welcome was successful.");
 
     assert_eq!(
@@ -301,18 +278,10 @@ fn setup_alice_bob(
     SignatureKeyPair,
 ) {
     // Create credentials and keys
-    let (alice_credential_with_key, alice_signer) = test_utils::new_credential(
-        provider,
-        b"Alice",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
-    let (bob_credential_with_key, bob_signer) = test_utils::new_credential(
-        provider,
-        b"Bob",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
+    let (alice_credential_with_key, alice_signer) =
+        test_utils::new_credential(provider, b"Alice", ciphersuite.signature_algorithm());
+    let (bob_credential_with_key, bob_signer) =
+        test_utils::new_credential(provider, b"Bob", ciphersuite.signature_algorithm());
 
     // Generate Bob's KeyPackage
     let bob_key_package_bundle =
@@ -409,7 +378,7 @@ fn test_psks(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .expect("error merging pending commit");
     let ratchet_tree = alice_group.public_group().export_ratchet_tree();
 
-    let group_bob = CoreGroup::new_from_welcome(
+    let group_bob = StagedCoreWelcome::new_from_welcome(
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
@@ -418,6 +387,7 @@ fn test_psks(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         provider,
         ResumptionPskStore::new(1024),
     )
+    .and_then(|staged_join| staged_join.into_core_group(provider))
     .expect("Could not create new group from Welcome");
 
     // === Bob updates and commits ===
@@ -506,7 +476,7 @@ fn test_staged_commit_creation(ciphersuite: Ciphersuite, provider: &impl OpenMls
         .expect("error processing own staged commit");
 
     // === Bob joins the group using Alice's tree ===
-    let group_bob = CoreGroup::new_from_welcome(
+    let group_bob = StagedCoreWelcome::new_from_welcome(
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
@@ -515,6 +485,7 @@ fn test_staged_commit_creation(ciphersuite: Ciphersuite, provider: &impl OpenMls
         provider,
         ResumptionPskStore::new(1024),
     )
+    .and_then(|staged_join| staged_join.into_core_group(provider))
     .expect("An unexpected error occurred.");
 
     // Let's make sure we end up in the same group state.
@@ -536,12 +507,8 @@ fn test_own_commit_processing(ciphersuite: Ciphersuite, provider: &impl OpenMlsP
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
     // Create credentials and keys
-    let (alice_credential_with_key, alice_signature_keys) = test_utils::new_credential(
-        provider,
-        b"Alice",
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
+    let (alice_credential_with_key, alice_signature_keys) =
+        test_utils::new_credential(provider, b"Alice", ciphersuite.signature_algorithm());
 
     // === Alice creates a group ===
     let alice_group = CoreGroup::builder(
@@ -580,12 +547,8 @@ pub(crate) fn setup_client(
     SignatureKeyPair,
     OpenMlsSignaturePublicKey,
 ) {
-    let (credential_with_key, signature_keys) = test_utils::new_credential(
-        provider,
-        id.as_bytes(),
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-    );
+    let (credential_with_key, signature_keys) =
+        test_utils::new_credential(provider, id.as_bytes(), ciphersuite.signature_algorithm());
     let pk = OpenMlsSignaturePublicKey::new(
         signature_keys.to_public_vec().into(),
         ciphersuite.signature_algorithm(),
@@ -663,7 +626,7 @@ fn test_proposal_application_after_self_was_removed(
 
     let ratchet_tree = alice_group.public_group().export_ratchet_tree();
 
-    let mut bob_group = CoreGroup::new_from_welcome(
+    let mut bob_group = StagedCoreWelcome::new_from_welcome(
         add_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
@@ -672,6 +635,7 @@ fn test_proposal_application_after_self_was_removed(
         provider,
         ResumptionPskStore::new(1024),
     )
+    .and_then(|staged_join| staged_join.into_core_group(provider))
     .expect("Error joining group.");
 
     // Alice adds Charlie and removes Bob in the same commit.
@@ -683,7 +647,11 @@ fn test_proposal_application_after_self_was_removed(
                  index: _,
                  credential,
                  ..
-             }| credential.identity() == b"Bob",
+             }| {
+                let identity =
+                    VLBytes::tls_deserialize_exact(credential.serialized_content()).unwrap();
+                identity.as_slice() == b"Bob"
+            },
         )
         .expect("Couldn't find Bob in tree.")
         .index;
@@ -743,7 +711,7 @@ fn test_proposal_application_after_self_was_removed(
 
     let ratchet_tree = alice_group.public_group().export_ratchet_tree();
 
-    let charlie_group = CoreGroup::new_from_welcome(
+    let charlie_group = StagedCoreWelcome::new_from_welcome(
         remove_add_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
@@ -752,6 +720,7 @@ fn test_proposal_application_after_self_was_removed(
         provider,
         ResumptionPskStore::new(1024),
     )
+    .and_then(|staged_join| staged_join.into_core_group(provider))
     .expect("Error joining group.");
 
     // We can now check that Bob correctly processed his and applied the changes
@@ -770,25 +739,29 @@ fn test_proposal_application_after_self_was_removed(
         // Note that we can't compare encryption keys for Bob because they
         // didn't get updated.
         assert_eq!(alice_member.index, bob_member.index);
-        assert_eq!(
-            alice_member.credential.identity(),
-            bob_member.credential.identity()
-        );
+
+        let alice_id =
+            VLBytes::tls_deserialize_exact(alice_member.credential.serialized_content()).unwrap();
+        let bob_id =
+            VLBytes::tls_deserialize_exact(bob_member.credential.serialized_content()).unwrap();
+        let charlie_id =
+            VLBytes::tls_deserialize_exact(charlie_member.credential.serialized_content()).unwrap();
+        assert_eq!(alice_id.as_slice(), bob_id.as_slice());
         assert_eq!(alice_member.signature_key, bob_member.signature_key);
         assert_eq!(charlie_member.index, bob_member.index);
-        assert_eq!(
-            charlie_member.credential.identity(),
-            bob_member.credential.identity()
-        );
+        assert_eq!(charlie_id.as_slice(), bob_id.as_slice());
         assert_eq!(charlie_member.signature_key, bob_member.signature_key);
         assert_eq!(charlie_member.encryption_key, alice_member.encryption_key);
     }
 
     let mut bob_members = bob_group.public_group().members();
 
-    assert_eq!(bob_members.next().unwrap().credential.identity(), b"Alice");
-    assert_eq!(
-        bob_members.next().unwrap().credential.identity(),
-        b"Charlie"
-    );
+    let bob_next_id =
+        VLBytes::tls_deserialize_exact(bob_members.next().unwrap().credential.serialized_content())
+            .unwrap();
+    assert_eq!(bob_next_id.as_slice(), b"Alice");
+    let bob_next_id =
+        VLBytes::tls_deserialize_exact(bob_members.next().unwrap().credential.serialized_content())
+            .unwrap();
+    assert_eq!(bob_next_id.as_slice(), b"Charlie");
 }

@@ -18,3 +18,14 @@ pub enum CredentialError {
     #[error("Invalid signature.")]
     InvalidSignature,
 }
+
+/// An error that occurs in methods of a [`super::Credential`].
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum BasicCredentialError {
+    /// TLS codec error
+    #[error(transparent)]
+    TlsCodecError(#[from] tls_codec::Error),
+    /// Wrong credential type
+    #[error("Wrong credential type.")]
+    WrongCredentialType,
+}

@@ -23,10 +23,12 @@ impl MlsGroup {
     /// update of the committer's leaf [KeyPackage].
     ///
     /// If successful, it returns a triple of [`MlsMessageOut`]s, where the first
-    /// contains the commit, the second one the [Welcome] and the third an optional [GroupInfo] that
+    /// contains the commit, the second one the [`Welcome`] and the third an optional [GroupInfo] that
     /// will be [Some] if the group has the `use_ratchet_tree_extension` flag set.
     ///
     /// Returns an error if there is a pending commit.
+    ///
+    /// [`Welcome`]: crate::messages::Welcome
     // FIXME: #1217
     #[allow(clippy::type_complexity)]
     pub fn add_members<KeyStore: OpenMlsKeyStore>(
@@ -100,12 +102,13 @@ impl MlsGroup {
     /// If successful, it returns a tuple of [`MlsMessageOut`] (containing the
     /// commit), an optional [`MlsMessageOut`] (containing the [`Welcome`]) and the current
     /// [GroupInfo].
-    /// The [Welcome] is [Some] when the queue of pending proposals contained
+    /// The [`Welcome`] is [Some] when the queue of pending proposals contained
     /// add proposals
     /// The [GroupInfo] is [Some] if the group has the `use_ratchet_tree_extension` flag set.
-
     ///
     /// Returns an error if there is a pending commit.
+    ///
+    /// [`Welcome`]: crate::messages::Welcome
     // FIXME: #1217
     #[allow(clippy::type_complexity)]
     pub fn remove_members<KeyStore: OpenMlsKeyStore>(

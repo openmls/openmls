@@ -6,9 +6,8 @@ use std::path::PathBuf;
 use std::{cell::RefCell, collections::HashMap, str};
 
 use ds_lib::{ClientKeyPackages, GroupMessage};
-use openmls::prelude::*;
+use openmls::prelude::{tls_codec::*, *};
 use openmls_traits::OpenMlsProvider;
-use tls_codec::TlsByteVecU8;
 
 use super::{
     backend::Backend, conversation::Conversation, conversation::ConversationMessage, file_helpers,
@@ -196,6 +195,7 @@ impl User {
             credential,
         } in mls_group.members()
         {
+            let credential = BasicCredential::try_from(&credential).unwrap();
             if credential.identity() == name.as_bytes() {
                 return Ok(index);
             }
@@ -237,6 +237,7 @@ impl User {
                 .as_slice()
                 != signature_key.as_slice()
             {
+                let credential = BasicCredential::try_from(&credential).unwrap();
                 log::debug!(
                     "Searching for contact {:?}",
                     str::from_utf8(credential.identity()).unwrap()
@@ -399,6 +400,9 @@ impl User {
 
             match processed_message.into_content() {
                 ProcessedMessageContent::ApplicationMessage(application_message) => {
+                    let processed_message_credential =
+                        BasicCredential::try_from(&processed_message_credential).unwrap();
+
                     let sender_name = match self
                         .contacts
                         .get(processed_message_credential.identity())
@@ -408,7 +412,8 @@ impl User {
                             // Contact list is not updated right now, get the identity from the
                             // mls_group member
                             let user_id = mls_group.members().find_map(|m| {
-                                if m.credential.identity()
+                                let m_credential = BasicCredential::try_from(&m.credential).unwrap();
+                                if m_credential.identity()
                                     == processed_message_credential.identity()
                                     && (self
                                         .identity
@@ -420,7 +425,7 @@ impl User {
                                 {
                                     log::debug!("update::Processing ApplicationMessage read sender name from credential identity for group {} ", group.group_name);
                                     Some(
-                                        str::from_utf8(m.credential.identity()).unwrap().to_owned(),
+                                        str::from_utf8(m_credential.identity()).unwrap().to_owned(),
                                     )
                                 } else {
                                     None
@@ -473,12 +478,12 @@ impl User {
         for message in self.backend.recv_msgs(self)?.drain(..) {
             log::debug!("Reading message format {:#?} ...", message.wire_format());
             match message.extract() {
-                MlsMessageInBody::Welcome(welcome) => {
+                MlsMessageBodyIn::Welcome(welcome) => {
                     // Join the group. (Later we should ask the user to
                     // approve first ...)
                     self.join_group(welcome)?;
                 }
-                MlsMessageInBody::PrivateMessage(message) => {
+                MlsMessageBodyIn::PrivateMessage(message) => {
                     match process_protocol_message(message.into()) {
                         Ok(p) => {
                             if p.0 == PostUpdateActions::Remove {
@@ -500,7 +505,7 @@ impl User {
                         }
                     };
                 }
-                MlsMessageInBody::PublicMessage(message) => {
+                MlsMessageBodyIn::PublicMessage(message) => {
                     if process_protocol_message(message.into()).is_err() {
                         continue;
                     }
@@ -675,8 +680,11 @@ impl User {
         let group_config = MlsGroupJoinConfig::builder()
             .use_ratchet_tree_extension(true)
             .build();
-        let mut mls_group = MlsGroup::new_from_welcome(&self.crypto, &group_config, welcome, None)
-            .expect("Failed to create MlsGroup");
+        let mut mls_group =
+            StagedWelcome::new_from_welcome(&self.crypto, &group_config, welcome, None)
+                .expect("Failed to create staged join")
+                .into_group(&self.crypto)
+                .expect("Failed to create MlsGroup");
 
         let group_id = mls_group.group_id().to_vec();
         // XXX: Use Welcome's encrypted_group_info field to store group_name.

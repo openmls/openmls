@@ -10,7 +10,7 @@ use openmls_traits::{
     types::{Ciphersuite, HpkeKeyPair, SignatureScheme},
     OpenMlsProvider,
 };
-use tls_codec::Serialize;
+use tls_codec::{Deserialize, Serialize};
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
@@ -122,8 +122,13 @@ impl Client {
         welcome: Welcome,
         ratchet_tree: Option<RatchetTreeIn>,
     ) -> Result<(), ClientError> {
-        let new_group: MlsGroup =
-            MlsGroup::new_from_welcome(&self.crypto, &mls_group_config, welcome, ratchet_tree)?;
+        let staged_join = StagedWelcome::new_from_welcome(
+            &self.crypto,
+            &mls_group_config,
+            welcome,
+            ratchet_tree,
+        )?;
+        let new_group = staged_join.into_group(&self.crypto)?;
         self.groups
             .write()
             .expect("An unexpected error occurred.")
@@ -338,6 +343,10 @@ impl Client {
     pub fn identity(&self, group_id: &GroupId) -> Option<Vec<u8>> {
         let groups = self.groups.read().unwrap();
         let group = groups.get(group_id).unwrap();
-        group.own_identity().map(|s| s.to_vec())
+        let leaf = group.own_leaf();
+        leaf.map(|l| {
+            let credential = BasicCredential::try_from(l.credential()).unwrap();
+            credential.identity().to_vec()
+        })
     }
 }

@@ -306,14 +306,17 @@ impl OpenMlsCrypto for RustCrypto {
         info: &[u8],
         aad: &[u8],
         ptxt: &[u8],
-    ) -> types::HpkeCiphertext {
+    ) -> Result<types::HpkeCiphertext, CryptoError> {
         let (kem_output, ciphertext) = hpke_from_config(config)
             .seal(&pk_r.into(), info, aad, ptxt, None, None, None)
-            .unwrap();
-        HpkeCiphertext {
+            .map_err(|e| match e {
+                hpke::HpkeError::InvalidInput => CryptoError::InvalidLength,
+                _ => CryptoError::CryptoLibraryError,
+            })?;
+        Ok(HpkeCiphertext {
             kem_output: kem_output.into(),
             ciphertext: ciphertext.into(),
-        }
+        })
     }
 
     fn hpke_open(
@@ -373,15 +376,22 @@ impl OpenMlsCrypto for RustCrypto {
         Ok(exported_secret.into())
     }
 
-    fn derive_hpke_keypair(&self, config: HpkeConfig, ikm: &[u8]) -> types::HpkeKeyPair {
+    fn derive_hpke_keypair(
+        &self,
+        config: HpkeConfig,
+        ikm: &[u8],
+    ) -> Result<types::HpkeKeyPair, CryptoError> {
         let kp = hpke_from_config(config)
             .derive_key_pair(ikm)
-            .unwrap()
+            .map_err(|e| match e {
+                hpke::HpkeError::InvalidInput => CryptoError::InvalidLength,
+                _ => CryptoError::CryptoLibraryError,
+            })?
             .into_keys();
-        HpkeKeyPair {
+        Ok(HpkeKeyPair {
             private: kp.0.as_slice().into(),
             public: kp.1.as_slice().into(),
-        }
+        })
     }
 }
 

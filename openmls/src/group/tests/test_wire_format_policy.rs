@@ -78,13 +78,15 @@ fn receive_message(
         .wire_format_policy(alice_group.configuration().wire_format_policy())
         .build();
 
-    let mut bob_group = MlsGroup::new_from_welcome(
-        provider,
-        &mls_group_config,
-        welcome.into_welcome().expect("Unexpected message type."),
-        None,
-    )
-    .expect("error creating bob's group from welcome");
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome
+        .into_welcome()
+        .expect("expected message to be a welcome");
+
+    let mut bob_group = StagedWelcome::new_from_welcome(provider, &mls_group_config, welcome, None)
+        .expect("error creating bob's staged join from welcome")
+        .into_group(provider)
+        .expect("error creating bob's group from staged join");
 
     let (message, _welcome, _group_info) = bob_group
         .self_update(provider, &bob_credential_with_key_and_signer.signer)
@@ -105,7 +107,7 @@ fn test_wire_policy_positive(ciphersuite: Ciphersuite, provider: &impl OpenMlsPr
             &alice_credential_with_key_and_signer.signer,
         );
         alice_group
-            .process_message(provider, message)
+            .process_message(provider, message.try_into_protocol_message().unwrap())
             .expect("An unexpected error occurred.");
     }
 }
@@ -134,7 +136,7 @@ fn test_wire_policy_negative(ciphersuite: Ciphersuite, provider: &impl OpenMlsPr
             &alice_credential_with_key_and_signer.signer,
         );
         let err = alice_group
-            .process_message(provider, message)
+            .process_message(provider, message.try_into_protocol_message().unwrap())
             .expect_err("An unexpected error occurred.");
         assert_eq!(err, ProcessMessageError::IncompatibleWireFormat);
     }

@@ -14,11 +14,11 @@ use mls_client::{
 use mls_interop_proto::mls_client;
 use openmls::{
     ciphersuite::HpkePrivateKey,
-    credentials::{Credential, CredentialType, CredentialWithKey},
-    framing::{MlsMessageIn, MlsMessageInBody, MlsMessageOut, ProcessedMessageContent},
+    credentials::{BasicCredential, Credential, CredentialType, CredentialWithKey},
+    framing::{MlsMessageBodyIn, MlsMessageIn, MlsMessageOut, ProcessedMessageContent},
     group::{
-        GroupEpoch, GroupId, MlsGroup, MlsGroupCreateConfig, MlsGroupJoinConfig, WireFormatPolicy,
-        PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        GroupEpoch, GroupId, MlsGroup, MlsGroupCreateConfig, MlsGroupJoinConfig, StagedWelcome,
+        WireFormatPolicy, PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     key_packages::KeyPackage,
     prelude::{config::CryptoConfig, Capabilities, ExtensionType, SenderRatchetConfiguration},
@@ -222,7 +222,7 @@ impl MlsClient for MlsClientImpl {
         let provider = OpenMlsRustCrypto::default();
 
         let ciphersuite = Ciphersuite::try_from(request.cipher_suite as u16).unwrap();
-        let credential = Credential::new(request.identity.clone(), CredentialType::Basic).unwrap();
+        let credential = BasicCredential::new(request.identity.clone()).unwrap();
         let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
         signature_keys.store(provider.key_store()).unwrap();
 
@@ -244,13 +244,12 @@ impl MlsClient for MlsClientImpl {
             &mls_group_config,
             GroupId::from_slice(&request.group_id),
             CredentialWithKey {
-                credential,
+                credential: credential.into(),
                 signature_key: signature_keys.public().into(),
             },
         )
         .map_err(into_status)?;
 
-        Span::current().record("actor", bytes_to_string(group.own_identity().unwrap()));
         trace!(epoch=?group.epoch(), "Current group state.");
 
         let interop_group = InteropGroup {
@@ -288,7 +287,7 @@ impl MlsClient for MlsClientImpl {
             "Creating key package."
         );
 
-        let credential = Credential::new(identity, CredentialType::Basic).unwrap();
+        let credential = BasicCredential::new(identity).unwrap();
         let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
         let key_package = KeyPackage::builder()
@@ -311,7 +310,7 @@ impl MlsClient for MlsClientImpl {
                 &crypto_provider,
                 &signature_keys,
                 CredentialWithKey {
-                    credential: credential.clone(),
+                    credential: credential.clone().into(),
                     signature_key: signature_keys.public().into(),
                 },
             )
@@ -351,7 +350,7 @@ impl MlsClient for MlsClientImpl {
                 key_package,
                 private_key,
                 encryption_key_pair,
-                credential,
+                credential.into(),
                 signature_keys,
                 crypto_provider,
             ),
@@ -427,18 +426,22 @@ impl MlsClient for MlsClientImpl {
             .store::<HpkePrivateKey>(my_key_package.hpke_init_key().as_slice(), &private_key)
             .map_err(into_status)?;
 
-        let welcome_msg = MlsMessageIn::tls_deserialize(&mut request.welcome.as_slice())
-            .map_err(|_| Status::aborted("failed to deserialize MlsMessage with a Welcome"))?;
-
-        let welcome = welcome_msg.into_welcome().ok_or(Status::invalid_argument(
-            "unable to get Welcome from MlsMessage",
-        ))?;
+        let welcome = MlsMessageIn::tls_deserialize(&mut request.welcome.as_slice())
+            .map_err(|_| Status::aborted("failed to deserialize MlsMessage with a Welcome"))?
+            .into_welcome()
+            .expect("expected a welcome");
 
         let ratchet_tree = ratchet_tree_from_config(request.ratchet_tree.clone());
 
-        let group =
-            MlsGroup::new_from_welcome(&crypto_provider, &mls_group_config, welcome, ratchet_tree)
-                .map_err(into_status)?;
+        let group = StagedWelcome::new_from_welcome(
+            &crypto_provider,
+            &mls_group_config,
+            welcome,
+            ratchet_tree,
+        )
+        .map_err(into_status)?
+        .into_group(&crypto_provider)
+        .map_err(into_status)?;
 
         let interop_group = InteropGroup {
             wire_format_policy,
@@ -448,10 +451,6 @@ impl MlsClient for MlsClientImpl {
             crypto_provider,
         };
         trace!("   in epoch {:?}", interop_group.group.epoch());
-        trace!(
-            "   actor {:x?}",
-            String::from_utf8_lossy(interop_group.group.own_identity().unwrap())
-        );
 
         let epoch_authenticator = interop_group
             .group
@@ -489,8 +488,8 @@ impl MlsClient for MlsClientImpl {
                     MlsMessageIn::tls_deserialize(&mut request.group_info.as_slice()).unwrap();
 
                 match msg.extract() {
-                    MlsMessageInBody::GroupInfo(verifiable_group_info) => verifiable_group_info,
-                    other => panic!("Expected `MlsMessageInBody::GroupInfo`, got {other:?}."),
+                    MlsMessageBodyIn::GroupInfo(verifiable_group_info) => verifiable_group_info,
+                    other => panic!("Expected `MlsMessageBodyIn::GroupInfo`, got {other:?}."),
                 }
             };
             debug!("Got `VerifiableGroupInfo`.");
@@ -502,8 +501,7 @@ impl MlsClient for MlsClientImpl {
             let ciphersuite = verifiable_group_info.ciphersuite();
 
             let (credential_with_key, signer) = {
-                let credential =
-                    Credential::new(request.identity.to_vec(), CredentialType::Basic).unwrap();
+                let credential = BasicCredential::new(request.identity.to_vec()).unwrap();
 
                 let signature_keypair =
                     SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
@@ -511,7 +509,7 @@ impl MlsClient for MlsClientImpl {
                 signature_keypair.store(provider.key_store()).unwrap();
 
                 let credential_with_key = CredentialWithKey {
-                    credential,
+                    credential: credential.into(),
                     signature_key: signature_keypair.public().into(),
                 };
 
@@ -590,10 +588,6 @@ impl MlsClient for MlsClientImpl {
             .get(request.state_id as usize)
             .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
         trace!("   in epoch {:?}", interop_group.group.epoch());
-        trace!(
-            "   actor {:x?}",
-            String::from_utf8_lossy(interop_group.group.own_identity().unwrap())
-        );
 
         let state_auth_secret = interop_group.group.epoch_authenticator();
 
@@ -618,10 +612,6 @@ impl MlsClient for MlsClientImpl {
             .get(request.state_id as usize)
             .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
         trace!("   in epoch {:?}", interop_group.group.epoch());
-        trace!(
-            "   actor {:x?}",
-            String::from_utf8_lossy(interop_group.group.own_identity().unwrap())
-        );
 
         let exported_secret = interop_group
             .group
@@ -651,7 +641,6 @@ impl MlsClient for MlsClientImpl {
         let interop_group = groups
             .get_mut(request.state_id as usize)
             .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
-        trace!(actor=String::from_utf8_lossy(interop_group.group.own_identity().unwrap()).to_string(), epoch=?interop_group.group.epoch(), "Protecting.");
 
         interop_group.group.set_aad(&request.authenticated_data);
 
@@ -684,7 +673,6 @@ impl MlsClient for MlsClientImpl {
         let interop_group = groups
             .get_mut(request.state_id as usize)
             .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
-        trace!(actor=String::from_utf8_lossy(interop_group.group.own_identity().unwrap()).to_string(), epoch=?interop_group.group.epoch(), "Unprotecting.");
 
         debug!("Deserializing `MlsMessageIn`.");
         let message = MlsMessageIn::tls_deserialize(&mut request.ciphertext.as_slice())
@@ -695,7 +683,10 @@ impl MlsClient for MlsClientImpl {
         debug!("Processing message.");
         let processed_message = interop_group
             .group
-            .process_message(&interop_group.crypto_provider, message)
+            .process_message(
+                &interop_group.crypto_provider,
+                message.try_into_protocol_message().unwrap(),
+            )
             .map_err(into_status)?;
         debug!("Processed.");
         trace!(?processed_message);
@@ -768,10 +759,6 @@ impl MlsClient for MlsClientImpl {
                 .get_mut(request.state_or_transaction_id as usize)
                 .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
             trace!("   in epoch {:?}", interop_group.group.epoch());
-            trace!(
-                "   actor {:x?}",
-                String::from_utf8_lossy(interop_group.group.own_identity().unwrap())
-            );
 
             store(
                 interop_group.group.ciphersuite(),
@@ -800,10 +787,6 @@ impl MlsClient for MlsClientImpl {
             .get_mut(request.state_id as usize)
             .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
         trace!("   in epoch {:?}", interop_group.group.epoch());
-        trace!(
-            "   actor {:x?}",
-            String::from_utf8_lossy(interop_group.group.own_identity().unwrap())
-        );
 
         let key_package = MlsMessageIn::tls_deserialize(&mut request.key_package.as_slice())
             .map_err(|_| Status::aborted("failed to deserialize key package (MlsMessage)"))?
@@ -858,10 +841,6 @@ impl MlsClient for MlsClientImpl {
             .get_mut(request.state_id as usize)
             .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
         trace!("   in epoch {:?}", interop_group.group.epoch());
-        trace!(
-            "   actor {:x?}",
-            String::from_utf8_lossy(interop_group.group.own_identity().unwrap())
-        );
 
         // Note: We just use some values here that make live testing work.
         //       There is nothing special about the used numbers and they
@@ -903,8 +882,7 @@ impl MlsClient for MlsClientImpl {
         let request = request.get_ref();
         info!(?request, "Request");
 
-        let removed_credential =
-            Credential::new(request.removed_id.clone(), CredentialType::Basic).unwrap();
+        let removed_credential = BasicCredential::new(request.removed_id.clone()).unwrap();
         trace!("   for credential: {removed_credential:x?}");
 
         let mut groups = self.groups.lock().unwrap();
@@ -912,10 +890,6 @@ impl MlsClient for MlsClientImpl {
             .get_mut(request.state_id as usize)
             .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
         trace!("   in epoch {:?}", interop_group.group.epoch());
-        trace!(
-            "   actor {:x?}",
-            String::from_utf8_lossy(interop_group.group.own_identity().unwrap())
-        );
 
         // Note: We just use some values here that make live testing work.
         //       There is nothing special about the used numbers and they
@@ -934,7 +908,7 @@ impl MlsClient for MlsClientImpl {
             .propose_remove_member_by_credential(
                 &interop_group.crypto_provider,
                 &interop_group.signature_keys,
-                &removed_credential,
+                &removed_credential.into(),
             )
             .map_err(into_status)?;
 
@@ -978,7 +952,6 @@ impl MlsClient for MlsClientImpl {
             .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
         let group = &mut interop_group.group;
 
-        Span::current().record("actor", bytes_to_string(group.own_identity().unwrap()));
         trace!(epoch=?group.epoch(), "Current group state.");
 
         // Proposals by reference. These proposals are standalone proposals. They should
@@ -994,7 +967,10 @@ impl MlsClient for MlsClientImpl {
             }
             trace!("Processing proposal ...");
             let processed_message = group
-                .process_message(&interop_group.crypto_provider, message)
+                .process_message(
+                    &interop_group.crypto_provider,
+                    message.try_into_protocol_message().unwrap(),
+                )
                 .map_err(into_status)?;
             trace!("... done");
 
@@ -1034,14 +1010,13 @@ impl MlsClient for MlsClientImpl {
                 }
                 "remove" => {
                     let removed_credential =
-                        Credential::new(proposal.removed_id.clone(), CredentialType::Basic)
-                            .unwrap();
+                        BasicCredential::new(proposal.removed_id.clone()).unwrap();
 
                     group
                         .propose_remove_member_by_credential_by_value(
                             &interop_group.crypto_provider,
                             &interop_group.signature_keys,
-                            &removed_credential,
+                            &removed_credential.into(),
                         )
                         .map_err(|_| Status::internal("Unable to generate proposal by value"))?
                 }
@@ -1158,7 +1133,6 @@ impl MlsClient for MlsClientImpl {
             .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
         let group = &mut interop_group.group;
 
-        Span::current().record("actor", bytes_to_string(group.own_identity().unwrap()));
         trace!(epoch=?group.epoch(), "Current group state.");
 
         // XXX[FK]: This is a horrible API.
@@ -1173,7 +1147,10 @@ impl MlsClient for MlsClientImpl {
             }
             trace!("   processing proposal ...");
             let processed_message = group
-                .process_message(&interop_group.crypto_provider, message)
+                .process_message(
+                    &interop_group.crypto_provider,
+                    message.try_into_protocol_message().unwrap(),
+                )
                 .map_err(into_status)?;
             trace!("       done");
             match processed_message.into_content() {
@@ -1197,7 +1174,10 @@ impl MlsClient for MlsClientImpl {
 
         debug!("Processing message.");
         let processed_message = group
-            .process_message(&interop_group.crypto_provider, message)
+            .process_message(
+                &interop_group.crypto_provider,
+                message.try_into_protocol_message().unwrap(),
+            )
             .map_err(into_status)?;
         debug!("Processed.");
         trace!(?processed_message);
@@ -1241,7 +1221,6 @@ impl MlsClient for MlsClientImpl {
             .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
         let group = &mut interop_group.group;
 
-        Span::current().record("actor", bytes_to_string(group.own_identity().unwrap()));
         trace!(epoch=?group.epoch(), "Current group state.");
 
         trace!(commit=?group.pending_commit(), "Merging pending commit.");
@@ -1276,8 +1255,6 @@ impl MlsClient for MlsClientImpl {
             .get_mut(request.state_id as usize)
             .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
         let group = &mut interop_group.group;
-
-        Span::current().record("actor", bytes_to_string(group.own_identity().unwrap()));
 
         let group_info = group
             .export_group_info(
@@ -1320,10 +1297,6 @@ impl MlsClient for MlsClientImpl {
             .get_mut(request.state_id as usize)
             .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
         trace!("   in epoch {:?}", interop_group.group.epoch());
-        trace!(
-            "   actor {:x?}",
-            String::from_utf8_lossy(interop_group.group.own_identity().unwrap())
-        );
 
         let raw_psk_id = request.psk_id.clone();
         trace!("   psk_id {:x?}", raw_psk_id);
@@ -1370,8 +1343,6 @@ impl MlsClient for MlsClientImpl {
             .get_mut(request.state_id as usize)
             .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
         let group = &mut interop_group.group;
-
-        Span::current().record("actor", bytes_to_string(group.own_identity().unwrap()));
 
         let psk_id = PreSharedKeyId::resumption(
             ResumptionPskUsage::Application,
