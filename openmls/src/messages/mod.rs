@@ -46,7 +46,7 @@ use self::{proposals::*, proposals_in::ProposalOrRefIn};
 ///
 /// This message is generated when a new member is added to a group.
 /// The invited member can use this message to join the group using
-/// [`MlsGroup::new_from_welcome()`](crate::group::mls_group::MlsGroup::new_from_welcome()).
+/// [`StagedWelcome::new_from_welcome()`](crate::group::mls_group::StagedWelcome::new_from_welcome()).
 ///
 /// ```c
 /// // draft-ietf-mls-protocol-17
@@ -167,6 +167,7 @@ impl Commit {
     }
 
     /// Returns the update path of the Commit if it has one.
+    #[cfg(test)]
     pub(crate) fn path(&self) -> &Option<UpdatePath> {
         &self.path
     }
@@ -323,8 +324,9 @@ impl PathSecret {
             .path_secret
             .kdf_expand_label(crypto, "node", &[], ciphersuite.hash_length())
             .map_err(LibraryError::unexpected_crypto_error)?;
-        let HpkeKeyPair { public, private } =
-            crypto.derive_hpke_keypair(ciphersuite.hpke_config(), node_secret.as_slice());
+        let HpkeKeyPair { public, private } = crypto
+            .derive_hpke_keypair(ciphersuite.hpke_config(), node_secret.as_slice())
+            .map_err(LibraryError::unexpected_crypto_error)?;
 
         Ok((HpkePublicKey::from(public), private).into())
     }

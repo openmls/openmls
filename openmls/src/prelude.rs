@@ -23,7 +23,7 @@ pub use crate::extensions::{errors::*, *};
 
 // Framing
 pub use crate::framing::{
-    message_in::{MlsMessageIn, MlsMessageInBody, ProtocolMessage},
+    message_in::{MlsMessageBodyIn, MlsMessageIn, ProtocolMessage},
     message_out::MlsMessageOut,
     sender::Sender,
     validation::{ApplicationMessage, ProcessedMessage, ProcessedMessageContent},
@@ -55,9 +55,7 @@ pub use crate::treesync::{
 // };
 
 // TLS codec traits
-pub use tls_codec::{
-    Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, Size as TlsSizeTrait,
-};
+pub use tls_codec::{self, *};
 
 // Errors
 pub use crate::error::*;

@@ -24,12 +24,16 @@ serde_json = { version = "1.0", optional = true }
 # Crypto providers required for KAT and testing - "test-utils" feature
 itertools = { version = "0.10", optional = true }
 openmls_rust_crypto = { version = "0.2.0", path = "../openmls_rust_crypto", optional = true }
+openmls_libcrux_crypto = { path = "../libcrux_crypto", optional = true }
 openmls_basic_credential = { version = "0.2.0", path = "../basic_credential", optional = true, features = [
     "clonable",
     "test-utils",
 ] }
 rstest = { version = "^0.16", optional = true }
 rstest_reuse = { version = "0.4", optional = true }
+wasm-bindgen-test = {version = "0.3.40", optional = true}
+getrandom = {version = "0.2.12", optional = true, features = [ "js" ]}
+fluvio-wasm-timer = {version = "0.2.5", optional = true}
 
 [features]
 default = ["backtrace"]
@@ -41,14 +45,17 @@ test-utils = [
     "dep:rand",
     "dep:rstest",
     "dep:rstest_reuse",
+    "dep:wasm-bindgen-test",
     "dep:openmls_basic_credential",
 ]
+libcrux-provider = ["dep:openmls_libcrux_crypto",]
 crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
 content-debug = [] # ☣️ Enable logging of sensitive message content
+js = ["dep:getrandom", "dep:fluvio-wasm-timer"] # enable js randomness source for provider
 
 [dev-dependencies]
 backtrace = "0.3"
-criterion = "^0.5"
+criterion = {version = "^0.5", default-features = false} # need to disable default features for wasm
 hex = { version = "0.4", features = ["serde"] }
 itertools = "0.10"
 lazy_static = "1.4"
@@ -60,6 +67,8 @@ pretty_env_logger = "0.5"
 rstest = "^0.16"
 rstest_reuse = "0.4"
 tempfile = "3"
+wasm-bindgen = "0.2.90"
+wasm-bindgen-test = "0.3.40"
 
 [[bench]]
 name = "benchmark"

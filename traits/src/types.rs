@@ -120,20 +120,13 @@ impl TryFrom<u16> for SignatureScheme {
     }
 }
 
-/// Trait errors.
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum Error {
-    CryptoError(CryptoError),
-    InvalidSignature,
-    SigningError,
-}
-
 /// Crypto errors.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum CryptoError {
     CryptoLibraryError,
     AeadDecryptionError,
     HpkeDecryptionError,
+    HpkeEncryptionError,
     UnsupportedSignatureScheme,
     KdfLabelTooLarge,
     KdfSerializationError,
@@ -151,6 +144,9 @@ pub enum CryptoError {
     ExporterError,
     UnsupportedCiphersuite,
     TlsSerializationError,
+    TooMuchData,
+    SigningError,
+    InvalidPublicKey,
 }
 
 impl std::fmt::Display for CryptoError {

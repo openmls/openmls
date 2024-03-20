@@ -167,9 +167,14 @@ impl GroupInfo {
         &self.payload.group_context
     }
 
-    /// Returns the extensions.
-    pub(crate) fn extensions(&self) -> &Extensions {
+    /// Returns the [`GroupInfo`] extensions.
+    pub fn extensions(&self) -> &Extensions {
         &self.payload.extensions
+    }
+
+    /// Returns the [`GroupInfo`] extensions.
+    pub fn signature(&self) -> &Signature {
+        &self.signature
     }
 
     /// Returns the confirmation tag.

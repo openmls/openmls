@@ -4,7 +4,7 @@
 //! up to parties and have them create a group.
 //!
 //! ```
-//! use openmls::prelude::{*, config::CryptoConfig};
+//! use openmls::prelude::{*, config::CryptoConfig, tls_codec::*};
 //! use openmls_rust_crypto::{OpenMlsRustCrypto};
 //! use openmls_basic_credential::SignatureKeyPair;
 //!
@@ -22,7 +22,8 @@
 //!     signature_algorithm: SignatureScheme,
 //!     provider: &impl OpenMlsProvider,
 //! ) -> (CredentialWithKey, SignatureKeyPair) {
-//!     let credential = Credential::new(identity, credential_type).unwrap();
+//!     let credential = BasicCredential::new(identity)
+//!         .expect("Error creating a credential.");
 //!     let signature_keys =
 //!         SignatureKeyPair::new(signature_algorithm)
 //!             .expect("Error generating a signature key pair.");
@@ -35,7 +36,7 @@
 //!     
 //!     (
 //!         CredentialWithKey {
-//!             credential,
+//!             credential: credential.into(),
 //!             signature_key: signature_keys.public().into(),
 //!         },
 //!         signature_keys,
@@ -116,21 +117,26 @@
 //!
 //! // ... and inspect the message.
 //! let welcome = match mls_message_in.extract() {
-//!    MlsMessageInBody::Welcome(welcome) => welcome,
+//!    MlsMessageBodyIn::Welcome(welcome) => welcome,
 //!    // We know it's a welcome message, so we ignore all other cases.
 //!    _ => unreachable!("Unexpected message type."),
 //! };
 //!
-//! // Now Maxim can join the group.
-//!  let mut maxim_group = MlsGroup::new_from_welcome(
+//! // Now Maxim can build a staged join for the group in order to inspect the welcome
+//! let maxim_staged_join = StagedWelcome::new_from_welcome(
 //!     provider,
 //!     &MlsGroupJoinConfig::default(),
 //!     welcome,
 //!     // The public tree is need and transferred out of band.
 //!     // It is also possible to use the [`RatchetTreeExtension`]
 //!     Some(sasha_group.export_ratchet_tree().into()),
-//!  )
-//!  .expect("Error joining group from Welcome");
+//! )
+//! .expect("Error creating a staged join from Welcome");
+//!
+//! // Finally, Maxim can create the group
+//! let mut maxim_group = maxim_staged_join
+//!     .into_group(provider)
+//!     .expect("Error creating the group from the staged join");
 //! ```
 //!
 //! [//]: # "links and badges"
@@ -145,6 +151,9 @@
     target_pointer_width = "64",
     target_pointer_width = "128"
 ))]
+
+#[cfg(all(target_arch = "wasm32", not(feature = "js")))]
+compile_error!("In order for OpenMLS to build for WebAssembly, JavaScript APIs must be available (for access to secure randomness and the current time). This can be signalled by setting the `js` feature on OpenMLS.");
 
 // === Testing ===
 
@@ -187,3 +196,9 @@ mod tree;
 
 /// Single place, re-exporting the most used public functions.
 pub mod prelude;
+
+// this is a workaround, see https://github.com/la10736/rstest/issues/211#issuecomment-1701238125
+#[cfg(any(test, feature = "test-utils"))]
+pub mod wasm {
+    pub use wasm_bindgen_test::wasm_bindgen_test as test;
+}

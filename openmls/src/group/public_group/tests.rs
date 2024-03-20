@@ -6,7 +6,7 @@ use rstest_reuse::{self, *};
 use crate::{
     binary_tree::LeafNodeIndex,
     framing::{
-        public_message_in::PublicMessageIn, MlsMessageOut, ProcessedMessage,
+        public_message_in::PublicMessageIn, MlsMessageIn, MlsMessageOut, ProcessedMessage,
         ProcessedMessageContent, ProtocolMessage, Sender,
     },
     group::{
@@ -16,7 +16,7 @@ use crate::{
     messages::proposals::Proposal,
 };
 
-use super::PublicGroup;
+use super::{super::mls_group::StagedWelcome, PublicGroup};
 
 #[apply(ciphersuites_and_providers)]
 fn public_group(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
@@ -91,15 +91,22 @@ fn public_group(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         }
     };
 
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome
+        .into_welcome()
+        .expect("expected message to be a welcome");
+
     // In the future, we'll use helper functions to skip the extraction steps above.
 
-    let mut bob_group = MlsGroup::new_from_welcome(
+    let mut bob_group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
-        welcome.into_welcome().expect("Unexpected message type."),
+        welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .expect("Error creating group from Welcome");
+    .expect("Error creating staged join from Welcome")
+    .into_group(provider)
+    .expect("Error creating group from staged join");
 
     // === Bob adds Charlie ===
     let (queued_messages, welcome, _group_info) = bob_group
@@ -137,12 +144,19 @@ fn public_group(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .merge_pending_commit(provider)
         .expect("error merging pending commit");
 
-    let mut charlie_group = MlsGroup::new_from_welcome(
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome
+        .into_welcome()
+        .expect("expected message to be a welcome");
+
+    let mut charlie_group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
-        welcome.into_welcome().expect("Unexpected message type."),
+        welcome,
         Some(bob_group.export_ratchet_tree().into()),
     )
+    .expect("Error creating group from Welcome")
+    .into_group(provider)
     .expect("Error creating group from Welcome");
 
     // === Alice removes Bob & Charlie commits ===

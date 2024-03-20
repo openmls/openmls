@@ -13,7 +13,7 @@ use tls_codec::Serialize as TlsSerializeTrait;
 
 use super::{errors::KsTestVectorError, CommitSecret};
 #[cfg(test)]
-use crate::test_utils::{read, write};
+use crate::test_utils::write;
 use crate::{ciphersuite::*, extensions::Extensions, group::*, schedule::*, test_utils::*};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -137,7 +137,8 @@ fn generate(
     // Calculate external HPKE key pair
     let external_key_pair = epoch_secrets
         .external_secret()
-        .derive_external_keypair(crypto.crypto(), ciphersuite);
+        .derive_external_keypair(crypto.crypto(), ciphersuite)
+        .expect("An unexpected crypto error occurred.");
 
     (
         confirmed_transcript_hash,
@@ -258,7 +259,7 @@ fn write_test_vectors() {
 fn read_test_vectors_key_schedule(provider: &impl OpenMlsProvider) {
     let _ = pretty_env_logger::try_init();
 
-    let tests: Vec<KeyScheduleTestVector> = read("test_vectors/key-schedule.json");
+    let tests: Vec<KeyScheduleTestVector> = read_json!("../../test_vectors/key-schedule.json");
 
     for test_vector in tests {
         match run_test_vector(test_vector, provider) {
@@ -443,7 +444,8 @@ pub fn run_test_vector(
         // Calculate external HPKE key pair
         let external_key_pair = epoch_secrets
             .external_secret()
-            .derive_external_keypair(provider.crypto(), ciphersuite);
+            .derive_external_keypair(provider.crypto(), ciphersuite)
+            .expect("an unexpected crypto error occurred");
         if hex_to_bytes(&epoch.external_pub) != external_key_pair.public {
             log::error!("  External public key mismatch");
             log::debug!(

@@ -40,9 +40,12 @@ use openmls_traits::{
     types::{Ciphersuite, HpkeKeyPair, SignatureScheme},
     OpenMlsProvider,
 };
-use rayon::prelude::*;
+
 use std::{collections::HashMap, sync::RwLock};
 use tls_codec::*;
+
+#[cfg(not(target_arch = "wasm32"))]
+use rayon::prelude::*;
 
 pub mod client;
 pub mod errors;
@@ -147,7 +150,7 @@ impl MlsGroupTestSetup {
             let crypto = OpenMlsRustCrypto::default();
             let mut credentials = HashMap::new();
             for ciphersuite in crypto.crypto().supported_ciphersuites().iter() {
-                let credential = Credential::new(identity.clone(), CredentialType::Basic).unwrap();
+                let credential = BasicCredential::new(identity.clone()).unwrap();
                 let signature_keys =
                     SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
                 signature_keys.store(crypto.key_store()).unwrap();
@@ -160,7 +163,7 @@ impl MlsGroupTestSetup {
                 credentials.insert(
                     *ciphersuite,
                     CredentialWithKey {
-                        credential,
+                        credential: credential.into(),
                         signature_key: signature_key.into(),
                     },
                 );
@@ -343,7 +346,11 @@ impl MlsGroupTestSetup {
             .map(
                 |Member {
                      index, credential, ..
-                 }| { (index.usize(), credential.identity().to_vec()) },
+                 }| {
+                    let identity =
+                        VLBytes::tls_deserialize_exact(credential.serialized_content()).unwrap();
+                    (index.usize(), identity.as_slice().to_vec())
+                },
             )
             .collect();
         group.public_tree = sender_group.export_ratchet_tree();
@@ -363,9 +370,13 @@ impl MlsGroupTestSetup {
         authentication_service: AS,
     ) {
         let clients = self.clients.read().expect("An unexpected error occurred.");
-        let messages = group
-            .members
-            .par_iter()
+
+        #[cfg(not(target_arch = "wasm32"))]
+        let group_members = group.members.par_iter();
+        #[cfg(target_arch = "wasm32")]
+        let group_members = group.members.iter();
+
+        let messages = group_members
             .filter_map(|(_, m_id)| {
                 let m = clients
                     .get(m_id)

@@ -21,12 +21,12 @@ use crate::messages::group_info::VerifiableGroupInfo;
 #[derive(Debug, Clone, PartialEq, TlsSerialize, TlsSize)]
 pub struct MlsMessageOut {
     pub(crate) version: ProtocolVersion,
-    pub(crate) body: MlsMessageOutBody,
+    pub(crate) body: MlsMessageBodyOut,
 }
 
 /// MLSMessage (Body)
 ///
-/// Note: Because [MlsMessageOutBody] already discriminates between
+/// Note: Because [MlsMessageBodyOut] already discriminates between
 /// `public_message`, `private_message`, etc., we don't use the
 /// `wire_format` field. This prevents inconsistent assignments
 /// where `wire_format` contradicts the variant given in `body`.
@@ -53,7 +53,7 @@ pub struct MlsMessageOut {
 /// ```
 #[derive(Debug, PartialEq, Clone, TlsSerialize, TlsSize)]
 #[repr(u16)]
-pub(crate) enum MlsMessageOutBody {
+pub enum MlsMessageBodyOut {
     /// Plaintext message
     #[tls_codec(discriminant = 1)]
     PublicMessage(PublicMessage),
@@ -82,7 +82,7 @@ impl From<PublicMessage> for MlsMessageOut {
             // TODO #34: The version should be set explicitly here instead of
             // the default.
             version: ProtocolVersion::default(),
-            body: MlsMessageOutBody::PublicMessage(public_message),
+            body: MlsMessageBodyOut::PublicMessage(public_message),
         }
     }
 }
@@ -93,7 +93,7 @@ impl From<PrivateMessage> for MlsMessageOut {
             // TODO #34: The version should be set explicitly here instead of
             // the default.
             version: ProtocolVersion::default(),
-            body: MlsMessageOutBody::PrivateMessage(private_message),
+            body: MlsMessageBodyOut::PrivateMessage(private_message),
         }
     }
 }
@@ -102,7 +102,7 @@ impl From<GroupInfo> for MlsMessageOut {
     fn from(group_info: GroupInfo) -> Self {
         Self {
             version: group_info.group_context().protocol_version(),
-            body: MlsMessageOutBody::GroupInfo(group_info),
+            body: MlsMessageBodyOut::GroupInfo(group_info),
         }
     }
 }
@@ -111,7 +111,7 @@ impl From<KeyPackage> for MlsMessageOut {
     fn from(key_package: KeyPackage) -> Self {
         Self {
             version: key_package.protocol_version(),
-            body: MlsMessageOutBody::KeyPackage(key_package),
+            body: MlsMessageBodyOut::KeyPackage(key_package),
         }
     }
 }
@@ -125,7 +125,7 @@ impl MlsMessageOut {
     ) -> Self {
         Self {
             version,
-            body: MlsMessageOutBody::PrivateMessage(private_message),
+            body: MlsMessageBodyOut::PrivateMessage(private_message),
         }
     }
 
@@ -134,7 +134,7 @@ impl MlsMessageOut {
     pub fn from_welcome(welcome: Welcome, version: ProtocolVersion) -> Self {
         MlsMessageOut {
             version,
-            body: MlsMessageOutBody::Welcome(welcome),
+            body: MlsMessageBodyOut::Welcome(welcome),
         }
     }
 
@@ -142,6 +142,11 @@ impl MlsMessageOut {
     pub fn to_bytes(&self) -> Result<Vec<u8>, MlsMessageError> {
         self.tls_serialize_detached()
             .map_err(|_| MlsMessageError::UnableToEncode)
+    }
+
+    /// Returns a reference to the contents of this [`MlsMessageOut`].
+    pub fn body(&self) -> &MlsMessageBodyOut {
+        &self.body
     }
 }
 
@@ -153,7 +158,7 @@ impl MlsMessageOut {
     #[cfg(any(feature = "test-utils", test))]
     pub fn into_welcome(self) -> Option<Welcome> {
         match self.body {
-            MlsMessageOutBody::Welcome(w) => Some(w),
+            MlsMessageBodyOut::Welcome(w) => Some(w),
             _ => None,
         }
     }
@@ -163,8 +168,8 @@ impl MlsMessageOut {
         let mls_message_in: MlsMessageIn = self.into();
 
         match mls_message_in.extract() {
-            MlsMessageInBody::PublicMessage(pm) => Some(pm.into()),
-            MlsMessageInBody::PrivateMessage(pm) => Some(pm.into()),
+            MlsMessageBodyIn::PublicMessage(pm) => Some(pm.into()),
+            MlsMessageBodyIn::PrivateMessage(pm) => Some(pm.into()),
             _ => None,
         }
     }
@@ -172,7 +177,7 @@ impl MlsMessageOut {
     #[cfg(any(feature = "test-utils", test))]
     pub fn into_verifiable_group_info(self) -> Option<VerifiableGroupInfo> {
         match self.body {
-            MlsMessageOutBody::GroupInfo(group_info) => {
+            MlsMessageBodyOut::GroupInfo(group_info) => {
                 Some(group_info.into_verifiable_group_info())
             }
             _ => None,
@@ -188,11 +193,11 @@ impl From<MlsMessageIn> for MlsMessageOut {
     fn from(mls_message: MlsMessageIn) -> Self {
         let version = mls_message.version;
         let body = match mls_message.body {
-            MlsMessageInBody::Welcome(w) => MlsMessageOutBody::Welcome(w),
-            MlsMessageInBody::GroupInfo(gi) => MlsMessageOutBody::GroupInfo(gi.into()),
-            MlsMessageInBody::KeyPackage(kp) => MlsMessageOutBody::KeyPackage(kp.into()),
-            MlsMessageInBody::PublicMessage(pm) => MlsMessageOutBody::PublicMessage(pm.into()),
-            MlsMessageInBody::PrivateMessage(pm) => MlsMessageOutBody::PrivateMessage(pm.into()),
+            MlsMessageBodyIn::Welcome(w) => MlsMessageBodyOut::Welcome(w),
+            MlsMessageBodyIn::GroupInfo(gi) => MlsMessageBodyOut::GroupInfo(gi.into()),
+            MlsMessageBodyIn::KeyPackage(kp) => MlsMessageBodyOut::KeyPackage(kp.into()),
+            MlsMessageBodyIn::PublicMessage(pm) => MlsMessageBodyOut::PublicMessage(pm.into()),
+            MlsMessageBodyIn::PrivateMessage(pm) => MlsMessageBodyOut::PrivateMessage(pm.into()),
         };
         Self { version, body }
     }
@@ -203,13 +208,13 @@ impl From<MlsMessageOut> for MlsMessageIn {
     fn from(mls_message_out: MlsMessageOut) -> Self {
         let version = mls_message_out.version;
         let body = match mls_message_out.body {
-            MlsMessageOutBody::PublicMessage(pm) => MlsMessageInBody::PublicMessage(pm.into()),
-            MlsMessageOutBody::PrivateMessage(pm) => MlsMessageInBody::PrivateMessage(pm.into()),
-            MlsMessageOutBody::Welcome(w) => MlsMessageInBody::Welcome(w),
-            MlsMessageOutBody::GroupInfo(gi) => {
-                MlsMessageInBody::GroupInfo(gi.into_verifiable_group_info())
+            MlsMessageBodyOut::PublicMessage(pm) => MlsMessageBodyIn::PublicMessage(pm.into()),
+            MlsMessageBodyOut::PrivateMessage(pm) => MlsMessageBodyIn::PrivateMessage(pm.into()),
+            MlsMessageBodyOut::Welcome(w) => MlsMessageBodyIn::Welcome(w),
+            MlsMessageBodyOut::GroupInfo(gi) => {
+                MlsMessageBodyIn::GroupInfo(gi.into_verifiable_group_info())
             }
-            MlsMessageOutBody::KeyPackage(kp) => MlsMessageInBody::KeyPackage(kp.into()),
+            MlsMessageBodyOut::KeyPackage(kp) => MlsMessageBodyIn::KeyPackage(kp.into()),
         };
         Self { version, body }
     }

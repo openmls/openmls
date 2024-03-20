@@ -11,7 +11,7 @@ use crate::{
     framing::{mls_auth_content::AuthenticatedContent, *},
     group::*,
     key_packages::{KeyPackage, KeyPackageBundle},
-    messages::{proposals::*, Welcome},
+    messages::proposals::*,
     schedule::ResumptionPskSecret,
     treesync::{node::leaf_node::LeafNode, RatchetTree},
 };
@@ -90,7 +90,7 @@ impl From<PendingCommitState> for StagedCommit {
 ///
 /// * [`MlsGroupState::PendingCommit`]: This state is split into two possible
 /// sub-states, one for each Commit type:
-/// [`PendingCommitState::Member`] and [`PendingCommitState::Member`]:
+/// [`PendingCommitState::Member`] and [`PendingCommitState::External`]:
 ///
 ///   * If the client creates a commit for this group, the `PendingCommit` state
 ///   is entered with [`PendingCommitState::Member`] and with the [`StagedCommit`] as
@@ -228,11 +228,6 @@ impl MlsGroup {
             .ok_or_else(|| LibraryError::custom("Own leaf node missing").into())
     }
 
-    /// Get the identity of the client's [`Credential`] owning this group.
-    pub fn own_identity(&self) -> Option<&[u8]> {
-        self.group.own_identity()
-    }
-
     /// Returns the leaf index of the client in the tree owning this group.
     pub fn own_leaf_index(&self) -> LeafNodeIndex {
         self.group.own_leaf_index()
@@ -291,6 +286,27 @@ impl MlsGroup {
             }
             MlsGroupState::Operational | MlsGroupState::Inactive => (),
         }
+    }
+
+    /// Clear the pending proposals, if the proposal store is not empty.
+    ///
+    /// Warning: Once the pending proposals are cleared it will be impossible to process
+    /// a Commit message that references those proposals. Only use this
+    /// function as a last resort, e.g. when a call to
+    /// `MlsGroup::commit_to_pending_proposals` fails.
+    pub fn clear_pending_proposals(&mut self) {
+        // If the proposal store is not empty...
+        if !self.proposal_store.is_empty() {
+            // Empty the proposal store
+            self.proposal_store.empty();
+            // Since the state of the group is changed, arm the state flag
+            self.flag_state_change();
+        }
+    }
+
+    /// Get a reference to the group context [`Extensions`] of this [`MlsGroup`].
+    pub fn extensions(&self) -> &Extensions {
+        self.group.public_group().group_context().extensions()
     }
 
     // === Load & save ===
@@ -411,12 +427,6 @@ impl MlsGroup {
         &self.group
     }
 
-    /// Clear the pending proposals.
-    #[cfg(test)]
-    pub(crate) fn clear_pending_proposals(&mut self) {
-        self.proposal_store.empty()
-    }
-
     /// Removes a specific proposal from the store.
     pub fn remove_pending_proposal(
         &mut self,
@@ -437,4 +447,15 @@ pub enum InnerState {
     Changed,
     /// The inner group state hasn't changed and doesn't need to be persisted.
     Persisted,
+}
+
+/// A [`StagedWelcome`] can be inspected and then turned into a [`MlsGroup`].
+/// This allows checking who authored the Welcome message.
+#[derive(Debug)]
+pub struct StagedWelcome {
+    // The group configuration. See [`MlsGroupJoinConfig`] for more information.
+    mls_group_config: MlsGroupJoinConfig,
+    // The internal `CoreGroup` used for lower level operations. See `CoreGroup` for more
+    // information.
+    group: StagedCoreWelcome,
 }

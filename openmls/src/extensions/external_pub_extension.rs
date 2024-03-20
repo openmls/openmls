@@ -54,21 +54,22 @@ mod test {
             let mut external_pub_extensions = Vec::new();
 
             for _ in 0..8 {
-                let hpke_public_key = {
-                    let ikm = Secret::random(
-                        Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-                        provider.rand(),
-                        ProtocolVersion::default(),
-                    )
-                    .unwrap();
-                    let init_key = provider.crypto().derive_hpke_keypair(
-                        Ciphersuite::hpke_config(
-                            &Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-                        ),
-                        ikm.as_slice(),
-                    );
-                    init_key.public
-                };
+                let hpke_public_key =
+                    {
+                        let ikm = Secret::random(
+                            Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+                            provider.rand(),
+                            ProtocolVersion::default(),
+                        )
+                        .unwrap();
+                        let init_key = provider.crypto().derive_hpke_keypair(
+                            Ciphersuite::hpke_config(
+                                &Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+                            ),
+                            ikm.as_slice(),
+                        ).expect("error deriving hpke key pair");
+                        init_key.public
+                    };
 
                 external_pub_extensions.push(ExternalPubExtension::new(hpke_public_key.into()));
             }
