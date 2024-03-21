@@ -4,7 +4,8 @@ This is a proof-of-concept for an MLS delivery service that can be used for test
 
 * Registering Clients via a POST request to `/clients/register`
 * Listing Clients via a GET request to `/clients/list`
-* Get a list of key packages of a client via a GET request to `/clients/get/{name}`
+* Get a list of key packages of a client via a GET request to `/clients/key_packages/{name}`
+* Add a new key package for a client via a POST request to `/clients/key_packages/{name}`
 * Send an MLS group message via a POST request to `/send/message`
 * Send a Welcome message via a POST request to `/send/welcome`
 * Get a list of messages for a client via a GET request to `/recv/{name}`

@@ -39,7 +39,7 @@ fn test_client_info() {
             .to_vec(),
         KeyPackageIn::from(client_key_package),
     )];
-    let client_data = ClientInfo::new(client_name.to_string(), client_key_package);
+    let client_data = ClientInfo::new(client_key_package);
 
     let encoded_client_data = client_data.tls_serialize_detached().unwrap();
     let client_data2 = ClientInfo::tls_deserialize(&mut encoded_client_data.as_slice())
