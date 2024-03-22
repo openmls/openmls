@@ -78,11 +78,15 @@ fn receive_message(
         .wire_format_policy(alice_group.configuration().wire_format_policy())
         .build();
 
-    let mut bob_group =
-        StagedWelcome::new_from_welcome(provider, &mls_group_config, welcome.into(), None)
-            .expect("error creating bob's staged join from welcome")
-            .into_group(provider)
-            .expect("error creating bob's group from staged join");
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome
+        .into_welcome()
+        .expect("expected message to be a welcome");
+
+    let mut bob_group = StagedWelcome::new_from_welcome(provider, &mls_group_config, welcome, None)
+        .expect("error creating bob's staged join from welcome")
+        .into_group(provider)
+        .expect("error creating bob's group from staged join");
 
     let (message, _welcome, _group_info) = bob_group
         .self_update(provider, &bob_credential_with_key_and_signer.signer)

@@ -427,7 +427,9 @@ impl MlsClient for MlsClientImpl {
             .map_err(into_status)?;
 
         let welcome = MlsMessageIn::tls_deserialize(&mut request.welcome.as_slice())
-            .map_err(|_| Status::aborted("failed to deserialize MlsMessage with a Welcome"))?;
+            .map_err(|_| Status::aborted("failed to deserialize MlsMessage with a Welcome"))?
+            .into_welcome()
+            .expect("expected a welcome");
 
         let ratchet_tree = ratchet_tree_from_config(request.ratchet_tree.clone());
 

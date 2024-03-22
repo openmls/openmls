@@ -8,7 +8,7 @@ use rstest_reuse::{self, *};
 
 use super::utils::{generate_credential_with_key, generate_key_package};
 use crate::{
-    framing::{MessageDecryptionError, ProcessedMessageContent},
+    framing::{MessageDecryptionError, MlsMessageIn, ProcessedMessageContent},
     group::{config::CryptoConfig, *},
 };
 
@@ -68,10 +68,15 @@ fn test_past_secrets_in_group(ciphersuite: Ciphersuite, provider: &impl OpenMlsP
             .merge_pending_commit(provider)
             .expect("error merging pending commit");
 
+        let welcome: MlsMessageIn = welcome.into();
+        let welcome = welcome
+            .into_welcome()
+            .expect("expected message to be a welcome");
+
         let mut bob_group = StagedWelcome::new_from_welcome(
             provider,
             mls_group_create_config.join_config(),
-            welcome.into(),
+            welcome,
             Some(alice_group.export_ratchet_tree().into()),
         )
         .expect("Error creating staged join from Welcome")

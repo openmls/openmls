@@ -8,7 +8,10 @@ use crate::{
         core_group::create_commit_params::CreateCommitParams,
         errors::{ExternalCommitError, WelcomeError},
     },
-    messages::group_info::{GroupInfo, VerifiableGroupInfo},
+    messages::{
+        group_info::{GroupInfo, VerifiableGroupInfo},
+        Welcome,
+    },
     schedule::psk::store::ResumptionPskStore,
     treesync::RatchetTreeIn,
 };
@@ -134,14 +137,9 @@ impl StagedWelcome {
     pub fn new_from_welcome<KeyStore: OpenMlsKeyStore>(
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         mls_group_config: &MlsGroupJoinConfig,
-        welcome: MlsMessageIn,
+        welcome: Welcome,
         ratchet_tree: Option<RatchetTreeIn>,
     ) -> Result<Self, WelcomeError<KeyStore::Error>> {
-        let welcome = match welcome.body {
-            MlsMessageBodyIn::Welcome(welcome) => welcome,
-            _ => return Err(WelcomeError::NotAWelcomeMessage),
-        };
-
         let resumption_psk_store =
             ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
         let (key_package, _) = welcome

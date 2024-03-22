@@ -122,7 +122,6 @@ impl Client {
         welcome: Welcome,
         ratchet_tree: Option<RatchetTreeIn>,
     ) -> Result<(), ClientError> {
-        let welcome = MlsMessageOut::from_welcome(welcome, ProtocolVersion::default()).into();
         let staged_join = StagedWelcome::new_from_welcome(
             &self.crypto,
             &mls_group_config,

@@ -13,7 +13,6 @@ use crate::{
         hash_ref::KeyPackageRef, hpke, signable::Signable, AeadKey, AeadNonce, Mac, Secret,
     },
     extensions::Extensions,
-    framing::MlsMessageOut,
     group::{
         config::CryptoConfig, errors::WelcomeError, GroupContext, GroupId, MlsGroup,
         MlsGroupCreateConfig, StagedWelcome,
@@ -165,7 +164,7 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, provider: &impl OpenM
     let err = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
-        MlsMessageOut::from_welcome(welcome, ProtocolVersion::default()).into(),
+        welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
     .expect_err("Created a staged join from an invalid Welcome.");
@@ -198,7 +197,7 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, provider: &impl OpenM
     let _group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
-        MlsMessageOut::from_welcome(original_welcome, ProtocolVersion::default()).into(),
+        original_welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
     .expect("Error creating staged join from a valid Welcome.")

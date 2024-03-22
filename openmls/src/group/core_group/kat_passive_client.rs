@@ -18,10 +18,8 @@ use crate::{
 
 const TEST_VECTORS_PATH_READ: &[&str] = &[
     "test_vectors/passive-client-welcome.json",
-    // FIXME #1529: The key packages are not valid anymore and the test vectors
-    //              need to be regenerated. See mlswg/mls-implementations#181
-    // "test_vectors/passive-client-random.json",
-    // "test_vectors/passive-client-handling-commit.json",
+    "test_vectors/passive-client-random.json",
+    "test_vectors/passive-client-handling-commit.json",
 ];
 const TEST_VECTOR_PATH_WRITE: &[&str] = &["test_vectors/passive-client-welcome-new.json"];
 const NUM_TESTS: usize = 25;
@@ -298,10 +296,14 @@ impl PassiveClient {
         mls_message_welcome: MlsMessageIn,
         ratchet_tree: Option<RatchetTreeIn>,
     ) {
+        let welcome = mls_message_welcome
+            .into_welcome()
+            .expect("expected a welcome");
+
         let group = StagedWelcome::new_from_welcome(
             &self.provider,
             &self.group_config,
-            mls_message_welcome,
+            welcome,
             ratchet_tree,
         )
         .unwrap()

@@ -436,10 +436,13 @@ fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
 
     alice_group.merge_pending_commit(provider).unwrap();
 
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome.into_welcome().expect("expected a welcome");
+
     let _bob_group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
-        welcome.into(),
+        welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
     .expect("An unexpected error occurred.")
