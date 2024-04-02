@@ -262,7 +262,7 @@ impl BasicCredential {
 
     /// Get the identity of this basic credential as byte slice.
     pub fn identity(&self) -> &[u8] {
-        &self.identity.as_slice()
+        self.identity.as_slice()
     }
 }
 
@@ -400,7 +400,7 @@ mod unit_tests {
         assert_eq!(credential, deserialized);
 
         let deserialized_custom_credential =
-            CustomCredential::tls_deserialize_exact_bytes(&deserialized.serialized_content())
+            CustomCredential::tls_deserialize_exact_bytes(deserialized.serialized_content())
                 .unwrap();
 
         assert_eq!(custom_credential, deserialized_custom_credential);
