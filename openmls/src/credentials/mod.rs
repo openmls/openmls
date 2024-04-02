@@ -28,7 +28,7 @@ use openmls_traits::types::SignatureScheme;
 use serde::{Deserialize, Serialize};
 use tls_codec::{
     Deserialize as TlsDeserializeTrait, DeserializeBytes, Error, Serialize as TlsSerializeTrait,
-    Size, TlsDeserialize, TlsSerialize, TlsSize, VLBytes,
+    Size, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes,
 };
 
 #[cfg(test)]
@@ -80,7 +80,7 @@ pub enum CredentialType {
     /// An X.509 [`Certificate`]
     X509 = 2,
     /// Proprietary credential used in the Infra protocol.
-    Infra,
+    Infra = 0xF000,
     /// Another type of credential that is not in the MLS protocol spec.
     Other(u16),
 }
@@ -163,7 +163,16 @@ pub struct Certificate {
 /// A credential that contains a (pseudonymous) identity, some metadata, as well
 /// as an encrypted signature.
 #[derive(
-    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsSize, TlsDeserialize,
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsSize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
 )]
 pub struct InfraCredential {
     // (Pseudonymous) identity
@@ -323,9 +332,13 @@ impl tls_codec::DeserializeBytes for Credential {
 
 impl From<InfraCredential> for Credential {
     fn from(value: InfraCredential) -> Self {
+        let serialized_infra_credential = VLBytes::from(value.tls_serialize_detached().unwrap())
+            .tls_serialize_detached()
+            .unwrap();
+
         Self {
             credential_type: CredentialType::Infra,
-            serialized_credential_content: value.tls_serialize_detached().unwrap().into(),
+            serialized_credential_content: serialized_infra_credential.into(),
         }
     }
 }
@@ -503,5 +516,47 @@ mod unit_tests {
             IDENTITY.as_bytes()
         );
         assert_eq!(basic_credential, deserialized_basic_credential);
+    }
+
+    #[test]
+    fn infra_credential_codec() {
+        use super::{Credential, CredentialType, InfraCredential};
+        use openmls_traits::types::SignatureScheme;
+        use tls_codec::{Serialize, VLBytes};
+
+        let identity = vec![0x01, 0x02, 0x03];
+        let expiration_data = super::Lifetime::new(0);
+        let credential_ciphersuite = SignatureScheme::ED25519;
+        let verifying_key = super::SignaturePublicKey::from(vec![0x01, 0x02, 0x03]);
+        let encrypted_signature = vec![0x01, 0x02, 0x03];
+
+        let infra_credential = InfraCredential::new(
+            identity.clone(),
+            expiration_data,
+            credential_ciphersuite,
+            verifying_key,
+            encrypted_signature.clone().into(),
+        );
+
+        // Test the encoding and decoding.
+        let credential = Credential::from(infra_credential.clone());
+        let serialized = credential.tls_serialize_detached().unwrap();
+
+        assert_eq!(credential.credential_type, CredentialType::Infra);
+
+        let deserialized = Credential::tls_deserialize_exact_bytes(&serialized).unwrap();
+        assert_eq!(credential.credential_type(), deserialized.credential_type());
+        assert_eq!(
+            credential.serialized_content(),
+            deserialized.serialized_content()
+        );
+
+        let serialized_infra_credential =
+            VLBytes::tls_deserialize_exact_bytes(&mut deserialized.serialized_content()).unwrap();
+
+        let deserialized_infra_credential =
+            InfraCredential::tls_deserialize_exact_bytes(&serialized_infra_credential.as_ref())
+                .unwrap();
+        assert_eq!(infra_credential, deserialized_infra_credential);
     }
 }
