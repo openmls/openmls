@@ -195,7 +195,7 @@ impl User {
             credential,
         } in mls_group.members()
         {
-            let credential = BasicCredential::try_from(&credential).unwrap();
+            let credential = BasicCredential::try_from(credential).unwrap();
             if credential.identity() == name.as_bytes() {
                 return Ok(index);
             }
@@ -237,7 +237,7 @@ impl User {
                 .as_slice()
                 != signature_key.as_slice()
             {
-                let credential = BasicCredential::try_from(&credential).unwrap();
+                let credential = BasicCredential::try_from(credential).unwrap();
                 log::debug!(
                     "Searching for contact {:?}",
                     str::from_utf8(credential.identity()).unwrap()
@@ -401,7 +401,7 @@ impl User {
             match processed_message.into_content() {
                 ProcessedMessageContent::ApplicationMessage(application_message) => {
                     let processed_message_credential =
-                        BasicCredential::try_from(&processed_message_credential).unwrap();
+                        BasicCredential::try_from(processed_message_credential).unwrap();
 
                     let sender_name = match self
                         .contacts
@@ -412,7 +412,7 @@ impl User {
                             // Contact list is not updated right now, get the identity from the
                             // mls_group member
                             let user_id = mls_group.members().find_map(|m| {
-                                let m_credential = BasicCredential::try_from(&m.credential).unwrap();
+                                let m_credential = BasicCredential::try_from(m.credential).unwrap();
                                 if m_credential.identity()
                                     == processed_message_credential.identity()
                                     && (self
