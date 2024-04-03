@@ -10,7 +10,7 @@ pub(crate) fn key_package(
     ciphersuite: Ciphersuite,
     provider: &impl OpenMlsProvider,
 ) -> (KeyPackage, Credential, SignatureKeyPair) {
-    let credential = BasicCredential::new(b"Sasha".to_vec()).unwrap();
+    let credential = BasicCredential::new(b"Sasha".to_vec());
     let signer = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
     // Generate a valid KeyPackage.
@@ -59,7 +59,7 @@ fn serialization(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
 #[apply(ciphersuites_and_providers)]
 fn application_id_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
-    let credential = BasicCredential::new(b"Sasha".to_vec()).unwrap();
+    let credential = BasicCredential::new(b"Sasha".to_vec());
     let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
     // Generate a valid KeyPackage.
@@ -155,7 +155,7 @@ fn key_package_validation(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
 /// the last resort flag is set during the build process.
 #[apply(ciphersuites_and_providers)]
 fn last_resort_key_package(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
-    let credential = Credential::from(BasicCredential::new(b"Sasha".to_vec()).unwrap());
+    let credential = Credential::from(BasicCredential::new(b"Sasha".to_vec()));
     let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
     // build without any other extensions
