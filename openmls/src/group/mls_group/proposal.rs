@@ -319,7 +319,6 @@ impl MlsGroup {
         }
     }
 
-    #[cfg(test)]
     pub fn propose_group_context_extensions(
         &mut self,
         provider: &impl OpenMlsProvider,

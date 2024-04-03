@@ -1043,11 +1043,7 @@ impl CoreGroup {
             group_info: group_info.filter(|_| self.use_ratchet_tree_extension),
         })
     }
-}
 
-// Test functions
-#[cfg(test)]
-impl CoreGroup {
     pub(crate) fn create_group_context_ext_proposal(
         &self,
         framing_parameters: FramingParameters,
@@ -1082,6 +1078,11 @@ impl CoreGroup {
         )
         .map_err(|e| e.into())
     }
+}
+
+// Test functions
+#[cfg(test)]
+impl CoreGroup {
 
     pub(crate) fn use_ratchet_tree_extension(&self) -> bool {
         self.use_ratchet_tree_extension
