@@ -258,7 +258,7 @@ Thus, to create a fresh <code>Credential</code>, the following inputs are requir
 <li><code>identity: Vec&lt;u8&gt;</code>: An octet string that uniquely identifies the client.</li>
 <li><code>credential_type: CredentialType</code>: The type of the credential, in this case <code>CredentialType::Basic</code>.</li>
 </ul>
-<pre><code class="language-rust no_run noplayground">    let credential = BasicCredential::new(identity).unwrap();</code></pre>
+<pre><code class="language-rust no_run noplayground">    let credential = BasicCredential::new(identity);</code></pre>
 <p>After creating the credential bundle, clients should create keys for it.
 OpenMLS provides a simple implementation of <a href="https://github.com/openmls/openmls/tree/main/basic-credential"><code>BasicCredential</code></a> for tests and to demonstrate how to use credentials.</p>
 <pre><code class="language-rust no_run noplayground">    let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
@@ -559,12 +559,10 @@ Even though members were removed in this operation, the Commit message could pot
     assert!(!bob_group.is_active());
     let members = bob_group.members().collect::&lt;Vec&lt;Member&gt;&gt;();
     assert_eq!(members.len(), 2);
-    let credential0 =
-        VLBytes::tls_deserialize_exact(members[0].credential.serialized_content()).unwrap();
-    let credential1 =
-        VLBytes::tls_deserialize_exact(members[1].credential.serialized_content()).unwrap();
-    assert_eq!(credential0.as_slice(), b"Alice");
-    assert_eq!(credential1.as_slice(), b"Charlie");</code></pre>
+    let credential0 = members[0].credential.serialized_content();
+    let credential1 = members[1].credential.serialized_content();
+    assert_eq!(credential0, b"Alice");
+    assert_eq!(credential1, b"Charlie");</code></pre>
 <h2 id="external-proposal-1"><a class="header" href="#external-proposal-1">External Proposal</a></h2>
 <p>Parties outside the group can also make proposals to remove members as long as they are registered as part of the <code>ExternalSendersExtension</code> extension.
 Since those proposals are crafted by outsiders, they are always public messages.</p>
@@ -809,7 +807,7 @@ but note that the key used to store, read, and delete values in the key store ha
 to be provided as a byte slice.</p>
 <p>In the following examples, we have a <code>ciphersuite</code> and a <code>provider</code> (<code>OpenMlsCryptoProvider</code>).</p>
 <pre><code class="language-rust no_run noplayground">    // First we generate a credential and key package for our user.
-    let credential = BasicCredential::new(b"User ID".to_vec()).unwrap();
+    let credential = BasicCredential::new(b"User ID".to_vec());
     let signature_keys = SignatureKeyPair::new(ciphersuite.into()).unwrap();
 
     let key_package = KeyPackage::builder()

@@ -231,12 +231,10 @@ Even though members were removed in this operation, the Commit message could pot
     assert!(!bob_group.is_active());
     let members = bob_group.members().collect::&lt;Vec&lt;Member&gt;&gt;();
     assert_eq!(members.len(), 2);
-    let credential0 =
-        VLBytes::tls_deserialize_exact(members[0].credential.serialized_content()).unwrap();
-    let credential1 =
-        VLBytes::tls_deserialize_exact(members[1].credential.serialized_content()).unwrap();
-    assert_eq!(credential0.as_slice(), b"Alice");
-    assert_eq!(credential1.as_slice(), b"Charlie");</code></pre>
+    let credential0 = members[0].credential.serialized_content();
+    let credential1 = members[1].credential.serialized_content();
+    assert_eq!(credential0, b"Alice");
+    assert_eq!(credential1, b"Charlie");</code></pre>
 <h2 id="external-proposal"><a class="header" href="#external-proposal">External Proposal</a></h2>
 <p>Parties outside the group can also make proposals to remove members as long as they are registered as part of the <code>ExternalSendersExtension</code> extension.
 Since those proposals are crafted by outsiders, they are always public messages.</p>
