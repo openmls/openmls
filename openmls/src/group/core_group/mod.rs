@@ -43,6 +43,7 @@ use self::{
     create_commit_params::{CommitType, CreateCommitParams},
     node::leaf_node::Capabilities,
     past_secrets::MessageSecretsStore,
+    proposal::CustomProposal,
     staged_commit::{MemberStagedCommitState, StagedCommit, StagedCommitState},
 };
 
@@ -457,6 +458,23 @@ impl CoreGroup {
     ) -> Result<AuthenticatedContent, LibraryError> {
         let presharedkey_proposal = PreSharedKeyProposal::new(psk);
         let proposal = Proposal::PreSharedKey(presharedkey_proposal);
+        AuthenticatedContent::member_proposal(
+            framing_parameters,
+            self.own_leaf_index(),
+            proposal,
+            self.context(),
+            signer,
+        )
+    }
+
+    pub(crate) fn create_custom_proposal(
+        &self,
+        framing_parameters: FramingParameters,
+        custom_proposal: CustomProposal,
+        signer: &impl Signer,
+    ) -> Result<AuthenticatedContent, LibraryError> {
+        let unknown_proposal = OtherProposal(custom_proposal.0 .1.into());
+        let proposal = Proposal::Other((custom_proposal.0 .0, unknown_proposal));
         AuthenticatedContent::member_proposal(
             framing_parameters,
             self.own_leaf_index(),

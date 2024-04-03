@@ -52,7 +52,13 @@ pub enum Propose {
 
     /// Propose adding new group context extensions.
     GroupContextExtensions(Extensions),
+
+    /// A custom proposal with semantics to be implemented by the application.
+    Custom(CustomProposal),
 }
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct CustomProposal(pub (u16, Vec<u8>));
 
 macro_rules! impl_propose_fun {
     ($name:ident, $value_ty:ty, $group_fun:ident, $ref_or_value:expr) => {
@@ -119,6 +125,20 @@ impl MlsGroup {
         PreSharedKeyId,
         create_presharedkey_proposal,
         ProposalOrRefType::Proposal
+    );
+
+    impl_propose_fun!(
+        propose_custom_proposal_by_value,
+        CustomProposal,
+        create_custom_proposal,
+        ProposalOrRefType::Proposal
+    );
+
+    impl_propose_fun!(
+        propose_custom_proposal_by_reference,
+        CustomProposal,
+        create_custom_proposal,
+        ProposalOrRefType::Reference
     );
 
     /// Generate a proposal
@@ -194,6 +214,14 @@ impl MlsGroup {
             Propose::GroupContextExtensions(_) => Err(ProposalError::LibraryError(
                 LibraryError::custom("Unsupported proposal type GroupContextExtensions"),
             )),
+            Propose::Custom(custom_proposal) => match ref_or_value {
+                ProposalOrRefType::Proposal => {
+                    self.propose_custom_proposal_by_value(provider, signer, custom_proposal)
+                }
+                ProposalOrRefType::Reference => {
+                    self.propose_custom_proposal_by_reference(provider, signer, custom_proposal)
+                }
+            },
         }
     }
 
