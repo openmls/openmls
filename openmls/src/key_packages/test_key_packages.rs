@@ -109,7 +109,7 @@ fn key_package_validation(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
 
     let mut franken_key_package = frankenstein::FrankenKeyPackage::from(key_package_orig.clone());
     // Set an invalid protocol version
-    franken_key_package.payload.protocol_version = 999;
+    franken_key_package.protocol_version = 999;
 
     let key_package_in = KeyPackageIn::from(franken_key_package);
 
@@ -124,12 +124,7 @@ fn key_package_validation(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
 
     let mut franken_key_package = frankenstein::FrankenKeyPackage::from(key_package_orig);
     // Set an invalid init key
-    franken_key_package.payload.init_key = franken_key_package
-        .payload
-        .leaf_node
-        .payload
-        .encryption_key
-        .clone();
+    franken_key_package.init_key = franken_key_package.leaf_node.encryption_key.clone();
 
     let key_package_in = KeyPackageIn::from(franken_key_package);
 
