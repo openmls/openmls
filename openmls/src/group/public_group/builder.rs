@@ -4,10 +4,7 @@ use super::{errors::PublicGroupBuildError, PublicGroup};
 use crate::{
     credentials::CredentialWithKey,
     error::LibraryError,
-    extensions::{
-        errors::{ExtensionError, InvalidExtensionError},
-        Extensions,
-    },
+    extensions::{errors::InvalidExtensionError, Extensions},
     group::{config::CryptoConfig, ExtensionType, GroupContext, GroupId},
     key_packages::Lifetime,
     messages::ConfirmationTag,
@@ -81,17 +78,6 @@ impl TempBuilderPG1 {
             if let Some(required_capabilities) =
                 self.group_context_extensions.required_capabilities()
             {
-                // Also, while we're at it, check if we support all required
-                // capabilities ourselves.
-                required_capabilities.check_support().map_err(|e| match e {
-                    ExtensionError::UnsupportedProposalType => {
-                        PublicGroupBuildError::UnsupportedProposalType
-                    }
-                    ExtensionError::UnsupportedExtensionType => {
-                        PublicGroupBuildError::UnsupportedExtensionType
-                    }
-                    _ => LibraryError::custom("Unexpected ExtensionError").into(),
-                })?;
                 (
                     Some(required_capabilities.extension_types()),
                     Some(required_capabilities.proposal_types()),

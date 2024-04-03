@@ -19,10 +19,13 @@ use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
-use super::proposals::{
-    AddProposal, AppAckProposal, ExternalInitProposal, GroupContextExtensionProposal,
-    PreSharedKeyProposal, Proposal, ProposalOrRef, ProposalType, ReInitProposal, RemoveProposal,
-    UpdateProposal,
+use super::{
+    proposals::{
+        AddProposal, AppAckProposal, ExternalInitProposal, GroupContextExtensionProposal,
+        PreSharedKeyProposal, Proposal, ProposalOrRef, ProposalType, ReInitProposal,
+        RemoveProposal, UpdateProposal,
+    },
+    UnknownProposal,
 };
 
 /// Proposal.
@@ -78,6 +81,7 @@ pub enum ProposalIn {
     //             was moved to `draft-ietf-mls-extensions-00`.
     #[tls_codec(discriminant = 8)]
     AppAck(AppAckProposal),
+    Other((u16, UnknownProposal)),
 }
 
 impl ProposalIn {
@@ -92,6 +96,7 @@ impl ProposalIn {
             ProposalIn::ExternalInit(_) => ProposalType::ExternalInit,
             ProposalIn::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,
             ProposalIn::AppAck(_) => ProposalType::AppAck,
+            ProposalIn::Other((proposal_type, _)) => ProposalType::Other(proposal_type.to_owned()),
         }
     }
 
@@ -125,6 +130,7 @@ impl ProposalIn {
                 Proposal::GroupContextExtensions(group_context_extension)
             }
             ProposalIn::AppAck(app_ack) => Proposal::AppAck(app_ack),
+            ProposalIn::Other(other_proposal) => Proposal::Other(other_proposal),
         })
     }
 }
@@ -327,6 +333,7 @@ impl From<ProposalIn> for crate::messages::proposals::Proposal {
                 Self::GroupContextExtensions(group_context_extension)
             }
             ProposalIn::AppAck(app_ack) => Self::AppAck(app_ack),
+            ProposalIn::Other(other) => Self::Other(other),
         }
     }
 }
@@ -344,6 +351,7 @@ impl From<crate::messages::proposals::Proposal> for ProposalIn {
                 Self::GroupContextExtensions(group_context_extension)
             }
             Proposal::AppAck(app_ack) => Self::AppAck(app_ack),
+            Proposal::Other(other) => Self::Other(other),
         }
     }
 }

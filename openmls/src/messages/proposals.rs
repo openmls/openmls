@@ -82,7 +82,7 @@ pub enum ProposalType {
     ExternalInit,
     GroupContextExtensions,
     AppAck,
-    Unknown(u16),
+    Other(u16),
 }
 
 impl Size for ProposalType {
@@ -124,21 +124,6 @@ impl DeserializeBytes for ProposalType {
 }
 
 impl ProposalType {
-    /// Check whether a proposal type is supported or not. Returns `true`
-    /// if a proposal is supported and `false` otherwise.
-    pub fn is_supported(&self) -> bool {
-        matches!(
-            self,
-            ProposalType::Add
-                | ProposalType::Update
-                | ProposalType::Remove
-                | ProposalType::PreSharedKey
-                | ProposalType::Reinit
-                | ProposalType::ExternalInit
-                | ProposalType::GroupContextExtensions
-        )
-    }
-
     /// Returns `true` if the proposal type requires a path and `false`
     pub fn is_path_required(&self) -> bool {
         matches!(
@@ -159,7 +144,7 @@ impl From<u16> for ProposalType {
             6 => ProposalType::ExternalInit,
             7 => ProposalType::GroupContextExtensions,
             8 => ProposalType::AppAck,
-            unknown => ProposalType::Unknown(unknown),
+            other => ProposalType::Other(other),
         }
     }
 }
@@ -175,7 +160,7 @@ impl From<ProposalType> for u16 {
             ProposalType::ExternalInit => 6,
             ProposalType::GroupContextExtensions => 7,
             ProposalType::AppAck => 8,
-            ProposalType::Unknown(unknown) => unknown,
+            ProposalType::Other(id) => id,
         }
     }
 }
@@ -223,6 +208,7 @@ pub enum Proposal {
     //             was moved to `draft-ietf-mls-extensions-00`.
     #[tls_codec(discriminant = 8)]
     AppAck(AppAckProposal),
+    Other((u16, UnknownProposal)),
 }
 
 impl Proposal {
@@ -237,6 +223,7 @@ impl Proposal {
             Proposal::ExternalInit(_) => ProposalType::ExternalInit,
             Proposal::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,
             Proposal::AppAck(_) => ProposalType::AppAck,
+            Proposal::Other((proposal_type, _)) => ProposalType::Other(proposal_type.to_owned()),
         }
     }
 
@@ -505,6 +492,22 @@ impl GroupContextExtensionProposal {
     }
 }
 
+/// A proposal that OpenMLS doesn't know and has to be handled by the
+/// application.
+#[derive(
+    PartialEq,
+    Eq,
+    Clone,
+    Debug,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
+)]
+pub struct UnknownProposal(pub VLBytes);
+
 // Crate-only types
 
 /// 11.2 Commit
@@ -653,7 +656,7 @@ mod tests {
             let got = ProposalType::tls_deserialize_exact(&test).unwrap();
 
             match got {
-                ProposalType::Unknown(got_proposal_type) => {
+                ProposalType::Other(got_proposal_type) => {
                     assert_eq!(proposal_type, got_proposal_type);
                 }
                 other => panic!("Expected `ProposalType::Unknown`, got `{:?}`.", other),

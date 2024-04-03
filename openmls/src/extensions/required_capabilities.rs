@@ -5,7 +5,7 @@ use crate::{
     treesync::node::leaf_node::default_extensions,
 };
 
-use super::{Deserialize, ExtensionError, ExtensionType, Serialize};
+use super::{Deserialize, ExtensionType, Serialize};
 
 /// # Required Capabilities Extension.
 ///
@@ -82,15 +82,5 @@ impl RequiredCapabilitiesExtension {
     /// Checks whether support for the provided extension type is required.
     pub(crate) fn requires_extension_type_support(&self, ext_type: ExtensionType) -> bool {
         self.extension_types.contains(&ext_type) || default_extensions().contains(&ext_type)
-    }
-
-    /// Check if all extension and proposal types are supported.
-    pub(crate) fn check_support(&self) -> Result<(), ExtensionError> {
-        for proposal in self.proposal_types() {
-            if !proposal.is_supported() {
-                return Err(ExtensionError::UnsupportedProposalType);
-            }
-        }
-        Ok(())
     }
 }
