@@ -279,9 +279,9 @@ impl TryFrom<Credential> for BasicCredential {
     type Error = BasicCredentialError;
 
     fn try_from(credential: Credential) -> Result<Self, Self::Error> {
-        match credential.credential_type() {
+        match credential.credential_type {
             CredentialType::Basic => Ok(BasicCredential::new(
-                credential.serialized_credential_content.clone().into(),
+                credential.serialized_credential_content.into(),
             )),
             _ => Err(errors::BasicCredentialError::WrongCredentialType),
         }
@@ -344,7 +344,6 @@ pub mod test_utils {
 mod unit_tests {
     use tls_codec::{
         DeserializeBytes, Serialize, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
-        VLBytes,
     };
 
     use super::{BasicCredential, Credential, CredentialType};
@@ -382,12 +381,15 @@ mod unit_tests {
             Debug, Clone, PartialEq, Eq, TlsSize, TlsSerialize, TlsDeserialize, TlsDeserializeBytes,
         )]
         struct CustomCredential {
-            inner: VLBytes,
+            custom_field1: u32,
+            custom_field2: Vec<u8>,
+            custom_field3: Option<u8>,
         }
 
-        const IDENTITY: &str = "custom identity";
         let custom_credential = CustomCredential {
-            inner: IDENTITY.as_bytes().to_vec().into(),
+            custom_field1: 42,
+            custom_field2: vec![1, 2, 3],
+            custom_field3: Some(2),
         };
 
         let credential = Credential::new(
