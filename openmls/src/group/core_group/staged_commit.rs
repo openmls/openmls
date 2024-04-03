@@ -4,6 +4,8 @@ use std::mem;
 use openmls_traits::key_store::OpenMlsKeyStore;
 use public_group::diff::{apply_proposals::ApplyProposalsValues, StagedPublicGroupDiff};
 
+use self::public_group::staged_commit::PublicStagedCommitState;
+
 use super::{super::errors::*, proposals::ProposalStore, *};
 use crate::{
     framing::mls_auth_content::AuthenticatedContent,
@@ -146,9 +148,13 @@ impl CoreGroup {
         // Check if we were removed from the group
         if apply_proposals_values.self_removed {
             let staged_diff = diff.into_staged_diff(provider.crypto(), ciphersuite)?;
+            let staged_state = PublicStagedCommitState::new(
+                staged_diff,
+                commit.path.as_ref().map(|path| path.leaf_node().clone()),
+            );
             return Ok(StagedCommit::new(
                 proposal_queue,
-                StagedCommitState::PublicState(Box::new(staged_diff)),
+                StagedCommitState::PublicState(Box::new(staged_state)),
             ));
         }
 
@@ -312,8 +318,9 @@ impl CoreGroup {
         // that are still relevant in the new epoch.
         let old_epoch_keypairs = self.read_epoch_keypairs(provider.key_store());
         match staged_commit.state {
-            StagedCommitState::PublicState(staged_diff) => {
-                self.public_group.merge_diff(*staged_diff);
+            StagedCommitState::PublicState(staged_state) => {
+                self.public_group
+                    .merge_diff(staged_state.into_staged_diff());
                 Ok(None)
             }
             StagedCommitState::GroupMember(state) => {
@@ -400,7 +407,7 @@ impl CoreGroup {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) enum StagedCommitState {
-    PublicState(Box<StagedPublicGroupDiff>),
+    PublicState(Box<PublicStagedCommitState>),
     GroupMember(Box<MemberStagedCommitState>),
 }
 
@@ -449,7 +456,9 @@ impl StagedCommit {
     /// Returns the leaf node of the (optional) update path.
     pub fn update_path_leaf_node(&self) -> Option<&LeafNode> {
         match self.state {
-            StagedCommitState::PublicState(_) => None,
+            StagedCommitState::PublicState(ref public_state) => {
+                public_state.update_path_leaf_node()
+            }
             StagedCommitState::GroupMember(ref group_member_state) => {
                 group_member_state.update_path_leaf_node.as_ref()
             }
@@ -512,7 +521,7 @@ impl StagedCommit {
     /// Returns the [`GroupContext`] of the staged commit state.
     pub fn group_context(&self) -> &GroupContext {
         match self.state {
-            StagedCommitState::PublicState(ref ps) => ps.group_context(),
+            StagedCommitState::PublicState(ref ps) => ps.staged_diff().group_context(),
             StagedCommitState::GroupMember(ref gm) => gm.group_context(),
         }
     }
