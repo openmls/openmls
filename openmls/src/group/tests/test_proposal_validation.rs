@@ -14,7 +14,7 @@ use super::utils::{
 };
 use crate::{
     binary_tree::LeafNodeIndex,
-    ciphersuite::{hash_ref::ProposalRef, signable::Signable},
+    ciphersuite::hash_ref::ProposalRef,
     credentials::*,
     framing::{
         mls_content::FramedContentBody, validation::ProcessedMessageContent, AuthenticatedContent,
@@ -432,7 +432,7 @@ fn test_valsem102(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             KeyUniqueness::NegativeSameKey => {
                 // Create a new key package for bob with the init key from Charlie.
                 let mut franken_key_package = FrankenKeyPackage::from(bob_key_package);
-                franken_key_package.payload.init_key = charlie_key_package
+                franken_key_package.init_key = charlie_key_package
                     .hpke_init_key()
                     .as_slice()
                     .to_owned()
@@ -514,15 +514,12 @@ fn test_valsem102(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         generate_credential_with_key_and_key_package("Dave".into(), ciphersuite, provider);
     // Change the init key and re-sign.
     let mut franken_key_package = FrankenKeyPackage::from(dave_key_package);
-    franken_key_package.payload.init_key = charlie_key_package
+    franken_key_package.init_key = charlie_key_package
         .hpke_init_key()
         .as_slice()
         .to_owned()
         .into();
-    let franken_key_package = franken_key_package
-        .payload
-        .sign(&dave_credential_with_key_and_signer.signer)
-        .unwrap();
+    franken_key_package.resign(&dave_credential_with_key_and_signer.signer);
     dave_key_package = KeyPackage::from(franken_key_package);
 
     let second_add_proposal = Proposal::Add(AddProposal {
@@ -845,12 +842,7 @@ fn test_valsem103_valsem104(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
             KeyUniqueness::NegativeSameKey => {
                 // Create a new key package for bob using the encryption key as init key.
                 let mut franken_key_package = FrankenKeyPackage::from(bob_key_package);
-                franken_key_package.payload.init_key = franken_key_package
-                    .payload
-                    .leaf_node
-                    .payload
-                    .encryption_key
-                    .clone();
+                franken_key_package.init_key = franken_key_package.leaf_node.encryption_key.clone();
                 franken_key_package.resign(&bob_credential_with_key.signer);
                 bob_key_package = KeyPackage::from(franken_key_package);
             }
@@ -928,8 +920,7 @@ fn test_valsem103_valsem104(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
 
     // Insert Bob's public key into Dave's KPB and resign.
     let mut franken_key_package = FrankenKeyPackage::from(dave_key_package);
-    franken_key_package.payload.leaf_node.payload.encryption_key =
-        bob_encryption_key.as_slice().to_owned().into();
+    franken_key_package.leaf_node.encryption_key = bob_encryption_key.as_slice().to_owned().into();
     franken_key_package.resign(&dave_credential_with_key.signer);
     let dave_key_package = KeyPackage::from(franken_key_package);
 
@@ -1058,26 +1049,16 @@ fn test_valsem105(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         } as u16;
         match key_package_version {
             KeyPackageTestVersion::WrongCiphersuite => {
-                franken_key_package.payload.ciphersuite = wrong_ciphersuite;
+                franken_key_package.ciphersuite = wrong_ciphersuite;
             }
             KeyPackageTestVersion::WrongVersion => {
-                franken_key_package.payload.protocol_version = 999;
+                franken_key_package.protocol_version = 999;
             }
             KeyPackageTestVersion::UnsupportedVersion => {
-                franken_key_package
-                    .payload
-                    .leaf_node
-                    .payload
-                    .capabilities
-                    .versions = vec![999];
+                franken_key_package.leaf_node.capabilities.versions = vec![999];
             }
             KeyPackageTestVersion::UnsupportedCiphersuite => {
-                franken_key_package
-                    .payload
-                    .leaf_node
-                    .payload
-                    .capabilities
-                    .ciphersuites =
+                franken_key_package.leaf_node.capabilities.ciphersuites =
                     vec![Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448.into()];
             }
             KeyPackageTestVersion::ValidTestCase => (),
@@ -1105,26 +1086,16 @@ fn test_valsem105(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             } as u16;
             match key_package_version {
                 KeyPackageTestVersion::WrongCiphersuite => {
-                    franken_key_package.payload.ciphersuite = wrong_ciphersuite;
+                    franken_key_package.ciphersuite = wrong_ciphersuite;
                 }
                 KeyPackageTestVersion::WrongVersion => {
-                    franken_key_package.payload.protocol_version = 999;
+                    franken_key_package.protocol_version = 999;
                 }
                 KeyPackageTestVersion::UnsupportedVersion => {
-                    franken_key_package
-                        .payload
-                        .leaf_node
-                        .payload
-                        .capabilities
-                        .versions = vec![999];
+                    franken_key_package.leaf_node.capabilities.versions = vec![999];
                 }
                 KeyPackageTestVersion::UnsupportedCiphersuite => {
-                    franken_key_package
-                        .payload
-                        .leaf_node
-                        .payload
-                        .capabilities
-                        .ciphersuites =
+                    franken_key_package.leaf_node.capabilities.ciphersuites =
                         vec![Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448.into()];
                 }
                 KeyPackageTestVersion::ValidTestCase => (),

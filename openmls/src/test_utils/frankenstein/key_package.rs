@@ -1,3 +1,5 @@
+use std::ops::{Deref, DerefMut};
+
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsProvider};
 use tls_codec::*;
@@ -35,6 +37,20 @@ impl FrankenKeyPackage {
     pub fn resign_only_key_package(&mut self, signer: &impl Signer) {
         let new_self = self.payload.clone().sign(signer).unwrap();
         let _ = std::mem::replace(self, new_self);
+    }
+}
+
+impl Deref for FrankenKeyPackage {
+    type Target = FrankenKeyPackageTbs;
+
+    fn deref(&self) -> &Self::Target {
+        &self.payload
+    }
+}
+
+impl DerefMut for FrankenKeyPackage {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.payload
     }
 }
 

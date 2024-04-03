@@ -1,3 +1,5 @@
+use std::ops::{Deref, DerefMut};
+
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsProvider};
 use tls_codec::*;
@@ -24,6 +26,20 @@ impl FrankenLeafNode {
     pub fn resign(&mut self, signer: &impl Signer) {
         let new_self = self.payload.clone().sign(signer).unwrap();
         let _ = std::mem::replace(self, new_self);
+    }
+}
+
+impl Deref for FrankenLeafNode {
+    type Target = FrankenLeafNodeTbs;
+
+    fn deref(&self) -> &Self::Target {
+        &self.payload
+    }
+}
+
+impl DerefMut for FrankenLeafNode {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.payload
     }
 }
 
