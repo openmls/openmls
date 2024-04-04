@@ -41,6 +41,7 @@ impl CoreGroup {
             )?;
             JoinerSecret::new(
                 provider.crypto(),
+                self.ciphersuite(),
                 commit_secret,
                 &init_secret,
                 serialized_provisional_group_context,
@@ -49,6 +50,7 @@ impl CoreGroup {
         } else {
             JoinerSecret::new(
                 provider.crypto(),
+                self.ciphersuite(),
                 commit_secret,
                 epoch_secrets.init_secret(),
                 serialized_provisional_group_context,
@@ -79,7 +81,7 @@ impl CoreGroup {
             .add_context(provider.crypto(), serialized_provisional_group_context)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
         Ok(key_schedule
-            .epoch_secrets(provider.crypto())
+            .epoch_secrets(provider.crypto(), self.ciphersuite())
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?)
     }
 
@@ -235,12 +237,7 @@ impl CoreGroup {
                     apply_proposals_values.extensions.clone(),
                 )?;
 
-                (
-                    CommitSecret::zero_secret(ciphersuite, self.version()),
-                    vec![],
-                    None,
-                    None,
-                )
+                (CommitSecret::zero_secret(ciphersuite), vec![], None, None)
             };
 
         // Update the confirmed transcript hash before we compute the confirmation tag.
@@ -275,6 +272,7 @@ impl CoreGroup {
             .confirmation_key()
             .tag(
                 provider.crypto(),
+                self.ciphersuite(),
                 diff.group_context().confirmed_transcript_hash(),
             )
             .map_err(LibraryError::unexpected_crypto_error)?;

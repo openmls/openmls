@@ -287,13 +287,12 @@ impl PreSharedKeyId {
     pub fn write_to_key_store<KeyStore: OpenMlsKeyStore>(
         &self,
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
-        ciphersuite: Ciphersuite,
         psk: &[u8],
     ) -> Result<(), PskError> {
         let keystore_id = self.keystore_id()?;
 
         let psk_bundle = {
-            let secret = Secret::from_slice(psk, ProtocolVersion::default(), ciphersuite);
+            let secret = Secret::from_slice(psk);
 
             PskBundle { secret }
         };
@@ -414,19 +413,17 @@ impl PskSecret {
         // Check that we don't have too many PSKs
         let num_psks = u16::try_from(psks.len()).map_err(|_| PskError::TooManyKeys)?;
 
-        let mls_version = ProtocolVersion::default();
-
         // Following comments are from `draft-ietf-mls-protocol-19`.
         //
         // psk_secret_[0] = 0
-        let mut psk_secret = Secret::zero(ciphersuite, mls_version);
+        let mut psk_secret = Secret::zero(ciphersuite);
 
         for (index, (psk_id, psk)) in psks.into_iter().enumerate() {
             // psk_extracted_[i] = KDF.Extract(0, psk_[i])
             let psk_extracted = {
-                let zero_secret = Secret::zero(ciphersuite, mls_version);
+                let zero_secret = Secret::zero(ciphersuite);
                 zero_secret
-                    .hkdf_extract(crypto, &psk)
+                    .hkdf_extract(crypto, ciphersuite, &psk)
                     .map_err(LibraryError::unexpected_crypto_error)?
             };
 
@@ -437,13 +434,19 @@ impl PskSecret {
                     .map_err(LibraryError::missing_bound_check)?;
 
                 psk_extracted
-                    .kdf_expand_label(crypto, "derived psk", &psk_label, ciphersuite.hash_length())
+                    .kdf_expand_label(
+                        crypto,
+                        ciphersuite,
+                        "derived psk",
+                        &psk_label,
+                        ciphersuite.hash_length(),
+                    )
                     .map_err(LibraryError::unexpected_crypto_error)?
             };
 
             // psk_secret_[i] = KDF.Extract(psk_input_[i-1], psk_secret_[i-1])
             psk_secret = psk_input
-                .hkdf_extract(crypto, &psk_secret)
+                .hkdf_extract(crypto, ciphersuite, &psk_secret)
                 .map_err(LibraryError::unexpected_crypto_error)?;
         }
 

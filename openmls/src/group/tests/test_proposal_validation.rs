@@ -185,6 +185,7 @@ fn validation_test_setup(
 
 fn insert_proposal_and_resign(
     provider: &impl OpenMlsProvider,
+    ciphersuite: Ciphersuite,
     mut proposal_or_ref: Vec<ProposalOrRef>,
     mut plaintext: PublicMessage,
     original_plaintext: &PublicMessage,
@@ -207,6 +208,7 @@ fn insert_proposal_and_resign(
         original_plaintext,
         provider,
         signer,
+        ciphersuite,
     );
 
     let membership_key = committer_group.group().message_secrets().membership_key();
@@ -214,6 +216,7 @@ fn insert_proposal_and_resign(
     signed_plaintext
         .set_membership_tag(
             provider.crypto(),
+            ciphersuite,
             membership_key,
             committer_group
                 .group()
@@ -375,6 +378,7 @@ fn test_valsem101a(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     let verifiable_plaintext = insert_proposal_and_resign(
         provider,
+        ciphersuite,
         vec![ProposalOrRef::Proposal(second_add_proposal)],
         plaintext,
         &original_plaintext,
@@ -528,6 +532,7 @@ fn test_valsem102(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     let verifiable_plaintext = insert_proposal_and_resign(
         provider,
+        ciphersuite,
         vec![ProposalOrRef::Proposal(second_add_proposal)],
         plaintext,
         &original_plaintext,
@@ -930,6 +935,7 @@ fn test_valsem103_valsem104(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
     // encryption key.
     let verifiable_plaintext = insert_proposal_and_resign(
         provider,
+        ciphersuite,
         vec![ProposalOrRef::Proposal(add_proposal)],
         plaintext,
         &original_plaintext,
@@ -1186,6 +1192,7 @@ fn test_valsem105(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             // Artificially add the proposal.
             let verifiable_plaintext = insert_proposal_and_resign(
                 provider,
+                ciphersuite,
                 vec![proposal_or_ref],
                 plaintext.clone(),
                 &original_plaintext,
@@ -1547,6 +1554,7 @@ fn test_valsem108(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // group.
     let verifiable_plaintext = insert_proposal_and_resign(
         provider,
+        ciphersuite,
         vec![ProposalOrRef::Proposal(remove_proposal)],
         plaintext,
         &original_plaintext,
@@ -1696,6 +1704,7 @@ fn test_valsem110(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // Artificially add the proposal.
     let verifiable_plaintext = insert_proposal_and_resign(
         provider,
+        ciphersuite,
         vec![ProposalOrRef::Proposal(update_proposal)],
         plaintext,
         &original_plaintext,
@@ -1802,6 +1811,7 @@ fn test_valsem111(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // Let's insert the proposal into the commit.
     let verifiable_plaintext = insert_proposal_and_resign(
         provider,
+        ciphersuite,
         vec![ProposalOrRef::Proposal(update_proposal.clone())],
         plaintext,
         &original_plaintext,
@@ -1859,6 +1869,7 @@ fn test_valsem111(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // Artificially add the proposal.
     let verifiable_plaintext = insert_proposal_and_resign(
         provider,
+        ciphersuite,
         vec![ProposalOrRef::Reference(
             ProposalRef::from_raw_proposal(ciphersuite, provider.crypto(), &update_proposal)
                 .expect("error creating hash reference"),
@@ -2057,10 +2068,10 @@ fn test_valsem401_valsem402(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
 
         for psk_id in psk_ids {
             psk_id
-                .write_to_key_store(&alice_provider, ciphersuite, b"irrelevant")
+                .write_to_key_store(&alice_provider, b"irrelevant")
                 .unwrap();
             psk_id
-                .write_to_key_store(&bob_provider, ciphersuite, b"irrelevant")
+                .write_to_key_store(&bob_provider, b"irrelevant")
                 .unwrap();
 
             let (psk_proposal, _) = alice_group

@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#1479](https://github.com/openmls/openmls/pull/1479): Allow the use of extensions with `ExtensionType::Unknown` in group context, key packages and leaf nodes
 - [#1488](https://github.com/openmls/openmls/pull/1488): Allow unknown credentials. Credentials other than the basic credential or X.509 may be used now as long as they are encoded as variable-sized vectors.
 - [#1527](https://github.com/openmls/openmls/pull/1527): CredentialType::Unknown is now called CredentialType::Other.
+- [#1543](https://github.com/openmls/openmls/pull/1543): PreSharedKeyId.write_to_key_store() no longer requires the cipher suite.
 
 ### Fixed
 

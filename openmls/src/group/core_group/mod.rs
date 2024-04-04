@@ -277,7 +277,6 @@ impl CoreGroupBuilder {
 
         let ciphersuite = public_group_builder.crypto_config().ciphersuite;
         let config = self.config.unwrap_or_default();
-        let version = public_group_builder.crypto_config().version;
 
         let serialized_group_context = public_group_builder
             .group_context()
@@ -291,8 +290,9 @@ impl CoreGroupBuilder {
         // We use a random `InitSecret` for initialization.
         let joiner_secret = JoinerSecret::new(
             provider.crypto(),
+            ciphersuite,
             commit_secret,
-            &InitSecret::random(ciphersuite, provider.rand(), version)
+            &InitSecret::random(ciphersuite, provider.rand())
                 .map_err(LibraryError::unexpected_crypto_error)?,
             &serialized_group_context,
         )
@@ -315,7 +315,7 @@ impl CoreGroupBuilder {
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 
         let epoch_secrets = key_schedule
-            .epoch_secrets(provider.crypto())
+            .epoch_secrets(provider.crypto(), ciphersuite)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 
         let (group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
@@ -326,7 +326,7 @@ impl CoreGroupBuilder {
 
         let initial_confirmation_tag = message_secrets
             .confirmation_key()
-            .tag(provider.crypto(), &[])
+            .tag(provider.crypto(), ciphersuite, &[])
             .map_err(LibraryError::unexpected_crypto_error)?;
 
         let message_secrets_store =
@@ -581,7 +581,11 @@ impl CoreGroup {
             extensions,
             self.message_secrets()
                 .confirmation_key()
-                .tag(crypto, self.context().confirmed_transcript_hash())
+                .tag(
+                    crypto,
+                    self.ciphersuite(),
+                    self.context().confirmed_transcript_hash(),
+                )
                 .map_err(LibraryError::unexpected_crypto_error)?,
             self.own_leaf_index(),
         );
@@ -898,6 +902,7 @@ impl CoreGroup {
 
         let joiner_secret = JoinerSecret::new(
             provider.crypto(),
+            ciphersuite,
             path_computation_result.commit_secret,
             self.group_epoch_secrets().init_secret(),
             &serialized_provisional_group_context,
@@ -925,13 +930,13 @@ impl CoreGroup {
             .map_err(LibraryError::missing_bound_check)?;
 
         let welcome_secret = key_schedule
-            .welcome(provider.crypto())
+            .welcome(provider.crypto(), self.ciphersuite())
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
         key_schedule
             .add_context(provider.crypto(), &serialized_provisional_group_context)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
         let provisional_epoch_secrets = key_schedule
-            .epoch_secrets(provider.crypto())
+            .epoch_secrets(provider.crypto(), self.ciphersuite())
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 
         // Calculate the confirmation tag
@@ -939,6 +944,7 @@ impl CoreGroup {
             .confirmation_key()
             .tag(
                 provider.crypto(),
+                self.ciphersuite(),
                 diff.group_context().confirmed_transcript_hash(),
             )
             .map_err(LibraryError::unexpected_crypto_error)?;
@@ -992,7 +998,7 @@ impl CoreGroup {
         let welcome_option = if !apply_proposals_values.invitation_list.is_empty() {
             // Encrypt GroupInfo object
             let (welcome_key, welcome_nonce) = welcome_secret
-                .derive_welcome_key_nonce(provider.crypto())
+                .derive_welcome_key_nonce(provider.crypto(), self.ciphersuite())
                 .map_err(LibraryError::unexpected_crypto_error)?;
             let encrypted_group_info = welcome_key
                 .aead_seal(
