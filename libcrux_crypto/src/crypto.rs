@@ -429,7 +429,7 @@ fn hpke_kem(kem: HpkeKemType) -> libcrux::hpke::kem::KEM {
         HpkeKemType::DhKemP521 => libcrux::hpke::kem::KEM::DHKEM_P521_HKDF_SHA512,
         HpkeKemType::DhKem25519 => libcrux::hpke::kem::KEM::DHKEM_X25519_HKDF_SHA256,
         HpkeKemType::DhKem448 => libcrux::hpke::kem::KEM::DHKEM_X448_HKDF_SHA512,
-        HpkeKemType::XWingKemDraft1 => libcrux::hpke::kem::KEM::XWingDraft02,
+        HpkeKemType::XWingKemDraft2 => libcrux::hpke::kem::KEM::XWingDraft02,
     }
 }
 

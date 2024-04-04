@@ -183,7 +183,7 @@ pub enum HpkeKemType {
     DhKem448 = 0x0021,
 
     /// XWing combiner for ML-KEM and X25519
-    XWingKemDraft1 = 0x004D,
+    XWingKemDraft2 = 0x004D,
 }
 
 /// KDF Types for HPKE
@@ -554,7 +554,7 @@ impl Ciphersuite {
             Ciphersuite::MLS_256_DHKEMP384_AES256GCM_SHA384_P384 => HpkeKemType::DhKemP384,
             Ciphersuite::MLS_256_DHKEMP521_AES256GCM_SHA512_P521 => HpkeKemType::DhKemP521,
             Ciphersuite::MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519 => {
-                HpkeKemType::XWingKemDraft1
+                HpkeKemType::XWingKemDraft2
             }
         }
     }

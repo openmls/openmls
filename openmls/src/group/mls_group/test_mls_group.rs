@@ -318,8 +318,8 @@ fn staged_join(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     );
 }
 
-#[apply(ciphersuites_and_providers)]
-fn test_invalid_plaintext(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+#[apply(ciphersuites)]
+fn test_invalid_plaintext(ciphersuite: Ciphersuite) {
     // Some basic setup functions for the MlsGroup.
     let mls_group_create_config = MlsGroupCreateConfig::test_default(ciphersuite);
 
@@ -375,7 +375,7 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
         MlsMessageBodyOut::PublicMessage(pt) => {
             pt.set_sender(random_sender);
             pt.set_membership_tag(
-                provider.crypto(),
+                client.crypto.crypto(),
                 membership_key,
                 client_group.group().message_secrets().serialized_context(),
             )
