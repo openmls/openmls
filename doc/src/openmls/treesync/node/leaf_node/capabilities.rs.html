@@ -560,7 +560,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>that_unknown_capabilities_are_de_serialized_correctly() {
-        <span class="kw">let </span>versions = <span class="macro">vec!</span>[ProtocolVersion::Mls10, ProtocolVersion::Mls10Draft11];
+        <span class="kw">let </span>versions = <span class="macro">vec!</span>[ProtocolVersion::Mls10, ProtocolVersion::Other(<span class="number">999</span>)];
         <span class="kw">let </span>ciphersuites = <span class="macro">vec!</span>[
             Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519.into(),
             Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256.into(),

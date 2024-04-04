@@ -223,6 +223,7 @@
 <a href="#221" id="221">221</a>
 <a href="#222" id="222">222</a>
 <a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Signatures.
 //!
 //! This module contains structs for creating signature keys, issuing signatures and verifying them.
@@ -353,9 +354,10 @@
     <span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::ciphersuite) value: VLBytes,
 }
 
-<span class="attr">#[cfg(test)]
+<span class="attr">#[cfg(any(test, feature = <span class="string">"test-utils"</span>))]
 </span><span class="kw">impl </span>Signature {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>modify(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>[u8]) {
+    <span class="attr">#[cfg(test)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>modify(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>[u8]) {
         <span class="self">self</span>.value = value.to_vec().into();
     }
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>as_slice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {

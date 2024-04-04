@@ -80,14 +80,38 @@
 <a href="#78" id="78">78</a>
 <a href="#79" id="79">79</a>
 <a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # MLS versions
 //!
 //! Only MLS 1.0 is currently supported.
 
 </span><span class="kw">use </span>serde::{Deserialize, Serialize};
-<span class="kw">use </span>std::fmt;
+<span class="kw">use </span>std::{fmt, io::Read};
 <span class="kw">use </span>thiserror::Error;
-<span class="kw">use </span>tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
+<span class="kw">use </span>tls_codec::{
+    Deserialize <span class="kw">as </span>TlsDeserializeTrait, DeserializeBytes, Error, Serialize <span class="kw">as </span>TlsSerializeTrait,
+    Size,
+};
 
 <span class="comment">// Public types
 
@@ -100,27 +124,13 @@
 ///     (65535)
 /// } ProtocolVersion;
 /// ```
-</span><span class="attr">#[derive(
-    Debug,
-    Copy,
-    Clone,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Serialize,
-    Deserialize,
-    TlsDeserialize,
-    TlsDeserializeBytes,
-    TlsSerialize,
-    TlsSize,
-)]
+</span><span class="attr">#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[repr(u16)]
 #[allow(missing_docs)]
 </span><span class="kw">pub enum </span>ProtocolVersion {
     Mls10 = <span class="number">1</span>,
-    Mls10Draft11 = <span class="number">200</span>, <span class="comment">// pre RFC version
-</span>}
+    Other(u16),
+}
 
 <span class="doccomment">/// There's only one version right now, which is the default.
 </span><span class="kw">impl </span>Default <span class="kw">for </span>ProtocolVersion {
@@ -129,26 +139,58 @@
     }
 }
 
-<span class="kw">impl </span>TryFrom&lt;u16&gt; <span class="kw">for </span>ProtocolVersion {
-    <span class="kw">type </span>Error = VersionError;
-
+<span class="kw">impl </span>From&lt;u16&gt; <span class="kw">for </span>ProtocolVersion {
     <span class="doccomment">/// Convert an integer to the corresponding protocol version.
-    ///
-    /// Returns an error if the protocol version is not supported.
-    </span><span class="kw">fn </span>try_from(v: u16) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
+    </span><span class="kw">fn </span>from(v: u16) -&gt; <span class="self">Self </span>{
         <span class="kw">match </span>v {
-            <span class="number">1 </span>=&gt; <span class="prelude-val">Ok</span>(ProtocolVersion::Mls10),
-            <span class="number">200 </span>=&gt; <span class="prelude-val">Ok</span>(ProtocolVersion::Mls10Draft11),
-            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(VersionError::UnsupportedMlsVersion),
+            <span class="number">1 </span>=&gt; ProtocolVersion::Mls10,
+            <span class="kw">_ </span>=&gt; ProtocolVersion::Other(v),
         }
     }
+}
+
+<span class="kw">impl </span>TlsSerializeTrait <span class="kw">for </span>ProtocolVersion {
+    <span class="kw">fn </span>tls_serialize&lt;W: std::io::Write&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, writer: <span class="kw-2">&amp;mut </span>W) -&gt; <span class="prelude-ty">Result</span>&lt;usize, tls_codec::Error&gt; {
+        <span class="kw">match </span><span class="self">self </span>{
+            ProtocolVersion::Mls10 =&gt; {
+                <span class="kw">let </span>v = <span class="number">1u16</span>;
+                v.tls_serialize(writer)
+            }
+            ProtocolVersion::Other(v) =&gt; v.tls_serialize(writer),
+        }
+    }
+}
+
+<span class="kw">impl </span>TlsDeserializeTrait <span class="kw">for </span>ProtocolVersion {
+    <span class="kw">fn </span>tls_deserialize&lt;R: Read&gt;(bytes: <span class="kw-2">&amp;mut </span>R) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Error&gt;
+    <span class="kw">where
+        </span><span class="self">Self</span>: Sized,
+    {
+        u16::tls_deserialize(bytes).map(ProtocolVersion::from)
+    }
+}
+
+<span class="kw">impl </span>DeserializeBytes <span class="kw">for </span>ProtocolVersion {
+    <span class="kw">fn </span>tls_deserialize_bytes(bytes: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, <span class="kw-2">&amp;</span>[u8]), Error&gt;
+    <span class="kw">where
+        </span><span class="self">Self</span>: Sized,
+    {
+        <span class="kw">let </span>(v, bytes) = u16::tls_deserialize_bytes(bytes)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>((ProtocolVersion::from(v), bytes))
+    }
+}
+
+<span class="kw">impl </span>Size <span class="kw">for </span>ProtocolVersion {
+    <span class="kw">fn </span>tls_serialized_len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="number">2
+    </span>}
 }
 
 <span class="kw">impl </span>fmt::Display <span class="kw">for </span>ProtocolVersion {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; fmt::Result {
         <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self </span>{
             ProtocolVersion::Mls10 =&gt; <span class="macro">write!</span>(f, <span class="string">"MLS 1.0"</span>),
-            ProtocolVersion::Mls10Draft11 =&gt; <span class="macro">write!</span>(f, <span class="string">"MLS 1.0 (Draft 11)"</span>),
+            ProtocolVersion::Other(v) =&gt; <span class="macro">write!</span>(f, <span class="string">"Other version: {}"</span>, v),
         }
     }
 }
