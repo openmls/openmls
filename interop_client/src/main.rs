@@ -222,7 +222,7 @@ impl MlsClient for MlsClientImpl {
         let provider = OpenMlsRustCrypto::default();
 
         let ciphersuite = Ciphersuite::try_from(request.cipher_suite as u16).unwrap();
-        let credential = BasicCredential::new(request.identity.clone()).unwrap();
+        let credential = BasicCredential::new(request.identity.clone());
         let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
         signature_keys.store(provider.key_store()).unwrap();
 
@@ -287,7 +287,7 @@ impl MlsClient for MlsClientImpl {
             "Creating key package."
         );
 
-        let credential = BasicCredential::new(identity).unwrap();
+        let credential = BasicCredential::new(identity);
         let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
         let key_package = KeyPackage::builder()
@@ -501,7 +501,7 @@ impl MlsClient for MlsClientImpl {
             let ciphersuite = verifiable_group_info.ciphersuite();
 
             let (credential_with_key, signer) = {
-                let credential = BasicCredential::new(request.identity.to_vec()).unwrap();
+                let credential = BasicCredential::new(request.identity.to_vec());
 
                 let signature_keypair =
                     SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
@@ -882,7 +882,7 @@ impl MlsClient for MlsClientImpl {
         let request = request.get_ref();
         info!(?request, "Request");
 
-        let removed_credential = BasicCredential::new(request.removed_id.clone()).unwrap();
+        let removed_credential = BasicCredential::new(request.removed_id.clone());
         trace!("   for credential: {removed_credential:x?}");
 
         let mut groups = self.groups.lock().unwrap();
@@ -1009,8 +1009,7 @@ impl MlsClient for MlsClientImpl {
                         .map_err(|_| Status::internal("Unable to generate proposal by value"))?
                 }
                 "remove" => {
-                    let removed_credential =
-                        BasicCredential::new(proposal.removed_id.clone()).unwrap();
+                    let removed_credential = BasicCredential::new(proposal.removed_id.clone());
 
                     group
                         .propose_remove_member_by_credential_by_value(

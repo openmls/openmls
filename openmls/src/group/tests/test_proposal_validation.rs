@@ -361,7 +361,7 @@ fn test_valsem101a(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             provider,
             &charlie_credential_with_key.signer,
             CredentialWithKey {
-                credential: BasicCredential::new(b"Dave".to_vec()).unwrap().into(),
+                credential: BasicCredential::new(b"Dave".to_vec()).into(),
                 signature_key: charlie_credential_with_key
                     .credential_with_key
                     .signature_key,
@@ -601,7 +601,7 @@ fn test_valsem101b(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             }
             .map(|(name, keypair)| CredentialWithKeyAndSigner {
                 credential_with_key: CredentialWithKey {
-                    credential: BasicCredential::new(name.into()).unwrap().into(),
+                    credential: BasicCredential::new(name.into()).into(),
                     signature_key: keypair.to_public_vec().into(),
                 },
                 signer: keypair,
@@ -669,10 +669,7 @@ fn test_valsem101b(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
                 let bob_index = alice_group
                     .members()
                     .find_map(|member| {
-                        let identity =
-                            VLBytes::tls_deserialize_exact(member.credential.serialized_content())
-                                .unwrap();
-                        if identity.as_slice() == b"Bob" {
+                        if member.credential.serialized_content() == b"Bob" {
                             Some(member.index)
                         } else {
                             None
