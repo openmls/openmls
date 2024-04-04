@@ -5,7 +5,6 @@ use openmls::{
 };
 
 use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, OpenMlsProvider};
-use tls_codec::VLBytes;
 
 fn generate_key_package<KeyStore: OpenMlsKeyStore>(
     ciphersuite: Ciphersuite,
@@ -117,17 +116,20 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 
         // Check that Alice & Bob are the members of the group
         let members = alice_group.members().collect::<Vec<Member>>();
-        let credential0 =
-            VLBytes::tls_deserialize_exact(members[0].credential.serialized_content()).unwrap();
-        let credential1 =
-            VLBytes::tls_deserialize_exact(members[1].credential.serialized_content()).unwrap();
-        assert_eq!(credential0.as_slice(), b"Alice");
-        assert_eq!(credential1.as_slice(), b"Bob");
+        let credential0 = members[0].credential.serialized_content();
+        let credential1 = members[1].credential.serialized_content();
+        assert_eq!(credential0, b"Alice");
+        assert_eq!(credential1, b"Bob");
+
+        let welcome: MlsMessageIn = welcome.into();
+        let welcome = welcome
+            .into_welcome()
+            .expect("expected the message to be a welcome message");
 
         let mut bob_group = StagedWelcome::new_from_welcome(
             provider,
             mls_group_create_config.join_config(),
-            welcome.into(),
+            welcome,
             Some(alice_group.export_ratchet_tree().into()),
         )
         .expect("Error creating StagedWelcome from Welcome")
@@ -342,10 +344,15 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
             unreachable!("Expected a StagedCommit.");
         }
 
+        let welcome: MlsMessageIn = welcome.into();
+        let welcome = welcome
+            .into_welcome()
+            .expect("expected the message to be a welcome message");
+
         let mut charlie_group = StagedWelcome::new_from_welcome(
             provider,
             mls_group_create_config.join_config(),
-            welcome.into(),
+            welcome,
             Some(bob_group.export_ratchet_tree().into()),
         )
         .expect("Error creating staged join from Welcome")
@@ -364,15 +371,12 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 
         // Check that Alice, Bob & Charlie are the members of the group
         let members = alice_group.members().collect::<Vec<Member>>();
-        let credential0 =
-            VLBytes::tls_deserialize_exact(members[0].credential.serialized_content()).unwrap();
-        let credential1 =
-            VLBytes::tls_deserialize_exact(members[1].credential.serialized_content()).unwrap();
-        let credential2 =
-            VLBytes::tls_deserialize_exact(members[2].credential.serialized_content()).unwrap();
-        assert_eq!(credential0.as_slice(), b"Alice");
-        assert_eq!(credential1.as_slice(), b"Bob");
-        assert_eq!(credential2.as_slice(), b"Charlie");
+        let credential0 = members[0].credential.serialized_content();
+        let credential1 = members[1].credential.serialized_content();
+        let credential2 = members[2].credential.serialized_content();
+        assert_eq!(credential0, b"Alice");
+        assert_eq!(credential1, b"Bob");
+        assert_eq!(credential2, b"Charlie");
 
         // === Charlie sends a message to the group ===
         let message_charlie = b"Hi, I'm Charlie!";
@@ -565,12 +569,10 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 
         // Check that Alice & Charlie are the members of the group
         let members = alice_group.members().collect::<Vec<Member>>();
-        let credential0 =
-            VLBytes::tls_deserialize_exact(members[0].credential.serialized_content()).unwrap();
-        let credential1 =
-            VLBytes::tls_deserialize_exact(members[1].credential.serialized_content()).unwrap();
-        assert_eq!(credential0.as_slice(), b"Alice");
-        assert_eq!(credential1.as_slice(), b"Charlie");
+        let credential0 = members[0].credential.serialized_content();
+        let credential1 = members[1].credential.serialized_content();
+        assert_eq!(credential0, b"Alice");
+        assert_eq!(credential1, b"Charlie");
 
         // Check that Bob can no longer send messages
         assert!(bob_group
@@ -701,18 +703,21 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 
         // Check that Alice & Bob are the members of the group
         let members = alice_group.members().collect::<Vec<Member>>();
-        let credential0 =
-            VLBytes::tls_deserialize_exact(members[0].credential.serialized_content()).unwrap();
-        let credential1 =
-            VLBytes::tls_deserialize_exact(members[1].credential.serialized_content()).unwrap();
-        assert_eq!(credential0.as_slice(), b"Alice");
-        assert_eq!(credential1.as_slice(), b"Bob");
+        let credential0 = members[0].credential.serialized_content();
+        let credential1 = members[1].credential.serialized_content();
+        assert_eq!(credential0, b"Alice");
+        assert_eq!(credential1, b"Bob");
+
+        let welcome: MlsMessageIn = welcome_option.expect("Welcome was not returned").into();
+        let welcome = welcome
+            .into_welcome()
+            .expect("expected the message to be a welcome message");
 
         // Bob creates a new group
         let mut bob_group = StagedWelcome::new_from_welcome(
             provider,
             mls_group_create_config.join_config(),
-            welcome_option.expect("Welcome was not returned").into(),
+            welcome,
             Some(alice_group.export_ratchet_tree().into()),
         )
         .expect("Error creating staged join from Welcome")
@@ -724,24 +729,20 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 
         // Check that Alice & Bob are the members of the group
         let members = alice_group.members().collect::<Vec<Member>>();
-        let credential0 =
-            VLBytes::tls_deserialize_exact(members[0].credential.serialized_content()).unwrap();
-        let credential1 =
-            VLBytes::tls_deserialize_exact(members[1].credential.serialized_content()).unwrap();
-        assert_eq!(credential0.as_slice(), b"Alice");
-        assert_eq!(credential1.as_slice(), b"Bob");
+        let credential0 = members[0].credential.serialized_content();
+        let credential1 = members[1].credential.serialized_content();
+        assert_eq!(credential0, b"Alice");
+        assert_eq!(credential1, b"Bob");
 
         // Make sure the group contains two members
         assert_eq!(bob_group.members().count(), 2);
 
         // Check that Alice & Bob are the members of the group
         let members = bob_group.members().collect::<Vec<Member>>();
-        let credential0 =
-            VLBytes::tls_deserialize_exact(members[0].credential.serialized_content()).unwrap();
-        let credential1 =
-            VLBytes::tls_deserialize_exact(members[1].credential.serialized_content()).unwrap();
-        assert_eq!(credential0.as_slice(), b"Alice");
-        assert_eq!(credential1.as_slice(), b"Bob");
+        let credential0 = members[0].credential.serialized_content();
+        let credential1 = members[1].credential.serialized_content();
+        assert_eq!(credential0, b"Alice");
+        assert_eq!(credential1, b"Bob");
 
         // === Alice sends a message to the group ===
         let message_alice = b"Hi, I'm Alice!";
@@ -877,9 +878,8 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 
         // Check that Alice is the only member of the group
         let members = alice_group.members().collect::<Vec<Member>>();
-        let credential0 =
-            VLBytes::tls_deserialize_exact(members[0].credential.serialized_content()).unwrap();
-        assert_eq!(credential0.as_slice(), b"Alice");
+        let credential0 = members[0].credential.serialized_content();
+        assert_eq!(credential0, b"Alice");
 
         // === Save the group state ===
 
@@ -910,10 +910,15 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
             .merge_pending_commit(provider)
             .expect("error merging pending commit");
 
+        let welcome: MlsMessageIn = welcome.into();
+        let welcome = welcome
+            .into_welcome()
+            .expect("expected the message to be a welcome message");
+
         let mut bob_group = StagedWelcome::new_from_welcome(
             provider,
             mls_group_create_config.join_config(),
-            welcome.into(),
+            welcome,
             Some(alice_group.export_ratchet_tree().into()),
         )
         .expect("Could not create staged join from Welcome")
@@ -1038,13 +1043,11 @@ fn addition_order(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         // in the original API call. After merging, bob should be at index 1 and
         // charlie at index 2.
         let members = alice_group.members().collect::<Vec<Member>>();
-        let credential1 =
-            VLBytes::tls_deserialize_exact(members[1].credential.serialized_content()).unwrap();
-        let credential2 =
-            VLBytes::tls_deserialize_exact(members[2].credential.serialized_content()).unwrap();
-        assert_eq!(credential1.as_slice(), b"Bob");
+        let credential1 = members[1].credential.serialized_content();
+        let credential2 = members[2].credential.serialized_content();
+        assert_eq!(credential1, b"Bob");
         assert_eq!(members[1].index, LeafNodeIndex::new(1));
-        assert_eq!(credential2.as_slice(), b"Charlie");
+        assert_eq!(credential2, b"Charlie");
         assert_eq!(members[2].index, LeafNodeIndex::new(2));
     }
 }
@@ -1131,11 +1134,16 @@ fn mls_group_ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl Op
             .add_members(provider, &alice_signer, &[bob_key_package.clone()])
             .unwrap();
 
+        let welcome: MlsMessageIn = welcome.into();
+        let welcome = welcome
+            .into_welcome()
+            .expect("expected the message to be a welcome message");
+
         // === Bob joins using the ratchet tree extension ===
         let _bob_group = StagedWelcome::new_from_welcome(
             provider,
             mls_group_create_config.join_config(),
-            welcome.into(),
+            welcome,
             None,
         )
         .expect("Error creating staged join from Welcome")
@@ -1177,11 +1185,16 @@ fn mls_group_ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl Op
             .add_members(provider, &alice_signer, &[bob_key_package])
             .unwrap();
 
+        let welcome: MlsMessageIn = welcome.into();
+        let welcome = welcome
+            .into_welcome()
+            .expect("expected the message to be a welcome message");
+
         // === Bob tries to join without the ratchet tree extension ===
         let error = StagedWelcome::new_from_welcome(
             provider,
             mls_group_create_config.join_config(),
-            welcome.into(),
+            welcome,
             None,
         )
         .expect_err("Could join a group without a ratchet tree");

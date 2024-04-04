@@ -291,10 +291,14 @@ impl PassiveClient {
         mls_message_welcome: MlsMessageIn,
         ratchet_tree: Option<RatchetTreeIn>,
     ) {
+        let welcome = mls_message_welcome
+            .into_welcome()
+            .expect("expected a welcome");
+
         let group = StagedWelcome::new_from_welcome(
             &self.provider,
             &self.group_config,
-            mls_message_welcome,
+            welcome,
             ratchet_tree,
         )
         .unwrap()
@@ -552,10 +556,7 @@ fn propose_remove(
 ) -> TestProposal {
     let remove = group
         .members()
-        .find(|Member { credential, .. }| {
-            let identity = VLBytes::tls_deserialize_exact(credential.serialized_content()).unwrap();
-            identity.as_slice() == remove_identity
-        })
+        .find(|Member { credential, .. }| credential.serialized_content() == remove_identity)
         .unwrap()
         .index;
 

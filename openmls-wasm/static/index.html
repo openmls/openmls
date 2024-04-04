@@ -1,0 +1,117 @@
+<html>
+  <head>
+    <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/water.css@2/out/light.css"
+    />
+    <style>
+      .row {
+        display: flex;
+      }
+
+      .column {
+        flex: 50%;
+        padding: 20px;
+      }
+    </style>
+    <!-- Note the usage of `type=module` here as this is an ES6 module -->
+    <script type="module">
+      import init from "./openmls_wasm.js";
+      // Initialise wasm context.
+      await init();
+    </script>
+  </head>
+  <body>
+    <script type="module">
+      function hex_to_bytes(hex) {
+        var typedArray = new Uint8Array(
+          hex.match(/[\da-f]{2}/gi).map(function (h) {
+            return parseInt(h, 16);
+          })
+        );
+        return typedArray;
+      }
+
+      function bytes_to_hex(bytes) {
+        return Array.from(bytes, function (byte) {
+          return ("0" + (byte & 0xff).toString(16)).slice(-2);
+        }).join("");
+      }
+
+      function compare_bytes(left, right) {
+        if (left.length !== right.length) {
+          return false
+        }
+
+        return left.every((value, index) => value === right[index])
+      }
+
+      import init, { Identity, Provider, Group } from "./openmls_wasm.js";
+
+      function run() {
+        let rand = new Uint8Array(32);
+        window.crypto.getRandomValues(rand);
+
+        let alice_provider = new Provider();
+        let bob_provider = new Provider();
+
+        let alice = new Identity(alice_provider, "alice");
+        let bob = new Identity(bob_provider, "bob");
+
+        let chess_club_alice = Group.create_new(alice_provider, alice, "chess club");
+        let bob_key_pkg = bob.key_package(bob_provider);
+
+        console.log("alice: adding and building welcome...");
+        let add_msgs = chess_club_alice.propose_and_commit_add(
+          alice_provider,
+          alice,
+          bob_key_pkg
+        );
+
+        console.log("alice: committing...");
+        chess_club_alice.merge_pending_commit(alice_provider);
+
+        console.log("alice: exporting ratchet tree...");
+        let ratchet_tree = chess_club_alice.export_ratchet_tree();
+
+        console.log("bob:   joining...");
+        let chess_club_bob = Group.join(
+          bob_provider,
+          add_msgs.welcome,
+          ratchet_tree
+        );
+
+        console.log("alice: exporting key...");
+        let alice_exported_key = chess_club_alice.export_key(
+          alice_provider,
+          "chess_key",
+          new Uint8Array([0x30], 32),
+          32
+        );
+        console.log(alice_exported_key);
+
+        console.log("bob:   exporting key...");
+        let bob_exported_key = chess_club_bob.export_key(
+          bob_provider,
+          "chess_key",
+          new Uint8Array([0x30], 32),
+          32
+        );
+        console.log(bob_exported_key);
+
+
+        
+        if (!compare_bytes(alice_exported_key, bob_exported_key)) {
+          console.error("expected keys to match, but they dont!")
+        } else {
+          console.log("success: the keys match!")
+        }
+      }
+
+      document.getElementById("run").onclick = run;
+    </script>
+
+    <button type="button" id="run">Run Test (check console!)</button>
+  </body>
+</html>

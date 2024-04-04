@@ -91,10 +91,15 @@ fn validation_test_setup(
         .merge_pending_commit(provider)
         .expect("error merging pending commit");
 
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome
+        .into_welcome()
+        .expect("expected message to be a welcome");
+
     let bob_group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
-        welcome.clone().into(),
+        welcome.clone(),
         Some(alice_group.export_ratchet_tree().into()),
     )
     .expect("error creating staged join from welcome")
@@ -104,7 +109,7 @@ fn validation_test_setup(
     let charlie_group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
-        welcome.into(),
+        welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
     .expect("error creating staged join from welcome")
@@ -779,11 +784,7 @@ fn test_partial_proposal_commit(ciphersuite: Ciphersuite, provider: &impl OpenMl
 
     let charlie_index = alice_group
         .members()
-        .find(|m| {
-            let identity =
-                VLBytes::tls_deserialize_exact(m.credential.serialized_content()).unwrap();
-            identity.as_slice() == b"Charlie"
-        })
+        .find(|m| m.credential.serialized_content() == b"Charlie")
         .unwrap()
         .index;
 

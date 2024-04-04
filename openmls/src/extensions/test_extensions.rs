@@ -365,7 +365,7 @@ fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
     let last_resort = Extension::LastResort(LastResortExtension::default());
 
     // Build a KeyPackage with a last resort extension
-    let credential = BasicCredential::new_credential(b"Bob".to_vec());
+    let credential = BasicCredential::new(b"Bob".to_vec());
     let signer =
         openmls_basic_credential::SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
@@ -387,7 +387,7 @@ fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
             provider,
             &signer,
             CredentialWithKey {
-                credential: credential.clone(),
+                credential: credential.clone().into(),
                 signature_key: signer.to_public_vec().into(),
             },
         )
@@ -436,10 +436,13 @@ fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
 
     alice_group.merge_pending_commit(provider).unwrap();
 
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome.into_welcome().expect("expected a welcome");
+
     let _bob_group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
-        welcome.into(),
+        welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
     .expect("An unexpected error occurred.")

@@ -76,3 +76,15 @@ impl Deserialize for MlsMessageIn {
         Ok(Self { version, body })
     }
 }
+
+impl DeserializeBytes for MlsMessageIn {
+    fn tls_deserialize_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), Error>
+    where
+        Self: Sized,
+    {
+        let mut bytes_ref = bytes;
+        let message = MlsMessageIn::tls_deserialize(&mut bytes_ref)?;
+        let remainder = &bytes[message.tls_serialized_len()..];
+        Ok((message, remainder))
+    }
+}

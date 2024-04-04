@@ -114,7 +114,7 @@ pub(crate) fn generate_group_candidate(
     use crate::credentials::BasicCredential;
 
     let credential_with_key_and_signer = {
-        let credential = BasicCredential::new_credential(identity.to_vec());
+        let credential = BasicCredential::new(identity.to_vec());
 
         let signature_keypair = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
@@ -131,7 +131,7 @@ pub(crate) fn generate_group_candidate(
 
         CredentialWithKeyAndSigner {
             credential_with_key: CredentialWithKey {
-                credential,
+                credential: credential.into(),
                 signature_key: signature_pkey.into(),
             },
             signer: signature_keypair,

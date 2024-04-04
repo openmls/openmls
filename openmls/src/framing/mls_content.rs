@@ -227,7 +227,8 @@ pub(crate) fn framed_content_tbs_serialized<'context, W: Write>(
     // NewMemberCommit.
     written += match serialized_context.into() {
         Some(context) if matches!(sender, Sender::Member(_) | Sender::NewMemberCommit) => {
-            writer.write(context)?
+            writer.write_all(context)?;
+            context.len()
         }
         _ => 0,
     };

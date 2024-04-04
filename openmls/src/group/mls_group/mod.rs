@@ -288,6 +288,27 @@ impl MlsGroup {
         }
     }
 
+    /// Clear the pending proposals, if the proposal store is not empty.
+    ///
+    /// Warning: Once the pending proposals are cleared it will be impossible to process
+    /// a Commit message that references those proposals. Only use this
+    /// function as a last resort, e.g. when a call to
+    /// `MlsGroup::commit_to_pending_proposals` fails.
+    pub fn clear_pending_proposals(&mut self) {
+        // If the proposal store is not empty...
+        if !self.proposal_store.is_empty() {
+            // Empty the proposal store
+            self.proposal_store.empty();
+            // Since the state of the group is changed, arm the state flag
+            self.flag_state_change();
+        }
+    }
+
+    /// Get a reference to the group context [`Extensions`] of this [`MlsGroup`].
+    pub fn extensions(&self) -> &Extensions {
+        self.group.public_group().group_context().extensions()
+    }
+
     // === Load & save ===
 
     /// Loads the state from persisted state.
@@ -404,12 +425,6 @@ impl MlsGroup {
     #[cfg(test)]
     pub(crate) fn group(&self) -> &CoreGroup {
         &self.group
-    }
-
-    /// Clear the pending proposals.
-    #[cfg(test)]
-    pub(crate) fn clear_pending_proposals(&mut self) {
-        self.proposal_store.empty()
     }
 
     /// Removes a specific proposal from the store.

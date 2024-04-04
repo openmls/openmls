@@ -282,9 +282,9 @@ mod tests {
         let credentials = vec![
             CredentialType::Basic,
             CredentialType::X509,
-            CredentialType::Unknown(0x0000),
-            CredentialType::Unknown(0x7A7A),
-            CredentialType::Unknown(0xFFFF),
+            CredentialType::Other(0x0000),
+            CredentialType::Other(0x7A7A),
+            CredentialType::Other(0xFFFF),
         ];
 
         let expected = Capabilities {

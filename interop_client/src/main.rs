@@ -222,7 +222,7 @@ impl MlsClient for MlsClientImpl {
         let provider = OpenMlsRustCrypto::default();
 
         let ciphersuite = Ciphersuite::try_from(request.cipher_suite as u16).unwrap();
-        let credential = BasicCredential::new_credential(request.identity.clone());
+        let credential = BasicCredential::new(request.identity.clone());
         let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
         signature_keys.store(provider.key_store()).unwrap();
 
@@ -244,7 +244,7 @@ impl MlsClient for MlsClientImpl {
             &mls_group_config,
             GroupId::from_slice(&request.group_id),
             CredentialWithKey {
-                credential,
+                credential: credential.into(),
                 signature_key: signature_keys.public().into(),
             },
         )
@@ -287,7 +287,7 @@ impl MlsClient for MlsClientImpl {
             "Creating key package."
         );
 
-        let credential = BasicCredential::new_credential(identity);
+        let credential = BasicCredential::new(identity);
         let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
         let key_package = KeyPackage::builder()
@@ -310,7 +310,7 @@ impl MlsClient for MlsClientImpl {
                 &crypto_provider,
                 &signature_keys,
                 CredentialWithKey {
-                    credential: credential.clone(),
+                    credential: credential.clone().into(),
                     signature_key: signature_keys.public().into(),
                 },
             )
@@ -350,7 +350,7 @@ impl MlsClient for MlsClientImpl {
                 key_package,
                 private_key,
                 encryption_key_pair,
-                credential,
+                credential.into(),
                 signature_keys,
                 crypto_provider,
             ),
@@ -427,7 +427,9 @@ impl MlsClient for MlsClientImpl {
             .map_err(into_status)?;
 
         let welcome = MlsMessageIn::tls_deserialize(&mut request.welcome.as_slice())
-            .map_err(|_| Status::aborted("failed to deserialize MlsMessage with a Welcome"))?;
+            .map_err(|_| Status::aborted("failed to deserialize MlsMessage with a Welcome"))?
+            .into_welcome()
+            .expect("expected a welcome");
 
         let ratchet_tree = ratchet_tree_from_config(request.ratchet_tree.clone());
 
@@ -499,7 +501,7 @@ impl MlsClient for MlsClientImpl {
             let ciphersuite = verifiable_group_info.ciphersuite();
 
             let (credential_with_key, signer) = {
-                let credential = BasicCredential::new_credential(request.identity.to_vec());
+                let credential = BasicCredential::new(request.identity.to_vec());
 
                 let signature_keypair =
                     SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
@@ -507,7 +509,7 @@ impl MlsClient for MlsClientImpl {
                 signature_keypair.store(provider.key_store()).unwrap();
 
                 let credential_with_key = CredentialWithKey {
-                    credential,
+                    credential: credential.into(),
                     signature_key: signature_keypair.public().into(),
                 };
 
@@ -880,7 +882,7 @@ impl MlsClient for MlsClientImpl {
         let request = request.get_ref();
         info!(?request, "Request");
 
-        let removed_credential = BasicCredential::new_credential(request.removed_id.clone());
+        let removed_credential = BasicCredential::new(request.removed_id.clone());
         trace!("   for credential: {removed_credential:x?}");
 
         let mut groups = self.groups.lock().unwrap();
@@ -906,7 +908,7 @@ impl MlsClient for MlsClientImpl {
             .propose_remove_member_by_credential(
                 &interop_group.crypto_provider,
                 &interop_group.signature_keys,
-                &removed_credential,
+                &removed_credential.into(),
             )
             .map_err(into_status)?;
 
@@ -1007,14 +1009,13 @@ impl MlsClient for MlsClientImpl {
                         .map_err(|_| Status::internal("Unable to generate proposal by value"))?
                 }
                 "remove" => {
-                    let removed_credential =
-                        BasicCredential::new_credential(proposal.removed_id.clone());
+                    let removed_credential = BasicCredential::new(proposal.removed_id.clone());
 
                     group
                         .propose_remove_member_by_credential_by_value(
                             &interop_group.crypto_provider,
                             &interop_group.signature_keys,
-                            &removed_credential,
+                            &removed_credential.into(),
                         )
                         .map_err(|_| Status::internal("Unable to generate proposal by value"))?
                 }

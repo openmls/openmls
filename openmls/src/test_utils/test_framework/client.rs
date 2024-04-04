@@ -122,7 +122,6 @@ impl Client {
         welcome: Welcome,
         ratchet_tree: Option<RatchetTreeIn>,
     ) -> Result<(), ClientError> {
-        let welcome = MlsMessageOut::from_welcome(welcome, ProtocolVersion::default()).into();
         let staged_join = StagedWelcome::new_from_welcome(
             &self.crypto,
             &mls_group_config,
@@ -346,9 +345,7 @@ impl Client {
         let group = groups.get(group_id).unwrap();
         let leaf = group.own_leaf();
         leaf.map(|l| {
-            let credential = l.credential();
-            let credential =
-                BasicCredential::tls_deserialize_exact(credential.serialized_content()).unwrap();
+            let credential = BasicCredential::try_from(l.credential().clone()).unwrap();
             credential.identity().to_vec()
         })
     }

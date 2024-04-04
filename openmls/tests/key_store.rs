@@ -6,7 +6,7 @@ use openmls_basic_credential::SignatureKeyPair;
 fn test_store_key_package(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // ANCHOR: key_store_store
     // First we generate a credential and key package for our user.
-    let credential = BasicCredential::new_credential(b"User ID".to_vec());
+    let credential = BasicCredential::new(b"User ID".to_vec());
     let signature_keys = SignatureKeyPair::new(ciphersuite.into()).unwrap();
 
     let key_package = KeyPackage::builder()
@@ -15,7 +15,7 @@ fn test_store_key_package(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
             provider,
             &signature_keys,
             CredentialWithKey {
-                credential,
+                credential: credential.into(),
                 signature_key: signature_keys.to_public_vec().into(),
             },
         )

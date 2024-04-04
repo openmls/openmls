@@ -8,8 +8,8 @@ use std::fmt::Debug;
 
 use openmls_traits::{
     key_store::{MlsEntity, MlsEntityId, OpenMlsKeyStore},
-    signatures::Signer,
-    types::{CryptoError, Error, SignatureScheme},
+    signatures::{Signer, SignerError},
+    types::{CryptoError, SignatureScheme},
 };
 
 use p256::ecdsa::{signature::Signer as P256Signer, Signature, SigningKey};
@@ -42,21 +42,21 @@ impl Debug for SignatureKeyPair {
 }
 
 impl Signer for SignatureKeyPair {
-    fn sign(&self, payload: &[u8]) -> Result<Vec<u8>, Error> {
+    fn sign(&self, payload: &[u8]) -> Result<Vec<u8>, SignerError> {
         match self.signature_scheme {
             SignatureScheme::ECDSA_SECP256R1_SHA256 => {
                 let k = SigningKey::from_bytes(self.private.as_slice().into())
-                    .map_err(|_| Error::SigningError)?;
+                    .map_err(|_| SignerError::SigningError)?;
                 let signature: Signature = k.sign(payload);
                 Ok(signature.to_der().to_bytes().into())
             }
             SignatureScheme::ED25519 => {
                 let k = ed25519_dalek::SigningKey::try_from(self.private.as_slice())
-                    .map_err(|_| Error::SigningError)?;
+                    .map_err(|_| SignerError::SigningError)?;
                 let signature = k.sign(payload);
                 Ok(signature.to_bytes().into())
             }
-            _ => Err(Error::SigningError),
+            _ => Err(SignerError::SigningError),
         }
     }
 

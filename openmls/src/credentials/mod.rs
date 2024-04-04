@@ -34,6 +34,7 @@ use tls_codec::{
 mod tests;
 
 use crate::ciphersuite::SignaturePublicKey;
+use errors::*;
 
 // Public
 pub mod errors;
@@ -77,8 +78,8 @@ pub enum CredentialType {
     Basic = 1,
     /// An X.509 [`Certificate`]
     X509 = 2,
-    /// A currently unknown credential.
-    Unknown(u16),
+    /// Another type of credential that is not in the MLS protocol spec.
+    Other(u16),
 }
 
 impl Size for CredentialType {
@@ -124,7 +125,7 @@ impl From<u16> for CredentialType {
         match value {
             1 => CredentialType::Basic,
             2 => CredentialType::X509,
-            unknown => CredentialType::Unknown(unknown),
+            other => CredentialType::Other(other),
         }
     }
 }
@@ -134,7 +135,7 @@ impl From<CredentialType> for u16 {
         match value {
             CredentialType::Basic => 1,
             CredentialType::X509 => 2,
-            CredentialType::Unknown(unknown) => unknown,
+            CredentialType::Other(other) => other,
         }
     }
 }
@@ -183,65 +184,21 @@ pub struct Certificate {
 ///     };
 /// } Credential;
 /// ```
-#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsSize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+)]
 pub struct Credential {
     credential_type: CredentialType,
     serialized_credential_content: VLBytes,
-}
-
-impl tls_codec::Size for Credential {
-    fn tls_serialized_len(&self) -> usize {
-        CredentialType::tls_serialized_len(&CredentialType::Basic)
-            + self.serialized_credential_content.as_ref().len()
-    }
-}
-
-impl tls_codec::Serialize for Credential {
-    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, Error> {
-        self.credential_type.tls_serialize(writer)?;
-        writer.write_all(self.serialized_credential_content.as_slice())?;
-        Ok(self.tls_serialized_len())
-    }
-}
-
-impl tls_codec::Deserialize for Credential {
-    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, Error> {
-        // We can not deserialize arbitrary credentials because we don't know
-        // their structure. While we don't care, we still need to parse it
-        // in order to move the reader forward and read the values in the struct
-        // after this credential.
-
-        // The credential type is important, so we read that.
-        let credential_type = CredentialType::tls_deserialize(bytes)?;
-
-        // Now we don't know what we get unfortunately.
-        // We assume that it is a variable-sized vector. This works for the
-        // currently specified credentials and any other credential MUST be
-        // encoded in a vector as well. Otherwise OpenMLS may fail later on
-        // or exhibit unexpected behaviour.
-        let (length, _) = tls_codec::vlen::read_length(bytes)?;
-        let mut actual_credential_content = vec![0u8; length];
-        bytes.read_exact(&mut actual_credential_content)?;
-
-        // Rebuild the credential again.
-        let mut serialized_credential = Vec::new();
-        tls_codec::vlen::write_length(&mut serialized_credential, length)?;
-        serialized_credential.append(&mut actual_credential_content);
-
-        Ok(Self {
-            serialized_credential_content: serialized_credential.into(),
-            credential_type,
-        })
-    }
-}
-
-impl tls_codec::DeserializeBytes for Credential {
-    fn tls_deserialize_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), Error> {
-        let mut bytes_ref = bytes;
-        let secret = Self::tls_deserialize(&mut bytes_ref)?;
-        let remainder = &bytes[secret.tls_serialized_len()..];
-        Ok((secret, remainder))
-    }
 }
 
 impl Credential {
@@ -251,13 +208,11 @@ impl Credential {
     }
 
     /// Creates and returns a new [`Credential`] of the given
-    /// the serialized credential.
-    ///
-    /// Returns an error if the given [`CredentialType`] is not supported.
-    pub fn new(serialized_credential: Vec<u8>) -> Self {
+    /// [`CredentialType`].
+    pub fn new(credential_type: CredentialType, serialized_credential: Vec<u8>) -> Self {
         Self {
+            credential_type,
             serialized_credential_content: serialized_credential.into(),
-            credential_type: CredentialType::Basic,
         }
     }
 
@@ -287,48 +242,49 @@ impl Credential {
 ///
 /// OpenMLS provides an implementation of signature keys for convenience in the
 /// `openmls_basic_credential` crate.
-#[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    Serialize,
-    Deserialize,
-    TlsSerialize,
-    TlsDeserialize,
-    TlsDeserializeBytes,
-    TlsSize,
-)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BasicCredential {
-    credential: Credential,
-}
-
-/// An internal type for (de)serialization of a basic credential as [`Credential`].
-#[derive(TlsSerialize, TlsSize)]
-struct MlsBasicCredential {
     identity: VLBytes,
 }
 
 impl BasicCredential {
-    /// Create a new basic credential as a [`Credential`].
-    pub fn new_credential(identity: Vec<u8>) -> Credential {
-        let cred = MlsBasicCredential {
+    /// Create a new basic credential.
+    ///
+    /// Errors
+    ///
+    /// Returns a [`BasicCredentialError`] if the length of the identity is too
+    /// large to be encoded as a variable-length vector.
+    pub fn new(identity: Vec<u8>) -> Self {
+        Self {
             identity: identity.into(),
-        };
-        Credential {
-            // This can't error, because we know the struct above will always serialize
-            serialized_credential_content: cred.tls_serialize_detached().unwrap().into(),
-            credential_type: CredentialType::Basic,
         }
     }
 
-    /// Get the identity of this basic credential as byte vector.
-    pub fn identity(&self) -> Vec<u8> {
-        // The unwrap here is safe because when we were able to build this
-        // basic credential, the value in the select statement must have been
-        // a variable-length byte vector.
-        let id: VLBytes = self.credential.deserialized().unwrap();
-        id.into()
+    /// Get the identity of this basic credential as byte slice.
+    pub fn identity(&self) -> &[u8] {
+        self.identity.as_slice()
+    }
+}
+
+impl From<BasicCredential> for Credential {
+    fn from(credential: BasicCredential) -> Self {
+        Credential {
+            credential_type: CredentialType::Basic,
+            serialized_credential_content: credential.identity,
+        }
+    }
+}
+
+impl TryFrom<Credential> for BasicCredential {
+    type Error = BasicCredentialError;
+
+    fn try_from(credential: Credential) -> Result<Self, Self::Error> {
+        match credential.credential_type {
+            CredentialType::Basic => Ok(BasicCredential::new(
+                credential.serialized_credential_content.into(),
+            )),
+            _ => Err(errors::BasicCredentialError::WrongCredentialType),
+        }
     }
 }
 
@@ -370,13 +326,13 @@ pub mod test_utils {
         identity: &[u8],
         signature_scheme: SignatureScheme,
     ) -> (CredentialWithKey, SignatureKeyPair) {
-        let credential = BasicCredential::new_credential(identity.into());
+        let credential = BasicCredential::new(identity.into());
         let signature_keys = SignatureKeyPair::new(signature_scheme).unwrap();
         signature_keys.store(provider.key_store()).unwrap();
 
         (
             CredentialWithKey {
-                credential,
+                credential: credential.into(),
                 signature_key: signature_keys.public().into(),
             },
             signature_keys,
@@ -386,25 +342,69 @@ pub mod test_utils {
 
 #[cfg(test)]
 mod unit_tests {
-    use tls_codec::{DeserializeBytes, Serialize, VLBytes};
+    use tls_codec::{
+        DeserializeBytes, Serialize, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
+    };
 
-    use super::{BasicCredential, Credential};
+    use super::{BasicCredential, Credential, CredentialType};
 
     #[test]
-    fn basic_credential_encoding() {
-        let credential = BasicCredential::new_credential("identity".into());
-        eprintln!("{credential:#?}");
-        let serialized = credential.tls_serialize_detached().unwrap();
-        eprintln!("{:#?}", VLBytes::from(serialized.clone()));
-        let (deserialized, remainder) = Credential::tls_deserialize_bytes(&serialized).unwrap();
-        eprintln!("remainder: {remainder:x?}");
+    fn basic_credential_identity_and_codec() {
+        const IDENTITY: &str = "identity";
+        // Test the identity getter.
+        let basic_credential = BasicCredential::new(IDENTITY.into());
+        assert_eq!(basic_credential.identity(), IDENTITY.as_bytes());
 
+        // Test the encoding and decoding.
+        let credential = Credential::from(basic_credential.clone());
+        let serialized = credential.tls_serialize_detached().unwrap();
+
+        let deserialized = Credential::tls_deserialize_exact_bytes(&serialized).unwrap();
         assert_eq!(credential.credential_type(), deserialized.credential_type());
         assert_eq!(
             credential.serialized_content(),
             deserialized.serialized_content()
         );
-        let identity: VLBytes = credential.deserialized().unwrap();
-        assert_eq!(identity.as_slice(), b"identity");
+
+        let deserialized_basic_credential = BasicCredential::try_from(deserialized).unwrap();
+        assert_eq!(
+            deserialized_basic_credential.identity(),
+            IDENTITY.as_bytes()
+        );
+        assert_eq!(basic_credential, deserialized_basic_credential);
+    }
+
+    /// Test the [`Credential`] with a custom credential.
+    #[test]
+    fn custom_credential() {
+        #[derive(
+            Debug, Clone, PartialEq, Eq, TlsSize, TlsSerialize, TlsDeserialize, TlsDeserializeBytes,
+        )]
+        struct CustomCredential {
+            custom_field1: u32,
+            custom_field2: Vec<u8>,
+            custom_field3: Option<u8>,
+        }
+
+        let custom_credential = CustomCredential {
+            custom_field1: 42,
+            custom_field2: vec![1, 2, 3],
+            custom_field3: Some(2),
+        };
+
+        let credential = Credential::new(
+            CredentialType::Other(1234),
+            custom_credential.tls_serialize_detached().unwrap(),
+        );
+
+        let serialized = credential.tls_serialize_detached().unwrap();
+        let deserialized = Credential::tls_deserialize_exact_bytes(&serialized).unwrap();
+        assert_eq!(credential, deserialized);
+
+        let deserialized_custom_credential =
+            CustomCredential::tls_deserialize_exact_bytes(deserialized.serialized_content())
+                .unwrap();
+
+        assert_eq!(custom_credential, deserialized_custom_credential);
     }
 }

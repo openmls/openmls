@@ -55,9 +55,7 @@ pub use crate::treesync::{
 // };
 
 // TLS codec traits
-pub use tls_codec::{
-    Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, Size as TlsSizeTrait,
-};
+pub use tls_codec::{self, *};
 
 // Errors
 pub use crate::error::*;

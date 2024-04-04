@@ -4,7 +4,7 @@
 //! up to parties and have them create a group.
 //!
 //! ```
-//! use openmls::prelude::{*, config::CryptoConfig};
+//! use openmls::prelude::{*, config::CryptoConfig, tls_codec::*};
 //! use openmls_rust_crypto::{OpenMlsRustCrypto};
 //! use openmls_basic_credential::SignatureKeyPair;
 //!
@@ -22,7 +22,7 @@
 //!     signature_algorithm: SignatureScheme,
 //!     provider: &impl OpenMlsProvider,
 //! ) -> (CredentialWithKey, SignatureKeyPair) {
-//!     let credential = BasicCredential::new_credential(identity);
+//!     let credential = BasicCredential::new(identity);
 //!     let signature_keys =
 //!         SignatureKeyPair::new(signature_algorithm)
 //!             .expect("Error generating a signature key pair.");
@@ -35,7 +35,7 @@
 //!     
 //!     (
 //!         CredentialWithKey {
-//!             credential,
+//!             credential: credential.into(),
 //!             signature_key: signature_keys.public().into(),
 //!         },
 //!         signature_keys,
@@ -111,8 +111,15 @@
 //!    .expect("Error serializing welcome");
 //!
 //! // Maxim can now de-serialize the message as an [`MlsMessageIn`] ...
-//! let welcome = MlsMessageIn::tls_deserialize(&mut serialized_welcome.as_slice())
+//! let mls_message_in = MlsMessageIn::tls_deserialize(&mut serialized_welcome.as_slice())
 //!    .expect("An unexpected error occurred.");
+//!
+//! // ... and inspect the message.
+//! let welcome = match mls_message_in.extract() {
+//!    MlsMessageBodyIn::Welcome(welcome) => welcome,
+//!    // We know it's a welcome message, so we ignore all other cases.
+//!    _ => unreachable!("Unexpected message type."),
+//! };
 //!
 //! // Now Maxim can build a staged join for the group in order to inspect the welcome
 //! let maxim_staged_join = StagedWelcome::new_from_welcome(
