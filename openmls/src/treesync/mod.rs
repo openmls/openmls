@@ -392,7 +392,7 @@ impl TreeSync {
         let (leaf, encryption_key_pair) = LeafNode::new(provider, signer, new_leaf_node_params)?;
 
         let node = Node::LeafNode(leaf);
-        let path_secret: PathSecret = Secret::random(config.ciphersuite, provider.rand(), None)
+        let path_secret: PathSecret = Secret::random(config.ciphersuite, provider.rand())
             .map_err(LibraryError::unexpected_crypto_error)?
             .into();
         let commit_secret: CommitSecret = path_secret

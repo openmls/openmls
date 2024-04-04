@@ -127,11 +127,7 @@ pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
         .number_of_resumption_psks(16)
         .build();
 
-    let mut passive_client = PassiveClient::new(
-        group_config,
-        cipher_suite,
-        test_vector.external_psks.clone(),
-    );
+    let mut passive_client = PassiveClient::new(group_config, test_vector.external_psks.clone());
 
     passive_client.inject_key_package(
         test_vector.key_package,
@@ -209,11 +205,7 @@ struct PassiveClient {
 }
 
 impl PassiveClient {
-    fn new(
-        group_config: MlsGroupJoinConfig,
-        ciphersuite: Ciphersuite,
-        psks: Vec<ExternalPskTest>,
-    ) -> Self {
+    fn new(group_config: MlsGroupJoinConfig, psks: Vec<ExternalPskTest>) -> Self {
         let provider = OpenMlsRustCrypto::default();
 
         // Load all PSKs into key store.
@@ -222,9 +214,7 @@ impl PassiveClient {
             // We only construct this to easily save the PSK in the keystore.
             // The nonce is not saved, so it can be empty...
             let psk_id = PreSharedKeyId::external(psk.psk_id, vec![]);
-            psk_id
-                .write_to_key_store(&provider, ciphersuite, &psk.psk)
-                .unwrap();
+            psk_id.write_to_key_store(&provider, &psk.psk).unwrap();
         }
 
         Self {
@@ -561,10 +551,7 @@ fn propose_remove(
 ) -> TestProposal {
     let remove = group
         .members()
-        .find(|Member { credential, .. }| {
-            let identity = VLBytes::tls_deserialize_exact(credential.serialized_content()).unwrap();
-            identity.as_slice() == remove_identity
-        })
+        .find(|Member { credential, .. }| credential.serialized_content() == remove_identity)
         .unwrap()
         .index;
 

@@ -263,6 +263,7 @@ impl CoreGroup {
                     message_secrets,
                     message_secrets.serialized_context().to_vec(),
                     crypto,
+                    self.ciphersuite(),
                 )
             }
             ProtocolMessage::PrivateMessage(ciphertext) => {

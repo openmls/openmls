@@ -335,7 +335,7 @@ pub(crate) fn generate_credential_with_key(
     provider: &impl OpenMlsProvider,
 ) -> CredentialWithKeyAndSigner {
     let (credential, signer) = {
-        let credential = BasicCredential::new(identity).unwrap();
+        let credential = BasicCredential::new(identity);
         let signature_keys = SignatureKeyPair::new(signature_scheme).unwrap();
         signature_keys.store(provider.key_store()).unwrap();
 
@@ -381,6 +381,7 @@ pub(crate) fn resign_message(
     original_plaintext: &PublicMessage,
     provider: &impl OpenMlsProvider,
     signer: &impl Signer,
+    ciphersuite: Ciphersuite,
 ) -> PublicMessage {
     let serialized_context = alice_group
         .export_group_context()
@@ -409,6 +410,7 @@ pub(crate) fn resign_message(
     signed_plaintext
         .set_membership_tag(
             provider.crypto(),
+            ciphersuite,
             membership_key,
             alice_group.group().message_secrets().serialized_context(),
         )

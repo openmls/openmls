@@ -322,7 +322,7 @@ impl PathSecret {
     ) -> Result<EncryptionKeyPair, LibraryError> {
         let node_secret = self
             .path_secret
-            .kdf_expand_label(crypto, "node", &[], ciphersuite.hash_length())
+            .kdf_expand_label(crypto, ciphersuite, "node", &[], ciphersuite.hash_length())
             .map_err(LibraryError::unexpected_crypto_error)?;
         let HpkeKeyPair { public, private } = crypto
             .derive_hpke_keypair(ciphersuite.hpke_config(), node_secret.as_slice())
@@ -339,7 +339,7 @@ impl PathSecret {
     ) -> Result<Self, LibraryError> {
         let path_secret = self
             .path_secret
-            .kdf_expand_label(crypto, "path", &[], ciphersuite.hash_length())
+            .kdf_expand_label(crypto, ciphersuite, "path", &[], ciphersuite.hash_length())
             .map_err(LibraryError::unexpected_crypto_error)?;
         Ok(Self { path_secret })
     }
@@ -375,14 +375,13 @@ impl PathSecret {
     pub(crate) fn decrypt(
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
-        version: ProtocolVersion,
         ciphertext: &HpkeCiphertext,
         private_key: &EncryptionPrivateKey,
         group_context: &[u8],
     ) -> Result<PathSecret, PathSecretError> {
         // ValSem203: Path secrets must decrypt correctly
         private_key
-            .decrypt(crypto, ciphersuite, version, ciphertext, group_context)
+            .decrypt(crypto, ciphersuite, ciphertext, group_context)
             .map(|path_secret| Self { path_secret })
             .map_err(|e| e.into())
     }
@@ -446,9 +445,7 @@ impl GroupSecrets {
 
         // Note: This also checks that no extraneous data was encrypted.
         let group_secrets = GroupSecrets::tls_deserialize_exact(group_secrets_plaintext)
-            .map_err(|_| GroupSecretsError::Malformed)?
-            // TODO(#1065)
-            .config(ciphersuite, ProtocolVersion::Mls10);
+            .map_err(|_| GroupSecretsError::Malformed)?;
 
         Ok(group_secrets)
     }
@@ -466,19 +463,6 @@ impl GroupSecrets {
         }
         .tls_serialize_detached()
     }
-
-    /// Set the config for the secrets, i.e. ciphersuite and MLS version.
-    pub(crate) fn config(
-        mut self,
-        ciphersuite: Ciphersuite,
-        mls_version: ProtocolVersion,
-    ) -> GroupSecrets {
-        self.joiner_secret.config(ciphersuite, mls_version);
-        if let Some(s) = &mut self.path_secret {
-            s.path_secret.config(ciphersuite, mls_version);
-        }
-        self
-    }
 }
 
 #[cfg(test)]
@@ -486,7 +470,6 @@ impl GroupSecrets {
     pub fn random_encoded(
         ciphersuite: Ciphersuite,
         rng: &impl OpenMlsRand,
-        version: ProtocolVersion,
     ) -> Result<Vec<u8>, tls_codec::Error> {
         let psk_id = PreSharedKeyId::new(
             ciphersuite,
@@ -500,10 +483,9 @@ impl GroupSecrets {
         let psks = vec![psk_id];
 
         GroupSecrets::new_encoded(
-            &JoinerSecret::random(ciphersuite, rng, version),
+            &JoinerSecret::random(ciphersuite, rng),
             Some(&PathSecret {
-                path_secret: Secret::random(ciphersuite, rng, version)
-                    .expect("Not enough randomness."),
+                path_secret: Secret::random(ciphersuite, rng).expect("Not enough randomness."),
             }),
             &psks,
         )

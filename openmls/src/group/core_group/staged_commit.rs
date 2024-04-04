@@ -4,6 +4,8 @@ use std::mem;
 use openmls_traits::key_store::OpenMlsKeyStore;
 use public_group::diff::{apply_proposals::ApplyProposalsValues, StagedPublicGroupDiff};
 
+use self::public_group::staged_commit::PublicStagedCommitState;
+
 use super::{super::errors::*, proposals::ProposalStore, *};
 use crate::{
     framing::mls_auth_content::AuthenticatedContent,
@@ -39,6 +41,7 @@ impl CoreGroup {
             )?;
             JoinerSecret::new(
                 provider.crypto(),
+                self.ciphersuite(),
                 commit_secret,
                 &init_secret,
                 serialized_provisional_group_context,
@@ -47,6 +50,7 @@ impl CoreGroup {
         } else {
             JoinerSecret::new(
                 provider.crypto(),
+                self.ciphersuite(),
                 commit_secret,
                 epoch_secrets.init_secret(),
                 serialized_provisional_group_context,
@@ -77,7 +81,7 @@ impl CoreGroup {
             .add_context(provider.crypto(), serialized_provisional_group_context)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
         Ok(key_schedule
-            .epoch_secrets(provider.crypto())
+            .epoch_secrets(provider.crypto(), self.ciphersuite())
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?)
     }
 
@@ -146,9 +150,13 @@ impl CoreGroup {
         // Check if we were removed from the group
         if apply_proposals_values.self_removed {
             let staged_diff = diff.into_staged_diff(provider.crypto(), ciphersuite)?;
+            let staged_state = PublicStagedCommitState::new(
+                staged_diff,
+                commit.path.as_ref().map(|path| path.leaf_node().clone()),
+            );
             return Ok(StagedCommit::new(
                 proposal_queue,
-                StagedCommitState::PublicState(Box::new(staged_diff)),
+                StagedCommitState::PublicState(Box::new(staged_state)),
             ));
         }
 
@@ -229,12 +237,7 @@ impl CoreGroup {
                     apply_proposals_values.extensions.clone(),
                 )?;
 
-                (
-                    CommitSecret::zero_secret(ciphersuite, self.version()),
-                    vec![],
-                    None,
-                    None,
-                )
+                (CommitSecret::zero_secret(ciphersuite), vec![], None, None)
             };
 
         // Update the confirmed transcript hash before we compute the confirmation tag.
@@ -269,6 +272,7 @@ impl CoreGroup {
             .confirmation_key()
             .tag(
                 provider.crypto(),
+                self.ciphersuite(),
                 diff.group_context().confirmed_transcript_hash(),
             )
             .map_err(LibraryError::unexpected_crypto_error)?;
@@ -312,8 +316,9 @@ impl CoreGroup {
         // that are still relevant in the new epoch.
         let old_epoch_keypairs = self.read_epoch_keypairs(provider.key_store());
         match staged_commit.state {
-            StagedCommitState::PublicState(staged_diff) => {
-                self.public_group.merge_diff(*staged_diff);
+            StagedCommitState::PublicState(staged_state) => {
+                self.public_group
+                    .merge_diff(staged_state.into_staged_diff());
                 Ok(None)
             }
             StagedCommitState::GroupMember(state) => {
@@ -400,7 +405,7 @@ impl CoreGroup {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) enum StagedCommitState {
-    PublicState(Box<StagedPublicGroupDiff>),
+    PublicState(Box<PublicStagedCommitState>),
     GroupMember(Box<MemberStagedCommitState>),
 }
 
@@ -449,7 +454,9 @@ impl StagedCommit {
     /// Returns the leaf node of the (optional) update path.
     pub fn update_path_leaf_node(&self) -> Option<&LeafNode> {
         match self.state {
-            StagedCommitState::PublicState(_) => None,
+            StagedCommitState::PublicState(ref public_state) => {
+                public_state.update_path_leaf_node()
+            }
             StagedCommitState::GroupMember(ref group_member_state) => {
                 group_member_state.update_path_leaf_node.as_ref()
             }
@@ -512,7 +519,7 @@ impl StagedCommit {
     /// Returns the [`GroupContext`] of the staged commit state.
     pub fn group_context(&self) -> &GroupContext {
         match self.state {
-            StagedCommitState::PublicState(ref ps) => ps.group_context(),
+            StagedCommitState::PublicState(ref ps) => ps.staged_diff().group_context(),
             StagedCommitState::GroupMember(ref gm) => gm.group_context(),
         }
     }

@@ -20,7 +20,6 @@ use crate::{
     treesync::{
         errors::ApplyUpdatePathError, node::parent_node::PlainUpdatePathNode, treekem::UpdatePath,
     },
-    versions::ProtocolVersion,
 };
 
 struct CommitValidationTestSetup {
@@ -222,6 +221,7 @@ fn test_valsem200(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     signed_plaintext
         .set_membership_tag(
             provider.crypto(),
+            ciphersuite,
             membership_key,
             alice_group.group().message_secrets().serialized_context(),
         )
@@ -283,7 +283,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     };
 
     let psk_proposal = || {
-        let secret = Secret::random(ciphersuite, provider.rand(), None).unwrap();
+        let secret = Secret::random(ciphersuite, provider.rand()).unwrap();
         let rand = provider
             .rand()
             .random_vec(ciphersuite.hash_length())
@@ -295,7 +295,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         )
         .unwrap();
         psk_id
-            .write_to_key_store(provider, ciphersuite, secret.as_slice())
+            .write_to_key_store(provider, secret.as_slice())
             .unwrap();
         queued(Proposal::PreSharedKey(PreSharedKeyProposal::new(psk_id)))
     };
@@ -371,6 +371,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         commit
             .set_membership_tag(
                 provider.crypto(),
+                ciphersuite,
                 membership_key,
                 alice_group.group().message_secrets().serialized_context(),
             )
@@ -379,6 +380,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         if is_path_required {
             let commit_wo_path = erase_path(
                 provider,
+                ciphersuite,
                 commit.clone(),
                 &alice_group,
                 &alice_credential.signer,
@@ -403,6 +405,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
 fn erase_path(
     provider: &impl OpenMlsProvider,
+    ciphersuite: Ciphersuite,
     mut plaintext: PublicMessage,
     alice_group: &MlsGroup,
     alice_signer: &impl Signer,
@@ -425,6 +428,7 @@ fn erase_path(
         &original_plaintext,
         provider,
         alice_signer,
+        ciphersuite,
     );
 
     plaintext.into()
@@ -478,6 +482,7 @@ fn test_valsem202(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         &original_plaintext,
         provider,
         &alice_credential.signer,
+        ciphersuite,
     );
 
     let update_message_in = ProtocolMessage::from(plaintext);
@@ -559,6 +564,7 @@ fn test_valsem203(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         &original_plaintext,
         provider,
         &alice_credential.signer,
+        ciphersuite,
     );
 
     let update_message_in = ProtocolMessage::from(plaintext);
@@ -656,9 +662,7 @@ fn test_valsem204(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             .map(|upn| {
                 PlainUpdatePathNode::new(
                     upn.encryption_key().clone(),
-                    Secret::random(ciphersuite, provider.rand(), ProtocolVersion::default())
-                        .unwrap()
-                        .into(),
+                    Secret::random(ciphersuite, provider.rand()).unwrap().into(),
                 )
             })
             .collect();
@@ -686,6 +690,7 @@ fn test_valsem204(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         &original_plaintext,
         provider,
         &alice_credential.signer,
+        ciphersuite,
     );
 
     let update_message_in = ProtocolMessage::from(plaintext);
@@ -763,6 +768,7 @@ fn test_valsem205(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     plaintext
         .set_membership_tag(
             provider.crypto(),
+            ciphersuite,
             membership_key,
             alice_group.group().message_secrets().serialized_context(),
         )
@@ -798,11 +804,7 @@ fn test_partial_proposal_commit(ciphersuite: Ciphersuite, provider: &impl OpenMl
 
     let charlie_index = alice_group
         .members()
-        .find(|m| {
-            let identity =
-                VLBytes::tls_deserialize_exact(m.credential.serialized_content()).unwrap();
-            identity.as_slice() == b"Charlie"
-        })
+        .find(|m| m.credential.serialized_content() == b"Charlie")
         .unwrap()
         .index;
 

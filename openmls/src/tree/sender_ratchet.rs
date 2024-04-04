@@ -129,6 +129,7 @@ impl RatchetSecret {
             return Err(SecretTreeError::RatchetTooLong);
         }
         let nonce = derive_tree_secret(
+            ciphersuite,
             &self.secret,
             "nonce",
             self.generation,
@@ -136,6 +137,7 @@ impl RatchetSecret {
             crypto,
         )?;
         let key = derive_tree_secret(
+            ciphersuite,
             &self.secret,
             "key",
             self.generation,
@@ -143,6 +145,7 @@ impl RatchetSecret {
             crypto,
         )?;
         self.secret = derive_tree_secret(
+            ciphersuite,
             &self.secret,
             "secret",
             self.generation,
@@ -153,7 +156,10 @@ impl RatchetSecret {
         self.generation += 1;
         Ok((
             generation,
-            (AeadKey::from_secret(key), AeadNonce::from_secret(nonce)),
+            (
+                AeadKey::from_secret(key, ciphersuite),
+                AeadNonce::from_secret(nonce),
+            ),
         ))
     }
 

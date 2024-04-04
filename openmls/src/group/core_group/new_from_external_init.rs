@@ -72,8 +72,12 @@ impl CoreGroup {
         // The `EpochSecrets` we create here are essentially zero, with the
         // exception of the `InitSecret`, which is all we need here for the
         // external commit.
-        let epoch_secrets = EpochSecrets::with_init_secret(provider.crypto(), init_secret)
-            .map_err(LibraryError::unexpected_crypto_error)?;
+        let epoch_secrets = EpochSecrets::with_init_secret(
+            provider.crypto(),
+            group_info.group_context().ciphersuite(),
+            init_secret,
+        )
+        .map_err(LibraryError::unexpected_crypto_error)?;
         let (group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
             group_context
                 .tls_serialize_detached()

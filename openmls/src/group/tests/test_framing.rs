@@ -21,7 +21,6 @@ use crate::{
         secret_tree::SecretTree, secret_tree::SecretType,
         sender_ratchet::SenderRatchetConfiguration,
     },
-    versions::ProtocolVersion,
     *,
 };
 
@@ -159,11 +158,8 @@ fn bad_padding(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             .unwrap();
 
         let sender_secret_tree = {
-            let sender_encryption_secret = EncryptionSecret::from_slice(
-                &encryption_secret_bytes[..],
-                ProtocolVersion::default(),
-                ciphersuite,
-            );
+            let sender_encryption_secret =
+                EncryptionSecret::from_slice(&encryption_secret_bytes[..]);
 
             SecretTree::new(
                 sender_encryption_secret,
@@ -173,11 +169,8 @@ fn bad_padding(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         };
 
         let receiver_secret_tree = {
-            let receiver_encryption_secret = EncryptionSecret::from_slice(
-                &encryption_secret_bytes[..],
-                ProtocolVersion::default(),
-                ciphersuite,
-            );
+            let receiver_encryption_secret =
+                EncryptionSecret::from_slice(&encryption_secret_bytes[..]);
 
             SecretTree::new(
                 receiver_encryption_secret,
@@ -285,7 +278,7 @@ fn bad_padding(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             // Derive the sender data key from the key schedule using the ciphertext.
             let sender_data_key = message_secrets
                 .sender_data_secret()
-                .derive_aead_key(provider.crypto(), &ciphertext)
+                .derive_aead_key(provider.crypto(), ciphersuite, &ciphertext)
                 .unwrap();
             // Derive initial nonce from the key schedule using the ciphertext.
             let sender_data_nonce = message_secrets

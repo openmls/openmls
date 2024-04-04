@@ -27,7 +27,6 @@ use crate::{
         KeySchedule,
     },
     treesync::node::encryption_keys::EncryptionKeyPair,
-    versions::ProtocolVersion,
 };
 
 /// This test detects if the decryption of the encrypted group secrets fails due to a change in
@@ -96,8 +95,7 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, provider: &impl OpenM
     )
     .expect("Could not decrypt group secrets.");
     let group_secrets = GroupSecrets::tls_deserialize(&mut group_secrets_bytes.as_slice())
-        .expect("Could not deserialize group secrets.")
-        .config(ciphersuite, ProtocolVersion::Mls10);
+        .expect("Could not deserialize group secrets.");
     let joiner_secret = group_secrets.joiner_secret;
 
     // Prepare the PskSecret
@@ -116,9 +114,9 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, provider: &impl OpenM
 
     // Derive welcome key & nonce from the key schedule
     let (welcome_key, welcome_nonce) = key_schedule
-        .welcome(provider.crypto())
+        .welcome(provider.crypto(), ciphersuite)
         .expect("Using the key schedule in the wrong state")
-        .derive_welcome_key_nonce(provider.crypto())
+        .derive_welcome_key_nonce(provider.crypto(), ciphersuite)
         .expect("Could not derive welcome key and nonce.");
 
     let group_info_bytes = welcome_key
@@ -248,7 +246,7 @@ fn test_welcome_message(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
         .crypto()
         .derive_hpke_keypair(
             ciphersuite.hpke_config(),
-            Secret::random(ciphersuite, provider.rand(), None)
+            Secret::random(ciphersuite, provider.rand())
                 .expect("Not enough randomness.")
                 .as_slice(),
         )
