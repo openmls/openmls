@@ -22,8 +22,7 @@
 //!     signature_algorithm: SignatureScheme,
 //!     provider: &impl OpenMlsProvider,
 //! ) -> (CredentialWithKey, SignatureKeyPair) {
-//!     let credential = BasicCredential::new(identity)
-//!         .expect("Error creating a credential.");
+//!     let credential = BasicCredential::new(identity);
 //!     let signature_keys =
 //!         SignatureKeyPair::new(signature_algorithm)
 //!             .expect("Error generating a signature key pair.");

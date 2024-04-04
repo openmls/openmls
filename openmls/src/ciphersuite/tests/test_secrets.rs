@@ -11,8 +11,13 @@ fn secret_init(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // These two secrets must be incompatible
     let default_secret =
         Secret::random(ciphersuite, provider.rand(), None).expect("Not enough randomness.");
+<<<<<<< HEAD
     let draft_secret =
         Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
+=======
+    let draft_secret = Secret::random(ciphersuite, provider.rand(), ProtocolVersion::Other(999))
+        .expect("Not enough randomness.");
+>>>>>>> main
 
     let derived_default_secret = default_secret.derive_secret(provider.crypto(), "my_test_label");
     let derived_draft_secret = draft_secret.derive_secret(provider.crypto(), "my_test_label");
@@ -25,7 +30,7 @@ fn secret_incompatible(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider
     // These two secrets must be incompatible
     let default_secret =
         Secret::random(ciphersuite, provider.rand(), None).expect("Not enough randomness.");
-    let draft_secret = Secret::random(ciphersuite, provider.rand(), ProtocolVersion::Mls10Draft11)
+    let draft_secret = Secret::random(ciphersuite, provider.rand(), ProtocolVersion::Other(999))
         .expect("Not enough randomness.");
 
     // This must panic because the two secrets have incompatible MLS versions.

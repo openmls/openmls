@@ -26,6 +26,7 @@ use crate::{
     treesync::node::encryption_keys::{EncryptionKeyPair, EncryptionPrivateKey},
 };
 
+pub mod frankenstein;
 pub mod test_framework;
 
 pub(crate) fn write(file_name: &str, obj: impl Serialize) {
@@ -114,7 +115,7 @@ pub(crate) fn generate_group_candidate(
     use crate::credentials::BasicCredential;
 
     let credential_with_key_and_signer = {
-        let credential = BasicCredential::new(identity.to_vec()).unwrap();
+        let credential = BasicCredential::new(identity.to_vec());
 
         let signature_keypair = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 

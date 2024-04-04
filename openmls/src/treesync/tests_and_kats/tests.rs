@@ -1,5 +1,4 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use tls_codec::*;
 
 use crate::{
     group::{
@@ -68,9 +67,7 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
         group
             .members()
             .find_map(|member| {
-                let identity =
-                    VLBytes::tls_deserialize_exact(member.credential.serialized_content()).unwrap();
-                if identity.as_slice() == target_id {
+                if member.credential.serialized_content() == target_id {
                     Some(member.index)
                 } else {
                     None

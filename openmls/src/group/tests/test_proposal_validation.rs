@@ -28,7 +28,8 @@ use crate::{
     },
     prelude::MlsMessageBodyIn,
     schedule::PreSharedKeyId,
-    treesync::{errors::ApplyUpdatePathError, node::leaf_node::Capabilities},
+    test_utils::frankenstein::FrankenKeyPackage,
+    treesync::errors::ApplyUpdatePathError,
     versions::ProtocolVersion,
 };
 
@@ -363,7 +364,7 @@ fn test_valsem101a(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             provider,
             &charlie_credential_with_key.signer,
             CredentialWithKey {
-                credential: BasicCredential::new(b"Dave".to_vec()).unwrap().into(),
+                credential: BasicCredential::new(b"Dave".to_vec()).into(),
                 signature_key: charlie_credential_with_key
                     .credential_with_key
                     .signature_key,
@@ -434,20 +435,14 @@ fn test_valsem102(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         match bob_and_charlie_share_keys {
             KeyUniqueness::NegativeSameKey => {
                 // Create a new key package for bob with the init key from Charlie.
-                bob_key_package = KeyPackage::new_from_init_key(
-                    CryptoConfig {
-                        ciphersuite,
-                        version: ProtocolVersion::default(),
-                    },
-                    provider,
-                    &bob_credential_with_key.signer,
-                    bob_credential_with_key.credential_with_key.clone(),
-                    Extensions::empty(),
-                    Capabilities::default(),
-                    Extensions::empty(),
-                    charlie_key_package.hpke_init_key().to_owned(),
-                )
-                .unwrap();
+                let mut franken_key_package = FrankenKeyPackage::from(bob_key_package);
+                franken_key_package.init_key = charlie_key_package
+                    .hpke_init_key()
+                    .as_slice()
+                    .to_owned()
+                    .into();
+                franken_key_package.resign(&bob_credential_with_key.signer);
+                bob_key_package = KeyPackage::from(franken_key_package);
             }
             KeyUniqueness::PositiveDifferentKey => {
                 // don't need to do anything since the keys are already
@@ -522,13 +517,15 @@ fn test_valsem102(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let (dave_credential_with_key_and_signer, mut dave_key_package) =
         generate_credential_with_key_and_key_package("Dave".into(), ciphersuite, provider);
     // Change the init key and re-sign.
-    dave_key_package.set_init_key(charlie_key_package.hpke_init_key().clone());
-    let dave_key_package = dave_key_package.resign(
-        &dave_credential_with_key_and_signer.signer,
-        dave_credential_with_key_and_signer
-            .credential_with_key
-            .clone(),
-    );
+    let mut franken_key_package = FrankenKeyPackage::from(dave_key_package);
+    franken_key_package.init_key = charlie_key_package
+        .hpke_init_key()
+        .as_slice()
+        .to_owned()
+        .into();
+    franken_key_package.resign(&dave_credential_with_key_and_signer.signer);
+    dave_key_package = KeyPackage::from(franken_key_package);
+
     let second_add_proposal = Proposal::Add(AddProposal {
         key_package: dave_key_package,
     });
@@ -609,7 +606,7 @@ fn test_valsem101b(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             }
             .map(|(name, keypair)| CredentialWithKeyAndSigner {
                 credential_with_key: CredentialWithKey {
-                    credential: BasicCredential::new(name.into()).unwrap().into(),
+                    credential: BasicCredential::new(name.into()).into(),
                     signature_key: keypair.to_public_vec().into(),
                 },
                 signer: keypair,
@@ -677,10 +674,7 @@ fn test_valsem101b(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
                 let bob_index = alice_group
                     .members()
                     .find_map(|member| {
-                        let identity =
-                            VLBytes::tls_deserialize_exact(member.credential.serialized_content())
-                                .unwrap();
-                        if identity.as_slice() == b"Bob" {
+                        if member.credential.serialized_content() == b"Bob" {
                             Some(member.index)
                         } else {
                             None
@@ -849,20 +843,10 @@ fn test_valsem103_valsem104(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
         match alice_and_bob_share_keys {
             KeyUniqueness::NegativeSameKey => {
                 // Create a new key package for bob using the encryption key as init key.
-                bob_key_package = bob_key_package
-                    .clone()
-                    .into_with_init_key(
-                        CryptoConfig::with_default_version(ciphersuite),
-                        &bob_credential_with_key.signer,
-                        InitKey::from(
-                            bob_key_package
-                                .leaf_node()
-                                .encryption_key()
-                                .as_slice()
-                                .to_vec(),
-                        ),
-                    )
-                    .unwrap();
+                let mut franken_key_package = FrankenKeyPackage::from(bob_key_package);
+                franken_key_package.init_key = franken_key_package.leaf_node.encryption_key.clone();
+                franken_key_package.resign(&bob_credential_with_key.signer);
+                bob_key_package = KeyPackage::from(franken_key_package);
             }
             KeyUniqueness::PositiveDifferentKey => {
                 // don't need to do anything since all keys are already
@@ -933,24 +917,14 @@ fn test_valsem103_valsem104(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
         .clone();
 
     // Generate fresh key material for Dave.
-    let (dave_credential_with_key, _) =
+    let (dave_credential_with_key, dave_key_package) =
         generate_credential_with_key_and_key_package("Dave".into(), ciphersuite, provider);
 
     // Insert Bob's public key into Dave's KPB and resign.
-    let dave_key_package = KeyPackage::new_from_encryption_key(
-        CryptoConfig {
-            ciphersuite,
-            version: ProtocolVersion::default(),
-        },
-        provider,
-        &dave_credential_with_key.signer,
-        dave_credential_with_key.credential_with_key.clone(),
-        Extensions::empty(),
-        Capabilities::default(),
-        Extensions::empty(),
-        bob_encryption_key,
-    )
-    .unwrap();
+    let mut franken_key_package = FrankenKeyPackage::from(dave_key_package);
+    franken_key_package.leaf_node.encryption_key = bob_encryption_key.as_slice().to_owned().into();
+    franken_key_package.resign(&dave_credential_with_key.signer);
+    let dave_key_package = KeyPackage::from(franken_key_package);
 
     // Use the resulting KP to create an Add proposal.
     let add_proposal = Proposal::Add(AddProposal {
@@ -1060,8 +1034,10 @@ fn test_valsem105(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             ..
         } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, provider);
 
-        let (charlie_credential_with_key, mut charlie_key_package) =
+        let (charlie_credential_with_key, charlie_key_package) =
             generate_credential_with_key_and_key_package("Charlie".into(), ciphersuite, provider);
+
+        let mut franken_key_package = FrankenKeyPackage::from(charlie_key_package.clone());
 
         let kpi = KeyPackageIn::from(charlie_key_package.clone());
         kpi.validate(provider.crypto(), ProtocolVersion::Mls10)
@@ -1073,43 +1049,36 @@ fn test_valsem105(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
                 Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256
             }
             _ => Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
-        };
+        } as u16;
         match key_package_version {
             KeyPackageTestVersion::WrongCiphersuite => {
-                charlie_key_package.set_ciphersuite(wrong_ciphersuite)
+                franken_key_package.ciphersuite = wrong_ciphersuite;
             }
             KeyPackageTestVersion::WrongVersion => {
-                charlie_key_package.set_version(ProtocolVersion::Mls10Draft11);
+                franken_key_package.protocol_version = 999;
             }
             KeyPackageTestVersion::UnsupportedVersion => {
-                let mut new_leaf_node = charlie_key_package.leaf_node().clone();
-                new_leaf_node
-                    .capabilities_mut()
-                    .set_versions(vec![ProtocolVersion::Mls10Draft11]);
-                charlie_key_package.set_leaf_node(new_leaf_node);
+                franken_key_package.leaf_node.capabilities.versions = vec![999];
             }
             KeyPackageTestVersion::UnsupportedCiphersuite => {
-                let mut new_leaf_node = charlie_key_package.leaf_node().clone();
-                new_leaf_node.capabilities_mut().set_ciphersuites(vec![
-                    Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448.into(),
-                ]);
-                charlie_key_package.set_leaf_node(new_leaf_node);
+                franken_key_package.leaf_node.capabilities.ciphersuites =
+                    vec![Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448.into()];
             }
             KeyPackageTestVersion::ValidTestCase => (),
         };
 
-        let test_kp = charlie_key_package.resign(
-            &charlie_credential_with_key.signer,
-            charlie_credential_with_key.credential_with_key.clone(),
-        );
+        franken_key_package.resign(&charlie_credential_with_key.signer);
+        let test_kp = KeyPackage::from(franken_key_package);
 
         let test_kp_2 = {
-            let (charlie_credential_with_key, mut charlie_key_package) =
+            let (charlie_credential_with_key, charlie_key_package) =
                 generate_credential_with_key_and_key_package(
                     "Charlie".into(),
                     ciphersuite,
                     provider,
                 );
+
+            let mut franken_key_package = FrankenKeyPackage::from(charlie_key_package.clone());
 
             // Let's just pick a ciphersuite that's not the one we're testing right now.
             let wrong_ciphersuite = match ciphersuite {
@@ -1117,35 +1086,26 @@ fn test_valsem105(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
                     Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256
                 }
                 _ => Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
-            };
+            } as u16;
             match key_package_version {
                 KeyPackageTestVersion::WrongCiphersuite => {
-                    charlie_key_package.set_ciphersuite(wrong_ciphersuite)
+                    franken_key_package.ciphersuite = wrong_ciphersuite;
                 }
                 KeyPackageTestVersion::WrongVersion => {
-                    charlie_key_package.set_version(ProtocolVersion::Mls10Draft11);
+                    franken_key_package.protocol_version = 999;
                 }
                 KeyPackageTestVersion::UnsupportedVersion => {
-                    let mut new_leaf_node = charlie_key_package.leaf_node().clone();
-                    new_leaf_node
-                        .capabilities_mut()
-                        .set_versions(vec![ProtocolVersion::Mls10Draft11]);
-                    charlie_key_package.set_leaf_node(new_leaf_node);
+                    franken_key_package.leaf_node.capabilities.versions = vec![999];
                 }
                 KeyPackageTestVersion::UnsupportedCiphersuite => {
-                    let mut new_leaf_node = charlie_key_package.leaf_node().clone();
-                    new_leaf_node.capabilities_mut().set_ciphersuites(vec![
-                        Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448.into(),
-                    ]);
-                    charlie_key_package.set_leaf_node(new_leaf_node);
+                    franken_key_package.leaf_node.capabilities.ciphersuites =
+                        vec![Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448.into()];
                 }
                 KeyPackageTestVersion::ValidTestCase => (),
             };
 
-            charlie_key_package.resign(
-                &charlie_credential_with_key.signer,
-                charlie_credential_with_key.credential_with_key.clone(),
-            )
+            franken_key_package.resign(&charlie_credential_with_key.signer);
+            KeyPackage::from(franken_key_package)
         };
 
         // Try to have Alice commit an Add with the test KeyPackage.

@@ -546,10 +546,7 @@ fn propose_remove(
 ) -> TestProposal {
     let remove = group
         .members()
-        .find(|Member { credential, .. }| {
-            let identity = VLBytes::tls_deserialize_exact(credential.serialized_content()).unwrap();
-            identity.as_slice() == remove_identity
-        })
+        .find(|Member { credential, .. }| credential.serialized_content() == remove_identity)
         .unwrap()
         .index;
 

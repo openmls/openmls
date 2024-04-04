@@ -272,7 +272,7 @@ impl From<Secret> for InitSecret {
 fn hpke_info_from_version(version: ProtocolVersion) -> &'static str {
     match version {
         ProtocolVersion::Mls10 => "MLS 1.0 external init secret",
-        ProtocolVersion::Mls10Draft11 => "<OpenMLS reserved; Don't use this.>",
+        _ => "<OpenMLS reserved; Don't use this.>",
     }
 }
 

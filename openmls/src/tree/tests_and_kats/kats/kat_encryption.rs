@@ -141,7 +141,7 @@ fn generate_credential(
     signature_algorithm: SignatureScheme,
     provider: &impl OpenMlsProvider,
 ) -> (CredentialWithKey, SignatureKeyPair) {
-    let credential = BasicCredential::new(identity).unwrap();
+    let credential = BasicCredential::new(identity);
     let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
     signature_keys.store(provider.key_store()).unwrap();
 

@@ -790,11 +790,7 @@ fn test_partial_proposal_commit(ciphersuite: Ciphersuite, provider: &impl OpenMl
 
     let charlie_index = alice_group
         .members()
-        .find(|m| {
-            let identity =
-                VLBytes::tls_deserialize_exact(m.credential.serialized_content()).unwrap();
-            identity.as_slice() == b"Charlie"
-        })
+        .find(|m| m.credential.serialized_content() == b"Charlie")
         .unwrap()
         .index;
 

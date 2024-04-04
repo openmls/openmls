@@ -11,6 +11,36 @@ use crate::{
     messages::{proposals::ProposalOrRef, Commit},
 };
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PublicStagedCommitState {
+    pub(super) staged_diff: StagedPublicGroupDiff,
+    pub(super) update_path_leaf_node: Option<LeafNode>,
+}
+
+impl PublicStagedCommitState {
+    pub fn new(
+        staged_diff: StagedPublicGroupDiff,
+        update_path_leaf_node: Option<LeafNode>,
+    ) -> Self {
+        Self {
+            staged_diff,
+            update_path_leaf_node,
+        }
+    }
+
+    pub(crate) fn into_staged_diff(self) -> StagedPublicGroupDiff {
+        self.staged_diff
+    }
+
+    pub fn update_path_leaf_node(&self) -> Option<&LeafNode> {
+        self.update_path_leaf_node.as_ref()
+    }
+
+    pub fn staged_diff(&self) -> &StagedPublicGroupDiff {
+        &self.staged_diff
+    }
+}
+
 impl PublicGroup {
     pub(crate) fn validate_commit<'a>(
         &self,
@@ -172,23 +202,22 @@ impl PublicGroup {
     ///  - ValSem244
     /// Returns an error if the given commit was sent by the owner of this
     /// group.
-    /// TODO #1255: This will be used by the `process_message` function of the
-    /// `PublicGroup` later on.
-    #[allow(unused)]
     pub(crate) fn stage_commit(
         &self,
         mls_content: &AuthenticatedContent,
         proposal_store: &ProposalStore,
         crypto: &impl OpenMlsCrypto,
     ) -> Result<StagedCommit, StageCommitError> {
-        let ciphersuite = self.ciphersuite();
-
         let (commit, proposal_queue, sender_index) =
             self.validate_commit(mls_content, proposal_store, crypto)?;
 
         let staged_diff = self.stage_diff(mls_content, &proposal_queue, sender_index, crypto)?;
+        let staged_state = PublicStagedCommitState {
+            staged_diff,
+            update_path_leaf_node: commit.path.as_ref().map(|p| p.leaf_node().clone()),
+        };
 
-        let staged_commit_state = StagedCommitState::PublicState(Box::new(staged_diff));
+        let staged_commit_state = StagedCommitState::PublicState(Box::new(staged_state));
 
         Ok(StagedCommit::new(proposal_queue, staged_commit_state))
     }
@@ -249,7 +278,9 @@ impl PublicGroup {
     /// might throw a `LibraryError`.
     pub fn merge_commit(&mut self, staged_commit: StagedCommit) {
         match staged_commit.into_state() {
-            StagedCommitState::PublicState(staged_diff) => self.merge_diff(*staged_diff),
+            StagedCommitState::PublicState(staged_state) => {
+                self.merge_diff(staged_state.staged_diff)
+            }
             StagedCommitState::GroupMember(_) => (),
         }
         self.proposal_store.empty()
