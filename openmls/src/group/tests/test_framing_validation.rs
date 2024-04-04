@@ -287,6 +287,7 @@ fn test_valsem004(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     plaintext
         .set_membership_tag(
             provider.crypto(),
+            ciphersuite,
             alice_group.group().message_secrets().membership_key(),
             alice_group.group().message_secrets().serialized_context(),
         )
@@ -342,6 +343,7 @@ fn test_valsem005(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     plaintext
         .set_membership_tag(
             provider.crypto(),
+            ciphersuite,
             alice_group.group().message_secrets().membership_key(),
             alice_group.group().message_secrets().serialized_context(),
         )
@@ -487,8 +489,13 @@ fn test_valsem008(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let original_message = plaintext.clone();
 
     plaintext.set_membership_tag_test(MembershipTag(
-        Mac::new(provider.crypto(), &Secret::default(), &[1, 2, 3])
-            .expect("Could not compute membership tag."),
+        Mac::new(
+            provider.crypto(),
+            ciphersuite,
+            &Secret::default(),
+            &[1, 2, 3],
+        )
+        .expect("Could not compute membership tag."),
     ));
 
     let message_in = ProtocolMessage::from(plaintext);
@@ -541,6 +548,7 @@ fn test_valsem009(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     plaintext
         .set_membership_tag(
             provider.crypto(),
+            ciphersuite,
             alice_group.group().message_secrets().membership_key(),
             alice_group.group().message_secrets().serialized_context(),
         )
@@ -598,6 +606,7 @@ fn test_valsem010(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     plaintext
         .set_membership_tag(
             provider.crypto(),
+            ciphersuite,
             alice_group.group().message_secrets().membership_key(),
             alice_group.group().message_secrets().serialized_context(),
         )

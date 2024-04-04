@@ -102,7 +102,6 @@ use crate::{
         sender_ratchet::SenderRatchetConfiguration,
     },
     utils::random_u64,
-    versions::ProtocolVersion,
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -220,12 +219,7 @@ fn build_handshake_messages(
     group.context_mut().set_epoch(epoch.into());
     let framing_parameters = FramingParameters::new(&[1, 2, 3, 4], WireFormat::PrivateMessage);
     let membership_key = MembershipKey::from_secret(
-        Secret::random(
-            group.ciphersuite(),
-            provider.rand(),
-            None, /* MLS version */
-        )
-        .expect("Not enough randomness."),
+        Secret::random(group.ciphersuite(), provider.rand()).expect("Not enough randomness."),
     );
     let content = AuthenticatedContentIn::from(
         AuthenticatedContent::member_proposal(
@@ -244,6 +238,7 @@ fn build_handshake_messages(
     plaintext
         .set_membership_tag(
             provider.crypto(),
+            group.ciphersuite(),
             &membership_key,
             &group.context().tls_serialize_detached().unwrap(),
         )
@@ -280,12 +275,7 @@ fn build_application_messages(
     let epoch = random_u64();
     group.context_mut().set_epoch(epoch.into());
     let membership_key = MembershipKey::from_secret(
-        Secret::random(
-            group.ciphersuite(),
-            provider.rand(),
-            None, /* MLS version */
-        )
-        .expect("Not enough randomness."),
+        Secret::random(group.ciphersuite(), provider.rand()).expect("Not enough randomness."),
     );
     let content = AuthenticatedContent::new_application(
         sender_index,
@@ -299,6 +289,7 @@ fn build_application_messages(
     plaintext
         .set_membership_tag(
             provider.crypto(),
+            group.ciphersuite(),
             &membership_key,
             &group.context().tls_serialize_detached().unwrap(),
         )
@@ -348,7 +339,7 @@ pub fn generate_test_vector(
         .random_vec(77)
         .expect("An unexpected error occurred.");
     let sender_data_key = sender_data_secret
-        .derive_aead_key(crypto.crypto(), &ciphertext)
+        .derive_aead_key(crypto.crypto(), ciphersuite, &ciphertext)
         .expect("Could not derive AEAD key.");
     // Derive initial nonce from the key schedule using the ciphertext.
     let sender_data_nonce = sender_data_secret
@@ -361,11 +352,8 @@ pub fn generate_test_vector(
     };
 
     let (mut group, _, signer) = group(ciphersuite, &crypto);
-    *group.message_secrets_test_mut().sender_data_secret_mut() = SenderDataSecret::from_slice(
-        sender_data_secret_bytes,
-        ProtocolVersion::default(),
-        ciphersuite,
-    );
+    *group.message_secrets_test_mut().sender_data_secret_mut() =
+        SenderDataSecret::from_slice(sender_data_secret_bytes);
 
     let mut leaves = Vec::new();
     for leaf in 0..n_leaves {
@@ -373,18 +361,10 @@ pub fn generate_test_vector(
         // It doesn't matter who the receiver is, as long as it's not the same
         // as the sender, so we don't get into trouble with the secret tree.
         let receiver_leaf = LeafNodeIndex::new(u32::from(leaf == 0));
-        let encryption_secret = EncryptionSecret::from_slice(
-            &encryption_secret_bytes[..],
-            ProtocolVersion::default(),
-            ciphersuite,
-        );
+        let encryption_secret = EncryptionSecret::from_slice(&encryption_secret_bytes[..]);
         let size = TreeSize::from_leaf_count(n_leaves);
         let encryption_secret_tree = SecretTree::new(encryption_secret, size, sender_leaf);
-        let decryption_secret = EncryptionSecret::from_slice(
-            &encryption_secret_bytes[..],
-            ProtocolVersion::default(),
-            ciphersuite,
-        );
+        let decryption_secret = EncryptionSecret::from_slice(&encryption_secret_bytes[..]);
         let mut decryption_secret_tree = SecretTree::new(decryption_secret, size, receiver_leaf);
 
         *group.message_secrets_test_mut().secret_tree_mut() = encryption_secret_tree;
@@ -500,15 +480,13 @@ pub fn run_test_vector(
     let ciphersuite = Ciphersuite::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
     log::debug!("Running test vector with {:?}", ciphersuite);
 
-    let sender_data_secret = SenderDataSecret::from_slice(
-        hex_to_bytes(&test_vector.sender_data_secret).as_slice(),
-        ProtocolVersion::default(),
-        ciphersuite,
-    );
+    let sender_data_secret =
+        SenderDataSecret::from_slice(hex_to_bytes(&test_vector.sender_data_secret).as_slice());
 
     let sender_data_key = sender_data_secret
         .derive_aead_key(
             provider.crypto(),
+            ciphersuite,
             &hex_to_bytes(&test_vector.sender_data_info.ciphertext),
         )
         .expect("Could not derive AEAD key.");
@@ -539,11 +517,7 @@ pub fn run_test_vector(
         let receiver_leaf = LeafNodeIndex::new(u32::from(leaf_index == 0));
 
         let mut secret_tree = SecretTree::new(
-            EncryptionSecret::from_slice(
-                hex_to_bytes(&test_vector.encryption_secret).as_slice(),
-                ProtocolVersion::default(),
-                ciphersuite,
-            ),
+            EncryptionSecret::from_slice(hex_to_bytes(&test_vector.encryption_secret).as_slice()),
             size,
             receiver_leaf,
         );
@@ -619,8 +593,6 @@ pub fn run_test_vector(
             *group.message_secrets_test_mut().sender_data_secret_mut() =
                 SenderDataSecret::from_slice(
                     hex_to_bytes(&test_vector.sender_data_secret).as_slice(),
-                    ProtocolVersion::default(),
-                    ciphersuite,
                 );
 
             // We have to take the fresh_secret_tree here because the secret_for_decryption
@@ -702,8 +674,6 @@ pub fn run_test_vector(
             *group.message_secrets_test_mut().sender_data_secret_mut() =
                 SenderDataSecret::from_slice(
                     hex_to_bytes(&test_vector.sender_data_secret).as_slice(),
-                    ProtocolVersion::default(),
-                    ciphersuite,
                 );
 
             // Swap secret tree
@@ -779,11 +749,7 @@ pub fn run_test_vector(
                 mls_ciphertext_handshake.group_id().clone(),
             );
             *group.message_secrets_test_mut().sender_data_secret_mut() =
-                SenderDataSecret::from_slice(
-                    &hex_to_bytes(&test_vector.sender_data_secret),
-                    ProtocolVersion::default(),
-                    ciphersuite,
-                );
+                SenderDataSecret::from_slice(&hex_to_bytes(&test_vector.sender_data_secret));
 
             // Swap secret tree
             let _ = group

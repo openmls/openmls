@@ -280,7 +280,7 @@ impl KeyPackage {
         }
 
         // Create a new HPKE key pair
-        let ikm = Secret::random(config.ciphersuite, provider.rand(), config.version)
+        let ikm = Secret::random(config.ciphersuite, provider.rand())
             .map_err(LibraryError::unexpected_crypto_error)?;
         let init_key = provider
             .crypto()
@@ -492,7 +492,7 @@ impl KeyPackage {
         encryption_key: EncryptionKey,
     ) -> Result<Self, KeyPackageNewError<KeyStore::Error>> {
         // Create a new HPKE init key pair
-        let ikm = Secret::random(config.ciphersuite, provider.rand(), config.version).unwrap();
+        let ikm = Secret::random(config.ciphersuite, provider.rand()).unwrap();
         let init_key = provider
             .crypto()
             .derive_hpke_keypair(config.ciphersuite.hpke_config(), ikm.as_slice())

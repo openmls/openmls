@@ -20,7 +20,6 @@ use crate::{
     messages::*,
     schedule::*,
     test_utils::*,
-    versions::ProtocolVersion,
 };
 
 const TEST_VECTOR_PATH_READ: &str = "test_vectors/transcript-hashes.json";
@@ -90,14 +89,12 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) {
     ));
 
     // ... and `authenticated_content.auth.confirmation_tag` is a valid MAC for `authenticated_content` with key `confirmation_key` and input `confirmed_transcript_hash_after`.
-    let confirmation_key = ConfirmationKey::from_secret(Secret::from_slice(
-        &test_vector.confirmation_key,
-        ProtocolVersion::default(),
-        ciphersuite,
-    ));
+    let confirmation_key =
+        ConfirmationKey::from_secret(Secret::from_slice(&test_vector.confirmation_key));
     let got_confirmation_tag = confirmation_key
         .tag(
             provider.crypto(),
+            ciphersuite,
             &test_vector.confirmed_transcript_hash_after,
         )
         .unwrap();
@@ -233,7 +230,11 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
     // ... and the `confirmation_tag` ...
     let confirmation_tag = {
         confirmation_key
-            .tag(provider.crypto(), &confirmed_transcript_hash_after)
+            .tag(
+                provider.crypto(),
+                ciphersuite,
+                &confirmed_transcript_hash_after,
+            )
             .unwrap()
     };
 

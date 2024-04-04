@@ -104,7 +104,7 @@ fn test_failed_groupinfo_decryption(ciphersuite: Ciphersuite, provider: &impl Op
         .crypto()
         .derive_hpke_keypair(
             ciphersuite.hpke_config(),
-            Secret::random(ciphersuite, provider.rand(), None)
+            Secret::random(ciphersuite, provider.rand())
                 .expect("Not enough randomness.")
                 .as_slice(),
         )
@@ -312,14 +312,13 @@ fn test_psks(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // === Alice creates a group with a PSK ===
     let psk_id = vec![1u8, 2, 3];
 
-    let secret = Secret::random(ciphersuite, provider.rand(), None /* MLS version */)
-        .expect("Not enough randomness.");
+    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
     let external_psk = ExternalPsk::new(psk_id);
     let preshared_key_id =
         PreSharedKeyId::new(ciphersuite, provider.rand(), Psk::External(external_psk))
             .expect("An unexpected error occured.");
     preshared_key_id
-        .write_to_key_store(provider, ciphersuite, secret.as_slice())
+        .write_to_key_store(provider, secret.as_slice())
         .unwrap();
     let mut alice_group = CoreGroup::builder(
         GroupId::random(provider.rand()),

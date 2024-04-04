@@ -376,6 +376,7 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
             pt.set_sender(random_sender);
             pt.set_membership_tag(
                 provider.crypto(),
+                ciphersuite,
                 membership_key,
                 client_group.group().message_secrets().serialized_context(),
             )

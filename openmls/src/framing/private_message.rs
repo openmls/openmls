@@ -197,7 +197,7 @@ impl PrivateMessage {
         // Derive the sender data key from the key schedule using the ciphertext.
         let sender_data_key = message_secrets
             .sender_data_secret()
-            .derive_aead_key(provider.crypto(), &ciphertext)
+            .derive_aead_key(provider.crypto(), ciphersuite, &ciphertext)
             .map_err(LibraryError::unexpected_crypto_error)?;
         // Derive initial nonce from the key schedule using the ciphertext.
         let sender_data_nonce = message_secrets

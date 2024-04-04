@@ -303,11 +303,8 @@ pub fn run_test_vector(
 
         // Inject the test values into the group
 
-        let encryption_secret = EncryptionSecret::from_slice(
-            &hex_to_bytes(&test.encryption_secret),
-            group_context.protocol_version(),
-            ciphersuite,
-        );
+        let encryption_secret =
+            EncryptionSecret::from_slice(&hex_to_bytes(&test.encryption_secret));
         let own_index = LeafNodeIndex::new(0);
         let sender_index = LeafNodeIndex::new(1);
         let secret_tree = SecretTree::new(encryption_secret.clone(), TreeSize::new(2), own_index);
@@ -328,16 +325,9 @@ pub fn run_test_vector(
             message_secrets.replace_secret_tree(secret_tree);
         }
         message_secrets.set_serialized_context(serialized_group_context);
-        *message_secrets.sender_data_secret_mut() = SenderDataSecret::from_slice(
-            &hex_to_bytes(&test.sender_data_secret),
-            ProtocolVersion::Mls10,
-            ciphersuite,
-        );
-        message_secrets.set_membership_key(Secret::from_slice(
-            &hex_to_bytes(&test.membership_key),
-            ProtocolVersion::Mls10,
-            ciphersuite,
-        ));
+        *message_secrets.sender_data_secret_mut() =
+            SenderDataSecret::from_slice(&hex_to_bytes(&test.sender_data_secret));
+        message_secrets.set_membership_key(Secret::from_slice(&hex_to_bytes(&test.membership_key)));
 
         group
     }
@@ -463,6 +453,7 @@ pub fn run_test_vector(
         my_proposal_pub
             .set_membership_tag(
                 provider.crypto(),
+                ciphersuite,
                 sender_group.message_secrets().membership_key(),
                 sender_group.message_secrets().serialized_context(),
             )
@@ -618,6 +609,7 @@ pub fn run_test_vector(
         my_commit_pub_msg
             .set_membership_tag(
                 provider.crypto(),
+                ciphersuite,
                 sender_group.message_secrets().membership_key(),
                 sender_group.message_secrets().serialized_context(),
             )

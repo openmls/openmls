@@ -74,6 +74,7 @@ impl From<&PublicMessage> for SecretType {
 /// to the `DeriveTreeSecret` defined in Section 10.1 of the MLS specification.
 #[inline]
 pub(crate) fn derive_tree_secret(
+    ciphersuite: Ciphersuite,
     secret: &Secret,
     label: &str,
     generation: u32,
@@ -88,7 +89,13 @@ pub(crate) fn derive_tree_secret(
     );
     log_crypto!(trace, "Input secret {:x?}", secret.as_slice());
 
-    let secret = secret.kdf_expand_label(crypto, label, &generation.to_be_bytes(), length)?;
+    let secret = secret.kdf_expand_label(
+        crypto,
+        ciphersuite,
+        label,
+        &generation.to_be_bytes(),
+        length,
+    )?;
     log_crypto!(trace, "Derived secret {:x?}", secret.as_slice());
     Ok(secret)
 }
@@ -229,10 +236,20 @@ impl SecretTree {
 
         log::trace!("Deriving leaf node secrets for leaf {index:?}");
 
-        let handshake_ratchet_secret =
-            node_secret.kdf_expand_label(crypto, "handshake", b"", ciphersuite.hash_length())?;
-        let application_ratchet_secret =
-            node_secret.kdf_expand_label(crypto, "application", b"", ciphersuite.hash_length())?;
+        let handshake_ratchet_secret = node_secret.kdf_expand_label(
+            crypto,
+            ciphersuite,
+            "handshake",
+            b"",
+            ciphersuite.hash_length(),
+        )?;
+        let application_ratchet_secret = node_secret.kdf_expand_label(
+            crypto,
+            ciphersuite,
+            "application",
+            b"",
+            ciphersuite.hash_length(),
+        )?;
 
         log_crypto!(
             trace,
@@ -397,8 +414,10 @@ impl SecretTree {
         log_crypto!(trace, "Node secret: {:x?}", node_secret.as_slice());
         let left_index = left(index_in_tree);
         let right_index = right(index_in_tree);
-        let left_secret = node_secret.kdf_expand_label(crypto, "tree", b"left", hash_len)?;
-        let right_secret = node_secret.kdf_expand_label(crypto, "tree", b"right", hash_len)?;
+        let left_secret =
+            node_secret.kdf_expand_label(crypto, ciphersuite, "tree", b"left", hash_len)?;
+        let right_secret =
+            node_secret.kdf_expand_label(crypto, ciphersuite, "tree", b"right", hash_len)?;
         log_crypto!(
             trace,
             "Left node ({}) secret: {:x?}",
