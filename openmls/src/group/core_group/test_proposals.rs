@@ -1,5 +1,9 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::{
+    key_store::OpenMlsKeyStore,
+    types::{Ciphersuite, HpkePrivateKey},
+    OpenMlsProvider,
+};
 
 use super::CoreGroup;
 use crate::{
@@ -12,9 +16,10 @@ use crate::{
     },
     group::{
         config::CryptoConfig,
+        core_group::{node::leaf_node::Capabilities, KeyPackageBuilder, OtherProposal},
         errors::*,
+        proposal::CustomProposal,
         proposals::{ProposalQueue, ProposalStore, QueuedProposal},
-        public_group::errors::PublicGroupBuildError,
         test_core_group::setup_client,
         CreateCommitParams, GroupContext, GroupId, StagedCoreWelcome,
     },
@@ -615,6 +620,161 @@ fn test_group_context_extension_proposal(
     let staged_commit = bob_group
         .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], provider)
         .expect("error staging commit");
+    bob_group
+        .merge_commit(provider, staged_commit)
+        .expect("error merging commit");
+
+    alice_group
+        .merge_commit(provider, create_commit_result.staged_commit)
+        .expect("error merging pending commit");
+
+    assert_eq!(
+        alice_group
+            .export_secret(provider.crypto(), "label", b"gce test", 32)
+            .expect("Error exporting secret."),
+        bob_group
+            .export_secret(provider.crypto(), "label", b"gce test", 32)
+            .expect("Error exporting secret.")
+    )
+}
+
+#[apply(ciphersuites_and_providers)]
+fn custom_proposals(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+    // Basic group setup.
+    let group_aad = b"Alice's test group";
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
+
+    let (alice_credential, _, alice_signer, _alice_pk) =
+        setup_client("Alice", ciphersuite, provider);
+    let (bob_credential_with_key, _bob_key_package_bundle, bob_signer, _) =
+        setup_client("Bob", ciphersuite, provider);
+
+    // Create a custom proposal type
+    let custom_proposal_id = 0xFF00;
+    let custom_proposal_type = ProposalType::Other(custom_proposal_id);
+    let custom_proposal_capabilities =
+        Capabilities::new(None, None, None, Some(&[custom_proposal_type]), None);
+    // Create Bob's key package with support for the custom proposal type
+    let bob_key_package = KeyPackageBuilder::new()
+        .leaf_node_capabilities(custom_proposal_capabilities.clone())
+        .build(
+            CryptoConfig {
+                ciphersuite,
+                version: ProtocolVersion::default(),
+            },
+            provider,
+            &bob_signer,
+            bob_credential_with_key,
+        )
+        .unwrap();
+
+    // Create group with custom proposal as required capability
+    let required_custom_proposal = Extension::RequiredCapabilities(
+        RequiredCapabilitiesExtension::new(&[], &[custom_proposal_type], &[CredentialType::Basic]),
+    );
+    let mut alice_group = CoreGroup::builder(
+        GroupId::random(provider.rand()),
+        CryptoConfig::with_default_version(ciphersuite),
+        alice_credential,
+    )
+    .with_capabilities(custom_proposal_capabilities)
+    .with_group_context_extensions(Extensions::single(required_custom_proposal))
+    .unwrap()
+    .build(provider, &alice_signer)
+    .expect("Error creating CoreGroup.");
+
+    // Adding Bob
+    let bob_add_proposal = alice_group
+        .create_add_proposal(framing_parameters, bob_key_package.clone(), &alice_signer)
+        .expect("Could not create proposal");
+
+    let proposal_store = ProposalStore::from_queued_proposal(
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            provider.crypto(),
+            bob_add_proposal,
+        )
+        .expect("Could not create QueuedProposal."),
+    );
+    log::info!(" >>> Creating commit ...");
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .proposal_store(&proposal_store)
+        .force_self_update(false)
+        .build();
+    let create_commit_results = alice_group
+        .create_commit(params, provider, &alice_signer)
+        .expect("Error creating commit");
+
+    log::info!(" >>> Staging & merging commit ...");
+
+    alice_group
+        .merge_commit(provider, create_commit_results.staged_commit)
+        .expect("error merging pending commit");
+
+    let ratchet_tree = alice_group.public_group().export_ratchet_tree();
+
+    let private_key = provider
+        .key_store()
+        .read::<HpkePrivateKey>(bob_key_package.hpke_init_key().as_slice())
+        .unwrap();
+    let bob_key_package_bundle = KeyPackageBundle {
+        key_package: bob_key_package,
+        private_key,
+    };
+    let mut bob_group = StagedCoreWelcome::new_from_welcome(
+        create_commit_results
+            .welcome_option
+            .expect("An unexpected error occurred."),
+        Some(ratchet_tree.into()),
+        bob_key_package_bundle,
+        provider,
+        ResumptionPskStore::new(1024),
+    )
+    .and_then(|staged_join| staged_join.into_core_group(provider))
+    .expect("Error joining group.");
+
+    // Alice sends custom proposal.
+    let custom_proposal = alice_group
+        .create_custom_proposal(
+            framing_parameters,
+            CustomProposal((custom_proposal_id, vec![0, 1, 2, 3])),
+            &alice_signer,
+        )
+        .expect("Error creating gce proposal.");
+
+    let proposal_store = ProposalStore::from_queued_proposal(
+        QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            provider.crypto(),
+            custom_proposal,
+        )
+        .expect("Could not create QueuedProposal."),
+    );
+    log::info!(" >>> Creating commit ...");
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .proposal_store(&proposal_store)
+        .force_self_update(false)
+        .build();
+    let create_commit_result = alice_group
+        .create_commit(params, provider, &alice_signer)
+        .expect("Error creating commit");
+
+    log::info!(" >>> Staging & merging commit ...");
+
+    let staged_commit = bob_group
+        .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], provider)
+        .expect("error staging commit");
+
+    // Check that the proposal is present in the staged commit
+    assert!(staged_commit.queued_proposals().any(|qp| {
+        let Proposal::Other(custom_proposal) = qp.proposal() else {
+            return false;
+        };
+        custom_proposal.0 == custom_proposal_id
+            && custom_proposal.1 == OtherProposal(vec![0, 1, 2, 3].into())
+    }));
     bob_group
         .merge_commit(provider, staged_commit)
         .expect("error merging commit");
