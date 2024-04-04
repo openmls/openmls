@@ -1,11 +1,10 @@
 use openmls::{
-    prelude::{config::CryptoConfig, test_utils::new_credential, tls_codec::*, *},
+    prelude::{config::CryptoConfig, test_utils::new_credential, *},
     test_utils::*,
     *,
 };
 
 use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, OpenMlsProvider};
-use tls_codec::VLBytes;
 
 fn generate_key_package<KeyStore: OpenMlsKeyStore>(
     ciphersuite: Ciphersuite,
@@ -117,12 +116,10 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 
         // Check that Alice & Bob are the members of the group
         let members = alice_group.members().collect::<Vec<Member>>();
-        let credential0 =
-            VLBytes::tls_deserialize_exact(members[0].credential.serialized_content()).unwrap();
-        let credential1 =
-            VLBytes::tls_deserialize_exact(members[1].credential.serialized_content()).unwrap();
-        assert_eq!(credential0.as_slice(), b"Alice");
-        assert_eq!(credential1.as_slice(), b"Bob");
+        let credential0 = members[0].credential.serialized_content();
+        let credential1 = members[1].credential.serialized_content();
+        assert_eq!(credential0, b"Alice");
+        assert_eq!(credential1, b"Bob");
 
         let welcome: MlsMessageIn = welcome.into();
         let welcome = welcome
@@ -374,15 +371,12 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 
         // Check that Alice, Bob & Charlie are the members of the group
         let members = alice_group.members().collect::<Vec<Member>>();
-        let credential0 =
-            VLBytes::tls_deserialize_exact(members[0].credential.serialized_content()).unwrap();
-        let credential1 =
-            VLBytes::tls_deserialize_exact(members[1].credential.serialized_content()).unwrap();
-        let credential2 =
-            VLBytes::tls_deserialize_exact(members[2].credential.serialized_content()).unwrap();
-        assert_eq!(credential0.as_slice(), b"Alice");
-        assert_eq!(credential1.as_slice(), b"Bob");
-        assert_eq!(credential2.as_slice(), b"Charlie");
+        let credential0 = members[0].credential.serialized_content();
+        let credential1 = members[1].credential.serialized_content();
+        let credential2 = members[2].credential.serialized_content();
+        assert_eq!(credential0, b"Alice");
+        assert_eq!(credential1, b"Bob");
+        assert_eq!(credential2, b"Charlie");
 
         // === Charlie sends a message to the group ===
         let message_charlie = b"Hi, I'm Charlie!";
@@ -575,12 +569,10 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 
         // Check that Alice & Charlie are the members of the group
         let members = alice_group.members().collect::<Vec<Member>>();
-        let credential0 =
-            VLBytes::tls_deserialize_exact(members[0].credential.serialized_content()).unwrap();
-        let credential1 =
-            VLBytes::tls_deserialize_exact(members[1].credential.serialized_content()).unwrap();
-        assert_eq!(credential0.as_slice(), b"Alice");
-        assert_eq!(credential1.as_slice(), b"Charlie");
+        let credential0 = members[0].credential.serialized_content();
+        let credential1 = members[1].credential.serialized_content();
+        assert_eq!(credential0, b"Alice");
+        assert_eq!(credential1, b"Charlie");
 
         // Check that Bob can no longer send messages
         assert!(bob_group
@@ -711,12 +703,10 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 
         // Check that Alice & Bob are the members of the group
         let members = alice_group.members().collect::<Vec<Member>>();
-        let credential0 =
-            VLBytes::tls_deserialize_exact(members[0].credential.serialized_content()).unwrap();
-        let credential1 =
-            VLBytes::tls_deserialize_exact(members[1].credential.serialized_content()).unwrap();
-        assert_eq!(credential0.as_slice(), b"Alice");
-        assert_eq!(credential1.as_slice(), b"Bob");
+        let credential0 = members[0].credential.serialized_content();
+        let credential1 = members[1].credential.serialized_content();
+        assert_eq!(credential0, b"Alice");
+        assert_eq!(credential1, b"Bob");
 
         let welcome: MlsMessageIn = welcome_option.expect("Welcome was not returned").into();
         let welcome = welcome
@@ -739,24 +729,20 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 
         // Check that Alice & Bob are the members of the group
         let members = alice_group.members().collect::<Vec<Member>>();
-        let credential0 =
-            VLBytes::tls_deserialize_exact(members[0].credential.serialized_content()).unwrap();
-        let credential1 =
-            VLBytes::tls_deserialize_exact(members[1].credential.serialized_content()).unwrap();
-        assert_eq!(credential0.as_slice(), b"Alice");
-        assert_eq!(credential1.as_slice(), b"Bob");
+        let credential0 = members[0].credential.serialized_content();
+        let credential1 = members[1].credential.serialized_content();
+        assert_eq!(credential0, b"Alice");
+        assert_eq!(credential1, b"Bob");
 
         // Make sure the group contains two members
         assert_eq!(bob_group.members().count(), 2);
 
         // Check that Alice & Bob are the members of the group
         let members = bob_group.members().collect::<Vec<Member>>();
-        let credential0 =
-            VLBytes::tls_deserialize_exact(members[0].credential.serialized_content()).unwrap();
-        let credential1 =
-            VLBytes::tls_deserialize_exact(members[1].credential.serialized_content()).unwrap();
-        assert_eq!(credential0.as_slice(), b"Alice");
-        assert_eq!(credential1.as_slice(), b"Bob");
+        let credential0 = members[0].credential.serialized_content();
+        let credential1 = members[1].credential.serialized_content();
+        assert_eq!(credential0, b"Alice");
+        assert_eq!(credential1, b"Bob");
 
         // === Alice sends a message to the group ===
         let message_alice = b"Hi, I'm Alice!";
@@ -892,9 +878,8 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 
         // Check that Alice is the only member of the group
         let members = alice_group.members().collect::<Vec<Member>>();
-        let credential0 =
-            VLBytes::tls_deserialize_exact(members[0].credential.serialized_content()).unwrap();
-        assert_eq!(credential0.as_slice(), b"Alice");
+        let credential0 = members[0].credential.serialized_content();
+        assert_eq!(credential0, b"Alice");
 
         // === Save the group state ===
 
@@ -1058,13 +1043,11 @@ fn addition_order(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         // in the original API call. After merging, bob should be at index 1 and
         // charlie at index 2.
         let members = alice_group.members().collect::<Vec<Member>>();
-        let credential1 =
-            VLBytes::tls_deserialize_exact(members[1].credential.serialized_content()).unwrap();
-        let credential2 =
-            VLBytes::tls_deserialize_exact(members[2].credential.serialized_content()).unwrap();
-        assert_eq!(credential1.as_slice(), b"Bob");
+        let credential1 = members[1].credential.serialized_content();
+        let credential2 = members[2].credential.serialized_content();
+        assert_eq!(credential1, b"Bob");
         assert_eq!(members[1].index, LeafNodeIndex::new(1));
-        assert_eq!(credential2.as_slice(), b"Charlie");
+        assert_eq!(credential2, b"Charlie");
         assert_eq!(members[2].index, LeafNodeIndex::new(2));
     }
 }

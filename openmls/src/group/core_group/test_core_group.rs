@@ -1,7 +1,7 @@
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{crypto::OpenMlsCrypto, types::HpkeCiphertext, OpenMlsProvider};
-use tls_codec::{Deserialize, Serialize};
+use tls_codec::Serialize;
 
 use crate::{
     binary_tree::*,
@@ -647,11 +647,7 @@ fn test_proposal_application_after_self_was_removed(
                  index: _,
                  credential,
                  ..
-             }| {
-                let identity =
-                    VLBytes::tls_deserialize_exact(credential.serialized_content()).unwrap();
-                identity.as_slice() == b"Bob"
-            },
+             }| { credential.serialized_content() == b"Bob" },
         )
         .expect("Couldn't find Bob in tree.")
         .index;
@@ -740,28 +736,23 @@ fn test_proposal_application_after_self_was_removed(
         // didn't get updated.
         assert_eq!(alice_member.index, bob_member.index);
 
-        let alice_id =
-            VLBytes::tls_deserialize_exact(alice_member.credential.serialized_content()).unwrap();
-        let bob_id =
-            VLBytes::tls_deserialize_exact(bob_member.credential.serialized_content()).unwrap();
-        let charlie_id =
-            VLBytes::tls_deserialize_exact(charlie_member.credential.serialized_content()).unwrap();
-        assert_eq!(alice_id.as_slice(), bob_id.as_slice());
+        let alice_id = alice_member.credential.serialized_content();
+        let bob_id = bob_member.credential.serialized_content();
+        let charlie_id = charlie_member.credential.serialized_content();
+        assert_eq!(alice_id, bob_id);
         assert_eq!(alice_member.signature_key, bob_member.signature_key);
         assert_eq!(charlie_member.index, bob_member.index);
-        assert_eq!(charlie_id.as_slice(), bob_id.as_slice());
+        assert_eq!(charlie_id, bob_id);
         assert_eq!(charlie_member.signature_key, bob_member.signature_key);
         assert_eq!(charlie_member.encryption_key, alice_member.encryption_key);
     }
 
     let mut bob_members = bob_group.public_group().members();
 
-    let bob_next_id =
-        VLBytes::tls_deserialize_exact(bob_members.next().unwrap().credential.serialized_content())
-            .unwrap();
-    assert_eq!(bob_next_id.as_slice(), b"Alice");
-    let bob_next_id =
-        VLBytes::tls_deserialize_exact(bob_members.next().unwrap().credential.serialized_content())
-            .unwrap();
-    assert_eq!(bob_next_id.as_slice(), b"Charlie");
+    let member = bob_members.next().unwrap();
+    let bob_next_id = member.credential.serialized_content();
+    assert_eq!(bob_next_id, b"Alice");
+    let member = bob_members.next().unwrap();
+    let bob_next_id = member.credential.serialized_content();
+    assert_eq!(bob_next_id, b"Charlie");
 }

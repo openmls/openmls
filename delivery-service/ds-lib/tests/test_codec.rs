@@ -11,7 +11,7 @@ fn test_client_info() {
     let client_name = "Client1";
     let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
 
-    let credential = BasicCredential::new(client_name.as_bytes().to_vec()).unwrap();
+    let credential = BasicCredential::new(client_name.as_bytes().to_vec());
     let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
     let credential_with_key = CredentialWithKey {
         credential: credential.into(),
