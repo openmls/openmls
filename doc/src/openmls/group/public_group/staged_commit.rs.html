@@ -257,6 +257,37 @@
 <a href="#255" id="255">255</a>
 <a href="#256" id="256">256</a>
 <a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{<span class="kw">super</span>::errors::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 <span class="kw">use crate</span>::{
     framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, Sender},
@@ -269,6 +300,36 @@
     },
     messages::{proposals::ProposalOrRef, Commit},
 };
+
+<span class="attr">#[derive(Debug, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>PublicStagedCommitState {
+    <span class="kw">pub</span>(<span class="kw">super</span>) staged_diff: StagedPublicGroupDiff,
+    <span class="kw">pub</span>(<span class="kw">super</span>) update_path_leaf_node: <span class="prelude-ty">Option</span>&lt;LeafNode&gt;,
+}
+
+<span class="kw">impl </span>PublicStagedCommitState {
+    <span class="kw">pub fn </span>new(
+        staged_diff: StagedPublicGroupDiff,
+        update_path_leaf_node: <span class="prelude-ty">Option</span>&lt;LeafNode&gt;,
+    ) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            staged_diff,
+            update_path_leaf_node,
+        }
+    }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>into_staged_diff(<span class="self">self</span>) -&gt; StagedPublicGroupDiff {
+        <span class="self">self</span>.staged_diff
+    }
+
+    <span class="kw">pub fn </span>update_path_leaf_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>LeafNode&gt; {
+        <span class="self">self</span>.update_path_leaf_node.as_ref()
+    }
+
+    <span class="kw">pub fn </span>staged_diff(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>StagedPublicGroupDiff {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.staged_diff
+    }
+}
 
 <span class="kw">impl </span>PublicGroup {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_commit&lt;<span class="lifetime">'a</span>&gt;(
@@ -431,23 +492,22 @@
     ///  - ValSem244
     /// Returns an error if the given commit was sent by the owner of this
     /// group.
-    /// TODO #1255: This will be used by the `process_message` function of the
-    /// `PublicGroup` later on.
-    </span><span class="attr">#[allow(unused)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>stage_commit(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         mls_content: <span class="kw-2">&amp;</span>AuthenticatedContent,
         proposal_store: <span class="kw-2">&amp;</span>ProposalStore,
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;StagedCommit, StageCommitError&gt; {
-        <span class="kw">let </span>ciphersuite = <span class="self">self</span>.ciphersuite();
-
         <span class="kw">let </span>(commit, proposal_queue, sender_index) =
             <span class="self">self</span>.validate_commit(mls_content, proposal_store, crypto)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>staged_diff = <span class="self">self</span>.stage_diff(mls_content, <span class="kw-2">&amp;</span>proposal_queue, sender_index, crypto)<span class="question-mark">?</span>;
+        <span class="kw">let </span>staged_state = PublicStagedCommitState {
+            staged_diff,
+            update_path_leaf_node: commit.path.as_ref().map(|p| p.leaf_node().clone()),
+        };
 
-        <span class="kw">let </span>staged_commit_state = StagedCommitState::PublicState(Box::new(staged_diff));
+        <span class="kw">let </span>staged_commit_state = StagedCommitState::PublicState(Box::new(staged_state));
 
         <span class="prelude-val">Ok</span>(StagedCommit::new(proposal_queue, staged_commit_state))
     }
@@ -508,7 +568,9 @@
     /// might throw a `LibraryError`.
     </span><span class="kw">pub fn </span>merge_commit(<span class="kw-2">&amp;mut </span><span class="self">self</span>, staged_commit: StagedCommit) {
         <span class="kw">match </span>staged_commit.into_state() {
-            StagedCommitState::PublicState(staged_diff) =&gt; <span class="self">self</span>.merge_diff(<span class="kw-2">*</span>staged_diff),
+            StagedCommitState::PublicState(staged_state) =&gt; {
+                <span class="self">self</span>.merge_diff(staged_state.staged_diff)
+            }
             StagedCommitState::GroupMember(<span class="kw">_</span>) =&gt; (),
         }
         <span class="self">self</span>.proposal_store.empty()

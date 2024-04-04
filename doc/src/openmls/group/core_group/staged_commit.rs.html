@@ -571,11 +571,22 @@
 <a href="#569" id="569">569</a>
 <a href="#570" id="570">570</a>
 <a href="#571" id="571">571</a>
+<a href="#572" id="572">572</a>
+<a href="#573" id="573">573</a>
+<a href="#574" id="574">574</a>
+<a href="#575" id="575">575</a>
+<a href="#576" id="576">576</a>
+<a href="#577" id="577">577</a>
+<a href="#578" id="578">578</a>
+<a href="#579" id="579">579</a>
+<a href="#580" id="580">580</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>core::fmt::Debug;
 <span class="kw">use </span>std::mem;
 
 <span class="kw">use </span>openmls_traits::key_store::OpenMlsKeyStore;
 <span class="kw">use </span>public_group::diff::{apply_proposals::ApplyProposalsValues, StagedPublicGroupDiff};
+
+<span class="kw">use </span><span class="self">self</span>::public_group::staged_commit::PublicStagedCommitState;
 
 <span class="kw">use super</span>::{<span class="kw">super</span>::errors::<span class="kw-2">*</span>, proposals::ProposalStore, <span class="kw-2">*</span>};
 <span class="kw">use crate</span>::{
@@ -719,9 +730,13 @@
         <span class="comment">// Check if we were removed from the group
         </span><span class="kw">if </span>apply_proposals_values.self_removed {
             <span class="kw">let </span>staged_diff = diff.into_staged_diff(provider.crypto(), ciphersuite)<span class="question-mark">?</span>;
+            <span class="kw">let </span>staged_state = PublicStagedCommitState::new(
+                staged_diff,
+                commit.path.as_ref().map(|path| path.leaf_node().clone()),
+            );
             <span class="kw">return </span><span class="prelude-val">Ok</span>(StagedCommit::new(
                 proposal_queue,
-                StagedCommitState::PublicState(Box::new(staged_diff)),
+                StagedCommitState::PublicState(Box::new(staged_state)),
             ));
         }
 
@@ -885,8 +900,9 @@
         // that are still relevant in the new epoch.
         </span><span class="kw">let </span>old_epoch_keypairs = <span class="self">self</span>.read_epoch_keypairs(provider.key_store());
         <span class="kw">match </span>staged_commit.state {
-            StagedCommitState::PublicState(staged_diff) =&gt; {
-                <span class="self">self</span>.public_group.merge_diff(<span class="kw-2">*</span>staged_diff);
+            StagedCommitState::PublicState(staged_state) =&gt; {
+                <span class="self">self</span>.public_group
+                    .merge_diff(staged_state.into_staged_diff());
                 <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
             }
             StagedCommitState::GroupMember(state) =&gt; {
@@ -973,7 +989,7 @@
 
 <span class="attr">#[derive(Debug, Serialize, Deserialize)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>StagedCommitState {
-    PublicState(Box&lt;StagedPublicGroupDiff&gt;),
+    PublicState(Box&lt;PublicStagedCommitState&gt;),
     GroupMember(Box&lt;MemberStagedCommitState&gt;),
 }
 
@@ -1022,7 +1038,9 @@
     <span class="doccomment">/// Returns the leaf node of the (optional) update path.
     </span><span class="kw">pub fn </span>update_path_leaf_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>LeafNode&gt; {
         <span class="kw">match </span><span class="self">self</span>.state {
-            StagedCommitState::PublicState(<span class="kw">_</span>) =&gt; <span class="prelude-val">None</span>,
+            StagedCommitState::PublicState(<span class="kw-2">ref </span>public_state) =&gt; {
+                public_state.update_path_leaf_node()
+            }
             StagedCommitState::GroupMember(<span class="kw-2">ref </span>group_member_state) =&gt; {
                 group_member_state.update_path_leaf_node.as_ref()
             }
@@ -1085,7 +1103,7 @@
     <span class="doccomment">/// Returns the [`GroupContext`] of the staged commit state.
     </span><span class="kw">pub fn </span>group_context(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupContext {
         <span class="kw">match </span><span class="self">self</span>.state {
-            StagedCommitState::PublicState(<span class="kw-2">ref </span>ps) =&gt; ps.group_context(),
+            StagedCommitState::PublicState(<span class="kw-2">ref </span>ps) =&gt; ps.staged_diff().group_context(),
             StagedCommitState::GroupMember(<span class="kw-2">ref </span>gm) =&gt; gm.group_context(),
         }
     }
