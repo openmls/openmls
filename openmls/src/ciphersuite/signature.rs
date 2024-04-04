@@ -128,8 +128,9 @@ pub struct OpenMlsSignaturePublicKey {
     pub(in crate::ciphersuite) value: VLBytes,
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-utils"))]
 impl Signature {
+    #[cfg(test)]
     pub(crate) fn modify(&mut self, value: &[u8]) {
         self.value = value.to_vec().into();
     }
