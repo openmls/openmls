@@ -1,9 +1,6 @@
 //! # Proposals
 //!
 //! This module defines all the different types of Proposals.
-//!
-//! To find out if a specific proposal type is supported,
-//! [`ProposalType::is_supported()`] can be used.
 
 use crate::{
     ciphersuite::{hash_ref::ProposalRef, signable::Verifiable},
