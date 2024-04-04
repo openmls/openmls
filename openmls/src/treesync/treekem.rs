@@ -32,7 +32,6 @@ use crate::{
     messages::{proposals::AddProposal, EncryptedGroupSecrets, GroupSecrets, PathSecret},
     schedule::{psk::PreSharedKeyId, CommitSecret, JoinerSecret},
     treesync::node::NodeReference,
-    versions::ProtocolVersion,
 };
 
 impl<'a> TreeSyncDiff<'a> {
@@ -133,7 +132,6 @@ impl<'a> TreeSyncDiff<'a> {
         let path_secret = PathSecret::decrypt(
             crypto,
             ciphersuite,
-            params.version,
             ciphertext,
             decryption_key,
             params.group_context,
@@ -231,7 +229,6 @@ impl<'a> TreeSyncDiff<'a> {
 }
 
 pub(crate) struct DecryptPathParams<'a> {
-    pub(crate) version: ProtocolVersion,
     pub(crate) update_path: &'a [UpdatePathNode],
     pub(crate) sender_leaf_index: LeafNodeIndex,
     pub(crate) exclusion_list: &'a HashSet<&'a LeafNodeIndex>,

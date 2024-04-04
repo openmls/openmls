@@ -128,6 +128,7 @@ fn test_update_proposal_encoding(provider: &impl OpenMlsProvider) {
         update
             .set_membership_tag(
                 provider.crypto(),
+                group_state.ciphersuite(),
                 group_state.message_secrets().membership_key(),
                 group_state.message_secrets().serialized_context(),
             )
@@ -181,6 +182,7 @@ fn test_add_proposal_encoding(provider: &impl OpenMlsProvider) {
             .into();
         add.set_membership_tag(
             provider.crypto(),
+            group_state.ciphersuite(),
             group_state.message_secrets().membership_key(),
             group_state.message_secrets().serialized_context(),
         )
@@ -224,6 +226,7 @@ fn test_remove_proposal_encoding(provider: &impl OpenMlsProvider) {
         remove
             .set_membership_tag(
                 provider.crypto(),
+                group_state.ciphersuite(),
                 group_state.message_secrets().membership_key(),
                 group_state.message_secrets().serialized_context(),
             )
@@ -324,6 +327,7 @@ fn test_commit_encoding(provider: &impl OpenMlsProvider) {
         commit
             .set_membership_tag(
                 provider.crypto(),
+                group_state.ciphersuite(),
                 group_state.message_secrets().membership_key(),
                 group_state.message_secrets().serialized_context(),
             )

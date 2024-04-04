@@ -34,7 +34,6 @@ use crate::{
     messages::{proposals::Proposal, proposals_in::ProposalIn, ConfirmationTag},
     test_utils::*,
     treesync::{node::NodeIn, RatchetTree, RatchetTreeIn, TreeSync},
-    versions::ProtocolVersion,
 };
 
 #[derive(Deserialize)]
@@ -79,7 +78,8 @@ fn run_test_vector(test: TestElement, provider: &impl OpenMlsProvider) -> Result
     let initial_confirmation_tag = ConfirmationTag(
         Mac::new(
             provider.crypto(),
-            &Secret::random(ciphersuite, provider.rand(), ProtocolVersion::Mls10).unwrap(),
+            ciphersuite,
+            &Secret::random(ciphersuite, provider.rand()).unwrap(),
             &[],
         )
         .unwrap(),

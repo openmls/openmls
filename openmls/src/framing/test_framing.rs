@@ -22,7 +22,6 @@ use crate::{
     schedule::psk::{store::ResumptionPskStore, PskSecret},
     test_utils::frankenstein::*,
     tree::{secret_tree::SecretTree, sender_ratchet::SenderRatchetConfiguration},
-    versions::ProtocolVersion,
 };
 
 /// This tests serializing/deserializing PublicMessage
@@ -58,11 +57,15 @@ fn codec_plaintext(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .into();
 
     let membership_key = MembershipKey::from_secret(
-        Secret::random(ciphersuite, provider.rand(), None /* MLS version */)
-            .expect("Not enough randomness."),
+        Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness."),
     );
-    orig.set_membership_tag(provider.crypto(), &membership_key, &serialized_context)
-        .expect("Error setting membership tag.");
+    orig.set_membership_tag(
+        provider.crypto(),
+        ciphersuite,
+        &membership_key,
+        &serialized_context,
+    )
+    .expect("Error setting membership tag.");
 
     let enc = orig
         .tls_serialize_detached()
@@ -107,8 +110,8 @@ fn codec_ciphertext(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let mut key_schedule = KeySchedule::init(
         ciphersuite,
         provider.crypto(),
-        &JoinerSecret::random(ciphersuite, provider.rand(), ProtocolVersion::default()),
-        PskSecret::from(Secret::zero(ciphersuite, ProtocolVersion::Mls10)),
+        &JoinerSecret::random(ciphersuite, provider.rand()),
+        PskSecret::from(Secret::zero(ciphersuite)),
     )
     .expect("Could not create KeySchedule.");
 
@@ -160,16 +163,8 @@ fn wire_format_checks(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider)
         .rand()
         .random_vec(ciphersuite.hash_length())
         .expect("An unexpected error occurred.");
-    let sender_encryption_secret = EncryptionSecret::from_slice(
-        &encryption_secret_bytes[..],
-        ProtocolVersion::default(),
-        ciphersuite,
-    );
-    let receiver_encryption_secret = EncryptionSecret::from_slice(
-        &encryption_secret_bytes[..],
-        ProtocolVersion::default(),
-        ciphersuite,
-    );
+    let sender_encryption_secret = EncryptionSecret::from_slice(&encryption_secret_bytes[..]);
+    let receiver_encryption_secret = EncryptionSecret::from_slice(&encryption_secret_bytes[..]);
     let sender_secret_tree = SecretTree::new(
         sender_encryption_secret,
         TreeSize::new(2u32),
@@ -333,8 +328,7 @@ fn membership_tag(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         Extensions::empty(),
     );
     let membership_key = MembershipKey::from_secret(
-        Secret::random(ciphersuite, provider.rand(), None /* MLS version */)
-            .expect("Not enough randomness."),
+        Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness."),
     );
     let public_message: PublicMessage = AuthenticatedContent::new_application(
         LeafNodeIndex::new(987543210),
@@ -350,17 +344,27 @@ fn membership_tag(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     let serialized_context = group_context.tls_serialize_detached().unwrap();
     public_message
-        .set_membership_tag(provider, &membership_key, &serialized_context)
+        .set_membership_tag(provider, ciphersuite, &membership_key, &serialized_context)
         .expect("Error setting membership tag.");
 
     println!(
         "Membership tag error: {:?}",
-        public_message.verify_membership(provider.crypto(), &membership_key, &serialized_context)
+        public_message.verify_membership(
+            provider.crypto(),
+            ciphersuite,
+            &membership_key,
+            &serialized_context
+        )
     );
 
     // Verify signature & membership tag
     assert!(public_message
-        .verify_membership(provider.crypto(), &membership_key, &serialized_context)
+        .verify_membership(
+            provider.crypto(),
+            ciphersuite,
+            &membership_key,
+            &serialized_context
+        )
         .is_ok());
 
     // Change the content of the plaintext message
@@ -368,7 +372,12 @@ fn membership_tag(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     // Expect the signature & membership tag verification to fail
     assert!(public_message
-        .verify_membership(provider.crypto(), &membership_key, &serialized_context)
+        .verify_membership(
+            provider.crypto(),
+            ciphersuite,
+            &membership_key,
+            &serialized_context
+        )
         .is_err());
 }
 

@@ -13,6 +13,7 @@ use super::{
     *,
 };
 
+use openmls_traits::types::Ciphersuite;
 use std::io::{Read, Write};
 use tls_codec::{Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait};
 
@@ -106,6 +107,7 @@ impl PublicMessageIn {
     pub(crate) fn set_membership_tag(
         &mut self,
         provider: &impl openmls_traits::OpenMlsProvider,
+        ciphersuite: Ciphersuite,
         membership_key: &MembershipKey,
         serialized_context: &[u8],
     ) -> Result<(), LibraryError> {
@@ -118,7 +120,8 @@ impl PublicMessageIn {
         )
         .map_err(LibraryError::missing_bound_check)?;
         let tbm_payload = AuthenticatedContentTbm::new(&tbs_payload, &self.auth)?;
-        let membership_tag = membership_key.tag_message(provider.crypto(), tbm_payload)?;
+        let membership_tag =
+            membership_key.tag_message(provider.crypto(), ciphersuite, tbm_payload)?;
 
         self.membership_tag = Some(membership_tag);
         Ok(())
@@ -131,6 +134,7 @@ impl PublicMessageIn {
     pub(crate) fn verify_membership(
         &self,
         crypto: &impl openmls_traits::crypto::OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
         membership_key: &MembershipKey,
         serialized_context: &[u8],
     ) -> Result<(), ValidationError> {
@@ -146,7 +150,8 @@ impl PublicMessageIn {
         )
         .map_err(LibraryError::missing_bound_check)?;
         let tbm_payload = AuthenticatedContentTbm::new(&tbs_payload, &self.auth)?;
-        let expected_membership_tag = &membership_key.tag_message(crypto, tbm_payload)?;
+        let expected_membership_tag =
+            &membership_key.tag_message(crypto, ciphersuite, tbm_payload)?;
 
         // Verify the membership tag
         if let Some(membership_tag) = &self.membership_tag {
