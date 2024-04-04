@@ -1318,21 +1318,23 @@ fn builder_pattern(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
 // Test the successful update of Group Context Extension with type Extension::Unknown(0xff11)
 #[apply(ciphersuites_and_providers)]
-fn update_group_context_with_unknown_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn update_group_context_with_unknown_extension(
+    ciphersuite: Ciphersuite,
+    provider: &impl OpenMlsProvider,
+) {
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
         setup_client("Alice", ciphersuite, provider);
 
     // Define the unknown group context extension and initial data
     let unknown_extension_data = vec![1, 2]; // Sample data for the extension
     let unknown_gc_extension = Extension::Unknown(0xff11, UnknownExtension(unknown_extension_data));
-    
-    let required_extension_types = &[
-        ExtensionType::Unknown(0xff11),
-    ];
 
-    let required_capabilities =
-    Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(required_extension_types, &[], &[]));
-    
+    let required_extension_types = &[ExtensionType::Unknown(0xff11)];
+
+    let required_capabilities = Extension::RequiredCapabilities(
+        RequiredCapabilitiesExtension::new(required_extension_types, &[], &[]),
+    );
+
     let capabilities = Capabilities::new(None, None, Some(required_extension_types), None, None);
 
     let test_gc_extensions = Extensions::from_vec(vec![
@@ -1340,7 +1342,6 @@ fn update_group_context_with_unknown_extension(ciphersuite: Ciphersuite, provide
         required_capabilities.clone(),
     ])
     .expect("error creating test group context extensions");
-
 
     // === Alice creates a group ===
     let mut alice_group = MlsGroup::builder()
@@ -1351,11 +1352,14 @@ fn update_group_context_with_unknown_extension(ciphersuite: Ciphersuite, provide
         .expect("error adding leaf node unknown extension to builder")
         .build(provider, &alice_signer, alice_credential_with_key)
         .expect("error creating group using builder");
-    
+
     // Create updated unknown extension
     let updated_unknown_extension_data = vec![3, 4]; // Sample data for the extension
-    let updated_unknown_gc_extension = Extension::Unknown(0xff11, UnknownExtension(updated_unknown_extension_data.clone()));
-    
+    let updated_unknown_gc_extension = Extension::Unknown(
+        0xff11,
+        UnknownExtension(updated_unknown_extension_data.clone()),
+    );
+
     let mut updated_extensions = test_gc_extensions.clone();
     updated_extensions.add_or_replace(updated_unknown_gc_extension);
 
@@ -1364,7 +1368,11 @@ fn update_group_context_with_unknown_extension(ciphersuite: Ciphersuite, provide
         .propose_group_context_extensions(provider, updated_extensions, &alice_signer)
         .expect("failed to propose group context extensions with unknown extension");
 
-    assert_eq!(alice_group.pending_proposals().count(), 1, "Expected one pending proposal");
+    assert_eq!(
+        alice_group.pending_proposals().count(),
+        1,
+        "Expected one pending proposal"
+    );
 
     // === Commit to the proposed group context extension ===
     alice_group
@@ -1377,10 +1385,7 @@ fn update_group_context_with_unknown_extension(ciphersuite: Ciphersuite, provide
         .expect("error merging pending commit");
 
     // === Verify the group context extension was updated ===
-    let group_context_extensions = alice_group
-        .group()
-        .context()
-        .extensions();
+    let group_context_extensions = alice_group.group().context().extensions();
 
     // Extract and verify the unknown extension's data
     let mut extracted_data = None;
@@ -1390,10 +1395,16 @@ fn update_group_context_with_unknown_extension(ciphersuite: Ciphersuite, provide
         }
     }
 
-    assert!(extracted_data.is_some(), "Extension::Unknown(0xff11) should be present in the group context");
-    assert_eq!(extracted_data.unwrap(), vec![3, 4], "The data of Extension::Unknown(0xff11) does not match the expected data");
+    assert!(
+        extracted_data.is_some(),
+        "Extension::Unknown(0xff11) should be present in the group context"
+    );
+    assert_eq!(
+        extracted_data.unwrap(),
+        vec![3, 4],
+        "The data of Extension::Unknown(0xff11) does not match the expected data"
+    );
 }
-
 
 // Test that unknown group context and leaf node extensions can be used in groups
 #[apply(ciphersuites_and_providers)]
