@@ -28,6 +28,14 @@ pub struct RatchetTreeExtension {
     ratchet_tree: RatchetTreeIn,
 }
 
+impl From<RatchetTreeExtension> for openmls_spec_types::extensions::RatchetTreeExtension {
+    fn from(value: RatchetTreeExtension) -> Self {
+        openmls_spec_types::extensions::RatchetTreeExtension {
+            ratchet_tree: value.ratchet_tree.into(),
+        }
+    }
+}
+
 impl RatchetTreeExtension {
     /// Build a new extension from a vector of [`Node`](crate::treesync::node::Node)s.
     pub fn new(ratchet_tree: RatchetTree) -> Self {

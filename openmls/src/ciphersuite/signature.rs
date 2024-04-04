@@ -23,6 +23,12 @@ pub struct Signature {
     value: VLBytes,
 }
 
+impl From<Signature> for openmls_spec_types::Signature {
+    fn from(value: Signature) -> Self {
+        openmls_spec_types::Signature { value: value.value }
+    }
+}
+
 impl From<Vec<u8>> for Signature {
     fn from(value: Vec<u8>) -> Self {
         Self {
@@ -76,6 +82,14 @@ impl From<(&str, &[u8])> for SignContent {
 )]
 pub struct SignaturePublicKey {
     pub(in crate::ciphersuite) value: VLBytes,
+}
+
+impl From<SignaturePublicKey> for openmls_spec_types::keys::SignaturePublicKey {
+    fn from(value: SignaturePublicKey) -> Self {
+        openmls_spec_types::keys::SignaturePublicKey {
+            value: value.value.into(),
+        }
+    }
 }
 
 impl From<Vec<u8>> for SignaturePublicKey {

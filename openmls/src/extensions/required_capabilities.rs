@@ -49,6 +49,26 @@ pub struct RequiredCapabilitiesExtension {
     credential_types: Vec<CredentialType>,
 }
 
+impl From<RequiredCapabilitiesExtension>
+    for openmls_spec_types::extensions::RequiredCapabilitiesExtension
+{
+    fn from(value: RequiredCapabilitiesExtension) -> Self {
+        openmls_spec_types::extensions::RequiredCapabilitiesExtension {
+            extension_types: value
+                .extension_types
+                .into_iter()
+                .map(|t| t.into())
+                .collect(),
+            proposal_types: value.proposal_types.into_iter().map(|t| t.into()).collect(),
+            credential_types: value
+                .credential_types
+                .into_iter()
+                .map(|t| t.into())
+                .collect(),
+        }
+    }
+}
+
 impl RequiredCapabilitiesExtension {
     /// Creates a new [`RequiredCapabilitiesExtension`] from extension and proposal types.
     pub fn new(

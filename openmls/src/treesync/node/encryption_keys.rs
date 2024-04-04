@@ -35,6 +35,14 @@ pub struct EncryptionKey {
     key: HpkePublicKey,
 }
 
+impl From<EncryptionKey> for openmls_spec_types::keys::EncryptionKey {
+    fn from(value: EncryptionKey) -> Self {
+        openmls_spec_types::keys::EncryptionKey {
+            key: value.key.into(),
+        }
+    }
+}
+
 impl EncryptionKey {
     /// Return the internal [`HpkePublicKey`].
     pub(crate) fn key(&self) -> &HpkePublicKey {

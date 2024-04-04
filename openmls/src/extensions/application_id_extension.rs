@@ -23,6 +23,14 @@ pub struct ApplicationIdExtension {
     key_id: VLBytes,
 }
 
+impl From<ApplicationIdExtension> for openmls_spec_types::extensions::ApplicationIdExtension {
+    fn from(value: ApplicationIdExtension) -> Self {
+        openmls_spec_types::extensions::ApplicationIdExtension {
+            key_id: value.key_id.into(),
+        }
+    }
+}
+
 impl ApplicationIdExtension {
     /// Create a new key identifier extension from a byte slice.
     pub fn new(id: &[u8]) -> Self {

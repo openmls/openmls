@@ -58,6 +58,15 @@ pub enum NodeIn {
     ParentNode(ParentNode),
 }
 
+impl From<NodeIn> for openmls_spec_types::tree::Node {
+    fn from(value: NodeIn) -> Self {
+        match value {
+            NodeIn::LeafNode(leaf) => openmls_spec_types::tree::Node::LeafNode(leaf.into()),
+            NodeIn::ParentNode(parent) => openmls_spec_types::tree::Node::ParentNode(parent.into()),
+        }
+    }
+}
+
 impl From<Node> for NodeIn {
     fn from(node: Node) -> Self {
         match node {

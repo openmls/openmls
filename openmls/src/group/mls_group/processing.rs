@@ -34,7 +34,7 @@ impl MlsGroup {
                 MlsGroupStateError::UseAfterEviction,
             ));
         }
-        let message = message.into();
+        let message: ProtocolMessage = message.into();
 
         // Check that handshake messages are compatible with the incoming wire format policy
         if !message.is_external()

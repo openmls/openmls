@@ -1,7 +1,9 @@
 use std::collections::{hash_map::Entry, HashMap, HashSet};
 
-use openmls_traits::crypto::OpenMlsCrypto;
+use openmls_traits::storage::StoredProposal;
 use openmls_traits::types::Ciphersuite;
+use openmls_traits::OpenMlsProvider;
+use openmls_traits::{crypto::OpenMlsCrypto, storage::Storage};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -71,6 +73,19 @@ pub struct QueuedProposal {
     proposal_reference: ProposalRef,
     sender: Sender,
     proposal_or_ref_type: ProposalOrRefType,
+}
+
+impl From<QueuedProposal> for StoredProposal {
+    fn from(value: QueuedProposal) -> Self {
+        StoredProposal {
+            proposal_ref: openmls_spec_types::proposals::ProposalRef(
+                value.proposal_reference.into(),
+            ),
+            proposal: value.proposal.into(),
+            sender: value.sender.into(),
+            proposal_or_ref_type: value.proposal_or_ref_type.into(),
+        }
+    }
 }
 
 impl QueuedProposal {
@@ -148,6 +163,15 @@ impl QueuedProposal {
         })
     }
 
+    fn from_stored_proposal(stored_proposal: StoredProposal) -> Self {
+        QueuedProposal {
+            proposal: stored_proposal.proposal,
+            proposal_reference: stored_proposal.proposal_ref,
+            sender: stored_proposal.sender,
+            proposal_or_ref_type: stored_proposal.proposal_or_ref_type,
+        }
+    }
+
     /// Returns the `Proposal` as a reference
     pub fn proposal(&self) -> &Proposal {
         &self.proposal
@@ -163,6 +187,24 @@ impl QueuedProposal {
     /// Returns the `Sender` as a reference
     pub fn sender(&self) -> &Sender {
         &self.sender
+    }
+
+    pub(crate) fn spec_proposal(&self) -> openmls_spec_types::proposals::Proposal {
+        self.proposal.clone().into()
+    }
+
+    pub(crate) fn spec_proposal_ref(&self) -> openmls_spec_types::proposals::ProposalRef {
+        openmls_spec_types::proposals::ProposalRef(self.proposal_reference.clone().into())
+    }
+
+    pub(crate) fn spec_sender(&self) -> openmls_spec_types::proposals::Sender {
+        self.sender.clone().into()
+    }
+
+    pub(crate) fn spec_proposal_or_ref_type(
+        &self,
+    ) -> openmls_spec_types::proposals::ProposalOrRefType {
+        self.proposal_or_ref_type.into()
     }
 }
 
@@ -416,12 +458,14 @@ impl ProposalQueue {
     /// the own node were included
     pub(crate) fn filter_proposals<'a>(
         ciphersuite: Ciphersuite,
-        crypto: &impl OpenMlsCrypto,
+        provider: &impl OpenMlsProvider,
         sender: Sender,
         proposal_store: &'a ProposalStore,
         inline_proposals: &'a [Proposal],
         own_index: LeafNodeIndex,
     ) -> Result<(Self, bool), ProposalQueueError> {
+        let crypto = provider.crypto();
+
         #[derive(Clone, Default)]
         struct Member {
             updates: Vec<QueuedProposal>,
@@ -438,8 +482,13 @@ impl ProposalQueue {
 
         // Aggregate both proposal types to a common iterator
         // We checked earlier that only proposals can end up here
-        let mut queued_proposal_list: Vec<QueuedProposal> =
-            proposal_store.proposals().cloned().collect();
+        let mut queued_proposal_list: Vec<QueuedProposal> = provider
+            .storage()
+            .get_queued_proposals()
+            .unwrap() // TODO: unwrap
+            .into_iter()
+            .map(QueuedProposal::from_stored_proposal)
+            .collect();
 
         queued_proposal_list.extend(
             inline_proposals

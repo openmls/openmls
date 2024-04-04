@@ -15,7 +15,9 @@ use crate::{
     schedule::ResumptionPskSecret,
     treesync::{node::leaf_node::LeafNode, RatchetTree},
 };
-use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::{
+    key_store::OpenMlsKeyStore, storage::Storage, types::Ciphersuite, OpenMlsProvider,
+};
 
 // Private
 mod application;
@@ -156,7 +158,7 @@ pub struct MlsGroup {
     group: CoreGroup,
     // A [ProposalStore] that stores incoming proposals from the DS within one epoch.
     // The store is emptied after every epoch change.
-    pub(crate) proposal_store: ProposalStore,
+    //pub(crate) proposal_store: ProposalStore,
     // Own [`LeafNode`]s that were created for update proposals and that
     // are needed in case an update proposal is committed by another group
     // member. The vector is emptied after every epoch change.
@@ -430,8 +432,10 @@ impl MlsGroup {
     /// Removes a specific proposal from the store.
     pub fn remove_pending_proposal(
         &mut self,
+        provider: &impl OpenMlsProvider,
         proposal_ref: ProposalRef,
     ) -> Result<(), MlsGroupStateError> {
+        //provider.storage().apply_update(Update);
         self.proposal_store
             .remove(proposal_ref)
             .ok_or(MlsGroupStateError::PendingProposalNotFound)

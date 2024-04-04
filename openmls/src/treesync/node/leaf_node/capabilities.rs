@@ -43,6 +43,18 @@ pub struct Capabilities {
     pub(super) credentials: Vec<CredentialType>,
 }
 
+impl From<Capabilities> for openmls_spec_types::tree::Capabilities {
+    fn from(value: Capabilities) -> Self {
+        openmls_spec_types::tree::Capabilities {
+            versions: value.versions.into_iter().map(|v| v.into()).collect(),
+            ciphersuites: value.ciphersuites.into_iter().map(|cs| cs.into()).collect(),
+            extensions: value.extensions.into_iter().map(|et| et.into()).collect(),
+            proposals: value.proposals.into_iter().map(|pt| pt.into()).collect(),
+            credentials: value.credentials.into_iter().map(|c| c.into()).collect(),
+        }
+    }
+}
+
 impl Capabilities {
     /// Create a new [`Capabilities`] struct with the given configuration.
     /// Any argument that is `None` is filled with the default values from the

@@ -18,8 +18,8 @@ pub(crate) enum CommitType {
 }
 
 pub(crate) struct CreateCommitParams<'a> {
-    framing_parameters: FramingParameters<'a>,      // Mandatory
-    proposal_store: &'a ProposalStore,              // Mandatory
+    framing_parameters: FramingParameters<'a>, // Mandatory
+    //proposal_store: &'a ProposalStore,              // Mandatory
     inline_proposals: Vec<Proposal>,                // Optional
     force_self_update: bool,                        // Optional
     commit_type: CommitType,                        // Optional (default is `Member`)
@@ -37,23 +37,13 @@ pub(crate) struct CreateCommitParamsBuilder<'a> {
 }
 
 impl TempBuilderCCPM0 {
-    pub(crate) fn framing_parameters(
+    pub(crate) fn framing_parameters<'a>(
         self,
-        framing_parameters: FramingParameters<'_>,
-    ) -> TempBuilderCCPM1<'_> {
-        TempBuilderCCPM1 { framing_parameters }
-    }
-}
-
-impl<'a> TempBuilderCCPM1<'a> {
-    pub(crate) fn proposal_store(
-        self,
-        proposal_store: &'a ProposalStore,
+        framing_parameters: FramingParameters<'a>,
     ) -> CreateCommitParamsBuilder<'a> {
         CreateCommitParamsBuilder {
             ccp: CreateCommitParams {
-                framing_parameters: self.framing_parameters,
-                proposal_store,
+                framing_parameters,
                 inline_proposals: vec![],
                 force_self_update: true,
                 commit_type: CommitType::Member,
@@ -61,7 +51,28 @@ impl<'a> TempBuilderCCPM1<'a> {
             },
         }
     }
+    //) -> TempBuilderCCPM1<'_> {
+    //    TempBuilderCCPM1 { framing_parameters }
+    //}
 }
+
+//impl<'a> TempBuilderCCPM1<'a> {
+//    pub(crate) fn proposal_store(
+//        self,
+//        proposal_store: &'a ProposalStore,
+//    ) -> CreateCommitParamsBuilder<'a> {
+//        CreateCommitParamsBuilder {
+//            ccp: CreateCommitParams {
+//                framing_parameters: self.framing_parameters,
+//                proposal_store,
+//                inline_proposals: vec![],
+//                force_self_update: true,
+//                commit_type: CommitType::Member,
+//                credential_with_key: None,
+//            },
+//        }
+//    }
+//}
 
 impl<'a> CreateCommitParamsBuilder<'a> {
     pub(crate) fn inline_proposals(mut self, inline_proposals: Vec<Proposal>) -> Self {
@@ -93,9 +104,9 @@ impl<'a> CreateCommitParams<'a> {
     pub(crate) fn framing_parameters(&self) -> &FramingParameters {
         &self.framing_parameters
     }
-    pub(crate) fn proposal_store(&self) -> &ProposalStore {
-        self.proposal_store
-    }
+    //pub(crate) fn proposal_store(&self) -> &ProposalStore {
+    //    self.proposal_store
+    //}
     pub(crate) fn inline_proposals(&self) -> &[Proposal] {
         &self.inline_proposals
     }

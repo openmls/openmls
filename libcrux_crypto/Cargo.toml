@@ -18,3 +18,4 @@ openmls_traits = { path = "../traits" }
 openmls_rust_crypto = { path = "../openmls_rust_crypto" }
 rand = "0.8.5"
 tls_codec.workspace = true
+openmls-memory-storage = { version = "0.1.0", path = "../memory-storage" }

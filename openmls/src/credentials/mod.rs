@@ -140,6 +140,18 @@ impl From<CredentialType> for u16 {
     }
 }
 
+impl From<CredentialType> for openmls_spec_types::credential::CredentialType {
+    fn from(value: CredentialType) -> Self {
+        match value {
+            CredentialType::Basic => openmls_spec_types::credential::CredentialType::Basic,
+            CredentialType::X509 => openmls_spec_types::credential::CredentialType::X509,
+            CredentialType::Other(value) => {
+                openmls_spec_types::credential::CredentialType::Other(value)
+            }
+        }
+    }
+}
+
 /// X.509 Certificate.
 ///
 /// This struct contains an X.509 certificate chain.  Note that X.509
@@ -188,6 +200,15 @@ pub struct Certificate {
 pub struct Credential {
     credential_type: CredentialType,
     serialized_credential_content: VLBytes,
+}
+
+impl From<Credential> for openmls_spec_types::credential::Credential {
+    fn from(value: Credential) -> Self {
+        openmls_spec_types::credential::Credential {
+            credential_type: value.credential_type.into(),
+            serialized_credential_content: value.serialized_credential_content.into(),
+        }
+    }
 }
 
 impl tls_codec::Size for Credential {

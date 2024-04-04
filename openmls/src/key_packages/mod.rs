@@ -166,6 +166,18 @@ struct KeyPackageTbs {
     extensions: Extensions,
 }
 
+impl From<KeyPackageTbs> for openmls_spec_types::key_package::KeyPackageTbs {
+    fn from(value: KeyPackageTbs) -> Self {
+        openmls_spec_types::key_package::KeyPackageTbs {
+            protocol_version: value.protocol_version.into(),
+            ciphersuite: value.ciphersuite.into(),
+            init_key: value.init_key.into(),
+            leaf_node: value.leaf_node.into(),
+            extensions: value.extensions.into(),
+        }
+    }
+}
+
 impl Signable for KeyPackageTbs {
     type SignedOutput = KeyPackage;
 
@@ -189,6 +201,15 @@ impl From<KeyPackage> for KeyPackageTbs {
 pub struct KeyPackage {
     payload: KeyPackageTbs,
     signature: Signature,
+}
+
+impl From<KeyPackage> for openmls_spec_types::key_package::KeyPackage {
+    fn from(value: KeyPackage) -> Self {
+        openmls_spec_types::key_package::KeyPackage {
+            payload: value.payload.into(),
+            signature: value.signature.into(),
+        }
+    }
 }
 
 impl PartialEq for KeyPackage {
@@ -232,6 +253,14 @@ pub(crate) struct KeyPackageCreationResult {
 )]
 pub struct InitKey {
     key: HpkePublicKey,
+}
+
+impl From<InitKey> for openmls_spec_types::keys::InitKey {
+    fn from(value: InitKey) -> Self {
+        openmls_spec_types::keys::InitKey {
+            key: value.key.into(),
+        }
+    }
 }
 
 impl InitKey {

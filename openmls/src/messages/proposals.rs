@@ -5,7 +5,10 @@
 //! To find out if a specific proposal type is supported,
 //! [`ProposalType::is_supported()`] can be used.
 
-use std::io::{Read, Write};
+use std::{
+    io::{Read, Write},
+    ops::AddAssign,
+};
 
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
@@ -27,6 +30,7 @@ use crate::{
     key_packages::*,
     prelude::LeafNode,
     schedule::psk::*,
+    treesync::node::leaf_node::{LeafNodePayload, LeafNodeTbs},
     versions::ProtocolVersion,
 };
 
@@ -83,6 +87,24 @@ pub enum ProposalType {
     GroupContextExtensions,
     AppAck,
     Unknown(u16),
+}
+
+impl From<ProposalType> for openmls_spec_types::proposals::ProposalType {
+    fn from(value: ProposalType) -> Self {
+        match value {
+            ProposalType::Add => openmls_spec_types::proposals::ProposalType::Add,
+            ProposalType::Update => openmls_spec_types::proposals::ProposalType::Update,
+            ProposalType::Remove => openmls_spec_types::proposals::ProposalType::Remove,
+            ProposalType::PreSharedKey => openmls_spec_types::proposals::ProposalType::PreSharedKey,
+            ProposalType::Reinit => openmls_spec_types::proposals::ProposalType::Reinit,
+            ProposalType::ExternalInit => openmls_spec_types::proposals::ProposalType::ExternalInit,
+            ProposalType::GroupContextExtensions => {
+                openmls_spec_types::proposals::ProposalType::GroupContextExtensions
+            }
+            ProposalType::AppAck => openmls_spec_types::proposals::ProposalType::AppAck,
+            ProposalType::Unknown(n) => openmls_spec_types::proposals::ProposalType::Unknown(n),
+        }
+    }
 }
 
 impl Size for ProposalType {
@@ -225,6 +247,27 @@ pub enum Proposal {
     AppAck(AppAckProposal),
 }
 
+impl From<Proposal> for openmls_spec_types::proposals::Proposal {
+    fn from(value: Proposal) -> Self {
+        match value {
+            Proposal::Add(prop) => openmls_spec_types::proposals::Proposal::Add(prop.into()),
+            Proposal::Update(prop) => openmls_spec_types::proposals::Proposal::Update(prop.into()),
+            Proposal::Remove(prop) => openmls_spec_types::proposals::Proposal::Remove(prop.into()),
+            Proposal::PreSharedKey(prop) => {
+                openmls_spec_types::proposals::Proposal::PreSharedKey(prop.into())
+            }
+            Proposal::ReInit(prop) => openmls_spec_types::proposals::Proposal::ReInit(prop.into()),
+            Proposal::ExternalInit(prop) => {
+                openmls_spec_types::proposals::Proposal::ExternalInit(prop.into())
+            }
+            Proposal::GroupContextExtensions(prop) => {
+                openmls_spec_types::proposals::Proposal::GroupContextExtensions(prop.into())
+            }
+            Proposal::AppAck(prop) => openmls_spec_types::proposals::Proposal::AppAck(prop.into()),
+        }
+    }
+}
+
 impl Proposal {
     /// Returns the proposal type.
     pub fn proposal_type(&self) -> ProposalType {
@@ -272,6 +315,14 @@ impl AddProposal {
     }
 }
 
+impl Into<openmls_spec_types::proposals::AddProposal> for AddProposal {
+    fn into(self) -> openmls_spec_types::proposals::AddProposal {
+        openmls_spec_types::proposals::AddProposal {
+            key_package: self.key_package.into(),
+        }
+    }
+}
+
 /// Update Proposal.
 ///
 /// An Update proposal is a similar mechanism to [`AddProposal`] with the distinction that it
@@ -286,6 +337,14 @@ impl AddProposal {
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsSize)]
 pub struct UpdateProposal {
     pub(crate) leaf_node: LeafNode,
+}
+
+impl From<UpdateProposal> for openmls_spec_types::proposals::UpdateProposal {
+    fn from(value: UpdateProposal) -> Self {
+        openmls_spec_types::proposals::UpdateProposal {
+            leaf_node: value.leaf_node.into(),
+        }
+    }
 }
 
 impl UpdateProposal {
@@ -321,6 +380,14 @@ pub struct RemoveProposal {
     pub(crate) removed: LeafNodeIndex,
 }
 
+impl From<RemoveProposal> for openmls_spec_types::proposals::RemoveProposal {
+    fn from(value: RemoveProposal) -> Self {
+        openmls_spec_types::proposals::RemoveProposal {
+            removed: value.removed.into(),
+        }
+    }
+}
+
 impl RemoveProposal {
     /// Returns the leaf index of the removed leaf in this proposal.
     pub fn removed(&self) -> LeafNodeIndex {
@@ -353,6 +420,14 @@ impl RemoveProposal {
 )]
 pub struct PreSharedKeyProposal {
     psk: PreSharedKeyId,
+}
+
+impl From<PreSharedKeyProposal> for openmls_spec_types::proposals::PreSharedKeyProposal {
+    fn from(value: PreSharedKeyProposal) -> Self {
+        openmls_spec_types::proposals::PreSharedKeyProposal {
+            psk: value.psk.into(),
+        }
+    }
 }
 
 impl PreSharedKeyProposal {
@@ -545,6 +620,19 @@ pub enum ProposalOrRefType {
     Proposal = 1,
     /// Proposal by reference
     Reference = 2,
+}
+
+impl From<ProposalOrRefType> for openmls_spec_types::proposals::ProposalOrRefType {
+    fn from(value: ProposalOrRefType) -> Self {
+        match value {
+            ProposalOrRefType::Proposal => {
+                openmls_spec_types::proposals::ProposalOrRefType::Proposal
+            }
+            ProposalOrRefType::Reference => {
+                openmls_spec_types::proposals::ProposalOrRefType::Reference
+            }
+        }
+    }
 }
 
 /// Type of Proposal, either by value or by reference.

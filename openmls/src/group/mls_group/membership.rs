@@ -3,7 +3,10 @@
 //! This module contains membership-related operations and exposes [`RemoveOperation`].
 
 use core_group::create_commit_params::CreateCommitParams;
-use openmls_traits::signatures::Signer;
+use openmls_traits::{
+    signatures::Signer,
+    storage::{Storage, Update},
+};
 
 use super::{
     errors::{AddMembersError, LeaveGroupError, RemoveMembersError},
@@ -58,7 +61,7 @@ impl MlsGroup {
         // TODO #751
         let params = CreateCommitParams::builder()
             .framing_parameters(self.framing_parameters())
-            .proposal_store(&self.proposal_store)
+            //.proposal_store(&self.proposal_store)
             .inline_proposals(inline_proposals)
             .build();
         let create_commit_result = self.group.create_commit(params, provider, signer)?;
@@ -138,7 +141,7 @@ impl MlsGroup {
         // TODO #751
         let params = CreateCommitParams::builder()
             .framing_parameters(self.framing_parameters())
-            .proposal_store(&self.proposal_store)
+            //.proposal_store(&self.proposal_store)
             .inline_proposals(inline_proposals)
             .build();
         let create_commit_result = self.group.create_commit(params, provider, signer)?;
@@ -184,12 +187,15 @@ impl MlsGroup {
             .create_remove_proposal(self.framing_parameters(), removed, signer)
             .map_err(|_| LibraryError::custom("Creating a self removal should not fail"))?;
 
-        self.proposal_store
-            .add(QueuedProposal::from_authenticated_content_by_ref(
-                self.ciphersuite(),
-                provider.crypto(),
-                remove_proposal.clone(),
-            )?);
+        let queued_proposal = QueuedProposal::from_authenticated_content_by_ref(
+            self.ciphersuite(),
+            provider.crypto(),
+            remove_proposal.clone(),
+        )?;
+
+        provider
+            .storage()
+            .apply_update(Update::QueueProposal(queued_proposal.into()))?;
 
         Ok(self.content_to_mls_message(remove_proposal, provider)?)
     }

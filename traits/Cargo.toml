@@ -17,6 +17,7 @@ default = []
 test-utils = []
 
 [dependencies]
+openmls-spec-types = { version = "0.1.0", path = "../spec-types" }
 serde = { version = "1.0", features = ["derive"] }
 tls_codec = { workspace = true }
 

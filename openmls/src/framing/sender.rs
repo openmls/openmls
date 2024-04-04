@@ -60,6 +60,17 @@ pub enum Sender {
     NewMemberCommit,
 }
 
+impl From<Sender> for openmls_spec_types::proposals::Sender {
+    fn from(value: Sender) -> Self {
+        match value {
+            Sender::Member(i) => openmls_spec_types::proposals::Sender::Member(i.into()),
+            Sender::External(i) => openmls_spec_types::proposals::Sender::External(i.into()),
+            Sender::NewMemberProposal => openmls_spec_types::proposals::Sender::NewMemberProposal,
+            Sender::NewMemberCommit => openmls_spec_types::proposals::Sender::NewMemberCommit,
+        }
+    }
+}
+
 impl Sender {
     /// Build a [`Sender`] from [`MlsSenderData`].
     pub(crate) fn from_sender_data(sender_data: MlsSenderData) -> Self {

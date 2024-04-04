@@ -18,6 +18,8 @@ pub trait OpenMlsProvider {
     type CryptoProvider: crypto::OpenMlsCrypto;
     type RandProvider: random::OpenMlsRand;
     type KeyStoreProvider: key_store::OpenMlsKeyStore;
+    type Platform: storage::Platform;
+    type StorageProvider: storage::Storage<Self::Platform>;
 
     /// Get the crypto provider.
     fn crypto(&self) -> &Self::CryptoProvider;
@@ -27,4 +29,7 @@ pub trait OpenMlsProvider {
 
     /// Get the key store provider.
     fn key_store(&self) -> &Self::KeyStoreProvider;
+
+    /// Get the general purpose storage provider
+    fn storage(&self) -> &Self::StorageProvider;
 }

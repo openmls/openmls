@@ -62,6 +62,14 @@ pub struct GroupId {
     value: VLBytes,
 }
 
+impl From<GroupId> for openmls_spec_types::GroupId {
+    fn from(value: GroupId) -> Self {
+        openmls_spec_types::GroupId {
+            value: value.value.into(),
+        }
+    }
+}
+
 impl GroupId {
     /// Create a new (random) group ID.
     ///
@@ -111,6 +119,12 @@ impl GroupId {
     TlsSize,
 )]
 pub struct GroupEpoch(u64);
+
+impl From<GroupEpoch> for openmls_spec_types::GroupEpoch {
+    fn from(value: GroupEpoch) -> Self {
+        openmls_spec_types::GroupEpoch(value.0)
+    }
+}
 
 impl GroupEpoch {
     /// Increment the group epoch by 1.

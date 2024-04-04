@@ -57,6 +57,14 @@ pub struct HashReference {
     value: VLBytes,
 }
 
+impl From<HashReference> for openmls_spec_types::HashReference {
+    fn from(value: HashReference) -> Self {
+        openmls_spec_types::HashReference {
+            value: value.value.into(),
+        }
+    }
+}
+
 /// A reference to a key package.
 /// This value uniquely identifies a key package.
 pub type KeyPackageRef = HashReference;

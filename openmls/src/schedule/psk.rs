@@ -56,6 +56,18 @@ pub enum ResumptionPskUsage {
     Branch = 3,
 }
 
+impl From<ResumptionPskUsage> for openmls_spec_types::psk::ResumptionPskUsage {
+    fn from(value: ResumptionPskUsage) -> Self {
+        match value {
+            ResumptionPskUsage::Application => {
+                openmls_spec_types::psk::ResumptionPskUsage::Application
+            }
+            ResumptionPskUsage::Reinit => openmls_spec_types::psk::ResumptionPskUsage::Reinit,
+            ResumptionPskUsage::Branch => openmls_spec_types::psk::ResumptionPskUsage::Branch,
+        }
+    }
+}
+
 /// External PSK.
 #[derive(
     Debug,
@@ -227,6 +239,28 @@ pub enum PskType {
 pub struct PreSharedKeyId {
     pub(crate) psk: Psk,
     pub(crate) psk_nonce: VLBytes,
+}
+
+impl From<PreSharedKeyId> for openmls_spec_types::psk::PreSharedKeyId {
+    fn from(value: PreSharedKeyId) -> Self {
+        match value.psk {
+            Psk::External(external) => openmls_spec_types::psk::PreSharedKeyId::External(
+                openmls_spec_types::psk::ExternalPsk {
+                    psk_id: external.psk_id.into(),
+                    psk_nonce: value.psk_nonce.into(),
+                },
+            ),
+
+            Psk::Resumption(resumption) => openmls_spec_types::psk::PreSharedKeyId::Resumption(
+                openmls_spec_types::psk::ResumptionPsk {
+                    usage: resumption.usage.into(),
+                    psk_group_id: resumption.psk_group_id.into(),
+                    psk_epoch: resumption.psk_epoch.into(),
+                    psk_nonce: value.psk_nonce.into(),
+                },
+            ),
+        }
+    }
 }
 
 impl PreSharedKeyId {

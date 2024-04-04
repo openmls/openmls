@@ -40,6 +40,16 @@ pub struct ParentNode {
     pub(super) unmerged_leaves: UnmergedLeaves,
 }
 
+impl From<ParentNode> for openmls_spec_types::tree::ParentNode {
+    fn from(value: ParentNode) -> Self {
+        openmls_spec_types::tree::ParentNode {
+            encryption_key: value.encryption_key.into(),
+            parent_hash: value.parent_hash.into(),
+            unmerged_leaves: value.unmerged_leaves.into(),
+        }
+    }
+}
+
 impl From<EncryptionKey> for ParentNode {
     fn from(public_key: EncryptionKey) -> Self {
         Self {
@@ -228,6 +238,14 @@ impl ParentNode {
 #[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize, TlsSize, TlsSerialize)]
 pub(in crate::treesync) struct UnmergedLeaves {
     list: Vec<LeafNodeIndex>,
+}
+
+impl From<UnmergedLeaves> for openmls_spec_types::tree::UnmergedLeaves {
+    fn from(value: UnmergedLeaves) -> Self {
+        openmls_spec_types::tree::UnmergedLeaves {
+            list: value.list.into_iter().map(|i| i.into()).collect(),
+        }
+    }
 }
 
 impl UnmergedLeaves {

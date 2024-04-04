@@ -6,6 +6,8 @@
 pub use openmls_memory_keystore::{MemoryKeyStore, MemoryKeyStoreError};
 use openmls_traits::OpenMlsProvider;
 
+use openmls_memory_storage::{kv::HashMapKV, KvStoreStorage};
+
 mod provider;
 pub use provider::*;
 
@@ -13,6 +15,7 @@ pub use provider::*;
 pub struct OpenMlsRustCrypto {
     crypto: RustCrypto,
     key_store: MemoryKeyStore,
+    storage: KvStoreStorage<HashMapKV>,
 }
 
 impl OpenMlsProvider for OpenMlsRustCrypto {
@@ -30,5 +33,13 @@ impl OpenMlsProvider for OpenMlsRustCrypto {
 
     fn key_store(&self) -> &Self::KeyStoreProvider {
         &self.key_store
+    }
+
+    type Platform = HashMapKV;
+
+    type StorageProvider = KvStoreStorage<HashMapKV>;
+
+    fn storage(&self) -> &Self::StorageProvider {
+        &self.storage
     }
 }

@@ -229,6 +229,18 @@ impl RatchetTree {
 )]
 pub struct RatchetTreeIn(Vec<Option<NodeIn>>);
 
+impl From<RatchetTreeIn> for openmls_spec_types::tree::RatchetTree {
+    fn from(value: RatchetTreeIn) -> Self {
+        openmls_spec_types::tree::RatchetTree(
+            value
+                .0
+                .into_iter()
+                .map(|maybe_node| maybe_node.map(|node| node.into()))
+                .collect(),
+        )
+    }
+}
+
 impl RatchetTreeIn {
     /// Create a new [`RatchetTreeIn`] from a vector of nodes after verifying
     /// the nodes.

@@ -21,6 +21,12 @@ use super::{Deserialize, Serialize};
 )]
 pub struct LastResortExtension {}
 
+impl From<LastResortExtension> for openmls_spec_types::extensions::LastResortExtension {
+    fn from(value: LastResortExtension) -> Self {
+        openmls_spec_types::extensions::LastResortExtension {}
+    }
+}
+
 impl LastResortExtension {
     /// Create a new `last_resort` extension.
     pub fn new() -> Self {

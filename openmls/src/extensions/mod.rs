@@ -101,6 +101,30 @@ pub enum ExtensionType {
     Unknown(u16),
 }
 
+impl From<ExtensionType> for openmls_spec_types::extensions::ExtensionType {
+    fn from(value: ExtensionType) -> Self {
+        match value {
+            ExtensionType::ApplicationId => {
+                openmls_spec_types::extensions::ExtensionType::ApplicationId
+            }
+            ExtensionType::RatchetTree => {
+                openmls_spec_types::extensions::ExtensionType::RatchetTree
+            }
+            ExtensionType::RequiredCapabilities => {
+                openmls_spec_types::extensions::ExtensionType::RequiredCapabilities
+            }
+            ExtensionType::ExternalPub => {
+                openmls_spec_types::extensions::ExtensionType::ExternalPub
+            }
+            ExtensionType::ExternalSenders => {
+                openmls_spec_types::extensions::ExtensionType::ExternalSenders
+            }
+            ExtensionType::LastResort => openmls_spec_types::extensions::ExtensionType::LastResort,
+            ExtensionType::Unknown(n) => openmls_spec_types::extensions::ExtensionType::Unknown(n),
+        }
+    }
+}
+
 impl Size for ExtensionType {
     fn tls_serialized_len(&self) -> usize {
         2
@@ -205,14 +229,58 @@ pub enum Extension {
     Unknown(u16, UnknownExtension),
 }
 
+impl From<Extension> for openmls_spec_types::extensions::Extension {
+    fn from(value: Extension) -> Self {
+        match value {
+            Extension::ApplicationId(ext) => {
+                openmls_spec_types::extensions::Extension::ApplicationId(ext.into())
+            }
+            Extension::RatchetTree(ext) => {
+                openmls_spec_types::extensions::Extension::RatchetTree(ext.into())
+            }
+            Extension::RequiredCapabilities(ext) => {
+                openmls_spec_types::extensions::Extension::RequiredCapabilities(ext.into())
+            }
+            Extension::ExternalPub(ext) => {
+                openmls_spec_types::extensions::Extension::ExternalPub(ext.into())
+            }
+            Extension::ExternalSenders(ext) => {
+                openmls_spec_types::extensions::Extension::ExternalSenders(
+                    ext.into_iter().map(|e| e.into()).collect(),
+                )
+            }
+            Extension::LastResort(ext) => {
+                openmls_spec_types::extensions::Extension::LastResort(ext.into())
+            }
+            Extension::Unknown(id, ext) => {
+                openmls_spec_types::extensions::Extension::Unknown(id, ext.into())
+            }
+        }
+    }
+}
+
 /// A unknown/unparsed extension represented by raw bytes.
 #[derive(PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub struct UnknownExtension(pub Vec<u8>);
+
+impl From<UnknownExtension> for openmls_spec_types::extensions::UnknownExtension {
+    fn from(value: UnknownExtension) -> Self {
+        openmls_spec_types::extensions::UnknownExtension(value.0)
+    }
+}
 
 /// A list of extensions with unique extension types.
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSize)]
 pub struct Extensions {
     unique: Vec<Extension>,
+}
+
+impl From<Extensions> for openmls_spec_types::extensions::Extensions {
+    fn from(value: Extensions) -> Self {
+        openmls_spec_types::extensions::Extensions {
+            unique: value.unique.into_iter().map(|e| e.into()).collect(),
+        }
+    }
 }
 
 impl TlsSerializeTrait for Extensions {

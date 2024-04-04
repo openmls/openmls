@@ -327,6 +327,12 @@ impl VerifiableCiphersuite {
     }
 }
 
+impl From<VerifiableCiphersuite> for openmls_spec_types::Ciphersuite {
+    fn from(value: VerifiableCiphersuite) -> Self {
+        openmls_spec_types::Ciphersuite(value.0)
+    }
+}
+
 impl From<Ciphersuite> for VerifiableCiphersuite {
     fn from(value: Ciphersuite) -> Self {
         Self(value as u16)
@@ -374,6 +380,12 @@ pub enum Ciphersuite {
 
     /// DH KEM P384 | AES-GCM 256 | SHA2-384 | EcDSA P384
     MLS_256_DHKEMP384_AES256GCM_SHA384_P384 = 0x0007,
+}
+
+impl From<Ciphersuite> for openmls_spec_types::Ciphersuite {
+    fn from(value: Ciphersuite) -> Self {
+        openmls_spec_types::Ciphersuite(value as u16)
+    }
 }
 
 impl core::fmt::Display for Ciphersuite {

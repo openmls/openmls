@@ -29,6 +29,15 @@ pub struct ExternalSender {
     credential: Credential,
 }
 
+impl From<ExternalSender> for openmls_spec_types::extensions::ExternalSender {
+    fn from(value: ExternalSender) -> Self {
+        openmls_spec_types::extensions::ExternalSender {
+            signature_key: value.signature_key.into(),
+            credential: value.credential.into(),
+        }
+    }
+}
+
 impl ExternalSender {
     /// Creates a new `ExternalSender` instance.
     pub fn new(signature_key: SignaturePublicKey, credential: Credential) -> Self {
@@ -69,6 +78,12 @@ pub type ExternalSendersExtension = Vec<ExternalSender>;
     TlsSize,
 )]
 pub struct SenderExtensionIndex(u32);
+
+impl From<SenderExtensionIndex> for openmls_spec_types::extensions::SenderExtensionIndex {
+    fn from(value: SenderExtensionIndex) -> Self {
+        openmls_spec_types::extensions::SenderExtensionIndex(value.0)
+    }
+}
 
 impl SenderExtensionIndex {
     /// Creates a new `SenderExtensionIndex` instance.

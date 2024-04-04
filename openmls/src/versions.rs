@@ -40,6 +40,15 @@ pub enum ProtocolVersion {
     Mls10Draft11 = 200, // pre RFC version
 }
 
+impl From<ProtocolVersion> for openmls_spec_types::ProtocolVersion {
+    fn from(value: ProtocolVersion) -> Self {
+        match value {
+            ProtocolVersion::Mls10 => openmls_spec_types::ProtocolVersion::Mls10,
+            ProtocolVersion::Mls10Draft11 => openmls_spec_types::ProtocolVersion::Mls10Draft11,
+        }
+    }
+}
+
 /// There's only one version right now, which is the default.
 impl Default for ProtocolVersion {
     fn default() -> Self {

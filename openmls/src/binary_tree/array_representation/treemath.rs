@@ -25,6 +25,12 @@ pub(crate) const MIN_TREE_SIZE: u32 = 1;
 )]
 pub struct LeafNodeIndex(u32);
 
+impl From<LeafNodeIndex> for openmls_spec_types::tree::LeafNodeIndex {
+    fn from(value: LeafNodeIndex) -> Self {
+        openmls_spec_types::tree::LeafNodeIndex(value.0)
+    }
+}
+
 impl std::fmt::Display for LeafNodeIndex {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("{:?}", self.0))

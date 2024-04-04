@@ -55,6 +55,15 @@ pub struct Lifetime {
     not_after: u64,
 }
 
+impl From<Lifetime> for openmls_spec_types::Lifetime {
+    fn from(value: Lifetime) -> Self {
+        openmls_spec_types::Lifetime {
+            not_before: value.not_before,
+            not_after: value.not_after,
+        }
+    }
+}
+
 impl Lifetime {
     /// Create a new lifetime with lifetime `t` (in seconds).
     /// Note that the lifetime is extended 1h into the past to adapt to skewed

@@ -1,3 +1,4 @@
+use openmls_memory_storage::{kv::HashMapKV, KvStoreStorage};
 use openmls_traits::OpenMlsProvider;
 
 mod crypto;
@@ -13,6 +14,7 @@ pub struct Provider {
     crypto: crypto::CryptoProvider,
     rand: rand::RandProvider,
     key_store: openmls_rust_crypto::MemoryKeyStore,
+    storage: KvStoreStorage<HashMapKV>,
 }
 
 impl OpenMlsProvider for Provider {
@@ -21,6 +23,9 @@ impl OpenMlsProvider for Provider {
     type RandProvider = RandProvider;
 
     type KeyStoreProvider = openmls_rust_crypto::MemoryKeyStore;
+    type Platform = HashMapKV;
+
+    type StorageProvider = KvStoreStorage<HashMapKV>;
 
     fn crypto(&self) -> &Self::CryptoProvider {
         &self.crypto
@@ -32,5 +37,9 @@ impl OpenMlsProvider for Provider {
 
     fn key_store(&self) -> &Self::KeyStoreProvider {
         &self.key_store
+    }
+
+    fn storage(&self) -> &Self::StorageProvider {
+        &self.storage
     }
 }

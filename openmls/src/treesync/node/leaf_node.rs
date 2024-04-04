@@ -77,6 +77,15 @@ pub struct LeafNode {
     signature: Signature,
 }
 
+impl From<LeafNode> for openmls_spec_types::tree::LeafNode {
+    fn from(value: LeafNode) -> Self {
+        openmls_spec_types::tree::LeafNode {
+            payload: value.payload.into(),
+            signature: value.signature.into(),
+        }
+    }
+}
+
 impl LeafNode {
     /// Create a new [`LeafNode`].
     /// This first creates a `LeadNodeTbs` and returns the result of signing
@@ -501,13 +510,26 @@ impl LeafNode {
     TlsDeserializeBytes,
     TlsSize,
 )]
-struct LeafNodePayload {
+pub(crate) struct LeafNodePayload {
     encryption_key: EncryptionKey,
     signature_key: SignaturePublicKey,
     credential: Credential,
     capabilities: Capabilities,
     leaf_node_source: LeafNodeSource,
     extensions: Extensions,
+}
+
+impl From<LeafNodePayload> for openmls_spec_types::tree::LeafNodePayload {
+    fn from(value: LeafNodePayload) -> Self {
+        openmls_spec_types::tree::LeafNodePayload {
+            encryption_key: value.encryption_key.into(),
+            signature_key: value.signature_key.into(),
+            credential: value.credential.into(),
+            capabilities: value.capabilities.into(),
+            leaf_node_source: value.leaf_node_source.into(),
+            extensions: value.extensions.into(),
+        }
+    }
 }
 
 #[derive(
@@ -528,6 +550,20 @@ pub enum LeafNodeSource {
     KeyPackage(Lifetime),
     Update,
     Commit(ParentHash),
+}
+
+impl From<LeafNodeSource> for openmls_spec_types::tree::LeafNodeSource {
+    fn from(value: LeafNodeSource) -> Self {
+        match value {
+            LeafNodeSource::KeyPackage(lifetime) => {
+                openmls_spec_types::tree::LeafNodeSource::KeyPackage(lifetime.into())
+            }
+            LeafNodeSource::Update => openmls_spec_types::tree::LeafNodeSource::Update,
+            LeafNodeSource::Commit(parent_hash) => {
+                openmls_spec_types::tree::LeafNodeSource::Commit(parent_hash.into())
+            }
+        }
+    }
 }
 
 pub type ParentHash = VLBytes;
@@ -661,6 +697,15 @@ const LEAF_NODE_SIGNATURE_LABEL: &str = "LeafNodeTBS";
 pub struct LeafNodeIn {
     payload: LeafNodePayload,
     signature: Signature,
+}
+
+impl From<LeafNodeIn> for openmls_spec_types::tree::LeafNode {
+    fn from(value: LeafNodeIn) -> Self {
+        openmls_spec_types::tree::LeafNode {
+            payload: value.payload.into(),
+            signature: value.signature.into(),
+        }
+    }
 }
 
 impl LeafNodeIn {

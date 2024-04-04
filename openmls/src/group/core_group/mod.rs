@@ -759,7 +759,7 @@ impl CoreGroup {
         // Filter proposals
         let (proposal_queue, contains_own_updates) = ProposalQueue::filter_proposals(
             ciphersuite,
-            provider.crypto(),
+            provider,
             sender.clone(),
             params.proposal_store(),
             params.inline_proposals(),
