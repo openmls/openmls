@@ -11,7 +11,6 @@ use crate::{
         mls_auth_content::AuthenticatedContent, sender::Sender, FramingParameters, WireFormat,
     },
     group::{
-        config::CryptoConfig,
         errors::*,
         proposals::{ProposalQueue, ProposalStore, QueuedProposal},
         public_group::errors::PublicGroupBuildError,
@@ -295,7 +294,7 @@ fn test_required_unsupported_proposals(ciphersuite: Ciphersuite, provider: &impl
     // This must fail because we don't actually support AppAck proposals
     let e = CoreGroup::builder(
         GroupId::random(provider.rand()),
-        CryptoConfig::with_default_version(ciphersuite),
+        ciphersuite,
         alice_credential,
     )
     .with_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
@@ -337,7 +336,7 @@ fn test_required_extension_key_package_mismatch(
 
     let alice_group = CoreGroup::builder(
         GroupId::random(provider.rand()),
-        CryptoConfig::with_default_version(ciphersuite),
+        ciphersuite,
         alice_credential,
     )
     .with_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
@@ -389,7 +388,7 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, provider: &impl OpenM
 
     let mut alice_group = CoreGroup::builder(
         GroupId::random(provider.rand()),
-        CryptoConfig::with_default_version(ciphersuite),
+        ciphersuite,
         alice_credential,
     )
     .with_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
@@ -471,7 +470,7 @@ fn test_group_context_extension_proposal_fails(
 
     let mut alice_group = CoreGroup::builder(
         GroupId::random(provider.rand()),
-        CryptoConfig::with_default_version(ciphersuite),
+        ciphersuite,
         alice_credential,
     )
     .with_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
@@ -560,7 +559,7 @@ fn test_group_context_extension_proposal(
 
     let mut alice_group = CoreGroup::builder(
         GroupId::random(provider.rand()),
-        CryptoConfig::with_default_version(ciphersuite),
+        ciphersuite,
         alice_credential,
     )
     .build(provider, &alice_signer)

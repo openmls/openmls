@@ -6,7 +6,7 @@ use rstest_reuse::{self, *};
 use crate::{
     binary_tree::LeafNodeIndex,
     framing::*,
-    group::{config::CryptoConfig, *},
+    group::*,
     messages::{
         external_proposals::*,
         proposals::{AddProposal, Proposal, ProposalType},
@@ -38,7 +38,7 @@ fn new_test_group(
     // Define the MlsGroup configuration
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .wire_format_policy(wire_format_policy)
-        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .ciphersuite(ciphersuite)
         .build();
 
     (

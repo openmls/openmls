@@ -1,5 +1,5 @@
 use openmls::{
-    prelude::{config::CryptoConfig, test_utils::new_credential, *},
+    prelude::{test_utils::new_credential, *},
     test_utils::*,
     *,
 };
@@ -15,15 +15,7 @@ fn generate_key_package<KeyStore: OpenMlsKeyStore>(
 ) -> KeyPackage {
     KeyPackage::builder()
         .key_package_extensions(extensions)
-        .build(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
-            provider,
-            signer,
-            credential_with_key,
-        )
+        .build(ciphersuite, provider, signer, credential_with_key)
         .unwrap()
 }
 
@@ -69,7 +61,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 
         let mls_group_create_config = MlsGroupCreateConfig::builder()
             .wire_format_policy(*wire_format_policy)
-            .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+            .ciphersuite(ciphersuite)
             .build();
 
         // === Alice creates a group ===
@@ -985,7 +977,7 @@ fn addition_order(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
         let mls_group_config = MlsGroupCreateConfig::builder()
             .wire_format_policy(*wire_format_policy)
-            .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+            .ciphersuite(ciphersuite)
             .build();
 
         // === Alice creates a group ===
@@ -1116,7 +1108,7 @@ fn mls_group_ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl Op
         let mls_group_create_config = MlsGroupCreateConfig::builder()
             .wire_format_policy(*wire_format_policy)
             .use_ratchet_tree_extension(true)
-            .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+            .ciphersuite(ciphersuite)
             .build();
 
         // === Alice creates a group ===

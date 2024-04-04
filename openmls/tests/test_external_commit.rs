@@ -14,7 +14,7 @@ fn create_alice_group(
 ) -> (MlsGroup, CredentialWithKey, SignatureKeyPair) {
     let group_config = MlsGroupCreateConfig::builder()
         .use_ratchet_tree_extension(use_ratchet_tree_extension)
-        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .ciphersuite(ciphersuite)
         .build();
 
     let (credential_with_key, signature_keys) =

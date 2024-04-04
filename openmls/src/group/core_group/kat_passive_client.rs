@@ -6,7 +6,7 @@ use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize};
 
 use crate::{
     framing::{MlsMessageBodyIn, MlsMessageIn, MlsMessageOut, ProcessedMessageContent},
-    group::{config::CryptoConfig, *},
+    group::*,
     key_packages::*,
     schedule::psk::PreSharedKeyId,
     test_utils::*,
@@ -335,16 +335,16 @@ impl PassiveClient {
     }
 }
 
-pub fn generate_test_vector(cipher_suite: Ciphersuite) -> PassiveClientWelcomeTestVector {
+pub fn generate_test_vector(ciphersuite: Ciphersuite) -> PassiveClientWelcomeTestVector {
     let group_config = MlsGroupCreateConfig::builder()
-        .crypto_config(CryptoConfig::with_default_version(cipher_suite))
+        .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
         .build();
 
     let creator_provider = OpenMlsRustCrypto::default();
 
     let creator =
-        generate_group_candidate(b"Alice (Creator)", cipher_suite, &creator_provider, true);
+        generate_group_candidate(b"Alice (Creator)", ciphersuite, &creator_provider, true);
 
     let mut creator_group = MlsGroup::new(
         &creator_provider,
@@ -359,7 +359,7 @@ pub fn generate_test_vector(cipher_suite: Ciphersuite) -> PassiveClientWelcomeTe
 
     let passive = generate_group_candidate(
         b"Bob (Passive Client)",
-        cipher_suite,
+        ciphersuite,
         &OpenMlsRustCrypto::default(),
         false,
     );
@@ -382,7 +382,7 @@ pub fn generate_test_vector(cipher_suite: Ciphersuite) -> PassiveClientWelcomeTe
 
     let epoch2 = {
         let proposals = vec![propose_add(
-            cipher_suite,
+            ciphersuite,
             &creator_provider,
             &creator,
             &mut creator_group,
@@ -422,14 +422,14 @@ pub fn generate_test_vector(cipher_suite: Ciphersuite) -> PassiveClientWelcomeTe
     let epoch4 = {
         let proposals = vec![
             propose_add(
-                cipher_suite,
+                ciphersuite,
                 &creator_provider,
                 &creator,
                 &mut creator_group,
                 b"Daniel",
             ),
             propose_add(
-                cipher_suite,
+                ciphersuite,
                 &creator_provider,
                 &creator,
                 &mut creator_group,
@@ -452,7 +452,7 @@ pub fn generate_test_vector(cipher_suite: Ciphersuite) -> PassiveClientWelcomeTe
         let proposals = vec![
             propose_remove(&creator_provider, &creator, &mut creator_group, b"Daniel"),
             propose_add(
-                cipher_suite,
+                ciphersuite,
                 &creator_provider,
                 &creator,
                 &mut creator_group,
@@ -491,7 +491,7 @@ pub fn generate_test_vector(cipher_suite: Ciphersuite) -> PassiveClientWelcomeTe
     let epochs = vec![epoch1, epoch2, epoch3, epoch4, epoch5, epoch6];
 
     PassiveClientWelcomeTestVector {
-        cipher_suite: cipher_suite.into(),
+        cipher_suite: ciphersuite.into(),
         external_psks: vec![],
 
         key_package: MlsMessageOut::from(passive.key_package)

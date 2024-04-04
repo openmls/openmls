@@ -16,10 +16,7 @@ pub(crate) fn key_package(
     // Generate a valid KeyPackage.
     let key_package = KeyPackage::builder()
         .build(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
+            ciphersuite,
             provider,
             &signer,
             CredentialWithKey {
@@ -69,10 +66,7 @@ fn application_id_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
             ApplicationIdExtension::new(id),
         )))
         .build(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
+            ciphersuite,
             provider,
             &signature_keys,
             CredentialWithKey {
@@ -147,10 +141,7 @@ fn last_resort_key_package(ciphersuite: Ciphersuite, provider: &impl OpenMlsProv
     let key_package = KeyPackage::builder()
         .mark_as_last_resort()
         .build(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
+            ciphersuite,
             provider,
             &signature_keys,
             CredentialWithKey {
@@ -166,10 +157,7 @@ fn last_resort_key_package(ciphersuite: Ciphersuite, provider: &impl OpenMlsProv
         .key_package_extensions(Extensions::empty())
         .mark_as_last_resort()
         .build(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
+            ciphersuite,
             provider,
             &signature_keys,
             CredentialWithKey {
@@ -188,10 +176,7 @@ fn last_resort_key_package(ciphersuite: Ciphersuite, provider: &impl OpenMlsProv
         )))
         .mark_as_last_resort()
         .build(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
+            ciphersuite,
             provider,
             &signature_keys,
             CredentialWithKey {

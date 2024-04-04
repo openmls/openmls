@@ -1,12 +1,7 @@
 //! This module tests the classification of remove operations with RemoveOperation
 
 use super::utils::{generate_credential_with_key, generate_key_package};
-use crate::{
-    framing::*,
-    group::{config::CryptoConfig, *},
-    test_utils::*,
-    *,
-};
+use crate::{framing::*, group::*, test_utils::*, *};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 
 // Tests the different variants of the RemoveOperation enum.
@@ -63,7 +58,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, provider: &impl Open
 
         // Define the MlsGroup configuration
         let mls_group_create_config = MlsGroupCreateConfig::builder()
-            .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+            .ciphersuite(ciphersuite)
             .build();
 
         // === Alice creates a group ===

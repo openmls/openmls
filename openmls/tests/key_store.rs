@@ -11,7 +11,7 @@ fn test_store_key_package(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
 
     let key_package = KeyPackage::builder()
         .build(
-            CryptoConfig::with_default_version(ciphersuite),
+            ciphersuite,
             provider,
             &signature_keys,
             CredentialWithKey {
