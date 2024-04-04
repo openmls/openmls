@@ -131,7 +131,6 @@ impl<'a> PublicGroupDiff<'a> {
         exclusion_list: &HashSet<&LeafNodeIndex>,
     ) -> Result<(Vec<EncryptionKeyPair>, CommitSecret), ApplyUpdatePathError> {
         let params = DecryptPathParams {
-            version: self.group_context().protocol_version(),
             update_path,
             sender_leaf_index,
             exclusion_list,

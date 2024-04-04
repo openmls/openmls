@@ -361,12 +361,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
             .tls_serialize_detached()
             .unwrap(),
 
-        group_secrets: GroupSecrets::random_encoded(
-            ciphersuite,
-            provider.rand(),
-            ProtocolVersion::default(),
-        )
-        .unwrap(),
+        group_secrets: GroupSecrets::random_encoded(ciphersuite, provider.rand()).unwrap(),
         ratchet_tree: alice_ratchet_tree.tls_serialize_detached().unwrap(),
 
         add_proposal: add_proposal.tls_serialize_detached().unwrap(),

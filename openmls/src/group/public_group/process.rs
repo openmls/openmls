@@ -152,6 +152,7 @@ impl PublicGroup {
                         .tls_serialize_detached()
                         .map_err(LibraryError::missing_bound_check)?,
                     crypto,
+                    self.ciphersuite(),
                 )?
             }
         };

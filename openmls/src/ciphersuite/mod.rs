@@ -3,7 +3,6 @@
 //! This file contains the API to interact with ciphersuites.
 //! See `codec.rs` and `ciphersuites.rs` for internals.
 
-use crate::versions::ProtocolVersion;
 use ::tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes};
 use openmls_traits::{
     crypto::OpenMlsCrypto,

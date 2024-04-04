@@ -13,7 +13,6 @@ use crate::{
     ciphersuite::{hpke, HpkePrivateKey, HpkePublicKey, Secret},
     error::LibraryError,
     group::config::CryptoConfig,
-    versions::ProtocolVersion,
 };
 
 /// [`EncryptionKey`] contains an HPKE public key that allows the encryption of
@@ -119,7 +118,6 @@ impl EncryptionPrivateKey {
         &self,
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
-        version: ProtocolVersion,
         ciphertext: &HpkeCiphertext,
         group_context: &[u8],
     ) -> Result<Secret, hpke::Error> {
@@ -132,7 +130,7 @@ impl EncryptionPrivateKey {
             ciphersuite,
             crypto,
         )
-        .map(|secret_bytes| Secret::from_slice(&secret_bytes, version, ciphersuite))
+        .map(|secret_bytes| Secret::from_slice(&secret_bytes))
     }
 }
 
@@ -211,7 +209,7 @@ impl EncryptionKeyPair {
         provider: &impl OpenMlsProvider,
         config: CryptoConfig,
     ) -> Result<Self, LibraryError> {
-        let ikm = Secret::random(config.ciphersuite, provider.rand(), config.version)
+        let ikm = Secret::random(config.ciphersuite, provider.rand())
             .map_err(LibraryError::unexpected_crypto_error)?;
         Ok(provider
             .crypto()

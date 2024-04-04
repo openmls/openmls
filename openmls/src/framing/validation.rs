@@ -67,6 +67,7 @@ impl DecryptedMessage {
         message_secrets_option: impl Into<Option<&'a MessageSecrets>>,
         serialized_context: Vec<u8>,
         crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
     ) -> Result<Self, ValidationError> {
         if public_message.sender().is_member() {
             // ValSem007 Membership tag presence
@@ -80,6 +81,7 @@ impl DecryptedMessage {
                 // ValSem008
                 public_message.verify_membership(
                     crypto,
+                    ciphersuite,
                     message_secrets.membership_key(),
                     message_secrets.serialized_context(),
                 )?;

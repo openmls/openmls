@@ -534,6 +534,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             .serialized_context()
             .to_vec(),
         provider.crypto(),
+        ciphersuite,
     )
     .unwrap();
     let verification_result: Result<AuthenticatedContentIn, _> =

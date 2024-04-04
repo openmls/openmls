@@ -277,7 +277,7 @@ impl KeyPackage {
         }
 
         // Create a new HPKE key pair
-        let ikm = Secret::random(config.ciphersuite, provider.rand(), config.version)
+        let ikm = Secret::random(config.ciphersuite, provider.rand())
             .map_err(LibraryError::unexpected_crypto_error)?;
         let init_key = provider
             .crypto()
