@@ -110,7 +110,7 @@ fn generate_credential(
     signature_algorithm: SignatureScheme,
     provider: &impl OpenMlsProvider,
 ) -> (CredentialWithKey, SignatureKeyPair) {
-    let credential = BasicCredential::new(identity).unwrap();
+    let credential = BasicCredential::new(identity);
     let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
     signature_keys.store(provider.key_store()).unwrap();
 
@@ -239,7 +239,7 @@ pub fn run_test_vector(
         );
 
         // Set up the group, unfortunately we can't do without.
-        let credential = BasicCredential::new(b"This is not needed".to_vec()).unwrap();
+        let credential = BasicCredential::new(b"This is not needed".to_vec());
         let signature_private_key = hex_to_bytes(&test.signature_priv);
         let random_own_signature_key =
             SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
@@ -261,7 +261,7 @@ pub fn run_test_vector(
         .build(provider, &signer)
         .unwrap();
 
-        let credential = BasicCredential::new("Fake user".into()).unwrap();
+        let credential = BasicCredential::new("Fake user".into());
         let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
         let bob_key_package_bundle = KeyPackageBundle::new(
             provider,

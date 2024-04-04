@@ -345,7 +345,7 @@ impl Client {
         let group = groups.get(group_id).unwrap();
         let leaf = group.own_leaf();
         leaf.map(|l| {
-            let credential = BasicCredential::try_from(l.credential()).unwrap();
+            let credential = BasicCredential::try_from(l.credential().clone()).unwrap();
             credential.identity().to_vec()
         })
     }
