@@ -315,6 +315,7 @@
 <a href="#313" id="313">313</a>
 <a href="#314" id="314">314</a>
 <a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # PublicMessage
 //!
 //! A PublicMessage is a framing structure for MLS messages. It can contain
@@ -455,6 +456,7 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>set_membership_tag(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
         membership_key: <span class="kw-2">&amp;</span>MembershipKey,
         serialized_context: <span class="kw-2">&amp;</span>[u8],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), LibraryError&gt; {
@@ -467,7 +469,7 @@
         )
         .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
         <span class="kw">let </span>tbm_payload = AuthenticatedContentTbm::new(<span class="kw-2">&amp;</span>tbs_payload, <span class="kw-2">&amp;</span><span class="self">self</span>.auth)<span class="question-mark">?</span>;
-        <span class="kw">let </span>membership_tag = membership_key.tag_message(crypto, tbm_payload)<span class="question-mark">?</span>;
+        <span class="kw">let </span>membership_tag = membership_key.tag_message(crypto, ciphersuite, tbm_payload)<span class="question-mark">?</span>;
 
         <span class="self">self</span>.membership_tag = <span class="prelude-val">Some</span>(membership_tag);
         <span class="prelude-val">Ok</span>(())

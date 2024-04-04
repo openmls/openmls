@@ -222,10 +222,10 @@
 <span class="kw">impl </span>AeadKey {
     <span class="doccomment">/// Create an `AeadKey` from a `Secret`. TODO: This function should
     /// disappear when tackling issue #103.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_secret(secret: Secret) -&gt; <span class="self">Self </span>{
-        <span class="macro">log::trace!</span>(<span class="string">"AeadKey::from_secret with {}"</span>, secret.ciphersuite);
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_secret(secret: Secret, ciphersuite: Ciphersuite) -&gt; <span class="self">Self </span>{
+        <span class="macro">log::trace!</span>(<span class="string">"AeadKey::from_secret with {}"</span>, ciphersuite);
         AeadKey {
-            aead_mode: secret.ciphersuite.aead_algorithm(),
+            aead_mode: ciphersuite.aead_algorithm(),
             value: secret.value,
         }
     }

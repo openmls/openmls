@@ -253,7 +253,6 @@
 <a href="#251" id="251">251</a>
 <a href="#252" id="252">252</a>
 <a href="#253" id="253">253</a>
-<a href="#254" id="254">254</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Public group diffs
 //!
 //! This module contains the [`PublicGroupDiff`] struct, as well as the
@@ -387,7 +386,6 @@
         exclusion_list: <span class="kw-2">&amp;</span>HashSet&lt;<span class="kw-2">&amp;</span>LeafNodeIndex&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;EncryptionKeyPair&gt;, CommitSecret), ApplyUpdatePathError&gt; {
         <span class="kw">let </span>params = DecryptPathParams {
-            version: <span class="self">self</span>.group_context().protocol_version(),
             update_path,
             sender_leaf_index,
             exclusion_list,

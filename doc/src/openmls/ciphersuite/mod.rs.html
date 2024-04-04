@@ -56,14 +56,12 @@
 <a href="#54" id="54">54</a>
 <a href="#55" id="55">55</a>
 <a href="#56" id="56">56</a>
-<a href="#57" id="57">57</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Ciphersuites for MLS
 //!
 //! This file contains the API to interact with ciphersuites.
 //! See `codec.rs` and `ciphersuites.rs` for internals.
 
-</span><span class="kw">use </span><span class="kw">crate</span>::versions::ProtocolVersion;
-<span class="kw">use </span>::tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes};
+</span><span class="kw">use </span>::tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes};
 <span class="kw">use </span>openmls_traits::{
     crypto::OpenMlsCrypto,
     random::OpenMlsRand,

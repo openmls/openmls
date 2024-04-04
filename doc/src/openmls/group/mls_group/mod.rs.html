@@ -461,6 +461,7 @@
 <a href="#459" id="459">459</a>
 <a href="#460" id="460">460</a>
 <a href="#461" id="461">461</a>
+<a href="#462" id="462">462</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! MLS Group
 //!
 //! This module contains [`MlsGroup`] and its submodules.
@@ -821,6 +822,7 @@
                 </span><span class="kw">if </span>plaintext.sender().is_member() {
                     plaintext.set_membership_tag(
                         provider.crypto(),
+                        <span class="self">self</span>.ciphersuite(),
                         <span class="self">self</span>.group.message_secrets().membership_key(),
                         <span class="self">self</span>.group.message_secrets().serialized_context(),
                     )<span class="question-mark">?</span>;

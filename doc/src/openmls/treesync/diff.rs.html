@@ -1183,7 +1183,7 @@
         leaf_index: LeafNodeIndex,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;PathDerivationResult, LibraryError&gt; {
         <span class="kw">let </span>path_secret = PathSecret::from(
-            Secret::random(ciphersuite, provider.rand(), <span class="prelude-val">None</span>)
+            Secret::random(ciphersuite, provider.rand())
                 .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>,
         );
 

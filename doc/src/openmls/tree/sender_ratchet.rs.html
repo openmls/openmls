@@ -274,6 +274,12 @@
 <a href="#272" id="272">272</a>
 <a href="#273" id="273">273</a>
 <a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! ### Don't Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -405,6 +411,7 @@
             <span class="kw">return </span><span class="prelude-val">Err</span>(SecretTreeError::RatchetTooLong);
         }
         <span class="kw">let </span>nonce = derive_tree_secret(
+            ciphersuite,
             <span class="kw-2">&amp;</span><span class="self">self</span>.secret,
             <span class="string">"nonce"</span>,
             <span class="self">self</span>.generation,
@@ -412,6 +419,7 @@
             crypto,
         )<span class="question-mark">?</span>;
         <span class="kw">let </span>key = derive_tree_secret(
+            ciphersuite,
             <span class="kw-2">&amp;</span><span class="self">self</span>.secret,
             <span class="string">"key"</span>,
             <span class="self">self</span>.generation,
@@ -419,6 +427,7 @@
             crypto,
         )<span class="question-mark">?</span>;
         <span class="self">self</span>.secret = derive_tree_secret(
+            ciphersuite,
             <span class="kw-2">&amp;</span><span class="self">self</span>.secret,
             <span class="string">"secret"</span>,
             <span class="self">self</span>.generation,
@@ -429,7 +438,10 @@
         <span class="self">self</span>.generation += <span class="number">1</span>;
         <span class="prelude-val">Ok</span>((
             generation,
-            (AeadKey::from_secret(key), AeadNonce::from_secret(nonce)),
+            (
+                AeadKey::from_secret(key, ciphersuite),
+                AeadNonce::from_secret(nonce),
+            ),
         ))
     }
 

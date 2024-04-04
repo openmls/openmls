@@ -295,6 +295,11 @@
 <a href="#293" id="293">293</a>
 <a href="#294" id="294">294</a>
 <a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # PublicMessageIn
 //!
 //! A PublicMessageIn is a framing structure for MLS messages. It can contain
@@ -310,6 +315,7 @@
     <span class="kw-2">*</span>,
 };
 
+<span class="kw">use </span>openmls_traits::types::Ciphersuite;
 <span class="kw">use </span>std::io::{Read, Write};
 <span class="kw">use </span>tls_codec::{Deserialize <span class="kw">as </span>TlsDeserializeTrait, Serialize <span class="kw">as </span>TlsSerializeTrait};
 
@@ -403,6 +409,7 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>set_membership_tag(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>openmls_traits::OpenMlsProvider,
+        ciphersuite: Ciphersuite,
         membership_key: <span class="kw-2">&amp;</span>MembershipKey,
         serialized_context: <span class="kw-2">&amp;</span>[u8],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), LibraryError&gt; {
@@ -415,7 +422,8 @@
         )
         .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
         <span class="kw">let </span>tbm_payload = AuthenticatedContentTbm::new(<span class="kw-2">&amp;</span>tbs_payload, <span class="kw-2">&amp;</span><span class="self">self</span>.auth)<span class="question-mark">?</span>;
-        <span class="kw">let </span>membership_tag = membership_key.tag_message(provider.crypto(), tbm_payload)<span class="question-mark">?</span>;
+        <span class="kw">let </span>membership_tag =
+            membership_key.tag_message(provider.crypto(), ciphersuite, tbm_payload)<span class="question-mark">?</span>;
 
         <span class="self">self</span>.membership_tag = <span class="prelude-val">Some</span>(membership_tag);
         <span class="prelude-val">Ok</span>(())
@@ -428,6 +436,7 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>verify_membership(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>openmls_traits::crypto::OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
         membership_key: <span class="kw-2">&amp;</span>MembershipKey,
         serialized_context: <span class="kw-2">&amp;</span>[u8],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ValidationError&gt; {
@@ -443,7 +452,8 @@
         )
         .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
         <span class="kw">let </span>tbm_payload = AuthenticatedContentTbm::new(<span class="kw-2">&amp;</span>tbs_payload, <span class="kw-2">&amp;</span><span class="self">self</span>.auth)<span class="question-mark">?</span>;
-        <span class="kw">let </span>expected_membership_tag = <span class="kw-2">&amp;</span>membership_key.tag_message(crypto, tbm_payload)<span class="question-mark">?</span>;
+        <span class="kw">let </span>expected_membership_tag =
+            <span class="kw-2">&amp;</span>membership_key.tag_message(crypto, ciphersuite, tbm_payload)<span class="question-mark">?</span>;
 
         <span class="comment">// Verify the membership tag
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(membership_tag) = <span class="kw-2">&amp;</span><span class="self">self</span>.membership_tag {

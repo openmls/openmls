@@ -1175,7 +1175,7 @@
         <span class="kw">let </span>(leaf, encryption_key_pair) = LeafNode::new(provider, signer, new_leaf_node_params)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>node = Node::LeafNode(leaf);
-        <span class="kw">let </span>path_secret: PathSecret = Secret::random(config.ciphersuite, provider.rand(), <span class="prelude-val">None</span>)
+        <span class="kw">let </span>path_secret: PathSecret = Secret::random(config.ciphersuite, provider.rand())
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?
             </span>.into();
         <span class="kw">let </span>commit_secret: CommitSecret = path_secret

@@ -408,6 +408,8 @@
 <a href="#406" id="406">406</a>
 <a href="#407" id="407">407</a>
 <a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Validation steps for incoming messages
 //!
 //! ```text
@@ -477,6 +479,7 @@
         message_secrets_option: <span class="kw">impl </span>Into&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>MessageSecrets&gt;&gt;,
         serialized_context: Vec&lt;u8&gt;,
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, ValidationError&gt; {
         <span class="kw">if </span>public_message.sender().is_member() {
             <span class="comment">// ValSem007 Membership tag presence
@@ -490,6 +493,7 @@
                 // ValSem008
                 </span>public_message.verify_membership(
                     crypto,
+                    ciphersuite,
                     message_secrets.membership_key(),
                     message_secrets.serialized_context(),
                 )<span class="question-mark">?</span>;

@@ -554,6 +554,9 @@
 <a href="#552" id="552">552</a>
 <a href="#553" id="553">553</a>
 <a href="#554" id="554">554</a>
+<a href="#555" id="555">555</a>
+<a href="#556" id="556">556</a>
+<a href="#557" id="557">557</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Preshared keys.
 
 </span><span class="kw">use </span>openmls_traits::{
@@ -843,13 +846,12 @@
     </span><span class="kw">pub fn </span>write_to_key_store&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
-        ciphersuite: Ciphersuite,
         psk: <span class="kw-2">&amp;</span>[u8],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), PskError&gt; {
         <span class="kw">let </span>keystore_id = <span class="self">self</span>.keystore_id()<span class="question-mark">?</span>;
 
         <span class="kw">let </span>psk_bundle = {
-            <span class="kw">let </span>secret = Secret::from_slice(psk, ProtocolVersion::default(), ciphersuite);
+            <span class="kw">let </span>secret = Secret::from_slice(psk);
 
             PskBundle { secret }
         };
@@ -970,19 +972,17 @@
         <span class="comment">// Check that we don't have too many PSKs
         </span><span class="kw">let </span>num_psks = u16::try_from(psks.len()).map_err(|<span class="kw">_</span>| PskError::TooManyKeys)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>mls_version = ProtocolVersion::default();
-
         <span class="comment">// Following comments are from `draft-ietf-mls-protocol-19`.
         //
         // psk_secret_[0] = 0
-        </span><span class="kw">let </span><span class="kw-2">mut </span>psk_secret = Secret::zero(ciphersuite, mls_version);
+        </span><span class="kw">let </span><span class="kw-2">mut </span>psk_secret = Secret::zero(ciphersuite);
 
         <span class="kw">for </span>(index, (psk_id, psk)) <span class="kw">in </span>psks.into_iter().enumerate() {
             <span class="comment">// psk_extracted_[i] = KDF.Extract(0, psk_[i])
             </span><span class="kw">let </span>psk_extracted = {
-                <span class="kw">let </span>zero_secret = Secret::zero(ciphersuite, mls_version);
+                <span class="kw">let </span>zero_secret = Secret::zero(ciphersuite);
                 zero_secret
-                    .hkdf_extract(crypto, <span class="kw-2">&amp;</span>psk)
+                    .hkdf_extract(crypto, ciphersuite, <span class="kw-2">&amp;</span>psk)
                     .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?
             </span>};
 
@@ -993,13 +993,19 @@
                     .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
 
                 psk_extracted
-                    .kdf_expand_label(crypto, <span class="string">"derived psk"</span>, <span class="kw-2">&amp;</span>psk_label, ciphersuite.hash_length())
+                    .kdf_expand_label(
+                        crypto,
+                        ciphersuite,
+                        <span class="string">"derived psk"</span>,
+                        <span class="kw-2">&amp;</span>psk_label,
+                        ciphersuite.hash_length(),
+                    )
                     .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?
             </span>};
 
             <span class="comment">// psk_secret_[i] = KDF.Extract(psk_input_[i-1], psk_secret_[i-1])
             </span>psk_secret = psk_input
-                .hkdf_extract(crypto, <span class="kw-2">&amp;</span>psk_secret)
+                .hkdf_extract(crypto, ciphersuite, <span class="kw-2">&amp;</span>psk_secret)
                 .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
         }
 

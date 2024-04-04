@@ -276,6 +276,7 @@
 <a href="#274" id="274">274</a>
 <a href="#275" id="275">275</a>
 <a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
 <span class="kw">use </span>tls_codec::Serialize;
 
@@ -430,6 +431,7 @@
                         .tls_serialize_detached()
                         .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>,
                     crypto,
+                    <span class="self">self</span>.ciphersuite(),
                 )<span class="question-mark">?
             </span>}
         };

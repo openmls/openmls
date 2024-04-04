@@ -307,6 +307,7 @@
 <a href="#305" id="305">305</a>
 <a href="#306" id="306">306</a>
 <a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>core_group::proposals::QueuedProposal;
 
 <span class="kw">use crate</span>::{
@@ -555,6 +556,7 @@
                     message_secrets,
                     message_secrets.serialized_context().to_vec(),
                     crypto,
+                    <span class="self">self</span>.ciphersuite(),
                 )
             }
             ProtocolMessage::PrivateMessage(ciphertext) =&gt; {

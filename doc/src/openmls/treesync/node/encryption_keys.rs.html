@@ -291,8 +291,6 @@
 <a href="#289" id="289">289</a>
 <a href="#290" id="290">290</a>
 <a href="#291" id="291">291</a>
-<a href="#292" id="292">292</a>
-<a href="#293" id="293">293</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::fmt::Debug;
 
 <span class="kw">use </span>openmls_traits::{
@@ -308,7 +306,6 @@
     ciphersuite::{hpke, HpkePrivateKey, HpkePublicKey, Secret},
     error::LibraryError,
     group::config::CryptoConfig,
-    versions::ProtocolVersion,
 };
 
 <span class="doccomment">/// [`EncryptionKey`] contains an HPKE public key that allows the encryption of
@@ -414,7 +411,6 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         ciphersuite: Ciphersuite,
-        version: ProtocolVersion,
         ciphertext: <span class="kw-2">&amp;</span>HpkeCiphertext,
         group_context: <span class="kw-2">&amp;</span>[u8],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Secret, hpke::Error&gt; {
@@ -427,7 +423,7 @@
             ciphersuite,
             crypto,
         )
-        .map(|secret_bytes| Secret::from_slice(<span class="kw-2">&amp;</span>secret_bytes, version, ciphersuite))
+        .map(|secret_bytes| Secret::from_slice(<span class="kw-2">&amp;</span>secret_bytes))
     }
 }
 
@@ -506,7 +502,7 @@
         provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
         config: CryptoConfig,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
-        <span class="kw">let </span>ikm = Secret::random(config.ciphersuite, provider.rand(), config.version)
+        <span class="kw">let </span>ikm = Secret::random(config.ciphersuite, provider.rand())
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(provider
             .crypto()

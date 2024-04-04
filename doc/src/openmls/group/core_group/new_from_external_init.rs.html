@@ -137,6 +137,10 @@
 <a href="#135" id="135">135</a>
 <a href="#136" id="136">136</a>
 <a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     binary_tree::array_representation::LeafNodeIndex,
     group::{
@@ -211,8 +215,12 @@
         <span class="comment">// The `EpochSecrets` we create here are essentially zero, with the
         // exception of the `InitSecret`, which is all we need here for the
         // external commit.
-        </span><span class="kw">let </span>epoch_secrets = EpochSecrets::with_init_secret(provider.crypto(), init_secret)
-            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>epoch_secrets = EpochSecrets::with_init_secret(
+            provider.crypto(),
+            group_info.group_context().ciphersuite(),
+            init_secret,
+        )
+        .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
         <span class="kw">let </span>(group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
             group_context
                 .tls_serialize_detached()

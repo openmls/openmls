@@ -896,7 +896,7 @@
         }
 
         <span class="comment">// Create a new HPKE key pair
-        </span><span class="kw">let </span>ikm = Secret::random(config.ciphersuite, provider.rand(), config.version)
+        </span><span class="kw">let </span>ikm = Secret::random(config.ciphersuite, provider.rand())
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
         <span class="kw">let </span>init_key = provider
             .crypto()

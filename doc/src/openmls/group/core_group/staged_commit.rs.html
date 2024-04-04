@@ -578,8 +578,6 @@
 <a href="#576" id="576">576</a>
 <a href="#577" id="577">577</a>
 <a href="#578" id="578">578</a>
-<a href="#579" id="579">579</a>
-<a href="#580" id="580">580</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>core::fmt::Debug;
 <span class="kw">use </span>std::mem;
 
@@ -623,6 +621,7 @@
             )<span class="question-mark">?</span>;
             JoinerSecret::new(
                 provider.crypto(),
+                <span class="self">self</span>.ciphersuite(),
                 commit_secret,
                 <span class="kw-2">&amp;</span>init_secret,
                 serialized_provisional_group_context,
@@ -631,6 +630,7 @@
         </span>} <span class="kw">else </span>{
             JoinerSecret::new(
                 provider.crypto(),
+                <span class="self">self</span>.ciphersuite(),
                 commit_secret,
                 epoch_secrets.init_secret(),
                 serialized_provisional_group_context,
@@ -661,7 +661,7 @@
             .add_context(provider.crypto(), serialized_provisional_group_context)
             .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"Using the key schedule in the wrong state"</span>))<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(key_schedule
-            .epoch_secrets(provider.crypto())
+            .epoch_secrets(provider.crypto(), <span class="self">self</span>.ciphersuite())
             .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"Using the key schedule in the wrong state"</span>))<span class="question-mark">?</span>)
     }
 
@@ -817,12 +817,7 @@
                     apply_proposals_values.extensions.clone(),
                 )<span class="question-mark">?</span>;
 
-                (
-                    CommitSecret::zero_secret(ciphersuite, <span class="self">self</span>.version()),
-                    <span class="macro">vec!</span>[],
-                    <span class="prelude-val">None</span>,
-                    <span class="prelude-val">None</span>,
-                )
+                (CommitSecret::zero_secret(ciphersuite), <span class="macro">vec!</span>[], <span class="prelude-val">None</span>, <span class="prelude-val">None</span>)
             };
 
         <span class="comment">// Update the confirmed transcript hash before we compute the confirmation tag.
@@ -857,6 +852,7 @@
             .confirmation_key()
             .tag(
                 provider.crypto(),
+                <span class="self">self</span>.ciphersuite(),
                 diff.group_context().confirmed_transcript_hash(),
             )
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
