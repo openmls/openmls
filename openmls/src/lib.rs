@@ -192,6 +192,7 @@ pub mod versions;
 
 // Private
 mod binary_tree;
+mod spec_types;
 mod tree;
 
 /// Single place, re-exporting the most used public functions.

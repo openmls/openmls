@@ -2,15 +2,24 @@ use impl_storagekey::QueuedProposals;
 use openmls_spec_types::hpke::*;
 use openmls_spec_types::key_package::{KeyPackage, KeyPackageRef};
 use openmls_spec_types::keys::{EncryptionKey, InitKey};
-use openmls_spec_types::proposals::{Proposal, ProposalOrRefType, ProposalRef, Sender};
+use openmls_spec_types::proposals::ProposalRef;
 use openmls_spec_types::GroupId;
 use openmls_traits::storage::{
     CreateError, DeleteError, EpochKeyPairId, GetError, InsertError, Key, OpenError, PskBundle,
-    PskBundleId, Storage, StoredProposal, Update, UpdateError,
+    PskBundleId, Storage, Stored as StoredTrait, StoredProposal, Update, UpdateError,
 };
-use serde::{Deserialize, Serialize};
 
 const MAX_SUPPORTED_VERSION: u16 = 1;
+const MIN_SUPPORTED_VERSION: u16 = 1;
+
+pub struct Stored<T>(T);
+
+impl<T> openmls_traits::storage::Stored<T> for Stored<T> {
+    fn get(self) -> T {
+        self.0
+    }
+}
+
 /// The kv module describes the underlying byte-oriented Key Value Store
 pub mod kv;
 
@@ -60,6 +69,8 @@ impl<KvStore: kv::KeyValueStore> KvStoreStorage<KvStore> {
 impl<KvStore: kv::KeyValueStore<SerializeError = serde_json::Error>> Storage<KvStore>
     for KvStoreStorage<KvStore>
 {
+    type Stored<T> = Stored<T>;
+
     fn current_version(&self) -> u16 {
         let version_bytes: [u8; 2] = self.0.get(b"version").unwrap().try_into().unwrap();
         u16::from_be_bytes(version_bytes)
@@ -118,55 +129,67 @@ impl<KvStore: kv::KeyValueStore<SerializeError = serde_json::Error>> Storage<KvS
     fn get_epoch_key_pairs(
         &self,
         epoch_key_pair_id: &EpochKeyPairId,
-    ) -> Result<Vec<HpkeKeyPair>, GetError<KvStore::InternalError, KvStore::SerializeError>> {
+    ) -> Result<Vec<Stored<HpkeKeyPair>>, GetError<KvStore::InternalError, KvStore::SerializeError>>
+    {
         let key = epoch_key_pair_id.key();
         let value_bytes = self.0.get(&key).map_err(kv::GetError::into_storage_error(
             epoch_key_pair_id.clone().into_key(),
         ))?;
-        serde_json::from_slice(&value_bytes).map_err(GetError::DeserializeFailed)
+        serde_json::from_slice(&value_bytes)
+            .map_err(GetError::DeserializeFailed)
+            .map(|list: Vec<_>| list.into_iter().map(Stored).collect())
     }
 
     fn get_encryption_secret_key(
         &self,
         public_key: &EncryptionKey,
-    ) -> Result<HpkePrivateKey, GetError<KvStore::InternalError, KvStore::SerializeError>> {
+    ) -> Result<Stored<HpkePrivateKey>, GetError<KvStore::InternalError, KvStore::SerializeError>>
+    {
         let key = public_key.key_bytes();
         let value_bytes = self.0.get(&key).map_err(kv::GetError::into_storage_error(
             public_key.clone().into_key(),
         ))?;
-        serde_json::from_slice(&value_bytes).map_err(GetError::DeserializeFailed)
+        serde_json::from_slice(&value_bytes)
+            .map_err(GetError::DeserializeFailed)
+            .map(Stored)
     }
 
     fn get_init_secret_key(
         &self,
         public_key: &InitKey,
-    ) -> Result<HpkePrivateKey, GetError<KvStore::InternalError, KvStore::SerializeError>> {
+    ) -> Result<Stored<HpkePrivateKey>, GetError<KvStore::InternalError, KvStore::SerializeError>>
+    {
         let key = public_key.key_bytes();
         let value_bytes = self.0.get(&key).map_err(kv::GetError::into_storage_error(
             public_key.clone().into_key(),
         ))?;
-        serde_json::from_slice(&value_bytes).map_err(GetError::DeserializeFailed)
+        serde_json::from_slice(&value_bytes)
+            .map_err(GetError::DeserializeFailed)
+            .map(Stored)
     }
 
     fn get_key_package(
         &self,
         key_pkg_ref: &KeyPackageRef,
-    ) -> Result<KeyPackage, GetError<KvStore::InternalError, KvStore::SerializeError>> {
+    ) -> Result<Stored<KeyPackage>, GetError<KvStore::InternalError, KvStore::SerializeError>> {
         let key = key_pkg_ref.key_bytes();
         let value_bytes = self.0.get(&key).map_err(kv::GetError::into_storage_error(
             key_pkg_ref.clone().into_key(),
         ))?;
-        serde_json::from_slice(&value_bytes).map_err(GetError::DeserializeFailed)
+        serde_json::from_slice(&value_bytes)
+            .map_err(GetError::DeserializeFailed)
+            .map(Stored)
     }
 
     fn get_psk_bundle(
         &self,
         id: &PskBundleId,
-    ) -> Result<PskBundle, GetError<KvStore::InternalError, KvStore::SerializeError>> {
+    ) -> Result<Stored<PskBundle>, GetError<KvStore::InternalError, KvStore::SerializeError>> {
         self.0
             .get(&id.key_bytes())
             .map_err(kv::GetError::into_storage_error(id.clone().into_key()))
             .map(PskBundle)
+            .map(Stored)
     }
 
     fn get_mls_group(
@@ -183,7 +206,7 @@ impl<KvStore: kv::KeyValueStore<SerializeError = serde_json::Error>> Storage<KvS
     fn get_queued_proposals(
         &self,
     ) -> Result<
-        Vec<StoredProposal>,
+        Vec<Stored<StoredProposal>>,
         GetError<
             <KvStore as openmls_traits::storage::Platform>::InternalError,
             <KvStore as openmls_traits::storage::Platform>::SerializeError,
@@ -210,8 +233,10 @@ impl<KvStore: kv::KeyValueStore<SerializeError = serde_json::Error>> Storage<KvS
                         .map_err(kv::GetError::into_storage_error(
                             proposal_ref.clone().into_key(),
                         ))?;
-                let stored_proposal: StoredProposal =
-                    serde_json::from_slice(&proposal_bytes).map_err(GetError::DeserializeFailed)?;
+                let stored_proposal: Stored<StoredProposal> =
+                    serde_json::from_slice(&proposal_bytes)
+                        .map_err(GetError::DeserializeFailed)
+                        .map(Stored)?;
 
                 Ok(stored_proposal)
             })
@@ -305,7 +330,8 @@ impl<KvStore: kv::KeyValueStore<SerializeError = serde_json::Error>> KvStoreStor
         // fetch the key package before deleting, so we can also delete the secrets
         let key_pkg = self
             .get_key_package(key_pkg_ref)
-            .map_err(DeleteError::GetKeyPackageError)?;
+            .map_err(DeleteError::GetKeyPackageError)?
+            .get();
 
         self.0
             .delete(&key_pkg_ref.key_bytes())
@@ -496,4 +522,16 @@ impl<KvStore: kv::KeyValueStore<SerializeError = serde_json::Error>> KvStoreStor
             .delete(&key)
             .map_err(kv::DeleteError::into_storage_error(proposal_ref.into_key()))
     }
+}
+
+/// Example.
+/// MigrationV1V2Error explains why a migration from version 1 to version 2 failed.
+#[derive(Clone, Debug)]
+pub enum MigrationV1V2Error<InnerError> {
+    InternalError(InnerError),
+}
+
+// an example for how we could implement migrations
+impl<KvStore: kv::KeyValueStore> KvStoreStorage<KvStore> {
+    fn migrate_v1_v2(kv: KvStore) -> Result<(), MigrationV1V2Error<KvStore::InternalError>> {}
 }

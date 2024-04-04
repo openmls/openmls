@@ -204,11 +204,16 @@ pub trait Platform {
     type SerializeError: core::fmt::Debug;
 }
 
+pub trait Stored<T> {
+    fn get(self) -> T;
+}
+
 // This trait is more of an interface documentation. I am not convinced it needs to be a trait,
 // it might be fine to just have this as a struct that implements these methods.
 /// Storage provides the high-level interface to OpenMLS. A version describes a certain layout of
 /// data inside the key-value store.
 pub trait Storage<KvStore: Platform> {
+    type Stored<T>: Stored<T>;
     /// returns the version of the data currently stored in the KVStore
     fn current_version(&self) -> u16;
 
@@ -231,143 +236,47 @@ pub trait Storage<KvStore: Platform> {
     fn get_epoch_key_pairs(
         &self,
         epoch_key_pair_id: &EpochKeyPairId,
-    ) -> Result<Vec<HpkeKeyPair>, GetError<KvStore::InternalError, KvStore::SerializeError>>;
-
-    //    fn insert_epoch_key_pairs(
-    //        &mut self,
-    //        epoch_key_pair_id: &EpochKeyPairId,
-    //        key_pairs: Vec<HpkeKeyPair>,
-    //    ) -> Result<(), InsertError<KvStore::InternalError, KvStore::SerializeError>>;
-    //
-    //    fn delete_epoch_key_pairs(
-    //        &mut self,
-    //        epoch_key_pair_id: &EpochKeyPairId,
-    //    ) -> Result<(), DeleteError<KvStore::InternalError, KvStore::SerializeError>>;
-
-    // ---
+    ) -> Result<
+        Vec<Self::Stored<HpkeKeyPair>>,
+        GetError<KvStore::InternalError, KvStore::SerializeError>,
+    >;
 
     fn get_encryption_secret_key(
         &self,
         public_key: &EncryptionKey,
-    ) -> Result<HpkePrivateKey, GetError<KvStore::InternalError, KvStore::SerializeError>>;
-
-    //    fn insert_encryption_secret_key(
-    //        &mut self,
-    //        public_key: &EncryptionKey,
-    //        secret_key: HpkePrivateKey,
-    //    ) -> Result<(), InsertError<KvStore::InternalError, KvStore::SerializeError>>;
-    //
-    //    fn delete_encryption_secret_key(
-    //        &mut self,
-    //        public_key: &EncryptionKey,
-    //    ) -> Result<(), DeleteError<KvStore::InternalError, KvStore::SerializeError>>;
-
-    // ---
+    ) -> Result<
+        Self::Stored<HpkePrivateKey>,
+        GetError<KvStore::InternalError, KvStore::SerializeError>,
+    >;
 
     fn get_init_secret_key(
         &self,
         public_key: &InitKey,
-    ) -> Result<HpkePrivateKey, GetError<KvStore::InternalError, KvStore::SerializeError>>;
-
-    //    fn insert_init_secret_key(
-    //        &mut self,
-    //        public_key: &InitKey,
-    //        secret_key: HpkePrivateKey,
-    //    ) -> Result<(), InsertError<KvStore::InternalError, KvStore::SerializeError>>;
-    //
-    //    fn delete_init_secret_key(
-    //        &mut self,
-    //        public_key: &InitKey,
-    //    ) -> Result<(), DeleteError<KvStore::InternalError, KvStore::SerializeError>>;
-
-    // ---
-
-    // Also deletes secret keys
-    //    fn delete_key_package(
-    //        &mut self,
-    //        key_pkg_ref: &KeyPackageRef,
-    //    ) -> Result<(), DeleteError<KvStore::InternalError, KvStore::SerializeError>>;
+    ) -> Result<
+        Self::Stored<HpkePrivateKey>,
+        GetError<KvStore::InternalError, KvStore::SerializeError>,
+    >;
 
     fn get_key_package(
         &self,
         key_pkg_ref: &KeyPackageRef,
-    ) -> Result<KeyPackage, GetError<KvStore::InternalError, KvStore::SerializeError>>;
-
-    //    fn insert_key_package(
-    //        &mut self,
-    //        key_pkg_ref: &KeyPackageRef,
-    //        key_pkg: KeyPackage,
-    //    ) -> Result<(), InsertError<KvStore::InternalError, KvStore::SerializeError>>;
-    //
-    //    fn insert_key_package_with_keys(
-    //        &mut self,
-    //        key_pkg_ref: &KeyPackageRef,
-    //        key_pkg: KeyPackage,
-    //        encryption_key: HpkePrivateKey,
-    //        init_key: HpkePrivateKey,
-    //    ) -> Result<(), InsertError<KvStore::InternalError, KvStore::SerializeError>>;
-    //
-    //    fn insert_key_package_with_encryption_key(
-    //        &mut self,
-    //        key_pkg_ref: &KeyPackageRef,
-    //        key_pkg: KeyPackage,
-    //        encryption_key: HpkePrivateKey,
-    //    ) -> Result<(), InsertError<KvStore::InternalError, KvStore::SerializeError>>;
-    //
-    //    fn insert_key_package_with_init_key(
-    //        &mut self,
-    //        key_pkg_ref: &KeyPackageRef,
-    //        key_pkg: KeyPackage,
-    //        init_key: HpkePrivateKey,
-    //    ) -> Result<(), InsertError<KvStore::InternalError, KvStore::SerializeError>>;
-
-    // ---
+    ) -> Result<Self::Stored<KeyPackage>, GetError<KvStore::InternalError, KvStore::SerializeError>>;
 
     fn get_psk_bundle(
         &self,
         id: &PskBundleId,
-    ) -> Result<PskBundle, GetError<KvStore::InternalError, KvStore::SerializeError>>;
-    //    fn insert_psk_bundle(
-    //        &mut self,
-    //        id: &PskBundleId,
-    //        bundle: PskBundle,
-    //    ) -> Result<(), InsertError<KvStore::InternalError, KvStore::SerializeError>>;
-    //    fn delete_psk_bundle(
-    //        &mut self,
-    //        id: &PskBundleId,
-    //    ) -> Result<(), DeleteError<KvStore::InternalError, KvStore::SerializeError>>;
+    ) -> Result<Self::Stored<PskBundle>, GetError<KvStore::InternalError, KvStore::SerializeError>>;
 
-    // ---
-
+    // TODO: remove this. Move all state to individual functions
     fn get_mls_group(
         &self,
         group_id: &GroupId,
     ) -> Result<Vec<u8>, GetError<KvStore::InternalError, KvStore::SerializeError>>;
-    //    fn insert_mls_group(
-    //        &mut self,
-    //        group_id: &GroupId,
-    //        group: Vec<u8>,
-    //    ) -> Result<(), InsertError<KvStore::InternalError, KvStore::SerializeError>>;
-    //    fn delete_mls_group(
-    //        &mut self,
-    //        group_id: &GroupId,
-    //    ) -> Result<(), DeleteError<KvStore::InternalError, KvStore::SerializeError>>;
 
-    // TODO: I wish the type was simpler, but the error type is just huge and i'm not sure how to
-    // work around that without losing info
-    #[allow(clippy::type_complexity)]
     fn get_queued_proposals(
         &self,
-    ) -> Result<Vec<StoredProposal>, GetError<KvStore::InternalError, KvStore::SerializeError>>;
-}
-
-/// MigrationV1V2Error explains why a migration from version 1 to version 2 failed.
-#[derive(Clone, Debug)]
-pub enum MigrationV1V2Error<InnerError> {
-    InternalError(InnerError),
-}
-
-// an example for how we could implement migrations
-trait StorageV2<KvStore: Platform>: Storage<KvStore> {
-    fn migrate_v1_v2(kv: KvStore) -> Result<(), MigrationV1V2Error<KvStore::InternalError>>;
+    ) -> Result<
+        Vec<Self::Stored<StoredProposal>>,
+        GetError<KvStore::InternalError, KvStore::SerializeError>,
+    >;
 }
