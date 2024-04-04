@@ -1,4 +1,4 @@
-use crate::{messages::group_info, spec_types as private_types};
+use crate::spec_types as private_types;
 use openmls_spec_types as public_types;
 
 impl private_types::tree::RatchetTree {

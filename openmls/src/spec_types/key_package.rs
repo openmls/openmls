@@ -5,7 +5,7 @@ use super::{Ciphersuite, Signature};
 use super::{HashReference, ProtocolVersion};
 
 /// The key package struct.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct KeyPackage {
     pub(super) payload: KeyPackageTbs,
     pub(super) signature: Signature,
@@ -22,7 +22,7 @@ pub struct KeyPackage {
 ///     Extension extensions<V>;
 /// } KeyPackageTBS;
 /// ```
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct KeyPackageTbs {
     pub(super) protocol_version: ProtocolVersion,
     pub(super) ciphersuite: Ciphersuite,
@@ -33,5 +33,5 @@ pub struct KeyPackageTbs {
 
 /// A reference to a key package.
 /// This value uniquely identifies a key package.
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct KeyPackageRef(pub(super) HashReference);

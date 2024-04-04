@@ -9,7 +9,7 @@ use tls_codec::VLBytes;
 
 /// A ratchet tree made of unverified nodes. This is used for deserialization
 /// and verification.
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Clone, Eq, Debug)]
 pub struct RatchetTree(pub(super) Vec<Option<Node>>);
 
 #[derive(Debug, PartialEq, Eq, Clone)]

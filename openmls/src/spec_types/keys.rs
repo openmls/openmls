@@ -1,5 +1,4 @@
 use super::hpke::HpkePublicKey;
-use serde::{Deserialize, Serialize};
 use tls_codec::VLBytes;
 
 /// [`EncryptionKey`] contains an HPKE public key that allows the encryption of

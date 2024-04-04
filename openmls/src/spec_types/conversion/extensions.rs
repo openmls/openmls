@@ -172,3 +172,23 @@ impl private_types::extensions::LastResortExtension {
         Self {}
     }
 }
+
+impl private_types::extensions::Extensions {
+    pub(in crate::spec_types) fn from_public(exts: public_types::extensions::Extensions) -> Self {
+        Self {
+            unique: exts
+                .unique
+                .into_iter()
+                .map(private_types::extensions::Extension::from_public)
+                .collect(),
+        }
+    }
+}
+
+impl private_types::extensions::SenderExtensionIndex {
+    pub(in crate::spec_types) fn from_public(
+        index: public_types::extensions::SenderExtensionIndex,
+    ) -> Self {
+        Self(index.0)
+    }
+}

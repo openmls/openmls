@@ -214,6 +214,7 @@ pub struct ExternalSender {
 /// // draft-ietf-mls-protocol-16
 /// ExternalSender external_senders<V>;
 /// ```
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ExternalSendersExtension(pub(super) Vec<ExternalSender>);
 
 /// ```c

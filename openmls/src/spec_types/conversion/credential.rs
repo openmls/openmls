@@ -1,4 +1,4 @@
-use crate::{messages::group_info, spec_types as private_types};
+use crate::spec_types as private_types;
 use openmls_spec_types as public_types;
 
 impl private_types::credential::CredentialType {
@@ -24,7 +24,9 @@ impl private_types::credential::Credential {
         credential: public_types::credential::Credential,
     ) -> Self {
         Self {
-            credential_type: credential.credential_type.into(),
+            credential_type: private_types::credential::CredentialType::from_public(
+                credential.credential_type,
+            ),
             serialized_credential_content: credential.serialized_credential_content.into(),
         }
     }
