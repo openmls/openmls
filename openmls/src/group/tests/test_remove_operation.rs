@@ -5,9 +5,8 @@ use crate::{framing::*, group::*, test_utils::*, *};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 
 // Tests the different variants of the RemoveOperation enum.
-#[apply(ciphersuites_and_providers)]
-fn test_remove_operation_variants(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
-    let _ = provider;
+#[apply(ciphersuites)]
+fn test_remove_operation_variants(ciphersuite: Ciphersuite) {
     let alice_provider = OpenMlsRustCrypto::default();
     let bob_provider = OpenMlsRustCrypto::default();
     let charlie_provider = OpenMlsRustCrypto::default();

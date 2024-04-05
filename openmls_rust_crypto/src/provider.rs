@@ -47,6 +47,9 @@ fn kem_mode(kem: HpkeKemType) -> hpke_types::KemAlgorithm {
         HpkeKemType::DhKemP521 => hpke_types::KemAlgorithm::DhKemP521,
         HpkeKemType::DhKem25519 => hpke_types::KemAlgorithm::DhKem25519,
         HpkeKemType::DhKem448 => hpke_types::KemAlgorithm::DhKem448,
+        HpkeKemType::XWingKemDraft2 => {
+            unimplemented!("XWingKemDraft1 is not supported by the RustCrypto provider.")
+        }
     }
 }
 
