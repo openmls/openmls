@@ -180,12 +180,7 @@
 <pre><code class="language-rust no_run noplayground">    // Create the key package
     KeyPackage::builder()
         .key_package_extensions(extensions)
-        .build(
-            CryptoConfig::with_default_version(ciphersuite),
-            provider,
-            signer,
-            credential_with_key,
-        )
+        .build(ciphersuite, provider, signer, credential_with_key)
         .unwrap()</code></pre>
 <p>After that, the group can be created either using a config:</p>
 <pre><code class="language-rust no_run noplayground">    let mut alice_group = MlsGroup::new(
@@ -202,7 +197,7 @@
                 10,   // out_of_order_tolerance
                 2000, // maximum_forward_distance
             ))
-            .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+            .ciphersuite(ciphersuite)
             .use_ratchet_tree_extension(true)
             .build(provider, &amp;alice_signature_keys, alice_credential.clone())
             .expect("An unexpected error occurred.");</code></pre>

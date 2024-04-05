@@ -854,12 +854,6 @@
 <a href="#852" id="852">852</a>
 <a href="#853" id="853">853</a>
 <a href="#854" id="854">854</a>
-<a href="#855" id="855">855</a>
-<a href="#856" id="856">856</a>
-<a href="#857" id="857">857</a>
-<a href="#858" id="858">858</a>
-<a href="#859" id="859">859</a>
-<a href="#860" id="860">860</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the [`LeafNode`] struct and its implementation.
 </span><span class="kw">use </span>openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsProvider};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -883,7 +877,7 @@
     credentials::{Credential, CredentialWithKey},
     error::LibraryError,
     extensions::{ExtensionType, Extensions},
-    group::{config::CryptoConfig, GroupId},
+    group::GroupId,
     key_packages::{KeyPackage, Lifetime},
     treesync::errors::PublicTreeError,
     versions::ProtocolVersion,
@@ -897,7 +891,7 @@
 <span class="kw">pub use </span>capabilities::<span class="kw-2">*</span>;
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>NewLeafNodeParams {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) config: CryptoConfig,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) ciphersuite: Ciphersuite,
     <span class="kw">pub</span>(<span class="kw">crate</span>) credential_with_key: CredentialWithKey,
     <span class="kw">pub</span>(<span class="kw">crate</span>) leaf_node_source: LeafNodeSource,
     <span class="kw">pub</span>(<span class="kw">crate</span>) capabilities: Capabilities,
@@ -953,7 +947,7 @@
         new_leaf_node_params: NewLeafNodeParams,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, EncryptionKeyPair), LibraryError&gt; {
         <span class="kw">let </span>NewLeafNodeParams {
-            config,
+            ciphersuite,
             credential_with_key,
             leaf_node_source,
             capabilities,
@@ -962,7 +956,7 @@
         } = new_leaf_node_params;
 
         <span class="comment">// Create a new encryption key pair.
-        </span><span class="kw">let </span>encryption_key_pair = EncryptionKeyPair::random(provider, config)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>encryption_key_pair = EncryptionKeyPair::random(provider, ciphersuite)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>leaf_node = <span class="self">Self</span>::new_with_key(
             encryption_key_pair.public_key().clone(),
@@ -1039,13 +1033,13 @@
     </span><span class="attr">#[cfg(test)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>updated&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        config: CryptoConfig,
+        ciphersuite: Ciphersuite,
         tree_info_tbs: TreeInfoTbs,
         provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LeafNodeGenerationError&lt;KeyStore::Error&gt;&gt; {
         <span class="self">Self</span>::generate_update(
-            config,
+            ciphersuite,
             CredentialWithKey {
                 credential: <span class="self">self</span>.payload.credential.clone(),
                 signature_key: <span class="self">self</span>.payload.signature_key.clone(),
@@ -1067,7 +1061,7 @@
     /// a leaf node should be generated as part of a new [`KeyPackage`].
     </span><span class="attr">#[cfg(test)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>generate_update&lt;KeyStore: OpenMlsKeyStore&gt;(
-        config: CryptoConfig,
+        ciphersuite: Ciphersuite,
         credential_with_key: CredentialWithKey,
         capabilities: Capabilities,
         extensions: Extensions,
@@ -1079,7 +1073,7 @@
         // because it is interacting with the key store.
 
         </span><span class="kw">let </span>new_leaf_node_params = NewLeafNodeParams {
-            config,
+            ciphersuite,
             credential_with_key,
             leaf_node_source: LeafNodeSource::Update,
             capabilities,
@@ -1168,13 +1162,7 @@
             )
             .into());
         }
-        <span class="kw">let </span>key_pair = EncryptionKeyPair::random(
-            provider,
-            CryptoConfig {
-                ciphersuite,
-                version: protocol_version,
-            },
-        )<span class="question-mark">?</span>;
+        <span class="kw">let </span>key_pair = EncryptionKeyPair::random(provider, ciphersuite)<span class="question-mark">?</span>;
 
         <span class="self">self</span>.update_and_re_sign(
             key_pair.public_key().clone(),

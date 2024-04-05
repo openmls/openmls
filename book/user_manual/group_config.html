@@ -216,7 +216,7 @@
             ),
         ])))
         .expect("error adding external senders extension to group context extensions")
-        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .ciphersuite(ciphersuite)
         .capabilities(Capabilities::new(
             None, // Defaults to the group's protocol version
             None, // Defaults to the group's ciphersuite

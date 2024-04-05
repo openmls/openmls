@@ -197,11 +197,9 @@
 <a href="#195" id="195">195</a>
 <a href="#196" id="196">196</a>
 <a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer, OpenMlsProvider};
+</pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::{
+    crypto::OpenMlsCrypto, signatures::Signer, types::Ciphersuite, OpenMlsProvider,
+};
 
 <span class="kw">use super</span>::{errors::PublicGroupBuildError, PublicGroup};
 <span class="kw">use crate</span>::{
@@ -211,7 +209,7 @@
         errors::{ExtensionError, InvalidExtensionError},
         Extensions,
     },
-    group::{config::CryptoConfig, ExtensionType, GroupContext, GroupId},
+    group::{ExtensionType, GroupContext, GroupId},
     key_packages::Lifetime,
     messages::ConfirmationTag,
     schedule::CommitSecret,
@@ -219,12 +217,13 @@
         node::{encryption_keys::EncryptionKeyPair, leaf_node::Capabilities},
         TreeSync,
     },
+    versions::ProtocolVersion,
 };
 
 <span class="attr">#[derive(Debug)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>TempBuilderPG1 {
     group_id: GroupId,
-    crypto_config: CryptoConfig,
+    ciphersuite: Ciphersuite,
     credential_with_key: CredentialWithKey,
     lifetime: <span class="prelude-ty">Option</span>&lt;Lifetime&gt;,
     capabilities: <span class="prelude-ty">Option</span>&lt;Capabilities&gt;,
@@ -304,8 +303,8 @@
                 (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>)
             };
         <span class="kw">let </span>capabilities = <span class="self">self</span>.capabilities.unwrap_or(Capabilities::new(
-            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>[<span class="self">self</span>.crypto_config.version]),
-            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>[<span class="self">self</span>.crypto_config.ciphersuite]),
+            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>[ProtocolVersion::default()]),
+            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>[<span class="self">self</span>.ciphersuite]),
             required_extensions,
             required_proposals,
             required_credentials,
@@ -313,7 +312,7 @@
         <span class="kw">let </span>(treesync, commit_secret, leaf_keypair) = TreeSync::new(
             provider,
             signer,
-            <span class="self">self</span>.crypto_config,
+            <span class="self">self</span>.ciphersuite,
             <span class="self">self</span>.credential_with_key,
             <span class="self">self</span>.lifetime.unwrap_or_default(),
             capabilities,
@@ -321,7 +320,7 @@
         )<span class="question-mark">?</span>;
 
         <span class="kw">let </span>group_context = GroupContext::create_initial_group_context(
-            <span class="self">self</span>.crypto_config.ciphersuite,
+            <span class="self">self</span>.ciphersuite,
             <span class="self">self</span>.group_id,
             treesync.tree_hash().to_vec(),
             <span class="self">self</span>.group_context_extensions,
@@ -348,13 +347,6 @@
             treesync: <span class="self">self</span>.treesync,
             group_context: <span class="self">self</span>.group_context,
             confirmation_tag,
-        }
-    }
-
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>crypto_config(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; CryptoConfig {
-        CryptoConfig {
-            ciphersuite: <span class="self">self</span>.group_context.ciphersuite(),
-            version: <span class="self">self</span>.group_context.protocol_version(),
         }
     }
 
@@ -388,12 +380,12 @@
     <span class="doccomment">/// Create a new [`PublicGroupBuilder`].
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>builder(
         group_id: GroupId,
-        crypto_config: CryptoConfig,
+        ciphersuite: Ciphersuite,
         credential_with_key: CredentialWithKey,
     ) -&gt; TempBuilderPG1 {
         TempBuilderPG1 {
             group_id,
-            crypto_config,
+            ciphersuite,
             credential_with_key,
             lifetime: <span class="prelude-val">None</span>,
             capabilities: <span class="prelude-val">None</span>,

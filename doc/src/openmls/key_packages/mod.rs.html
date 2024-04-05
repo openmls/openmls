@@ -605,18 +605,6 @@
 <a href="#603" id="603">603</a>
 <a href="#604" id="604">604</a>
 <a href="#605" id="605">605</a>
-<a href="#606" id="606">606</a>
-<a href="#607" id="607">607</a>
-<a href="#608" id="608">608</a>
-<a href="#609" id="609">609</a>
-<a href="#610" id="610">610</a>
-<a href="#611" id="611">611</a>
-<a href="#612" id="612">612</a>
-<a href="#613" id="613">613</a>
-<a href="#614" id="614">614</a>
-<a href="#615" id="615">615</a>
-<a href="#616" id="616">616</a>
-<a href="#617" id="617">617</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Key Packages
 //!
 //! Key packages are pre-published public keys that provide some information
@@ -665,10 +653,7 @@
 //! };
 //! let key_package = KeyPackage::builder()
 //!     .build(
-//!         CryptoConfig {
-//!             ciphersuite,
-//!             version: ProtocolVersion::default(),
-//!         },
+//!         ciphersuite,
 //!         &amp;provider,
 //!         &amp;signer,
 //!         credential_with_key,
@@ -721,7 +706,6 @@
     credentials::<span class="kw-2">*</span>,
     error::LibraryError,
     extensions::{Extension, ExtensionType, Extensions, LastResortExtension},
-    group::config::CryptoConfig,
     treesync::{
         node::{
             encryption_keys::EncryptionKeyPair,
@@ -882,7 +866,7 @@
     <span class="attr">#[allow(clippy::too_many_arguments)]
     </span><span class="doccomment">/// Create a new key package for the given `ciphersuite` and `identity`.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>create&lt;KeyStore: OpenMlsKeyStore&gt;(
-        config: CryptoConfig,
+        ciphersuite: Ciphersuite,
         provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         credential_with_key: CredentialWithKey,
@@ -891,21 +875,21 @@
         leaf_node_capabilities: Capabilities,
         leaf_node_extensions: Extensions,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;KeyPackageCreationResult, KeyPackageNewError&lt;KeyStore::Error&gt;&gt; {
-        <span class="kw">if </span>config.ciphersuite.signature_algorithm() != signer.signature_scheme() {
+        <span class="kw">if </span>ciphersuite.signature_algorithm() != signer.signature_scheme() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(KeyPackageNewError::CiphersuiteSignatureSchemeMismatch);
         }
 
         <span class="comment">// Create a new HPKE key pair
-        </span><span class="kw">let </span>ikm = Secret::random(config.ciphersuite, provider.rand())
+        </span><span class="kw">let </span>ikm = Secret::random(ciphersuite, provider.rand())
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
         <span class="kw">let </span>init_key = provider
             .crypto()
-            .derive_hpke_keypair(config.ciphersuite.hpke_config(), ikm.as_slice())
+            .derive_hpke_keypair(ciphersuite.hpke_config(), ikm.as_slice())
             .map_err(|e| {
                 KeyPackageNewError::LibraryError(LibraryError::unexpected_crypto_error(e))
             })<span class="question-mark">?</span>;
         <span class="kw">let </span>(key_package, encryption_keypair) = <span class="self">Self</span>::new_from_keys(
-            config,
+            ciphersuite,
             provider,
             signer,
             credential_with_key,
@@ -934,7 +918,7 @@
     /// The caller is responsible for storing the new values.
     </span><span class="attr">#[allow(clippy::too_many_arguments)]
     </span><span class="kw">fn </span>new_from_keys&lt;KeyStore: OpenMlsKeyStore&gt;(
-        config: CryptoConfig,
+        ciphersuite: Ciphersuite,
         provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         credential_with_key: CredentialWithKey,
@@ -948,7 +932,7 @@
         // use later when creating a group with this key package.
 
         </span><span class="kw">let </span>new_leaf_node_params = NewLeafNodeParams {
-            config,
+            ciphersuite,
             leaf_node_source: LeafNodeSource::KeyPackage(lifetime),
             credential_with_key,
             capabilities,
@@ -960,8 +944,8 @@
             LeafNode::new(provider, signer, new_leaf_node_params)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>key_package_tbs = KeyPackageTbs {
-            protocol_version: config.version,
-            ciphersuite: config.ciphersuite,
+            protocol_version: ProtocolVersion::default(),
+            ciphersuite,
             init_key,
             leaf_node,
             extensions,
@@ -1115,14 +1099,14 @@
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>build_without_key_storage&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">mut </span><span class="self">self</span>,
-        config: CryptoConfig,
+        ciphersuite: Ciphersuite,
         provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         credential_with_key: CredentialWithKey,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;KeyPackageCreationResult, KeyPackageNewError&lt;KeyStore::Error&gt;&gt; {
         <span class="self">self</span>.ensure_last_resort();
         KeyPackage::create(
-            config,
+            ciphersuite,
             provider,
             signer,
             credential_with_key,
@@ -1136,7 +1120,7 @@
     <span class="doccomment">/// Finalize and build the key package.
     </span><span class="kw">pub fn </span>build&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">mut </span><span class="self">self</span>,
-        config: CryptoConfig,
+        ciphersuite: Ciphersuite,
         provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         credential_with_key: CredentialWithKey,
@@ -1147,7 +1131,7 @@
             encryption_keypair,
             init_private_key,
         } = KeyPackage::create(
-            config,
+            ciphersuite,
             provider,
             signer,
             credential_with_key,
@@ -1214,15 +1198,7 @@
         credential_with_key: CredentialWithKey,
     ) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>key_package = KeyPackage::builder()
-            .build(
-                CryptoConfig {
-                    ciphersuite,
-                    version: ProtocolVersion::default(),
-                },
-                provider,
-                signer,
-                credential_with_key,
-            )
+            .build(ciphersuite, provider, signer, credential_with_key)
             .unwrap();
         <span class="kw">let </span>private_key = provider
             .key_store()

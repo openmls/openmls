@@ -847,7 +847,7 @@
     credentials::CredentialWithKey,
     error::LibraryError,
     extensions::Extensions,
-    group::{config::CryptoConfig, GroupId, Member},
+    group::{GroupId, Member},
     key_packages::Lifetime,
     messages::{PathSecret, PathSecretError},
     schedule::CommitSecret,
@@ -1157,14 +1157,14 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
         provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
-        config: CryptoConfig,
+        ciphersuite: Ciphersuite,
         credential_with_key: CredentialWithKey,
         life_time: Lifetime,
         capabilities: Capabilities,
         extensions: Extensions,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, CommitSecret, EncryptionKeyPair), LibraryError&gt; {
         <span class="kw">let </span>new_leaf_node_params = NewLeafNodeParams {
-            config,
+            ciphersuite,
             credential_with_key,
             <span class="comment">// Creation of a group is considered to be from a key package.
             </span>leaf_node_source: LeafNodeSource::KeyPackage(life_time),
@@ -1175,11 +1175,11 @@
         <span class="kw">let </span>(leaf, encryption_key_pair) = LeafNode::new(provider, signer, new_leaf_node_params)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>node = Node::LeafNode(leaf);
-        <span class="kw">let </span>path_secret: PathSecret = Secret::random(config.ciphersuite, provider.rand())
+        <span class="kw">let </span>path_secret: PathSecret = Secret::random(ciphersuite, provider.rand())
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?
             </span>.into();
         <span class="kw">let </span>commit_secret: CommitSecret = path_secret
-            .derive_path_secret(provider.crypto(), config.ciphersuite)<span class="question-mark">?
+            .derive_path_secret(provider.crypto(), ciphersuite)<span class="question-mark">?
             </span>.into();
         <span class="kw">let </span>nodes = <span class="macro">vec!</span>[TreeSyncNode::from(node).into()];
         <span class="kw">let </span>tree = MlsBinaryTree::new(nodes)
@@ -1189,7 +1189,7 @@
             tree_hash: <span class="macro">vec!</span>[],
         };
         <span class="comment">// Populate tree hash caches.
-        </span>tree_sync.populate_parent_hashes(provider.crypto(), config.ciphersuite)<span class="question-mark">?</span>;
+        </span>tree_sync.populate_parent_hashes(provider.crypto(), ciphersuite)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>((tree_sync, commit_secret, encryption_key_pair))
     }

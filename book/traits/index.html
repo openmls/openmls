@@ -197,7 +197,7 @@ to be provided as a byte slice.</p>
 
     let key_package = KeyPackage::builder()
         .build(
-            CryptoConfig::with_default_version(ciphersuite),
+            ciphersuite,
             provider,
             &amp;signature_keys,
             CredentialWithKey {

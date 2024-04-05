@@ -286,12 +286,7 @@ OpenMLS provides a simple implementation of <a href="https://github.com/openmls/
 <pre><code class="language-rust no_run noplayground">    // Create the key package
     KeyPackage::builder()
         .key_package_extensions(extensions)
-        .build(
-            CryptoConfig::with_default_version(ciphersuite),
-            provider,
-            signer,
-            credential_with_key,
-        )
+        .build(ciphersuite, provider, signer, credential_with_key)
         .unwrap()</code></pre>
 <p>This will also store the private key for the key package in the key store.</p>
 <p>All functions and structs related to key packages can be found in the <a href="https://docs.rs/crate/openmls/latest/key_packages/index.html"><code>key_packages</code></a> module.</p>
@@ -338,7 +333,7 @@ OpenMLS provides a simple implementation of <a href="https://github.com/openmls/
             ),
         ])))
         .expect("error adding external senders extension to group context extensions")
-        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .ciphersuite(ciphersuite)
         .capabilities(Capabilities::new(
             None, // Defaults to the group's protocol version
             None, // Defaults to the group's ciphersuite
@@ -363,12 +358,7 @@ OpenMLS provides a simple implementation of <a href="https://github.com/openmls/
 <pre><code class="language-rust no_run noplayground">    // Create the key package
     KeyPackage::builder()
         .key_package_extensions(extensions)
-        .build(
-            CryptoConfig::with_default_version(ciphersuite),
-            provider,
-            signer,
-            credential_with_key,
-        )
+        .build(ciphersuite, provider, signer, credential_with_key)
         .unwrap()</code></pre>
 <p>After that, the group can be created either using a config:</p>
 <pre><code class="language-rust no_run noplayground">    let mut alice_group = MlsGroup::new(
@@ -385,7 +375,7 @@ OpenMLS provides a simple implementation of <a href="https://github.com/openmls/
                 10,   // out_of_order_tolerance
                 2000, // maximum_forward_distance
             ))
-            .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+            .ciphersuite(ciphersuite)
             .use_ratchet_tree_extension(true)
             .build(provider, &amp;alice_signature_keys, alice_credential.clone())
             .expect("An unexpected error occurred.");</code></pre>
@@ -812,7 +802,7 @@ to be provided as a byte slice.</p>
 
     let key_package = KeyPackage::builder()
         .build(
-            CryptoConfig::with_default_version(ciphersuite),
+            ciphersuite,
             provider,
             &amp;signature_keys,
             CredentialWithKey {
