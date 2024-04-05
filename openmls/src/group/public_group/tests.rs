@@ -10,8 +10,8 @@ use crate::{
         ProcessedMessageContent, ProtocolMessage, Sender,
     },
     group::{
-        config::CryptoConfig, test_core_group::setup_client, GroupId, MlsGroup,
-        MlsGroupCreateConfig, ProposalStore, StagedCommit, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        test_core_group::setup_client, GroupId, MlsGroup, MlsGroupCreateConfig, ProposalStore,
+        StagedCommit, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     messages::proposals::Proposal,
 };
@@ -33,7 +33,7 @@ fn public_group(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // Set plaintext wire format policy s.t. the public group can track changes.
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
-        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .ciphersuite(ciphersuite)
         .build();
 
     // === Alice creates a group ===

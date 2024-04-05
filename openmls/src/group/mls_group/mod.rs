@@ -25,7 +25,6 @@ mod exporting;
 mod updates;
 
 use config::*;
-use errors::*;
 
 // Crate
 pub(crate) mod config;

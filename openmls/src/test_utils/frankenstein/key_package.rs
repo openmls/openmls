@@ -11,7 +11,6 @@ use crate::{
         signature::{OpenMlsSignaturePublicKey, Signature},
     },
     credentials::{BasicCredential, CredentialWithKey},
-    group::config::CryptoConfig,
     key_packages::{KeyPackage, KeyPackageIn},
     test_utils::{apply, rstest, OpenMlsRustCrypto},
     versions::ProtocolVersion,
@@ -128,7 +127,7 @@ pub struct FrankenExtension {
 
 #[apply(ciphersuites_and_providers)]
 fn test_franken_key_package(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
-    let config = CryptoConfig::with_default_version(ciphersuite);
+    let config = ciphersuite;
 
     let (credential, signer) = {
         let credential = BasicCredential::new(b"test identity".to_vec());

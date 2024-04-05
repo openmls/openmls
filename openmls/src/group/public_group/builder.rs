@@ -1,4 +1,6 @@
-use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer, OpenMlsProvider};
+use openmls_traits::{
+    crypto::OpenMlsCrypto, signatures::Signer, types::Ciphersuite, OpenMlsProvider,
+};
 
 use super::{errors::PublicGroupBuildError, PublicGroup};
 use crate::{
@@ -8,7 +10,7 @@ use crate::{
         errors::{ExtensionError, InvalidExtensionError},
         Extensions,
     },
-    group::{config::CryptoConfig, ExtensionType, GroupContext, GroupId},
+    group::{ExtensionType, GroupContext, GroupId},
     key_packages::Lifetime,
     messages::ConfirmationTag,
     schedule::CommitSecret,
@@ -16,12 +18,13 @@ use crate::{
         node::{encryption_keys::EncryptionKeyPair, leaf_node::Capabilities},
         TreeSync,
     },
+    versions::ProtocolVersion,
 };
 
 #[derive(Debug)]
 pub(crate) struct TempBuilderPG1 {
     group_id: GroupId,
-    crypto_config: CryptoConfig,
+    ciphersuite: Ciphersuite,
     credential_with_key: CredentialWithKey,
     lifetime: Option<Lifetime>,
     capabilities: Option<Capabilities>,
@@ -101,8 +104,8 @@ impl TempBuilderPG1 {
                 (None, None, None)
             };
         let capabilities = self.capabilities.unwrap_or(Capabilities::new(
-            Some(&[self.crypto_config.version]),
-            Some(&[self.crypto_config.ciphersuite]),
+            Some(&[ProtocolVersion::default()]),
+            Some(&[self.ciphersuite]),
             required_extensions,
             required_proposals,
             required_credentials,
@@ -110,7 +113,7 @@ impl TempBuilderPG1 {
         let (treesync, commit_secret, leaf_keypair) = TreeSync::new(
             provider,
             signer,
-            self.crypto_config,
+            self.ciphersuite,
             self.credential_with_key,
             self.lifetime.unwrap_or_default(),
             capabilities,
@@ -118,7 +121,7 @@ impl TempBuilderPG1 {
         )?;
 
         let group_context = GroupContext::create_initial_group_context(
-            self.crypto_config.ciphersuite,
+            self.ciphersuite,
             self.group_id,
             treesync.tree_hash().to_vec(),
             self.group_context_extensions,
@@ -145,13 +148,6 @@ impl TempBuilderPG2 {
             treesync: self.treesync,
             group_context: self.group_context,
             confirmation_tag,
-        }
-    }
-
-    pub(crate) fn crypto_config(&self) -> CryptoConfig {
-        CryptoConfig {
-            ciphersuite: self.group_context.ciphersuite(),
-            version: self.group_context.protocol_version(),
         }
     }
 
@@ -185,12 +181,12 @@ impl PublicGroup {
     /// Create a new [`PublicGroupBuilder`].
     pub(crate) fn builder(
         group_id: GroupId,
-        crypto_config: CryptoConfig,
+        ciphersuite: Ciphersuite,
         credential_with_key: CredentialWithKey,
     ) -> TempBuilderPG1 {
         TempBuilderPG1 {
             group_id,
-            crypto_config,
+            ciphersuite,
             credential_with_key,
             lifetime: None,
             capabilities: None,

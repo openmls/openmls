@@ -6,10 +6,7 @@ use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsProvider};
 use rstest::*;
 use rstest_reuse::{self, *};
 
-use crate::{
-    framing::*,
-    group::{config::CryptoConfig, *},
-};
+use crate::{framing::*, group::*};
 
 use super::utils::{
     generate_credential_with_key, generate_key_package, CredentialWithKeyAndSigner,
@@ -31,7 +28,7 @@ fn create_group(
     let mls_group_config = MlsGroupCreateConfig::builder()
         .wire_format_policy(wire_format_policy)
         .use_ratchet_tree_extension(true)
-        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .ciphersuite(ciphersuite)
         .build();
 
     (
