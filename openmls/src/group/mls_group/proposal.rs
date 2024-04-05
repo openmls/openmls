@@ -57,6 +57,7 @@ pub enum Propose {
     Custom(CustomProposal),
 }
 
+/// A custom proposal with semantics to be implemented by the application.
 #[derive(Debug, PartialEq, Clone)]
 pub struct CustomProposal(pub (u16, Vec<u8>));
 
