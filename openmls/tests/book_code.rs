@@ -1,5 +1,5 @@
 use openmls::{
-    prelude::{config::CryptoConfig, tls_codec::*, *},
+    prelude::{config::CryptoConfig, tls_codec::*, CustomProposal, *},
     test_utils::*,
     *,
 };
@@ -415,6 +415,51 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .expect("Could not create update proposal.");
     // ANCHOR_END: propose_self_update
 
+    // ANCHOR: alice_creates_custom_proposal
+    let custom_proposal_type = 0xFFFF;
+    let custom_proposal_payload = vec![0, 1, 2, 3];
+    let custom_proposal = CustomProposal((custom_proposal_type, custom_proposal_payload.clone()));
+    let (custom_proposal_message, _proposal_ref) = alice_group
+        .propose_custom_proposal_by_reference(provider, &alice_signature_keys, custom_proposal)
+        .expect("Could not create custom proposal.");
+    // ANCHOR_END: alice_creates_custom_proposal
+
+    let bob_processed_proposal_message = bob_group
+        .process_message(
+            provider,
+            custom_proposal_message
+                .into_protocol_message()
+                .expect("Unexpected message type"),
+        )
+        .expect("Could not process message.");
+
+    // Check that we received the correct proposals
+    let ProcessedMessageContent::ProposalMessage(staged_proposal) =
+        bob_processed_proposal_message.into_content()
+    else {
+        unreachable!("Expected a ProposalMessage.");
+    };
+    if let Proposal::Other((received_custom_proposal_type, received_custom_proposal_payload)) =
+        staged_proposal.proposal()
+    {
+        // Check that the proposal is as expected
+        assert_eq!(received_custom_proposal_type, &custom_proposal_type);
+        assert_eq!(
+            received_custom_proposal_payload,
+            &OtherProposal(custom_proposal_payload.into())
+        );
+    } else {
+        unreachable!("Expected a Proposal.");
+    }
+
+    // Check that Alice sent the proposal
+    assert!(matches!(
+        staged_proposal.sender(),
+        Sender::Member(member) if *member == alice_group.own_leaf_index()
+    ));
+    // Have Bob store the processed proposal
+    bob_group.store_pending_proposal(*staged_proposal);
+
     let bob_processed_message = bob_group
         .process_message(
             provider,
@@ -425,30 +470,28 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .expect("Could not process message.");
 
     // Check that we received the correct proposals
-    if let ProcessedMessageContent::ProposalMessage(staged_proposal) =
+    let ProcessedMessageContent::ProposalMessage(staged_proposal) =
         bob_processed_message.into_content()
-    {
-        if let Proposal::Update(ref update_proposal) = staged_proposal.proposal() {
-            // Check that Alice updated
-            assert_eq!(
-                update_proposal.leaf_node().credential(),
-                &alice_credential.credential
-            );
-            // Store proposal
-            alice_group.store_pending_proposal(*staged_proposal.clone());
-        } else {
-            unreachable!("Expected a Proposal.");
-        }
-
-        // Check that Alice sent the proposal
-        assert!(matches!(
-            staged_proposal.sender(),
-            Sender::Member(member) if *member == alice_group.own_leaf_index()
-        ));
-        bob_group.store_pending_proposal(*staged_proposal);
+    else {
+        unreachable!("Expected a ProposalMessage.");
+    };
+    if let Proposal::Update(ref update_proposal) = staged_proposal.proposal() {
+        // Check that Alice updated
+        assert_eq!(
+            update_proposal.leaf_node().credential(),
+            &alice_credential.credential
+        );
     } else {
-        unreachable!("Expected a QueuedProposal.");
+        unreachable!("Expected a Proposal.");
     }
+
+    // Check that Alice sent the proposal
+    assert!(matches!(
+        staged_proposal.sender(),
+        Sender::Member(member) if *member == alice_group.own_leaf_index()
+    ));
+    // Have Bob store the processed proposal
+    bob_group.store_pending_proposal(*staged_proposal);
 
     // ANCHOR: commit_to_proposals
     let (mls_message_out, welcome_option, _group_info) = alice_group
