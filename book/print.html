@@ -1002,16 +1002,19 @@ pub enum HpkeKemType {
     DhKemP521 = 0x0012,
 </code></pre>
 <pre><code class="language-rust no_run noplayground">    DhKem448 = 0x0021,
+
+    /// XWing combiner for ML-KEM and X25519
+    XWingKemDraft2 = 0x004D,
 }
 
 /// KDF Types for HPKE
 #[derive(PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
 #[repr(u16)]
-pub enum HpkeKdfType {
-    /// HKDF SHA 256
-    HkdfSha256 = 0x0001,
-</code></pre>
-<pre><code class="language-rust no_run noplayground">    HkdfSha512 = 0x0003,
+pub enum HpkeKdfType {</code></pre>
+<pre><code class="language-rust no_run noplayground">    HkdfSha384 = 0x0002,
+
+    /// HKDF SHA 512
+    HkdfSha512 = 0x0003,
 }
 
 /// AEAD Types for HPKE.
@@ -1020,19 +1023,16 @@ pub enum HpkeKdfType {
 pub enum HpkeAeadType {
     /// AES GCM 128
     AesGcm128 = 0x0001,
-
-    /// AES GCM 256
-    AesGcm256 = 0x0002,
 </code></pre>
 <p>In addition, helper structs for <code>HpkeCiphertext</code> and <code>HpkeKeyPair</code> are defined.</p>
-<pre><code class="language-rust no_run noplayground">///     opaque ciphertext&lt;V&gt;;
-/// } HPKECiphertext;
-/// ```
-#[derive(</code></pre>
-<pre><code class="language-rust no_run noplayground">    Clone,
-    Serialize,
-    Deserialize,
-    TlsSerialize,</code></pre>
+<pre><code class="language-rust no_run noplayground">/// ```text
+/// struct {
+///     opaque kem_output&lt;V&gt;;
+///     opaque ciphertext&lt;V&gt;;</code></pre>
+<pre><code class="language-rust no_run noplayground">    Debug,
+    PartialEq,
+    Eq,
+    Clone,</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="message-validation"><a class="header" href="#message-validation">Message Validation</a></h1>
 <p>OpenMLS implements a variety of syntactical and semantical checks, both when parsing and processing incoming commits and when creating own commits.</p>
 <h2 id="validation-steps"><a class="header" href="#validation-steps">Validation steps</a></h2>
