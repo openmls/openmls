@@ -1348,8 +1348,6 @@ fn update_group_context_with_unknown_extension(
         .with_group_context_extensions(test_gc_extensions.clone())
         .expect("error adding unknown extension to builder")
         .with_capabilities(capabilities)
-        .with_leaf_node_extensions(Extensions::single(unknown_gc_extension))
-        .expect("error adding leaf node unknown extension to builder")
         .build(provider, &alice_signer, alice_credential_with_key)
         .expect("error creating group using builder");
 
