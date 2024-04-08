@@ -149,7 +149,7 @@ impl PublicGroup {
         // Check that the types of all proposals are supported by all members
         for proposal in proposal_queue.queued_proposals() {
             let proposal_type = proposal.proposal().proposal_type();
-            if matches!(proposal_type, ProposalType::Other(_))
+            if matches!(proposal_type, ProposalType::Custom(_))
                 && !capabilities_intersection.contains(&proposal_type)
             {
                 return Err(ProposalValidationError::UnsupportedProposalType);
@@ -517,7 +517,7 @@ impl PublicGroup {
                 Proposal::ExternalInit(_)
                     | Proposal::Remove(_)
                     | Proposal::PreSharedKey(_)
-                    | Proposal::Other(_)
+                    | Proposal::Custom(_)
             );
             is_inline && !is_allowed_type
         });

@@ -6,10 +6,11 @@ use tls_codec::{Deserialize, DeserializeBytes, Serialize, Size};
 
 use super::{
     proposals::{
-        AppAckProposal, ExternalInitProposal, GroupContextExtensionProposal, OtherProposal,
-        PreSharedKeyProposal, Proposal, ProposalType, ReInitProposal, RemoveProposal,
+        AppAckProposal, ExternalInitProposal, GroupContextExtensionProposal, PreSharedKeyProposal,
+        Proposal, ProposalType, ReInitProposal, RemoveProposal,
     },
     proposals_in::{AddProposalIn, ProposalIn, UpdateProposalIn},
+    CustomProposal,
 };
 
 impl Size for Proposal {
@@ -24,7 +25,7 @@ impl Size for Proposal {
                 Proposal::ExternalInit(p) => p.tls_serialized_len(),
                 Proposal::GroupContextExtensions(p) => p.tls_serialized_len(),
                 Proposal::AppAck(p) => p.tls_serialized_len(),
-                Proposal::Other((_, p)) => p.0.tls_serialized_len(),
+                Proposal::Custom(p) => p.payload().tls_serialized_len(),
             }
     }
 }
@@ -41,7 +42,7 @@ impl Serialize for Proposal {
             Proposal::ExternalInit(p) => p.tls_serialize(writer),
             Proposal::GroupContextExtensions(p) => p.tls_serialize(writer),
             Proposal::AppAck(p) => p.tls_serialize(writer),
-            Proposal::Other((_, p)) => p.0.tls_serialize(writer),
+            Proposal::Custom(p) => p.payload().tls_serialize(writer),
         }
         .map(|l| written + l)
     }
@@ -59,7 +60,7 @@ impl Size for &ProposalIn {
                 ProposalIn::ExternalInit(p) => p.tls_serialized_len(),
                 ProposalIn::GroupContextExtensions(p) => p.tls_serialized_len(),
                 ProposalIn::AppAck(p) => p.tls_serialized_len(),
-                ProposalIn::Other((_, p)) => p.0.tls_serialized_len(),
+                ProposalIn::Custom(p) => p.payload().tls_serialized_len(),
             }
     }
 }
@@ -82,7 +83,7 @@ impl Serialize for &ProposalIn {
             ProposalIn::ExternalInit(p) => p.tls_serialize(writer),
             ProposalIn::GroupContextExtensions(p) => p.tls_serialize(writer),
             ProposalIn::AppAck(p) => p.tls_serialize(writer),
-            ProposalIn::Other((_, p)) => p.0.tls_serialize(writer),
+            ProposalIn::Custom(p) => p.payload().tls_serialize(writer),
         }
         .map(|l| written + l)
     }
@@ -115,8 +116,10 @@ impl Deserialize for ProposalIn {
                 GroupContextExtensionProposal::tls_deserialize(bytes)?,
             ),
             ProposalType::AppAck => ProposalIn::AppAck(AppAckProposal::tls_deserialize(bytes)?),
-            ProposalType::Other(_) => {
-                ProposalIn::Other((proposal_type.into(), OtherProposal::tls_deserialize(bytes)?))
+            ProposalType::Custom(_) => {
+                let payload = Vec::<u8>::tls_deserialize(bytes)?;
+                let custom_proposal = CustomProposal::new(proposal_type.into(), payload);
+                ProposalIn::Custom(custom_proposal)
             }
         };
         Ok(proposal)

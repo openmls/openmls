@@ -24,7 +24,8 @@ use crate::{
     key_packages::{errors::*, *},
     messages::{
         proposals::{
-            AddProposal, Proposal, ProposalOrRef, ProposalType, RemoveProposal, UpdateProposal,
+            AddProposal, CustomProposal, Proposal, ProposalOrRef, ProposalType, RemoveProposal,
+            UpdateProposal,
         },
         Commit, Welcome,
     },
@@ -1982,13 +1983,14 @@ fn valsem113(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     let custom_proposal_type = 0xFFFF;
     let custom_proposal_payload = vec![0, 1, 2, 3];
-    let custom_proposal = CustomProposal((custom_proposal_type, custom_proposal_payload.clone()));
+    let custom_proposal =
+        CustomProposal::new(custom_proposal_type, custom_proposal_payload.clone());
 
     let capabilities_with_support = Capabilities::new(
         None,
         None,
         None,
-        Some(&[ProposalType::Other(custom_proposal_type)]),
+        Some(&[ProposalType::Custom(custom_proposal_type)]),
         None,
     );
 

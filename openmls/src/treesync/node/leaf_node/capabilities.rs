@@ -277,7 +277,7 @@ mod tests {
             ExtensionType::Unknown(0xFAFA),
         ];
 
-        let proposals = vec![ProposalType::Other(0x7A7A)];
+        let proposals = vec![ProposalType::Custom(0x7A7A)];
 
         let credentials = vec![
             CredentialType::Basic,

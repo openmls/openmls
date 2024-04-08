@@ -43,7 +43,6 @@ use self::{
     create_commit_params::{CommitType, CreateCommitParams},
     node::leaf_node::Capabilities,
     past_secrets::MessageSecretsStore,
-    proposal::CustomProposal,
     staged_commit::{MemberStagedCommitState, StagedCommit, StagedCommitState},
 };
 
@@ -472,8 +471,7 @@ impl CoreGroup {
         custom_proposal: CustomProposal,
         signer: &impl Signer,
     ) -> Result<AuthenticatedContent, LibraryError> {
-        let unknown_proposal = OtherProposal(custom_proposal.0 .1.into());
-        let proposal = Proposal::Other((custom_proposal.0 .0, unknown_proposal));
+        let proposal = Proposal::Custom(custom_proposal);
         AuthenticatedContent::member_proposal(
             framing_parameters,
             self.own_leaf_index(),

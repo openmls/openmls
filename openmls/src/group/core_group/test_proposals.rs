@@ -1,9 +1,5 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{
-    key_store::OpenMlsKeyStore,
-    types::{Ciphersuite, HpkePrivateKey},
-    OpenMlsProvider,
-};
+use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
 
 use super::CoreGroup;
 use crate::{
@@ -15,9 +11,7 @@ use crate::{
         mls_auth_content::AuthenticatedContent, sender::Sender, FramingParameters, WireFormat,
     },
     group::{
-        core_group::{node::leaf_node::Capabilities, KeyPackageBuilder, OtherProposal},
         errors::*,
-        proposal::CustomProposal,
         proposals::{ProposalQueue, ProposalStore, QueuedProposal},
         test_core_group::setup_client,
         CreateCommitParams, GroupContext, GroupId, StagedCoreWelcome,

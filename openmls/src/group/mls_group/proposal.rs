@@ -4,7 +4,7 @@ use openmls_traits::{
 
 use super::{
     errors::{ProposalError, ProposeAddMemberError, ProposeRemoveMemberError},
-    MlsGroup,
+    CustomProposal, MlsGroup,
 };
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -56,10 +56,6 @@ pub enum Propose {
     /// A custom proposal with semantics to be implemented by the application.
     Custom(CustomProposal),
 }
-
-/// A custom proposal with semantics to be implemented by the application.
-#[derive(Debug, PartialEq, Clone)]
-pub struct CustomProposal(pub (u16, Vec<u8>));
 
 macro_rules! impl_propose_fun {
     ($name:ident, $value_ty:ty, $group_fun:ident, $ref_or_value:expr) => {

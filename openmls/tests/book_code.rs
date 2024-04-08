@@ -1410,7 +1410,7 @@ fn custom_proposal_usage(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
         None,
         None,
         None,
-        Some(&[ProposalType::Other(custom_proposal_type)]),
+        Some(&[ProposalType::Custom(custom_proposal_type)]),
         None,
     );
 
@@ -1449,7 +1449,8 @@ fn custom_proposal_usage(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
     // Create a custom proposal based on an example payload and the custom
     // proposal type defined above
     let custom_proposal_payload = vec![0, 1, 2, 3];
-    let custom_proposal = CustomProposal((custom_proposal_type, custom_proposal_payload.clone()));
+    let custom_proposal =
+        CustomProposal::new(custom_proposal_type, custom_proposal_payload.clone());
 
     let (custom_proposal_message, _proposal_ref) = alice_group
         .propose_custom_proposal_by_reference(provider, &alice_signer, custom_proposal.clone())
@@ -1473,11 +1474,11 @@ fn custom_proposal_usage(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
     // Commit to the proposal
     let (commit, _, _) = alice_group
         .commit_to_pending_proposals(provider, &alice_signer)
-        .expect("Error creating commit");
+        .unwrap();
 
     let processed_message = bob_group
         .process_message(provider, commit.into_protocol_message().unwrap())
-        .expect("Error processing commit");
+        .unwrap();
 
     let staged_commit = match processed_message.into_content() {
         ProcessedMessageContent::StagedCommitMessage(staged_commit) => staged_commit,
@@ -1485,12 +1486,12 @@ fn custom_proposal_usage(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
     };
 
     // Check that the proposal is present in the staged commit
-    let expected_proposal = OtherProposal(custom_proposal_payload.into());
     assert!(staged_commit.queued_proposals().any(|qp| {
-        let Proposal::Other(custom_proposal) = qp.proposal() else {
+        let Proposal::Custom(custom_proposal) = qp.proposal() else {
             return false;
         };
-        custom_proposal.0 == custom_proposal_type && custom_proposal.1 == expected_proposal
+        custom_proposal.proposal_type() == custom_proposal_type
+            && custom_proposal.payload() == custom_proposal_payload
     }));
 
     // ANCHOR_END: custom_proposal_usage

@@ -512,7 +512,7 @@ impl ProposalQueue {
                     proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
                 Proposal::AppAck(_) => unimplemented!("See #291"),
-                Proposal::Other(_) => {
+                Proposal::Custom(_) => {
                     // Other/unknown proposals are always considered valid and
                     // have to be checked by the application instead.
                     valid_proposals.add(queued_proposal.proposal_reference());

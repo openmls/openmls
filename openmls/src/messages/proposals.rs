@@ -79,7 +79,7 @@ pub enum ProposalType {
     ExternalInit,
     GroupContextExtensions,
     AppAck,
-    Other(u16),
+    Custom(u16),
 }
 
 impl Size for ProposalType {
@@ -141,7 +141,7 @@ impl From<u16> for ProposalType {
             6 => ProposalType::ExternalInit,
             7 => ProposalType::GroupContextExtensions,
             8 => ProposalType::AppAck,
-            other => ProposalType::Other(other),
+            other => ProposalType::Custom(other),
         }
     }
 }
@@ -157,7 +157,7 @@ impl From<ProposalType> for u16 {
             ProposalType::ExternalInit => 6,
             ProposalType::GroupContextExtensions => 7,
             ProposalType::AppAck => 8,
-            ProposalType::Other(id) => id,
+            ProposalType::Custom(id) => id,
         }
     }
 }
@@ -197,7 +197,7 @@ pub enum Proposal {
     // TODO(#916): `AppAck` is not in draft-ietf-mls-protocol-17 but
     //             was moved to `draft-ietf-mls-extensions-00`.
     AppAck(AppAckProposal),
-    Other((u16, OtherProposal)),
+    Custom(CustomProposal),
 }
 
 impl Proposal {
@@ -212,7 +212,10 @@ impl Proposal {
             Proposal::ExternalInit(_) => ProposalType::ExternalInit,
             Proposal::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,
             Proposal::AppAck(_) => ProposalType::AppAck,
-            Proposal::Other((proposal_type, _)) => ProposalType::Other(proposal_type.to_owned()),
+            Proposal::Custom(CustomProposal {
+                proposal_type,
+                payload: _,
+            }) => ProposalType::Custom(proposal_type.to_owned()),
         }
     }
 
@@ -481,22 +484,6 @@ impl GroupContextExtensionProposal {
     }
 }
 
-/// A proposal that OpenMLS doesn't know and has to be handled by the
-/// application.
-#[derive(
-    PartialEq,
-    Eq,
-    Clone,
-    Debug,
-    Serialize,
-    Deserialize,
-    TlsDeserialize,
-    TlsDeserializeBytes,
-    TlsSerialize,
-    TlsSize,
-)]
-pub struct OtherProposal(pub VLBytes);
-
 // Crate-only types
 
 /// 11.2 Commit
@@ -627,6 +614,40 @@ pub(crate) struct MessageRange {
     last_generation: u32,
 }
 
+/// A custom proposal with semantics to be implemented by the application.
+#[derive(
+    Debug,
+    PartialEq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsSize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+)]
+pub struct CustomProposal {
+    proposal_type: u16,
+    payload: Vec<u8>,
+}
+
+impl CustomProposal {
+    pub fn new(proposal_type: u16, payload: Vec<u8>) -> Self {
+        Self {
+            proposal_type,
+            payload,
+        }
+    }
+
+    pub fn proposal_type(&self) -> u16 {
+        self.proposal_type
+    }
+
+    pub fn payload(&self) -> &[u8] {
+        &self.payload
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use tls_codec::{Deserialize, Serialize};
@@ -645,7 +666,7 @@ mod tests {
             let got = ProposalType::tls_deserialize_exact(&test).unwrap();
 
             match got {
-                ProposalType::Other(got_proposal_type) => {
+                ProposalType::Custom(got_proposal_type) => {
                     assert_eq!(proposal_type, got_proposal_type);
                 }
                 other => panic!("Expected `ProposalType::Unknown`, got `{:?}`.", other),

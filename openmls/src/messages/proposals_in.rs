@@ -22,7 +22,7 @@ use super::{
         PreSharedKeyProposal, Proposal, ProposalOrRef, ProposalType, ReInitProposal,
         RemoveProposal, UpdateProposal,
     },
-    OtherProposal,
+    CustomProposal,
 };
 
 /// Proposal.
@@ -60,7 +60,7 @@ pub enum ProposalIn {
     // TODO(#916): `AppAck` is not in draft-ietf-mls-protocol-17 but
     //             was moved to `draft-ietf-mls-extensions-00`.
     AppAck(AppAckProposal),
-    Other((u16, OtherProposal)),
+    Custom(CustomProposal),
 }
 
 impl ProposalIn {
@@ -75,7 +75,9 @@ impl ProposalIn {
             ProposalIn::ExternalInit(_) => ProposalType::ExternalInit,
             ProposalIn::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,
             ProposalIn::AppAck(_) => ProposalType::AppAck,
-            ProposalIn::Other((proposal_type, _)) => ProposalType::Other(proposal_type.to_owned()),
+            ProposalIn::Custom(custom_proposal) => {
+                ProposalType::Custom(custom_proposal.proposal_type())
+            }
         }
     }
 
@@ -109,7 +111,7 @@ impl ProposalIn {
                 Proposal::GroupContextExtensions(group_context_extension)
             }
             ProposalIn::AppAck(app_ack) => Proposal::AppAck(app_ack),
-            ProposalIn::Other(other_proposal) => Proposal::Other(other_proposal),
+            ProposalIn::Custom(custom) => Proposal::Custom(custom),
         })
     }
 }
@@ -312,7 +314,7 @@ impl From<ProposalIn> for crate::messages::proposals::Proposal {
                 Self::GroupContextExtensions(group_context_extension)
             }
             ProposalIn::AppAck(app_ack) => Self::AppAck(app_ack),
-            ProposalIn::Other(other) => Self::Other(other),
+            ProposalIn::Custom(other) => Self::Custom(other),
         }
     }
 }
@@ -330,7 +332,7 @@ impl From<crate::messages::proposals::Proposal> for ProposalIn {
                 Self::GroupContextExtensions(group_context_extension)
             }
             Proposal::AppAck(app_ack) => Self::AppAck(app_ack),
-            Proposal::Other(other) => Self::Other(other),
+            Proposal::Custom(other) => Self::Custom(other),
         }
     }
 }
