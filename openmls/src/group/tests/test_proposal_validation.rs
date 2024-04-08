@@ -2100,10 +2100,6 @@ fn valsem113(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
         // If the proposal is unsupported, we expect an error here.
         let _processed_message = if matches!(test_mode, TestMode::Unsupported) {
-            let bob_capabilities = bob_group.own_leaf().unwrap().capabilities();
-            println!("Bob's capabilities: {:?}", bob_capabilities);
-            println!("{:?}", test_mode);
-            println!("{:?}", result);
             assert!(matches!(
                 result,
                 Err(ProcessMessageError::InvalidCommit(

@@ -660,17 +660,12 @@ fn custom_proposals(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .unwrap();
 
     // Create group with custom proposal as required capability
-    //let required_custom_proposal = Extension::RequiredCapabilities(
-    //    RequiredCapabilitiesExtension::new(&[], &[custom_proposal_type], &[CredentialType::Basic]),
-    //);
     let mut alice_group = CoreGroup::builder(
         GroupId::random(provider.rand()),
         ciphersuite,
         alice_credential,
     )
     .with_capabilities(custom_proposal_capabilities)
-    //.with_group_context_extensions(Extensions::single(required_custom_proposal))
-    //.unwrap()
     .build(provider, &alice_signer)
     .expect("Error creating CoreGroup.");
 

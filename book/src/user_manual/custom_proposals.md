@@ -7,5 +7,9 @@ Custom proposals can contain arbitrary octet-strings as defined by the applicati
 Example on how to use custom proposals:
 
 ```rust,no_run,noplayground
-{{#include ../../../openmls/tests/book_code.rs:custom_proposal_example}}
+{{#include ../../../openmls/tests/book_code.rs:custom_proposal_type}}
+```
+
+```rust,no_run,noplayground
+{{#include ../../../openmls/tests/book_code.rs:custom_proposal_usage}}
 ```
