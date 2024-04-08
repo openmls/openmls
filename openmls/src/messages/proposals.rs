@@ -632,6 +632,7 @@ pub struct CustomProposal {
 }
 
 impl CustomProposal {
+    /// Generate a new custom proposal.
     pub fn new(proposal_type: u16, payload: Vec<u8>) -> Self {
         Self {
             proposal_type,
@@ -639,10 +640,12 @@ impl CustomProposal {
         }
     }
 
+    /// Returns the proposal type of this [`CustomProposal`].
     pub fn proposal_type(&self) -> u16 {
         self.proposal_type
     }
 
+    /// Returns the payload of this [`CustomProposal`].
     pub fn payload(&self) -> &[u8] {
         &self.payload
     }
