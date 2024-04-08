@@ -806,6 +806,10 @@ impl CoreGroup {
 
         // Validate the proposals by doing the following checks:
 
+        // ValSem113: All Proposals: The proposal type must be supported by all
+        // members of the group
+        self.public_group
+            .validate_proposal_type_support(&proposal_queue)?;
         // ValSem101
         // ValSem102
         // ValSem103

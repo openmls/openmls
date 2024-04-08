@@ -68,7 +68,7 @@ use crate::{
 /// | Value  | Name    | Recommended | Path Required | Reference | Notes                        |
 /// |:=======|:========|:============|:==============|:==========|:=============================|
 /// | 0x0008 | app_ack | Y           | Y             | RFC XXXX  | draft-ietf-mls-extensions-00 |
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Serialize, Deserialize, Hash)]
 #[allow(missing_docs)]
 pub enum ProposalType {
     Add,
