@@ -18,7 +18,7 @@ use crate::{
     credentials::*,
     extensions::*,
     framing::*,
-    group::{config::CryptoConfig, *},
+    group::*,
     key_packages::*,
     messages::{group_info::GroupInfo, *},
     treesync::{
@@ -66,10 +66,7 @@ impl Client {
 
         let key_package = KeyPackage::builder()
             .build(
-                CryptoConfig {
-                    ciphersuite,
-                    version: ProtocolVersion::default(),
-                },
+                ciphersuite,
                 &self.crypto,
                 &keys,
                 credential_with_key.clone(),

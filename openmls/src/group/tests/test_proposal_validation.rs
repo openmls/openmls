@@ -20,7 +20,7 @@ use crate::{
         mls_content::FramedContentBody, validation::ProcessedMessageContent, AuthenticatedContent,
         FramedContent, MlsMessageIn, MlsMessageOut, ProtocolMessage, PublicMessage, Sender,
     },
-    group::{config::CryptoConfig, *},
+    group::*,
     key_packages::{errors::*, *},
     messages::{
         proposals::{
@@ -65,7 +65,7 @@ fn create_group_with_members<KeyStore: OpenMlsKeyStore>(
         provider,
         &alice_credential_with_key_and_signer.signer,
         &MlsGroupCreateConfig::builder()
-            .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+            .ciphersuite(ciphersuite)
             .build(),
         GroupId::from_slice(b"Alice's Friends"),
         alice_credential_with_key_and_signer
@@ -111,7 +111,7 @@ fn new_test_group(
     // Define the MlsGroup configuration
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .wire_format_policy(wire_format_policy)
-        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .ciphersuite(ciphersuite)
         .build();
 
     (
@@ -359,10 +359,7 @@ fn test_valsem101a(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // a different hpke key, different identity, but the same signature key.
     let dave_key_package = KeyPackage::builder()
         .build(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
+            ciphersuite,
             provider,
             &charlie_credential_with_key.signer,
             CredentialWithKey {
@@ -632,7 +629,7 @@ fn test_valsem101b(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             provider,
             &alice_credential_with_key.signer,
             &MlsGroupCreateConfig::builder()
-                .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+                .ciphersuite(ciphersuite)
                 .build(),
             GroupId::from_slice(b"Alice's Friends"),
             alice_credential_with_key.credential_with_key.clone(),
@@ -743,10 +740,7 @@ fn test_valsem101b(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
         let dave_key_package = KeyPackage::builder()
             .build(
-                CryptoConfig {
-                    ciphersuite,
-                    version: ProtocolVersion::default(),
-                },
+                ciphersuite
                 provider,
                 &dave_credential_bundle,
             )
@@ -2018,10 +2012,7 @@ fn valsem113(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             KeyPackageBuilder::new().leaf_node_capabilities(capabilities_with_support.clone())
         }
         .build(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::Mls10,
-            },
+            ciphersuite,
             provider,
             &bob_credential_with_keys.signer,
             bob_credential_with_keys.credential_with_key.clone(),
@@ -2034,10 +2025,7 @@ fn valsem113(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         } else {
             MlsGroup::builder().with_capabilities(capabilities_with_support.clone())
         }
-        .crypto_config(CryptoConfig {
-            ciphersuite,
-            version: ProtocolVersion::Mls10,
-        })
+        .ciphersuite(ciphersuite)
         .build(
             provider,
             &alice_credential_with_keys.signer,

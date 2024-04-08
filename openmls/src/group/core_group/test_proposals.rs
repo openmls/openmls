@@ -15,7 +15,6 @@ use crate::{
         mls_auth_content::AuthenticatedContent, sender::Sender, FramingParameters, WireFormat,
     },
     group::{
-        config::CryptoConfig,
         core_group::{node::leaf_node::Capabilities, KeyPackageBuilder, OtherProposal},
         errors::*,
         proposal::CustomProposal,
@@ -310,7 +309,7 @@ fn test_required_extension_key_package_mismatch(
 
     let alice_group = CoreGroup::builder(
         GroupId::random(provider.rand()),
-        CryptoConfig::with_default_version(ciphersuite),
+        ciphersuite,
         alice_credential,
     )
     .with_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
@@ -362,7 +361,7 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, provider: &impl OpenM
 
     let mut alice_group = CoreGroup::builder(
         GroupId::random(provider.rand()),
-        CryptoConfig::with_default_version(ciphersuite),
+        ciphersuite,
         alice_credential,
     )
     .with_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
@@ -444,7 +443,7 @@ fn test_group_context_extension_proposal_fails(
 
     let mut alice_group = CoreGroup::builder(
         GroupId::random(provider.rand()),
-        CryptoConfig::with_default_version(ciphersuite),
+        ciphersuite,
         alice_credential,
     )
     .with_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
@@ -533,7 +532,7 @@ fn test_group_context_extension_proposal(
 
     let mut alice_group = CoreGroup::builder(
         GroupId::random(provider.rand()),
-        CryptoConfig::with_default_version(ciphersuite),
+        ciphersuite,
         alice_credential,
     )
     .build(provider, &alice_signer)
@@ -657,15 +656,7 @@ fn custom_proposals(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // Create Bob's key package with support for the custom proposal type
     let bob_key_package = KeyPackageBuilder::new()
         .leaf_node_capabilities(custom_proposal_capabilities.clone())
-        .build(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
-            provider,
-            &bob_signer,
-            bob_credential_with_key,
-        )
+        .build(ciphersuite, provider, &bob_signer, bob_credential_with_key)
         .unwrap();
 
     // Create group with custom proposal as required capability
@@ -674,7 +665,7 @@ fn custom_proposals(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     //);
     let mut alice_group = CoreGroup::builder(
         GroupId::random(provider.rand()),
-        CryptoConfig::with_default_version(ciphersuite),
+        ciphersuite,
         alice_credential,
     )
     .with_capabilities(custom_proposal_capabilities)

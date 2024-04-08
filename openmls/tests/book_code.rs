@@ -1,5 +1,5 @@
 use openmls::{
-    prelude::{config::CryptoConfig, tls_codec::*, CustomProposal, *},
+    prelude::{tls_codec::*, CustomProposal, *},
     test_utils::*,
     *,
 };
@@ -52,12 +52,7 @@ fn generate_key_package(
     // Create the key package
     KeyPackage::builder()
         .key_package_extensions(extensions)
-        .build(
-            CryptoConfig::with_default_version(ciphersuite),
-            provider,
-            signer,
-            credential_with_key,
-        )
+        .build(ciphersuite, provider, signer, credential_with_key)
         .unwrap()
     // ANCHOR_END: create_key_package
 }
@@ -125,7 +120,7 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             ),
         ])))
         .expect("error adding external senders extension to group context extensions")
-        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .ciphersuite(ciphersuite)
         .capabilities(Capabilities::new(
             None, // Defaults to the group's protocol version
             None, // Defaults to the group's ciphersuite
@@ -202,7 +197,7 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
                 10,   // out_of_order_tolerance
                 2000, // maximum_forward_distance
             ))
-            .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+            .ciphersuite(ciphersuite)
             .use_ratchet_tree_extension(true)
             .build(provider, &alice_signature_keys, alice_credential.clone())
             .expect("An unexpected error occurred.");
@@ -420,7 +415,7 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let custom_proposal_payload = vec![0, 1, 2, 3];
     let custom_proposal = CustomProposal((custom_proposal_type, custom_proposal_payload.clone()));
     let (custom_proposal_message, _proposal_ref) = alice_group
-        .propose_custom_proposal_by_reference(provider, &alice_signature_keys, custom_proposal)
+        .propose_custom_proposal_by_value(provider, &alice_signature_keys, custom_proposal)
         .expect("Could not create custom proposal.");
     // ANCHOR_END: alice_creates_custom_proposal
 

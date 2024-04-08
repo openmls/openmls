@@ -64,7 +64,7 @@ use crate::{
     error::LibraryError,
     extensions::errors::InvalidExtensionError,
     framing::{mls_auth_content::AuthenticatedContent, *},
-    group::{config::CryptoConfig, *},
+    group::*,
     key_packages::*,
     messages::{
         group_info::{GroupInfo, GroupInfoTBS, VerifiableGroupInfo},
@@ -191,11 +191,10 @@ impl CoreGroupBuilder {
     /// Create a new [`CoreGroupBuilder`].
     pub(crate) fn new(
         group_id: GroupId,
-        crypto_config: CryptoConfig,
+        ciphersuite: Ciphersuite,
         credential_with_key: CredentialWithKey,
     ) -> Self {
-        let public_group_builder =
-            PublicGroup::builder(group_id, crypto_config, credential_with_key);
+        let public_group_builder = PublicGroup::builder(group_id, ciphersuite, credential_with_key);
         Self {
             config: None,
             psk_ids: vec![],
@@ -275,7 +274,7 @@ impl CoreGroupBuilder {
         let (public_group_builder, commit_secret, leaf_keypair) =
             self.public_group_builder.get_secrets(provider, signer)?;
 
-        let ciphersuite = public_group_builder.crypto_config().ciphersuite;
+        let ciphersuite = public_group_builder.group_context().ciphersuite();
         let config = self.config.unwrap_or_default();
 
         let serialized_group_context = public_group_builder
@@ -358,10 +357,10 @@ impl CoreGroup {
     /// Get a builder for [`CoreGroup`].
     pub(crate) fn builder(
         group_id: GroupId,
-        crypto_config: CryptoConfig,
+        ciphersuite: Ciphersuite,
         credential_with_key: CredentialWithKey,
     ) -> CoreGroupBuilder {
-        CoreGroupBuilder::new(group_id, crypto_config, credential_with_key)
+        CoreGroupBuilder::new(group_id, ciphersuite, credential_with_key)
     }
 
     // === Create handshake messages ===

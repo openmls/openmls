@@ -1,13 +1,15 @@
-use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, OpenMlsProvider};
+use openmls_traits::{
+    key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite, OpenMlsProvider,
+};
 
 use crate::{
     credentials::CredentialWithKey,
     error::LibraryError,
     extensions::{errors::InvalidExtensionError, Extensions},
     group::{
-        config::CryptoConfig, public_group::errors::PublicGroupBuildError, CoreGroup,
-        CoreGroupBuildError, CoreGroupConfig, GroupId, MlsGroupCreateConfig,
-        MlsGroupCreateConfigBuilder, NewGroupError, ProposalStore, WireFormatPolicy,
+        public_group::errors::PublicGroupBuildError, CoreGroup, CoreGroupBuildError,
+        CoreGroupConfig, GroupId, MlsGroupCreateConfig, MlsGroupCreateConfigBuilder, NewGroupError,
+        ProposalStore, WireFormatPolicy,
     },
     key_packages::Lifetime,
     tree::sender_ratchet::SenderRatchetConfiguration,
@@ -69,7 +71,7 @@ impl MlsGroupBuilder {
 
         let mut group = CoreGroup::builder(
             group_id,
-            mls_group_create_config.crypto_config,
+            mls_group_create_config.ciphersuite,
             credential_with_key,
         )
         .with_config(group_config)
@@ -182,10 +184,11 @@ impl MlsGroupBuilder {
         self
     }
 
-    /// Sets the `crypto_config` of the MlsGroup.
-    pub fn crypto_config(mut self, config: CryptoConfig) -> Self {
-        self.mls_group_create_config_builder =
-            self.mls_group_create_config_builder.crypto_config(config);
+    /// Sets the `ciphersuite` of the MlsGroup.
+    pub fn ciphersuite(mut self, ciphersuite: Ciphersuite) -> Self {
+        self.mls_group_create_config_builder = self
+            .mls_group_create_config_builder
+            .ciphersuite(ciphersuite);
         self
     }
 

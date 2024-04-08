@@ -7,7 +7,7 @@ use crate::{
     binary_tree::LeafNodeIndex,
     extensions::errors::InvalidExtensionError,
     framing::*,
-    group::{config::CryptoConfig, errors::*, *},
+    group::{errors::*, *},
     key_packages::*,
     messages::proposals::*,
     prelude::Capabilities,
@@ -76,7 +76,7 @@ fn remover(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     // Define the MlsGroup configuration
     let mls_group_create_config = MlsGroupCreateConfig::builder()
-        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .ciphersuite(ciphersuite)
         .build();
 
     // === Alice creates a group ===
@@ -967,7 +967,7 @@ fn key_package_deletion(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 
     // Define the MlsGroup configuration
     let mls_group_create_config = MlsGroupCreateConfig::builder()
-        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .ciphersuite(ciphersuite)
         .build();
 
     // === Alice creates a group ===
@@ -1040,7 +1040,7 @@ fn remove_prosposal_by_ref(ciphersuite: Ciphersuite, provider: &impl OpenMlsProv
 
     // Define the MlsGroup configuration
     let mls_group_create_config = MlsGroupCreateConfig::builder()
-        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .ciphersuite(ciphersuite)
         .build();
 
     // === Alice creates a group ===
@@ -1225,7 +1225,7 @@ fn builder_pattern(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     ])
     .expect("error creating group context extensions");
 
-    let test_crypto_config = CryptoConfig::with_default_version(ciphersuite);
+    let test_ciphersuite = ciphersuite;
     let test_sender_ratchet_config = SenderRatchetConfiguration::new(10, 2000);
     let test_max_past_epochs = 10;
     let test_number_of_resumption_psks = 5;
@@ -1248,7 +1248,7 @@ fn builder_pattern(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .sender_ratchet_configuration(test_sender_ratchet_config.clone())
         .with_group_context_extensions(test_gc_extensions.clone())
         .expect("error adding group context extension to builder")
-        .crypto_config(test_crypto_config)
+        .ciphersuite(test_ciphersuite)
         .with_wire_format_policy(test_wire_format_policy)
         .lifetime(test_lifetime)
         .use_ratchet_tree_extension(true)
@@ -1289,11 +1289,7 @@ fn builder_pattern(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         Extension::ExternalSenders(external_senders),
         test_external_senders
     );
-    let crypto_config = CryptoConfig {
-        ciphersuite,
-        version: group_context.protocol_version(),
-    };
-    assert_eq!(crypto_config, test_crypto_config);
+    assert_eq!(ciphersuite, test_ciphersuite);
     let extensions = group_context.extensions();
     assert_eq!(extensions, &test_gc_extensions);
     let lifetime = alice_group
@@ -1344,12 +1340,8 @@ fn unknown_extensions(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider)
     let test_kp_extensions = Extensions::single(unknown_kp_extension.clone());
 
     // === Alice creates a group ===
-    let config = CryptoConfig {
-        ciphersuite,
-        version: crate::versions::ProtocolVersion::default(),
-    };
     let mut alice_group = MlsGroup::builder()
-        .crypto_config(config)
+        .ciphersuite(ciphersuite)
         .with_capabilities(capabilities.clone())
         .with_leaf_node_extensions(Extensions::single(unknown_leaf_extension.clone()))
         .expect("error adding unknown leaf extension to builder")
@@ -1377,7 +1369,7 @@ fn unknown_extensions(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider)
     let bob_key_package = KeyPackage::builder()
         .leaf_node_capabilities(capabilities)
         .key_package_extensions(test_kp_extensions.clone())
-        .build(config, provider, &bob_signer, bob_credential_with_key)
+        .build(ciphersuite, provider, &bob_signer, bob_credential_with_key)
         .expect("error building key package");
 
     assert_eq!(
@@ -1420,22 +1412,18 @@ fn join_multiple_groups_last_resort_extension(
         setup_client("bob", ciphersuite, provider);
     let (charlie_credential_with_key, _charlie_kpb, charlie_signer, _charlie_pk) =
         setup_client("charlie", ciphersuite, provider);
-    let config = CryptoConfig {
-        ciphersuite,
-        version: crate::versions::ProtocolVersion::default(),
-    };
     let leaf_capabilities =
         Capabilities::new(None, None, Some(&[ExtensionType::LastResort]), None, None);
     let keypkg_extensions = Extensions::single(Extension::LastResort(LastResortExtension::new()));
     // alice creates MlsGroup
     let mut alice_group = MlsGroup::builder()
-        .crypto_config(config)
+        .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
         .build(provider, &alice_signer, alice_credential_with_key)
         .expect("error creating group for alice using builder");
     // bob creates MlsGroup
     let mut bob_group = MlsGroup::builder()
-        .crypto_config(config)
+        .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
         .build(provider, &bob_signer, bob_credential_with_key)
         .expect("error creating group for bob using builder");
@@ -1444,7 +1432,7 @@ fn join_multiple_groups_last_resort_extension(
         .leaf_node_capabilities(leaf_capabilities)
         .key_package_extensions(keypkg_extensions.clone())
         .build(
-            config,
+            ciphersuite,
             provider,
             &charlie_signer,
             charlie_credential_with_key,

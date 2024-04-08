@@ -1,5 +1,5 @@
 use ds_lib::{self, *};
-use openmls::prelude::{config::CryptoConfig, *};
+use openmls::prelude::*;
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::OpenMlsProvider;
@@ -20,15 +20,7 @@ fn test_client_info() {
     signature_keys.store(crypto.key_store()).unwrap();
 
     let client_key_package = KeyPackage::builder()
-        .build(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
-            crypto,
-            &signature_keys,
-            credential_with_key,
-        )
+        .build(ciphersuite, crypto, &signature_keys, credential_with_key)
         .unwrap();
 
     let client_key_package = vec![(

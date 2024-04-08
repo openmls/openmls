@@ -21,7 +21,7 @@ use crate::{
     credentials::{Credential, CredentialWithKey},
     error::LibraryError,
     extensions::{ExtensionType, Extensions},
-    group::{config::CryptoConfig, GroupId},
+    group::GroupId,
     key_packages::{KeyPackage, Lifetime},
     treesync::errors::PublicTreeError,
     versions::ProtocolVersion,
@@ -35,7 +35,7 @@ mod codec;
 pub use capabilities::*;
 
 pub(crate) struct NewLeafNodeParams {
-    pub(crate) config: CryptoConfig,
+    pub(crate) ciphersuite: Ciphersuite,
     pub(crate) credential_with_key: CredentialWithKey,
     pub(crate) leaf_node_source: LeafNodeSource,
     pub(crate) capabilities: Capabilities,
@@ -91,7 +91,7 @@ impl LeafNode {
         new_leaf_node_params: NewLeafNodeParams,
     ) -> Result<(Self, EncryptionKeyPair), LibraryError> {
         let NewLeafNodeParams {
-            config,
+            ciphersuite,
             credential_with_key,
             leaf_node_source,
             capabilities,
@@ -100,7 +100,7 @@ impl LeafNode {
         } = new_leaf_node_params;
 
         // Create a new encryption key pair.
-        let encryption_key_pair = EncryptionKeyPair::random(provider, config)?;
+        let encryption_key_pair = EncryptionKeyPair::random(provider, ciphersuite)?;
 
         let leaf_node = Self::new_with_key(
             encryption_key_pair.public_key().clone(),
@@ -177,13 +177,13 @@ impl LeafNode {
     #[cfg(test)]
     pub(crate) fn updated<KeyStore: OpenMlsKeyStore>(
         &self,
-        config: CryptoConfig,
+        ciphersuite: Ciphersuite,
         tree_info_tbs: TreeInfoTbs,
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
     ) -> Result<Self, LeafNodeGenerationError<KeyStore::Error>> {
         Self::generate_update(
-            config,
+            ciphersuite,
             CredentialWithKey {
                 credential: self.payload.credential.clone(),
                 signature_key: self.payload.signature_key.clone(),
@@ -205,7 +205,7 @@ impl LeafNode {
     /// a leaf node should be generated as part of a new [`KeyPackage`].
     #[cfg(test)]
     pub(crate) fn generate_update<KeyStore: OpenMlsKeyStore>(
-        config: CryptoConfig,
+        ciphersuite: Ciphersuite,
         credential_with_key: CredentialWithKey,
         capabilities: Capabilities,
         extensions: Extensions,
@@ -217,7 +217,7 @@ impl LeafNode {
         // because it is interacting with the key store.
 
         let new_leaf_node_params = NewLeafNodeParams {
-            config,
+            ciphersuite,
             credential_with_key,
             leaf_node_source: LeafNodeSource::Update,
             capabilities,
@@ -306,13 +306,7 @@ impl LeafNode {
             )
             .into());
         }
-        let key_pair = EncryptionKeyPair::random(
-            provider,
-            CryptoConfig {
-                ciphersuite,
-                version: protocol_version,
-            },
-        )?;
+        let key_pair = EncryptionKeyPair::random(provider, ciphersuite)?;
 
         self.update_and_re_sign(
             key_pair.public_key().clone(),
