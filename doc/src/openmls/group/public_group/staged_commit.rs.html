@@ -288,6 +288,10 @@
 <a href="#286" id="286">286</a>
 <a href="#287" id="287">287</a>
 <a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{<span class="kw">super</span>::errors::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 <span class="kw">use crate</span>::{
     framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, Sender},
@@ -389,6 +393,7 @@
         })<span class="question-mark">?</span>;
 
         <span class="comment">// Validate the staged proposals by doing the following checks:
+
         // ValSem101
         // ValSem102
         // ValSem103
@@ -402,6 +407,9 @@
         <span class="comment">// ValSem107
         // ValSem108
         </span><span class="self">self</span>.validate_remove_proposals(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
+        <span class="comment">// ValSem113: All Proposals: The proposal type must be supported by all
+        // members of the group
+        </span><span class="self">self</span>.validate_proposal_type_support(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
         <span class="comment">// ValSem208
         // ValSem209
         </span><span class="self">self</span>.validate_group_context_extensions_proposal(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;

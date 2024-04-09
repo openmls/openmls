@@ -578,6 +578,7 @@
 <a href="#576" id="576">576</a>
 <a href="#577" id="577">577</a>
 <a href="#578" id="578">578</a>
+<a href="#579" id="579">579</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>core::fmt::Debug;
 <span class="kw">use </span>std::mem;
 
@@ -665,17 +666,17 @@
             .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"Using the key schedule in the wrong state"</span>))<span class="question-mark">?</span>)
     }
 
-    <span class="doccomment">/// Stages a commit message that was sent by another group member.
-    /// This function does the following:
+    <span class="doccomment">/// Stages a commit message that was sent by another group member. This
+    /// function does the following:
     ///  - Applies the proposals covered by the commit to the tree
     ///  - Applies the (optional) update path to the tree
     ///  - Decrypts and calculates the path secrets
     ///  - Initializes the key schedule for epoch rollover
     ///  - Verifies the confirmation tag
     ///
-    /// Returns a [StagedCommit] that can be inspected and later merged
-    /// into the group state with [CoreGroup::merge_commit()]
-    /// This function does the following checks:
+    /// Returns a [StagedCommit] that can be inspected and later merged into the
+    /// group state with [CoreGroup::merge_commit()] This function does the
+    /// following checks:
     ///  - ValSem101
     ///  - ValSem102
     ///  - ValSem104
@@ -686,6 +687,8 @@
     ///  - ValSem110
     ///  - ValSem111
     ///  - ValSem112
+    ///  - ValSem113: All Proposals: The proposal type must be supported by all
+    ///               members of the group
     ///  - ValSem200
     ///  - ValSem201
     ///  - ValSem202: Path must be the right length
@@ -696,9 +699,8 @@
     ///  - ValSem240
     ///  - ValSem241
     ///  - ValSem242
-    ///  - ValSem244
-    /// Returns an error if the given commit was sent by the owner of this
-    /// group.
+    ///  - ValSem244 Returns an error if the given commit was sent by the owner
+    /// of this group.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>stage_commit(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         mls_content: <span class="kw-2">&amp;</span>AuthenticatedContent,
@@ -1027,7 +1029,7 @@
     }
 
     <span class="doccomment">/// Returns an iterator over all [`QueuedProposal`]s.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>queued_proposals(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>QueuedProposal&gt; {
+    </span><span class="kw">pub fn </span>queued_proposals(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>QueuedProposal&gt; {
         <span class="self">self</span>.staged_proposal_queue.queued_proposals()
     }
 

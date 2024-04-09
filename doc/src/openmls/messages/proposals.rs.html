@@ -667,12 +667,25 @@
 <a href="#665" id="665">665</a>
 <a href="#666" id="666">666</a>
 <a href="#667" id="667">667</a>
+<a href="#668" id="668">668</a>
+<a href="#669" id="669">669</a>
+<a href="#670" id="670">670</a>
+<a href="#671" id="671">671</a>
+<a href="#672" id="672">672</a>
+<a href="#673" id="673">673</a>
+<a href="#674" id="674">674</a>
+<a href="#675" id="675">675</a>
+<a href="#676" id="676">676</a>
+<a href="#677" id="677">677</a>
+<a href="#678" id="678">678</a>
+<a href="#679" id="679">679</a>
+<a href="#680" id="680">680</a>
+<a href="#681" id="681">681</a>
+<a href="#682" id="682">682</a>
+<a href="#683" id="683">683</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Proposals
 //!
 //! This module defines all the different types of Proposals.
-//!
-//! To find out if a specific proposal type is supported,
-//! [`ProposalType::is_supported()`] can be used.
 
 </span><span class="kw">use </span>std::io::{Read, Write};
 
@@ -740,7 +753,7 @@
 /// | Value  | Name    | Recommended | Path Required | Reference | Notes                        |
 /// |:=======|:========|:============|:==============|:==========|:=============================|
 /// | 0x0008 | app_ack | Y           | Y             | RFC XXXX  | draft-ietf-mls-extensions-00 |
-</span><span class="attr">#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Serialize, Deserialize)]
+</span><span class="attr">#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Serialize, Deserialize, Hash)]
 #[allow(missing_docs)]
 </span><span class="kw">pub enum </span>ProposalType {
     Add,
@@ -751,7 +764,7 @@
     ExternalInit,
     GroupContextExtensions,
     AppAck,
-    Unknown(u16),
+    Custom(u16),
 }
 
 <span class="kw">impl </span>Size <span class="kw">for </span>ProposalType {
@@ -793,21 +806,6 @@
 }
 
 <span class="kw">impl </span>ProposalType {
-    <span class="doccomment">/// Check whether a proposal type is supported or not. Returns `true`
-    /// if a proposal is supported and `false` otherwise.
-    </span><span class="kw">pub fn </span>is_supported(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="macro">matches!</span>(
-            <span class="self">self</span>,
-            ProposalType::Add
-                | ProposalType::Update
-                | ProposalType::Remove
-                | ProposalType::PreSharedKey
-                | ProposalType::Reinit
-                | ProposalType::ExternalInit
-                | ProposalType::GroupContextExtensions
-        )
-    }
-
     <span class="doccomment">/// Returns `true` if the proposal type requires a path and `false`
     </span><span class="kw">pub fn </span>is_path_required(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="macro">matches!</span>(
@@ -828,7 +826,7 @@
             <span class="number">6 </span>=&gt; ProposalType::ExternalInit,
             <span class="number">7 </span>=&gt; ProposalType::GroupContextExtensions,
             <span class="number">8 </span>=&gt; ProposalType::AppAck,
-            unknown =&gt; ProposalType::Unknown(unknown),
+            other =&gt; ProposalType::Custom(other),
         }
     }
 }
@@ -844,7 +842,7 @@
             ProposalType::ExternalInit =&gt; <span class="number">6</span>,
             ProposalType::GroupContextExtensions =&gt; <span class="number">7</span>,
             ProposalType::AppAck =&gt; <span class="number">8</span>,
-            ProposalType::Unknown(unknown) =&gt; unknown,
+            ProposalType::Custom(id) =&gt; id,
         }
     }
 }
@@ -869,29 +867,22 @@
 /// } Proposal;
 /// ```
 </span><span class="attr">#[allow(clippy::large_enum_variant)]
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TlsSize, TlsSerialize)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 #[allow(missing_docs)]
 #[repr(u16)]
 </span><span class="kw">pub enum </span>Proposal {
-    <span class="attr">#[tls_codec(discriminant = <span class="number">1</span>)]
-    </span>Add(AddProposal),
-    <span class="attr">#[tls_codec(discriminant = <span class="number">2</span>)]
-    </span>Update(UpdateProposal),
-    <span class="attr">#[tls_codec(discriminant = <span class="number">3</span>)]
-    </span>Remove(RemoveProposal),
-    <span class="attr">#[tls_codec(discriminant = <span class="number">4</span>)]
-    </span>PreSharedKey(PreSharedKeyProposal),
-    <span class="attr">#[tls_codec(discriminant = <span class="number">5</span>)]
-    </span>ReInit(ReInitProposal),
-    <span class="attr">#[tls_codec(discriminant = <span class="number">6</span>)]
-    </span>ExternalInit(ExternalInitProposal),
-    <span class="attr">#[tls_codec(discriminant = <span class="number">7</span>)]
-    </span>GroupContextExtensions(GroupContextExtensionProposal),
+    Add(AddProposal),
+    Update(UpdateProposal),
+    Remove(RemoveProposal),
+    PreSharedKey(PreSharedKeyProposal),
+    ReInit(ReInitProposal),
+    ExternalInit(ExternalInitProposal),
+    GroupContextExtensions(GroupContextExtensionProposal),
     <span class="comment">// # Extensions
     // TODO(#916): `AppAck` is not in draft-ietf-mls-protocol-17 but
     //             was moved to `draft-ietf-mls-extensions-00`.
-    </span><span class="attr">#[tls_codec(discriminant = <span class="number">8</span>)]
     </span>AppAck(AppAckProposal),
+    Custom(CustomProposal),
 }
 
 <span class="kw">impl </span>Proposal {
@@ -906,6 +897,10 @@
             Proposal::ExternalInit(<span class="kw">_</span>) =&gt; ProposalType::ExternalInit,
             Proposal::GroupContextExtensions(<span class="kw">_</span>) =&gt; ProposalType::GroupContextExtensions,
             Proposal::AppAck(<span class="kw">_</span>) =&gt; ProposalType::AppAck,
+            Proposal::Custom(CustomProposal {
+                proposal_type,
+                payload: <span class="kw">_</span>,
+            }) =&gt; ProposalType::Custom(proposal_type.to_owned()),
         }
     }
 
@@ -1304,6 +1299,43 @@
     last_generation: u32,
 }
 
+<span class="doccomment">/// A custom proposal with semantics to be implemented by the application.
+</span><span class="attr">#[derive(
+    Debug,
+    PartialEq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsSize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+)]
+</span><span class="kw">pub struct </span>CustomProposal {
+    proposal_type: u16,
+    payload: Vec&lt;u8&gt;,
+}
+
+<span class="kw">impl </span>CustomProposal {
+    <span class="doccomment">/// Generate a new custom proposal.
+    </span><span class="kw">pub fn </span>new(proposal_type: u16, payload: Vec&lt;u8&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            proposal_type,
+            payload,
+        }
+    }
+
+    <span class="doccomment">/// Returns the proposal type of this [`CustomProposal`].
+    </span><span class="kw">pub fn </span>proposal_type(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u16 {
+        <span class="self">self</span>.proposal_type
+    }
+
+    <span class="doccomment">/// Returns the payload of this [`CustomProposal`].
+    </span><span class="kw">pub fn </span>payload(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.payload
+    }
+}
+
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use </span>tls_codec::{Deserialize, Serialize};
@@ -1322,7 +1354,7 @@
             </span><span class="kw">let </span>got = ProposalType::tls_deserialize_exact(<span class="kw-2">&amp;</span>test).unwrap();
 
             <span class="kw">match </span>got {
-                ProposalType::Unknown(got_proposal_type) =&gt; {
+                ProposalType::Custom(got_proposal_type) =&gt; {
                     <span class="macro">assert_eq!</span>(proposal_type, got_proposal_type);
                 }
                 other =&gt; <span class="macro">panic!</span>(<span class="string">"Expected `ProposalType::Unknown`, got `{:?}`."</span>, other),

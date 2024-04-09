@@ -308,6 +308,11 @@
 <a href="#306" id="306">306</a>
 <a href="#307" id="307">307</a>
 <a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>core_group::proposals::QueuedProposal;
 
 <span class="kw">use crate</span>::{
@@ -335,6 +340,8 @@
     ///  - ValSem110
     ///  - ValSem111
     ///  - ValSem112
+    ///  - ValSem113: All Proposals: The proposal type must be supported by all
+    ///               members of the group
     ///  - ValSem200
     ///  - ValSem201
     ///  - ValSem202: Path must be the right length
@@ -378,6 +385,7 @@
                             provider.crypto(),
                             content,
                         )<span class="question-mark">?</span>);
+
                         <span class="kw">if </span><span class="macro">matches!</span>(sender, Sender::NewMemberProposal) {
                             ProcessedMessageContent::ExternalJoinProposalMessage(proposal)
                         } <span class="kw">else </span>{
@@ -461,6 +469,8 @@
     ///  - ValSem110
     ///  - ValSem111
     ///  - ValSem112
+    ///  - ValSem113: All Proposals: The proposal type must be supported by all
+    ///               members of the group
     ///  - ValSem200
     ///  - ValSem201
     ///  - ValSem202: Path must be the right length

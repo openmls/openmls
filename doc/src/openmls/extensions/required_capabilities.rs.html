@@ -86,16 +86,6 @@
 <a href="#84" id="84">84</a>
 <a href="#85" id="85">85</a>
 <a href="#86" id="86">86</a>
-<a href="#87" id="87">87</a>
-<a href="#88" id="88">88</a>
-<a href="#89" id="89">89</a>
-<a href="#90" id="90">90</a>
-<a href="#91" id="91">91</a>
-<a href="#92" id="92">92</a>
-<a href="#93" id="93">93</a>
-<a href="#94" id="94">94</a>
-<a href="#95" id="95">95</a>
-<a href="#96" id="96">96</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
 <span class="kw">use crate</span>::{
@@ -103,7 +93,7 @@
     treesync::node::leaf_node::default_extensions,
 };
 
-<span class="kw">use super</span>::{Deserialize, ExtensionError, ExtensionType, Serialize};
+<span class="kw">use super</span>::{Deserialize, ExtensionType, Serialize};
 
 <span class="doccomment">/// # Required Capabilities Extension.
 ///
@@ -180,16 +170,6 @@
     <span class="doccomment">/// Checks whether support for the provided extension type is required.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>requires_extension_type_support(<span class="kw-2">&amp;</span><span class="self">self</span>, ext_type: ExtensionType) -&gt; bool {
         <span class="self">self</span>.extension_types.contains(<span class="kw-2">&amp;</span>ext_type) || default_extensions().contains(<span class="kw-2">&amp;</span>ext_type)
-    }
-
-    <span class="doccomment">/// Check if all extension and proposal types are supported.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>check_support(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExtensionError&gt; {
-        <span class="kw">for </span>proposal <span class="kw">in </span><span class="self">self</span>.proposal_types() {
-            <span class="kw">if </span>!proposal.is_supported() {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ExtensionError::UnsupportedProposalType);
-            }
-        }
-        <span class="prelude-val">Ok</span>(())
     }
 }
 </code></pre></div></section></main></body></html>

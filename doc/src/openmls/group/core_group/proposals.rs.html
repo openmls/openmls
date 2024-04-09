@@ -649,6 +649,12 @@
 <a href="#647" id="647">647</a>
 <a href="#648" id="648">648</a>
 <a href="#649" id="649">649</a>
+<a href="#650" id="650">650</a>
+<a href="#651" id="651">651</a>
+<a href="#652" id="652">652</a>
+<a href="#653" id="653">653</a>
+<a href="#654" id="654">654</a>
+<a href="#655" id="655">655</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::{hash_map::Entry, HashMap, HashSet};
 
 <span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
@@ -1163,6 +1169,12 @@
                     proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
                 Proposal::AppAck(<span class="kw">_</span>) =&gt; <span class="macro">unimplemented!</span>(<span class="string">"See #291"</span>),
+                Proposal::Custom(<span class="kw">_</span>) =&gt; {
+                    <span class="comment">// Other/unknown proposals are always considered valid and
+                    // have to be checked by the application instead.
+                    </span>valid_proposals.add(queued_proposal.proposal_reference());
+                    proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
+                }
             }
         }
         <span class="comment">// Check for presence of Removes and delete Updates

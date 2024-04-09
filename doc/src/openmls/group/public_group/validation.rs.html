@@ -571,6 +571,46 @@
 <a href="#569" id="569">569</a>
 <a href="#570" id="570">570</a>
 <a href="#571" id="571">571</a>
+<a href="#572" id="572">572</a>
+<a href="#573" id="573">573</a>
+<a href="#574" id="574">574</a>
+<a href="#575" id="575">575</a>
+<a href="#576" id="576">576</a>
+<a href="#577" id="577">577</a>
+<a href="#578" id="578">578</a>
+<a href="#579" id="579">579</a>
+<a href="#580" id="580">580</a>
+<a href="#581" id="581">581</a>
+<a href="#582" id="582">582</a>
+<a href="#583" id="583">583</a>
+<a href="#584" id="584">584</a>
+<a href="#585" id="585">585</a>
+<a href="#586" id="586">586</a>
+<a href="#587" id="587">587</a>
+<a href="#588" id="588">588</a>
+<a href="#589" id="589">589</a>
+<a href="#590" id="590">590</a>
+<a href="#591" id="591">591</a>
+<a href="#592" id="592">592</a>
+<a href="#593" id="593">593</a>
+<a href="#594" id="594">594</a>
+<a href="#595" id="595">595</a>
+<a href="#596" id="596">596</a>
+<a href="#597" id="597">597</a>
+<a href="#598" id="598">598</a>
+<a href="#599" id="599">599</a>
+<a href="#600" id="600">600</a>
+<a href="#601" id="601">601</a>
+<a href="#602" id="602">602</a>
+<a href="#603" id="603">603</a>
+<a href="#604" id="604">604</a>
+<a href="#605" id="605">605</a>
+<a href="#606" id="606">606</a>
+<a href="#607" id="607">607</a>
+<a href="#608" id="608">608</a>
+<a href="#609" id="609">609</a>
+<a href="#610" id="610">610</a>
+<a href="#611" id="611">611</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains validation functions for incoming messages
 //! as defined in &lt;https://github.com/openmls/openmls/wiki/Message-validation&gt;
 
@@ -694,7 +734,44 @@
 
     <span class="comment">// === Proposals ===
 
-    </span><span class="doccomment">/// Validate key uniqueness. This function implements the following checks:
+    </span><span class="doccomment">/// Validate that all group members support the types of all proposals.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_proposal_type_support(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        proposal_queue: <span class="kw-2">&amp;</span>ProposalQueue,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProposalValidationError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>leaves = <span class="self">self</span>.treesync().full_leaves();
+        <span class="kw">let </span><span class="prelude-val">Some</span>(first_leaf) = leaves.next() <span class="kw">else </span>{
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+        };
+        <span class="comment">// Initialize the capabilities intersection with the capabilities of the
+        // first leaf node.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>capabilities_intersection = first_leaf
+            .capabilities()
+            .proposals()
+            .iter()
+            .collect::&lt;HashSet&lt;<span class="kw">_</span>&gt;&gt;();
+        <span class="comment">// Iterate over the remaining leaf nodes and intersect their capabilities
+        </span><span class="kw">for </span>leaf_node <span class="kw">in </span>leaves {
+            <span class="kw">let </span>leaf_capabilities_set = leaf_node.capabilities().proposals().iter().collect();
+            capabilities_intersection = capabilities_intersection
+                .intersection(<span class="kw-2">&amp;</span>leaf_capabilities_set)
+                .cloned()
+                .collect();
+        }
+
+        <span class="comment">// Check that the types of all proposals are supported by all members
+        </span><span class="kw">for </span>proposal <span class="kw">in </span>proposal_queue.queued_proposals() {
+            <span class="kw">let </span>proposal_type = proposal.proposal().proposal_type();
+            <span class="kw">if </span><span class="macro">matches!</span>(proposal_type, ProposalType::Custom(<span class="kw">_</span>))
+                &amp;&amp; !capabilities_intersection.contains(<span class="kw-2">&amp;</span>proposal_type)
+            {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::UnsupportedProposalType);
+            }
+        }
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="doccomment">/// Validate key uniqueness. This function implements the following checks:
     ///  - ValSem101: Add Proposal: Signature public key in proposals must be unique among proposals &amp; members
     ///  - ValSem102: Add Proposal: Init key in proposals must be unique among proposals
     ///  - ValSem103: Add Proposal: Encryption key in proposals must be unique among proposals &amp; members
@@ -1050,7 +1127,10 @@
             <span class="kw">let </span>is_inline = p.proposal_or_ref_type() == ProposalOrRefType::Proposal;
             <span class="kw">let </span>is_allowed_type = <span class="macro">matches!</span>(
                 p.proposal(),
-                Proposal::ExternalInit(<span class="kw">_</span>) | Proposal::Remove(<span class="kw">_</span>) | Proposal::PreSharedKey(<span class="kw">_</span>)
+                Proposal::ExternalInit(<span class="kw">_</span>)
+                    | Proposal::Remove(<span class="kw">_</span>)
+                    | Proposal::PreSharedKey(<span class="kw">_</span>)
+                    | Proposal::Custom(<span class="kw">_</span>)
             );
             is_inline &amp;&amp; !is_allowed_type
         });

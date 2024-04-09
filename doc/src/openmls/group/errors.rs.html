@@ -546,6 +546,9 @@
 <a href="#544" id="544">544</a>
 <a href="#545" id="545">545</a>
 <a href="#546" id="546">546</a>
+<a href="#547" id="547">547</a>
+<a href="#548" id="548">548</a>
+<a href="#549" id="549">549</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # MLS group errors
 //!
 //! This module contains errors that originate at lower levels and are partially re-exported in errors thrown by functions of the `MlsGroup` API.
@@ -922,6 +925,9 @@
     <span class="doccomment">/// See [`PskError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>Psk(<span class="attr">#[from] </span>PskError),
+    <span class="doccomment">/// The proposal type is not supported by all group members.
+    </span><span class="attr">#[error(<span class="string">"The proposal type is not supported by all group members."</span>)]
+    </span>UnsupportedProposalType,
 }
 
 <span class="doccomment">/// External Commit validaton error
