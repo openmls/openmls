@@ -319,7 +319,10 @@ impl MlsGroup {
         }
     }
 
-    #[cfg(test)]
+    /// Creates a proposals with a new set of `extensions` for the group context.
+    ///
+    /// Returns an error when the group does not support all the required capabilities
+    /// in the new `extensions`.
     pub fn propose_group_context_extensions(
         &mut self,
         provider: &impl OpenMlsProvider,
