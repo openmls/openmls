@@ -151,7 +151,7 @@ impl TreeNodeIndex {
     }
 
     /// Re-exported for testing.
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(any(feature = "test-utils", feature = "crypto-debug", test))]
     pub(crate) fn test_u32(&self) -> u32 {
         self.u32()
     }

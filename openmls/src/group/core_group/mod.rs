@@ -465,6 +465,22 @@ impl CoreGroup {
         )
     }
 
+    pub(crate) fn create_custom_proposal(
+        &self,
+        framing_parameters: FramingParameters,
+        custom_proposal: CustomProposal,
+        signer: &impl Signer,
+    ) -> Result<AuthenticatedContent, LibraryError> {
+        let proposal = Proposal::Custom(custom_proposal);
+        AuthenticatedContent::member_proposal(
+            framing_parameters,
+            self.own_leaf_index(),
+            proposal,
+            self.context(),
+            signer,
+        )
+    }
+
     // Create application message
     pub(crate) fn create_application_message(
         &mut self,
@@ -787,6 +803,10 @@ impl CoreGroup {
 
         // Validate the proposals by doing the following checks:
 
+        // ValSem113: All Proposals: The proposal type must be supported by all
+        // members of the group
+        self.public_group
+            .validate_proposal_type_support(&proposal_queue)?;
         // ValSem101
         // ValSem102
         // ValSem103
@@ -1058,7 +1078,6 @@ impl CoreGroup {
         if let Some(required_extension) = required_extension {
             let required_capabilities = required_extension.as_required_capabilities_extension()?;
             // Ensure we support all the capabilities.
-            required_capabilities.check_support()?;
             self.own_leaf_node()?
                 .capabilities()
                 .supports_required_capabilities(required_capabilities)?;

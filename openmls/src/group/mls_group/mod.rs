@@ -308,6 +308,14 @@ impl MlsGroup {
         self.group.public_group().group_context().extensions()
     }
 
+    /// Returns the index of the sender of a staged, external commit.
+    pub fn ext_commit_sender_index(
+        &self,
+        commit: &StagedCommit,
+    ) -> Result<LeafNodeIndex, LibraryError> {
+        self.group.public_group().ext_commit_sender_index(commit)
+    }
+
     // === Load & save ===
 
     /// Loads the state from persisted state.

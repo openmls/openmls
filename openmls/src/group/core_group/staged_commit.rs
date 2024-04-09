@@ -85,17 +85,17 @@ impl CoreGroup {
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?)
     }
 
-    /// Stages a commit message that was sent by another group member.
-    /// This function does the following:
+    /// Stages a commit message that was sent by another group member. This
+    /// function does the following:
     ///  - Applies the proposals covered by the commit to the tree
     ///  - Applies the (optional) update path to the tree
     ///  - Decrypts and calculates the path secrets
     ///  - Initializes the key schedule for epoch rollover
     ///  - Verifies the confirmation tag
     ///
-    /// Returns a [StagedCommit] that can be inspected and later merged
-    /// into the group state with [CoreGroup::merge_commit()]
-    /// This function does the following checks:
+    /// Returns a [StagedCommit] that can be inspected and later merged into the
+    /// group state with [CoreGroup::merge_commit()] This function does the
+    /// following checks:
     ///  - ValSem101
     ///  - ValSem102
     ///  - ValSem104
@@ -106,6 +106,8 @@ impl CoreGroup {
     ///  - ValSem110
     ///  - ValSem111
     ///  - ValSem112
+    ///  - ValSem113: All Proposals: The proposal type must be supported by all
+    ///               members of the group
     ///  - ValSem200
     ///  - ValSem201
     ///  - ValSem202: Path must be the right length
@@ -116,9 +118,8 @@ impl CoreGroup {
     ///  - ValSem240
     ///  - ValSem241
     ///  - ValSem242
-    ///  - ValSem244
-    /// Returns an error if the given commit was sent by the owner of this
-    /// group.
+    ///  - ValSem244 Returns an error if the given commit was sent by the owner
+    /// of this group.
     pub(crate) fn stage_commit(
         &self,
         mls_content: &AuthenticatedContent,
@@ -447,7 +448,7 @@ impl StagedCommit {
     }
 
     /// Returns an iterator over all [`QueuedProposal`]s.
-    pub(crate) fn queued_proposals(&self) -> impl Iterator<Item = &QueuedProposal> {
+    pub fn queued_proposals(&self) -> impl Iterator<Item = &QueuedProposal> {
         self.staged_proposal_queue.queued_proposals()
     }
 

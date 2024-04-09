@@ -99,6 +99,7 @@ impl PublicGroup {
         })?;
 
         // Validate the staged proposals by doing the following checks:
+
         // ValSem101
         // ValSem102
         // ValSem103
@@ -112,6 +113,9 @@ impl PublicGroup {
         // ValSem107
         // ValSem108
         self.validate_remove_proposals(&proposal_queue)?;
+        // ValSem113: All Proposals: The proposal type must be supported by all
+        // members of the group
+        self.validate_proposal_type_support(&proposal_queue)?;
         // ValSem208
         // ValSem209
         self.validate_group_context_extensions_proposal(&proposal_queue)?;
