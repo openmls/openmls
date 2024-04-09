@@ -23,36 +23,13 @@ use crate::{
 ///     CredentialType credentials<V>;
 /// } Capabilities;
 /// ```
-#[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    Serialize,
-    Deserialize,
-    TlsSerialize,
-    TlsDeserialize,
-    TlsDeserializeBytes,
-    TlsSize,
-)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Capabilities {
     pub(super) versions: Vec<ProtocolVersion>,
     pub(super) ciphersuites: Vec<VerifiableCiphersuite>,
     pub(super) extensions: Vec<ExtensionType>,
     pub(super) proposals: Vec<ProposalType>,
     pub(super) credentials: Vec<CredentialType>,
-}
-
-impl From<Capabilities> for openmls_spec_types::tree::Capabilities {
-    fn from(value: Capabilities) -> Self {
-        openmls_spec_types::tree::Capabilities {
-            versions: value.versions.into_iter().map(|v| v.into()).collect(),
-            ciphersuites: value.ciphersuites.into_iter().map(|cs| cs.into()).collect(),
-            extensions: value.extensions.into_iter().map(|et| et.into()).collect(),
-            proposals: value.proposals.into_iter().map(|pt| pt.into()).collect(),
-            credentials: value.credentials.into_iter().map(|c| c.into()).collect(),
-        }
-    }
 }
 
 impl Capabilities {

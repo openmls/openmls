@@ -190,9 +190,11 @@ pub mod schedule;
 pub mod treesync;
 pub mod versions;
 
+// crate public
+pub(crate) mod spec_types;
+
 // Private
 mod binary_tree;
-mod spec_types;
 mod tree;
 
 /// Single place, re-exporting the most used public functions.

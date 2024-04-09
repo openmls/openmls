@@ -7,35 +7,7 @@ use tls_codec::Serialize;
 use super::{LABEL_PREFIX, *};
 
 /// Signature.
-#[derive(
-    Debug,
-    PartialEq,
-    Eq,
-    Clone,
-    Serialize,
-    Deserialize,
-    TlsDeserialize,
-    TlsDeserializeBytes,
-    TlsSerialize,
-    TlsSize,
-)]
-pub struct Signature {
-    value: VLBytes,
-}
-
-impl From<Signature> for openmls_spec_types::Signature {
-    fn from(value: Signature) -> Self {
-        openmls_spec_types::Signature { value: value.value }
-    }
-}
-
-impl From<Vec<u8>> for Signature {
-    fn from(value: Vec<u8>) -> Self {
-        Self {
-            value: value.into(),
-        }
-    }
-}
+pub use crate::spec_types::Signature;
 
 /// Labeled signature content.
 ///
@@ -142,23 +114,6 @@ pub struct OpenMlsSignaturePublicKey {
     pub(in crate::ciphersuite) value: VLBytes,
 }
 
-#[cfg(test)]
-impl Signature {
-    pub(crate) fn modify(&mut self, value: &[u8]) {
-        self.value = value.to_vec().into();
-    }
-    pub(crate) fn as_slice(&self) -> &[u8] {
-        self.value.as_slice()
-    }
-}
-
-impl Signature {
-    /// Get this signature as slice.
-    pub(super) fn value(&self) -> &[u8] {
-        self.value.as_slice()
-    }
-}
-
 impl<T> SignedStruct<T> for Signature {
     fn from_payload(_payload: T, signature: Signature) -> Self {
         signature
@@ -202,7 +157,7 @@ impl OpenMlsSignaturePublicKey {
                 self.signature_scheme,
                 &payload,
                 self.value.as_ref(),
-                signature.value.as_slice(),
+                signature.value(),
             )
             .map_err(|_| CryptoError::InvalidSignature)
     }
@@ -220,7 +175,7 @@ impl OpenMlsSignaturePublicKey {
                 self.signature_scheme,
                 payload,
                 self.value.as_ref(),
-                signature.value.as_slice(),
+                signature.value(),
             )
             .map_err(|_| CryptoError::InvalidSignature)
     }

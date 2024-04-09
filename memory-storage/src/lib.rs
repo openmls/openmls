@@ -6,7 +6,7 @@ use openmls_spec_types::proposals::ProposalRef;
 use openmls_spec_types::GroupId;
 use openmls_traits::storage::{
     CreateError, DeleteError, EpochKeyPairId, GetError, InsertError, Key, OpenError, PskBundle,
-    PskBundleId, Storage, Stored as StoredTrait, StoredProposal, Update, UpdateError,
+    PskBundleId, QueuedProposal, Storage, Stored as StoredTrait, Update, UpdateError,
 };
 
 const MAX_SUPPORTED_VERSION: u16 = 1;
@@ -206,7 +206,7 @@ impl<KvStore: kv::KeyValueStore<SerializeError = serde_json::Error>> Storage<KvS
     fn get_queued_proposals(
         &self,
     ) -> Result<
-        Vec<Stored<StoredProposal>>,
+        Vec<Stored<QueuedProposal>>,
         GetError<
             <KvStore as openmls_traits::storage::Platform>::InternalError,
             <KvStore as openmls_traits::storage::Platform>::SerializeError,
@@ -233,7 +233,7 @@ impl<KvStore: kv::KeyValueStore<SerializeError = serde_json::Error>> Storage<KvS
                         .map_err(kv::GetError::into_storage_error(
                             proposal_ref.clone().into_key(),
                         ))?;
-                let stored_proposal: Stored<StoredProposal> =
+                let stored_proposal: Stored<QueuedProposal> =
                     serde_json::from_slice(&proposal_bytes)
                         .map_err(GetError::DeserializeFailed)
                         .map(Stored)?;
@@ -241,6 +241,29 @@ impl<KvStore: kv::KeyValueStore<SerializeError = serde_json::Error>> Storage<KvS
                 Ok(stored_proposal)
             })
             .collect()
+    }
+
+    fn queued_proposal_count(
+        &self,
+    ) -> Result<
+        usize,
+        GetError<
+            <KvStore as openmls_traits::storage::Platform>::InternalError,
+            <KvStore as openmls_traits::storage::Platform>::SerializeError,
+        >,
+    > {
+        // first fetch and deserialize the refs in the queue
+        let queue_key = QueuedProposals;
+        let queue_bytes = match self.0.get(&queue_key.key_bytes()) {
+            Ok(queue_bytes) => queue_bytes,
+            Err(kv::GetError::NotFound(_)) => return Ok(0),
+            Err(kv::GetError::InternalError(e)) => return Err(GetError::InternalError(e)),
+        };
+
+        let queue: Vec<ProposalRef> =
+            serde_json::from_slice(&queue_bytes).map_err(GetError::DeserializeFailed)?;
+
+        Ok(queue.len())
     }
 }
 
@@ -446,7 +469,7 @@ impl<KvStore: kv::KeyValueStore<SerializeError = serde_json::Error>> KvStoreStor
 
     fn queue_proposal(
         &mut self,
-        stored_proposal: StoredProposal,
+        stored_proposal: QueuedProposal,
     ) -> Result<(), InsertError<KvStore::InternalError, KvStore::SerializeError>> {
         let proposal_key = stored_proposal.proposal_ref.key_bytes();
         let value = serde_json::to_vec(&stored_proposal).map_err(InsertError::SerializeFailed)?;
@@ -533,5 +556,7 @@ pub enum MigrationV1V2Error<InnerError> {
 
 // an example for how we could implement migrations
 impl<KvStore: kv::KeyValueStore> KvStoreStorage<KvStore> {
-    fn migrate_v1_v2(kv: KvStore) -> Result<(), MigrationV1V2Error<KvStore::InternalError>> {}
+    fn migrate_v1_v2(kv: KvStore) -> Result<(), MigrationV1V2Error<KvStore::InternalError>> {
+        todo!()
+    }
 }

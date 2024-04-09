@@ -7,6 +7,7 @@ use public_group::diff::{apply_proposals::ApplyProposalsValues, StagedPublicGrou
 use super::{super::errors::*, proposals::ProposalStore, *};
 use crate::{
     framing::mls_auth_content::AuthenticatedContent,
+    spec_types::proprietary::queued_proposal::QueuedProposal,
     treesync::node::encryption_keys::EncryptionKeyPair,
 };
 

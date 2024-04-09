@@ -28,7 +28,7 @@ pub struct ExternalPubExtension {
 impl From<ExternalPubExtension> for openmls_spec_types::extensions::ExternalPubExtension {
     fn from(value: ExternalPubExtension) -> Self {
         openmls_spec_types::extensions::ExternalPubExtension {
-            external_pub: value.external_pub.into(),
+            external_pub: openmls_spec_types::hpke::HpkePublicKey(value.external_pub),
         }
     }
 }

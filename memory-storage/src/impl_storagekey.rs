@@ -56,7 +56,7 @@ impl StorageKey for QueuedProposals {
 
 impl StorageKey for InitKey {
     fn key_bytes(&self) -> Vec<u8> {
-        build_key(Domain::InitKey, &self.key)
+        build_key(Domain::InitKey, self.key.0.as_slice())
     }
 
     fn into_key(self) -> Key {
@@ -65,7 +65,7 @@ impl StorageKey for InitKey {
 }
 impl StorageKey for EncryptionKey {
     fn key_bytes(&self) -> Vec<u8> {
-        build_key(Domain::EncryptionKey, &self.key)
+        build_key(Domain::EncryptionKey, self.key.0.as_slice())
     }
 
     fn into_key(self) -> Key {
@@ -75,7 +75,7 @@ impl StorageKey for EncryptionKey {
 
 impl StorageKey for KeyPackageRef {
     fn key_bytes(&self) -> Vec<u8> {
-        build_key(Domain::KeyPackage, &self.0.value)
+        build_key(Domain::KeyPackage, self.0.value.as_slice())
     }
 
     fn into_key(self) -> Key {
@@ -95,7 +95,7 @@ impl StorageKey for PskBundleId {
 
 impl StorageKey for ProposalRef {
     fn key_bytes(&self) -> Vec<u8> {
-        build_key(Domain::Proposal, &self.0.value)
+        build_key(Domain::Proposal, self.0.value.as_slice())
     }
 
     fn into_key(self) -> Key {
@@ -105,7 +105,7 @@ impl StorageKey for ProposalRef {
 
 impl StorageKey for GroupId {
     fn key_bytes(&self) -> Vec<u8> {
-        build_key(Domain::Group, &self.value)
+        build_key(Domain::Group, self.value.as_slice())
     }
 
     fn into_key(self) -> Key {

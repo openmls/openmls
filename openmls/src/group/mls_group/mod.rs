@@ -2,7 +2,7 @@
 //!
 //! This module contains [`MlsGroup`] and its submodules.
 
-use super::proposals::{ProposalStore, QueuedProposal};
+use super::proposals::ProposalStore;
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::hash_ref::ProposalRef,
@@ -13,6 +13,7 @@ use crate::{
     key_packages::{KeyPackage, KeyPackageBundle},
     messages::proposals::*,
     schedule::ResumptionPskSecret,
+    spec_types::proprietary::queued_proposal::QueuedProposal,
     treesync::{node::leaf_node::LeafNode, RatchetTree},
 };
 use openmls_traits::{

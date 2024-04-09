@@ -5,8 +5,9 @@ use crate::{
     key_package::{KeyPackage, KeyPackageRef},
     psk::PreSharedKeyId,
     tree::{LeafNode, LeafNodeIndex},
-    Ciphersuite, GroupId, HashReference, ProtocolVersion, VLBytes,
+    Ciphersuite, GroupId, HashReference, ProtocolVersion,
 };
+use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes};
 
 /// ## MLS Proposal Types
 ///
@@ -63,6 +64,63 @@ pub enum ProposalType {
     Unknown(u16),
 }
 
+impl ProposalType {
+    /// Check whether a proposal type is supported or not. Returns `true`
+    /// if a proposal is supported and `false` otherwise.
+    pub fn is_supported(&self) -> bool {
+        matches!(
+            self,
+            ProposalType::Add
+                | ProposalType::Update
+                | ProposalType::Remove
+                | ProposalType::PreSharedKey
+                | ProposalType::Reinit
+                | ProposalType::ExternalInit
+                | ProposalType::GroupContextExtensions
+        )
+    }
+
+    /// Returns `true` if the proposal type requires a path and `false`
+    pub fn is_path_required(&self) -> bool {
+        matches!(
+            self,
+            Self::Update | Self::Remove | Self::ExternalInit | Self::GroupContextExtensions
+        )
+    }
+}
+
+impl From<u16> for ProposalType {
+    fn from(value: u16) -> Self {
+        match value {
+            1 => ProposalType::Add,
+            2 => ProposalType::Update,
+            3 => ProposalType::Remove,
+            4 => ProposalType::PreSharedKey,
+            5 => ProposalType::Reinit,
+            6 => ProposalType::ExternalInit,
+            7 => ProposalType::GroupContextExtensions,
+            8 => ProposalType::AppAck,
+            unknown => ProposalType::Unknown(unknown),
+        }
+    }
+}
+
+impl From<ProposalType> for u16 {
+    fn from(value: ProposalType) -> Self {
+        match value {
+            ProposalType::Add => 1,
+            ProposalType::Update => 2,
+            ProposalType::Remove => 3,
+            ProposalType::PreSharedKey => 4,
+            ProposalType::Reinit => 5,
+            ProposalType::ExternalInit => 6,
+            ProposalType::GroupContextExtensions => 7,
+            ProposalType::AppAck => 8,
+            ProposalType::Unknown(unknown) => unknown,
+        }
+    }
+}
+
 /// Proposal.
 ///
 /// This `enum` contains the different proposals in its variants.
@@ -83,21 +141,64 @@ pub enum ProposalType {
 /// } Proposal;
 /// ```
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    PartialEq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
+)]
 #[allow(missing_docs)]
 #[repr(u16)]
 pub enum Proposal {
+    #[tls_codec(discriminant = 1)]
     Add(AddProposal),
+    #[tls_codec(discriminant = 2)]
     Update(UpdateProposal),
+    #[tls_codec(discriminant = 3)]
     Remove(RemoveProposal),
+    #[tls_codec(discriminant = 4)]
     PreSharedKey(PreSharedKeyProposal),
+    #[tls_codec(discriminant = 5)]
     ReInit(ReInitProposal),
+    #[tls_codec(discriminant = 6)]
     ExternalInit(ExternalInitProposal),
+    #[tls_codec(discriminant = 7)]
     GroupContextExtensions(GroupContextExtensionProposal),
     // # Extensions
     // TODO(#916): `AppAck` is not in draft-ietf-mls-protocol-17 but
     //             was moved to `draft-ietf-mls-extensions-00`.
+    #[tls_codec(discriminant = 8)]
     AppAck(AppAckProposal),
+}
+
+impl Proposal {
+    /// Returns the proposal type.
+    pub fn proposal_type(&self) -> ProposalType {
+        match self {
+            Proposal::Add(_) => ProposalType::Add,
+            Proposal::Update(_) => ProposalType::Update,
+            Proposal::Remove(_) => ProposalType::Remove,
+            Proposal::PreSharedKey(_) => ProposalType::PreSharedKey,
+            Proposal::ReInit(_) => ProposalType::Reinit,
+            Proposal::ExternalInit(_) => ProposalType::ExternalInit,
+            Proposal::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,
+            Proposal::AppAck(_) => ProposalType::AppAck,
+        }
+    }
+
+    pub fn is_type(&self, proposal_type: ProposalType) -> bool {
+        self.proposal_type() == proposal_type
+    }
+
+    /// Indicates whether a Commit containing this [Proposal] requires a path.
+    pub fn is_path_required(&self) -> bool {
+        self.proposal_type().is_path_required()
+    }
 }
 
 /// Add Proposal.
@@ -110,7 +211,17 @@ pub enum Proposal {
 ///     KeyPackage key_package;
 /// } Add;
 /// ```
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    PartialEq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
+)]
 pub struct AddProposal {
     pub key_package: KeyPackage,
 }
@@ -126,7 +237,18 @@ pub struct AddProposal {
 ///     LeafNode leaf_node;
 /// } Update;
 /// ```
-#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
+)]
 pub struct UpdateProposal {
     pub leaf_node: LeafNode,
 }
@@ -141,7 +263,18 @@ pub struct UpdateProposal {
 ///     uint32 removed;
 /// } Remove;
 /// ```
-#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
+)]
 pub struct RemoveProposal {
     pub removed: LeafNodeIndex,
 }
@@ -157,7 +290,18 @@ pub struct RemoveProposal {
 ///     PreSharedKeyID psk;
 /// } PreSharedKey;
 /// ```
-#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
+)]
 pub struct PreSharedKeyProposal {
     pub psk: PreSharedKeyId,
 }
@@ -177,7 +321,18 @@ pub struct PreSharedKeyProposal {
 ///     Extension extensions<V>;
 /// } ReInit;
 /// ```
-#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
+)]
 pub struct ReInitProposal {
     pub group_id: GroupId,
     pub version: ProtocolVersion,
@@ -196,7 +351,18 @@ pub struct ReInitProposal {
 ///   opaque kem_output<V>;
 /// } ExternalInit;
 /// ```
-#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
+)]
 pub struct ExternalInitProposal {
     pub kem_output: VLBytes,
 }
@@ -209,7 +375,17 @@ pub struct ExternalInitProposal {
 ///     uint32 last_generation;
 /// } MessageRange;
 /// ```
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    PartialEq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
+)]
 pub struct MessageRange {
     pub sender: KeyPackageRef,
     pub first_generation: u32,
@@ -218,7 +394,17 @@ pub struct MessageRange {
 /// AppAck Proposal.
 ///
 /// This is not yet supported.
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    PartialEq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
+)]
 pub struct AppAckProposal {
     pub received_ranges: Vec<MessageRange>,
 }
@@ -234,14 +420,35 @@ pub struct AppAckProposal {
 ///   Extension extensions<V>;
 /// } GroupContextExtensions;
 /// ```
-#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
+)]
 pub struct GroupContextExtensionProposal {
     pub extensions: Extensions,
 }
 
 /// A reference to a proposal.
 /// This value uniquely identifies a proposal.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
+)]
 pub struct ProposalRef(pub HashReference);
 
 /// All possible sender types according to the MLS protocol spec.
@@ -271,7 +478,18 @@ pub struct ProposalRef(pub HashReference);
 ///     }
 /// } Sender;
 /// ```
-#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
+)]
 #[repr(u8)]
 pub enum Sender {
     /// The sender is a member of the group
@@ -307,11 +525,66 @@ pub enum Sender {
 /// Type of Proposal, either by value or by reference
 /// We only implement the values (1, 2), other values are not valid
 /// and will yield `ProposalOrRefTypeError::UnknownValue` when decoded.
-#[derive(PartialEq, Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(
+    PartialEq,
+    Clone,
+    Copy,
+    Debug,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
+)]
 #[repr(u8)]
 pub enum ProposalOrRefType {
     /// Proposal by value.
     Proposal = 1,
     /// Proposal by reference
     Reference = 2,
+}
+
+mod codec {
+    use super::*;
+    use std::io::{Read, Write};
+    use tls_codec::{Deserialize, DeserializeBytes, Error, Serialize, Size};
+
+    impl Size for ProposalType {
+        fn tls_serialized_len(&self) -> usize {
+            2
+        }
+    }
+
+    impl Deserialize for ProposalType {
+        fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, Error>
+        where
+            Self: Sized,
+        {
+            let mut proposal_type = [0u8; 2];
+            bytes.read_exact(&mut proposal_type)?;
+
+            Ok(ProposalType::from(u16::from_be_bytes(proposal_type)))
+        }
+    }
+
+    impl Serialize for ProposalType {
+        fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, Error> {
+            writer.write_all(&u16::from(*self).to_be_bytes())?;
+
+            Ok(2)
+        }
+    }
+
+    impl DeserializeBytes for ProposalType {
+        fn tls_deserialize_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), Error>
+        where
+            Self: Sized,
+        {
+            let mut bytes_ref = bytes;
+            let proposal_type = ProposalType::tls_deserialize(&mut bytes_ref)?;
+            let remainder = &bytes[proposal_type.tls_serialized_len()..];
+            Ok((proposal_type, remainder))
+        }
+    }
 }

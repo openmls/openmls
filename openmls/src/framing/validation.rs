@@ -30,10 +30,8 @@ use crate::{
     ciphersuite::signable::Verifiable,
     error::LibraryError,
     extensions::ExternalSendersExtension,
-    group::{
-        core_group::{proposals::QueuedProposal, staged_commit::StagedCommit},
-        errors::ValidationError,
-    },
+    group::{core_group::staged_commit::StagedCommit, errors::ValidationError},
+    spec_types::proprietary::queued_proposal::QueuedProposal,
     tree::sender_ratchet::SenderRatchetConfiguration,
     treesync::TreeSync,
     versions::ProtocolVersion,

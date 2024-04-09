@@ -38,7 +38,7 @@
 //!
 //! let credential = BasicCredential::new("identity".into())
 //!     .expect("Error creating a credential.");
-//! let signer =
+//! let signer =/
 //!     SignatureKeyPair::new(ciphersuite.signature_algorithm())
 //!         .expect("Error generating a signature key pair.");
 //! let credential_with_key = CredentialWithKey {
@@ -157,32 +157,22 @@ pub use lifetime::Lifetime;
 ///     Extension extensions<V>;
 /// } KeyPackageTBS;
 /// ```
-#[derive(Debug, Clone, PartialEq, TlsSize, TlsSerialize, Serialize, Deserialize)]
-struct KeyPackageTbs {
-    protocol_version: ProtocolVersion,
-    ciphersuite: Ciphersuite,
-    init_key: InitKey,
-    leaf_node: LeafNode,
-    extensions: Extensions,
-}
-
-impl From<KeyPackageTbs> for openmls_spec_types::key_package::KeyPackageTbs {
-    fn from(value: KeyPackageTbs) -> Self {
-        openmls_spec_types::key_package::KeyPackageTbs {
-            protocol_version: value.protocol_version.into(),
-            ciphersuite: value.ciphersuite.into(),
-            init_key: value.init_key.into(),
-            leaf_node: value.leaf_node.into(),
-            extensions: value.extensions.into(),
-        }
-    }
-}
+//#[derive(Debug, Clone, PartialEq, TlsSize, TlsSerialize, Serialize, Deserialize)]
+//struct KeyPackageTbs {
+//    protocol_version: ProtocolVersion,
+//    ciphersuite: Ciphersuite,
+//    init_key: InitKey,
+//    leaf_node: LeafNode,
+//    extensions: Extensions,
+//}
+use crate::spec_types::key_package::KeyPackageTbs;
 
 impl Signable for KeyPackageTbs {
     type SignedOutput = KeyPackage;
 
     fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
-        self.tls_serialize_detached()
+        let public: openmls_spec_types::key_package::KeyPackageTbs = self.clone().into();
+        public.tls_serialize_detached()
     }
 
     fn label(&self) -> &str {
@@ -190,47 +180,15 @@ impl Signable for KeyPackageTbs {
     }
 }
 
-impl From<KeyPackage> for KeyPackageTbs {
-    fn from(kp: KeyPackage) -> Self {
-        kp.payload
-    }
-}
-
 /// The key package struct.
-#[derive(Debug, Clone, Serialize, Deserialize, TlsSize, TlsSerialize)]
-pub struct KeyPackage {
-    payload: KeyPackageTbs,
-    signature: Signature,
-}
-
-impl From<KeyPackage> for openmls_spec_types::key_package::KeyPackage {
-    fn from(value: KeyPackage) -> Self {
-        openmls_spec_types::key_package::KeyPackage {
-            payload: value.payload.into(),
-            signature: value.signature.into(),
-        }
-    }
-}
-
-impl PartialEq for KeyPackage {
-    fn eq(&self, other: &Self) -> bool {
-        // We ignore the signature in the comparison. The same key package
-        // may have different, valid signatures.
-        self.payload == other.payload
-    }
-}
-
-impl SignedStruct<KeyPackageTbs> for KeyPackage {
-    fn from_payload(payload: KeyPackageTbs, signature: Signature) -> Self {
-        Self { payload, signature }
-    }
-}
+//#[derive(Debug, Clone, Serialize, Deserialize, TlsSize, TlsSerialize)]
+//pub struct KeyPackage {
+//    payload: KeyPackageTbs,
+//    signature: Signature,
+//}
+pub use crate::spec_types::key_package::KeyPackage;
 
 const SIGNATURE_KEY_PACKAGE_LABEL: &str = "KeyPackageTBS";
-
-impl MlsEntity for KeyPackage {
-    const ID: MlsEntityId = MlsEntityId::KeyPackage;
-}
 
 /// Helper struct containing the results of building a new [`KeyPackage`].
 pub(crate) struct KeyPackageCreationResult {
@@ -239,49 +197,7 @@ pub(crate) struct KeyPackageCreationResult {
     pub init_private_key: HpkePrivateKey,
 }
 
-/// Init key for HPKE.
-#[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    TlsSize,
-    TlsSerialize,
-    Serialize,
-    Deserialize,
-    TlsDeserialize,
-    TlsDeserializeBytes,
-)]
-pub struct InitKey {
-    key: HpkePublicKey,
-}
-
-impl From<InitKey> for openmls_spec_types::keys::InitKey {
-    fn from(value: InitKey) -> Self {
-        openmls_spec_types::keys::InitKey {
-            key: value.key.into(),
-        }
-    }
-}
-
-impl InitKey {
-    /// Return the internal [`HpkePublicKey`].
-    pub fn key(&self) -> &HpkePublicKey {
-        &self.key
-    }
-
-    /// Return the internal [`HpkePublicKey`] as a slice.
-    pub fn as_slice(&self) -> &[u8] {
-        self.key.as_slice()
-    }
-}
-
-impl From<Vec<u8>> for InitKey {
-    fn from(key: Vec<u8>) -> Self {
-        Self {
-            key: HpkePublicKey::from(key),
-        }
-    }
-}
+pub use crate::spec_types::keys::InitKey;
 
 // Public `KeyPackage` functions.
 impl KeyPackage {
@@ -398,11 +314,6 @@ impl KeyPackage {
             .delete::<HpkePrivateKey>(self.hpke_init_key().as_slice())
     }
 
-    /// Get a reference to the extensions of this key package.
-    pub fn extensions(&self) -> &Extensions {
-        &self.payload.extensions
-    }
-
     /// Check whether the this key package supports all the required extensions
     /// in the provided list.
     pub fn check_extension_support(
@@ -416,48 +327,6 @@ impl KeyPackage {
         }
 
         Ok(())
-    }
-
-    /// Compute the [`KeyPackageRef`] of this [`KeyPackage`].
-    /// The [`KeyPackageRef`] is used to identify a new member that should get
-    /// added to a group.
-    pub fn hash_ref(&self, crypto: &impl OpenMlsCrypto) -> Result<KeyPackageRef, LibraryError> {
-        make_key_package_ref(
-            &self
-                .tls_serialize_detached()
-                .map_err(LibraryError::missing_bound_check)?,
-            self.payload.ciphersuite,
-            crypto,
-        )
-        .map_err(LibraryError::unexpected_crypto_error)
-    }
-
-    /// Get the [`Ciphersuite`].
-    pub fn ciphersuite(&self) -> Ciphersuite {
-        self.payload.ciphersuite
-    }
-
-    /// Get the [`LeafNode`] reference.
-    pub fn leaf_node(&self) -> &LeafNode {
-        &self.payload.leaf_node
-    }
-
-    /// Get the public HPKE init key of this key package.
-    pub fn hpke_init_key(&self) -> &InitKey {
-        &self.payload.init_key
-    }
-
-    /// Check if this KeyPackage is a last resort key package.
-    pub fn last_resort(&self) -> bool {
-        self.payload.extensions.contains(ExtensionType::LastResort)
-    }
-}
-
-/// Crate visible `KeyPackage` functions.
-impl KeyPackage {
-    /// Get the `ProtocolVersion`.
-    pub(crate) fn protocol_version(&self) -> ProtocolVersion {
-        self.payload.protocol_version
     }
 }
 

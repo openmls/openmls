@@ -1,23 +1,18 @@
 use std::collections::{hash_map::Entry, HashMap, HashSet};
 
-use openmls_traits::storage::StoredProposal;
+use openmls_traits::storage::Stored;
 use openmls_traits::types::Ciphersuite;
 use openmls_traits::OpenMlsProvider;
 use openmls_traits::{crypto::OpenMlsCrypto, storage::Storage};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    binary_tree::array_representation::LeafNodeIndex,
-    ciphersuite::hash_ref::ProposalRef,
-    error::LibraryError,
-    framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, Sender},
     group::errors::*,
-    messages::proposals::{
-        AddProposal, PreSharedKeyProposal, Proposal, ProposalOrRef, ProposalOrRefType,
-        ProposalType, RemoveProposal, UpdateProposal,
-    },
+    spec_types::{proposals::*, proprietary::queued_proposal::QueuedProposal, tree::LeafNodeIndex},
     utils::vector_converter,
 };
+
+use super::ProposalOrRef;
 
 /// A [ProposalStore] can store the standalone proposals that are received from
 /// the DS in between two commit messages.
@@ -62,149 +57,6 @@ impl ProposalStore {
             .position(|p| p.proposal_reference() == proposal_ref)?;
         self.queued_proposals.remove(index);
         Some(())
-    }
-}
-
-/// Alternative representation of a Proposal, where the sender is extracted from
-/// the encapsulating PublicMessage and the ProposalRef is attached.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct QueuedProposal {
-    proposal: Proposal,
-    proposal_reference: ProposalRef,
-    sender: Sender,
-    proposal_or_ref_type: ProposalOrRefType,
-}
-
-impl From<QueuedProposal> for StoredProposal {
-    fn from(value: QueuedProposal) -> Self {
-        StoredProposal {
-            proposal_ref: openmls_spec_types::proposals::ProposalRef(
-                value.proposal_reference.into(),
-            ),
-            proposal: value.proposal.into(),
-            sender: value.sender.into(),
-            proposal_or_ref_type: value.proposal_or_ref_type.into(),
-        }
-    }
-}
-
-impl QueuedProposal {
-    /// Creates a new [QueuedProposal] from an [PublicMessage]
-    pub(crate) fn from_authenticated_content_by_ref(
-        ciphersuite: Ciphersuite,
-        crypto: &impl OpenMlsCrypto,
-        public_message: AuthenticatedContent,
-    ) -> Result<Self, LibraryError> {
-        Self::from_authenticated_content(
-            ciphersuite,
-            crypto,
-            public_message,
-            ProposalOrRefType::Reference,
-        )
-    }
-
-    /// Creates a new [QueuedProposal] from an [PublicMessage]
-    pub(crate) fn from_authenticated_content_by_value(
-        ciphersuite: Ciphersuite,
-        crypto: &impl OpenMlsCrypto,
-        public_message: AuthenticatedContent,
-    ) -> Result<Self, LibraryError> {
-        Self::from_authenticated_content(
-            ciphersuite,
-            crypto,
-            public_message,
-            ProposalOrRefType::Proposal,
-        )
-    }
-
-    /// Creates a new [QueuedProposal] from an [PublicMessage]
-    pub(crate) fn from_authenticated_content(
-        ciphersuite: Ciphersuite,
-        crypto: &impl OpenMlsCrypto,
-        public_message: AuthenticatedContent,
-        proposal_or_ref_type: ProposalOrRefType,
-    ) -> Result<Self, LibraryError> {
-        let proposal_reference =
-            ProposalRef::from_authenticated_content_by_ref(crypto, ciphersuite, &public_message)
-                .map_err(|_| LibraryError::custom("Could not calculate `ProposalRef`."))?;
-
-        let (body, sender) = public_message.into_body_and_sender();
-
-        let proposal = match body {
-            FramedContentBody::Proposal(p) => p,
-            _ => return Err(LibraryError::custom("Wrong content type")),
-        };
-
-        Ok(Self {
-            proposal,
-            proposal_reference,
-            sender,
-            proposal_or_ref_type,
-        })
-    }
-
-    /// Creates a new [QueuedProposal] from a [Proposal] and [Sender]
-    ///
-    /// Note: We should calculate the proposal ref by hashing the authenticated
-    /// content but can't do this here without major refactoring. Thus, we
-    /// use an internal `from_raw_proposal` hash.
-    pub(crate) fn from_proposal_and_sender(
-        ciphersuite: Ciphersuite,
-        crypto: &impl OpenMlsCrypto,
-        proposal: Proposal,
-        sender: &Sender,
-    ) -> Result<Self, LibraryError> {
-        let proposal_reference = ProposalRef::from_raw_proposal(ciphersuite, crypto, &proposal)?;
-        Ok(Self {
-            proposal,
-            proposal_reference,
-            sender: sender.clone(),
-            proposal_or_ref_type: ProposalOrRefType::Proposal,
-        })
-    }
-
-    fn from_stored_proposal(stored_proposal: StoredProposal) -> Self {
-        QueuedProposal {
-            proposal: stored_proposal.proposal,
-            proposal_reference: stored_proposal.proposal_ref,
-            sender: stored_proposal.sender,
-            proposal_or_ref_type: stored_proposal.proposal_or_ref_type,
-        }
-    }
-
-    /// Returns the `Proposal` as a reference
-    pub fn proposal(&self) -> &Proposal {
-        &self.proposal
-    }
-    /// Returns the `ProposalRef`.
-    pub(crate) fn proposal_reference(&self) -> ProposalRef {
-        self.proposal_reference.clone()
-    }
-    /// Returns the `ProposalOrRefType`.
-    pub fn proposal_or_ref_type(&self) -> ProposalOrRefType {
-        self.proposal_or_ref_type
-    }
-    /// Returns the `Sender` as a reference
-    pub fn sender(&self) -> &Sender {
-        &self.sender
-    }
-
-    pub(crate) fn spec_proposal(&self) -> openmls_spec_types::proposals::Proposal {
-        self.proposal.clone().into()
-    }
-
-    pub(crate) fn spec_proposal_ref(&self) -> openmls_spec_types::proposals::ProposalRef {
-        openmls_spec_types::proposals::ProposalRef(self.proposal_reference.clone().into())
-    }
-
-    pub(crate) fn spec_sender(&self) -> openmls_spec_types::proposals::Sender {
-        self.sender.clone().into()
-    }
-
-    pub(crate) fn spec_proposal_or_ref_type(
-        &self,
-    ) -> openmls_spec_types::proposals::ProposalOrRefType {
-        self.proposal_or_ref_type.into()
     }
 }
 
@@ -308,8 +160,7 @@ impl ProposalQueue {
                     match proposals_by_reference_queue.get(proposal_reference) {
                         Some(queued_proposal) => {
                             // ValSem200
-                            if let Proposal::Remove(ref remove_proposal) = queued_proposal.proposal
-                            {
+                            if let Proposal::Remove(remove_proposal) = queued_proposal.proposal() {
                                 if let Sender::Member(leaf_index) = sender {
                                     if remove_proposal.removed() == *leaf_index {
                                         return Err(FromCommittedProposalsError::SelfRemoval);
@@ -356,7 +207,7 @@ impl ProposalQueue {
         self.proposal_references
             .iter()
             .filter(move |&pr| match self.queued_proposals.get(pr) {
-                Some(p) => p.proposal.is_type(proposal_type),
+                Some(p) => p.proposal().is_type(proposal_type),
                 None => false,
             })
             .filter_map(move |reference| self.get(reference))
@@ -460,7 +311,6 @@ impl ProposalQueue {
         ciphersuite: Ciphersuite,
         provider: &impl OpenMlsProvider,
         sender: Sender,
-        proposal_store: &'a ProposalStore,
         inline_proposals: &'a [Proposal],
         own_index: LeafNodeIndex,
     ) -> Result<(Self, bool), ProposalQueueError> {
@@ -482,12 +332,12 @@ impl ProposalQueue {
 
         // Aggregate both proposal types to a common iterator
         // We checked earlier that only proposals can end up here
-        let mut queued_proposal_list: Vec<QueuedProposal> = provider
+        let mut queued_proposal_list: Vec<Stored<QueuedProposal>> = provider
             .storage()
             .get_queued_proposals()
             .unwrap() // TODO: unwrap
             .into_iter()
-            .map(QueuedProposal::from_stored_proposal)
+            .map(OpenMlsProvider::StorageProvider::Stored::into_private)
             .collect();
 
         queued_proposal_list.extend(
@@ -608,12 +458,12 @@ impl ProposalQueue {
             .filter_map(|proposal_reference| self.queued_proposals.get(proposal_reference))
             .map(|queued_proposal| {
                 // Differentiate the type of proposal
-                match queued_proposal.proposal_or_ref_type {
+                match queued_proposal.proposal_or_ref_type() {
                     ProposalOrRefType::Proposal => {
-                        ProposalOrRef::Proposal(queued_proposal.proposal.clone())
+                        ProposalOrRef::Proposal(queued_proposal.proposal().clone())
                     }
                     ProposalOrRefType::Reference => {
-                        ProposalOrRef::Reference(queued_proposal.proposal_reference.clone())
+                        ProposalOrRef::Reference(queued_proposal.proposal_reference().clone())
                     }
                 }
             })

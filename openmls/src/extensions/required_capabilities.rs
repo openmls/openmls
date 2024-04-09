@@ -30,78 +30,12 @@ use super::{Deserialize, ExtensionError, ExtensionType, Serialize};
 ///     CredentialType credential_types<V>;
 /// } RequiredCapabilities;
 /// ```
-#[derive(
-    PartialEq,
-    Eq,
-    Clone,
-    Debug,
-    Default,
-    Serialize,
-    Deserialize,
-    TlsSerialize,
-    TlsDeserialize,
-    TlsDeserializeBytes,
-    TlsSize,
-)]
-pub struct RequiredCapabilitiesExtension {
-    extension_types: Vec<ExtensionType>,
-    proposal_types: Vec<ProposalType>,
-    credential_types: Vec<CredentialType>,
-}
-
-impl From<RequiredCapabilitiesExtension>
-    for openmls_spec_types::extensions::RequiredCapabilitiesExtension
-{
-    fn from(value: RequiredCapabilitiesExtension) -> Self {
-        openmls_spec_types::extensions::RequiredCapabilitiesExtension {
-            extension_types: value
-                .extension_types
-                .into_iter()
-                .map(|t| t.into())
-                .collect(),
-            proposal_types: value.proposal_types.into_iter().map(|t| t.into()).collect(),
-            credential_types: value
-                .credential_types
-                .into_iter()
-                .map(|t| t.into())
-                .collect(),
-        }
-    }
-}
+pub use crate::spec_types::extensions::RequiredCapabilitiesExtension;
 
 impl RequiredCapabilitiesExtension {
-    /// Creates a new [`RequiredCapabilitiesExtension`] from extension and proposal types.
-    pub fn new(
-        extension_types: &[ExtensionType],
-        proposal_types: &[ProposalType],
-        credential_types: &[CredentialType],
-    ) -> Self {
-        Self {
-            extension_types: extension_types.into(),
-            proposal_types: proposal_types.into(),
-            credential_types: credential_types.into(),
-        }
-    }
-
-    /// Get a slice with the required extension types.
-    pub(crate) fn extension_types(&self) -> &[ExtensionType] {
-        self.extension_types.as_slice()
-    }
-
-    /// Get a slice with the required proposal types.
-    pub(crate) fn proposal_types(&self) -> &[ProposalType] {
-        self.proposal_types.as_slice()
-    }
-
-    /// Get a slice with the required credential types.
-    #[allow(unused)]
-    pub(crate) fn credential_types(&self) -> &[CredentialType] {
-        self.credential_types.as_slice()
-    }
-
     /// Checks whether support for the provided extension type is required.
     pub(crate) fn requires_extension_type_support(&self, ext_type: ExtensionType) -> bool {
-        self.extension_types.contains(&ext_type) || default_extensions().contains(&ext_type)
+        self.extension_types().contains(&ext_type) || default_extensions().contains(&ext_type)
     }
 
     /// Check if all extension and proposal types are supported.

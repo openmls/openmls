@@ -1,3 +1,13 @@
+use openmls_traits::crypto::OpenMlsCrypto;
+use serde::Serialize;
+use tls_codec::{Serialize as _, TlsSerialize, TlsSize};
+
+use crate::error::LibraryError;
+use crate::framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody};
+use crate::messages::proposals::ProposalRefError;
+
+use crate::ciphersuite::hash_ref::make_proposal_ref;
+
 use super::{
     extensions::{Extensions, SenderExtensionIndex},
     key_package::{KeyPackage, KeyPackageRef},
@@ -47,7 +57,7 @@ use super::{
 /// | Value  | Name    | Recommended | Path Required | Reference | Notes                        |
 /// |:=======|:========|:============|:==============|:==========|:=============================|
 /// | 0x0008 | app_ack | Y           | Y             | RFC XXXX  | draft-ietf-mls-extensions-00 |
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Serialize)]
 #[allow(missing_docs)]
 pub enum ProposalType {
     Add,
@@ -59,6 +69,31 @@ pub enum ProposalType {
     GroupContextExtensions,
     AppAck,
     Unknown(u16),
+}
+
+impl ProposalType {
+    /// Check whether a proposal type is supported or not. Returns `true`
+    /// if a proposal is supported and `false` otherwise.
+    pub fn is_supported(&self) -> bool {
+        matches!(
+            self,
+            ProposalType::Add
+                | ProposalType::Update
+                | ProposalType::Remove
+                | ProposalType::PreSharedKey
+                | ProposalType::Reinit
+                | ProposalType::ExternalInit
+                | ProposalType::GroupContextExtensions
+        )
+    }
+
+    /// Returns `true` if the proposal type requires a path and `false`
+    pub fn is_path_required(&self) -> bool {
+        matches!(
+            self,
+            Self::Update | Self::Remove | Self::ExternalInit | Self::GroupContextExtensions
+        )
+    }
 }
 
 /// Proposal.
@@ -81,7 +116,7 @@ pub enum ProposalType {
 /// } Proposal;
 /// ```
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, TlsSize, TlsSerialize)]
 #[allow(missing_docs)]
 #[repr(u16)]
 pub enum Proposal {
@@ -98,6 +133,31 @@ pub enum Proposal {
     AppAck(AppAckProposal),
 }
 
+impl Proposal {
+    /// Returns the proposal type.
+    pub fn proposal_type(&self) -> ProposalType {
+        match self {
+            Proposal::Add(_) => ProposalType::Add,
+            Proposal::Update(_) => ProposalType::Update,
+            Proposal::Remove(_) => ProposalType::Remove,
+            Proposal::PreSharedKey(_) => ProposalType::PreSharedKey,
+            Proposal::ReInit(_) => ProposalType::Reinit,
+            Proposal::ExternalInit(_) => ProposalType::ExternalInit,
+            Proposal::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,
+            Proposal::AppAck(_) => ProposalType::AppAck,
+        }
+    }
+
+    pub(crate) fn is_type(&self, proposal_type: ProposalType) -> bool {
+        self.proposal_type() == proposal_type
+    }
+
+    /// Indicates whether a Commit containing this [Proposal] requires a path.
+    pub fn is_path_required(&self) -> bool {
+        self.proposal_type().is_path_required()
+    }
+}
+
 /// Add Proposal.
 ///
 /// An Add proposal requests that a client with a specified [`KeyPackage`] be added to the group.
@@ -108,9 +168,16 @@ pub enum Proposal {
 ///     KeyPackage key_package;
 /// } Add;
 /// ```
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, TlsSize, TlsSerialize)]
 pub struct AddProposal {
-    pub(super) key_package: KeyPackage,
+    pub(crate) key_package: KeyPackage,
+}
+
+impl AddProposal {
+    /// Returns a reference to the key package in the proposal.
+    pub(crate) fn key_package(&self) -> &KeyPackage {
+        &self.key_package
+    }
 }
 
 /// Update Proposal.
@@ -124,9 +191,9 @@ pub struct AddProposal {
 ///     LeafNode leaf_node;
 /// } Update;
 /// ```
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, TlsSize, TlsSerialize)]
 pub struct UpdateProposal {
-    pub(super) leaf_node: LeafNode,
+    pub(crate) leaf_node: LeafNode,
 }
 
 /// Remove Proposal.
@@ -139,7 +206,7 @@ pub struct UpdateProposal {
 ///     uint32 removed;
 /// } Remove;
 /// ```
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, TlsSize, TlsSerialize)]
 pub struct RemoveProposal {
     pub(super) removed: LeafNodeIndex,
 }
@@ -155,7 +222,7 @@ pub struct RemoveProposal {
 ///     PreSharedKeyID psk;
 /// } PreSharedKey;
 /// ```
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, TlsSize, TlsSerialize)]
 pub struct PreSharedKeyProposal {
     pub(super) psk: PreSharedKeyId,
 }
@@ -175,7 +242,7 @@ pub struct PreSharedKeyProposal {
 ///     Extension extensions<V>;
 /// } ReInit;
 /// ```
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, TlsSize, TlsSerialize)]
 pub struct ReInitProposal {
     pub(super) group_id: GroupId,
     pub(super) version: ProtocolVersion,
@@ -194,7 +261,7 @@ pub struct ReInitProposal {
 ///   opaque kem_output<V>;
 /// } ExternalInit;
 /// ```
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, TlsSize, TlsSerialize)]
 pub struct ExternalInitProposal {
     pub(super) kem_output: VLBytes,
 }
@@ -207,7 +274,7 @@ pub struct ExternalInitProposal {
 ///     uint32 last_generation;
 /// } MessageRange;
 /// ```
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, TlsSize, TlsSerialize)]
 pub struct MessageRange {
     pub(super) sender: KeyPackageRef,
     pub(super) first_generation: u32,
@@ -216,7 +283,7 @@ pub struct MessageRange {
 /// AppAck Proposal.
 ///
 /// This is not yet supported.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, TlsSize, TlsSerialize)]
 pub struct AppAckProposal {
     pub(super) received_ranges: Vec<MessageRange>,
 }
@@ -232,15 +299,59 @@ pub struct AppAckProposal {
 ///   Extension extensions<V>;
 /// } GroupContextExtensions;
 /// ```
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, TlsSize, TlsSerialize)]
 pub struct GroupContextExtensionProposal {
     pub(super) extensions: Extensions,
 }
 
 /// A reference to a proposal.
 /// This value uniquely identifies a proposal.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Hash, Eq, Ord, PartialOrd)]
 pub struct ProposalRef(pub(super) HashReference);
+
+impl ProposalRef {
+    pub(crate) fn from_authenticated_content_by_ref(
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+        authenticated_content: &AuthenticatedContent,
+    ) -> Result<Self, ProposalRefError> {
+        if !matches!(
+            authenticated_content.content(),
+            FramedContentBody::Proposal(_)
+        ) {
+            return Err(ProposalRefError::AuthenticatedContentHasWrongType {
+                wrong: authenticated_content.content().content_type(),
+            });
+        };
+
+        let encoded = authenticated_content
+            .tls_serialize_detached()
+            .map_err(|error| ProposalRefError::Other(LibraryError::missing_bound_check(error)))?;
+
+        make_proposal_ref(&encoded, ciphersuite, crypto)
+            .map_err(|error| ProposalRefError::Other(LibraryError::unexpected_crypto_error(error)))
+    }
+
+    /// Note: A [`ProposalRef`] should be calculated by using TLS-serialized [`AuthenticatedContent`]
+    ///       as value input and not the TLS-serialized proposal. However, to spare us a major refactoring,
+    ///       we calculate it from the raw value in some places that do not interact with the outside world.
+    pub(crate) fn from_raw_proposal(
+        ciphersuite: Ciphersuite,
+        crypto: &impl OpenMlsCrypto,
+        proposal: &Proposal,
+    ) -> Result<Self, LibraryError> {
+        // This is used for hash domain separation.
+        let mut data = b"Internal OpenMLS ProposalRef Label".to_vec();
+
+        let mut encoded = proposal
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)?;
+
+        data.append(&mut encoded);
+
+        make_proposal_ref(&data, ciphersuite, crypto).map_err(LibraryError::unexpected_crypto_error)
+    }
+}
 
 /// All possible sender types according to the MLS protocol spec.
 ///
@@ -312,4 +423,14 @@ pub enum ProposalOrRefType {
     Proposal = 1,
     /// Proposal by reference
     Reference = 2,
+}
+
+/// Type of Proposal, either by value or by reference.
+#[derive(Debug, PartialEq, Clone)]
+#[repr(u8)]
+#[allow(missing_docs)]
+#[allow(clippy::large_enum_variant)]
+pub(crate) enum ProposalOrRef {
+    Proposal(Proposal),
+    Reference(ProposalRef),
 }

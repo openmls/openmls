@@ -257,13 +257,9 @@ impl From<Proposal> for openmls_spec_types::proposals::Proposal {
                 openmls_spec_types::proposals::Proposal::PreSharedKey(prop.into())
             }
             Proposal::ReInit(prop) => openmls_spec_types::proposals::Proposal::ReInit(prop.into()),
-            Proposal::ExternalInit(prop) => {
-                openmls_spec_types::proposals::Proposal::ExternalInit(prop.into())
-            }
-            Proposal::GroupContextExtensions(prop) => {
-                openmls_spec_types::proposals::Proposal::GroupContextExtensions(prop.into())
-            }
-            Proposal::AppAck(prop) => openmls_spec_types::proposals::Proposal::AppAck(prop.into()),
+            Proposal::ExternalInit(_) => todo!(),
+            Proposal::GroupContextExtensions(_) => todo!(),
+            Proposal::AppAck(_) => todo!(),
         }
     }
 }

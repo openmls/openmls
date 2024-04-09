@@ -1,5 +1,5 @@
-use crate::VLBytes;
 use serde::{Deserialize, Serialize};
+use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes};
 
 use crate::{GroupEpoch, GroupId};
 
@@ -18,7 +18,22 @@ pub const PSK_TYPE_RESUMPTION: u8 = 2;
 ///   (255)
 /// } ResumptionPSKUsage;
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Deserialize,
+    Serialize,
+    TlsDeserializeBytes,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
+)]
 #[repr(u8)]
 pub enum ResumptionPskUsage {
     /// Application.
@@ -52,7 +67,20 @@ pub enum ResumptionPskUsage {
 ///   opaque psk_nonce<V>;
 /// } PreSharedKeyID;
 /// ```
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Deserialize,
+    Serialize,
+    TlsDeserializeBytes,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
+)]
 #[repr(u8)]
 pub enum PreSharedKeyId {
     /// An external PSK provided by the application.
@@ -62,14 +90,41 @@ pub enum PreSharedKeyId {
 }
 
 /// External PSK.
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Deserialize, Serialize)]
+#[derive(
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Clone,
+    Hash,
+    Deserialize,
+    Serialize,
+    TlsDeserializeBytes,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
+)]
 pub struct ExternalPsk {
     pub psk_id: VLBytes,
     pub psk_nonce: VLBytes,
 }
 
 /// Resumption PSK.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Deserialize,
+    Serialize,
+    TlsDeserializeBytes,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
+)]
 pub struct ResumptionPsk {
     pub usage: ResumptionPskUsage,
     pub psk_group_id: GroupId,

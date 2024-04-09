@@ -67,7 +67,8 @@ impl From<HashReference> for openmls_spec_types::HashReference {
 
 /// A reference to a key package.
 /// This value uniquely identifies a key package.
-pub type KeyPackageRef = HashReference;
+//pub type KeyPackageRef = HashReference;
+pub use crate::spec_types::key_package::KeyPackageRef;
 
 /// A reference to a proposal.
 /// This value uniquely identifies a proposal.
@@ -94,7 +95,12 @@ pub fn make_key_package_ref(
     ciphersuite: Ciphersuite,
     crypto: &impl OpenMlsCrypto,
 ) -> Result<KeyPackageRef, CryptoError> {
-    HashReference::new(value, ciphersuite, crypto, KEY_PACKAGE_REF_LABEL)
+    KeyPackageRef(HashReference::new(
+        value,
+        ciphersuite,
+        crypto,
+        KEY_PACKAGE_REF_LABEL,
+    ))
 }
 
 impl HashReference {

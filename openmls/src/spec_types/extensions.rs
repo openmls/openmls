@@ -182,6 +182,37 @@ pub struct RequiredCapabilitiesExtension {
     pub(super) credential_types: Vec<CredentialType>,
 }
 
+impl RequiredCapabilitiesExtension {
+    /// Creates a new [`RequiredCapabilitiesExtension`] from extension and proposal types.
+    pub fn new(
+        extension_types: &[ExtensionType],
+        proposal_types: &[ProposalType],
+        credential_types: &[CredentialType],
+    ) -> Self {
+        Self {
+            extension_types: extension_types.into(),
+            proposal_types: proposal_types.into(),
+            credential_types: credential_types.into(),
+        }
+    }
+
+    /// Get a slice with the required extension types.
+    pub(crate) fn extension_types(&self) -> &[ExtensionType] {
+        self.extension_types.as_slice()
+    }
+
+    /// Get a slice with the required proposal types.
+    pub(crate) fn proposal_types(&self) -> &[ProposalType] {
+        self.proposal_types.as_slice()
+    }
+
+    /// Get a slice with the required credential types.
+    #[allow(unused)]
+    pub(crate) fn credential_types(&self) -> &[CredentialType] {
+        self.credential_types.as_slice()
+    }
+}
+
 /// ```c
 /// // draft-ietf-mls-protocol-16
 /// struct {

@@ -1,5 +1,5 @@
-use crate::VLBytes;
 use serde::{Deserialize, Serialize};
+use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes};
 
 /// CredentialType.
 ///
@@ -33,7 +33,21 @@ use serde::{Deserialize, Serialize};
 /// | 0xDADA           | GREASE                   | Y | RFC XXXX |
 /// | 0xEAEA           | GREASE                   | Y | RFC XXXX |
 /// | 0xF000  - 0xFFFF | Reserved for Private Use | - | RFC XXXX |
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
+    TlsDeserializeBytes,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
+)]
 #[repr(u16)]
 pub enum CredentialType {
     /// A [`BasicCredential`]
@@ -93,7 +107,18 @@ impl From<CredentialType> for u16 {
 ///     };
 /// } Credential;
 /// ```
-#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserializeBytes,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
+)]
 pub struct Credential {
     pub credential_type: CredentialType,
     pub serialized_credential_content: VLBytes,

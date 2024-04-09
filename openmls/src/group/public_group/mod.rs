@@ -23,7 +23,7 @@ use self::{
     diff::{PublicGroupDiff, StagedPublicGroupDiff},
     errors::CreationFromExternalError,
 };
-use super::{GroupContext, GroupId, Member, ProposalStore, QueuedProposal, StagedCommit};
+use super::{GroupContext, GroupId, Member, ProposalStore, StagedCommit};
 #[cfg(test)]
 use crate::treesync::{node::parent_node::PlainUpdatePathNode, treekem::UpdatePathNode};
 use crate::{
@@ -38,6 +38,7 @@ use crate::{
         ConfirmationTag, PathSecret,
     },
     schedule::CommitSecret,
+    spec_types::proprietary::queued_proposal::QueuedProposal,
     treesync::{
         errors::{DerivePathError, TreeSyncFromNodesError},
         node::{

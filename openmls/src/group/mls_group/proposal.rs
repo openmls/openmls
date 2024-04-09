@@ -12,11 +12,12 @@ use crate::{
     credentials::Credential,
     extensions::Extensions,
     framing::MlsMessageOut,
-    group::{errors::CreateAddProposalError, GroupId, QueuedProposal},
+    group::{errors::CreateAddProposalError, GroupId},
     key_packages::KeyPackage,
     messages::proposals::ProposalOrRefType,
     prelude::LibraryError,
     schedule::PreSharedKeyId,
+    spec_types::proprietary::queued_proposal::QueuedProposal,
     treesync::LeafNode,
     versions::ProtocolVersion,
 };

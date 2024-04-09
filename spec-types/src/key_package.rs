@@ -3,11 +3,22 @@ use crate::keys::InitKey;
 use crate::tree::LeafNode;
 use crate::{Ciphersuite, Signature};
 use crate::{HashReference, ProtocolVersion};
+use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
 use serde::{Deserialize, Serialize};
 
 /// The key package struct.
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    PartialEq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserializeBytes,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
+)]
 pub struct KeyPackage {
     pub payload: KeyPackageTbs,
     pub signature: Signature,
@@ -24,7 +35,17 @@ pub struct KeyPackage {
 ///     Extension extensions<V>;
 /// } KeyPackageTBS;
 /// ```
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    TlsDeserializeBytes,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
+)]
 pub struct KeyPackageTbs {
     pub protocol_version: ProtocolVersion,
     pub ciphersuite: Ciphersuite,
@@ -35,5 +56,15 @@ pub struct KeyPackageTbs {
 
 /// A reference to a key package.
 /// This value uniquely identifies a key package.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    TlsDeserializeBytes,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
+)]
 pub struct KeyPackageRef(pub HashReference);

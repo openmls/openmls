@@ -5,15 +5,37 @@ use crate::proposals::ProposalType;
 use crate::{credential::Credential, keys::SignaturePublicKey};
 use crate::{Ciphersuite, Lifetime, ProtocolVersion, Signature};
 
-use crate::VLBytes;
 use serde::{Deserialize, Serialize};
+use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes};
 
 /// A ratchet tree made of unverified nodes. This is used for deserialization
 /// and verification.
-#[derive(PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
+#[derive(
+    PartialEq,
+    Eq,
+    Clone,
+    Debug,
+    Serialize,
+    Deserialize,
+    TlsDeserializeBytes,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
+)]
 pub struct RatchetTree(pub Vec<Option<Node>>);
 
-#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserializeBytes,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
+)]
 #[repr(u8)]
 pub enum Node {
     /// A leaf node.
@@ -22,10 +44,32 @@ pub enum Node {
     ParentNode(ParentNode),
 }
 
-#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Eq,
+    PartialEq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserializeBytes,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
+)]
 pub struct LeafNodeIndex(pub u32);
 
-#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Eq,
+    PartialEq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserializeBytes,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
+)]
 pub struct UnmergedLeaves {
     pub list: Vec<LeafNodeIndex>,
 }
@@ -33,7 +77,18 @@ pub struct UnmergedLeaves {
 /// This struct implements the MLS parent node. It contains its public key,
 /// parent hash and unmerged leaves. Additionally, it may contain the private
 /// key corresponding to the public key.
-#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Eq,
+    PartialEq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserializeBytes,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
+)]
 pub struct ParentNode {
     pub encryption_key: EncryptionKey,
     pub parent_hash: VLBytes,
@@ -68,7 +123,18 @@ pub struct ParentNode {
 /// } LeafNode;
 /// ```
 // TODO(#1242): Do not derive `TlsDeserialize`.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    TlsDeserializeBytes,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
+)]
 pub struct LeafNode {
     pub payload: LeafNodePayload,
     pub signature: Signature,
@@ -99,7 +165,18 @@ pub struct LeafNode {
 ///     ...
 /// } LeafNode;
 /// ```
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    TlsDeserializeBytes,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
+)]
 pub struct LeafNodePayload {
     pub encryption_key: EncryptionKey,
     pub signature_key: SignaturePublicKey,
@@ -109,7 +186,18 @@ pub struct LeafNodePayload {
     pub extensions: Extensions,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    TlsDeserializeBytes,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
+)]
 #[repr(u8)]
 pub enum LeafNodeSource {
     KeyPackage(Lifetime),
@@ -130,7 +218,18 @@ pub type ParentHash = VLBytes;
 ///     CredentialType credentials<V>;
 /// } Capabilities;
 /// ```
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    TlsDeserializeBytes,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
+)]
 pub struct Capabilities {
     pub versions: Vec<ProtocolVersion>,
     pub ciphersuites: Vec<Ciphersuite>,

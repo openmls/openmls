@@ -10,12 +10,11 @@ use crate::{
         ProcessedMessageContent, ProtocolMessage, Sender, SenderContext, UnverifiedMessage,
     },
     group::{
-        core_group::proposals::{ProposalStore, QueuedProposal},
-        errors::ValidationError,
-        mls_group::errors::ProcessMessageError,
-        past_secrets::MessageSecretsStore,
+        core_group::proposals::ProposalStore, errors::ValidationError,
+        mls_group::errors::ProcessMessageError, past_secrets::MessageSecretsStore,
     },
     messages::proposals::Proposal,
+    spec_types::proprietary::queued_proposal::QueuedProposal,
 };
 
 use super::PublicGroup;

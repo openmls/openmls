@@ -3,8 +3,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    credentials::CredentialWithKey, framing::FramingParameters, group::ProposalStore,
-    messages::proposals::Proposal,
+    credentials::CredentialWithKey, framing::FramingParameters, messages::proposals::Proposal,
 };
 
 #[cfg(doc)]

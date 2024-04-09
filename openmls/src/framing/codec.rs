@@ -1,7 +1,8 @@
 use std::io::{Read, Write};
 use tls_codec::{Deserialize, Serialize, Size};
 
-use crate::versions::ProtocolVersion;
+//use crate::versions::ProtocolVersion;
+use openmls_spec_types::ProtocolVersion;
 
 use super::{
     mls_auth_content::FramedContentAuthData, mls_content_in::FramedContentBodyIn,

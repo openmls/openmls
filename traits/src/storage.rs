@@ -52,7 +52,7 @@ use std::io::Write;
 use openmls_spec_types::hpke::{HpkeKeyPair, HpkePrivateKey};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct StoredProposal {
+pub struct QueuedProposal {
     pub proposal_ref: ProposalRef,
     pub proposal: Proposal,
     pub sender: Sender,
@@ -79,7 +79,7 @@ pub enum Update {
     DeleteKeyPackage(KeyPackageRef),
     InsertPskBundle(PskBundleId, PskBundle),
     DeletePskBundle(PskBundleId),
-    QueueProposal(StoredProposal),
+    QueueProposal(QueuedProposal),
     DeleteProposal(ProposalRef),
     ClearProposalQueue,
 }
@@ -208,8 +208,6 @@ pub trait Stored<T> {
     fn get(self) -> T;
 }
 
-// This trait is more of an interface documentation. I am not convinced it needs to be a trait,
-// it might be fine to just have this as a struct that implements these methods.
 /// Storage provides the high-level interface to OpenMLS. A version describes a certain layout of
 /// data inside the key-value store.
 pub trait Storage<KvStore: Platform> {
@@ -276,7 +274,11 @@ pub trait Storage<KvStore: Platform> {
     fn get_queued_proposals(
         &self,
     ) -> Result<
-        Vec<Self::Stored<StoredProposal>>,
+        Vec<Self::Stored<QueuedProposal>>,
         GetError<KvStore::InternalError, KvStore::SerializeError>,
     >;
+
+    fn queued_proposal_count(
+        &self,
+    ) -> Result<usize, GetError<KvStore::InternalError, KvStore::SerializeError>>;
 }

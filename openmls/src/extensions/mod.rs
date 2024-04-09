@@ -28,7 +28,7 @@ use serde::{Deserialize, Serialize};
 
 // Private
 mod application_id_extension;
-mod codec;
+//mod codec;
 mod external_pub_extension;
 mod external_sender_extension;
 mod last_resort;
@@ -71,125 +71,74 @@ mod test_extensions;
 /// | 0xff00  - 0xffff | Reserved for Private Use | N/A        | N/A         | RFC XXXX  |
 ///
 /// Note: OpenMLS does not provide a `Reserved` variant in [ExtensionType].
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Ord, PartialOrd)]
-pub enum ExtensionType {
-    /// The application id extension allows applications to add an explicit,
-    /// application-defined identifier to a KeyPackage.
-    ApplicationId,
+//#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Ord, PartialOrd)]
+//pub enum ExtensionType {
+//    /// The application id extension allows applications to add an explicit,
+//    /// application-defined identifier to a KeyPackage.
+//    ApplicationId,
+//
+//    /// The ratchet tree extensions provides the whole public state of the
+//    /// ratchet tree.
+//    RatchetTree,
+//
+//    /// The required capabilities extension defines the configuration of a group
+//    /// that imposes certain requirements on clients in the group.
+//    RequiredCapabilities,
+//
+//    /// To join a group via an External Commit, a new member needs a GroupInfo
+//    /// with an ExternalPub extension present in its extensions field.
+//    ExternalPub,
+//
+//    /// Group context extension that contains the credentials and signature keys
+//    /// of senders that are permitted to send external proposals to the group.
+//    ExternalSenders,
+//
+//    /// KeyPackage extension that marks a KeyPackage for use in a last resort
+//    /// scenario.
+//    LastResort,
+//
+//    /// A currently unknown extension type.
+//    Unknown(u16),
+//}
+pub use crate::spec_types::extensions::ExtensionType;
 
-    /// The ratchet tree extensions provides the whole public state of the
-    /// ratchet tree.
-    RatchetTree,
-
-    /// The required capabilities extension defines the configuration of a group
-    /// that imposes certain requirements on clients in the group.
-    RequiredCapabilities,
-
-    /// To join a group via an External Commit, a new member needs a GroupInfo
-    /// with an ExternalPub extension present in its extensions field.
-    ExternalPub,
-
-    /// Group context extension that contains the credentials and signature keys
-    /// of senders that are permitted to send external proposals to the group.
-    ExternalSenders,
-
-    /// KeyPackage extension that marks a KeyPackage for use in a last resort
-    /// scenario.
-    LastResort,
-
-    /// A currently unknown extension type.
-    Unknown(u16),
-}
-
-impl From<ExtensionType> for openmls_spec_types::extensions::ExtensionType {
-    fn from(value: ExtensionType) -> Self {
-        match value {
-            ExtensionType::ApplicationId => {
-                openmls_spec_types::extensions::ExtensionType::ApplicationId
-            }
-            ExtensionType::RatchetTree => {
-                openmls_spec_types::extensions::ExtensionType::RatchetTree
-            }
-            ExtensionType::RequiredCapabilities => {
-                openmls_spec_types::extensions::ExtensionType::RequiredCapabilities
-            }
-            ExtensionType::ExternalPub => {
-                openmls_spec_types::extensions::ExtensionType::ExternalPub
-            }
-            ExtensionType::ExternalSenders => {
-                openmls_spec_types::extensions::ExtensionType::ExternalSenders
-            }
-            ExtensionType::LastResort => openmls_spec_types::extensions::ExtensionType::LastResort,
-            ExtensionType::Unknown(n) => openmls_spec_types::extensions::ExtensionType::Unknown(n),
-        }
-    }
-}
-
-impl Size for ExtensionType {
-    fn tls_serialized_len(&self) -> usize {
-        2
-    }
-}
-
-impl TlsDeserializeTrait for ExtensionType {
-    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, Error>
-    where
-        Self: Sized,
-    {
-        let mut extension_type = [0u8; 2];
-        bytes.read_exact(&mut extension_type)?;
-
-        Ok(ExtensionType::from(u16::from_be_bytes(extension_type)))
-    }
-}
-
-impl DeserializeBytes for ExtensionType {
-    fn tls_deserialize_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), Error>
-    where
-        Self: Sized,
-    {
-        let mut bytes_ref = bytes;
-        let extension_type = ExtensionType::tls_deserialize(&mut bytes_ref)?;
-        let remainder = &bytes[extension_type.tls_serialized_len()..];
-        Ok((extension_type, remainder))
-    }
-}
-
-impl TlsSerializeTrait for ExtensionType {
-    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, Error> {
-        writer.write_all(&u16::from(*self).to_be_bytes())?;
-
-        Ok(2)
-    }
-}
-
-impl From<u16> for ExtensionType {
-    fn from(a: u16) -> Self {
-        match a {
-            1 => ExtensionType::ApplicationId,
-            2 => ExtensionType::RatchetTree,
-            3 => ExtensionType::RequiredCapabilities,
-            4 => ExtensionType::ExternalPub,
-            5 => ExtensionType::ExternalSenders,
-            10 => ExtensionType::LastResort,
-            unknown => ExtensionType::Unknown(unknown),
-        }
-    }
-}
-
-impl From<ExtensionType> for u16 {
-    fn from(value: ExtensionType) -> Self {
-        match value {
-            ExtensionType::ApplicationId => 1,
-            ExtensionType::RatchetTree => 2,
-            ExtensionType::RequiredCapabilities => 3,
-            ExtensionType::ExternalPub => 4,
-            ExtensionType::ExternalSenders => 5,
-            ExtensionType::LastResort => 10,
-            ExtensionType::Unknown(unknown) => unknown,
-        }
-    }
-}
+//impl Size for ExtensionType {
+//    fn tls_serialized_len(&self) -> usize {
+//        2
+//    }
+//}
+//
+//impl TlsDeserializeTrait for ExtensionType {
+//    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, Error>
+//    where
+//        Self: Sized,
+//    {
+//        let mut extension_type = [0u8; 2];
+//        bytes.read_exact(&mut extension_type)?;
+//
+//        Ok(ExtensionType::from(u16::from_be_bytes(extension_type)))
+//    }
+//}
+//
+//impl DeserializeBytes for ExtensionType {
+//    fn tls_deserialize_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), Error>
+//    where
+//        Self: Sized,
+//    {
+//        let mut bytes_ref = bytes;
+//        let extension_type = ExtensionType::tls_deserialize(&mut bytes_ref)?;
+//        let remainder = &bytes[extension_type.tls_serialized_len()..];
+//        Ok((extension_type, remainder))
+//    }
+//}
+//
+//impl TlsSerializeTrait for ExtensionType {
+//    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, Error> {
+//        writer.write_all(&u16::from(*self).to_be_bytes())?;
+//
+//        Ok(2)
+//    }
+//}
 
 /// # Extension
 ///
@@ -205,7 +154,7 @@ impl From<ExtensionType> for u16 {
 ///     opaque extension_data<V>;
 /// } Extension;
 /// ```
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Extension {
     /// An [`ApplicationIdExtension`]
     ApplicationId(ApplicationIdExtension),
@@ -270,47 +219,39 @@ impl From<UnknownExtension> for openmls_spec_types::extensions::UnknownExtension
 }
 
 /// A list of extensions with unique extension types.
-#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct Extensions {
     unique: Vec<Extension>,
 }
 
-impl From<Extensions> for openmls_spec_types::extensions::Extensions {
-    fn from(value: Extensions) -> Self {
-        openmls_spec_types::extensions::Extensions {
-            unique: value.unique.into_iter().map(|e| e.into()).collect(),
-        }
-    }
-}
-
-impl TlsSerializeTrait for Extensions {
-    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, Error> {
-        self.unique.tls_serialize(writer)
-    }
-}
-
-impl TlsDeserializeTrait for Extensions {
-    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, Error>
-    where
-        Self: Sized,
-    {
-        let candidate: Vec<Extension> = Vec::tls_deserialize(bytes)?;
-        Extensions::try_from(candidate)
-            .map_err(|_| Error::DecodingError("Found duplicate extensions".into()))
-    }
-}
-
-impl DeserializeBytes for Extensions {
-    fn tls_deserialize_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), Error>
-    where
-        Self: Sized,
-    {
-        let mut bytes_ref = bytes;
-        let extensions = Extensions::tls_deserialize(&mut bytes_ref)?;
-        let remainder = &bytes[extensions.tls_serialized_len()..];
-        Ok((extensions, remainder))
-    }
-}
+//impl TlsSerializeTrait for Extensions {
+//    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, Error> {
+//        self.unique.tls_serialize(writer)
+//    }
+//}
+//
+//impl TlsDeserializeTrait for Extensions {
+//    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, Error>
+//    where
+//        Self: Sized,
+//    {
+//        let candidate: Vec<Extension> = Vec::tls_deserialize(bytes)?;
+//        Extensions::try_from(candidate)
+//            .map_err(|_| Error::DecodingError("Found duplicate extensions".into()))
+//    }
+//}
+//
+//impl DeserializeBytes for Extensions {
+//    fn tls_deserialize_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), Error>
+//    where
+//        Self: Sized,
+//    {
+//        let mut bytes_ref = bytes;
+//        let extensions = Extensions::tls_deserialize(&mut bytes_ref)?;
+//        let remainder = &bytes[extensions.tls_serialized_len()..];
+//        Ok((extensions, remainder))
+//    }
+//}
 
 impl Extensions {
     /// Create an empty extension list.

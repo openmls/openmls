@@ -1,4 +1,4 @@
-use core_group::proposals::QueuedProposal;
+use crate::spec_types::proprietary::queued_proposal::QueuedProposal;
 
 use crate::{
     framing::mls_content::FramedContentBody,
