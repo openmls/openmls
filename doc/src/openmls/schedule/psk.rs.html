@@ -1017,7 +1017,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>.secret
     }
 
-    <span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
+    <span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, feature = <span class="string">"crypto-debug"</span>, test))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>as_slice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
         <span class="self">self</span>.secret.as_slice()
     }

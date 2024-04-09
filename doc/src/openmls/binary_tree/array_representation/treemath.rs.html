@@ -619,7 +619,7 @@
     }
 
     <span class="doccomment">/// Re-exported for testing.
-    </span><span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
+    </span><span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, feature = <span class="string">"crypto-debug"</span>, test))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>test_u32(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
         <span class="self">self</span>.u32()
     }

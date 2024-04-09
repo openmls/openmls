@@ -1283,6 +1283,9 @@
 <a href="#1281" id="1281">1281</a>
 <a href="#1282" id="1282">1282</a>
 <a href="#1283" id="1283">1283</a>
+<a href="#1284" id="1284">1284</a>
+<a href="#1285" id="1285">1285</a>
+<a href="#1286" id="1286">1286</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Key schedule
 //!
 //! This module contains the types and implementations for key schedule operations.
@@ -2225,7 +2228,10 @@
 <span class="doccomment">/// A key that can be used to derive an `AeadKey` and an `AeadNonce`.
 </span><span class="attr">#[derive(Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
-#[cfg_attr(any(feature = <span class="string">"test-utils"</span>, test), derive(Debug, Clone))]
+#[cfg_attr(
+    any(feature = <span class="string">"test-utils"</span>, feature = <span class="string">"crypto-debug"</span>, test),
+    derive(Debug, Clone)
+)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>SenderDataSecret {
     secret: Secret,
 }
