@@ -507,6 +507,8 @@ pub enum CreateGroupContextExtProposalError {
     /// See [`LeafNodeValidationError`] for more details.
     #[error(transparent)]
     LeafNodeValidation(#[from] LeafNodeValidationError),
+    #[error(transparent)]
+    GroupStateError(#[from] MlsGroupStateError),
 }
 
 /// Error merging a commit.

@@ -1,10 +1,10 @@
+use core_group::create_commit_params::CreateCommitParams;
 use openmls_traits::{
     key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite, OpenMlsProvider,
 };
 
 use super::{
-    errors::{ProposalError, ProposeAddMemberError, ProposeRemoveMemberError},
-    MlsGroup,
+    core_group, errors::{ProposalError, ProposeAddMemberError, ProposeRemoveMemberError}, CreateGroupContextExtProposalError, GroupContextExtensionProposal, GroupContextExtensionsProposalValidationError, MlsGroup, MlsGroupState, PendingCommitState, Proposal
 };
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -14,7 +14,7 @@ use crate::{
     framing::MlsMessageOut,
     group::{errors::CreateAddProposalError, GroupId, QueuedProposal},
     key_packages::KeyPackage,
-    messages::proposals::ProposalOrRefType,
+    messages::{group_info::GroupInfo, proposals::ProposalOrRefType},
     prelude::LibraryError,
     schedule::PreSharedKeyId,
     treesync::LeafNode,
@@ -348,5 +348,51 @@ impl MlsGroup {
         self.flag_state_change();
 
         Ok((mls_message, proposal_ref))
+    }
+
+    pub fn update_group_context_extensions(
+        &mut self,
+        provider: &impl OpenMlsProvider,
+        extensions: Extensions,
+        signer: &impl Signer,
+    ) -> Result<(MlsMessageOut, MlsMessageOut, Option<GroupInfo>), CreateGroupContextExtProposalError> 
+    {
+        self.is_operational()?;
+
+        // if key_packages.is_empty() {
+        //     return Err(CreateGroupContextExtProposalError::EmptyInput(EmptyInputError::AddMembers));
+        // }
+
+        // Create inline add proposals from key packages
+        let mut inline_proposals = vec![];
+        inline_proposals.push(Proposal::GroupContextExtensions(GroupContextExtensionProposal {
+            extensions,
+        }));
+
+        let params = CreateCommitParams::builder()
+            .framing_parameters(self.framing_parameters())
+            .proposal_store(&self.proposal_store)
+            .inline_proposals(inline_proposals)
+            .build();
+        let create_commit_result = self.group.create_commit(params, provider, signer).unwrap();
+        let welcome = match create_commit_result.welcome_option {
+            Some(welcome) => welcome,
+            None => {
+                return Err(LibraryError::custom("No secrets to generate commit message.").into())
+            }
+        };
+        let mls_messages = self.content_to_mls_message(create_commit_result.commit, provider)?;
+        self.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
+            create_commit_result.staged_commit,
+        )));
+
+        // Since the state of the group might be changed, arm the state flag
+        self.flag_state_change();
+
+        Ok((
+            mls_messages,
+            MlsMessageOut::from_welcome(welcome, self.group.version()),
+            create_commit_result.group_info,
+        ))
     }
 }
