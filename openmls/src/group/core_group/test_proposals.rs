@@ -13,7 +13,6 @@ use crate::{
     group::{
         errors::*,
         proposals::{ProposalQueue, ProposalStore, QueuedProposal},
-        public_group::errors::PublicGroupBuildError,
         test_core_group::setup_client,
         CreateCommitParams, GroupContext, GroupId, StagedCoreWelcome,
     },
@@ -277,38 +276,6 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 
     assert_eq!(proposal_collection[0].proposal(), &proposal_add_bob1);
     assert_eq!(proposal_collection[1].proposal(), &proposal_add_alice1);
-}
-
-#[apply(ciphersuites_and_providers)]
-fn test_required_unsupported_proposals(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
-    let (alice_credential, _, alice_signer, _alice_pk) =
-        setup_client("Alice", ciphersuite, provider);
-
-    // Set required capabilities
-    let extensions = &[];
-    let proposals = &[ProposalType::GroupContextExtensions, ProposalType::AppAck];
-    let credentials = &[CredentialType::Basic];
-    let required_capabilities =
-        RequiredCapabilitiesExtension::new(extensions, proposals, credentials);
-
-    // This must fail because we don't actually support AppAck proposals
-    let e = CoreGroup::builder(
-        GroupId::random(provider.rand()),
-        ciphersuite,
-        alice_credential,
-    )
-    .with_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
-        required_capabilities,
-    )))
-    .unwrap()
-    .build(provider, &alice_signer)
-    .expect_err(
-        "CoreGroup creation must fail because AppAck proposals aren't supported in OpenMLS yet.",
-    );
-    assert_eq!(
-        e,
-        CoreGroupBuildError::PublicGroupBuildError(PublicGroupBuildError::UnsupportedProposalType)
-    )
 }
 
 #[apply(ciphersuites_and_providers)]

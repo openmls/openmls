@@ -1,5 +1,5 @@
 use openmls::{
-    prelude::{tls_codec::*, *},
+    prelude::{tls_codec::*, CustomProposal, *},
     test_utils::*,
     *,
 };
@@ -1390,4 +1390,109 @@ fn test_empty_input_errors(ciphersuite: Ciphersuite, provider: &impl OpenMlsProv
             ),
         RemoveMembersError::EmptyInput(EmptyInputError::RemoveMembers)
     );
+}
+
+#[apply(ciphersuites_and_providers)]
+fn custom_proposal_usage(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+    // Generate credentials with keys
+    let (alice_credential_with_key, alice_signer) =
+        generate_credential(b"alice".into(), ciphersuite.signature_algorithm(), provider);
+
+    let (bob_credential_with_key, bob_signer) =
+        generate_credential(b"bob".into(), ciphersuite.signature_algorithm(), provider);
+
+    // ANCHOR: custom_proposal_type
+    // Define a custom proposal type
+    let custom_proposal_type = 0xFFFF;
+
+    // Define capabilities supporting the custom proposal type
+    let capabilities = Capabilities::new(
+        None,
+        None,
+        None,
+        Some(&[ProposalType::Custom(custom_proposal_type)]),
+        None,
+    );
+
+    // Generate KeyPackage that signals support for the custom proposal type
+    let bob_key_package = KeyPackageBuilder::new()
+        .leaf_node_capabilities(capabilities.clone())
+        .build(ciphersuite, provider, &bob_signer, bob_credential_with_key)
+        .unwrap();
+
+    // Create a group that supports the custom proposal type
+    let mut alice_group = MlsGroup::builder()
+        .with_capabilities(capabilities.clone())
+        .ciphersuite(ciphersuite)
+        .build(provider, &alice_signer, alice_credential_with_key)
+        .unwrap();
+    // ANCHOR_END: custom_proposal_type
+
+    // Add Bob
+    let (_mls_message, welcome, _group_info) = alice_group
+        .add_members(provider, &alice_signer, &[bob_key_package])
+        .unwrap();
+
+    alice_group.merge_pending_commit(provider).unwrap();
+
+    let staged_welcome = StagedWelcome::new_from_welcome(
+        provider,
+        &MlsGroupJoinConfig::default(),
+        welcome.into_welcome().unwrap(),
+        Some(alice_group.export_ratchet_tree().into()),
+    )
+    .unwrap();
+
+    let mut bob_group = staged_welcome.into_group(provider).unwrap();
+
+    // ANCHOR: custom_proposal_usage
+    // Create a custom proposal based on an example payload and the custom
+    // proposal type defined above
+    let custom_proposal_payload = vec![0, 1, 2, 3];
+    let custom_proposal =
+        CustomProposal::new(custom_proposal_type, custom_proposal_payload.clone());
+
+    let (custom_proposal_message, _proposal_ref) = alice_group
+        .propose_custom_proposal_by_reference(provider, &alice_signer, custom_proposal.clone())
+        .unwrap();
+
+    // Have bob process the custom proposal.
+    let processed_message = bob_group
+        .process_message(
+            provider,
+            custom_proposal_message.into_protocol_message().unwrap(),
+        )
+        .unwrap();
+
+    let ProcessedMessageContent::ProposalMessage(proposal) = processed_message.into_content()
+    else {
+        panic!("Unexpected message type");
+    };
+
+    bob_group.store_pending_proposal(*proposal);
+
+    // Commit to the proposal
+    let (commit, _, _) = alice_group
+        .commit_to_pending_proposals(provider, &alice_signer)
+        .unwrap();
+
+    let processed_message = bob_group
+        .process_message(provider, commit.into_protocol_message().unwrap())
+        .unwrap();
+
+    let staged_commit = match processed_message.into_content() {
+        ProcessedMessageContent::StagedCommitMessage(staged_commit) => staged_commit,
+        _ => panic!("Unexpected message type"),
+    };
+
+    // Check that the proposal is present in the staged commit
+    assert!(staged_commit.queued_proposals().any(|qp| {
+        let Proposal::Custom(custom_proposal) = qp.proposal() else {
+            return false;
+        };
+        custom_proposal.proposal_type() == custom_proposal_type
+            && custom_proposal.payload() == custom_proposal_payload
+    }));
+
+    // ANCHOR_END: custom_proposal_usage
 }

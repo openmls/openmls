@@ -91,12 +91,6 @@ impl MlsGroupBuilder {
             CoreGroupBuildError::KeyStoreError(e) => NewGroupError::KeyStoreError(e),
             CoreGroupBuildError::PublicGroupBuildError(e) => match e {
                 PublicGroupBuildError::LibraryError(e) => e.into(),
-                PublicGroupBuildError::UnsupportedProposalType => {
-                    NewGroupError::UnsupportedProposalType
-                }
-                PublicGroupBuildError::UnsupportedExtensionType => {
-                    NewGroupError::UnsupportedExtensionType
-                }
                 PublicGroupBuildError::InvalidExtensions(e) => NewGroupError::InvalidExtensions(e),
             },
         })?;

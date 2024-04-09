@@ -374,6 +374,9 @@ pub enum ProposalValidationError {
     /// See [`PskError`] for more details.
     #[error(transparent)]
     Psk(#[from] PskError),
+    /// The proposal type is not supported by all group members.
+    #[error("The proposal type is not supported by all group members.")]
+    UnsupportedProposalType,
 }
 
 /// External Commit validaton error
