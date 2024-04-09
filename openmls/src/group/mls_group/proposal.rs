@@ -355,13 +355,9 @@ impl MlsGroup {
         provider: &impl OpenMlsProvider,
         extensions: Extensions,
         signer: &impl Signer,
-    ) -> Result<(MlsMessageOut, MlsMessageOut, Option<GroupInfo>), CreateGroupContextExtProposalError> 
+    ) -> Result<(MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>), CreateGroupContextExtProposalError> 
     {
         self.is_operational()?;
-
-        // if key_packages.is_empty() {
-        //     return Err(CreateGroupContextExtProposalError::EmptyInput(EmptyInputError::AddMembers));
-        // }
 
         // Create inline add proposals from key packages
         let mut inline_proposals = vec![];
@@ -375,12 +371,7 @@ impl MlsGroup {
             .inline_proposals(inline_proposals)
             .build();
         let create_commit_result = self.group.create_commit(params, provider, signer).unwrap();
-        let welcome = match create_commit_result.welcome_option {
-            Some(welcome) => welcome,
-            None => {
-                return Err(LibraryError::custom("No secrets to generate commit message.").into())
-            }
-        };
+        
         let mls_messages = self.content_to_mls_message(create_commit_result.commit, provider)?;
         self.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
             create_commit_result.staged_commit,
@@ -391,7 +382,9 @@ impl MlsGroup {
 
         Ok((
             mls_messages,
-            MlsMessageOut::from_welcome(welcome, self.group.version()),
+            create_commit_result
+                .welcome_option
+                .map(|w| MlsMessageOut::from_welcome(w, self.group.version())),
             create_commit_result.group_info,
         ))
     }
