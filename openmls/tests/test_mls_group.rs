@@ -1195,8 +1195,7 @@ fn mls_group_ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl Op
     }
 }
 
-//
-// Test that the builder pattern accurately configures the new group.
+/// Test that the a group context extensions proposal is correctly applied when valid, and rejected when not.
 #[apply(ciphersuites_and_providers)]
 fn group_context_extensions_proposal(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let (alice_credential_with_key, alice_signer) =
