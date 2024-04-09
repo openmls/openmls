@@ -31,9 +31,9 @@ openmls_basic_credential = { version = "0.2.0", path = "../basic_credential", op
 ] }
 rstest = { version = "^0.16", optional = true }
 rstest_reuse = { version = "0.4", optional = true }
-wasm-bindgen-test = {version = "0.3.40", optional = true}
-getrandom = {version = "0.2.12", optional = true, features = [ "js" ]}
-fluvio-wasm-timer = {version = "0.2.5", optional = true}
+wasm-bindgen-test = { version = "0.3.40", optional = true }
+getrandom = { version = "0.2.12", optional = true, features = ["js"] }
+fluvio-wasm-timer = { version = "0.2.5", optional = true }
 
 [features]
 default = ["backtrace"]
@@ -48,14 +48,17 @@ test-utils = [
     "dep:wasm-bindgen-test",
     "dep:openmls_basic_credential",
 ]
-libcrux-provider = ["dep:openmls_libcrux_crypto",]
+libcrux-provider = ["dep:openmls_libcrux_crypto"]
 crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
 content-debug = [] # ☣️ Enable logging of sensitive message content
-js = ["dep:getrandom", "dep:fluvio-wasm-timer"] # enable js randomness source for provider
+js = [
+    "dep:getrandom",
+    "dep:fluvio-wasm-timer",
+] # enable js randomness source for provider
 
 [dev-dependencies]
 backtrace = "0.3"
-criterion = {version = "^0.5", default-features = false} # need to disable default features for wasm
+criterion = { version = "^0.5", default-features = false } # need to disable default features for wasm
 hex = { version = "0.4", features = ["serde"] }
 itertools = "0.10"
 lazy_static = "1.4"
