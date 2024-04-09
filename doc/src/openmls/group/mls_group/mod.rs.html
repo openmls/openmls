@@ -461,6 +461,14 @@
 <a href="#459" id="459">459</a>
 <a href="#460" id="460">460</a>
 <a href="#461" id="461">461</a>
+<a href="#462" id="462">462</a>
+<a href="#463" id="463">463</a>
+<a href="#464" id="464">464</a>
+<a href="#465" id="465">465</a>
+<a href="#466" id="466">466</a>
+<a href="#467" id="467">467</a>
+<a href="#468" id="468">468</a>
+<a href="#469" id="469">469</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! MLS Group
 //!
 //! This module contains [`MlsGroup`] and its submodules.
@@ -769,6 +777,14 @@
     <span class="doccomment">/// Get a reference to the group context [`Extensions`] of this [`MlsGroup`].
     </span><span class="kw">pub fn </span>extensions(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Extensions {
         <span class="self">self</span>.group.public_group().group_context().extensions()
+    }
+
+    <span class="doccomment">/// Returns the index of the sender of a staged, external commit.
+    </span><span class="kw">pub fn </span>ext_commit_sender_index(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        commit: <span class="kw-2">&amp;</span>StagedCommit,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;LeafNodeIndex, LibraryError&gt; {
+        <span class="self">self</span>.group.public_group().ext_commit_sender_index(commit)
     }
 
     <span class="comment">// === Load &amp; save ===
