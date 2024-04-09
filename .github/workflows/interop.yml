@@ -38,6 +38,7 @@ jobs:
           vcpkgDirectory: "${{ github.workspace }}/vcpkg"
           vcpkgGitCommitId: "70992f64912b9ab0e60e915ab7421faa197524b7"
           vcpkgJsonGlob: "mlspp/vcpkg.json"
+          doNotUpdateVcpkg: false
           runVcpkgInstall: true
 
       - name: MLS++ | Install dependencies | 2/2
@@ -46,6 +47,7 @@ jobs:
           vcpkgDirectory: "${{ github.workspace }}/vcpkg"
           vcpkgGitCommitId: "70992f64912b9ab0e60e915ab7421faa197524b7"
           vcpkgJsonGlob: "mlspp/cmd/interop/vcpkg.json"
+          doNotUpdateVcpkg: false
           runVcpkgInstall: true
 
       - name: MLS++ | Build | 1/2
