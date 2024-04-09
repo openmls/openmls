@@ -1194,3 +1194,83 @@ fn mls_group_ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl Op
         assert_eq!(error, WelcomeError::MissingRatchetTree);
     }
 }
+
+/// Test that the a group context extensions proposal is correctly applied when valid, and rejected when not.
+#[apply(ciphersuites_and_providers)]
+fn group_context_extensions_proposal(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+    let (alice_credential_with_key, alice_signer) =
+        new_credential(provider, b"Alice", ciphersuite.signature_algorithm());
+
+    // === Alice creates a group ===
+    let mut alice_group = MlsGroup::builder()
+        .build(provider, &alice_signer, alice_credential_with_key)
+        .expect("error creating group using builder");
+
+    // No required capabilities, so no specifically required extensions.
+    assert!(alice_group.extensions().required_capabilities().is_none());
+
+    let new_extensions = Extensions::single(Extension::RequiredCapabilities(
+        RequiredCapabilitiesExtension::new(&[ExtensionType::RequiredCapabilities], &[], &[]),
+    ));
+
+    let new_extensions_2 = Extensions::single(Extension::RequiredCapabilities(
+        RequiredCapabilitiesExtension::new(&[ExtensionType::RatchetTree], &[], &[]),
+    ));
+
+    alice_group
+        .propose_group_context_extensions(provider, new_extensions.clone(), &alice_signer)
+        .expect("failed to build group context extensions proposal");
+
+    assert_eq!(alice_group.pending_proposals().count(), 1);
+
+    alice_group
+        .commit_to_pending_proposals(provider, &alice_signer)
+        .expect("failed to commit to pending proposals");
+
+    alice_group
+        .merge_pending_commit(provider)
+        .expect("error merging pending commit");
+
+    let required_capabilities = alice_group
+        .extensions()
+        .required_capabilities()
+        .expect("couldn't get required_capabilities");
+
+    // has required_capabilities as required capability
+    assert!(required_capabilities.extension_types() == [ExtensionType::RequiredCapabilities]);
+
+    // === committing to two group context extensions should fail
+
+    alice_group
+        .propose_group_context_extensions(provider, new_extensions, &alice_signer)
+        .expect("failed to build group context extensions proposal");
+
+    // the proposals need to be different or they will be deduplicated
+    alice_group
+        .propose_group_context_extensions(provider, new_extensions_2, &alice_signer)
+        .expect("failed to build group context extensions proposal");
+
+    assert_eq!(alice_group.pending_proposals().count(), 2);
+
+    alice_group
+        .commit_to_pending_proposals(provider, &alice_signer)
+        .expect_err(
+            "expected error when committing to multiple group context extensions proposals",
+        );
+
+    // === can't update required required_capabilities to extensions that existing group members
+    //       are not capable of
+
+    // contains unsupported extension
+    let new_extensions = Extensions::single(Extension::RequiredCapabilities(
+        RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xf042)], &[], &[]),
+    ));
+
+    alice_group
+        .propose_group_context_extensions(provider, new_extensions, &alice_signer)
+        .expect_err("expected an error building GCE proposal with bad required_capabilities");
+
+    // TODO: we need to test that processing a commit with multiple group context extensions
+    //       proposal also fails. however, we can't generate this commit, because our functions for
+    //       constructing commits does not permit it. See #1476
+}
