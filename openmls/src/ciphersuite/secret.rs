@@ -20,7 +20,7 @@ impl Debug for Secret {
         let mut ds = f.debug_struct("Secret");
 
         #[cfg(feature = "crypto-debug")]
-        ds.field("value", &self.value);
+        return ds.field("value", &self.value).finish();
         #[cfg(not(feature = "crypto-debug"))]
         ds.field("value", &"***").finish()
     }
@@ -156,10 +156,9 @@ impl Secret {
     ) -> Result<Secret, CryptoError> {
         log_crypto!(
             trace,
-            "derive secret from {:x?} with label {} and {:?}",
+            "derive secret from {:x?} with label {}",
             self.value,
-            label,
-            self.ciphersuite
+            label
         );
         self.kdf_expand_label(crypto, ciphersuite, label, &[], ciphersuite.hash_length())
     }
