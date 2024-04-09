@@ -23,10 +23,13 @@ use crate::{
     group::*,
     key_packages::{errors::*, *},
     messages::{
-        proposals::{AddProposal, Proposal, ProposalOrRef, RemoveProposal, UpdateProposal},
+        proposals::{
+            AddProposal, CustomProposal, Proposal, ProposalOrRef, ProposalType, RemoveProposal,
+            UpdateProposal,
+        },
         Commit, Welcome,
     },
-    prelude::MlsMessageBodyIn,
+    prelude::{Capabilities, MlsMessageBodyIn},
     schedule::PreSharedKeyId,
     test_utils::frankenstein::FrankenKeyPackage,
     treesync::errors::ApplyUpdatePathError,
@@ -1965,6 +1968,154 @@ fn test_valsem112(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     bob_group
         .process_message(provider, ProtocolMessage::from(original_plaintext))
         .expect("Unexpected error.");
+}
+
+/// ValSem113
+/// All Proposals: The proposal type must be supported by all members of the
+/// group
+#[apply(ciphersuites_and_providers)]
+fn valsem113(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+    #[derive(Debug)]
+    enum TestMode {
+        Unsupported,
+        Supported,
+    }
+
+    let custom_proposal_type = 0xFFFF;
+    let custom_proposal_payload = vec![0, 1, 2, 3];
+    let custom_proposal =
+        CustomProposal::new(custom_proposal_type, custom_proposal_payload.clone());
+
+    let capabilities_with_support = Capabilities::new(
+        None,
+        None,
+        None,
+        Some(&[ProposalType::Custom(custom_proposal_type)]),
+        None,
+    );
+
+    let mls_group_config = MlsGroupJoinConfig::default();
+
+    // Generate credentials with keys
+    let alice_credential_with_keys =
+        generate_credential_with_key(b"alice".into(), ciphersuite.signature_algorithm(), provider);
+
+    let bob_credential_with_keys =
+        generate_credential_with_key(b"bob".into(), ciphersuite.signature_algorithm(), provider);
+
+    for test_mode in [TestMode::Unsupported, TestMode::Supported] {
+        // Before we can test creation or reception of a commit with an
+        // (unsupported) custom proposal, we set up a new group with Alice and Bob.
+
+        // Generate Bob's KeyPackage depending on the test mode
+        let bob_key_package = if matches!(test_mode, TestMode::Unsupported) {
+            KeyPackageBuilder::new()
+        } else {
+            KeyPackageBuilder::new().leaf_node_capabilities(capabilities_with_support.clone())
+        }
+        .build(
+            ciphersuite,
+            provider,
+            &bob_credential_with_keys.signer,
+            bob_credential_with_keys.credential_with_key.clone(),
+        )
+        .unwrap();
+
+        // Create a group with the defined capabilities
+        let mut alice_group = if matches!(test_mode, TestMode::Unsupported) {
+            MlsGroup::builder()
+        } else {
+            MlsGroup::builder().with_capabilities(capabilities_with_support.clone())
+        }
+        .ciphersuite(ciphersuite)
+        .build(
+            provider,
+            &alice_credential_with_keys.signer,
+            alice_credential_with_keys.credential_with_key.clone(),
+        )
+        .unwrap();
+
+        // Add Bob
+        let (_mls_message, welcome, _group_info) = alice_group
+            .add_members(
+                provider,
+                &alice_credential_with_keys.signer,
+                &[bob_key_package],
+            )
+            .unwrap();
+
+        alice_group.merge_pending_commit(provider).unwrap();
+
+        let staged_welcome = StagedWelcome::new_from_welcome(
+            provider,
+            &mls_group_config,
+            welcome.into_welcome().unwrap(),
+            Some(alice_group.export_ratchet_tree().into()),
+        )
+        .unwrap();
+
+        let mut bob_group = staged_welcome.into_group(provider).unwrap();
+
+        // Have alice create a commit with a custom proposal.
+        let (custom_proposal_message, _proposal_ref) = alice_group
+            .propose_custom_proposal_by_reference(
+                provider,
+                &alice_credential_with_keys.signer,
+                custom_proposal.clone(),
+            )
+            .unwrap();
+
+        let result =
+            alice_group.commit_to_pending_proposals(provider, &alice_credential_with_keys.signer);
+
+        // If the proposal is unsupported, we expect an error here.
+        let (commit, _, _) = if matches!(test_mode, TestMode::Unsupported) {
+            assert_eq!(
+                result,
+                Err(CommitToPendingProposalsError::CreateCommitError(
+                    CreateCommitError::ProposalValidationError(
+                        ProposalValidationError::UnsupportedProposalType
+                    )
+                ))
+            );
+            continue;
+        } else {
+            result.expect("Error creating commit")
+        };
+
+        // Have bob process the custom proposal first.
+        let processed_message = bob_group
+            .process_message(
+                provider,
+                custom_proposal_message.into_protocol_message().unwrap(),
+            )
+            .unwrap();
+
+        if let ProcessedMessageContent::ProposalMessage(proposal) = processed_message.into_content()
+        {
+            bob_group.store_pending_proposal(*proposal);
+        } else {
+            panic!("Unexpected message type");
+        }
+
+        let result = bob_group.process_message(provider, commit.into_protocol_message().unwrap());
+
+        // If the proposal is unsupported, we expect an error here.
+        let _processed_message = if matches!(test_mode, TestMode::Unsupported) {
+            assert!(matches!(
+                result,
+                Err(ProcessMessageError::InvalidCommit(
+                    StageCommitError::ProposalValidationError(
+                        ProposalValidationError::UnsupportedProposalType
+                    )
+                ))
+            ));
+            continue;
+        } else {
+            // If the proposal is supported, we expect no error.
+            result.expect("Error processing commit")
+        };
+    }
 }
 
 // --- PreSharedKey Proposals ---

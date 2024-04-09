@@ -12,6 +12,7 @@
   - [Removing members from a group](user_manual/remove_members.md)
   - [Updating own key package](user_manual/updates.md)
   - [Leaving a group](user_manual/leaving.md)
+  - [Custom proposals](user_manual/custom_proposals.md)
   - [Creating application messages](user_manual/application_messages.md)
   - [Committing to pending proposals](user_manual/commit_to_proposals.md)
   - [Processing incoming messages](user_manual/processing.md)

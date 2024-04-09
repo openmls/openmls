@@ -458,7 +458,7 @@ impl PskSecret {
         &self.secret
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(any(feature = "test-utils", feature = "crypto-debug", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
