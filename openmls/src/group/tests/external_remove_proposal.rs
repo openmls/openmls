@@ -187,7 +187,7 @@ fn external_remove_proposal_should_remove_member(
         panic!("Not a remove proposal");
     };
     alice_group.store_pending_proposal(*remove_proposal);
-    assert_eq!(
+    assert!(matches!(
         alice_group
             .commit_to_pending_proposals(provider, &alice_credential.signer)
             .unwrap_err(),
@@ -196,7 +196,7 @@ fn external_remove_proposal_should_remove_member(
                 ProposalValidationError::UnknownMemberRemoval
             )
         )
-    );
+    ));
 }
 
 #[apply(ciphersuites_and_providers)]

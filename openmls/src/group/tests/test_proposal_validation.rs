@@ -307,12 +307,12 @@ fn test_valsem101a(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         match bob_and_charlie_share_keys {
             KeyUniqueness::NegativeSameKey => {
                 let err = res.expect_err("was able to add users with the same signature key!");
-                assert_eq!(
+                assert!(matches!(
                     err,
                     AddMembersError::CreateCommitError(CreateCommitError::ProposalValidationError(
                         ProposalValidationError::DuplicateSignatureKey
                     ))
-                );
+                ));
             }
             KeyUniqueness::PositiveDifferentKey => {
                 let _ = res.expect("failed to add users with different signature keypairs!");
@@ -462,12 +462,12 @@ fn test_valsem102(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         match bob_and_charlie_share_keys {
             KeyUniqueness::NegativeSameKey => {
                 let err = res.expect_err("was able to add users with the same HPKE init key!");
-                assert_eq!(
+                assert!(matches!(
                     err,
                     AddMembersError::CreateCommitError(CreateCommitError::ProposalValidationError(
                         ProposalValidationError::DuplicateInitKey
                     ))
-                );
+                ));
             }
             KeyUniqueness::PositiveDifferentKey => {
                 let _ = res.expect("failed to add users with different HPKE init keys!");
@@ -646,12 +646,12 @@ fn test_valsem101b(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
                         &[bob_key_package, target_key_package],
                     )
                     .expect_err("was able to add user with same signature key as a group member!");
-                assert_eq!(
+                assert!(matches!(
                     err,
                     AddMembersError::CreateCommitError(CreateCommitError::ProposalValidationError(
                         ProposalValidationError::DuplicateSignatureKey
                     ))
-                );
+                ));
             }
             KeyUniqueness::PositiveDifferentKey => {
                 alice_group
@@ -864,12 +864,12 @@ fn test_valsem103_valsem104(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
             KeyUniqueness::NegativeSameKey => {
                 let err =
                     res.expect_err("was able to add user with colliding init and encryption keys!");
-                assert_eq!(
+                assert!(matches!(
                     err,
                     AddMembersError::CreateCommitError(CreateCommitError::ProposalValidationError(
                         ProposalValidationError::InitEncryptionKeyCollision
                     ))
-                );
+                ));
             }
             KeyUniqueness::PositiveDifferentKey => {
                 let _ = res.expect("failed to add user with different HPKE init key!");
@@ -1517,12 +1517,12 @@ fn test_valsem108(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         )
         .expect_err("no error while trying to remove non-group-member");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         RemoveMembersError::CreateCommitError(CreateCommitError::ProposalValidationError(
             ProposalValidationError::UnknownMemberRemoval
         ))
-    );
+    ));
 
     // We now have alice create a commit. Then we artificially add an invalid
     // remove proposal targeting a member that is not part of the group.
@@ -1663,14 +1663,14 @@ fn test_valsem110(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .commit_to_pending_proposals(provider, &alice_credential_with_key_and_signer.signer)
         .expect_err("no error while trying to commit to update proposal with differing identity");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         CommitToPendingProposalsError::CreateCommitError(
             CreateCommitError::ProposalValidationError(
                 ProposalValidationError::DuplicateEncryptionKey
             )
         )
-    );
+    ));
 
     // Clear commit to see if Bob will process a commit containing two colliding
     // keys.
@@ -2070,14 +2070,14 @@ fn valsem113(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
         // If the proposal is unsupported, we expect an error here.
         let (commit, _, _) = if matches!(test_mode, TestMode::Unsupported) {
-            assert_eq!(
+            assert!(matches!(
                 result,
                 Err(CommitToPendingProposalsError::CreateCommitError(
                     CreateCommitError::ProposalValidationError(
                         ProposalValidationError::UnsupportedProposalType
                     )
                 ))
-            );
+            ));
             continue;
         } else {
             result.expect("Error creating commit")

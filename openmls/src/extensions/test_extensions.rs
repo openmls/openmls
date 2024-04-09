@@ -195,10 +195,10 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
     .err();
 
     // We expect an error because the ratchet tree is missing
-    assert_eq!(
+    assert!(matches!(
         error.expect("We expected an error"),
         WelcomeError::MissingRatchetTree
-    );
+    ));
 }
 
 #[test]
