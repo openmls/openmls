@@ -36,18 +36,16 @@ jobs:
         uses: lukka/run-vcpkg@v11
         with:
           vcpkgDirectory: "${{ github.workspace }}/vcpkg"
-          vcpkgGitCommitId: "eb33d2f"
+          vcpkgGitCommitId: "70992f64912b9ab0e60e915ab7421faa197524b7"
           vcpkgJsonGlob: "mlspp/vcpkg.json"
-          doNotUpdateVcpkg: false
           runVcpkgInstall: true
 
       - name: MLS++ | Install dependencies | 2/2
         uses: lukka/run-vcpkg@v11
         with:
           vcpkgDirectory: "${{ github.workspace }}/vcpkg"
-          vcpkgGitCommitId: "eb33d2f"
+          vcpkgGitCommitId: "70992f64912b9ab0e60e915ab7421faa197524b7"
           vcpkgJsonGlob: "mlspp/cmd/interop/vcpkg.json"
-          doNotUpdateVcpkg: false
           runVcpkgInstall: true
 
       - name: MLS++ | Build | 1/2
