@@ -21,8 +21,7 @@ pub use crate::utils::*;
 use crate::{
     ciphersuite::{HpkePrivateKey, OpenMlsSignaturePublicKey},
     credentials::{Credential, CredentialType, CredentialWithKey},
-    key_packages::KeyPackage,
-    prelude::{CryptoConfig, KeyPackageBuilder},
+    key_packages::{KeyPackage, KeyPackageBuilder},
     treesync::node::encryption_keys::{EncryptionKeyPair, EncryptionPrivateKey},
 };
 
@@ -145,7 +144,7 @@ pub(crate) fn generate_group_candidate(
         if use_store {
             let key_package = builder
                 .build(
-                    CryptoConfig::with_default_version(ciphersuite),
+                    ciphersuite,
                     provider,
                     &credential_with_key_and_signer.signer,
                     credential_with_key_and_signer.credential_with_key.clone(),
@@ -176,7 +175,7 @@ pub(crate) fn generate_group_candidate(
 
             let key_package_creation_result = builder
                 .build_without_key_storage(
-                    CryptoConfig::with_default_version(ciphersuite),
+                    ciphersuite,
                     &provider,
                     &credential_with_key_and_signer.signer,
                     credential_with_key_and_signer.credential_with_key.clone(),
@@ -264,9 +263,10 @@ pub fn ciphersuites(ciphersuite: Ciphersuite) {}
     case::rust_crypto_MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519, &OpenMlsRustCrypto::default()),
     case::rust_crypto_MLS_128_DHKEMP256_AES128GCM_SHA256_P256(Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256, &OpenMlsRustCrypto::default()),
     case::rust_crypto_MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519, &OpenMlsRustCrypto::default()),
+    case::libcrux_MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519, &$crate::test_utils::OpenMlsLibcrux::default()),
     case::libcrux_MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519, &$crate::test_utils::OpenMlsLibcrux::default()),
     case::libcrux_MLS_128_DHKEMP256_AES128GCM_SHA256_P256(Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256, &$crate::test_utils::OpenMlsLibcrux::default()),
-    case::libcrux_MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519, &$crate::test_utils::OpenMlsLibcrux::default()),
+    case::libcrux_MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519, &$crate::test_utils::OpenMlsLibcrux::default()),
   )
 )]
 #[cfg_attr(not(feature = "libcrux-provider"),rstest(ciphersuite, provider,

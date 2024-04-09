@@ -14,8 +14,7 @@ use crate::{
     },
     extensions::Extensions,
     group::{
-        config::CryptoConfig, errors::WelcomeError, GroupContext, GroupId, MlsGroup,
-        MlsGroupCreateConfig, StagedWelcome,
+        errors::WelcomeError, GroupContext, GroupId, MlsGroup, MlsGroupCreateConfig, StagedWelcome,
     },
     messages::{
         group_info::{GroupInfoTBS, VerifiableGroupInfo},
@@ -48,7 +47,7 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, provider: &impl OpenM
 
     let group_id = GroupId::random(provider.rand());
     let mls_group_create_config = MlsGroupCreateConfig::builder()
-        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .ciphersuite(ciphersuite)
         .build();
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_signature_key) =

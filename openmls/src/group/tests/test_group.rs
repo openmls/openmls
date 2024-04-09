@@ -4,15 +4,9 @@ use openmls_traits::key_store::OpenMlsKeyStore;
 use tests::utils::{generate_credential_with_key, generate_key_package};
 
 use crate::{
-    ciphersuite::signable::Verifiable,
-    framing::*,
-    group::{config::CryptoConfig, *},
-    key_packages::*,
-    schedule::psk::store::ResumptionPskStore,
-    test_utils::*,
-    tree::sender_ratchet::SenderRatchetConfiguration,
-    treesync::node::leaf_node::TreeInfoTbs,
-    *,
+    ciphersuite::signable::Verifiable, framing::*, group::*, key_packages::*,
+    schedule::psk::store::ResumptionPskStore, test_utils::*,
+    tree::sender_ratchet::SenderRatchetConfiguration, treesync::node::leaf_node::TreeInfoTbs, *,
 };
 
 #[apply(ciphersuites_and_providers)]
@@ -41,7 +35,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, provider: &impl OpenMls
     // Alice creates a group
     let mut group_alice = CoreGroup::builder(
         GroupId::random(provider.rand()),
-        CryptoConfig::with_default_version(ciphersuite),
+        ciphersuite,
         alice_credential_with_keys.credential_with_key,
     )
     .build(provider, &alice_credential_with_keys.signer)
@@ -161,7 +155,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, provider: &impl OpenMls
         .own_leaf_node()
         .unwrap()
         .updated(
-            CryptoConfig::with_default_version(ciphersuite),
+            ciphersuite,
             TreeInfoTbs::Update(group_alice.own_tree_position()),
             provider,
             &alice_credential_with_keys.signer,
@@ -234,7 +228,7 @@ fn basic_group_setup(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) 
     // Alice creates a group
     let group_alice = CoreGroup::builder(
         GroupId::random(provider.rand()),
-        CryptoConfig::with_default_version(ciphersuite),
+        ciphersuite,
         alice_credential_with_keys.credential_with_key,
     )
     .build(provider, &alice_credential_with_keys.signer)
@@ -312,7 +306,7 @@ fn group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // === Alice creates a group ===
     let mut group_alice = CoreGroup::builder(
         GroupId::random(provider.rand()),
-        CryptoConfig::with_default_version(ciphersuite),
+        ciphersuite,
         alice_credential_with_keys.credential_with_key.clone(),
     )
     .build(provider, &alice_credential_with_keys.signer)
@@ -426,7 +420,7 @@ fn group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .own_leaf_node()
         .unwrap()
         .updated(
-            CryptoConfig::with_default_version(ciphersuite),
+            ciphersuite,
             TreeInfoTbs::Update(group_bob.own_tree_position()),
             provider,
             &alice_credential_with_keys.signer,
@@ -493,7 +487,7 @@ fn group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .own_leaf_node()
         .unwrap()
         .updated(
-            CryptoConfig::with_default_version(ciphersuite),
+            ciphersuite,
             TreeInfoTbs::Update(group_alice.own_tree_position()),
             provider,
             &alice_credential_with_keys.signer,
@@ -556,7 +550,7 @@ fn group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .own_leaf_node()
         .unwrap()
         .updated(
-            CryptoConfig::with_default_version(ciphersuite),
+            ciphersuite,
             TreeInfoTbs::Update(group_bob.own_tree_position()),
             provider,
             &bob_credential_with_keys.signer,
@@ -786,7 +780,7 @@ fn group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .own_leaf_node()
         .unwrap()
         .updated(
-            CryptoConfig::with_default_version(ciphersuite),
+            ciphersuite,
             TreeInfoTbs::Update(group_charlie.own_tree_position()),
             provider,
             &charlie_credential_with_keys.signer,

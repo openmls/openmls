@@ -2,12 +2,7 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use rstest::*;
 use rstest_reuse::{self, *};
 
-use crate::{
-    credentials::BasicCredential,
-    framing::*,
-    group::{config::CryptoConfig, *},
-    messages::external_proposals::*,
-};
+use crate::{credentials::BasicCredential, framing::*, group::*, messages::external_proposals::*};
 
 use openmls_traits::types::Ciphersuite;
 
@@ -30,7 +25,7 @@ fn new_test_group(
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupCreateConfig::builder()
         .wire_format_policy(wire_format_policy)
-        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .ciphersuite(ciphersuite)
         .with_group_context_extensions(Extensions::single(Extension::ExternalSenders(
             external_senders,
         )))

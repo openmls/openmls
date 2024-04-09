@@ -29,7 +29,7 @@
 
 use super::*;
 use crate::{
-    extensions::errors::InvalidExtensionError, group::config::CryptoConfig, key_packages::Lifetime,
+    extensions::errors::InvalidExtensionError, key_packages::Lifetime,
     tree::sender_ratchet::SenderRatchetConfiguration, treesync::node::leaf_node::Capabilities,
 };
 use serde::{Deserialize, Serialize};
@@ -83,20 +83,33 @@ impl MlsGroupJoinConfig {
 /// Specifies configuration for the creation of an [`MlsGroup`]. Refer to the
 /// [User Manual](https://openmls.tech/book/user_manual/group_config.html) for
 /// more information about the different configuration values.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MlsGroupCreateConfig {
     /// Capabilities advertised in the creator's leaf node
     pub(crate) capabilities: Capabilities,
     /// Lifetime of the own leaf node
     pub(crate) lifetime: Lifetime,
     /// Ciphersuite and protocol version
-    pub(crate) crypto_config: CryptoConfig,
+    pub(crate) ciphersuite: Ciphersuite,
     /// Configuration parameters relevant to group operation at runtime
     pub(crate) join_config: MlsGroupJoinConfig,
     /// List of initial group context extensions
     pub(crate) group_context_extensions: Extensions,
     /// List of initial leaf node extensions
     pub(crate) leaf_node_extensions: Extensions,
+}
+
+impl Default for MlsGroupCreateConfig {
+    fn default() -> Self {
+        Self {
+            capabilities: Capabilities::default(),
+            lifetime: Lifetime::default(),
+            ciphersuite: Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+            join_config: MlsGroupJoinConfig::default(),
+            group_context_extensions: Extensions::default(),
+            leaf_node_extensions: Extensions::default(),
+        }
+    }
 }
 
 /// Builder struct for an [`MlsGroupJoinConfig`].
@@ -206,9 +219,9 @@ impl MlsGroupCreateConfig {
         &self.lifetime
     }
 
-    /// Returns the [`CryptoConfig`].
-    pub fn crypto_config(&self) -> &CryptoConfig {
-        &self.crypto_config
+    /// Returns the [`Ciphersuite`].
+    pub fn ciphersuite(&self) -> Ciphersuite {
+        self.ciphersuite
     }
 
     #[cfg(any(feature = "test-utils", test))]
@@ -218,7 +231,7 @@ impl MlsGroupCreateConfig {
                 OutgoingWireFormatPolicy::AlwaysPlaintext,
                 IncomingWireFormatPolicy::Mixed,
             ))
-            .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+            .ciphersuite(ciphersuite)
             .build()
     }
 
@@ -302,9 +315,9 @@ impl MlsGroupCreateConfigBuilder {
         self
     }
 
-    /// Sets the `crypto_config` property of the MlsGroupCreateConfig.
-    pub fn crypto_config(mut self, config: CryptoConfig) -> Self {
-        self.config.crypto_config = config;
+    /// Sets the `ciphersuite` property of the MlsGroupCreateConfig.
+    pub fn ciphersuite(mut self, ciphersuite: Ciphersuite) -> Self {
+        self.config.ciphersuite = ciphersuite;
         self
     }
 

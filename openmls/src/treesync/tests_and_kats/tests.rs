@@ -15,15 +15,10 @@ mod test_unmerged_leaves;
 
 /// Pathological example taken from ...
 ///   https://github.com/mlswg/mls-protocol/issues/690#issue-1244086547.
-#[apply(ciphersuites_and_providers)]
-fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
-    ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
-) {
-    let _ = provider; // get rid of warning
-    let crypto_config = CryptoConfig::with_default_version(ciphersuite);
+#[apply(ciphersuites)]
+fn that_commit_secret_is_derived_from_end_of_update_path_not_root(ciphersuite: Ciphersuite) {
     let mls_group_create_config = MlsGroupCreateConfig::builder()
-        .crypto_config(crypto_config)
+        .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
         .build();
 
@@ -48,7 +43,7 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
         );
         let key_package = KeyPackage::builder()
             .build(
-                CryptoConfig::with_default_version(ciphersuite),
+                ciphersuite,
                 &provider,
                 &credential_with_key_and_signer.signer,
                 credential_with_key_and_signer.credential_with_key.clone(),

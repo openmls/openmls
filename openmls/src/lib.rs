@@ -4,7 +4,7 @@
 //! up to parties and have them create a group.
 //!
 //! ```
-//! use openmls::prelude::{*, config::CryptoConfig, tls_codec::*};
+//! use openmls::prelude::{*,  tls_codec::*};
 //! use openmls_rust_crypto::{OpenMlsRustCrypto};
 //! use openmls_basic_credential::SignatureKeyPair;
 //!
@@ -52,10 +52,7 @@
 //!     // Create the key package
 //!     KeyPackage::builder()
 //!         .build(
-//!             CryptoConfig {
-//!                 ciphersuite,
-//!                 version: ProtocolVersion::default(),
-//!             },
+//!             ciphersuite,
 //!             provider,
 //!             signer,
 //!             credential_with_key,

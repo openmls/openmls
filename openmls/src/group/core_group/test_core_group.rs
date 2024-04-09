@@ -8,7 +8,7 @@ use crate::{
     ciphersuite::{signable::Signable, AeadNonce},
     credentials::*,
     framing::*,
-    group::{config::CryptoConfig, errors::*, *},
+    group::{errors::*, *},
     key_packages::*,
     messages::{group_info::GroupInfoTBS, *},
     schedule::psk::{store::ResumptionPskStore, ExternalPsk, PreSharedKeyId, Psk},
@@ -37,7 +37,7 @@ pub(crate) fn setup_alice_group(
     // Alice creates a group
     let group = CoreGroup::builder(
         GroupId::random(provider.rand()),
-        config::CryptoConfig::with_default_version(ciphersuite),
+        ciphersuite,
         alice_credential_with_key.clone(),
     )
     .build(provider, &alice_signature_keys)
@@ -185,7 +185,7 @@ fn test_update_path(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let bob_old_leaf = group_bob.own_leaf_node().unwrap();
     let bob_update_leaf_node = bob_old_leaf
         .updated(
-            CryptoConfig::with_default_version(ciphersuite),
+            ciphersuite,
             TreeInfoTbs::Update(group_bob.own_tree_position()),
             provider,
             &bob_signature_keys,
@@ -322,7 +322,7 @@ fn test_psks(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .unwrap();
     let mut alice_group = CoreGroup::builder(
         GroupId::random(provider.rand()),
-        config::CryptoConfig::with_default_version(ciphersuite),
+        ciphersuite,
         alice_credential_with_key,
     )
     .with_psk(vec![preshared_key_id.clone()])
@@ -393,7 +393,7 @@ fn test_psks(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let bob_old_leaf = group_bob.own_leaf_node().unwrap();
     let bob_update_leaf_node = bob_old_leaf
         .updated(
-            CryptoConfig::with_default_version(ciphersuite),
+            ciphersuite,
             TreeInfoTbs::Update(group_bob.own_tree_position()),
             provider,
             &bob_signature_keys,
@@ -438,7 +438,7 @@ fn test_staged_commit_creation(ciphersuite: Ciphersuite, provider: &impl OpenMls
     // === Alice creates a group ===
     let mut alice_group = CoreGroup::builder(
         GroupId::random(provider.rand()),
-        config::CryptoConfig::with_default_version(ciphersuite),
+        ciphersuite,
         alice_credential_with_key,
     )
     .build(provider, &alice_signature_keys)
@@ -512,7 +512,7 @@ fn test_own_commit_processing(ciphersuite: Ciphersuite, provider: &impl OpenMlsP
     // === Alice creates a group ===
     let alice_group = CoreGroup::builder(
         GroupId::random(provider.rand()),
-        config::CryptoConfig::with_default_version(ciphersuite),
+        ciphersuite,
         alice_credential_with_key,
     )
     .build(provider, &alice_signature_keys)
@@ -586,7 +586,7 @@ fn test_proposal_application_after_self_was_removed(
 
     let mut alice_group = CoreGroup::builder(
         GroupId::random(provider.rand()),
-        config::CryptoConfig::with_default_version(ciphersuite),
+        ciphersuite,
         alice_credential_with_key,
     )
     .build(provider, &alice_signature_keys)

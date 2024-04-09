@@ -411,7 +411,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // Alice creates a group
     let mut group_alice = CoreGroup::builder(
         GroupId::random(provider.rand()),
-        config::CryptoConfig::with_default_version(ciphersuite),
+        ciphersuite,
         alice_credential,
     )
     .build(provider, &alice_signature_keys)
@@ -643,7 +643,7 @@ pub(crate) fn setup_alice_bob_group(
     // Alice creates a group
     let mut group_alice = CoreGroup::builder(
         GroupId::random(provider.rand()),
-        config::CryptoConfig::with_default_version(ciphersuite),
+        ciphersuite,
         alice_credential,
     )
     .build(provider, &alice_signature_keys)

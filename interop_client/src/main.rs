@@ -21,7 +21,7 @@ use openmls::{
         WireFormatPolicy, PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     key_packages::KeyPackage,
-    prelude::{config::CryptoConfig, Capabilities, ExtensionType, SenderRatchetConfiguration},
+    prelude::{Capabilities, ExtensionType, SenderRatchetConfiguration},
     schedule::{psk::ResumptionPskUsage, ExternalPsk, PreSharedKeyId, Psk},
     treesync::{
         test_utils::{read_keys_from_key_store, write_keys_from_key_store},
@@ -231,7 +231,7 @@ impl MlsClient for MlsClientImpl {
         //       There is nothing special about the used numbers and they
         //       can be increased (or decreased) depending on the available scenarios.
         let mls_group_config = MlsGroupCreateConfig::builder()
-            .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+            .ciphersuite(ciphersuite)
             .max_past_epochs(32)
             .number_of_resumption_psks(32)
             .sender_ratchet_configuration(SenderRatchetConfiguration::default())
@@ -303,10 +303,7 @@ impl MlsClient for MlsClientImpl {
                 Some(&CREDENTIAL_TYPES),
             ))
             .build(
-                CryptoConfig {
-                    ciphersuite,
-                    version: ProtocolVersion::default(),
-                },
+                ciphersuite,
                 &crypto_provider,
                 &signature_keys,
                 CredentialWithKey {

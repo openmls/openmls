@@ -8,10 +8,7 @@ use crate::{
     credentials::CredentialWithKey,
     error::LibraryError,
     extensions::Extensions,
-    group::{
-        config::CryptoConfig, core_group::create_commit_params::CommitType,
-        errors::CreateCommitError,
-    },
+    group::{core_group::create_commit_params::CommitType, errors::CreateCommitError},
     key_packages::{KeyPackage, KeyPackageCreationResult},
     schedule::CommitSecret,
     treesync::{
@@ -68,10 +65,7 @@ impl<'a> PublicGroupDiff<'a> {
                 .leaf_node_capabilities(leaf_node_capabilities_option)
                 .leaf_node_extensions(leaf_node_extensions_option)
                 .build_without_key_storage(
-                    CryptoConfig {
-                        ciphersuite,
-                        version,
-                    },
+                    ciphersuite,
                     provider,
                     signer,
                     credential_with_key.ok_or(CreateCommitError::MissingCredential)?,

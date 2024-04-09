@@ -1,6 +1,5 @@
 use super::*;
 use actix_web::{body::MessageBody, http::StatusCode, test, web, web::Bytes, App};
-use openmls::prelude::config::CryptoConfig;
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::types::SignatureScheme;
@@ -30,15 +29,7 @@ fn generate_key_package(
 ) -> KeyPackage {
     KeyPackage::builder()
         .key_package_extensions(extensions)
-        .build(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
-            crypto_provider,
-            signer,
-            credential_with_key,
-        )
+        .build(ciphersuite, crypto_provider, signer, credential_with_key)
         .unwrap()
 }
 

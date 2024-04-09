@@ -14,7 +14,7 @@ use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::signable::Signable,
     framing::*,
-    group::{config::CryptoConfig, *},
+    group::*,
     messages::proposals::*,
     schedule::{ExternalPsk, PreSharedKeyId, Psk},
     treesync::{
@@ -65,7 +65,7 @@ fn validation_test_setup(
 
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .wire_format_policy(wire_format_policy)
-        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .ciphersuite(ciphersuite)
         .build();
 
     // === Alice creates a group ===

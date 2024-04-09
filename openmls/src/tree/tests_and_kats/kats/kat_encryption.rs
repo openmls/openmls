@@ -159,8 +159,6 @@ fn group(
     ciphersuite: Ciphersuite,
     provider: &impl OpenMlsProvider,
 ) -> (CoreGroup, CredentialWithKey, SignatureKeyPair) {
-    use crate::group::config::CryptoConfig;
-
     let (credential_with_key, signer) = generate_credential(
         "Kreator".into(),
         ciphersuite.signature_algorithm(),
@@ -169,7 +167,7 @@ fn group(
 
     let group = CoreGroup::builder(
         GroupId::random(provider.rand()),
-        CryptoConfig::with_default_version(ciphersuite),
+        ciphersuite,
         credential_with_key.clone(),
     )
     .build(provider, &signer)
@@ -184,21 +182,15 @@ fn receiver_group(
     provider: &impl OpenMlsProvider,
     group_id: GroupId,
 ) -> (CoreGroup, CredentialWithKey, SignatureKeyPair) {
-    use crate::group::config::CryptoConfig;
-
     let (credential_with_key, signer) = generate_credential(
         "Receiver".into(),
         ciphersuite.signature_algorithm(),
         provider,
     );
 
-    let group = CoreGroup::builder(
-        group_id,
-        CryptoConfig::with_default_version(ciphersuite),
-        credential_with_key.clone(),
-    )
-    .build(provider, &signer)
-    .unwrap();
+    let group = CoreGroup::builder(group_id, ciphersuite, credential_with_key.clone())
+        .build(provider, &signer)
+        .unwrap();
 
     (group, credential_with_key, signer)
 }

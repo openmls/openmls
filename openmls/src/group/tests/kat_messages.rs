@@ -16,7 +16,6 @@ use crate::{
     ciphersuite::Mac,
     framing::*,
     group::{
-        config::CryptoConfig,
         tests::utils::{generate_credential_with_key, generate_key_package, randombytes},
         *,
     },
@@ -139,7 +138,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     // Let's create a group
     let mut alice_group = CoreGroup::builder(
         GroupId::random(provider.rand()),
-        CryptoConfig::with_default_version(ciphersuite),
+        ciphersuite,
         alice_credential_with_key_and_signer
             .credential_with_key
             .clone(),
@@ -172,10 +171,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         );
 
         LeafNode::generate_update(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::Mls10,
-            },
+            ciphersuite,
             alice_credential_with_key_and_signer
                 .credential_with_key
                 .clone(),

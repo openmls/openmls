@@ -9,7 +9,7 @@ use rstest_reuse::{self, *};
 use super::utils::{generate_credential_with_key, generate_key_package};
 use crate::{
     framing::{MessageDecryptionError, MlsMessageIn, ProcessedMessageContent},
-    group::{config::CryptoConfig, *},
+    group::*,
 };
 
 #[apply(ciphersuites_and_providers)]
@@ -42,7 +42,7 @@ fn test_past_secrets_in_group(ciphersuite: Ciphersuite, provider: &impl OpenMlsP
 
         let mls_group_create_config = MlsGroupCreateConfig::builder()
             .max_past_epochs(max_epochs / 2)
-            .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+            .ciphersuite(ciphersuite)
             .build();
 
         // === Alice creates a group ===

@@ -8,12 +8,7 @@ use tls_codec::Serialize;
 use rstest::*;
 use rstest_reuse::{self, *};
 
-use crate::{
-    binary_tree::LeafNodeIndex,
-    framing::*,
-    group::{config::CryptoConfig, *},
-    key_packages::*,
-};
+use crate::{binary_tree::LeafNodeIndex, framing::*, group::*, key_packages::*};
 
 use super::utils::{
     generate_credential_with_key, generate_key_package, CredentialWithKeyAndSigner,
@@ -62,7 +57,7 @@ fn validation_test_setup(
     // Define the MlsGroup configuration
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .wire_format_policy(wire_format_policy)
-        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .ciphersuite(ciphersuite)
         .build();
 
     // === Alice creates a group ===
