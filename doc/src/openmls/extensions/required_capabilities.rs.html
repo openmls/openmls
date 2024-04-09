@@ -85,7 +85,6 @@
 <a href="#83" id="83">83</a>
 <a href="#84" id="84">84</a>
 <a href="#85" id="85">85</a>
-<a href="#86" id="86">86</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
 <span class="kw">use crate</span>::{
@@ -152,18 +151,17 @@
     }
 
     <span class="doccomment">/// Get a slice with the required extension types.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>extension_types(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[ExtensionType] {
+    </span><span class="kw">pub fn </span>extension_types(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[ExtensionType] {
         <span class="self">self</span>.extension_types.as_slice()
     }
 
     <span class="doccomment">/// Get a slice with the required proposal types.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>proposal_types(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[ProposalType] {
+    </span><span class="kw">pub fn </span>proposal_types(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[ProposalType] {
         <span class="self">self</span>.proposal_types.as_slice()
     }
 
     <span class="doccomment">/// Get a slice with the required credential types.
-    </span><span class="attr">#[allow(unused)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>credential_types(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[CredentialType] {
+    </span><span class="kw">pub fn </span>credential_types(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[CredentialType] {
         <span class="self">self</span>.credential_types.as_slice()
     }
 

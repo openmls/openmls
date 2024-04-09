@@ -378,6 +378,9 @@
 <a href="#376" id="376">376</a>
 <a href="#377" id="377">377</a>
 <a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::{
     key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite, OpenMlsProvider,
 };
@@ -724,7 +727,10 @@
         }
     }
 
-    <span class="attr">#[cfg(test)]
+    <span class="doccomment">/// Creates a proposals with a new set of `extensions` for the group context.
+    ///
+    /// Returns an error when the group does not support all the required capabilities
+    /// in the new `extensions`.
     </span><span class="kw">pub fn </span>propose_group_context_extensions(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
