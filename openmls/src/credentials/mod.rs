@@ -24,7 +24,6 @@
 
 use std::io::{Read, Write};
 
-use openmls_traits::types::SignatureScheme;
 use serde::{Deserialize, Serialize};
 use tls_codec::{
     Deserialize as TlsDeserializeTrait, DeserializeBytes, Error, Serialize as TlsSerializeTrait,
@@ -34,7 +33,7 @@ use tls_codec::{
 #[cfg(test)]
 mod tests;
 
-use crate::{ciphersuite::SignaturePublicKey, prelude::Lifetime};
+use crate::ciphersuite::SignaturePublicKey;
 use errors::*;
 
 // Public
@@ -79,8 +78,6 @@ pub enum CredentialType {
     Basic = 1,
     /// An X.509 [`Certificate`]
     X509 = 2,
-    /// Proprietary credential used in the Infra protocol.
-    Infra = 0xF000,
     /// Another type of credential that is not in the MLS protocol spec.
     Other(u16),
 }
@@ -128,7 +125,6 @@ impl From<u16> for CredentialType {
         match value {
             1 => CredentialType::Basic,
             2 => CredentialType::X509,
-            0xF000 => CredentialType::Infra,
             other => CredentialType::Other(other),
         }
     }
@@ -139,7 +135,6 @@ impl From<CredentialType> for u16 {
         match value {
             CredentialType::Basic => 1,
             CredentialType::X509 => 2,
-            CredentialType::Infra => 0xF000,
             CredentialType::Other(other) => other,
         }
     }
@@ -160,73 +155,6 @@ pub struct Certificate {
     cert_data: Vec<u8>,
 }
 
-/// A credential that contains a (pseudonymous) identity, some metadata, as well
-/// as an encrypted signature.
-#[derive(
-    Debug,
-    PartialEq,
-    Eq,
-    Clone,
-    Serialize,
-    Deserialize,
-    TlsSerialize,
-    TlsSize,
-    TlsDeserialize,
-    TlsDeserializeBytes,
-)]
-pub struct InfraCredential {
-    // (Pseudonymous) identity
-    identity: Vec<u8>,
-    expiration_data: Lifetime,
-    credential_ciphersuite: SignatureScheme,
-    verifying_key: SignaturePublicKey,
-    encrypted_signature: VLBytes,
-}
-
-impl InfraCredential {
-    /// Create a new [`InfraCredential`].
-    pub fn new(
-        identity: Vec<u8>,
-        expiration_data: Lifetime,
-        credential_ciphersuite: SignatureScheme,
-        verifying_key: SignaturePublicKey,
-        encrypted_signature: VLBytes,
-    ) -> Self {
-        Self {
-            identity,
-            expiration_data,
-            credential_ciphersuite,
-            verifying_key,
-            encrypted_signature,
-        }
-    }
-
-    /// Returns the identity of a given credential.
-    pub fn identity(&self) -> &[u8] {
-        self.identity.as_ref()
-    }
-
-    /// Returns the expiration data of a given credential.
-    pub fn expiration_data(&self) -> Lifetime {
-        self.expiration_data
-    }
-
-    /// Returns the credential ciphersuite of a given credential.
-    pub fn credential_ciphersuite(&self) -> SignatureScheme {
-        self.credential_ciphersuite
-    }
-
-    /// Returns the verifying key of a given credential.
-    pub fn verifying_key(&self) -> &SignaturePublicKey {
-        &self.verifying_key
-    }
-
-    /// Returns the encrypted signature of a given credential.
-    pub fn encrypted_signature(&self) -> &VLBytes {
-        &self.encrypted_signature
-    }
-}
-
 /// MlsCredentialType.
 ///
 /// This enum contains variants containing the different available credentials.
@@ -236,8 +164,6 @@ pub enum MlsCredentialType {
     Basic(BasicCredential),
     /// An X.509 [`Certificate`]
     X509(Certificate),
-    /// Proprietary credential used in the Infra protocol.
-    Infra(InfraCredential),
 }
 
 /// Credential.
@@ -284,19 +210,6 @@ pub enum MlsCredentialType {
 pub struct Credential {
     credential_type: CredentialType,
     serialized_credential_content: VLBytes,
-}
-
-impl From<InfraCredential> for Credential {
-    fn from(value: InfraCredential) -> Self {
-        let serialized_infra_credential = VLBytes::from(value.tls_serialize_detached().unwrap())
-            .tls_serialize_detached()
-            .unwrap();
-
-        Self {
-            credential_type: CredentialType::Infra,
-            serialized_credential_content: serialized_infra_credential.into(),
-        }
-    }
 }
 
 impl Credential {
