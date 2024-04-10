@@ -3,7 +3,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 pub trait Types<const VERSION: usize> {
     type QueuedProposal: QueuedProposalEntity<VERSION>;
     type GroupId: GroupIdKey<VERSION>;
-    type ProposalRef: ProposalRefKey<VERSION>;
+    type ProposalRef: ProposalRefKey<VERSION> + ProposalRefEntity<VERSION>;
 }
 
 pub trait Storage<const VERSION: usize> {
@@ -27,12 +27,12 @@ pub trait Storage<const VERSION: usize> {
     // getter
     fn get_queued_proposal_refs(
         &self,
-        group_id: <Self::Types as Types<VERSION>>::GroupId,
+        group_id: &<Self::Types as Types<VERSION>>::GroupId,
     ) -> Result<Vec<<Self::Types as Types<VERSION>>::ProposalRef>, GetError<Self::GetErrorSource>>;
 
     fn get_queued_proposals(
         &self,
-        group_id: <Self::Types as Types<VERSION>>::GroupId,
+        group_id: &<Self::Types as Types<VERSION>>::GroupId,
     ) -> Result<Vec<<Self::Types as Types<VERSION>>::QueuedProposal>, GetError<Self::GetErrorSource>>;
 }
 
@@ -51,6 +51,7 @@ pub trait ProposalRefKey<const VERSION: usize>: Key<VERSION> {}
 
 // traits for entity, one per type
 pub trait QueuedProposalEntity<const VERSION: usize>: Entity<VERSION> {}
+pub trait ProposalRefEntity<const VERSION: usize>: Entity<VERSION> {}
 
 // errors
 pub enum GetErrorKind {

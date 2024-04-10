@@ -13,7 +13,9 @@ impl Key<1> for GroupId {}
 impl GroupIdKey<1> for GroupId {}
 
 impl Key<1> for ProposalRef {}
+impl Entity<1> for ProposalRef {}
 impl ProposalRefKey<1> for ProposalRef {}
+impl ProposalRefEntity<1> for ProposalRef {}
 
 impl Types<1> for OpenMlsTypes {
     type QueuedProposal = QueuedProposal;
