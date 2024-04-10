@@ -47,6 +47,7 @@ test-utils = [
     "dep:rstest_reuse",
     "dep:wasm-bindgen-test",
     "dep:openmls_basic_credential",
+    "dep:openmls_libcrux_crypto",
 ]
 libcrux-provider = ["dep:openmls_libcrux_crypto"]
 crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information

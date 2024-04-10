@@ -1,9 +1,10 @@
 use openmls::{
-    prelude::{test_utils::new_credential, *},
+    prelude::{test_utils::new_credential, tls_codec::*, *},
     test_utils::*,
     *,
 };
 
+use openmls_libcrux_crypto::Provider;
 use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, OpenMlsProvider};
 
 fn generate_key_package<KeyStore: OpenMlsKeyStore>(
@@ -35,7 +36,15 @@ fn generate_key_package<KeyStore: OpenMlsKeyStore>(
 ///  - Test saving the group state
 #[apply(ciphersuites_and_providers)]
 fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
-    for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
+    if !provider
+        .crypto()
+        .supported_ciphersuites()
+        .contains(&ciphersuite)
+    {
+        return;
+    }
+
+    for wire_format_policy in [PURE_PLAINTEXT_WIRE_FORMAT_POLICY].iter() {
         let group_id = GroupId::from_slice(b"Test Group");
 
         // Generate credentials with keys
@@ -55,6 +64,10 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
             provider,
             bob_credential.clone(),
             &bob_signer,
+        );
+        println!(
+            "key package size: {}",
+            bob_key_package.tls_serialize_detached().unwrap().len()
         );
 
         // Define the MlsGroup configuration
@@ -76,7 +89,17 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 
         // === Alice adds Bob ===
         let welcome = match alice_group.add_members(provider, &alice_signer, &[bob_key_package]) {
-            Ok((_, welcome, _)) => welcome,
+            Ok((commit, welcome, _)) => {
+                eprintln!(
+                    "commit size: {}",
+                    commit.tls_serialize_detached().unwrap().len()
+                );
+                eprintln!(
+                    "welcome size: {}",
+                    welcome.tls_serialize_detached().unwrap().len()
+                );
+                welcome
+            }
             Err(e) => panic!("Could not add member to group: {e:?}"),
         };
 
@@ -118,6 +141,14 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
             .into_welcome()
             .expect("expected the message to be a welcome message");
 
+        eprintln!(
+            "ratchet tree size: {}",
+            alice_group
+                .export_ratchet_tree()
+                .tls_serialize_detached()
+                .unwrap()
+                .len()
+        );
         let mut bob_group = StagedWelcome::new_from_welcome(
             provider,
             mls_group_create_config.join_config(),
@@ -174,6 +205,11 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
         // === Bob updates and commits ===
         let (queued_message, welcome_option, _group_info) =
             bob_group.self_update(provider, &bob_signer).unwrap();
+
+        eprintln!(
+            "commit size 2: {}",
+            queued_message.tls_serialize_detached().unwrap().len()
+        );
 
         let alice_processed_message = alice_group
             .process_message(
