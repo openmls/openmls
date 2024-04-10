@@ -1970,11 +1970,17 @@ fn test_valsem112(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .expect("Unexpected error.");
 }
 
+use crate::storage::OpenMlsTypes;
+use openmls_traits::storage::StorageProvider;
+
 /// ValSem113
 /// All Proposals: The proposal type must be supported by all members of the
 /// group
 #[apply(ciphersuites_and_providers)]
-fn valsem113(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn valsem113<Storage: StorageProvider<1, Types = OpenMlsTypes>>(
+    ciphersuite: Ciphersuite,
+    provider: &mut impl OpenMlsProvider<StorageProvider = Storage>,
+) {
     #[derive(Debug)]
     enum TestMode {
         Unsupported,
@@ -2121,7 +2127,10 @@ fn valsem113(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 // --- PreSharedKey Proposals ---
 
 #[apply(ciphersuites_and_providers)]
-fn test_valsem401_valsem402(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem401_valsem402<Storage: StorageProvider<1, Types = OpenMlsTypes>>(
+    ciphersuite: Ciphersuite,
+    provider: &mut impl OpenMlsProvider<StorageProvider = Storage>,
+) {
     let ProposalValidationTestSetup {
         mut alice_group,
         alice_credential_with_key_and_signer,
@@ -2129,7 +2138,7 @@ fn test_valsem401_valsem402(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
         ..
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, provider);
 
-    let alice_provider = OpenMlsRustCrypto::default();
+    let mut alice_provider = OpenMlsRustCrypto::default();
     let bob_provider = OpenMlsRustCrypto::default();
 
     // TODO(#1354): This is currently not tested because we can't easily create invalid commits.
@@ -2221,7 +2230,7 @@ fn test_valsem401_valsem402(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
 
             let (psk_proposal, _) = alice_group
                 .propose_external_psk(
-                    &alice_provider,
+                    &mut alice_provider,
                     &alice_credential_with_key_and_signer.signer,
                     psk_id,
                 )

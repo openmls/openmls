@@ -1389,8 +1389,14 @@ fn test_empty_input_errors(ciphersuite: Ciphersuite, provider: &impl OpenMlsProv
     );
 }
 
+use openmls::storage::OpenMlsTypes;
+use openmls_traits::storage::StorageProvider;
+
 #[apply(ciphersuites_and_providers)]
-fn custom_proposal_usage(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn custom_proposal_usage<Storage: StorageProvider<1, Types = OpenMlsTypes>>(
+    ciphersuite: Ciphersuite,
+    provider: &mut impl OpenMlsProvider<StorageProvider = Storage>,
+) {
     // Generate credentials with keys
     let (alice_credential_with_key, alice_signer) =
         generate_credential(b"alice".into(), ciphersuite.signature_algorithm(), provider);

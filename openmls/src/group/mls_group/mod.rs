@@ -15,7 +15,9 @@ use crate::{
     schedule::ResumptionPskSecret,
     treesync::{node::leaf_node::LeafNode, RatchetTree},
 };
-use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::{
+    key_store::OpenMlsKeyStore, storage::StorageProvider, types::Ciphersuite, OpenMlsProvider,
+};
 
 // Private
 mod application;

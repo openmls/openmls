@@ -129,7 +129,7 @@ impl<'a, Types: TypesTrait<V1>> Key<'a, Types> {
     }
 }
 
-impl<KvStore: kv_store::KvStore, Types: TypesTrait<V1>> Storage<V1>
+impl<KvStore: kv_store::KvStore, Types: TypesTrait<V1>> StorageProvider<V1>
     for KvStoreStorage<KvStore, Types>
 {
     type Types = Types;
@@ -162,7 +162,7 @@ impl<KvStore: kv_store::KvStore, Types: TypesTrait<V1>> Storage<V1>
                     })?;
 
                 let mut proposal_refs: Vec<_> =
-                    match Storage::get_queued_proposal_refs(self, &group_id) {
+                    match StorageProvider::get_queued_proposal_refs(self, &group_id) {
                         Ok(proposal_refs) => proposal_refs,
                         Err(GetError {
                             kind: GetErrorKind::NotFound,
@@ -230,7 +230,7 @@ impl<KvStore: kv_store::KvStore, Types: TypesTrait<V1>> Storage<V1>
         &self,
         group_id: &Types::GroupId,
     ) -> Result<Vec<Types::QueuedProposal>, GetError<Self::GetErrorSource>> {
-        Storage::get_queued_proposal_refs(self, group_id)?
+        StorageProvider::get_queued_proposal_refs(self, group_id)?
             .into_iter()
             .map(|proposal_ref| {
                 let proposal_key = Key::<Types>::QueuedProposal(group_id, &proposal_ref)

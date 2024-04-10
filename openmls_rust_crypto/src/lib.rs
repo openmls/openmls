@@ -28,6 +28,10 @@ impl<Types: openmls_traits::storage::Types<1>> OpenMlsProvider for OpenMlsRustCr
         &self.storage
     }
 
+    fn storage_mut(&mut self) -> &mut Self::StorageProvider {
+        &mut self.storage
+    }
+
     fn crypto(&self) -> &Self::CryptoProvider {
         &self.crypto
     }

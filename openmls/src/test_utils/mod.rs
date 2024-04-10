@@ -261,21 +261,25 @@ pub fn ciphersuites(ciphersuite: Ciphersuite) {}
 #[template]
 #[export]
 #[cfg_attr(feature = "libcrux-provider", rstest(ciphersuite, provider,
-    case::rust_crypto_MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519, &$crate::test_utils::OpenMlsRustCrypto::default()),
-    case::rust_crypto_MLS_128_DHKEMP256_AES128GCM_SHA256_P256(Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256, &$crate::test_utils::OpenMlsRustCrypto::default()),
-    case::rust_crypto_MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519, &$crate::test_utils::OpenMlsRustCrypto::default()),
-    case::libcrux_MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519, &$crate::test_utils::OpenMlsLibcrux::default()),
-    case::libcrux_MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519, &$crate::test_utils::OpenMlsLibcrux::default()),
-    case::libcrux_MLS_128_DHKEMP256_AES128GCM_SHA256_P256(Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256, &$crate::test_utils::OpenMlsLibcrux::default()),
-    case::libcrux_MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519, &$crate::test_utils::OpenMlsLibcrux::default()),
+    case::rust_crypto_MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519, &mut $crate::test_utils::OpenMlsRustCrypto::default()),
+    case::rust_crypto_MLS_128_DHKEMP256_AES128GCM_SHA256_P256(Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256, &mut $crate::test_utils::OpenMlsRustCrypto::default()),
+    case::rust_crypto_MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519, &mut $crate::test_utils::OpenMlsRustCrypto::default()),
+    case::libcrux_MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519, &mut $crate::test_utils::OpenMlsLibcrux::default()),
+    case::libcrux_MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519, &mut $crate::test_utils::OpenMlsLibcrux::default()),
+    case::libcrux_MLS_128_DHKEMP256_AES128GCM_SHA256_P256(Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256, &mut $crate::test_utils::OpenMlsLibcrux::default()),
+    case::libcrux_MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519, &mut $crate::test_utils::OpenMlsLibcrux::default()),
   )
 )]
 #[cfg_attr(not(feature = "libcrux-provider"),rstest(ciphersuite, provider,
-    case::rust_crypto_MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519, &$crate::test_utils::OpenMlsRustCrypto::default()),
-    case::rust_crypto_MLS_128_DHKEMP256_AES128GCM_SHA256_P256(Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256, &$crate::test_utils::OpenMlsRustCrypto::default()),
-    case::rust_crypto_MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519, &$crate::test_utils::OpenMlsRustCrypto::default()),
+    case::rust_crypto_MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519, &mut $crate::test_utils::OpenMlsRustCrypto::default()),
+    case::rust_crypto_MLS_128_DHKEMP256_AES128GCM_SHA256_P256(Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256, &mut $crate::test_utils::OpenMlsRustCrypto::default()),
+    case::rust_crypto_MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519, &mut $crate::test_utils::OpenMlsRustCrypto::default()),
   )
 )]
 #[allow(non_snake_case)]
 #[cfg_attr(target_arch = "wasm32", openmls::wasm::test)]
-pub fn ciphersuites_and_providers(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {}
+pub fn ciphersuites_and_providers<Storage: StorageProvider<Types = OpenMlsTypes>>(
+    ciphersuite: Ciphersuite,
+    provider: &mut impl OpenMlsProvider<StorageProvider = Storage>,
+) {
+}

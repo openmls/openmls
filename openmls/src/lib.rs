@@ -4,14 +4,14 @@
 //! up to parties and have them create a group.
 //!
 //! ```
-//! use openmls::prelude::{*,  tls_codec::*};
+//! use openmls::{prelude::{*,  tls_codec::*}, storage::OpenMlsTypes};
 //! use openmls_rust_crypto::{OpenMlsRustCrypto};
 //! use openmls_basic_credential::SignatureKeyPair;
 //!
 //! // Define ciphersuite ...
 //! let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
 //! // ... and the crypto provider to use.
-//! let provider = &OpenMlsRustCrypto::default();
+//! let provider = &OpenMlsRustCrypto::<OpenMlsTypes>::default();
 //!
 //! // Now let's create two participants.
 //!

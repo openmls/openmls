@@ -6,7 +6,7 @@ pub trait Types<const VERSION: usize> {
     type ProposalRef: ProposalRefKey<VERSION> + ProposalRefEntity<VERSION>;
 }
 
-pub trait Storage<const VERSION: usize> {
+pub trait StorageProvider<const VERSION: usize> {
     // source for errors
     type GetErrorSource: core::fmt::Debug;
     type UpdateErrorSource: core::fmt::Debug;
