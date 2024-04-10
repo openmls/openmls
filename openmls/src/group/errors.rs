@@ -494,7 +494,7 @@ pub(crate) enum CoreGroupParseMessageError {
 
 /// Create group context ext proposal error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum CreateGroupContextExtProposalError {
+pub enum CreateGroupContextExtProposalError<KeyStoreError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -507,6 +507,12 @@ pub enum CreateGroupContextExtProposalError {
     /// See [`LeafNodeValidationError`] for more details.
     #[error(transparent)]
     LeafNodeValidation(#[from] LeafNodeValidationError),
+    /// See [`MlsGroupStateError`] for more details.
+    #[error(transparent)]
+    MlsGroupStateError(#[from] MlsGroupStateError),
+    /// See [`CreateCommitError`] for more details.
+    #[error(transparent)]
+    CreateCommitError(#[from] CreateCommitError<KeyStoreError>),
 }
 
 /// Error merging a commit.

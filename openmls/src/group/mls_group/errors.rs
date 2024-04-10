@@ -322,5 +322,5 @@ pub enum ProposalError<KeyStoreError> {
     ValidationError(#[from] ValidationError),
     /// See [`CreateGroupContextExtProposalError`] for more details.
     #[error(transparent)]
-    CreateGroupContextExtProposalError(#[from] CreateGroupContextExtProposalError),
+    CreateGroupContextExtProposalError(#[from] CreateGroupContextExtProposalError<KeyStoreError>),
 }

@@ -1043,17 +1043,14 @@ impl CoreGroup {
             group_info: group_info.filter(|_| self.use_ratchet_tree_extension),
         })
     }
-}
 
-// Test functions
-#[cfg(test)]
-impl CoreGroup {
-    pub(crate) fn create_group_context_ext_proposal(
+    /// Create a new group context extension proposal
+    pub(crate) fn create_group_context_ext_proposal<KeyStore: OpenMlsKeyStore>(
         &self,
         framing_parameters: FramingParameters,
         extensions: Extensions,
         signer: &impl Signer,
-    ) -> Result<AuthenticatedContent, CreateGroupContextExtProposalError> {
+    ) -> Result<AuthenticatedContent, CreateGroupContextExtProposalError<KeyStore::Error>> {
         // Ensure that the group supports all the extensions that are wanted.
         let required_extension = extensions
             .iter()
@@ -1082,7 +1079,11 @@ impl CoreGroup {
         )
         .map_err(|e| e.into())
     }
+}
 
+// Test functions
+#[cfg(test)]
+impl CoreGroup {
     pub(crate) fn use_ratchet_tree_extension(&self) -> bool {
         self.use_ratchet_tree_extension
     }

@@ -489,12 +489,11 @@ pub struct AppAckProposal {
     TlsSize,
 )]
 pub struct GroupContextExtensionProposal {
-    extensions: Extensions,
+    pub(crate) extensions: Extensions,
 }
 
 impl GroupContextExtensionProposal {
     /// Create a new [`GroupContextExtensionProposal`].
-    #[cfg(test)]
     pub(crate) fn new(extensions: Extensions) -> Self {
         Self { extensions }
     }
