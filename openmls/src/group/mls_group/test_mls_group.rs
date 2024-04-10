@@ -840,10 +840,10 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, provider: &impl OpenMlsPr
     let error = alice_group
         .add_members(provider, &alice_signer, &[bob_key_package.clone()])
         .expect_err("no error committing while a commit is pending");
-    assert_eq!(
+    assert!(matches!(
         error,
         AddMembersError::GroupStateError(MlsGroupStateError::PendingCommit)
-    );
+    ));
     let error = alice_group
         .propose_add_member(provider, &alice_signer, bob_key_package)
         .expect_err("no error creating a proposal while a commit is pending");
@@ -854,10 +854,10 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, provider: &impl OpenMlsPr
     let error = alice_group
         .remove_members(provider, &alice_signer, &[LeafNodeIndex::new(1)])
         .expect_err("no error committing while a commit is pending");
-    assert_eq!(
+    assert!(matches!(
         error,
         RemoveMembersError::GroupStateError(MlsGroupStateError::PendingCommit)
-    );
+    ));
     let error = alice_group
         .propose_remove_member(provider, &alice_signer, LeafNodeIndex::new(1))
         .expect_err("no error creating a proposal while a commit is pending");
@@ -868,24 +868,24 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, provider: &impl OpenMlsPr
     let error = alice_group
         .commit_to_pending_proposals(provider, &alice_signer)
         .expect_err("no error committing while a commit is pending");
-    assert_eq!(
+    assert!(matches!(
         error,
         CommitToPendingProposalsError::GroupStateError(MlsGroupStateError::PendingCommit)
-    );
+    ));
     let error = alice_group
         .self_update(provider, &alice_signer)
         .expect_err("no error committing while a commit is pending");
-    assert_eq!(
+    assert!(matches!(
         error,
         SelfUpdateError::GroupStateError(MlsGroupStateError::PendingCommit)
-    );
+    ));
     let error = alice_group
         .propose_self_update(provider, &alice_signer, None)
         .expect_err("no error creating a proposal while a commit is pending");
-    assert_eq!(
+    assert!(matches!(
         error,
         ProposeSelfUpdateError::GroupStateError(MlsGroupStateError::PendingCommit)
-    );
+    ));
 
     // Clearing the pending commit should actually clear it.
     alice_group.clear_pending_commit();
