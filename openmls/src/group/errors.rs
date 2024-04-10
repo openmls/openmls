@@ -507,8 +507,10 @@ pub enum CreateGroupContextExtProposalError<KeyStoreError> {
     /// See [`LeafNodeValidationError`] for more details.
     #[error(transparent)]
     LeafNodeValidation(#[from] LeafNodeValidationError),
+    /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
-    GroupStateError(#[from] MlsGroupStateError),
+    MlsGroupStateError(#[from] MlsGroupStateError),
+    /// See [`CreateCommitError`] for more details.
     #[error(transparent)]
     CreateCommitError(#[from] CreateCommitError<KeyStoreError>),
 }

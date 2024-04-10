@@ -360,6 +360,7 @@ impl MlsGroup {
     ///
     /// Returns an error when the group does not support all the required capabilities
     /// in the new `extensions`.
+    #[allow(clippy::type_complexity)]
     pub fn update_group_context_extensions<KeyStore: OpenMlsKeyStore>(
         &mut self,
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
