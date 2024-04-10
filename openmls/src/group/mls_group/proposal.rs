@@ -325,15 +325,15 @@ impl MlsGroup {
     ///
     /// Returns an error when the group does not support all the required capabilities
     /// in the new `extensions`.
-    pub fn propose_group_context_extensions(
+    pub fn propose_group_context_extensions<KeyStore: OpenMlsKeyStore>(
         &mut self,
-        provider: &impl OpenMlsProvider,
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         extensions: Extensions,
         signer: &impl Signer,
-    ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<()>> {
+    ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<KeyStore::Error>> {
         self.is_operational()?;
 
-        let proposal = self.group.create_group_context_ext_proposal(
+        let proposal = self.group.create_group_context_ext_proposal::<KeyStore>(
             self.framing_parameters(),
             extensions,
             signer,
@@ -356,14 +356,18 @@ impl MlsGroup {
         Ok((mls_message, proposal_ref))
     }
 
-    pub fn update_group_context_extensions(
+    /// Updates group context extensions
+    ///
+    /// Returns an error when the group does not support all the required capabilities
+    /// in the new `extensions`.
+    pub fn update_group_context_extensions<KeyStore: OpenMlsKeyStore>(
         &mut self,
-        provider: &impl OpenMlsProvider,
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         extensions: Extensions,
         signer: &impl Signer,
     ) -> Result<
         (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
-        CreateGroupContextExtProposalError,
+        CreateGroupContextExtProposalError<KeyStore::Error>,
     > {
         self.is_operational()?;
 
@@ -377,7 +381,7 @@ impl MlsGroup {
             .proposal_store(&self.proposal_store)
             .inline_proposals(inline_proposals)
             .build();
-        let create_commit_result = self.group.create_commit(params, provider, signer).unwrap();
+        let create_commit_result = self.group.create_commit(params, provider, signer)?;
 
         let mls_messages = self.content_to_mls_message(create_commit_result.commit, provider)?;
         self.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(

@@ -1,5 +1,5 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsProvider};
 
 use super::CoreGroup;
 use crate::{
@@ -543,9 +543,9 @@ fn test_group_context_extension_proposal_fails(
 }
 
 #[apply(ciphersuites_and_providers)]
-fn test_group_context_extension_proposal(
+fn test_group_context_extension_proposal<KeyStore: OpenMlsKeyStore>(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
 ) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
@@ -617,7 +617,7 @@ fn test_group_context_extension_proposal(
             &[CredentialType::Basic],
         ));
     let gce_proposal = alice_group
-        .create_group_context_ext_proposal(
+        .create_group_context_ext_proposal::<KeyStore>(
             framing_parameters,
             Extensions::single(required_application_id),
             &alice_signer,
