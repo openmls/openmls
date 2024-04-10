@@ -1044,6 +1044,7 @@ impl CoreGroup {
         })
     }
 
+    /// Create a new group context extension proposal
     pub(crate) fn create_group_context_ext_proposal(
         &self,
         framing_parameters: FramingParameters,
@@ -1083,7 +1084,6 @@ impl CoreGroup {
 // Test functions
 #[cfg(test)]
 impl CoreGroup {
-
     pub(crate) fn use_ratchet_tree_extension(&self) -> bool {
         self.use_ratchet_tree_extension
     }

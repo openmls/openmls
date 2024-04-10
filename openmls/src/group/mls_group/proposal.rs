@@ -4,7 +4,10 @@ use openmls_traits::{
 };
 
 use super::{
-    core_group, errors::{ProposalError, ProposeAddMemberError, ProposeRemoveMemberError}, CreateGroupContextExtProposalError, GroupContextExtensionProposal, GroupContextExtensionsProposalValidationError, MlsGroup, MlsGroupState, PendingCommitState, Proposal
+    core_group,
+    errors::{ProposalError, ProposeAddMemberError, ProposeRemoveMemberError},
+    CreateGroupContextExtProposalError, GroupContextExtensionProposal, MlsGroup, MlsGroupState,
+    PendingCommitState, Proposal,
 };
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -319,6 +322,10 @@ impl MlsGroup {
         }
     }
 
+    /// Creates a proposals with a new set of `extensions` for the group context.
+    ///
+    /// Returns an error when the group does not support all the required capabilities
+    /// in the new `extensions`.
     pub fn propose_group_context_extensions(
         &mut self,
         provider: &impl OpenMlsProvider,
@@ -355,15 +362,16 @@ impl MlsGroup {
         provider: &impl OpenMlsProvider,
         extensions: Extensions,
         signer: &impl Signer,
-    ) -> Result<(MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>), CreateGroupContextExtProposalError> 
-    {
+    ) -> Result<
+        (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
+        CreateGroupContextExtProposalError,
+    > {
         self.is_operational()?;
 
-        // Create inline add proposals from key packages
-        let mut inline_proposals = vec![];
-        inline_proposals.push(Proposal::GroupContextExtensions(GroupContextExtensionProposal {
-            extensions,
-        }));
+        // Create group context extension proposals
+        let inline_proposals = vec![Proposal::GroupContextExtensions(
+            GroupContextExtensionProposal { extensions },
+        )];
 
         let params = CreateCommitParams::builder()
             .framing_parameters(self.framing_parameters())
@@ -371,7 +379,7 @@ impl MlsGroup {
             .inline_proposals(inline_proposals)
             .build();
         let create_commit_result = self.group.create_commit(params, provider, signer).unwrap();
-        
+
         let mls_messages = self.content_to_mls_message(create_commit_result.commit, provider)?;
         self.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
             create_commit_result.staged_commit,
