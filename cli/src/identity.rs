@@ -21,9 +21,9 @@ impl Identity {
     pub(crate) fn new(
         ciphersuite: Ciphersuite,
         crypto: &OpenMlsRustPersistentCrypto,
-        id: &[u8],
+        username: &[u8],
     ) -> Self {
-        let credential = BasicCredential::new(id.to_vec());
+        let credential = BasicCredential::new(username.to_vec());
         let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
         let credential_with_key = CredentialWithKey {
             credential: credential.into(),
@@ -83,5 +83,12 @@ impl Identity {
     /// Get the plain identity as byte vector.
     pub fn identity(&self) -> &[u8] {
         self.credential_with_key.credential.serialized_content()
+    }
+
+    /// Get the plain identity as byte vector.
+    pub fn identity_as_string(&self) -> String {
+        std::str::from_utf8(self.credential_with_key.credential.serialized_content())
+            .unwrap()
+            .to_string()
     }
 }
