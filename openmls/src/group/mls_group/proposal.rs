@@ -1,10 +1,9 @@
-use core_group::create_commit_params::CreateCommitParams;
 use openmls_traits::{
     key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite, OpenMlsProvider,
 };
 
 use super::{
-    core_group,
+    core_group::create_commit_params::CreateCommitParams,
     errors::{ProposalError, ProposeAddMemberError, ProposeRemoveMemberError},
     CreateGroupContextExtProposalError, GroupContextExtensionProposal, MlsGroup, MlsGroupState,
     PendingCommitState, Proposal,
