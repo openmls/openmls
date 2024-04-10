@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use openmls::prelude::{config::CryptoConfig, *};
+use openmls::prelude::*;
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::OpenMlsProvider;
 
@@ -23,7 +23,7 @@ impl Identity {
         crypto: &OpenMlsRustPersistentCrypto,
         username: &[u8],
     ) -> Self {
-        let credential = BasicCredential::new(username.to_vec()).unwrap();
+        let credential = BasicCredential::new(username.to_vec());
         let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
         let credential_with_key = CredentialWithKey {
             credential: credential.into(),
@@ -33,10 +33,7 @@ impl Identity {
 
         let key_package = KeyPackage::builder()
             .build(
-                CryptoConfig {
-                    ciphersuite,
-                    version: ProtocolVersion::default(),
-                },
+                ciphersuite,
                 crypto,
                 &signature_keys,
                 credential_with_key.clone(),
@@ -65,10 +62,7 @@ impl Identity {
     ) -> KeyPackage {
         let key_package = KeyPackage::builder()
             .build(
-                CryptoConfig {
-                    ciphersuite,
-                    version: ProtocolVersion::default(),
-                },
+                ciphersuite,
                 crypto,
                 &self.signer,
                 self.credential_with_key.clone(),

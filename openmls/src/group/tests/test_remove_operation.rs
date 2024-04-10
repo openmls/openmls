@@ -1,18 +1,12 @@
 //! This module tests the classification of remove operations with RemoveOperation
 
 use super::utils::{generate_credential_with_key, generate_key_package};
-use crate::{
-    framing::*,
-    group::{config::CryptoConfig, *},
-    test_utils::*,
-    *,
-};
+use crate::{framing::*, group::*, test_utils::*, *};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 
 // Tests the different variants of the RemoveOperation enum.
-#[apply(ciphersuites_and_providers)]
-fn test_remove_operation_variants(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
-    let _ = provider;
+#[apply(ciphersuites)]
+fn test_remove_operation_variants(ciphersuite: Ciphersuite) {
     let alice_provider = OpenMlsRustCrypto::default();
     let bob_provider = OpenMlsRustCrypto::default();
     let charlie_provider = OpenMlsRustCrypto::default();
@@ -63,7 +57,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, provider: &impl Open
 
         // Define the MlsGroup configuration
         let mls_group_create_config = MlsGroupCreateConfig::builder()
-            .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+            .ciphersuite(ciphersuite)
             .build();
 
         // === Alice creates a group ===
@@ -91,10 +85,15 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, provider: &impl Open
             .merge_pending_commit(&alice_provider)
             .expect("error merging pending commit");
 
+        let welcome: MlsMessageIn = welcome.into();
+        let welcome = welcome
+            .into_welcome()
+            .expect("expected message to be a welcome");
+
         let mut bob_group = StagedWelcome::new_from_welcome(
             &bob_provider,
             mls_group_create_config.join_config(),
-            welcome.clone().into(),
+            welcome.clone(),
             Some(alice_group.export_ratchet_tree().into()),
         )
         .expect("Error creating staged join from Welcome")
@@ -104,7 +103,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, provider: &impl Open
         let mut charlie_group = StagedWelcome::new_from_welcome(
             &charlie_provider,
             mls_group_create_config.join_config(),
-            welcome.into(),
+            welcome,
             Some(alice_group.export_ratchet_tree().into()),
         )
         .expect("Error creating staged join from Welcome")

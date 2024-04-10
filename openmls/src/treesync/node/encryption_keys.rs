@@ -12,8 +12,6 @@ use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBy
 use crate::{
     ciphersuite::{hpke, HpkePrivateKey, HpkePublicKey, Secret},
     error::LibraryError,
-    group::config::CryptoConfig,
-    versions::ProtocolVersion,
 };
 
 /// [`EncryptionKey`] contains an HPKE public key that allows the encryption of
@@ -119,7 +117,6 @@ impl EncryptionPrivateKey {
         &self,
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
-        version: ProtocolVersion,
         ciphertext: &HpkeCiphertext,
         group_context: &[u8],
     ) -> Result<Secret, hpke::Error> {
@@ -132,7 +129,7 @@ impl EncryptionPrivateKey {
             ciphersuite,
             crypto,
         )
-        .map(|secret_bytes| Secret::from_slice(&secret_bytes, version, ciphersuite))
+        .map(|secret_bytes| Secret::from_slice(&secret_bytes))
     }
 }
 
@@ -209,13 +206,13 @@ impl EncryptionKeyPair {
 
     pub(crate) fn random(
         provider: &impl OpenMlsProvider,
-        config: CryptoConfig,
+        ciphersuite: Ciphersuite,
     ) -> Result<Self, LibraryError> {
-        let ikm = Secret::random(config.ciphersuite, provider.rand(), config.version)
+        let ikm = Secret::random(ciphersuite, provider.rand())
             .map_err(LibraryError::unexpected_crypto_error)?;
         Ok(provider
             .crypto()
-            .derive_hpke_keypair(config.ciphersuite.hpke_config(), ikm.as_slice())
+            .derive_hpke_keypair(ciphersuite.hpke_config(), ikm.as_slice())
             .map_err(LibraryError::unexpected_crypto_error)?
             .into())
     }

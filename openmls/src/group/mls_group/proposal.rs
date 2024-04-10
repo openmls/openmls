@@ -4,7 +4,7 @@ use openmls_traits::{
 
 use super::{
     errors::{ProposalError, ProposeAddMemberError, ProposeRemoveMemberError},
-    MlsGroup,
+    CustomProposal, MlsGroup,
 };
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -52,6 +52,9 @@ pub enum Propose {
 
     /// Propose adding new group context extensions.
     GroupContextExtensions(Extensions),
+
+    /// A custom proposal with semantics to be implemented by the application.
+    Custom(CustomProposal),
 }
 
 macro_rules! impl_propose_fun {
@@ -119,6 +122,20 @@ impl MlsGroup {
         PreSharedKeyId,
         create_presharedkey_proposal,
         ProposalOrRefType::Proposal
+    );
+
+    impl_propose_fun!(
+        propose_custom_proposal_by_value,
+        CustomProposal,
+        create_custom_proposal,
+        ProposalOrRefType::Proposal
+    );
+
+    impl_propose_fun!(
+        propose_custom_proposal_by_reference,
+        CustomProposal,
+        create_custom_proposal,
+        ProposalOrRefType::Reference
     );
 
     /// Generate a proposal
@@ -194,6 +211,14 @@ impl MlsGroup {
             Propose::GroupContextExtensions(_) => Err(ProposalError::LibraryError(
                 LibraryError::custom("Unsupported proposal type GroupContextExtensions"),
             )),
+            Propose::Custom(custom_proposal) => match ref_or_value {
+                ProposalOrRefType::Proposal => {
+                    self.propose_custom_proposal_by_value(provider, signer, custom_proposal)
+                }
+                ProposalOrRefType::Reference => {
+                    self.propose_custom_proposal_by_reference(provider, signer, custom_proposal)
+                }
+            },
         }
     }
 
@@ -319,7 +344,10 @@ impl MlsGroup {
         }
     }
 
-    #[cfg(test)]
+    /// Creates a proposals with a new set of `extensions` for the group context.
+    ///
+    /// Returns an error when the group does not support all the required capabilities
+    /// in the new `extensions`.
     pub fn propose_group_context_extensions(
         &mut self,
         provider: &impl OpenMlsProvider,

@@ -201,7 +201,7 @@ impl User {
             credential,
         } in mls_group.members()
         {
-            let credential = BasicCredential::try_from(&credential).unwrap();
+            let credential = BasicCredential::try_from(credential).unwrap();
             if credential.identity() == name.as_bytes() {
                 return Ok(index);
             }
@@ -246,7 +246,7 @@ impl User {
                 .as_slice()
                 != signature_key.as_slice()
             {
-                let credential = BasicCredential::try_from(&credential).unwrap();
+                let credential = BasicCredential::try_from(credential).unwrap();
                 log::debug!(
                     "Searching for contact {:?}",
                     str::from_utf8(credential.identity()).unwrap()
@@ -404,14 +404,14 @@ impl User {
         let message_out = match processed_message.into_content() {
             ProcessedMessageContent::ApplicationMessage(application_message) => {
                 let processed_message_credential =
-                    BasicCredential::try_from(&processed_message_credential).unwrap();
+                    BasicCredential::try_from(processed_message_credential.clone()).unwrap();
                 let sender_name = match self.contacts.get(processed_message_credential.identity()) {
                     Some(c) => c.id.clone(),
                     None => {
                         // Contact list is not updated right now, get the identity from the
                         // mls_group member
                         let user_id = mls_group.members().find_map(|m| {
-                                let m_credential = BasicCredential::try_from(&m.credential).unwrap();
+                                let m_credential = BasicCredential::try_from(m.credential.clone()).unwrap();
                                 if m_credential.identity()
                                     == processed_message_credential.identity()
                                     && (self
@@ -706,15 +706,11 @@ impl User {
         let group_config = MlsGroupJoinConfig::builder()
             .use_ratchet_tree_extension(true)
             .build();
-        let mut mls_group = StagedWelcome::new_from_welcome(
-            &self.crypto,
-            &group_config,
-            MlsMessageOut::from_welcome(welcome, ProtocolVersion::default()).into(),
-            None,
-        )
-        .expect("Failed to create staged join")
-        .into_group(&self.crypto)
-        .expect("Failed to create MlsGroup");
+        let mut mls_group =
+            StagedWelcome::new_from_welcome(&self.crypto, &group_config, welcome, None)
+                .expect("Failed to create staged join")
+                .into_group(&self.crypto)
+                .expect("Failed to create MlsGroup");
 
         let group_id = mls_group.group_id().to_vec();
         // XXX: Use Welcome's encrypted_group_info field to store group_name.

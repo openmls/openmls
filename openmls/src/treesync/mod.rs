@@ -64,7 +64,7 @@ use crate::{
     credentials::CredentialWithKey,
     error::LibraryError,
     extensions::Extensions,
-    group::{config::CryptoConfig, GroupId, Member},
+    group::{GroupId, Member},
     key_packages::Lifetime,
     messages::{PathSecret, PathSecretError},
     schedule::CommitSecret,
@@ -374,14 +374,14 @@ impl TreeSync {
     pub(crate) fn new(
         provider: &impl OpenMlsProvider,
         signer: &impl Signer,
-        config: CryptoConfig,
+        ciphersuite: Ciphersuite,
         credential_with_key: CredentialWithKey,
         life_time: Lifetime,
         capabilities: Capabilities,
         extensions: Extensions,
     ) -> Result<(Self, CommitSecret, EncryptionKeyPair), LibraryError> {
         let new_leaf_node_params = NewLeafNodeParams {
-            config,
+            ciphersuite,
             credential_with_key,
             // Creation of a group is considered to be from a key package.
             leaf_node_source: LeafNodeSource::KeyPackage(life_time),
@@ -392,11 +392,11 @@ impl TreeSync {
         let (leaf, encryption_key_pair) = LeafNode::new(provider, signer, new_leaf_node_params)?;
 
         let node = Node::LeafNode(leaf);
-        let path_secret: PathSecret = Secret::random(config.ciphersuite, provider.rand(), None)
+        let path_secret: PathSecret = Secret::random(ciphersuite, provider.rand())
             .map_err(LibraryError::unexpected_crypto_error)?
             .into();
         let commit_secret: CommitSecret = path_secret
-            .derive_path_secret(provider.crypto(), config.ciphersuite)?
+            .derive_path_secret(provider.crypto(), ciphersuite)?
             .into();
         let nodes = vec![TreeSyncNode::from(node).into()];
         let tree = MlsBinaryTree::new(nodes)
@@ -406,7 +406,7 @@ impl TreeSync {
             tree_hash: vec![],
         };
         // Populate tree hash caches.
-        tree_sync.populate_parent_hashes(provider.crypto(), config.ciphersuite)?;
+        tree_sync.populate_parent_hashes(provider.crypto(), ciphersuite)?;
 
         Ok((tree_sync, commit_secret, encryption_key_pair))
     }

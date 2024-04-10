@@ -36,8 +36,7 @@
 //! let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
 //! let provider = OpenMlsRustCrypto::default();
 //!
-//! let credential = BasicCredential::new("identity".into())
-//!     .expect("Error creating a credential.");
+//! let credential = BasicCredential::new("identity".into());
 //! let signer =
 //!     SignatureKeyPair::new(ciphersuite.signature_algorithm())
 //!         .expect("Error generating a signature key pair.");
@@ -47,10 +46,7 @@
 //! };
 //! let key_package = KeyPackage::builder()
 //!     .build(
-//!         CryptoConfig {
-//!             ciphersuite,
-//!             version: ProtocolVersion::default(),
-//!         },
+//!         ciphersuite,
 //!         &provider,
 //!         &signer,
 //!         credential_with_key,
@@ -94,8 +90,6 @@
 //!
 //! See [`KeyPackage`] for more details on how to use key packages.
 
-#[cfg(test)]
-use crate::treesync::node::encryption_keys::EncryptionKey;
 use crate::{
     ciphersuite::{
         hash_ref::{make_key_package_ref, KeyPackageRef},
@@ -105,7 +99,6 @@ use crate::{
     credentials::*,
     error::LibraryError,
     extensions::{Extension, ExtensionType, Extensions, LastResortExtension},
-    group::config::CryptoConfig,
     treesync::{
         node::{
             encryption_keys::EncryptionKeyPair,
@@ -266,7 +259,7 @@ impl KeyPackage {
     #[allow(clippy::too_many_arguments)]
     /// Create a new key package for the given `ciphersuite` and `identity`.
     pub(crate) fn create<KeyStore: OpenMlsKeyStore>(
-        config: CryptoConfig,
+        ciphersuite: Ciphersuite,
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
@@ -275,21 +268,21 @@ impl KeyPackage {
         leaf_node_capabilities: Capabilities,
         leaf_node_extensions: Extensions,
     ) -> Result<KeyPackageCreationResult, KeyPackageNewError<KeyStore::Error>> {
-        if config.ciphersuite.signature_algorithm() != signer.signature_scheme() {
+        if ciphersuite.signature_algorithm() != signer.signature_scheme() {
             return Err(KeyPackageNewError::CiphersuiteSignatureSchemeMismatch);
         }
 
         // Create a new HPKE key pair
-        let ikm = Secret::random(config.ciphersuite, provider.rand(), config.version)
+        let ikm = Secret::random(ciphersuite, provider.rand())
             .map_err(LibraryError::unexpected_crypto_error)?;
         let init_key = provider
             .crypto()
-            .derive_hpke_keypair(config.ciphersuite.hpke_config(), ikm.as_slice())
+            .derive_hpke_keypair(ciphersuite.hpke_config(), ikm.as_slice())
             .map_err(|e| {
                 KeyPackageNewError::LibraryError(LibraryError::unexpected_crypto_error(e))
             })?;
         let (key_package, encryption_keypair) = Self::new_from_keys(
-            config,
+            ciphersuite,
             provider,
             signer,
             credential_with_key,
@@ -318,7 +311,7 @@ impl KeyPackage {
     /// The caller is responsible for storing the new values.
     #[allow(clippy::too_many_arguments)]
     fn new_from_keys<KeyStore: OpenMlsKeyStore>(
-        config: CryptoConfig,
+        ciphersuite: Ciphersuite,
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
@@ -332,7 +325,7 @@ impl KeyPackage {
         // use later when creating a group with this key package.
 
         let new_leaf_node_params = NewLeafNodeParams {
-            config,
+            ciphersuite,
             leaf_node_source: LeafNodeSource::KeyPackage(lifetime),
             credential_with_key,
             capabilities,
@@ -344,8 +337,8 @@ impl KeyPackage {
             LeafNode::new(provider, signer, new_leaf_node_params)?;
 
         let key_package_tbs = KeyPackageTbs {
-            protocol_version: config.version,
-            ciphersuite: config.ciphersuite,
+            protocol_version: ProtocolVersion::default(),
+            ciphersuite,
             init_key,
             leaf_node,
             extensions,
@@ -432,171 +425,6 @@ impl KeyPackage {
     }
 }
 
-/// Helpers for testing.
-#[cfg(any(feature = "test-utils", test))]
-#[allow(clippy::too_many_arguments)]
-impl KeyPackage {
-    /// Generate a new key package with a given init key
-    pub fn new_from_init_key<KeyStore: OpenMlsKeyStore>(
-        config: CryptoConfig,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
-        signer: &impl Signer,
-        credential_with_key: CredentialWithKey,
-        extensions: Extensions,
-        leaf_node_capabilities: Capabilities,
-        leaf_node_extensions: Extensions,
-        init_key: InitKey,
-    ) -> Result<Self, KeyPackageNewError<KeyStore::Error>> {
-        let (key_package, encryption_key_pair) = Self::new_from_keys(
-            config,
-            provider,
-            signer,
-            credential_with_key,
-            Lifetime::default(),
-            extensions,
-            leaf_node_capabilities,
-            leaf_node_extensions,
-            init_key,
-        )?;
-
-        // Store the key package in the key store with the hash reference as id
-        // for retrieval when parsing welcome messages.
-        provider
-            .key_store()
-            .store(
-                key_package.hash_ref(provider.crypto())?.as_slice(),
-                &key_package,
-            )
-            .map_err(KeyPackageNewError::KeyStoreError)?;
-
-        // Store the encryption key pair in the key store.
-        encryption_key_pair
-            .write_to_key_store(provider.key_store())
-            .map_err(KeyPackageNewError::KeyStoreError)?;
-
-        Ok(key_package)
-    }
-
-    /// Create new key package with a leaf node encryption key set to the
-    /// provided `encryption_key`.
-    #[cfg(test)]
-    #[allow(clippy::too_many_arguments)]
-    pub(crate) fn new_from_encryption_key<KeyStore: OpenMlsKeyStore>(
-        config: CryptoConfig,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
-        signer: &impl Signer,
-        credential_with_key: CredentialWithKey,
-        extensions: Extensions,
-        leaf_node_capabilities: Capabilities,
-        leaf_node_extensions: Extensions,
-        encryption_key: EncryptionKey,
-    ) -> Result<Self, KeyPackageNewError<KeyStore::Error>> {
-        // Create a new HPKE init key pair
-        let ikm = Secret::random(config.ciphersuite, provider.rand(), config.version).unwrap();
-        let init_key = provider
-            .crypto()
-            .derive_hpke_keypair(config.ciphersuite.hpke_config(), ikm.as_slice())
-            .map_err(|e| {
-                KeyPackageNewError::LibraryError(LibraryError::unexpected_crypto_error(e))
-            })?;
-
-        // Store the private part of the init_key into the key store.
-        // The key is the public key.
-        provider
-            .key_store()
-            .store::<HpkePrivateKey>(&init_key.public, &init_key.private)
-            .map_err(KeyPackageNewError::KeyStoreError)?;
-
-        // We don't need the private key here. It's stored in the key store for
-        // use later when creating a group with this key package.
-        let leaf_node = LeafNode::create_new_with_key(
-            encryption_key,
-            credential_with_key,
-            LeafNodeSource::KeyPackage(Lifetime::default()),
-            leaf_node_capabilities,
-            leaf_node_extensions,
-            TreeInfoTbs::KeyPackage,
-            signer,
-        )
-        .unwrap();
-
-        let key_package = KeyPackageTbs {
-            protocol_version: config.version,
-            ciphersuite: config.ciphersuite,
-            init_key: init_key.public.into(),
-            leaf_node,
-            extensions,
-        };
-
-        let key_package = key_package.sign(signer)?;
-
-        // Store the key package in the key store with the hash reference as id
-        // for retrieval when parsing welcome messages.
-        provider
-            .key_store()
-            .store(
-                key_package.hash_ref(provider.crypto())?.as_slice(),
-                &key_package,
-            )
-            .map_err(KeyPackageNewError::KeyStoreError)?;
-
-        Ok(key_package)
-    }
-
-    pub fn into_with_init_key(
-        self,
-        config: CryptoConfig,
-        signer: &impl Signer,
-        init_key: InitKey,
-    ) -> Result<Self, SignatureError> {
-        let key_package_tbs = KeyPackageTbs {
-            protocol_version: config.version,
-            ciphersuite: config.ciphersuite,
-            init_key,
-            leaf_node: self.leaf_node().clone(),
-            extensions: self.extensions().clone(),
-        };
-
-        key_package_tbs.sign(signer)
-    }
-
-    /// Resign this key package with another credential.
-    pub fn resign(mut self, signer: &impl Signer, credential_with_key: CredentialWithKey) -> Self {
-        self.payload
-            .leaf_node
-            .set_credential(credential_with_key.credential.clone());
-        self.payload
-            .leaf_node
-            .set_signature_key(credential_with_key.signature_key.clone());
-
-        self.payload
-            .leaf_node
-            .resign(signer, credential_with_key, TreeInfoTbs::KeyPackage);
-
-        self.payload.sign(signer).unwrap()
-    }
-
-    /// Replace the public key in the KeyPackage.
-    pub fn set_init_key(&mut self, init_key: InitKey) {
-        self.payload.init_key = init_key
-    }
-
-    /// Replace the version in the KeyPackage.
-    pub fn set_version(&mut self, version: ProtocolVersion) {
-        self.payload.protocol_version = version
-    }
-
-    /// Replace the ciphersuite in the KeyPackage.
-    pub fn set_ciphersuite(&mut self, ciphersuite: Ciphersuite) {
-        self.payload.ciphersuite = ciphersuite
-    }
-
-    /// Set the [`LeafNode`].
-    pub fn set_leaf_node(&mut self, leaf_node: LeafNode) {
-        self.payload.leaf_node = leaf_node;
-    }
-}
-
 /// Builder that helps creating (and configuring) a [`KeyPackage`].
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct KeyPackageBuilder {
@@ -664,14 +492,14 @@ impl KeyPackageBuilder {
 
     pub(crate) fn build_without_key_storage<KeyStore: OpenMlsKeyStore>(
         mut self,
-        config: CryptoConfig,
+        ciphersuite: Ciphersuite,
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
     ) -> Result<KeyPackageCreationResult, KeyPackageNewError<KeyStore::Error>> {
         self.ensure_last_resort();
         KeyPackage::create(
-            config,
+            ciphersuite,
             provider,
             signer,
             credential_with_key,
@@ -685,7 +513,7 @@ impl KeyPackageBuilder {
     /// Finalize and build the key package.
     pub fn build<KeyStore: OpenMlsKeyStore>(
         mut self,
-        config: CryptoConfig,
+        ciphersuite: Ciphersuite,
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
@@ -696,7 +524,7 @@ impl KeyPackageBuilder {
             encryption_keypair,
             init_private_key,
         } = KeyPackage::create(
-            config,
+            ciphersuite,
             provider,
             signer,
             credential_with_key,
@@ -763,15 +591,7 @@ impl KeyPackageBundle {
         credential_with_key: CredentialWithKey,
     ) -> Self {
         let key_package = KeyPackage::builder()
-            .build(
-                CryptoConfig {
-                    ciphersuite,
-                    version: ProtocolVersion::default(),
-                },
-                provider,
-                signer,
-                credential_with_key,
-            )
+            .build(ciphersuite, provider, signer, credential_with_key)
             .unwrap();
         let private_key = provider
             .key_store()

@@ -1,12 +1,11 @@
 use openmls::{
-    prelude::{config::CryptoConfig, tls_codec::*, *},
+    prelude::{tls_codec::*, CustomProposal, *},
     test_utils::*,
     *,
 };
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{signatures::Signer, types::SignatureScheme, OpenMlsProvider};
-use tls_codec::VLBytes;
 
 #[test]
 fn create_provider_rust_crypto() {
@@ -26,7 +25,7 @@ fn generate_credential(
     provider: &impl OpenMlsProvider,
 ) -> (CredentialWithKey, SignatureKeyPair) {
     // ANCHOR: create_basic_credential
-    let credential = BasicCredential::new(identity).unwrap();
+    let credential = BasicCredential::new(identity);
     // ANCHOR_END: create_basic_credential
     // ANCHOR: create_credential_keys
     let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
@@ -53,12 +52,7 @@ fn generate_key_package(
     // Create the key package
     KeyPackage::builder()
         .key_package_extensions(extensions)
-        .build(
-            CryptoConfig::with_default_version(ciphersuite),
-            provider,
-            signer,
-            credential_with_key,
-        )
+        .build(ciphersuite, provider, signer, credential_with_key)
         .unwrap()
     // ANCHOR_END: create_key_package
 }
@@ -126,7 +120,7 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             ),
         ])))
         .expect("error adding external senders extension to group context extensions")
-        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .ciphersuite(ciphersuite)
         .capabilities(Capabilities::new(
             None, // Defaults to the group's protocol version
             None, // Defaults to the group's ciphersuite
@@ -203,7 +197,7 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
                 10,   // out_of_order_tolerance
                 2000, // maximum_forward_distance
             ))
-            .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+            .ciphersuite(ciphersuite)
             .use_ratchet_tree_extension(true)
             .build(provider, &alice_signature_keys, alice_credential.clone())
             .expect("An unexpected error occurred.");
@@ -255,10 +249,10 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     // Check that Alice & Bob are the members of the group
     let members = alice_group.members().collect::<Vec<Member>>();
-    let id0 = VLBytes::tls_deserialize_exact(members[0].credential.serialized_content()).unwrap();
-    let id1 = VLBytes::tls_deserialize_exact(members[1].credential.serialized_content()).unwrap();
-    assert_eq!(id0.as_slice(), b"Alice");
-    assert_eq!(id1.as_slice(), b"Bob");
+    let id0 = members[0].credential.serialized_content();
+    let id1 = members[1].credential.serialized_content();
+    assert_eq!(id0, b"Alice");
+    assert_eq!(id1, b"Bob");
 
     // ANCHOR: mls_group_config_example
     let mls_group_config = MlsGroupJoinConfig::builder()
@@ -271,10 +265,14 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .build();
     // ANCHOR_END: mls_group_config_example
 
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome
+        .into_welcome()
+        .expect("expected the message to be a welcome message");
+
     // ANCHOR: bob_joins_with_welcome
-    let staged_join =
-        StagedWelcome::new_from_welcome(provider, &mls_group_config, welcome.into(), None)
-            .expect("Error constructing staged join");
+    let staged_join = StagedWelcome::new_from_welcome(provider, &mls_group_config, welcome, None)
+        .expect("Error constructing staged join");
     let mut bob_group = staged_join
         .into_group(provider)
         .expect("Error joining group from StagedWelcome");
@@ -533,10 +531,15 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         unreachable!("Expected a StagedCommit.");
     }
 
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome
+        .into_welcome()
+        .expect("expected the message to be a welcome message");
+
     let mut charlie_group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
-        welcome.into(),
+        welcome,
         Some(bob_group.export_ratchet_tree().into()),
     )
     .expect("Error building StagedWelcome")
@@ -555,15 +558,12 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     // Check that Alice, Bob & Charlie are the members of the group
     let members = alice_group.members().collect::<Vec<Member>>();
-    let credential0 =
-        VLBytes::tls_deserialize_exact(members[0].credential.serialized_content()).unwrap();
-    let credential1 =
-        VLBytes::tls_deserialize_exact(members[1].credential.serialized_content()).unwrap();
-    let credential2 =
-        VLBytes::tls_deserialize_exact(members[2].credential.serialized_content()).unwrap();
-    assert_eq!(credential0.as_slice(), b"Alice");
-    assert_eq!(credential1.as_slice(), b"Bob");
-    assert_eq!(credential2.as_slice(), b"Charlie");
+    let credential0 = members[0].credential.serialized_content();
+    let credential1 = members[1].credential.serialized_content();
+    let credential2 = members[2].credential.serialized_content();
+    assert_eq!(credential0, b"Alice");
+    assert_eq!(credential1, b"Bob");
+    assert_eq!(credential2, b"Charlie");
     assert_eq!(members.len(), 3);
 
     // === Charlie sends a message to the group ===
@@ -672,26 +672,18 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
                  index: _,
                  credential,
                  ..
-             }| {
-                let credential =
-                    VLBytes::tls_deserialize_exact(credential.serialized_content()).unwrap();
-                credential.as_slice() == b"Bob"
-            },
+             }| { credential.serialized_content() == b"Bob" },
         )
         .expect("Couldn't find Bob in the list of group members.");
 
     // Make sure that this is Bob's actual KP reference.
-    let bob_cred =
-        VLBytes::tls_deserialize_exact(bob_member.credential.serialized_content()).unwrap();
-    let bob_group_cred = VLBytes::tls_deserialize_exact(
-        bob_group
-            .own_leaf()
-            .unwrap()
-            .credential()
-            .serialized_content(),
-    )
-    .unwrap();
-    assert_eq!(bob_cred.as_slice(), bob_group_cred.as_slice());
+    let bob_cred = bob_member.credential.serialized_content();
+    let bob_group_cred = bob_group
+        .own_leaf()
+        .unwrap()
+        .credential()
+        .serialized_content();
+    assert_eq!(bob_cred, bob_group_cred);
 
     // === Charlie removes Bob ===
     // ANCHOR: charlie_removes_bob
@@ -812,12 +804,10 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     assert!(!bob_group.is_active());
     let members = bob_group.members().collect::<Vec<Member>>();
     assert_eq!(members.len(), 2);
-    let credential0 =
-        VLBytes::tls_deserialize_exact(members[0].credential.serialized_content()).unwrap();
-    let credential1 =
-        VLBytes::tls_deserialize_exact(members[1].credential.serialized_content()).unwrap();
-    assert_eq!(credential0.as_slice(), b"Alice");
-    assert_eq!(credential1.as_slice(), b"Charlie");
+    let credential0 = members[0].credential.serialized_content();
+    let credential1 = members[1].credential.serialized_content();
+    assert_eq!(credential0, b"Alice");
+    assert_eq!(credential1, b"Charlie");
     // ANCHOR_END: getting_removed
 
     // Make sure that all groups have the same public tree
@@ -831,12 +821,10 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     // Check that Alice & Charlie are the members of the group
     let members = alice_group.members().collect::<Vec<Member>>();
-    let credential0 =
-        VLBytes::tls_deserialize_exact(members[0].credential.serialized_content()).unwrap();
-    let credential1 =
-        VLBytes::tls_deserialize_exact(members[1].credential.serialized_content()).unwrap();
-    assert_eq!(credential0.as_slice(), b"Alice");
-    assert_eq!(credential1.as_slice(), b"Charlie");
+    let credential0 = members[0].credential.serialized_content();
+    let credential1 = members[1].credential.serialized_content();
+    assert_eq!(credential0, b"Alice");
+    assert_eq!(credential1, b"Charlie");
 
     // Check that Bob can no longer send messages
     assert!(bob_group
@@ -987,18 +975,21 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // Check that Alice & Bob are the members of the group
     let members = alice_group.members().collect::<Vec<Member>>();
 
-    let credential0 =
-        VLBytes::tls_deserialize_exact(members[0].credential.serialized_content()).unwrap();
-    let credential1 =
-        VLBytes::tls_deserialize_exact(members[1].credential.serialized_content()).unwrap();
-    assert_eq!(credential0.as_slice(), b"Alice");
-    assert_eq!(credential1.as_slice(), b"Bob");
+    let credential0 = members[0].credential.serialized_content();
+    let credential1 = members[1].credential.serialized_content();
+    assert_eq!(credential0, b"Alice");
+    assert_eq!(credential1, b"Bob");
+
+    let welcome: MlsMessageIn = welcome_option.expect("Welcome was not returned").into();
+    let welcome = welcome
+        .into_welcome()
+        .expect("expected the message to be a welcome message");
 
     // Bob creates a new group
     let mut bob_group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
-        welcome_option.expect("Welcome was not returned").into(),
+        welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
     .expect("Error creating StagedWelcome")
@@ -1010,24 +1001,20 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     // Check that Alice & Bob are the members of the group
     let members = alice_group.members().collect::<Vec<Member>>();
-    let credential0 =
-        VLBytes::tls_deserialize_exact(members[0].credential.serialized_content()).unwrap();
-    let credential1 =
-        VLBytes::tls_deserialize_exact(members[1].credential.serialized_content()).unwrap();
-    assert_eq!(credential0.as_slice(), b"Alice");
-    assert_eq!(credential1.as_slice(), b"Bob");
+    let credential0 = members[0].credential.serialized_content();
+    let credential1 = members[1].credential.serialized_content();
+    assert_eq!(credential0, b"Alice");
+    assert_eq!(credential1, b"Bob");
 
     // Make sure the group contains two members
     assert_eq!(bob_group.members().count(), 2);
 
     // Check that Alice & Bob are the members of the group
     let members = bob_group.members().collect::<Vec<Member>>();
-    let credential0 =
-        VLBytes::tls_deserialize_exact(members[0].credential.serialized_content()).unwrap();
-    let credential1 =
-        VLBytes::tls_deserialize_exact(members[1].credential.serialized_content()).unwrap();
-    assert_eq!(credential0.as_slice(), b"Alice");
-    assert_eq!(credential1.as_slice(), b"Bob");
+    let credential0 = members[0].credential.serialized_content();
+    let credential1 = members[1].credential.serialized_content();
+    assert_eq!(credential0, b"Alice");
+    assert_eq!(credential1, b"Bob");
 
     // === Alice sends a message to the group ===
     let message_alice = b"Hi, I'm Alice!";
@@ -1188,9 +1175,8 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     // Check that Alice is the only member of the group
     let members = alice_group.members().collect::<Vec<Member>>();
-    let credential0 =
-        VLBytes::tls_deserialize_exact(members[0].credential.serialized_content()).unwrap();
-    assert_eq!(credential0.as_slice(), b"Alice");
+    let credential0 = members[0].credential.serialized_content();
+    assert_eq!(credential0, b"Alice");
 
     // === Re-Add Bob with external Add proposal ===
 
@@ -1234,10 +1220,15 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
                 .expect("Could not merge commit");
             assert_eq!(alice_group.members().count(), 2);
 
+            let welcome: MlsMessageIn = welcome.expect("Welcome was not returned").into();
+            let welcome = welcome
+                .into_welcome()
+                .expect("expected the message to be a welcome message");
+
             let bob_group = StagedWelcome::new_from_welcome(
                 provider,
                 mls_group_create_config.join_config(),
-                welcome.unwrap().into(),
+                welcome,
                 None,
             )
             .expect("Bob could not stage the the group join")
@@ -1253,9 +1244,8 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let bob_index = alice_group
         .members()
         .find_map(|member| {
-            let credential =
-                VLBytes::tls_deserialize_exact(member.credential.serialized_content()).unwrap();
-            if credential.as_slice() == b"Bob" {
+            let credential = member.credential.serialized_content();
+            if credential == b"Bob" {
                 Some(member.index)
             } else {
                 None
@@ -1320,10 +1310,15 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .merge_pending_commit(provider)
         .expect("error merging pending commit");
 
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome
+        .into_welcome()
+        .expect("expected the message to be a welcome message");
+
     let bob_staged_welcome = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
-        welcome.into(),
+        welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
     .expect("Could not create StagedWelcome from Welcome");
@@ -1395,4 +1390,109 @@ fn test_empty_input_errors(ciphersuite: Ciphersuite, provider: &impl OpenMlsProv
             ),
         RemoveMembersError::EmptyInput(EmptyInputError::RemoveMembers)
     );
+}
+
+#[apply(ciphersuites_and_providers)]
+fn custom_proposal_usage(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+    // Generate credentials with keys
+    let (alice_credential_with_key, alice_signer) =
+        generate_credential(b"alice".into(), ciphersuite.signature_algorithm(), provider);
+
+    let (bob_credential_with_key, bob_signer) =
+        generate_credential(b"bob".into(), ciphersuite.signature_algorithm(), provider);
+
+    // ANCHOR: custom_proposal_type
+    // Define a custom proposal type
+    let custom_proposal_type = 0xFFFF;
+
+    // Define capabilities supporting the custom proposal type
+    let capabilities = Capabilities::new(
+        None,
+        None,
+        None,
+        Some(&[ProposalType::Custom(custom_proposal_type)]),
+        None,
+    );
+
+    // Generate KeyPackage that signals support for the custom proposal type
+    let bob_key_package = KeyPackageBuilder::new()
+        .leaf_node_capabilities(capabilities.clone())
+        .build(ciphersuite, provider, &bob_signer, bob_credential_with_key)
+        .unwrap();
+
+    // Create a group that supports the custom proposal type
+    let mut alice_group = MlsGroup::builder()
+        .with_capabilities(capabilities.clone())
+        .ciphersuite(ciphersuite)
+        .build(provider, &alice_signer, alice_credential_with_key)
+        .unwrap();
+    // ANCHOR_END: custom_proposal_type
+
+    // Add Bob
+    let (_mls_message, welcome, _group_info) = alice_group
+        .add_members(provider, &alice_signer, &[bob_key_package])
+        .unwrap();
+
+    alice_group.merge_pending_commit(provider).unwrap();
+
+    let staged_welcome = StagedWelcome::new_from_welcome(
+        provider,
+        &MlsGroupJoinConfig::default(),
+        welcome.into_welcome().unwrap(),
+        Some(alice_group.export_ratchet_tree().into()),
+    )
+    .unwrap();
+
+    let mut bob_group = staged_welcome.into_group(provider).unwrap();
+
+    // ANCHOR: custom_proposal_usage
+    // Create a custom proposal based on an example payload and the custom
+    // proposal type defined above
+    let custom_proposal_payload = vec![0, 1, 2, 3];
+    let custom_proposal =
+        CustomProposal::new(custom_proposal_type, custom_proposal_payload.clone());
+
+    let (custom_proposal_message, _proposal_ref) = alice_group
+        .propose_custom_proposal_by_reference(provider, &alice_signer, custom_proposal.clone())
+        .unwrap();
+
+    // Have bob process the custom proposal.
+    let processed_message = bob_group
+        .process_message(
+            provider,
+            custom_proposal_message.into_protocol_message().unwrap(),
+        )
+        .unwrap();
+
+    let ProcessedMessageContent::ProposalMessage(proposal) = processed_message.into_content()
+    else {
+        panic!("Unexpected message type");
+    };
+
+    bob_group.store_pending_proposal(*proposal);
+
+    // Commit to the proposal
+    let (commit, _, _) = alice_group
+        .commit_to_pending_proposals(provider, &alice_signer)
+        .unwrap();
+
+    let processed_message = bob_group
+        .process_message(provider, commit.into_protocol_message().unwrap())
+        .unwrap();
+
+    let staged_commit = match processed_message.into_content() {
+        ProcessedMessageContent::StagedCommitMessage(staged_commit) => staged_commit,
+        _ => panic!("Unexpected message type"),
+    };
+
+    // Check that the proposal is present in the staged commit
+    assert!(staged_commit.queued_proposals().any(|qp| {
+        let Proposal::Custom(custom_proposal) = qp.proposal() else {
+            return false;
+        };
+        custom_proposal.proposal_type() == custom_proposal_type
+            && custom_proposal.payload() == custom_proposal_payload
+    }));
+
+    // ANCHOR_END: custom_proposal_usage
 }

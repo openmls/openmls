@@ -6,12 +6,12 @@ use rstest_reuse::{self, *};
 use crate::{
     binary_tree::LeafNodeIndex,
     framing::{
-        public_message_in::PublicMessageIn, MlsMessageOut, ProcessedMessage,
+        public_message_in::PublicMessageIn, MlsMessageIn, MlsMessageOut, ProcessedMessage,
         ProcessedMessageContent, ProtocolMessage, Sender,
     },
     group::{
-        config::CryptoConfig, test_core_group::setup_client, GroupId, MlsGroup,
-        MlsGroupCreateConfig, ProposalStore, StagedCommit, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        test_core_group::setup_client, GroupId, MlsGroup, MlsGroupCreateConfig, ProposalStore,
+        StagedCommit, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     messages::proposals::Proposal,
 };
@@ -33,7 +33,7 @@ fn public_group(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // Set plaintext wire format policy s.t. the public group can track changes.
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
-        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .ciphersuite(ciphersuite)
         .build();
 
     // === Alice creates a group ===
@@ -91,12 +91,17 @@ fn public_group(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         }
     };
 
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome
+        .into_welcome()
+        .expect("expected message to be a welcome");
+
     // In the future, we'll use helper functions to skip the extraction steps above.
 
     let mut bob_group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
-        welcome.into(),
+        welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
     .expect("Error creating staged join from Welcome")
@@ -139,10 +144,15 @@ fn public_group(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .merge_pending_commit(provider)
         .expect("error merging pending commit");
 
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome
+        .into_welcome()
+        .expect("expected message to be a welcome");
+
     let mut charlie_group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
-        welcome.into(),
+        welcome,
         Some(bob_group.export_ratchet_tree().into()),
     )
     .expect("Error creating group from Welcome")

@@ -534,6 +534,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             .serialized_context()
             .to_vec(),
         provider.crypto(),
+        ciphersuite,
     )
     .unwrap();
     let verification_result: Result<AuthenticatedContentIn, _> =
@@ -604,7 +605,6 @@ mod utils {
     use crate::{
         framing::{MlsMessageIn, PublicMessage, Sender},
         group::{
-            config::CryptoConfig,
             tests::utils::{generate_credential_with_key, CredentialWithKeyAndSigner},
             MlsGroup, MlsGroupCreateConfig, WireFormatPolicy,
         },
@@ -638,7 +638,7 @@ mod utils {
         // Define the MlsGroup configuration
         let mls_group_create_config = MlsGroupCreateConfig::builder()
             .wire_format_policy(wire_format_policy)
-            .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+            .ciphersuite(ciphersuite)
             .build();
 
         // Alice creates a group

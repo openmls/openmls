@@ -87,10 +87,7 @@ impl ClientInfo {
     /// key packages with corresponding hashes.
     pub fn new(mut key_packages: Vec<(Vec<u8>, KeyPackageIn)>) -> Self {
         let key_package: KeyPackage = KeyPackage::from(key_packages[0].1.clone());
-        let id = VLBytes::tls_deserialize_exact(
-            key_package.leaf_node().credential().serialized_content(),
-        )
-        .unwrap();
+        let id = key_package.leaf_node().credential().serialized_content();
         Self {
             id: id.into(),
             key_packages: ClientKeyPackages(

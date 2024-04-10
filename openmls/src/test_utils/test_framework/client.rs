@@ -18,7 +18,7 @@ use crate::{
     credentials::*,
     extensions::*,
     framing::*,
-    group::{config::CryptoConfig, *},
+    group::*,
     key_packages::*,
     messages::{group_info::GroupInfo, *},
     treesync::{
@@ -66,10 +66,7 @@ impl Client {
 
         let key_package = KeyPackage::builder()
             .build(
-                CryptoConfig {
-                    ciphersuite,
-                    version: ProtocolVersion::default(),
-                },
+                ciphersuite,
                 &self.crypto,
                 &keys,
                 credential_with_key.clone(),
@@ -122,7 +119,6 @@ impl Client {
         welcome: Welcome,
         ratchet_tree: Option<RatchetTreeIn>,
     ) -> Result<(), ClientError> {
-        let welcome = MlsMessageOut::from_welcome(welcome, ProtocolVersion::default()).into();
         let staged_join = StagedWelcome::new_from_welcome(
             &self.crypto,
             &mls_group_config,
@@ -346,7 +342,7 @@ impl Client {
         let group = groups.get(group_id).unwrap();
         let leaf = group.own_leaf();
         leaf.map(|l| {
-            let credential = BasicCredential::try_from(l.credential()).unwrap();
+            let credential = BasicCredential::try_from(l.credential().clone()).unwrap();
             credential.identity().to_vec()
         })
     }

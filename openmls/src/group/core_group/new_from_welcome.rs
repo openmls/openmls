@@ -95,9 +95,9 @@ impl StagedCoreWelcome {
 
         // Derive welcome key & nonce from the key schedule
         let (welcome_key, welcome_nonce) = key_schedule
-            .welcome(provider.crypto())
+            .welcome(provider.crypto(), ciphersuite)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?
-            .derive_welcome_key_nonce(provider.crypto())
+            .derive_welcome_key_nonce(provider.crypto(), ciphersuite)
             .map_err(LibraryError::unexpected_crypto_error)?;
 
         let verifiable_group_info = VerifiableGroupInfo::try_from_ciphertext(
@@ -112,9 +112,6 @@ impl StagedCoreWelcome {
         if let Some(required_capabilities) =
             verifiable_group_info.extensions().required_capabilities()
         {
-            required_capabilities
-                .check_support()
-                .map_err(|_| WelcomeError::UnsupportedCapability)?;
             // Also check that our key package actually supports the extensions.
             // Per spec the sender must have checked this. But you never know.
             key_package_bundle
@@ -180,7 +177,7 @@ impl StagedCoreWelcome {
                 .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 
             let epoch_secrets = key_schedule
-                .epoch_secrets(provider.crypto())
+                .epoch_secrets(provider.crypto(), ciphersuite)
                 .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 
             epoch_secrets.split_secrets(
@@ -194,6 +191,7 @@ impl StagedCoreWelcome {
             .confirmation_key()
             .tag(
                 provider.crypto(),
+                ciphersuite,
                 public_group.group_context().confirmed_transcript_hash(),
             )
             .map_err(LibraryError::unexpected_crypto_error)?;

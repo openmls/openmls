@@ -110,7 +110,7 @@ fn generate_credential(
     signature_algorithm: SignatureScheme,
     provider: &impl OpenMlsProvider,
 ) -> (CredentialWithKey, SignatureKeyPair) {
-    let credential = BasicCredential::new(identity).unwrap();
+    let credential = BasicCredential::new(identity);
     let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
     signature_keys.store(provider.key_store()).unwrap();
 
@@ -128,8 +128,6 @@ fn group(
     ciphersuite: Ciphersuite,
     provider: &impl OpenMlsProvider,
 ) -> (CoreGroup, CredentialWithKey, SignatureKeyPair) {
-    use crate::group::config::CryptoConfig;
-
     let (credential_with_key, signer) = generate_credential(
         "Kreator".into(),
         ciphersuite.signature_algorithm(),
@@ -138,7 +136,7 @@ fn group(
 
     let group = CoreGroup::builder(
         GroupId::random(provider.rand()),
-        CryptoConfig::with_default_version(ciphersuite),
+        ciphersuite,
         credential_with_key.clone(),
     )
     .build(provider, &signer)
@@ -153,21 +151,15 @@ fn receiver_group(
     provider: &impl OpenMlsProvider,
     group_id: GroupId,
 ) -> (CoreGroup, CredentialWithKey, SignatureKeyPair) {
-    use crate::group::config::CryptoConfig;
-
     let (credential_with_key, signer) = generate_credential(
         "Receiver".into(),
         ciphersuite.signature_algorithm(),
         provider,
     );
 
-    let group = CoreGroup::builder(
-        group_id,
-        CryptoConfig::with_default_version(ciphersuite),
-        credential_with_key.clone(),
-    )
-    .build(provider, &signer)
-    .unwrap();
+    let group = CoreGroup::builder(group_id, ciphersuite, credential_with_key.clone())
+        .build(provider, &signer)
+        .unwrap();
 
     (group, credential_with_key, signer)
 }
@@ -183,7 +175,6 @@ pub fn run_test_vector(
     use crate::{
         binary_tree::array_representation::TreeSize,
         extensions::Extensions,
-        group::config::CryptoConfig,
         messages::{proposals_in::ProposalIn, CommitIn, ConfirmationTag},
         prelude::KeyPackageBundle,
         prelude_test::{Mac, Secret},
@@ -239,7 +230,7 @@ pub fn run_test_vector(
         );
 
         // Set up the group, unfortunately we can't do without.
-        let credential = BasicCredential::new(b"This is not needed".to_vec()).unwrap();
+        let credential = BasicCredential::new(b"This is not needed".to_vec());
         let signature_private_key = hex_to_bytes(&test.signature_priv);
         let random_own_signature_key =
             SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
@@ -252,7 +243,7 @@ pub fn run_test_vector(
 
         let mut group = CoreGroup::builder(
             group_context.group_id().clone(),
-            CryptoConfig::with_default_version(ciphersuite),
+            ciphersuite,
             CredentialWithKey {
                 credential: credential.into(),
                 signature_key: random_own_signature_key.into(),
@@ -261,7 +252,7 @@ pub fn run_test_vector(
         .build(provider, &signer)
         .unwrap();
 
-        let credential = BasicCredential::new("Fake user".into()).unwrap();
+        let credential = BasicCredential::new("Fake user".into());
         let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
         let bob_key_package_bundle = KeyPackageBundle::new(
             provider,
@@ -303,11 +294,8 @@ pub fn run_test_vector(
 
         // Inject the test values into the group
 
-        let encryption_secret = EncryptionSecret::from_slice(
-            &hex_to_bytes(&test.encryption_secret),
-            group_context.protocol_version(),
-            ciphersuite,
-        );
+        let encryption_secret =
+            EncryptionSecret::from_slice(&hex_to_bytes(&test.encryption_secret));
         let own_index = LeafNodeIndex::new(0);
         let sender_index = LeafNodeIndex::new(1);
         let secret_tree = SecretTree::new(encryption_secret.clone(), TreeSize::new(2), own_index);
@@ -328,16 +316,9 @@ pub fn run_test_vector(
             message_secrets.replace_secret_tree(secret_tree);
         }
         message_secrets.set_serialized_context(serialized_group_context);
-        *message_secrets.sender_data_secret_mut() = SenderDataSecret::from_slice(
-            &hex_to_bytes(&test.sender_data_secret),
-            ProtocolVersion::Mls10,
-            ciphersuite,
-        );
-        message_secrets.set_membership_key(Secret::from_slice(
-            &hex_to_bytes(&test.membership_key),
-            ProtocolVersion::Mls10,
-            ciphersuite,
-        ));
+        *message_secrets.sender_data_secret_mut() =
+            SenderDataSecret::from_slice(&hex_to_bytes(&test.sender_data_secret));
+        message_secrets.set_membership_key(Secret::from_slice(&hex_to_bytes(&test.membership_key)));
 
         group
     }
@@ -463,6 +444,7 @@ pub fn run_test_vector(
         my_proposal_pub
             .set_membership_tag(
                 provider.crypto(),
+                ciphersuite,
                 sender_group.message_secrets().membership_key(),
                 sender_group.message_secrets().serialized_context(),
             )
@@ -618,6 +600,7 @@ pub fn run_test_vector(
         my_commit_pub_msg
             .set_membership_tag(
                 provider.crypto(),
+                ciphersuite,
                 sender_group.message_secrets().membership_key(),
                 sender_group.message_secrets().serialized_context(),
             )

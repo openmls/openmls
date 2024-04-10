@@ -1,9 +1,6 @@
 //! # Proposals
 //!
 //! This module defines all the different types of Proposals.
-//!
-//! To find out if a specific proposal type is supported,
-//! [`ProposalType::is_supported()`] can be used.
 
 use std::io::{Read, Write};
 
@@ -71,7 +68,7 @@ use crate::{
 /// | Value  | Name    | Recommended | Path Required | Reference | Notes                        |
 /// |:=======|:========|:============|:==============|:==========|:=============================|
 /// | 0x0008 | app_ack | Y           | Y             | RFC XXXX  | draft-ietf-mls-extensions-00 |
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Serialize, Deserialize, Hash)]
 #[allow(missing_docs)]
 pub enum ProposalType {
     Add,
@@ -82,7 +79,7 @@ pub enum ProposalType {
     ExternalInit,
     GroupContextExtensions,
     AppAck,
-    Unknown(u16),
+    Custom(u16),
 }
 
 impl Size for ProposalType {
@@ -124,21 +121,6 @@ impl DeserializeBytes for ProposalType {
 }
 
 impl ProposalType {
-    /// Check whether a proposal type is supported or not. Returns `true`
-    /// if a proposal is supported and `false` otherwise.
-    pub fn is_supported(&self) -> bool {
-        matches!(
-            self,
-            ProposalType::Add
-                | ProposalType::Update
-                | ProposalType::Remove
-                | ProposalType::PreSharedKey
-                | ProposalType::Reinit
-                | ProposalType::ExternalInit
-                | ProposalType::GroupContextExtensions
-        )
-    }
-
     /// Returns `true` if the proposal type requires a path and `false`
     pub fn is_path_required(&self) -> bool {
         matches!(
@@ -159,7 +141,7 @@ impl From<u16> for ProposalType {
             6 => ProposalType::ExternalInit,
             7 => ProposalType::GroupContextExtensions,
             8 => ProposalType::AppAck,
-            unknown => ProposalType::Unknown(unknown),
+            other => ProposalType::Custom(other),
         }
     }
 }
@@ -175,7 +157,7 @@ impl From<ProposalType> for u16 {
             ProposalType::ExternalInit => 6,
             ProposalType::GroupContextExtensions => 7,
             ProposalType::AppAck => 8,
-            ProposalType::Unknown(unknown) => unknown,
+            ProposalType::Custom(id) => id,
         }
     }
 }
@@ -200,29 +182,22 @@ impl From<ProposalType> for u16 {
 /// } Proposal;
 /// ```
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TlsSize, TlsSerialize)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 #[allow(missing_docs)]
 #[repr(u16)]
 pub enum Proposal {
-    #[tls_codec(discriminant = 1)]
     Add(AddProposal),
-    #[tls_codec(discriminant = 2)]
     Update(UpdateProposal),
-    #[tls_codec(discriminant = 3)]
     Remove(RemoveProposal),
-    #[tls_codec(discriminant = 4)]
     PreSharedKey(PreSharedKeyProposal),
-    #[tls_codec(discriminant = 5)]
     ReInit(ReInitProposal),
-    #[tls_codec(discriminant = 6)]
     ExternalInit(ExternalInitProposal),
-    #[tls_codec(discriminant = 7)]
     GroupContextExtensions(GroupContextExtensionProposal),
     // # Extensions
     // TODO(#916): `AppAck` is not in draft-ietf-mls-protocol-17 but
     //             was moved to `draft-ietf-mls-extensions-00`.
-    #[tls_codec(discriminant = 8)]
     AppAck(AppAckProposal),
+    Custom(CustomProposal),
 }
 
 impl Proposal {
@@ -237,6 +212,10 @@ impl Proposal {
             Proposal::ExternalInit(_) => ProposalType::ExternalInit,
             Proposal::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,
             Proposal::AppAck(_) => ProposalType::AppAck,
+            Proposal::Custom(CustomProposal {
+                proposal_type,
+                payload: _,
+            }) => ProposalType::Custom(proposal_type.to_owned()),
         }
     }
 
@@ -494,7 +473,6 @@ pub struct GroupContextExtensionProposal {
 
 impl GroupContextExtensionProposal {
     /// Create a new [`GroupContextExtensionProposal`].
-    #[cfg(test)]
     pub(crate) fn new(extensions: Extensions) -> Self {
         Self { extensions }
     }
@@ -635,6 +613,43 @@ pub(crate) struct MessageRange {
     last_generation: u32,
 }
 
+/// A custom proposal with semantics to be implemented by the application.
+#[derive(
+    Debug,
+    PartialEq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsSize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+)]
+pub struct CustomProposal {
+    proposal_type: u16,
+    payload: Vec<u8>,
+}
+
+impl CustomProposal {
+    /// Generate a new custom proposal.
+    pub fn new(proposal_type: u16, payload: Vec<u8>) -> Self {
+        Self {
+            proposal_type,
+            payload,
+        }
+    }
+
+    /// Returns the proposal type of this [`CustomProposal`].
+    pub fn proposal_type(&self) -> u16 {
+        self.proposal_type
+    }
+
+    /// Returns the payload of this [`CustomProposal`].
+    pub fn payload(&self) -> &[u8] {
+        &self.payload
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use tls_codec::{Deserialize, Serialize};
@@ -653,7 +668,7 @@ mod tests {
             let got = ProposalType::tls_deserialize_exact(&test).unwrap();
 
             match got {
-                ProposalType::Unknown(got_proposal_type) => {
+                ProposalType::Custom(got_proposal_type) => {
                     assert_eq!(proposal_type, got_proposal_type);
                 }
                 other => panic!("Expected `ProposalType::Unknown`, got `{:?}`.", other),

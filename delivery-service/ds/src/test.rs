@@ -1,17 +1,16 @@
 use super::*;
 use actix_web::{body::MessageBody, http::StatusCode, test, web, web::Bytes, App};
-use openmls::prelude::config::CryptoConfig;
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::types::SignatureScheme;
 use openmls_traits::OpenMlsProvider;
-use tls_codec::{TlsByteVecU8, TlsVecU16, VLBytes};
+use tls_codec::{TlsByteVecU8, TlsVecU16};
 
 fn generate_credential(
     identity: Vec<u8>,
     signature_scheme: SignatureScheme,
 ) -> (CredentialWithKey, SignatureKeyPair) {
-    let credential = BasicCredential::new(identity).unwrap();
+    let credential = BasicCredential::new(identity);
     let signature_keys = SignatureKeyPair::new(signature_scheme).unwrap();
     let credential_with_key = CredentialWithKey {
         credential: credential.into(),
@@ -30,15 +29,7 @@ fn generate_key_package(
 ) -> KeyPackage {
     KeyPackage::builder()
         .key_package_extensions(extensions)
-        .build(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
-            crypto_provider,
-            signer,
-            credential_with_key,
-        )
+        .build(ciphersuite, crypto_provider, signer, credential_with_key)
         .unwrap()
 }
 
@@ -79,10 +70,8 @@ async fn test_list_clients() {
     let crypto = &OpenMlsRustCrypto::default();
     let (credential_with_key, signer) =
         generate_credential(client_name.into(), SignatureScheme::from(ciphersuite));
-    let identity =
-        VLBytes::tls_deserialize_exact(credential_with_key.credential.serialized_content())
-            .unwrap();
-    let client_id = identity.as_slice().to_vec();
+    let identity = credential_with_key.credential.serialized_content();
+    let client_id = identity.to_vec();
     let client_key_package = generate_key_package(
         ciphersuite,
         credential_with_key.clone(),
@@ -215,10 +204,8 @@ async fn test_group() {
         let mut client_data = ClientInfo::new(vec![(client_key_packages.clone())]);
         key_packages.push(client_key_package);
 
-        let id =
-            VLBytes::tls_deserialize_exact(credential_with_key.credential.serialized_content())
-                .unwrap();
-        client_ids.push(id.as_slice().to_vec());
+        let id = credential_with_key.credential.serialized_content();
+        client_ids.push(id.to_vec());
         credentials_with_key.push(credential_with_key);
         signers.push(signer);
 
@@ -366,10 +353,15 @@ async fn test_group() {
     assert_eq!(welcome_msg, welcome_message.into());
     assert!(messages.is_empty());
 
+    let welcome = match welcome_msg.body() {
+        MlsMessageBodyOut::Welcome(welcome) => welcome,
+        other => panic!("expected a welcome message, got {:?}", other),
+    };
+
     let mut group_on_client2 = StagedWelcome::new_from_welcome(
         crypto,
         mls_group_create_config.join_config(),
-        welcome_msg.into(),
+        welcome.clone(),
         Some(group.export_ratchet_tree().into()), // delivered out of band
     )
     .expect("Error creating staged join from Welcome")

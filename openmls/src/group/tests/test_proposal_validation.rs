@@ -20,15 +20,19 @@ use crate::{
         mls_content::FramedContentBody, validation::ProcessedMessageContent, AuthenticatedContent,
         FramedContent, MlsMessageIn, MlsMessageOut, ProtocolMessage, PublicMessage, Sender,
     },
-    group::{config::CryptoConfig, *},
+    group::*,
     key_packages::{errors::*, *},
     messages::{
-        proposals::{AddProposal, Proposal, ProposalOrRef, RemoveProposal, UpdateProposal},
+        proposals::{
+            AddProposal, CustomProposal, Proposal, ProposalOrRef, ProposalType, RemoveProposal,
+            UpdateProposal,
+        },
         Commit, Welcome,
     },
-    prelude::MlsMessageBodyIn,
+    prelude::{Capabilities, MlsMessageBodyIn},
     schedule::PreSharedKeyId,
-    treesync::{errors::ApplyUpdatePathError, node::leaf_node::Capabilities},
+    test_utils::frankenstein::FrankenKeyPackage,
+    treesync::errors::ApplyUpdatePathError,
     versions::ProtocolVersion,
 };
 
@@ -62,7 +66,7 @@ fn create_group_with_members<KeyStore: OpenMlsKeyStore>(
         provider,
         &alice_credential_with_key_and_signer.signer,
         &MlsGroupCreateConfig::builder()
-            .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+            .ciphersuite(ciphersuite)
             .build(),
         GroupId::from_slice(b"Alice's Friends"),
         alice_credential_with_key_and_signer
@@ -108,7 +112,7 @@ fn new_test_group(
     // Define the MlsGroup configuration
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .wire_format_policy(wire_format_policy)
-        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .ciphersuite(ciphersuite)
         .build();
 
     (
@@ -159,10 +163,15 @@ fn validation_test_setup(
         .wire_format_policy(wire_format_policy)
         .build();
 
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome
+        .into_welcome()
+        .expect("expected message to be a welcome");
+
     let bob_group = StagedWelcome::new_from_welcome(
         provider,
         &mls_group_config,
-        welcome.into(),
+        welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
     .unwrap()
@@ -179,6 +188,7 @@ fn validation_test_setup(
 
 fn insert_proposal_and_resign(
     provider: &impl OpenMlsProvider,
+    ciphersuite: Ciphersuite,
     mut proposal_or_ref: Vec<ProposalOrRef>,
     mut plaintext: PublicMessage,
     original_plaintext: &PublicMessage,
@@ -201,6 +211,7 @@ fn insert_proposal_and_resign(
         original_plaintext,
         provider,
         signer,
+        ciphersuite,
     );
 
     let membership_key = committer_group.group().message_secrets().membership_key();
@@ -208,6 +219,7 @@ fn insert_proposal_and_resign(
     signed_plaintext
         .set_membership_tag(
             provider.crypto(),
+            ciphersuite,
             membership_key,
             committer_group
                 .group()
@@ -348,14 +360,11 @@ fn test_valsem101a(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // a different hpke key, different identity, but the same signature key.
     let dave_key_package = KeyPackage::builder()
         .build(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
+            ciphersuite,
             provider,
             &charlie_credential_with_key.signer,
             CredentialWithKey {
-                credential: BasicCredential::new(b"Dave".to_vec()).unwrap().into(),
+                credential: BasicCredential::new(b"Dave".to_vec()).into(),
                 signature_key: charlie_credential_with_key
                     .credential_with_key
                     .signature_key,
@@ -369,6 +378,7 @@ fn test_valsem101a(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     let verifiable_plaintext = insert_proposal_and_resign(
         provider,
+        ciphersuite,
         vec![ProposalOrRef::Proposal(second_add_proposal)],
         plaintext,
         &original_plaintext,
@@ -425,20 +435,14 @@ fn test_valsem102(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         match bob_and_charlie_share_keys {
             KeyUniqueness::NegativeSameKey => {
                 // Create a new key package for bob with the init key from Charlie.
-                bob_key_package = KeyPackage::new_from_init_key(
-                    CryptoConfig {
-                        ciphersuite,
-                        version: ProtocolVersion::default(),
-                    },
-                    provider,
-                    &bob_credential_with_key.signer,
-                    bob_credential_with_key.credential_with_key.clone(),
-                    Extensions::empty(),
-                    Capabilities::default(),
-                    Extensions::empty(),
-                    charlie_key_package.hpke_init_key().to_owned(),
-                )
-                .unwrap();
+                let mut franken_key_package = FrankenKeyPackage::from(bob_key_package);
+                franken_key_package.init_key = charlie_key_package
+                    .hpke_init_key()
+                    .as_slice()
+                    .to_owned()
+                    .into();
+                franken_key_package.resign(&bob_credential_with_key.signer);
+                bob_key_package = KeyPackage::from(franken_key_package);
             }
             KeyUniqueness::PositiveDifferentKey => {
                 // don't need to do anything since the keys are already
@@ -513,19 +517,22 @@ fn test_valsem102(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let (dave_credential_with_key_and_signer, mut dave_key_package) =
         generate_credential_with_key_and_key_package("Dave".into(), ciphersuite, provider);
     // Change the init key and re-sign.
-    dave_key_package.set_init_key(charlie_key_package.hpke_init_key().clone());
-    let dave_key_package = dave_key_package.resign(
-        &dave_credential_with_key_and_signer.signer,
-        dave_credential_with_key_and_signer
-            .credential_with_key
-            .clone(),
-    );
+    let mut franken_key_package = FrankenKeyPackage::from(dave_key_package);
+    franken_key_package.init_key = charlie_key_package
+        .hpke_init_key()
+        .as_slice()
+        .to_owned()
+        .into();
+    franken_key_package.resign(&dave_credential_with_key_and_signer.signer);
+    dave_key_package = KeyPackage::from(franken_key_package);
+
     let second_add_proposal = Proposal::Add(AddProposal {
         key_package: dave_key_package,
     });
 
     let verifiable_plaintext = insert_proposal_and_resign(
         provider,
+        ciphersuite,
         vec![ProposalOrRef::Proposal(second_add_proposal)],
         plaintext,
         &original_plaintext,
@@ -599,7 +606,7 @@ fn test_valsem101b(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             }
             .map(|(name, keypair)| CredentialWithKeyAndSigner {
                 credential_with_key: CredentialWithKey {
-                    credential: BasicCredential::new(name.into()).unwrap().into(),
+                    credential: BasicCredential::new(name.into()).into(),
                     signature_key: keypair.to_public_vec().into(),
                 },
                 signer: keypair,
@@ -623,7 +630,7 @@ fn test_valsem101b(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             provider,
             &alice_credential_with_key.signer,
             &MlsGroupCreateConfig::builder()
-                .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+                .ciphersuite(ciphersuite)
                 .build(),
             GroupId::from_slice(b"Alice's Friends"),
             alice_credential_with_key.credential_with_key.clone(),
@@ -667,10 +674,7 @@ fn test_valsem101b(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
                 let bob_index = alice_group
                     .members()
                     .find_map(|member| {
-                        let identity =
-                            VLBytes::tls_deserialize_exact(member.credential.serialized_content())
-                                .unwrap();
-                        if identity.as_slice() == b"Bob" {
+                        if member.credential.serialized_content() == b"Bob" {
                             Some(member.index)
                         } else {
                             None
@@ -737,10 +741,7 @@ fn test_valsem101b(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
         let dave_key_package = KeyPackage::builder()
             .build(
-                CryptoConfig {
-                    ciphersuite,
-                    version: ProtocolVersion::default(),
-                },
+                ciphersuite
                 provider,
                 &dave_credential_bundle,
             )
@@ -839,20 +840,10 @@ fn test_valsem103_valsem104(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
         match alice_and_bob_share_keys {
             KeyUniqueness::NegativeSameKey => {
                 // Create a new key package for bob using the encryption key as init key.
-                bob_key_package = bob_key_package
-                    .clone()
-                    .into_with_init_key(
-                        CryptoConfig::with_default_version(ciphersuite),
-                        &bob_credential_with_key.signer,
-                        InitKey::from(
-                            bob_key_package
-                                .leaf_node()
-                                .encryption_key()
-                                .as_slice()
-                                .to_vec(),
-                        ),
-                    )
-                    .unwrap();
+                let mut franken_key_package = FrankenKeyPackage::from(bob_key_package);
+                franken_key_package.init_key = franken_key_package.leaf_node.encryption_key.clone();
+                franken_key_package.resign(&bob_credential_with_key.signer);
+                bob_key_package = KeyPackage::from(franken_key_package);
             }
             KeyUniqueness::PositiveDifferentKey => {
                 // don't need to do anything since all keys are already
@@ -923,24 +914,14 @@ fn test_valsem103_valsem104(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
         .clone();
 
     // Generate fresh key material for Dave.
-    let (dave_credential_with_key, _) =
+    let (dave_credential_with_key, dave_key_package) =
         generate_credential_with_key_and_key_package("Dave".into(), ciphersuite, provider);
 
     // Insert Bob's public key into Dave's KPB and resign.
-    let dave_key_package = KeyPackage::new_from_encryption_key(
-        CryptoConfig {
-            ciphersuite,
-            version: ProtocolVersion::default(),
-        },
-        provider,
-        &dave_credential_with_key.signer,
-        dave_credential_with_key.credential_with_key.clone(),
-        Extensions::empty(),
-        Capabilities::default(),
-        Extensions::empty(),
-        bob_encryption_key,
-    )
-    .unwrap();
+    let mut franken_key_package = FrankenKeyPackage::from(dave_key_package);
+    franken_key_package.leaf_node.encryption_key = bob_encryption_key.as_slice().to_owned().into();
+    franken_key_package.resign(&dave_credential_with_key.signer);
+    let dave_key_package = KeyPackage::from(franken_key_package);
 
     // Use the resulting KP to create an Add proposal.
     let add_proposal = Proposal::Add(AddProposal {
@@ -951,6 +932,7 @@ fn test_valsem103_valsem104(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
     // encryption key.
     let verifiable_plaintext = insert_proposal_and_resign(
         provider,
+        ciphersuite,
         vec![ProposalOrRef::Proposal(add_proposal)],
         plaintext,
         &original_plaintext,
@@ -1049,8 +1031,10 @@ fn test_valsem105(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             ..
         } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, provider);
 
-        let (charlie_credential_with_key, mut charlie_key_package) =
+        let (charlie_credential_with_key, charlie_key_package) =
             generate_credential_with_key_and_key_package("Charlie".into(), ciphersuite, provider);
+
+        let mut franken_key_package = FrankenKeyPackage::from(charlie_key_package.clone());
 
         let kpi = KeyPackageIn::from(charlie_key_package.clone());
         kpi.validate(provider.crypto(), ProtocolVersion::Mls10)
@@ -1062,43 +1046,36 @@ fn test_valsem105(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
                 Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256
             }
             _ => Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
-        };
+        } as u16;
         match key_package_version {
             KeyPackageTestVersion::WrongCiphersuite => {
-                charlie_key_package.set_ciphersuite(wrong_ciphersuite)
+                franken_key_package.ciphersuite = wrong_ciphersuite;
             }
             KeyPackageTestVersion::WrongVersion => {
-                charlie_key_package.set_version(ProtocolVersion::Mls10Draft11);
+                franken_key_package.protocol_version = 999;
             }
             KeyPackageTestVersion::UnsupportedVersion => {
-                let mut new_leaf_node = charlie_key_package.leaf_node().clone();
-                new_leaf_node
-                    .capabilities_mut()
-                    .set_versions(vec![ProtocolVersion::Mls10Draft11]);
-                charlie_key_package.set_leaf_node(new_leaf_node);
+                franken_key_package.leaf_node.capabilities.versions = vec![999];
             }
             KeyPackageTestVersion::UnsupportedCiphersuite => {
-                let mut new_leaf_node = charlie_key_package.leaf_node().clone();
-                new_leaf_node.capabilities_mut().set_ciphersuites(vec![
-                    Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448.into(),
-                ]);
-                charlie_key_package.set_leaf_node(new_leaf_node);
+                franken_key_package.leaf_node.capabilities.ciphersuites =
+                    vec![Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448.into()];
             }
             KeyPackageTestVersion::ValidTestCase => (),
         };
 
-        let test_kp = charlie_key_package.resign(
-            &charlie_credential_with_key.signer,
-            charlie_credential_with_key.credential_with_key.clone(),
-        );
+        franken_key_package.resign(&charlie_credential_with_key.signer);
+        let test_kp = KeyPackage::from(franken_key_package);
 
         let test_kp_2 = {
-            let (charlie_credential_with_key, mut charlie_key_package) =
+            let (charlie_credential_with_key, charlie_key_package) =
                 generate_credential_with_key_and_key_package(
                     "Charlie".into(),
                     ciphersuite,
                     provider,
                 );
+
+            let mut franken_key_package = FrankenKeyPackage::from(charlie_key_package.clone());
 
             // Let's just pick a ciphersuite that's not the one we're testing right now.
             let wrong_ciphersuite = match ciphersuite {
@@ -1106,35 +1083,26 @@ fn test_valsem105(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
                     Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256
                 }
                 _ => Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
-            };
+            } as u16;
             match key_package_version {
                 KeyPackageTestVersion::WrongCiphersuite => {
-                    charlie_key_package.set_ciphersuite(wrong_ciphersuite)
+                    franken_key_package.ciphersuite = wrong_ciphersuite;
                 }
                 KeyPackageTestVersion::WrongVersion => {
-                    charlie_key_package.set_version(ProtocolVersion::Mls10Draft11);
+                    franken_key_package.protocol_version = 999;
                 }
                 KeyPackageTestVersion::UnsupportedVersion => {
-                    let mut new_leaf_node = charlie_key_package.leaf_node().clone();
-                    new_leaf_node
-                        .capabilities_mut()
-                        .set_versions(vec![ProtocolVersion::Mls10Draft11]);
-                    charlie_key_package.set_leaf_node(new_leaf_node);
+                    franken_key_package.leaf_node.capabilities.versions = vec![999];
                 }
                 KeyPackageTestVersion::UnsupportedCiphersuite => {
-                    let mut new_leaf_node = charlie_key_package.leaf_node().clone();
-                    new_leaf_node.capabilities_mut().set_ciphersuites(vec![
-                        Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448.into(),
-                    ]);
-                    charlie_key_package.set_leaf_node(new_leaf_node);
+                    franken_key_package.leaf_node.capabilities.ciphersuites =
+                        vec![Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448.into()];
                 }
                 KeyPackageTestVersion::ValidTestCase => (),
             };
 
-            charlie_key_package.resign(
-                &charlie_credential_with_key.signer,
-                charlie_credential_with_key.credential_with_key.clone(),
-            )
+            franken_key_package.resign(&charlie_credential_with_key.signer);
+            KeyPackage::from(franken_key_package)
         };
 
         // Try to have Alice commit an Add with the test KeyPackage.
@@ -1221,6 +1189,7 @@ fn test_valsem105(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             // Artificially add the proposal.
             let verifiable_plaintext = insert_proposal_and_resign(
                 provider,
+                ciphersuite,
                 vec![proposal_or_ref],
                 plaintext.clone(),
                 &original_plaintext,
@@ -1582,6 +1551,7 @@ fn test_valsem108(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // group.
     let verifiable_plaintext = insert_proposal_and_resign(
         provider,
+        ciphersuite,
         vec![ProposalOrRef::Proposal(remove_proposal)],
         plaintext,
         &original_plaintext,
@@ -1731,6 +1701,7 @@ fn test_valsem110(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // Artificially add the proposal.
     let verifiable_plaintext = insert_proposal_and_resign(
         provider,
+        ciphersuite,
         vec![ProposalOrRef::Proposal(update_proposal)],
         plaintext,
         &original_plaintext,
@@ -1837,6 +1808,7 @@ fn test_valsem111(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // Let's insert the proposal into the commit.
     let verifiable_plaintext = insert_proposal_and_resign(
         provider,
+        ciphersuite,
         vec![ProposalOrRef::Proposal(update_proposal.clone())],
         plaintext,
         &original_plaintext,
@@ -1894,6 +1866,7 @@ fn test_valsem111(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // Artificially add the proposal.
     let verifiable_plaintext = insert_proposal_and_resign(
         provider,
+        ciphersuite,
         vec![ProposalOrRef::Reference(
             ProposalRef::from_raw_proposal(ciphersuite, provider.crypto(), &update_proposal)
                 .expect("error creating hash reference"),
@@ -1997,6 +1970,154 @@ fn test_valsem112(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .expect("Unexpected error.");
 }
 
+/// ValSem113
+/// All Proposals: The proposal type must be supported by all members of the
+/// group
+#[apply(ciphersuites_and_providers)]
+fn valsem113(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+    #[derive(Debug)]
+    enum TestMode {
+        Unsupported,
+        Supported,
+    }
+
+    let custom_proposal_type = 0xFFFF;
+    let custom_proposal_payload = vec![0, 1, 2, 3];
+    let custom_proposal =
+        CustomProposal::new(custom_proposal_type, custom_proposal_payload.clone());
+
+    let capabilities_with_support = Capabilities::new(
+        None,
+        None,
+        None,
+        Some(&[ProposalType::Custom(custom_proposal_type)]),
+        None,
+    );
+
+    let mls_group_config = MlsGroupJoinConfig::default();
+
+    // Generate credentials with keys
+    let alice_credential_with_keys =
+        generate_credential_with_key(b"alice".into(), ciphersuite.signature_algorithm(), provider);
+
+    let bob_credential_with_keys =
+        generate_credential_with_key(b"bob".into(), ciphersuite.signature_algorithm(), provider);
+
+    for test_mode in [TestMode::Unsupported, TestMode::Supported] {
+        // Before we can test creation or reception of a commit with an
+        // (unsupported) custom proposal, we set up a new group with Alice and Bob.
+
+        // Generate Bob's KeyPackage depending on the test mode
+        let bob_key_package = if matches!(test_mode, TestMode::Unsupported) {
+            KeyPackageBuilder::new()
+        } else {
+            KeyPackageBuilder::new().leaf_node_capabilities(capabilities_with_support.clone())
+        }
+        .build(
+            ciphersuite,
+            provider,
+            &bob_credential_with_keys.signer,
+            bob_credential_with_keys.credential_with_key.clone(),
+        )
+        .unwrap();
+
+        // Create a group with the defined capabilities
+        let mut alice_group = if matches!(test_mode, TestMode::Unsupported) {
+            MlsGroup::builder()
+        } else {
+            MlsGroup::builder().with_capabilities(capabilities_with_support.clone())
+        }
+        .ciphersuite(ciphersuite)
+        .build(
+            provider,
+            &alice_credential_with_keys.signer,
+            alice_credential_with_keys.credential_with_key.clone(),
+        )
+        .unwrap();
+
+        // Add Bob
+        let (_mls_message, welcome, _group_info) = alice_group
+            .add_members(
+                provider,
+                &alice_credential_with_keys.signer,
+                &[bob_key_package],
+            )
+            .unwrap();
+
+        alice_group.merge_pending_commit(provider).unwrap();
+
+        let staged_welcome = StagedWelcome::new_from_welcome(
+            provider,
+            &mls_group_config,
+            welcome.into_welcome().unwrap(),
+            Some(alice_group.export_ratchet_tree().into()),
+        )
+        .unwrap();
+
+        let mut bob_group = staged_welcome.into_group(provider).unwrap();
+
+        // Have alice create a commit with a custom proposal.
+        let (custom_proposal_message, _proposal_ref) = alice_group
+            .propose_custom_proposal_by_reference(
+                provider,
+                &alice_credential_with_keys.signer,
+                custom_proposal.clone(),
+            )
+            .unwrap();
+
+        let result =
+            alice_group.commit_to_pending_proposals(provider, &alice_credential_with_keys.signer);
+
+        // If the proposal is unsupported, we expect an error here.
+        let (commit, _, _) = if matches!(test_mode, TestMode::Unsupported) {
+            assert_eq!(
+                result,
+                Err(CommitToPendingProposalsError::CreateCommitError(
+                    CreateCommitError::ProposalValidationError(
+                        ProposalValidationError::UnsupportedProposalType
+                    )
+                ))
+            );
+            continue;
+        } else {
+            result.expect("Error creating commit")
+        };
+
+        // Have bob process the custom proposal first.
+        let processed_message = bob_group
+            .process_message(
+                provider,
+                custom_proposal_message.into_protocol_message().unwrap(),
+            )
+            .unwrap();
+
+        if let ProcessedMessageContent::ProposalMessage(proposal) = processed_message.into_content()
+        {
+            bob_group.store_pending_proposal(*proposal);
+        } else {
+            panic!("Unexpected message type");
+        }
+
+        let result = bob_group.process_message(provider, commit.into_protocol_message().unwrap());
+
+        // If the proposal is unsupported, we expect an error here.
+        let _processed_message = if matches!(test_mode, TestMode::Unsupported) {
+            assert!(matches!(
+                result,
+                Err(ProcessMessageError::InvalidCommit(
+                    StageCommitError::ProposalValidationError(
+                        ProposalValidationError::UnsupportedProposalType
+                    )
+                ))
+            ));
+            continue;
+        } else {
+            // If the proposal is supported, we expect no error.
+            result.expect("Error processing commit")
+        };
+    }
+}
+
 // --- PreSharedKey Proposals ---
 
 #[apply(ciphersuites_and_providers)]
@@ -2092,10 +2213,10 @@ fn test_valsem401_valsem402(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
 
         for psk_id in psk_ids {
             psk_id
-                .write_to_key_store(&alice_provider, ciphersuite, b"irrelevant")
+                .write_to_key_store(&alice_provider, b"irrelevant")
                 .unwrap();
             psk_id
-                .write_to_key_store(&bob_provider, ciphersuite, b"irrelevant")
+                .write_to_key_store(&bob_provider, b"irrelevant")
                 .unwrap();
 
             let (psk_proposal, _) = alice_group

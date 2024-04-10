@@ -25,7 +25,6 @@ mod exporting;
 mod updates;
 
 use config::*;
-use errors::*;
 
 // Crate
 pub(crate) mod config;
@@ -309,6 +308,14 @@ impl MlsGroup {
         self.group.public_group().group_context().extensions()
     }
 
+    /// Returns the index of the sender of a staged, external commit.
+    pub fn ext_commit_sender_index(
+        &self,
+        commit: &StagedCommit,
+    ) -> Result<LeafNodeIndex, LibraryError> {
+        self.group.public_group().ext_commit_sender_index(commit)
+    }
+
     // === Load & save ===
 
     /// Loads the state from persisted state.
@@ -358,6 +365,7 @@ impl MlsGroup {
                 if plaintext.sender().is_member() {
                     plaintext.set_membership_tag(
                         provider.crypto(),
+                        self.ciphersuite(),
                         self.group.message_secrets().membership_key(),
                         self.group.message_secrets().serialized_context(),
                     )?;

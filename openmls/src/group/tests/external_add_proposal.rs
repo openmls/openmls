@@ -6,7 +6,7 @@ use rstest_reuse::{self, *};
 use crate::{
     binary_tree::LeafNodeIndex,
     framing::*,
-    group::{config::CryptoConfig, *},
+    group::*,
     messages::{
         external_proposals::*,
         proposals::{AddProposal, Proposal, ProposalType},
@@ -38,7 +38,7 @@ fn new_test_group(
     // Define the MlsGroup configuration
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .wire_format_policy(wire_format_policy)
-        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .ciphersuite(ciphersuite)
         .build();
 
     (
@@ -87,10 +87,15 @@ fn validation_test_setup(
         .wire_format_policy(wire_format_policy)
         .build();
 
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome
+        .into_welcome()
+        .expect("expected message to be a welcome");
+
     let bob_group = StagedWelcome::new_from_welcome(
         provider,
         &mls_group_config,
-        welcome.into(),
+        welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
     .expect("error creating group from welcome")
@@ -194,6 +199,11 @@ fn external_add_proposal_should_succeed(ciphersuite: Ciphersuite, provider: &imp
         }
         assert_eq!(bob_group.members().count(), 3);
 
+        let welcome: MlsMessageIn = welcome.expect("expected a welcome").into();
+        let welcome = welcome
+            .into_welcome()
+            .expect("expected message to be a welcome");
+
         // Finally, Charlie can join with the Welcome
         let mls_group_config = MlsGroupJoinConfig::builder()
             .wire_format_policy(policy)
@@ -201,7 +211,7 @@ fn external_add_proposal_should_succeed(ciphersuite: Ciphersuite, provider: &imp
         let charlie_group = StagedWelcome::new_from_welcome(
             provider,
             &mls_group_config,
-            welcome.unwrap().into(),
+            welcome,
             Some(alice_group.export_ratchet_tree().into()),
         )
         .unwrap()

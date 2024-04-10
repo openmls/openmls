@@ -21,7 +21,7 @@ use openmls::{
         WireFormatPolicy, PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     key_packages::KeyPackage,
-    prelude::{config::CryptoConfig, Capabilities, ExtensionType, SenderRatchetConfiguration},
+    prelude::{Capabilities, ExtensionType, SenderRatchetConfiguration},
     schedule::{psk::ResumptionPskUsage, ExternalPsk, PreSharedKeyId, Psk},
     treesync::{
         test_utils::{read_keys_from_key_store, write_keys_from_key_store},
@@ -222,7 +222,7 @@ impl MlsClient for MlsClientImpl {
         let provider = OpenMlsRustCrypto::default();
 
         let ciphersuite = Ciphersuite::try_from(request.cipher_suite as u16).unwrap();
-        let credential = BasicCredential::new(request.identity.clone()).unwrap();
+        let credential = BasicCredential::new(request.identity.clone());
         let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
         signature_keys.store(provider.key_store()).unwrap();
 
@@ -231,7 +231,7 @@ impl MlsClient for MlsClientImpl {
         //       There is nothing special about the used numbers and they
         //       can be increased (or decreased) depending on the available scenarios.
         let mls_group_config = MlsGroupCreateConfig::builder()
-            .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+            .ciphersuite(ciphersuite)
             .max_past_epochs(32)
             .number_of_resumption_psks(32)
             .sender_ratchet_configuration(SenderRatchetConfiguration::default())
@@ -287,12 +287,12 @@ impl MlsClient for MlsClientImpl {
             "Creating key package."
         );
 
-        let credential = BasicCredential::new(identity).unwrap();
+        let credential = BasicCredential::new(identity);
         let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
         let key_package = KeyPackage::builder()
             .leaf_node_capabilities(Capabilities::new(
-                Some(&[ProtocolVersion::Mls10, ProtocolVersion::Mls10Draft11]),
+                Some(&[ProtocolVersion::Mls10, ProtocolVersion::Other(999)]),
                 Some(&[
                     Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
                     Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
@@ -303,10 +303,7 @@ impl MlsClient for MlsClientImpl {
                 Some(&CREDENTIAL_TYPES),
             ))
             .build(
-                CryptoConfig {
-                    ciphersuite,
-                    version: ProtocolVersion::default(),
-                },
+                ciphersuite,
                 &crypto_provider,
                 &signature_keys,
                 CredentialWithKey {
@@ -427,7 +424,9 @@ impl MlsClient for MlsClientImpl {
             .map_err(into_status)?;
 
         let welcome = MlsMessageIn::tls_deserialize(&mut request.welcome.as_slice())
-            .map_err(|_| Status::aborted("failed to deserialize MlsMessage with a Welcome"))?;
+            .map_err(|_| Status::aborted("failed to deserialize MlsMessage with a Welcome"))?
+            .into_welcome()
+            .expect("expected a welcome");
 
         let ratchet_tree = ratchet_tree_from_config(request.ratchet_tree.clone());
 
@@ -499,7 +498,7 @@ impl MlsClient for MlsClientImpl {
             let ciphersuite = verifiable_group_info.ciphersuite();
 
             let (credential_with_key, signer) = {
-                let credential = BasicCredential::new(request.identity.to_vec()).unwrap();
+                let credential = BasicCredential::new(request.identity.to_vec());
 
                 let signature_keypair =
                     SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
@@ -729,7 +728,7 @@ impl MlsClient for MlsClientImpl {
             let psk_id = PreSharedKeyId::new(ciphersuite, crypto_provider.rand(), external_psk)
                 .map_err(|_| Status::internal("unable to create PreSharedKeyId from raw psk_id"))?;
             psk_id
-                .write_to_key_store(crypto_provider, ciphersuite, secret)
+                .write_to_key_store(crypto_provider, secret)
                 .map_err(|_| Status::new(Code::Internal, "unable to store PSK"))?;
             Ok(())
         }
@@ -880,7 +879,7 @@ impl MlsClient for MlsClientImpl {
         let request = request.get_ref();
         info!(?request, "Request");
 
-        let removed_credential = BasicCredential::new(request.removed_id.clone()).unwrap();
+        let removed_credential = BasicCredential::new(request.removed_id.clone());
         trace!("   for credential: {removed_credential:x?}");
 
         let mut groups = self.groups.lock().unwrap();
@@ -1007,8 +1006,7 @@ impl MlsClient for MlsClientImpl {
                         .map_err(|_| Status::internal("Unable to generate proposal by value"))?
                 }
                 "remove" => {
-                    let removed_credential =
-                        BasicCredential::new(proposal.removed_id.clone()).unwrap();
+                    let removed_credential = BasicCredential::new(proposal.removed_id.clone());
 
                     group
                         .propose_remove_member_by_credential_by_value(

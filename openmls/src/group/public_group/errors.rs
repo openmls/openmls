@@ -34,12 +34,6 @@ pub enum PublicGroupBuildError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    /// Unsupported proposal type in required capabilities.
-    #[error("Unsupported proposal type in required capabilities.")]
-    UnsupportedProposalType,
-    /// Unsupported extension type in required capabilities.
-    #[error("Unsupported extension type in required capabilities.")]
-    UnsupportedExtensionType,
     /// Invalid extensions set in configuration
     #[error("Invalid extensions set in configuration")]
     InvalidExtensions(#[from] InvalidExtensionError),

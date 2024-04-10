@@ -271,7 +271,7 @@ impl<'a> TreeSyncDiff<'a> {
         leaf_index: LeafNodeIndex,
     ) -> Result<PathDerivationResult, LibraryError> {
         let path_secret = PathSecret::from(
-            Secret::random(ciphersuite, provider.rand(), None)
+            Secret::random(ciphersuite, provider.rand())
                 .map_err(LibraryError::unexpected_crypto_error)?,
         );
 

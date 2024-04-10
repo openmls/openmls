@@ -121,6 +121,43 @@ impl PublicGroup {
 
     // === Proposals ===
 
+    /// Validate that all group members support the types of all proposals.
+    pub(crate) fn validate_proposal_type_support(
+        &self,
+        proposal_queue: &ProposalQueue,
+    ) -> Result<(), ProposalValidationError> {
+        let mut leaves = self.treesync().full_leaves();
+        let Some(first_leaf) = leaves.next() else {
+            return Ok(());
+        };
+        // Initialize the capabilities intersection with the capabilities of the
+        // first leaf node.
+        let mut capabilities_intersection = first_leaf
+            .capabilities()
+            .proposals()
+            .iter()
+            .collect::<HashSet<_>>();
+        // Iterate over the remaining leaf nodes and intersect their capabilities
+        for leaf_node in leaves {
+            let leaf_capabilities_set = leaf_node.capabilities().proposals().iter().collect();
+            capabilities_intersection = capabilities_intersection
+                .intersection(&leaf_capabilities_set)
+                .cloned()
+                .collect();
+        }
+
+        // Check that the types of all proposals are supported by all members
+        for proposal in proposal_queue.queued_proposals() {
+            let proposal_type = proposal.proposal().proposal_type();
+            if matches!(proposal_type, ProposalType::Custom(_))
+                && !capabilities_intersection.contains(&proposal_type)
+            {
+                return Err(ProposalValidationError::UnsupportedProposalType);
+            }
+        }
+        Ok(())
+    }
+
     /// Validate key uniqueness. This function implements the following checks:
     ///  - ValSem101: Add Proposal: Signature public key in proposals must be unique among proposals & members
     ///  - ValSem102: Add Proposal: Init key in proposals must be unique among proposals
@@ -477,7 +514,10 @@ impl PublicGroup {
             let is_inline = p.proposal_or_ref_type() == ProposalOrRefType::Proposal;
             let is_allowed_type = matches!(
                 p.proposal(),
-                Proposal::ExternalInit(_) | Proposal::Remove(_) | Proposal::PreSharedKey(_)
+                Proposal::ExternalInit(_)
+                    | Proposal::Remove(_)
+                    | Proposal::PreSharedKey(_)
+                    | Proposal::Custom(_)
             );
             is_inline && !is_allowed_type
         });

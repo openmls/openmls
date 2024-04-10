@@ -13,10 +13,8 @@ use crate::{
         hash_ref::KeyPackageRef, hpke, signable::Signable, AeadKey, AeadNonce, Mac, Secret,
     },
     extensions::Extensions,
-    framing::MlsMessageOut,
     group::{
-        config::CryptoConfig, errors::WelcomeError, GroupContext, GroupId, MlsGroup,
-        MlsGroupCreateConfig, StagedWelcome,
+        errors::WelcomeError, GroupContext, GroupId, MlsGroup, MlsGroupCreateConfig, StagedWelcome,
     },
     messages::{
         group_info::{GroupInfoTBS, VerifiableGroupInfo},
@@ -28,7 +26,6 @@ use crate::{
         KeySchedule,
     },
     treesync::node::encryption_keys::EncryptionKeyPair,
-    versions::ProtocolVersion,
 };
 
 /// This test detects if the decryption of the encrypted group secrets fails due to a change in
@@ -50,7 +47,7 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, provider: &impl OpenM
 
     let group_id = GroupId::random(provider.rand());
     let mls_group_create_config = MlsGroupCreateConfig::builder()
-        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .ciphersuite(ciphersuite)
         .build();
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_signature_key) =
@@ -97,8 +94,7 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, provider: &impl OpenM
     )
     .expect("Could not decrypt group secrets.");
     let group_secrets = GroupSecrets::tls_deserialize(&mut group_secrets_bytes.as_slice())
-        .expect("Could not deserialize group secrets.")
-        .config(ciphersuite, ProtocolVersion::Mls10);
+        .expect("Could not deserialize group secrets.");
     let joiner_secret = group_secrets.joiner_secret;
 
     // Prepare the PskSecret
@@ -117,9 +113,9 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, provider: &impl OpenM
 
     // Derive welcome key & nonce from the key schedule
     let (welcome_key, welcome_nonce) = key_schedule
-        .welcome(provider.crypto())
+        .welcome(provider.crypto(), ciphersuite)
         .expect("Using the key schedule in the wrong state")
-        .derive_welcome_key_nonce(provider.crypto())
+        .derive_welcome_key_nonce(provider.crypto(), ciphersuite)
         .expect("Could not derive welcome key and nonce.");
 
     let group_info_bytes = welcome_key
@@ -165,7 +161,7 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, provider: &impl OpenM
     let err = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
-        MlsMessageOut::from_welcome(welcome, ProtocolVersion::default()).into(),
+        welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
     .expect_err("Created a staged join from an invalid Welcome.");
@@ -198,7 +194,7 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, provider: &impl OpenM
     let _group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
-        MlsMessageOut::from_welcome(original_welcome, ProtocolVersion::default()).into(),
+        original_welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
     .expect("Error creating staged join from a valid Welcome.")
@@ -249,7 +245,7 @@ fn test_welcome_message(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
         .crypto()
         .derive_hpke_keypair(
             ciphersuite.hpke_config(),
-            Secret::random(ciphersuite, provider.rand(), None)
+            Secret::random(ciphersuite, provider.rand())
                 .expect("Not enough randomness.")
                 .as_slice(),
         )

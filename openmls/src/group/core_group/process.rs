@@ -25,6 +25,8 @@ impl CoreGroup {
     ///  - ValSem110
     ///  - ValSem111
     ///  - ValSem112
+    ///  - ValSem113: All Proposals: The proposal type must be supported by all
+    ///               members of the group
     ///  - ValSem200
     ///  - ValSem201
     ///  - ValSem202: Path must be the right length
@@ -68,6 +70,7 @@ impl CoreGroup {
                             provider.crypto(),
                             content,
                         )?);
+
                         if matches!(sender, Sender::NewMemberProposal) {
                             ProcessedMessageContent::ExternalJoinProposalMessage(proposal)
                         } else {
@@ -151,6 +154,8 @@ impl CoreGroup {
     ///  - ValSem110
     ///  - ValSem111
     ///  - ValSem112
+    ///  - ValSem113: All Proposals: The proposal type must be supported by all
+    ///               members of the group
     ///  - ValSem200
     ///  - ValSem201
     ///  - ValSem202: Path must be the right length
@@ -246,6 +251,7 @@ impl CoreGroup {
                     message_secrets,
                     message_secrets.serialized_context().to_vec(),
                     crypto,
+                    self.ciphersuite(),
                 )
             }
             ProtocolMessage::PrivateMessage(ciphertext) => {

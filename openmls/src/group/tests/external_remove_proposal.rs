@@ -1,14 +1,8 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use rstest::*;
 use rstest_reuse::{self, *};
-use tls_codec::Deserialize;
 
-use crate::{
-    credentials::BasicCredential,
-    framing::*,
-    group::{config::CryptoConfig, *},
-    messages::external_proposals::*,
-};
+use crate::{credentials::BasicCredential, framing::*, group::*, messages::external_proposals::*};
 
 use openmls_traits::types::Ciphersuite;
 
@@ -31,7 +25,7 @@ fn new_test_group(
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupCreateConfig::builder()
         .wire_format_policy(wire_format_policy)
-        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .ciphersuite(ciphersuite)
         .with_group_context_extensions(Extensions::single(Extension::ExternalSenders(
             external_senders,
         )))
@@ -129,7 +123,7 @@ fn external_remove_proposal_should_remove_member(
     let bob_index = alice_group
         .members()
         .find(|member| {
-            let credential = BasicCredential::try_from(&member.credential).unwrap();
+            let credential = BasicCredential::try_from(member.credential.clone()).unwrap();
             let identity = credential.identity();
             identity == b"Bob"
         })
@@ -236,11 +230,7 @@ fn external_remove_proposal_should_fail_when_invalid_external_senders_index(
     // get Bob's index
     let bob_index = alice_group
         .members()
-        .find(|member| {
-            let identity =
-                VLBytes::tls_deserialize_exact(member.credential.serialized_content()).unwrap();
-            identity.as_slice() == b"Bob"
-        })
+        .find(|member| member.credential.serialized_content() == b"Bob")
         .map(|member| member.index)
         .unwrap();
     // Now Delivery Service wants to (already) remove Bob with invalid sender index
@@ -303,11 +293,7 @@ fn external_remove_proposal_should_fail_when_invalid_signature(
     // get Bob's index
     let bob_index = alice_group
         .members()
-        .find(|member| {
-            let identity =
-                VLBytes::tls_deserialize_exact(member.credential.serialized_content()).unwrap();
-            identity.as_slice() == b"Bob"
-        })
+        .find(|member| member.credential.serialized_content() == b"Bob")
         .map(|member| member.index)
         .unwrap();
     // Now Delivery Service wants to (already) remove Bob with invalid sender index
@@ -354,11 +340,7 @@ fn external_remove_proposal_should_fail_when_no_external_senders(
     // get Bob's index
     let bob_index = alice_group
         .members()
-        .find(|member| {
-            let identity =
-                VLBytes::tls_deserialize_exact(member.credential.serialized_content()).unwrap();
-            identity.as_slice() == b"Bob"
-        })
+        .find(|member| member.credential.serialized_content() == b"Bob")
         .map(|member| member.index)
         .unwrap();
     // Now Delivery Service wants to remove Bob with invalid sender index but there's no extension

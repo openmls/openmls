@@ -3,12 +3,11 @@ mod utils;
 use js_sys::Uint8Array;
 use openmls::{
     credentials::{BasicCredential, CredentialWithKey},
-    framing::{MlsMessageIn, MlsMessageOut},
-    group::{config::CryptoConfig, GroupId, MlsGroup, MlsGroupJoinConfig, StagedWelcome},
+    framing::{MlsMessageBodyIn, MlsMessageIn, MlsMessageOut},
+    group::{GroupId, MlsGroup, MlsGroupJoinConfig, StagedWelcome},
     key_packages::KeyPackage as OpenMlsKeyPackage,
     prelude::SignatureScheme,
     treesync::RatchetTreeIn,
-    versions::ProtocolVersion,
 };
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
@@ -28,15 +27,6 @@ extern "C" {
 
 /// The ciphersuite used here. Fixed in order to reduce the binary size.
 static CIPHERSUITE: Ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519;
-
-/// The protocol version. We only support RFC MLS.
-static VERSION: ProtocolVersion = ProtocolVersion::Mls10;
-
-/// The config used in all calls that need a CryptoConfig, using hardcoded settings.
-static CRYPTO_CONFIG: CryptoConfig = CryptoConfig {
-    ciphersuite: CIPHERSUITE,
-    version: VERSION,
-};
 
 #[wasm_bindgen]
 #[derive(Default)]
@@ -73,7 +63,7 @@ impl Identity {
     pub fn new(provider: &Provider, name: &str) -> Result<Identity, JsError> {
         let signature_scheme = SignatureScheme::ED25519;
         let identity = name.bytes().collect();
-        let credential = BasicCredential::new(identity)?;
+        let credential = BasicCredential::new(identity);
         let keypair = SignatureKeyPair::new(signature_scheme)?;
 
         keypair.store(provider.0.key_store())?;
@@ -93,7 +83,7 @@ impl Identity {
         KeyPackage(
             OpenMlsKeyPackage::builder()
                 .build(
-                    CRYPTO_CONFIG,
+                    CIPHERSUITE,
                     &provider.0,
                     &self.keypair,
                     self.credential_with_key.clone(),
@@ -145,7 +135,7 @@ impl Group {
         let group_id_bytes = group_id.bytes().collect::<Vec<_>>();
 
         let mls_group = MlsGroup::builder()
-            .crypto_config(CRYPTO_CONFIG)
+            .ciphersuite(CIPHERSUITE)
             .with_group_id(GroupId::from_slice(&group_id_bytes))
             .build(
                 &provider.0,
@@ -161,7 +151,12 @@ impl Group {
         mut welcome: &[u8],
         ratchet_tree: RatchetTree,
     ) -> Result<Group, JsError> {
-        let welcome = MlsMessageIn::tls_deserialize(&mut welcome)?;
+        let welcome = match MlsMessageIn::tls_deserialize(&mut welcome)?.extract() {
+            MlsMessageBodyIn::Welcome(welcome) => Ok(welcome),
+            other => Err(openmls::error::ErrorString::from(format!(
+                "expected a message of type welcome, got {other:?}",
+            ))),
+        }?;
         let config = MlsGroupJoinConfig::builder().build();
         let mls_group =
             StagedWelcome::new_from_welcome(&provider.0, &config, welcome, Some(ratchet_tree.0))?
@@ -289,7 +284,10 @@ impl Group {
     }
 
     fn native_join(provider: &Provider, mut welcome: &[u8], ratchet_tree: RatchetTree) -> Group {
-        let welcome = MlsMessageIn::tls_deserialize(&mut welcome).unwrap();
+        let welcome = MlsMessageIn::tls_deserialize(&mut welcome)
+            .unwrap()
+            .into_welcome()
+            .expect("expected a message of type welcome");
         let config = MlsGroupJoinConfig::builder().build();
         let mls_group = StagedWelcome::new_from_welcome(
             provider.as_ref(),

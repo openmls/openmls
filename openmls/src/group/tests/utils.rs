@@ -6,7 +6,6 @@
 
 use std::{cell::RefCell, collections::HashMap};
 
-use config::CryptoConfig;
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::{
@@ -17,8 +16,7 @@ use tls_codec::Serialize;
 
 use crate::{
     ciphersuite::signable::Signable, credentials::*, framing::*, group::*, key_packages::*,
-    messages::ConfirmationTag, schedule::psk::store::ResumptionPskStore, test_utils::*,
-    versions::ProtocolVersion, *,
+    messages::ConfirmationTag, schedule::psk::store::ResumptionPskStore, test_utils::*, *,
 };
 
 /// Configuration of a client meant to be used in a test setup.
@@ -140,7 +138,7 @@ pub(crate) fn setup(config: TestSetupConfig, provider: &impl OpenMlsProvider) ->
         // Initialize the group state for the initial member.
         let core_group = CoreGroup::builder(
             GroupId::from_slice(&group_id.to_be_bytes()),
-            CryptoConfig::with_default_version(group_config.ciphersuite),
+            group_config.ciphersuite,
             credential_with_key_and_signer.credential_with_key.clone(),
         )
         .with_config(group_config.config)
@@ -335,7 +333,7 @@ pub(crate) fn generate_credential_with_key(
     provider: &impl OpenMlsProvider,
 ) -> CredentialWithKeyAndSigner {
     let (credential, signer) = {
-        let credential = BasicCredential::new(identity).unwrap();
+        let credential = BasicCredential::new(identity);
         let signature_keys = SignatureKeyPair::new(signature_scheme).unwrap();
         signature_keys.store(provider.key_store()).unwrap();
 
@@ -363,10 +361,7 @@ pub(crate) fn generate_key_package<KeyStore: OpenMlsKeyStore>(
     KeyPackage::builder()
         .key_package_extensions(extensions)
         .build(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
+            ciphersuite,
             provider,
             &credential_with_keys.signer,
             credential_with_keys.credential_with_key,
@@ -381,6 +376,7 @@ pub(crate) fn resign_message(
     original_plaintext: &PublicMessage,
     provider: &impl OpenMlsProvider,
     signer: &impl Signer,
+    ciphersuite: Ciphersuite,
 ) -> PublicMessage {
     let serialized_context = alice_group
         .export_group_context()
@@ -409,6 +405,7 @@ pub(crate) fn resign_message(
     signed_plaintext
         .set_membership_tag(
             provider.crypto(),
+            ciphersuite,
             membership_key,
             alice_group.group().message_secrets().serialized_context(),
         )

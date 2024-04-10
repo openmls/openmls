@@ -67,6 +67,7 @@ The following is a list of the individual semantic validation steps performed by
 | `ValSem110`    | Update Proposal: Encryption key must be unique among proposals & members                    | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem111`    | Update Proposal: The sender of a full Commit must not include own update proposals          | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem112`    | Update Proposal: The sender of a standalone update proposal must be of type member          | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
+| `ValSem113`    | All Proposals: The proposal type must be supported by all members of the group              | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
 
 ### Commit message validation
 

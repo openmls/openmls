@@ -63,7 +63,7 @@ use crate::{
     error::LibraryError,
     extensions::errors::InvalidExtensionError,
     framing::{mls_auth_content::AuthenticatedContent, *},
-    group::{config::CryptoConfig, *},
+    group::*,
     key_packages::*,
     messages::{
         group_info::{GroupInfo, GroupInfoTBS, VerifiableGroupInfo},
@@ -190,11 +190,10 @@ impl CoreGroupBuilder {
     /// Create a new [`CoreGroupBuilder`].
     pub(crate) fn new(
         group_id: GroupId,
-        crypto_config: CryptoConfig,
+        ciphersuite: Ciphersuite,
         credential_with_key: CredentialWithKey,
     ) -> Self {
-        let public_group_builder =
-            PublicGroup::builder(group_id, crypto_config, credential_with_key);
+        let public_group_builder = PublicGroup::builder(group_id, ciphersuite, credential_with_key);
         Self {
             config: None,
             psk_ids: vec![],
@@ -274,9 +273,8 @@ impl CoreGroupBuilder {
         let (public_group_builder, commit_secret, leaf_keypair) =
             self.public_group_builder.get_secrets(provider, signer)?;
 
-        let ciphersuite = public_group_builder.crypto_config().ciphersuite;
+        let ciphersuite = public_group_builder.group_context().ciphersuite();
         let config = self.config.unwrap_or_default();
-        let version = public_group_builder.crypto_config().version;
 
         let serialized_group_context = public_group_builder
             .group_context()
@@ -290,8 +288,9 @@ impl CoreGroupBuilder {
         // We use a random `InitSecret` for initialization.
         let joiner_secret = JoinerSecret::new(
             provider.crypto(),
+            ciphersuite,
             commit_secret,
-            &InitSecret::random(ciphersuite, provider.rand(), version)
+            &InitSecret::random(ciphersuite, provider.rand())
                 .map_err(LibraryError::unexpected_crypto_error)?,
             &serialized_group_context,
         )
@@ -314,7 +313,7 @@ impl CoreGroupBuilder {
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 
         let epoch_secrets = key_schedule
-            .epoch_secrets(provider.crypto())
+            .epoch_secrets(provider.crypto(), ciphersuite)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 
         let (group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
@@ -325,7 +324,7 @@ impl CoreGroupBuilder {
 
         let initial_confirmation_tag = message_secrets
             .confirmation_key()
-            .tag(provider.crypto(), &[])
+            .tag(provider.crypto(), ciphersuite, &[])
             .map_err(LibraryError::unexpected_crypto_error)?;
 
         let message_secrets_store =
@@ -357,10 +356,10 @@ impl CoreGroup {
     /// Get a builder for [`CoreGroup`].
     pub(crate) fn builder(
         group_id: GroupId,
-        crypto_config: CryptoConfig,
+        ciphersuite: Ciphersuite,
         credential_with_key: CredentialWithKey,
     ) -> CoreGroupBuilder {
-        CoreGroupBuilder::new(group_id, crypto_config, credential_with_key)
+        CoreGroupBuilder::new(group_id, ciphersuite, credential_with_key)
     }
 
     // === Create handshake messages ===
@@ -457,6 +456,22 @@ impl CoreGroup {
     ) -> Result<AuthenticatedContent, LibraryError> {
         let presharedkey_proposal = PreSharedKeyProposal::new(psk);
         let proposal = Proposal::PreSharedKey(presharedkey_proposal);
+        AuthenticatedContent::member_proposal(
+            framing_parameters,
+            self.own_leaf_index(),
+            proposal,
+            self.context(),
+            signer,
+        )
+    }
+
+    pub(crate) fn create_custom_proposal(
+        &self,
+        framing_parameters: FramingParameters,
+        custom_proposal: CustomProposal,
+        signer: &impl Signer,
+    ) -> Result<AuthenticatedContent, LibraryError> {
+        let proposal = Proposal::Custom(custom_proposal);
         AuthenticatedContent::member_proposal(
             framing_parameters,
             self.own_leaf_index(),
@@ -563,7 +578,11 @@ impl CoreGroup {
             extensions,
             self.message_secrets()
                 .confirmation_key()
-                .tag(crypto, self.context().confirmed_transcript_hash())
+                .tag(
+                    crypto,
+                    self.ciphersuite(),
+                    self.context().confirmed_transcript_hash(),
+                )
                 .map_err(LibraryError::unexpected_crypto_error)?,
             self.own_leaf_index(),
         );
@@ -784,6 +803,10 @@ impl CoreGroup {
 
         // Validate the proposals by doing the following checks:
 
+        // ValSem113: All Proposals: The proposal type must be supported by all
+        // members of the group
+        self.public_group
+            .validate_proposal_type_support(&proposal_queue)?;
         // ValSem101
         // ValSem102
         // ValSem103
@@ -880,6 +903,7 @@ impl CoreGroup {
 
         let joiner_secret = JoinerSecret::new(
             provider.crypto(),
+            ciphersuite,
             path_computation_result.commit_secret,
             self.group_epoch_secrets().init_secret(),
             &serialized_provisional_group_context,
@@ -907,13 +931,13 @@ impl CoreGroup {
             .map_err(LibraryError::missing_bound_check)?;
 
         let welcome_secret = key_schedule
-            .welcome(provider.crypto())
+            .welcome(provider.crypto(), self.ciphersuite())
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
         key_schedule
             .add_context(provider.crypto(), &serialized_provisional_group_context)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
         let provisional_epoch_secrets = key_schedule
-            .epoch_secrets(provider.crypto())
+            .epoch_secrets(provider.crypto(), self.ciphersuite())
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 
         // Calculate the confirmation tag
@@ -921,6 +945,7 @@ impl CoreGroup {
             .confirmation_key()
             .tag(
                 provider.crypto(),
+                self.ciphersuite(),
                 diff.group_context().confirmed_transcript_hash(),
             )
             .map_err(LibraryError::unexpected_crypto_error)?;
@@ -974,7 +999,7 @@ impl CoreGroup {
         let welcome_option = if !apply_proposals_values.invitation_list.is_empty() {
             // Encrypt GroupInfo object
             let (welcome_key, welcome_nonce) = welcome_secret
-                .derive_welcome_key_nonce(provider.crypto())
+                .derive_welcome_key_nonce(provider.crypto(), self.ciphersuite())
                 .map_err(LibraryError::unexpected_crypto_error)?;
             let encrypted_group_info = welcome_key
                 .aead_seal(
@@ -1038,11 +1063,8 @@ impl CoreGroup {
             group_info: group_info.filter(|_| self.use_ratchet_tree_extension),
         })
     }
-}
 
-// Test functions
-#[cfg(test)]
-impl CoreGroup {
+    /// Create a new group context extension proposal
     pub(crate) fn create_group_context_ext_proposal(
         &self,
         framing_parameters: FramingParameters,
@@ -1056,7 +1078,6 @@ impl CoreGroup {
         if let Some(required_extension) = required_extension {
             let required_capabilities = required_extension.as_required_capabilities_extension()?;
             // Ensure we support all the capabilities.
-            required_capabilities.check_support()?;
             self.own_leaf_node()?
                 .capabilities()
                 .supports_required_capabilities(required_capabilities)?;
@@ -1077,7 +1098,11 @@ impl CoreGroup {
         )
         .map_err(|e| e.into())
     }
+}
 
+// Test functions
+#[cfg(test)]
+impl CoreGroup {
     pub(crate) fn use_ratchet_tree_extension(&self) -> bool {
         self.use_ratchet_tree_extension
     }
