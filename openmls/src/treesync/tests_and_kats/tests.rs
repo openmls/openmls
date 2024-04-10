@@ -1,5 +1,3 @@
-use openmls_rust_crypto::OpenMlsRustCrypto;
-
 use crate::{
     group::{
         tests::utils::{generate_credential_with_key, CredentialWithKeyAndSigner},

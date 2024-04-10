@@ -1,4 +1,4 @@
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Serialize};
 
 pub trait Types<const VERSION: usize> {
     type QueuedProposal: QueuedProposalEntity<VERSION>;
@@ -10,8 +10,6 @@ pub trait Storage<const VERSION: usize> {
     // source for errors
     type GetErrorSource: core::fmt::Debug;
     type UpdateErrorSource: core::fmt::Debug;
-
-    // types for this version
     type Types: Types<VERSION>;
 
     // update functions, single and batched

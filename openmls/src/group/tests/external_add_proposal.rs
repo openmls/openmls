@@ -1,5 +1,4 @@
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_rust_crypto::OpenMlsRustCrypto;
 use rstest::*;
 use rstest_reuse::{self, *};
 

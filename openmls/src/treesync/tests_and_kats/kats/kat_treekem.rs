@@ -2,7 +2,6 @@ use std::collections::HashSet;
 
 use log::{debug, trace};
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsProvider};
 use serde::{Deserialize, Serialize};
 use tls_codec::{Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait};
@@ -14,7 +13,7 @@ use crate::{
     messages::PathSecret,
     prelude_test::Secret,
     schedule::CommitSecret,
-    test_utils::hex_to_bytes,
+    test_utils::{hex_to_bytes, OpenMlsRustCrypto},
     treesync::{
         node::encryption_keys::EncryptionKeyPair,
         treekem::{DecryptPathParams, UpdatePath, UpdatePathIn},

@@ -2,7 +2,6 @@
 
 use super::utils::{generate_credential_with_key, generate_key_package};
 use crate::{framing::*, group::*, test_utils::*, *};
-use openmls_rust_crypto::OpenMlsRustCrypto;
 
 // Tests the different variants of the RemoveOperation enum.
 #[apply(ciphersuites)]

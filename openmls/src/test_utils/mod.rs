@@ -212,9 +212,10 @@ pub(crate) fn generate_group_candidate(
 // === Define provider per platform ===
 
 // This provider is currently used on all platforms
+use crate::storage::OpenMlsTypes;
 #[cfg(feature = "libcrux-provider")]
-pub use openmls_libcrux_crypto::Provider as OpenMlsLibcrux;
-pub use openmls_rust_crypto::OpenMlsRustCrypto;
+pub type OpenMlsLibcrux = openmls_libcrux_crypto::Provider<OpenMlsTypes>;
+pub type OpenMlsRustCrypto = openmls_rust_crypto::OpenMlsRustCrypto<OpenMlsTypes>;
 
 // === providers ===
 
@@ -260,9 +261,9 @@ pub fn ciphersuites(ciphersuite: Ciphersuite) {}
 #[template]
 #[export]
 #[cfg_attr(feature = "libcrux-provider", rstest(ciphersuite, provider,
-    case::rust_crypto_MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519, &OpenMlsRustCrypto::default()),
-    case::rust_crypto_MLS_128_DHKEMP256_AES128GCM_SHA256_P256(Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256, &OpenMlsRustCrypto::default()),
-    case::rust_crypto_MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519, &OpenMlsRustCrypto::default()),
+    case::rust_crypto_MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519, &$crate::test_utils::OpenMlsRustCrypto::default()),
+    case::rust_crypto_MLS_128_DHKEMP256_AES128GCM_SHA256_P256(Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256, &$crate::test_utils::OpenMlsRustCrypto::default()),
+    case::rust_crypto_MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519, &$crate::test_utils::OpenMlsRustCrypto::default()),
     case::libcrux_MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519, &$crate::test_utils::OpenMlsLibcrux::default()),
     case::libcrux_MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519, &$crate::test_utils::OpenMlsLibcrux::default()),
     case::libcrux_MLS_128_DHKEMP256_AES128GCM_SHA256_P256(Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256, &$crate::test_utils::OpenMlsLibcrux::default()),
@@ -270,9 +271,9 @@ pub fn ciphersuites(ciphersuite: Ciphersuite) {}
   )
 )]
 #[cfg_attr(not(feature = "libcrux-provider"),rstest(ciphersuite, provider,
-    case::rust_crypto_MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519, &OpenMlsRustCrypto::default()),
-    case::rust_crypto_MLS_128_DHKEMP256_AES128GCM_SHA256_P256(Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256, &OpenMlsRustCrypto::default()),
-    case::rust_crypto_MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519, &OpenMlsRustCrypto::default()),
+    case::rust_crypto_MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519, &$crate::test_utils::OpenMlsRustCrypto::default()),
+    case::rust_crypto_MLS_128_DHKEMP256_AES128GCM_SHA256_P256(Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256, &$crate::test_utils::OpenMlsRustCrypto::default()),
+    case::rust_crypto_MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519, &$crate::test_utils::OpenMlsRustCrypto::default()),
   )
 )]
 #[allow(non_snake_case)]

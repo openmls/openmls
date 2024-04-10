@@ -19,7 +19,7 @@
 //!     from the key schedule epoch and the `confirmed_transcript_hash` from the
 //!     decrypted GroupContext
 
-use openmls_rust_crypto::OpenMlsRustCrypto;
+use crate::test_utils::OpenMlsRustCrypto;
 use openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, OpenMlsProvider};
 use serde::{self, Deserialize, Serialize};
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize};

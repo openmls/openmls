@@ -62,7 +62,6 @@
 //!     * When protecting the Commit message, add the supplied confirmation tag
 
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{types::SignatureScheme, OpenMlsProvider};
 use serde::{self, Deserialize, Serialize};
 

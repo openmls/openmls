@@ -6,7 +6,6 @@
 //! If values are not present, they are encoded as empty strings.
 
 use log::info;
-use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{random::OpenMlsRand, types::HpkeKeyPair, OpenMlsProvider};
 use serde::{self, Deserialize, Serialize};
 use tls_codec::Serialize as TlsSerializeTrait;

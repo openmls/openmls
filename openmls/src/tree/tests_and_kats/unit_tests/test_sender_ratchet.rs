@@ -1,5 +1,3 @@
-use openmls_rust_crypto::OpenMlsRustCrypto;
-
 use crate::{
     ciphersuite::Secret, test_utils::*, tree::secret_tree::SecretTreeError, tree::sender_ratchet::*,
 };

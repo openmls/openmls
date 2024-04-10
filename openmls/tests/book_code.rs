@@ -4,15 +4,12 @@ use openmls::{
     *,
 };
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{signatures::Signer, types::SignatureScheme, OpenMlsProvider};
 
 #[test]
 fn create_provider_rust_crypto() {
     // ANCHOR: create_provider_rust_crypto
-    use openmls_rust_crypto::OpenMlsRustCrypto;
-
-    let provider = OpenMlsRustCrypto::default();
+    let provider: OpenMlsRustCrypto = OpenMlsRustCrypto::default();
     // ANCHOR_END: create_provider_rust_crypto
 
     // Suppress warning.

@@ -81,7 +81,6 @@
 
 use itertools::izip;
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{signatures::Signer, types::SignatureScheme, OpenMlsProvider};
 use serde::{self, Deserialize, Serialize};
 use thiserror::Error;

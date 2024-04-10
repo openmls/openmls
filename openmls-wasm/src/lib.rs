@@ -7,6 +7,7 @@ use openmls::{
     group::{GroupId, MlsGroup, MlsGroupJoinConfig, StagedWelcome},
     key_packages::KeyPackage as OpenMlsKeyPackage,
     prelude::SignatureScheme,
+    storage::OpenMlsTypes,
     treesync::RatchetTreeIn,
 };
 use openmls_basic_credential::SignatureKeyPair;
@@ -30,10 +31,10 @@ static CIPHERSUITE: Ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1
 
 #[wasm_bindgen]
 #[derive(Default)]
-pub struct Provider(OpenMlsRustCrypto);
+pub struct Provider(OpenMlsRustCrypto<OpenMlsTypes>);
 
-impl AsRef<OpenMlsRustCrypto> for Provider {
-    fn as_ref(&self) -> &OpenMlsRustCrypto {
+impl AsRef<OpenMlsRustCrypto<OpenMlsTypes>> for Provider {
+    fn as_ref(&self) -> &OpenMlsRustCrypto<OpenMlsTypes> {
         &self.0
     }
 }

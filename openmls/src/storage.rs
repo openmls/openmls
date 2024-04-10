@@ -1,4 +1,5 @@
-struct OpenMlsTypes;
+#[derive(Debug, Clone, Default)]
+pub struct OpenMlsTypes;
 
 use openmls_traits::storage::*;
 

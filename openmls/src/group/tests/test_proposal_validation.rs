@@ -1,7 +1,7 @@
 //! This module tests the validation of proposals as defined in
 //! https://openmls.tech/book/message_validation.html#semantic-validation-of-proposals-covered-by-a-commit
 
-use openmls_rust_crypto::OpenMlsRustCrypto;
+use crate::test_utils::OpenMlsRustCrypto;
 use openmls_traits::{
     key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite, OpenMlsProvider,
 };

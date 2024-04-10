@@ -36,7 +36,7 @@ mod kv_store {
 pub mod mem_kv_store {
     pub use super::kv_store::*;
 
-    #[derive(Default)]
+    #[derive(Debug, Clone, Default)]
     pub struct HashMapKv(std::collections::HashMap<Vec<u8>, Vec<u8>>);
 
     impl KvStore for HashMapKv {
@@ -75,7 +75,8 @@ use openmls_traits::storage::*;
 
 const V1: usize = 1;
 
-struct KvStoreStorage<KvStore: kv_store::KvStore, Types: TypesTrait<V1>>(KvStore, Types);
+#[derive(Debug, Clone, Default)]
+pub struct KvStoreStorage<KvStore: kv_store::KvStore, Ts: Types<V1>>(KvStore, Ts);
 
 #[derive(Debug)]
 pub enum KvStorageGetError<InternalError> {
@@ -128,7 +129,6 @@ impl<'a, Types: TypesTrait<V1>> Key<'a, Types> {
     }
 }
 
-// TODO: move version into generics
 impl<KvStore: kv_store::KvStore, Types: TypesTrait<V1>> Storage<V1>
     for KvStoreStorage<KvStore, Types>
 {
@@ -138,7 +138,7 @@ impl<KvStore: kv_store::KvStore, Types: TypesTrait<V1>> Storage<V1>
 
     fn apply_update(
         &mut self,
-        update: Update<V1, Self::Types>,
+        update: Update<V1, Types>,
     ) -> Result<(), UpdateError<Self::UpdateErrorSource>> {
         match update {
             Update::QueueProposal(group_id, proposal_ref, queued_proposal) => {
@@ -161,33 +161,34 @@ impl<KvStore: kv_store::KvStore, Types: TypesTrait<V1>> Storage<V1>
                         source: KvStorageUpdateError::ValueEncodeError(e),
                     })?;
 
-                let mut proposal_refs: Vec<_> = match self.get_queued_proposal_refs(&group_id) {
-                    Ok(proposal_refs) => proposal_refs,
-                    Err(GetError {
-                        kind: GetErrorKind::NotFound,
-                        ..
-                    }) => {
-                        vec![]
-                    }
-                    Err(GetError { kind, source }) => {
-                        let kind = match kind {
-                            GetErrorKind::NotFound => unreachable!(),
-                            GetErrorKind::Encoding => UpdateErrorKind::Encoding,
-                            GetErrorKind::Internal => UpdateErrorKind::Internal,
-                        };
-                        let source = match source {
-                            KvStorageGetError::KeyEncodeError(e) => {
-                                KvStorageUpdateError::KeyEncodeError(e)
-                            }
-                            KvStorageGetError::ValueDecodeError(e) => {
-                                KvStorageUpdateError::ValueDecodeError(e)
-                            }
-                            e => KvStorageUpdateError::GetError(e),
-                        };
+                let mut proposal_refs: Vec<_> =
+                    match Storage::get_queued_proposal_refs(self, &group_id) {
+                        Ok(proposal_refs) => proposal_refs,
+                        Err(GetError {
+                            kind: GetErrorKind::NotFound,
+                            ..
+                        }) => {
+                            vec![]
+                        }
+                        Err(GetError { kind, source }) => {
+                            let kind = match kind {
+                                GetErrorKind::NotFound => unreachable!(),
+                                GetErrorKind::Encoding => UpdateErrorKind::Encoding,
+                                GetErrorKind::Internal => UpdateErrorKind::Internal,
+                            };
+                            let source = match source {
+                                KvStorageGetError::KeyEncodeError(e) => {
+                                    KvStorageUpdateError::KeyEncodeError(e)
+                                }
+                                KvStorageGetError::ValueDecodeError(e) => {
+                                    KvStorageUpdateError::ValueDecodeError(e)
+                                }
+                                e => KvStorageUpdateError::GetError(e),
+                            };
 
-                        return Err(UpdateError { kind, source });
-                    }
-                };
+                            return Err(UpdateError { kind, source });
+                        }
+                    };
 
                 proposal_refs.push(proposal_ref);
 
@@ -216,7 +217,7 @@ impl<KvStore: kv_store::KvStore, Types: TypesTrait<V1>> Storage<V1>
 
     fn apply_updates(
         &mut self,
-        updates: Vec<Update<V1, Self::Types>>,
+        updates: Vec<Update<V1, Types>>,
     ) -> Result<(), UpdateError<Self::UpdateErrorSource>> {
         for update in updates {
             self.apply_update(update)?
@@ -229,7 +230,7 @@ impl<KvStore: kv_store::KvStore, Types: TypesTrait<V1>> Storage<V1>
         &self,
         group_id: &Types::GroupId,
     ) -> Result<Vec<Types::QueuedProposal>, GetError<Self::GetErrorSource>> {
-        self.get_queued_proposal_refs(group_id)?
+        Storage::get_queued_proposal_refs(self, group_id)?
             .into_iter()
             .map(|proposal_ref| {
                 let proposal_key = Key::<Types>::QueuedProposal(group_id, &proposal_ref)

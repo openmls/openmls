@@ -21,6 +21,7 @@
 //! can be manipulated manually via the `Client` struct, which contains their
 //! group states.
 
+use crate::test_utils::OpenMlsRustCrypto;
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::{hash_ref::KeyPackageRef, *},
@@ -33,7 +34,6 @@ use crate::{
 };
 use ::rand::{rngs::OsRng, RngCore};
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     key_store::OpenMlsKeyStore,

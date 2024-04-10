@@ -1,4 +1,3 @@
-use openmls_rust_crypto::OpenMlsRustCrypto;
 use rstest::*;
 use rstest_reuse::{self, *};
 

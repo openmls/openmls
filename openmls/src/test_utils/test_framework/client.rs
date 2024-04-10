@@ -4,13 +4,14 @@
 use std::{collections::HashMap, sync::RwLock};
 
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
     key_store::OpenMlsKeyStore,
     types::{Ciphersuite, HpkeKeyPair, SignatureScheme},
     OpenMlsProvider,
 };
 use tls_codec::{Deserialize, Serialize};
+
+use super::OpenMlsRustCrypto;
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
