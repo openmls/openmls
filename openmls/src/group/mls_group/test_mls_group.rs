@@ -1113,7 +1113,7 @@ fn remove_prosposal_by_ref(ciphersuite: Ciphersuite, provider: &impl OpenMlsProv
         _ => unreachable!("Expected a StagedCommit."),
     }
 }
-//
+
 // Test that the builder pattern accurately configures the new group.
 #[apply(ciphersuites_and_providers)]
 fn group_context_extensions_proposal(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
