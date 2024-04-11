@@ -22,8 +22,6 @@ pub trait OpenMlsProvider {
 
     // Get the storage provider.
     fn storage(&self) -> &Self::StorageProvider;
-    // Get the storage provider.
-    fn storage_mut(&mut self) -> &mut Self::StorageProvider;
 
     /// Get the crypto provider.
     fn crypto(&self) -> &Self::CryptoProvider;

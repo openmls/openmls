@@ -70,7 +70,7 @@ macro_rules! impl_propose_fun {
             Storage: StorageProvider<1, Types = OpenMlsTypes>,
         >(
             &mut self,
-            provider: &mut impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
+            provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
             signer: &impl Signer,
             value: $value_ty,
         ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<KeyStore::Error>> {
@@ -94,7 +94,7 @@ macro_rules! impl_propose_fun {
                 proposal_ref.clone(),
                 queued_proposal,
             );
-            provider.storage_mut().apply_update(update);
+            provider.storage().apply_update(update);
 
             let mls_message = self.content_to_mls_message(proposal, provider)?;
 
@@ -152,7 +152,7 @@ impl MlsGroup {
     /// Generate a proposal
     pub fn propose<KeyStore: OpenMlsKeyStore, Storage: StorageProvider<1, Types = OpenMlsTypes>>(
         &mut self,
-        provider: &mut impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
         signer: &impl Signer,
         propose: Propose,
         ref_or_value: ProposalOrRefType,
@@ -337,7 +337,7 @@ impl MlsGroup {
         Storage: StorageProvider<1, Types = OpenMlsTypes>,
     >(
         &mut self,
-        provider: &mut impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
         signer: &impl Signer,
         member: &Credential,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<KeyStore::Error>> {

@@ -4,6 +4,7 @@ pub trait Types<const VERSION: usize> {
     type QueuedProposal: QueuedProposalEntity<VERSION>;
     type GroupId: GroupIdKey<VERSION>;
     type ProposalRef: ProposalRefKey<VERSION> + ProposalRefEntity<VERSION>;
+    type TreeSync: TreeSyncEntity<VERSION>;
 }
 
 pub trait StorageProvider<const VERSION: usize> {
@@ -14,11 +15,11 @@ pub trait StorageProvider<const VERSION: usize> {
 
     // update functions, single and batched
     fn apply_update(
-        &mut self,
+        &self,
         update: Update<VERSION, Self::Types>,
     ) -> Result<(), UpdateError<Self::UpdateErrorSource>>;
     fn apply_updates(
-        &mut self,
+        &self,
         update: Vec<Update<VERSION, Self::Types>>,
     ) -> Result<(), UpdateError<Self::UpdateErrorSource>>;
 
@@ -32,11 +33,17 @@ pub trait StorageProvider<const VERSION: usize> {
         &self,
         group_id: &<Self::Types as Types<VERSION>>::GroupId,
     ) -> Result<Vec<<Self::Types as Types<VERSION>>::QueuedProposal>, GetError<Self::GetErrorSource>>;
+
+    fn get_treesync(
+        &self,
+        group_id: &<Self::Types as Types<VERSION>>::GroupId,
+    ) -> Result<<Self::Types as Types<VERSION>>::TreeSync, GetError<Self::GetErrorSource>>;
 }
 
 // contains the different types of updates
 pub enum Update<const VERSION: usize, T: Types<VERSION>> {
     QueueProposal(T::GroupId, T::ProposalRef, T::QueuedProposal),
+    WriteTreeSync(T::GroupId, T::TreeSync),
 }
 
 // base traits for keys and values
@@ -50,12 +57,14 @@ pub trait ProposalRefKey<const VERSION: usize>: Key<VERSION> {}
 // traits for entity, one per type
 pub trait QueuedProposalEntity<const VERSION: usize>: Entity<VERSION> {}
 pub trait ProposalRefEntity<const VERSION: usize>: Entity<VERSION> {}
+pub trait TreeSyncEntity<const VERSION: usize>: Entity<VERSION> {}
 
 // errors
 pub enum GetErrorKind {
     NotFound,
     Encoding,
     Internal,
+    LockPoisoned,
 }
 
 pub struct GetError<E> {
@@ -66,6 +75,7 @@ pub struct GetError<E> {
 pub enum UpdateErrorKind {
     Encoding,
     Internal,
+    LockPoisoned,
 }
 
 pub struct UpdateError<E> {

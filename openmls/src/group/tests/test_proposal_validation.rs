@@ -1979,7 +1979,7 @@ use openmls_traits::storage::StorageProvider;
 #[apply(ciphersuites_and_providers)]
 fn valsem113<Storage: StorageProvider<1, Types = OpenMlsTypes>>(
     ciphersuite: Ciphersuite,
-    provider: &mut impl OpenMlsProvider<StorageProvider = Storage>,
+    provider: &impl OpenMlsProvider<StorageProvider = Storage>,
 ) {
     #[derive(Debug)]
     enum TestMode {
@@ -2129,7 +2129,7 @@ fn valsem113<Storage: StorageProvider<1, Types = OpenMlsTypes>>(
 #[apply(ciphersuites_and_providers)]
 fn test_valsem401_valsem402<Storage: StorageProvider<1, Types = OpenMlsTypes>>(
     ciphersuite: Ciphersuite,
-    provider: &mut impl OpenMlsProvider<StorageProvider = Storage>,
+    provider: &impl OpenMlsProvider<StorageProvider = Storage>,
 ) {
     let ProposalValidationTestSetup {
         mut alice_group,

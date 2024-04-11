@@ -280,6 +280,6 @@ pub fn ciphersuites(ciphersuite: Ciphersuite) {}
 #[cfg_attr(target_arch = "wasm32", openmls::wasm::test)]
 pub fn ciphersuites_and_providers<Storage: StorageProvider<Types = OpenMlsTypes>>(
     ciphersuite: Ciphersuite,
-    provider: &mut impl OpenMlsProvider<StorageProvider = Storage>,
+    provider: &impl OpenMlsProvider<StorageProvider = Storage>,
 ) {
 }

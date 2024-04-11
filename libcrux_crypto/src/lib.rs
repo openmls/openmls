@@ -26,10 +26,6 @@ impl<Types: openmls_traits::storage::Types<1>> OpenMlsProvider for Provider<Type
 
     type StorageProvider = KvStoreStorage<HashMapKv, Types>;
 
-    fn storage_mut(&mut self) -> &mut Self::StorageProvider {
-        &mut self.storage
-    }
-
     fn storage(&self) -> &Self::StorageProvider {
         &self.storage
     }

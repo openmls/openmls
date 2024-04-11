@@ -39,6 +39,12 @@ impl AsRef<OpenMlsRustCrypto<OpenMlsTypes>> for Provider {
     }
 }
 
+impl AsMut<OpenMlsRustCrypto<OpenMlsTypes>> for Provider {
+    fn as_mut(&mut self) -> &mut OpenMlsRustCrypto<OpenMlsTypes> {
+        &mut self.0
+    }
+}
+
 #[wasm_bindgen]
 impl Provider {
     #[wasm_bindgen(constructor)]
@@ -197,15 +203,15 @@ impl Group {
         })
     }
 
-    pub fn merge_pending_commit(&mut self, provider: &Provider) -> Result<(), JsError> {
+    pub fn merge_pending_commit(&mut self, provider: &mut Provider) -> Result<(), JsError> {
         self.mls_group
-            .merge_pending_commit(provider.as_ref())
+            .merge_pending_commit(provider.as_mut())
             .map_err(|e| e.into())
     }
 
     pub fn process_message(
         &mut self,
-        provider: &Provider,
+        provider: &mut Provider,
         mut msg: &[u8],
     ) -> Result<Vec<u8>, JsError> {
         let msg = MlsMessageIn::tls_deserialize(&mut msg).unwrap();
@@ -233,7 +239,7 @@ impl Group {
             }
             openmls::framing::ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
                 self.mls_group
-                    .merge_staged_commit(provider.as_ref(), *staged_commit)?;
+                    .merge_staged_commit(provider.as_mut(), *staged_commit)?;
                 Ok(vec![])
             }
         }
@@ -351,7 +357,7 @@ mod tests {
 
     #[test]
     fn basic() {
-        let alice_provider = Provider::new();
+        let mut alice_provider = Provider::new();
         let bob_provider = Provider::new();
 
         let alice = Identity::new(&alice_provider, "alice")
@@ -371,7 +377,7 @@ mod tests {
             .unwrap();
 
         chess_club_alice
-            .merge_pending_commit(&alice_provider)
+            .merge_pending_commit(&mut alice_provider)
             .map_err(js_error_to_string)
             .unwrap();
 

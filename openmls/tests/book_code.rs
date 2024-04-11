@@ -1395,7 +1395,7 @@ use openmls_traits::storage::StorageProvider;
 #[apply(ciphersuites_and_providers)]
 fn custom_proposal_usage<Storage: StorageProvider<1, Types = OpenMlsTypes>>(
     ciphersuite: Ciphersuite,
-    provider: &mut impl OpenMlsProvider<StorageProvider = Storage>,
+    provider: &impl OpenMlsProvider<StorageProvider = Storage>,
 ) {
     // Generate credentials with keys
     let (alice_credential_with_key, alice_signer) =

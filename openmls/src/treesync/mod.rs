@@ -361,7 +361,7 @@ impl fmt::Display for RatchetTree {
 /// merging a diff.
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq, Clone))]
-pub(crate) struct TreeSync {
+pub struct TreeSync {
     tree: MlsBinaryTree<TreeSyncLeafNode, TreeSyncParentNode>,
     tree_hash: Vec<u8>,
 }
