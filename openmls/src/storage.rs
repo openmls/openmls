@@ -8,6 +8,7 @@ use crate::group::GroupContext;
 use crate::group::GroupId;
 use crate::group::InterimTranscriptHash;
 use crate::group::QueuedProposal;
+use crate::messages::ConfirmationTag;
 use crate::treesync::TreeSync;
 
 impl Entity<1> for QueuedProposal {}
@@ -30,6 +31,9 @@ impl GroupContextEntity<1> for GroupContext {}
 impl Entity<1> for InterimTranscriptHash {}
 impl InterimTranscriptHashEntity<1> for InterimTranscriptHash {}
 
+impl Entity<1> for ConfirmationTag {}
+impl ConfirmationTagEntity<1> for ConfirmationTag {}
+
 impl Types<1> for OpenMlsTypes {
     type QueuedProposal = QueuedProposal;
     type GroupId = GroupId;
@@ -37,4 +41,5 @@ impl Types<1> for OpenMlsTypes {
     type TreeSync = TreeSync;
     type GroupContext = GroupContext;
     type InterimTranscriptHash = InterimTranscriptHash;
+    type ConfirmationTag = ConfirmationTag;
 }

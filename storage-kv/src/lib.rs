@@ -38,6 +38,7 @@ enum Key<'a, Types: TypesTrait<V1>> {
     TreeSync(&'a Types::GroupId),
     GroupContext(&'a Types::GroupId),
     InterimTranscriptHash(&'a Types::GroupId),
+    ConfirmationTag(&'a Types::GroupId),
 }
 
 impl<'a, Types: TypesTrait<V1>> Key<'a, Types> {
@@ -48,6 +49,7 @@ impl<'a, Types: TypesTrait<V1>> Key<'a, Types> {
             Key::TreeSync(_) => [0, 2],
             Key::GroupContext(_) => [0, 3],
             Key::InterimTranscriptHash(_) => [0, 4],
+            Key::ConfirmationTag(_) => [0, 5],
         }
     }
 
@@ -74,6 +76,9 @@ impl<'a, Types: TypesTrait<V1>> Key<'a, Types> {
             Key::InterimTranscriptHash(group_id) => {
                 serde_json::to_writer(&mut out, group_id)?;
             }
+            Key::ConfirmationTag(group_id) => {
+                serde_json::to_writer(&mut out, group_id)?;
+            }
         }
 
         Ok(out)
@@ -91,6 +96,7 @@ impl<'a, Types: TypesTrait<1>> From<&'a Update<1, Types>> for Key<'a, Types> {
             Update::WriteInterimTranscriptHash(group_id, _) => {
                 Self::InterimTranscriptHash(group_id)
             }
+            Update::WriteConfirmationTag(group_id, _) => Self::ConfirmationTag(group_id),
         }
     }
 }
@@ -173,6 +179,14 @@ impl<KvStore: kv_store::KvStore, Types: TypesTrait<V1>> StorageProvider<V1>
             }
             Update::WriteInterimTranscriptHash(_group_id, interim_transcript_hash) => {
                 let value_bytes = serde_json::to_vec(&interim_transcript_hash)
+                    .map_err(KvStorageUpdateError::ValueEncodeError)?;
+
+                store
+                    .insert(key, value_bytes)
+                    .map_err(KvStorageUpdateError::KvInsertError)?;
+            }
+            Update::WriteConfirmationTag(_group_id, confirmation_tag) => {
+                let value_bytes = serde_json::to_vec(&confirmation_tag)
                     .map_err(KvStorageUpdateError::ValueEncodeError)?;
 
                 store
@@ -294,6 +308,25 @@ impl<KvStore: kv_store::KvStore, Types: TypesTrait<V1>> StorageProvider<V1>
         let store = self.read_get()?;
 
         let key = Key::<Types>::InterimTranscriptHash(group_id)
+            .key()
+            .map_err(KvStorageGetError::KeyEncodeError)?;
+
+        let value_bytes = store.get(&key).map_err(|e| match e {
+            kv_store::KvGetError::NotFound(key) => KvStorageGetError::NotFound(key),
+            kv_store::KvGetError::Internal(_) => KvStorageGetError::KvGetError(e),
+        })?;
+
+        Ok(serde_json::from_slice(&value_bytes).map_err(KvStorageGetError::ValueDecodeError)?)
+    }
+
+    fn get_confirmation_tag(
+        &self,
+        group_id: &<Self::Types as TypesTrait<V1>>::GroupId,
+    ) -> Result<<Self::Types as TypesTrait<V1>>::ConfirmationTag, GetError<Self::GetErrorSource>>
+    {
+        let store = self.read_get()?;
+
+        let key = Key::<Types>::ConfirmationTag(group_id)
             .key()
             .map_err(KvStorageGetError::KeyEncodeError)?;
 

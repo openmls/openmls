@@ -7,6 +7,7 @@ pub trait Types<const VERSION: usize> {
     type TreeSync: TreeSyncEntity<VERSION>;
     type GroupContext: GroupContextEntity<VERSION>;
     type InterimTranscriptHash: InterimTranscriptHashEntity<VERSION>;
+    type ConfirmationTag: ConfirmationTagEntity<VERSION>;
 }
 
 pub trait StorageProvider<const VERSION: usize> {
@@ -53,6 +54,11 @@ pub trait StorageProvider<const VERSION: usize> {
         <Self::Types as Types<VERSION>>::InterimTranscriptHash,
         GetError<Self::GetErrorSource>,
     >;
+
+    fn get_confirmation_tag(
+        &self,
+        group_id: &<Self::Types as Types<VERSION>>::GroupId,
+    ) -> Result<<Self::Types as Types<VERSION>>::ConfirmationTag, GetError<Self::GetErrorSource>>;
 }
 
 // contains the different types of updates
@@ -61,6 +67,7 @@ pub enum Update<const VERSION: usize, T: Types<VERSION>> {
     WriteTreeSync(T::GroupId, T::TreeSync),
     WriteGroupContext(T::GroupId, T::GroupContext),
     WriteInterimTranscriptHash(T::GroupId, T::InterimTranscriptHash),
+    WriteConfirmationTag(T::GroupId, T::ConfirmationTag),
 }
 
 // base traits for keys and values
@@ -81,6 +88,7 @@ pub trait ProposalRefEntity<const VERSION: usize>: Entity<VERSION> {}
 pub trait TreeSyncEntity<const VERSION: usize>: Entity<VERSION> {}
 pub trait GroupContextEntity<const VERSION: usize>: Entity<VERSION> {}
 pub trait InterimTranscriptHashEntity<const VERSION: usize>: Entity<VERSION> {}
+pub trait ConfirmationTagEntity<const VERSION: usize>: Entity<VERSION> {}
 
 // errors
 pub enum GetErrorKind {
