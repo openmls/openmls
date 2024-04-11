@@ -144,73 +144,47 @@ impl<KvStore: kv_store::KvStore, Types: TypesTrait<V1>> StorageProvider<V1>
             Update::QueueProposal(group_id, proposal_ref, queued_proposal) => {
                 let proposal_key = Key::<Types>::QueuedProposal(&group_id, &proposal_ref)
                     .key()
-                    .map_err(|e| UpdateError {
-                        kind: UpdateErrorKind::Internal,
-                        source: KvStorageUpdateError::KeyEncodeError(e),
-                    })?;
+                    .map_err(KvStorageUpdateError::KeyEncodeError)?;
                 let proposal_refs_key = Key::<Types>::QueuedProposalsRefList(&group_id)
                     .key()
-                    .map_err(|e| UpdateError {
-                        kind: UpdateErrorKind::Internal,
-                        source: KvStorageUpdateError::KeyEncodeError(e),
-                    })?;
+                    .map_err(KvStorageUpdateError::KeyEncodeError)?;
 
-                let proposal_value =
-                    serde_json::to_vec(&queued_proposal).map_err(|e| UpdateError {
-                        kind: UpdateErrorKind::Internal,
-                        source: KvStorageUpdateError::ValueEncodeError(e),
-                    })?;
+                let proposal_value = serde_json::to_vec(&queued_proposal)
+                    .map_err(KvStorageUpdateError::ValueEncodeError)?;
 
                 let mut proposal_refs: Vec<_> =
                     match StorageProvider::get_queued_proposal_refs(self, &group_id) {
-                        Ok(proposal_refs) => proposal_refs,
+                        Ok(proposal_refs) => Ok(proposal_refs),
                         Err(GetError {
                             kind: GetErrorKind::NotFound,
                             ..
-                        }) => {
-                            vec![]
-                        }
+                        }) => Ok(vec![]),
                         Err(GetError { kind, source }) => {
                             let kind = match kind {
                                 GetErrorKind::NotFound => unreachable!(),
                                 GetErrorKind::Encoding => UpdateErrorKind::Encoding,
                                 GetErrorKind::Internal => UpdateErrorKind::Internal,
                             };
-                            let source = match source {
-                                KvStorageGetError::KeyEncodeError(e) => {
-                                    KvStorageUpdateError::KeyEncodeError(e)
-                                }
-                                KvStorageGetError::ValueDecodeError(e) => {
-                                    KvStorageUpdateError::ValueDecodeError(e)
-                                }
-                                e => KvStorageUpdateError::GetError(e),
-                            };
+                            let source = KvStorageUpdateError::GetError(source);
 
-                            return Err(UpdateError { kind, source });
+                            Err(UpdateError { kind, source })
                         }
-                    };
+                    }?;
 
                 proposal_refs.push(proposal_ref);
 
-                let proposal_refs_bytes =
-                    serde_json::to_vec(&proposal_refs).map_err(|e| UpdateError {
-                        kind: UpdateErrorKind::Internal,
-                        source: KvStorageUpdateError::ValueEncodeError(e),
-                    })?;
+                let proposal_refs_bytes = serde_json::to_vec(&proposal_refs)
+                    .map_err(KvStorageUpdateError::ValueEncodeError)?;
 
                 self.0
                     .insert(proposal_refs_key, proposal_refs_bytes)
-                    .map_err(|err| UpdateError {
-                        kind: UpdateErrorKind::Internal,
-                        source: KvStorageUpdateError::KvInsertError(err),
-                    })?;
+                    .map_err(KvStorageUpdateError::KvInsertError)?;
 
                 self.0
                     .insert(proposal_key, proposal_value)
-                    .map_err(|err| UpdateError {
-                        kind: UpdateErrorKind::Internal,
-                        source: KvStorageUpdateError::KvInsertError(err),
-                    })
+                    .map_err(KvStorageUpdateError::KvInsertError)?;
+
+                Ok(())
             }
         }
     }
@@ -284,5 +258,20 @@ impl<KvStore: kv_store::KvStore, Types: TypesTrait<V1>> StorageProvider<V1>
             kind: GetErrorKind::Encoding,
             source: KvStorageGetError::ValueDecodeError(e),
         })
+    }
+}
+
+impl<E> From<KvStorageUpdateError<E>> for UpdateError<KvStorageUpdateError<E>> {
+    fn from(source: KvStorageUpdateError<E>) -> Self {
+        let kind = match &source {
+            KvStorageUpdateError::KeyEncodeError(_)
+            | KvStorageUpdateError::ValueEncodeError(_)
+            | KvStorageUpdateError::ValueDecodeError(_) => UpdateErrorKind::Encoding,
+            KvStorageUpdateError::KvInsertError(_) | KvStorageUpdateError::GetError(_) => {
+                UpdateErrorKind::Internal
+            }
+        };
+
+        UpdateError { kind, source }
     }
 }
