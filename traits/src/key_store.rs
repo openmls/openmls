@@ -28,7 +28,7 @@ where
 /// The Key Store trait
 pub trait OpenMlsKeyStore {
     /// The error type returned by the [`OpenMlsKeyStore`].
-    type Error: std::error::Error + std::fmt::Debug + PartialEq;
+    type Error: std::error::Error + std::fmt::Debug;
 
     /// Store a value `v` that implements the [`MlsEntity`] trait for
     /// serialization for ID `k`.

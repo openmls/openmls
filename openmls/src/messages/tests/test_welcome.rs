@@ -166,10 +166,10 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, provider: &impl OpenM
     )
     .expect_err("Created a staged join from an invalid Welcome.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         WelcomeError::GroupSecrets(GroupSecretsError::DecryptionFailed)
-    );
+    ));
 
     // === Process the original Welcome ===
 

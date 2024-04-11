@@ -37,7 +37,13 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 use tls_codec::{Deserialize, Serialize, TlsSliceU16, TlsVecU32};
 
-use ds_lib::*;
+use ds_lib::{
+    messages::{
+        PublishKeyPackagesRequest, RecvMessageRequest, RegisterClientRequest,
+        RegisterClientSuccessResponse,
+    },
+    *,
+};
 use openmls::prelude::*;
 
 #[cfg(test)]
@@ -84,23 +90,42 @@ async fn register_client(mut body: Payload, data: web::Data<DsData>) -> impl Res
     while let Some(item) = body.next().await {
         bytes.extend_from_slice(&unwrap_item!(item));
     }
-    let info = match ClientInfo::tls_deserialize(&mut &bytes[..]) {
+    let req = match RegisterClientRequest::tls_deserialize(&mut &bytes[..]) {
         Ok(i) => i,
         Err(_) => {
             log::error!("Invalid payload for /clients/register\n{:?}", bytes);
             return actix_web::HttpResponse::BadRequest().finish();
         }
     };
-    log::debug!("Registering client: {:?}", info);
 
-    let mut clients = unwrap_data!(data.clients.lock());
-    let client_name = info.client_name.clone();
-    let old = clients.insert(info.id.clone(), info);
-    if old.is_some() {
-        return actix_web::HttpResponse::Conflict().finish();
+    if req.key_packages.0.is_empty() {
+        log::error!("Invalid payload for /clients/register: no key packages");
+        return actix_web::HttpResponse::BadRequest().finish();
     }
 
-    actix_web::HttpResponse::Ok().body(format!("Welcome {client_name}!\n"))
+    let key_packages = req
+        .key_packages
+        .0
+        .into_vec()
+        .into_iter()
+        .map(|(b, kp)| (b.into_vec(), kp))
+        .collect();
+    let new_client_info = ClientInfo::new(key_packages);
+
+    log::debug!("Registering client: {:?}", new_client_info.id);
+
+    let response = RegisterClientSuccessResponse {
+        auth_token: new_client_info.auth_token.clone(),
+    };
+
+    let mut clients = unwrap_data!(data.clients.lock());
+    if clients.contains_key(&new_client_info.id) {
+        return actix_web::HttpResponse::Conflict().finish();
+    }
+    let old = clients.insert(new_client_info.id.clone(), new_client_info);
+    assert!(old.is_none());
+
+    actix_web::HttpResponse::Ok().body(response.tls_serialize_detached().unwrap())
 }
 
 /// Returns a list of clients with their names and IDs.
@@ -110,10 +135,10 @@ async fn list_clients(_req: HttpRequest, data: web::Data<DsData>) -> impl Respon
     let clients = unwrap_data!(data.clients.lock());
 
     // XXX: we could encode while iterating to be less wasteful.
-    let clients: TlsVecU32<ClientInfo> = clients
+    let clients: TlsVecU32<Vec<u8>> = clients
         .values()
-        .cloned()
-        .collect::<Vec<ClientInfo>>()
+        .map(|c| c.id().to_vec())
+        .collect::<Vec<Vec<u8>>>()
         .into();
     let mut out_bytes = Vec::new();
     if clients.tls_serialize(&mut out_bytes).is_err() {
@@ -124,7 +149,12 @@ async fn list_clients(_req: HttpRequest, data: web::Data<DsData>) -> impl Respon
 
 /// Resets the server state.
 #[get("/reset")]
-async fn reset(_req: HttpRequest, data: web::Data<DsData>) -> impl Responder {
+async fn reset(req: HttpRequest, data: web::Data<DsData>) -> impl Responder {
+    if let Some(reset_key) = req.headers().get("reset-key") {
+        if reset_key != "poc-reset-password" {
+            return actix_web::HttpResponse::NetworkAuthenticationRequired().finish();
+        }
+    }
     log::debug!("Resetting server");
     let mut clients = unwrap_data!(data.clients.lock());
     let mut groups = unwrap_data!(data.groups.lock());
@@ -144,6 +174,7 @@ async fn get_key_packages(path: web::Path<String>, data: web::Data<DsData>) -> i
         Ok(v) => v,
         Err(_) => return actix_web::HttpResponse::BadRequest().finish(),
     };
+
     log::debug!("Getting key packages for {:?}", id);
 
     let client = match clients.get(&id) {
@@ -171,15 +202,15 @@ async fn publish_key_packages(
         Ok(v) => v,
         Err(_) => return actix_web::HttpResponse::BadRequest().finish(),
     };
-    log::debug!("Add key package for {:?}", id);
 
-    let client = match clients.get_mut(&id) {
-        Some(client) => client,
+    let client = match clients.get(&id) {
+        Some(c) => c,
         None => return actix_web::HttpResponse::NotFound().finish(),
     };
 
-    let key_packages = match ClientKeyPackages::tls_deserialize(&mut &bytes[..]) {
-        Ok(ckp) => ckp,
+    // Deserialize request
+    let req = match PublishKeyPackagesRequest::tls_deserialize(&mut &bytes[..]) {
+        Ok(i) => i,
         Err(_) => {
             log::error!(
                 "Invalid payload for /clients/key_packages/{:?}\n{:?}",
@@ -190,10 +221,22 @@ async fn publish_key_packages(
         }
     };
 
-    key_packages
+    // Auth
+    if client.auth_token != req.auth_token {
+        return actix_web::HttpResponse::Unauthorized().finish();
+    }
+
+    log::debug!("Add key package for {:?}", id);
+
+    let client = match clients.get_mut(&id) {
+        Some(client) => client,
+        None => return actix_web::HttpResponse::NotFound().finish(),
+    };
+
+    req.key_packages
         .0
-        .iter()
-        .map(|(b, kp)| (b.clone(), kp.clone()))
+        .into_vec()
+        .into_iter()
         .for_each(|value| client.key_packages.0.push(value));
 
     actix_web::HttpResponse::Ok().finish()
@@ -319,18 +362,47 @@ async fn msg_send(mut body: Payload, data: web::Data<DsData>) -> impl Responder 
 /// details) the DS has stored for the given client.
 /// The messages are deleted on the DS when sent out.
 #[get("/recv/{id}")]
-async fn msg_recv(path: web::Path<String>, data: web::Data<DsData>) -> impl Responder {
+async fn msg_recv(
+    path: web::Path<String>,
+    mut body: Payload,
+    data: web::Data<DsData>,
+) -> impl Responder {
+    let mut bytes = web::BytesMut::new();
+    while let Some(item) = body.next().await {
+        bytes.extend_from_slice(&unwrap_item!(item));
+    }
+
     let mut clients = unwrap_data!(data.clients.lock());
 
     let id = match base64::decode_config(path.into_inner(), base64::URL_SAFE) {
         Ok(v) => v,
         Err(_) => return actix_web::HttpResponse::BadRequest().finish(),
     };
-    log::debug!("Getting messages for client {:?}", id);
+
     let client = match clients.get_mut(&id) {
         Some(client) => client,
         None => return actix_web::HttpResponse::NotFound().finish(),
     };
+
+    // Auth
+    // Deserialize request
+    let req = match RecvMessageRequest::tls_deserialize(&mut &bytes[..]) {
+        Ok(i) => i,
+        Err(_) => {
+            log::error!(
+                "Invalid payload for /clients/key_packages/{:?}\n{:?}",
+                id,
+                bytes
+            );
+            return actix_web::HttpResponse::BadRequest().finish();
+        }
+    };
+
+    if req.auth_token != client.auth_token {
+        return actix_web::HttpResponse::Unauthorized().finish();
+    }
+
+    log::debug!("Getting messages for client {:?}", id);
 
     let mut out: Vec<MlsMessageIn> = Vec::new();
     let mut welcomes: Vec<MlsMessageIn> = client.welcome_queue.drain(..).collect();
