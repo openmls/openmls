@@ -4,6 +4,7 @@ pub struct OpenMlsTypes;
 use openmls_traits::storage::*;
 
 use crate::ciphersuite::hash_ref::ProposalRef;
+use crate::group::GroupContext;
 use crate::group::GroupId;
 use crate::group::QueuedProposal;
 use crate::treesync::TreeSync;
@@ -22,9 +23,13 @@ impl Entity<1> for ProposalRef {}
 impl ProposalRefKey<1> for ProposalRef {}
 impl ProposalRefEntity<1> for ProposalRef {}
 
+impl Entity<1> for GroupContext {}
+impl GroupContextEntity<1> for GroupContext {}
+
 impl Types<1> for OpenMlsTypes {
     type QueuedProposal = QueuedProposal;
     type GroupId = GroupId;
     type ProposalRef = ProposalRef;
-    type TreeSync = crate::treesync::TreeSync;
+    type TreeSync = TreeSync;
+    type GroupContext = GroupContext;
 }

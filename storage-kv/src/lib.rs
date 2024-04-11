@@ -1,7 +1,7 @@
 mod kv_store;
 pub mod mem_kv_store;
 
-use std::sync::RwLock;
+use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use mem_kv_store::{KvGetError, KvInsertError};
 use openmls_traits::storage::Types as TypesTrait;
@@ -35,6 +35,7 @@ enum Key<'a, Types: TypesTrait<V1>> {
     QueuedProposal(&'a Types::GroupId, &'a Types::ProposalRef),
     QueuedProposalsRefList(&'a Types::GroupId),
     TreeSync(&'a Types::GroupId),
+    GroupContext(&'a Types::GroupId),
 }
 
 impl<'a, Types: TypesTrait<V1>> Key<'a, Types> {
@@ -43,6 +44,7 @@ impl<'a, Types: TypesTrait<V1>> Key<'a, Types> {
             Key::QueuedProposal(_, _) => [0, 0],
             Key::QueuedProposalsRefList(_) => [0, 1],
             Key::TreeSync(_) => [0, 2],
+            Key::GroupContext(_) => [0, 3],
         }
     }
 
@@ -63,6 +65,9 @@ impl<'a, Types: TypesTrait<V1>> Key<'a, Types> {
             Key::TreeSync(group_id) => {
                 serde_json::to_writer(&mut out, group_id)?;
             }
+            Key::GroupContext(group_id) => {
+                serde_json::to_writer(&mut out, group_id)?;
+            }
         }
 
         Ok(out)
@@ -76,6 +81,7 @@ impl<'a, Types: TypesTrait<1>> From<&'a Update<1, Types>> for Key<'a, Types> {
                 Self::QueuedProposal(group_id, proposal_ref)
             }
             Update::WriteTreeSync(group_id, _) => Self::TreeSync(group_id),
+            Update::WriteGroupContext(group_id, _) => Self::GroupContext(group_id),
         }
     }
 }
@@ -91,10 +97,8 @@ impl<KvStore: kv_store::KvStore, Types: TypesTrait<V1>> StorageProvider<V1>
         &self,
         update: Update<V1, Types>,
     ) -> Result<(), UpdateError<Self::UpdateErrorSource>> {
-        let mut store = self
-            .0
-            .write()
-            .map_err(|_| KvStorageUpdateError::LockPoisonedError)?;
+        let mut store = self.write_update()?;
+
         let key = Key::<Types>::from(&update)
             .key()
             .map_err(KvStorageUpdateError::KeyEncodeError)?;
@@ -150,6 +154,14 @@ impl<KvStore: kv_store::KvStore, Types: TypesTrait<V1>> StorageProvider<V1>
                     .insert(key, value_bytes)
                     .map_err(KvStorageUpdateError::KvInsertError)?;
             }
+            Update::WriteGroupContext(_group_id, group_context) => {
+                let value_bytes = serde_json::to_vec(&group_context)
+                    .map_err(KvStorageUpdateError::ValueEncodeError)?;
+
+                store
+                    .insert(key, value_bytes)
+                    .map_err(KvStorageUpdateError::KvInsertError)?;
+            }
         }
 
         Ok(())
@@ -171,10 +183,7 @@ impl<KvStore: kv_store::KvStore, Types: TypesTrait<V1>> StorageProvider<V1>
         &self,
         group_id: &Types::GroupId,
     ) -> Result<Vec<Types::QueuedProposal>, GetError<Self::GetErrorSource>> {
-        let store = self
-            .0
-            .read()
-            .map_err(|_| KvStorageGetError::LockPoisonedError)?;
+        let store = self.read_get()?;
 
         StorageProvider::get_queued_proposal_refs(self, group_id)?
             .into_iter()
@@ -208,10 +217,7 @@ impl<KvStore: kv_store::KvStore, Types: TypesTrait<V1>> StorageProvider<V1>
         &self,
         group_id: &Types::GroupId,
     ) -> Result<Vec<Types::ProposalRef>, GetError<Self::GetErrorSource>> {
-        let store = self
-            .0
-            .read()
-            .map_err(|_| KvStorageGetError::LockPoisonedError)?;
+        let store = self.read_get()?;
 
         let key = Key::<Types>::QueuedProposalsRefList(group_id)
             .key()
@@ -229,12 +235,27 @@ impl<KvStore: kv_store::KvStore, Types: TypesTrait<V1>> StorageProvider<V1>
         &self,
         group_id: &<Self::Types as TypesTrait<V1>>::GroupId,
     ) -> Result<<Self::Types as TypesTrait<V1>>::TreeSync, GetError<Self::GetErrorSource>> {
-        let store = self
-            .0
-            .read()
-            .map_err(|_| KvStorageGetError::LockPoisonedError)?;
+        let store = self.read_get()?;
 
         let key = Key::<Types>::QueuedProposalsRefList(group_id)
+            .key()
+            .map_err(KvStorageGetError::KeyEncodeError)?;
+
+        let value_bytes = store.get(&key).map_err(|e| match e {
+            kv_store::KvGetError::NotFound(key) => KvStorageGetError::NotFound(key),
+            kv_store::KvGetError::Internal(_) => KvStorageGetError::KvGetError(e),
+        })?;
+
+        Ok(serde_json::from_slice(&value_bytes).map_err(KvStorageGetError::ValueDecodeError)?)
+    }
+
+    fn get_group_context(
+        &self,
+        group_id: &<Self::Types as TypesTrait<V1>>::GroupId,
+    ) -> Result<<Self::Types as TypesTrait<V1>>::GroupContext, GetError<Self::GetErrorSource>> {
+        let store = self.read_get()?;
+
+        let key = Key::<Types>::GroupContext(group_id)
             .key()
             .map_err(KvStorageGetError::KeyEncodeError)?;
 
@@ -278,5 +299,35 @@ impl<E> From<KvStorageUpdateError<E>> for UpdateError<KvStorageUpdateError<E>> {
         };
 
         UpdateError { kind, source }
+    }
+}
+
+impl<KvStore: kv_store::KvStore, Types: TypesTrait<V1>> KvStoreStorage<KvStore, Types> {
+    fn read_get(
+        &self,
+    ) -> Result<RwLockReadGuard<KvStore>, KvStorageGetError<KvStore::InternalError>> {
+        self.0
+            .read()
+            .map_err(|_| KvStorageGetError::LockPoisonedError)
+    }
+}
+
+impl<KvStore: kv_store::KvStore, Types: TypesTrait<V1>> KvStoreStorage<KvStore, Types> {
+    fn read_update(
+        &self,
+    ) -> Result<RwLockReadGuard<KvStore>, KvStorageUpdateError<KvStore::InternalError>> {
+        self.0
+            .read()
+            .map_err(|_| KvStorageUpdateError::LockPoisonedError)
+    }
+}
+
+impl<KvStore: kv_store::KvStore, Types: TypesTrait<V1>> KvStoreStorage<KvStore, Types> {
+    fn write_update(
+        &self,
+    ) -> Result<RwLockWriteGuard<KvStore>, KvStorageUpdateError<KvStore::InternalError>> {
+        self.0
+            .write()
+            .map_err(|_| KvStorageUpdateError::LockPoisonedError)
     }
 }
