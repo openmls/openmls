@@ -31,11 +31,13 @@ pub enum KvStorageUpdateError<InternalError> {
     LockPoisonedError,
 }
 
+// The variant describes the type of the key, and the contents are what the key is made of
 enum Key<'a, Types: TypesTrait<V1>> {
     QueuedProposal(&'a Types::GroupId, &'a Types::ProposalRef),
     QueuedProposalsRefList(&'a Types::GroupId),
     TreeSync(&'a Types::GroupId),
     GroupContext(&'a Types::GroupId),
+    InterimTranscriptHash(&'a Types::GroupId),
 }
 
 impl<'a, Types: TypesTrait<V1>> Key<'a, Types> {
@@ -45,6 +47,7 @@ impl<'a, Types: TypesTrait<V1>> Key<'a, Types> {
             Key::QueuedProposalsRefList(_) => [0, 1],
             Key::TreeSync(_) => [0, 2],
             Key::GroupContext(_) => [0, 3],
+            Key::InterimTranscriptHash(_) => [0, 4],
         }
     }
 
@@ -68,6 +71,9 @@ impl<'a, Types: TypesTrait<V1>> Key<'a, Types> {
             Key::GroupContext(group_id) => {
                 serde_json::to_writer(&mut out, group_id)?;
             }
+            Key::InterimTranscriptHash(group_id) => {
+                serde_json::to_writer(&mut out, group_id)?;
+            }
         }
 
         Ok(out)
@@ -82,6 +88,9 @@ impl<'a, Types: TypesTrait<1>> From<&'a Update<1, Types>> for Key<'a, Types> {
             }
             Update::WriteTreeSync(group_id, _) => Self::TreeSync(group_id),
             Update::WriteGroupContext(group_id, _) => Self::GroupContext(group_id),
+            Update::WriteInterimTranscriptHash(group_id, _) => {
+                Self::InterimTranscriptHash(group_id)
+            }
         }
     }
 }
@@ -156,6 +165,14 @@ impl<KvStore: kv_store::KvStore, Types: TypesTrait<V1>> StorageProvider<V1>
             }
             Update::WriteGroupContext(_group_id, group_context) => {
                 let value_bytes = serde_json::to_vec(&group_context)
+                    .map_err(KvStorageUpdateError::ValueEncodeError)?;
+
+                store
+                    .insert(key, value_bytes)
+                    .map_err(KvStorageUpdateError::KvInsertError)?;
+            }
+            Update::WriteInterimTranscriptHash(_group_id, interim_transcript_hash) => {
+                let value_bytes = serde_json::to_vec(&interim_transcript_hash)
                     .map_err(KvStorageUpdateError::ValueEncodeError)?;
 
                 store
@@ -256,6 +273,27 @@ impl<KvStore: kv_store::KvStore, Types: TypesTrait<V1>> StorageProvider<V1>
         let store = self.read_get()?;
 
         let key = Key::<Types>::GroupContext(group_id)
+            .key()
+            .map_err(KvStorageGetError::KeyEncodeError)?;
+
+        let value_bytes = store.get(&key).map_err(|e| match e {
+            kv_store::KvGetError::NotFound(key) => KvStorageGetError::NotFound(key),
+            kv_store::KvGetError::Internal(_) => KvStorageGetError::KvGetError(e),
+        })?;
+
+        Ok(serde_json::from_slice(&value_bytes).map_err(KvStorageGetError::ValueDecodeError)?)
+    }
+
+    fn get_interim_transcript_hash(
+        &self,
+        group_id: &<Self::Types as TypesTrait<V1>>::GroupId,
+    ) -> Result<
+        <Self::Types as TypesTrait<V1>>::InterimTranscriptHash,
+        GetError<Self::GetErrorSource>,
+    > {
+        let store = self.read_get()?;
+
+        let key = Key::<Types>::InterimTranscriptHash(group_id)
             .key()
             .map_err(KvStorageGetError::KeyEncodeError)?;
 

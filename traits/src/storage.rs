@@ -6,6 +6,7 @@ pub trait Types<const VERSION: usize> {
     type ProposalRef: ProposalRefKey<VERSION> + ProposalRefEntity<VERSION>;
     type TreeSync: TreeSyncEntity<VERSION>;
     type GroupContext: GroupContextEntity<VERSION>;
+    type InterimTranscriptHash: InterimTranscriptHashEntity<VERSION>;
 }
 
 pub trait StorageProvider<const VERSION: usize> {
@@ -44,6 +45,14 @@ pub trait StorageProvider<const VERSION: usize> {
         &self,
         group_id: &<Self::Types as Types<VERSION>>::GroupId,
     ) -> Result<<Self::Types as Types<VERSION>>::GroupContext, GetError<Self::GetErrorSource>>;
+
+    fn get_interim_transcript_hash(
+        &self,
+        group_id: &<Self::Types as Types<VERSION>>::GroupId,
+    ) -> Result<
+        <Self::Types as Types<VERSION>>::InterimTranscriptHash,
+        GetError<Self::GetErrorSource>,
+    >;
 }
 
 // contains the different types of updates
@@ -51,6 +60,7 @@ pub enum Update<const VERSION: usize, T: Types<VERSION>> {
     QueueProposal(T::GroupId, T::ProposalRef, T::QueuedProposal),
     WriteTreeSync(T::GroupId, T::TreeSync),
     WriteGroupContext(T::GroupId, T::GroupContext),
+    WriteInterimTranscriptHash(T::GroupId, T::InterimTranscriptHash),
 }
 
 // base traits for keys and values
@@ -70,6 +80,7 @@ pub trait QueuedProposalEntity<const VERSION: usize>: Entity<VERSION> {}
 pub trait ProposalRefEntity<const VERSION: usize>: Entity<VERSION> {}
 pub trait TreeSyncEntity<const VERSION: usize>: Entity<VERSION> {}
 pub trait GroupContextEntity<const VERSION: usize>: Entity<VERSION> {}
+pub trait InterimTranscriptHashEntity<const VERSION: usize>: Entity<VERSION> {}
 
 // errors
 pub enum GetErrorKind {

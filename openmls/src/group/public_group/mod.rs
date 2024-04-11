@@ -72,6 +72,10 @@ pub struct PublicGroup {
     confirmation_tag: ConfirmationTag,
 }
 
+// we need this type because we can't implement the storage traits on Vec<u8>.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct InterimTranscriptHash(pub Vec<u8>);
+
 impl PublicGroup {
     /// Create a new PublicGroup from a [`TreeSync`] instance and a
     /// [`GroupInfo`].
