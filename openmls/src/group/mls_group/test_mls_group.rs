@@ -1328,7 +1328,10 @@ fn update_group_context_with_unknown_extension(
     // === Define the unknown group context extension and initial data ===
     const UNKNOWN_EXTENSION_TYPE: u16 = 0xff11;
     let unknown_extension_data = vec![1, 2];
-    let unknown_gc_extension = Extension::Unknown(UNKNOWN_EXTENSION_TYPE, UnknownExtension(unknown_extension_data));
+    let unknown_gc_extension = Extension::Unknown(
+        UNKNOWN_EXTENSION_TYPE,
+        UnknownExtension(unknown_extension_data),
+    );
     let required_extension_types = &[ExtensionType::Unknown(UNKNOWN_EXTENSION_TYPE)];
     let required_capabilities = Extension::RequiredCapabilities(
         RequiredCapabilitiesExtension::new(required_extension_types, &[], &[]),
