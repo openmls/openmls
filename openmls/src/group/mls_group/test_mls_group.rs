@@ -1342,7 +1342,7 @@ fn update_group_context_with_unknown_extension(
         .with_group_context_extensions(test_gc_extensions.clone())
         .expect("error adding unknown extension to config")
         .capabilities(capabilities.clone())
-        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .ciphersuite(ciphersuite)
         .build();
 
     // === Alice creates a group ===
@@ -1374,12 +1374,7 @@ fn update_group_context_with_unknown_extension(
 
     let bob_key_package = KeyPackage::builder()
         .leaf_node_capabilities(capabilities)
-        .build(
-            CryptoConfig::with_default_version(ciphersuite),
-            provider,
-            &bob_signer,
-            bob_credential_with_key,
-        )
+        .build(ciphersuite, provider, &bob_signer, bob_credential_with_key)
         .expect("error building key package");
 
     let (_, welcome, _) = alice_group
