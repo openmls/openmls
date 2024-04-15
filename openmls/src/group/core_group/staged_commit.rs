@@ -8,7 +8,7 @@ use self::public_group::staged_commit::PublicStagedCommitState;
 
 use super::{super::errors::*, proposals::ProposalStore, *};
 use crate::{
-    framing::mls_auth_content::AuthenticatedContent,
+    framing::mls_auth_content::AuthenticatedContent, storage::StorageProvider,
     treesync::node::encryption_keys::EncryptionKeyPair,
 };
 
@@ -308,11 +308,12 @@ impl CoreGroup {
     ///
     /// This function should not fail and only returns a [`Result`], because it
     /// might throw a `LibraryError`.
-    pub(crate) fn merge_commit<KeyStore: OpenMlsKeyStore>(
+    pub(crate) fn merge_commit<KeyStore: OpenMlsKeyStore, Storage: StorageProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
         staged_commit: StagedCommit,
-    ) -> Result<Option<MessageSecrets>, MergeCommitError<KeyStore::Error>> {
+    ) -> Result<Option<MessageSecrets>, MergeCommitError<KeyStore::Error, Storage::UpdateError>>
+    {
         // Get all keypairs from the old epoch, so we can later store the ones
         // that are still relevant in the new epoch.
         let old_epoch_keypairs = self.read_epoch_keypairs(provider.key_store());
@@ -333,6 +334,9 @@ impl CoreGroup {
                 );
 
                 self.public_group.merge_diff(state.staged_diff);
+                self.public_group
+                    .write_to_storage(provider.storage())
+                    .map_err(MergeCommitError::StorageError)?;
 
                 // TODO #1194: Group storage and key storage should be
                 // correlated s.t. there is no divergence between key material

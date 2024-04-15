@@ -33,7 +33,7 @@ use crate::{
 
 // ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
 #[apply(ciphersuites_and_providers)]
-fn test_valsem240(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem240(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
     let ECValidationTestSetup {
         mut alice_group,
         bob_credential,
@@ -100,7 +100,7 @@ fn test_valsem240(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
 // ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
 #[apply(ciphersuites_and_providers)]
-fn test_valsem241(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem241(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
     // Test with PublicMessage
     let ECValidationTestSetup {
         mut alice_group,
@@ -163,7 +163,7 @@ fn test_valsem241(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
 // ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
 #[apply(ciphersuites_and_providers)]
-fn test_valsem242(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem242(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
     // Test with PublicMessage
     let ECValidationTestSetup {
         mut alice_group,
@@ -311,7 +311,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
 // ValSem244: External Commit must not include any proposals by reference
 #[apply(ciphersuites_and_providers)]
-fn test_valsem244(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem244(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
     // Test with PublicMessage
     let ECValidationTestSetup {
         mut alice_group,
@@ -388,7 +388,7 @@ fn test_valsem244(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
 // ValSem245: External Commit: MUST contain a path.
 #[apply(ciphersuites_and_providers)]
-fn test_valsem245(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem245(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
     // Test with PublicMessage
     let ECValidationTestSetup {
         mut alice_group,
@@ -444,7 +444,7 @@ fn test_valsem245(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
 // ValSem246: External Commit: The signature of the PublicMessage MUST be verified with the credential of the KeyPackage in the included `path`.
 #[apply(ciphersuites_and_providers)]
-fn test_valsem246(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem246(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
     // Test with PublicMessage
     let ECValidationTestSetup {
         mut alice_group,
@@ -557,7 +557,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
 // External Commit should work when group use ciphertext WireFormat
 #[apply(ciphersuites_and_providers)]
-fn test_pure_ciphertest(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_pure_ciphertest(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
     // Test with PrivateMessage
     let ECValidationTestSetup {
         mut alice_group,
@@ -623,7 +623,7 @@ mod utils {
     pub(super) fn validation_test_setup(
         wire_format_policy: WireFormatPolicy,
         ciphersuite: Ciphersuite,
-        provider: &impl OpenMlsProvider,
+        provider: &impl crate::storage::RefinedProvider,
     ) -> ECValidationTestSetup {
         // Generate credentials with keys
         let alice_credential = generate_credential_with_key(

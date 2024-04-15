@@ -77,7 +77,10 @@ pub(crate) struct TestSetup {
 const KEY_PACKAGE_COUNT: usize = 10;
 
 /// The setup function creates a set of groups and clients.
-pub(crate) fn setup(config: TestSetupConfig, provider: &impl OpenMlsProvider) -> TestSetup {
+pub(crate) fn setup(
+    config: TestSetupConfig,
+    provider: &impl crate::storage::RefinedProvider,
+) -> TestSetup {
     let mut test_clients: HashMap<&'static str, RefCell<TestClient>> = HashMap::new();
     let mut key_store: HashMap<(&'static str, Ciphersuite), Vec<KeyPackage>> = HashMap::new();
     // Initialize the clients for which we have configurations.
@@ -298,7 +301,7 @@ fn test_random() {
 }
 
 #[apply(providers)]
-fn test_setup(provider: &impl OpenMlsProvider) {
+fn test_setup(provider: &impl crate::storage::RefinedProvider) {
     let test_client_config_a = TestClientConfig {
         name: "TestClientConfigA",
         ciphersuites: vec![Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519],
@@ -330,7 +333,7 @@ pub(crate) struct CredentialWithKeyAndSigner {
 pub(crate) fn generate_credential_with_key(
     identity: Vec<u8>,
     signature_scheme: SignatureScheme,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::RefinedProvider,
 ) -> CredentialWithKeyAndSigner {
     let (credential, signer) = {
         let credential = BasicCredential::new(identity);
@@ -355,7 +358,7 @@ pub(crate) fn generate_credential_with_key(
 pub(crate) fn generate_key_package<KeyStore: OpenMlsKeyStore>(
     ciphersuite: Ciphersuite,
     extensions: Extensions,
-    provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+    provider: &impl crate::storage::RefinedProvider<KeyStoreProvider = KeyStore>,
     credential_with_keys: CredentialWithKeyAndSigner,
 ) -> KeyPackage {
     KeyPackage::builder()
@@ -374,7 +377,7 @@ pub(crate) fn resign_message(
     alice_group: &MlsGroup,
     plaintext: PublicMessage,
     original_plaintext: &PublicMessage,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::RefinedProvider,
     signer: &impl Signer,
     ciphersuite: Ciphersuite,
 ) -> PublicMessage {

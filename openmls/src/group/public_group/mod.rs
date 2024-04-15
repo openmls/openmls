@@ -16,7 +16,11 @@ use crate::prelude::OpenMlsProvider;
 #[cfg(test)]
 use std::collections::HashSet;
 
-use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
+use openmls_traits::{
+    crypto::OpenMlsCrypto,
+    storage::{StorageProvider, Update, UpdateError},
+    types::Ciphersuite,
+};
 use serde::{Deserialize, Serialize};
 
 use self::{
@@ -379,5 +383,23 @@ impl PublicGroup {
             exclusion_list,
             own_leaf_index,
         )
+    }
+
+    pub(crate) fn write_to_storage<
+        Storage: StorageProvider<1, Types = crate::storage::OpenMlsTypes>,
+    >(
+        &self,
+        storage: &Storage,
+    ) -> Result<(), Storage::UpdateError> {
+        let group_id = self.group_context.group_id();
+        storage.apply_updates(vec![
+            Update::WriteTreeSync(group_id.clone(), self.treesync().clone()),
+            Update::WriteConfirmationTag(group_id.clone(), self.confirmation_tag.clone()),
+            Update::WriteGroupContext(group_id.clone(), self.group_context.clone()),
+            Update::WriteInterimTranscriptHash(
+                group_id.clone(),
+                InterimTranscriptHash(self.interim_transcript_hash.clone()),
+            ),
+        ])
     }
 }

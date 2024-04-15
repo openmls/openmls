@@ -1,4 +1,3 @@
-use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
 use rstest::*;
 use rstest_reuse::{self, *};
@@ -19,7 +18,7 @@ use crate::{
 use super::{super::mls_group::StagedWelcome, PublicGroup};
 
 #[apply(ciphersuites_and_providers)]
-fn public_group(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn public_group(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =

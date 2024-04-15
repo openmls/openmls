@@ -1,10 +1,11 @@
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_traits::{random::OpenMlsRand, types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::{
+    random::OpenMlsRand, storage::StorageProvider, types::Ciphersuite, OpenMlsProvider,
+};
 
 use rstest::*;
 use rstest_reuse::{self, *};
 
-use openmls_rust_crypto::OpenMlsRustCrypto;
 use signable::Verifiable;
 use tls_codec::{Deserialize, Serialize};
 
@@ -26,7 +27,10 @@ use crate::{
 
 /// This tests serializing/deserializing PublicMessage
 #[apply(ciphersuites_and_providers)]
-fn codec_plaintext(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn codec_plaintext<Storage: StorageProvider<1, Types = crate::storage::OpenMlsTypes>>(
+    ciphersuite: Ciphersuite,
+    provider: &impl OpenMlsProvider<StorageProvider = Storage>,
+) {
     let (_credential, signature_keys) =
         test_utils::new_credential(provider, b"Creator", ciphersuite.signature_algorithm());
     let sender = Sender::build_member(LeafNodeIndex::new(987543210));
@@ -382,7 +386,10 @@ fn membership_tag(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 }
 
 #[apply(ciphersuites_and_providers)]
-fn unknown_sender(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn unknown_sender<Storage: StorageProvider<1, Types = crate::storage::OpenMlsTypes>>(
+    ciphersuite: Ciphersuite,
+    provider: &impl OpenMlsProvider<StorageProvider = Storage>,
+) {
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
     let configuration = &SenderRatchetConfiguration::default();
@@ -586,7 +593,10 @@ fn unknown_sender(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 }
 
 #[apply(ciphersuites_and_providers)]
-fn confirmation_tag_presence(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn confirmation_tag_presence<Storage: StorageProvider<1, Types = crate::storage::OpenMlsTypes>>(
+    ciphersuite: Ciphersuite,
+    provider: &impl OpenMlsProvider<StorageProvider = Storage>,
+) {
     let (framing_parameters, group_alice, alice_signature_keys, group_bob, _, _) =
         setup_alice_bob_group(ciphersuite, provider);
 
@@ -611,9 +621,11 @@ fn confirmation_tag_presence(ciphersuite: Ciphersuite, provider: &impl OpenMlsPr
     assert_eq!(err, StageCommitError::ConfirmationTagMissing);
 }
 
-pub(crate) fn setup_alice_bob_group(
+pub(crate) fn setup_alice_bob_group<
+    Storage: StorageProvider<1, Types = crate::storage::OpenMlsTypes>,
+>(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl OpenMlsProvider<StorageProvider = Storage>,
 ) -> (
     FramingParameters,
     CoreGroup,

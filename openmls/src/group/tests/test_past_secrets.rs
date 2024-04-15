@@ -13,7 +13,10 @@ use crate::{
 };
 
 #[apply(ciphersuites_and_providers)]
-fn test_past_secrets_in_group(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_past_secrets_in_group(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::RefinedProvider,
+) {
     // Test this for different parameters
     for max_epochs in (0..10usize).step_by(2) {
         let group_id = GroupId::from_slice(b"Test Group");

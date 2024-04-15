@@ -1,6 +1,6 @@
 use serde::{de::DeserializeOwned, Serialize};
 
-pub trait Types<const VERSION: usize> {
+pub trait Types<const VERSION: usize>: Default {
     type QueuedProposal: QueuedProposalEntity<VERSION>;
     type GroupId: GroupIdKey<VERSION>;
     type ProposalRef: ProposalRefKey<VERSION> + ProposalRefEntity<VERSION>;
@@ -10,55 +10,57 @@ pub trait Types<const VERSION: usize> {
     type ConfirmationTag: ConfirmationTagEntity<VERSION>;
 }
 
+pub trait GetError: core::fmt::Debug + std::error::Error + PartialEq {
+    fn error_kind(&self) -> GetErrorKind;
+}
+
+pub trait UpdateError: core::fmt::Debug + std::error::Error + PartialEq {
+    fn error_kind(&self) -> UpdateErrorKind;
+}
+
 pub trait StorageProvider<const VERSION: usize> {
     // source for errors
-    type GetErrorSource: core::fmt::Debug;
-    type UpdateErrorSource: core::fmt::Debug;
+    type GetError: GetError;
+    type UpdateError: UpdateError;
     type Types: Types<VERSION>;
 
     // update functions, single and batched
-    fn apply_update(
-        &self,
-        update: Update<VERSION, Self::Types>,
-    ) -> Result<(), UpdateError<Self::UpdateErrorSource>>;
+    fn apply_update(&self, update: Update<VERSION, Self::Types>) -> Result<(), Self::UpdateError>;
     fn apply_updates(
         &self,
         update: Vec<Update<VERSION, Self::Types>>,
-    ) -> Result<(), UpdateError<Self::UpdateErrorSource>>;
+    ) -> Result<(), Self::UpdateError>;
 
     // getter
     fn get_queued_proposal_refs(
         &self,
         group_id: &<Self::Types as Types<VERSION>>::GroupId,
-    ) -> Result<Vec<<Self::Types as Types<VERSION>>::ProposalRef>, GetError<Self::GetErrorSource>>;
+    ) -> Result<Vec<<Self::Types as Types<VERSION>>::ProposalRef>, Self::GetError>;
 
     fn get_queued_proposals(
         &self,
         group_id: &<Self::Types as Types<VERSION>>::GroupId,
-    ) -> Result<Vec<<Self::Types as Types<VERSION>>::QueuedProposal>, GetError<Self::GetErrorSource>>;
+    ) -> Result<Vec<<Self::Types as Types<VERSION>>::QueuedProposal>, Self::GetError>;
 
     fn get_treesync(
         &self,
         group_id: &<Self::Types as Types<VERSION>>::GroupId,
-    ) -> Result<<Self::Types as Types<VERSION>>::TreeSync, GetError<Self::GetErrorSource>>;
+    ) -> Result<<Self::Types as Types<VERSION>>::TreeSync, Self::GetError>;
 
     fn get_group_context(
         &self,
         group_id: &<Self::Types as Types<VERSION>>::GroupId,
-    ) -> Result<<Self::Types as Types<VERSION>>::GroupContext, GetError<Self::GetErrorSource>>;
+    ) -> Result<<Self::Types as Types<VERSION>>::GroupContext, Self::GetError>;
 
     fn get_interim_transcript_hash(
         &self,
         group_id: &<Self::Types as Types<VERSION>>::GroupId,
-    ) -> Result<
-        <Self::Types as Types<VERSION>>::InterimTranscriptHash,
-        GetError<Self::GetErrorSource>,
-    >;
+    ) -> Result<<Self::Types as Types<VERSION>>::InterimTranscriptHash, Self::GetError>;
 
     fn get_confirmation_tag(
         &self,
         group_id: &<Self::Types as Types<VERSION>>::GroupId,
-    ) -> Result<<Self::Types as Types<VERSION>>::ConfirmationTag, GetError<Self::GetErrorSource>>;
+    ) -> Result<<Self::Types as Types<VERSION>>::ConfirmationTag, Self::GetError>;
 }
 
 // contains the different types of updates
@@ -91,6 +93,7 @@ pub trait InterimTranscriptHashEntity<const VERSION: usize>: Entity<VERSION> {}
 pub trait ConfirmationTagEntity<const VERSION: usize>: Entity<VERSION> {}
 
 // errors
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum GetErrorKind {
     NotFound,
     Encoding,
@@ -98,18 +101,10 @@ pub enum GetErrorKind {
     LockPoisoned,
 }
 
-pub struct GetError<E> {
-    pub kind: GetErrorKind,
-    pub source: E,
-}
-
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum UpdateErrorKind {
     Encoding,
     Internal,
     LockPoisoned,
-}
-
-pub struct UpdateError<E> {
-    pub kind: UpdateErrorKind,
-    pub source: E,
+    AlreadyExists,
 }

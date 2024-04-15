@@ -1,6 +1,5 @@
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{crypto::OpenMlsCrypto, types::HpkeCiphertext, OpenMlsProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, types::HpkeCiphertext};
 use tls_codec::Serialize;
 
 use crate::{
@@ -18,7 +17,7 @@ use crate::{
 
 pub(crate) fn setup_alice_group(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::RefinedProvider,
 ) -> (
     CoreGroup,
     CredentialWithKey,
@@ -56,7 +55,10 @@ pub fn flip_last_byte(ctxt: &mut HpkeCiphertext) {
 }
 
 #[apply(ciphersuites_and_providers)]
-fn test_failed_groupinfo_decryption(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_failed_groupinfo_decryption(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::RefinedProvider,
+) {
     let epoch = 123;
     let group_id = GroupId::random(provider.rand());
     let tree_hash = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
@@ -170,7 +172,7 @@ fn test_failed_groupinfo_decryption(ciphersuite: Ciphersuite, provider: &impl Op
 /// Test what happens if the KEM ciphertext for the receiver in the UpdatePath
 /// is broken.
 #[apply(ciphersuites_and_providers)]
-fn test_update_path(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_update_path(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
     // === Alice creates a group with her and Bob ===
     let (
         framing_parameters,
@@ -270,7 +272,7 @@ fn test_update_path(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
 fn setup_alice_bob(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::RefinedProvider,
 ) -> (
     CredentialWithKey,
     SignatureKeyPair,
@@ -297,7 +299,7 @@ fn setup_alice_bob(
 
 // Test several scenarios when PSKs are used in a group
 #[apply(ciphersuites_and_providers)]
-fn test_psks(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_psks(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -427,7 +429,10 @@ fn test_psks(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
 // Test several scenarios when PSKs are used in a group
 #[apply(ciphersuites_and_providers)]
-fn test_staged_commit_creation(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_staged_commit_creation(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::RefinedProvider,
+) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -500,7 +505,10 @@ fn test_staged_commit_creation(ciphersuite: Ciphersuite, provider: &impl OpenMls
 
 // Test processing of own commits
 #[apply(ciphersuites_and_providers)]
-fn test_own_commit_processing(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_own_commit_processing(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::RefinedProvider,
+) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -539,7 +547,7 @@ fn test_own_commit_processing(ciphersuite: Ciphersuite, provider: &impl OpenMlsP
 pub(crate) fn setup_client(
     id: &str,
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::RefinedProvider,
 ) -> (
     CredentialWithKey,
     KeyPackageBundle,
@@ -567,7 +575,7 @@ pub(crate) fn setup_client(
 #[apply(ciphersuites_and_providers)]
 fn test_proposal_application_after_self_was_removed(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::RefinedProvider,
 ) {
     // We're going to test if proposals are still applied, even after a client
     // notices that it was removed from a group.  We do so by having Alice

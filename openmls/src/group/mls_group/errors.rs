@@ -5,6 +5,7 @@
 
 // These errors are exposed through `crate::group::errors`.
 
+use openmls_traits::storage::UpdateError;
 use thiserror::Error;
 
 use crate::{
@@ -80,13 +81,13 @@ pub enum MlsGroupStateError {
 
 /// Error merging pending commit
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum MergePendingCommitError<KeyStoreError> {
+pub enum MergePendingCommitError<KeyStoreError, StorageUpdateError: UpdateError> {
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     MlsGroupStateError(#[from] MlsGroupStateError),
     /// See [`MergeCommitError`] for more details.
     #[error(transparent)]
-    MergeCommitError(#[from] MergeCommitError<KeyStoreError>),
+    MergeCommitError(#[from] MergeCommitError<KeyStoreError, StorageUpdateError>),
 }
 
 /// Process message error
@@ -298,7 +299,7 @@ pub enum ProposePskError {
 
 /// Export secret error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum ProposalError<KeyStoreError> {
+pub enum ProposalError<KeyStoreError, StorageUpdateError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -323,4 +324,7 @@ pub enum ProposalError<KeyStoreError> {
     /// See [`CreateGroupContextExtProposalError`] for more details.
     #[error(transparent)]
     CreateGroupContextExtProposalError(#[from] CreateGroupContextExtProposalError),
+    /// Error writing proposal to storage.
+    #[error("error writing proposal to storage")]
+    StorageError(StorageUpdateError),
 }

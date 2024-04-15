@@ -73,7 +73,10 @@ macro_rules! impl_propose_fun {
             provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
             signer: &impl Signer,
             value: $value_ty,
-        ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<KeyStore::Error>> {
+        ) -> Result<
+            (MlsMessageOut, ProposalRef),
+            ProposalError<KeyStore::Error, Storage::UpdateError>,
+        > {
             self.is_operational()?;
 
             let proposal = self
@@ -94,7 +97,10 @@ macro_rules! impl_propose_fun {
                 proposal_ref.clone(),
                 queued_proposal,
             );
-            provider.storage().apply_update(update);
+            provider
+                .storage()
+                .apply_update(update)
+                .map_err(ProposalError::StorageError)?;
 
             let mls_message = self.content_to_mls_message(proposal, provider)?;
 
@@ -156,7 +162,8 @@ impl MlsGroup {
         signer: &impl Signer,
         propose: Propose,
         ref_or_value: ProposalOrRefType,
-    ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<KeyStore::Error>> {
+    ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<KeyStore::Error, Storage::UpdateError>>
+    {
         match propose {
             Propose::Add(key_package) => match ref_or_value {
                 ProposalOrRefType::Proposal => {
@@ -340,7 +347,8 @@ impl MlsGroup {
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
         signer: &impl Signer,
         member: &Credential,
-    ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<KeyStore::Error>> {
+    ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<KeyStore::Error, Storage::UpdateError>>
+    {
         // Find the user for the credential first.
         let member_index = self
             .group
@@ -362,12 +370,12 @@ impl MlsGroup {
     ///
     /// Returns an error when the group does not support all the required capabilities
     /// in the new `extensions`.
-    pub fn propose_group_context_extensions(
+    pub fn propose_group_context_extensions<Storage: crate::storage::StorageProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider,
+        provider: &impl crate::storage::RefinedProvider<Storage = Storage>,
         extensions: Extensions,
         signer: &impl Signer,
-    ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<()>> {
+    ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<(), Storage::UpdateError>> {
         self.is_operational()?;
 
         let proposal = self.group.create_group_context_ext_proposal(

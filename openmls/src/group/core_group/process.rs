@@ -1,4 +1,5 @@
 use core_group::proposals::QueuedProposal;
+use openmls_traits::storage::StorageProvider;
 
 use crate::{
     framing::mls_content::FramedContentBody,
@@ -290,12 +291,15 @@ impl CoreGroup {
     }
 
     /// Merge a [StagedCommit] into the group after inspection
-    pub(crate) fn merge_staged_commit<KeyStore: OpenMlsKeyStore>(
+    pub(crate) fn merge_staged_commit<
+        KeyStore: OpenMlsKeyStore,
+        Storage: StorageProvider<1, Types = crate::storage::OpenMlsTypes>,
+    >(
         &mut self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
         staged_commit: StagedCommit,
         proposal_store: &mut ProposalStore,
-    ) -> Result<(), MergeCommitError<KeyStore::Error>> {
+    ) -> Result<(), MergeCommitError<KeyStore::Error, Storage::UpdateError>> {
         // Save the past epoch
         let past_epoch = self.context().epoch();
         // Get all the full leaves

@@ -40,7 +40,7 @@ use crate::{
 fn generate_credential_with_key_and_key_package(
     identity: Vec<u8>,
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::RefinedProvider,
 ) -> (CredentialWithKeyAndSigner, KeyPackage) {
     let credential_with_key_and_signer =
         generate_credential_with_key(identity, ciphersuite.signature_algorithm(), provider);
@@ -60,7 +60,7 @@ fn create_group_with_members<KeyStore: OpenMlsKeyStore>(
     ciphersuite: Ciphersuite,
     alice_credential_with_key_and_signer: &CredentialWithKeyAndSigner,
     member_key_packages: &[KeyPackage],
-    provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+    provider: &impl crate::storage::RefinedProvider<KeyStoreProvider = KeyStore>,
 ) -> Result<(MlsMessageIn, Welcome), AddMembersError<KeyStore::Error>> {
     let mut alice_group = MlsGroup::new_with_group_id(
         provider,
@@ -101,7 +101,7 @@ fn new_test_group(
     identity: &str,
     wire_format_policy: WireFormatPolicy,
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::RefinedProvider,
 ) -> (MlsGroup, CredentialWithKeyAndSigner) {
     let group_id = GroupId::from_slice(b"Test Group");
 
@@ -132,7 +132,7 @@ fn new_test_group(
 fn validation_test_setup(
     wire_format_policy: WireFormatPolicy,
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::RefinedProvider,
 ) -> ProposalValidationTestSetup {
     // === Alice creates a group ===
     let (mut alice_group, alice_credential_with_key_and_signer) =
@@ -187,7 +187,7 @@ fn validation_test_setup(
 }
 
 fn insert_proposal_and_resign(
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::RefinedProvider,
     ciphersuite: Ciphersuite,
     mut proposal_or_ref: Vec<ProposalOrRef>,
     mut plaintext: PublicMessage,
@@ -244,7 +244,7 @@ enum KeyUniqueness {
 /// Add Proposal:
 /// Signature public key in proposals must be unique among proposals
 #[apply(ciphersuites_and_providers)]
-fn test_valsem101a(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem101a(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
     for bob_and_charlie_share_keys in [
         KeyUniqueness::NegativeSameKey,
         KeyUniqueness::PositiveDifferentKey,
@@ -419,7 +419,7 @@ fn test_valsem101a(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 /// Add Proposal:
 /// HPKE init key in proposals must be unique among proposals
 #[apply(ciphersuites_and_providers)]
-fn test_valsem102(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem102(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
     for bob_and_charlie_share_keys in [
         KeyUniqueness::NegativeSameKey,
         KeyUniqueness::PositiveDifferentKey,
@@ -574,7 +574,7 @@ fn test_valsem102(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 /// Signature public key in proposals must be unique among existing group
 /// members
 #[apply(ciphersuites_and_providers)]
-fn test_valsem101b(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem101b(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
     for alice_and_bob_share_keys in [
         KeyUniqueness::NegativeSameKey,
         KeyUniqueness::PositiveDifferentKey,
@@ -826,7 +826,10 @@ fn test_valsem101b(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 /// ValSem104:
 /// Add Proposal: Init key and encryption key must be different
 #[apply(ciphersuites_and_providers)]
-fn test_valsem103_valsem104(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem103_valsem104(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::RefinedProvider,
+) {
     for alice_and_bob_share_keys in [
         KeyUniqueness::NegativeSameKey,
         KeyUniqueness::PositiveDifferentKey,
@@ -992,7 +995,7 @@ enum ProposalInclusion {
 /// Add Proposal:
 /// Ciphersuite & protocol version must match the group
 #[apply(ciphersuites_and_providers)]
-fn test_valsem105(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem105(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
     let _ = pretty_env_logger::try_init();
 
     // Ciphersuite & protocol version validation includes checking the
@@ -1315,7 +1318,7 @@ fn test_valsem105(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 /// Remove Proposal:
 /// Removed member must be unique among proposals
 #[apply(ciphersuites_and_providers)]
-fn test_valsem107(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem107(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
     // Helper function to unwrap a commit with a single proposal from an mls message.
     fn unwrap_specific_commit(commit_ref_remove: MlsMessageOut) -> Commit {
         let serialized_message = commit_ref_remove.tls_serialize_detached().unwrap();
@@ -1462,7 +1465,7 @@ fn test_valsem107(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 /// Remove Proposal:
 /// Removed member must be an existing group member
 #[apply(ciphersuites_and_providers)]
-fn test_valsem108(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem108(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
     // Before we can test creation or reception of (invalid) proposals, we set
     // up a new group with Alice and Bob.
     let ProposalValidationTestSetup {
@@ -1592,7 +1595,7 @@ fn test_valsem108(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 /// Update Proposal:
 /// Encryption key must be unique among existing members
 #[apply(ciphersuites_and_providers)]
-fn test_valsem110(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem110(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
     // Before we can test creation or reception of (invalid) proposals, we set
     // up a new group with Alice and Bob.
     let ProposalValidationTestSetup {
@@ -1738,7 +1741,7 @@ fn test_valsem110(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 /// Update Proposal:
 /// The sender of a full Commit must not include own update proposals
 #[apply(ciphersuites_and_providers)]
-fn test_valsem111(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem111(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
     // Before we can test creation or reception of (invalid) proposals, we set
     // up a new group with Alice and Bob.
     let ProposalValidationTestSetup {
@@ -1910,7 +1913,7 @@ fn test_valsem111(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 /// Update Proposal:
 /// The sender of a standalone update proposal must be of type member
 #[apply(ciphersuites_and_providers)]
-fn test_valsem112(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem112(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
     // Before we can test creation or reception of (invalid) proposals, we set
     // up a new group with Alice and Bob.
     let ProposalValidationTestSetup {
@@ -1970,17 +1973,11 @@ fn test_valsem112(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .expect("Unexpected error.");
 }
 
-use crate::storage::OpenMlsTypes;
-use openmls_traits::storage::StorageProvider;
-
 /// ValSem113
 /// All Proposals: The proposal type must be supported by all members of the
 /// group
 #[apply(ciphersuites_and_providers)]
-fn valsem113<Storage: StorageProvider<1, Types = OpenMlsTypes>>(
-    ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider<StorageProvider = Storage>,
-) {
+fn valsem113(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
     #[derive(Debug)]
     enum TestMode {
         Unsupported,
@@ -2127,9 +2124,9 @@ fn valsem113<Storage: StorageProvider<1, Types = OpenMlsTypes>>(
 // --- PreSharedKey Proposals ---
 
 #[apply(ciphersuites_and_providers)]
-fn test_valsem401_valsem402<Storage: StorageProvider<1, Types = OpenMlsTypes>>(
+fn test_valsem401_valsem402(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider<StorageProvider = Storage>,
+    provider: &impl crate::storage::RefinedProvider,
 ) {
     let ProposalValidationTestSetup {
         mut alice_group,

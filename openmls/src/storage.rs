@@ -43,3 +43,22 @@ impl Types<1> for OpenMlsTypes {
     type InterimTranscriptHash = InterimTranscriptHash;
     type ConfirmationTag = ConfirmationTag;
 }
+
+pub trait StorageProvider:
+    openmls_traits::storage::StorageProvider<1, Types = OpenMlsTypes>
+{
+}
+
+impl<P: openmls_traits::storage::StorageProvider<1, Types = OpenMlsTypes>> StorageProvider for P {}
+
+pub trait RefinedProvider:
+    openmls_traits::OpenMlsProvider<StorageProvider = Self::Storage>
+{
+    type Storage: StorageProvider;
+}
+
+impl<SP: StorageProvider, OP: openmls_traits::OpenMlsProvider<StorageProvider = SP>> RefinedProvider
+    for OP
+{
+    type Storage = SP;
+}

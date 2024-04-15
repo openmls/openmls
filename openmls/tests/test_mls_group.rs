@@ -4,12 +4,12 @@ use openmls::{
     *,
 };
 
-use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, OpenMlsProvider};
+use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer};
 
 fn generate_key_package<KeyStore: OpenMlsKeyStore>(
     ciphersuite: Ciphersuite,
     extensions: Extensions,
-    provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+    provider: &impl crate::storage::RefinedProvider<KeyStoreProvider = KeyStore>,
     credential_with_key: CredentialWithKey,
     signer: &impl Signer,
 ) -> KeyPackage {
@@ -34,7 +34,7 @@ fn generate_key_package<KeyStore: OpenMlsKeyStore>(
 ///  - Bob leaves
 ///  - Test saving the group state
 #[apply(ciphersuites_and_providers)]
-fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
         let group_id = GroupId::from_slice(b"Test Group");
 
@@ -944,7 +944,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 }
 
 #[apply(ciphersuites_and_providers)]
-fn addition_order(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn addition_order(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
         let group_id = GroupId::from_slice(b"Test Group");
         // Generate credentials with keys
@@ -1045,7 +1045,10 @@ fn addition_order(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 }
 
 #[apply(ciphersuites_and_providers)]
-fn test_empty_input_errors(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_empty_input_errors(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::RefinedProvider,
+) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Generate credentials with keys
@@ -1083,7 +1086,10 @@ fn test_empty_input_errors(ciphersuite: Ciphersuite, provider: &impl OpenMlsProv
 
 // This tests the ratchet tree extension usage flag in the configuration
 #[apply(ciphersuites_and_providers)]
-fn mls_group_ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn mls_group_ratchet_tree_extension(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::RefinedProvider,
+) {
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
         let group_id = GroupId::from_slice(b"Test Group");
 
@@ -1197,7 +1203,10 @@ fn mls_group_ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl Op
 
 /// Test that the a group context extensions proposal is correctly applied when valid, and rejected when not.
 #[apply(ciphersuites_and_providers)]
-fn group_context_extensions_proposal(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn group_context_extensions_proposal(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::RefinedProvider,
+) {
     let (alice_credential_with_key, alice_signer) =
         new_credential(provider, b"Alice", ciphersuite.signature_algorithm());
 

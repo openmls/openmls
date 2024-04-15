@@ -12,7 +12,7 @@ fn new_test_group(
     identity: &str,
     wire_format_policy: WireFormatPolicy,
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::RefinedProvider,
     external_senders: ExternalSendersExtension,
 ) -> (MlsGroup, CredentialWithKeyAndSigner) {
     let group_id = GroupId::from_slice(b"Test Group");
@@ -48,7 +48,7 @@ fn new_test_group(
 fn validation_test_setup(
     wire_format_policy: WireFormatPolicy,
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::RefinedProvider,
     external_senders: ExternalSendersExtension,
 ) -> (MlsGroup, CredentialWithKeyAndSigner) {
     // === Alice creates a group ===
@@ -85,7 +85,7 @@ fn validation_test_setup(
 #[apply(ciphersuites_and_providers)]
 fn external_remove_proposal_should_remove_member(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::RefinedProvider,
 ) {
     // delivery service credentials. DS will craft an external remove proposal
     let ds_credential_with_key = generate_credential_with_key(
@@ -201,7 +201,7 @@ fn external_remove_proposal_should_remove_member(
 #[apply(ciphersuites_and_providers)]
 fn external_remove_proposal_should_fail_when_invalid_external_senders_index(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::RefinedProvider,
 ) {
     // delivery service credentials. DS will craft an external remove proposal
     let ds_credential_with_key = generate_credential_with_key(
@@ -261,7 +261,7 @@ fn external_remove_proposal_should_fail_when_invalid_external_senders_index(
 #[apply(ciphersuites_and_providers)]
 fn external_remove_proposal_should_fail_when_invalid_signature(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::RefinedProvider,
 ) {
     // delivery service credentials. DS will craft an external remove proposal
     let ds_credential_with_key = generate_credential_with_key(
@@ -321,7 +321,7 @@ fn external_remove_proposal_should_fail_when_invalid_signature(
 #[apply(ciphersuites_and_providers)]
 fn external_remove_proposal_should_fail_when_no_external_senders(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::RefinedProvider,
 ) {
     let (mut alice_group, _) = validation_test_setup(
         PURE_PLAINTEXT_WIRE_FORMAT_POLICY,

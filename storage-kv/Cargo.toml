@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 openmls_traits = { path = "../traits" }
 serde_json = "1.0.115"
+thiserror = "^1.0"

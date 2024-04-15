@@ -4,7 +4,7 @@ use openmls::{
     *,
 };
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_traits::{signatures::Signer, types::SignatureScheme, OpenMlsProvider};
+use openmls_traits::{signatures::Signer, types::SignatureScheme};
 
 #[test]
 fn create_provider_rust_crypto() {
@@ -19,7 +19,7 @@ fn create_provider_rust_crypto() {
 fn generate_credential(
     identity: Vec<u8>,
     signature_algorithm: SignatureScheme,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::RefinedProvider,
 ) -> (CredentialWithKey, SignatureKeyPair) {
     // ANCHOR: create_basic_credential
     let credential = BasicCredential::new(identity);
@@ -42,7 +42,7 @@ fn generate_key_package(
     ciphersuite: Ciphersuite,
     credential_with_key: CredentialWithKey,
     extensions: Extensions,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::RefinedProvider,
     signer: &impl Signer,
 ) -> KeyPackage {
     // ANCHOR: create_key_package
@@ -69,7 +69,7 @@ fn generate_key_package(
 ///  - Bob leaves
 ///  - Test saving the group state
 #[apply(ciphersuites_and_providers)]
-fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn book_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
     // Generate credentials with keys
     let (alice_credential, alice_signature_keys) =
         generate_credential("Alice".into(), ciphersuite.signature_algorithm(), provider);
@@ -1353,7 +1353,10 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 }
 
 #[apply(ciphersuites_and_providers)]
-fn test_empty_input_errors(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_empty_input_errors(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::RefinedProvider,
+) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Generate credentials with keys
@@ -1389,13 +1392,10 @@ fn test_empty_input_errors(ciphersuite: Ciphersuite, provider: &impl OpenMlsProv
     );
 }
 
-use openmls::storage::OpenMlsTypes;
-use openmls_traits::storage::StorageProvider;
-
 #[apply(ciphersuites_and_providers)]
-fn custom_proposal_usage<Storage: StorageProvider<1, Types = OpenMlsTypes>>(
+fn custom_proposal_usage(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider<StorageProvider = Storage>,
+    provider: &impl crate::storage::RefinedProvider,
 ) {
     // Generate credentials with keys
     let (alice_credential_with_key, alice_signer) =

@@ -359,8 +359,8 @@ impl fmt::Display for RatchetTree {
 /// [`TreeSync`] instance guarantee a few invariants that are checked upon
 /// creating a new instance from an imported set of nodes, as well as when
 /// merging a diff.
-#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq, Clone))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct TreeSync {
     tree: MlsBinaryTree<TreeSyncLeafNode, TreeSyncParentNode>,
     tree_hash: Vec<u8>,

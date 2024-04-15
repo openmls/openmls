@@ -3,9 +3,11 @@ use thiserror::Error;
 
 use crate::{error::LibraryError, group::errors::*};
 use openmls_rust_crypto::{MemoryKeyStore, MemoryKeyStoreError};
+use openmls_storage_kv::mem_kv_store::Infallible;
+use openmls_storage_kv::UpdateError as KvStorageUpdateError;
 
 /// Setup error
-#[derive(Error, Debug, PartialEq, Clone)]
+#[derive(Error, Debug, PartialEq)]
 pub enum SetupError {
     #[error("")]
     UnknownGroupId,
@@ -38,7 +40,7 @@ pub enum SetupGroupError {
 }
 
 /// Errors that can occur when processing messages with the client.
-#[derive(Error, Debug, PartialEq, Clone)]
+#[derive(Error, Debug, PartialEq)]
 pub enum ClientError {
     #[error("")]
     NoMatchingKeyPackage,
@@ -87,10 +89,14 @@ pub enum ClientError {
     ProposeSelfUpdateError(#[from] ProposeSelfUpdateError<MemoryKeyStoreError>),
     /// See [`MergePendingCommitError`] for more details.
     #[error(transparent)]
-    MergePendingCommitError(#[from] MergePendingCommitError<MemoryKeyStoreError>),
+    MergePendingCommitError(
+        #[from] MergePendingCommitError<MemoryKeyStoreError, KvStorageUpdateError<Infallible>>,
+    ),
     /// See [`MergeCommitError`] for more details.
     #[error(transparent)]
-    MergeCommitError(#[from] MergeCommitError<MemoryKeyStoreError>),
+    MergeCommitError(
+        #[from] MergeCommitError<MemoryKeyStoreError, KvStorageUpdateError<Infallible>>,
+    ),
     /// See [`MemoryKeyStoreError`] for more details.
     #[error(transparent)]
     KeyStoreError(#[from] MemoryKeyStoreError),

@@ -107,7 +107,7 @@ pub struct MessageProtectionTest {
 fn generate_credential(
     identity: Vec<u8>,
     signature_algorithm: SignatureScheme,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::RefinedProvider,
 ) -> (CredentialWithKey, SignatureKeyPair) {
     let credential = BasicCredential::new(identity);
     let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
@@ -125,7 +125,7 @@ fn generate_credential(
 #[cfg(any(feature = "test-utils", test))]
 fn group(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::RefinedProvider,
 ) -> (CoreGroup, CredentialWithKey, SignatureKeyPair) {
     let (credential_with_key, signer) = generate_credential(
         "Kreator".into(),
@@ -147,7 +147,7 @@ fn group(
 #[cfg(any(feature = "test-utils", test))]
 fn receiver_group(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::RefinedProvider,
     group_id: GroupId,
 ) -> (CoreGroup, CredentialWithKey, SignatureKeyPair) {
     let (credential_with_key, signer) = generate_credential(
@@ -166,7 +166,7 @@ fn receiver_group(
 #[cfg(test)]
 pub fn run_test_vector(
     test: MessageProtectionTest,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::RefinedProvider,
 ) -> Result<(), String> {
     use openmls_traits::crypto::OpenMlsCrypto;
     use tls_codec::{Deserialize, Serialize};
@@ -214,7 +214,7 @@ pub fn run_test_vector(
 
     // Make the group think it has two members.
     fn setup_group(
-        provider: &impl OpenMlsProvider,
+        provider: &impl crate::storage::RefinedProvider,
         ciphersuite: Ciphersuite,
         test: &MessageProtectionTest,
         sender: bool,
@@ -332,7 +332,7 @@ pub fn run_test_vector(
 
         fn test_proposal_pub(
             mut group: CoreGroup,
-            provider: &impl OpenMlsProvider,
+            provider: &impl crate::storage::RefinedProvider,
             ciphersuite: Ciphersuite,
             proposal: ProposalIn,
             proposal_pub: MlsMessageIn,
@@ -373,7 +373,7 @@ pub fn run_test_vector(
 
         fn test_proposal_priv(
             mut group: CoreGroup,
-            provider: &impl OpenMlsProvider,
+            provider: &impl crate::storage::RefinedProvider,
             proposal: ProposalIn,
             proposal_priv: MlsMessageIn,
         ) {
@@ -469,7 +469,7 @@ pub fn run_test_vector(
 
         fn test_commit_pub(
             mut group: CoreGroup,
-            provider: &impl OpenMlsProvider,
+            provider: &impl crate::storage::RefinedProvider,
             ciphersuite: Ciphersuite,
             commit: CommitIn,
             commit_pub: MlsMessageIn,
@@ -512,7 +512,7 @@ pub fn run_test_vector(
 
         fn test_commit_priv(
             mut group: CoreGroup,
-            provider: &impl OpenMlsProvider,
+            provider: &impl crate::storage::RefinedProvider,
             ciphersuite: Ciphersuite,
             commit: CommitIn,
             commit_priv: MlsMessageIn,
@@ -623,7 +623,7 @@ pub fn run_test_vector(
 
         fn test_application_priv(
             mut group: CoreGroup,
-            provider: &impl OpenMlsProvider,
+            provider: &impl crate::storage::RefinedProvider,
             application: Vec<u8>,
             application_priv: MlsMessageIn,
         ) {
@@ -678,7 +678,7 @@ pub fn run_test_vector(
 }
 
 #[apply(providers)]
-fn read_test_vectors_mp(provider: &impl OpenMlsProvider) {
+fn read_test_vectors_mp(provider: &impl crate::storage::RefinedProvider) {
     let _ = pretty_env_logger::try_init();
     log::debug!("Reading test vectors ...");
 

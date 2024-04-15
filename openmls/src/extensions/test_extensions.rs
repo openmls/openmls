@@ -2,7 +2,6 @@
 //! Some basic unit tests for extensions
 //! Proper testing is done through the public APIs.
 
-use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::key_store::OpenMlsKeyStore;
 use tls_codec::{Deserialize, Serialize};
 
@@ -39,7 +38,10 @@ fn application_id() {
 // This tests the ratchet tree extension to deliver the public ratcheting tree
 // in-band
 #[apply(ciphersuites_and_providers)]
-fn ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn ratchet_tree_extension(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::RefinedProvider,
+) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -243,7 +245,10 @@ fn required_capabilities() {
 }
 
 #[apply(ciphersuites_and_providers)]
-fn with_group_context_extensions(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn with_group_context_extensions(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::RefinedProvider,
+) {
     // create an extension that we can check for later
     let test_extension = Extension::Unknown(0xf023, UnknownExtension(vec![0xca, 0xfe]));
     let extensions = Extensions::single(test_extension.clone());
@@ -281,7 +286,7 @@ fn with_group_context_extensions(ciphersuite: Ciphersuite, provider: &impl OpenM
 #[apply(ciphersuites_and_providers)]
 fn wrong_extension_with_group_context_extensions(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::RefinedProvider,
 ) {
     // Extension types that are known to not be allowed here:
     // - application id
@@ -359,7 +364,10 @@ fn wrong_extension_with_group_context_extensions(
 }
 
 #[apply(ciphersuites_and_providers)]
-fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn last_resort_extension(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::RefinedProvider,
+) {
     let last_resort = Extension::LastResort(LastResortExtension::default());
 
     // Build a KeyPackage with a last resort extension

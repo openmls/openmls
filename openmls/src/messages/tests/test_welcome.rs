@@ -33,7 +33,10 @@ use crate::{
 /// group info, it is not possible to generate a matching encrypted group context with different
 /// parameters.
 #[apply(ciphersuites_and_providers)]
-fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_welcome_context_mismatch(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::RefinedProvider,
+) {
     let _ = pretty_env_logger::try_init();
 
     // We need a ciphersuite that is different from the current one to create
@@ -203,11 +206,11 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, provider: &impl OpenM
 }
 
 #[apply(ciphersuites_and_providers)]
-fn test_welcome_msg(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_welcome_msg(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
     test_welcome_message(ciphersuite, provider);
 }
 
-fn test_welcome_message(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_welcome_message(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
     // We use this dummy group info in all test cases.
     let group_info_tbs = {
         let group_context = GroupContext::new(

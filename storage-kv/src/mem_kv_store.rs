@@ -1,7 +1,18 @@
 pub use super::kv_store::*;
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct HashMapKv(std::collections::HashMap<Vec<u8>, Vec<u8>>);
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Infallible {}
+
+impl core::fmt::Display for Infallible {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        unreachable!()
+    }
+}
+
+impl std::error::Error for Infallible {}
 
 impl KvStore for HashMapKv {
     type InternalError = Infallible;

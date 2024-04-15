@@ -10,7 +10,10 @@ use crate::{
 };
 
 #[apply(ciphersuites_and_providers)]
-fn create_commit_optional_path(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn create_commit_optional_path(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::RefinedProvider,
+) {
     let group_aad = b"Alice's test group";
     // Framing parameters
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -203,7 +206,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, provider: &impl OpenMls
 }
 
 #[apply(ciphersuites_and_providers)]
-fn basic_group_setup(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn basic_group_setup(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
     let group_aad = b"Alice's test group";
     // Framing parameters
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -279,7 +282,7 @@ fn basic_group_setup(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) 
 ///  - Charlie updates and commits
 ///  - Charlie removes Bob
 #[apply(ciphersuites_and_providers)]
-fn group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn group_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
     let group_aad = b"Alice's test group";
     // Framing parameters
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);

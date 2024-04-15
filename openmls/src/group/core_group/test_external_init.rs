@@ -12,13 +12,12 @@ use crate::{
     test_utils::*,
 };
 
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::types::Ciphersuite;
 
 use super::{proposals::ProposalStore, CoreGroup};
 
 #[apply(ciphersuites_and_providers)]
-fn test_external_init(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_external_init(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
     let (
         framing_parameters,
         mut group_alice,
@@ -183,7 +182,7 @@ fn test_external_init(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider)
 #[apply(ciphersuites_and_providers)]
 fn test_external_init_single_member_group(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::RefinedProvider,
 ) {
     let (mut group_alice, _alice_credential_with_key, alice_signer, _alice_pk) =
         setup_alice_group(ciphersuite, provider);
@@ -243,7 +242,10 @@ fn test_external_init_single_member_group(
 }
 
 #[apply(ciphersuites_and_providers)]
-fn test_external_init_broken_signature(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_external_init_broken_signature(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::RefinedProvider,
+) {
     let (
         framing_parameters,
         group_alice,
