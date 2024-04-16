@@ -1,12 +1,16 @@
-use openmls_traits::key_store::{MlsEntity, OpenMlsKeyStore};
-use std::{collections::HashMap, sync::RwLock};
+use openmls_traits::{
+    key_store::{MlsEntity, OpenMlsKeyStore},
+    storage::{self, GetError, Key, StorageProvider, Update, UpdateError},
+};
+use std::{collections::HashMap, marker::PhantomData, sync::RwLock};
 
 #[derive(Debug, Default)]
-pub struct MemoryKeyStore {
+pub struct MemoryKeyStore<Types: Default> {
     values: RwLock<HashMap<Vec<u8>, Vec<u8>>>,
+    phantom: PhantomData<Types>,
 }
 
-impl OpenMlsKeyStore for MemoryKeyStore {
+impl<Types: Default> OpenMlsKeyStore for MemoryKeyStore<Types> {
     /// The error type returned by the [`OpenMlsKeyStore`].
     type Error = MemoryKeyStoreError;
 
@@ -60,4 +64,114 @@ pub enum MemoryKeyStoreError {
     UnsupportedMethod,
     #[error("Error serializing value.")]
     SerializationError,
+}
+
+impl GetError for MemoryKeyStoreError {
+    fn error_kind(&self) -> storage::GetErrorKind {
+        todo!()
+    }
+}
+
+impl UpdateError for MemoryKeyStoreError {
+    fn error_kind(&self) -> storage::UpdateErrorKind {
+        todo!()
+    }
+}
+
+pub const V1: usize = 1;
+
+impl<Types: storage::Types<1>> StorageProvider<1> for MemoryKeyStore<Types> {
+    type GetError = MemoryKeyStoreError;
+    type UpdateError = MemoryKeyStoreError;
+    type Types = Types;
+
+    fn apply_update(&self, update: Update<1, Self::Types>) -> Result<(), Self::UpdateError> {
+        let mut values = self.values.write().unwrap();
+        match update {
+            Update::QueueProposal(group_id, proposal_ref, queued_proposal) => {
+                let mut key = b"QueueProposal".to_vec();
+                key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
+
+                let mut value = serde_json::to_vec(&proposal_ref).unwrap();
+                value.extend_from_slice(&serde_json::to_vec(&queued_proposal).unwrap());
+
+                values.insert(key, value);
+            }
+            Update::WriteTreeSync(group_id, tree) => {
+                let mut key = b"Tree".to_vec();
+                key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
+                let value = serde_json::to_vec(&tree).unwrap();
+
+                values.insert(key, value);
+            }
+            Update::WriteGroupContext(group_id, context) => {
+                let mut key = b"GroupContext".to_vec();
+                key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
+                let value = serde_json::to_vec(&context).unwrap();
+
+                values.insert(key, value);
+            }
+            Update::WriteInterimTranscriptHash(group_id, interim_transcript_hash) => {
+                let mut key = b"InterimTranscriptHash".to_vec();
+                key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
+                let value = serde_json::to_vec(&interim_transcript_hash).unwrap();
+
+                values.insert(key, value);
+            }
+            Update::WriteConfirmationTag(group_id, confirmation_tag) => {
+                let mut key = b"ConfirmationTag".to_vec();
+                key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
+                let value = serde_json::to_vec(&confirmation_tag).unwrap();
+
+                values.insert(key, value);
+            }
+        }
+        Ok(())
+    }
+
+    fn apply_updates(&self, update: Vec<Update<1, Self::Types>>) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn get_queued_proposal_refs(
+        &self,
+        group_id: &<Self::Types as storage::Types<1>>::GroupId,
+    ) -> Result<Vec<<Self::Types as storage::Types<1>>::ProposalRef>, Self::GetError> {
+        todo!()
+    }
+
+    fn get_queued_proposals(
+        &self,
+        group_id: &<Self::Types as storage::Types<1>>::GroupId,
+    ) -> Result<Vec<<Self::Types as storage::Types<1>>::QueuedProposal>, Self::GetError> {
+        todo!()
+    }
+
+    fn get_treesync(
+        &self,
+        group_id: &<Self::Types as storage::Types<1>>::GroupId,
+    ) -> Result<<Self::Types as storage::Types<1>>::TreeSync, Self::GetError> {
+        todo!()
+    }
+
+    fn get_group_context(
+        &self,
+        group_id: &<Self::Types as storage::Types<1>>::GroupId,
+    ) -> Result<<Self::Types as storage::Types<1>>::GroupContext, Self::GetError> {
+        todo!()
+    }
+
+    fn get_interim_transcript_hash(
+        &self,
+        group_id: &<Self::Types as storage::Types<1>>::GroupId,
+    ) -> Result<<Self::Types as storage::Types<1>>::InterimTranscriptHash, Self::GetError> {
+        todo!()
+    }
+
+    fn get_confirmation_tag(
+        &self,
+        group_id: &<Self::Types as storage::Types<1>>::GroupId,
+    ) -> Result<<Self::Types as storage::Types<1>>::ConfirmationTag, Self::GetError> {
+        todo!()
+    }
 }
