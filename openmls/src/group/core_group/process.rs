@@ -1,5 +1,5 @@
 use core_group::proposals::QueuedProposal;
-use openmls_traits::storage::StorageProvider;
+use openmls_traits::storage::v1::StorageProvider;
 
 use crate::{
     framing::mls_content::FramedContentBody,
@@ -293,7 +293,7 @@ impl CoreGroup {
     /// Merge a [StagedCommit] into the group after inspection
     pub(crate) fn merge_staged_commit<
         KeyStore: OpenMlsKeyStore,
-        Storage: StorageProvider<1, Types = crate::storage::OpenMlsTypes>,
+        Storage: StorageProvider<Types = crate::storage::OpenMlsTypes>,
     >(
         &mut self,
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,

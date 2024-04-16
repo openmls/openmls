@@ -1,6 +1,6 @@
 use openmls_traits::{
-    key_store::OpenMlsKeyStore, signatures::Signer, storage::StorageProvider, types::Ciphersuite,
-    OpenMlsProvider,
+    key_store::OpenMlsKeyStore, signatures::Signer, storage::v1::StorageProvider,
+    types::Ciphersuite, OpenMlsProvider,
 };
 
 use super::{
@@ -65,10 +65,7 @@ macro_rules! impl_propose_fun {
         /// Creates proposals to add an external PSK to the key schedule.
         ///
         /// Returns an error if there is a pending commit.
-        pub fn $name<
-            KeyStore: OpenMlsKeyStore,
-            Storage: StorageProvider<1, Types = OpenMlsTypes>,
-        >(
+        pub fn $name<KeyStore: OpenMlsKeyStore, Storage: StorageProvider<Types = OpenMlsTypes>>(
             &mut self,
             provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
             signer: &impl Signer,
@@ -92,7 +89,7 @@ macro_rules! impl_propose_fun {
             let proposal_ref = queued_proposal.proposal_reference();
             log::trace!("Storing proposal in queue {:?}", queued_proposal);
             self.proposal_store.add(queued_proposal.clone());
-            let update = openmls_traits::storage::Update::<1, OpenMlsTypes>::QueueProposal(
+            let update = openmls_traits::storage::v1::Update::<OpenMlsTypes>::QueueProposal(
                 self.group.group_id().clone(),
                 proposal_ref.clone(),
                 queued_proposal,
@@ -156,7 +153,7 @@ impl MlsGroup {
     );
 
     /// Generate a proposal
-    pub fn propose<KeyStore: OpenMlsKeyStore, Storage: StorageProvider<1, Types = OpenMlsTypes>>(
+    pub fn propose<KeyStore: OpenMlsKeyStore, Storage: StorageProvider<Types = OpenMlsTypes>>(
         &mut self,
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
         signer: &impl Signer,
@@ -341,7 +338,7 @@ impl MlsGroup {
     /// Returns an error if there is a pending commit.
     pub fn propose_remove_member_by_credential_by_value<
         KeyStore: OpenMlsKeyStore,
-        Storage: StorageProvider<1, Types = OpenMlsTypes>,
+        Storage: StorageProvider<Types = OpenMlsTypes>,
     >(
         &mut self,
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,

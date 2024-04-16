@@ -18,7 +18,7 @@ use std::collections::HashSet;
 
 use openmls_traits::{
     crypto::OpenMlsCrypto,
-    storage::{StorageProvider, Update, UpdateError},
+    storage::v1::{StorageProvider, Update},
     types::Ciphersuite,
 };
 use serde::{Deserialize, Serialize};
@@ -386,7 +386,7 @@ impl PublicGroup {
     }
 
     pub(crate) fn write_to_storage<
-        Storage: StorageProvider<1, Types = crate::storage::OpenMlsTypes>,
+        Storage: StorageProvider<Types = crate::storage::OpenMlsTypes>,
     >(
         &self,
         storage: &Storage,

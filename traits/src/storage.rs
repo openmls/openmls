@@ -1,5 +1,7 @@
 use serde::{de::DeserializeOwned, Serialize};
 
+pub const VERSION_V1: usize = 1;
+
 pub trait Types<const VERSION: usize>: Default {
     type QueuedProposal: QueuedProposalEntity<VERSION>;
     type GroupId: GroupIdKey<VERSION>;
@@ -18,58 +20,63 @@ pub trait UpdateError: core::fmt::Debug + std::error::Error + PartialEq {
     fn error_kind(&self) -> UpdateErrorKind;
 }
 
-pub trait StorageProvider<const VERSION: usize> {
-    // source for errors
-    type GetError: GetError;
-    type UpdateError: UpdateError;
-    type Types: Types<VERSION>;
+pub mod v1 {
+    use super::*;
 
-    // update functions, single and batched
-    fn apply_update(&self, update: Update<VERSION, Self::Types>) -> Result<(), Self::UpdateError>;
-    fn apply_updates(
-        &self,
-        update: Vec<Update<VERSION, Self::Types>>,
-    ) -> Result<(), Self::UpdateError>;
+    pub trait Types: super::Types<VERSION_V1> {}
 
-    // getter
-    fn get_queued_proposal_refs(
-        &self,
-        group_id: &<Self::Types as Types<VERSION>>::GroupId,
-    ) -> Result<Vec<<Self::Types as Types<VERSION>>::ProposalRef>, Self::GetError>;
+    impl<T: super::Types<VERSION_V1>> Types for T {}
 
-    fn get_queued_proposals(
-        &self,
-        group_id: &<Self::Types as Types<VERSION>>::GroupId,
-    ) -> Result<Vec<<Self::Types as Types<VERSION>>::QueuedProposal>, Self::GetError>;
+    pub trait StorageProvider {
+        // source for errors
+        type GetError: GetError;
+        type UpdateError: UpdateError;
+        type Types: Types;
 
-    fn get_treesync(
-        &self,
-        group_id: &<Self::Types as Types<VERSION>>::GroupId,
-    ) -> Result<<Self::Types as Types<VERSION>>::TreeSync, Self::GetError>;
+        // update functions, single and batched
+        fn apply_update(&self, update: Update<Self::Types>) -> Result<(), Self::UpdateError>;
+        fn apply_updates(&self, update: Vec<Update<Self::Types>>) -> Result<(), Self::UpdateError>;
 
-    fn get_group_context(
-        &self,
-        group_id: &<Self::Types as Types<VERSION>>::GroupId,
-    ) -> Result<<Self::Types as Types<VERSION>>::GroupContext, Self::GetError>;
+        // getter
+        fn get_queued_proposal_refs(
+            &self,
+            group_id: &<Self::Types as super::Types<VERSION_V1>>::GroupId,
+        ) -> Result<Vec<<Self::Types as super::Types<VERSION_V1>>::ProposalRef>, Self::GetError>;
 
-    fn get_interim_transcript_hash(
-        &self,
-        group_id: &<Self::Types as Types<VERSION>>::GroupId,
-    ) -> Result<<Self::Types as Types<VERSION>>::InterimTranscriptHash, Self::GetError>;
+        fn get_queued_proposals(
+            &self,
+            group_id: &<Self::Types as super::Types<VERSION_V1>>::GroupId,
+        ) -> Result<Vec<<Self::Types as super::Types<VERSION_V1>>::QueuedProposal>, Self::GetError>;
 
-    fn get_confirmation_tag(
-        &self,
-        group_id: &<Self::Types as Types<VERSION>>::GroupId,
-    ) -> Result<<Self::Types as Types<VERSION>>::ConfirmationTag, Self::GetError>;
-}
+        fn get_treesync(
+            &self,
+            group_id: &<Self::Types as super::Types<VERSION_V1>>::GroupId,
+        ) -> Result<<Self::Types as super::Types<VERSION_V1>>::TreeSync, Self::GetError>;
 
-// contains the different types of updates
-pub enum Update<const VERSION: usize, T: Types<VERSION>> {
-    QueueProposal(T::GroupId, T::ProposalRef, T::QueuedProposal),
-    WriteTreeSync(T::GroupId, T::TreeSync),
-    WriteGroupContext(T::GroupId, T::GroupContext),
-    WriteInterimTranscriptHash(T::GroupId, T::InterimTranscriptHash),
-    WriteConfirmationTag(T::GroupId, T::ConfirmationTag),
+        fn get_group_context(
+            &self,
+            group_id: &<Self::Types as super::Types<VERSION_V1>>::GroupId,
+        ) -> Result<<Self::Types as super::Types<VERSION_V1>>::GroupContext, Self::GetError>;
+
+        fn get_interim_transcript_hash(
+            &self,
+            group_id: &<Self::Types as super::Types<VERSION_V1>>::GroupId,
+        ) -> Result<<Self::Types as super::Types<VERSION_V1>>::InterimTranscriptHash, Self::GetError>;
+
+        fn get_confirmation_tag(
+            &self,
+            group_id: &<Self::Types as super::Types<VERSION_V1>>::GroupId,
+        ) -> Result<<Self::Types as super::Types<VERSION_V1>>::ConfirmationTag, Self::GetError>;
+    }
+
+    // contains the different types of updates
+    pub enum Update<T: Types> {
+        QueueProposal(T::GroupId, T::ProposalRef, T::QueuedProposal),
+        WriteTreeSync(T::GroupId, T::TreeSync),
+        WriteGroupContext(T::GroupId, T::GroupContext),
+        WriteInterimTranscriptHash(T::GroupId, T::InterimTranscriptHash),
+        WriteConfirmationTag(T::GroupId, T::ConfirmationTag),
+    }
 }
 
 // base traits for keys and values

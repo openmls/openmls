@@ -127,7 +127,7 @@ impl MlsGroup {
     /// the epoch of the group, it also clears any pending commits.
     pub fn merge_staged_commit<
         KeyStore: OpenMlsKeyStore,
-        Storage: StorageProvider<1, Types = crate::storage::OpenMlsTypes>,
+        Storage: StorageProvider<Types = crate::storage::OpenMlsTypes>,
     >(
         &mut self,
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
@@ -164,7 +164,7 @@ impl MlsGroup {
     /// clears the field by setting it to `None`.
     pub fn merge_pending_commit<
         KeyStore: OpenMlsKeyStore,
-        Storage: StorageProvider<1, Types = crate::storage::OpenMlsTypes>,
+        Storage: StorageProvider<Types = crate::storage::OpenMlsTypes>,
     >(
         &mut self,
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,

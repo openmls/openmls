@@ -16,7 +16,7 @@ use crate::{
     treesync::{node::leaf_node::LeafNode, RatchetTree},
 };
 use openmls_traits::{
-    key_store::OpenMlsKeyStore, storage::StorageProvider, types::Ciphersuite, OpenMlsProvider,
+    key_store::OpenMlsKeyStore, storage::v1::StorageProvider, types::Ciphersuite, OpenMlsProvider,
 };
 
 // Private

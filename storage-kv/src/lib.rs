@@ -224,32 +224,34 @@ impl<'a, Types: storage::Types<V1>> Key<'a, Types> {
     }
 }
 
-impl<'a, Types: storage::Types<1>> From<&'a storage::Update<1, Types>> for Key<'a, Types> {
-    fn from(value: &'a storage::Update<1, Types>) -> Self {
+impl<'a, Types: storage::v1::Types> From<&'a storage::v1::Update<Types>> for Key<'a, Types> {
+    fn from(value: &'a storage::v1::Update<Types>) -> Self {
         match value {
-            storage::Update::QueueProposal(group_id, proposal_ref, _) => {
+            storage::v1::Update::QueueProposal(group_id, proposal_ref, _) => {
                 Self::QueuedProposal(group_id, proposal_ref)
             }
-            storage::Update::WriteTreeSync(group_id, _) => Self::TreeSync(group_id),
-            storage::Update::WriteGroupContext(group_id, _) => Self::GroupContext(group_id),
-            storage::Update::WriteInterimTranscriptHash(group_id, _) => {
+            storage::v1::Update::WriteTreeSync(group_id, _) => Self::TreeSync(group_id),
+            storage::v1::Update::WriteGroupContext(group_id, _) => Self::GroupContext(group_id),
+            storage::v1::Update::WriteInterimTranscriptHash(group_id, _) => {
                 Self::InterimTranscriptHash(group_id)
             }
-            storage::Update::WriteConfirmationTag(group_id, _) => Self::ConfirmationTag(group_id),
+            storage::v1::Update::WriteConfirmationTag(group_id, _) => {
+                Self::ConfirmationTag(group_id)
+            }
         }
     }
 }
 
 // TODO: implement Error with source for the error types
 
-impl<KvStore: kv_store::KvStore, Types: storage::Types<V1>> storage::StorageProvider<V1>
+impl<KvStore: kv_store::KvStore, Types: storage::v1::Types> storage::v1::StorageProvider
     for KvStoreStorage<KvStore, Types>
 {
     type Types = Types;
     type GetError = GetError<KvStore::InternalError>;
     type UpdateError = UpdateError<KvStore::InternalError>;
 
-    fn apply_update(&self, update: storage::Update<V1, Types>) -> Result<(), Self::UpdateError> {
+    fn apply_update(&self, update: storage::v1::Update<Types>) -> Result<(), Self::UpdateError> {
         let mut store = self.write_update()?;
 
         let key = Key::<Types>::from(&update)
@@ -257,7 +259,7 @@ impl<KvStore: kv_store::KvStore, Types: storage::Types<V1>> storage::StorageProv
             .map_err(UpdateError::KeyEncodeError)?;
 
         match update {
-            storage::Update::QueueProposal(group_id, proposal_ref, queued_proposal) => {
+            storage::v1::Update::QueueProposal(group_id, proposal_ref, queued_proposal) => {
                 let proposal_key = key;
                 let proposal_refs_key = Key::<Types>::QueuedProposalsRefList(&group_id)
                     .key()
@@ -266,15 +268,15 @@ impl<KvStore: kv_store::KvStore, Types: storage::Types<V1>> storage::StorageProv
                 let proposal_value =
                     serde_json::to_vec(&queued_proposal).map_err(UpdateError::ValueEncodeError)?;
 
-                let mut proposal_refs: Vec<Types::ProposalRef> = match store.get(&proposal_refs_key)
-                {
-                    Ok(proposal_queue_bytes) => serde_json::from_slice(&proposal_queue_bytes)
-                        .map_err(UpdateError::ValueEncodeError),
-                    Err(kv_store::KvGetError::NotFound(_)) => Ok(vec![]),
-                    Err(e @ kv_store::KvGetError::Internal(_)) => {
-                        Result::<Vec<_>, _>::Err(UpdateError::KvGetError(e))
-                    }
-                }?;
+                let mut proposal_refs: Vec<<Types as storage::Types<1>>::ProposalRef> =
+                    match store.get(&proposal_refs_key) {
+                        Ok(proposal_queue_bytes) => serde_json::from_slice(&proposal_queue_bytes)
+                            .map_err(UpdateError::ValueEncodeError),
+                        Err(kv_store::KvGetError::NotFound(_)) => Ok(vec![]),
+                        Err(e @ kv_store::KvGetError::Internal(_)) => {
+                            Result::<Vec<_>, _>::Err(UpdateError::KvGetError(e))
+                        }
+                    }?;
 
                 proposal_refs.push(proposal_ref);
 
@@ -296,7 +298,7 @@ impl<KvStore: kv_store::KvStore, Types: storage::Types<V1>> storage::StorageProv
                     },
                 }?;
             }
-            storage::Update::WriteTreeSync(_group_id, tree_sync) => {
+            storage::v1::Update::WriteTreeSync(_group_id, tree_sync) => {
                 let value_bytes =
                     serde_json::to_vec(&tree_sync).map_err(UpdateError::ValueEncodeError)?;
 
@@ -308,7 +310,7 @@ impl<KvStore: kv_store::KvStore, Types: storage::Types<V1>> storage::StorageProv
                     },
                 }?
             }
-            storage::Update::WriteGroupContext(_group_id, group_context) => {
+            storage::v1::Update::WriteGroupContext(_group_id, group_context) => {
                 let value_bytes =
                     serde_json::to_vec(&group_context).map_err(UpdateError::ValueEncodeError)?;
 
@@ -320,7 +322,7 @@ impl<KvStore: kv_store::KvStore, Types: storage::Types<V1>> storage::StorageProv
                     },
                 }?
             }
-            storage::Update::WriteInterimTranscriptHash(_group_id, interim_transcript_hash) => {
+            storage::v1::Update::WriteInterimTranscriptHash(_group_id, interim_transcript_hash) => {
                 let value_bytes = serde_json::to_vec(&interim_transcript_hash)
                     .map_err(UpdateError::ValueEncodeError)?;
 
@@ -332,7 +334,7 @@ impl<KvStore: kv_store::KvStore, Types: storage::Types<V1>> storage::StorageProv
                     },
                 }?
             }
-            storage::Update::WriteConfirmationTag(_group_id, confirmation_tag) => {
+            storage::v1::Update::WriteConfirmationTag(_group_id, confirmation_tag) => {
                 let value_bytes =
                     serde_json::to_vec(&confirmation_tag).map_err(UpdateError::ValueEncodeError)?;
 
@@ -352,7 +354,7 @@ impl<KvStore: kv_store::KvStore, Types: storage::Types<V1>> storage::StorageProv
     // TODO: take lock at the start and then iterate
     fn apply_updates(
         &self,
-        updates: Vec<storage::Update<V1, Types>>,
+        updates: Vec<storage::v1::Update<Types>>,
     ) -> Result<(), Self::UpdateError> {
         for update in updates {
             self.apply_update(update)?
@@ -367,7 +369,7 @@ impl<KvStore: kv_store::KvStore, Types: storage::Types<V1>> storage::StorageProv
     ) -> Result<Vec<Types::QueuedProposal>, Self::GetError> {
         let store = self.read_get()?;
 
-        storage::StorageProvider::get_queued_proposal_refs(self, group_id)?
+        storage::v1::StorageProvider::get_queued_proposal_refs(self, group_id)?
             .into_iter()
             .map(|proposal_ref| {
                 let proposal_key = Key::<Types>::QueuedProposal(group_id, &proposal_ref)
