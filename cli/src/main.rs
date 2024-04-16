@@ -71,7 +71,7 @@ fn main() {
             client = Some(user::User::new(client_name.to_string()));
             client.as_mut().unwrap().add_key_package();
             client.as_mut().unwrap().add_key_package();
-            client.as_ref().unwrap().register();
+            client.as_mut().unwrap().register();
             stdout
                 .write_all(format!("registered new client {client_name}\n\n").as_bytes())
                 .unwrap();
@@ -114,7 +114,7 @@ fn main() {
         if op == "save" {
             if let Some(client) = &mut client {
                 client.save();
-                let name = &client.username;
+                let name = &client.identity.borrow().identity_as_string();
                 stdout
                     .write_all(format!(" >>> client {name} state saved\n\n").as_bytes())
                     .unwrap();
@@ -130,7 +130,7 @@ fn main() {
         if op == "autosave" {
             if let Some(client) = &mut client {
                 client.enable_auto_save();
-                let name = &client.username;
+                let name = &client.identity.borrow().identity_as_string();
                 stdout
                     .write_all(format!(" >>> autosave enabled for client {name} \n\n").as_bytes())
                     .unwrap();

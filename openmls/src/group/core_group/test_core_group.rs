@@ -163,10 +163,10 @@ fn test_failed_groupinfo_decryption(
     .and_then(|staged_join| staged_join.into_core_group(provider))
     .expect_err("Creation of core group from a broken Welcome was successful.");
 
-    assert_eq!(
+    assert!(matches!(
         error,
         WelcomeError::GroupSecrets(GroupSecretsError::DecryptionFailed)
-    )
+    ))
 }
 
 /// Test what happens if the KEM ciphertext for the receiver in the UpdatePath

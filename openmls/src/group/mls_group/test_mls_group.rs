@@ -845,10 +845,10 @@ fn test_pending_commit_logic(
     let error = alice_group
         .add_members(provider, &alice_signer, &[bob_key_package.clone()])
         .expect_err("no error committing while a commit is pending");
-    assert_eq!(
+    assert!(matches!(
         error,
         AddMembersError::GroupStateError(MlsGroupStateError::PendingCommit)
-    );
+    ));
     let error = alice_group
         .propose_add_member(provider, &alice_signer, bob_key_package)
         .expect_err("no error creating a proposal while a commit is pending");
@@ -859,10 +859,10 @@ fn test_pending_commit_logic(
     let error = alice_group
         .remove_members(provider, &alice_signer, &[LeafNodeIndex::new(1)])
         .expect_err("no error committing while a commit is pending");
-    assert_eq!(
+    assert!(matches!(
         error,
         RemoveMembersError::GroupStateError(MlsGroupStateError::PendingCommit)
-    );
+    ));
     let error = alice_group
         .propose_remove_member(provider, &alice_signer, LeafNodeIndex::new(1))
         .expect_err("no error creating a proposal while a commit is pending");
@@ -873,24 +873,24 @@ fn test_pending_commit_logic(
     let error = alice_group
         .commit_to_pending_proposals(provider, &alice_signer)
         .expect_err("no error committing while a commit is pending");
-    assert_eq!(
+    assert!(matches!(
         error,
         CommitToPendingProposalsError::GroupStateError(MlsGroupStateError::PendingCommit)
-    );
+    ));
     let error = alice_group
         .self_update(provider, &alice_signer)
         .expect_err("no error committing while a commit is pending");
-    assert_eq!(
+    assert!(matches!(
         error,
         SelfUpdateError::GroupStateError(MlsGroupStateError::PendingCommit)
-    );
+    ));
     let error = alice_group
         .propose_self_update(provider, &alice_signer, None)
         .expect_err("no error creating a proposal while a commit is pending");
-    assert_eq!(
+    assert!(matches!(
         error,
         ProposeSelfUpdateError::GroupStateError(MlsGroupStateError::PendingCommit)
-    );
+    ));
 
     // Clearing the pending commit should actually clear it.
     alice_group.clear_pending_commit();
@@ -1325,6 +1325,168 @@ fn builder_pattern(ciphersuite: Ciphersuite, provider: &impl crate::storage::Ref
         .with_leaf_node_extensions(invalid_leaf_extensions)
         .expect_err("successfully built group with invalid leaf extensions");
     assert_eq!(builder_err, InvalidExtensionError::IllegalInLeafNodes);
+}
+
+// Test the successful update of Group Context Extension with type Extension::Unknown(0xff11)
+#[apply(ciphersuites_and_providers)]
+fn update_group_context_with_unknown_extension(
+    ciphersuite: Ciphersuite,
+    provider: &impl OpenMlsProvider,
+) {
+    let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
+        setup_client("Alice", ciphersuite, provider);
+
+    // === Define the unknown group context extension and initial data ===
+    const UNKNOWN_EXTENSION_TYPE: u16 = 0xff11;
+    let unknown_extension_data = vec![1, 2];
+    let unknown_gc_extension = Extension::Unknown(
+        UNKNOWN_EXTENSION_TYPE,
+        UnknownExtension(unknown_extension_data),
+    );
+    let required_extension_types = &[ExtensionType::Unknown(UNKNOWN_EXTENSION_TYPE)];
+    let required_capabilities = Extension::RequiredCapabilities(
+        RequiredCapabilitiesExtension::new(required_extension_types, &[], &[]),
+    );
+    let capabilities = Capabilities::new(None, None, Some(required_extension_types), None, None);
+    let test_gc_extensions = Extensions::from_vec(vec![
+        unknown_gc_extension.clone(),
+        required_capabilities.clone(),
+    ])
+    .expect("error creating test group context extensions");
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .with_group_context_extensions(test_gc_extensions.clone())
+        .expect("error adding unknown extension to config")
+        .capabilities(capabilities.clone())
+        .ciphersuite(ciphersuite)
+        .build();
+
+    // === Alice creates a group ===
+    let mut alice_group = MlsGroup::new(
+        provider,
+        &alice_signer,
+        &mls_group_create_config,
+        alice_credential_with_key,
+    )
+    .expect("error creating group");
+
+    // === Verify the initial group context extension data is correct ===
+    let group_context_extensions = alice_group.group().context().extensions();
+    let mut extracted_data = None;
+    for extension in group_context_extensions.iter() {
+        if let Extension::Unknown(UNKNOWN_EXTENSION_TYPE, UnknownExtension(data)) = extension {
+            extracted_data = Some(data.clone());
+        }
+    }
+    assert_eq!(
+        extracted_data.unwrap(),
+        vec![1, 2],
+        "The data of Extension::Unknown(0xff11) does not match the expected data"
+    );
+
+    // === Alice adds Bob ===
+    let (bob_credential_with_key, _bob_kpb, bob_signer, _bob_pk) =
+        setup_client("Bob", ciphersuite, provider);
+
+    let bob_key_package = KeyPackage::builder()
+        .leaf_node_capabilities(capabilities)
+        .build(ciphersuite, provider, &bob_signer, bob_credential_with_key)
+        .expect("error building key package");
+
+    let (_, welcome, _) = alice_group
+        .add_members(provider, &alice_signer, &[bob_key_package.clone()])
+        .unwrap();
+    alice_group.merge_pending_commit(provider).unwrap();
+
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome
+        .into_welcome()
+        .expect("expected message to be a welcome");
+
+    let bob_group = StagedWelcome::new_from_welcome(
+        provider,
+        &MlsGroupJoinConfig::default(),
+        welcome,
+        Some(alice_group.export_ratchet_tree().into()),
+    )
+    .expect("Error creating staged join from Welcome")
+    .into_group(provider)
+    .expect("Error creating group from staged join");
+
+    // === Verify Bob's initial group context extension data is correct ===
+    let group_context_extensions = bob_group.group().context().extensions();
+    let mut extracted_data_2 = None;
+    for extension in group_context_extensions.iter() {
+        if let Extension::Unknown(UNKNOWN_EXTENSION_TYPE, UnknownExtension(data)) = extension {
+            extracted_data_2 = Some(data.clone());
+        }
+    }
+    assert_eq!(
+        extracted_data_2.unwrap(),
+        vec![1, 2],
+        "The data of Extension::Unknown(0xff11) does not match the expected data"
+    );
+
+    // === Propose the new group context extension ===
+    let updated_unknown_extension_data = vec![3, 4]; // Sample data for the extension
+    let updated_unknown_gc_extension = Extension::Unknown(
+        UNKNOWN_EXTENSION_TYPE,
+        UnknownExtension(updated_unknown_extension_data.clone()),
+    );
+
+    let mut updated_extensions = test_gc_extensions.clone();
+    updated_extensions.add_or_replace(updated_unknown_gc_extension);
+    alice_group
+        .propose_group_context_extensions(provider, updated_extensions, &alice_signer)
+        .expect("failed to propose group context extensions with unknown extension");
+
+    assert_eq!(
+        alice_group.pending_proposals().count(),
+        1,
+        "Expected one pending proposal"
+    );
+
+    // === Commit to the proposed group context extension ===
+    alice_group
+        .commit_to_pending_proposals(provider, &alice_signer)
+        .expect("failed to commit to pending group context extensions");
+
+    alice_group
+        .merge_pending_commit(provider)
+        .expect("error merging pending commit");
+
+    alice_group
+        .save(provider.key_store())
+        .expect("error saving group");
+
+    // === Verify the group context extension was updated ===
+    let group_context_extensions = alice_group.group().context().extensions();
+    let mut extracted_data_updated = None;
+    for extension in group_context_extensions.iter() {
+        if let Extension::Unknown(UNKNOWN_EXTENSION_TYPE, UnknownExtension(data)) = extension {
+            extracted_data_updated = Some(data.clone());
+        }
+    }
+    assert_eq!(
+        extracted_data_updated.unwrap(),
+        vec![3, 4],
+        "The data of Extension::Unknown(0xff11) does not match the expected data"
+    );
+
+    // === Verify Bob sees the group context extension updated ===
+    let bob_group_loaded = MlsGroup::load(bob_group.group().group_id(), provider.key_store())
+        .expect("error loading group");
+    let group_context_extensions_2 = bob_group_loaded.export_group_context().extensions();
+    let mut extracted_data_2 = None;
+    for extension in group_context_extensions_2.iter() {
+        if let Extension::Unknown(UNKNOWN_EXTENSION_TYPE, UnknownExtension(data)) = extension {
+            extracted_data_2 = Some(data.clone());
+        }
+    }
+    assert_eq!(
+        extracted_data_2.unwrap(),
+        vec![3, 4],
+        "The data of Extension::Unknown(0xff11) does not match the expected data"
+    );
 }
 
 // Test that unknown group context and leaf node extensions can be used in groups

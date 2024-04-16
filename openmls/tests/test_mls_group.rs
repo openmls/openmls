@@ -795,12 +795,12 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage
         }
 
         // Should fail because you cannot remove yourself from a group
-        assert_eq!(
+        assert!(matches!(
             bob_group.commit_to_pending_proposals(provider, &bob_signer),
             Err(CommitToPendingProposalsError::CreateCommitError(
                 CreateCommitError::CannotRemoveSelf
             ))
-        );
+        ));
 
         let (queued_message, _welcome_option, _group_info) = alice_group
             .commit_to_pending_proposals(provider, &alice_signer)
@@ -1068,20 +1068,20 @@ fn test_empty_input_errors(
     )
     .expect("An unexpected error occurred.");
 
-    assert_eq!(
+    assert!(matches!(
         alice_group
             .add_members(provider, &alice_signer, &[])
             .expect_err("No EmptyInputError when trying to pass an empty slice to `add_members`."),
         AddMembersError::EmptyInput(EmptyInputError::AddMembers)
-    );
-    assert_eq!(
+    ));
+    assert!(matches!(
         alice_group
             .remove_members(provider, &alice_signer, &[])
             .expect_err(
                 "No EmptyInputError when trying to pass an empty slice to `remove_members`."
             ),
         RemoveMembersError::EmptyInput(EmptyInputError::RemoveMembers)
-    );
+    ));
 }
 
 // This tests the ratchet tree extension usage flag in the configuration
@@ -1197,7 +1197,7 @@ fn mls_group_ratchet_tree_extension(
         )
         .expect_err("Could join a group without a ratchet tree");
 
-        assert_eq!(error, WelcomeError::MissingRatchetTree);
+        assert!(matches!(error, WelcomeError::MissingRatchetTree));
     }
 }
 

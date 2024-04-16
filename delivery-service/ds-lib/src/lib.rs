@@ -5,22 +5,63 @@
 //!
 //! Clients are represented by the `ClientInfo` struct.
 
+pub mod messages;
+
 use std::collections::HashSet;
 
-use openmls::prelude::{tls_codec::*, *};
+use messages::AuthToken;
+use openmls::prelude::tls_codec::*;
+use openmls::prelude::*;
 
 /// Information about a client.
 /// To register a new client create a new `ClientInfo` and send it to
 /// `/clients/register`.
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, TlsSize, TlsSerialize, TlsDeserialize)]
 pub struct ClientInfo {
-    pub client_name: String,
+    pub id: Vec<u8>,
     pub key_packages: ClientKeyPackages,
     /// map of reserved key_packages [group_id, key_package_hash]
+    #[tls_codec(with = "hashset_codec")]
     pub reserved_key_pkg_hash: HashSet<Vec<u8>>,
-    pub id: Vec<u8>,
     pub msgs: Vec<MlsMessageIn>,
     pub welcome_queue: Vec<MlsMessageIn>,
+    pub auth_token: AuthToken,
+}
+
+mod hashset_codec {
+    use std::{
+        collections::HashSet,
+        io::{Read, Write},
+    };
+
+    use crate::tls_codec::{self, Deserialize, Serialize};
+
+    pub fn tls_serialized_len(hashset: &HashSet<Vec<u8>>) -> usize {
+        let hashset_len = hashset.len();
+        let length_encoding_bytes = match hashset_len {
+            0..=0x3f => 1,
+            0x40..=0x3fff => 2,
+            0x4000..=0x3fff_ffff => 4,
+            _ => 8,
+        };
+        hashset_len + length_encoding_bytes
+    }
+
+    pub fn tls_serialize<W>(
+        hashset: &HashSet<Vec<u8>>,
+        writer: &mut W,
+    ) -> Result<usize, tls_codec::Error>
+    where
+        W: Write,
+    {
+        let vec = hashset.iter().map(|v| v.as_slice()).collect::<Vec<_>>();
+        vec.tls_serialize(writer)
+    }
+
+    pub fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<HashSet<Vec<u8>>, tls_codec::Error> {
+        let vec = Vec::<Vec<u8>>::tls_deserialize(bytes)?;
+        Ok(vec.into_iter().collect::<HashSet<_>>())
+    }
 }
 
 /// The DS returns a list of key packages for a client as `ClientKeyPackages`.
@@ -44,11 +85,10 @@ pub struct ClientKeyPackages(pub TlsVecU32<(TlsByteVecU8, KeyPackageIn)>);
 impl ClientInfo {
     /// Create a new `ClientInfo` struct for a given client name and vector of
     /// key packages with corresponding hashes.
-    pub fn new(client_name: String, mut key_packages: Vec<(Vec<u8>, KeyPackageIn)>) -> Self {
+    pub fn new(mut key_packages: Vec<(Vec<u8>, KeyPackageIn)>) -> Self {
         let key_package: KeyPackage = KeyPackage::from(key_packages[0].1.clone());
         let id = key_package.leaf_node().credential().serialized_content();
         Self {
-            client_name,
             id: id.into(),
             key_packages: ClientKeyPackages(
                 key_packages
@@ -60,6 +100,7 @@ impl ClientInfo {
             reserved_key_pkg_hash: HashSet::new(),
             msgs: Vec::new(),
             welcome_queue: Vec::new(),
+            auth_token: AuthToken::random(),
         }
     }
 
@@ -108,34 +149,6 @@ impl GroupMessage {
                 .collect::<Vec<TlsByteVecU32>>()
                 .into(),
         }
-    }
-}
-
-impl tls_codec::Size for ClientInfo {
-    fn tls_serialized_len(&self) -> usize {
-        TlsByteSliceU16(self.client_name.as_bytes()).tls_serialized_len()
-            + self.key_packages.tls_serialized_len()
-    }
-}
-
-impl tls_codec::Serialize for ClientInfo {
-    fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
-        let written = TlsByteSliceU16(self.client_name.as_bytes()).tls_serialize(writer)?;
-        self.key_packages.tls_serialize(writer).map(|l| l + written)
-    }
-}
-
-impl tls_codec::Deserialize for ClientInfo {
-    fn tls_deserialize<R: std::io::Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
-        let client_name =
-            String::from_utf8_lossy(TlsByteVecU16::tls_deserialize(bytes)?.as_slice()).into();
-        let mut key_packages: Vec<(TlsByteVecU8, KeyPackageIn)> =
-            TlsVecU32::<(TlsByteVecU8, KeyPackageIn)>::tls_deserialize(bytes)?.into();
-        let key_packages = key_packages
-            .drain(..)
-            .map(|(e1, e2)| (e1.into(), e2))
-            .collect();
-        Ok(Self::new(client_name, key_packages))
     }
 }
 
