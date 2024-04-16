@@ -1331,7 +1331,7 @@ fn builder_pattern(ciphersuite: Ciphersuite, provider: &impl crate::storage::Ref
 #[apply(ciphersuites_and_providers)]
 fn update_group_context_with_unknown_extension(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::RefinedProvider,
 ) {
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
         setup_client("Alice", ciphersuite, provider);
