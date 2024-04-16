@@ -65,10 +65,7 @@ macro_rules! impl_propose_fun {
         /// Creates proposals to add an external PSK to the key schedule.
         ///
         /// Returns an error if there is a pending commit.
-        pub fn $name<
-            KeyStore: OpenMlsKeyStore,
-            Storage: StorageProvider<1, Types = OpenMlsTypes>,
-        >(
+        pub fn $name<KeyStore: OpenMlsKeyStore, Storage: StorageProvider<1>>(
             &mut self,
             provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
             signer: &impl Signer,
@@ -92,14 +89,19 @@ macro_rules! impl_propose_fun {
             let proposal_ref = queued_proposal.proposal_reference();
             log::trace!("Storing proposal in queue {:?}", queued_proposal);
             self.proposal_store.add(queued_proposal.clone());
-            let update = openmls_traits::storage::Update::<1, OpenMlsTypes>::QueueProposal(
-                self.group.group_id().clone(),
-                proposal_ref.clone(),
-                queued_proposal,
-            );
+            // let update = openmls_traits::storage::Update::<1>::QueueProposal(
+            //     self.group.group_id().clone(),
+            //     proposal_ref.clone(),
+            //     queued_proposal,
+            // );
             provider
                 .storage()
-                .apply_update(update)
+                .queue_proposal(
+                    self.group.group_id().clone(),
+                    proposal_ref.clone(),
+                    queued_proposal,
+                )
+                // .apply_update(update)
                 .map_err(ProposalError::StorageError)?;
 
             let mls_message = self.content_to_mls_message(proposal, provider)?;
@@ -156,7 +158,7 @@ impl MlsGroup {
     );
 
     /// Generate a proposal
-    pub fn propose<KeyStore: OpenMlsKeyStore, Storage: StorageProvider<1, Types = OpenMlsTypes>>(
+    pub fn propose<KeyStore: OpenMlsKeyStore, Storage: StorageProvider<1>>(
         &mut self,
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
         signer: &impl Signer,
@@ -341,7 +343,7 @@ impl MlsGroup {
     /// Returns an error if there is a pending commit.
     pub fn propose_remove_member_by_credential_by_value<
         KeyStore: OpenMlsKeyStore,
-        Storage: StorageProvider<1, Types = OpenMlsTypes>,
+        Storage: StorageProvider<1>,
     >(
         &mut self,
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,

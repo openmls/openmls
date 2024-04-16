@@ -34,22 +34,19 @@ impl InterimTranscriptHashEntity<1> for InterimTranscriptHash {}
 impl Entity<1> for ConfirmationTag {}
 impl ConfirmationTagEntity<1> for ConfirmationTag {}
 
-impl Types<1> for OpenMlsTypes {
-    type QueuedProposal = QueuedProposal;
-    type GroupId = GroupId;
-    type ProposalRef = ProposalRef;
-    type TreeSync = TreeSync;
-    type GroupContext = GroupContext;
-    type InterimTranscriptHash = InterimTranscriptHash;
-    type ConfirmationTag = ConfirmationTag;
-}
+// impl Types<1> for OpenMlsTypes {
+//     type QueuedProposal = QueuedProposal;
+//     type GroupId = GroupId;
+//     type ProposalRef = ProposalRef;
+//     type TreeSync = TreeSync;
+//     type GroupContext = GroupContext;
+//     type InterimTranscriptHash = InterimTranscriptHash;
+//     type ConfirmationTag = ConfirmationTag;
+// }
 
-pub trait StorageProvider:
-    openmls_traits::storage::StorageProvider<1, Types = OpenMlsTypes>
-{
-}
+pub trait StorageProvider: openmls_traits::storage::StorageProvider<1> {}
 
-impl<P: openmls_traits::storage::StorageProvider<1, Types = OpenMlsTypes>> StorageProvider for P {}
+impl<P: openmls_traits::storage::StorageProvider<1>> StorageProvider for P {}
 
 pub trait RefinedProvider:
     openmls_traits::OpenMlsProvider<StorageProvider = Self::Storage>

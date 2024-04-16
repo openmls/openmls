@@ -34,7 +34,7 @@
 //! use openmls_basic_credential::SignatureKeyPair;
 //!
 //! let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
-//! let provider = OpenMlsRustCrypto::<OpenMlsTypes>::default();
+//! let provider = OpenMlsRustCrypto::default();
 //!
 //! let credential = BasicCredential::new("identity".into());
 //! let signer =
@@ -66,7 +66,7 @@
 //! use openmls::test_utils::hex_to_bytes;
 //! use openmls_rust_crypto::OpenMlsRustCrypto;
 //!
-//! let provider = OpenMlsRustCrypto::<OpenMlsTypes>::default();
+//! let provider = OpenMlsRustCrypto::default();
 //! let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
 //!
 //! let key_package_bytes = hex_to_bytes(

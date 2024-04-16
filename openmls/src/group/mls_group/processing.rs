@@ -125,14 +125,11 @@ impl MlsGroup {
 
     /// Merge a [StagedCommit] into the group after inspection. As this advances
     /// the epoch of the group, it also clears any pending commits.
-    pub fn merge_staged_commit<
-        KeyStore: OpenMlsKeyStore,
-        Storage: StorageProvider<1, Types = crate::storage::OpenMlsTypes>,
-    >(
+    pub fn merge_staged_commit<KeyStore: OpenMlsKeyStore, Storage: StorageProvider<1>>(
         &mut self,
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
         staged_commit: StagedCommit,
-    ) -> Result<(), MergeCommitError<KeyStore::Error, Storage::UpdateError>> {
+    ) -> Result<(), MergeCommitError<KeyStore::Error>> {
         // Check if we were removed from the group
         if staged_commit.self_removed() {
             self.group_state = MlsGroupState::Inactive;
@@ -162,13 +159,10 @@ impl MlsGroup {
 
     /// Merges the pending [`StagedCommit`] if there is one, and
     /// clears the field by setting it to `None`.
-    pub fn merge_pending_commit<
-        KeyStore: OpenMlsKeyStore,
-        Storage: StorageProvider<1, Types = crate::storage::OpenMlsTypes>,
-    >(
+    pub fn merge_pending_commit<KeyStore: OpenMlsKeyStore, Storage: StorageProvider<1>>(
         &mut self,
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
-    ) -> Result<(), MergePendingCommitError<KeyStore::Error, Storage::UpdateError>> {
+    ) -> Result<(), MergePendingCommitError<KeyStore::Error>> {
         match &self.group_state {
             MlsGroupState::PendingCommit(_) => {
                 let old_state = mem::replace(&mut self.group_state, MlsGroupState::Operational);

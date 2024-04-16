@@ -27,7 +27,7 @@ use crate::{
 
 /// This tests serializing/deserializing PublicMessage
 #[apply(ciphersuites_and_providers)]
-fn codec_plaintext<Storage: StorageProvider<1, Types = crate::storage::OpenMlsTypes>>(
+fn codec_plaintext<Storage: StorageProvider<1>>(
     ciphersuite: Ciphersuite,
     provider: &impl OpenMlsProvider<StorageProvider = Storage>,
 ) {
@@ -386,7 +386,7 @@ fn membership_tag(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 }
 
 #[apply(ciphersuites_and_providers)]
-fn unknown_sender<Storage: StorageProvider<1, Types = crate::storage::OpenMlsTypes>>(
+fn unknown_sender<Storage: StorageProvider<1>>(
     ciphersuite: Ciphersuite,
     provider: &impl OpenMlsProvider<StorageProvider = Storage>,
 ) {
@@ -593,7 +593,7 @@ fn unknown_sender<Storage: StorageProvider<1, Types = crate::storage::OpenMlsTyp
 }
 
 #[apply(ciphersuites_and_providers)]
-fn confirmation_tag_presence<Storage: StorageProvider<1, Types = crate::storage::OpenMlsTypes>>(
+fn confirmation_tag_presence<Storage: StorageProvider<1>>(
     ciphersuite: Ciphersuite,
     provider: &impl OpenMlsProvider<StorageProvider = Storage>,
 ) {
@@ -622,7 +622,7 @@ fn confirmation_tag_presence<Storage: StorageProvider<1, Types = crate::storage:
 }
 
 pub(crate) fn setup_alice_bob_group<
-    Storage: StorageProvider<1, Types = crate::storage::OpenMlsTypes>,
+    Storage: StorageProvider<1>,
 >(
     ciphersuite: Ciphersuite,
     provider: &impl OpenMlsProvider<StorageProvider = Storage>,

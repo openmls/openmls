@@ -1,16 +1,15 @@
 use openmls_traits::{
     key_store::{MlsEntity, OpenMlsKeyStore},
-    storage::{self, GetError, Key, StorageProvider, Update, UpdateError},
+    storage::{self, GetError, ProposalRefEntity, StorageProvider, UpdateError},
 };
-use std::{collections::HashMap, marker::PhantomData, sync::RwLock};
+use std::{collections::HashMap, sync::RwLock};
 
 #[derive(Debug, Default)]
-pub struct MemoryKeyStore<Types: Default> {
+pub struct MemoryKeyStore {
     values: RwLock<HashMap<Vec<u8>, Vec<u8>>>,
-    phantom: PhantomData<Types>,
 }
 
-impl<Types: Default> OpenMlsKeyStore for MemoryKeyStore<Types> {
+impl OpenMlsKeyStore for MemoryKeyStore {
     /// The error type returned by the [`OpenMlsKeyStore`].
     type Error = MemoryKeyStoreError;
 
@@ -80,98 +79,228 @@ impl UpdateError for MemoryKeyStoreError {
 
 pub const V1: usize = 1;
 
-impl<Types: storage::Types<1>> StorageProvider<1> for MemoryKeyStore<Types> {
+impl StorageProvider<1> for MemoryKeyStore {
     type GetError = MemoryKeyStoreError;
     type UpdateError = MemoryKeyStoreError;
-    type Types = Types;
+    // type Types = Types;
 
-    fn apply_update(&self, update: Update<1, Self::Types>) -> Result<(), Self::UpdateError> {
+    fn queue_proposal(
+        &self,
+        group_id: impl storage::GroupIdKey<1>,
+        proposal_ref: impl storage::ProposalRefEntity<1>,
+        proposal: impl storage::QueuedProposalEntity<1>,
+    ) -> Result<(), Self::UpdateError> {
         let mut values = self.values.write().unwrap();
-        match update {
-            Update::QueueProposal(group_id, proposal_ref, queued_proposal) => {
-                let mut key = b"QueueProposal".to_vec();
-                key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
 
-                let mut value = serde_json::to_vec(&proposal_ref).unwrap();
-                value.extend_from_slice(&serde_json::to_vec(&queued_proposal).unwrap());
+        let mut key = b"QueuedProposal".to_vec();
+        key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
+        key.extend_from_slice(&u16::to_be_bytes(1));
 
-                values.insert(key, value);
-            }
-            Update::WriteTreeSync(group_id, tree) => {
-                let mut key = b"Tree".to_vec();
-                key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
-                let value = serde_json::to_vec(&tree).unwrap();
-
-                values.insert(key, value);
-            }
-            Update::WriteGroupContext(group_id, context) => {
-                let mut key = b"GroupContext".to_vec();
-                key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
-                let value = serde_json::to_vec(&context).unwrap();
-
-                values.insert(key, value);
-            }
-            Update::WriteInterimTranscriptHash(group_id, interim_transcript_hash) => {
-                let mut key = b"InterimTranscriptHash".to_vec();
-                key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
-                let value = serde_json::to_vec(&interim_transcript_hash).unwrap();
-
-                values.insert(key, value);
-            }
-            Update::WriteConfirmationTag(group_id, confirmation_tag) => {
-                let mut key = b"ConfirmationTag".to_vec();
-                key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
-                let value = serde_json::to_vec(&confirmation_tag).unwrap();
-
-                values.insert(key, value);
-            }
+        let mut proposals = values.get_mut(&key);
+        let new_value = serde_json::to_vec(&proposal).unwrap();
+        if let Some(proposals) = proposals {
+            proposals.extend_from_slice(&new_value); // XXX: this doesn't actually work like this.
+        } else {
+            values.insert(key, new_value);
         }
+
+        // XXX: actually append
+        let mut key = b"ProposalRef".to_vec();
+        key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
+        key.extend_from_slice(&u16::to_be_bytes(1));
+        let value = serde_json::to_vec(&proposal_ref).unwrap();
+        values.insert(key, value);
+
         Ok(())
     }
 
-    fn apply_updates(&self, update: Vec<Update<1, Self::Types>>) -> Result<(), Self::UpdateError> {
-        todo!()
+    fn write_tree(
+        &self,
+        group_id: impl storage::GroupIdKey<1>,
+        tree: impl storage::TreeSyncEntity<1>,
+    ) -> Result<(), Self::UpdateError> {
+        let mut values = self.values.write().unwrap();
+
+        let mut key = b"Tree".to_vec();
+        key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
+        key.extend_from_slice(&u16::to_be_bytes(1));
+        let value = serde_json::to_vec(&tree).unwrap();
+
+        values.insert(key, value);
+        Ok(())
     }
 
-    fn get_queued_proposal_refs(
+    fn write_interim_transcript_hash(
         &self,
-        group_id: &<Self::Types as storage::Types<1>>::GroupId,
-    ) -> Result<Vec<<Self::Types as storage::Types<1>>::ProposalRef>, Self::GetError> {
-        todo!()
+        group_id: impl storage::GroupIdKey<1>,
+        interim_transcript_hash: impl storage::InterimTranscriptHashEntity<1>,
+    ) -> Result<(), Self::UpdateError> {
+        let mut values = self.values.write().unwrap();
+        let mut key = b"InterimTranscriptHash".to_vec();
+        key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
+        key.extend_from_slice(&u16::to_be_bytes(1));
+        let value = serde_json::to_vec(&interim_transcript_hash).unwrap();
+
+        values.insert(key, value);
+        Ok(())
     }
 
-    fn get_queued_proposals(
+    fn write_context(
         &self,
-        group_id: &<Self::Types as storage::Types<1>>::GroupId,
-    ) -> Result<Vec<<Self::Types as storage::Types<1>>::QueuedProposal>, Self::GetError> {
-        todo!()
+        group_id: impl storage::GroupIdKey<1>,
+        group_context: impl storage::GroupContextEntity<1>,
+    ) -> Result<(), Self::UpdateError> {
+        let mut values = self.values.write().unwrap();
+        let mut key = b"GroupContext".to_vec();
+        key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
+        key.extend_from_slice(&u16::to_be_bytes(1));
+        let value = serde_json::to_vec(&group_context).unwrap();
+
+        values.insert(key, value);
+        Ok(())
     }
 
-    fn get_treesync(
+    fn write_confirmation_tag(
         &self,
-        group_id: &<Self::Types as storage::Types<1>>::GroupId,
-    ) -> Result<<Self::Types as storage::Types<1>>::TreeSync, Self::GetError> {
-        todo!()
+        group_id: impl storage::GroupIdKey<1>,
+        confirmation_tag: impl storage::ConfirmationTagEntity<1>,
+    ) -> Result<(), Self::UpdateError> {
+        let mut values = self.values.write().unwrap();
+        let mut key = b"ConfirmationTag".to_vec();
+        key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
+        key.extend_from_slice(&u16::to_be_bytes(1));
+        let value = serde_json::to_vec(&confirmation_tag).unwrap();
+
+        values.insert(key, value);
+        Ok(())
     }
 
-    fn get_group_context(
+    fn write_signature_key_pair(
         &self,
-        group_id: &<Self::Types as storage::Types<1>>::GroupId,
-    ) -> Result<<Self::Types as storage::Types<1>>::GroupContext, Self::GetError> {
-        todo!()
+        public_key: impl storage::SignaturePublicKeyKey<1>,
+        key_pair: impl storage::SignatureKeyPairEntity<1>,
+    ) -> Result<(), Self::UpdateError> {
+        let mut values = self.values.write().unwrap();
+        let mut key = b"SignatureKeyPair".to_vec();
+        key.extend_from_slice(&serde_json::to_vec(&public_key).unwrap());
+        key.extend_from_slice(&u16::to_be_bytes(1));
+        let value = serde_json::to_vec(&key_pair).unwrap();
+
+        values.insert(key, value);
+        Ok(())
     }
 
-    fn get_interim_transcript_hash(
+    fn get_queued_proposal_refs<V: ProposalRefEntity<1>>(
         &self,
-        group_id: &<Self::Types as storage::Types<1>>::GroupId,
-    ) -> Result<<Self::Types as storage::Types<1>>::InterimTranscriptHash, Self::GetError> {
-        todo!()
+        group_id: &impl storage::GroupIdKey<1>,
+    ) -> Result<Vec<V>, Self::GetError> {
+        let mut values = self.values.read().unwrap();
+
+        let mut key = b"ProposalRef".to_vec();
+        key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
+        key.extend_from_slice(&u16::to_be_bytes(1));
+
+        // XXX: This is wrong.
+        let value = values.get(&key).unwrap();
+        let value = serde_json::from_slice(value).unwrap();
+
+        Ok(vec![value])
     }
 
-    fn get_confirmation_tag(
+    fn get_queued_proposals<V: storage::QueuedProposalEntity<1>>(
         &self,
-        group_id: &<Self::Types as storage::Types<1>>::GroupId,
-    ) -> Result<<Self::Types as storage::Types<1>>::ConfirmationTag, Self::GetError> {
-        todo!()
+        group_id: &impl storage::GroupIdKey<1>,
+    ) -> Result<Vec<V>, Self::GetError> {
+        let mut values = self.values.read().unwrap();
+
+        let mut key = b"QueuedProposal".to_vec();
+        key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
+        key.extend_from_slice(&u16::to_be_bytes(1));
+
+        let value = values.get(&key).unwrap();
+        let value = serde_json::from_slice(value).unwrap();
+
+        Ok(vec![value])
+    }
+
+    fn get_treesync<V: storage::TreeSyncEntity<1>>(
+        &self,
+        group_id: &impl storage::GroupIdKey<1>,
+    ) -> Result<V, Self::GetError> {
+        let mut values = self.values.read().unwrap();
+
+        // XXX: These domain separators should be constants.
+        let mut key = b"Tree".to_vec();
+        key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
+        key.extend_from_slice(&u16::to_be_bytes(1));
+
+        let value = values.get(&key).unwrap();
+        let value = serde_json::from_slice(value).unwrap();
+
+        Ok(value)
+    }
+
+    fn get_group_context<V: storage::GroupContextEntity<1>>(
+        &self,
+        group_id: &impl storage::GroupIdKey<1>,
+    ) -> Result<V, Self::GetError> {
+        let mut values = self.values.read().unwrap();
+
+        let mut key = b"GroupContext".to_vec();
+        key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
+        key.extend_from_slice(&u16::to_be_bytes(1));
+
+        let value = values.get(&key).unwrap();
+        let value = serde_json::from_slice(value).unwrap();
+
+        Ok(value)
+    }
+
+    fn get_interim_transcript_hash<V: storage::InterimTranscriptHashEntity<1>>(
+        &self,
+        group_id: &impl storage::GroupIdKey<1>,
+    ) -> Result<V, Self::GetError> {
+        let mut values = self.values.read().unwrap();
+
+        let mut key = b"InterimTranscriptHash".to_vec();
+        key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
+        key.extend_from_slice(&u16::to_be_bytes(1));
+
+        let value = values.get(&key).unwrap();
+        let value = serde_json::from_slice(value).unwrap();
+
+        Ok(value)
+    }
+
+    fn get_confirmation_tag<V: storage::ConfirmationTagEntity<1>>(
+        &self,
+        group_id: &impl storage::GroupIdKey<1>,
+    ) -> Result<V, Self::GetError> {
+        let mut values = self.values.read().unwrap();
+
+        let mut key = b"ConfirmationTag".to_vec();
+        key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
+        key.extend_from_slice(&u16::to_be_bytes(1));
+
+        let value = values.get(&key).unwrap();
+        let value = serde_json::from_slice(value).unwrap();
+
+        Ok(value)
+    }
+
+    fn signature_key_pair<V: storage::SignatureKeyPairEntity<1>>(
+        &self,
+        public_key: &impl storage::SignaturePublicKeyKey<1>,
+    ) -> Result<V, Self::GetError> {
+        let mut values = self.values.read().unwrap();
+
+        let mut key = b"SignatureKeyPair".to_vec();
+        key.extend_from_slice(&serde_json::to_vec(&public_key).unwrap());
+        key.extend_from_slice(&u16::to_be_bytes(1));
+
+        let value = values.get(&key).unwrap();
+        let value = serde_json::from_slice(value).unwrap();
+
+        Ok(value)
     }
 }

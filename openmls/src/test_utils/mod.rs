@@ -215,7 +215,7 @@ pub(crate) fn generate_group_candidate(
 use crate::storage::OpenMlsTypes;
 #[cfg(feature = "libcrux-provider")]
 pub type OpenMlsLibcrux = openmls_libcrux_crypto::Provider<OpenMlsTypes>;
-pub type OpenMlsRustCrypto = openmls_rust_crypto::OpenMlsRustCrypto<OpenMlsTypes>;
+pub type OpenMlsRustCrypto = openmls_rust_crypto::OpenMlsRustCrypto;
 
 // === providers ===
 

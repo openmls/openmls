@@ -515,16 +515,16 @@ pub enum CreateGroupContextExtProposalError {
 
 /// Error merging a commit.
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum MergeCommitError<KeyStoreError, StorageUpdateError: UpdateError> {
+pub enum MergeCommitError<KeyStoreError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
     /// Error accessing the key store.
     #[error("Error accessing the key store.")]
     KeyStoreError(KeyStoreError),
-    /// Error writing updated group to storage.
-    #[error("Error writing updated group data to storage.")]
-    StorageError(#[from] StorageUpdateError),
+    // /// Error writing updated group to storage.
+    // #[error("Error writing updated group data to storage.")]
+    // StorageError(#[from] StorageUpdateError),
 }
 
 /// Error validation a GroupContextExtensions proposal.

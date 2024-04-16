@@ -31,16 +31,16 @@ static CIPHERSUITE: Ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1
 
 #[wasm_bindgen]
 #[derive(Default)]
-pub struct Provider(OpenMlsRustCrypto<OpenMlsTypes>);
+pub struct Provider(OpenMlsRustCrypto);
 
-impl AsRef<OpenMlsRustCrypto<OpenMlsTypes>> for Provider {
-    fn as_ref(&self) -> &OpenMlsRustCrypto<OpenMlsTypes> {
+impl AsRef<OpenMlsRustCrypto> for Provider {
+    fn as_ref(&self) -> &OpenMlsRustCrypto {
         &self.0
     }
 }
 
-impl AsMut<OpenMlsRustCrypto<OpenMlsTypes>> for Provider {
-    fn as_mut(&mut self) -> &mut OpenMlsRustCrypto<OpenMlsTypes> {
+impl AsMut<OpenMlsRustCrypto> for Provider {
+    fn as_mut(&mut self) -> &mut OpenMlsRustCrypto {
         &mut self.0
     }
 }

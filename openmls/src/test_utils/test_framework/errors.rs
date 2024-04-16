@@ -3,8 +3,8 @@ use thiserror::Error;
 
 use crate::{error::LibraryError, group::errors::*};
 use openmls_rust_crypto::{MemoryKeyStore, MemoryKeyStoreError};
-use openmls_storage_kv::mem_kv_store::Infallible;
-use openmls_storage_kv::UpdateError as KvStorageUpdateError;
+// use openmls_storage_kv::mem_kv_store::Infallible;
+// use openmls_storage_kv::UpdateError as KvStorageUpdateError;
 
 /// Setup error
 #[derive(Error, Debug, PartialEq)]
@@ -90,12 +90,12 @@ pub enum ClientError {
     /// See [`MergePendingCommitError`] for more details.
     #[error(transparent)]
     MergePendingCommitError(
-        #[from] MergePendingCommitError<MemoryKeyStoreError, KvStorageUpdateError<Infallible>>,
+        #[from] MergePendingCommitError<MemoryKeyStoreError>,
     ),
     /// See [`MergeCommitError`] for more details.
     #[error(transparent)]
     MergeCommitError(
-        #[from] MergeCommitError<MemoryKeyStoreError, KvStorageUpdateError<Infallible>>,
+        #[from] MergeCommitError<MemoryKeyStoreError>,
     ),
     /// See [`MemoryKeyStoreError`] for more details.
     #[error(transparent)]

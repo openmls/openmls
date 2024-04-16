@@ -236,6 +236,7 @@ impl<'a, Types: storage::Types<1>> From<&'a storage::Update<1, Types>> for Key<'
                 Self::InterimTranscriptHash(group_id)
             }
             storage::Update::WriteConfirmationTag(group_id, _) => Self::ConfirmationTag(group_id),
+            storage::Update::SignatureKeypair(_, _) => todo!(),
         }
     }
 }
@@ -344,6 +345,7 @@ impl<KvStore: kv_store::KvStore, Types: storage::Types<V1>> storage::StorageProv
                     },
                 }?
             }
+            storage::Update::SignatureKeypair(_, _) => todo!(),
         }
 
         Ok(())
@@ -471,6 +473,13 @@ impl<KvStore: kv_store::KvStore, Types: storage::Types<V1>> storage::StorageProv
         })?;
 
         Ok(serde_json::from_slice(&value_bytes).map_err(GetError::ValueDecodeError)?)
+    }
+
+    fn signature_key_pair(
+        &self,
+        public_key: &<Self::Types as storage::Types<V1>>::SignaturePublicKey,
+    ) -> Result<<Self::Types as storage::Types<V1>>::SignatureKeyPair, Self::GetError> {
+        todo!()
     }
 }
 

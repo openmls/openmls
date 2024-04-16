@@ -15,7 +15,7 @@ libcrux = { git = "https://github.com/cryspen/libcrux", rev = "d7ec04eea33dce81e
   "rand",
 ] }
 openmls_traits = { path = "../traits" }
-openmls-storage-kv = { path = "../storage-kv/" }
+# openmls-storage-kv = { path = "../storage-kv/" }
 openmls_rust_crypto = { path = "../openmls_rust_crypto" }
 rand = "0.8.5"
 tls_codec.workspace = true

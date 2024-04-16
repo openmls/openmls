@@ -81,13 +81,13 @@ pub enum MlsGroupStateError {
 
 /// Error merging pending commit
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum MergePendingCommitError<KeyStoreError, StorageUpdateError: UpdateError> {
+pub enum MergePendingCommitError<KeyStoreError> {
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     MlsGroupStateError(#[from] MlsGroupStateError),
     /// See [`MergeCommitError`] for more details.
     #[error(transparent)]
-    MergeCommitError(#[from] MergeCommitError<KeyStoreError, StorageUpdateError>),
+    MergeCommitError(#[from] MergeCommitError<KeyStoreError>),
 }
 
 /// Process message error

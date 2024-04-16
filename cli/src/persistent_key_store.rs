@@ -1,4 +1,7 @@
-use openmls_traits::key_store::{MlsEntity, OpenMlsKeyStore};
+use openmls_traits::{
+    key_store::{MlsEntity, OpenMlsKeyStore},
+    storage::{GetError, StorageProvider, UpdateError},
+};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -18,6 +21,124 @@ pub struct PersistentKeyStore {
 #[derive(Debug, Default, Serialize, Deserialize)]
 struct SerializableKeyStore {
     values: HashMap<String, String>,
+}
+
+impl GetError for PersistentKeyStoreError {
+    fn error_kind(&self) -> openmls_traits::storage::GetErrorKind {
+        todo!()
+    }
+}
+
+impl UpdateError for PersistentKeyStoreError {
+    fn error_kind(&self) -> openmls_traits::storage::UpdateErrorKind {
+        todo!()
+    }
+}
+
+impl<const VERSION: u16> StorageProvider<VERSION> for PersistentKeyStore {
+    type GetError = PersistentKeyStoreError;
+
+    type UpdateError = PersistentKeyStoreError;
+
+    fn queue_proposal(
+        &self,
+        group_id: impl openmls_traits::storage::GroupIdKey<VERSION>,
+        proposal_ref: impl openmls_traits::storage::ProposalRefEntity<VERSION>,
+        proposal: impl openmls_traits::storage::QueuedProposalEntity<VERSION>,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn write_tree(
+        &self,
+        group_id: impl openmls_traits::storage::GroupIdKey<VERSION>,
+        tree: impl openmls_traits::storage::TreeSyncEntity<VERSION>,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn write_interim_transcript_hash(
+        &self,
+        group_id: impl openmls_traits::storage::GroupIdKey<VERSION>,
+        interim_transcript_hash: impl openmls_traits::storage::InterimTranscriptHashEntity<VERSION>,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn write_context(
+        &self,
+        group_id: impl openmls_traits::storage::GroupIdKey<VERSION>,
+        group_context: impl openmls_traits::storage::GroupContextEntity<VERSION>,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn write_confirmation_tag(
+        &self,
+        group_id: impl openmls_traits::storage::GroupIdKey<VERSION>,
+        confirmation_tag: impl openmls_traits::storage::ConfirmationTagEntity<VERSION>,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn write_signature_key_pair(
+        &self,
+        public_key: impl openmls_traits::storage::SignaturePublicKeyKey<VERSION>,
+        signature_key_pair: impl openmls_traits::storage::SignatureKeyPairEntity<VERSION>,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn get_queued_proposal_refs<V: openmls_traits::storage::ProposalRefEntity<VERSION>>(
+        &self,
+        group_id: &impl openmls_traits::storage::GroupIdKey<VERSION>,
+    ) -> Result<Vec<V>, Self::GetError> {
+        todo!()
+    }
+
+    fn get_queued_proposals<V: openmls_traits::storage::QueuedProposalEntity<VERSION>>(
+        &self,
+        group_id: &impl openmls_traits::storage::GroupIdKey<VERSION>,
+    ) -> Result<Vec<V>, Self::GetError> {
+        todo!()
+    }
+
+    fn get_treesync<V: openmls_traits::storage::TreeSyncEntity<VERSION>>(
+        &self,
+        group_id: &impl openmls_traits::storage::GroupIdKey<VERSION>,
+    ) -> Result<V, Self::GetError> {
+        todo!()
+    }
+
+    fn get_group_context<V: openmls_traits::storage::GroupContextEntity<VERSION>>(
+        &self,
+        group_id: &impl openmls_traits::storage::GroupIdKey<VERSION>,
+    ) -> Result<V, Self::GetError> {
+        todo!()
+    }
+
+    fn get_interim_transcript_hash<
+        V: openmls_traits::storage::InterimTranscriptHashEntity<VERSION>,
+    >(
+        &self,
+        group_id: &impl openmls_traits::storage::GroupIdKey<VERSION>,
+    ) -> Result<V, Self::GetError> {
+        todo!()
+    }
+
+    fn get_confirmation_tag<V: openmls_traits::storage::ConfirmationTagEntity<VERSION>>(
+        &self,
+        group_id: &impl openmls_traits::storage::GroupIdKey<VERSION>,
+    ) -> Result<V, Self::GetError> {
+        todo!()
+    }
+
+    fn signature_key_pair<V: openmls_traits::storage::SignatureKeyPairEntity<VERSION>>(
+        &self,
+        public_key: &impl openmls_traits::storage::SignaturePublicKeyKey<VERSION>,
+    ) -> Result<V, Self::GetError> {
+        todo!()
+    }
 }
 
 impl OpenMlsKeyStore for PersistentKeyStore {

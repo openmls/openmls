@@ -3,6 +3,8 @@
 //! This is an implementation of the [`OpenMlsCryptoProvider`] trait to use with
 //! OpenMLS.
 
+use std::any::Any;
+
 use super::persistent_key_store::PersistentKeyStore;
 use openmls_rust_crypto::RustCrypto;
 use openmls_traits::OpenMlsProvider;
@@ -28,6 +30,12 @@ impl OpenMlsProvider for OpenMlsRustPersistentCrypto {
 
     fn key_store(&self) -> &Self::KeyStoreProvider {
         &self.key_store
+    }
+
+    type StorageProvider = PersistentKeyStore;
+
+    fn storage(&self) -> &Self::StorageProvider {
+        todo!()
     }
 }
 

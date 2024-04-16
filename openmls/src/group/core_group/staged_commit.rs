@@ -312,8 +312,7 @@ impl CoreGroup {
         &mut self,
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
         staged_commit: StagedCommit,
-    ) -> Result<Option<MessageSecrets>, MergeCommitError<KeyStore::Error, Storage::UpdateError>>
-    {
+    ) -> Result<Option<MessageSecrets>, MergeCommitError<KeyStore::Error>> {
         // Get all keypairs from the old epoch, so we can later store the ones
         // that are still relevant in the new epoch.
         let old_epoch_keypairs = self.read_epoch_keypairs(provider.key_store());
@@ -336,7 +335,8 @@ impl CoreGroup {
                 self.public_group.merge_diff(state.staged_diff);
                 self.public_group
                     .write_to_storage(provider.storage())
-                    .map_err(MergeCommitError::StorageError)?;
+                    .unwrap();
+                // .map_err(MergeCommitError::StorageError)?;
 
                 // TODO #1194: Group storage and key storage should be
                 // correlated s.t. there is no divergence between key material
