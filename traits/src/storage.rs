@@ -45,6 +45,26 @@ pub trait StorageProvider<const VERSION: u16> {
         public_key: impl SignaturePublicKeyKey<VERSION>,
         signature_key_pair: impl SignatureKeyPairEntity<VERSION>,
     ) -> Result<(), Self::UpdateError>;
+    fn write_hpke_private_key(
+        &self,
+        public_key: impl InitKey<VERSION>,
+        private_key: impl HpkePrivateKey<VERSION>,
+    ) -> Result<(), Self::UpdateError>;
+    fn write_key_package(
+        &self,
+        hash_ref: impl HashReference<VERSION>,
+        key_package: impl KeyPackage<VERSION>,
+    ) -> Result<(), Self::UpdateError>;
+    fn write_psk(
+        &self,
+        psk_id: impl PskKey<VERSION>,
+        psk: impl PskBundle<VERSION>,
+    ) -> Result<(), Self::UpdateError>;
+    fn write_encryption_key_pair(
+        &self,
+        public_key: impl HpkePublicKey<VERSION>,
+        key_pair: impl HpkeKeyPair<VERSION>,
+    ) -> Result<(), Self::UpdateError>;
 
     // getter
     fn get_queued_proposal_refs<V: ProposalRefEntity<VERSION>>(
@@ -77,9 +97,26 @@ pub trait StorageProvider<const VERSION: u16> {
         group_id: &impl GroupIdKey<VERSION>,
     ) -> Result<V, Self::GetError>;
 
+    // Get crypto objects
+
     fn signature_key_pair<V: SignatureKeyPairEntity<VERSION>>(
         &self,
         public_key: &impl SignaturePublicKeyKey<VERSION>,
+    ) -> Result<V, Self::GetError>;
+
+    fn hpke_private_key<V: HpkePrivateKey<VERSION>>(
+        &self,
+        public_key: impl InitKey<VERSION>,
+    ) -> Result<V, Self::GetError>;
+    fn key_package<V: KeyPackage<VERSION>>(
+        &self,
+        hash_ref: impl HashReference<VERSION>,
+    ) -> Result<V, Self::GetError>;
+    fn psk<V: PskBundle<VERSION>>(&self, psk_id: impl PskKey<VERSION>)
+        -> Result<V, Self::GetError>;
+    fn encryption_key_pair<V: HpkeKeyPair<VERSION>>(
+        &self,
+        public_key: impl HpkePublicKey<VERSION>,
     ) -> Result<V, Self::GetError>;
 }
 
@@ -95,6 +132,10 @@ pub trait Entity<const VERSION: u16>: Serialize + DeserializeOwned {}
 pub trait GroupIdKey<const VERSION: u16>: Key<VERSION> {}
 pub trait ProposalRefKey<const VERSION: u16>: Key<VERSION> {}
 pub trait SignaturePublicKeyKey<const VERSION: u16>: Key<VERSION> {}
+pub trait InitKey<const VERSION: u16>: Key<VERSION> {}
+pub trait HashReference<const VERSION: u16>: Key<VERSION> {}
+pub trait PskKey<const VERSION: u16>: Key<VERSION> {}
+pub trait HpkePublicKey<const VERSION: u16>: Key<VERSION> {}
 
 // traits for entity, one per type
 pub trait QueuedProposalEntity<const VERSION: u16>: Entity<VERSION> {}
@@ -104,6 +145,10 @@ pub trait GroupContextEntity<const VERSION: u16>: Entity<VERSION> {}
 pub trait InterimTranscriptHashEntity<const VERSION: u16>: Entity<VERSION> {}
 pub trait ConfirmationTagEntity<const VERSION: u16>: Entity<VERSION> {}
 pub trait SignatureKeyPairEntity<const VERSION: u16>: Entity<VERSION> {}
+pub trait HpkePrivateKey<const VERSION: u16>: Entity<VERSION> {}
+pub trait KeyPackage<const VERSION: u16>: Entity<VERSION> {}
+pub trait PskBundle<const VERSION: u16>: Entity<VERSION> {}
+pub trait HpkeKeyPair<const VERSION: u16>: Entity<VERSION> {}
 
 // errors
 #[derive(Debug, Clone, Copy, PartialEq)]

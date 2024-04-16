@@ -139,6 +139,66 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentKeyStore {
     ) -> Result<V, Self::GetError> {
         todo!()
     }
+
+    fn write_hpke_private_key(
+        &self,
+        public_key: impl openmls_traits::storage::InitKey<VERSION>,
+        private_key: impl openmls_traits::storage::HpkePrivateKey<VERSION>,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn write_key_package(
+        &self,
+        hash_ref: impl openmls_traits::storage::HashReference<VERSION>,
+        key_package: impl openmls_traits::storage::KeyPackage<VERSION>,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn write_psk(
+        &self,
+        psk_id: impl openmls_traits::storage::PskKey<VERSION>,
+        psk: impl openmls_traits::storage::PskBundle<VERSION>,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn write_encryption_key_pair(
+        &self,
+        public_key: impl openmls_traits::storage::HpkePublicKey<VERSION>,
+        key_pair: impl openmls_traits::storage::HpkeKeyPair<VERSION>,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn hpke_private_key<V: openmls_traits::storage::HpkePrivateKey<VERSION>>(
+        &self,
+        public_key: impl openmls_traits::storage::InitKey<VERSION>,
+    ) -> Result<V, Self::UpdateError> {
+        todo!()
+    }
+
+    fn key_package<V: openmls_traits::storage::KeyPackage<VERSION>>(
+        &self,
+        hash_ref: impl openmls_traits::storage::HashReference<VERSION>,
+    ) -> Result<V, Self::UpdateError> {
+        todo!()
+    }
+
+    fn psk<V: openmls_traits::storage::PskBundle<VERSION>>(
+        &self,
+        psk_id: impl openmls_traits::storage::PskKey<VERSION>,
+    ) -> Result<V, Self::UpdateError> {
+        todo!()
+    }
+
+    fn encryption_key_pair<V: openmls_traits::storage::HpkeKeyPair<VERSION>>(
+        &self,
+        public_key: impl openmls_traits::storage::HpkePublicKey<VERSION>,
+    ) -> Result<V, Self::UpdateError> {
+        todo!()
+    }
 }
 
 impl OpenMlsKeyStore for PersistentKeyStore {

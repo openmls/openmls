@@ -63,6 +63,8 @@ pub enum MemoryKeyStoreError {
     UnsupportedMethod,
     #[error("Error serializing value.")]
     SerializationError,
+    #[error("Value does not exist.")]
+    None,
 }
 
 impl GetError for MemoryKeyStoreError {
@@ -302,5 +304,80 @@ impl StorageProvider<1> for MemoryKeyStore {
         let value = serde_json::from_slice(value).unwrap();
 
         Ok(value)
+    }
+
+    fn write_hpke_private_key(
+        &self,
+        public_key: impl storage::InitKey<1>,
+        private_key: impl storage::HpkePrivateKey<1>,
+    ) -> Result<(), Self::UpdateError> {
+        let mut values = self.values.write().unwrap();
+
+        let mut key = b"HpkePrivateKey".to_vec();
+        key.extend_from_slice(&serde_json::to_vec(&public_key).unwrap());
+        key.extend_from_slice(&u16::to_be_bytes(1));
+        let value = serde_json::to_vec(&private_key).unwrap();
+
+        values.insert(key, value);
+        Ok(())
+    }
+
+    fn write_key_package(
+        &self,
+        hash_ref: impl storage::HashReference<1>,
+        key_package: impl storage::KeyPackage<1>,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn write_psk(
+        &self,
+        psk_id: impl storage::PskKey<1>,
+        psk: impl storage::PskBundle<1>,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn write_encryption_key_pair(
+        &self,
+        public_key: impl storage::HpkePublicKey<1>,
+        key_pair: impl storage::HpkeKeyPair<1>,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn hpke_private_key<V: storage::HpkePrivateKey<1>>(
+        &self,
+        public_key: impl storage::InitKey<1>,
+    ) -> Result<V, Self::GetError> {
+        let mut values = self.values.write().unwrap();
+
+        let mut key = b"HpkePrivateKey".to_vec();
+        key.extend_from_slice(&serde_json::to_vec(&public_key).unwrap());
+        key.extend_from_slice(&u16::to_be_bytes(1));
+        let value = values.get(&key).ok_or(MemoryKeyStoreError::None)?;
+
+        Ok(serde_json::from_slice(value).map_err(|_| MemoryKeyStoreError::SerializationError)?)
+    }
+
+    fn key_package<V: storage::KeyPackage<1>>(
+        &self,
+        hash_ref: impl storage::HashReference<1>,
+    ) -> Result<V, Self::GetError> {
+        todo!()
+    }
+
+    fn psk<V: storage::PskBundle<1>>(
+        &self,
+        psk_id: impl storage::PskKey<1>,
+    ) -> Result<V, Self::GetError> {
+        todo!()
+    }
+
+    fn encryption_key_pair<V: storage::HpkeKeyPair<1>>(
+        &self,
+        public_key: impl storage::HpkePublicKey<1>,
+    ) -> Result<V, Self::GetError> {
+        todo!()
     }
 }
