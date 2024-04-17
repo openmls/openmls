@@ -40,30 +40,54 @@ pub trait StorageProvider<const VERSION: u16> {
         group_id: impl GroupIdKey<VERSION>,
         confirmation_tag: impl ConfirmationTagEntity<VERSION>,
     ) -> Result<(), Self::UpdateError>;
+
+    // Write crypto objects
+
+    /// Store a signature key.
+    ///
+    /// Note that signature keys are defined outside of OpenMLS.
     fn write_signature_key_pair(
         &self,
         public_key: impl SignaturePublicKeyKey<VERSION>,
         signature_key_pair: impl SignatureKeyPairEntity<VERSION>,
     ) -> Result<(), Self::UpdateError>;
-    fn write_hpke_private_key(
+
+    /// Store an HPKE init private key.
+    ///
+    /// This is used for init keys from key packages.
+    fn write_init_private_key(
         &self,
         public_key: impl InitKey<VERSION>,
         private_key: impl HpkePrivateKey<VERSION>,
     ) -> Result<(), Self::UpdateError>;
+
+    /// Store an HPKE encryption key pair.
+    /// This includes the private and public key
+    ///
+    /// This is used for encryption keys from leaf nodes.
+    fn write_encryption_key_pair(
+        &self,
+        public_key: impl HpkePublicKey<VERSION>,
+        key_pair: impl HpkeKeyPair<VERSION>,
+    ) -> Result<(), Self::UpdateError>;
+
+    /// Store key packages.
+    ///
+    /// Store a key package. This does not include the private keys. They are
+    /// stored separately with `write_hpke_private_key`.
     fn write_key_package(
         &self,
         hash_ref: impl HashReference<VERSION>,
         key_package: impl KeyPackage<VERSION>,
     ) -> Result<(), Self::UpdateError>;
+
+    /// Store a PSK.
+    ///
+    /// This stores PSKs based on the PSK id.
     fn write_psk(
         &self,
         psk_id: impl PskKey<VERSION>,
         psk: impl PskBundle<VERSION>,
-    ) -> Result<(), Self::UpdateError>;
-    fn write_encryption_key_pair(
-        &self,
-        public_key: impl HpkePublicKey<VERSION>,
-        key_pair: impl HpkeKeyPair<VERSION>,
     ) -> Result<(), Self::UpdateError>;
 
     // getter
@@ -99,24 +123,68 @@ pub trait StorageProvider<const VERSION: u16> {
 
     // Get crypto objects
 
+    /// Get a signature key based on the public key.
     fn signature_key_pair<V: SignatureKeyPairEntity<VERSION>>(
         &self,
         public_key: &impl SignaturePublicKeyKey<VERSION>,
     ) -> Result<V, Self::GetError>;
 
-    fn hpke_private_key<V: HpkePrivateKey<VERSION>>(
+    /// Get a private init key based on the corresponding public kye.
+    fn init_private_key<V: HpkePrivateKey<VERSION>>(
         &self,
         public_key: impl InitKey<VERSION>,
     ) -> Result<V, Self::GetError>;
+
+    /// Get an HPKE encryption key pair based on the public key.
+    fn encryption_key_pair<V: HpkeKeyPair<VERSION>>(
+        &self,
+        public_key: impl HpkePublicKey<VERSION>,
+    ) -> Result<V, Self::GetError>;
+
+    /// Get a key package based on its hash reference.
     fn key_package<V: KeyPackage<VERSION>>(
         &self,
         hash_ref: impl HashReference<VERSION>,
     ) -> Result<V, Self::GetError>;
+
+    /// Get a PSK based on the PSK identifier.
     fn psk<V: PskBundle<VERSION>>(&self, psk_id: impl PskKey<VERSION>)
         -> Result<V, Self::GetError>;
-    fn encryption_key_pair<V: HpkeKeyPair<VERSION>>(
+
+    // Delete crypto objects
+
+    /// Delete a signature key pair based on its public key
+    fn delete_signature_key_pair<V: SignatureKeyPairEntity<VERSION>>(
+        &self,
+        public_key: &impl SignaturePublicKeyKey<VERSION>,
+    ) -> Result<V, Self::GetError>;
+
+    /// Delete an HPKE private init key.
+    ///
+    /// XXX: This should be called when deleting key packages.
+    fn delete_hpke_private_key<V: HpkePrivateKey<VERSION>>(
+        &self,
+        public_key: impl InitKey<VERSION>,
+    ) -> Result<V, Self::GetError>;
+
+    /// Delete an encryption key pair for a public key.
+    fn delete_encryption_key_pair<V: HpkeKeyPair<VERSION>>(
         &self,
         public_key: impl HpkePublicKey<VERSION>,
+    ) -> Result<V, Self::GetError>;
+
+    /// Delete a key package based on the hash reference.
+    ///
+    /// XXX: This needs to delete all corresponding keys.
+    fn delete_key_package<V: KeyPackage<VERSION>>(
+        &self,
+        hash_ref: impl HashReference<VERSION>,
+    ) -> Result<V, Self::GetError>;
+
+    /// Delete a PSK based on an identifier.
+    fn delete_psk<V: PskBundle<VERSION>>(
+        &self,
+        psk_id: impl PskKey<VERSION>,
     ) -> Result<V, Self::GetError>;
 }
 

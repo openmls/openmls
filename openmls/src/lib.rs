@@ -4,7 +4,7 @@
 //! up to parties and have them create a group.
 //!
 //! ```
-//! use openmls::{prelude::{*,  tls_codec::*}, storage::OpenMlsTypes};
+//! use openmls::{prelude::{*,  tls_codec::*}};
 //! use openmls_rust_crypto::{OpenMlsRustCrypto};
 //! use openmls_basic_credential::SignatureKeyPair;
 //!

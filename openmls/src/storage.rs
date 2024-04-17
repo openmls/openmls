@@ -1,5 +1,6 @@
-#[derive(Debug, Clone, Default)]
-pub struct OpenMlsTypes;
+//! OpenMLS Storage
+//!
+//! TODO
 
 use openmls_traits::storage;
 use openmls_traits::storage::*;
@@ -50,13 +51,17 @@ impl InitKey<1> for StorageInitKey {}
 impl storage::HpkePrivateKey<1> for StorageHpkePrivateKey {}
 impl Entity<1> for StorageHpkePrivateKey {}
 
+/// A convenience trait for the current version of the storage.
 pub trait StorageProvider: openmls_traits::storage::StorageProvider<1> {}
 
 impl<P: openmls_traits::storage::StorageProvider<1>> StorageProvider for P {}
 
+/// A convenience trait for the OpenMLS provider that defines the storage provider
+/// for the current version of storage.
 pub trait RefinedProvider:
     openmls_traits::OpenMlsProvider<StorageProvider = Self::Storage>
 {
+    /// The storage to use
     type Storage: StorageProvider;
 }
 
@@ -91,7 +96,7 @@ mod test {
 
         provider
             .storage()
-            .write_hpke_private_key(
+            .write_init_private_key(
                 StorageInitKey(key_pair.public.clone()),
                 StorageHpkePrivateKey(key_pair.private.clone()),
             )
@@ -99,7 +104,7 @@ mod test {
 
         let private_key: StorageHpkePrivateKey = provider
             .storage()
-            .hpke_private_key(StorageInitKey(key_pair.public))
+            .init_private_key(StorageInitKey(key_pair.public))
             .unwrap();
         assert_eq!(private_key.0, key_pair.private);
     }

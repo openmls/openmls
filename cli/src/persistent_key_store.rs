@@ -140,7 +140,7 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentKeyStore {
         todo!()
     }
 
-    fn write_hpke_private_key(
+    fn write_init_private_key(
         &self,
         public_key: impl openmls_traits::storage::InitKey<VERSION>,
         private_key: impl openmls_traits::storage::HpkePrivateKey<VERSION>,
@@ -172,7 +172,7 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentKeyStore {
         todo!()
     }
 
-    fn hpke_private_key<V: openmls_traits::storage::HpkePrivateKey<VERSION>>(
+    fn init_private_key<V: openmls_traits::storage::HpkePrivateKey<VERSION>>(
         &self,
         public_key: impl openmls_traits::storage::InitKey<VERSION>,
     ) -> Result<V, Self::UpdateError> {
@@ -197,6 +197,41 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentKeyStore {
         &self,
         public_key: impl openmls_traits::storage::HpkePublicKey<VERSION>,
     ) -> Result<V, Self::UpdateError> {
+        todo!()
+    }
+    
+    fn delete_signature_key_pair<V: openmls_traits::storage::SignatureKeyPairEntity<VERSION>>(
+        &self,
+        public_key: &impl openmls_traits::storage::SignaturePublicKeyKey<VERSION>,
+    ) -> Result<V, Self::GetError> {
+        todo!()
+    }
+    
+    fn delete_hpke_private_key<V: openmls_traits::storage::HpkePrivateKey<VERSION>>(
+        &self,
+        public_key: impl openmls_traits::storage::InitKey<VERSION>,
+    ) -> Result<V, Self::GetError> {
+        todo!()
+    }
+    
+    fn delete_encryption_key_pair<V: openmls_traits::storage::HpkeKeyPair<VERSION>>(
+        &self,
+        public_key: impl openmls_traits::storage::HpkePublicKey<VERSION>,
+    ) -> Result<V, Self::GetError> {
+        todo!()
+    }
+    
+    fn delete_key_package<V: openmls_traits::storage::KeyPackage<VERSION>>(
+        &self,
+        hash_ref: impl openmls_traits::storage::HashReference<VERSION>,
+    ) -> Result<V, Self::GetError> {
+        todo!()
+    }
+    
+    fn delete_psk<V: openmls_traits::storage::PskBundle<VERSION>>(
+        &self,
+        psk_id: impl openmls_traits::storage::PskKey<VERSION>,
+    ) -> Result<V, Self::GetError> {
         todo!()
     }
 }

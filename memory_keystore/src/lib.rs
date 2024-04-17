@@ -306,7 +306,7 @@ impl StorageProvider<1> for MemoryKeyStore {
         Ok(value)
     }
 
-    fn write_hpke_private_key(
+    fn write_init_private_key(
         &self,
         public_key: impl storage::InitKey<1>,
         private_key: impl storage::HpkePrivateKey<1>,
@@ -346,7 +346,7 @@ impl StorageProvider<1> for MemoryKeyStore {
         todo!()
     }
 
-    fn hpke_private_key<V: storage::HpkePrivateKey<1>>(
+    fn init_private_key<V: storage::HpkePrivateKey<1>>(
         &self,
         public_key: impl storage::InitKey<1>,
     ) -> Result<V, Self::GetError> {
@@ -377,6 +377,41 @@ impl StorageProvider<1> for MemoryKeyStore {
     fn encryption_key_pair<V: storage::HpkeKeyPair<1>>(
         &self,
         public_key: impl storage::HpkePublicKey<1>,
+    ) -> Result<V, Self::GetError> {
+        todo!()
+    }
+
+    fn delete_signature_key_pair<V: storage::SignatureKeyPairEntity<1>>(
+        &self,
+        public_key: &impl storage::SignaturePublicKeyKey<1>,
+    ) -> Result<V, Self::GetError> {
+        todo!()
+    }
+
+    fn delete_hpke_private_key<V: storage::HpkePrivateKey<1>>(
+        &self,
+        public_key: impl storage::InitKey<1>,
+    ) -> Result<V, Self::GetError> {
+        todo!()
+    }
+
+    fn delete_encryption_key_pair<V: storage::HpkeKeyPair<1>>(
+        &self,
+        public_key: impl storage::HpkePublicKey<1>,
+    ) -> Result<V, Self::GetError> {
+        todo!()
+    }
+
+    fn delete_key_package<V: storage::KeyPackage<1>>(
+        &self,
+        hash_ref: impl storage::HashReference<1>,
+    ) -> Result<V, Self::GetError> {
+        todo!()
+    }
+
+    fn delete_psk<V: storage::PskBundle<1>>(
+        &self,
+        psk_id: impl storage::PskKey<1>,
     ) -> Result<V, Self::GetError> {
         todo!()
     }

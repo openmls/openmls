@@ -212,9 +212,8 @@ pub(crate) fn generate_group_candidate(
 // === Define provider per platform ===
 
 // This provider is currently used on all platforms
-use crate::storage::OpenMlsTypes;
 #[cfg(feature = "libcrux-provider")]
-pub type OpenMlsLibcrux = openmls_libcrux_crypto::Provider<OpenMlsTypes>;
+pub type OpenMlsLibcrux = openmls_libcrux_crypto::Provider;
 pub type OpenMlsRustCrypto = openmls_rust_crypto::OpenMlsRustCrypto;
 
 // === providers ===

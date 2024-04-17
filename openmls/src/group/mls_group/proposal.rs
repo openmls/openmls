@@ -18,7 +18,6 @@ use crate::{
     messages::proposals::ProposalOrRefType,
     prelude::LibraryError,
     schedule::PreSharedKeyId,
-    storage::OpenMlsTypes,
     treesync::LeafNode,
     versions::ProtocolVersion,
 };

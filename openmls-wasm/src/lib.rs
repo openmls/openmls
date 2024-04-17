@@ -7,7 +7,6 @@ use openmls::{
     group::{GroupId, MlsGroup, MlsGroupJoinConfig, StagedWelcome},
     key_packages::KeyPackage as OpenMlsKeyPackage,
     prelude::SignatureScheme,
-    storage::OpenMlsTypes,
     treesync::RatchetTreeIn,
 };
 use openmls_basic_credential::SignatureKeyPair;

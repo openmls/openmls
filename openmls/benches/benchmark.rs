@@ -8,7 +8,7 @@ use openmls::prelude::*;
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsProvider};
 
-pub type OpenMlsRustCrypto = openmls_rust_crypto::OpenMlsRustCrypto<openmls::storage::OpenMlsTypes>;
+pub type OpenMlsRustCrypto = openmls_rust_crypto::OpenMlsRustCrypto;
 
 fn criterion_kp_bundle(c: &mut Criterion, provider: &impl OpenMlsProvider) {
     for &ciphersuite in provider.crypto().supported_ciphersuites().iter() {

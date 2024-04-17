@@ -72,7 +72,7 @@ pub struct PublicGroup {
     confirmation_tag: ConfirmationTag,
 }
 
-// we need this type because we can't implement the storage traits on Vec<u8>.
+/// we need this type because we can't implement the storage traits on Vec<u8>.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct InterimTranscriptHash(pub Vec<u8>);
 
@@ -347,6 +347,31 @@ impl PublicGroup {
     pub(crate) fn owned_encryption_keys(&self, leaf_index: LeafNodeIndex) -> Vec<EncryptionKey> {
         self.treesync().owned_encryption_keys(leaf_index)
     }
+
+    pub(crate) fn write_to_storage<Storage: StorageProvider<1>>(
+        &self,
+        storage: &Storage,
+    ) -> Result<(), Storage::UpdateError> {
+        let group_id = self.group_context.group_id();
+        storage.write_tree(group_id.clone(), self.treesync().clone())?;
+        storage.write_confirmation_tag(group_id.clone(), self.confirmation_tag().clone())?;
+        storage.write_context(group_id.clone(), self.group_context().clone())?;
+        storage.write_interim_transcript_hash(
+            group_id.clone(),
+            InterimTranscriptHash(self.interim_transcript_hash.clone()),
+        )?;
+        Ok(())
+
+        // storage.apply_updates(vec![
+        //     Update::WriteTreeSync(group_id.clone(), self.treesync().clone()),
+        //     Update::WriteConfirmationTag(group_id.clone(), self.confirmation_tag.clone()),
+        //     Update::WriteGroupContext(group_id.clone(), self.group_context.clone()),
+        //     Update::WriteInterimTranscriptHash(
+        //         group_id.clone(),
+        //         InterimTranscriptHash(self.interim_transcript_hash.clone()),
+        //     ),
+        // ])
+    }
 }
 
 // Test functions
@@ -379,30 +404,5 @@ impl PublicGroup {
             exclusion_list,
             own_leaf_index,
         )
-    }
-
-    pub(crate) fn write_to_storage<Storage: StorageProvider<1>>(
-        &self,
-        storage: &Storage,
-    ) -> Result<(), Storage::UpdateError> {
-        let group_id = self.group_context.group_id();
-        storage.write_tree(group_id.clone(), self.treesync().clone())?;
-        storage.write_confirmation_tag(group_id.clone(), self.confirmation_tag().clone())?;
-        storage.write_context(group_id.clone(), self.group_context().clone())?;
-        storage.write_interim_transcript_hash(
-            group_id.clone(),
-            InterimTranscriptHash(self.interim_transcript_hash.clone()),
-        )?;
-        Ok(())
-
-        // storage.apply_updates(vec![
-        //     Update::WriteTreeSync(group_id.clone(), self.treesync().clone()),
-        //     Update::WriteConfirmationTag(group_id.clone(), self.confirmation_tag.clone()),
-        //     Update::WriteGroupContext(group_id.clone(), self.group_context.clone()),
-        //     Update::WriteInterimTranscriptHash(
-        //         group_id.clone(),
-        //         InterimTranscriptHash(self.interim_transcript_hash.clone()),
-        //     ),
-        // ])
     }
 }
