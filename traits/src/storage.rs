@@ -8,6 +8,15 @@ pub trait UpdateError: core::fmt::Debug + std::error::Error + PartialEq {
     fn error_kind(&self) -> UpdateErrorKind;
 }
 
+/// The storage version used by OpenMLS
+pub const CURRENT_VERSION: u16 = 1;
+
+/// For testing there is a test version defined here.
+///
+/// THIS VERSION MUST NEVER BE USED OUTSIDE OF TESTS.
+#[cfg(feature = "test-utils")]
+pub const V_TEST: u16 = u16::MAX;
+
 pub trait StorageProvider<const VERSION: u16> {
     // source for errors
     type GetError: GetError;
@@ -217,6 +226,15 @@ pub trait HpkePrivateKey<const VERSION: u16>: Entity<VERSION> {}
 pub trait KeyPackage<const VERSION: u16>: Entity<VERSION> {}
 pub trait PskBundle<const VERSION: u16>: Entity<VERSION> {}
 pub trait HpkeKeyPair<const VERSION: u16>: Entity<VERSION> {}
+
+/// A trait to convert one entity into another one.
+///
+/// This is implemented for all entities with different versions.
+/// 
+/// XXX: I'd like something like this. But this obviously doesn't work. How should this work?
+pub trait EntityConversion<const OLD_VERSION: u16, const NEW_VERSION: u16> {
+    fn from(old: impl Entity<OLD_VERSION>) -> Self;
+}
 
 // errors
 #[derive(Debug, Clone, Copy, PartialEq)]
