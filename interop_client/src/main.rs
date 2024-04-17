@@ -224,7 +224,7 @@ impl MlsClient for MlsClientImpl {
         let ciphersuite = Ciphersuite::try_from(request.cipher_suite as u16).unwrap();
         let credential = BasicCredential::new(request.identity.clone());
         let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
-        signature_keys.store(provider.key_store()).unwrap();
+        signature_keys.store(provider.storage()).unwrap();
 
         let wire_format_policy = wire_format_policy(request.encrypt_handshake);
         // Note: We just use some values here that make live testing work.
@@ -503,7 +503,7 @@ impl MlsClient for MlsClientImpl {
                 let signature_keypair =
                     SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
-                signature_keypair.store(provider.key_store()).unwrap();
+                signature_keypair.store(provider.storage()).unwrap();
 
                 let credential_with_key = CredentialWithKey {
                     credential: credential.into(),

@@ -72,7 +72,7 @@ impl Identity {
         let credential = BasicCredential::new(identity);
         let keypair = SignatureKeyPair::new(signature_scheme)?;
 
-        keypair.store(provider.0.key_store())?;
+        keypair.store(provider.0.storage())?;
 
         let credential_with_key = CredentialWithKey {
             credential: credential.into(),

@@ -62,8 +62,8 @@ pub trait StorageProvider<const VERSION: u16> {
     /// Note that signature keys are defined outside of OpenMLS.
     fn write_signature_key_pair(
         &self,
-        public_key: impl SignaturePublicKeyKey<VERSION>,
-        signature_key_pair: impl SignatureKeyPairEntity<VERSION>,
+        public_key: &impl SignaturePublicKeyKey<VERSION>,
+        signature_key_pair: &impl SignatureKeyPairEntity<VERSION>,
     ) -> Result<(), Self::UpdateError>;
 
     /// Store an HPKE init private key.
@@ -212,7 +212,7 @@ pub trait StorageProvider<const VERSION: u16> {
     fn write_group_state<GroupState: GroupStateEntity<VERSION>, GroupId: GroupIdKey<VERSION>>(
         &self,
         group_id: &GroupId,
-        group_state: GroupState,
+        group_state: &GroupState,
     ) -> Result<(), Self::UpdateError>;
 
     /// Deletes the MlsGroupState for group with given id.
@@ -284,7 +284,7 @@ pub trait StorageProvider<const VERSION: u16> {
     >(
         &self,
         group_id: &GroupId,
-        own_leaf_index: LeafNodeIndex,
+        own_leaf_index: &LeafNodeIndex,
     ) -> Result<(), Self::UpdateError>;
 
     /// Deletes the own leaf index inside the group for the group with the given id.

@@ -30,7 +30,7 @@
 //!     // Store the signature key into the key store so OpenMLS has access
 //!     // to it.
 //!     signature_keys
-//!         .store(provider.key_store())
+//!         .store(provider.storage())
 //!         .expect("Error storing signature keys in key store.");
 //!     
 //!     (

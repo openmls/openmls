@@ -132,7 +132,7 @@ fn test_franken_key_package(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
     let (credential, signer) = {
         let credential = BasicCredential::new(b"test identity".to_vec());
         let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
-        signature_keys.store(provider.key_store()).unwrap();
+        signature_keys.store(provider.storage()).unwrap();
 
         (credential, signature_keys)
     };

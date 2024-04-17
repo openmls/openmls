@@ -338,7 +338,7 @@ pub(crate) fn generate_credential_with_key(
     let (credential, signer) = {
         let credential = BasicCredential::new(identity);
         let signature_keys = SignatureKeyPair::new(signature_scheme).unwrap();
-        signature_keys.store(provider.key_store()).unwrap();
+        signature_keys.store(provider.storage()).unwrap();
 
         (credential, signature_keys)
     };

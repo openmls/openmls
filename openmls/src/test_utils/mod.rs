@@ -120,7 +120,7 @@ pub(crate) fn generate_group_candidate(
 
         // Store if there is a key store.
         if use_store {
-            signature_keypair.store(provider.key_store()).unwrap();
+            signature_keypair.store(provider.storage()).unwrap();
         }
 
         let signature_pkey = OpenMlsSignaturePublicKey::new(

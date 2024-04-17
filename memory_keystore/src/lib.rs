@@ -11,6 +11,8 @@ pub struct MemoryKeyStore {
 }
 
 impl MemoryKeyStore {
+    /// Internal helper to abstract write operations.
+    #[inline(always)]
     fn write<const VERSION: u16>(
         &self,
         label: &[u8],
@@ -22,12 +24,13 @@ impl MemoryKeyStore {
         let mut storage_key = label.to_vec();
         storage_key.extend_from_slice(key);
         storage_key.extend_from_slice(&u16::to_be_bytes(VERSION));
-        println!("write storage key {:x?}", storage_key);
 
         values.insert(storage_key, value.to_vec());
         Ok(())
     }
 
+    /// Internal helper to abstract read operations.
+    #[inline(always)]
     fn read<const VERSION: u16, V: Entity<VERSION>>(
         &self,
         label: &[u8],
@@ -38,15 +41,15 @@ impl MemoryKeyStore {
         let mut storage_key = label.to_vec();
         storage_key.extend_from_slice(key);
         storage_key.extend_from_slice(&u16::to_be_bytes(VERSION));
-        println!("read storage key {:x?}", storage_key);
 
         let value = values.get(&storage_key).unwrap();
-        println!("read data {}", String::from_utf8(value.clone()).unwrap());
         let value = serde_json::from_slice(value).unwrap();
 
         Ok(value)
     }
 
+    /// Internal helper to abstract delete operations.
+    #[inline(always)]
     fn delete<const VERSION: u16, V: Entity<VERSION>>(
         &self,
         label: &[u8],
@@ -144,6 +147,13 @@ const PSK_LABEL: &[u8] = b"Psk";
 const ENCRYPTION_KEY_PAIR_LABEL: &[u8] = b"EncryptionKeyPair";
 const SIGNATURE_KEY_PAIR_LABEL: &[u8] = b"SignatureKeyPair";
 
+const OWN_LEAF_NODE_LABEL: &[u8] = b"OwnLeafNode";
+const EPOCH_SECRETS_LABEL: &[u8] = b"EpochSecrets";
+const RESUMPTION_PSK_STORE_LABEL: &[u8] = b"ResumptionPsk";
+const MESSAGE_SECRETS_LABEL: &[u8] = b"MessageSecrets";
+const GROUP_STATE_LABEL: &[u8] = b"GroupState";
+const USE_RATCHET_TREE_LABEL: &[u8] = b"UseRatchetTree";
+
 impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     type GetError = MemoryKeyStoreError;
     type UpdateError = MemoryKeyStoreError;
@@ -238,8 +248,8 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
 
     fn write_signature_key_pair(
         &self,
-        public_key: impl storage::SignaturePublicKeyKey<CURRENT_VERSION>,
-        key_pair: impl storage::SignatureKeyPairEntity<CURRENT_VERSION>,
+        public_key: &impl storage::SignaturePublicKeyKey<CURRENT_VERSION>,
+        key_pair: &impl storage::SignatureKeyPairEntity<CURRENT_VERSION>,
     ) -> Result<(), Self::UpdateError> {
         let mut values = self.values.write().unwrap();
         let mut key = SIGNATURE_KEY_PAIR_LABEL.to_vec();
@@ -524,9 +534,13 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     >(
         &self,
         group_id: &GroupId,
-        group_state: GroupState,
+        group_state: &GroupState,
     ) -> Result<(), Self::UpdateError> {
-        todo!()
+        self.write::<CURRENT_VERSION>(
+            GROUP_STATE_LABEL,
+            &serde_json::to_vec(group_id)?,
+            &serde_json::to_vec(group_state)?,
+        )
     }
 
     fn delete_group_state<GroupId: GroupIdKey<CURRENT_VERSION>>(
@@ -554,7 +568,11 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         group_id: &GroupId,
         message_secrets: &MessageSecrets,
     ) -> Result<(), Self::UpdateError> {
-        todo!()
+        self.write::<CURRENT_VERSION>(
+            MESSAGE_SECRETS_LABEL,
+            &serde_json::to_vec(group_id)?,
+            &serde_json::to_vec(message_secrets)?,
+        )
     }
 
     fn delete_message_secrets<GroupId: GroupIdKey<CURRENT_VERSION>>(
@@ -582,7 +600,11 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         group_id: &GroupId,
         resumption_psk_store: &ResumptionPskStore,
     ) -> Result<(), Self::UpdateError> {
-        todo!()
+        self.write::<CURRENT_VERSION>(
+            RESUMPTION_PSK_STORE_LABEL,
+            &serde_json::to_vec(group_id)?,
+            &serde_json::to_vec(resumption_psk_store)?,
+        )
     }
 
     fn delete_all_resumption_psk_secrets<GroupId: GroupIdKey<CURRENT_VERSION>>(
@@ -608,9 +630,13 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     >(
         &self,
         group_id: &GroupId,
-        own_leaf_index: LeafNodeIndex,
+        own_leaf_index: &LeafNodeIndex,
     ) -> Result<(), Self::UpdateError> {
-        todo!()
+        self.write::<CURRENT_VERSION>(
+            OWN_LEAF_NODE_LABEL,
+            &serde_json::to_vec(group_id)?,
+            &serde_json::to_vec(own_leaf_index)?,
+        )
     }
 
     fn delete_own_leaf_index<GroupId: GroupIdKey<CURRENT_VERSION>>(
@@ -632,7 +658,11 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         group_id: &GroupId,
         value: bool,
     ) -> Result<(), Self::UpdateError> {
-        todo!()
+        self.write::<CURRENT_VERSION>(
+            USE_RATCHET_TREE_LABEL,
+            &serde_json::to_vec(group_id)?,
+            &serde_json::to_vec(&value)?,
+        )
     }
 
     fn delete_use_ratchet_tree_extension<GroupId: GroupIdKey<CURRENT_VERSION>>(
@@ -660,7 +690,11 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         group_id: &GroupId,
         group_epoch_secrets: &GroupEpochSecrets,
     ) -> Result<(), Self::UpdateError> {
-        todo!()
+        self.write::<CURRENT_VERSION>(
+            EPOCH_SECRETS_LABEL,
+            &serde_json::to_vec(group_id)?,
+            &serde_json::to_vec(group_epoch_secrets)?,
+        )
     }
 
     fn delete_group_epoch_secrets<GroupId: GroupIdKey<CURRENT_VERSION>>(
@@ -719,8 +753,8 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
 
     fn write_signature_key_pair(
         &self,
-        public_key: impl SignaturePublicKeyKey<V_TEST>,
-        signature_key_pair: impl SignatureKeyPairEntity<V_TEST>,
+        public_key: &impl SignaturePublicKeyKey<V_TEST>,
+        signature_key_pair: &impl SignatureKeyPairEntity<V_TEST>,
     ) -> Result<(), Self::UpdateError> {
         todo!()
     }
@@ -914,7 +948,7 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
     fn write_group_state<GroupState: GroupStateEntity<V_TEST>, GroupId: GroupIdKey<V_TEST>>(
         &self,
         group_id: &GroupId,
-        group_state: GroupState,
+        group_state: &GroupState,
     ) -> Result<(), Self::UpdateError> {
         todo!()
     }
@@ -995,7 +1029,7 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
     >(
         &self,
         group_id: &GroupId,
-        own_leaf_index: LeafNodeIndex,
+        own_leaf_index: &LeafNodeIndex,
     ) -> Result<(), Self::UpdateError> {
         todo!()
     }
@@ -1055,5 +1089,11 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         group_id: &GroupId,
     ) -> Result<(), Self::UpdateError> {
         todo!()
+    }
+}
+
+impl From<serde_json::Error> for MemoryKeyStoreError {
+    fn from(_: serde_json::Error) -> Self {
+        Self::SerializationError
     }
 }

@@ -29,7 +29,7 @@ impl Identity {
             credential: credential.into(),
             signature_key: signature_keys.to_public_vec().into(),
         };
-        signature_keys.store(crypto.key_store()).unwrap();
+        signature_keys.store(crypto.storage()).unwrap();
 
         let key_package = KeyPackage::builder()
             .build(

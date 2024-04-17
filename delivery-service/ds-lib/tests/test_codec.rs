@@ -17,7 +17,7 @@ fn test_client_info() {
         credential: credential.into(),
         signature_key: signature_keys.to_public_vec().into(),
     };
-    signature_keys.store(crypto.key_store()).unwrap();
+    signature_keys.store(crypto.storage()).unwrap();
 
     let client_key_package = KeyPackage::builder()
         .build(ciphersuite, crypto, &signature_keys, credential_with_key)

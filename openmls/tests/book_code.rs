@@ -26,7 +26,7 @@ fn generate_credential(
     // ANCHOR_END: create_basic_credential
     // ANCHOR: create_credential_keys
     let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
-    signature_keys.store(provider.key_store()).unwrap();
+    signature_keys.store(provider.storage()).unwrap();
     // ANCHOR_END: create_credential_keys
 
     (

@@ -718,7 +718,7 @@ impl CoreGroup {
     ) -> Result<(), Storage::UpdateError> {
         let group_id = self.group_id();
 
-        storage.write_own_leaf_index(group_id, self.own_leaf_index())?;
+        storage.write_own_leaf_index(group_id, &self.own_leaf_index())?;
         storage.write_group_epoch_secrets(group_id, &self.group_epoch_secrets)?;
         storage.set_use_ratchet_tree_extension(group_id, self.use_ratchet_tree_extension)?;
         storage.write_message_secrets(group_id, &self.message_secrets_store)?;
