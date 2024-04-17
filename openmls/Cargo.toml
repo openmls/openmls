@@ -35,6 +35,7 @@ rstest_reuse = { version = "0.4", optional = true }
 wasm-bindgen-test = { version = "0.3.40", optional = true }
 getrandom = { version = "0.2.12", optional = true, features = ["js"] }
 fluvio-wasm-timer = { version = "0.2.5", optional = true }
+openmls_memory_keystore = { path = "../memory_keystore", features = ["test-utils"],  optional = true }
 
 [features]
 default = ["backtrace"]
@@ -48,6 +49,7 @@ test-utils = [
   "dep:rstest_reuse",
   "dep:wasm-bindgen-test",
   "dep:openmls_basic_credential",
+  "dep:openmls_memory_keystore"
   # "dep:openmls-storage-kv",
 ]
 libcrux-provider = ["dep:openmls_libcrux_crypto"]

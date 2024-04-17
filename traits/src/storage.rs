@@ -22,6 +22,11 @@ pub trait StorageProvider<const VERSION: u16> {
     type GetError: GetError;
     type UpdateError: UpdateError;
 
+    /// Get the version of this provider.
+    fn version() -> u16 {
+        VERSION
+    }
+
     // Write/queue
     fn queue_proposal(
         &self,
@@ -151,6 +156,7 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<V, Self::GetError>;
 
     /// Get a key package based on its hash reference.
+    /// TODO: use references for getters
     fn key_package<V: KeyPackage<VERSION>>(
         &self,
         hash_ref: impl HashReference<VERSION>,
@@ -166,21 +172,21 @@ pub trait StorageProvider<const VERSION: u16> {
     fn delete_signature_key_pair<V: SignatureKeyPairEntity<VERSION>>(
         &self,
         public_key: &impl SignaturePublicKeyKey<VERSION>,
-    ) -> Result<V, Self::GetError>;
+    ) -> Result<Option<V>, Self::GetError>;
 
     /// Delete an HPKE private init key.
     ///
     /// XXX: This should be called when deleting key packages.
-    fn delete_hpke_private_key<V: HpkePrivateKey<VERSION>>(
+    fn delete_init_private_key<V: HpkePrivateKey<VERSION>>(
         &self,
         public_key: impl InitKey<VERSION>,
-    ) -> Result<V, Self::GetError>;
+    ) -> Result<Option<V>, Self::GetError>;
 
     /// Delete an encryption key pair for a public key.
     fn delete_encryption_key_pair<V: HpkeKeyPair<VERSION>>(
         &self,
         public_key: impl HpkePublicKey<VERSION>,
-    ) -> Result<V, Self::GetError>;
+    ) -> Result<Option<V>, Self::GetError>;
 
     /// Delete a key package based on the hash reference.
     ///
@@ -188,13 +194,13 @@ pub trait StorageProvider<const VERSION: u16> {
     fn delete_key_package<V: KeyPackage<VERSION>>(
         &self,
         hash_ref: impl HashReference<VERSION>,
-    ) -> Result<V, Self::GetError>;
+    ) -> Result<Option<V>, Self::GetError>;
 
     /// Delete a PSK based on an identifier.
     fn delete_psk<V: PskBundle<VERSION>>(
         &self,
         psk_id: impl PskKey<VERSION>,
-    ) -> Result<V, Self::GetError>;
+    ) -> Result<Option<V>, Self::GetError>;
 }
 
 // base traits for keys and values
@@ -230,7 +236,7 @@ pub trait HpkeKeyPair<const VERSION: u16>: Entity<VERSION> {}
 /// A trait to convert one entity into another one.
 ///
 /// This is implemented for all entities with different versions.
-/// 
+///
 /// XXX: I'd like something like this. But this obviously doesn't work. How should this work?
 pub trait EntityConversion<const OLD_VERSION: u16, const NEW_VERSION: u16> {
     fn from(old: impl Entity<OLD_VERSION>) -> Self;

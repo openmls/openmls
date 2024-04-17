@@ -207,7 +207,7 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentKeyStore {
         todo!()
     }
     
-    fn delete_hpke_private_key<V: openmls_traits::storage::HpkePrivateKey<VERSION>>(
+    fn delete_init_private_key<V: openmls_traits::storage::HpkePrivateKey<VERSION>>(
         &self,
         public_key: impl openmls_traits::storage::InitKey<VERSION>,
     ) -> Result<V, Self::GetError> {
