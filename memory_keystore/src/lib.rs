@@ -20,11 +20,11 @@ impl MemoryKeyStore {
         let mut values = self.values.write().unwrap();
 
         let mut storage_key = label.to_vec();
-        storage_key.extend_from_slice(&serde_json::to_vec(key).unwrap());
+        storage_key.extend_from_slice(key);
         storage_key.extend_from_slice(&u16::to_be_bytes(VERSION));
-        let value = serde_json::to_vec(value).unwrap();
+        println!("write storage key {:x?}", storage_key);
 
-        values.insert(storage_key, value);
+        values.insert(storage_key, value.to_vec());
         Ok(())
     }
 
@@ -33,13 +33,15 @@ impl MemoryKeyStore {
         label: &[u8],
         key: &[u8],
     ) -> Result<V, <Self as OpenMlsKeyStore>::Error> {
-        let mut values = self.values.read().unwrap();
+        let values = self.values.read().unwrap();
 
         let mut storage_key = label.to_vec();
-        storage_key.extend_from_slice(&serde_json::to_vec(&key).unwrap());
+        storage_key.extend_from_slice(key);
         storage_key.extend_from_slice(&u16::to_be_bytes(VERSION));
+        println!("read storage key {:x?}", storage_key);
 
         let value = values.get(&storage_key).unwrap();
+        println!("read data {}", String::from_utf8(value.clone()).unwrap());
         let value = serde_json::from_slice(value).unwrap();
 
         Ok(value)
@@ -53,7 +55,7 @@ impl MemoryKeyStore {
         let mut values = self.values.write().unwrap();
 
         let mut storage_key = label.to_vec();
-        storage_key.extend_from_slice(&serde_json::to_vec(&storage_key).unwrap());
+        storage_key.extend_from_slice(key);
         storage_key.extend_from_slice(&u16::to_be_bytes(VERSION));
 
         let out = values
@@ -379,19 +381,20 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         Ok(())
     }
 
-    fn write_key_package(
+    fn write_key_package<KeyPackage: storage::KeyPackage<CURRENT_VERSION>>(
         &self,
         hash_ref: impl storage::HashReference<CURRENT_VERSION>,
-        key_package: impl storage::KeyPackage<CURRENT_VERSION>,
+        key_package: KeyPackage,
     ) -> Result<(), Self::UpdateError> {
-        let mut values = self.values.write().unwrap();
-
-        let mut key = KEY_PACKAGE_LABEL.to_vec();
-        key.extend_from_slice(&serde_json::to_vec(&hash_ref).unwrap());
-        key.extend_from_slice(&u16::to_be_bytes(CURRENT_VERSION));
+        let key = serde_json::to_vec(&hash_ref).unwrap();
+        println!("setting key package at {key:?} for version {CURRENT_VERSION}");
         let value = serde_json::to_vec(&key_package).unwrap();
 
-        values.insert(key, value);
+        self.write::<CURRENT_VERSION>(KEY_PACKAGE_LABEL, &key, &value)
+            .unwrap();
+
+        self.key_package::<KeyPackage>(hash_ref).unwrap();
+
         Ok(())
     }
 
@@ -430,14 +433,21 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         key.extend_from_slice(&u16::to_be_bytes(CURRENT_VERSION));
         let value = values.get(&key).ok_or(MemoryKeyStoreError::None)?;
 
-        Ok(serde_json::from_slice(value).map_err(|_| MemoryKeyStoreError::SerializationError)?)
+        serde_json::from_slice(value).map_err(|_| MemoryKeyStoreError::SerializationError)
     }
 
     fn key_package<V: storage::KeyPackage<CURRENT_VERSION>>(
         &self,
         hash_ref: impl storage::HashReference<CURRENT_VERSION>,
     ) -> Result<V, Self::GetError> {
-        self.read(KEY_PACKAGE_LABEL, &serde_json::to_vec(&hash_ref).unwrap())
+        let key = serde_json::to_vec(&hash_ref).unwrap();
+
+        println!("getting key package at {key:?} for version {CURRENT_VERSION}");
+        println!(
+            "the whole store when trying to get the key package: {:?}",
+            self.values.read().unwrap()
+        );
+        self.read(KEY_PACKAGE_LABEL, &key)
     }
 
     fn psk<V: storage::PskBundle<CURRENT_VERSION>>(
@@ -558,7 +568,15 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         public_key: impl InitKey<V_TEST>,
         private_key: impl HpkePrivateKey<V_TEST>,
     ) -> Result<(), Self::UpdateError> {
-        todo!()
+        let mut values = self.values.write().unwrap();
+
+        let mut key = INIT_KEY_LABEL.to_vec();
+        key.extend_from_slice(&serde_json::to_vec(&public_key).unwrap());
+        key.extend_from_slice(&u16::to_be_bytes(V_TEST));
+        let value = serde_json::to_vec(&private_key).unwrap();
+
+        values.insert(key, value);
+        Ok(())
     }
 
     fn write_encryption_key_pair(
@@ -566,15 +584,11 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         public_key: impl HpkePublicKey<V_TEST>,
         key_pair: impl HpkeKeyPair<V_TEST>,
     ) -> Result<(), Self::UpdateError> {
-        todo!()
-    }
-
-    fn write_key_package(
-        &self,
-        hash_ref: impl HashReference<V_TEST>,
-        key_package: impl KeyPackage<V_TEST>,
-    ) -> Result<(), Self::UpdateError> {
-        todo!()
+        self.write::<V_TEST>(
+            ENCRYPTION_KEY_PAIR_LABEL,
+            &serde_json::to_vec(&public_key).unwrap(),
+            &serde_json::to_vec(&key_pair).unwrap(),
+        )
     }
 
     fn write_psk(
@@ -638,21 +652,38 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         &self,
         public_key: impl InitKey<V_TEST>,
     ) -> Result<V, Self::GetError> {
-        todo!()
+        let values = self.values.read().unwrap();
+
+        let mut key = INIT_KEY_LABEL.to_vec();
+        key.extend_from_slice(&serde_json::to_vec(&public_key).unwrap());
+        key.extend_from_slice(&u16::to_be_bytes(V_TEST));
+        let value = values.get(&key).ok_or(MemoryKeyStoreError::None)?;
+
+        serde_json::from_slice(value).map_err(|_| MemoryKeyStoreError::SerializationError)
     }
 
     fn encryption_key_pair<V: HpkeKeyPair<V_TEST>>(
         &self,
         public_key: impl HpkePublicKey<V_TEST>,
     ) -> Result<V, Self::GetError> {
-        todo!()
+        self.read(
+            ENCRYPTION_KEY_PAIR_LABEL,
+            &serde_json::to_vec(&public_key).unwrap(),
+        )
     }
 
     fn key_package<V: KeyPackage<V_TEST>>(
         &self,
         hash_ref: impl HashReference<V_TEST>,
     ) -> Result<V, Self::GetError> {
-        todo!()
+        let key = serde_json::to_vec(&hash_ref).unwrap();
+
+        println!("getting key package at {key:?} for version {V_TEST}");
+        println!(
+            "the whole store when trying to get the key package: {:?}",
+            self.values.read().unwrap()
+        );
+        self.read(KEY_PACKAGE_LABEL, &key)
     }
 
     fn psk<V: PskBundle<V_TEST>>(&self, psk_id: impl PskKey<V_TEST>) -> Result<V, Self::GetError> {
@@ -692,5 +723,22 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         psk_id: impl PskKey<V_TEST>,
     ) -> Result<Option<V>, Self::GetError> {
         todo!()
+    }
+
+    fn write_key_package<KeyPackage: storage::KeyPackage<V_TEST>>(
+        &self,
+        hash_ref: impl storage::HashReference<V_TEST>,
+        key_package: KeyPackage,
+    ) -> Result<(), Self::UpdateError> {
+        let key = serde_json::to_vec(&hash_ref).unwrap();
+        println!("setting key package at {key:?} for version {V_TEST}");
+        let value = serde_json::to_vec(&key_package).unwrap();
+
+        self.write::<V_TEST>(KEY_PACKAGE_LABEL, &key, &value)
+            .unwrap();
+
+        self.key_package::<KeyPackage>(hash_ref).unwrap();
+
+        Ok(())
     }
 }

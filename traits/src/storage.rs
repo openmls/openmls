@@ -89,10 +89,10 @@ pub trait StorageProvider<const VERSION: u16> {
     ///
     /// Store a key package. This does not include the private keys. They are
     /// stored separately with `write_hpke_private_key`.
-    fn write_key_package(
+    fn write_key_package<TKeyPackage: KeyPackage<VERSION>>(
         &self,
         hash_ref: impl HashReference<VERSION>,
-        key_package: impl KeyPackage<VERSION>,
+        key_package: TKeyPackage,
     ) -> Result<(), Self::UpdateError>;
 
     /// Store a PSK.

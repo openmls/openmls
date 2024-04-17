@@ -11,7 +11,6 @@ use openmls_traits::types::HpkePrivateKey;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::prelude_test::hash_ref::HashReference;
 use crate::treesync::node::encryption_keys::EncryptionKeyPair;
 use crate::treesync::EncryptionKey;
 use crate::{
@@ -58,8 +57,16 @@ impl storage::HpkeKeyPair<CURRENT_VERSION> for EncryptionKeyPair {}
 // Crypto
 #[derive(Serialize)]
 struct StorageInitKey(Vec<u8>);
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 struct StorageHpkePrivateKey(HpkePrivateKey);
+
+impl core::fmt::Debug for StorageHpkePrivateKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("StorageHpkePrivateKey")
+            .field(&"***")
+            .finish()
+    }
+}
 
 impl Key<CURRENT_VERSION> for StorageInitKey {}
 impl storage::InitKey<CURRENT_VERSION> for StorageInitKey {}
@@ -92,7 +99,6 @@ mod test {
     use crate::{
         group::test_core_group::setup_client,
         prelude::{InitKey, KeyPackageBuilder},
-        prelude_test::hash_ref::KeyPackageRef,
     };
 
     use super::*;
@@ -201,13 +207,15 @@ mod test {
         <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::write_init_private_key(
             provider.storage(),
             StorageInitKey(key_package.hpke_init_key().as_slice().to_vec()),
-            init_sk,
-        );
+            init_sk.clone(),
+        )
+        .unwrap();
         <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::write_encryption_key_pair(
             provider.storage(),
             key_package.leaf_node().encryption_key().clone(),
-            encryption_keypair,
-        );
+            encryption_keypair.clone(),
+        )
+        .unwrap();
 
         // write key package
         <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::write_key_package(
@@ -220,9 +228,10 @@ mod test {
         // // Serialize the old storage. This should become a kat test file
         // let old_storage = serde_json::to_string(provider.storage()).unwrap();
 
-        // migration starts here
+        //  ---- migration starts here ----
         let new_storage_provider = MemoryKeyStore::default();
 
+        // first, read the old data
         let read_key_package: crate::prelude::KeyPackage =
             <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::key_package(
                 provider.storage(),
@@ -242,11 +251,13 @@ mod test {
             )
             .unwrap();
 
+        // then, build the new data from the old data
         let new_version_init_key = NewStorageHpkePrivateKey {
             ciphersuite: read_key_package.ciphersuite(),
             key: read_init_secret.0,
         };
 
+        // insert the new data (encryption key and key package can just be copied)
         <MemoryKeyStore as StorageProvider<V_TEST>>::write_encryption_key_pair(
             &new_storage_provider,
             read_key_package.leaf_node().encryption_key().clone(),
@@ -261,16 +272,35 @@ mod test {
         .unwrap();
         <MemoryKeyStore as StorageProvider<V_TEST>>::write_key_package(
             &new_storage_provider,
-            key_package_ref,
-            read_key_package,
+            key_package_ref.clone(),
+            read_key_package.clone(),
         )
         .unwrap();
 
-        // Trying to read the new value from the old storage fails at compile time.
-        // TODO: test this with something like trybuild
-        // let private_key: NewStorageHpkePrivateKey = provider
-        //     .storage()
-        //     .init_private_key(StorageInitKey(key_pair.public))
-        //     .unwrap();
+        // read the new value from storage
+        let read_new_key_package: crate::prelude::KeyPackage =
+            <MemoryKeyStore as StorageProvider<V_TEST>>::key_package(
+                &new_storage_provider,
+                key_package_ref.clone(),
+            )
+            .unwrap();
+        let read_new_init_secret: NewStorageHpkePrivateKey =
+            <MemoryKeyStore as StorageProvider<V_TEST>>::init_private_key(
+                &new_storage_provider,
+                read_key_package.hpke_init_key().clone(),
+            )
+            .unwrap();
+        let read_new_encryption_keypair: EncryptionKeyPair =
+            <MemoryKeyStore as StorageProvider<V_TEST>>::encryption_key_pair(
+                &new_storage_provider,
+                read_key_package.leaf_node().encryption_key().clone(),
+            )
+            .unwrap();
+
+        // compare it to the old_storage
+
+        assert_eq!(read_new_key_package, key_package);
+        assert_eq!(read_new_encryption_keypair, encryption_keypair);
+        assert_eq!(read_new_init_secret.key, init_sk.0);
     }
 }
