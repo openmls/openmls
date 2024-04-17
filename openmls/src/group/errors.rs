@@ -21,7 +21,7 @@ use crate::{
 
 /// Welcome error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum WelcomeError<KeyStoreError> {
+pub enum WelcomeError<KeyStoreError, StorageUpdateError> {
     /// See [`GroupSecretsError`] for more details.
     #[error(transparent)]
     GroupSecrets(#[from] GroupSecretsError),
@@ -92,6 +92,9 @@ pub enum WelcomeError<KeyStoreError> {
     /// This error indicates the leaf node is invalid. See [`LeafNodeValidationError`] for more details.
     #[error(transparent)]
     LeafNodeValidation(#[from] LeafNodeValidationError),
+    /// This error indicates that an error occurred while writing the group state to storage.
+    #[error("An error occurred when writing the group state to storage")]
+    StorageUpdateError(StorageUpdateError),
 }
 
 /// External Commit error
@@ -125,6 +128,10 @@ pub enum ExternalCommitError {
     /// Credential is missing from external commit.
     #[error("Credential is missing from external commit.")]
     MissingCredential,
+    /// An erorr occurred when writing group to storage
+    // TODO: add a field containing the error. is tricky because that is a generic type
+    #[error("An erorr occurred when writing group to storage.")]
+    StorageUpdateError,
 }
 
 /// Stage Commit error
@@ -515,16 +522,16 @@ pub enum CreateGroupContextExtProposalError {
 
 /// Error merging a commit.
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum MergeCommitError<KeyStoreError> {
+pub enum MergeCommitError<KeyStoreError, StorageUpdateError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
     /// Error accessing the key store.
     #[error("Error accessing the key store.")]
     KeyStoreError(KeyStoreError),
-    // /// Error writing updated group to storage.
-    // #[error("Error writing updated group data to storage.")]
-    // StorageError(#[from] StorageUpdateError),
+    /// Error writing updated group to storage.
+    #[error("Error writing updated group data to storage.")]
+    StorageUpdateError(StorageUpdateError),
 }
 
 /// Error validation a GroupContextExtensions proposal.

@@ -1,4 +1,4 @@
-use openmls_traits::signatures::Signer;
+use openmls_traits::{signatures::Signer, storage};
 
 use super::{builder::MlsGroupBuilder, *};
 use crate::{
@@ -134,12 +134,15 @@ impl StagedWelcome {
     /// message, even if the caller does not turn the [`StagedWelcome`] into an [`MlsGroup`].
     ///
     /// [`Welcome`]: crate::messages::Welcome
-    pub fn new_from_welcome<KeyStore: OpenMlsKeyStore>(
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+    pub fn new_from_welcome<
+        KeyStore: OpenMlsKeyStore,
+        Storage: StorageProvider<{ storage::CURRENT_VERSION }>,
+    >(
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
         ratchet_tree: Option<RatchetTreeIn>,
-    ) -> Result<Self, WelcomeError<KeyStore::Error>> {
+    ) -> Result<Self, WelcomeError<KeyStore::Error, Storage::UpdateError>> {
         let resumption_psk_store =
             ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
         let (key_package, _) = welcome
@@ -207,10 +210,13 @@ impl StagedWelcome {
     }
 
     /// Consumes the [`StagedWelcome`] and returns the respective [`MlsGroup`].
-    pub fn into_group<KeyStore: OpenMlsKeyStore>(
+    pub fn into_group<
+        KeyStore: OpenMlsKeyStore,
+        Storage: StorageProvider<{ storage::CURRENT_VERSION }>,
+    >(
         self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
-    ) -> Result<MlsGroup, WelcomeError<KeyStore::Error>> {
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
+    ) -> Result<MlsGroup, WelcomeError<KeyStore::Error, Storage::UpdateError>> {
         let mut group = self.group.into_core_group(provider)?;
         group.set_max_past_epochs(self.mls_group_config.max_past_epochs);
 

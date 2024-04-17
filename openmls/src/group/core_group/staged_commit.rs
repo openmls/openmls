@@ -312,7 +312,8 @@ impl CoreGroup {
         &mut self,
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
         staged_commit: StagedCommit,
-    ) -> Result<Option<MessageSecrets>, MergeCommitError<KeyStore::Error>> {
+    ) -> Result<Option<MessageSecrets>, MergeCommitError<KeyStore::Error, Storage::UpdateError>>
+    {
         // Get all keypairs from the old epoch, so we can later store the ones
         // that are still relevant in the new epoch.
         let old_epoch_keypairs = self.read_epoch_keypairs(provider.key_store());
@@ -320,6 +321,8 @@ impl CoreGroup {
             StagedCommitState::PublicState(staged_state) => {
                 self.public_group
                     .merge_diff(staged_state.into_staged_diff());
+                self.store(provider.storage())
+                    .map_err(MergeCommitError::StorageUpdateError)?;
                 Ok(None)
             }
             StagedCommitState::GroupMember(state) => {

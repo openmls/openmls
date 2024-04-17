@@ -202,20 +202,26 @@ pub trait StorageProvider<const VERSION: u16> {
         psk_id: impl PskKey<VERSION>,
     ) -> Result<Option<V>, Self::GetError>;
 
+    /// Returns the MlsGroupState for group with given id.
     fn group_state<GroupState: GroupStateEntity<VERSION>, GroupId: GroupIdKey<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<GroupState, Self::UpdateError>;
+
+    /// Writes the MlsGroupState for group with given id.
     fn write_group_state<GroupState: GroupStateEntity<VERSION>, GroupId: GroupIdKey<VERSION>>(
         &self,
         group_id: &GroupId,
         group_state: GroupState,
     ) -> Result<(), Self::UpdateError>;
+
+    /// Deletes the MlsGroupState for group with given id.
     fn delete_group_state<GroupId: GroupIdKey<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::UpdateError>;
 
+    /// Returns the MessageSecretsStore for the group with the given id.
     fn message_secrets<
         GroupId: GroupIdKey<VERSION>,
         MessageSecrets: MessageSecretsEntity<VERSION>,
@@ -223,19 +229,24 @@ pub trait StorageProvider<const VERSION: u16> {
         &self,
         group_id: &GroupId,
     ) -> Result<MessageSecrets, Self::GetError>;
+
+    /// Writes the MessageSecretsStore for the group with the given id.
     fn write_message_secrets<
         GroupId: GroupIdKey<VERSION>,
         MessageSecrets: MessageSecretsEntity<VERSION>,
     >(
         &self,
         group_id: &GroupId,
-        message_secrets: MessageSecrets,
+        message_secrets: &MessageSecrets,
     ) -> Result<(), Self::UpdateError>;
+
+    /// Deletes the MessageSecretsStore for the group with the given id.
     fn delete_message_secrets<GroupId: GroupIdKey<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::UpdateError>;
 
+    /// Returns the ResumptionPskStore for the group with the given id.
     fn resumption_psk_store<
         GroupId: GroupIdKey<VERSION>,
         ResumptionPskStore: ResumptionPskStoreEntity<VERSION>,
@@ -243,23 +254,30 @@ pub trait StorageProvider<const VERSION: u16> {
         &self,
         group_id: &GroupId,
     ) -> Result<ResumptionPskStore, Self::GetError>;
+
+    /// Writes the ResumptionPskStore for the group with the given id.
     fn write_resumption_psk_store<
         GroupId: GroupIdKey<VERSION>,
         ResumptionPskStore: ResumptionPskStoreEntity<VERSION>,
     >(
         &self,
         group_id: &GroupId,
-        resumption_psk_store: ResumptionPskStore,
+        resumption_psk_store: &ResumptionPskStore,
     ) -> Result<(), Self::UpdateError>;
+
+    /// Deletes the ResumptionPskStore for the group with the given id.
     fn delete_all_resumption_psk_secrets<GroupId: GroupIdKey<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::UpdateError>;
 
+    /// Returns the own leaf index inside the group for the group with the given id.
     fn own_leaf_index<GroupId: GroupIdKey<VERSION>, LeafNodeIndex: LeafNodeIndexEntity<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<LeafNodeIndex, Self::GetError>;
+
+    /// Writes the own leaf index inside the group for the group with the given id.
     fn write_own_leaf_index<
         GroupId: GroupIdKey<VERSION>,
         LeafNodeIndex: LeafNodeIndexEntity<VERSION>,
@@ -268,25 +286,33 @@ pub trait StorageProvider<const VERSION: u16> {
         group_id: &GroupId,
         own_leaf_index: LeafNodeIndex,
     ) -> Result<(), Self::UpdateError>;
+
+    /// Deletes the own leaf index inside the group for the group with the given id.
     fn delete_own_leaf_index<GroupId: GroupIdKey<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::UpdateError>;
 
+    /// Returns whether to use the RatchetTreeExtension for the group with the given id.
     fn use_ratchet_tree_extension<GroupId: GroupIdKey<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<bool, Self::GetError>;
+
+    /// Sets whether to use the RatchetTreeExtension for the group with the given id.
     fn set_use_ratchet_tree_extension<GroupId: GroupIdKey<VERSION>>(
         &self,
         group_id: &GroupId,
         value: bool,
     ) -> Result<(), Self::UpdateError>;
+
+    /// Deletes any preference about whether to use the RatchetTreeExtension for the group with the given id.
     fn delete_use_ratchet_tree_extension<GroupId: GroupIdKey<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::UpdateError>;
 
+    /// Returns the GroupEpochSecrets for the group with the given id.
     fn group_epoch_secrets<
         GroupId: GroupIdKey<VERSION>,
         GroupEpochSecrets: GroupEpochSecretsEntity<VERSION>,
@@ -294,14 +320,18 @@ pub trait StorageProvider<const VERSION: u16> {
         &self,
         group_id: &GroupId,
     ) -> Result<GroupEpochSecrets, Self::GetError>;
-    fn set_group_epoch_secrets<
+
+    /// Writes the GroupEpochSecrets for the group with the given id.
+    fn write_group_epoch_secrets<
         GroupId: GroupIdKey<VERSION>,
         GroupEpochSecrets: GroupEpochSecretsEntity<VERSION>,
     >(
         &self,
         group_id: &GroupId,
-        group_epoch_secrets: GroupEpochSecrets,
+        group_epoch_secrets: &GroupEpochSecrets,
     ) -> Result<(), Self::UpdateError>;
+
+    /// Deletes the GroupEpochSecrets for the group with the given id.
     fn delete_group_epoch_secrets<GroupId: GroupIdKey<VERSION>>(
         &self,
         group_id: &GroupId,

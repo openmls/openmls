@@ -265,17 +265,6 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentKeyStore {
         todo!()
     }
 
-    fn write_message_secrets<
-        GroupId: openmls_traits::storage::GroupIdKey<VERSION>,
-        MessageSecrets: openmls_traits::storage::MessageSecretsEntity<VERSION>,
-    >(
-        &self,
-        group_id: &GroupId,
-        message_secrets: MessageSecrets,
-    ) -> Result<(), Self::UpdateError> {
-        todo!()
-    }
-
     fn delete_message_secrets<GroupId: openmls_traits::storage::GroupIdKey<VERSION>>(
         &self,
         group_id: &GroupId,
@@ -290,17 +279,6 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentKeyStore {
         &self,
         group_id: &GroupId,
     ) -> Result<ResumptionPskStore, Self::GetError> {
-        todo!()
-    }
-
-    fn write_resumption_psk_store<
-        GroupId: openmls_traits::storage::GroupIdKey<VERSION>,
-        ResumptionPskStore: openmls_traits::storage::ResumptionPskStoreEntity<VERSION>,
-    >(
-        &self,
-        group_id: &GroupId,
-        resumption_psk_store: ResumptionPskStore,
-    ) -> Result<(), Self::UpdateError> {
         todo!()
     }
 
@@ -371,17 +349,6 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentKeyStore {
         todo!()
     }
 
-    fn set_group_epoch_secrets<
-        GroupId: openmls_traits::storage::GroupIdKey<VERSION>,
-        GroupEpochSecrets: openmls_traits::storage::GroupEpochSecretsEntity<VERSION>,
-    >(
-        &self,
-        group_id: &GroupId,
-        group_epoch_secrets: GroupEpochSecrets,
-    ) -> Result<(), Self::UpdateError> {
-        todo!()
-    }
-
     fn delete_group_epoch_secrets<GroupId: openmls_traits::storage::GroupIdKey<VERSION>>(
         &self,
         group_id: &GroupId,
@@ -393,6 +360,39 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentKeyStore {
         &self,
         hash_ref: impl openmls_traits::storage::HashReference<VERSION>,
         key_package: TKeyPackage,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn write_message_secrets<
+        GroupId: openmls_traits::storage::GroupIdKey<VERSION>,
+        MessageSecrets: openmls_traits::storage::MessageSecretsEntity<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        message_secrets: &MessageSecrets,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn write_resumption_psk_store<
+        GroupId: openmls_traits::storage::GroupIdKey<VERSION>,
+        ResumptionPskStore: openmls_traits::storage::ResumptionPskStoreEntity<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        resumption_psk_store: &ResumptionPskStore,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn write_group_epoch_secrets<
+        GroupId: openmls_traits::storage::GroupIdKey<VERSION>,
+        GroupEpochSecrets: openmls_traits::storage::GroupEpochSecretsEntity<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        group_epoch_secrets: &GroupEpochSecrets,
     ) -> Result<(), Self::UpdateError> {
         todo!()
     }

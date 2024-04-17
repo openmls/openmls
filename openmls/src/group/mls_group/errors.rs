@@ -5,7 +5,6 @@
 
 // These errors are exposed through `crate::group::errors`.
 
-use openmls_traits::storage::UpdateError;
 use thiserror::Error;
 
 use crate::{
@@ -81,13 +80,13 @@ pub enum MlsGroupStateError {
 
 /// Error merging pending commit
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum MergePendingCommitError<KeyStoreError> {
+pub enum MergePendingCommitError<KeyStoreError, StorageUpdateError> {
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     MlsGroupStateError(#[from] MlsGroupStateError),
     /// See [`MergeCommitError`] for more details.
     #[error(transparent)]
-    MergeCommitError(#[from] MergeCommitError<KeyStoreError>),
+    MergeCommitError(#[from] MergeCommitError<KeyStoreError, StorageUpdateError>),
 }
 
 /// Process message error

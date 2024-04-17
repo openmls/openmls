@@ -1,5 +1,5 @@
 use log::debug;
-use openmls_traits::key_store::OpenMlsKeyStore;
+use openmls_traits::{key_store::OpenMlsKeyStore, storage};
 
 use crate::{
     ciphersuite::hash_ref::HashReference,
@@ -17,13 +17,16 @@ impl StagedCoreWelcome {
     /// group.
     /// Note: calling this function will consume the key material for decrypting the [`Welcome`]
     /// message, even if the caller does not turn the [`StagedCoreWelcome`] into a [`CoreGroup`].
-    pub fn new_from_welcome<KeyStore: OpenMlsKeyStore>(
+    pub fn new_from_welcome<
+        KeyStore: OpenMlsKeyStore,
+        Storage: StorageProvider<{ storage::CURRENT_VERSION }>,
+    >(
         welcome: Welcome,
         ratchet_tree: Option<RatchetTreeIn>,
         key_package_bundle: KeyPackageBundle,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
         mut resumption_psk_store: ResumptionPskStore,
-    ) -> Result<Self, WelcomeError<KeyStore::Error>> {
+    ) -> Result<Self, WelcomeError<KeyStore::Error, Storage::UpdateError>> {
         log::debug!("CoreGroup::new_from_welcome_internal");
 
         // Read the encryption key pair from the key store and delete it there.
@@ -263,10 +266,13 @@ impl StagedCoreWelcome {
     }
 
     /// Consumes the [`StagedCoreWelcome`] and returns the respective [`CoreGroup`].
-    pub fn into_core_group<KeyStore: OpenMlsKeyStore>(
+    pub fn into_core_group<
+        KeyStore: OpenMlsKeyStore,
+        Storage: StorageProvider<{ storage::CURRENT_VERSION }>,
+    >(
         self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
-    ) -> Result<CoreGroup, WelcomeError<KeyStore::Error>> {
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
+    ) -> Result<CoreGroup, WelcomeError<KeyStore::Error, Storage::UpdateError>> {
         let Self {
             public_group,
             group_epoch_secrets,
@@ -299,6 +305,9 @@ impl StagedCoreWelcome {
             resumption_psk_store,
         };
 
+        group
+            .store(provider.storage())
+            .map_err(WelcomeError::StorageUpdateError)?;
         group
             .store_epoch_keypairs(provider.key_store(), group_keypairs.as_slice())
             .map_err(WelcomeError::KeyStoreError)?;

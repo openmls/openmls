@@ -34,7 +34,8 @@ mod test_proposals;
 
 use log::{debug, trace};
 use openmls_traits::{
-    crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite,
+    crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, signatures::Signer,
+    storage::StorageProvider, types::Ciphersuite,
 };
 use serde::{Deserialize, Serialize};
 use tls_codec::Serialize as TlsSerializeTrait;
@@ -709,6 +710,21 @@ impl CoreGroup {
         self.public_group()
             .leaf(self.own_leaf_index())
             .ok_or_else(|| LibraryError::custom("Tree has no own leaf."))
+    }
+
+    pub(super) fn store<Storage: StorageProvider<{ openmls_traits::storage::CURRENT_VERSION }>>(
+        &self,
+        storage: &Storage,
+    ) -> Result<(), Storage::UpdateError> {
+        let group_id = self.group_id();
+
+        storage.write_own_leaf_index(group_id, self.own_leaf_index())?;
+        storage.write_group_epoch_secrets(group_id, &self.group_epoch_secrets)?;
+        storage.set_use_ratchet_tree_extension(group_id, self.use_ratchet_tree_extension)?;
+        storage.write_message_secrets(group_id, &self.message_secrets_store)?;
+        storage.write_resumption_psk_store(group_id, &self.resumption_psk_store)?;
+
+        Ok(())
     }
 
     /// Store the given [`EncryptionKeyPair`]s in the `provider`'s key store

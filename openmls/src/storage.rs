@@ -11,6 +11,10 @@ use openmls_traits::types::HpkePrivateKey;
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::binary_tree::LeafNodeIndex;
+use crate::group::past_secrets::MessageSecretsStore;
+use crate::schedule::psk::store::ResumptionPskStore;
+use crate::schedule::GroupEpochSecrets;
 use crate::treesync::node::encryption_keys::EncryptionKeyPair;
 use crate::treesync::EncryptionKey;
 use crate::{
@@ -53,6 +57,18 @@ impl storage::HpkePublicKey<CURRENT_VERSION> for EncryptionKey {}
 
 impl Entity<CURRENT_VERSION> for EncryptionKeyPair {}
 impl storage::HpkeKeyPairEntity<CURRENT_VERSION> for EncryptionKeyPair {}
+
+impl Entity<CURRENT_VERSION> for LeafNodeIndex {}
+impl storage::LeafNodeIndexEntity<CURRENT_VERSION> for LeafNodeIndex {}
+
+impl Entity<CURRENT_VERSION> for GroupEpochSecrets {}
+impl storage::GroupEpochSecretsEntity<CURRENT_VERSION> for GroupEpochSecrets {}
+
+impl Entity<CURRENT_VERSION> for MessageSecretsStore {}
+impl storage::MessageSecretsEntity<CURRENT_VERSION> for MessageSecretsStore {}
+
+impl Entity<CURRENT_VERSION> for ResumptionPskStore {}
+impl storage::ResumptionPskStoreEntity<CURRENT_VERSION> for ResumptionPskStore {}
 
 // Crypto
 #[derive(Serialize)]

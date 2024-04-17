@@ -133,6 +133,10 @@ impl CoreGroup {
             "Error creating commit {create_commit_result:?}"
         );
 
+        group
+            .store(provider.storage())
+            .map_err(|_| ExternalCommitError::StorageUpdateError)?;
+
         Ok((
             group,
             create_commit_result.map_err(|_| ExternalCommitError::CommitError)?,

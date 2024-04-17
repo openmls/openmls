@@ -54,7 +54,7 @@ pub enum ClientError {
     NoCiphersuite,
     /// See [`WelcomeError`] for more details.
     #[error(transparent)]
-    FailedToJoinGroup(#[from] WelcomeError<MemoryKeyStoreError>),
+    FailedToJoinGroup(#[from] WelcomeError<MemoryKeyStoreError, MemoryKeyStoreError>),
     #[error(transparent)]
     TlsCodecError(#[from] tls_codec::Error),
     /// See [`ProcessMessageError`] for more details.
@@ -90,13 +90,11 @@ pub enum ClientError {
     /// See [`MergePendingCommitError`] for more details.
     #[error(transparent)]
     MergePendingCommitError(
-        #[from] MergePendingCommitError<MemoryKeyStoreError>,
+        #[from] MergePendingCommitError<MemoryKeyStoreError, MemoryKeyStoreError>,
     ),
     /// See [`MergeCommitError`] for more details.
     #[error(transparent)]
-    MergeCommitError(
-        #[from] MergeCommitError<MemoryKeyStoreError>,
-    ),
+    MergeCommitError(#[from] MergeCommitError<MemoryKeyStoreError, MemoryKeyStoreError>),
     /// See [`MemoryKeyStoreError`] for more details.
     #[error(transparent)]
     KeyStoreError(#[from] MemoryKeyStoreError),

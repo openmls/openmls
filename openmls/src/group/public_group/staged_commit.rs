@@ -283,7 +283,7 @@ impl PublicGroup {
     pub fn merge_commit(&mut self, staged_commit: StagedCommit) {
         match staged_commit.into_state() {
             StagedCommitState::PublicState(staged_state) => {
-                self.merge_diff(staged_state.staged_diff)
+                self.merge_diff(staged_state.staged_diff);
             }
             StagedCommitState::GroupMember(_) => (),
         }

@@ -552,7 +552,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     >(
         &self,
         group_id: &GroupId,
-        message_secrets: MessageSecrets,
+        message_secrets: &MessageSecrets,
     ) -> Result<(), Self::UpdateError> {
         todo!()
     }
@@ -580,7 +580,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     >(
         &self,
         group_id: &GroupId,
-        resumption_psk_store: ResumptionPskStore,
+        resumption_psk_store: &ResumptionPskStore,
     ) -> Result<(), Self::UpdateError> {
         todo!()
     }
@@ -652,13 +652,13 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         todo!()
     }
 
-    fn set_group_epoch_secrets<
+    fn write_group_epoch_secrets<
         GroupId: GroupIdKey<CURRENT_VERSION>,
         GroupEpochSecrets: GroupEpochSecretsEntity<CURRENT_VERSION>,
     >(
         &self,
         group_id: &GroupId,
-        group_epoch_secrets: GroupEpochSecrets,
+        group_epoch_secrets: &GroupEpochSecrets,
     ) -> Result<(), Self::UpdateError> {
         todo!()
     }
@@ -942,7 +942,7 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
     >(
         &self,
         group_id: &GroupId,
-        message_secrets: MessageSecrets,
+        message_secrets: &MessageSecrets,
     ) -> Result<(), Self::UpdateError> {
         todo!()
     }
@@ -970,7 +970,7 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
     >(
         &self,
         group_id: &GroupId,
-        resumption_psk_store: ResumptionPskStore,
+        resumption_psk_store: &ResumptionPskStore,
     ) -> Result<(), Self::UpdateError> {
         todo!()
     }
@@ -1039,13 +1039,13 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         todo!()
     }
 
-    fn set_group_epoch_secrets<
+    fn write_group_epoch_secrets<
         GroupId: GroupIdKey<V_TEST>,
         GroupEpochSecrets: GroupEpochSecretsEntity<V_TEST>,
     >(
         &self,
         group_id: &GroupId,
-        group_epoch_secrets: GroupEpochSecrets,
+        group_epoch_secrets: &GroupEpochSecrets,
     ) -> Result<(), Self::UpdateError> {
         todo!()
     }
