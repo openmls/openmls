@@ -148,14 +148,6 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentKeyStore {
         todo!()
     }
 
-    fn write_key_package(
-        &self,
-        hash_ref: impl openmls_traits::storage::HashReference<VERSION>,
-        key_package: impl openmls_traits::storage::KeyPackage<VERSION>,
-    ) -> Result<(), Self::UpdateError> {
-        todo!()
-    }
-
     fn write_psk(
         &self,
         psk_id: impl openmls_traits::storage::PskKey<VERSION>,
@@ -167,7 +159,7 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentKeyStore {
     fn write_encryption_key_pair(
         &self,
         public_key: impl openmls_traits::storage::HpkePublicKey<VERSION>,
-        key_pair: impl openmls_traits::storage::HpkeKeyPair<VERSION>,
+        key_pair: impl openmls_traits::storage::HpkeKeyPairEntity<VERSION>,
     ) -> Result<(), Self::UpdateError> {
         todo!()
     }
@@ -193,45 +185,215 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentKeyStore {
         todo!()
     }
 
-    fn encryption_key_pair<V: openmls_traits::storage::HpkeKeyPair<VERSION>>(
+    fn encryption_key_pair<V: openmls_traits::storage::HpkeKeyPairEntity<VERSION>>(
         &self,
         public_key: impl openmls_traits::storage::HpkePublicKey<VERSION>,
     ) -> Result<V, Self::UpdateError> {
         todo!()
     }
-    
+
     fn delete_signature_key_pair<V: openmls_traits::storage::SignatureKeyPairEntity<VERSION>>(
         &self,
         public_key: &impl openmls_traits::storage::SignaturePublicKeyKey<VERSION>,
-    ) -> Result<V, Self::GetError> {
+    ) -> Result<Option<V>, Self::GetError> {
         todo!()
     }
-    
+
     fn delete_init_private_key<V: openmls_traits::storage::HpkePrivateKey<VERSION>>(
         &self,
         public_key: impl openmls_traits::storage::InitKey<VERSION>,
-    ) -> Result<V, Self::GetError> {
+    ) -> Result<Option<V>, Self::GetError> {
         todo!()
     }
-    
-    fn delete_encryption_key_pair<V: openmls_traits::storage::HpkeKeyPair<VERSION>>(
+
+    fn delete_encryption_key_pair<V: openmls_traits::storage::HpkeKeyPairEntity<VERSION>>(
         &self,
         public_key: impl openmls_traits::storage::HpkePublicKey<VERSION>,
-    ) -> Result<V, Self::GetError> {
+    ) -> Result<Option<V>, Self::GetError> {
         todo!()
     }
-    
+
     fn delete_key_package<V: openmls_traits::storage::KeyPackage<VERSION>>(
         &self,
         hash_ref: impl openmls_traits::storage::HashReference<VERSION>,
-    ) -> Result<V, Self::GetError> {
+    ) -> Result<Option<V>, Self::GetError> {
         todo!()
     }
-    
+
     fn delete_psk<V: openmls_traits::storage::PskBundle<VERSION>>(
         &self,
         psk_id: impl openmls_traits::storage::PskKey<VERSION>,
-    ) -> Result<V, Self::GetError> {
+    ) -> Result<Option<V>, Self::GetError> {
+        todo!()
+    }
+
+    fn group_state<
+        GroupState: openmls_traits::storage::GroupStateEntity<VERSION>,
+        GroupId: openmls_traits::storage::GroupIdKey<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<GroupState, Self::UpdateError> {
+        todo!()
+    }
+
+    fn write_group_state<
+        GroupState: openmls_traits::storage::GroupStateEntity<VERSION>,
+        GroupId: openmls_traits::storage::GroupIdKey<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        group_state: GroupState,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn delete_group_state<GroupId: openmls_traits::storage::GroupIdKey<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn message_secrets<
+        GroupId: openmls_traits::storage::GroupIdKey<VERSION>,
+        MessageSecrets: openmls_traits::storage::MessageSecretsEntity<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<MessageSecrets, Self::GetError> {
+        todo!()
+    }
+
+    fn write_message_secrets<
+        GroupId: openmls_traits::storage::GroupIdKey<VERSION>,
+        MessageSecrets: openmls_traits::storage::MessageSecretsEntity<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        message_secrets: MessageSecrets,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn delete_message_secrets<GroupId: openmls_traits::storage::GroupIdKey<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn resumption_psk_store<
+        GroupId: openmls_traits::storage::GroupIdKey<VERSION>,
+        ResumptionPskStore: openmls_traits::storage::ResumptionPskStoreEntity<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<ResumptionPskStore, Self::GetError> {
+        todo!()
+    }
+
+    fn write_resumption_psk_store<
+        GroupId: openmls_traits::storage::GroupIdKey<VERSION>,
+        ResumptionPskStore: openmls_traits::storage::ResumptionPskStoreEntity<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        resumption_psk_store: ResumptionPskStore,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn delete_all_resumption_psk_secrets<GroupId: openmls_traits::storage::GroupIdKey<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn own_leaf_index<
+        GroupId: openmls_traits::storage::GroupIdKey<VERSION>,
+        LeafNodeIndex: openmls_traits::storage::LeafNodeIndexEntity<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<LeafNodeIndex, Self::GetError> {
+        todo!()
+    }
+
+    fn write_own_leaf_index<
+        GroupId: openmls_traits::storage::GroupIdKey<VERSION>,
+        LeafNodeIndex: openmls_traits::storage::LeafNodeIndexEntity<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        own_leaf_index: LeafNodeIndex,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn delete_own_leaf_index<GroupId: openmls_traits::storage::GroupIdKey<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn use_ratchet_tree_extension<GroupId: openmls_traits::storage::GroupIdKey<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<bool, Self::GetError> {
+        todo!()
+    }
+
+    fn set_use_ratchet_tree_extension<GroupId: openmls_traits::storage::GroupIdKey<VERSION>>(
+        &self,
+        group_id: &GroupId,
+        value: bool,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn delete_use_ratchet_tree_extension<GroupId: openmls_traits::storage::GroupIdKey<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn group_epoch_secrets<
+        GroupId: openmls_traits::storage::GroupIdKey<VERSION>,
+        GroupEpochSecrets: openmls_traits::storage::GroupEpochSecretsEntity<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<GroupEpochSecrets, Self::GetError> {
+        todo!()
+    }
+
+    fn set_group_epoch_secrets<
+        GroupId: openmls_traits::storage::GroupIdKey<VERSION>,
+        GroupEpochSecrets: openmls_traits::storage::GroupEpochSecretsEntity<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        group_epoch_secrets: GroupEpochSecrets,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn delete_group_epoch_secrets<GroupId: openmls_traits::storage::GroupIdKey<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn write_key_package<TKeyPackage: openmls_traits::storage::KeyPackage<VERSION>>(
+        &self,
+        hash_ref: impl openmls_traits::storage::HashReference<VERSION>,
+        key_package: TKeyPackage,
+    ) -> Result<(), Self::UpdateError> {
         todo!()
     }
 }

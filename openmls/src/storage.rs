@@ -52,7 +52,7 @@ impl Key<CURRENT_VERSION> for EncryptionKey {}
 impl storage::HpkePublicKey<CURRENT_VERSION> for EncryptionKey {}
 
 impl Entity<CURRENT_VERSION> for EncryptionKeyPair {}
-impl storage::HpkeKeyPair<CURRENT_VERSION> for EncryptionKeyPair {}
+impl storage::HpkeKeyPairEntity<CURRENT_VERSION> for EncryptionKeyPair {}
 
 // Crypto
 #[derive(Serialize)]
@@ -162,7 +162,7 @@ mod test {
     impl storage::HpkePublicKey<V_TEST> for EncryptionKey {}
 
     impl Entity<V_TEST> for EncryptionKeyPair {}
-    impl storage::HpkeKeyPair<V_TEST> for EncryptionKeyPair {}
+    impl storage::HpkeKeyPairEntity<V_TEST> for EncryptionKeyPair {}
 
     impl Key<V_TEST> for InitKey {}
     impl storage::InitKey<V_TEST> for InitKey {}

@@ -413,7 +413,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     fn write_encryption_key_pair(
         &self,
         public_key: impl storage::HpkePublicKey<CURRENT_VERSION>,
-        key_pair: impl storage::HpkeKeyPair<CURRENT_VERSION>,
+        key_pair: impl storage::HpkeKeyPairEntity<CURRENT_VERSION>,
     ) -> Result<(), Self::UpdateError> {
         self.write::<CURRENT_VERSION>(
             ENCRYPTION_KEY_PAIR_LABEL,
@@ -457,7 +457,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         self.read(PSK_LABEL, &serde_json::to_vec(&psk_id).unwrap())
     }
 
-    fn encryption_key_pair<V: storage::HpkeKeyPair<CURRENT_VERSION>>(
+    fn encryption_key_pair<V: storage::HpkeKeyPairEntity<CURRENT_VERSION>>(
         &self,
         public_key: impl storage::HpkePublicKey<CURRENT_VERSION>,
     ) -> Result<V, Self::GetError> {
@@ -484,7 +484,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         self.delete(INIT_KEY_LABEL, &serde_json::to_vec(&public_key).unwrap())
     }
 
-    fn delete_encryption_key_pair<V: storage::HpkeKeyPair<CURRENT_VERSION>>(
+    fn delete_encryption_key_pair<V: storage::HpkeKeyPairEntity<CURRENT_VERSION>>(
         &self,
         public_key: impl storage::HpkePublicKey<CURRENT_VERSION>,
     ) -> Result<Option<V>, Self::GetError> {
@@ -506,6 +506,168 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         psk_id: impl storage::PskKey<CURRENT_VERSION>,
     ) -> Result<Option<V>, Self::GetError> {
         self.delete(PSK_LABEL, &serde_json::to_vec(&psk_id).unwrap())
+    }
+
+    fn group_state<
+        GroupState: GroupStateEntity<CURRENT_VERSION>,
+        GroupId: GroupIdKey<CURRENT_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<GroupState, Self::UpdateError> {
+        todo!()
+    }
+
+    fn write_group_state<
+        GroupState: GroupStateEntity<CURRENT_VERSION>,
+        GroupId: GroupIdKey<CURRENT_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        group_state: GroupState,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn delete_group_state<GroupId: GroupIdKey<CURRENT_VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn message_secrets<
+        GroupId: GroupIdKey<CURRENT_VERSION>,
+        MessageSecrets: MessageSecretsEntity<CURRENT_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<MessageSecrets, Self::GetError> {
+        todo!()
+    }
+
+    fn write_message_secrets<
+        GroupId: GroupIdKey<CURRENT_VERSION>,
+        MessageSecrets: MessageSecretsEntity<CURRENT_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        message_secrets: MessageSecrets,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn delete_message_secrets<GroupId: GroupIdKey<CURRENT_VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn resumption_psk_store<
+        GroupId: GroupIdKey<CURRENT_VERSION>,
+        ResumptionPskStore: ResumptionPskStoreEntity<CURRENT_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<ResumptionPskStore, Self::GetError> {
+        todo!()
+    }
+
+    fn write_resumption_psk_store<
+        GroupId: GroupIdKey<CURRENT_VERSION>,
+        ResumptionPskStore: ResumptionPskStoreEntity<CURRENT_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        resumption_psk_store: ResumptionPskStore,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn delete_all_resumption_psk_secrets<GroupId: GroupIdKey<CURRENT_VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn own_leaf_index<
+        GroupId: GroupIdKey<CURRENT_VERSION>,
+        LeafNodeIndex: LeafNodeIndexEntity<CURRENT_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<LeafNodeIndex, Self::GetError> {
+        todo!()
+    }
+
+    fn write_own_leaf_index<
+        GroupId: GroupIdKey<CURRENT_VERSION>,
+        LeafNodeIndex: LeafNodeIndexEntity<CURRENT_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        own_leaf_index: LeafNodeIndex,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn delete_own_leaf_index<GroupId: GroupIdKey<CURRENT_VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn use_ratchet_tree_extension<GroupId: GroupIdKey<CURRENT_VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<bool, Self::GetError> {
+        todo!()
+    }
+
+    fn set_use_ratchet_tree_extension<GroupId: GroupIdKey<CURRENT_VERSION>>(
+        &self,
+        group_id: &GroupId,
+        value: bool,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn delete_use_ratchet_tree_extension<GroupId: GroupIdKey<CURRENT_VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn group_epoch_secrets<
+        GroupId: GroupIdKey<CURRENT_VERSION>,
+        GroupEpochSecrets: GroupEpochSecretsEntity<CURRENT_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<GroupEpochSecrets, Self::GetError> {
+        todo!()
+    }
+
+    fn set_group_epoch_secrets<
+        GroupId: GroupIdKey<CURRENT_VERSION>,
+        GroupEpochSecrets: GroupEpochSecretsEntity<CURRENT_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        group_epoch_secrets: GroupEpochSecrets,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn delete_group_epoch_secrets<GroupId: GroupIdKey<CURRENT_VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
     }
 }
 
@@ -582,7 +744,7 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
     fn write_encryption_key_pair(
         &self,
         public_key: impl HpkePublicKey<V_TEST>,
-        key_pair: impl HpkeKeyPair<V_TEST>,
+        key_pair: impl HpkeKeyPairEntity<V_TEST>,
     ) -> Result<(), Self::UpdateError> {
         self.write::<V_TEST>(
             ENCRYPTION_KEY_PAIR_LABEL,
@@ -662,7 +824,7 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         serde_json::from_slice(value).map_err(|_| MemoryKeyStoreError::SerializationError)
     }
 
-    fn encryption_key_pair<V: HpkeKeyPair<V_TEST>>(
+    fn encryption_key_pair<V: HpkeKeyPairEntity<V_TEST>>(
         &self,
         public_key: impl HpkePublicKey<V_TEST>,
     ) -> Result<V, Self::GetError> {
@@ -704,7 +866,7 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         todo!()
     }
 
-    fn delete_encryption_key_pair<V: HpkeKeyPair<V_TEST>>(
+    fn delete_encryption_key_pair<V: HpkeKeyPairEntity<V_TEST>>(
         &self,
         public_key: impl HpkePublicKey<V_TEST>,
     ) -> Result<Option<V>, Self::GetError> {
@@ -740,5 +902,158 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         self.key_package::<KeyPackage>(hash_ref).unwrap();
 
         Ok(())
+    }
+
+    fn group_state<GroupState: GroupStateEntity<V_TEST>, GroupId: GroupIdKey<V_TEST>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<GroupState, Self::UpdateError> {
+        todo!()
+    }
+
+    fn write_group_state<GroupState: GroupStateEntity<V_TEST>, GroupId: GroupIdKey<V_TEST>>(
+        &self,
+        group_id: &GroupId,
+        group_state: GroupState,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn delete_group_state<GroupId: GroupIdKey<V_TEST>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn message_secrets<
+        GroupId: GroupIdKey<V_TEST>,
+        MessageSecrets: MessageSecretsEntity<V_TEST>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<MessageSecrets, Self::GetError> {
+        todo!()
+    }
+
+    fn write_message_secrets<
+        GroupId: GroupIdKey<V_TEST>,
+        MessageSecrets: MessageSecretsEntity<V_TEST>,
+    >(
+        &self,
+        group_id: &GroupId,
+        message_secrets: MessageSecrets,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn delete_message_secrets<GroupId: GroupIdKey<V_TEST>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn resumption_psk_store<
+        GroupId: GroupIdKey<V_TEST>,
+        ResumptionPskStore: ResumptionPskStoreEntity<V_TEST>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<ResumptionPskStore, Self::GetError> {
+        todo!()
+    }
+
+    fn write_resumption_psk_store<
+        GroupId: GroupIdKey<V_TEST>,
+        ResumptionPskStore: ResumptionPskStoreEntity<V_TEST>,
+    >(
+        &self,
+        group_id: &GroupId,
+        resumption_psk_store: ResumptionPskStore,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn delete_all_resumption_psk_secrets<GroupId: GroupIdKey<V_TEST>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn own_leaf_index<GroupId: GroupIdKey<V_TEST>, LeafNodeIndex: LeafNodeIndexEntity<V_TEST>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<LeafNodeIndex, Self::GetError> {
+        todo!()
+    }
+
+    fn write_own_leaf_index<
+        GroupId: GroupIdKey<V_TEST>,
+        LeafNodeIndex: LeafNodeIndexEntity<V_TEST>,
+    >(
+        &self,
+        group_id: &GroupId,
+        own_leaf_index: LeafNodeIndex,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn delete_own_leaf_index<GroupId: GroupIdKey<V_TEST>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn use_ratchet_tree_extension<GroupId: GroupIdKey<V_TEST>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<bool, Self::GetError> {
+        todo!()
+    }
+
+    fn set_use_ratchet_tree_extension<GroupId: GroupIdKey<V_TEST>>(
+        &self,
+        group_id: &GroupId,
+        value: bool,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn delete_use_ratchet_tree_extension<GroupId: GroupIdKey<V_TEST>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn group_epoch_secrets<
+        GroupId: GroupIdKey<V_TEST>,
+        GroupEpochSecrets: GroupEpochSecretsEntity<V_TEST>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<GroupEpochSecrets, Self::GetError> {
+        todo!()
+    }
+
+    fn set_group_epoch_secrets<
+        GroupId: GroupIdKey<V_TEST>,
+        GroupEpochSecrets: GroupEpochSecretsEntity<V_TEST>,
+    >(
+        &self,
+        group_id: &GroupId,
+        group_epoch_secrets: GroupEpochSecrets,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn delete_group_epoch_secrets<GroupId: GroupIdKey<V_TEST>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
     }
 }

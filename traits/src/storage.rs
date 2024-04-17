@@ -82,7 +82,7 @@ pub trait StorageProvider<const VERSION: u16> {
     fn write_encryption_key_pair(
         &self,
         public_key: impl HpkePublicKey<VERSION>,
-        key_pair: impl HpkeKeyPair<VERSION>,
+        key_pair: impl HpkeKeyPairEntity<VERSION>,
     ) -> Result<(), Self::UpdateError>;
 
     /// Store key packages.
@@ -150,7 +150,7 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<V, Self::GetError>;
 
     /// Get an HPKE encryption key pair based on the public key.
-    fn encryption_key_pair<V: HpkeKeyPair<VERSION>>(
+    fn encryption_key_pair<V: HpkeKeyPairEntity<VERSION>>(
         &self,
         public_key: impl HpkePublicKey<VERSION>,
     ) -> Result<V, Self::GetError>;
@@ -183,7 +183,7 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<Option<V>, Self::GetError>;
 
     /// Delete an encryption key pair for a public key.
-    fn delete_encryption_key_pair<V: HpkeKeyPair<VERSION>>(
+    fn delete_encryption_key_pair<V: HpkeKeyPairEntity<VERSION>>(
         &self,
         public_key: impl HpkePublicKey<VERSION>,
     ) -> Result<Option<V>, Self::GetError>;
@@ -201,6 +201,111 @@ pub trait StorageProvider<const VERSION: u16> {
         &self,
         psk_id: impl PskKey<VERSION>,
     ) -> Result<Option<V>, Self::GetError>;
+
+    fn group_state<GroupState: GroupStateEntity<VERSION>, GroupId: GroupIdKey<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<GroupState, Self::UpdateError>;
+    fn write_group_state<GroupState: GroupStateEntity<VERSION>, GroupId: GroupIdKey<VERSION>>(
+        &self,
+        group_id: &GroupId,
+        group_state: GroupState,
+    ) -> Result<(), Self::UpdateError>;
+    fn delete_group_state<GroupId: GroupIdKey<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::UpdateError>;
+
+    fn message_secrets<
+        GroupId: GroupIdKey<VERSION>,
+        MessageSecrets: MessageSecretsEntity<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<MessageSecrets, Self::GetError>;
+    fn write_message_secrets<
+        GroupId: GroupIdKey<VERSION>,
+        MessageSecrets: MessageSecretsEntity<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        message_secrets: MessageSecrets,
+    ) -> Result<(), Self::UpdateError>;
+    fn delete_message_secrets<GroupId: GroupIdKey<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::UpdateError>;
+
+    fn resumption_psk_store<
+        GroupId: GroupIdKey<VERSION>,
+        ResumptionPskStore: ResumptionPskStoreEntity<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<ResumptionPskStore, Self::GetError>;
+    fn write_resumption_psk_store<
+        GroupId: GroupIdKey<VERSION>,
+        ResumptionPskStore: ResumptionPskStoreEntity<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        resumption_psk_store: ResumptionPskStore,
+    ) -> Result<(), Self::UpdateError>;
+    fn delete_all_resumption_psk_secrets<GroupId: GroupIdKey<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::UpdateError>;
+
+    fn own_leaf_index<GroupId: GroupIdKey<VERSION>, LeafNodeIndex: LeafNodeIndexEntity<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<LeafNodeIndex, Self::GetError>;
+    fn write_own_leaf_index<
+        GroupId: GroupIdKey<VERSION>,
+        LeafNodeIndex: LeafNodeIndexEntity<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        own_leaf_index: LeafNodeIndex,
+    ) -> Result<(), Self::UpdateError>;
+    fn delete_own_leaf_index<GroupId: GroupIdKey<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::UpdateError>;
+
+    fn use_ratchet_tree_extension<GroupId: GroupIdKey<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<bool, Self::GetError>;
+    fn set_use_ratchet_tree_extension<GroupId: GroupIdKey<VERSION>>(
+        &self,
+        group_id: &GroupId,
+        value: bool,
+    ) -> Result<(), Self::UpdateError>;
+    fn delete_use_ratchet_tree_extension<GroupId: GroupIdKey<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::UpdateError>;
+
+    fn group_epoch_secrets<
+        GroupId: GroupIdKey<VERSION>,
+        GroupEpochSecrets: GroupEpochSecretsEntity<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<GroupEpochSecrets, Self::GetError>;
+    fn set_group_epoch_secrets<
+        GroupId: GroupIdKey<VERSION>,
+        GroupEpochSecrets: GroupEpochSecretsEntity<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        group_epoch_secrets: GroupEpochSecrets,
+    ) -> Result<(), Self::UpdateError>;
+    fn delete_group_epoch_secrets<GroupId: GroupIdKey<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::UpdateError>;
 }
 
 // base traits for keys and values
@@ -231,7 +336,13 @@ pub trait SignatureKeyPairEntity<const VERSION: u16>: Entity<VERSION> {}
 pub trait HpkePrivateKey<const VERSION: u16>: Entity<VERSION> {}
 pub trait KeyPackage<const VERSION: u16>: Entity<VERSION> {}
 pub trait PskBundle<const VERSION: u16>: Entity<VERSION> {}
-pub trait HpkeKeyPair<const VERSION: u16>: Entity<VERSION> {}
+pub trait HpkeKeyPairEntity<const VERSION: u16>: Entity<VERSION> {}
+pub trait GroupStateEntity<const VERSION: u16>: Entity<VERSION> {}
+pub trait GroupEpochSecretsEntity<const VERSION: u16>: Entity<VERSION> {}
+pub trait LeafNodeIndexEntity<const VERSION: u16>: Entity<VERSION> {}
+pub trait GroupUseRatchetTreeExtensionEntity<const VERSION: u16>: Entity<VERSION> {}
+pub trait MessageSecretsEntity<const VERSION: u16>: Entity<VERSION> {}
+pub trait ResumptionPskStoreEntity<const VERSION: u16>: Entity<VERSION> {}
 
 /// A trait to convert one entity into another one.
 ///
