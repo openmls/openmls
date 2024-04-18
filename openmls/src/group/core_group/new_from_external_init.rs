@@ -5,6 +5,7 @@ use crate::{
         errors::ExternalCommitError,
     },
     messages::proposals::{ExternalInitProposal, Proposal},
+    storage::RefinedProvider,
 };
 
 use super::CoreGroup;
@@ -24,13 +25,13 @@ impl CoreGroup {
     ///
     /// Note: If there is a group member in the group with the same identity as us,
     /// this will create a remove proposal.
-    pub(crate) fn join_by_external_commit(
-        provider: &impl OpenMlsProvider,
+    pub(crate) fn join_by_external_commit<Provider: RefinedProvider>(
+        provider: &Provider,
         signer: &impl Signer,
         mut params: CreateCommitParams,
         ratchet_tree: Option<RatchetTreeIn>,
         verifiable_group_info: VerifiableGroupInfo,
-    ) -> Result<ExternalCommitResult, ExternalCommitError> {
+    ) -> Result<ExternalCommitResult, ExternalCommitError<Provider::StorageError>> {
         // Build the ratchet tree
 
         // Set nodes either from the extension or from the `nodes_option`.
@@ -47,7 +48,7 @@ impl CoreGroup {
             };
 
         let (public_group, group_info) = PublicGroup::from_external(
-            provider.crypto(),
+            provider,
             ratchet_tree,
             verifiable_group_info,
             // Existing proposals are discarded when joining by external commit.

@@ -13,6 +13,7 @@ use crate::{
         Welcome,
     },
     schedule::psk::store::ResumptionPskStore,
+    storage::RefinedProvider,
     treesync::RatchetTreeIn,
 };
 
@@ -77,15 +78,16 @@ impl MlsGroup {
     ///
     /// Note: If there is a group member in the group with the same identity as
     /// us, this will create a remove proposal.
-    pub fn join_by_external_commit(
-        provider: &impl OpenMlsProvider,
+    pub fn join_by_external_commit<Provider: RefinedProvider>(
+        provider: &Provider,
         signer: &impl Signer,
         ratchet_tree: Option<RatchetTreeIn>,
         verifiable_group_info: VerifiableGroupInfo,
         mls_group_config: &MlsGroupJoinConfig,
         aad: &[u8],
         credential_with_key: CredentialWithKey,
-    ) -> Result<(Self, MlsMessageOut, Option<GroupInfo>), ExternalCommitError> {
+    ) -> Result<(Self, MlsMessageOut, Option<GroupInfo>), ExternalCommitError<Provider::StorageError>>
+    {
         // Prepare the commit parameters
         let framing_parameters = FramingParameters::new(aad, WireFormat::PublicMessage);
 
