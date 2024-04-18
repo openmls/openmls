@@ -107,8 +107,8 @@ pub trait RefinedProvider:
     openmls_traits::OpenMlsProvider<StorageProvider = Self::Storage>
 {
     /// The storage to use
-    type Storage: StorageProvider<Error = Self::Error>;
-    type Error: std::error::Error + PartialEq;
+    type Storage: StorageProvider<Error = Self::StorageError>;
+    type StorageError: std::error::Error + PartialEq;
 }
 
 impl<
@@ -118,7 +118,7 @@ impl<
     > RefinedProvider for OP
 {
     type Storage = SP;
-    type Error = Error;
+    type StorageError = Error;
 }
 
 #[cfg(test)]
