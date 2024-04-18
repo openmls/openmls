@@ -824,6 +824,23 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         let key = epoch_key_pairs_id(group_id, epoch, leaf_index)?;
         self.delete::<CURRENT_VERSION>(EPOCH_KEY_PAIRS_LABEL, &key)
     }
+
+    fn clear_proposal_queue<GroupId: traits::GroupId<CURRENT_VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        let mut values = self.values.write().unwrap();
+
+        let mut key = QUEUED_PROPOSAL_LABEL.to_vec();
+        key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
+        key.extend_from_slice(&u16::to_be_bytes(CURRENT_VERSION));
+
+        // XXX: also remove the proposal refs. can't be done now because they are stored in a
+        // non-recoverable way
+        values.remove(&key);
+
+        Ok(())
+    }
 }
 
 fn epoch_key_pairs_id(
@@ -1321,6 +1338,13 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
     }
 
     fn delete_group_epoch_secrets<GroupId: traits::GroupId<V_TEST>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    fn clear_proposal_queue<GroupId: traits::GroupId<V_TEST>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {

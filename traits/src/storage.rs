@@ -411,6 +411,12 @@ pub trait StorageProvider<const VERSION: u16> {
         group_id: &GroupId,
     ) -> Result<(), Self::Error>;
 
+    /// Clear the proposal queue for the grou pwith the given id.
+    fn clear_proposal_queue<GroupId: traits::GroupId<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error>;
+
     //
     //    ---   deleters for crypto objects   ---
     //
