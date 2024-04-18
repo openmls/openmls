@@ -352,18 +352,18 @@ impl KeyPackage {
         provider
             .storage()
             .delete_key_package(&self.hash_ref(provider.crypto())?)
-            .map_err(KeyPackageStorageError::StorageError)?;
+            .map_err(KeyPackageStorageError::Storage)?;
 
         provider
             .storage()
             .delete_init_private_key(&StorageInitKey(self.hpke_init_key().as_slice()))
-            .map_err(KeyPackageStorageError::StorageError)?;
+            .map_err(KeyPackageStorageError::Storage)?;
 
         if delete_encryption_key {
             provider
                 .storage()
                 .delete_encryption_key_pair(self.leaf_node().encryption_key())
-                .map_err(KeyPackageStorageError::StorageError)?;
+                .map_err(KeyPackageStorageError::Storage)?;
         }
 
         Ok(())

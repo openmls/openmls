@@ -1,4 +1,4 @@
-use openmls_traits::{signatures::Signer, storage};
+use openmls_traits::signatures::Signer;
 
 use super::{builder::MlsGroupBuilder, *};
 use crate::{
@@ -8,7 +8,7 @@ use crate::{
         core_group::create_commit_params::CreateCommitParams,
         errors::{ExternalCommitError, WelcomeError},
     },
-    key_packages::errors::KeyPackageStorage,
+    key_packages::errors::KeyPackageStorageError,
     messages::{
         group_info::{GroupInfo, VerifiableGroupInfo},
         Welcome,
@@ -186,8 +186,8 @@ impl StagedWelcome {
                 .key_package
                 .delete(provider, false)
                 .map_err(|e| match e {
-                    KeyPackageStorage::LibraryError(l) => WelcomeError::LibraryError(l),
-                    KeyPackageStorage::Storage(e) => WelcomeError::StorageError(e),
+                    KeyPackageStorageError::LibraryError(l) => WelcomeError::LibraryError(l),
+                    KeyPackageStorageError::Storage(e) => WelcomeError::StorageError(e),
                 })?;
         } else {
             log::debug!("Key package has last resort extension, not deleting");
