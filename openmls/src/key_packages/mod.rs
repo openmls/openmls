@@ -110,10 +110,7 @@ use crate::{
     versions::ProtocolVersion,
 };
 use openmls_traits::{
-    crypto::OpenMlsCrypto,
-    signatures::Signer,
-    storage::{Key, StorageProvider, CURRENT_VERSION},
-    types::Ciphersuite,
+    crypto::OpenMlsCrypto, signatures::Signer, storage::StorageProvider, types::Ciphersuite,
     OpenMlsProvider,
 };
 use serde::{Deserialize, Serialize};
@@ -595,8 +592,6 @@ impl KeyPackageBundle {
 
 #[cfg(test)]
 use openmls_traits::key_store::OpenMlsKeyStore;
-
-use self::errors::KeyPackageStorage;
 
 #[cfg(test)]
 impl KeyPackageBundle {

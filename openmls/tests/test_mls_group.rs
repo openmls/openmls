@@ -12,8 +12,8 @@ fn generate_key_package<KeyStore: OpenMlsKeyStore>(
     provider: &impl crate::storage::RefinedProvider<KeyStoreProvider = KeyStore>,
     credential_with_key: CredentialWithKey,
     signer: &impl Signer,
-) -> KeyPackageStorage {
-    KeyPackageStorage::builder()
+) -> KeyPackage {
+    KeyPackage::builder()
         .key_package_extensions(extensions)
         .build(ciphersuite, provider, signer, credential_with_key)
         .unwrap()

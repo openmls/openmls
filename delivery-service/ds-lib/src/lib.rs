@@ -86,7 +86,7 @@ impl ClientInfo {
     /// Create a new `ClientInfo` struct for a given client name and vector of
     /// key packages with corresponding hashes.
     pub fn new(mut key_packages: Vec<(Vec<u8>, KeyPackageIn)>) -> Self {
-        let key_package: KeyPackageStorage = KeyPackageStorage::from(key_packages[0].1.clone());
+        let key_package: KeyPackage = KeyPackage::from(key_packages[0].1.clone());
         let id = key_package.leaf_node().credential().serialized_content();
         Self {
             id: id.into(),

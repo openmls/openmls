@@ -25,7 +25,7 @@ impl Backend {
     /// Register a new client with the server.
     pub fn register_client(
         &self,
-        key_packages: Vec<(Vec<u8>, KeyPackageStorage)>,
+        key_packages: Vec<(Vec<u8>, KeyPackage)>,
     ) -> Result<AuthToken, String> {
         let mut url = self.ds_url.clone();
         url.set_path("/clients/register");

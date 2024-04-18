@@ -19,7 +19,7 @@ fn test_client_info() {
     };
     signature_keys.store(crypto.storage()).unwrap();
 
-    let client_key_package = KeyPackageStorage::builder()
+    let client_key_package = KeyPackage::builder()
         .build(ciphersuite, crypto, &signature_keys, credential_with_key)
         .unwrap();
 

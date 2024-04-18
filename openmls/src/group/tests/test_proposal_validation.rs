@@ -41,7 +41,7 @@ fn generate_credential_with_key_and_key_package(
     identity: Vec<u8>,
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::RefinedProvider,
-) -> (CredentialWithKeyAndSigner, KeyPackageStorage) {
+) -> (CredentialWithKeyAndSigner, KeyPackage) {
     let credential_with_key_and_signer =
         generate_credential_with_key(identity, ciphersuite.signature_algorithm(), provider);
 
@@ -59,7 +59,7 @@ fn generate_credential_with_key_and_key_package(
 fn create_group_with_members<KeyStore: OpenMlsKeyStore>(
     ciphersuite: Ciphersuite,
     alice_credential_with_key_and_signer: &CredentialWithKeyAndSigner,
-    member_key_packages: &[KeyPackageStorage],
+    member_key_packages: &[KeyPackage],
     provider: &impl crate::storage::RefinedProvider<KeyStoreProvider = KeyStore>,
 ) -> Result<(MlsMessageIn, Welcome), AddMembersError<KeyStore::Error>> {
     let mut alice_group = MlsGroup::new_with_group_id(

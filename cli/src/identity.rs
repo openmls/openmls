@@ -12,7 +12,7 @@ pub struct Identity {
         serialize_with = "serialize_any_hashmap::serialize_hashmap",
         deserialize_with = "serialize_any_hashmap::deserialize_hashmap"
     )]
-    pub(crate) kp: HashMap<Vec<u8>, KeyPackageStorage>,
+    pub(crate) kp: HashMap<Vec<u8>, KeyPackage>,
     pub(crate) credential_with_key: CredentialWithKey,
     pub(crate) signer: SignatureKeyPair,
 }
@@ -31,7 +31,7 @@ impl Identity {
         };
         signature_keys.store(crypto.storage()).unwrap();
 
-        let key_package = KeyPackageStorage::builder()
+        let key_package = KeyPackage::builder()
             .build(
                 ciphersuite,
                 crypto,
@@ -59,8 +59,8 @@ impl Identity {
         &mut self,
         ciphersuite: Ciphersuite,
         crypto: &OpenMlsRustPersistentCrypto,
-    ) -> KeyPackageStorage {
-        let key_package = KeyPackageStorage::builder()
+    ) -> KeyPackage {
+        let key_package = KeyPackage::builder()
             .build(
                 ciphersuite,
                 crypto,

@@ -8,11 +8,12 @@ use crate::{
         core_group::create_commit_params::CreateCommitParams,
         errors::{ExternalCommitError, WelcomeError},
     },
+    key_packages::errors::KeyPackageStorage,
     messages::{
         group_info::{GroupInfo, VerifiableGroupInfo},
         Welcome,
     },
-    prelude::KeyPackageStorage,
+    prelude::KeyPackage,
     schedule::psk::store::ResumptionPskStore,
     storage::RefinedProvider,
     treesync::RatchetTreeIn,

@@ -261,7 +261,7 @@ mod test {
         let new_storage_provider = MemoryKeyStore::default();
 
         // first, read the old data
-        let read_key_package: crate::prelude::KeyPackageStorage = <MemoryKeyStore as StorageProvider<
+        let read_key_package: crate::prelude::KeyPackage = <MemoryKeyStore as StorageProvider<
             CURRENT_VERSION,
         >>::key_package(
             provider.storage(), &key_package_ref
@@ -310,7 +310,7 @@ mod test {
         .unwrap();
 
         // read the new value from storage
-        let read_new_key_package: crate::prelude::KeyPackageStorage =
+        let read_new_key_package: crate::prelude::KeyPackage =
             <MemoryKeyStore as StorageProvider<V_TEST>>::key_package(
                 &new_storage_provider,
                 &key_package_ref,

@@ -9,12 +9,12 @@ use crate::{extensions::*, key_packages::*};
 pub(crate) fn key_package(
     ciphersuite: Ciphersuite,
     provider: &impl OpenMlsProvider,
-) -> (KeyPackageStorage, Credential, SignatureKeyPair) {
+) -> (KeyPackage, Credential, SignatureKeyPair) {
     let credential = BasicCredential::new(b"Sasha".to_vec());
     let signer = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
     // Generate a valid KeyPackage.
-    let key_package = KeyPackageStorage::builder()
+    let key_package = KeyPackage::builder()
         .build(
             ciphersuite,
             provider,
@@ -47,7 +47,7 @@ fn serialization(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .tls_serialize_detached()
         .expect("An unexpected error occurred.");
 
-    let decoded_key_package = KeyPackageStorage::from(
+    let decoded_key_package = KeyPackage::from(
         KeyPackageIn::tls_deserialize(&mut encoded.as_slice())
             .expect("An unexpected error occurred."),
     );
@@ -61,7 +61,7 @@ fn application_id_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
 
     // Generate a valid KeyPackage.
     let id = b"application id" as &[u8];
-    let key_package = KeyPackageStorage::builder()
+    let key_package = KeyPackage::builder()
         .leaf_node_extensions(Extensions::single(Extension::ApplicationId(
             ApplicationIdExtension::new(id),
         )))
@@ -138,7 +138,7 @@ fn last_resort_key_package(ciphersuite: Ciphersuite, provider: &impl OpenMlsProv
     let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
     // build without any other extensions
-    let key_package = KeyPackageStorage::builder()
+    let key_package = KeyPackage::builder()
         .mark_as_last_resort()
         .build(
             ciphersuite,
@@ -153,7 +153,7 @@ fn last_resort_key_package(ciphersuite: Ciphersuite, provider: &impl OpenMlsProv
     assert!(key_package.last_resort());
 
     // build with empty extensions
-    let key_package = KeyPackageStorage::builder()
+    let key_package = KeyPackage::builder()
         .key_package_extensions(Extensions::empty())
         .mark_as_last_resort()
         .build(
@@ -169,7 +169,7 @@ fn last_resort_key_package(ciphersuite: Ciphersuite, provider: &impl OpenMlsProv
     assert!(key_package.last_resort());
 
     // build with extension
-    let key_package = KeyPackageStorage::builder()
+    let key_package = KeyPackage::builder()
         .key_package_extensions(Extensions::single(Extension::Unknown(
             0xFF00,
             UnknownExtension(vec![0x00]),
