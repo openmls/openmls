@@ -103,8 +103,8 @@ impl MlsGroup {
             )?;
             // TODO #1207: Move to the top of the function.
             keypair
-                .write_to_key_store(provider.key_store())
-                .map_err(ProposeSelfUpdateError::KeyStoreError)?;
+                .write(provider.storage())
+                .map_err(|_| ProposeSelfUpdateError::LibraryError(LibraryError::custom("FIXME")))?;
         };
 
         let update_proposal = self.group.create_update_proposal(

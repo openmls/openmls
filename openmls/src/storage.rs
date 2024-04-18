@@ -3,7 +3,7 @@
 //! TODO
 
 use openmls_traits::storage::{
-    self, ConfirmationTagEntity, Entity, GroupContextEntity, GroupIdKey,
+    self, ConfirmationTagEntity, Entity, GroupContextEntity, GroupIdKey, HashReference,
     InterimTranscriptHashEntity, Key, ProposalRefEntity, ProposalRefKey, QueuedProposalEntity,
     TreeSyncEntity, CURRENT_VERSION,
 };
@@ -13,6 +13,7 @@ use serde::Serialize;
 
 use crate::binary_tree::LeafNodeIndex;
 use crate::group::past_secrets::MessageSecretsStore;
+use crate::group::GroupEpoch;
 use crate::schedule::psk::store::ResumptionPskStore;
 use crate::schedule::GroupEpochSecrets;
 use crate::treesync::node::encryption_keys::EncryptionKeyPair;
@@ -72,9 +73,16 @@ impl storage::ResumptionPskStoreEntity<CURRENT_VERSION> for ResumptionPskStore {
 
 // Crypto
 #[derive(Serialize)]
-struct StorageInitKey(Vec<u8>);
+pub(crate) struct StorageInitKey<'a>(pub(crate) &'a [u8]);
 #[derive(Clone, Serialize, Deserialize)]
-struct StorageHpkePrivateKey(HpkePrivateKey);
+pub(crate) struct StorageHpkePrivateKey(pub(crate) HpkePrivateKey);
+
+/// Helper to use slices as keys
+#[derive(Serialize)]
+pub(crate) struct StorageReference<'a>(pub(crate) &'a [u8]);
+
+impl<'a> Key<CURRENT_VERSION> for StorageReference<'a> {}
+impl<'a> HashReference<CURRENT_VERSION> for StorageReference<'a> {}
 
 impl core::fmt::Debug for StorageHpkePrivateKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -84,11 +92,14 @@ impl core::fmt::Debug for StorageHpkePrivateKey {
     }
 }
 
-impl Key<CURRENT_VERSION> for StorageInitKey {}
-impl storage::InitKey<CURRENT_VERSION> for StorageInitKey {}
+impl<'a> Key<CURRENT_VERSION> for StorageInitKey<'a> {}
+impl<'a> storage::InitKey<CURRENT_VERSION> for StorageInitKey<'a> {}
 
 impl storage::HpkePrivateKey<CURRENT_VERSION> for StorageHpkePrivateKey {}
 impl Entity<CURRENT_VERSION> for StorageHpkePrivateKey {}
+
+impl Key<CURRENT_VERSION> for GroupEpoch {}
+impl storage::EpochKey<CURRENT_VERSION> for GroupEpoch {}
 
 /// A convenience trait for the current version of the storage.
 pub trait StorageProvider: openmls_traits::storage::StorageProvider<CURRENT_VERSION> {}
@@ -146,14 +157,14 @@ mod test {
         provider
             .storage()
             .write_init_private_key(
-                StorageInitKey(key_pair.public.clone()),
-                StorageHpkePrivateKey(key_pair.private.clone()),
+                &StorageInitKey(&key_pair.public),
+                &StorageHpkePrivateKey(key_pair.private.clone()),
             )
             .unwrap();
 
         let private_key: StorageHpkePrivateKey = provider
             .storage()
-            .init_private_key(StorageInitKey(key_pair.public))
+            .init_private_key(&StorageInitKey(&key_pair.public))
             .unwrap();
         assert_eq!(private_key.0, key_pair.private);
     }
@@ -222,14 +233,14 @@ mod test {
         // write private keys
         <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::write_init_private_key(
             provider.storage(),
-            StorageInitKey(key_package.hpke_init_key().as_slice().to_vec()),
-            init_sk.clone(),
+            &StorageInitKey(key_package.hpke_init_key().as_slice()),
+            &init_sk,
         )
         .unwrap();
         <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::write_encryption_key_pair(
             provider.storage(),
-            key_package.leaf_node().encryption_key().clone(),
-            encryption_keypair.clone(),
+            key_package.leaf_node().encryption_key(),
+            &encryption_keypair,
         )
         .unwrap();
 
@@ -237,7 +248,7 @@ mod test {
         <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::write_key_package(
             provider.storage(),
             key_package_ref.clone(),
-            key_package_bundle.key_package,
+            &key_package_bundle.key_package,
         )
         .unwrap();
 
@@ -257,13 +268,13 @@ mod test {
         let read_init_secret: StorageHpkePrivateKey =
             <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::init_private_key(
                 provider.storage(),
-                StorageInitKey(read_key_package.hpke_init_key().as_slice().to_vec()),
+                StorageInitKey(read_key_package.hpke_init_key().as_slice()),
             )
             .unwrap();
         let read_encryption_keypair: EncryptionKeyPair =
             <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::encryption_key_pair(
                 provider.storage(),
-                read_key_package.leaf_node().encryption_key().clone(),
+                read_key_package.leaf_node().encryption_key(),
             )
             .unwrap();
 
@@ -276,20 +287,20 @@ mod test {
         // insert the new data (encryption key and key package can just be copied)
         <MemoryKeyStore as StorageProvider<V_TEST>>::write_encryption_key_pair(
             &new_storage_provider,
-            read_key_package.leaf_node().encryption_key().clone(),
-            read_encryption_keypair,
+            read_key_package.leaf_node().encryption_key(),
+            &read_encryption_keypair,
         )
         .unwrap();
         <MemoryKeyStore as StorageProvider<V_TEST>>::write_init_private_key(
             &new_storage_provider,
-            read_key_package.hpke_init_key().clone(),
-            new_version_init_key,
+            read_key_package.hpke_init_key(),
+            &new_version_init_key,
         )
         .unwrap();
         <MemoryKeyStore as StorageProvider<V_TEST>>::write_key_package(
             &new_storage_provider,
             key_package_ref.clone(),
-            read_key_package.clone(),
+            &read_key_package,
         )
         .unwrap();
 
@@ -309,7 +320,7 @@ mod test {
         let read_new_encryption_keypair: EncryptionKeyPair =
             <MemoryKeyStore as StorageProvider<V_TEST>>::encryption_key_pair(
                 &new_storage_provider,
-                read_key_package.leaf_node().encryption_key().clone(),
+                read_key_package.leaf_node().encryption_key(),
             )
             .unwrap();
 

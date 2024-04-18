@@ -99,6 +99,7 @@ use crate::{
     credentials::*,
     error::LibraryError,
     extensions::{Extension, ExtensionType, Extensions, LastResortExtension},
+    storage::{StorageHpkePrivateKey, StorageInitKey},
     treesync::{
         node::{
             encryption_keys::EncryptionKeyPair,
@@ -109,10 +110,7 @@ use crate::{
     versions::ProtocolVersion,
 };
 use openmls_traits::{
-    crypto::OpenMlsCrypto,
-    key_store::{MlsEntity, MlsEntityId, OpenMlsKeyStore},
-    signatures::Signer,
-    types::Ciphersuite,
+    crypto::OpenMlsCrypto, signatures::Signer, storage::StorageProvider, types::Ciphersuite,
     OpenMlsProvider,
 };
 use serde::{Deserialize, Serialize};
@@ -200,10 +198,6 @@ impl SignedStruct<KeyPackageTbs> for KeyPackage {
 
 const SIGNATURE_KEY_PACKAGE_LABEL: &str = "KeyPackageTBS";
 
-impl MlsEntity for KeyPackage {
-    const ID: MlsEntityId = MlsEntityId::KeyPackage;
-}
-
 /// Helper struct containing the results of building a new [`KeyPackage`].
 pub(crate) struct KeyPackageCreationResult {
     pub key_package: KeyPackage,
@@ -258,16 +252,16 @@ impl KeyPackage {
 
     #[allow(clippy::too_many_arguments)]
     /// Create a new key package for the given `ciphersuite` and `identity`.
-    pub(crate) fn create<KeyStore: OpenMlsKeyStore>(
+    pub(crate) fn create(
         ciphersuite: Ciphersuite,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &impl OpenMlsProvider,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
         lifetime: Lifetime,
         extensions: Extensions,
         leaf_node_capabilities: Capabilities,
         leaf_node_extensions: Extensions,
-    ) -> Result<KeyPackageCreationResult, KeyPackageNewError<KeyStore::Error>> {
+    ) -> Result<KeyPackageCreationResult, KeyPackageNewError> {
         if ciphersuite.signature_algorithm() != signer.signature_scheme() {
             return Err(KeyPackageNewError::CiphersuiteSignatureSchemeMismatch);
         }
@@ -310,9 +304,9 @@ impl KeyPackage {
     ///
     /// The caller is responsible for storing the new values.
     #[allow(clippy::too_many_arguments)]
-    fn new_from_keys<KeyStore: OpenMlsKeyStore>(
+    fn new_from_keys(
         ciphersuite: Ciphersuite,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &impl OpenMlsProvider,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
         lifetime: Lifetime,
@@ -320,7 +314,7 @@ impl KeyPackage {
         capabilities: Capabilities,
         leaf_node_extensions: Extensions,
         init_key: InitKey,
-    ) -> Result<(Self, EncryptionKeyPair), KeyPackageNewError<KeyStore::Error>> {
+    ) -> Result<(Self, EncryptionKeyPair), KeyPackageNewError> {
         // We don't need the private key here. It's stored in the key store for
         // use later when creating a group with this key package.
 
@@ -349,17 +343,27 @@ impl KeyPackage {
         Ok((key_package, encryption_key_pair))
     }
 
-    /// Delete this key package and its private key from the key store.
-    pub fn delete<KeyStore: OpenMlsKeyStore>(
+    /// Delete this key package and its private keys from the key store.
+    pub fn delete(
         &self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
-    ) -> Result<(), KeyStore::Error> {
+        provider: &impl OpenMlsProvider,
+        delete_encryption_key: bool,
+    ) -> Result<(), KeyPackageStorage> {
+        provider.storage().delete_key_package(
+            self.hash_ref(provider.crypto())
+                .map_err(|_| KeyPackageStorage::Error)?,
+        );
         provider
-            .key_store()
-            .delete::<Self>(self.hash_ref(provider.crypto()).unwrap().as_slice())?;
-        provider
-            .key_store()
-            .delete::<HpkePrivateKey>(self.hpke_init_key().as_slice())
+            .storage()
+            .delete_init_private_key(&StorageInitKey(self.hpke_init_key().as_slice()))
+            .map_err(|_| KeyPackageStorage::Error)?;
+        if delete_encryption_key {
+            provider
+                .storage()
+                .delete_encryption_key_pair(self.leaf_node().encryption_key())
+                .map_err(|_| KeyPackageStorage::Error)?;
+        }
+        Ok(())
     }
 
     /// Get a reference to the extensions of this key package.
@@ -490,13 +494,13 @@ impl KeyPackageBuilder {
         }
     }
 
-    pub(crate) fn build_without_key_storage<KeyStore: OpenMlsKeyStore>(
+    pub(crate) fn build_without_key_storage(
         mut self,
         ciphersuite: Ciphersuite,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &impl OpenMlsProvider,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
-    ) -> Result<KeyPackageCreationResult, KeyPackageNewError<KeyStore::Error>> {
+    ) -> Result<KeyPackageCreationResult, KeyPackageNewError> {
         self.ensure_last_resort();
         KeyPackage::create(
             ciphersuite,
@@ -511,13 +515,13 @@ impl KeyPackageBuilder {
     }
 
     /// Finalize and build the key package.
-    pub fn build<KeyStore: OpenMlsKeyStore>(
+    pub fn build(
         mut self,
         ciphersuite: Ciphersuite,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &impl OpenMlsProvider,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
-    ) -> Result<KeyPackage, KeyPackageNewError<KeyStore::Error>> {
+    ) -> Result<KeyPackage, KeyPackageNewError> {
         self.ensure_last_resort();
         let KeyPackageCreationResult {
             key_package,
@@ -537,24 +541,24 @@ impl KeyPackageBuilder {
         // Store the key package in the key store with the hash reference as id
         // for retrieval when parsing welcome messages.
         provider
-            .key_store()
-            .store(
-                key_package.hash_ref(provider.crypto())?.as_slice(),
-                &key_package,
-            )
-            .map_err(KeyPackageNewError::KeyStoreError)?;
+            .storage()
+            .write_key_package(key_package.hash_ref(provider.crypto())?, &key_package)
+            .map_err(|_| KeyPackageNewError::StorageError)?;
 
         // Store the encryption key pair in the key store.
         encryption_keypair
-            .write_to_key_store(provider.key_store())
-            .map_err(KeyPackageNewError::KeyStoreError)?;
+            .write(provider.storage())
+            .map_err(|_| KeyPackageNewError::StorageError)?;
 
         // Store the private part of the init_key into the key store.
         // The key is the public key.
         provider
-            .key_store()
-            .store::<HpkePrivateKey>(key_package.hpke_init_key().as_slice(), &init_private_key)
-            .map_err(KeyPackageNewError::KeyStoreError)?;
+            .storage()
+            .write_init_private_key(
+                &StorageInitKey(key_package.hpke_init_key().as_slice()),
+                &StorageHpkePrivateKey(init_private_key),
+            )
+            .map_err(|_| KeyPackageNewError::StorageError)?;
 
         Ok(key_package)
     }

@@ -21,7 +21,7 @@ use crate::{
 
 /// Welcome error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum WelcomeError<KeyStoreError, StorageUpdateError> {
+pub enum WelcomeError<StorageUpdateError> {
     /// See [`GroupSecretsError`] for more details.
     #[error(transparent)]
     GroupSecrets(#[from] GroupSecretsError),
@@ -79,9 +79,6 @@ pub enum WelcomeError<KeyStoreError, StorageUpdateError> {
     /// No matching key package was found in the key store.
     #[error("No matching key package was found in the key store.")]
     NoMatchingKeyPackage,
-    /// Error accessing the key store.
-    #[error("Error accessing the key store.")]
-    KeyStoreError(KeyStoreError),
     /// This error indicates the public tree is invalid. See [`PublicTreeError`] for more details.
     #[error(transparent)]
     PublicTreeError(#[from] PublicTreeError),
@@ -236,7 +233,7 @@ pub enum CreateCommitError<KeyStoreError> {
     KeyStoreError(KeyStoreError),
     /// See [`KeyPackageNewError`] for more details.
     #[error(transparent)]
-    KeyPackageGenerationError(#[from] KeyPackageNewError<KeyStoreError>),
+    KeyPackageGenerationError(#[from] KeyPackageNewError),
     /// See [`SignatureError`] for more details.
     #[error(transparent)]
     SignatureError(#[from] SignatureError),

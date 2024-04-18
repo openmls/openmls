@@ -271,7 +271,7 @@ impl PassiveClient {
         ));
 
         key_pair
-            .write_to_key_store(self.provider.key_store())
+            .write(self.provider.key_store())
             .unwrap();
     }
 

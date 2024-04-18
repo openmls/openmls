@@ -34,8 +34,11 @@ mod test_proposals;
 
 use log::{debug, trace};
 use openmls_traits::{
-    crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, signatures::Signer,
-    storage::StorageProvider, types::Ciphersuite,
+    crypto::OpenMlsCrypto,
+    key_store::OpenMlsKeyStore,
+    signatures::Signer,
+    storage::{StorageProvider, CURRENT_VERSION},
+    types::Ciphersuite,
 };
 use serde::{Deserialize, Serialize};
 use tls_codec::Serialize as TlsSerializeTrait;
@@ -346,8 +349,8 @@ impl CoreGroupBuilder {
 
         // Store the private key of the own leaf in the key store as an epoch keypair.
         group
-            .store_epoch_keypairs(provider.key_store(), &[leaf_keypair])
-            .map_err(CoreGroupBuildError::KeyStoreError)?;
+            .store_epoch_keypairs(provider.storage(), &[leaf_keypair])
+            .map_err(|_| CoreGroupBuildError::LibraryError(LibraryError::custom("FIXME")))?;
 
         Ok(group)
     }
@@ -731,34 +734,34 @@ impl CoreGroup {
     /// indexed by this group's [`GroupId`] and [`GroupEpoch`].
     ///
     /// Returns an error if access to the key store fails.
-    pub(super) fn store_epoch_keypairs<KeyStore: OpenMlsKeyStore>(
+    pub(super) fn store_epoch_keypairs<Storage: StorageProvider<CURRENT_VERSION>>(
         &self,
-        store: &KeyStore,
+        store: &Storage,
         keypair_references: &[EncryptionKeyPair],
-    ) -> Result<(), KeyStore::Error> {
-        let k = EpochKeypairId::new(
+    ) -> Result<(), Storage::UpdateError> {
+        store.write_encryption_epoch_key_pairs(
             self.group_id(),
-            self.context().epoch().as_u64(),
-            self.own_leaf_index(),
-        );
-        store.store(&k.0, &keypair_references.to_vec())
+            &self.context().epoch(),
+            self.own_leaf_index().u32(),
+            keypair_references,
+        )
     }
 
     /// Read the [`EncryptionKeyPair`]s of this group and its current
-    /// [`GroupEpoch`] from the `provider`'s key store.
+    /// [`GroupEpoch`] from the `provider`'s storage.
     ///
-    /// Returns `None` if access to the key store fails.
-    pub(super) fn read_epoch_keypairs<KeyStore: OpenMlsKeyStore>(
+    /// Returns an empty vector if access to the store fails or it can't find
+    /// any keys.
+    pub(super) fn read_epoch_keypairs<Storage: StorageProvider<CURRENT_VERSION>>(
         &self,
-        store: &KeyStore,
+        store: &Storage,
     ) -> Vec<EncryptionKeyPair> {
-        let k = EpochKeypairId::new(
-            self.group_id(),
-            self.context().epoch().as_u64(),
-            self.own_leaf_index(),
-        );
         store
-            .read::<Vec<EncryptionKeyPair>>(&k.0)
+            .encryption_epoch_key_pairs(
+                self.group_id(),
+                &self.context().epoch(),
+                self.own_leaf_index().u32(),
+            )
             .unwrap_or_default()
     }
 
@@ -766,16 +769,15 @@ impl CoreGroup {
     /// the `provider`'s key store.
     ///
     /// Returns an error if access to the key store fails.
-    pub(super) fn delete_previous_epoch_keypairs<KeyStore: OpenMlsKeyStore>(
+    pub(super) fn delete_previous_epoch_keypairs<Store: StorageProvider<CURRENT_VERSION>>(
         &self,
-        store: &KeyStore,
-    ) -> Result<(), KeyStore::Error> {
-        let k = EpochKeypairId::new(
+        store: &Store,
+    ) -> Result<(), Store::UpdateError> {
+        store.delete_encryption_epoch_key_pairs(
             self.group_id(),
-            self.context().epoch().as_u64() - 1,
-            self.own_leaf_index(),
-        );
-        store.delete::<Vec<EncryptionKeyPair>>(&k.0)
+            &self.context().epoch(),
+            self.own_leaf_index().u32(),
+        )
     }
 
     pub(crate) fn create_commit<KeyStore: OpenMlsKeyStore>(

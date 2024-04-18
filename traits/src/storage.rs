@@ -71,8 +71,8 @@ pub trait StorageProvider<const VERSION: u16> {
     /// This is used for init keys from key packages.
     fn write_init_private_key(
         &self,
-        public_key: impl InitKey<VERSION>,
-        private_key: impl HpkePrivateKey<VERSION>,
+        public_key: &impl InitKey<VERSION>,
+        private_key: &impl HpkePrivateKey<VERSION>,
     ) -> Result<(), Self::UpdateError>;
 
     /// Store an HPKE encryption key pair.
@@ -81,8 +81,18 @@ pub trait StorageProvider<const VERSION: u16> {
     /// This is used for encryption keys from leaf nodes.
     fn write_encryption_key_pair(
         &self,
-        public_key: impl HpkePublicKey<VERSION>,
-        key_pair: impl HpkeKeyPairEntity<VERSION>,
+        public_key: &impl HpkePublicKey<VERSION>,
+        key_pair: &impl HpkeKeyPairEntity<VERSION>,
+    ) -> Result<(), Self::UpdateError>;
+
+    /// Store a list of HPKE encryption key pairs for a given epoch.
+    /// This includes the private and public keys.
+    fn write_encryption_epoch_key_pairs(
+        &self,
+        group_id: &impl GroupIdKey<VERSION>,
+        epoch: &impl EpochKey<VERSION>,
+        leaf_index: u32,
+        key_pairs: &[impl HpkeKeyPairEntity<VERSION>],
     ) -> Result<(), Self::UpdateError>;
 
     /// Store key packages.
@@ -92,7 +102,7 @@ pub trait StorageProvider<const VERSION: u16> {
     fn write_key_package<TKeyPackage: KeyPackage<VERSION>>(
         &self,
         hash_ref: impl HashReference<VERSION>,
-        key_package: TKeyPackage,
+        key_package: &TKeyPackage,
     ) -> Result<(), Self::UpdateError>;
 
     /// Store a PSK.
@@ -152,8 +162,17 @@ pub trait StorageProvider<const VERSION: u16> {
     /// Get an HPKE encryption key pair based on the public key.
     fn encryption_key_pair<V: HpkeKeyPairEntity<VERSION>>(
         &self,
-        public_key: impl HpkePublicKey<VERSION>,
+        public_key: &impl HpkePublicKey<VERSION>,
     ) -> Result<V, Self::GetError>;
+
+    /// Get a list of HPKE encryption key pairs for a given epoch.
+    /// This includes the private and public keys.
+    fn encryption_epoch_key_pairs<V: HpkeKeyPairEntity<VERSION>>(
+        &self,
+        group_id: &impl GroupIdKey<VERSION>,
+        epoch: &impl EpochKey<VERSION>,
+        leaf_index: u32,
+    ) -> Result<Vec<V>, Self::GetError>;
 
     /// Get a key package based on its hash reference.
     /// TODO: use references for getters
@@ -169,38 +188,44 @@ pub trait StorageProvider<const VERSION: u16> {
     // Delete crypto objects
 
     /// Delete a signature key pair based on its public key
-    fn delete_signature_key_pair<V: SignatureKeyPairEntity<VERSION>>(
+    fn delete_signature_key_pair(
         &self,
         public_key: &impl SignaturePublicKeyKey<VERSION>,
-    ) -> Result<Option<V>, Self::GetError>;
+    ) -> Result<(), Self::UpdateError>;
 
     /// Delete an HPKE private init key.
     ///
     /// XXX: This should be called when deleting key packages.
-    fn delete_init_private_key<V: HpkePrivateKey<VERSION>>(
+    fn delete_init_private_key(
         &self,
-        public_key: impl InitKey<VERSION>,
-    ) -> Result<Option<V>, Self::GetError>;
+        public_key: &impl InitKey<VERSION>,
+    ) -> Result<(), Self::UpdateError>;
 
     /// Delete an encryption key pair for a public key.
-    fn delete_encryption_key_pair<V: HpkeKeyPairEntity<VERSION>>(
+    fn delete_encryption_key_pair(
         &self,
-        public_key: impl HpkePublicKey<VERSION>,
-    ) -> Result<Option<V>, Self::GetError>;
+        public_key: &impl HpkePublicKey<VERSION>,
+    ) -> Result<(), Self::UpdateError>;
+
+    /// Delete a list of HPKE encryption key pairs for a given epoch.
+    /// This includes the private and public keys.
+    fn delete_encryption_epoch_key_pairs(
+        &self,
+        group_id: &impl GroupIdKey<VERSION>,
+        epoch: &impl EpochKey<VERSION>,
+        leaf_index: u32,
+    ) -> Result<(), Self::UpdateError>;
 
     /// Delete a key package based on the hash reference.
     ///
     /// XXX: This needs to delete all corresponding keys.
-    fn delete_key_package<V: KeyPackage<VERSION>>(
+    fn delete_key_package(
         &self,
         hash_ref: impl HashReference<VERSION>,
-    ) -> Result<Option<V>, Self::GetError>;
+    ) -> Result<(), Self::UpdateError>;
 
     /// Delete a PSK based on an identifier.
-    fn delete_psk<V: PskBundle<VERSION>>(
-        &self,
-        psk_id: impl PskKey<VERSION>,
-    ) -> Result<Option<V>, Self::GetError>;
+    fn delete_psk(&self, psk_id: impl PskKey<VERSION>) -> Result<(), Self::UpdateError>;
 
     /// Returns the MlsGroupState for group with given id.
     fn group_state<GroupState: GroupStateEntity<VERSION>, GroupId: GroupIdKey<VERSION>>(
@@ -354,6 +379,7 @@ pub trait InitKey<const VERSION: u16>: Key<VERSION> {}
 pub trait HashReference<const VERSION: u16>: Key<VERSION> {}
 pub trait PskKey<const VERSION: u16>: Key<VERSION> {}
 pub trait HpkePublicKey<const VERSION: u16>: Key<VERSION> {}
+pub trait EpochKey<const VERSION: u16>: Key<VERSION> {}
 
 // traits for entity, one per type
 pub trait QueuedProposalEntity<const VERSION: u16>: Entity<VERSION> {}

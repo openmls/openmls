@@ -26,13 +26,13 @@ impl StagedCoreWelcome {
         key_package_bundle: KeyPackageBundle,
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
         mut resumption_psk_store: ResumptionPskStore,
-    ) -> Result<Self, WelcomeError<KeyStore::Error, Storage::UpdateError>> {
+    ) -> Result<Self, WelcomeError<Storage::UpdateError>> {
         log::debug!("CoreGroup::new_from_welcome_internal");
 
         // Read the encryption key pair from the key store and delete it there.
         // TODO #1207: Key store access happens as early as possible so it can
         // be pulled up later more easily.
-        let leaf_keypair = EncryptionKeyPair::read_from_key_store(
+        let leaf_keypair = EncryptionKeyPair::read(
             provider,
             key_package_bundle.key_package.leaf_node().encryption_key(),
         )
@@ -42,7 +42,7 @@ impl StagedCoreWelcome {
         // key store, but only if it doesn't have a last resort extension.
         if !key_package_bundle.key_package().last_resort() {
             leaf_keypair
-                .delete_from_key_store(provider.key_store())
+                .delete_from_key_store(provider.storage())
                 .map_err(|_| WelcomeError::NoMatchingEncryptionKey)?;
         } else {
             log::debug!(
@@ -272,7 +272,7 @@ impl StagedCoreWelcome {
     >(
         self,
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
-    ) -> Result<CoreGroup, WelcomeError<KeyStore::Error, Storage::UpdateError>> {
+    ) -> Result<CoreGroup, WelcomeError<Storage::UpdateError>> {
         let Self {
             public_group,
             group_epoch_secrets,
@@ -309,8 +309,8 @@ impl StagedCoreWelcome {
             .store(provider.storage())
             .map_err(WelcomeError::StorageUpdateError)?;
         group
-            .store_epoch_keypairs(provider.key_store(), group_keypairs.as_slice())
-            .map_err(WelcomeError::KeyStoreError)?;
+            .store_epoch_keypairs(provider.storage(), group_keypairs.as_slice())
+            .map_err(WelcomeError::StorageUpdateError)?;
 
         Ok(group)
     }

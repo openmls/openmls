@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use openmls_traits::{
     crypto::OpenMlsCrypto,
-    key_store::{MlsEntity, MlsEntityId, OpenMlsKeyStore},
+    storage::{StorageProvider as StorageProviderTrait, CURRENT_VERSION},
     types::{Ciphersuite, HpkeCiphertext, HpkeKeyPair},
     OpenMlsProvider,
 };
@@ -158,16 +158,12 @@ pub(crate) struct EncryptionKeyPair {
 const ENCRYPTION_KEY_LABEL: &[u8; 19] = b"leaf_encryption_key";
 
 impl EncryptionKeyPair {
-    /// Write the [`EncryptionKeyPair`] to the key store of the `provider`. This
-    /// function is meant to store standalone keypairs, not ones that are
-    /// already in use with an MLS group.
-    ///
-    /// Returns a key store error if access to the key store fails.
-    pub(crate) fn write_to_key_store<KeyStore: OpenMlsKeyStore>(
+    /// Write the [`EncryptionKeyPair`] to the store of the `provider`.
+    pub(crate) fn write<Storage: StorageProviderTrait<CURRENT_VERSION>>(
         &self,
-        store: &KeyStore,
-    ) -> Result<(), KeyStore::Error> {
-        store.store(&self.public_key().to_bytes_with_prefix(), self)
+        store: &Storage,
+    ) -> Result<(), Storage::UpdateError> {
+        store.write_encryption_key_pair(self.public_key(), self)
     }
 
     /// Read the [`EncryptionKeyPair`] from the key store of the `provider`. This
@@ -175,25 +171,19 @@ impl EncryptionKeyPair {
     /// already in use with an MLS group.
     ///
     /// Returns `None` if the keypair cannot be read from the store.
-    pub(crate) fn read_from_key_store(
+    pub(crate) fn read(
         provider: &impl OpenMlsProvider,
         encryption_key: &EncryptionKey,
     ) -> Option<EncryptionKeyPair> {
-        provider
-            .key_store()
-            .read(&encryption_key.to_bytes_with_prefix())
+        provider.storage().encryption_key_pair(encryption_key).ok()
     }
 
-    /// Delete the [`EncryptionKeyPair`] from the key store of the `provider`.
-    /// This function is meant to delete standalone keypairs, not ones that are
-    /// already in use with an MLS group.
-    ///
-    /// Returns a key store error if access to the key store fails.
-    pub(crate) fn delete_from_key_store<KeyStore: OpenMlsKeyStore>(
+    /// Delete the [`EncryptionKeyPair`] from the store of the `provider`.
+    pub(crate) fn delete_from_key_store<Storage: StorageProviderTrait<CURRENT_VERSION>>(
         &self,
-        store: &KeyStore,
-    ) -> Result<(), KeyStore::Error> {
-        store.delete::<Self>(&self.public_key().to_bytes_with_prefix())
+        store: &Storage,
+    ) -> Result<(), Storage::UpdateError> {
+        store.delete_encryption_key_pair(self.public_key())
     }
 
     pub(crate) fn public_key(&self) -> &EncryptionKey {
@@ -226,7 +216,7 @@ pub mod test_utils {
         provider: &impl OpenMlsProvider,
         encryption_key: &EncryptionKey,
     ) -> HpkeKeyPair {
-        let keys = EncryptionKeyPair::read_from_key_store(provider, encryption_key).unwrap();
+        let keys = EncryptionKeyPair::read(provider, encryption_key).unwrap();
 
         HpkeKeyPair {
             private: keys.private_key.key,
@@ -237,7 +227,7 @@ pub mod test_utils {
     pub fn write_keys_from_key_store(provider: &impl OpenMlsProvider, encryption_key: HpkeKeyPair) {
         let keypair = EncryptionKeyPair::from(encryption_key);
 
-        keypair.write_to_key_store(provider.key_store()).unwrap();
+        keypair.write(provider.storage()).unwrap();
     }
 }
 
@@ -283,8 +273,4 @@ impl From<(EncryptionKey, EncryptionPrivateKey)> for EncryptionKeyPair {
             private_key,
         }
     }
-}
-
-impl MlsEntity for EncryptionKeyPair {
-    const ID: MlsEntityId = MlsEntityId::EncryptionKeyPair;
 }

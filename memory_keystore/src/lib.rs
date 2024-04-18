@@ -18,7 +18,7 @@ impl MemoryKeyStore {
         label: &[u8],
         key: &[u8],
         value: &[u8],
-    ) -> Result<(), <Self as OpenMlsKeyStore>::Error> {
+    ) -> Result<(), <Self as StorageProvider<CURRENT_VERSION>>::GetError> {
         let mut values = self.values.write().unwrap();
 
         let mut storage_key = label.to_vec();
@@ -35,7 +35,7 @@ impl MemoryKeyStore {
         &self,
         label: &[u8],
         key: &[u8],
-    ) -> Result<V, <Self as OpenMlsKeyStore>::Error> {
+    ) -> Result<V, <Self as StorageProvider<CURRENT_VERSION>>::GetError> {
         let values = self.values.read().unwrap();
 
         let mut storage_key = label.to_vec();
@@ -50,22 +50,20 @@ impl MemoryKeyStore {
 
     /// Internal helper to abstract delete operations.
     #[inline(always)]
-    fn delete<const VERSION: u16, V: Entity<VERSION>>(
+    fn delete<const VERSION: u16>(
         &self,
         label: &[u8],
         key: &[u8],
-    ) -> Result<Option<V>, <Self as OpenMlsKeyStore>::Error> {
+    ) -> Result<(), <Self as StorageProvider<CURRENT_VERSION>>::UpdateError> {
         let mut values = self.values.write().unwrap();
 
         let mut storage_key = label.to_vec();
         storage_key.extend_from_slice(key);
         storage_key.extend_from_slice(&u16::to_be_bytes(VERSION));
 
-        let out = values
-            .remove(&storage_key)
-            .map(|bytes| serde_json::from_slice(&bytes).unwrap());
+        values.remove(&storage_key);
 
-        Ok(out)
+        Ok(())
     }
 }
 
@@ -146,6 +144,7 @@ const TREE_LABEL: &[u8] = b"Tree";
 const PSK_LABEL: &[u8] = b"Psk";
 const ENCRYPTION_KEY_PAIR_LABEL: &[u8] = b"EncryptionKeyPair";
 const SIGNATURE_KEY_PAIR_LABEL: &[u8] = b"SignatureKeyPair";
+const EPOCH_KEY_PAIRS_LABEL: &[u8] = b"EpochKeyPairs";
 
 const OWN_LEAF_NODE_LABEL: &[u8] = b"OwnLeafNode";
 const EPOCH_SECRETS_LABEL: &[u8] = b"EpochSecrets";
@@ -377,15 +376,15 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
 
     fn write_init_private_key(
         &self,
-        public_key: impl storage::InitKey<CURRENT_VERSION>,
-        private_key: impl storage::HpkePrivateKey<CURRENT_VERSION>,
+        public_key: &impl storage::InitKey<CURRENT_VERSION>,
+        private_key: &impl storage::HpkePrivateKey<CURRENT_VERSION>,
     ) -> Result<(), Self::UpdateError> {
         let mut values = self.values.write().unwrap();
 
         let mut key = INIT_KEY_LABEL.to_vec();
-        key.extend_from_slice(&serde_json::to_vec(&public_key).unwrap());
+        key.extend_from_slice(&serde_json::to_vec(public_key).unwrap());
         key.extend_from_slice(&u16::to_be_bytes(CURRENT_VERSION));
-        let value = serde_json::to_vec(&private_key).unwrap();
+        let value = serde_json::to_vec(private_key).unwrap();
 
         values.insert(key, value);
         Ok(())
@@ -394,16 +393,13 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     fn write_key_package<KeyPackage: storage::KeyPackage<CURRENT_VERSION>>(
         &self,
         hash_ref: impl storage::HashReference<CURRENT_VERSION>,
-        key_package: KeyPackage,
+        key_package: &KeyPackage,
     ) -> Result<(), Self::UpdateError> {
         let key = serde_json::to_vec(&hash_ref).unwrap();
-        println!("setting key package at {key:?} for version {CURRENT_VERSION}");
         let value = serde_json::to_vec(&key_package).unwrap();
 
         self.write::<CURRENT_VERSION>(KEY_PACKAGE_LABEL, &key, &value)
             .unwrap();
-
-        self.key_package::<KeyPackage>(hash_ref).unwrap();
 
         Ok(())
     }
@@ -422,13 +418,13 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
 
     fn write_encryption_key_pair(
         &self,
-        public_key: impl storage::HpkePublicKey<CURRENT_VERSION>,
-        key_pair: impl storage::HpkeKeyPairEntity<CURRENT_VERSION>,
+        public_key: &impl storage::HpkePublicKey<CURRENT_VERSION>,
+        key_pair: &impl storage::HpkeKeyPairEntity<CURRENT_VERSION>,
     ) -> Result<(), Self::UpdateError> {
         self.write::<CURRENT_VERSION>(
             ENCRYPTION_KEY_PAIR_LABEL,
-            &serde_json::to_vec(&public_key).unwrap(),
-            &serde_json::to_vec(&key_pair).unwrap(),
+            &serde_json::to_vec(public_key).unwrap(),
+            &serde_json::to_vec(key_pair).unwrap(),
         )
     }
 
@@ -469,53 +465,53 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
 
     fn encryption_key_pair<V: storage::HpkeKeyPairEntity<CURRENT_VERSION>>(
         &self,
-        public_key: impl storage::HpkePublicKey<CURRENT_VERSION>,
+        public_key: &impl storage::HpkePublicKey<CURRENT_VERSION>,
     ) -> Result<V, Self::GetError> {
         self.read(
             ENCRYPTION_KEY_PAIR_LABEL,
-            &serde_json::to_vec(&public_key).unwrap(),
+            &serde_json::to_vec(public_key).unwrap(),
         )
     }
 
-    fn delete_signature_key_pair<V: storage::SignatureKeyPairEntity<CURRENT_VERSION>>(
+    fn delete_signature_key_pair(
         &self,
         public_key: &impl storage::SignaturePublicKeyKey<CURRENT_VERSION>,
-    ) -> Result<Option<V>, Self::GetError> {
-        self.delete(
+    ) -> Result<(), Self::UpdateError> {
+        self.delete::<CURRENT_VERSION>(
             SIGNATURE_KEY_PAIR_LABEL,
             &serde_json::to_vec(public_key).unwrap(),
         )
     }
 
-    fn delete_init_private_key<V: storage::HpkePrivateKey<CURRENT_VERSION>>(
+    fn delete_init_private_key(
         &self,
-        public_key: impl storage::InitKey<CURRENT_VERSION>,
-    ) -> Result<Option<V>, Self::GetError> {
-        self.delete(INIT_KEY_LABEL, &serde_json::to_vec(&public_key).unwrap())
+        public_key: &impl storage::InitKey<CURRENT_VERSION>,
+    ) -> Result<(), Self::UpdateError> {
+        self.delete::<CURRENT_VERSION>(INIT_KEY_LABEL, &serde_json::to_vec(public_key).unwrap())
     }
 
-    fn delete_encryption_key_pair<V: storage::HpkeKeyPairEntity<CURRENT_VERSION>>(
+    fn delete_encryption_key_pair(
         &self,
-        public_key: impl storage::HpkePublicKey<CURRENT_VERSION>,
-    ) -> Result<Option<V>, Self::GetError> {
-        self.delete(
+        public_key: &impl storage::HpkePublicKey<CURRENT_VERSION>,
+    ) -> Result<(), Self::UpdateError> {
+        self.delete::<CURRENT_VERSION>(
             ENCRYPTION_KEY_PAIR_LABEL,
             &serde_json::to_vec(&public_key).unwrap(),
         )
     }
 
-    fn delete_key_package<V: storage::KeyPackage<CURRENT_VERSION>>(
+    fn delete_key_package(
         &self,
         hash_ref: impl storage::HashReference<CURRENT_VERSION>,
-    ) -> Result<Option<V>, Self::GetError> {
-        self.delete(KEY_PACKAGE_LABEL, &serde_json::to_vec(&hash_ref).unwrap())
+    ) -> Result<(), Self::UpdateError> {
+        self.delete::<CURRENT_VERSION>(KEY_PACKAGE_LABEL, &serde_json::to_vec(&hash_ref).unwrap())
     }
 
-    fn delete_psk<V: storage::PskBundle<CURRENT_VERSION>>(
+    fn delete_psk(
         &self,
         psk_id: impl storage::PskKey<CURRENT_VERSION>,
-    ) -> Result<Option<V>, Self::GetError> {
-        self.delete(PSK_LABEL, &serde_json::to_vec(&psk_id).unwrap())
+    ) -> Result<(), Self::UpdateError> {
+        self.delete::<CURRENT_VERSION>(PSK_LABEL, &serde_json::to_vec(&psk_id).unwrap())
     }
 
     fn group_state<
@@ -703,6 +699,63 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     ) -> Result<(), Self::UpdateError> {
         todo!()
     }
+
+    fn write_encryption_epoch_key_pairs(
+        &self,
+        group_id: &impl GroupIdKey<CURRENT_VERSION>,
+        epoch: &impl EpochKey<CURRENT_VERSION>,
+        leaf_index: u32,
+        key_pairs: &[impl HpkeKeyPairEntity<CURRENT_VERSION>],
+    ) -> Result<(), Self::UpdateError> {
+        let key = epoch_key_pairs_id(group_id, epoch, leaf_index)?;
+
+        let value = serde_json::to_vec(key_pairs)?;
+
+        self.write::<CURRENT_VERSION>(EPOCH_KEY_PAIRS_LABEL, &key, &value)
+    }
+
+    fn encryption_epoch_key_pairs<V: HpkeKeyPairEntity<CURRENT_VERSION>>(
+        &self,
+        group_id: &impl GroupIdKey<CURRENT_VERSION>,
+        epoch: &impl EpochKey<CURRENT_VERSION>,
+        leaf_index: u32,
+    ) -> Result<Vec<V>, Self::GetError> {
+        let key = epoch_key_pairs_id(group_id, epoch, leaf_index)?;
+
+        let values = self.values.read().unwrap();
+
+        let mut storage_key = EPOCH_KEY_PAIRS_LABEL.to_vec();
+        storage_key.extend_from_slice(&key);
+        storage_key.extend_from_slice(&u16::to_be_bytes(CURRENT_VERSION));
+
+        let value = values.get(&storage_key);
+        if let Some(value) = value {
+            return Ok(serde_json::from_slice(value).unwrap());
+        }
+
+        Err(MemoryKeyStoreError::None)
+    }
+
+    fn delete_encryption_epoch_key_pairs(
+        &self,
+        group_id: &impl GroupIdKey<CURRENT_VERSION>,
+        epoch: &impl EpochKey<CURRENT_VERSION>,
+        leaf_index: u32,
+    ) -> Result<(), Self::UpdateError> {
+        let key = epoch_key_pairs_id(group_id, epoch, leaf_index)?;
+        self.delete::<CURRENT_VERSION>(EPOCH_KEY_PAIRS_LABEL, &key)
+    }
+}
+
+fn epoch_key_pairs_id(
+    group_id: &impl GroupIdKey<CURRENT_VERSION>,
+    epoch: &impl EpochKey<CURRENT_VERSION>,
+    leaf_index: u32,
+) -> Result<Vec<u8>, <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::UpdateError> {
+    let mut key = serde_json::to_vec(group_id)?;
+    key.extend_from_slice(&serde_json::to_vec(epoch)?);
+    key.extend_from_slice(&serde_json::to_vec(&leaf_index)?);
+    Ok(key)
 }
 
 #[cfg(feature = "test-utils")]
@@ -761,15 +814,15 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
 
     fn write_init_private_key(
         &self,
-        public_key: impl InitKey<V_TEST>,
-        private_key: impl HpkePrivateKey<V_TEST>,
+        public_key: &impl InitKey<V_TEST>,
+        private_key: &impl HpkePrivateKey<V_TEST>,
     ) -> Result<(), Self::UpdateError> {
         let mut values = self.values.write().unwrap();
 
         let mut key = INIT_KEY_LABEL.to_vec();
-        key.extend_from_slice(&serde_json::to_vec(&public_key).unwrap());
+        key.extend_from_slice(&serde_json::to_vec(public_key).unwrap());
         key.extend_from_slice(&u16::to_be_bytes(V_TEST));
-        let value = serde_json::to_vec(&private_key).unwrap();
+        let value = serde_json::to_vec(private_key).unwrap();
 
         values.insert(key, value);
         Ok(())
@@ -777,8 +830,8 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
 
     fn write_encryption_key_pair(
         &self,
-        public_key: impl HpkePublicKey<V_TEST>,
-        key_pair: impl HpkeKeyPairEntity<V_TEST>,
+        public_key: &impl HpkePublicKey<V_TEST>,
+        key_pair: &impl HpkeKeyPairEntity<V_TEST>,
     ) -> Result<(), Self::UpdateError> {
         self.write::<V_TEST>(
             ENCRYPTION_KEY_PAIR_LABEL,
@@ -860,11 +913,11 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
 
     fn encryption_key_pair<V: HpkeKeyPairEntity<V_TEST>>(
         &self,
-        public_key: impl HpkePublicKey<V_TEST>,
+        public_key: &impl HpkePublicKey<V_TEST>,
     ) -> Result<V, Self::GetError> {
         self.read(
             ENCRYPTION_KEY_PAIR_LABEL,
-            &serde_json::to_vec(&public_key).unwrap(),
+            &serde_json::to_vec(public_key).unwrap(),
         )
     }
 
@@ -886,45 +939,10 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         todo!()
     }
 
-    fn delete_signature_key_pair<V: SignatureKeyPairEntity<V_TEST>>(
-        &self,
-        public_key: &impl SignaturePublicKeyKey<V_TEST>,
-    ) -> Result<Option<V>, Self::GetError> {
-        todo!()
-    }
-
-    fn delete_init_private_key<V: HpkePrivateKey<V_TEST>>(
-        &self,
-        public_key: impl InitKey<V_TEST>,
-    ) -> Result<Option<V>, Self::GetError> {
-        todo!()
-    }
-
-    fn delete_encryption_key_pair<V: HpkeKeyPairEntity<V_TEST>>(
-        &self,
-        public_key: impl HpkePublicKey<V_TEST>,
-    ) -> Result<Option<V>, Self::GetError> {
-        todo!()
-    }
-
-    fn delete_key_package<V: KeyPackage<V_TEST>>(
-        &self,
-        hash_ref: impl HashReference<V_TEST>,
-    ) -> Result<Option<V>, Self::GetError> {
-        todo!()
-    }
-
-    fn delete_psk<V: PskBundle<V_TEST>>(
-        &self,
-        psk_id: impl PskKey<V_TEST>,
-    ) -> Result<Option<V>, Self::GetError> {
-        todo!()
-    }
-
     fn write_key_package<KeyPackage: storage::KeyPackage<V_TEST>>(
         &self,
         hash_ref: impl storage::HashReference<V_TEST>,
-        key_package: KeyPackage,
+        key_package: &KeyPackage,
     ) -> Result<(), Self::UpdateError> {
         let key = serde_json::to_vec(&hash_ref).unwrap();
         println!("setting key package at {key:?} for version {V_TEST}");
@@ -1087,6 +1105,66 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
     fn delete_group_epoch_secrets<GroupId: GroupIdKey<V_TEST>>(
         &self,
         group_id: &GroupId,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn delete_signature_key_pair(
+        &self,
+        public_key: &impl SignaturePublicKeyKey<V_TEST>,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn delete_init_private_key(
+        &self,
+        public_key: &impl InitKey<V_TEST>,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn delete_encryption_key_pair(
+        &self,
+        public_key: &impl HpkePublicKey<V_TEST>,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn delete_key_package(
+        &self,
+        hash_ref: impl HashReference<V_TEST>,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn delete_psk(&self, psk_id: impl PskKey<V_TEST>) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn write_encryption_epoch_key_pairs(
+        &self,
+        group_id: &impl GroupIdKey<V_TEST>,
+        epoch: &impl EpochKey<V_TEST>,
+        leaf_index: u32,
+        key_pairs: &[impl HpkeKeyPairEntity<V_TEST>],
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn encryption_epoch_key_pairs<V: HpkeKeyPairEntity<V_TEST>>(
+        &self,
+        group_id: &impl GroupIdKey<V_TEST>,
+        epoch: &impl EpochKey<V_TEST>,
+        leaf_index: u32,
+    ) -> Result<Vec<V>, Self::GetError> {
+        todo!()
+    }
+
+    fn delete_encryption_epoch_key_pairs(
+        &self,
+        group_id: &impl GroupIdKey<V_TEST>,
+        epoch: &impl EpochKey<V_TEST>,
+        leaf_index: u32,
     ) -> Result<(), Self::UpdateError> {
         todo!()
     }

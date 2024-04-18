@@ -151,7 +151,7 @@ pub(crate) fn generate_group_candidate(
                 )
                 .unwrap();
 
-            let encryption_keypair = EncryptionKeyPair::read_from_key_store(
+            let encryption_keypair = EncryptionKeyPair::read(
                 provider,
                 key_package.leaf_node().encryption_key(),
             )

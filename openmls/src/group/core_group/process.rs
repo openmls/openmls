@@ -274,7 +274,7 @@ impl CoreGroup {
         own_leaf_nodes: &[LeafNode],
     ) -> Result<(Vec<EncryptionKeyPair>, Vec<EncryptionKeyPair>), StageCommitError> {
         // All keys from the previous epoch are potential decryption keypairs.
-        let old_epoch_keypairs = self.read_epoch_keypairs(provider.key_store());
+        let old_epoch_keypairs = self.read_epoch_keypairs(provider.storage());
 
         // If we are processing an update proposal that originally came from
         // us, the keypair corresponding to the leaf in the update is also a
@@ -282,7 +282,7 @@ impl CoreGroup {
         let leaf_node_keypairs = own_leaf_nodes
             .iter()
             .map(|leaf_node| {
-                EncryptionKeyPair::read_from_key_store(provider, leaf_node.encryption_key())
+                EncryptionKeyPair::read(provider, leaf_node.encryption_key())
                     .ok_or(StageCommitError::MissingDecryptionKey)
             })
             .collect::<Result<Vec<EncryptionKeyPair>, StageCommitError>>()?;

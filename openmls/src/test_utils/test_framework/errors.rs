@@ -54,7 +54,7 @@ pub enum ClientError {
     NoCiphersuite,
     /// See [`WelcomeError`] for more details.
     #[error(transparent)]
-    FailedToJoinGroup(#[from] WelcomeError<MemoryKeyStoreError, MemoryKeyStoreError>),
+    FailedToJoinGroup(#[from] WelcomeError<MemoryKeyStoreError>),
     #[error(transparent)]
     TlsCodecError(#[from] tls_codec::Error),
     /// See [`ProcessMessageError`] for more details.

@@ -13,6 +13,7 @@ use crate::{
         Welcome,
     },
     schedule::psk::store::ResumptionPskStore,
+    storage::StorageReference,
     treesync::RatchetTreeIn,
 };
 
@@ -142,7 +143,7 @@ impl StagedWelcome {
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
         ratchet_tree: Option<RatchetTreeIn>,
-    ) -> Result<Self, WelcomeError<KeyStore::Error, Storage::UpdateError>> {
+    ) -> Result<Self, WelcomeError<Storage::UpdateError>> {
         let resumption_psk_store =
             ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
         let (key_package, _) = welcome
@@ -152,9 +153,10 @@ impl StagedWelcome {
                 let new_member = egs.new_member();
                 let hash_ref = new_member.as_slice();
                 provider
-                    .key_store()
-                    .read(hash_ref)
+                    .storage()
+                    .key_package(StorageReference(hash_ref))
                     .map(|kp: KeyPackage| (kp, hash_ref.to_vec()))
+                    .ok()
             })
             .ok_or(WelcomeError::NoMatchingKeyPackage)?;
 
@@ -173,8 +175,8 @@ impl StagedWelcome {
         if !key_package_bundle.key_package().last_resort() {
             key_package_bundle
                 .key_package
-                .delete(provider)
-                .map_err(WelcomeError::KeyStoreError)?;
+                .delete(provider, false)
+                .unwrap(); // FIXME: error handling
         } else {
             log::debug!("Key package has last resort extension, not deleting");
         }
@@ -216,7 +218,7 @@ impl StagedWelcome {
     >(
         self,
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
-    ) -> Result<MlsGroup, WelcomeError<KeyStore::Error, Storage::UpdateError>> {
+    ) -> Result<MlsGroup, WelcomeError<Storage::UpdateError>> {
         let mut group = self.group.into_core_group(provider)?;
         group.set_max_past_epochs(self.mls_group_config.max_past_epochs);
 

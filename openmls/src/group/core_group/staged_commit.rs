@@ -316,7 +316,7 @@ impl CoreGroup {
     {
         // Get all keypairs from the old epoch, so we can later store the ones
         // that are still relevant in the new epoch.
-        let old_epoch_keypairs = self.read_epoch_keypairs(provider.key_store());
+        let old_epoch_keypairs = self.read_epoch_keypairs(provider.storage());
         match staged_commit.state {
             StagedCommitState::PublicState(staged_state) => {
                 self.public_group
@@ -372,15 +372,15 @@ impl CoreGroup {
                     .into());
                 }
                 // Store the relevant keys under the new epoch
-                self.store_epoch_keypairs(provider.key_store(), epoch_keypairs.as_slice())
-                    .map_err(MergeCommitError::KeyStoreError)?;
+                self.store_epoch_keypairs(provider.storage(), epoch_keypairs.as_slice())
+                    .map_err(MergeCommitError::StorageUpdateError)?;
                 // Delete the old keys.
-                self.delete_previous_epoch_keypairs(provider.key_store())
-                    .map_err(MergeCommitError::KeyStoreError)?;
+                self.delete_previous_epoch_keypairs(provider.storage())
+                    .map_err(MergeCommitError::StorageUpdateError)?;
                 if let Some(keypair) = state.new_leaf_keypair_option {
                     keypair
-                        .delete_from_key_store(provider.key_store())
-                        .map_err(MergeCommitError::KeyStoreError)?;
+                        .delete_from_key_store(provider.storage())
+                        .map_err(MergeCommitError::StorageUpdateError)?;
                 }
 
                 Ok(Some(message_secrets))
