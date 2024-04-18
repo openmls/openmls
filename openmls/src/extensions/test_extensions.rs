@@ -459,7 +459,7 @@ fn last_resort_extension(
     let _: KeyPackage = provider
         .storage()
         .key_package(
-            kp.hash_ref(provider.crypto())
+            &kp.hash_ref(provider.crypto())
                 .expect("error hashing key package"),
         )
         .expect("error retrieving key package");

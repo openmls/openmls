@@ -1,9 +1,9 @@
 use openmls_traits::{
     key_store::{MlsEntity, OpenMlsKeyStore},
-    storage::{self, *},
+    storage::*,
 };
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, sync::RwLock};
+use std::{collections::HashMap, io::Write as _, sync::RwLock};
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct MemoryKeyStore {
@@ -35,7 +35,25 @@ impl MemoryKeyStore {
         &self,
         label: &[u8],
         key: &[u8],
-    ) -> Result<V, <Self as StorageProvider<CURRENT_VERSION>>::GetError> {
+    ) -> Result<Option<V>, <Self as StorageProvider<CURRENT_VERSION>>::GetError> {
+        let values = self.values.read().unwrap();
+
+        let mut storage_key = label.to_vec();
+        storage_key.extend_from_slice(key);
+        storage_key.extend_from_slice(&u16::to_be_bytes(VERSION));
+
+        let value = values.get(&storage_key).unwrap();
+        let value = serde_json::from_slice(value).unwrap();
+
+        Ok(value)
+    }
+    /// Internal helper to abstract read operations.
+    #[inline(always)]
+    fn read_list<const VERSION: u16, V: Entity<VERSION>>(
+        &self,
+        label: &[u8],
+        key: &[u8],
+    ) -> Result<Vec<V>, <Self as StorageProvider<CURRENT_VERSION>>::GetError> {
         let values = self.values.read().unwrap();
 
         let mut storage_key = label.to_vec();
@@ -125,17 +143,9 @@ pub enum MemoryKeyStoreError {
     None,
 }
 
-impl GetError for MemoryKeyStoreError {
-    fn error_kind(&self) -> storage::GetErrorKind {
-        todo!()
-    }
-}
+impl GetError for MemoryKeyStoreError {}
 
-impl UpdateError for MemoryKeyStoreError {
-    fn error_kind(&self) -> storage::UpdateErrorKind {
-        todo!()
-    }
-}
+impl UpdateError for MemoryKeyStoreError {}
 
 const QUEUED_PROPOSAL_LABEL: &[u8] = b"QueuedProposal";
 const INIT_KEY_LABEL: &[u8] = b"HpkePrivateKey";
@@ -158,11 +168,15 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     type UpdateError = MemoryKeyStoreError;
     // type Types = Types;
 
-    fn queue_proposal(
+    fn queue_proposal<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        ProposalRef: traits::ProposalRef<CURRENT_VERSION>,
+        QueuedProposal: traits::QueuedProposal<CURRENT_VERSION>,
+    >(
         &self,
-        group_id: impl storage::GroupIdKey<CURRENT_VERSION>,
-        proposal_ref: impl storage::ProposalRefEntity<CURRENT_VERSION>,
-        proposal: impl storage::QueuedProposalEntity<CURRENT_VERSION>,
+        group_id: &GroupId,
+        proposal_ref: &ProposalRef,
+        proposal: &QueuedProposal,
     ) -> Result<(), Self::UpdateError> {
         let mut values = self.values.write().unwrap();
 
@@ -188,10 +202,13 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         Ok(())
     }
 
-    fn write_tree(
+    fn write_tree<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        TreeSync: traits::TreeSync<CURRENT_VERSION>,
+    >(
         &self,
-        group_id: impl storage::GroupIdKey<CURRENT_VERSION>,
-        tree: impl storage::TreeSyncEntity<CURRENT_VERSION>,
+        group_id: &GroupId,
+        tree: &TreeSync,
     ) -> Result<(), Self::UpdateError> {
         self.write::<CURRENT_VERSION>(
             TREE_LABEL,
@@ -200,10 +217,13 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         )
     }
 
-    fn write_interim_transcript_hash(
+    fn write_interim_transcript_hash<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        InterimTranscriptHash: traits::InterimTranscriptHash<CURRENT_VERSION>,
+    >(
         &self,
-        group_id: impl storage::GroupIdKey<CURRENT_VERSION>,
-        interim_transcript_hash: impl storage::InterimTranscriptHashEntity<CURRENT_VERSION>,
+        group_id: &GroupId,
+        interim_transcript_hash: &InterimTranscriptHash,
     ) -> Result<(), Self::UpdateError> {
         let mut values = self.values.write().unwrap();
         let mut key = b"InterimTranscriptHash".to_vec();
@@ -215,10 +235,13 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         Ok(())
     }
 
-    fn write_context(
+    fn write_context<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        GroupContext: traits::GroupContext<CURRENT_VERSION>,
+    >(
         &self,
-        group_id: impl storage::GroupIdKey<CURRENT_VERSION>,
-        group_context: impl storage::GroupContextEntity<CURRENT_VERSION>,
+        group_id: &GroupId,
+        group_context: &GroupContext,
     ) -> Result<(), Self::UpdateError> {
         let mut values = self.values.write().unwrap();
         let mut key = b"GroupContext".to_vec();
@@ -230,10 +253,13 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         Ok(())
     }
 
-    fn write_confirmation_tag(
+    fn write_confirmation_tag<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        ConfirmationTag: traits::ConfirmationTag<CURRENT_VERSION>,
+    >(
         &self,
-        group_id: impl storage::GroupIdKey<CURRENT_VERSION>,
-        confirmation_tag: impl storage::ConfirmationTagEntity<CURRENT_VERSION>,
+        group_id: &GroupId,
+        confirmation_tag: &ConfirmationTag,
     ) -> Result<(), Self::UpdateError> {
         let mut values = self.values.write().unwrap();
         let mut key = b"ConfirmationTag".to_vec();
@@ -245,25 +271,31 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         Ok(())
     }
 
-    fn write_signature_key_pair(
+    fn write_signature_key_pair<
+        SignaturePublicKey: traits::SignaturePublicKey<CURRENT_VERSION>,
+        SignatureKeyPair: traits::SignatureKeyPair<CURRENT_VERSION>,
+    >(
         &self,
-        public_key: &impl storage::SignaturePublicKeyKey<CURRENT_VERSION>,
-        key_pair: &impl storage::SignatureKeyPairEntity<CURRENT_VERSION>,
+        public_key: &SignaturePublicKey,
+        signature_key_pair: &SignatureKeyPair,
     ) -> Result<(), Self::UpdateError> {
         let mut values = self.values.write().unwrap();
         let mut key = SIGNATURE_KEY_PAIR_LABEL.to_vec();
         key.extend_from_slice(&serde_json::to_vec(&public_key).unwrap());
         key.extend_from_slice(&u16::to_be_bytes(CURRENT_VERSION));
-        let value = serde_json::to_vec(&key_pair).unwrap();
+        let value = serde_json::to_vec(&signature_key_pair).unwrap();
 
         values.insert(key, value);
         Ok(())
     }
 
-    fn get_queued_proposal_refs<V: ProposalRefEntity<CURRENT_VERSION>>(
+    fn queued_proposal_refs<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        ProposalRef: traits::ProposalRef<CURRENT_VERSION>,
+    >(
         &self,
-        group_id: &impl storage::GroupIdKey<CURRENT_VERSION>,
-    ) -> Result<Vec<V>, Self::GetError> {
+        group_id: &GroupId,
+    ) -> Result<Vec<ProposalRef>, Self::GetError> {
         let values = self.values.read().unwrap();
 
         let mut key = b"ProposalRef".to_vec();
@@ -277,10 +309,13 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         Ok(vec![value])
     }
 
-    fn get_queued_proposals<V: storage::QueuedProposalEntity<CURRENT_VERSION>>(
+    fn queued_proposals<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        QueuedProposal: traits::QueuedProposal<CURRENT_VERSION>,
+    >(
         &self,
-        group_id: &impl storage::GroupIdKey<CURRENT_VERSION>,
-    ) -> Result<Vec<V>, Self::GetError> {
+        group_id: &GroupId,
+    ) -> Result<Vec<QueuedProposal>, Self::GetError> {
         let values = self.values.read().unwrap();
 
         let mut key = QUEUED_PROPOSAL_LABEL.to_vec();
@@ -293,10 +328,13 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         Ok(vec![value])
     }
 
-    fn get_treesync<V: storage::TreeSyncEntity<CURRENT_VERSION>>(
+    fn treesync<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        TreeSync: traits::TreeSync<CURRENT_VERSION>,
+    >(
         &self,
-        group_id: &impl storage::GroupIdKey<CURRENT_VERSION>,
-    ) -> Result<V, Self::GetError> {
+        group_id: &GroupId,
+    ) -> Result<Option<TreeSync>, Self::GetError> {
         let values = self.values.read().unwrap();
 
         // XXX: These domain separators should be constants.
@@ -310,10 +348,13 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         Ok(value)
     }
 
-    fn get_group_context<V: storage::GroupContextEntity<CURRENT_VERSION>>(
+    fn group_context<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        GroupContext: traits::GroupContext<CURRENT_VERSION>,
+    >(
         &self,
-        group_id: &impl storage::GroupIdKey<CURRENT_VERSION>,
-    ) -> Result<V, Self::GetError> {
+        group_id: &GroupId,
+    ) -> Result<Option<GroupContext>, Self::GetError> {
         let values = self.values.read().unwrap();
 
         let mut key = b"GroupContext".to_vec();
@@ -326,10 +367,13 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         Ok(value)
     }
 
-    fn get_interim_transcript_hash<V: storage::InterimTranscriptHashEntity<CURRENT_VERSION>>(
+    fn interim_transcript_hash<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        InterimTranscriptHash: traits::InterimTranscriptHash<CURRENT_VERSION>,
+    >(
         &self,
-        group_id: &impl storage::GroupIdKey<CURRENT_VERSION>,
-    ) -> Result<V, Self::GetError> {
+        group_id: &GroupId,
+    ) -> Result<Option<InterimTranscriptHash>, Self::GetError> {
         let values = self.values.read().unwrap();
 
         let mut key = b"InterimTranscriptHash".to_vec();
@@ -342,10 +386,13 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         Ok(value)
     }
 
-    fn get_confirmation_tag<V: storage::ConfirmationTagEntity<CURRENT_VERSION>>(
+    fn confirmation_tag<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        ConfirmationTag: traits::ConfirmationTag<CURRENT_VERSION>,
+    >(
         &self,
-        group_id: &impl storage::GroupIdKey<CURRENT_VERSION>,
-    ) -> Result<V, Self::GetError> {
+        group_id: &GroupId,
+    ) -> Result<Option<ConfirmationTag>, Self::GetError> {
         let values = self.values.read().unwrap();
 
         let mut key = b"ConfirmationTag".to_vec();
@@ -358,10 +405,13 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         Ok(value)
     }
 
-    fn signature_key_pair<V: storage::SignatureKeyPairEntity<CURRENT_VERSION>>(
+    fn signature_key_pair<
+        SignaturePublicKey: traits::SignaturePublicKey<CURRENT_VERSION>,
+        SignatureKeyPair: traits::SignatureKeyPair<CURRENT_VERSION>,
+    >(
         &self,
-        public_key: &impl storage::SignaturePublicKeyKey<CURRENT_VERSION>,
-    ) -> Result<V, Self::GetError> {
+        public_key: &SignaturePublicKey,
+    ) -> Result<Option<SignatureKeyPair>, Self::GetError> {
         let values = self.values.read().unwrap();
 
         let mut key = SIGNATURE_KEY_PAIR_LABEL.to_vec();
@@ -374,10 +424,13 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         Ok(value)
     }
 
-    fn write_init_private_key(
+    fn write_init_private_key<
+        InitKey: traits::InitKey<CURRENT_VERSION>,
+        HpkePrivateKey: traits::HpkePrivateKey<CURRENT_VERSION>,
+    >(
         &self,
-        public_key: &impl storage::InitKey<CURRENT_VERSION>,
-        private_key: &impl storage::HpkePrivateKey<CURRENT_VERSION>,
+        public_key: &InitKey,
+        private_key: &HpkePrivateKey,
     ) -> Result<(), Self::UpdateError> {
         let mut values = self.values.write().unwrap();
 
@@ -390,9 +443,12 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         Ok(())
     }
 
-    fn write_key_package<KeyPackage: storage::KeyPackage<CURRENT_VERSION>>(
+    fn write_key_package<
+        HashReference: traits::HashReference<CURRENT_VERSION>,
+        KeyPackage: traits::KeyPackage<CURRENT_VERSION>,
+    >(
         &self,
-        hash_ref: impl storage::HashReference<CURRENT_VERSION>,
+        hash_ref: &HashReference,
         key_package: &KeyPackage,
     ) -> Result<(), Self::UpdateError> {
         let key = serde_json::to_vec(&hash_ref).unwrap();
@@ -404,10 +460,13 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         Ok(())
     }
 
-    fn write_psk(
+    fn write_psk<
+        PskId: traits::PskId<CURRENT_VERSION>,
+        PskBundle: traits::PskBundle<CURRENT_VERSION>,
+    >(
         &self,
-        psk_id: impl storage::PskKey<CURRENT_VERSION>,
-        psk: impl storage::PskBundle<CURRENT_VERSION>,
+        psk_id: &PskId,
+        psk: &PskBundle,
     ) -> Result<(), Self::UpdateError> {
         self.write::<CURRENT_VERSION>(
             PSK_LABEL,
@@ -416,10 +475,13 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         )
     }
 
-    fn write_encryption_key_pair(
+    fn write_encryption_key_pair<
+        EncryptionKey: traits::EncryptionKey<CURRENT_VERSION>,
+        HpkeKeyPair: traits::HpkeKeyPair<CURRENT_VERSION>,
+    >(
         &self,
-        public_key: &impl storage::HpkePublicKey<CURRENT_VERSION>,
-        key_pair: &impl storage::HpkeKeyPairEntity<CURRENT_VERSION>,
+        public_key: &EncryptionKey,
+        key_pair: &HpkeKeyPair,
     ) -> Result<(), Self::UpdateError> {
         self.write::<CURRENT_VERSION>(
             ENCRYPTION_KEY_PAIR_LABEL,
@@ -428,10 +490,13 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         )
     }
 
-    fn init_private_key<V: storage::HpkePrivateKey<CURRENT_VERSION>>(
+    fn init_private_key<
+        InitKey: traits::InitKey<CURRENT_VERSION>,
+        HpkePrivateKey: traits::HpkePrivateKey<CURRENT_VERSION>,
+    >(
         &self,
-        public_key: impl storage::InitKey<CURRENT_VERSION>,
-    ) -> Result<V, Self::GetError> {
+        public_key: &InitKey,
+    ) -> Result<Option<HpkePrivateKey>, Self::GetError> {
         let values = self.values.read().unwrap();
 
         let mut key = INIT_KEY_LABEL.to_vec();
@@ -442,10 +507,13 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         serde_json::from_slice(value).map_err(|_| MemoryKeyStoreError::SerializationError)
     }
 
-    fn key_package<V: storage::KeyPackage<CURRENT_VERSION>>(
+    fn key_package<
+        KeyPackageRef: traits::HashReference<CURRENT_VERSION>,
+        KeyPackage: traits::KeyPackage<CURRENT_VERSION>,
+    >(
         &self,
-        hash_ref: impl storage::HashReference<CURRENT_VERSION>,
-    ) -> Result<V, Self::GetError> {
+        hash_ref: &KeyPackageRef,
+    ) -> Result<Option<KeyPackage>, Self::GetError> {
         let key = serde_json::to_vec(&hash_ref).unwrap();
 
         println!("getting key package at {key:?} for version {CURRENT_VERSION}");
@@ -456,26 +524,31 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         self.read(KEY_PACKAGE_LABEL, &key)
     }
 
-    fn psk<V: storage::PskBundle<CURRENT_VERSION>>(
+    fn psk<PskBundle: traits::PskBundle<CURRENT_VERSION>, PskId: traits::PskId<CURRENT_VERSION>>(
         &self,
-        psk_id: impl storage::PskKey<CURRENT_VERSION>,
-    ) -> Result<V, Self::GetError> {
+        psk_id: &PskId,
+    ) -> Result<Option<PskBundle>, Self::GetError> {
         self.read(PSK_LABEL, &serde_json::to_vec(&psk_id).unwrap())
     }
 
-    fn encryption_key_pair<V: storage::HpkeKeyPairEntity<CURRENT_VERSION>>(
+    fn encryption_key_pair<
+        HpkeKeyPair: traits::HpkeKeyPair<CURRENT_VERSION>,
+        EncryptionKey: traits::EncryptionKey<CURRENT_VERSION>,
+    >(
         &self,
-        public_key: &impl storage::HpkePublicKey<CURRENT_VERSION>,
-    ) -> Result<V, Self::GetError> {
+        public_key: &EncryptionKey,
+    ) -> Result<Option<HpkeKeyPair>, Self::GetError> {
         self.read(
             ENCRYPTION_KEY_PAIR_LABEL,
             &serde_json::to_vec(public_key).unwrap(),
         )
     }
 
-    fn delete_signature_key_pair(
+    fn delete_signature_key_pair<
+        SignaturePublicKeuy: traits::SignaturePublicKey<CURRENT_VERSION>,
+    >(
         &self,
-        public_key: &impl storage::SignaturePublicKeyKey<CURRENT_VERSION>,
+        public_key: &SignaturePublicKeuy,
     ) -> Result<(), Self::UpdateError> {
         self.delete::<CURRENT_VERSION>(
             SIGNATURE_KEY_PAIR_LABEL,
@@ -483,16 +556,16 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         )
     }
 
-    fn delete_init_private_key(
+    fn delete_init_private_key<InitKey: traits::InitKey<CURRENT_VERSION>>(
         &self,
-        public_key: &impl storage::InitKey<CURRENT_VERSION>,
+        public_key: &InitKey,
     ) -> Result<(), Self::UpdateError> {
         self.delete::<CURRENT_VERSION>(INIT_KEY_LABEL, &serde_json::to_vec(public_key).unwrap())
     }
 
-    fn delete_encryption_key_pair(
+    fn delete_encryption_key_pair<EncryptionKey: traits::EncryptionKey<CURRENT_VERSION>>(
         &self,
-        public_key: &impl storage::HpkePublicKey<CURRENT_VERSION>,
+        public_key: &EncryptionKey,
     ) -> Result<(), Self::UpdateError> {
         self.delete::<CURRENT_VERSION>(
             ENCRYPTION_KEY_PAIR_LABEL,
@@ -500,33 +573,33 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         )
     }
 
-    fn delete_key_package(
+    fn delete_key_package<KeyPackageRef: traits::HashReference<CURRENT_VERSION>>(
         &self,
-        hash_ref: impl storage::HashReference<CURRENT_VERSION>,
+        hash_ref: &KeyPackageRef,
     ) -> Result<(), Self::UpdateError> {
         self.delete::<CURRENT_VERSION>(KEY_PACKAGE_LABEL, &serde_json::to_vec(&hash_ref).unwrap())
     }
 
-    fn delete_psk(
+    fn delete_psk<PskKey: traits::PskId<CURRENT_VERSION>>(
         &self,
-        psk_id: impl storage::PskKey<CURRENT_VERSION>,
+        psk_id: &PskKey,
     ) -> Result<(), Self::UpdateError> {
         self.delete::<CURRENT_VERSION>(PSK_LABEL, &serde_json::to_vec(&psk_id).unwrap())
     }
 
     fn group_state<
-        GroupState: GroupStateEntity<CURRENT_VERSION>,
-        GroupId: GroupIdKey<CURRENT_VERSION>,
+        GroupState: traits::GroupState<CURRENT_VERSION>,
+        GroupId: traits::GroupId<CURRENT_VERSION>,
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<GroupState, Self::UpdateError> {
+    ) -> Result<Option<GroupState>, Self::UpdateError> {
         todo!()
     }
 
     fn write_group_state<
-        GroupState: GroupStateEntity<CURRENT_VERSION>,
-        GroupId: GroupIdKey<CURRENT_VERSION>,
+        GroupState: traits::GroupState<CURRENT_VERSION>,
+        GroupId: traits::GroupId<CURRENT_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -539,7 +612,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         )
     }
 
-    fn delete_group_state<GroupId: GroupIdKey<CURRENT_VERSION>>(
+    fn delete_group_state<GroupId: traits::GroupId<CURRENT_VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::UpdateError> {
@@ -547,18 +620,18 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     }
 
     fn message_secrets<
-        GroupId: GroupIdKey<CURRENT_VERSION>,
-        MessageSecrets: MessageSecretsEntity<CURRENT_VERSION>,
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        MessageSecrets: traits::MessageSecrets<CURRENT_VERSION>,
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<MessageSecrets, Self::GetError> {
+    ) -> Result<Option<MessageSecrets>, Self::GetError> {
         todo!()
     }
 
     fn write_message_secrets<
-        GroupId: GroupIdKey<CURRENT_VERSION>,
-        MessageSecrets: MessageSecretsEntity<CURRENT_VERSION>,
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        MessageSecrets: traits::MessageSecrets<CURRENT_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -571,7 +644,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         )
     }
 
-    fn delete_message_secrets<GroupId: GroupIdKey<CURRENT_VERSION>>(
+    fn delete_message_secrets<GroupId: traits::GroupId<CURRENT_VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::UpdateError> {
@@ -579,18 +652,18 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     }
 
     fn resumption_psk_store<
-        GroupId: GroupIdKey<CURRENT_VERSION>,
-        ResumptionPskStore: ResumptionPskStoreEntity<CURRENT_VERSION>,
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        ResumptionPskStore: traits::ResumptionPskStore<CURRENT_VERSION>,
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<ResumptionPskStore, Self::GetError> {
+    ) -> Result<Option<ResumptionPskStore>, Self::GetError> {
         todo!()
     }
 
     fn write_resumption_psk_store<
-        GroupId: GroupIdKey<CURRENT_VERSION>,
-        ResumptionPskStore: ResumptionPskStoreEntity<CURRENT_VERSION>,
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        ResumptionPskStore: traits::ResumptionPskStore<CURRENT_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -603,7 +676,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         )
     }
 
-    fn delete_all_resumption_psk_secrets<GroupId: GroupIdKey<CURRENT_VERSION>>(
+    fn delete_all_resumption_psk_secrets<GroupId: traits::GroupId<CURRENT_VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::UpdateError> {
@@ -611,18 +684,18 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     }
 
     fn own_leaf_index<
-        GroupId: GroupIdKey<CURRENT_VERSION>,
-        LeafNodeIndex: LeafNodeIndexEntity<CURRENT_VERSION>,
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        LeafNodeIndex: traits::LeafNodeIndex<CURRENT_VERSION>,
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<LeafNodeIndex, Self::GetError> {
+    ) -> Result<Option<LeafNodeIndex>, Self::GetError> {
         todo!()
     }
 
     fn write_own_leaf_index<
-        GroupId: GroupIdKey<CURRENT_VERSION>,
-        LeafNodeIndex: LeafNodeIndexEntity<CURRENT_VERSION>,
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        LeafNodeIndex: traits::LeafNodeIndex<CURRENT_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -635,21 +708,21 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         )
     }
 
-    fn delete_own_leaf_index<GroupId: GroupIdKey<CURRENT_VERSION>>(
+    fn delete_own_leaf_index<GroupId: traits::GroupId<CURRENT_VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::UpdateError> {
         todo!()
     }
 
-    fn use_ratchet_tree_extension<GroupId: GroupIdKey<CURRENT_VERSION>>(
+    fn use_ratchet_tree_extension<GroupId: traits::GroupId<CURRENT_VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<bool, Self::GetError> {
+    ) -> Result<Option<bool>, Self::GetError> {
         todo!()
     }
 
-    fn set_use_ratchet_tree_extension<GroupId: GroupIdKey<CURRENT_VERSION>>(
+    fn set_use_ratchet_tree_extension<GroupId: traits::GroupId<CURRENT_VERSION>>(
         &self,
         group_id: &GroupId,
         value: bool,
@@ -661,7 +734,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         )
     }
 
-    fn delete_use_ratchet_tree_extension<GroupId: GroupIdKey<CURRENT_VERSION>>(
+    fn delete_use_ratchet_tree_extension<GroupId: traits::GroupId<CURRENT_VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::UpdateError> {
@@ -669,18 +742,18 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     }
 
     fn group_epoch_secrets<
-        GroupId: GroupIdKey<CURRENT_VERSION>,
-        GroupEpochSecrets: GroupEpochSecretsEntity<CURRENT_VERSION>,
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        GroupEpochSecrets: traits::GroupEpochSecrets<CURRENT_VERSION>,
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<GroupEpochSecrets, Self::GetError> {
+    ) -> Result<Option<GroupEpochSecrets>, Self::GetError> {
         todo!()
     }
 
     fn write_group_epoch_secrets<
-        GroupId: GroupIdKey<CURRENT_VERSION>,
-        GroupEpochSecrets: GroupEpochSecretsEntity<CURRENT_VERSION>,
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        GroupEpochSecrets: traits::GroupEpochSecrets<CURRENT_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -693,19 +766,23 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         )
     }
 
-    fn delete_group_epoch_secrets<GroupId: GroupIdKey<CURRENT_VERSION>>(
+    fn delete_group_epoch_secrets<GroupId: traits::GroupId<CURRENT_VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::UpdateError> {
         todo!()
     }
 
-    fn write_encryption_epoch_key_pairs(
+    fn write_encryption_epoch_key_pairs<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        EpochKey: traits::EpochKey<CURRENT_VERSION>,
+        HpkeKeyPair: traits::HpkeKeyPair<CURRENT_VERSION>,
+    >(
         &self,
-        group_id: &impl GroupIdKey<CURRENT_VERSION>,
-        epoch: &impl EpochKey<CURRENT_VERSION>,
+        group_id: &GroupId,
+        epoch: &EpochKey,
         leaf_index: u32,
-        key_pairs: &[impl HpkeKeyPairEntity<CURRENT_VERSION>],
+        key_pairs: &[HpkeKeyPair],
     ) -> Result<(), Self::UpdateError> {
         let key = epoch_key_pairs_id(group_id, epoch, leaf_index)?;
 
@@ -714,12 +791,16 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         self.write::<CURRENT_VERSION>(EPOCH_KEY_PAIRS_LABEL, &key, &value)
     }
 
-    fn encryption_epoch_key_pairs<V: HpkeKeyPairEntity<CURRENT_VERSION>>(
+    fn encryption_epoch_key_pairs<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        EpochKey: traits::EpochKey<CURRENT_VERSION>,
+        HpkeKeyPair: traits::HpkeKeyPair<CURRENT_VERSION>,
+    >(
         &self,
-        group_id: &impl GroupIdKey<CURRENT_VERSION>,
-        epoch: &impl EpochKey<CURRENT_VERSION>,
+        group_id: &GroupId,
+        epoch: &EpochKey,
         leaf_index: u32,
-    ) -> Result<Vec<V>, Self::GetError> {
+    ) -> Result<Vec<HpkeKeyPair>, Self::GetError> {
         let key = epoch_key_pairs_id(group_id, epoch, leaf_index)?;
 
         let values = self.values.read().unwrap();
@@ -736,10 +817,13 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         Err(MemoryKeyStoreError::None)
     }
 
-    fn delete_encryption_epoch_key_pairs(
+    fn delete_encryption_epoch_key_pairs<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        EpochKey: traits::EpochKey<CURRENT_VERSION>,
+    >(
         &self,
-        group_id: &impl GroupIdKey<CURRENT_VERSION>,
-        epoch: &impl EpochKey<CURRENT_VERSION>,
+        group_id: &GroupId,
+        epoch: &EpochKey,
         leaf_index: u32,
     ) -> Result<(), Self::UpdateError> {
         let key = epoch_key_pairs_id(group_id, epoch, leaf_index)?;
@@ -748,8 +832,8 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
 }
 
 fn epoch_key_pairs_id(
-    group_id: &impl GroupIdKey<CURRENT_VERSION>,
-    epoch: &impl EpochKey<CURRENT_VERSION>,
+    group_id: &impl traits::GroupId<CURRENT_VERSION>,
+    epoch: &impl traits::EpochKey<CURRENT_VERSION>,
     leaf_index: u32,
 ) -> Result<Vec<u8>, <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::UpdateError> {
     let mut key = serde_json::to_vec(group_id)?;
@@ -763,59 +847,13 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
     type GetError = MemoryKeyStoreError;
     type UpdateError = MemoryKeyStoreError;
 
-    fn queue_proposal(
+    fn write_init_private_key<
+        InitKey: traits::InitKey<V_TEST>,
+        HpkePrivateKey: traits::HpkePrivateKey<V_TEST>,
+    >(
         &self,
-        group_id: impl GroupIdKey<V_TEST>,
-        proposal_ref: impl ProposalRefEntity<V_TEST>,
-        proposal: impl QueuedProposalEntity<V_TEST>,
-    ) -> Result<(), Self::UpdateError> {
-        todo!()
-    }
-
-    fn write_tree(
-        &self,
-        group_id: impl GroupIdKey<V_TEST>,
-        tree: impl TreeSyncEntity<V_TEST>,
-    ) -> Result<(), Self::UpdateError> {
-        todo!()
-    }
-
-    fn write_interim_transcript_hash(
-        &self,
-        group_id: impl GroupIdKey<V_TEST>,
-        interim_transcript_hash: impl InterimTranscriptHashEntity<V_TEST>,
-    ) -> Result<(), Self::UpdateError> {
-        todo!()
-    }
-
-    fn write_context(
-        &self,
-        group_id: impl GroupIdKey<V_TEST>,
-        group_context: impl GroupContextEntity<V_TEST>,
-    ) -> Result<(), Self::UpdateError> {
-        todo!()
-    }
-
-    fn write_confirmation_tag(
-        &self,
-        group_id: impl GroupIdKey<V_TEST>,
-        confirmation_tag: impl ConfirmationTagEntity<V_TEST>,
-    ) -> Result<(), Self::UpdateError> {
-        todo!()
-    }
-
-    fn write_signature_key_pair(
-        &self,
-        public_key: &impl SignaturePublicKeyKey<V_TEST>,
-        signature_key_pair: &impl SignatureKeyPairEntity<V_TEST>,
-    ) -> Result<(), Self::UpdateError> {
-        todo!()
-    }
-
-    fn write_init_private_key(
-        &self,
-        public_key: &impl InitKey<V_TEST>,
-        private_key: &impl HpkePrivateKey<V_TEST>,
+        public_key: &InitKey,
+        private_key: &HpkePrivateKey,
     ) -> Result<(), Self::UpdateError> {
         let mut values = self.values.write().unwrap();
 
@@ -828,10 +866,13 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         Ok(())
     }
 
-    fn write_encryption_key_pair(
+    fn write_encryption_key_pair<
+        EncryptionKey: traits::EncryptionKey<V_TEST>,
+        HpkeKeyPair: traits::HpkeKeyPair<V_TEST>,
+    >(
         &self,
-        public_key: &impl HpkePublicKey<V_TEST>,
-        key_pair: &impl HpkeKeyPairEntity<V_TEST>,
+        public_key: &EncryptionKey,
+        key_pair: &HpkeKeyPair,
     ) -> Result<(), Self::UpdateError> {
         self.write::<V_TEST>(
             ENCRYPTION_KEY_PAIR_LABEL,
@@ -840,67 +881,13 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         )
     }
 
-    fn write_psk(
+    fn init_private_key<
+        InitKey: traits::InitKey<V_TEST>,
+        HpkePrivateKey: traits::HpkePrivateKey<V_TEST>,
+    >(
         &self,
-        psk_id: impl PskKey<V_TEST>,
-        psk: impl PskBundle<V_TEST>,
-    ) -> Result<(), Self::UpdateError> {
-        todo!()
-    }
-
-    fn get_queued_proposal_refs<V: ProposalRefEntity<V_TEST>>(
-        &self,
-        group_id: &impl GroupIdKey<V_TEST>,
-    ) -> Result<Vec<V>, Self::GetError> {
-        todo!()
-    }
-
-    fn get_queued_proposals<V: QueuedProposalEntity<V_TEST>>(
-        &self,
-        group_id: &impl GroupIdKey<V_TEST>,
-    ) -> Result<Vec<V>, Self::GetError> {
-        todo!()
-    }
-
-    fn get_treesync<V: TreeSyncEntity<V_TEST>>(
-        &self,
-        group_id: &impl GroupIdKey<V_TEST>,
-    ) -> Result<V, Self::GetError> {
-        todo!()
-    }
-
-    fn get_group_context<V: GroupContextEntity<V_TEST>>(
-        &self,
-        group_id: &impl GroupIdKey<V_TEST>,
-    ) -> Result<V, Self::GetError> {
-        todo!()
-    }
-
-    fn get_interim_transcript_hash<V: InterimTranscriptHashEntity<V_TEST>>(
-        &self,
-        group_id: &impl GroupIdKey<V_TEST>,
-    ) -> Result<V, Self::GetError> {
-        todo!()
-    }
-
-    fn get_confirmation_tag<V: ConfirmationTagEntity<V_TEST>>(
-        &self,
-        group_id: &impl GroupIdKey<V_TEST>,
-    ) -> Result<V, Self::GetError> {
-        todo!()
-    }
-
-    fn signature_key_pair<V: SignatureKeyPairEntity<V_TEST>>(
-        &self,
-        public_key: &impl SignaturePublicKeyKey<V_TEST>,
-    ) -> Result<V, Self::GetError> {
-        todo!()
-    }
-
-    fn init_private_key<V: HpkePrivateKey<V_TEST>>(
-        &self,
-        public_key: impl InitKey<V_TEST>,
-    ) -> Result<V, Self::GetError> {
+        public_key: &InitKey,
+    ) -> Result<Option<HpkePrivateKey>, Self::GetError> {
         let values = self.values.read().unwrap();
 
         let mut key = INIT_KEY_LABEL.to_vec();
@@ -911,20 +898,33 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         serde_json::from_slice(value).map_err(|_| MemoryKeyStoreError::SerializationError)
     }
 
-    fn encryption_key_pair<V: HpkeKeyPairEntity<V_TEST>>(
+    fn encryption_epoch_key_pairs<
+        GroupId: traits::GroupId<V_TEST>,
+        EpochKey: traits::EpochKey<V_TEST>,
+        HpkeKeyPair: traits::HpkeKeyPair<V_TEST>,
+    >(
         &self,
-        public_key: &impl HpkePublicKey<V_TEST>,
-    ) -> Result<V, Self::GetError> {
-        self.read(
-            ENCRYPTION_KEY_PAIR_LABEL,
-            &serde_json::to_vec(public_key).unwrap(),
-        )
+        group_id: &GroupId,
+        epoch: &EpochKey,
+        leaf_index: u32,
+    ) -> Result<Vec<HpkeKeyPair>, Self::GetError> {
+        let mut key = vec![];
+        write!(
+            &mut key,
+            "{group_id},{epoch},{leaf_index}",
+            group_id = serde_json::to_string(group_id).unwrap(),
+            epoch = serde_json::to_string(epoch).unwrap(),
+        );
+        self.read_list(ENCRYPTION_KEY_PAIR_LABEL, &key)
     }
 
-    fn key_package<V: KeyPackage<V_TEST>>(
+    fn key_package<
+        KeyPackageRef: traits::HashReference<V_TEST>,
+        KeyPackage: traits::KeyPackage<V_TEST>,
+    >(
         &self,
-        hash_ref: impl HashReference<V_TEST>,
-    ) -> Result<V, Self::GetError> {
+        hash_ref: &KeyPackageRef,
+    ) -> Result<Option<KeyPackage>, Self::GetError> {
         let key = serde_json::to_vec(&hash_ref).unwrap();
 
         println!("getting key package at {key:?} for version {V_TEST}");
@@ -935,13 +935,12 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         self.read(KEY_PACKAGE_LABEL, &key)
     }
 
-    fn psk<V: PskBundle<V_TEST>>(&self, psk_id: impl PskKey<V_TEST>) -> Result<V, Self::GetError> {
-        todo!()
-    }
-
-    fn write_key_package<KeyPackage: storage::KeyPackage<V_TEST>>(
+    fn write_key_package<
+        HashReference: traits::HashReference<V_TEST>,
+        KeyPackage: traits::KeyPackage<V_TEST>,
+    >(
         &self,
-        hash_ref: impl storage::HashReference<V_TEST>,
+        hash_ref: &HashReference,
         key_package: &KeyPackage,
     ) -> Result<(), Self::UpdateError> {
         let key = serde_json::to_vec(&hash_ref).unwrap();
@@ -951,19 +950,241 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         self.write::<V_TEST>(KEY_PACKAGE_LABEL, &key, &value)
             .unwrap();
 
-        self.key_package::<KeyPackage>(hash_ref).unwrap();
+        self.key_package::<HashReference, KeyPackage>(hash_ref)
+            .unwrap();
 
         Ok(())
     }
 
-    fn group_state<GroupState: GroupStateEntity<V_TEST>, GroupId: GroupIdKey<V_TEST>>(
+    fn queue_proposal<
+        GroupId: traits::GroupId<V_TEST>,
+        ProposalRef: traits::ProposalRef<V_TEST>,
+        QueuedProposal: traits::QueuedProposal<V_TEST>,
+    >(
         &self,
         group_id: &GroupId,
-    ) -> Result<GroupState, Self::UpdateError> {
+        proposal_ref: &ProposalRef,
+        proposal: &QueuedProposal,
+    ) -> Result<(), Self::UpdateError> {
         todo!()
     }
 
-    fn write_group_state<GroupState: GroupStateEntity<V_TEST>, GroupId: GroupIdKey<V_TEST>>(
+    fn write_tree<GroupId: traits::GroupId<V_TEST>, TreeSync: traits::TreeSync<V_TEST>>(
+        &self,
+        group_id: &GroupId,
+        tree: &TreeSync,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn write_interim_transcript_hash<
+        GroupId: traits::GroupId<V_TEST>,
+        InterimTranscriptHash: traits::InterimTranscriptHash<V_TEST>,
+    >(
+        &self,
+        group_id: &GroupId,
+        interim_transcript_hash: &InterimTranscriptHash,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn write_context<
+        GroupId: traits::GroupId<V_TEST>,
+        GroupContext: traits::GroupContext<V_TEST>,
+    >(
+        &self,
+        group_id: &GroupId,
+        group_context: &GroupContext,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn write_confirmation_tag<
+        GroupId: traits::GroupId<V_TEST>,
+        ConfirmationTag: traits::ConfirmationTag<V_TEST>,
+    >(
+        &self,
+        group_id: &GroupId,
+        confirmation_tag: &ConfirmationTag,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn write_signature_key_pair<
+        SignaturePublicKey: traits::SignaturePublicKey<V_TEST>,
+        SignatureKeyPair: traits::SignatureKeyPair<V_TEST>,
+    >(
+        &self,
+        public_key: &SignaturePublicKey,
+        signature_key_pair: &SignatureKeyPair,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn write_encryption_epoch_key_pairs<
+        GroupId: traits::GroupId<V_TEST>,
+        EpochKey: traits::EpochKey<V_TEST>,
+        HpkeKeyPair: traits::HpkeKeyPair<V_TEST>,
+    >(
+        &self,
+        group_id: &GroupId,
+        epoch: &EpochKey,
+        leaf_index: u32,
+        key_pairs: &[HpkeKeyPair],
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn write_psk<PskId: traits::PskId<V_TEST>, PskBundle: traits::PskBundle<V_TEST>>(
+        &self,
+        psk_id: &PskId,
+        psk: &PskBundle,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn queued_proposal_refs<
+        GroupId: traits::GroupId<V_TEST>,
+        ProposalRef: traits::ProposalRef<V_TEST>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Vec<ProposalRef>, Self::GetError> {
+        todo!()
+    }
+
+    fn queued_proposals<
+        GroupId: traits::GroupId<V_TEST>,
+        QueuedProposal: traits::QueuedProposal<V_TEST>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Vec<QueuedProposal>, Self::GetError> {
+        todo!()
+    }
+
+    fn treesync<GroupId: traits::GroupId<V_TEST>, TreeSync: traits::TreeSync<V_TEST>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Option<TreeSync>, Self::GetError> {
+        todo!()
+    }
+
+    fn group_context<
+        GroupId: traits::GroupId<V_TEST>,
+        GroupContext: traits::GroupContext<V_TEST>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Option<GroupContext>, Self::GetError> {
+        todo!()
+    }
+
+    fn interim_transcript_hash<
+        GroupId: traits::GroupId<V_TEST>,
+        InterimTranscriptHash: traits::InterimTranscriptHash<V_TEST>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Option<InterimTranscriptHash>, Self::GetError> {
+        todo!()
+    }
+
+    fn confirmation_tag<
+        GroupId: traits::GroupId<V_TEST>,
+        ConfirmationTag: traits::ConfirmationTag<V_TEST>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Option<ConfirmationTag>, Self::GetError> {
+        todo!()
+    }
+
+    fn signature_key_pair<
+        SignaturePublicKey: traits::SignaturePublicKey<V_TEST>,
+        SignatureKeyPair: traits::SignatureKeyPair<V_TEST>,
+    >(
+        &self,
+        public_key: &SignaturePublicKey,
+    ) -> Result<Option<SignatureKeyPair>, Self::GetError> {
+        todo!()
+    }
+
+    fn encryption_key_pair<
+        HpkeKeyPair: traits::HpkeKeyPair<V_TEST>,
+        EncryptionKey: traits::EncryptionKey<V_TEST>,
+    >(
+        &self,
+        public_key: &EncryptionKey,
+    ) -> Result<Option<HpkeKeyPair>, Self::GetError> {
+        todo!()
+    }
+
+    fn psk<PskBundle: traits::PskBundle<V_TEST>, PskId: traits::PskId<V_TEST>>(
+        &self,
+        psk_id: &PskId,
+    ) -> Result<Option<PskBundle>, Self::GetError> {
+        todo!()
+    }
+
+    fn delete_signature_key_pair<SignaturePublicKeuy: traits::SignaturePublicKey<V_TEST>>(
+        &self,
+        public_key: &SignaturePublicKeuy,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn delete_init_private_key<InitKey: traits::InitKey<V_TEST>>(
+        &self,
+        public_key: &InitKey,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn delete_encryption_key_pair<EncryptionKey: traits::EncryptionKey<V_TEST>>(
+        &self,
+        public_key: &EncryptionKey,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn delete_encryption_epoch_key_pairs<
+        GroupId: traits::GroupId<V_TEST>,
+        EpochKey: traits::EpochKey<V_TEST>,
+    >(
+        &self,
+        group_id: &GroupId,
+        epoch: &EpochKey,
+        leaf_index: u32,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn delete_key_package<KeyPackageRef: traits::HashReference<V_TEST>>(
+        &self,
+        hash_ref: &KeyPackageRef,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn delete_psk<PskKey: traits::PskId<V_TEST>>(
+        &self,
+        psk_id: &PskKey,
+    ) -> Result<(), Self::UpdateError> {
+        todo!()
+    }
+
+    fn group_state<GroupState: traits::GroupState<V_TEST>, GroupId: traits::GroupId<V_TEST>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Option<GroupState>, Self::UpdateError> {
+        todo!()
+    }
+
+    fn write_group_state<
+        GroupState: traits::GroupState<V_TEST>,
+        GroupId: traits::GroupId<V_TEST>,
+    >(
         &self,
         group_id: &GroupId,
         group_state: &GroupState,
@@ -971,7 +1192,7 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         todo!()
     }
 
-    fn delete_group_state<GroupId: GroupIdKey<V_TEST>>(
+    fn delete_group_state<GroupId: traits::GroupId<V_TEST>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::UpdateError> {
@@ -979,18 +1200,18 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
     }
 
     fn message_secrets<
-        GroupId: GroupIdKey<V_TEST>,
-        MessageSecrets: MessageSecretsEntity<V_TEST>,
+        GroupId: traits::GroupId<V_TEST>,
+        MessageSecrets: traits::MessageSecrets<V_TEST>,
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<MessageSecrets, Self::GetError> {
+    ) -> Result<Option<MessageSecrets>, Self::GetError> {
         todo!()
     }
 
     fn write_message_secrets<
-        GroupId: GroupIdKey<V_TEST>,
-        MessageSecrets: MessageSecretsEntity<V_TEST>,
+        GroupId: traits::GroupId<V_TEST>,
+        MessageSecrets: traits::MessageSecrets<V_TEST>,
     >(
         &self,
         group_id: &GroupId,
@@ -999,7 +1220,7 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         todo!()
     }
 
-    fn delete_message_secrets<GroupId: GroupIdKey<V_TEST>>(
+    fn delete_message_secrets<GroupId: traits::GroupId<V_TEST>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::UpdateError> {
@@ -1007,18 +1228,18 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
     }
 
     fn resumption_psk_store<
-        GroupId: GroupIdKey<V_TEST>,
-        ResumptionPskStore: ResumptionPskStoreEntity<V_TEST>,
+        GroupId: traits::GroupId<V_TEST>,
+        ResumptionPskStore: traits::ResumptionPskStore<V_TEST>,
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<ResumptionPskStore, Self::GetError> {
+    ) -> Result<Option<ResumptionPskStore>, Self::GetError> {
         todo!()
     }
 
     fn write_resumption_psk_store<
-        GroupId: GroupIdKey<V_TEST>,
-        ResumptionPskStore: ResumptionPskStoreEntity<V_TEST>,
+        GroupId: traits::GroupId<V_TEST>,
+        ResumptionPskStore: traits::ResumptionPskStore<V_TEST>,
     >(
         &self,
         group_id: &GroupId,
@@ -1027,23 +1248,26 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         todo!()
     }
 
-    fn delete_all_resumption_psk_secrets<GroupId: GroupIdKey<V_TEST>>(
+    fn delete_all_resumption_psk_secrets<GroupId: traits::GroupId<V_TEST>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::UpdateError> {
         todo!()
     }
 
-    fn own_leaf_index<GroupId: GroupIdKey<V_TEST>, LeafNodeIndex: LeafNodeIndexEntity<V_TEST>>(
+    fn own_leaf_index<
+        GroupId: traits::GroupId<V_TEST>,
+        LeafNodeIndex: traits::LeafNodeIndex<V_TEST>,
+    >(
         &self,
         group_id: &GroupId,
-    ) -> Result<LeafNodeIndex, Self::GetError> {
+    ) -> Result<Option<LeafNodeIndex>, Self::GetError> {
         todo!()
     }
 
     fn write_own_leaf_index<
-        GroupId: GroupIdKey<V_TEST>,
-        LeafNodeIndex: LeafNodeIndexEntity<V_TEST>,
+        GroupId: traits::GroupId<V_TEST>,
+        LeafNodeIndex: traits::LeafNodeIndex<V_TEST>,
     >(
         &self,
         group_id: &GroupId,
@@ -1052,21 +1276,21 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         todo!()
     }
 
-    fn delete_own_leaf_index<GroupId: GroupIdKey<V_TEST>>(
+    fn delete_own_leaf_index<GroupId: traits::GroupId<V_TEST>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::UpdateError> {
         todo!()
     }
 
-    fn use_ratchet_tree_extension<GroupId: GroupIdKey<V_TEST>>(
+    fn use_ratchet_tree_extension<GroupId: traits::GroupId<V_TEST>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<bool, Self::GetError> {
+    ) -> Result<Option<bool>, Self::GetError> {
         todo!()
     }
 
-    fn set_use_ratchet_tree_extension<GroupId: GroupIdKey<V_TEST>>(
+    fn set_use_ratchet_tree_extension<GroupId: traits::GroupId<V_TEST>>(
         &self,
         group_id: &GroupId,
         value: bool,
@@ -1074,7 +1298,7 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         todo!()
     }
 
-    fn delete_use_ratchet_tree_extension<GroupId: GroupIdKey<V_TEST>>(
+    fn delete_use_ratchet_tree_extension<GroupId: traits::GroupId<V_TEST>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::UpdateError> {
@@ -1082,18 +1306,18 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
     }
 
     fn group_epoch_secrets<
-        GroupId: GroupIdKey<V_TEST>,
-        GroupEpochSecrets: GroupEpochSecretsEntity<V_TEST>,
+        GroupId: traits::GroupId<V_TEST>,
+        GroupEpochSecrets: traits::GroupEpochSecrets<V_TEST>,
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<GroupEpochSecrets, Self::GetError> {
+    ) -> Result<Option<GroupEpochSecrets>, Self::GetError> {
         todo!()
     }
 
     fn write_group_epoch_secrets<
-        GroupId: GroupIdKey<V_TEST>,
-        GroupEpochSecrets: GroupEpochSecretsEntity<V_TEST>,
+        GroupId: traits::GroupId<V_TEST>,
+        GroupEpochSecrets: traits::GroupEpochSecrets<V_TEST>,
     >(
         &self,
         group_id: &GroupId,
@@ -1102,69 +1326,9 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         todo!()
     }
 
-    fn delete_group_epoch_secrets<GroupId: GroupIdKey<V_TEST>>(
+    fn delete_group_epoch_secrets<GroupId: traits::GroupId<V_TEST>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::UpdateError> {
-        todo!()
-    }
-
-    fn delete_signature_key_pair(
-        &self,
-        public_key: &impl SignaturePublicKeyKey<V_TEST>,
-    ) -> Result<(), Self::UpdateError> {
-        todo!()
-    }
-
-    fn delete_init_private_key(
-        &self,
-        public_key: &impl InitKey<V_TEST>,
-    ) -> Result<(), Self::UpdateError> {
-        todo!()
-    }
-
-    fn delete_encryption_key_pair(
-        &self,
-        public_key: &impl HpkePublicKey<V_TEST>,
-    ) -> Result<(), Self::UpdateError> {
-        todo!()
-    }
-
-    fn delete_key_package(
-        &self,
-        hash_ref: impl HashReference<V_TEST>,
-    ) -> Result<(), Self::UpdateError> {
-        todo!()
-    }
-
-    fn delete_psk(&self, psk_id: impl PskKey<V_TEST>) -> Result<(), Self::UpdateError> {
-        todo!()
-    }
-
-    fn write_encryption_epoch_key_pairs(
-        &self,
-        group_id: &impl GroupIdKey<V_TEST>,
-        epoch: &impl EpochKey<V_TEST>,
-        leaf_index: u32,
-        key_pairs: &[impl HpkeKeyPairEntity<V_TEST>],
-    ) -> Result<(), Self::UpdateError> {
-        todo!()
-    }
-
-    fn encryption_epoch_key_pairs<V: HpkeKeyPairEntity<V_TEST>>(
-        &self,
-        group_id: &impl GroupIdKey<V_TEST>,
-        epoch: &impl EpochKey<V_TEST>,
-        leaf_index: u32,
-    ) -> Result<Vec<V>, Self::GetError> {
-        todo!()
-    }
-
-    fn delete_encryption_epoch_key_pairs(
-        &self,
-        group_id: &impl GroupIdKey<V_TEST>,
-        epoch: &impl EpochKey<V_TEST>,
-        leaf_index: u32,
     ) -> Result<(), Self::UpdateError> {
         todo!()
     }

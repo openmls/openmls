@@ -154,7 +154,7 @@ impl StagedWelcome {
                 let hash_ref = new_member.as_slice();
                 provider
                     .storage()
-                    .key_package(StorageReference(hash_ref))
+                    .key_package(&hash_ref)
                     .map(|kp: KeyPackage| (kp, hash_ref.to_vec()))
                     .ok()
             })

@@ -2,11 +2,7 @@
 //!
 //! TODO
 
-use openmls_traits::storage::{
-    self, ConfirmationTagEntity, Entity, GroupContextEntity, GroupIdKey, HashReference,
-    InterimTranscriptHashEntity, Key, ProposalRefEntity, ProposalRefKey, QueuedProposalEntity,
-    TreeSyncEntity, CURRENT_VERSION,
-};
+use openmls_traits::storage::{self, traits, Entity, Key, CURRENT_VERSION};
 use openmls_traits::types::HpkePrivateKey;
 use serde::Deserialize;
 use serde::Serialize;
@@ -27,49 +23,61 @@ use crate::{
 };
 
 impl Entity<CURRENT_VERSION> for QueuedProposal {}
-impl QueuedProposalEntity<CURRENT_VERSION> for QueuedProposal {}
+impl traits::QueuedProposal<CURRENT_VERSION> for QueuedProposal {}
 
 impl Entity<CURRENT_VERSION> for TreeSync {}
-impl TreeSyncEntity<CURRENT_VERSION> for TreeSync {}
+impl traits::TreeSync<CURRENT_VERSION> for TreeSync {}
 
 impl Key<CURRENT_VERSION> for GroupId {}
-impl GroupIdKey<CURRENT_VERSION> for GroupId {}
+impl traits::GroupId<CURRENT_VERSION> for GroupId {}
 
 impl Key<CURRENT_VERSION> for ProposalRef {}
 impl Entity<CURRENT_VERSION> for ProposalRef {}
-impl ProposalRefKey<CURRENT_VERSION> for ProposalRef {}
-impl ProposalRefEntity<CURRENT_VERSION> for ProposalRef {}
-impl storage::HashReference<CURRENT_VERSION> for ProposalRef {}
+impl traits::ProposalRef<CURRENT_VERSION> for ProposalRef {}
+impl traits::ProposalRef<CURRENT_VERSION> for ProposalRef {}
+impl traits::HashReference<CURRENT_VERSION> for ProposalRef {}
 
 impl Entity<CURRENT_VERSION> for GroupContext {}
-impl GroupContextEntity<CURRENT_VERSION> for GroupContext {}
+impl traits::GroupContext<CURRENT_VERSION> for GroupContext {}
 
 impl Entity<CURRENT_VERSION> for InterimTranscriptHash {}
-impl InterimTranscriptHashEntity<CURRENT_VERSION> for InterimTranscriptHash {}
+impl traits::InterimTranscriptHash<CURRENT_VERSION> for InterimTranscriptHash {}
 
 impl Entity<CURRENT_VERSION> for ConfirmationTag {}
-impl ConfirmationTagEntity<CURRENT_VERSION> for ConfirmationTag {}
+impl traits::ConfirmationTag<CURRENT_VERSION> for ConfirmationTag {}
 
 impl Entity<CURRENT_VERSION> for KeyPackage {}
-impl storage::KeyPackage<CURRENT_VERSION> for KeyPackage {}
+impl traits::KeyPackage<CURRENT_VERSION> for KeyPackage {
+    type InitKey = StorageInitKey;
+
+    type EncryptionKey = &EncryptionKey;
+
+    fn init_key(&self) -> Self::InitKey {
+        StorageInitKey(self.init_key())
+    }
+
+    fn encryption_key(&self) -> Self::EncryptionKey {
+        self.encryption_key()
+    }
+}
 
 impl Key<CURRENT_VERSION> for EncryptionKey {}
-impl storage::HpkePublicKey<CURRENT_VERSION> for EncryptionKey {}
+impl traits::EncryptionKey<CURRENT_VERSION> for EncryptionKey {}
 
 impl Entity<CURRENT_VERSION> for EncryptionKeyPair {}
-impl storage::HpkeKeyPairEntity<CURRENT_VERSION> for EncryptionKeyPair {}
+impl traits::HpkeKeyPair<CURRENT_VERSION> for EncryptionKeyPair {}
 
 impl Entity<CURRENT_VERSION> for LeafNodeIndex {}
-impl storage::LeafNodeIndexEntity<CURRENT_VERSION> for LeafNodeIndex {}
+impl traits::LeafNodeIndex<CURRENT_VERSION> for LeafNodeIndex {}
 
 impl Entity<CURRENT_VERSION> for GroupEpochSecrets {}
-impl storage::GroupEpochSecretsEntity<CURRENT_VERSION> for GroupEpochSecrets {}
+impl traits::GroupEpochSecrets<CURRENT_VERSION> for GroupEpochSecrets {}
 
 impl Entity<CURRENT_VERSION> for MessageSecretsStore {}
-impl storage::MessageSecretsEntity<CURRENT_VERSION> for MessageSecretsStore {}
+impl traits::MessageSecrets<CURRENT_VERSION> for MessageSecretsStore {}
 
 impl Entity<CURRENT_VERSION> for ResumptionPskStore {}
-impl storage::ResumptionPskStoreEntity<CURRENT_VERSION> for ResumptionPskStore {}
+impl traits::ResumptionPskStore<CURRENT_VERSION> for ResumptionPskStore {}
 
 // Crypto
 #[derive(Serialize)]
@@ -82,7 +90,7 @@ pub(crate) struct StorageHpkePrivateKey(pub(crate) HpkePrivateKey);
 pub(crate) struct StorageReference<'a>(pub(crate) &'a [u8]);
 
 impl<'a> Key<CURRENT_VERSION> for StorageReference<'a> {}
-impl<'a> HashReference<CURRENT_VERSION> for StorageReference<'a> {}
+impl<'a> traits::HashReference<CURRENT_VERSION> for StorageReference<'a> {}
 
 impl core::fmt::Debug for StorageHpkePrivateKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -93,13 +101,13 @@ impl core::fmt::Debug for StorageHpkePrivateKey {
 }
 
 impl<'a> Key<CURRENT_VERSION> for StorageInitKey<'a> {}
-impl<'a> storage::InitKey<CURRENT_VERSION> for StorageInitKey<'a> {}
+impl<'a> traits::InitKey<CURRENT_VERSION> for StorageInitKey<'a> {}
 
-impl storage::HpkePrivateKey<CURRENT_VERSION> for StorageHpkePrivateKey {}
+impl traits::HpkePrivateKey<CURRENT_VERSION> for StorageHpkePrivateKey {}
 impl Entity<CURRENT_VERSION> for StorageHpkePrivateKey {}
 
 impl Key<CURRENT_VERSION> for GroupEpoch {}
-impl storage::EpochKey<CURRENT_VERSION> for GroupEpoch {}
+impl traits::EpochKey<CURRENT_VERSION> for GroupEpoch {}
 
 /// A convenience trait for the current version of the storage.
 pub trait StorageProvider: openmls_traits::storage::StorageProvider<CURRENT_VERSION> {}
@@ -164,7 +172,7 @@ mod test {
 
         let private_key: StorageHpkePrivateKey = provider
             .storage()
-            .init_private_key(StorageInitKey(&key_pair.public))
+            .init_private_key(&StorageInitKey(&key_pair.public))
             .unwrap();
         assert_eq!(private_key.0, key_pair.private);
     }
@@ -179,23 +187,23 @@ mod test {
 
     struct NewStorageKeyPackage {}
 
-    impl storage::HpkePrivateKey<V_TEST> for NewStorageHpkePrivateKey {}
+    impl storage::HpkePrivateKeyEntity<V_TEST> for NewStorageHpkePrivateKey {}
     impl Entity<V_TEST> for NewStorageHpkePrivateKey {}
 
     impl Entity<V_TEST> for KeyPackage {}
-    impl storage::KeyPackage<V_TEST> for KeyPackage {}
+    impl storage::KeyPackageEntity<V_TEST> for KeyPackage {}
 
     impl Key<V_TEST> for EncryptionKey {}
-    impl storage::HpkePublicKey<V_TEST> for EncryptionKey {}
+    impl storage::HpkePublicKeyKey<V_TEST> for EncryptionKey {}
 
     impl Entity<V_TEST> for EncryptionKeyPair {}
     impl storage::HpkeKeyPairEntity<V_TEST> for EncryptionKeyPair {}
 
     impl Key<V_TEST> for InitKey {}
-    impl storage::InitKey<V_TEST> for InitKey {}
+    impl storage::InitKeyKey<V_TEST> for InitKey {}
 
     impl Key<V_TEST> for ProposalRef {}
-    impl storage::HashReference<V_TEST> for ProposalRef {}
+    impl storage::HashReferenceKey<V_TEST> for ProposalRef {}
 
     #[test]
     fn init_key_upgrade() {
@@ -247,7 +255,7 @@ mod test {
         // write key package
         <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::write_key_package(
             provider.storage(),
-            key_package_ref.clone(),
+            &key_package_ref,
             &key_package_bundle.key_package,
         )
         .unwrap();
@@ -259,16 +267,16 @@ mod test {
         let new_storage_provider = MemoryKeyStore::default();
 
         // first, read the old data
-        let read_key_package: crate::prelude::KeyPackage =
-            <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::key_package(
-                provider.storage(),
-                key_package_ref.clone(),
-            )
-            .unwrap();
+        let read_key_package: crate::prelude::KeyPackage = <MemoryKeyStore as StorageProvider<
+            CURRENT_VERSION,
+        >>::key_package(
+            provider.storage(), &key_package_ref
+        )
+        .unwrap();
         let read_init_secret: StorageHpkePrivateKey =
             <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::init_private_key(
                 provider.storage(),
-                StorageInitKey(read_key_package.hpke_init_key().as_slice()),
+                &StorageInitKey(read_key_package.hpke_init_key().as_slice()),
             )
             .unwrap();
         let read_encryption_keypair: EncryptionKeyPair =
@@ -299,7 +307,7 @@ mod test {
         .unwrap();
         <MemoryKeyStore as StorageProvider<V_TEST>>::write_key_package(
             &new_storage_provider,
-            key_package_ref.clone(),
+            &key_package_ref,
             &read_key_package,
         )
         .unwrap();
@@ -308,13 +316,13 @@ mod test {
         let read_new_key_package: crate::prelude::KeyPackage =
             <MemoryKeyStore as StorageProvider<V_TEST>>::key_package(
                 &new_storage_provider,
-                key_package_ref.clone(),
+                &key_package_ref,
             )
             .unwrap();
         let read_new_init_secret: NewStorageHpkePrivateKey =
             <MemoryKeyStore as StorageProvider<V_TEST>>::init_private_key(
                 &new_storage_provider,
-                read_key_package.hpke_init_key().clone(),
+                read_key_package.hpke_init_key(),
             )
             .unwrap();
         let read_new_encryption_keypair: EncryptionKeyPair =

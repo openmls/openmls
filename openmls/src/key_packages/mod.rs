@@ -350,7 +350,8 @@ impl KeyPackage {
         delete_encryption_key: bool,
     ) -> Result<(), KeyPackageStorage> {
         provider.storage().delete_key_package(
-            self.hash_ref(provider.crypto())
+            &self
+                .hash_ref(provider.crypto())
                 .map_err(|_| KeyPackageStorage::Error)?,
         );
         provider
@@ -360,7 +361,7 @@ impl KeyPackage {
         if delete_encryption_key {
             provider
                 .storage()
-                .delete_encryption_key_pair(self.leaf_node().encryption_key())
+                .delete_encryption_key_pair(&self.leaf_node().encryption_key())
                 .map_err(|_| KeyPackageStorage::Error)?;
         }
         Ok(())
@@ -542,7 +543,7 @@ impl KeyPackageBuilder {
         // for retrieval when parsing welcome messages.
         provider
             .storage()
-            .write_key_package(key_package.hash_ref(provider.crypto())?, &key_package)
+            .write_key_package(&key_package.hash_ref(provider.crypto())?, &key_package)
             .map_err(|_| KeyPackageNewError::StorageError)?;
 
         // Store the encryption key pair in the key store.

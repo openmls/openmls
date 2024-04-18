@@ -1023,7 +1023,7 @@ fn key_package_deletion<Provider: crate::storage::RefinedProvider>(
     // TEST: The key package must be gone from the key store.
     let result: Result<KeyPackage, _> = provider
         .storage()
-        .key_package(bob_key_package.hash_ref(provider.crypto()).unwrap());
+        .key_package(&bob_key_package.hash_ref(provider.crypto()).unwrap());
     assert!(
         result.is_err(),
         "The key package is still in the key store after creating a new group from it."

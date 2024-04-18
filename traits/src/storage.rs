@@ -1,12 +1,7 @@
 use serde::{de::DeserializeOwned, Serialize};
 
-pub trait GetError: core::fmt::Debug + std::error::Error + PartialEq {
-    fn error_kind(&self) -> GetErrorKind;
-}
-
-pub trait UpdateError: core::fmt::Debug + std::error::Error + PartialEq {
-    fn error_kind(&self) -> UpdateErrorKind;
-}
+pub trait GetError: core::fmt::Debug + std::error::Error + PartialEq {}
+pub trait UpdateError: core::fmt::Debug + std::error::Error + PartialEq {}
 
 /// The storage version used by OpenMLS
 pub const CURRENT_VERSION: u16 = 1;
@@ -28,31 +23,44 @@ pub trait StorageProvider<const VERSION: u16> {
     }
 
     // Write/queue
-    fn queue_proposal(
+    fn queue_proposal<
+        GroupId: traits::GroupId<VERSION>,
+        ProposalRef: traits::ProposalRef<VERSION>,
+        QueuedProposal: traits::QueuedProposal<VERSION>,
+    >(
         &self,
-        group_id: impl GroupIdKey<VERSION>,
-        proposal_ref: impl ProposalRefEntity<VERSION>,
-        proposal: impl QueuedProposalEntity<VERSION>,
+        group_id: &GroupId,
+        proposal_ref: &ProposalRef,
+        proposal: &QueuedProposal,
     ) -> Result<(), Self::UpdateError>;
-    fn write_tree(
+    fn write_tree<GroupId: traits::GroupId<VERSION>, TreeSync: traits::TreeSync<VERSION>>(
         &self,
-        group_id: impl GroupIdKey<VERSION>,
-        tree: impl TreeSyncEntity<VERSION>,
+        group_id: &GroupId,
+        tree: &TreeSync,
     ) -> Result<(), Self::UpdateError>;
-    fn write_interim_transcript_hash(
+    fn write_interim_transcript_hash<
+        GroupId: traits::GroupId<VERSION>,
+        InterimTranscriptHash: traits::InterimTranscriptHash<VERSION>,
+    >(
         &self,
-        group_id: impl GroupIdKey<VERSION>,
-        interim_transcript_hash: impl InterimTranscriptHashEntity<VERSION>,
+        group_id: &GroupId,
+        interim_transcript_hash: &InterimTranscriptHash,
     ) -> Result<(), Self::UpdateError>;
-    fn write_context(
+    fn write_context<
+        GroupId: traits::GroupId<VERSION>,
+        GroupContext: traits::GroupContext<VERSION>,
+    >(
         &self,
-        group_id: impl GroupIdKey<VERSION>,
-        group_context: impl GroupContextEntity<VERSION>,
+        group_id: &GroupId,
+        group_context: &GroupContext,
     ) -> Result<(), Self::UpdateError>;
-    fn write_confirmation_tag(
+    fn write_confirmation_tag<
+        GroupId: traits::GroupId<VERSION>,
+        ConfirmationTag: traits::ConfirmationTag<VERSION>,
+    >(
         &self,
-        group_id: impl GroupIdKey<VERSION>,
-        confirmation_tag: impl ConfirmationTagEntity<VERSION>,
+        group_id: &GroupId,
+        confirmation_tag: &ConfirmationTag,
     ) -> Result<(), Self::UpdateError>;
 
     // Write crypto objects
@@ -60,205 +68,266 @@ pub trait StorageProvider<const VERSION: u16> {
     /// Store a signature key.
     ///
     /// Note that signature keys are defined outside of OpenMLS.
-    fn write_signature_key_pair(
+    fn write_signature_key_pair<
+        SignaturePublicKey: traits::SignaturePublicKey<VERSION>,
+        SignatureKeyPair: traits::SignatureKeyPair<VERSION>,
+    >(
         &self,
-        public_key: &impl SignaturePublicKeyKey<VERSION>,
-        signature_key_pair: &impl SignatureKeyPairEntity<VERSION>,
+        public_key: &SignaturePublicKey,
+        signature_key_pair: &SignatureKeyPair,
     ) -> Result<(), Self::UpdateError>;
 
     /// Store an HPKE init private key.
     ///
     /// This is used for init keys from key packages.
-    fn write_init_private_key(
+    fn write_init_private_key<
+        InitKey: traits::InitKey<VERSION>,
+        HpkePrivateKey: traits::HpkePrivateKey<VERSION>,
+    >(
         &self,
-        public_key: &impl InitKey<VERSION>,
-        private_key: &impl HpkePrivateKey<VERSION>,
+        public_key: &InitKey,
+        private_key: &HpkePrivateKey,
     ) -> Result<(), Self::UpdateError>;
 
     /// Store an HPKE encryption key pair.
     /// This includes the private and public key
     ///
     /// This is used for encryption keys from leaf nodes.
-    fn write_encryption_key_pair(
+    fn write_encryption_key_pair<
+        EncryptionKey: traits::EncryptionKey<VERSION>,
+        HpkeKeyPair: traits::HpkeKeyPair<VERSION>,
+    >(
         &self,
-        public_key: &impl HpkePublicKey<VERSION>,
-        key_pair: &impl HpkeKeyPairEntity<VERSION>,
+        public_key: &EncryptionKey,
+        key_pair: &HpkeKeyPair,
     ) -> Result<(), Self::UpdateError>;
 
     /// Store a list of HPKE encryption key pairs for a given epoch.
     /// This includes the private and public keys.
-    fn write_encryption_epoch_key_pairs(
+    fn write_encryption_epoch_key_pairs<
+        GroupId: traits::GroupId<VERSION>,
+        EpochKey: traits::EpochKey<VERSION>,
+        HpkeKeyPair: traits::HpkeKeyPair<VERSION>,
+    >(
         &self,
-        group_id: &impl GroupIdKey<VERSION>,
-        epoch: &impl EpochKey<VERSION>,
+        group_id: &GroupId,
+        epoch: &EpochKey,
         leaf_index: u32,
-        key_pairs: &[impl HpkeKeyPairEntity<VERSION>],
+        key_pairs: &[HpkeKeyPair],
     ) -> Result<(), Self::UpdateError>;
 
     /// Store key packages.
     ///
     /// Store a key package. This does not include the private keys. They are
     /// stored separately with `write_hpke_private_key`.
-    fn write_key_package<TKeyPackage: KeyPackage<VERSION>>(
+    fn write_key_package<
+        HashReference: traits::HashReference<VERSION>,
+        KeyPackage: traits::KeyPackage<VERSION>,
+    >(
         &self,
-        hash_ref: impl HashReference<VERSION>,
-        key_package: &TKeyPackage,
+        hash_ref: &HashReference,
+        key_package: &KeyPackage,
     ) -> Result<(), Self::UpdateError>;
 
     /// Store a PSK.
     ///
     /// This stores PSKs based on the PSK id.
-    fn write_psk(
+    fn write_psk<PskId: traits::PskId<VERSION>, PskBundle: traits::PskBundle<VERSION>>(
         &self,
-        psk_id: impl PskKey<VERSION>,
-        psk: impl PskBundle<VERSION>,
+        psk_id: &PskId,
+        psk: &PskBundle,
     ) -> Result<(), Self::UpdateError>;
 
     // getter
-    fn get_queued_proposal_refs<V: ProposalRefEntity<VERSION>>(
+    /// Returns references of all queued proposals, or an empty vector of none are stored.
+    fn queued_proposal_refs<
+        GroupId: traits::GroupId<VERSION>,
+        ProposalRef: traits::ProposalRef<VERSION>,
+    >(
         &self,
-        group_id: &impl GroupIdKey<VERSION>,
-    ) -> Result<Vec<V>, Self::GetError>;
+        group_id: &GroupId,
+    ) -> Result<Vec<ProposalRef>, Self::GetError>;
 
-    fn get_queued_proposals<V: QueuedProposalEntity<VERSION>>(
+    /// Returns all queued proposals, or an empty vector of none are stored.
+    fn queued_proposals<
+        GroupId: traits::GroupId<VERSION>,
+        QueuedProposal: traits::QueuedProposal<VERSION>,
+    >(
         &self,
-        group_id: &impl GroupIdKey<VERSION>,
-    ) -> Result<Vec<V>, Self::GetError>;
+        group_id: &GroupId,
+    ) -> Result<Vec<QueuedProposal>, Self::GetError>;
 
-    fn get_treesync<V: TreeSyncEntity<VERSION>>(
+    fn treesync<GroupId: traits::GroupId<VERSION>, TreeSync: traits::TreeSync<VERSION>>(
         &self,
-        group_id: &impl GroupIdKey<VERSION>,
-    ) -> Result<V, Self::GetError>;
+        group_id: &GroupId,
+    ) -> Result<Option<TreeSync>, Self::GetError>;
 
-    fn get_group_context<V: GroupContextEntity<VERSION>>(
+    fn group_context<
+        GroupId: traits::GroupId<VERSION>,
+        GroupContext: traits::GroupContext<VERSION>,
+    >(
         &self,
-        group_id: &impl GroupIdKey<VERSION>,
-    ) -> Result<V, Self::GetError>;
+        group_id: &GroupId,
+    ) -> Result<Option<GroupContext>, Self::GetError>;
 
-    fn get_interim_transcript_hash<V: InterimTranscriptHashEntity<VERSION>>(
+    fn interim_transcript_hash<
+        GroupId: traits::GroupId<VERSION>,
+        InterimTranscriptHash: traits::InterimTranscriptHash<VERSION>,
+    >(
         &self,
-        group_id: &impl GroupIdKey<VERSION>,
-    ) -> Result<V, Self::GetError>;
+        group_id: &GroupId,
+    ) -> Result<Option<InterimTranscriptHash>, Self::GetError>;
 
-    fn get_confirmation_tag<V: ConfirmationTagEntity<VERSION>>(
+    fn confirmation_tag<
+        GroupId: traits::GroupId<VERSION>,
+        ConfirmationTag: traits::ConfirmationTag<VERSION>,
+    >(
         &self,
-        group_id: &impl GroupIdKey<VERSION>,
-    ) -> Result<V, Self::GetError>;
+        group_id: &GroupId,
+    ) -> Result<Option<ConfirmationTag>, Self::GetError>;
 
     // Get crypto objects
 
     /// Get a signature key based on the public key.
-    fn signature_key_pair<V: SignatureKeyPairEntity<VERSION>>(
+    fn signature_key_pair<
+        SignaturePublicKey: traits::SignaturePublicKey<VERSION>,
+        SignatureKeyPair: traits::SignatureKeyPair<VERSION>,
+    >(
         &self,
-        public_key: &impl SignaturePublicKeyKey<VERSION>,
-    ) -> Result<V, Self::GetError>;
+        public_key: &SignaturePublicKey,
+    ) -> Result<Option<SignatureKeyPair>, Self::GetError>;
 
     /// Get a private init key based on the corresponding public kye.
-    fn init_private_key<V: HpkePrivateKey<VERSION>>(
+    fn init_private_key<
+        InitKey: traits::InitKey<VERSION>,
+        HpkePrivateKey: traits::HpkePrivateKey<VERSION>,
+    >(
         &self,
-        public_key: impl InitKey<VERSION>,
-    ) -> Result<V, Self::GetError>;
+        public_key: &InitKey,
+    ) -> Result<Option<HpkePrivateKey>, Self::GetError>;
 
     /// Get an HPKE encryption key pair based on the public key.
-    fn encryption_key_pair<V: HpkeKeyPairEntity<VERSION>>(
+    fn encryption_key_pair<
+        HpkeKeyPair: traits::HpkeKeyPair<VERSION>,
+        EncryptionKey: traits::EncryptionKey<VERSION>,
+    >(
         &self,
-        public_key: &impl HpkePublicKey<VERSION>,
-    ) -> Result<V, Self::GetError>;
+        public_key: &EncryptionKey,
+    ) -> Result<Option<HpkeKeyPair>, Self::GetError>;
 
     /// Get a list of HPKE encryption key pairs for a given epoch.
     /// This includes the private and public keys.
-    fn encryption_epoch_key_pairs<V: HpkeKeyPairEntity<VERSION>>(
+    // TODO: how should this behave if there are no key pairs stored for this epoch? None? empty
+    // vector?
+    fn encryption_epoch_key_pairs<
+        GroupId: traits::GroupId<VERSION>,
+        EpochKey: traits::EpochKey<VERSION>,
+        HpkeKeyPair: traits::HpkeKeyPair<VERSION>,
+    >(
         &self,
-        group_id: &impl GroupIdKey<VERSION>,
-        epoch: &impl EpochKey<VERSION>,
+        group_id: &GroupId,
+        epoch: &EpochKey,
         leaf_index: u32,
-    ) -> Result<Vec<V>, Self::GetError>;
+    ) -> Result<Vec<HpkeKeyPair>, Self::GetError>;
 
     /// Get a key package based on its hash reference.
-    /// TODO: use references for getters
-    fn key_package<V: KeyPackage<VERSION>>(
+    fn key_package<
+        KeyPackageRef: traits::HashReference<VERSION>,
+        KeyPackage: traits::KeyPackage<VERSION>,
+    >(
         &self,
-        hash_ref: impl HashReference<VERSION>,
-    ) -> Result<V, Self::GetError>;
+        hash_ref: &KeyPackageRef,
+    ) -> Result<Option<KeyPackage>, Self::GetError>;
 
     /// Get a PSK based on the PSK identifier.
-    fn psk<V: PskBundle<VERSION>>(&self, psk_id: impl PskKey<VERSION>)
-        -> Result<V, Self::GetError>;
+    fn psk<PskBundle: traits::PskBundle<VERSION>, PskId: traits::PskId<VERSION>>(
+        &self,
+        psk_id: &PskId,
+    ) -> Result<Option<PskBundle>, Self::GetError>;
 
     // Delete crypto objects
 
     /// Delete a signature key pair based on its public key
-    fn delete_signature_key_pair(
+    fn delete_signature_key_pair<SignaturePublicKeuy: traits::SignaturePublicKey<VERSION>>(
         &self,
-        public_key: &impl SignaturePublicKeyKey<VERSION>,
+        public_key: &SignaturePublicKeuy,
     ) -> Result<(), Self::UpdateError>;
 
     /// Delete an HPKE private init key.
     ///
-    /// XXX: This should be called when deleting key packages.
-    fn delete_init_private_key(
+    /// XXX: traits::This should be called when deleting key packages.
+    fn delete_init_private_key<InitKey: traits::InitKey<VERSION>>(
         &self,
-        public_key: &impl InitKey<VERSION>,
+        public_key: &InitKey,
     ) -> Result<(), Self::UpdateError>;
 
     /// Delete an encryption key pair for a public key.
-    fn delete_encryption_key_pair(
+    fn delete_encryption_key_pair<EncryptionKey: traits::EncryptionKey<VERSION>>(
         &self,
-        public_key: &impl HpkePublicKey<VERSION>,
+        public_key: &EncryptionKey,
     ) -> Result<(), Self::UpdateError>;
 
     /// Delete a list of HPKE encryption key pairs for a given epoch.
     /// This includes the private and public keys.
-    fn delete_encryption_epoch_key_pairs(
+    fn delete_encryption_epoch_key_pairs<
+        GroupId: traits::GroupId<VERSION>,
+        EpochKey: traits::EpochKey<VERSION>,
+    >(
         &self,
-        group_id: &impl GroupIdKey<VERSION>,
-        epoch: &impl EpochKey<VERSION>,
+        group_id: &GroupId,
+        epoch: &EpochKey,
         leaf_index: u32,
     ) -> Result<(), Self::UpdateError>;
 
     /// Delete a key package based on the hash reference.
     ///
-    /// XXX: This needs to delete all corresponding keys.
-    fn delete_key_package(
+    /// XXX: traits::This needs to delete all corresponding keys.
+    fn delete_key_package<KeyPackageRef: traits::HashReference<VERSION>>(
         &self,
-        hash_ref: impl HashReference<VERSION>,
+        hash_ref: &KeyPackageRef,
     ) -> Result<(), Self::UpdateError>;
 
     /// Delete a PSK based on an identifier.
-    fn delete_psk(&self, psk_id: impl PskKey<VERSION>) -> Result<(), Self::UpdateError>;
+    fn delete_psk<PskKey: traits::PskId<VERSION>>(
+        &self,
+        psk_id: &PskKey,
+    ) -> Result<(), Self::UpdateError>;
 
     /// Returns the MlsGroupState for group with given id.
-    fn group_state<GroupState: GroupStateEntity<VERSION>, GroupId: GroupIdKey<VERSION>>(
+    fn group_state<GroupState: traits::GroupState<VERSION>, GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<GroupState, Self::UpdateError>;
+    ) -> Result<Option<GroupState>, Self::UpdateError>;
 
     /// Writes the MlsGroupState for group with given id.
-    fn write_group_state<GroupState: GroupStateEntity<VERSION>, GroupId: GroupIdKey<VERSION>>(
+    fn write_group_state<
+        GroupState: traits::GroupState<VERSION>,
+        GroupId: traits::GroupId<VERSION>,
+    >(
         &self,
         group_id: &GroupId,
         group_state: &GroupState,
     ) -> Result<(), Self::UpdateError>;
 
     /// Deletes the MlsGroupState for group with given id.
-    fn delete_group_state<GroupId: GroupIdKey<VERSION>>(
+    fn delete_group_state<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::UpdateError>;
 
     /// Returns the MessageSecretsStore for the group with the given id.
     fn message_secrets<
-        GroupId: GroupIdKey<VERSION>,
-        MessageSecrets: MessageSecretsEntity<VERSION>,
+        GroupId: traits::GroupId<VERSION>,
+        MessageSecrets: traits::MessageSecrets<VERSION>,
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<MessageSecrets, Self::GetError>;
+    ) -> Result<Option<MessageSecrets>, Self::GetError>;
 
     /// Writes the MessageSecretsStore for the group with the given id.
     fn write_message_secrets<
-        GroupId: GroupIdKey<VERSION>,
-        MessageSecrets: MessageSecretsEntity<VERSION>,
+        GroupId: traits::GroupId<VERSION>,
+        MessageSecrets: traits::MessageSecrets<VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -266,24 +335,24 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<(), Self::UpdateError>;
 
     /// Deletes the MessageSecretsStore for the group with the given id.
-    fn delete_message_secrets<GroupId: GroupIdKey<VERSION>>(
+    fn delete_message_secrets<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::UpdateError>;
 
     /// Returns the ResumptionPskStore for the group with the given id.
     fn resumption_psk_store<
-        GroupId: GroupIdKey<VERSION>,
-        ResumptionPskStore: ResumptionPskStoreEntity<VERSION>,
+        GroupId: traits::GroupId<VERSION>,
+        ResumptionPskStore: traits::ResumptionPskStore<VERSION>,
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<ResumptionPskStore, Self::GetError>;
+    ) -> Result<Option<ResumptionPskStore>, Self::GetError>;
 
     /// Writes the ResumptionPskStore for the group with the given id.
     fn write_resumption_psk_store<
-        GroupId: GroupIdKey<VERSION>,
-        ResumptionPskStore: ResumptionPskStoreEntity<VERSION>,
+        GroupId: traits::GroupId<VERSION>,
+        ResumptionPskStore: traits::ResumptionPskStore<VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -291,21 +360,24 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<(), Self::UpdateError>;
 
     /// Deletes the ResumptionPskStore for the group with the given id.
-    fn delete_all_resumption_psk_secrets<GroupId: GroupIdKey<VERSION>>(
+    fn delete_all_resumption_psk_secrets<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::UpdateError>;
 
     /// Returns the own leaf index inside the group for the group with the given id.
-    fn own_leaf_index<GroupId: GroupIdKey<VERSION>, LeafNodeIndex: LeafNodeIndexEntity<VERSION>>(
+    fn own_leaf_index<
+        GroupId: traits::GroupId<VERSION>,
+        LeafNodeIndex: traits::LeafNodeIndex<VERSION>,
+    >(
         &self,
         group_id: &GroupId,
-    ) -> Result<LeafNodeIndex, Self::GetError>;
+    ) -> Result<Option<LeafNodeIndex>, Self::GetError>;
 
     /// Writes the own leaf index inside the group for the group with the given id.
     fn write_own_leaf_index<
-        GroupId: GroupIdKey<VERSION>,
-        LeafNodeIndex: LeafNodeIndexEntity<VERSION>,
+        GroupId: traits::GroupId<VERSION>,
+        LeafNodeIndex: traits::LeafNodeIndex<VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -313,43 +385,43 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<(), Self::UpdateError>;
 
     /// Deletes the own leaf index inside the group for the group with the given id.
-    fn delete_own_leaf_index<GroupId: GroupIdKey<VERSION>>(
+    fn delete_own_leaf_index<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::UpdateError>;
 
     /// Returns whether to use the RatchetTreeExtension for the group with the given id.
-    fn use_ratchet_tree_extension<GroupId: GroupIdKey<VERSION>>(
+    fn use_ratchet_tree_extension<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<bool, Self::GetError>;
+    ) -> Result<Option<bool>, Self::GetError>;
 
     /// Sets whether to use the RatchetTreeExtension for the group with the given id.
-    fn set_use_ratchet_tree_extension<GroupId: GroupIdKey<VERSION>>(
+    fn set_use_ratchet_tree_extension<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
         value: bool,
     ) -> Result<(), Self::UpdateError>;
 
     /// Deletes any preference about whether to use the RatchetTreeExtension for the group with the given id.
-    fn delete_use_ratchet_tree_extension<GroupId: GroupIdKey<VERSION>>(
+    fn delete_use_ratchet_tree_extension<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::UpdateError>;
 
     /// Returns the GroupEpochSecrets for the group with the given id.
     fn group_epoch_secrets<
-        GroupId: GroupIdKey<VERSION>,
-        GroupEpochSecrets: GroupEpochSecretsEntity<VERSION>,
+        GroupId: traits::GroupId<VERSION>,
+        GroupEpochSecrets: traits::GroupEpochSecrets<VERSION>,
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<GroupEpochSecrets, Self::GetError>;
+    ) -> Result<Option<GroupEpochSecrets>, Self::GetError>;
 
     /// Writes the GroupEpochSecrets for the group with the given id.
     fn write_group_epoch_secrets<
-        GroupId: GroupIdKey<VERSION>,
-        GroupEpochSecrets: GroupEpochSecretsEntity<VERSION>,
+        GroupId: traits::GroupId<VERSION>,
+        GroupEpochSecrets: traits::GroupEpochSecrets<VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -357,7 +429,7 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<(), Self::UpdateError>;
 
     /// Deletes the GroupEpochSecrets for the group with the given id.
-    fn delete_group_epoch_secrets<GroupId: GroupIdKey<VERSION>>(
+    fn delete_group_epoch_secrets<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::UpdateError>;
@@ -371,34 +443,45 @@ pub trait Entity<const VERSION: u16>: Serialize + DeserializeOwned {}
 // we can don't sacrifice type safety in the implementations of the storage provider.
 // note that there are types that are used both as keys and as entities.
 
-// traits for keys, one per data type
-pub trait GroupIdKey<const VERSION: u16>: Key<VERSION> {}
-pub trait ProposalRefKey<const VERSION: u16>: Key<VERSION> {}
-pub trait SignaturePublicKeyKey<const VERSION: u16>: Key<VERSION> {}
-pub trait InitKey<const VERSION: u16>: Key<VERSION> {}
-pub trait HashReference<const VERSION: u16>: Key<VERSION> {}
-pub trait PskKey<const VERSION: u16>: Key<VERSION> {}
-pub trait HpkePublicKey<const VERSION: u16>: Key<VERSION> {}
-pub trait EpochKey<const VERSION: u16>: Key<VERSION> {}
+pub mod traits {
+    use super::{Entity, Key};
 
-// traits for entity, one per type
-pub trait QueuedProposalEntity<const VERSION: u16>: Entity<VERSION> {}
-pub trait ProposalRefEntity<const VERSION: u16>: Entity<VERSION> {}
-pub trait TreeSyncEntity<const VERSION: u16>: Entity<VERSION> {}
-pub trait GroupContextEntity<const VERSION: u16>: Entity<VERSION> {}
-pub trait InterimTranscriptHashEntity<const VERSION: u16>: Entity<VERSION> {}
-pub trait ConfirmationTagEntity<const VERSION: u16>: Entity<VERSION> {}
-pub trait SignatureKeyPairEntity<const VERSION: u16>: Entity<VERSION> {}
-pub trait HpkePrivateKey<const VERSION: u16>: Entity<VERSION> {}
-pub trait KeyPackage<const VERSION: u16>: Entity<VERSION> {}
-pub trait PskBundle<const VERSION: u16>: Entity<VERSION> {}
-pub trait HpkeKeyPairEntity<const VERSION: u16>: Entity<VERSION> {}
-pub trait GroupStateEntity<const VERSION: u16>: Entity<VERSION> {}
-pub trait GroupEpochSecretsEntity<const VERSION: u16>: Entity<VERSION> {}
-pub trait LeafNodeIndexEntity<const VERSION: u16>: Entity<VERSION> {}
-pub trait GroupUseRatchetTreeExtensionEntity<const VERSION: u16>: Entity<VERSION> {}
-pub trait MessageSecretsEntity<const VERSION: u16>: Entity<VERSION> {}
-pub trait ResumptionPskStoreEntity<const VERSION: u16>: Entity<VERSION> {}
+    // traits for keys, one per data type
+    pub trait GroupId<const VERSION: u16>: Key<VERSION> {}
+    pub trait ProposalRefKey<const VERSION: u16>: Key<VERSION> {}
+    pub trait SignaturePublicKey<const VERSION: u16>: Key<VERSION> {}
+    pub trait InitKey<const VERSION: u16>: Key<VERSION> {}
+    pub trait HashReference<const VERSION: u16>: Key<VERSION> {}
+    pub trait PskId<const VERSION: u16>: Key<VERSION> {}
+    pub trait EncryptionKey<const VERSION: u16>: Key<VERSION> {}
+    pub trait EpochKey<const VERSION: u16>: Key<VERSION> {}
+
+    // traits for entity, one per type
+    pub trait QueuedProposal<const VERSION: u16>: Entity<VERSION> {}
+    pub trait ProposalRef<const VERSION: u16>: Entity<VERSION> {}
+    pub trait TreeSync<const VERSION: u16>: Entity<VERSION> {}
+    pub trait GroupContext<const VERSION: u16>: Entity<VERSION> {}
+    pub trait InterimTranscriptHash<const VERSION: u16>: Entity<VERSION> {}
+    pub trait ConfirmationTag<const VERSION: u16>: Entity<VERSION> {}
+    pub trait SignatureKeyPair<const VERSION: u16>: Entity<VERSION> {}
+    pub trait HpkePrivateKey<const VERSION: u16>: Entity<VERSION> {}
+    pub trait PskBundle<const VERSION: u16>: Entity<VERSION> {}
+    pub trait HpkeKeyPair<const VERSION: u16>: Entity<VERSION> {}
+    pub trait GroupState<const VERSION: u16>: Entity<VERSION> {}
+    pub trait GroupEpochSecrets<const VERSION: u16>: Entity<VERSION> {}
+    pub trait LeafNodeIndex<const VERSION: u16>: Entity<VERSION> {}
+    pub trait GroupUseRatchetTreeExtension<const VERSION: u16>: Entity<VERSION> {}
+    pub trait MessageSecrets<const VERSION: u16>: Entity<VERSION> {}
+    pub trait ResumptionPskStore<const VERSION: u16>: Entity<VERSION> {}
+
+    pub trait KeyPackage<const VERSION: u16>: Entity<VERSION> {
+        type InitKey: InitKey<VERSION>;
+        type EncryptionKey: EncryptionKey<VERSION>;
+
+        fn init_key(&self) -> &Self::InitKey;
+        fn encryption_key(&self) -> &Self::EncryptionKey;
+    }
+}
 
 /// A trait to convert one entity into another one.
 ///
