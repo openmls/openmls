@@ -7,7 +7,6 @@
 use std::fmt::Debug;
 
 use openmls_traits::{
-    key_store::{MlsEntity, MlsEntityId},
     signatures::{Signer, SignerError},
     storage::{self, StorageProvider, CURRENT_VERSION},
     types::{CryptoError, SignatureScheme},
@@ -75,10 +74,6 @@ fn id(public_key: &[u8], signature_scheme: SignatureScheme) -> Vec<u8> {
     let signature_scheme = (signature_scheme as u16).to_be_bytes();
     id.extend_from_slice(&signature_scheme);
     id
-}
-
-impl MlsEntity for SignatureKeyPair {
-    const ID: MlsEntityId = MlsEntityId::SignatureKeyPair;
 }
 
 impl SignatureKeyPair {
