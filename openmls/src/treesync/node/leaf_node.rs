@@ -183,7 +183,7 @@ impl LeafNode {
         tree_info_tbs: TreeInfoTbs,
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
         signer: &impl Signer,
-    ) -> Result<Self, LeafNodeGenerationError<KeyStore::Error, Storage::UpdateError>> {
+    ) -> Result<Self, LeafNodeGenerationError<KeyStore::Error, Storage::Error>> {
         Self::generate_update(
             ciphersuite,
             CredentialWithKey {
@@ -214,7 +214,7 @@ impl LeafNode {
         tree_info_tbs: TreeInfoTbs,
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
         signer: &impl Signer,
-    ) -> Result<Self, LeafNodeGenerationError<KeyStore::Error, Storage::UpdateError>> {
+    ) -> Result<Self, LeafNodeGenerationError<KeyStore::Error, Storage::Error>> {
         // Note that this function is supposed to be used in the public API only
         // because it is interacting with the key store.
 

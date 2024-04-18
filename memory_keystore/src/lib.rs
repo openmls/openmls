@@ -18,7 +18,7 @@ impl MemoryKeyStore {
         label: &[u8],
         key: &[u8],
         value: &[u8],
-    ) -> Result<(), <Self as StorageProvider<CURRENT_VERSION>>::GetError> {
+    ) -> Result<(), <Self as StorageProvider<CURRENT_VERSION>>::Error> {
         let mut values = self.values.write().unwrap();
 
         let mut storage_key = label.to_vec();
@@ -35,7 +35,7 @@ impl MemoryKeyStore {
         &self,
         label: &[u8],
         key: &[u8],
-    ) -> Result<Option<V>, <Self as StorageProvider<CURRENT_VERSION>>::GetError> {
+    ) -> Result<Option<V>, <Self as StorageProvider<CURRENT_VERSION>>::Error> {
         let values = self.values.read().unwrap();
 
         let mut storage_key = label.to_vec();
@@ -53,7 +53,7 @@ impl MemoryKeyStore {
         &self,
         label: &[u8],
         key: &[u8],
-    ) -> Result<Vec<V>, <Self as StorageProvider<CURRENT_VERSION>>::GetError> {
+    ) -> Result<Vec<V>, <Self as StorageProvider<CURRENT_VERSION>>::Error> {
         let values = self.values.read().unwrap();
 
         let mut storage_key = label.to_vec();
@@ -72,7 +72,7 @@ impl MemoryKeyStore {
         &self,
         label: &[u8],
         key: &[u8],
-    ) -> Result<(), <Self as StorageProvider<CURRENT_VERSION>>::UpdateError> {
+    ) -> Result<(), <Self as StorageProvider<CURRENT_VERSION>>::Error> {
         let mut values = self.values.write().unwrap();
 
         let mut storage_key = label.to_vec();
@@ -160,8 +160,7 @@ const GROUP_STATE_LABEL: &[u8] = b"GroupState";
 const USE_RATCHET_TREE_LABEL: &[u8] = b"UseRatchetTree";
 
 impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
-    type GetError = MemoryKeyStoreError;
-    type UpdateError = MemoryKeyStoreError;
+    type Error = MemoryKeyStoreError;
     // type Types = Types;
 
     fn queue_proposal<
@@ -173,7 +172,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         group_id: &GroupId,
         proposal_ref: &ProposalRef,
         proposal: &QueuedProposal,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         let mut values = self.values.write().unwrap();
 
         let mut key = QUEUED_PROPOSAL_LABEL.to_vec();
@@ -205,7 +204,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         &self,
         group_id: &GroupId,
         tree: &TreeSync,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         self.write::<CURRENT_VERSION>(
             TREE_LABEL,
             &serde_json::to_vec(&group_id).unwrap(),
@@ -220,7 +219,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         &self,
         group_id: &GroupId,
         interim_transcript_hash: &InterimTranscriptHash,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         let mut values = self.values.write().unwrap();
         let mut key = b"InterimTranscriptHash".to_vec();
         key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
@@ -238,7 +237,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         &self,
         group_id: &GroupId,
         group_context: &GroupContext,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         let mut values = self.values.write().unwrap();
         let mut key = b"GroupContext".to_vec();
         key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
@@ -256,7 +255,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         &self,
         group_id: &GroupId,
         confirmation_tag: &ConfirmationTag,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         let mut values = self.values.write().unwrap();
         let mut key = b"ConfirmationTag".to_vec();
         key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
@@ -274,7 +273,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         &self,
         public_key: &SignaturePublicKey,
         signature_key_pair: &SignatureKeyPair,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         let mut values = self.values.write().unwrap();
         let mut key = SIGNATURE_KEY_PAIR_LABEL.to_vec();
         key.extend_from_slice(&serde_json::to_vec(&public_key).unwrap());
@@ -291,7 +290,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Vec<ProposalRef>, Self::GetError> {
+    ) -> Result<Vec<ProposalRef>, Self::Error> {
         let values = self.values.read().unwrap();
 
         let mut key = b"ProposalRef".to_vec();
@@ -311,7 +310,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Vec<QueuedProposal>, Self::GetError> {
+    ) -> Result<Vec<QueuedProposal>, Self::Error> {
         let values = self.values.read().unwrap();
 
         let mut key = QUEUED_PROPOSAL_LABEL.to_vec();
@@ -330,7 +329,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<TreeSync>, Self::GetError> {
+    ) -> Result<Option<TreeSync>, Self::Error> {
         let values = self.values.read().unwrap();
 
         // XXX: These domain separators should be constants.
@@ -350,7 +349,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<GroupContext>, Self::GetError> {
+    ) -> Result<Option<GroupContext>, Self::Error> {
         let values = self.values.read().unwrap();
 
         let mut key = b"GroupContext".to_vec();
@@ -369,7 +368,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<InterimTranscriptHash>, Self::GetError> {
+    ) -> Result<Option<InterimTranscriptHash>, Self::Error> {
         let values = self.values.read().unwrap();
 
         let mut key = b"InterimTranscriptHash".to_vec();
@@ -388,7 +387,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<ConfirmationTag>, Self::GetError> {
+    ) -> Result<Option<ConfirmationTag>, Self::Error> {
         let values = self.values.read().unwrap();
 
         let mut key = b"ConfirmationTag".to_vec();
@@ -407,7 +406,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     >(
         &self,
         public_key: &SignaturePublicKey,
-    ) -> Result<Option<SignatureKeyPair>, Self::GetError> {
+    ) -> Result<Option<SignatureKeyPair>, Self::Error> {
         let values = self.values.read().unwrap();
 
         let mut key = SIGNATURE_KEY_PAIR_LABEL.to_vec();
@@ -427,7 +426,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         &self,
         public_key: &InitKey,
         private_key: &HpkePrivateKey,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         let mut values = self.values.write().unwrap();
 
         let mut key = INIT_KEY_LABEL.to_vec();
@@ -446,7 +445,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         &self,
         hash_ref: &HashReference,
         key_package: &KeyPackage,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         let key = serde_json::to_vec(&hash_ref).unwrap();
         let value = serde_json::to_vec(&key_package).unwrap();
 
@@ -463,7 +462,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         &self,
         psk_id: &PskId,
         psk: &PskBundle,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         self.write::<CURRENT_VERSION>(
             PSK_LABEL,
             &serde_json::to_vec(&psk_id).unwrap(),
@@ -478,7 +477,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         &self,
         public_key: &EncryptionKey,
         key_pair: &HpkeKeyPair,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         self.write::<CURRENT_VERSION>(
             ENCRYPTION_KEY_PAIR_LABEL,
             &serde_json::to_vec(public_key).unwrap(),
@@ -492,7 +491,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     >(
         &self,
         public_key: &InitKey,
-    ) -> Result<Option<HpkePrivateKey>, Self::GetError> {
+    ) -> Result<Option<HpkePrivateKey>, Self::Error> {
         let values = self.values.read().unwrap();
 
         let mut key = INIT_KEY_LABEL.to_vec();
@@ -509,7 +508,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     >(
         &self,
         hash_ref: &KeyPackageRef,
-    ) -> Result<Option<KeyPackage>, Self::GetError> {
+    ) -> Result<Option<KeyPackage>, Self::Error> {
         let key = serde_json::to_vec(&hash_ref).unwrap();
 
         println!("getting key package at {key:?} for version {CURRENT_VERSION}");
@@ -523,7 +522,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     fn psk<PskBundle: traits::PskBundle<CURRENT_VERSION>, PskId: traits::PskId<CURRENT_VERSION>>(
         &self,
         psk_id: &PskId,
-    ) -> Result<Option<PskBundle>, Self::GetError> {
+    ) -> Result<Option<PskBundle>, Self::Error> {
         self.read(PSK_LABEL, &serde_json::to_vec(&psk_id).unwrap())
     }
 
@@ -533,7 +532,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     >(
         &self,
         public_key: &EncryptionKey,
-    ) -> Result<Option<HpkeKeyPair>, Self::GetError> {
+    ) -> Result<Option<HpkeKeyPair>, Self::Error> {
         self.read(
             ENCRYPTION_KEY_PAIR_LABEL,
             &serde_json::to_vec(public_key).unwrap(),
@@ -545,7 +544,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     >(
         &self,
         public_key: &SignaturePublicKeuy,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         self.delete::<CURRENT_VERSION>(
             SIGNATURE_KEY_PAIR_LABEL,
             &serde_json::to_vec(public_key).unwrap(),
@@ -555,14 +554,14 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     fn delete_init_private_key<InitKey: traits::InitKey<CURRENT_VERSION>>(
         &self,
         public_key: &InitKey,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         self.delete::<CURRENT_VERSION>(INIT_KEY_LABEL, &serde_json::to_vec(public_key).unwrap())
     }
 
     fn delete_encryption_key_pair<EncryptionKey: traits::EncryptionKey<CURRENT_VERSION>>(
         &self,
         public_key: &EncryptionKey,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         self.delete::<CURRENT_VERSION>(
             ENCRYPTION_KEY_PAIR_LABEL,
             &serde_json::to_vec(&public_key).unwrap(),
@@ -572,14 +571,14 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     fn delete_key_package<KeyPackageRef: traits::HashReference<CURRENT_VERSION>>(
         &self,
         hash_ref: &KeyPackageRef,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         self.delete::<CURRENT_VERSION>(KEY_PACKAGE_LABEL, &serde_json::to_vec(&hash_ref).unwrap())
     }
 
     fn delete_psk<PskKey: traits::PskId<CURRENT_VERSION>>(
         &self,
         psk_id: &PskKey,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         self.delete::<CURRENT_VERSION>(PSK_LABEL, &serde_json::to_vec(&psk_id).unwrap())
     }
 
@@ -589,7 +588,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<GroupState>, Self::UpdateError> {
+    ) -> Result<Option<GroupState>, Self::Error> {
         todo!()
     }
 
@@ -600,7 +599,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         &self,
         group_id: &GroupId,
         group_state: &GroupState,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         self.write::<CURRENT_VERSION>(
             GROUP_STATE_LABEL,
             &serde_json::to_vec(group_id)?,
@@ -611,7 +610,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     fn delete_group_state<GroupId: traits::GroupId<CURRENT_VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         todo!()
     }
 
@@ -621,7 +620,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<MessageSecrets>, Self::GetError> {
+    ) -> Result<Option<MessageSecrets>, Self::Error> {
         todo!()
     }
 
@@ -632,7 +631,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         &self,
         group_id: &GroupId,
         message_secrets: &MessageSecrets,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         self.write::<CURRENT_VERSION>(
             MESSAGE_SECRETS_LABEL,
             &serde_json::to_vec(group_id)?,
@@ -643,7 +642,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     fn delete_message_secrets<GroupId: traits::GroupId<CURRENT_VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         todo!()
     }
 
@@ -653,7 +652,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<ResumptionPskStore>, Self::GetError> {
+    ) -> Result<Option<ResumptionPskStore>, Self::Error> {
         todo!()
     }
 
@@ -664,7 +663,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         &self,
         group_id: &GroupId,
         resumption_psk_store: &ResumptionPskStore,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         self.write::<CURRENT_VERSION>(
             RESUMPTION_PSK_STORE_LABEL,
             &serde_json::to_vec(group_id)?,
@@ -675,7 +674,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     fn delete_all_resumption_psk_secrets<GroupId: traits::GroupId<CURRENT_VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         todo!()
     }
 
@@ -685,7 +684,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<LeafNodeIndex>, Self::GetError> {
+    ) -> Result<Option<LeafNodeIndex>, Self::Error> {
         todo!()
     }
 
@@ -696,7 +695,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         &self,
         group_id: &GroupId,
         own_leaf_index: &LeafNodeIndex,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         self.write::<CURRENT_VERSION>(
             OWN_LEAF_NODE_LABEL,
             &serde_json::to_vec(group_id)?,
@@ -707,14 +706,14 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     fn delete_own_leaf_index<GroupId: traits::GroupId<CURRENT_VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn use_ratchet_tree_extension<GroupId: traits::GroupId<CURRENT_VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<bool>, Self::GetError> {
+    ) -> Result<Option<bool>, Self::Error> {
         todo!()
     }
 
@@ -722,7 +721,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         &self,
         group_id: &GroupId,
         value: bool,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         self.write::<CURRENT_VERSION>(
             USE_RATCHET_TREE_LABEL,
             &serde_json::to_vec(group_id)?,
@@ -733,7 +732,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     fn delete_use_ratchet_tree_extension<GroupId: traits::GroupId<CURRENT_VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         todo!()
     }
 
@@ -743,7 +742,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<GroupEpochSecrets>, Self::GetError> {
+    ) -> Result<Option<GroupEpochSecrets>, Self::Error> {
         todo!()
     }
 
@@ -754,7 +753,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         &self,
         group_id: &GroupId,
         group_epoch_secrets: &GroupEpochSecrets,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         self.write::<CURRENT_VERSION>(
             EPOCH_SECRETS_LABEL,
             &serde_json::to_vec(group_id)?,
@@ -765,7 +764,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     fn delete_group_epoch_secrets<GroupId: traits::GroupId<CURRENT_VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         todo!()
     }
 
@@ -779,7 +778,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         epoch: &EpochKey,
         leaf_index: u32,
         key_pairs: &[HpkeKeyPair],
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         let key = epoch_key_pairs_id(group_id, epoch, leaf_index)?;
 
         let value = serde_json::to_vec(key_pairs)?;
@@ -796,7 +795,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         group_id: &GroupId,
         epoch: &EpochKey,
         leaf_index: u32,
-    ) -> Result<Vec<HpkeKeyPair>, Self::GetError> {
+    ) -> Result<Vec<HpkeKeyPair>, Self::Error> {
         let key = epoch_key_pairs_id(group_id, epoch, leaf_index)?;
 
         let values = self.values.read().unwrap();
@@ -821,7 +820,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         group_id: &GroupId,
         epoch: &EpochKey,
         leaf_index: u32,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         let key = epoch_key_pairs_id(group_id, epoch, leaf_index)?;
         self.delete::<CURRENT_VERSION>(EPOCH_KEY_PAIRS_LABEL, &key)
     }
@@ -831,7 +830,7 @@ fn epoch_key_pairs_id(
     group_id: &impl traits::GroupId<CURRENT_VERSION>,
     epoch: &impl traits::EpochKey<CURRENT_VERSION>,
     leaf_index: u32,
-) -> Result<Vec<u8>, <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::UpdateError> {
+) -> Result<Vec<u8>, <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::Error> {
     let mut key = serde_json::to_vec(group_id)?;
     key.extend_from_slice(&serde_json::to_vec(epoch)?);
     key.extend_from_slice(&serde_json::to_vec(&leaf_index)?);
@@ -840,8 +839,7 @@ fn epoch_key_pairs_id(
 
 #[cfg(feature = "test-utils")]
 impl StorageProvider<V_TEST> for MemoryKeyStore {
-    type GetError = MemoryKeyStoreError;
-    type UpdateError = MemoryKeyStoreError;
+    type Error = MemoryKeyStoreError;
 
     fn write_init_private_key<
         InitKey: traits::InitKey<V_TEST>,
@@ -850,7 +848,7 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         &self,
         public_key: &InitKey,
         private_key: &HpkePrivateKey,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         let mut values = self.values.write().unwrap();
 
         let mut key = INIT_KEY_LABEL.to_vec();
@@ -869,7 +867,7 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         &self,
         public_key: &EncryptionKey,
         key_pair: &HpkeKeyPair,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         self.write::<V_TEST>(
             ENCRYPTION_KEY_PAIR_LABEL,
             &serde_json::to_vec(&public_key).unwrap(),
@@ -883,7 +881,7 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
     >(
         &self,
         public_key: &InitKey,
-    ) -> Result<Option<HpkePrivateKey>, Self::GetError> {
+    ) -> Result<Option<HpkePrivateKey>, Self::Error> {
         let values = self.values.read().unwrap();
 
         let mut key = INIT_KEY_LABEL.to_vec();
@@ -903,7 +901,7 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         group_id: &GroupId,
         epoch: &EpochKey,
         leaf_index: u32,
-    ) -> Result<Vec<HpkeKeyPair>, Self::GetError> {
+    ) -> Result<Vec<HpkeKeyPair>, Self::Error> {
         let mut key = vec![];
         write!(
             &mut key,
@@ -920,7 +918,7 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
     >(
         &self,
         hash_ref: &KeyPackageRef,
-    ) -> Result<Option<KeyPackage>, Self::GetError> {
+    ) -> Result<Option<KeyPackage>, Self::Error> {
         let key = serde_json::to_vec(&hash_ref).unwrap();
 
         println!("getting key package at {key:?} for version {V_TEST}");
@@ -938,7 +936,7 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         &self,
         hash_ref: &HashReference,
         key_package: &KeyPackage,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         let key = serde_json::to_vec(&hash_ref).unwrap();
         println!("setting key package at {key:?} for version {V_TEST}");
         let value = serde_json::to_vec(&key_package).unwrap();
@@ -961,7 +959,7 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         group_id: &GroupId,
         proposal_ref: &ProposalRef,
         proposal: &QueuedProposal,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         todo!()
     }
 
@@ -969,7 +967,7 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         &self,
         group_id: &GroupId,
         tree: &TreeSync,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         todo!()
     }
 
@@ -980,7 +978,7 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         &self,
         group_id: &GroupId,
         interim_transcript_hash: &InterimTranscriptHash,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         todo!()
     }
 
@@ -991,7 +989,7 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         &self,
         group_id: &GroupId,
         group_context: &GroupContext,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         todo!()
     }
 
@@ -1002,7 +1000,7 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         &self,
         group_id: &GroupId,
         confirmation_tag: &ConfirmationTag,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         todo!()
     }
 
@@ -1013,7 +1011,7 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         &self,
         public_key: &SignaturePublicKey,
         signature_key_pair: &SignatureKeyPair,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         todo!()
     }
 
@@ -1027,7 +1025,7 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         epoch: &EpochKey,
         leaf_index: u32,
         key_pairs: &[HpkeKeyPair],
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         todo!()
     }
 
@@ -1035,7 +1033,7 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         &self,
         psk_id: &PskId,
         psk: &PskBundle,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         todo!()
     }
 
@@ -1045,7 +1043,7 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Vec<ProposalRef>, Self::GetError> {
+    ) -> Result<Vec<ProposalRef>, Self::Error> {
         todo!()
     }
 
@@ -1055,14 +1053,14 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Vec<QueuedProposal>, Self::GetError> {
+    ) -> Result<Vec<QueuedProposal>, Self::Error> {
         todo!()
     }
 
     fn treesync<GroupId: traits::GroupId<V_TEST>, TreeSync: traits::TreeSync<V_TEST>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<TreeSync>, Self::GetError> {
+    ) -> Result<Option<TreeSync>, Self::Error> {
         todo!()
     }
 
@@ -1072,7 +1070,7 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<GroupContext>, Self::GetError> {
+    ) -> Result<Option<GroupContext>, Self::Error> {
         todo!()
     }
 
@@ -1082,7 +1080,7 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<InterimTranscriptHash>, Self::GetError> {
+    ) -> Result<Option<InterimTranscriptHash>, Self::Error> {
         todo!()
     }
 
@@ -1092,7 +1090,7 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<ConfirmationTag>, Self::GetError> {
+    ) -> Result<Option<ConfirmationTag>, Self::Error> {
         todo!()
     }
 
@@ -1102,7 +1100,7 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
     >(
         &self,
         public_key: &SignaturePublicKey,
-    ) -> Result<Option<SignatureKeyPair>, Self::GetError> {
+    ) -> Result<Option<SignatureKeyPair>, Self::Error> {
         todo!()
     }
 
@@ -1112,35 +1110,35 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
     >(
         &self,
         public_key: &EncryptionKey,
-    ) -> Result<Option<HpkeKeyPair>, Self::GetError> {
+    ) -> Result<Option<HpkeKeyPair>, Self::Error> {
         todo!()
     }
 
     fn psk<PskBundle: traits::PskBundle<V_TEST>, PskId: traits::PskId<V_TEST>>(
         &self,
         psk_id: &PskId,
-    ) -> Result<Option<PskBundle>, Self::GetError> {
+    ) -> Result<Option<PskBundle>, Self::Error> {
         todo!()
     }
 
     fn delete_signature_key_pair<SignaturePublicKeuy: traits::SignaturePublicKey<V_TEST>>(
         &self,
         public_key: &SignaturePublicKeuy,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn delete_init_private_key<InitKey: traits::InitKey<V_TEST>>(
         &self,
         public_key: &InitKey,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn delete_encryption_key_pair<EncryptionKey: traits::EncryptionKey<V_TEST>>(
         &self,
         public_key: &EncryptionKey,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         todo!()
     }
 
@@ -1152,28 +1150,28 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         group_id: &GroupId,
         epoch: &EpochKey,
         leaf_index: u32,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn delete_key_package<KeyPackageRef: traits::HashReference<V_TEST>>(
         &self,
         hash_ref: &KeyPackageRef,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn delete_psk<PskKey: traits::PskId<V_TEST>>(
         &self,
         psk_id: &PskKey,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn group_state<GroupState: traits::GroupState<V_TEST>, GroupId: traits::GroupId<V_TEST>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<GroupState>, Self::UpdateError> {
+    ) -> Result<Option<GroupState>, Self::Error> {
         todo!()
     }
 
@@ -1184,14 +1182,14 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         &self,
         group_id: &GroupId,
         group_state: &GroupState,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn delete_group_state<GroupId: traits::GroupId<V_TEST>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         todo!()
     }
 
@@ -1201,7 +1199,7 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<MessageSecrets>, Self::GetError> {
+    ) -> Result<Option<MessageSecrets>, Self::Error> {
         todo!()
     }
 
@@ -1212,14 +1210,14 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         &self,
         group_id: &GroupId,
         message_secrets: &MessageSecrets,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn delete_message_secrets<GroupId: traits::GroupId<V_TEST>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         todo!()
     }
 
@@ -1229,7 +1227,7 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<ResumptionPskStore>, Self::GetError> {
+    ) -> Result<Option<ResumptionPskStore>, Self::Error> {
         todo!()
     }
 
@@ -1240,14 +1238,14 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         &self,
         group_id: &GroupId,
         resumption_psk_store: &ResumptionPskStore,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn delete_all_resumption_psk_secrets<GroupId: traits::GroupId<V_TEST>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         todo!()
     }
 
@@ -1257,7 +1255,7 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<LeafNodeIndex>, Self::GetError> {
+    ) -> Result<Option<LeafNodeIndex>, Self::Error> {
         todo!()
     }
 
@@ -1268,21 +1266,21 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         &self,
         group_id: &GroupId,
         own_leaf_index: &LeafNodeIndex,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn delete_own_leaf_index<GroupId: traits::GroupId<V_TEST>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn use_ratchet_tree_extension<GroupId: traits::GroupId<V_TEST>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<bool>, Self::GetError> {
+    ) -> Result<Option<bool>, Self::Error> {
         todo!()
     }
 
@@ -1290,14 +1288,14 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         &self,
         group_id: &GroupId,
         value: bool,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn delete_use_ratchet_tree_extension<GroupId: traits::GroupId<V_TEST>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         todo!()
     }
 
@@ -1307,7 +1305,7 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<GroupEpochSecrets>, Self::GetError> {
+    ) -> Result<Option<GroupEpochSecrets>, Self::Error> {
         todo!()
     }
 
@@ -1318,14 +1316,14 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         &self,
         group_id: &GroupId,
         group_epoch_secrets: &GroupEpochSecrets,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn delete_group_epoch_secrets<GroupId: traits::GroupId<V_TEST>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::UpdateError> {
+    ) -> Result<(), Self::Error> {
         todo!()
     }
 }

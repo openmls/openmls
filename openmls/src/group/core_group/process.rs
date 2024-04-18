@@ -296,7 +296,7 @@ impl CoreGroup {
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
         staged_commit: StagedCommit,
         proposal_store: &mut ProposalStore,
-    ) -> Result<(), MergeCommitError<KeyStore::Error, Storage::UpdateError>> {
+    ) -> Result<(), MergeCommitError<KeyStore::Error, Storage::Error>> {
         // Save the past epoch
         let past_epoch = self.context().epoch();
         // Get all the full leaves

@@ -13,7 +13,6 @@ use crate::{
         Welcome,
     },
     schedule::psk::store::ResumptionPskStore,
-    storage::StorageReference,
     treesync::RatchetTreeIn,
 };
 
@@ -127,6 +126,14 @@ impl MlsGroup {
     }
 }
 
+fn transpose_err_opt<T, E>(v: Result<Option<T>, E>) -> Option<Result<T, E>> {
+    match v {
+        Ok(Some(v)) => Some(Ok(v)),
+        Ok(None) => None,
+        Err(err) => Some(Err(err)),
+    }
+}
+
 impl StagedWelcome {
     /// Creates a new staged welcome from a [`Welcome`] message. Returns an error
     /// ([`WelcomeError::NoMatchingKeyPackage`]) if no [`KeyPackage`]
@@ -143,22 +150,23 @@ impl StagedWelcome {
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
         ratchet_tree: Option<RatchetTreeIn>,
-    ) -> Result<Self, WelcomeError<Storage::UpdateError>> {
+    ) -> Result<Self, WelcomeError<Storage::Error>> {
         let resumption_psk_store =
             ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
-        let (key_package, _) = welcome
+        let key_package: KeyPackage = welcome
             .secrets()
             .iter()
             .find_map(|egs| {
-                let new_member = egs.new_member();
-                let hash_ref = new_member.as_slice();
-                provider
-                    .storage()
-                    .key_package(&hash_ref)
-                    .map(|kp: KeyPackage| (kp, hash_ref.to_vec()))
-                    .ok()
+                let hash_ref = egs.new_member();
+
+                transpose_err_opt(
+                    provider
+                        .storage()
+                        .key_package(&hash_ref)
+                        .map_err(WelcomeError::StorageError),
+                )
             })
-            .ok_or(WelcomeError::NoMatchingKeyPackage)?;
+            .ok_or(WelcomeError::NoMatchingKeyPackage)??;
 
         // TODO #751
         let private_key = provider
@@ -218,7 +226,7 @@ impl StagedWelcome {
     >(
         self,
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
-    ) -> Result<MlsGroup, WelcomeError<Storage::UpdateError>> {
+    ) -> Result<MlsGroup, WelcomeError<Storage::Error>> {
         let mut group = self.group.into_core_group(provider)?;
         group.set_max_past_epochs(self.mls_group_config.max_past_epochs);
 

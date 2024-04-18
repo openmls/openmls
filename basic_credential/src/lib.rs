@@ -116,7 +116,7 @@ impl SignatureKeyPair {
     }
 
     /// Store this signature key pair in the key store.
-    pub fn store<T>(&self, store: &T) -> Result<(), T::UpdateError>
+    pub fn store<T>(&self, store: &T) -> Result<(), T::Error>
     where
         T: StorageProvider<CURRENT_VERSION>,
     {

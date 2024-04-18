@@ -361,7 +361,7 @@ impl KeyPackage {
         if delete_encryption_key {
             provider
                 .storage()
-                .delete_encryption_key_pair(&self.leaf_node().encryption_key())
+                .delete_encryption_key_pair(self.leaf_node().encryption_key())
                 .map_err(|_| KeyPackageStorage::Error)?;
         }
         Ok(())

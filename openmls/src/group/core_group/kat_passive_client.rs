@@ -253,7 +253,7 @@ impl PassiveClient {
         let hash_ref = key_package.hash_ref(self.provider.crypto()).unwrap();
         <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::write_key_package(
             self.provider.storage(),
-            hash_ref,
+            &hash_ref,
             &key_package,
         )
         .unwrap();

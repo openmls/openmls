@@ -2,7 +2,7 @@
 //!
 //! TODO
 
-use openmls_traits::storage::{self, traits, Entity, Key, CURRENT_VERSION};
+use openmls_traits::storage::{traits, Entity, Key, CURRENT_VERSION};
 use openmls_traits::types::HpkePrivateKey;
 use serde::Deserialize;
 use serde::Serialize;
@@ -33,7 +33,6 @@ impl traits::GroupId<CURRENT_VERSION> for GroupId {}
 
 impl Key<CURRENT_VERSION> for ProposalRef {}
 impl Entity<CURRENT_VERSION> for ProposalRef {}
-impl traits::ProposalRef<CURRENT_VERSION> for ProposalRef {}
 impl traits::ProposalRef<CURRENT_VERSION> for ProposalRef {}
 impl traits::HashReference<CURRENT_VERSION> for ProposalRef {}
 
@@ -130,7 +129,7 @@ mod test {
     use openmls_rust_crypto::OpenMlsRustCrypto;
     use openmls_traits::{
         crypto::OpenMlsCrypto,
-        storage::{StorageProvider, V_TEST},
+        storage::{traits as type_traits, StorageProvider, V_TEST},
         types::Ciphersuite,
         OpenMlsProvider,
     };
@@ -161,6 +160,7 @@ mod test {
         let private_key: StorageHpkePrivateKey = provider
             .storage()
             .init_private_key(&StorageInitKey(&key_pair.public))
+            .unwrap()
             .unwrap();
         assert_eq!(private_key.0, key_pair.private);
     }
@@ -175,23 +175,23 @@ mod test {
 
     struct NewStorageKeyPackage {}
 
-    impl storage::HpkePrivateKeyEntity<V_TEST> for NewStorageHpkePrivateKey {}
+    impl type_traits::HpkePrivateKey<V_TEST> for NewStorageHpkePrivateKey {}
     impl Entity<V_TEST> for NewStorageHpkePrivateKey {}
 
     impl Entity<V_TEST> for KeyPackage {}
-    impl storage::KeyPackageEntity<V_TEST> for KeyPackage {}
+    impl type_traits::KeyPackage<V_TEST> for KeyPackage {}
 
     impl Key<V_TEST> for EncryptionKey {}
-    impl storage::HpkePublicKeyKey<V_TEST> for EncryptionKey {}
+    impl type_traits::EncryptionKey<V_TEST> for EncryptionKey {}
 
     impl Entity<V_TEST> for EncryptionKeyPair {}
-    impl storage::HpkeKeyPairEntity<V_TEST> for EncryptionKeyPair {}
+    impl type_traits::HpkeKeyPair<V_TEST> for EncryptionKeyPair {}
 
     impl Key<V_TEST> for InitKey {}
-    impl storage::InitKeyKey<V_TEST> for InitKey {}
+    impl type_traits::InitKey<V_TEST> for InitKey {}
 
     impl Key<V_TEST> for ProposalRef {}
-    impl storage::HashReferenceKey<V_TEST> for ProposalRef {}
+    impl type_traits::HashReference<V_TEST> for ProposalRef {}
 
     #[test]
     fn init_key_upgrade() {
@@ -260,18 +260,21 @@ mod test {
         >>::key_package(
             provider.storage(), &key_package_ref
         )
+        .unwrap()
         .unwrap();
         let read_init_secret: StorageHpkePrivateKey =
             <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::init_private_key(
                 provider.storage(),
                 &StorageInitKey(read_key_package.hpke_init_key().as_slice()),
             )
+            .unwrap()
             .unwrap();
         let read_encryption_keypair: EncryptionKeyPair =
             <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::encryption_key_pair(
                 provider.storage(),
                 read_key_package.leaf_node().encryption_key(),
             )
+            .unwrap()
             .unwrap();
 
         // then, build the new data from the old data
@@ -306,18 +309,21 @@ mod test {
                 &new_storage_provider,
                 &key_package_ref,
             )
+            .unwrap()
             .unwrap();
         let read_new_init_secret: NewStorageHpkePrivateKey =
             <MemoryKeyStore as StorageProvider<V_TEST>>::init_private_key(
                 &new_storage_provider,
                 read_key_package.hpke_init_key(),
             )
+            .unwrap()
             .unwrap();
         let read_new_encryption_keypair: EncryptionKeyPair =
             <MemoryKeyStore as StorageProvider<V_TEST>>::encryption_key_pair(
                 &new_storage_provider,
                 read_key_package.leaf_node().encryption_key(),
             )
+            .unwrap()
             .unwrap();
 
         // compare it to the old_storage

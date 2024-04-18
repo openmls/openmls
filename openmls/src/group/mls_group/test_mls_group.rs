@@ -1021,7 +1021,7 @@ fn key_package_deletion<Provider: crate::storage::RefinedProvider>(
     use openmls_traits::storage::{StorageProvider, CURRENT_VERSION};
 
     // TEST: The key package must be gone from the key store.
-    let result: Result<KeyPackage, _> = provider
+    let result: Result<Option<KeyPackage>, _> = provider
         .storage()
         .key_package(&bob_key_package.hash_ref(provider.crypto()).unwrap());
     assert!(

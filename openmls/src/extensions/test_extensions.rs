@@ -462,5 +462,6 @@ fn last_resort_extension(
             &kp.hash_ref(provider.crypto())
                 .expect("error hashing key package"),
         )
-        .expect("error retrieving key package");
+        .expect("error retrieving key package")
+        .expect("key package does not exist");
 }

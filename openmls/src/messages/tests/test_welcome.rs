@@ -1,5 +1,4 @@
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
     crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, storage::StorageProvider,
     types::Ciphersuite, OpenMlsProvider,
@@ -179,7 +178,7 @@ fn test_welcome_context_mismatch(
     // has been consumed already.
     provider
         .storage()
-        .write_key_package(bob_kp.hash_ref(provider.crypto()).unwrap(), bob_kp)
+        .write_key_package(&bob_kp.hash_ref(provider.crypto()).unwrap(), bob_kp)
         .unwrap();
     provider
         .key_store()

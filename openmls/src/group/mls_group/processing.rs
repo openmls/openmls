@@ -129,7 +129,7 @@ impl MlsGroup {
         &mut self,
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
         staged_commit: StagedCommit,
-    ) -> Result<(), MergeCommitError<KeyStore::Error, Storage::UpdateError>> {
+    ) -> Result<(), MergeCommitError<KeyStore::Error, Storage::Error>> {
         // Check if we were removed from the group
         if staged_commit.self_removed() {
             self.group_state = MlsGroupState::Inactive;
@@ -162,7 +162,7 @@ impl MlsGroup {
     pub fn merge_pending_commit<KeyStore: OpenMlsKeyStore, Storage: StorageProvider<1>>(
         &mut self,
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
-    ) -> Result<(), MergePendingCommitError<KeyStore::Error, Storage::UpdateError>> {
+    ) -> Result<(), MergePendingCommitError<KeyStore::Error, Storage::Error>> {
         match &self.group_state {
             MlsGroupState::PendingCommit(_) => {
                 let old_state = mem::replace(&mut self.group_state, MlsGroupState::Operational);

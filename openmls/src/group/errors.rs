@@ -20,7 +20,7 @@ use crate::{
 
 /// Welcome error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum WelcomeError<StorageUpdateError> {
+pub enum WelcomeError<StorageError> {
     /// See [`GroupSecretsError`] for more details.
     #[error(transparent)]
     GroupSecrets(#[from] GroupSecretsError),
@@ -88,9 +88,9 @@ pub enum WelcomeError<StorageUpdateError> {
     /// This error indicates the leaf node is invalid. See [`LeafNodeValidationError`] for more details.
     #[error(transparent)]
     LeafNodeValidation(#[from] LeafNodeValidationError),
-    /// This error indicates that an error occurred while writing the group state to storage.
-    #[error("An error occurred when writing the group state to storage")]
-    StorageUpdateError(StorageUpdateError),
+    /// This error indicates that an error occurred while reading or writing from/to storage.
+    #[error("An error occurred when querying storage")]
+    StorageError(StorageError),
 }
 
 /// External Commit error
@@ -518,7 +518,7 @@ pub enum CreateGroupContextExtProposalError {
 
 /// Error merging a commit.
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum MergeCommitError<KeyStoreError, StorageUpdateError> {
+pub enum MergeCommitError<KeyStoreError, StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -527,7 +527,7 @@ pub enum MergeCommitError<KeyStoreError, StorageUpdateError> {
     KeyStoreError(KeyStoreError),
     /// Error writing updated group to storage.
     #[error("Error writing updated group data to storage.")]
-    StorageUpdateError(StorageUpdateError),
+    StorageError(StorageError),
 }
 
 /// Error validation a GroupContextExtensions proposal.

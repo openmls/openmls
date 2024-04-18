@@ -351,14 +351,14 @@ impl PublicGroup {
     pub(crate) fn write_to_storage<Storage: StorageProvider<1>>(
         &self,
         storage: &Storage,
-    ) -> Result<(), Storage::UpdateError> {
+    ) -> Result<(), Storage::Error> {
         let group_id = self.group_context.group_id();
-        storage.write_tree(group_id.clone(), self.treesync().clone())?;
-        storage.write_confirmation_tag(group_id.clone(), self.confirmation_tag().clone())?;
-        storage.write_context(group_id.clone(), self.group_context().clone())?;
+        storage.write_tree(group_id, self.treesync())?;
+        storage.write_confirmation_tag(group_id, self.confirmation_tag())?;
+        storage.write_context(group_id, self.group_context())?;
         storage.write_interim_transcript_hash(
-            group_id.clone(),
-            InterimTranscriptHash(self.interim_transcript_hash.clone()),
+            group_id,
+            &InterimTranscriptHash(self.interim_transcript_hash.clone()),
         )?;
         Ok(())
 

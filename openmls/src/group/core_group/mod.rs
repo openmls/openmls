@@ -718,7 +718,7 @@ impl CoreGroup {
     pub(super) fn store<Storage: StorageProvider<{ openmls_traits::storage::CURRENT_VERSION }>>(
         &self,
         storage: &Storage,
-    ) -> Result<(), Storage::UpdateError> {
+    ) -> Result<(), Storage::Error> {
         let group_id = self.group_id();
 
         storage.write_own_leaf_index(group_id, &self.own_leaf_index())?;
@@ -738,7 +738,7 @@ impl CoreGroup {
         &self,
         store: &Storage,
         keypair_references: &[EncryptionKeyPair],
-    ) -> Result<(), Storage::UpdateError> {
+    ) -> Result<(), Storage::Error> {
         store.write_encryption_epoch_key_pairs(
             self.group_id(),
             &self.context().epoch(),
@@ -772,7 +772,7 @@ impl CoreGroup {
     pub(super) fn delete_previous_epoch_keypairs<Store: StorageProvider<CURRENT_VERSION>>(
         &self,
         store: &Store,
-    ) -> Result<(), Store::UpdateError> {
+    ) -> Result<(), Store::Error> {
         store.delete_encryption_epoch_key_pairs(
             self.group_id(),
             &self.context().epoch(),

@@ -162,7 +162,7 @@ impl EncryptionKeyPair {
     pub(crate) fn write<Storage: StorageProviderTrait<CURRENT_VERSION>>(
         &self,
         store: &Storage,
-    ) -> Result<(), Storage::UpdateError> {
+    ) -> Result<(), Storage::Error> {
         store.write_encryption_key_pair(self.public_key(), self)
     }
 
@@ -175,14 +175,18 @@ impl EncryptionKeyPair {
         provider: &impl OpenMlsProvider,
         encryption_key: &EncryptionKey,
     ) -> Option<EncryptionKeyPair> {
-        provider.storage().encryption_key_pair(encryption_key).ok()
+        provider
+            .storage()
+            .encryption_key_pair(encryption_key)
+            .ok()
+            .flatten()
     }
 
     /// Delete the [`EncryptionKeyPair`] from the store of the `provider`.
     pub(crate) fn delete_from_key_store<Storage: StorageProviderTrait<CURRENT_VERSION>>(
         &self,
         store: &Storage,
-    ) -> Result<(), Storage::UpdateError> {
+    ) -> Result<(), Storage::Error> {
         store.delete_encryption_key_pair(self.public_key())
     }
 

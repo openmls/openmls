@@ -26,7 +26,7 @@ impl StagedCoreWelcome {
         key_package_bundle: KeyPackageBundle,
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
         mut resumption_psk_store: ResumptionPskStore,
-    ) -> Result<Self, WelcomeError<Storage::UpdateError>> {
+    ) -> Result<Self, WelcomeError<Storage::Error>> {
         log::debug!("CoreGroup::new_from_welcome_internal");
 
         // Read the encryption key pair from the key store and delete it there.
@@ -272,7 +272,7 @@ impl StagedCoreWelcome {
     >(
         self,
         provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
-    ) -> Result<CoreGroup, WelcomeError<Storage::UpdateError>> {
+    ) -> Result<CoreGroup, WelcomeError<Storage::Error>> {
         let Self {
             public_group,
             group_epoch_secrets,
@@ -307,10 +307,10 @@ impl StagedCoreWelcome {
 
         group
             .store(provider.storage())
-            .map_err(WelcomeError::StorageUpdateError)?;
+            .map_err(WelcomeError::StorageError)?;
         group
             .store_epoch_keypairs(provider.storage(), group_keypairs.as_slice())
-            .map_err(WelcomeError::StorageUpdateError)?;
+            .map_err(WelcomeError::StorageError)?;
 
         Ok(group)
     }

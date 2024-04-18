@@ -175,7 +175,7 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
     let hash_ref = key_package.hash_ref(provider.crypto()).unwrap();
     <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::write_key_package(
         provider.storage(),
-        hash_ref,
+        &hash_ref,
         &key_package,
     )
     .unwrap();
