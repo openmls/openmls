@@ -1,10 +1,6 @@
 //! # Preshared keys.
 
-use openmls_traits::{
-    key_store::{MlsEntity, MlsEntityId, OpenMlsKeyStore},
-    random::OpenMlsRand,
-    OpenMlsProvider,
-};
+use openmls_traits::{random::OpenMlsRand, storage::StorageProvider as StorageProviderTrait};
 use serde::{Deserialize, Serialize};
 use tls_codec::{Serialize as TlsSerializeTrait, VLBytes};
 
@@ -12,6 +8,7 @@ use super::*;
 use crate::{
     group::{GroupEpoch, GroupId},
     schedule::psk::store::ResumptionPskStore,
+    storage::{RefinedProvider, StorageProvider},
 };
 
 /// Resumption PSK usage.
@@ -95,10 +92,6 @@ impl ExternalPsk {
 #[derive(Serialize, Deserialize, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize)]
 pub(crate) struct PskBundle {
     secret: Secret,
-}
-
-impl MlsEntity for PskBundle {
-    const ID: MlsEntityId = MlsEntityId::PskBundle;
 }
 
 /// Resumption PSK.
@@ -284,13 +277,11 @@ impl PreSharedKeyId {
     /// Save this `PreSharedKeyId` in the keystore.
     ///
     /// Note: The nonce is not saved as it must be unique for each time it's being applied.
-    pub fn write_to_key_store<KeyStore: OpenMlsKeyStore>(
+    pub fn write_to_key_store<Provider: RefinedProvider>(
         &self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &Provider,
         psk: &[u8],
     ) -> Result<(), PskError> {
-        let keystore_id = self.keystore_id()?;
-
         let psk_bundle = {
             let secret = Secret::from_slice(psk);
 
@@ -298,25 +289,9 @@ impl PreSharedKeyId {
         };
 
         provider
-            .key_store()
-            .store(&keystore_id, &psk_bundle)
-            .map_err(|_| PskError::KeyStore)
-    }
-
-    pub(crate) fn keystore_id(&self) -> Result<Vec<u8>, LibraryError> {
-        let psk_id_with_empty_nonce = PreSharedKeyId {
-            psk: self.psk.clone(),
-            psk_nonce: VLBytes::new(vec![]),
-        };
-
-        log::trace!(
-            "keystore id: {:x?}",
-            psk_id_with_empty_nonce.tls_serialize_detached()
-        );
-
-        psk_id_with_empty_nonce
-            .tls_serialize_detached()
-            .map_err(LibraryError::missing_bound_check)
+            .storage()
+            .write_psk(&self.psk, &psk_bundle)
+            .map_err(|_| PskError::Storage)
     }
 
     // ----- Validation ----------------------------------------------------------------------------
@@ -471,8 +446,8 @@ impl From<Secret> for PskSecret {
     }
 }
 
-pub(crate) fn load_psks<'p>(
-    key_store: &impl OpenMlsKeyStore,
+pub(crate) fn load_psks<'p, Storage: StorageProvider>(
+    storage: &Storage,
     resumption_psk_store: &ResumptionPskStore,
     psk_ids: &'p [PreSharedKeyId],
 ) -> Result<Vec<(&'p PreSharedKeyId, Secret)>, PskError> {
@@ -490,7 +465,10 @@ pub(crate) fn load_psks<'p>(
                 }
             }
             Psk::External(_) => {
-                if let Some(psk_bundle) = key_store.read::<PskBundle>(&psk_id.keystore_id()?) {
+                let psk_bundle: Option<PskBundle> = storage
+                    .psk(psk_id.psk())
+                    .map_err(|_| PskError::KeyNotFound)?;
+                if let Some(psk_bundle) = psk_bundle {
                     psk_bundles.push((psk_id, psk_bundle.secret));
                 } else {
                     return Err(PskError::KeyNotFound);

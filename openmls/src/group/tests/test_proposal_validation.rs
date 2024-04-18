@@ -1,7 +1,7 @@
 //! This module tests the validation of proposals as defined in
 //! https://openmls.tech/book/message_validation.html#semantic-validation-of-proposals-covered-by-a-commit
 
-use crate::test_utils::OpenMlsRustCrypto;
+use crate::{storage::RefinedProvider, test_utils::OpenMlsRustCrypto};
 use openmls_traits::{
     key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite, OpenMlsProvider,
 };
@@ -56,12 +56,12 @@ fn generate_credential_with_key_and_key_package(
 }
 
 /// Helper function to create a group and try to add `members` to it.
-fn create_group_with_members<KeyStore: OpenMlsKeyStore>(
+fn create_group_with_members<Provider: RefinedProvider>(
     ciphersuite: Ciphersuite,
     alice_credential_with_key_and_signer: &CredentialWithKeyAndSigner,
     member_key_packages: &[KeyPackage],
-    provider: &impl crate::storage::RefinedProvider<KeyStoreProvider = KeyStore>,
-) -> Result<(MlsMessageIn, Welcome), AddMembersError<KeyStore::Error>> {
+    provider: &Provider,
+) -> Result<(MlsMessageIn, Welcome), AddMembersError<Provider::StorageError>> {
     let mut alice_group = MlsGroup::new_with_group_id(
         provider,
         &alice_credential_with_key_and_signer.signer,

@@ -291,12 +291,12 @@ impl CoreGroup {
     }
 
     /// Merge a [StagedCommit] into the group after inspection
-    pub(crate) fn merge_staged_commit<KeyStore: OpenMlsKeyStore, Storage: StorageProvider<1>>(
+    pub(crate) fn merge_staged_commit<Provider: RefinedProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
+        provider: &Provider,
         staged_commit: StagedCommit,
         proposal_store: &mut ProposalStore,
-    ) -> Result<(), MergeCommitError<KeyStore::Error, Storage::Error>> {
+    ) -> Result<(), MergeCommitError<Provider::StorageError>> {
         // Save the past epoch
         let past_epoch = self.context().epoch();
         // Get all the full leaves

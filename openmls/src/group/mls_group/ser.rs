@@ -4,7 +4,6 @@
 use super::*;
 use crate::schedule::psk::store::ResumptionPskStore;
 
-use openmls_traits::key_store::{MlsEntity, MlsEntityId};
 use serde::{
     ser::{SerializeStruct, Serializer},
     Deserialize, Serialize,
@@ -39,10 +38,6 @@ impl Into<MlsGroup> for SerializedMlsGroup {
             state_changed: InnerState::Persisted,
         }
     }
-}
-
-impl MlsEntity for MlsGroup {
-    const ID: MlsEntityId = MlsEntityId::GroupState;
 }
 
 impl Serialize for MlsGroup {

@@ -34,10 +34,7 @@ mod test_proposals;
 
 use log::{debug, trace};
 use openmls_traits::{
-    crypto::OpenMlsCrypto,
-    key_store::OpenMlsKeyStore,
-    signatures::Signer,
-    storage::{StorageProvider, CURRENT_VERSION},
+    crypto::OpenMlsCrypto, signatures::Signer, storage::StorageProvider as StorageProviderTrait,
     types::Ciphersuite,
 };
 use serde::{Deserialize, Serialize};
@@ -79,7 +76,7 @@ use crate::{
         psk::{load_psks, store::ResumptionPskStore, PskSecret},
         *,
     },
-    storage::RefinedProvider,
+    storage::{RefinedProvider, StorageProvider},
     tree::{secret_tree::SecretTreeError, sender_ratchet::SenderRatchetConfiguration},
     treesync::{node::encryption_keys::EncryptionKeyPair, *},
     versions::ProtocolVersion,
@@ -306,7 +303,7 @@ impl CoreGroupBuilder {
 
         // Prepare the PskSecret
         let psk_secret = {
-            let psks = load_psks(provider.key_store(), &resumption_psk_store, &self.psk_ids)?;
+            let psks = load_psks(provider.storage(), &resumption_psk_store, &self.psk_ids)?;
 
             PskSecret::new(provider.crypto(), ciphersuite, psks)?
         };
@@ -721,7 +718,7 @@ impl CoreGroup {
             .ok_or_else(|| LibraryError::custom("Tree has no own leaf."))
     }
 
-    pub(super) fn store<Storage: StorageProvider<{ openmls_traits::storage::CURRENT_VERSION }>>(
+    pub(super) fn store<Storage: StorageProvider>(
         &self,
         storage: &Storage,
     ) -> Result<(), Storage::Error> {
@@ -741,7 +738,7 @@ impl CoreGroup {
     /// indexed by this group's [`GroupId`] and [`GroupEpoch`].
     ///
     /// Returns an error if access to the key store fails.
-    pub(super) fn store_epoch_keypairs<Storage: StorageProvider<CURRENT_VERSION>>(
+    pub(super) fn store_epoch_keypairs<Storage: StorageProvider>(
         &self,
         store: &Storage,
         keypair_references: &[EncryptionKeyPair],
@@ -759,7 +756,7 @@ impl CoreGroup {
     ///
     /// Returns an empty vector if access to the store fails or it can't find
     /// any keys.
-    pub(super) fn read_epoch_keypairs<Storage: StorageProvider<CURRENT_VERSION>>(
+    pub(super) fn read_epoch_keypairs<Storage: StorageProvider>(
         &self,
         store: &Storage,
     ) -> Vec<EncryptionKeyPair> {
@@ -776,10 +773,10 @@ impl CoreGroup {
     /// the `provider`'s key store.
     ///
     /// Returns an error if access to the key store fails.
-    pub(super) fn delete_previous_epoch_keypairs<Store: StorageProvider<CURRENT_VERSION>>(
+    pub(super) fn delete_previous_epoch_keypairs<Storage: StorageProvider>(
         &self,
-        store: &Store,
-    ) -> Result<(), Store::Error> {
+        store: &Storage,
+    ) -> Result<(), Storage::Error> {
         store.delete_encryption_epoch_key_pairs(
             self.group_id(),
             &self.context().epoch(),
@@ -787,12 +784,12 @@ impl CoreGroup {
         )
     }
 
-    pub(crate) fn create_commit<KeyStore: OpenMlsKeyStore>(
+    pub(crate) fn create_commit<Provider: RefinedProvider>(
         &self,
         mut params: CreateCommitParams,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &Provider,
         signer: &impl Signer,
-    ) -> Result<CreateCommitResult, CreateCommitError<KeyStore::Error>> {
+    ) -> Result<CreateCommitResult, CreateCommitError<Provider::StorageError>> {
         let ciphersuite = self.ciphersuite();
 
         let sender = match params.commit_type() {
@@ -938,7 +935,7 @@ impl CoreGroup {
         // Prepare the PskSecret
         let psk_secret = {
             let psks = load_psks(
-                provider.key_store(),
+                provider.storage(),
                 &self.resumption_psk_store,
                 &apply_proposals_values.presharedkeys,
             )?;

@@ -11,7 +11,7 @@ use super::{
 };
 use crate::{
     binary_tree::array_representation::LeafNodeIndex, messages::group_info::GroupInfo,
-    treesync::LeafNode,
+    storage::RefinedProvider, treesync::LeafNode,
 };
 
 impl MlsGroup {
@@ -31,13 +31,15 @@ impl MlsGroup {
     /// [`Welcome`]: crate::messages::Welcome
     // FIXME: #1217
     #[allow(clippy::type_complexity)]
-    pub fn add_members<KeyStore: OpenMlsKeyStore>(
+    pub fn add_members<Provider: RefinedProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &Provider,
         signer: &impl Signer,
         key_packages: &[KeyPackage],
-    ) -> Result<(MlsMessageOut, MlsMessageOut, Option<GroupInfo>), AddMembersError<KeyStore::Error>>
-    {
+    ) -> Result<
+        (MlsMessageOut, MlsMessageOut, Option<GroupInfo>),
+        AddMembersError<Provider::StorageError>,
+    > {
         self.is_operational()?;
 
         if key_packages.is_empty() {
@@ -111,14 +113,14 @@ impl MlsGroup {
     /// [`Welcome`]: crate::messages::Welcome
     // FIXME: #1217
     #[allow(clippy::type_complexity)]
-    pub fn remove_members<KeyStore: OpenMlsKeyStore>(
+    pub fn remove_members<Provider: RefinedProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &Provider,
         signer: &impl Signer,
         members: &[LeafNodeIndex],
     ) -> Result<
         (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
-        RemoveMembersError<KeyStore::Error>,
+        RemoveMembersError<Provider::StorageError>,
     > {
         self.is_operational()?;
 

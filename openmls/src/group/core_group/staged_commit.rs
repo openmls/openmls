@@ -1,14 +1,13 @@
 use core::fmt::Debug;
 use std::mem;
 
-use openmls_traits::key_store::OpenMlsKeyStore;
 use public_group::diff::{apply_proposals::ApplyProposalsValues, StagedPublicGroupDiff};
 
 use self::public_group::staged_commit::PublicStagedCommitState;
 
 use super::{super::errors::*, proposals::ProposalStore, *};
 use crate::{
-    framing::mls_auth_content::AuthenticatedContent, storage::StorageProvider,
+    ciphersuite::Secret, framing::mls_auth_content::AuthenticatedContent,
     treesync::node::encryption_keys::EncryptionKeyPair,
 };
 
@@ -62,8 +61,8 @@ impl CoreGroup {
 
         // Prepare the PskSecret
         let psk_secret = {
-            let psks = load_psks(
-                provider.key_store(),
+            let psks: Vec<(&PreSharedKeyId, Secret)> = load_psks(
+                provider.storage(),
                 &self.resumption_psk_store,
                 &apply_proposals_values.presharedkeys,
             )?;
@@ -310,11 +309,11 @@ impl CoreGroup {
     ///
     /// This function should not fail and only returns a [`Result`], because it
     /// might throw a `LibraryError`.
-    pub(crate) fn merge_commit<KeyStore: OpenMlsKeyStore, Storage: StorageProvider>(
+    pub(crate) fn merge_commit<Provider: RefinedProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
+        provider: &Provider,
         staged_commit: StagedCommit,
-    ) -> Result<Option<MessageSecrets>, MergeCommitError<KeyStore::Error, Storage::Error>> {
+    ) -> Result<Option<MessageSecrets>, MergeCommitError<Provider::StorageError>> {
         // Get all keypairs from the old epoch, so we can later store the ones
         // that are still relevant in the new epoch.
         let old_epoch_keypairs = self.read_epoch_keypairs(provider.storage());

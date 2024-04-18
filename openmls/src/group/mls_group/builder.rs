@@ -1,6 +1,4 @@
-use openmls_traits::{
-    key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite, OpenMlsProvider,
-};
+use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsProvider};
 
 use crate::{
     credentials::CredentialWithKey,

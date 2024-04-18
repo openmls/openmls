@@ -377,7 +377,7 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite) {
         MlsMessageBodyOut::PublicMessage(pt) => {
             pt.set_sender(random_sender);
             pt.set_membership_tag(
-                client.crypto.crypto(),
+                client.provider.crypto(),
                 ciphersuite,
                 membership_key,
                 client_group.group().message_secrets().serialized_context(),

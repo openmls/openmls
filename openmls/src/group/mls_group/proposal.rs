@@ -1,6 +1,5 @@
 use openmls_traits::{
-    key_store::OpenMlsKeyStore, signatures::Signer, storage::StorageProvider, types::Ciphersuite,
-    OpenMlsProvider,
+    signatures::Signer, storage::StorageProvider, types::Ciphersuite, OpenMlsProvider,
 };
 
 use super::{
@@ -18,6 +17,7 @@ use crate::{
     messages::proposals::ProposalOrRefType,
     prelude::LibraryError,
     schedule::PreSharedKeyId,
+    storage::RefinedProvider,
     treesync::LeafNode,
     versions::ProtocolVersion,
 };
@@ -64,12 +64,12 @@ macro_rules! impl_propose_fun {
         /// Creates proposals to add an external PSK to the key schedule.
         ///
         /// Returns an error if there is a pending commit.
-        pub fn $name<KeyStore: OpenMlsKeyStore, Storage: StorageProvider<1>>(
+        pub fn $name<Provider: RefinedProvider>(
             &mut self,
-            provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
+            provider: &Provider,
             signer: &impl Signer,
             value: $value_ty,
-        ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<KeyStore::Error, Storage::Error>> {
+        ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
             self.is_operational()?;
 
             let proposal = self
@@ -150,13 +150,13 @@ impl MlsGroup {
     );
 
     /// Generate a proposal
-    pub fn propose<KeyStore: OpenMlsKeyStore, Storage: StorageProvider<1>>(
+    pub fn propose<Provider: RefinedProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
+        provider: &Provider,
         signer: &impl Signer,
         propose: Propose,
         ref_or_value: ProposalOrRefType,
-    ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<KeyStore::Error, Storage::Error>> {
+    ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
         match propose {
             Propose::Add(key_package) => match ref_or_value {
                 ProposalOrRefType::Proposal => {
@@ -332,15 +332,12 @@ impl MlsGroup {
     /// The `member` has to be the member's credential.
     ///
     /// Returns an error if there is a pending commit.
-    pub fn propose_remove_member_by_credential_by_value<
-        KeyStore: OpenMlsKeyStore,
-        Storage: StorageProvider<1>,
-    >(
+    pub fn propose_remove_member_by_credential_by_value<Provider: RefinedProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
+        provider: &Provider,
         signer: &impl Signer,
         member: &Credential,
-    ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<KeyStore::Error, Storage::Error>> {
+    ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
         // Find the user for the credential first.
         let member_index = self
             .group
@@ -362,12 +359,12 @@ impl MlsGroup {
     ///
     /// Returns an error when the group does not support all the required capabilities
     /// in the new `extensions`.
-    pub fn propose_group_context_extensions<Storage: crate::storage::StorageProvider>(
+    pub fn propose_group_context_extensions<Provider: RefinedProvider>(
         &mut self,
-        provider: &impl crate::storage::RefinedProvider<Storage = Storage>,
+        provider: &Provider,
         extensions: Extensions,
         signer: &impl Signer,
-    ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<(), Storage::Error>> {
+    ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
         self.is_operational()?;
 
         let proposal = self.group.create_group_context_ext_proposal(

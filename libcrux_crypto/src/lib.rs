@@ -20,7 +20,6 @@ pub struct Provider {
 impl OpenMlsProvider for Provider {
     type CryptoProvider = CryptoProvider;
     type RandProvider = RandProvider;
-    type KeyStoreProvider = openmls_rust_crypto::MemoryKeyStore;
     type StorageProvider = openmls_rust_crypto::MemoryKeyStore;
 
     fn storage(&self) -> &Self::StorageProvider {
@@ -33,9 +32,5 @@ impl OpenMlsProvider for Provider {
 
     fn rand(&self) -> &Self::RandProvider {
         &self.rand
-    }
-
-    fn key_store(&self) -> &Self::KeyStoreProvider {
-        &self.key_store
     }
 }

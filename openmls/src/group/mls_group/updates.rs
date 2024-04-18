@@ -1,7 +1,10 @@
 use core_group::create_commit_params::CreateCommitParams;
 use openmls_traits::signatures::Signer;
 
-use crate::{messages::group_info::GroupInfo, treesync::LeafNode, versions::ProtocolVersion};
+use crate::{
+    messages::group_info::GroupInfo, storage::RefinedProvider, treesync::LeafNode,
+    versions::ProtocolVersion,
+};
 
 use super::*;
 
@@ -23,13 +26,13 @@ impl MlsGroup {
     /// [`Welcome`]: crate::messages::Welcome
     // FIXME: #1217
     #[allow(clippy::type_complexity)]
-    pub fn self_update<KeyStore: OpenMlsKeyStore>(
+    pub fn self_update<Provider: RefinedProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &Provider,
         signer: &impl Signer,
     ) -> Result<
         (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
-        SelfUpdateError<KeyStore::Error>,
+        SelfUpdateError<Provider::StorageError>,
     > {
         self.is_operational()?;
 
@@ -66,12 +69,12 @@ impl MlsGroup {
     /// Creates a proposal to update the own leaf node. Optionally, a
     /// [`LeafNode`] can be provided to update the leaf node. Note that its
     /// private key must be manually added to the key store.
-    fn _propose_self_update<KeyStore: OpenMlsKeyStore>(
+    fn _propose_self_update<Provider: RefinedProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &Provider,
         signer: &impl Signer,
         leaf_node: Option<LeafNode>,
-    ) -> Result<AuthenticatedContent, ProposeSelfUpdateError<KeyStore::Error>> {
+    ) -> Result<AuthenticatedContent, ProposeSelfUpdateError<Provider::StorageError>> {
         self.is_operational()?;
 
         // Here we clone our own leaf to rekey it such that we don't change the
@@ -119,12 +122,12 @@ impl MlsGroup {
     }
 
     /// Creates a proposal to update the own leaf node.
-    pub fn propose_self_update<KeyStore: OpenMlsKeyStore>(
+    pub fn propose_self_update<Provider: RefinedProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &Provider,
         signer: &impl Signer,
         leaf_node: Option<LeafNode>,
-    ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<KeyStore::Error>> {
+    ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<Provider::StorageError>> {
         let update_proposal = self._propose_self_update(provider, signer, leaf_node)?;
         let proposal = QueuedProposal::from_authenticated_content_by_ref(
             self.ciphersuite(),
@@ -143,12 +146,12 @@ impl MlsGroup {
     }
 
     /// Creates a proposal to update the own leaf node.
-    pub fn propose_self_update_by_value<KeyStore: OpenMlsKeyStore>(
+    pub fn propose_self_update_by_value<Provider: RefinedProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &Provider,
         signer: &impl Signer,
         leaf_node: Option<LeafNode>,
-    ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<KeyStore::Error>> {
+    ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<Provider::StorageError>> {
         let update_proposal = self._propose_self_update(provider, signer, leaf_node)?;
         let proposal = QueuedProposal::from_authenticated_content_by_value(
             self.ciphersuite(),

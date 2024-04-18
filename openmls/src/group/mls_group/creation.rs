@@ -1,8 +1,7 @@
-use openmls_traits::signatures::Signer;
+use openmls_traits::{signatures::Signer, storage::StorageProvider as StorageProviderTrait};
 
 use super::{builder::MlsGroupBuilder, *};
 use crate::{
-    ciphersuite::HpkePrivateKey,
     credentials::CredentialWithKey,
     group::{
         core_group::create_commit_params::CreateCommitParams,
@@ -15,7 +14,7 @@ use crate::{
     },
     prelude::KeyPackage,
     schedule::psk::store::ResumptionPskStore,
-    storage::RefinedProvider,
+    storage::{RefinedProvider, StorageHpkePrivateKey, StorageInitKey},
     treesync::RatchetTreeIn,
 };
 
@@ -170,9 +169,12 @@ impl StagedWelcome {
             .ok_or(WelcomeError::NoMatchingKeyPackage)??;
 
         // TODO #751
-        let private_key = provider
-            .key_store()
-            .read::<HpkePrivateKey>(key_package.hpke_init_key().as_slice())
+        let StorageHpkePrivateKey(private_key) = provider
+            .storage()
+            .init_private_key(&StorageInitKey(key_package.hpke_init_key().as_slice()))
+            // .read::<HpkePrivateKey>(key_package.hpke_init_key().as_slice())
+            .ok()
+            .flatten()
             .ok_or(WelcomeError::NoMatchingKeyPackage)?;
         let key_package_bundle = KeyPackageBundle {
             key_package,

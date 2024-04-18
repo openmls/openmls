@@ -1,4 +1,3 @@
-use openmls_traits::key_store::OpenMlsKeyStore;
 use thiserror::Error;
 
 use crate::{error::LibraryError, group::errors::*};
@@ -89,12 +88,10 @@ pub enum ClientError {
     ProposeSelfUpdateError(#[from] ProposeSelfUpdateError<MemoryKeyStoreError>),
     /// See [`MergePendingCommitError`] for more details.
     #[error(transparent)]
-    MergePendingCommitError(
-        #[from] MergePendingCommitError<MemoryKeyStoreError, MemoryKeyStoreError>,
-    ),
+    MergePendingCommitError(#[from] MergePendingCommitError<MemoryKeyStoreError>),
     /// See [`MergeCommitError`] for more details.
     #[error(transparent)]
-    MergeCommitError(#[from] MergeCommitError<MemoryKeyStoreError, MemoryKeyStoreError>),
+    MergeCommitError(#[from] MergeCommitError<MemoryKeyStoreError>),
     /// See [`MemoryKeyStoreError`] for more details.
     #[error(transparent)]
     KeyStoreError(#[from] MemoryKeyStoreError),

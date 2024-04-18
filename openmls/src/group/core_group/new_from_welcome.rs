@@ -1,5 +1,4 @@
 use log::debug;
-use openmls_traits::{key_store::OpenMlsKeyStore, storage};
 
 use crate::{
     ciphersuite::hash_ref::HashReference,
@@ -78,7 +77,7 @@ impl StagedCoreWelcome {
         // Prepare the PskSecret
         let psk_secret = {
             let psks = load_psks(
-                provider.key_store(),
+                provider.storage(),
                 &resumption_psk_store,
                 &group_secrets.psks,
             )?;
@@ -264,13 +263,10 @@ impl StagedCoreWelcome {
     }
 
     /// Consumes the [`StagedCoreWelcome`] and returns the respective [`CoreGroup`].
-    pub fn into_core_group<
-        KeyStore: OpenMlsKeyStore,
-        Storage: StorageProvider<{ storage::CURRENT_VERSION }>,
-    >(
+    pub fn into_core_group<Provider: RefinedProvider>(
         self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
-    ) -> Result<CoreGroup, WelcomeError<Storage::Error>> {
+        provider: &Provider,
+    ) -> Result<CoreGroup, WelcomeError<Provider::StorageError>> {
         let Self {
             public_group,
             group_epoch_secrets,

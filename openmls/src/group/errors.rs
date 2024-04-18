@@ -205,7 +205,7 @@ pub enum StageCommitError {
 
 /// Create commit error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum CreateCommitError<KeyStoreError> {
+pub enum CreateCommitError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -227,9 +227,9 @@ pub enum CreateCommitError<KeyStoreError> {
     /// See [`ProposalValidationError`] for more details.
     #[error(transparent)]
     ProposalValidationError(#[from] ProposalValidationError),
-    /// Error interacting with the key store.
-    #[error("Error interacting with the key store.")]
-    KeyStoreError(KeyStoreError),
+    /// Error interacting with storage.
+    #[error("Error interacting with storage.")]
+    KeyStoreError(StorageError),
     /// See [`KeyPackageNewError`] for more details.
     #[error(transparent)]
     KeyPackageGenerationError(#[from] KeyPackageNewError),
@@ -518,13 +518,10 @@ pub enum CreateGroupContextExtProposalError {
 
 /// Error merging a commit.
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum MergeCommitError<KeyStoreError, StorageError> {
+pub enum MergeCommitError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    /// Error accessing the key store.
-    #[error("Error accessing the key store.")]
-    KeyStoreError(KeyStoreError),
     /// Error writing updated group to storage.
     #[error("Error writing updated group data to storage.")]
     StorageError(StorageError),

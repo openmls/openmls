@@ -80,13 +80,13 @@ pub enum MlsGroupStateError {
 
 /// Error merging pending commit
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum MergePendingCommitError<KeyStoreError, StorageUpdateError> {
+pub enum MergePendingCommitError<StorageError> {
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     MlsGroupStateError(#[from] MlsGroupStateError),
     /// See [`MergeCommitError`] for more details.
     #[error(transparent)]
-    MergeCommitError(#[from] MergeCommitError<KeyStoreError, StorageUpdateError>),
+    MergeCommitError(#[from] MergeCommitError<StorageError>),
 }
 
 /// Process message error
@@ -131,7 +131,7 @@ pub enum CreateMessageError {
 
 /// Add members error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum AddMembersError<KeyStoreError> {
+pub enum AddMembersError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -140,7 +140,7 @@ pub enum AddMembersError<KeyStoreError> {
     EmptyInput(#[from] EmptyInputError),
     /// See [`CreateCommitError`] for more details.
     #[error(transparent)]
-    CreateCommitError(#[from] CreateCommitError<KeyStoreError>),
+    CreateCommitError(#[from] CreateCommitError<StorageError>),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
@@ -227,7 +227,7 @@ pub enum SelfUpdateError<KeyStoreError> {
 
 /// Propose self update error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum ProposeSelfUpdateError<KeyStoreError> {
+pub enum ProposeSelfUpdateError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -235,9 +235,9 @@ pub enum ProposeSelfUpdateError<KeyStoreError> {
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
-    /// Error accessing the key store.
-    #[error("Error accessing the key store.")]
-    KeyStoreError(KeyStoreError),
+    /// Error accessing storage.
+    #[error("Error accessing storage.")]
+    KeyStoreError(StorageError),
     /// See [`PublicTreeError`] for more details.
     #[error(transparent)]
     PublicTreeError(#[from] PublicTreeError),
@@ -245,13 +245,13 @@ pub enum ProposeSelfUpdateError<KeyStoreError> {
 
 /// Commit to pending proposals error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum CommitToPendingProposalsError<KeyStoreError> {
+pub enum CommitToPendingProposalsError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
     /// See [`CreateCommitError`] for more details.
     #[error(transparent)]
-    CreateCommitError(#[from] CreateCommitError<KeyStoreError>),
+    CreateCommitError(#[from] CreateCommitError<StorageError>),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
@@ -298,7 +298,7 @@ pub enum ProposePskError {
 
 /// Export secret error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum ProposalError<KeyStoreError, StorageUpdateError> {
+pub enum ProposalError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -310,7 +310,7 @@ pub enum ProposalError<KeyStoreError, StorageUpdateError> {
     CreateAddProposalError(#[from] CreateAddProposalError),
     /// See [`ProposeSelfUpdateError`] for more details.
     #[error(transparent)]
-    ProposeSelfUpdateError(#[from] ProposeSelfUpdateError<KeyStoreError>),
+    ProposeSelfUpdateError(#[from] ProposeSelfUpdateError<StorageError>),
     /// See [`ProposeRemoveMemberError`] for more details.
     #[error(transparent)]
     ProposeRemoveMemberError(#[from] ProposeRemoveMemberError),
@@ -325,5 +325,5 @@ pub enum ProposalError<KeyStoreError, StorageUpdateError> {
     CreateGroupContextExtProposalError(#[from] CreateGroupContextExtProposalError),
     /// Error writing proposal to storage.
     #[error("error writing proposal to storage")]
-    StorageError(StorageUpdateError),
+    StorageError(StorageError),
 }

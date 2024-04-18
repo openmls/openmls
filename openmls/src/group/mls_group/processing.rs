@@ -5,6 +5,7 @@ use std::mem;
 use core_group::staged_commit::StagedCommit;
 use openmls_traits::signatures::Signer;
 
+use crate::storage::RefinedProvider;
 use crate::{
     group::core_group::create_commit_params::CreateCommitParams, messages::group_info::GroupInfo,
 };
@@ -83,13 +84,13 @@ impl MlsGroup {
     /// [`Welcome`]: crate::messages::Welcome
     // FIXME: #1217
     #[allow(clippy::type_complexity)]
-    pub fn commit_to_pending_proposals<KeyStore: OpenMlsKeyStore>(
+    pub fn commit_to_pending_proposals<Provider: RefinedProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &Provider,
         signer: &impl Signer,
     ) -> Result<
         (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
-        CommitToPendingProposalsError<KeyStore::Error>,
+        CommitToPendingProposalsError<Provider::StorageError>,
     > {
         self.is_operational()?;
 
@@ -125,11 +126,11 @@ impl MlsGroup {
 
     /// Merge a [StagedCommit] into the group after inspection. As this advances
     /// the epoch of the group, it also clears any pending commits.
-    pub fn merge_staged_commit<KeyStore: OpenMlsKeyStore, Storage: StorageProvider<1>>(
+    pub fn merge_staged_commit<Provider: RefinedProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
+        provider: &Provider,
         staged_commit: StagedCommit,
-    ) -> Result<(), MergeCommitError<KeyStore::Error, Storage::Error>> {
+    ) -> Result<(), MergeCommitError<Provider::StorageError>> {
         // Check if we were removed from the group
         if staged_commit.self_removed() {
             self.group_state = MlsGroupState::Inactive;
@@ -159,10 +160,10 @@ impl MlsGroup {
 
     /// Merges the pending [`StagedCommit`] if there is one, and
     /// clears the field by setting it to `None`.
-    pub fn merge_pending_commit<KeyStore: OpenMlsKeyStore, Storage: StorageProvider<1>>(
+    pub fn merge_pending_commit<Provider: RefinedProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
-    ) -> Result<(), MergePendingCommitError<KeyStore::Error, Storage::Error>> {
+        provider: &Provider,
+    ) -> Result<(), MergePendingCommitError<Provider::StorageError>> {
         match &self.group_state {
             MlsGroupState::PendingCommit(_) => {
                 let old_state = mem::replace(&mut self.group_state, MlsGroupState::Operational);

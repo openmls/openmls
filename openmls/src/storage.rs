@@ -11,7 +11,8 @@ use crate::binary_tree::LeafNodeIndex;
 use crate::group::past_secrets::MessageSecretsStore;
 use crate::group::GroupEpoch;
 use crate::schedule::psk::store::ResumptionPskStore;
-use crate::schedule::GroupEpochSecrets;
+use crate::schedule::psk::PskBundle;
+use crate::schedule::{GroupEpochSecrets, PreSharedKeyId, Psk};
 use crate::treesync::node::encryption_keys::EncryptionKeyPair;
 use crate::treesync::EncryptionKey;
 use crate::{
@@ -95,6 +96,12 @@ impl Entity<CURRENT_VERSION> for StorageHpkePrivateKey {}
 
 impl Key<CURRENT_VERSION> for GroupEpoch {}
 impl traits::EpochKey<CURRENT_VERSION> for GroupEpoch {}
+
+impl Key<CURRENT_VERSION> for Psk {}
+impl traits::PskId<CURRENT_VERSION> for Psk {}
+
+impl Entity<CURRENT_VERSION> for PskBundle {}
+impl traits::PskBundle<CURRENT_VERSION> for PskBundle {}
 
 /// A convenience trait for the current version of the storage.
 pub trait StorageProvider: openmls_traits::storage::StorageProvider<CURRENT_VERSION> {}
@@ -211,7 +218,7 @@ mod test {
         );
 
         let key_package_bundle = KeyPackageBuilder::new()
-            .build_without_key_storage(
+            .build_without_storage(
                 Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
                 &provider,
                 &signer,

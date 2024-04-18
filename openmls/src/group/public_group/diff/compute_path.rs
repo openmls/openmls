@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, OpenMlsProvider};
+use openmls_traits::signatures::Signer;
 use tls_codec::Serialize;
 
 use crate::{
@@ -11,6 +11,7 @@ use crate::{
     group::{core_group::create_commit_params::CommitType, errors::CreateCommitError},
     key_packages::{KeyPackage, KeyPackageCreationResult},
     schedule::CommitSecret,
+    storage::RefinedProvider,
     treesync::{
         node::{
             encryption_keys::EncryptionKeyPair, leaf_node::LeafNode,
@@ -34,16 +35,16 @@ pub(crate) struct PathComputationResult {
 
 impl<'a> PublicGroupDiff<'a> {
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn compute_path<KeyStore: OpenMlsKeyStore>(
+    pub(crate) fn compute_path<Provider: RefinedProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &Provider,
         leaf_index: LeafNodeIndex,
         exclusion_list: HashSet<&LeafNodeIndex>,
         commit_type: CommitType,
         signer: &impl Signer,
         credential_with_key: Option<CredentialWithKey>,
         extensions: Option<Extensions>,
-    ) -> Result<PathComputationResult, CreateCommitError<KeyStore::Error>> {
+    ) -> Result<PathComputationResult, CreateCommitError<Provider::StorageError>> {
         let version = self.group_context().protocol_version();
         let ciphersuite = self.group_context().ciphersuite();
         let group_id = self.group_context().group_id().clone();
@@ -58,7 +59,7 @@ impl<'a> PublicGroupDiff<'a> {
                 // The KeyPackage is immediately put into the group. No need for
                 // the init key.
                 init_private_key: _,
-            } = KeyPackage::builder().build_without_key_storage(
+            } = KeyPackage::builder().build_without_storage(
                 ciphersuite,
                 provider,
                 signer,

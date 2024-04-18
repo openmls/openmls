@@ -497,7 +497,7 @@ impl KeyPackageBuilder {
         }
     }
 
-    pub(crate) fn build_without_key_storage(
+    pub(crate) fn build_without_storage(
         mut self,
         ciphersuite: Ciphersuite,
         provider: &impl OpenMlsProvider,
@@ -590,9 +590,6 @@ impl KeyPackageBundle {
 }
 
 #[cfg(test)]
-use openmls_traits::key_store::OpenMlsKeyStore;
-
-#[cfg(test)]
 impl KeyPackageBundle {
     pub(crate) fn new(
         provider: &impl OpenMlsProvider,
@@ -603,9 +600,10 @@ impl KeyPackageBundle {
         let key_package = KeyPackage::builder()
             .build(ciphersuite, provider, signer, credential_with_key)
             .unwrap();
-        let private_key = provider
-            .key_store()
-            .read::<HpkePrivateKey>(key_package.hpke_init_key().as_slice())
+        let StorageHpkePrivateKey(private_key) = provider
+            .storage()
+            .init_private_key(&StorageInitKey(key_package.hpke_init_key().as_slice()))
+            .unwrap()
             .unwrap();
         Self {
             key_package,

@@ -9,7 +9,7 @@ use std::{
 };
 
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_traits::{key_store::OpenMlsKeyStore, types::HpkeKeyPair};
+use openmls_traits::types::HpkeKeyPair;
 pub use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
 pub use rstest::*;
 pub use rstest_reuse::{self, *};
@@ -151,11 +151,9 @@ pub(crate) fn generate_group_candidate(
                 )
                 .unwrap();
 
-            let encryption_keypair = EncryptionKeyPair::read(
-                provider,
-                key_package.leaf_node().encryption_key(),
-            )
-            .unwrap();
+            let encryption_keypair =
+                EncryptionKeyPair::read(provider, key_package.leaf_node().encryption_key())
+                    .unwrap();
             let init_keypair = {
                 let private = provider
                     .key_store()
@@ -174,7 +172,7 @@ pub(crate) fn generate_group_candidate(
             let provider = OpenMlsRustCrypto::default();
 
             let key_package_creation_result = builder
-                .build_without_key_storage(
+                .build_without_storage(
                     ciphersuite,
                     &provider,
                     &credential_with_key_and_signer.signer,
