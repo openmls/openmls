@@ -2,9 +2,10 @@
 //!
 //! `KeyPackageError` are thrown on errors handling `KeyPackage`s.
 
+use openmls_traits::storage::{StorageProvider, CURRENT_VERSION};
 use thiserror::Error;
 
-use crate::{ciphersuite::signable::SignatureError, error::LibraryError};
+use crate::{ciphersuite::signable::SignatureError, error::LibraryError, storage::RefinedProvider};
 
 /// KeyPackage verify error
 #[derive(Error, Debug, PartialEq, Clone)]
@@ -65,8 +66,11 @@ pub enum KeyPackageNewError {
 
 /// KeyPackage storage error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum KeyPackageStorage {
+pub enum KeyPackageStorage<StorageError> {
+    /// See [`LibraryError`] for more details.
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
     /// Accessing storage failed.
-    #[error("Accessing storage failed.")]
-    Error,
+    #[error("Storage error.")]
+    Storage(StorageError),
 }

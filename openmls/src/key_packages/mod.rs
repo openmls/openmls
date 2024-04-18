@@ -99,7 +99,7 @@ use crate::{
     credentials::*,
     error::LibraryError,
     extensions::{Extension, ExtensionType, Extensions, LastResortExtension},
-    storage::{StorageHpkePrivateKey, StorageInitKey},
+    storage::{RefinedProvider, StorageHpkePrivateKey, StorageInitKey},
     treesync::{
         node::{
             encryption_keys::EncryptionKeyPair,
@@ -110,7 +110,10 @@ use crate::{
     versions::ProtocolVersion,
 };
 use openmls_traits::{
-    crypto::OpenMlsCrypto, signatures::Signer, storage::StorageProvider, types::Ciphersuite,
+    crypto::OpenMlsCrypto,
+    signatures::Signer,
+    storage::{Key, StorageProvider, CURRENT_VERSION},
+    types::Ciphersuite,
     OpenMlsProvider,
 };
 use serde::{Deserialize, Serialize};
@@ -344,25 +347,28 @@ impl KeyPackage {
     }
 
     /// Delete this key package and its private keys from the key store.
-    pub fn delete(
+    pub fn delete<Provider: RefinedProvider>(
         &self,
-        provider: &impl OpenMlsProvider,
+        provider: &Provider,
         delete_encryption_key: bool,
-    ) -> Result<(), KeyPackageStorage> {
-        provider.storage().delete_key_package(
-            &self
-                .hash_ref(provider.crypto())
-                .map_err(|_| KeyPackageStorage::Error)?,
-        );
+    ) -> Result<(), KeyPackageStorage<Provider::StorageError>> {
+        provider
+            .storage()
+            .delete_key_package(
+                &self
+                    .hash_ref(provider.crypto())
+                    .map_err(KeyPackageStorage::LibraryError)?,
+            )
+            .map_err(KeyPackageStorage::Storage)?;
         provider
             .storage()
             .delete_init_private_key(&StorageInitKey(self.hpke_init_key().as_slice()))
-            .map_err(|_| KeyPackageStorage::Error)?;
+            .map_err(KeyPackageStorage::Storage)?;
         if delete_encryption_key {
             provider
                 .storage()
                 .delete_encryption_key_pair(self.leaf_node().encryption_key())
-                .map_err(|_| KeyPackageStorage::Error)?;
+                .map_err(KeyPackageStorage::Storage)?;
         }
         Ok(())
     }
@@ -589,6 +595,8 @@ impl KeyPackageBundle {
 
 #[cfg(test)]
 use openmls_traits::key_store::OpenMlsKeyStore;
+
+use self::errors::KeyPackageStorage;
 
 #[cfg(test)]
 impl KeyPackageBundle {

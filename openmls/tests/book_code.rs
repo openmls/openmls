@@ -44,10 +44,10 @@ fn generate_key_package(
     extensions: Extensions,
     provider: &impl crate::storage::RefinedProvider,
     signer: &impl Signer,
-) -> KeyPackage {
+) -> KeyPackageStorage {
     // ANCHOR: create_key_package
     // Create the key package
-    KeyPackage::builder()
+    KeyPackageStorage::builder()
         .key_package_extensions(extensions)
         .build(ciphersuite, provider, signer, credential_with_key)
         .unwrap()

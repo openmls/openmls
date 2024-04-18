@@ -177,7 +177,7 @@ impl User {
 
     /// Add a key package to the user identity and return the pair [key package
     /// hash ref , key package]
-    pub fn add_key_package(&self) -> (Vec<u8>, KeyPackage) {
+    pub fn add_key_package(&self) -> (Vec<u8>, KeyPackageStorage) {
         let kp = self
             .identity
             .borrow_mut()
@@ -210,7 +210,7 @@ impl User {
     }
 
     /// Get the key packages fo this user.
-    pub fn key_packages(&self) -> Vec<(Vec<u8>, KeyPackage)> {
+    pub fn key_packages(&self) -> Vec<(Vec<u8>, KeyPackageStorage)> {
         // clone first !
         let kpgs = self.identity.borrow().kp.clone();
         Vec::from_iter(kpgs)

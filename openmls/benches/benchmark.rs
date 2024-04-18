@@ -28,7 +28,7 @@ fn criterion_kp_bundle(c: &mut Criterion, provider: &impl OpenMlsProvider) {
                         (credential_with_key, signer)
                     },
                     |(credential_with_key, signer)| {
-                        let _key_package = KeyPackage::builder()
+                        let _key_package = KeyPackageStorage::builder()
                             .build(ciphersuite, provider, &signer, credential_with_key)
                             .expect("An unexpected error occurred.");
                     },

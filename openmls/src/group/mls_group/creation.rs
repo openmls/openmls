@@ -12,7 +12,9 @@ use crate::{
         group_info::{GroupInfo, VerifiableGroupInfo},
         Welcome,
     },
+    prelude::KeyPackageStorage,
     schedule::psk::store::ResumptionPskStore,
+    storage::RefinedProvider,
     treesync::RatchetTreeIn,
 };
 
@@ -142,15 +144,12 @@ impl StagedWelcome {
     /// message, even if the caller does not turn the [`StagedWelcome`] into an [`MlsGroup`].
     ///
     /// [`Welcome`]: crate::messages::Welcome
-    pub fn new_from_welcome<
-        KeyStore: OpenMlsKeyStore,
-        Storage: StorageProvider<{ storage::CURRENT_VERSION }>,
-    >(
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
+    pub fn new_from_welcome<Provider: RefinedProvider>(
+        provider: &Provider,
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
         ratchet_tree: Option<RatchetTreeIn>,
-    ) -> Result<Self, WelcomeError<Storage::Error>> {
+    ) -> Result<Self, WelcomeError<Provider::StorageError>> {
         let resumption_psk_store =
             ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
         let key_package: KeyPackage = welcome
@@ -184,7 +183,10 @@ impl StagedWelcome {
             key_package_bundle
                 .key_package
                 .delete(provider, false)
-                .unwrap(); // FIXME: error handling
+                .map_err(|e| match e {
+                    KeyPackageStorage::LibraryError(l) => WelcomeError::LibraryError(l),
+                    KeyPackageStorage::Storage(e) => WelcomeError::StorageError(e),
+                })?;
         } else {
             log::debug!("Key package has last resort extension, not deleting");
         }

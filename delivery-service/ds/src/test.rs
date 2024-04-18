@@ -26,8 +26,8 @@ fn generate_key_package(
     extensions: Extensions,
     crypto_provider: &impl OpenMlsProvider,
     signer: &SignatureKeyPair,
-) -> KeyPackage {
-    KeyPackage::builder()
+) -> KeyPackageStorage {
+    KeyPackageStorage::builder()
         .key_package_extensions(extensions)
         .build(ciphersuite, crypto_provider, signer, credential_with_key)
         .unwrap()
