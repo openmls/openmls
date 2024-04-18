@@ -5,6 +5,7 @@ use crate::{
     ciphersuite::hash_ref::HashReference,
     group::{core_group::*, errors::WelcomeError},
     schedule::psk::store::ResumptionPskStore,
+    storage::RefinedProvider,
     treesync::{
         errors::{DerivePathError, PublicTreeError},
         node::encryption_keys::EncryptionKeyPair,
@@ -17,16 +18,13 @@ impl StagedCoreWelcome {
     /// group.
     /// Note: calling this function will consume the key material for decrypting the [`Welcome`]
     /// message, even if the caller does not turn the [`StagedCoreWelcome`] into a [`CoreGroup`].
-    pub fn new_from_welcome<
-        KeyStore: OpenMlsKeyStore,
-        Storage: StorageProvider<{ storage::CURRENT_VERSION }>,
-    >(
+    pub fn new_from_welcome<Provider: RefinedProvider>(
         welcome: Welcome,
         ratchet_tree: Option<RatchetTreeIn>,
         key_package_bundle: KeyPackageBundle,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
+        provider: &Provider,
         mut resumption_psk_store: ResumptionPskStore,
-    ) -> Result<Self, WelcomeError<Storage::Error>> {
+    ) -> Result<Self, WelcomeError<Provider::StorageError>> {
         log::debug!("CoreGroup::new_from_welcome_internal");
 
         // Read the encryption key pair from the key store and delete it there.
