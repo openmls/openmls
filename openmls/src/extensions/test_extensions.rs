@@ -454,11 +454,13 @@ fn last_resort_extension(
     .into_group(provider)
     .expect("An unexpected error occurred.");
 
-    // This should not have deleted the KP from the store
-    let kp: Option<KeyPackage> = provider.key_store().read(
-        kp.hash_ref(provider.crypto())
-            .expect("error hashing kp")
-            .as_slice(),
-    );
-    assert!(kp.is_some());
+    use openmls_traits::storage::StorageProvider;
+
+    let _: KeyPackage = provider
+        .storage()
+        .key_package(
+            kp.hash_ref(provider.crypto())
+                .expect("error hashing key package"),
+        )
+        .expect("error retrieving key package");
 }

@@ -20,7 +20,13 @@
 //!     decrypted GroupContext
 
 use crate::test_utils::OpenMlsRustCrypto;
-use openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, OpenMlsProvider};
+use openmls_memory_keystore::MemoryKeyStore;
+use openmls_traits::{
+    crypto::OpenMlsCrypto,
+    key_store::OpenMlsKeyStore,
+    storage::{StorageProvider, CURRENT_VERSION},
+    OpenMlsProvider,
+};
 use serde::{self, Deserialize, Serialize};
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize};
 
@@ -166,13 +172,13 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
         private_key: init_priv,
     };
 
-    provider
-        .key_store()
-        .store(
-            key_package.hash_ref(provider.crypto()).unwrap().as_slice(),
-            &key_package,
-        )
-        .unwrap();
+    let hash_ref = key_package.hash_ref(provider.crypto()).unwrap();
+    <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::write_key_package(
+        provider.storage(),
+        hash_ref,
+        &key_package,
+    )
+    .unwrap();
 
     provider
         .key_store()

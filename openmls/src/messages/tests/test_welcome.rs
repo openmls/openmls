@@ -1,7 +1,8 @@
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
-    crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsProvider,
+    crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, storage::StorageProvider,
+    types::Ciphersuite, OpenMlsProvider,
 };
 use rstest::*;
 use rstest_reuse::{self, *};
@@ -154,11 +155,9 @@ fn test_welcome_context_mismatch(
     welcome.encrypted_group_info = encrypted_verifiable_group_info.into();
 
     // Create backup of encryption keypair, s.t. we can process the welcome a second time after failing.
-    let encryption_keypair = EncryptionKeyPair::read_from_key_store(
-        provider,
-        bob_kpb.key_package().leaf_node().encryption_key(),
-    )
-    .unwrap();
+    let encryption_keypair =
+        EncryptionKeyPair::read(provider, bob_kpb.key_package().leaf_node().encryption_key())
+            .unwrap();
 
     // Bob tries to join the group
     let err = StagedWelcome::new_from_welcome(
@@ -179,20 +178,15 @@ fn test_welcome_context_mismatch(
     // We need to store the key package and its encryption key again because it
     // has been consumed already.
     provider
-        .key_store()
-        .store(
-            bob_kp.hash_ref(provider.crypto()).unwrap().as_slice(),
-            bob_kp,
-        )
+        .storage()
+        .write_key_package(bob_kp.hash_ref(provider.crypto()).unwrap(), bob_kp)
         .unwrap();
     provider
         .key_store()
         .store::<HpkePrivateKey>(bob_kp.hpke_init_key().as_slice(), bob_private_key)
         .unwrap();
 
-    encryption_keypair
-        .write_to_key_store(provider.key_store())
-        .unwrap();
+    encryption_keypair.write(provider.storage()).unwrap();
 
     let _group = StagedWelcome::new_from_welcome(
         provider,

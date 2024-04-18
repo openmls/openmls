@@ -1718,13 +1718,11 @@ fn test_valsem110(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
     // process the commit.
     let leaf_keypair = alice_group
         .group()
-        .read_epoch_keypairs(provider.key_store())
+        .read_epoch_keypairs(provider.storage())
         .into_iter()
         .find(|keypair| keypair.public_key() == &alice_encryption_key)
         .unwrap();
-    leaf_keypair
-        .write_to_key_store(provider.key_store())
-        .unwrap();
+    leaf_keypair.write(provider.storage()).unwrap();
 
     // Have bob process the resulting plaintext
     let err = bob_group

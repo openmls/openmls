@@ -961,7 +961,10 @@ fn test_pending_commit_logic(
 // Test that the key package and the corresponding private key are deleted when
 // creating a new group for a welcome message.
 #[apply(ciphersuites_and_providers)]
-fn key_package_deletion(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
+fn key_package_deletion<Provider: crate::storage::RefinedProvider>(
+    ciphersuite: Ciphersuite,
+    provider: &Provider,
+) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
@@ -1015,17 +1018,14 @@ fn key_package_deletion(ciphersuite: Ciphersuite, provider: &impl crate::storage
         .is_none(),
         "The HPKE private key is still in the key store after creating a new group from the key package.");
 
+    use openmls_traits::storage::{StorageProvider, CURRENT_VERSION};
+
     // TEST: The key package must be gone from the key store.
+    let result: Result<KeyPackage, _> = provider
+        .storage()
+        .key_package(bob_key_package.hash_ref(provider.crypto()).unwrap());
     assert!(
-        provider
-            .key_store()
-            .read::<KeyPackage>(
-                bob_key_package
-                    .hash_ref(provider.crypto())
-                    .unwrap()
-                    .as_slice()
-            )
-            .is_none(),
+        result.is_err(),
         "The key package is still in the key store after creating a new group from it."
     );
 }

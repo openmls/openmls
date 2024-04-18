@@ -587,6 +587,9 @@ impl KeyPackageBundle {
 }
 
 #[cfg(test)]
+use openmls_traits::key_store::OpenMlsKeyStore;
+
+#[cfg(test)]
 impl KeyPackageBundle {
     pub(crate) fn new(
         provider: &impl OpenMlsProvider,

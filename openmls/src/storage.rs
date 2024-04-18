@@ -164,7 +164,7 @@ mod test {
 
         let private_key: StorageHpkePrivateKey = provider
             .storage()
-            .init_private_key(&StorageInitKey(&key_pair.public))
+            .init_private_key(StorageInitKey(&key_pair.public))
             .unwrap();
         assert_eq!(private_key.0, key_pair.private);
     }

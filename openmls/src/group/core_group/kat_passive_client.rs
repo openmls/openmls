@@ -1,5 +1,11 @@
 use log::{debug, info, warn};
-use openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, OpenMlsProvider};
+use openmls_memory_keystore::MemoryKeyStore;
+use openmls_traits::{
+    crypto::OpenMlsCrypto,
+    key_store::OpenMlsKeyStore,
+    storage::{StorageProvider, CURRENT_VERSION},
+    OpenMlsProvider,
+};
 use serde::{self, Deserialize, Serialize};
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize};
 
@@ -244,16 +250,13 @@ impl PassiveClient {
         };
 
         // Store key package.
-        self.provider
-            .key_store()
-            .store(
-                key_package
-                    .hash_ref(self.provider.crypto())
-                    .unwrap()
-                    .as_slice(),
-                &key_package,
-            )
-            .unwrap();
+        let hash_ref = key_package.hash_ref(self.provider.crypto()).unwrap();
+        <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::write_key_package(
+            self.provider.storage(),
+            hash_ref,
+            &key_package,
+        )
+        .unwrap();
 
         // Store init key.
         self.provider
@@ -270,9 +273,7 @@ impl PassiveClient {
             EncryptionPrivateKey::from(encryption_priv),
         ));
 
-        key_pair
-            .write(self.provider.key_store())
-            .unwrap();
+        key_pair.write(self.provider.key_store()).unwrap();
     }
 
     fn join_by_welcome(
