@@ -224,13 +224,10 @@ impl StagedWelcome {
     }
 
     /// Consumes the [`StagedWelcome`] and returns the respective [`MlsGroup`].
-    pub fn into_group<
-        KeyStore: OpenMlsKeyStore,
-        Storage: StorageProvider<{ storage::CURRENT_VERSION }>,
-    >(
+    pub fn into_group<Provider: RefinedProvider>(
         self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
-    ) -> Result<MlsGroup, WelcomeError<Storage::Error>> {
+        provider: &Provider,
+    ) -> Result<MlsGroup, WelcomeError<Provider::StorageError>> {
         let mut group = self.group.into_core_group(provider)?;
         group.set_max_past_epochs(self.mls_group_config.max_past_epochs);
 

@@ -176,7 +176,7 @@ impl PublicGroup {
 
         public_group
             .store(provider.storage())
-            .map_err(|e| CreationFromExternalError::WriteToStorageError(e))?;
+            .map_err(CreationFromExternalError::WriteToStorageError)?;
 
         Ok((public_group, group_info))
     }

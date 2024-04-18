@@ -66,7 +66,7 @@ pub enum KeyPackageNewError {
 
 /// KeyPackage storage error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum KeyPackageStorage<StorageError> {
+pub enum KeyPackageStorageError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
