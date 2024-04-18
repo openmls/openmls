@@ -12,6 +12,8 @@ use crate::{
     treesync::node::encryption_keys::EncryptionKeyPair,
 };
 
+use openmls_traits::storage::StorageProvider as _;
+
 impl CoreGroup {
     fn derive_epoch_secrets(
         &self,
@@ -335,10 +337,6 @@ impl CoreGroup {
                 );
 
                 self.public_group.merge_diff(state.staged_diff);
-                self.public_group
-                    .write_to_storage(provider.storage())
-                    .unwrap();
-                // .map_err(MergeCommitError::StorageError)?;
 
                 // TODO #1194: Group storage and key storage should be
                 // correlated s.t. there is no divergence between key material
@@ -361,8 +359,8 @@ impl CoreGroup {
                     .chain(leaf_keypair)
                     .filter(|keypair| new_owned_encryption_keys.contains(keypair.public_key()))
                     .collect();
-                // We should have private keys for all owned encryption keys.
 
+                // We should have private keys for all owned encryption keys.
                 debug_assert_eq!(new_owned_encryption_keys.len(), epoch_keypairs.len());
                 if new_owned_encryption_keys.len() != epoch_keypairs.len() {
                     return Err(LibraryError::custom(
@@ -370,15 +368,31 @@ impl CoreGroup {
                     )
                     .into());
                 }
-                // Store the relevant keys under the new epoch
-                self.store_epoch_keypairs(provider.storage(), epoch_keypairs.as_slice())
+
+                // store the updated group state
+                let storage = provider.storage();
+                let group_id = self.group_id();
+
+                self.public_group
+                    .write_to_storage(storage)
                     .map_err(MergeCommitError::StorageError)?;
+                storage
+                    .write_group_epoch_secrets(group_id, &self.group_epoch_secrets)
+                    .map_err(MergeCommitError::StorageError)?;
+                storage
+                    .write_message_secrets(group_id, &self.message_secrets_store)
+                    .map_err(MergeCommitError::StorageError)?;
+
+                // Store the relevant keys under the new epoch
+                self.store_epoch_keypairs(storage, epoch_keypairs.as_slice())
+                    .map_err(MergeCommitError::StorageError)?;
+
                 // Delete the old keys.
-                self.delete_previous_epoch_keypairs(provider.storage())
+                self.delete_previous_epoch_keypairs(storage)
                     .map_err(MergeCommitError::StorageError)?;
                 if let Some(keypair) = state.new_leaf_keypair_option {
                     keypair
-                        .delete_from_key_store(provider.storage())
+                        .delete_from_key_store(storage)
                         .map_err(MergeCommitError::StorageError)?;
                 }
 
