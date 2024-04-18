@@ -471,7 +471,7 @@ pub(crate) enum FromCommittedProposalsError {
 
 // Core group build error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub(crate) enum CoreGroupBuildError<KeyStoreError> {
+pub(crate) enum CoreGroupBuildError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -482,8 +482,8 @@ pub(crate) enum CoreGroupBuildError<KeyStoreError> {
     #[error(transparent)]
     Psk(#[from] PskError),
     /// Error storing leaf private key in key store.
-    #[error("Error storing leaf private key in key store.")]
-    KeyStoreError(KeyStoreError),
+    #[error("Error saving data to storage: {0}.")]
+    StorageError(StorageError),
 }
 
 // CoreGroup parse message error

@@ -31,12 +31,12 @@ impl MlsGroup {
     ///
     /// This function removes the private key corresponding to the
     /// `key_package` from the key store.
-    pub fn new<KeyStore: OpenMlsKeyStore>(
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+    pub fn new<Provider: RefinedProvider>(
+        provider: &Provider,
         signer: &impl Signer,
         mls_group_create_config: &MlsGroupCreateConfig,
         credential_with_key: CredentialWithKey,
-    ) -> Result<Self, NewGroupError<KeyStore::Error>> {
+    ) -> Result<Self, NewGroupError<Provider::StorageError>> {
         MlsGroupBuilder::new().build_internal(
             provider,
             signer,
@@ -47,13 +47,13 @@ impl MlsGroup {
 
     /// Creates a new group with a given group ID with the creator as the only
     /// member.
-    pub fn new_with_group_id<KeyStore: OpenMlsKeyStore>(
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+    pub fn new_with_group_id<Provider: RefinedProvider>(
+        provider: &Provider,
         signer: &impl Signer,
         mls_group_create_config: &MlsGroupCreateConfig,
         group_id: GroupId,
         credential_with_key: CredentialWithKey,
-    ) -> Result<Self, NewGroupError<KeyStore::Error>> {
+    ) -> Result<Self, NewGroupError<Provider::StorageError>> {
         MlsGroupBuilder::new()
             .with_group_id(group_id)
             .build_internal(

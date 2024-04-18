@@ -79,6 +79,7 @@ use crate::{
         psk::{load_psks, store::ResumptionPskStore, PskSecret},
         *,
     },
+    storage::RefinedProvider,
     tree::{secret_tree::SecretTreeError, sender_ratchet::SenderRatchetConfiguration},
     treesync::{node::encryption_keys::EncryptionKeyPair, *},
     versions::ProtocolVersion,
@@ -269,11 +270,11 @@ impl CoreGroupBuilder {
     ///
     /// This function performs cryptographic operations and there requires an
     /// [`OpenMlsProvider`].
-    pub(crate) fn build<KeyStore: OpenMlsKeyStore>(
+    pub(crate) fn build<Provider: RefinedProvider>(
         self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &Provider,
         signer: &impl Signer,
-    ) -> Result<CoreGroup, CoreGroupBuildError<KeyStore::Error>> {
+    ) -> Result<CoreGroup, CoreGroupBuildError<Provider::StorageError>> {
         let (public_group_builder, commit_secret, leaf_keypair) =
             self.public_group_builder.get_secrets(provider, signer)?;
 
@@ -347,10 +348,15 @@ impl CoreGroupBuilder {
             resumption_psk_store,
         };
 
+        // Store the group state
+        group
+            .store(provider.storage())
+            .map_err(CoreGroupBuildError::StorageError)?;
+
         // Store the private key of the own leaf in the key store as an epoch keypair.
         group
             .store_epoch_keypairs(provider.storage(), &[leaf_keypair])
-            .map_err(|_| CoreGroupBuildError::LibraryError(LibraryError::custom("FIXME")))?;
+            .map_err(CoreGroupBuildError::StorageError)?;
 
         Ok(group)
     }
@@ -721,6 +727,7 @@ impl CoreGroup {
     ) -> Result<(), Storage::Error> {
         let group_id = self.group_id();
 
+        self.public_group.store(storage)?;
         storage.write_own_leaf_index(group_id, &self.own_leaf_index())?;
         storage.write_group_epoch_secrets(group_id, &self.group_epoch_secrets)?;
         storage.set_use_ratchet_tree_extension(group_id, self.use_ratchet_tree_extension)?;

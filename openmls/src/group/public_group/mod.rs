@@ -175,7 +175,7 @@ impl PublicGroup {
         };
 
         public_group
-            .write_to_storage(provider.storage())
+            .store(provider.storage())
             .map_err(|e| CreationFromExternalError::WriteToStorageError(e))?;
 
         Ok((public_group, group_info))
@@ -353,7 +353,7 @@ impl PublicGroup {
         self.treesync().owned_encryption_keys(leaf_index)
     }
 
-    pub(crate) fn write_to_storage<Storage: StorageProvider<1>>(
+    pub(crate) fn store<Storage: StorageProvider<1>>(
         &self,
         storage: &Storage,
     ) -> Result<(), Storage::Error> {

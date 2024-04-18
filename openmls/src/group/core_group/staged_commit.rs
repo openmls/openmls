@@ -374,7 +374,7 @@ impl CoreGroup {
                 let group_id = self.group_id();
 
                 self.public_group
-                    .write_to_storage(storage)
+                    .store(storage)
                     .map_err(MergeCommitError::StorageError)?;
                 storage
                     .write_group_epoch_secrets(group_id, &self.group_epoch_secrets)
