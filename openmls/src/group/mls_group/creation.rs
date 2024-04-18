@@ -32,12 +32,12 @@ impl MlsGroup {
     ///
     /// This function removes the private key corresponding to the
     /// `key_package` from the key store.
-    pub fn new<KeyStore: OpenMlsKeyStore>(
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+    pub fn new<Provider: RefinedProvider>(
+        provider: &Provider,
         signer: &impl Signer,
         mls_group_create_config: &MlsGroupCreateConfig,
         credential_with_key: CredentialWithKey,
-    ) -> Result<Self, NewGroupError<KeyStore::Error>> {
+    ) -> Result<Self, NewGroupError<Provider::StorageError>> {
         MlsGroupBuilder::new().build_internal(
             provider,
             signer,
@@ -48,13 +48,13 @@ impl MlsGroup {
 
     /// Creates a new group with a given group ID with the creator as the only
     /// member.
-    pub fn new_with_group_id<KeyStore: OpenMlsKeyStore>(
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+    pub fn new_with_group_id<Provider: RefinedProvider>(
+        provider: &Provider,
         signer: &impl Signer,
         mls_group_create_config: &MlsGroupCreateConfig,
         group_id: GroupId,
         credential_with_key: CredentialWithKey,
-    ) -> Result<Self, NewGroupError<KeyStore::Error>> {
+    ) -> Result<Self, NewGroupError<Provider::StorageError>> {
         MlsGroupBuilder::new()
             .with_group_id(group_id)
             .build_internal(
@@ -79,15 +79,16 @@ impl MlsGroup {
     ///
     /// Note: If there is a group member in the group with the same identity as
     /// us, this will create a remove proposal.
-    pub fn join_by_external_commit(
-        provider: &impl OpenMlsProvider,
+    pub fn join_by_external_commit<Provider: RefinedProvider>(
+        provider: &Provider,
         signer: &impl Signer,
         ratchet_tree: Option<RatchetTreeIn>,
         verifiable_group_info: VerifiableGroupInfo,
         mls_group_config: &MlsGroupJoinConfig,
         aad: &[u8],
         credential_with_key: CredentialWithKey,
-    ) -> Result<(Self, MlsMessageOut, Option<GroupInfo>), ExternalCommitError> {
+    ) -> Result<(Self, MlsMessageOut, Option<GroupInfo>), ExternalCommitError<Provider::StorageError>>
+    {
         // Prepare the commit parameters
         let framing_parameters = FramingParameters::new(aad, WireFormat::PublicMessage);
 

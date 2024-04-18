@@ -38,6 +38,7 @@ use crate::{
         ConfirmationTag, PathSecret,
     },
     schedule::CommitSecret,
+    storage::RefinedProvider,
     treesync::{
         errors::{DerivePathError, TreeSyncFromNodesError},
         node::{
@@ -109,13 +110,14 @@ impl PublicGroup {
     /// This function performs basic validation checks and returns an error if
     /// one of the checks fails. See [`CreationFromExternalError`] for more
     /// details.
-    pub fn from_external(
-        crypto: &impl OpenMlsCrypto,
+    pub fn from_external<Provider: RefinedProvider>(
+        provider: &Provider,
         ratchet_tree: RatchetTreeIn,
         verifiable_group_info: VerifiableGroupInfo,
         proposal_store: ProposalStore,
-    ) -> Result<(Self, GroupInfo), CreationFromExternalError> {
+    ) -> Result<(Self, GroupInfo), CreationFromExternalError<Provider::StorageError>> {
         let ciphersuite = verifiable_group_info.ciphersuite();
+        let crypto = provider.crypto();
 
         let group_id = verifiable_group_info.group_id();
         let ratchet_tree = ratchet_tree
@@ -164,16 +166,19 @@ impl PublicGroup {
             )?
         };
 
-        Ok((
-            Self {
-                treesync,
-                group_context,
-                interim_transcript_hash,
-                confirmation_tag: group_info.confirmation_tag().clone(),
-                proposal_store,
-            },
-            group_info,
-        ))
+        let public_group = Self {
+            treesync,
+            group_context,
+            interim_transcript_hash,
+            confirmation_tag: group_info.confirmation_tag().clone(),
+            proposal_store,
+        };
+
+        public_group
+            .store(provider.storage())
+            .map_err(|e| CreationFromExternalError::WriteToStorageError(e))?;
+
+        Ok((public_group, group_info))
     }
 
     /// Returns the index of the sender of a staged, external commit.
@@ -348,7 +353,7 @@ impl PublicGroup {
         self.treesync().owned_encryption_keys(leaf_index)
     }
 
-    pub(crate) fn write_to_storage<Storage: StorageProvider<1>>(
+    pub(crate) fn store<Storage: StorageProvider<1>>(
         &self,
         storage: &Storage,
     ) -> Result<(), Storage::Error> {

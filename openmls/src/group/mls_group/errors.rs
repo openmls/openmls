@@ -23,16 +23,16 @@ use crate::{
 
 /// New group error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum NewGroupError<KeyStoreError> {
+pub enum NewGroupError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
     /// No matching KeyPackage was found in the key store.
     #[error("No matching KeyPackage was found in the key store.")]
     NoMatchingKeyPackage,
-    /// Error accessing the key store.
-    #[error("Error accessing the key store.")]
-    KeyStoreError(KeyStoreError),
+    /// Error accessing the storage.
+    #[error("Error accessing the storage.")]
+    StorageError(StorageError),
     /// Unsupported proposal type in required capabilities.
     #[error("Unsupported proposal type in required capabilities.")]
     UnsupportedProposalType,

@@ -84,7 +84,7 @@ pub enum WelcomeError<StorageError> {
     /// This error indicates the public tree is invalid. See
     /// [`CreationFromExternalError`] for more details.
     #[error(transparent)]
-    PublicGroupError(#[from] CreationFromExternalError),
+    PublicGroupError(#[from] CreationFromExternalError<StorageError>),
     /// This error indicates the leaf node is invalid. See [`LeafNodeValidationError`] for more details.
     #[error(transparent)]
     LeafNodeValidation(#[from] LeafNodeValidationError),
@@ -95,7 +95,7 @@ pub enum WelcomeError<StorageError> {
 
 /// External Commit error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum ExternalCommitError {
+pub enum ExternalCommitError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -120,7 +120,7 @@ pub enum ExternalCommitError {
     /// This error indicates the public tree is invalid. See
     /// [`CreationFromExternalError`] for more details.
     #[error(transparent)]
-    PublicGroupError(#[from] CreationFromExternalError),
+    PublicGroupError(#[from] CreationFromExternalError<StorageError>),
     /// Credential is missing from external commit.
     #[error("Credential is missing from external commit.")]
     MissingCredential,
@@ -471,7 +471,7 @@ pub(crate) enum FromCommittedProposalsError {
 
 // Core group build error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub(crate) enum CoreGroupBuildError<KeyStoreError> {
+pub(crate) enum CoreGroupBuildError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -482,8 +482,8 @@ pub(crate) enum CoreGroupBuildError<KeyStoreError> {
     #[error(transparent)]
     Psk(#[from] PskError),
     /// Error storing leaf private key in key store.
-    #[error("Error storing leaf private key in key store.")]
-    KeyStoreError(KeyStoreError),
+    #[error("Error saving data to storage: {0}.")]
+    StorageError(StorageError),
 }
 
 // CoreGroup parse message error

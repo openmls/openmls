@@ -280,6 +280,8 @@ impl PublicGroup {
     ///
     /// This function should not fail and only returns a [`Result`], because it
     /// might throw a `LibraryError`.
+    /// TODO: fix comment above. Also, should we write to storage here? in that
+    ///       case we'd return an error again.
     pub fn merge_commit(&mut self, staged_commit: StagedCommit) {
         match staged_commit.into_state() {
             StagedCommitState::PublicState(staged_state) => {

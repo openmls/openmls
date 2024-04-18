@@ -12,6 +12,7 @@ use crate::{
         ProposalStore, WireFormatPolicy,
     },
     key_packages::Lifetime,
+    storage::RefinedProvider,
     tree::sender_ratchet::SenderRatchetConfiguration,
     treesync::node::leaf_node::Capabilities,
 };
@@ -36,12 +37,12 @@ impl MlsGroupBuilder {
     }
 
     /// Build a new group as configured by this builder.
-    pub fn build<KeyStore: OpenMlsKeyStore>(
+    pub fn build<Provider: RefinedProvider>(
         self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &Provider,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
-    ) -> Result<MlsGroup, NewGroupError<KeyStore::Error>> {
+    ) -> Result<MlsGroup, NewGroupError<Provider::StorageError>> {
         self.build_internal(provider, signer, credential_with_key, None)
     }
 
@@ -50,13 +51,13 @@ impl MlsGroupBuilder {
     /// If an [`MlsGroupCreateConfig`] is provided, it will be used to configure the
     /// group. Otherwise, the internal builder is used to build one with the
     /// parameters set on this builder.
-    pub(super) fn build_internal<KeyStore: OpenMlsKeyStore>(
+    pub(super) fn build_internal<Provider: RefinedProvider>(
         self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &Provider,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
         mls_group_create_config_option: Option<MlsGroupCreateConfig>,
-    ) -> Result<MlsGroup, NewGroupError<KeyStore::Error>> {
+    ) -> Result<MlsGroup, NewGroupError<Provider::StorageError>> {
         let mls_group_create_config = mls_group_create_config_option
             .unwrap_or_else(|| self.mls_group_create_config_builder.build());
         let group_id = self
@@ -88,7 +89,7 @@ impl MlsGroupBuilder {
                 log::debug!("Unexpected PSK error: {:?}", e);
                 LibraryError::custom("Unexpected PSK error").into()
             }
-            CoreGroupBuildError::KeyStoreError(e) => NewGroupError::KeyStoreError(e),
+            CoreGroupBuildError::StorageError(e) => NewGroupError::StorageError(e),
             CoreGroupBuildError::PublicGroupBuildError(e) => match e {
                 PublicGroupBuildError::LibraryError(e) => e.into(),
                 PublicGroupBuildError::InvalidExtensions(e) => NewGroupError::InvalidExtensions(e),
