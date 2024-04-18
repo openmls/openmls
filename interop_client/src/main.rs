@@ -400,15 +400,16 @@ impl MlsClient for MlsClientImpl {
             .store(my_key_package.hpke_init_key().as_slice(), &private_key)
             .map_err(|_| Status::aborted("failed to interact with the key store"))?;
 
+        use openmls_traits::storage::StorageProvider as _;
+
         // Store the key package in the key store with the hash reference as id
         // for retrieval when parsing welcome messages.
         crypto_provider
-            .key_store()
-            .store(
-                my_key_package
+            .storage()
+            .write_key_package(
+                &my_key_package
                     .hash_ref(crypto_provider.crypto())
-                    .map_err(into_status)?
-                    .as_slice(),
+                    .map_err(into_status)?,
                 &my_key_package,
             )
             .map_err(into_status)?;
