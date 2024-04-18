@@ -134,6 +134,7 @@ impl SignatureKeyPair {
                 value: id(public_key, signature_scheme),
             })
             .ok()
+            .flatten()
     }
 
     /// Get the public key as byte slice.
@@ -166,8 +167,8 @@ struct StorageId {
 
 // Implement key traits for the storage id
 impl storage::Key<CURRENT_VERSION> for StorageId {}
-impl storage::SignaturePublicKeyKey<CURRENT_VERSION> for StorageId {}
+impl storage::traits::SignaturePublicKey<CURRENT_VERSION> for StorageId {}
 
 // Implement entity trait for the signature key pair
 impl storage::Entity<CURRENT_VERSION> for SignatureKeyPair {}
-impl storage::SignatureKeyPairEntity<CURRENT_VERSION> for SignatureKeyPair {}
+impl storage::traits::SignatureKeyPair<CURRENT_VERSION> for SignatureKeyPair {}

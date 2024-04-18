@@ -2,7 +2,6 @@
 //!
 //! This module contains errors that originate at lower levels and are partially re-exported in errors thrown by functions of the `MlsGroup` API.
 
-use openmls_traits::storage::UpdateError;
 use thiserror::Error;
 
 pub use super::mls_group::errors::*;

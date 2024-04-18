@@ -143,10 +143,6 @@ pub enum MemoryKeyStoreError {
     None,
 }
 
-impl GetError for MemoryKeyStoreError {}
-
-impl UpdateError for MemoryKeyStoreError {}
-
 const QUEUED_PROPOSAL_LABEL: &[u8] = b"QueuedProposal";
 const INIT_KEY_LABEL: &[u8] = b"HpkePrivateKey";
 const KEY_PACKAGE_LABEL: &[u8] = b"KeyPackage";

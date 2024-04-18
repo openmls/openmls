@@ -1,8 +1,5 @@
 use serde::{de::DeserializeOwned, Serialize};
 
-pub trait GetError: core::fmt::Debug + std::error::Error + PartialEq {}
-pub trait UpdateError: core::fmt::Debug + std::error::Error + PartialEq {}
-
 /// The storage version used by OpenMLS
 pub const CURRENT_VERSION: u16 = 1;
 
@@ -14,8 +11,8 @@ pub const V_TEST: u16 = u16::MAX;
 
 pub trait StorageProvider<const VERSION: u16> {
     // source for errors
-    type GetError: GetError;
-    type UpdateError: UpdateError;
+    type GetError: core::fmt::Debug + std::error::Error + PartialEq;
+    type UpdateError: core::fmt::Debug + std::error::Error + PartialEq;
 
     /// Get the version of this provider.
     fn version() -> u16 {
@@ -217,8 +214,6 @@ pub trait StorageProvider<const VERSION: u16> {
 
     /// Get a list of HPKE encryption key pairs for a given epoch.
     /// This includes the private and public keys.
-    // TODO: how should this behave if there are no key pairs stored for this epoch? None? empty
-    // vector?
     fn encryption_epoch_key_pairs<
         GroupId: traits::GroupId<VERSION>,
         EpochKey: traits::EpochKey<VERSION>,
@@ -473,38 +468,5 @@ pub mod traits {
     pub trait GroupUseRatchetTreeExtension<const VERSION: u16>: Entity<VERSION> {}
     pub trait MessageSecrets<const VERSION: u16>: Entity<VERSION> {}
     pub trait ResumptionPskStore<const VERSION: u16>: Entity<VERSION> {}
-
-    pub trait KeyPackage<const VERSION: u16>: Entity<VERSION> {
-        type InitKey: InitKey<VERSION>;
-        type EncryptionKey: EncryptionKey<VERSION>;
-
-        fn init_key(&self) -> &Self::InitKey;
-        fn encryption_key(&self) -> &Self::EncryptionKey;
-    }
-}
-
-/// A trait to convert one entity into another one.
-///
-/// This is implemented for all entities with different versions.
-///
-/// XXX: I'd like something like this. But this obviously doesn't work. How should this work?
-pub trait EntityConversion<const OLD_VERSION: u16, const NEW_VERSION: u16> {
-    fn from(old: impl Entity<OLD_VERSION>) -> Self;
-}
-
-// errors
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum GetErrorKind {
-    NotFound,
-    Encoding,
-    Internal,
-    LockPoisoned,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum UpdateErrorKind {
-    Encoding,
-    Internal,
-    LockPoisoned,
-    AlreadyExists,
+    pub trait KeyPackage<const VERSION: u16>: Entity<VERSION> {}
 }

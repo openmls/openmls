@@ -47,19 +47,7 @@ impl Entity<CURRENT_VERSION> for ConfirmationTag {}
 impl traits::ConfirmationTag<CURRENT_VERSION> for ConfirmationTag {}
 
 impl Entity<CURRENT_VERSION> for KeyPackage {}
-impl traits::KeyPackage<CURRENT_VERSION> for KeyPackage {
-    type InitKey = StorageInitKey;
-
-    type EncryptionKey = &EncryptionKey;
-
-    fn init_key(&self) -> Self::InitKey {
-        StorageInitKey(self.init_key())
-    }
-
-    fn encryption_key(&self) -> Self::EncryptionKey {
-        self.encryption_key()
-    }
-}
+impl traits::KeyPackage<CURRENT_VERSION> for KeyPackage {}
 
 impl Key<CURRENT_VERSION> for EncryptionKey {}
 impl traits::EncryptionKey<CURRENT_VERSION> for EncryptionKey {}
