@@ -21,6 +21,7 @@ use crate::{
     },
     key_packages::{test_key_packages::key_package, KeyPackageBundle},
     schedule::psk::{store::ResumptionPskStore, PskSecret},
+    storage::RefinedProvider,
     test_utils::frankenstein::*,
     tree::{secret_tree::SecretTree, sender_ratchet::SenderRatchetConfiguration},
 };
@@ -386,29 +387,39 @@ fn membership_tag(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 }
 
 #[apply(ciphersuites_and_providers)]
-fn unknown_sender<Storage: StorageProvider<1>>(
-    ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider<StorageProvider = Storage>,
-) {
+fn unknown_sender<Provider: RefinedProvider>(ciphersuite: Ciphersuite, provider: &Provider) {
+    let _ = pretty_env_logger::try_init();
+
+    let alice_provider = provider.clone();
+    let bob_provider = provider.clone();
+    let charlie_provider = provider.clone();
+
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
     let configuration = &SenderRatchetConfiguration::default();
 
     // Define credentials with keys
     let (alice_credential, alice_signature_keys) =
-        test_utils::new_credential(provider, b"Alice", ciphersuite.signature_algorithm());
+        test_utils::new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
     let (bob_credential, bob_signature_keys) =
-        test_utils::new_credential(provider, b"Bob", ciphersuite.signature_algorithm());
-    let (charlie_credential, charlie_signature_keys) =
-        test_utils::new_credential(provider, b"Charlie", ciphersuite.signature_algorithm());
+        test_utils::new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
+    let (charlie_credential, charlie_signature_keys) = test_utils::new_credential(
+        charlie_provider,
+        b"Charlie",
+        ciphersuite.signature_algorithm(),
+    );
 
     // Generate KeyPackages
-    let bob_key_package_bundle =
-        KeyPackageBundle::new(provider, &bob_signature_keys, ciphersuite, bob_credential);
+    let bob_key_package_bundle = KeyPackageBundle::new(
+        bob_provider,
+        &bob_signature_keys,
+        ciphersuite,
+        bob_credential,
+    );
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let charlie_key_package_bundle = KeyPackageBundle::new(
-        provider,
+        charlie_provider,
         &charlie_signature_keys,
         ciphersuite,
         charlie_credential,
@@ -417,11 +428,11 @@ fn unknown_sender<Storage: StorageProvider<1>>(
 
     // Alice creates a group
     let mut group_alice = CoreGroup::builder(
-        GroupId::random(provider.rand()),
+        GroupId::random(alice_provider.rand()),
         ciphersuite,
         alice_credential,
     )
-    .build(provider, &alice_signature_keys)
+    .build(alice_provider, &alice_signature_keys)
     .expect("Error creating group.");
 
     // Alice adds Bob
@@ -436,7 +447,7 @@ fn unknown_sender<Storage: StorageProvider<1>>(
     let mut proposal_store = ProposalStore::from_queued_proposal(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
-            provider.crypto(),
+            alice_provider.crypto(),
             bob_add_proposal,
         )
         .expect("Could not create QueuedProposal."),
@@ -448,11 +459,11 @@ fn unknown_sender<Storage: StorageProvider<1>>(
         .force_self_update(false)
         .build();
     let create_commit_result = group_alice
-        .create_commit(params, provider, &alice_signature_keys)
+        .create_commit(params, alice_provider, &alice_signature_keys)
         .expect("Error creating Commit");
 
     group_alice
-        .merge_commit(provider, create_commit_result.staged_commit)
+        .merge_commit(alice_provider, create_commit_result.staged_commit)
         .expect("error merging pending commit");
 
     let _group_bob = StagedCoreWelcome::new_from_welcome(
@@ -461,10 +472,10 @@ fn unknown_sender<Storage: StorageProvider<1>>(
             .expect("An unexpected error occurred."),
         Some(group_alice.public_group().export_ratchet_tree().into()),
         bob_key_package_bundle,
-        provider,
+        bob_provider,
         ResumptionPskStore::new(1024),
     )
-    .and_then(|staged_join| staged_join.into_core_group(provider))
+    .and_then(|staged_join| staged_join.into_core_group(bob_provider))
     .expect("Bob: Error creating group from Welcome");
 
     // Alice adds Charlie
@@ -481,7 +492,7 @@ fn unknown_sender<Storage: StorageProvider<1>>(
     proposal_store.add(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
-            provider.crypto(),
+            alice_provider.crypto(),
             charlie_add_proposal,
         )
         .expect("Could not create staged proposal."),
@@ -493,11 +504,11 @@ fn unknown_sender<Storage: StorageProvider<1>>(
         .force_self_update(false)
         .build();
     let create_commit_result = group_alice
-        .create_commit(params, provider, &alice_signature_keys)
+        .create_commit(params, alice_provider, &alice_signature_keys)
         .expect("Error creating Commit");
 
     group_alice
-        .merge_commit(provider, create_commit_result.staged_commit)
+        .merge_commit(alice_provider, create_commit_result.staged_commit)
         .expect("error merging pending commit");
 
     let mut group_charlie = StagedCoreWelcome::new_from_welcome(
@@ -506,10 +517,10 @@ fn unknown_sender<Storage: StorageProvider<1>>(
             .expect("An unexpected error occurred."),
         Some(group_alice.public_group().export_ratchet_tree().into()),
         charlie_key_package_bundle,
-        provider,
+        charlie_provider,
         ResumptionPskStore::new(1024),
     )
-    .and_then(|staged_join| staged_join.into_core_group(provider))
+    .and_then(|staged_join| staged_join.into_core_group(charlie_provider))
     .expect("Charlie: Error creating group from Welcome");
 
     // Alice removes Bob
@@ -525,7 +536,7 @@ fn unknown_sender<Storage: StorageProvider<1>>(
     proposal_store.add(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
-            provider.crypto(),
+            alice_provider.crypto(),
             bob_remove_proposal,
         )
         .expect("Could not create staged proposal."),
@@ -537,18 +548,23 @@ fn unknown_sender<Storage: StorageProvider<1>>(
         .force_self_update(false)
         .build();
     let create_commit_result = group_alice
-        .create_commit(params, provider, &alice_signature_keys)
+        .create_commit(params, alice_provider, &alice_signature_keys)
         .expect("Error creating Commit");
 
     let staged_commit = group_charlie
-        .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], provider)
+        .read_keys_and_stage_commit(
+            &create_commit_result.commit,
+            &proposal_store,
+            &[],
+            alice_provider,
+        )
         .expect("Charlie: Could not stage Commit");
     group_charlie
-        .merge_commit(provider, staged_commit)
+        .merge_commit(charlie_provider, staged_commit)
         .expect("error merging commit");
 
     group_alice
-        .merge_commit(provider, create_commit_result.staged_commit)
+        .merge_commit(alice_provider, create_commit_result.staged_commit)
         .expect("error merging pending commit");
 
     group_alice.print_ratchet_tree("Alice tree");
@@ -568,7 +584,7 @@ fn unknown_sender<Storage: StorageProvider<1>>(
     let enc_message = PrivateMessage::encrypt_with_different_header(
         &bogus_sender_message,
         ciphersuite,
-        provider,
+        alice_provider,
         MlsMessageHeader {
             group_id: group_alice.group_id().clone(),
             epoch: group_alice.context().epoch(),
@@ -580,7 +596,7 @@ fn unknown_sender<Storage: StorageProvider<1>>(
     .expect("Encryption error");
 
     let received_message = group_charlie.decrypt_message(
-        provider.crypto(),
+        charlie_provider.crypto(),
         ProtocolMessage::from(PrivateMessageIn::from(enc_message)),
         configuration,
     );
@@ -621,9 +637,7 @@ fn confirmation_tag_presence<Storage: StorageProvider<1>>(
     assert_eq!(err, StageCommitError::ConfirmationTagMissing);
 }
 
-pub(crate) fn setup_alice_bob_group<
-    Storage: StorageProvider<1>,
->(
+pub(crate) fn setup_alice_bob_group<Storage: StorageProvider<1>>(
     ciphersuite: Ciphersuite,
     provider: &impl OpenMlsProvider<StorageProvider = Storage>,
 ) -> (

@@ -779,7 +779,7 @@ impl CoreGroup {
     ) -> Result<(), Storage::Error> {
         store.delete_encryption_epoch_key_pairs(
             self.group_id(),
-            &self.context().epoch(),
+            &GroupEpoch::from(self.context().epoch().as_u64() - 1),
             self.own_leaf_index().u32(),
         )
     }

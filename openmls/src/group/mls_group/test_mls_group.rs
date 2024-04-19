@@ -1024,11 +1024,12 @@ fn key_package_deletion<Provider: crate::storage::RefinedProvider>(
     use crate::storage::{StorageHpkePrivateKey, StorageInitKey};
 
     // TEST: The key package must be gone from the key store.
-    let result: Result<Option<KeyPackage>, _> = provider
+    let result: Option<KeyPackage> = provider
         .storage()
-        .key_package(&bob_key_package.hash_ref(provider.crypto()).unwrap());
+        .key_package(&bob_key_package.hash_ref(provider.crypto()).unwrap())
+        .unwrap();
     assert!(
-        result.is_err(),
+        result.is_none(),
         "The key package is still in the key store after creating a new group from it."
     );
 }

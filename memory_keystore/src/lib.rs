@@ -22,6 +22,10 @@ impl MemoryKeyStore {
         storage_key.extend_from_slice(key);
         storage_key.extend_from_slice(&u16::to_be_bytes(VERSION));
 
+        #[cfg(feature = "test-utils")]
+        log::debug!("  write key: {}", hex::encode(&storage_key));
+        log::trace!("{}", std::backtrace::Backtrace::capture());
+
         values.insert(storage_key, value.to_vec());
         Ok(())
     }
@@ -39,11 +43,21 @@ impl MemoryKeyStore {
         storage_key.extend_from_slice(key);
         storage_key.extend_from_slice(&u16::to_be_bytes(VERSION));
 
-        let value = values.get(&storage_key).unwrap();
-        let value = serde_json::from_slice(value).unwrap();
+        #[cfg(feature = "test-utils")]
+        log::debug!("  read key: {}", hex::encode(&storage_key));
+        log::trace!("{}", std::backtrace::Backtrace::capture());
 
-        Ok(value)
+        let value = values.get(&storage_key);
+
+        if let Some(value) = value {
+            serde_json::from_slice(value)
+                .map_err(|_| MemoryKeyStoreError::SerializationError)
+                .map(|v| Some(v))
+        } else {
+            Ok(None)
+        }
     }
+
     /// Internal helper to abstract read operations.
     #[inline(always)]
     fn read_list<const VERSION: u16, V: Entity<VERSION>>(
@@ -56,6 +70,10 @@ impl MemoryKeyStore {
         let mut storage_key = label.to_vec();
         storage_key.extend_from_slice(key);
         storage_key.extend_from_slice(&u16::to_be_bytes(VERSION));
+
+        #[cfg(feature = "test-utils")]
+        log::debug!("  read list key: {}", hex::encode(&storage_key));
+        log::trace!("{}", std::backtrace::Backtrace::capture());
 
         let value = values.get(&storage_key).unwrap();
         let value = serde_json::from_slice(value).unwrap();
@@ -75,6 +93,10 @@ impl MemoryKeyStore {
         let mut storage_key = label.to_vec();
         storage_key.extend_from_slice(key);
         storage_key.extend_from_slice(&u16::to_be_bytes(VERSION));
+
+        #[cfg(feature = "test-utils")]
+        log::debug!("  delete key: {}", hex::encode(&storage_key));
+        log::trace!("{}", std::backtrace::Backtrace::capture());
 
         values.remove(&storage_key);
 
@@ -449,9 +471,14 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         let mut key = INIT_KEY_LABEL.to_vec();
         key.extend_from_slice(&serde_json::to_vec(&public_key).unwrap());
         key.extend_from_slice(&u16::to_be_bytes(CURRENT_VERSION));
-        let value = values.get(&key).ok_or(MemoryKeyStoreError::None)?;
 
-        serde_json::from_slice(value).map_err(|_| MemoryKeyStoreError::SerializationError)
+        let value = values.get(&key);
+
+        if let Some(value) = value {
+            serde_json::from_slice(value).map_err(|_| MemoryKeyStoreError::SerializationError)
+        } else {
+            Ok(None)
+        }
     }
 
     fn key_package<
@@ -732,8 +759,13 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         key_pairs: &[HpkeKeyPair],
     ) -> Result<(), Self::Error> {
         let key = epoch_key_pairs_id(group_id, epoch, leaf_index)?;
-
         let value = serde_json::to_vec(key_pairs)?;
+        log::debug!("Writing encryption epoch key pairs");
+        #[cfg(feature = "test-utils")]
+        {
+            log::debug!("  key: {}", hex::encode(&key));
+            log::debug!("  value: {}", hex::encode(&value));
+        }
 
         self.write::<CURRENT_VERSION>(EPOCH_KEY_PAIRS_LABEL, &key, &value)
     }
@@ -749,6 +781,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         leaf_index: u32,
     ) -> Result<Vec<HpkeKeyPair>, Self::Error> {
         let key = epoch_key_pairs_id(group_id, epoch, leaf_index)?;
+        log::debug!("Reading encryption epoch key pairs");
 
         let values = self.values.read().unwrap();
 
@@ -757,7 +790,13 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         storage_key.extend_from_slice(&u16::to_be_bytes(CURRENT_VERSION));
 
         let value = values.get(&storage_key);
+
+        #[cfg(feature = "test-utils")]
+        log::debug!("  key: {}", hex::encode(&storage_key));
+
         if let Some(value) = value {
+            #[cfg(feature = "test-utils")]
+            log::debug!("  value: {}", hex::encode(&value));
             return Ok(serde_json::from_slice(value).unwrap());
         }
 
