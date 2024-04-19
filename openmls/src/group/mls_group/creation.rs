@@ -186,7 +186,7 @@ impl StagedWelcome {
         if !key_package_bundle.key_package().last_resort() {
             key_package_bundle
                 .key_package
-                .delete(provider, false)
+                .delete(provider)
                 .map_err(|e| match e {
                     KeyPackageStorageError::LibraryError(l) => WelcomeError::LibraryError(l),
                     KeyPackageStorageError::Storage(e) => WelcomeError::StorageError(e),

@@ -350,10 +350,12 @@ impl KeyPackage {
     }
 
     /// Delete this key package and its private keys from the key store.
+    ///
+    /// Note that this DOES NOT delete eny encryption key pairs.
+    /// This is because they may being used in the leaf node for the group.
     pub fn delete<Provider: RefinedProvider>(
         &self,
         provider: &Provider,
-        delete_encryption_key: bool,
     ) -> Result<(), KeyPackageStorageError<Provider::StorageError>> {
         provider
             .storage()
@@ -364,13 +366,6 @@ impl KeyPackage {
             .storage()
             .delete_init_private_key(self.hpke_init_key())
             .map_err(KeyPackageStorageError::Storage)?;
-
-        if delete_encryption_key {
-            provider
-                .storage()
-                .delete_encryption_key_pair(self.leaf_node().encryption_key())
-                .map_err(KeyPackageStorageError::Storage)?;
-        }
 
         Ok(())
     }
