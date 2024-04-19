@@ -2,10 +2,10 @@
 //!
 //! `KeyPackageError` are thrown on errors handling `KeyPackage`s.
 
-use openmls_traits::storage::{StorageProvider, CURRENT_VERSION};
+
 use thiserror::Error;
 
-use crate::{ciphersuite::signable::SignatureError, error::LibraryError, storage::RefinedProvider};
+use crate::{ciphersuite::signable::SignatureError, error::LibraryError};
 
 /// KeyPackage verify error
 #[derive(Error, Debug, PartialEq, Clone)]

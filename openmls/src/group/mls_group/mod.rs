@@ -13,7 +13,6 @@ use crate::{
     key_packages::{KeyPackage, KeyPackageBundle},
     messages::proposals::*,
     schedule::ResumptionPskSecret,
-    storage::{RefinedProvider, StorageProvider},
     treesync::{node::leaf_node::LeafNode, RatchetTree},
 };
 use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
@@ -321,8 +320,8 @@ impl MlsGroup {
 
     /// Loads the state from persisted state.
     pub fn load<StorageProvider: crate::storage::StorageProvider>(
-        group_id: &GroupId,
-        store: &StorageProvider,
+        _group_id: &GroupId,
+        _store: &StorageProvider,
     ) -> Option<MlsGroup> {
         todo!("rewrite load group")
         // store.read(group_id.as_slice())
@@ -331,7 +330,7 @@ impl MlsGroup {
     /// Persists the state.
     pub fn save<StorageProvider: crate::storage::StorageProvider>(
         &mut self,
-        store: &StorageProvider,
+        _store: &StorageProvider,
     ) -> Result<(), StorageProvider::Error> {
         todo!("rewrite save group")
         // store.store(self.group_id().as_slice(), &*self)?;

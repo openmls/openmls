@@ -1,11 +1,10 @@
 use thiserror::Error;
 
 use crate::{
-    error::LibraryError, extensions::errors::InvalidExtensionError,
-    messages::group_info::GroupInfo, treesync::errors::TreeSyncFromNodesError,
+    error::LibraryError, extensions::errors::InvalidExtensionError, treesync::errors::TreeSyncFromNodesError,
 };
 
-use super::PublicGroup;
+
 
 /// Public group creation from external error.
 #[derive(Error, Debug, PartialEq, Clone)]

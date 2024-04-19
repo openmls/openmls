@@ -1,5 +1,5 @@
 //! Unit tests for the ciphersuites.
-use openmls_rust_crypto::OpenMlsRustCrypto;
+
 use openmls_traits::types::HpkeCiphertext;
 
 use crate::{ciphersuite::*, test_utils::*};

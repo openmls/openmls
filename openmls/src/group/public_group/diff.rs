@@ -9,7 +9,7 @@ use openmls_traits::{crypto::OpenMlsCrypto, storage::StorageProvider};
 use serde::{Deserialize, Serialize};
 use tls_codec::Serialize as TlsSerialize;
 
-use super::{InterimTranscriptHash, PublicGroup};
+use super::{PublicGroup};
 use crate::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
     error::LibraryError,

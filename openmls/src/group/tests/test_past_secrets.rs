@@ -1,7 +1,7 @@
 //! This module contains tests regarding the use of [`MessageSecretsStore`] in [`MlsGroup`]
 
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
+
+use openmls_traits::{types::Ciphersuite};
 
 use rstest::*;
 use rstest_reuse::{self, *};

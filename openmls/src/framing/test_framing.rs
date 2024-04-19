@@ -390,9 +390,9 @@ fn membership_tag(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 fn unknown_sender<Provider: RefinedProvider>(ciphersuite: Ciphersuite, provider: &Provider) {
     let _ = pretty_env_logger::try_init();
 
-    let alice_provider = provider.clone();
-    let bob_provider = provider.clone();
-    let charlie_provider = provider.clone();
+    let alice_provider = provider;
+    let bob_provider = provider;
+    let charlie_provider = provider;
 
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
