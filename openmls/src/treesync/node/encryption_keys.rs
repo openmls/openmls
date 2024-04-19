@@ -44,16 +44,6 @@ impl EncryptionKey {
         self.key.as_slice()
     }
 
-    /// Helper function to prefix the given (serialized) [`EncryptionKey`] with
-    /// the `ENCRYPTION_KEY_LABEL`.
-    ///
-    /// Returns the resulting bytes.
-    fn to_bytes_with_prefix(&self) -> Vec<u8> {
-        let mut key_store_index = ENCRYPTION_KEY_LABEL.to_vec();
-        key_store_index.extend_from_slice(self.as_slice());
-        key_store_index
-    }
-
     /// Encrypt to this HPKE public key.
     pub(crate) fn encrypt(
         &self,
@@ -154,8 +144,6 @@ pub(crate) struct EncryptionKeyPair {
     public_key: EncryptionKey,
     private_key: EncryptionPrivateKey,
 }
-
-const ENCRYPTION_KEY_LABEL: &[u8; 19] = b"leaf_encryption_key";
 
 impl EncryptionKeyPair {
     /// Write the [`EncryptionKeyPair`] to the store of the `provider`.

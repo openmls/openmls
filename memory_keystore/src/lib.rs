@@ -916,7 +916,8 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
             "{group_id},{epoch},{leaf_index}",
             group_id = serde_json::to_string(group_id).unwrap(),
             epoch = serde_json::to_string(epoch).unwrap(),
-        );
+        )
+        .unwrap();
         self.read_list(ENCRYPTION_KEY_PAIR_LABEL, &key)
     }
 

@@ -2,7 +2,7 @@
 //! https://openmls.tech/book/message_validation.html#semantic-validation-of-proposals-covered-by-a-commit
 
 use crate::{storage::RefinedProvider, test_utils::OpenMlsRustCrypto};
-use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::{signatures::Signer, types::Ciphersuite};
 use rstest::*;
 use rstest_reuse::{self, *};
 use tls_codec::{Deserialize, Serialize};

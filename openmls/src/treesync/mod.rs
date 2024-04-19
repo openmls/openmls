@@ -18,7 +18,6 @@
 // Finally, this module contains the [`treekem`] module, which allows the
 // encryption and decryption of updates to the tree.
 
-
 #[cfg(test)]
 use rstest::*;
 #[cfg(test)]

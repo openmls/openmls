@@ -2,8 +2,7 @@
 //! commit messages as defined in
 //! https://github.com/openmls/openmls/wiki/Message-validation
 
-
-use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::types::Ciphersuite;
 use rstest::rstest;
 use rstest_reuse::apply;
 use tls_codec::{Deserialize, Serialize};
@@ -599,7 +598,7 @@ fn test_pure_ciphertest(ciphersuite: Ciphersuite, provider: &impl crate::storage
 }
 
 mod utils {
-    use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
+    use openmls_traits::types::Ciphersuite;
     use tls_codec::{Deserialize, Serialize};
 
     use crate::{

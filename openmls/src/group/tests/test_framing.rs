@@ -1,9 +1,7 @@
 use std::io::Write;
 
 use itertools::iproduct;
-use openmls_traits::{
-    crypto::OpenMlsCrypto, random::OpenMlsRand, types::Ciphersuite, OpenMlsProvider,
-};
+use openmls_traits::{crypto::OpenMlsCrypto, random::OpenMlsRand, types::Ciphersuite};
 use rstest::*;
 use rstest_reuse::{self, *};
 use tls_codec::Serialize;

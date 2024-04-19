@@ -33,10 +33,7 @@ mod test_past_secrets;
 mod test_proposals;
 
 use log::{debug, trace};
-use openmls_traits::{
-    crypto::OpenMlsCrypto, signatures::Signer, storage::StorageProvider as StorageProviderTrait,
-    types::Ciphersuite,
-};
+use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
 use tls_codec::Serialize as TlsSerializeTrait;
 
@@ -1168,20 +1165,4 @@ pub(crate) struct CoreGroupConfig {
     /// Flag whether to send the ratchet tree along with the `GroupInfo` or not.
     /// Defaults to false.
     pub(crate) add_ratchet_tree_extension: bool,
-}
-
-/// Composite key for key material of a client within an epoch
-pub struct EpochKeypairId(Vec<u8>);
-
-impl EpochKeypairId {
-    fn new(group_id: &GroupId, epoch: u64, leaf_index: LeafNodeIndex) -> Self {
-        Self(
-            [
-                group_id.as_slice(),
-                &leaf_index.u32().to_be_bytes(),
-                &epoch.to_be_bytes(),
-            ]
-            .concat(),
-        )
-    }
 }

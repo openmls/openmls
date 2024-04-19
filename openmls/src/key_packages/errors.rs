@@ -2,7 +2,6 @@
 //!
 //! `KeyPackageError` are thrown on errors handling `KeyPackage`s.
 
-
 use thiserror::Error;
 
 use crate::{ciphersuite::signable::SignatureError, error::LibraryError};

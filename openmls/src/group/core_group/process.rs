@@ -1,5 +1,4 @@
 use core_group::proposals::QueuedProposal;
-use openmls_traits::storage::StorageProvider;
 
 use crate::{
     framing::mls_content::FramedContentBody,

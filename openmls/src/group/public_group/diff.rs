@@ -4,12 +4,12 @@
 //! [`StagedPublicGroupDiff`] and associated functions and types.
 use std::collections::HashSet;
 
+use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::Ciphersuite;
-use openmls_traits::{crypto::OpenMlsCrypto, storage::StorageProvider};
 use serde::{Deserialize, Serialize};
 use tls_codec::Serialize as TlsSerialize;
 
-use super::{PublicGroup};
+use super::PublicGroup;
 use crate::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
     error::LibraryError,

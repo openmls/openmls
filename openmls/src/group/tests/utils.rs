@@ -8,7 +8,7 @@ use std::{cell::RefCell, collections::HashMap};
 
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::crypto::OpenMlsCrypto;
-use openmls_traits::{signatures::Signer, types::SignatureScheme, OpenMlsProvider};
+use openmls_traits::{signatures::Signer, types::SignatureScheme};
 use rand::{rngs::OsRng, RngCore};
 use tls_codec::Serialize;
 

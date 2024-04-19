@@ -23,7 +23,6 @@ use openmls::{
     key_packages::KeyPackage,
     prelude::{Capabilities, ExtensionType, SenderRatchetConfiguration},
     schedule::{psk::ResumptionPskUsage, ExternalPsk, PreSharedKeyId, Psk},
-    storage::{StorageHpkePrivateKey, StorageInitKey},
     treesync::{
         test_utils::{read_keys_from_key_store, write_keys_from_key_store},
         RatchetTreeIn,

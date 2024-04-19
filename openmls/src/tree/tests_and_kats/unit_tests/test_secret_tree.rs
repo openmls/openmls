@@ -1,4 +1,3 @@
-
 use openmls_traits::random::OpenMlsRand;
 
 use crate::{

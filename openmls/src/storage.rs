@@ -184,8 +184,6 @@ mod test {
         key: HpkePrivateKey,
     }
 
-    struct NewStorageKeyPackage {}
-
     impl type_traits::HpkePrivateKey<V_TEST> for NewStorageHpkePrivateKey {}
     impl Entity<V_TEST> for NewStorageHpkePrivateKey {}
 

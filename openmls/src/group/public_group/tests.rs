@@ -1,4 +1,4 @@
-use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::types::Ciphersuite;
 use rstest::*;
 use rstest_reuse::{self, *};
 
