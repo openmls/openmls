@@ -312,9 +312,9 @@ impl MlsClient for MlsClientImpl {
                 },
             )
             .unwrap();
-        let StorageHpkePrivateKey(private_key) = crypto_provider
+        let private_key: HpkePrivateKey = crypto_provider
             .storage()
-            .init_private_key(&StorageInitKey(key_package.hpke_init_key().as_slice()))
+            .init_private_key(key_package.hpke_init_key())
             .unwrap()
             .unwrap();
 
@@ -398,10 +398,7 @@ impl MlsClient for MlsClientImpl {
         // Store keys so OpenMLS can find them.
         crypto_provider
             .storage()
-            .write_init_private_key(
-                &StorageInitKey(my_key_package.hpke_init_key().as_slice()),
-                &StorageHpkePrivateKey(private_key.clone()),
-            )
+            .write_init_private_key(my_key_package.hpke_init_key(), &private_key)
             .map_err(|_| Status::aborted("failed to interact with the key store"))?;
 
         use openmls_traits::storage::StorageProvider as _;
@@ -425,10 +422,7 @@ impl MlsClient for MlsClientImpl {
         // The key is the public key.
         crypto_provider
             .storage()
-            .write_init_private_key(
-                &StorageInitKey(my_key_package.hpke_init_key().as_slice()),
-                &StorageHpkePrivateKey(private_key),
-            )
+            .write_init_private_key(my_key_package.hpke_init_key(), &private_key)
             .map_err(into_status)?;
 
         let welcome = MlsMessageIn::tls_deserialize(&mut request.welcome.as_slice())
