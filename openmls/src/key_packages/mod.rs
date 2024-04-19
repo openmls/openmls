@@ -102,7 +102,7 @@ use crate::{
     storage::RefinedProvider,
     treesync::{
         node::{
-            encryption_keys::EncryptionKeyPair,
+            encryption_keys::{EncryptionKeyPair, EncryptionPrivateKey},
             leaf_node::{Capabilities, LeafNodeSource, NewLeafNodeParams, TreeInfoTbs},
         },
         LeafNode,
@@ -541,7 +541,8 @@ impl KeyPackageBuilder {
         // for retrieval when parsing welcome messages.
         let full_kp = KeyPackageBundle {
             key_package,
-            private_key: init_private_key,
+            private_init_key: init_private_key,
+            private_encryption_key: encryption_keypair.private_key().clone(),
         };
         provider
             .storage()
@@ -565,16 +566,22 @@ impl KeyPackageBuilder {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KeyPackageBundle {
     pub(crate) key_package: KeyPackage,
-    pub(crate) private_key: HpkePrivateKey,
+    pub(crate) private_init_key: HpkePrivateKey,
+    pub(crate) private_encryption_key: EncryptionPrivateKey,
 }
 
 // Public `KeyPackageBundle` functions.
 impl KeyPackageBundle {
     /// Generate a new key package bundle with the private key.
-    pub fn new(key_package: KeyPackage, private_key: HpkePrivateKey) -> Self {
+    pub fn new(
+        key_package: KeyPackage,
+        private_init_key: HpkePrivateKey,
+        private_encryption_key: EncryptionPrivateKey,
+    ) -> Self {
         Self {
             key_package,
-            private_key,
+            private_init_key,
+            private_encryption_key,
         }
     }
 
@@ -585,7 +592,20 @@ impl KeyPackageBundle {
 
     /// Get a reference to the private init key.
     pub fn init_private_key(&self) -> &HpkePrivateKey {
-        &self.private_key
+        &self.private_init_key
+    }
+
+    /// Get a reference to the private encryption key.
+    pub fn encryption_private_key(&self) -> &EncryptionPrivateKey {
+        &self.private_encryption_key
+    }
+
+    /// Get the encryption key pair.
+    pub fn encryption_key_pair(&self) -> EncryptionKeyPair {
+        EncryptionKeyPair::from((
+            self.key_package.leaf_node().encryption_key().clone(),
+            self.private_encryption_key.clone(),
+        ))
     }
 }
 

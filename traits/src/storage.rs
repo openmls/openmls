@@ -152,7 +152,9 @@ pub trait StorageProvider<const VERSION: u16> {
     /// Store an HPKE encryption key pair.
     /// This includes the private and public key
     ///
-    /// This is used for encryption keys from leaf nodes.
+    /// This is only be used for encryption key pairs that are generated for
+    /// update leaf nodes. All other encryption key pairs are stored as part
+    /// of the key package or the epoch encryption key pairs.
     fn write_encryption_key_pair<
         EncryptionKey: traits::EncryptionKey<VERSION>,
         HpkeKeyPair: traits::HpkeKeyPair<VERSION>,
@@ -325,6 +327,10 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<Option<SignatureKeyPair>, Self::Error>;
 
     /// Get an HPKE encryption key pair based on the public key.
+    ///
+    /// This is only be used for encryption key pairs that are generated for
+    /// update leaf nodes. All other encryption key pairs are stored as part
+    /// of the key package or the epoch encryption key pairs.
     fn encryption_key_pair<
         HpkeKeyPair: traits::HpkeKeyPair<VERSION>,
         EncryptionKey: traits::EncryptionKey<VERSION>,
@@ -421,6 +427,10 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<(), Self::Error>;
 
     /// Delete an encryption key pair for a public key.
+    ///
+    /// This is only be used for encryption key pairs that are generated for
+    /// update leaf nodes. All other encryption key pairs are stored as part
+    /// of the key package or the epoch encryption key pairs.
     fn delete_encryption_key_pair<EncryptionKey: traits::EncryptionKey<VERSION>>(
         &self,
         public_key: &EncryptionKey,

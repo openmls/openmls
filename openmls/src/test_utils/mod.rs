@@ -102,7 +102,6 @@ pub fn hex_to_bytes_option(hex: Option<String>) -> Vec<u8> {
 pub(crate) struct GroupCandidate {
     pub identity: Vec<u8>,
     pub key_package: KeyPackageBundle,
-    pub encryption_keypair: EncryptionKeyPair,
     pub signature_keypair: SignatureKeyPair,
     pub credential_with_key_and_signer: CredentialWithKeyAndSigner,
 }
@@ -141,26 +140,18 @@ pub(crate) fn generate_group_candidate(
         }
     };
 
-    let (key_package, encryption_keypair) = {
+    let key_package = {
         let builder = KeyPackageBuilder::new();
 
         if use_store {
-            let key_package = builder
+            builder
                 .build(
                     ciphersuite,
                     provider,
                     &credential_with_key_and_signer.signer,
                     credential_with_key_and_signer.credential_with_key.clone(),
                 )
-                .unwrap();
-
-            let encryption_keypair = EncryptionKeyPair::read(
-                provider,
-                key_package.key_package().leaf_node().encryption_key(),
-            )
-            .unwrap();
-
-            (key_package, encryption_keypair)
+                .unwrap()
         } else {
             // We don't want to store anything. So...
             let provider = OpenMlsRustCrypto::default();
@@ -174,12 +165,13 @@ pub(crate) fn generate_group_candidate(
                 )
                 .unwrap();
 
-            (
-                KeyPackageBundle::new(
-                    key_package_creation_result.key_package,
-                    key_package_creation_result.init_private_key,
-                ),
-                key_package_creation_result.encryption_keypair,
+            KeyPackageBundle::new(
+                key_package_creation_result.key_package,
+                key_package_creation_result.init_private_key,
+                key_package_creation_result
+                    .encryption_keypair
+                    .private_key()
+                    .clone(),
             )
         }
     };
@@ -187,7 +179,6 @@ pub(crate) fn generate_group_candidate(
     GroupCandidate {
         identity: identity.as_ref().to_vec(),
         key_package,
-        encryption_keypair,
         signature_keypair: credential_with_key_and_signer.signer.clone(),
         credential_with_key_and_signer,
     }

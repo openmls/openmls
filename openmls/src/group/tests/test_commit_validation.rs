@@ -294,7 +294,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
         )
         .unwrap();
         psk_id
-            .write_to_key_store(provider, secret.as_slice())
+            .store(provider, secret.as_slice())
             .unwrap();
         queued(Proposal::PreSharedKey(PreSharedKeyProposal::new(psk_id)))
     };

@@ -5,10 +5,7 @@ use crate::{
     group::{core_group::*, errors::WelcomeError},
     schedule::psk::store::ResumptionPskStore,
     storage::RefinedProvider,
-    treesync::{
-        errors::{DerivePathError, PublicTreeError},
-        node::encryption_keys::EncryptionKeyPair,
-    },
+    treesync::errors::{DerivePathError, PublicTreeError},
 };
 
 impl StagedCoreWelcome {
@@ -25,28 +22,6 @@ impl StagedCoreWelcome {
         mut resumption_psk_store: ResumptionPskStore,
     ) -> Result<Self, WelcomeError<Provider::StorageError>> {
         log::debug!("CoreGroup::new_from_welcome_internal");
-
-        // Read the encryption key pair from the key store and delete it there.
-        // TODO #1207: Key store access happens as early as possible so it can
-        // be pulled up later more easily.
-        let leaf_keypair = EncryptionKeyPair::read(
-            provider,
-            key_package_bundle.key_package.leaf_node().encryption_key(),
-        )
-        .ok_or(WelcomeError::NoMatchingEncryptionKey)?;
-
-        // Delete the leaf encryption keypair from the
-        // key store, but only if it doesn't have a last resort extension.
-        if !key_package_bundle.key_package().last_resort() {
-            leaf_keypair
-                .delete_from_key_store(provider.storage())
-                .map_err(|_| WelcomeError::NoMatchingEncryptionKey)?;
-        } else {
-            log::debug!(
-                "Found last resort extension, not deleting leaf encryption keypair from key store"
-            );
-        }
-
         let ciphersuite = welcome.ciphersuite();
 
         // Find key_package in welcome secrets
@@ -240,7 +215,7 @@ impl StagedCoreWelcome {
             message_secrets_store,
             resumption_psk_store,
             verifiable_group_info,
-            leaf_keypair,
+            key_package_bundle,
             path_keypairs,
         };
 
@@ -267,36 +242,23 @@ impl StagedCoreWelcome {
         self,
         provider: &Provider,
     ) -> Result<CoreGroup, WelcomeError<Provider::StorageError>> {
-        let Self {
-            public_group,
-            group_epoch_secrets,
-            own_leaf_index,
-            use_ratchet_tree_extension,
-            message_secrets_store,
-            resumption_psk_store,
-            leaf_keypair,
-            path_keypairs,
-            ..
-        } = self;
-
         // If we got a path secret, derive the path (which also checks if the
         // public keys match) and store the derived keys in the key store.
-        let group_keypairs = if let Some(path_keypairs) = path_keypairs {
-            vec![leaf_keypair]
-                .into_iter()
-                .chain(path_keypairs)
-                .collect()
+        let group_keypairs = if let Some(path_keypairs) = self.path_keypairs {
+            let mut keypairs = vec![self.key_package_bundle.encryption_key_pair()];
+            keypairs.extend_from_slice(&path_keypairs);
+            keypairs
         } else {
-            vec![leaf_keypair]
+            vec![self.key_package_bundle.encryption_key_pair()]
         };
 
         let group = CoreGroup {
-            public_group,
-            group_epoch_secrets,
-            own_leaf_index,
-            use_ratchet_tree_extension,
-            message_secrets_store,
-            resumption_psk_store,
+            public_group: self.public_group,
+            group_epoch_secrets: self.group_epoch_secrets,
+            own_leaf_index: self.own_leaf_index,
+            use_ratchet_tree_extension: self.use_ratchet_tree_extension,
+            message_secrets_store: self.message_secrets_store,
+            resumption_psk_store: self.resumption_psk_store,
         };
 
         group

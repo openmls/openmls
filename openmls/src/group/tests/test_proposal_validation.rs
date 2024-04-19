@@ -436,6 +436,7 @@ fn test_valsem102(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
         match bob_and_charlie_share_keys {
             KeyUniqueness::NegativeSameKey => {
                 // Create a new key package for bob with the init key from Charlie.
+                let encryption_private_key = bob_key_package.encryption_private_key().clone();
                 let mut franken_key_package = FrankenKeyPackage::from(bob_key_package);
                 franken_key_package.init_key = charlie_key_package
                     .key_package()
@@ -446,7 +447,11 @@ fn test_valsem102(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
                 franken_key_package.resign(&bob_credential_with_key.signer);
                 bob_key_package = {
                     let kp = KeyPackage::from(franken_key_package.clone());
-                    KeyPackageBundle::new(kp, charlie_key_package.init_private_key().clone())
+                    KeyPackageBundle::new(
+                        kp,
+                        charlie_key_package.init_private_key().clone(),
+                        encryption_private_key,
+                    )
                 };
             }
             KeyUniqueness::PositiveDifferentKey => {
@@ -2232,12 +2237,8 @@ fn test_valsem401_valsem402(
         let mut proposals = Vec::new();
 
         for psk_id in psk_ids {
-            psk_id
-                .write_to_key_store(&alice_provider, b"irrelevant")
-                .unwrap();
-            psk_id
-                .write_to_key_store(&bob_provider, b"irrelevant")
-                .unwrap();
+            psk_id.store(&alice_provider, b"irrelevant").unwrap();
+            psk_id.store(&bob_provider, b"irrelevant").unwrap();
 
             let (psk_proposal, _) = alice_group
                 .propose_external_psk(

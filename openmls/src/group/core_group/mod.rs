@@ -149,8 +149,8 @@ pub(crate) struct StagedCoreWelcome {
     /// The [`VerifiableGroupInfo`] from the [`Welcome`] message.
     verifiable_group_info: VerifiableGroupInfo,
 
-    /// The keypair used to decrypt the [`Welcome`] message.
-    leaf_keypair: EncryptionKeyPair,
+    /// The key package bundle used for this welcome.
+    pub(crate) key_package_bundle: KeyPackageBundle,
 
     /// If we got a path secret, these are the derived path keys.
     path_keypairs: Option<Vec<EncryptionKeyPair>>,

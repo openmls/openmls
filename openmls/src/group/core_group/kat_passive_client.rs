@@ -245,7 +245,8 @@ impl PassiveClient {
 
         let key_package_bundle = KeyPackageBundle {
             key_package: key_package.clone(),
-            private_key: init_priv,
+            private_init_key: init_priv,
+            private_encryption_key: encryption_priv.clone().into(),
         };
 
         // Store key package.
@@ -480,6 +481,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> PassiveClientWelcomeTes
 
     let epochs = vec![epoch1, epoch2, epoch3, epoch4, epoch5, epoch6];
     let init_priv = passive.key_package.init_private_key().to_vec();
+    let encryption_priv = passive.key_package.encryption_private_key().key().to_vec();
 
     PassiveClientWelcomeTestVector {
         cipher_suite: ciphersuite.into(),
@@ -490,7 +492,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> PassiveClientWelcomeTes
             .unwrap(),
 
         signature_priv: passive.signature_keypair.private().to_vec(),
-        encryption_priv: passive.encryption_keypair.private_key().key().to_vec(),
+        encryption_priv,
         init_priv,
 
         welcome: mls_message_welcome.tls_serialize_detached().unwrap(),

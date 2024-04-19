@@ -148,6 +148,10 @@ pub(crate) struct EncryptionKeyPair {
 
 impl EncryptionKeyPair {
     /// Write the [`EncryptionKeyPair`] to the store of the `provider`.
+    ///
+    /// This must only be used for encryption key pairs that are generated for
+    /// update leaf nodes. All other encryption key pairs are stored as part
+    /// of the key package or the epoch encryption key pairs.
     pub(crate) fn write<Storage: StorageProvider>(
         &self,
         store: &Storage,
@@ -158,6 +162,10 @@ impl EncryptionKeyPair {
     /// Read the [`EncryptionKeyPair`] from the key store of the `provider`. This
     /// function is meant to read standalone keypairs, not ones that are
     /// already in use with an MLS group.
+    ///
+    /// This must only be used for encryption key pairs that are generated for
+    /// update leaf nodes. All other encryption key pairs are stored as part
+    /// of the key package or the epoch encryption key pairs.
     ///
     /// Returns `None` if the keypair cannot be read from the store.
     pub(crate) fn read(
@@ -172,7 +180,11 @@ impl EncryptionKeyPair {
     }
 
     /// Delete the [`EncryptionKeyPair`] from the store of the `provider`.
-    pub(crate) fn delete_from_key_store<Storage: StorageProviderTrait<CURRENT_VERSION>>(
+    ///
+    /// This must only be used for encryption key pairs that are generated for
+    /// update leaf nodes. All other encryption key pairs are stored as part
+    /// of the key package or the epoch encryption key pairs.
+    pub(crate) fn delete<Storage: StorageProviderTrait<CURRENT_VERSION>>(
         &self,
         store: &Storage,
     ) -> Result<(), Storage::Error> {

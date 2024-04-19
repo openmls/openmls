@@ -20,6 +20,7 @@
 //!     decrypted GroupContext
 
 use crate::test_utils::OpenMlsRustCrypto;
+use kat_welcome::core_group::node::encryption_keys::EncryptionPrivateKey;
 use openmls_memory_keystore::MemoryKeyStore;
 use openmls_traits::{
     crypto::OpenMlsCrypto,
@@ -168,7 +169,8 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
 
     let key_package_bundle = KeyPackageBundle {
         key_package: key_package.clone(),
-        private_key: init_priv,
+        private_init_key: init_priv,
+        private_encryption_key: EncryptionPrivateKey::from(vec![]),
     };
 
     let hash_ref = key_package.hash_ref(provider.crypto()).unwrap();

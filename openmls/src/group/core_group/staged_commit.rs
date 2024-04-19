@@ -391,7 +391,7 @@ impl CoreGroup {
                     .map_err(MergeCommitError::StorageError)?;
                 if let Some(keypair) = state.new_leaf_keypair_option {
                     keypair
-                        .delete_from_key_store(storage)
+                        .delete(storage)
                         .map_err(MergeCommitError::StorageError)?;
                 }
 
