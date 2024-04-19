@@ -6,7 +6,7 @@ pub const CURRENT_VERSION: u16 = 1;
 /// For testing there is a test version defined here.
 ///
 /// THIS VERSION MUST NEVER BE USED OUTSIDE OF TESTS.
-#[cfg(feature = "test-utils")]
+#[cfg(any(test, feature = "test-utils"))]
 pub const V_TEST: u16 = u16::MAX;
 
 pub trait StorageProvider<const VERSION: u16> {

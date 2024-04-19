@@ -18,7 +18,7 @@ log = { version = "0.4" }
 hex = { version = "0.4", features = ["serde"], optional = true }
 
 [features]
-test-utils = ["hex"] # Enable test utilites
+test-utils = ["hex", "openmls_traits/test-utils"] # Enable test utilites
 
 [dev-dependencies]
 openmls_memory_keystore = { path = ".", features = ["test-utils"] }
