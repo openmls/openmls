@@ -19,10 +19,7 @@
 //!     from the key schedule epoch and the `confirmed_transcript_hash` from the
 //!     decrypted GroupContext
 
-use crate::{
-    storage::{StorageHpkePrivateKey, StorageInitKey},
-    test_utils::OpenMlsRustCrypto,
-};
+use crate::test_utils::OpenMlsRustCrypto;
 use openmls_memory_keystore::MemoryKeyStore;
 use openmls_traits::{
     crypto::OpenMlsCrypto,
@@ -185,8 +182,8 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
     provider
         .storage()
         .write_init_private_key(
-            &StorageInitKey(key_package.hpke_init_key().as_slice()),
-            &StorageHpkePrivateKey(key_package_bundle.private_key().clone()),
+            key_package.hpke_init_key(),
+            key_package_bundle.private_key(),
         )
         .unwrap();
 

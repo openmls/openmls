@@ -14,7 +14,7 @@ use crate::{
     },
     prelude::KeyPackage,
     schedule::psk::store::ResumptionPskStore,
-    storage::{RefinedProvider, StorageHpkePrivateKey, StorageInitKey},
+    storage::RefinedProvider,
     treesync::RatchetTreeIn,
 };
 
@@ -169,9 +169,9 @@ impl StagedWelcome {
             .ok_or(WelcomeError::NoMatchingKeyPackage)??;
 
         // TODO #751
-        let StorageHpkePrivateKey(private_key) = provider
+        let private_key = provider
             .storage()
-            .init_private_key(&StorageInitKey(key_package.hpke_init_key().as_slice()))
+            .init_private_key(key_package.hpke_init_key())
             // .read::<HpkePrivateKey>(key_package.hpke_init_key().as_slice())
             .ok()
             .flatten()

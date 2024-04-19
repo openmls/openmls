@@ -21,7 +21,6 @@ use crate::{
         psk::{load_psks, store::ResumptionPskStore, PskSecret},
         KeySchedule,
     },
-    storage::{StorageHpkePrivateKey, StorageInitKey},
     treesync::node::encryption_keys::EncryptionKeyPair,
 };
 
@@ -179,10 +178,7 @@ fn test_welcome_context_mismatch(
         .unwrap();
     provider
         .storage()
-        .write_init_private_key(
-            &StorageInitKey(bob_kp.hpke_init_key().as_slice()),
-            &StorageHpkePrivateKey(bob_private_key.clone()),
-        )
+        .write_init_private_key(bob_kp.hpke_init_key(), bob_private_key)
         .unwrap();
 
     encryption_keypair.write(provider.storage()).unwrap();

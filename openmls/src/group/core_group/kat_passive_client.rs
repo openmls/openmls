@@ -13,7 +13,6 @@ use crate::{
     group::*,
     key_packages::*,
     schedule::psk::PreSharedKeyId,
-    storage::{StorageHpkePrivateKey, StorageInitKey},
     test_utils::*,
     treesync::{
         node::encryption_keys::{EncryptionKeyPair, EncryptionPrivateKey},
@@ -262,8 +261,8 @@ impl PassiveClient {
         self.provider
             .storage()
             .write_init_private_key(
-                &StorageInitKey(key_package.hpke_init_key().as_slice()),
-                &StorageHpkePrivateKey(key_package_bundle.private_key().clone()),
+                key_package.hpke_init_key(),
+                key_package_bundle.private_key(),
             )
             .unwrap();
 

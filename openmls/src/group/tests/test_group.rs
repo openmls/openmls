@@ -12,8 +12,6 @@ fn create_commit_optional_path(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::RefinedProvider,
 ) {
-    use crate::storage::{StorageHpkePrivateKey, StorageInitKey};
-
     let group_aad = b"Alice's test group";
     // Framing parameters
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -126,9 +124,9 @@ fn create_commit_optional_path(
         .expect("error merging pending commit");
     let ratchet_tree = group_alice.public_group().export_ratchet_tree();
 
-    let StorageHpkePrivateKey(bob_private_key) = provider
+    let bob_private_key = provider
         .storage()
-        .init_private_key(&StorageInitKey(bob_key_package.hpke_init_key().as_slice()))
+        .init_private_key(bob_key_package.hpke_init_key())
         .unwrap()
         .unwrap();
     let bob_key_package_bundle = KeyPackageBundle {

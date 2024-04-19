@@ -1012,16 +1012,14 @@ fn key_package_deletion<Provider: crate::storage::RefinedProvider>(
 
     // TEST: The private key must be gone from the key store.
     // let result =
-    let result: Option<StorageHpkePrivateKey> = provider
+    let result: Option<HpkePrivateKey> = provider
         .storage()
-        .init_private_key(&StorageInitKey(bob_key_package.hpke_init_key().as_slice()))
+        .init_private_key(bob_key_package.hpke_init_key())
         .unwrap();
     assert!(result.is_none(),
         "The HPKE private key is still in the key store after creating a new group from the key package.");
 
     use openmls_traits::storage::StorageProvider;
-
-    use crate::storage::{StorageHpkePrivateKey, StorageInitKey};
 
     // TEST: The key package must be gone from the key store.
     let result: Option<KeyPackage> = provider

@@ -99,7 +99,7 @@ use crate::{
     credentials::*,
     error::LibraryError,
     extensions::{Extension, ExtensionType, Extensions, LastResortExtension},
-    storage::{RefinedProvider, StorageHpkePrivateKey, StorageInitKey},
+    storage::RefinedProvider,
     treesync::{
         node::{
             encryption_keys::EncryptionKeyPair,
@@ -241,6 +241,12 @@ impl From<Vec<u8>> for InitKey {
     }
 }
 
+impl From<HpkePublicKey> for InitKey {
+    fn from(key: HpkePublicKey) -> Self {
+        Self { key }
+    }
+}
+
 // Public `KeyPackage` functions.
 impl KeyPackage {
     /// Create a key package builder.
@@ -356,7 +362,7 @@ impl KeyPackage {
 
         provider
             .storage()
-            .delete_init_private_key(&StorageInitKey(self.hpke_init_key().as_slice()))
+            .delete_init_private_key(self.hpke_init_key())
             .map_err(KeyPackageStorageError::Storage)?;
 
         if delete_encryption_key {
@@ -557,10 +563,7 @@ impl KeyPackageBuilder {
         // The key is the public key.
         provider
             .storage()
-            .write_init_private_key(
-                &StorageInitKey(key_package.hpke_init_key().as_slice()),
-                &StorageHpkePrivateKey(init_private_key),
-            )
+            .write_init_private_key(key_package.hpke_init_key(), &init_private_key)
             .map_err(|_| KeyPackageNewError::StorageError)?;
 
         Ok(key_package)
@@ -600,9 +603,9 @@ impl KeyPackageBundle {
         let key_package = KeyPackage::builder()
             .build(ciphersuite, provider, signer, credential_with_key)
             .unwrap();
-        let StorageHpkePrivateKey(private_key) = provider
+        let private_key = provider
             .storage()
-            .init_private_key(&StorageInitKey(key_package.hpke_init_key().as_slice()))
+            .init_private_key(key_package.hpke_init_key())
             .unwrap()
             .unwrap();
         Self {

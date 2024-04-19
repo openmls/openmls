@@ -114,10 +114,7 @@ pub(crate) fn generate_group_candidate(
     provider: &impl OpenMlsProvider,
     use_store: bool,
 ) -> GroupCandidate {
-    use crate::{
-        credentials::BasicCredential,
-        storage::{StorageHpkePrivateKey, StorageInitKey},
-    };
+    use crate::credentials::BasicCredential;
 
     let credential_with_key_and_signer = {
         let credential = BasicCredential::new(identity.to_vec());
@@ -161,9 +158,9 @@ pub(crate) fn generate_group_candidate(
                 EncryptionKeyPair::read(provider, key_package.leaf_node().encryption_key())
                     .unwrap();
             let init_keypair = {
-                let StorageHpkePrivateKey(private) = provider
+                let private = provider
                     .storage()
-                    .init_private_key(&StorageInitKey(key_package.hpke_init_key().as_slice()))
+                    .init_private_key(key_package.hpke_init_key())
                     .unwrap()
                     .unwrap();
 
