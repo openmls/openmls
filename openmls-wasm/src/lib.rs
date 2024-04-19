@@ -94,7 +94,9 @@ impl Identity {
                     &self.keypair,
                     self.credential_with_key.clone(),
                 )
-                .unwrap(),
+                .unwrap()
+                .key_package()
+                .clone(),
         )
     }
 }

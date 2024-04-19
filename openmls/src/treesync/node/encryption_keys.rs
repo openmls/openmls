@@ -124,7 +124,7 @@ impl EncryptionPrivateKey {
     }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-utils"))]
 impl EncryptionPrivateKey {
     pub(crate) fn key(&self) -> &HpkePrivateKey {
         &self.key

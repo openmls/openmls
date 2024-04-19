@@ -572,6 +572,32 @@ pub struct KeyPackageBundle {
 
 // Public `KeyPackageBundle` functions.
 impl KeyPackageBundle {
+    /// Get a reference to the public part of this bundle, i.e. the [`KeyPackage`].
+    pub fn key_package(&self) -> &KeyPackage {
+        &self.key_package
+    }
+
+    /// Get a reference to the private init key.
+    pub fn init_private_key(&self) -> &HpkePrivateKey {
+        &self.private_init_key
+    }
+
+    // /// Get a reference to the private encryption key.
+    // pub(crate) fn encryption_private_key(&self) -> &EncryptionPrivateKey {
+    //     &self.private_encryption_key
+    // }
+
+    /// Get the encryption key pair.
+    pub(crate) fn encryption_key_pair(&self) -> EncryptionKeyPair {
+        EncryptionKeyPair::from((
+            self.key_package.leaf_node().encryption_key().clone(),
+            self.private_encryption_key.clone(),
+        ))
+    }
+}
+
+#[cfg(any(test, feature = "test-utils"))]
+impl KeyPackageBundle {
     /// Generate a new key package bundle with the private key.
     pub fn new(
         key_package: KeyPackage,
@@ -585,27 +611,9 @@ impl KeyPackageBundle {
         }
     }
 
-    /// Get a reference to the public part of this bundle, i.e. the [`KeyPackage`].
-    pub fn key_package(&self) -> &KeyPackage {
-        &self.key_package
-    }
-
-    /// Get a reference to the private init key.
-    pub fn init_private_key(&self) -> &HpkePrivateKey {
-        &self.private_init_key
-    }
-
     /// Get a reference to the private encryption key.
-    pub fn encryption_private_key(&self) -> &EncryptionPrivateKey {
-        &self.private_encryption_key
-    }
-
-    /// Get the encryption key pair.
-    pub fn encryption_key_pair(&self) -> EncryptionKeyPair {
-        EncryptionKeyPair::from((
-            self.key_package.leaf_node().encryption_key().clone(),
-            self.private_encryption_key.clone(),
-        ))
+    pub fn encryption_private_key(&self) -> &HpkePrivateKey {
+        self.private_encryption_key.key()
     }
 }
 

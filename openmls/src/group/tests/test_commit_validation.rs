@@ -293,9 +293,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
             Psk::External(ExternalPsk::new(rand)),
         )
         .unwrap();
-        psk_id
-            .store(provider, secret.as_slice())
-            .unwrap();
+        psk_id.store(provider, secret.as_slice()).unwrap();
         queued(Proposal::PreSharedKey(PreSharedKeyProposal::new(psk_id)))
     };
 

@@ -450,7 +450,7 @@ fn test_valsem102(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
                     KeyPackageBundle::new(
                         kp,
                         charlie_key_package.init_private_key().clone(),
-                        encryption_private_key,
+                        encryption_private_key.into(),
                     )
                 };
             }

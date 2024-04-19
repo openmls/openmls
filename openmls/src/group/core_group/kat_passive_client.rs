@@ -481,7 +481,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> PassiveClientWelcomeTes
 
     let epochs = vec![epoch1, epoch2, epoch3, epoch4, epoch5, epoch6];
     let init_priv = passive.key_package.init_private_key().to_vec();
-    let encryption_priv = passive.key_package.encryption_private_key().key().to_vec();
+    let encryption_priv = passive.key_package.encryption_private_key().to_vec();
 
     PassiveClientWelcomeTestVector {
         cipher_suite: ciphersuite.into(),

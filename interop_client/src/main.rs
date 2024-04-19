@@ -20,9 +20,10 @@ use openmls::{
         GroupEpoch, GroupId, MlsGroup, MlsGroupCreateConfig, MlsGroupJoinConfig, StagedWelcome,
         WireFormatPolicy, PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
-    key_packages::KeyPackage,
+    key_packages::{KeyPackage, KeyPackageBundle},
     prelude::{Capabilities, ExtensionType, SenderRatchetConfiguration},
     schedule::{psk::ResumptionPskUsage, ExternalPsk, PreSharedKeyId, Psk},
+    test_utils::frankenstein::key_package,
     treesync::{
         test_utils::{read_keys_from_key_store, write_keys_from_key_store},
         RatchetTreeIn,
@@ -64,9 +65,7 @@ pub struct InteropGroup {
 }
 
 type PendingState = (
-    KeyPackage,
-    HpkePrivateKey,
-    HpkeKeyPair,
+    KeyPackageBundle,
     Credential,
     SignatureKeyPair,
     OpenMlsRustCrypto,
@@ -312,14 +311,6 @@ impl MlsClient for MlsClientImpl {
                 },
             )
             .unwrap();
-        let private_key: HpkePrivateKey = crypto_provider
-            .storage()
-            .init_private_key(key_package.hpke_init_key())
-            .unwrap()
-            .unwrap();
-
-        let encryption_key_pair =
-            read_keys_from_key_store(&crypto_provider, key_package.leaf_node().encryption_key());
 
         let transaction_id: [u8; 4] = crypto_provider.rand().random_array().unwrap();
         let transaction_id = u32::from_be_bytes(transaction_id);
@@ -330,11 +321,14 @@ impl MlsClient for MlsClientImpl {
             key_package: key_package_msg
                 .tls_serialize_detached()
                 .expect("error serializing key package"),
-            encryption_priv: encryption_key_pair
-                .private
+            encryption_priv: key_package
+                .encryption_private_key()
                 .tls_serialize_detached()
                 .unwrap(),
-            init_priv: private_key.tls_serialize_detached().unwrap(),
+            init_priv: key_package
+                .init_private_key()
+                .tls_serialize_detached()
+                .unwrap(),
             signature_priv: signature_keys.private().to_vec(),
         };
 
@@ -346,8 +340,6 @@ impl MlsClient for MlsClientImpl {
             request.identity.clone(),
             (
                 key_package,
-                private_key,
-                encryption_key_pair,
                 credential.into(),
                 signature_keys,
                 crypto_provider,
@@ -381,25 +373,13 @@ impl MlsClient for MlsClientImpl {
             .build();
 
         let mut pending_key_packages = self.pending_state.lock().unwrap();
-        let (
-            my_key_package,
-            private_key,
-            encryption_keypair,
-            _my_credential,
-            my_signature_keys,
-            crypto_provider,
-        ) = pending_key_packages
-            .remove(&request.identity)
-            .ok_or(Status::aborted(format!(
-                "failed to find key package for identity {:x?}",
-                request.identity
-            )))?;
-
-        // Store keys so OpenMLS can find them.
-        crypto_provider
-            .storage()
-            .write_init_private_key(my_key_package.hpke_init_key(), &private_key)
-            .map_err(|_| Status::aborted("failed to interact with the key store"))?;
+        let (my_key_package, _my_credential, my_signature_keys, crypto_provider) =
+            pending_key_packages
+                .remove(&request.identity)
+                .ok_or(Status::aborted(format!(
+                    "failed to find key package for identity {:x?}",
+                    request.identity
+                )))?;
 
         use openmls_traits::storage::StorageProvider as _;
 
@@ -409,20 +389,11 @@ impl MlsClient for MlsClientImpl {
             .storage()
             .write_key_package(
                 &my_key_package
+                    .key_package()
                     .hash_ref(crypto_provider.crypto())
                     .map_err(into_status)?,
                 &my_key_package,
             )
-            .map_err(into_status)?;
-
-        // Store the encryption key pair in the key store.
-        write_keys_from_key_store(&crypto_provider, encryption_keypair);
-
-        // Store the private part of the init_key into the key store.
-        // The key is the public key.
-        crypto_provider
-            .storage()
-            .write_init_private_key(my_key_package.hpke_init_key(), &private_key)
             .map_err(into_status)?;
 
         let welcome = MlsMessageIn::tls_deserialize(&mut request.welcome.as_slice())
@@ -746,8 +717,8 @@ impl MlsClient for MlsClientImpl {
                 .ok_or(Status::internal("Unable to retrieve pending state"))?;
 
             store(
-                pending_state.0.ciphersuite(),
-                &pending_state.5,
+                pending_state.0.key_package().ciphersuite(),
+                &pending_state.3,
                 external_psk,
                 &request.psk_secret,
             )?;

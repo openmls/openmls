@@ -26,7 +26,7 @@ fn generate_key_package(
     extensions: Extensions,
     crypto_provider: &impl OpenMlsProvider,
     signer: &SignatureKeyPair,
-) -> KeyPackage {
+) -> KeyPackageBundle {
     KeyPackage::builder()
         .key_package_extensions(extensions)
         .build(ciphersuite, crypto_provider, signer, credential_with_key)
@@ -81,6 +81,7 @@ async fn test_list_clients() {
     );
     let client_key_package = vec![(
         client_key_package
+            .key_package()
             .hash_ref(crypto.crypto())
             .unwrap()
             .as_slice()
@@ -194,6 +195,7 @@ async fn test_group() {
         );
         let client_key_packages = (
             client_key_package
+                .key_package()
                 .hash_ref(crypto.crypto())
                 .unwrap()
                 .as_slice()
@@ -236,7 +238,7 @@ async fn test_group() {
     }
 
     // Add an additional key package for Client2
-    let group_ciphersuite = key_packages[0].ciphersuite();
+    let group_ciphersuite = key_packages[0].key_package().ciphersuite();
     let key_package_2 = generate_key_package(
         group_ciphersuite,
         credentials_with_key.get(1).unwrap().clone(),
@@ -247,6 +249,7 @@ async fn test_group() {
 
     let key_package_2 = (
         key_package_2
+            .key_package()
             .hash_ref(crypto.crypto())
             .unwrap()
             .as_slice()

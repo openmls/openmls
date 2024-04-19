@@ -30,9 +30,7 @@ fn test_psks(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .map(|_| Secret::from_slice(&prng.random_vec(55).expect("An unexpected error occurred.")))
         .zip(psk_ids.clone())
     {
-        psk_id
-            .store(provider, secret.as_slice())
-            .unwrap();
+        psk_id.store(provider, secret.as_slice()).unwrap();
     }
 
     let _psk_secret = {

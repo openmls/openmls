@@ -156,17 +156,6 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         todo!()
     }
 
-    fn write_init_private_key<
-        InitKey: openmls_traits::storage::traits::InitKey<VERSION>,
-        HpkePrivateKey: openmls_traits::storage::traits::HpkePrivateKey<VERSION>,
-    >(
-        &self,
-        public_key: &InitKey,
-        private_key: &HpkePrivateKey,
-    ) -> Result<(), Self::Error> {
-        todo!()
-    }
-
     fn write_encryption_key_pair<
         EncryptionKey: openmls_traits::storage::traits::EncryptionKey<VERSION>,
         HpkeKeyPair: openmls_traits::storage::traits::HpkeKeyPair<VERSION>,
@@ -341,16 +330,6 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         todo!()
     }
 
-    fn init_private_key<
-        InitKey: openmls_traits::storage::traits::InitKey<VERSION>,
-        HpkePrivateKey: openmls_traits::storage::traits::HpkePrivateKey<VERSION>,
-    >(
-        &self,
-        public_key: &InitKey,
-    ) -> Result<Option<HpkePrivateKey>, Self::Error> {
-        todo!()
-    }
-
     fn encryption_key_pair<
         HpkeKeyPair: openmls_traits::storage::traits::HpkeKeyPair<VERSION>,
         EncryptionKey: openmls_traits::storage::traits::EncryptionKey<VERSION>,
@@ -452,13 +431,6 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
     >(
         &self,
         public_key: &SignaturePublicKeuy,
-    ) -> Result<(), Self::Error> {
-        todo!()
-    }
-
-    fn delete_init_private_key<InitKey: openmls_traits::storage::traits::InitKey<VERSION>>(
-        &self,
-        public_key: &InitKey,
     ) -> Result<(), Self::Error> {
         todo!()
     }
