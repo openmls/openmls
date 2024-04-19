@@ -277,7 +277,7 @@ impl PreSharedKeyId {
     /// Save this `PreSharedKeyId` in the keystore.
     ///
     /// Note: The nonce is not saved as it must be unique for each time it's being applied.
-    pub fn write_to_key_store<Provider: RefinedProvider>(
+    pub fn store<Provider: RefinedProvider>(
         &self,
         provider: &Provider,
         psk: &[u8],

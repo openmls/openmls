@@ -320,7 +320,7 @@ fn test_psks(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedPr
         PreSharedKeyId::new(ciphersuite, provider.rand(), Psk::External(external_psk))
             .expect("An unexpected error occured.");
     preshared_key_id
-        .write_to_key_store(provider, secret.as_slice())
+        .store(provider, secret.as_slice())
         .unwrap();
     let mut alice_group = CoreGroup::builder(
         GroupId::random(provider.rand()),

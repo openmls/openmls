@@ -80,7 +80,7 @@ fn run_test_vector(test: TestElement, provider: &impl OpenMlsProvider) -> Result
 
             let psk_id = PreSharedKeyId::new_with_nonce(psk_type, psk.psk_nonce.clone());
 
-            psk_id.write_to_key_store(provider, &psk.psk).unwrap();
+            psk_id.store(provider, &psk.psk).unwrap();
             psk_id
         })
         .collect::<Vec<_>>();

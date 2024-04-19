@@ -730,7 +730,7 @@ impl MlsClient for MlsClientImpl {
             let psk_id = PreSharedKeyId::new(ciphersuite, crypto_provider.rand(), external_psk)
                 .map_err(|_| Status::internal("unable to create PreSharedKeyId from raw psk_id"))?;
             psk_id
-                .write_to_key_store(crypto_provider, secret)
+                .store(crypto_provider, secret)
                 .map_err(|_| Status::new(Code::Internal, "unable to store PSK"))?;
             Ok(())
         }

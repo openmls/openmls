@@ -31,7 +31,7 @@ fn test_psks(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .zip(psk_ids.clone())
     {
         psk_id
-            .write_to_key_store(provider, secret.as_slice())
+            .store(provider, secret.as_slice())
             .unwrap();
     }
 

@@ -215,7 +215,7 @@ impl PassiveClient {
             // We only construct this to easily save the PSK in the keystore.
             // The nonce is not saved, so it can be empty...
             let psk_id = PreSharedKeyId::external(psk.psk_id, vec![]);
-            psk_id.write_to_key_store(&provider, &psk.psk).unwrap();
+            psk_id.store(&provider, &psk.psk).unwrap();
         }
 
         Self {

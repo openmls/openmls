@@ -138,7 +138,8 @@ pub trait StorageProvider<const VERSION: u16> {
 
     /// Store a signature key.
     ///
-    /// Note that signature keys are defined outside of OpenMLS.
+    /// The signature key pair is not known to OpenMLS. This may be used by the
+    /// application
     fn write_signature_key_pair<
         SignaturePublicKey: traits::SignaturePublicKey<VERSION>,
         SignatureKeyPair: traits::SignatureKeyPair<VERSION>,
@@ -195,6 +196,9 @@ pub trait StorageProvider<const VERSION: u16> {
     /// Store a PSK.
     ///
     /// This stores PSKs based on the PSK id.
+    ///
+    /// PSKs are only read by OpenMLS. The application is responsible for managing
+    /// and storing PSKs.
     fn write_psk<PskId: traits::PskId<VERSION>, PskBundle: traits::PskBundle<VERSION>>(
         &self,
         psk_id: &PskId,
@@ -309,6 +313,9 @@ pub trait StorageProvider<const VERSION: u16> {
     //
 
     /// Get a signature key based on the public key.
+    ///
+    /// The signature key pair is not known to OpenMLS. This may be used by the
+    /// application
     fn signature_key_pair<
         SignaturePublicKey: traits::SignaturePublicKey<VERSION>,
         SignatureKeyPair: traits::SignatureKeyPair<VERSION>,
@@ -405,9 +412,12 @@ pub trait StorageProvider<const VERSION: u16> {
     //
 
     /// Delete a signature key pair based on its public key
-    fn delete_signature_key_pair<SignaturePublicKeuy: traits::SignaturePublicKey<VERSION>>(
+    ///
+    /// The signature key pair is not known to OpenMLS. This may be used by the
+    /// application
+    fn delete_signature_key_pair<SignaturePublicKey: traits::SignaturePublicKey<VERSION>>(
         &self,
-        public_key: &SignaturePublicKeuy,
+        public_key: &SignaturePublicKey,
     ) -> Result<(), Self::Error>;
 
     /// Delete an encryption key pair for a public key.
