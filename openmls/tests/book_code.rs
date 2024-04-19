@@ -1336,14 +1336,14 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage::Ref
     //save(&mut bob_group);
 
     bob_group
-        .save(provider.key_store())
+        .save(provider.storage())
         .expect("Could not write group state to file");
 
     // Check that the state flag gets reset when saving
     assert_eq!(bob_group.state_changed(), InnerState::Persisted);
 
     let bob_group =
-        MlsGroup::load(&group_id, provider.key_store()).expect("Could not load group from file");
+        MlsGroup::load(&group_id, provider.storage()).expect("Could not load group from file");
 
     // Make sure the state is still the same
     assert_eq!(

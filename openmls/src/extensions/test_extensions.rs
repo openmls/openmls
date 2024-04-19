@@ -2,7 +2,6 @@
 //! Some basic unit tests for extensions
 //! Proper testing is done through the public APIs.
 
-use openmls_traits::key_store::OpenMlsKeyStore;
 use tls_codec::{Deserialize, Serialize};
 
 use super::*;

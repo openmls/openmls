@@ -1,5 +1,4 @@
 use core_group::test_core_group::setup_client;
-use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsProvider};
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
@@ -45,11 +44,11 @@ fn test_mls_group_persistence(
     assert_eq!(alice_group.state_changed(), InnerState::Changed);
 
     alice_group
-        .save(provider.key_store())
+        .save(provider.storage())
         .expect("Could not write group state to file");
 
     let alice_group_deserialized =
-        MlsGroup::load(&group_id, provider.key_store()).expect("Could not deserialize MlsGroup");
+        MlsGroup::load(&group_id, provider.storage()).expect("Could not deserialize MlsGroup");
 
     assert_eq!(
         (
@@ -1012,13 +1011,17 @@ fn key_package_deletion<Provider: crate::storage::RefinedProvider>(
     .expect("Error creating group from staged join");
 
     // TEST: The private key must be gone from the key store.
-    assert!(provider
-        .key_store()
-        .read::<HpkePrivateKey>(bob_key_package.hpke_init_key().as_slice())
-        .is_none(),
+    // let result =
+    let result: Option<StorageHpkePrivateKey> = provider
+        .storage()
+        .init_private_key(&StorageInitKey(bob_key_package.hpke_init_key().as_slice()))
+        .unwrap();
+    assert!(result.is_none(),
         "The HPKE private key is still in the key store after creating a new group from the key package.");
 
-    use openmls_traits::storage::{StorageProvider, CURRENT_VERSION};
+    use openmls_traits::storage::StorageProvider;
+
+    use crate::storage::{StorageHpkePrivateKey, StorageInitKey};
 
     // TEST: The key package must be gone from the key store.
     let result: Result<Option<KeyPackage>, _> = provider
@@ -1455,7 +1458,7 @@ fn update_group_context_with_unknown_extension(
         .expect("error merging pending commit");
 
     alice_group
-        .save(provider.key_store())
+        .save(provider.storage())
         .expect("error saving group");
 
     // === Verify the group context extension was updated ===
@@ -1473,7 +1476,7 @@ fn update_group_context_with_unknown_extension(
     );
 
     // === Verify Bob sees the group context extension updated ===
-    let bob_group_loaded = MlsGroup::load(bob_group.group().group_id(), provider.key_store())
+    let bob_group_loaded = MlsGroup::load(bob_group.group().group_id(), provider.storage())
         .expect("error loading group");
     let group_context_extensions_2 = bob_group_loaded.export_group_context().extensions();
     let mut extracted_data_2 = None;

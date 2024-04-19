@@ -1,7 +1,4 @@
-use openmls_traits::{
-    key_store::{MlsEntity, OpenMlsKeyStore},
-    storage::StorageProvider,
-};
+use openmls_traits::storage::StorageProvider;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -14,7 +11,7 @@ use std::{
 use super::file_helpers;
 
 #[derive(Debug, Default)]
-pub struct PersistentKeyStore {
+pub struct PersistentStorage {
     values: RwLock<HashMap<Vec<u8>, Vec<u8>>>,
 }
 
@@ -23,7 +20,7 @@ struct SerializableKeyStore {
     values: HashMap<String, String>,
 }
 
-impl<const VERSION: u16> StorageProvider<VERSION> for PersistentKeyStore {
+impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
     type Error = PersistentKeyStoreError;
 
     fn queue_proposal<
@@ -504,53 +501,7 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentKeyStore {
     }
 }
 
-impl OpenMlsKeyStore for PersistentKeyStore {
-    /// The error type returned by the [`OpenMlsKeyStore`].
-    type Error = PersistentKeyStoreError;
-
-    /// Store a value `v` that implements the [`ToKeyStoreValue`] trait for
-    /// serialization for ID `k`.
-    ///
-    /// Returns an error if storing fails.
-    fn store<V: MlsEntity>(&self, k: &[u8], v: &V) -> Result<(), Self::Error> {
-        let value =
-            serde_json::to_vec(v).map_err(|_| PersistentKeyStoreError::SerializationError)?;
-        // We unwrap here, because this is the only function claiming a write
-        // lock on `credential_bundles`. It only holds the lock very briefly and
-        // should not panic during that period.
-        let mut values = self.values.write().unwrap();
-        values.insert(k.to_vec(), value);
-        Ok(())
-    }
-
-    /// Read and return a value stored for ID `k` that implements the
-    /// [`FromKeyStoreValue`] trait for deserialization.
-    ///
-    /// Returns [`None`] if no value is stored for `k` or reading fails.
-    fn read<V: MlsEntity>(&self, k: &[u8]) -> Option<V> {
-        // We unwrap here, because the two functions claiming a write lock on
-        // `init_key_package_bundles` (this one and `generate_key_package_bundle`) only
-        // hold the lock very briefly and should not panic during that period.
-        let values = self.values.read().unwrap();
-        if let Some(value) = values.get(k) {
-            serde_json::from_slice(value).ok()
-        } else {
-            None
-        }
-    }
-
-    /// Delete a value stored for ID `k`.
-    ///
-    /// Returns an error if storing fails.
-    fn delete<V: MlsEntity>(&self, k: &[u8]) -> Result<(), Self::Error> {
-        // We just delete both ...
-        let mut values = self.values.write().unwrap();
-        values.remove(k);
-        Ok(())
-    }
-}
-
-impl PersistentKeyStore {
+impl PersistentStorage {
     fn get_file_path(user_name: &String) -> PathBuf {
         file_helpers::get_file_path(&("openmls_cli_".to_owned() + user_name + "_ks.json"))
     }
@@ -572,7 +523,7 @@ impl PersistentKeyStore {
     }
 
     pub fn save(&self, user_name: String) -> Result<(), String> {
-        let ks_output_path = PersistentKeyStore::get_file_path(&user_name);
+        let ks_output_path = PersistentStorage::get_file_path(&user_name);
 
         match File::create(ks_output_path) {
             Ok(output_file) => self.save_to_file(&output_file),
@@ -598,7 +549,7 @@ impl PersistentKeyStore {
     }
 
     pub fn load(&mut self, user_name: String) -> Result<(), String> {
-        let ks_input_path = PersistentKeyStore::get_file_path(&user_name);
+        let ks_input_path = PersistentStorage::get_file_path(&user_name);
 
         match File::open(ks_input_path) {
             Ok(input_file) => self.load_from_file(&input_file),

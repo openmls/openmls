@@ -50,7 +50,7 @@ pub struct User {
     #[serde(skip)]
     backend: Backend,
     #[serde(skip)]
-    crypto: OpenMlsRustPersistentCrypto,
+    provider: OpenMlsRustPersistentCrypto,
     autosave_enabled: bool,
     auth_token: Option<AuthToken>,
 }
@@ -71,7 +71,7 @@ impl User {
             contacts: HashMap::new(),
             identity: RefCell::new(Identity::new(CIPHERSUITE, &crypto, username.as_bytes())),
             backend: Backend::default(),
-            crypto,
+            provider: crypto,
             autosave_enabled: false,
             auth_token: None,
         };
@@ -106,13 +106,13 @@ impl User {
 
                 if user_result.is_ok() {
                     let mut user = user_result.ok().unwrap();
-                    match user.crypto.load_keystore(user_name) {
+                    match user.provider.load_keystore(user_name) {
                         Ok(_) => {
                             let groups = user.groups.get_mut();
                             for group_name in &user.group_list {
                                 let mlsgroup = MlsGroup::load(
                                     &GroupId::from_slice(group_name.as_bytes()),
-                                    user.crypto.key_store(),
+                                    user.provider.storage(),
                                 );
                                 let grp = Group {
                                     mls_group: RefCell::new(mlsgroup.unwrap()),
@@ -151,13 +151,13 @@ impl User {
                     group
                         .mls_group
                         .borrow_mut()
-                        .save(self.crypto.key_store())
+                        .save(self.provider.storage())
                         .unwrap();
                 }
 
                 self.save_to_file(&output_file);
 
-                match self.crypto.save_keystore(self.username()) {
+                match self.provider.save_keystore(self.username()) {
                     Ok(_) => log::info!("User state saved"),
                     Err(e) => log::error!("Error saving user state : {:?}", e.to_string()),
                 }
@@ -181,9 +181,9 @@ impl User {
         let kp = self
             .identity
             .borrow_mut()
-            .add_key_package(CIPHERSUITE, &self.crypto);
+            .add_key_package(CIPHERSUITE, &self.provider);
         (
-            kp.hash_ref(self.crypto.crypto())
+            kp.hash_ref(self.provider.crypto())
                 .unwrap()
                 .as_slice()
                 .to_vec(),
@@ -305,7 +305,11 @@ impl User {
         let message_out = group
             .mls_group
             .borrow_mut()
-            .create_message(&self.crypto, &self.identity.borrow().signer, msg.as_bytes())
+            .create_message(
+                &self.provider,
+                &self.identity.borrow().signer,
+                msg.as_bytes(),
+            )
             .map_err(|e| format!("{e}"))?;
 
         let msg = GroupMessage::new(message_out.into(), &self.recipients(group));
@@ -388,7 +392,7 @@ impl User {
         };
         let mut mls_group = group.mls_group.borrow_mut();
 
-        processed_message = match mls_group.process_message(&self.crypto, message) {
+        processed_message = match mls_group.process_message(&self.provider, message) {
             Ok(msg) => msg,
             Err(e) => {
                 log::error!(
@@ -459,7 +463,7 @@ impl User {
                 if commit_ptr.self_removed() {
                     remove_proposal = true;
                 }
-                match mls_group.merge_staged_commit(&self.crypto, *commit_ptr) {
+                match mls_group.merge_staged_commit(&self.provider, *commit_ptr) {
                     Ok(()) => {
                         if remove_proposal {
                             log::debug!(
@@ -562,7 +566,7 @@ impl User {
             .build();
 
         let mut mls_group = MlsGroup::new_with_group_id(
-            &self.crypto,
+            &self.provider,
             &self.identity.borrow().signer,
             &group_config,
             GroupId::from_slice(group_id),
@@ -608,7 +612,7 @@ impl User {
             .mls_group
             .borrow_mut()
             .add_members(
-                &self.crypto,
+                &self.provider,
                 &self.identity.borrow().signer,
                 &[joiner_key_package.into()],
             )
@@ -628,7 +632,7 @@ impl User {
         group
             .mls_group
             .borrow_mut()
-            .merge_pending_commit(&self.crypto)
+            .merge_pending_commit(&self.provider)
             .expect("error merging pending commit");
 
         // Finally, send Welcome to the joiner.
@@ -665,7 +669,11 @@ impl User {
         let (remove_message, _welcome, _group_info) = group
             .mls_group
             .borrow_mut()
-            .remove_members(&self.crypto, &self.identity.borrow().signer, &[leaf_index])
+            .remove_members(
+                &self.provider,
+                &self.identity.borrow().signer,
+                &[leaf_index],
+            )
             .map_err(|e| format!("Failed to remove member from group - {e}"))?;
 
         // First, send the MlsMessage remove commit to the group.
@@ -680,7 +688,7 @@ impl User {
         group
             .mls_group
             .borrow_mut()
-            .merge_pending_commit(&self.crypto)
+            .merge_pending_commit(&self.provider)
             .expect("error merging pending commit");
 
         drop(groups);
@@ -707,9 +715,9 @@ impl User {
             .use_ratchet_tree_extension(true)
             .build();
         let mut mls_group =
-            StagedWelcome::new_from_welcome(&self.crypto, &group_config, welcome, None)
+            StagedWelcome::new_from_welcome(&self.provider, &group_config, welcome, None)
                 .expect("Failed to create staged join")
-                .into_group(&self.crypto)
+                .into_group(&self.provider)
                 .expect("Failed to create MlsGroup");
 
         let group_id = mls_group.group_id().to_vec();

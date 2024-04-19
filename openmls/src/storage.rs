@@ -68,10 +68,12 @@ impl Entity<CURRENT_VERSION> for ResumptionPskStore {}
 impl traits::ResumptionPskStore<CURRENT_VERSION> for ResumptionPskStore {}
 
 // Crypto
+
+// TODO: Remove these and move the impl to the actual types.
 #[derive(Serialize)]
-pub(crate) struct StorageInitKey<'a>(pub(crate) &'a [u8]);
+pub struct StorageInitKey<'a>(pub &'a [u8]);
 #[derive(Clone, Serialize, Deserialize)]
-pub(crate) struct StorageHpkePrivateKey(pub(crate) HpkePrivateKey);
+pub struct StorageHpkePrivateKey(pub HpkePrivateKey);
 
 /// Helper to use slices as keys
 #[derive(Serialize)]

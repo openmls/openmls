@@ -8,9 +8,7 @@ use std::{cell::RefCell, collections::HashMap};
 
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::crypto::OpenMlsCrypto;
-use openmls_traits::{
-    key_store::OpenMlsKeyStore, signatures::Signer, types::SignatureScheme, OpenMlsProvider,
-};
+use openmls_traits::{signatures::Signer, types::SignatureScheme, OpenMlsProvider};
 use rand::{rngs::OsRng, RngCore};
 use tls_codec::Serialize;
 
@@ -18,6 +16,8 @@ use crate::{
     ciphersuite::signable::Signable, credentials::*, framing::*, group::*, key_packages::*,
     messages::ConfirmationTag, schedule::psk::store::ResumptionPskStore, test_utils::*, *,
 };
+
+use self::storage::RefinedProvider;
 
 /// Configuration of a client meant to be used in a test setup.
 #[derive(Clone)]
@@ -355,10 +355,10 @@ pub(crate) fn generate_credential_with_key(
 }
 
 // Helper function to generate a KeyPackageBundle
-pub(crate) fn generate_key_package<KeyStore: OpenMlsKeyStore>(
+pub(crate) fn generate_key_package<Provider: RefinedProvider>(
     ciphersuite: Ciphersuite,
     extensions: Extensions,
-    provider: &impl crate::storage::RefinedProvider<KeyStoreProvider = KeyStore>,
+    provider: &Provider,
     credential_with_keys: CredentialWithKeyAndSigner,
 ) -> KeyPackage {
     KeyPackage::builder()

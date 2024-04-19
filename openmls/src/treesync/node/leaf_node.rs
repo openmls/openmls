@@ -7,9 +7,7 @@ use tls_codec::{
 };
 
 #[cfg(test)]
-use crate::storage::StorageProvider;
-#[cfg(test)]
-use openmls_traits::key_store::OpenMlsKeyStore;
+use crate::storage::RefinedProvider;
 #[cfg(test)]
 use thiserror::Error;
 
@@ -177,13 +175,13 @@ impl LeafNode {
     /// This function can be used when generating an update. In most other cases
     /// a leaf node should be generated as part of a new [`KeyPackage`].
     #[cfg(test)]
-    pub(crate) fn updated<KeyStore: OpenMlsKeyStore, Storage: StorageProvider>(
+    pub(crate) fn updated<Provider: RefinedProvider>(
         &self,
         ciphersuite: Ciphersuite,
         tree_info_tbs: TreeInfoTbs,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
+        provider: &Provider,
         signer: &impl Signer,
-    ) -> Result<Self, LeafNodeGenerationError<KeyStore::Error, Storage::Error>> {
+    ) -> Result<Self, LeafNodeGenerationError<Provider::StorageError>> {
         Self::generate_update(
             ciphersuite,
             CredentialWithKey {
@@ -206,15 +204,15 @@ impl LeafNode {
     /// This function can be used when generating an update. In most other cases
     /// a leaf node should be generated as part of a new [`KeyPackage`].
     #[cfg(test)]
-    pub(crate) fn generate_update<KeyStore: OpenMlsKeyStore, Storage: StorageProvider>(
+    pub(crate) fn generate_update<Provider: RefinedProvider>(
         ciphersuite: Ciphersuite,
         credential_with_key: CredentialWithKey,
         capabilities: Capabilities,
         extensions: Extensions,
         tree_info_tbs: TreeInfoTbs,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore, StorageProvider = Storage>,
+        provider: &Provider,
         signer: &impl Signer,
-    ) -> Result<Self, LeafNodeGenerationError<KeyStore::Error, Storage::Error>> {
+    ) -> Result<Self, LeafNodeGenerationError<Provider::StorageError>> {
         // Note that this function is supposed to be used in the public API only
         // because it is interacting with the key store.
 
@@ -846,13 +844,10 @@ impl SignedStruct<LeafNodeTbs> for LeafNode {
 
 #[cfg(test)]
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum LeafNodeGenerationError<KeyStoreError, StorageError> {
+pub enum LeafNodeGenerationError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    /// Error storing leaf private key in key store.
-    #[error("Error storing leaf private key in key store.")]
-    KeyStoreError(KeyStoreError),
 
     /// Error storing leaf private key in storage.
     #[error("Error storing leaf private key.")]

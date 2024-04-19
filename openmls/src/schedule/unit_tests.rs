@@ -1,6 +1,5 @@
 //! Key Schedule Unit Tests
 
-use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{random::OpenMlsRand, OpenMlsProvider};
 
 use super::PskSecret;
@@ -39,7 +38,7 @@ fn test_psks(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let _psk_secret = {
         let resumption_psk_store = ResumptionPskStore::new(1024);
 
-        let psks = load_psks(provider.key_store(), &resumption_psk_store, &psk_ids).unwrap();
+        let psks = load_psks(provider.storage(), &resumption_psk_store, &psk_ids).unwrap();
 
         PskSecret::new(provider.crypto(), ciphersuite, psks).unwrap()
     };

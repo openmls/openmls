@@ -1,6 +1,4 @@
 use framing::mls_content_in::FramedContentBodyIn;
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::key_store::OpenMlsKeyStore;
 use tests::utils::{generate_credential_with_key, generate_key_package};
 
 use crate::{
@@ -14,6 +12,8 @@ fn create_commit_optional_path(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::RefinedProvider,
 ) {
+    use crate::storage::{StorageHpkePrivateKey, StorageInitKey};
+
     let group_aad = b"Alice's test group";
     // Framing parameters
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -126,9 +126,10 @@ fn create_commit_optional_path(
         .expect("error merging pending commit");
     let ratchet_tree = group_alice.public_group().export_ratchet_tree();
 
-    let bob_private_key = provider
-        .key_store()
-        .read::<HpkePrivateKey>(bob_key_package.hpke_init_key().as_slice())
+    let StorageHpkePrivateKey(bob_private_key) = provider
+        .storage()
+        .init_private_key(&StorageInitKey(bob_key_package.hpke_init_key().as_slice()))
+        .unwrap()
         .unwrap();
     let bob_key_package_bundle = KeyPackageBundle {
         key_package: bob_key_package,

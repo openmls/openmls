@@ -1,8 +1,5 @@
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_traits::{
-    crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, storage::StorageProvider,
-    types::Ciphersuite, OpenMlsProvider,
-};
+use openmls_traits::{crypto::OpenMlsCrypto, storage::StorageProvider, types::Ciphersuite};
 use rstest::*;
 use rstest_reuse::{self, *};
 use tls_codec::{Deserialize, Serialize};
@@ -20,11 +17,11 @@ use crate::{
         group_info::{GroupInfoTBS, VerifiableGroupInfo},
         ConfirmationTag, EncryptedGroupSecrets, GroupSecrets, GroupSecretsError, Welcome,
     },
-    prelude::HpkePrivateKey,
     schedule::{
         psk::{load_psks, store::ResumptionPskStore, PskSecret},
         KeySchedule,
     },
+    storage::{StorageHpkePrivateKey, StorageInitKey},
     treesync::node::encryption_keys::EncryptionKeyPair,
 };
 
@@ -104,7 +101,7 @@ fn test_welcome_context_mismatch(
     let psk_secret = {
         let resumption_psk_store = ResumptionPskStore::new(1024);
 
-        let psks = load_psks(provider.key_store(), &resumption_psk_store, &[]).unwrap();
+        let psks = load_psks(provider.storage(), &resumption_psk_store, &[]).unwrap();
 
         PskSecret::new(provider.crypto(), ciphersuite, psks).unwrap()
     };
@@ -181,8 +178,11 @@ fn test_welcome_context_mismatch(
         .write_key_package(&bob_kp.hash_ref(provider.crypto()).unwrap(), bob_kp)
         .unwrap();
     provider
-        .key_store()
-        .store::<HpkePrivateKey>(bob_kp.hpke_init_key().as_slice(), bob_private_key)
+        .storage()
+        .write_init_private_key(
+            &StorageInitKey(bob_kp.hpke_init_key().as_slice()),
+            &StorageHpkePrivateKey(bob_private_key.clone()),
+        )
         .unwrap();
 
     encryption_keypair.write(provider.storage()).unwrap();

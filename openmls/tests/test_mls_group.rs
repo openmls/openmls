@@ -1,15 +1,16 @@
 use openmls::{
     prelude::{test_utils::new_credential, *},
+    storage::RefinedProvider,
     test_utils::*,
     *,
 };
 
-use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer};
+use openmls_traits::signatures::Signer;
 
-fn generate_key_package<KeyStore: OpenMlsKeyStore>(
+fn generate_key_package<Provider: RefinedProvider>(
     ciphersuite: Ciphersuite,
     extensions: Extensions,
-    provider: &impl crate::storage::RefinedProvider<KeyStoreProvider = KeyStore>,
+    provider: &Provider,
     credential_with_key: CredentialWithKey,
     signer: &impl Signer,
 ) -> KeyPackage {
@@ -891,11 +892,11 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage
 
         // Test saving & loading the group state when there is a pending commit
         alice_group
-            .save(provider.key_store())
+            .save(provider.storage())
             .expect("Could not save group state.");
 
-        let _test_group = MlsGroup::load(&group_id, provider.key_store())
-            .expect("Could not load the group state.");
+        let _test_group =
+            MlsGroup::load(&group_id, provider.storage()).expect("Could not load the group state.");
 
         // Merge Commit
         alice_group
@@ -926,14 +927,14 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage
         assert_eq!(bob_group.state_changed(), InnerState::Changed);
 
         bob_group
-            .save(provider.key_store())
+            .save(provider.storage())
             .expect("Could not write group state to file");
 
         // Check that the state flag gets reset when saving
         assert_eq!(bob_group.state_changed(), InnerState::Persisted);
 
-        let bob_group = MlsGroup::load(&group_id, provider.key_store())
-            .expect("Could not load group from file");
+        let bob_group =
+            MlsGroup::load(&group_id, provider.storage()).expect("Could not load group from file");
 
         // Make sure the state is still the same
         assert_eq!(

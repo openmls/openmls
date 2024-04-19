@@ -23,6 +23,7 @@ use openmls::{
     key_packages::KeyPackage,
     prelude::{Capabilities, ExtensionType, SenderRatchetConfiguration},
     schedule::{psk::ResumptionPskUsage, ExternalPsk, PreSharedKeyId, Psk},
+    storage::{StorageHpkePrivateKey, StorageInitKey},
     treesync::{
         test_utils::{read_keys_from_key_store, write_keys_from_key_store},
         RatchetTreeIn,
@@ -32,8 +33,8 @@ use openmls::{
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
-    key_store::OpenMlsKeyStore,
     random::OpenMlsRand,
+    storage::StorageProvider as StorageProviderTrait,
     types::{Ciphersuite, HpkeKeyPair},
     OpenMlsProvider,
 };
@@ -312,9 +313,10 @@ impl MlsClient for MlsClientImpl {
                 },
             )
             .unwrap();
-        let private_key = crypto_provider
-            .key_store()
-            .read::<HpkePrivateKey>(key_package.hpke_init_key().as_slice())
+        let StorageHpkePrivateKey(private_key) = crypto_provider
+            .storage()
+            .init_private_key(&StorageInitKey(key_package.hpke_init_key().as_slice()))
+            .unwrap()
             .unwrap();
 
         let encryption_key_pair =
@@ -396,8 +398,11 @@ impl MlsClient for MlsClientImpl {
 
         // Store keys so OpenMLS can find them.
         crypto_provider
-            .key_store()
-            .store(my_key_package.hpke_init_key().as_slice(), &private_key)
+            .storage()
+            .write_init_private_key(
+                &StorageInitKey(my_key_package.hpke_init_key().as_slice()),
+                &StorageHpkePrivateKey(private_key.clone()),
+            )
             .map_err(|_| Status::aborted("failed to interact with the key store"))?;
 
         use openmls_traits::storage::StorageProvider as _;
@@ -420,8 +425,11 @@ impl MlsClient for MlsClientImpl {
         // Store the private part of the init_key into the key store.
         // The key is the public key.
         crypto_provider
-            .key_store()
-            .store::<HpkePrivateKey>(my_key_package.hpke_init_key().as_slice(), &private_key)
+            .storage()
+            .write_init_private_key(
+                &StorageInitKey(my_key_package.hpke_init_key().as_slice()),
+                &StorageHpkePrivateKey(private_key),
+            )
             .map_err(into_status)?;
 
         let welcome = MlsMessageIn::tls_deserialize(&mut request.welcome.as_slice())

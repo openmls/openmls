@@ -9,8 +9,11 @@ use std::{
 };
 
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_traits::types::HpkeKeyPair;
-pub use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
+pub use openmls_traits::{
+    storage::StorageProvider as StorageProviderTrait,
+    types::{Ciphersuite, HpkeKeyPair},
+    OpenMlsProvider,
+};
 pub use rstest::*;
 pub use rstest_reuse::{self, *};
 use serde::{self, de::DeserializeOwned, Serialize};
@@ -111,7 +114,10 @@ pub(crate) fn generate_group_candidate(
     provider: &impl OpenMlsProvider,
     use_store: bool,
 ) -> GroupCandidate {
-    use crate::credentials::BasicCredential;
+    use crate::{
+        credentials::BasicCredential,
+        storage::{StorageHpkePrivateKey, StorageInitKey},
+    };
 
     let credential_with_key_and_signer = {
         let credential = BasicCredential::new(identity.to_vec());
@@ -155,9 +161,10 @@ pub(crate) fn generate_group_candidate(
                 EncryptionKeyPair::read(provider, key_package.leaf_node().encryption_key())
                     .unwrap();
             let init_keypair = {
-                let private = provider
-                    .key_store()
-                    .read::<HpkePrivateKey>(key_package.hpke_init_key().as_slice())
+                let StorageHpkePrivateKey(private) = provider
+                    .storage()
+                    .init_private_key(&StorageInitKey(key_package.hpke_init_key().as_slice()))
+                    .unwrap()
                     .unwrap();
 
                 HpkeKeyPair {

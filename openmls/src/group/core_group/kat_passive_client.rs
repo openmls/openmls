@@ -2,7 +2,6 @@ use log::{debug, info, warn};
 use openmls_memory_keystore::MemoryKeyStore;
 use openmls_traits::{
     crypto::OpenMlsCrypto,
-    key_store::OpenMlsKeyStore,
     storage::{StorageProvider, CURRENT_VERSION},
     OpenMlsProvider,
 };
@@ -14,6 +13,7 @@ use crate::{
     group::*,
     key_packages::*,
     schedule::psk::PreSharedKeyId,
+    storage::{StorageHpkePrivateKey, StorageInitKey},
     test_utils::*,
     treesync::{
         node::encryption_keys::{EncryptionKeyPair, EncryptionPrivateKey},
@@ -260,10 +260,10 @@ impl PassiveClient {
 
         // Store init key.
         self.provider
-            .key_store()
-            .store::<HpkePrivateKey>(
-                key_package.hpke_init_key().as_slice(),
-                key_package_bundle.private_key(),
+            .storage()
+            .write_init_private_key(
+                &StorageInitKey(key_package.hpke_init_key().as_slice()),
+                &StorageHpkePrivateKey(key_package_bundle.private_key().clone()),
             )
             .unwrap();
 
@@ -273,7 +273,7 @@ impl PassiveClient {
             EncryptionPrivateKey::from(encryption_priv),
         ));
 
-        key_pair.write(self.provider.key_store()).unwrap();
+        key_pair.write(self.provider.storage()).unwrap();
     }
 
     fn join_by_welcome(
