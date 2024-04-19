@@ -55,7 +55,7 @@ fn test_welcome_context_mismatch(
         crate::group::test_core_group::setup_client("Bob", ciphersuite, provider);
 
     let bob_kp = bob_kpb.key_package();
-    let bob_private_key = bob_kpb.private_key();
+    let bob_private_key = bob_kpb.init_private_key();
 
     // === Alice creates a group  and adds Bob ===
     let mut alice_group = MlsGroup::new_with_group_id(
@@ -174,11 +174,7 @@ fn test_welcome_context_mismatch(
     // has been consumed already.
     provider
         .storage()
-        .write_key_package(&bob_kp.hash_ref(provider.crypto()).unwrap(), bob_kp)
-        .unwrap();
-    provider
-        .storage()
-        .write_init_private_key(bob_kp.hpke_init_key(), bob_private_key)
+        .write_key_package(&bob_kp.hash_ref(provider.crypto()).unwrap(), &bob_kpb)
         .unwrap();
 
     encryption_keypair.write(provider.storage()).unwrap();

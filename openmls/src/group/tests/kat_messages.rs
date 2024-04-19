@@ -194,7 +194,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         &provider,
     );
 
-    let bob_key_package_bundle = KeyPackageBundle::new(
+    let bob_key_package_bundle = KeyPackageBundle::generate(
         &provider,
         &bob_credential_with_key_and_signer.signer,
         ciphersuite,

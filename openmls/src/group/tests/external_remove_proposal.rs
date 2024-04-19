@@ -71,7 +71,11 @@ fn validation_test_setup(
     );
 
     alice_group
-        .add_members(provider, &alice_signer_when_keys.signer, &[bob_key_package])
+        .add_members(
+            provider,
+            &alice_signer_when_keys.signer,
+            &[bob_key_package.key_package().clone()],
+        )
         .expect("error adding Bob to group");
 
     alice_group

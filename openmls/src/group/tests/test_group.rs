@@ -48,7 +48,7 @@ fn create_commit_optional_path(
     let bob_add_proposal = group_alice
         .create_add_proposal(
             framing_parameters,
-            bob_key_package.clone(),
+            bob_key_package.key_package().clone(),
             &alice_credential_with_keys.signer,
         )
         .expect("Could not create proposal.");
@@ -87,7 +87,7 @@ fn create_commit_optional_path(
     let bob_add_proposal = group_alice
         .create_add_proposal(
             framing_parameters,
-            bob_key_package.clone(),
+            bob_key_package.key_package().clone(),
             &alice_credential_with_keys.signer,
         )
         .expect("Could not create proposal.");
@@ -124,23 +124,13 @@ fn create_commit_optional_path(
         .expect("error merging pending commit");
     let ratchet_tree = group_alice.public_group().export_ratchet_tree();
 
-    let bob_private_key = provider
-        .storage()
-        .init_private_key(bob_key_package.hpke_init_key())
-        .unwrap()
-        .unwrap();
-    let bob_key_package_bundle = KeyPackageBundle {
-        key_package: bob_key_package,
-        private_key: bob_private_key,
-    };
-
     // Bob creates group from Welcome
     let group_bob = StagedCoreWelcome::new_from_welcome(
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
         Some(ratchet_tree.into()),
-        bob_key_package_bundle,
+        bob_key_package,
         provider,
         ResumptionPskStore::new(1024),
     )
@@ -240,7 +230,7 @@ fn basic_group_setup(ciphersuite: Ciphersuite, provider: &impl crate::storage::R
     let bob_add_proposal = group_alice
         .create_add_proposal(
             framing_parameters,
-            bob_key_package,
+            bob_key_package.key_package().clone(),
             &alice_credential_with_keys.signer,
         )
         .expect("Could not create proposal.");
@@ -297,7 +287,7 @@ fn group_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage::Re
         generate_credential_with_key(b"Bob".to_vec(), ciphersuite.signature_algorithm(), provider);
 
     // Generate KeyPackages
-    let bob_key_package_bundle = KeyPackageBundle::new(
+    let bob_key_package_bundle = KeyPackageBundle::generate(
         provider,
         &bob_credential_with_keys.signer,
         ciphersuite,
@@ -629,7 +619,7 @@ fn group_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage::Re
         provider,
     );
 
-    let charlie_key_package_bundle = KeyPackageBundle::new(
+    let charlie_key_package_bundle = KeyPackageBundle::generate(
         provider,
         &charlie_credential_with_keys.signer,
         ciphersuite,

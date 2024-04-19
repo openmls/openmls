@@ -175,17 +175,9 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
     <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::write_key_package(
         provider.storage(),
         &hash_ref,
-        &key_package,
+        &key_package_bundle,
     )
     .unwrap();
-
-    provider
-        .storage()
-        .write_init_private_key(
-            key_package.hpke_init_key(),
-            key_package_bundle.private_key(),
-        )
-        .unwrap();
 
     // Verification:
     // * Decrypt the Welcome message:
@@ -202,7 +194,7 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
 
     // // //  * Decrypt the encrypted group secrets using `init_priv`
     let group_secrets = GroupSecrets::try_from_ciphertext(
-        key_package_bundle.private_key(),
+        key_package_bundle.init_private_key(),
         encrypted_group_secrets.encrypted_group_secrets(),
         welcome.encrypted_group_info(),
         welcome.ciphersuite(),

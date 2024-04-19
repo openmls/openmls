@@ -73,7 +73,7 @@ impl Client {
             )
             .unwrap();
 
-        Ok(key_package)
+        Ok(key_package.key_package)
     }
 
     /// Create a group with the given [MlsGroupCreateConfig] and [Ciphersuite], and return the created [GroupId].

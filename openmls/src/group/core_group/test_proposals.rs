@@ -40,7 +40,7 @@ fn proposal_queue_functions(
 
     let bob_key_package = bob_key_package_bundle.key_package();
     let alice_update_key_package_bundle =
-        KeyPackageBundle::new(provider, &alice_signer, ciphersuite, alice_credential);
+        KeyPackageBundle::generate(provider, &alice_signer, ciphersuite, alice_credential);
     let alice_update_key_package = alice_update_key_package_bundle.key_package();
     let kpi = KeyPackageIn::from(alice_update_key_package.clone());
     assert!(kpi
@@ -184,7 +184,7 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, provider: &impl crate::storage
 
     let bob_key_package = bob_key_package_bundle.key_package();
     let alice_update_key_package_bundle =
-        KeyPackageBundle::new(provider, &alice_signer, ciphersuite, alice_credential);
+        KeyPackageBundle::generate(provider, &alice_signer, ciphersuite, alice_credential);
     let alice_update_key_package = alice_update_key_package_bundle.key_package();
     let kpi = KeyPackageIn::from(alice_update_key_package.clone());
     assert!(kpi

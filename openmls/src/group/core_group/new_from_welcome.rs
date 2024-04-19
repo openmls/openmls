@@ -67,7 +67,7 @@ impl StagedCoreWelcome {
         }
 
         let group_secrets = GroupSecrets::try_from_ciphertext(
-            key_package_bundle.private_key(),
+            key_package_bundle.init_private_key(),
             egs.encrypted_group_secrets(),
             welcome.encrypted_group_info(),
             ciphersuite,

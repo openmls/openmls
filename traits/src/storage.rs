@@ -148,18 +148,6 @@ pub trait StorageProvider<const VERSION: u16> {
         signature_key_pair: &SignatureKeyPair,
     ) -> Result<(), Self::Error>;
 
-    /// Store an HPKE init private key.
-    ///
-    /// This is used for init keys from key packages.
-    fn write_init_private_key<
-        InitKey: traits::InitKey<VERSION>,
-        HpkePrivateKey: traits::HpkePrivateKey<VERSION>,
-    >(
-        &self,
-        public_key: &InitKey,
-        private_key: &HpkePrivateKey,
-    ) -> Result<(), Self::Error>;
-
     /// Store an HPKE encryption key pair.
     /// This includes the private and public key
     ///
@@ -189,8 +177,12 @@ pub trait StorageProvider<const VERSION: u16> {
 
     /// Store key packages.
     ///
-    /// Store a key package. This does not include the private keys. They are
-    /// stored separately with `write_hpke_private_key`.
+    /// Store a key package. This includes the private init key.
+    /// The encryption key is stored separately with `write_encryption_key_pair`.
+    ///
+    /// Note that it is recommended to store a list of the hash references as well
+    /// in order to iterate over key packages. OpenMLS does not have a reference
+    /// for them.
     fn write_key_package<
         HashReference: traits::HashReference<VERSION>,
         KeyPackage: traits::KeyPackage<VERSION>,
@@ -325,15 +317,6 @@ pub trait StorageProvider<const VERSION: u16> {
         public_key: &SignaturePublicKey,
     ) -> Result<Option<SignatureKeyPair>, Self::Error>;
 
-    /// Get a private init key based on the corresponding public kye.
-    fn init_private_key<
-        InitKey: traits::InitKey<VERSION>,
-        HpkePrivateKey: traits::HpkePrivateKey<VERSION>,
-    >(
-        &self,
-        public_key: &InitKey,
-    ) -> Result<Option<HpkePrivateKey>, Self::Error>;
-
     /// Get an HPKE encryption key pair based on the public key.
     fn encryption_key_pair<
         HpkeKeyPair: traits::HpkeKeyPair<VERSION>,
@@ -427,14 +410,6 @@ pub trait StorageProvider<const VERSION: u16> {
         public_key: &SignaturePublicKeuy,
     ) -> Result<(), Self::Error>;
 
-    /// Delete an HPKE private init key.
-    ///
-    /// XXX: traits::This should be called when deleting key packages.
-    fn delete_init_private_key<InitKey: traits::InitKey<VERSION>>(
-        &self,
-        public_key: &InitKey,
-    ) -> Result<(), Self::Error>;
-
     /// Delete an encryption key pair for a public key.
     fn delete_encryption_key_pair<EncryptionKey: traits::EncryptionKey<VERSION>>(
         &self,
@@ -455,7 +430,8 @@ pub trait StorageProvider<const VERSION: u16> {
 
     /// Delete a key package based on the hash reference.
     ///
-    /// XXX: traits::This needs to delete all corresponding keys.
+    /// This function only deletes the key package.
+    /// The corresponding encryption keys must be deleted separately.
     fn delete_key_package<KeyPackageRef: traits::HashReference<VERSION>>(
         &self,
         hash_ref: &KeyPackageRef,
@@ -483,7 +459,6 @@ pub mod traits {
     pub trait GroupId<const VERSION: u16>: Key<VERSION> {}
     pub trait ProposalRefKey<const VERSION: u16>: Key<VERSION> {}
     pub trait SignaturePublicKey<const VERSION: u16>: Key<VERSION> {}
-    pub trait InitKey<const VERSION: u16>: Key<VERSION> {}
     pub trait HashReference<const VERSION: u16>: Key<VERSION> {}
     pub trait PskId<const VERSION: u16>: Key<VERSION> {}
     pub trait EncryptionKey<const VERSION: u16>: Key<VERSION> {}
@@ -497,7 +472,6 @@ pub mod traits {
     pub trait InterimTranscriptHash<const VERSION: u16>: Entity<VERSION> {}
     pub trait ConfirmationTag<const VERSION: u16>: Entity<VERSION> {}
     pub trait SignatureKeyPair<const VERSION: u16>: Entity<VERSION> {}
-    pub trait HpkePrivateKey<const VERSION: u16>: Entity<VERSION> {}
     pub trait PskBundle<const VERSION: u16>: Entity<VERSION> {}
     pub trait HpkeKeyPair<const VERSION: u16>: Entity<VERSION> {}
     pub trait GroupState<const VERSION: u16>: Entity<VERSION> {}

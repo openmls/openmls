@@ -253,7 +253,7 @@ pub fn run_test_vector(
 
         let credential = BasicCredential::new("Fake user".into());
         let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
-        let bob_key_package_bundle = KeyPackageBundle::new(
+        let bob_key_package_bundle = KeyPackageBundle::generate(
             provider,
             &signature_keys,
             ciphersuite,

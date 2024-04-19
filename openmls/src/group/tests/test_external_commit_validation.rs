@@ -183,7 +183,11 @@ fn test_valsem242(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
     );
 
     alice_group
-        .add_members(provider, &alice_credential.signer, &[bob_key_package])
+        .add_members(
+            provider,
+            &alice_credential.signer,
+            &[bob_key_package.key_package().clone()],
+        )
         .unwrap();
     alice_group.merge_pending_commit(provider).unwrap();
 
@@ -236,7 +240,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
             );
 
             ProposalOrRef::Proposal(Proposal::Add(AddProposal {
-                key_package: charlie_key_package,
+                key_package: charlie_key_package.key_package().clone(),
             }))
         };
 
@@ -337,7 +341,7 @@ fn test_valsem244(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
         );
 
         let add_proposal = Proposal::Add(AddProposal {
-            key_package: bob_key_package,
+            key_package: bob_key_package.key_package().clone(),
         });
 
         let proposal_ref =
@@ -476,7 +480,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
         );
 
         if let Some(ref mut path) = commit_bad.path {
-            path.set_leaf_node(bob_new_key_package.leaf_node().clone())
+            path.set_leaf_node(bob_new_key_package.key_package().leaf_node().clone())
         }
 
         let mut public_message_commit_bad = public_message_commit.clone();

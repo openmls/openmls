@@ -43,11 +43,12 @@ impl Identity {
         Self {
             kp: HashMap::from([(
                 key_package
+                    .key_package()
                     .hash_ref(crypto.crypto())
                     .unwrap()
                     .as_slice()
                     .to_vec(),
-                key_package,
+                key_package.key_package().clone(),
             )]),
             credential_with_key,
             signer: signature_keys,
@@ -71,13 +72,14 @@ impl Identity {
 
         self.kp.insert(
             key_package
+                .key_package()
                 .hash_ref(crypto.crypto())
                 .unwrap()
                 .as_slice()
                 .to_vec(),
-            key_package.clone(),
+            key_package.key_package().clone(),
         );
-        key_package
+        key_package.key_package().clone()
     }
 
     /// Get the plain identity as byte vector.

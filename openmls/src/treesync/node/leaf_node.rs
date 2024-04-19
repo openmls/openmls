@@ -23,8 +23,8 @@ use crate::{
     extensions::{ExtensionType, Extensions},
     group::GroupId,
     key_packages::{KeyPackage, Lifetime},
+    prelude::KeyPackageBundle,
     treesync::errors::PublicTreeError,
-    versions::ProtocolVersion,
 };
 
 use crate::treesync::errors::LeafNodeValidationError;
@@ -284,7 +284,6 @@ impl LeafNode {
         group_id: &GroupId,
         leaf_index: LeafNodeIndex,
         ciphersuite: Ciphersuite,
-        protocol_version: ProtocolVersion,
         provider: &impl OpenMlsProvider,
         signer: &impl Signer,
     ) -> Result<EncryptionKeyPair, PublicTreeError> {
@@ -293,13 +292,12 @@ impl LeafNode {
             .capabilities
             .ciphersuites
             .contains(&ciphersuite.into())
-            || !self.capabilities().versions.contains(&protocol_version)
         {
             debug_assert!(
                 false,
                 "Ciphersuite or protocol version is not supported by this leaf node.\
-                 \ncapabilities: {:?}\nprotocol version: {:?}\nciphersuite: {:?}",
-                self.payload.capabilities, protocol_version, ciphersuite
+                 \ncapabilities: {:?}\nciphersuite: {:?}",
+                self.payload.capabilities, ciphersuite
             );
             return Err(LibraryError::custom(
                 "Ciphersuite or protocol version is not supported by this leaf node.",
@@ -652,6 +650,12 @@ impl From<LeafNodeIn> for LeafNode {
 impl From<KeyPackage> for LeafNode {
     fn from(key_package: KeyPackage) -> Self {
         key_package.leaf_node().clone()
+    }
+}
+
+impl From<KeyPackageBundle> for LeafNode {
+    fn from(key_package: KeyPackageBundle) -> Self {
+        key_package.key_package().leaf_node().clone()
     }
 }
 

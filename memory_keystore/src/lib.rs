@@ -123,7 +123,6 @@ pub enum MemoryKeyStoreError {
 }
 
 const QUEUED_PROPOSAL_LABEL: &[u8] = b"QueuedProposal";
-const INIT_KEY_LABEL: &[u8] = b"HpkePrivateKey";
 const KEY_PACKAGE_LABEL: &[u8] = b"KeyPackage";
 const TREE_LABEL: &[u8] = b"Tree";
 const PSK_LABEL: &[u8] = b"Psk";
@@ -398,25 +397,6 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         Ok(value)
     }
 
-    fn write_init_private_key<
-        InitKey: traits::InitKey<CURRENT_VERSION>,
-        HpkePrivateKey: traits::HpkePrivateKey<CURRENT_VERSION>,
-    >(
-        &self,
-        public_key: &InitKey,
-        private_key: &HpkePrivateKey,
-    ) -> Result<(), Self::Error> {
-        let mut values = self.values.write().unwrap();
-
-        let mut key = INIT_KEY_LABEL.to_vec();
-        key.extend_from_slice(&serde_json::to_vec(public_key).unwrap());
-        key.extend_from_slice(&u16::to_be_bytes(CURRENT_VERSION));
-        let value = serde_json::to_vec(private_key).unwrap();
-
-        values.insert(key, value);
-        Ok(())
-    }
-
     fn write_key_package<
         HashReference: traits::HashReference<CURRENT_VERSION>,
         KeyPackage: traits::KeyPackage<CURRENT_VERSION>,
@@ -462,28 +442,6 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
             &serde_json::to_vec(public_key).unwrap(),
             &serde_json::to_vec(key_pair).unwrap(),
         )
-    }
-
-    fn init_private_key<
-        InitKey: traits::InitKey<CURRENT_VERSION>,
-        HpkePrivateKey: traits::HpkePrivateKey<CURRENT_VERSION>,
-    >(
-        &self,
-        public_key: &InitKey,
-    ) -> Result<Option<HpkePrivateKey>, Self::Error> {
-        let values = self.values.read().unwrap();
-
-        let mut key = INIT_KEY_LABEL.to_vec();
-        key.extend_from_slice(&serde_json::to_vec(&public_key).unwrap());
-        key.extend_from_slice(&u16::to_be_bytes(CURRENT_VERSION));
-
-        let value = values.get(&key);
-
-        if let Some(value) = value {
-            serde_json::from_slice(value).map_err(|_| MemoryKeyStoreError::SerializationError)
-        } else {
-            Ok(None)
-        }
     }
 
     fn key_package<
@@ -533,13 +491,6 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
             SIGNATURE_KEY_PAIR_LABEL,
             &serde_json::to_vec(public_key).unwrap(),
         )
-    }
-
-    fn delete_init_private_key<InitKey: traits::InitKey<CURRENT_VERSION>>(
-        &self,
-        public_key: &InitKey,
-    ) -> Result<(), Self::Error> {
-        self.delete::<CURRENT_VERSION>(INIT_KEY_LABEL, &serde_json::to_vec(public_key).unwrap())
     }
 
     fn delete_encryption_key_pair<EncryptionKey: traits::EncryptionKey<CURRENT_VERSION>>(

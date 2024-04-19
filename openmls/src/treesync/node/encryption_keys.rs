@@ -12,6 +12,7 @@ use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBy
 use crate::{
     ciphersuite::{hpke, HpkePrivateKey, HpkePublicKey, Secret},
     error::LibraryError,
+    storage::StorageProvider,
 };
 
 /// [`EncryptionKey`] contains an HPKE public key that allows the encryption of
@@ -147,7 +148,7 @@ pub(crate) struct EncryptionKeyPair {
 
 impl EncryptionKeyPair {
     /// Write the [`EncryptionKeyPair`] to the store of the `provider`.
-    pub(crate) fn write<Storage: StorageProviderTrait<CURRENT_VERSION>>(
+    pub(crate) fn write<Storage: StorageProvider>(
         &self,
         store: &Storage,
     ) -> Result<(), Storage::Error> {

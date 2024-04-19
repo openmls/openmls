@@ -25,6 +25,7 @@ use crate::{
     ciphersuite::{HpkePrivateKey, OpenMlsSignaturePublicKey},
     credentials::{Credential, CredentialType, CredentialWithKey},
     key_packages::{KeyPackage, KeyPackageBuilder},
+    prelude::KeyPackageBundle,
     treesync::node::encryption_keys::{EncryptionKeyPair, EncryptionPrivateKey},
 };
 
@@ -100,9 +101,8 @@ pub fn hex_to_bytes_option(hex: Option<String>) -> Vec<u8> {
 #[cfg(test)]
 pub(crate) struct GroupCandidate {
     pub identity: Vec<u8>,
-    pub key_package: KeyPackage,
+    pub key_package: KeyPackageBundle,
     pub encryption_keypair: EncryptionKeyPair,
-    pub init_keypair: HpkeKeyPair,
     pub signature_keypair: SignatureKeyPair,
     pub credential_with_key_and_signer: CredentialWithKeyAndSigner,
 }
@@ -114,7 +114,7 @@ pub(crate) fn generate_group_candidate(
     provider: &impl OpenMlsProvider,
     use_store: bool,
 ) -> GroupCandidate {
-    use crate::credentials::BasicCredential;
+    use crate::{credentials::BasicCredential, prelude::KeyPackageBundle};
 
     let credential_with_key_and_signer = {
         let credential = BasicCredential::new(identity.to_vec());
@@ -141,7 +141,7 @@ pub(crate) fn generate_group_candidate(
         }
     };
 
-    let (key_package, encryption_keypair, init_keypair) = {
+    let (key_package, encryption_keypair) = {
         let builder = KeyPackageBuilder::new();
 
         if use_store {
@@ -154,23 +154,13 @@ pub(crate) fn generate_group_candidate(
                 )
                 .unwrap();
 
-            let encryption_keypair =
-                EncryptionKeyPair::read(provider, key_package.leaf_node().encryption_key())
-                    .unwrap();
-            let init_keypair = {
-                let private = provider
-                    .storage()
-                    .init_private_key(key_package.hpke_init_key())
-                    .unwrap()
-                    .unwrap();
+            let encryption_keypair = EncryptionKeyPair::read(
+                provider,
+                key_package.key_package().leaf_node().encryption_key(),
+            )
+            .unwrap();
 
-                HpkeKeyPair {
-                    private,
-                    public: key_package.hpke_init_key().as_slice().to_vec(),
-                }
-            };
-
-            (key_package, encryption_keypair, init_keypair)
+            (key_package, encryption_keypair)
         } else {
             // We don't want to store anything. So...
             let provider = OpenMlsRustCrypto::default();
@@ -184,19 +174,12 @@ pub(crate) fn generate_group_candidate(
                 )
                 .unwrap();
 
-            let init_keypair = HpkeKeyPair {
-                private: key_package_creation_result.init_private_key,
-                public: key_package_creation_result
-                    .key_package
-                    .hpke_init_key()
-                    .as_slice()
-                    .to_vec(),
-            };
-
             (
-                key_package_creation_result.key_package,
+                KeyPackageBundle::new(
+                    key_package_creation_result.key_package,
+                    key_package_creation_result.init_private_key,
+                ),
                 key_package_creation_result.encryption_keypair,
-                init_keypair,
             )
         }
     };
@@ -205,7 +188,6 @@ pub(crate) fn generate_group_candidate(
         identity: identity.as_ref().to_vec(),
         key_package,
         encryption_keypair,
-        init_keypair,
         signature_keypair: credential_with_key_and_signer.signer.clone(),
         credential_with_key_and_signer,
     }

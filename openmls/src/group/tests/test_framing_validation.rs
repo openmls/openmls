@@ -74,7 +74,7 @@ fn validation_test_setup(
         .add_members(
             provider,
             &alice_credential.signer,
-            &[bob_key_package.clone()],
+            &[bob_key_package.key_package().clone()],
         )
         .expect("Could not add member.");
 
@@ -102,8 +102,8 @@ fn validation_test_setup(
         bob_group,
         _alice_credential: alice_credential,
         _bob_credential: bob_credential,
-        _alice_key_package: alice_key_package,
-        _bob_key_package: bob_key_package,
+        _alice_key_package: alice_key_package.key_package().clone(),
+        _bob_key_package: bob_key_package.key_package().clone(),
     }
 }
 

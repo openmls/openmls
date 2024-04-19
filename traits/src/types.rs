@@ -9,8 +9,6 @@ use tls_codec::{
     SecretVLBytes, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes,
 };
 
-use crate::storage::{self, CURRENT_VERSION};
-
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
 #[repr(u16)]
 /// AEAD types
@@ -256,9 +254,6 @@ pub struct HpkeCiphertext {
 #[cfg_attr(feature = "test-utils", derive(PartialEq, Eq))]
 #[serde(transparent)]
 pub struct HpkePrivateKey(SecretVLBytes);
-
-impl storage::traits::HpkePrivateKey<CURRENT_VERSION> for HpkePrivateKey {}
-impl storage::Entity<CURRENT_VERSION> for HpkePrivateKey {}
 
 impl From<Vec<u8>> for HpkePrivateKey {
     fn from(bytes: Vec<u8>) -> Self {

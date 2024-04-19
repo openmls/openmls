@@ -81,7 +81,10 @@ fn validation_test_setup(
         .add_members(
             provider,
             &alice_credential.signer,
-            &[bob_key_package, charlie_key_package],
+            &[
+                bob_key_package.key_package().clone(),
+                charlie_key_package.key_package().clone(),
+            ],
         )
         .expect("error adding Bob to group");
 
@@ -274,7 +277,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
             generate_key_package(ciphersuite, Extensions::empty(), provider, dave_credential);
 
         queued(Proposal::Add(AddProposal {
-            key_package: dave_key_package,
+            key_package: dave_key_package.key_package().clone(),
         }))
     };
 

@@ -62,7 +62,7 @@ fn test_past_secrets_in_group(
             .add_members(
                 provider,
                 &alice_credential_with_keys.signer,
-                &[bob_key_package],
+                &[bob_key_package.key_package().clone()],
             )
             .expect("An unexpected error occurred.");
 

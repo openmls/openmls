@@ -63,7 +63,11 @@ fn receive_message(
     );
 
     let (_message, welcome, _group_info) = alice_group
-        .add_members(provider, alice_signer, &[bob_key_package])
+        .add_members(
+            provider,
+            alice_signer,
+            &[bob_key_package.key_package().clone()],
+        )
         .expect("Could not add member.");
 
     alice_group

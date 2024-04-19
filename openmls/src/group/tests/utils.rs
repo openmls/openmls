@@ -100,7 +100,7 @@ pub(crate) fn setup(
             // Create a number of key packages.
             let mut key_packages = Vec::new();
             for _ in 0..KEY_PACKAGE_COUNT {
-                let key_package_bundle: KeyPackageBundle = KeyPackageBundle::new(
+                let key_package_bundle: KeyPackageBundle = KeyPackageBundle::generate(
                     provider,
                     &credentia_with_key_and_signer.signer,
                     ciphersuite,
@@ -360,7 +360,7 @@ pub(crate) fn generate_key_package<Provider: RefinedProvider>(
     extensions: Extensions,
     provider: &Provider,
     credential_with_keys: CredentialWithKeyAndSigner,
-) -> KeyPackage {
+) -> KeyPackageBundle {
     KeyPackage::builder()
         .key_package_extensions(extensions)
         .build(

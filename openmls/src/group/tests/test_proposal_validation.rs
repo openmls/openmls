@@ -39,7 +39,7 @@ fn generate_credential_with_key_and_key_package(
     identity: Vec<u8>,
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::RefinedProvider,
-) -> (CredentialWithKeyAndSigner, KeyPackage) {
+) -> (CredentialWithKeyAndSigner, KeyPackageBundle) {
     let credential_with_key_and_signer =
         generate_credential_with_key(identity, ciphersuite.signature_algorithm(), provider);
 
@@ -150,7 +150,7 @@ fn validation_test_setup(
         .add_members(
             provider,
             &alice_credential_with_key_and_signer.signer,
-            &[bob_key_package],
+            &[bob_key_package.key_package().clone()],
         )
         .unwrap();
 
@@ -298,7 +298,10 @@ fn test_valsem101a(ciphersuite: Ciphersuite, provider: &impl crate::storage::Ref
         let res = create_group_with_members(
             ciphersuite,
             &alice_credential_with_keys,
-            &[bob_key_package, charlie_key_package],
+            &[
+                bob_key_package.key_package().clone(),
+                charlie_key_package.key_package().clone(),
+            ],
             provider,
         );
 
@@ -340,7 +343,7 @@ fn test_valsem101a(ciphersuite: Ciphersuite, provider: &impl crate::storage::Ref
         .add_members(
             provider,
             &alice_credential_with_key_and_signer.signer,
-            &[charlie_key_package],
+            &[charlie_key_package.key_package().clone()],
         )
         .expect("Error creating self-update")
         .tls_serialize_detached()
@@ -371,7 +374,7 @@ fn test_valsem101a(ciphersuite: Ciphersuite, provider: &impl crate::storage::Ref
         .unwrap();
 
     let second_add_proposal = Proposal::Add(AddProposal {
-        key_package: dave_key_package,
+        key_package: dave_key_package.key_package().clone(),
     });
 
     let verifiable_plaintext = insert_proposal_and_resign(
@@ -435,12 +438,16 @@ fn test_valsem102(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
                 // Create a new key package for bob with the init key from Charlie.
                 let mut franken_key_package = FrankenKeyPackage::from(bob_key_package);
                 franken_key_package.init_key = charlie_key_package
+                    .key_package()
                     .hpke_init_key()
                     .as_slice()
                     .to_owned()
                     .into();
                 franken_key_package.resign(&bob_credential_with_key.signer);
-                bob_key_package = KeyPackage::from(franken_key_package);
+                bob_key_package = {
+                    let kp = KeyPackage::from(franken_key_package.clone());
+                    KeyPackageBundle::new(kp, charlie_key_package.init_private_key().clone())
+                };
             }
             KeyUniqueness::PositiveDifferentKey => {
                 // don't need to do anything since the keys are already
@@ -453,7 +460,10 @@ fn test_valsem102(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
         let res = create_group_with_members(
             ciphersuite,
             &alice_credential_with_key,
-            &[bob_key_package, charlie_key_package],
+            &[
+                bob_key_package.key_package().clone(),
+                charlie_key_package.key_package().clone(),
+            ],
             provider,
         );
 
@@ -495,7 +505,7 @@ fn test_valsem102(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
         .add_members(
             provider,
             &alice_credential_with_key_and_signer.signer,
-            &[charlie_key_package.clone()],
+            &[charlie_key_package.key_package().clone()],
         )
         .expect("Error creating self-update")
         .tls_serialize_detached()
@@ -512,17 +522,18 @@ fn test_valsem102(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
     // Now let's create a second proposal and insert it into the commit. We want
     // a different signature key, different identity, but the same hpke init
     // key.
-    let (dave_credential_with_key_and_signer, mut dave_key_package) =
+    let (dave_credential_with_key_and_signer, dave_key_package) =
         generate_credential_with_key_and_key_package("Dave".into(), ciphersuite, provider);
     // Change the init key and re-sign.
     let mut franken_key_package = FrankenKeyPackage::from(dave_key_package);
     franken_key_package.init_key = charlie_key_package
+        .key_package()
         .hpke_init_key()
         .as_slice()
         .to_owned()
         .into();
     franken_key_package.resign(&dave_credential_with_key_and_signer.signer);
-    dave_key_package = KeyPackage::from(franken_key_package);
+    let dave_key_package = KeyPackage::from(franken_key_package);
 
     let second_add_proposal = Proposal::Add(AddProposal {
         key_package: dave_key_package,
@@ -641,7 +652,10 @@ fn test_valsem101b(ciphersuite: Ciphersuite, provider: &impl crate::storage::Ref
                     .add_members(
                         provider,
                         &alice_credential_with_key.signer,
-                        &[bob_key_package, target_key_package],
+                        &[
+                            bob_key_package.key_package().clone(),
+                            target_key_package.key_package().clone(),
+                        ],
                     )
                     .expect_err("was able to add user with same signature key as a group member!");
                 assert!(matches!(
@@ -656,7 +670,10 @@ fn test_valsem101b(ciphersuite: Ciphersuite, provider: &impl crate::storage::Ref
                     .add_members(
                         provider,
                         &alice_credential_with_key.signer,
-                        &[bob_key_package, target_key_package],
+                        &[
+                            bob_key_package.key_package().clone(),
+                            target_key_package.key_package().clone(),
+                        ],
                     )
                     .expect("failed to add user with different signature keypair!");
             }
@@ -665,7 +682,7 @@ fn test_valsem101b(ciphersuite: Ciphersuite, provider: &impl crate::storage::Ref
                     .add_members(
                         provider,
                         &alice_credential_with_key.signer,
-                        &[bob_key_package.clone()],
+                        &[bob_key_package.key_package().clone()],
                     )
                     .unwrap();
                 alice_group.merge_pending_commit(provider).unwrap();
@@ -683,7 +700,7 @@ fn test_valsem101b(ciphersuite: Ciphersuite, provider: &impl crate::storage::Ref
                     .propose_remove_member(provider, &alice_credential_with_key.signer, bob_index)
                     .unwrap();
                 alice_group
-                    .add_members(provider, &alice_credential_with_key.signer, &[target_key_package])
+                    .add_members(provider, &alice_credential_with_key.signer, &[target_key_package.key_package().clone()])
                     .expect(
                     "failed to add a user with the same identity as someone in the group (with a remove proposal)!",
                 );
@@ -835,23 +852,24 @@ fn test_valsem103_valsem104(
         // 0. Initialize Alice and Bob
         let (alice_credential_with_key, _) =
             generate_credential_with_key_and_key_package("Alice".into(), ciphersuite, provider);
-        let (bob_credential_with_key, mut bob_key_package) =
+        let (bob_credential_with_key, bob_key_package) =
             generate_credential_with_key_and_key_package("Bob".into(), ciphersuite, provider);
 
-        match alice_and_bob_share_keys {
+        let bob_key_package = match alice_and_bob_share_keys {
             KeyUniqueness::NegativeSameKey => {
                 // Create a new key package for bob using the encryption key as init key.
                 let mut franken_key_package = FrankenKeyPackage::from(bob_key_package);
                 franken_key_package.init_key = franken_key_package.leaf_node.encryption_key.clone();
                 franken_key_package.resign(&bob_credential_with_key.signer);
-                bob_key_package = KeyPackage::from(franken_key_package);
+                KeyPackage::from(franken_key_package)
             }
             KeyUniqueness::PositiveDifferentKey => {
                 // don't need to do anything since all keys are already
                 // different.
+                bob_key_package.key_package().clone()
             }
             KeyUniqueness::PositiveSameKeyWithRemove => unreachable!(),
-        }
+        };
 
         // 1. Alice creates a group and tries to add Bob to it
         let res = create_group_with_members(
@@ -1764,7 +1782,7 @@ fn test_valsem111(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
     );
 
     let update_proposal = Proposal::Update(UpdateProposal {
-        leaf_node: update_kp.leaf_node().clone(),
+        leaf_node: update_kp.key_package().leaf_node().clone(),
     });
 
     // We now have Alice create a commit. That commit should not contain any
@@ -2039,7 +2057,7 @@ fn valsem113(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedPr
             .add_members(
                 provider,
                 &alice_credential_with_keys.signer,
-                &[bob_key_package],
+                &[bob_key_package.key_package().clone()],
             )
             .unwrap();
 

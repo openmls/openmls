@@ -410,7 +410,7 @@ fn unknown_sender<Provider: RefinedProvider>(ciphersuite: Ciphersuite, provider:
     );
 
     // Generate KeyPackages
-    let bob_key_package_bundle = KeyPackageBundle::new(
+    let bob_key_package_bundle = KeyPackageBundle::generate(
         bob_provider,
         &bob_signature_keys,
         ciphersuite,
@@ -418,7 +418,7 @@ fn unknown_sender<Provider: RefinedProvider>(ciphersuite: Ciphersuite, provider:
     );
     let bob_key_package = bob_key_package_bundle.key_package();
 
-    let charlie_key_package_bundle = KeyPackageBundle::new(
+    let charlie_key_package_bundle = KeyPackageBundle::generate(
         charlie_provider,
         &charlie_signature_keys,
         ciphersuite,
@@ -658,7 +658,7 @@ pub(crate) fn setup_alice_bob_group<Storage: StorageProvider<1>>(
         test_utils::new_credential(provider, b"Bob", ciphersuite.signature_algorithm());
 
     // Generate KeyPackages
-    let bob_key_package_bundle = KeyPackageBundle::new(
+    let bob_key_package_bundle = KeyPackageBundle::generate(
         provider,
         &bob_signature_keys,
         ciphersuite,

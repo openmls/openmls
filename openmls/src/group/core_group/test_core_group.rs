@@ -72,7 +72,7 @@ fn test_failed_groupinfo_decryption(
     let (alice_credential_with_key, alice_signature_keys) =
         test_utils::new_credential(provider, b"Alice", ciphersuite.signature_algorithm());
 
-    let key_package_bundle = KeyPackageBundle::new(
+    let key_package_bundle = KeyPackageBundle::generate(
         provider,
         &alice_signature_keys,
         ciphersuite,
@@ -287,7 +287,7 @@ fn setup_alice_bob(
 
     // Generate Bob's KeyPackage
     let bob_key_package_bundle =
-        KeyPackageBundle::new(provider, &bob_signer, ciphersuite, bob_credential_with_key);
+        KeyPackageBundle::generate(provider, &bob_signer, ciphersuite, bob_credential_with_key);
 
     (
         alice_credential_with_key,
@@ -563,7 +563,7 @@ pub(crate) fn setup_client(
     .unwrap();
 
     // Generate the KeyPackage
-    let key_package_bundle = KeyPackageBundle::new(
+    let key_package_bundle = KeyPackageBundle::generate(
         provider,
         &signature_keys,
         ciphersuite,

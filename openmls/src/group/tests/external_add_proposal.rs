@@ -74,7 +74,11 @@ fn validation_test_setup(
     );
 
     let (_message, welcome, _group_info) = alice_group
-        .add_members(provider, &alice_signer_with_keys.signer, &[bob_key_package])
+        .add_members(
+            provider,
+            &alice_signer_with_keys.signer,
+            &[bob_key_package.key_package().clone()],
+        )
         .expect("error adding Bob to group");
 
     alice_group
@@ -138,7 +142,7 @@ fn external_add_proposal_should_succeed(
         );
 
         let proposal = JoinProposal::new(
-            charlie_kp.clone(),
+            charlie_kp.key_package().clone(),
             alice_group.group_id().clone(),
             alice_group.epoch(),
             &charlie_credential.signer,
@@ -164,7 +168,7 @@ fn external_add_proposal_should_succeed(
                 assert!(matches!(proposal.sender(), Sender::NewMemberProposal));
                 assert!(matches!(
                     proposal.proposal(),
-                    Proposal::Add(AddProposal { key_package }) if key_package == &charlie_kp
+                    Proposal::Add(AddProposal { key_package }) if key_package == charlie_kp.key_package()
                 ));
                 alice_group.store_pending_proposal(*proposal)
             }
@@ -253,7 +257,7 @@ fn external_add_proposal_should_be_signed_by_key_package_it_references(
     );
 
     let invalid_proposal = JoinProposal::new(
-        charlie_kp,
+        charlie_kp.key_package().clone(),
         alice_group.group_id().clone(),
         alice_group.epoch(),
         &charlie_credential.signer,
@@ -294,7 +298,7 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
     );
 
     let join_proposal = JoinProposal::new(
-        any_kp,
+        any_kp.key_package().clone(),
         alice_group.group_id().clone(),
         alice_group.epoch(),
         &any_credential.signer,

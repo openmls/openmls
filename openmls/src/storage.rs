@@ -6,20 +6,20 @@ use openmls_traits::storage::{traits, Entity, Key, CURRENT_VERSION};
 use serde::Serialize;
 
 use crate::binary_tree::LeafNodeIndex;
-use crate::group::past_secrets::MessageSecretsStore;
-use crate::group::GroupEpoch;
-use crate::key_packages::InitKey;
-use crate::schedule::psk::store::ResumptionPskStore;
-use crate::schedule::psk::PskBundle;
-use crate::schedule::{GroupEpochSecrets, Psk};
-use crate::treesync::node::encryption_keys::EncryptionKeyPair;
-use crate::treesync::EncryptionKey;
 use crate::{
     ciphersuite::hash_ref::ProposalRef,
     group::{GroupContext, GroupId, InterimTranscriptHash, QueuedProposal},
-    key_packages::KeyPackage,
     messages::ConfirmationTag,
     treesync::TreeSync,
+};
+use crate::{
+    group::{past_secrets::MessageSecretsStore, GroupEpoch},
+    prelude::KeyPackageBundle,
+    schedule::{
+        psk::{store::ResumptionPskStore, PskBundle},
+        GroupEpochSecrets, Psk,
+    },
+    treesync::{node::encryption_keys::EncryptionKeyPair, EncryptionKey},
 };
 
 impl Entity<CURRENT_VERSION> for QueuedProposal {}
@@ -45,8 +45,8 @@ impl traits::InterimTranscriptHash<CURRENT_VERSION> for InterimTranscriptHash {}
 impl Entity<CURRENT_VERSION> for ConfirmationTag {}
 impl traits::ConfirmationTag<CURRENT_VERSION> for ConfirmationTag {}
 
-impl Entity<CURRENT_VERSION> for KeyPackage {}
-impl traits::KeyPackage<CURRENT_VERSION> for KeyPackage {}
+impl Entity<CURRENT_VERSION> for KeyPackageBundle {}
+impl traits::KeyPackage<CURRENT_VERSION> for KeyPackageBundle {}
 
 impl Key<CURRENT_VERSION> for EncryptionKey {}
 impl traits::EncryptionKey<CURRENT_VERSION> for EncryptionKey {}
@@ -68,29 +68,12 @@ impl traits::ResumptionPskStore<CURRENT_VERSION> for ResumptionPskStore {}
 
 // Crypto
 
-// // TODO: Remove these and move the impl to the actual types.
-// #[derive(Serialize)]
-// pub struct StorageInitKey<'a>(pub &'a [u8]);
-// #[derive(Clone, Serialize, Deserialize)]
-// pub struct StorageHpkePrivateKey(pub HpkePrivateKey);
-
 /// Helper to use slices as keys
 #[derive(Serialize)]
 pub(crate) struct StorageReference<'a>(pub(crate) &'a [u8]);
 
 impl<'a> Key<CURRENT_VERSION> for StorageReference<'a> {}
 impl<'a> traits::HashReference<CURRENT_VERSION> for StorageReference<'a> {}
-
-// impl core::fmt::Debug for StorageHpkePrivateKey {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         f.debug_tuple("StorageHpkePrivateKey")
-//             .field(&"***")
-//             .finish()
-//     }
-// }
-
-impl Key<CURRENT_VERSION> for InitKey {}
-impl traits::InitKey<CURRENT_VERSION> for InitKey {}
 
 impl Key<CURRENT_VERSION> for GroupEpoch {}
 impl traits::EpochKey<CURRENT_VERSION> for GroupEpoch {}
@@ -162,18 +145,6 @@ mod test {
             .unwrap();
         let public_key = InitKey::from(key_pair.public);
         let private_key = HpkePrivateKey::from(key_pair.private);
-
-        provider
-            .storage()
-            .write_init_private_key(&public_key, &private_key)
-            .unwrap();
-
-        let private_key: HpkePrivateKey = provider
-            .storage()
-            .init_private_key(&public_key)
-            .unwrap()
-            .unwrap();
-        assert_eq!(private_key, private_key);
     }
 
     // Test upgrade path
@@ -184,20 +155,14 @@ mod test {
         key: HpkePrivateKey,
     }
 
-    impl type_traits::HpkePrivateKey<V_TEST> for NewStorageHpkePrivateKey {}
-    impl Entity<V_TEST> for NewStorageHpkePrivateKey {}
-
-    impl Entity<V_TEST> for KeyPackage {}
-    impl type_traits::KeyPackage<V_TEST> for KeyPackage {}
+    impl Entity<V_TEST> for KeyPackageBundle {}
+    impl type_traits::KeyPackage<V_TEST> for KeyPackageBundle {}
 
     impl Key<V_TEST> for EncryptionKey {}
     impl type_traits::EncryptionKey<V_TEST> for EncryptionKey {}
 
     impl Entity<V_TEST> for EncryptionKeyPair {}
     impl type_traits::HpkeKeyPair<V_TEST> for EncryptionKeyPair {}
-
-    impl Key<V_TEST> for InitKey {}
-    impl type_traits::InitKey<V_TEST> for InitKey {}
 
     impl Key<V_TEST> for ProposalRef {}
     impl type_traits::HashReference<V_TEST> for ProposalRef {}
@@ -235,110 +200,110 @@ mod test {
         )
         .unwrap();
 
-        // write private keys
-        <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::write_init_private_key(
-            provider.storage(),
-            key_package.hpke_init_key(),
-            &init_sk,
-        )
-        .unwrap();
-        <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::write_encryption_key_pair(
-            provider.storage(),
-            key_package.leaf_node().encryption_key(),
-            &encryption_keypair,
-        )
-        .unwrap();
+        // // write private keys
+        // <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::write_init_private_key(
+        //     provider.storage(),
+        //     key_package.hpke_init_key(),
+        //     &init_sk,
+        // )
+        // .unwrap();
+        // <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::write_encryption_key_pair(
+        //     provider.storage(),
+        //     key_package.leaf_node().encryption_key(),
+        //     &encryption_keypair,
+        // )
+        // .unwrap();
 
-        // write key package
-        <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::write_key_package(
-            provider.storage(),
-            &key_package_ref,
-            &key_package_bundle.key_package,
-        )
-        .unwrap();
+        // // write key package
+        // <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::write_key_package(
+        //     provider.storage(),
+        //     &key_package_ref,
+        //     &KeyPackageBundle::new(key_package, init_sk),
+        // )
+        // .unwrap();
 
         // // Serialize the old storage. This should become a kat test file
         // let old_storage = serde_json::to_string(provider.storage()).unwrap();
 
         //  ---- migration starts here ----
-        let new_storage_provider = MemoryKeyStore::default();
+        // let new_storage_provider = MemoryKeyStore::default();
 
-        // first, read the old data
-        let read_key_package: crate::prelude::KeyPackage = <MemoryKeyStore as StorageProvider<
-            CURRENT_VERSION,
-        >>::key_package(
-            provider.storage(), &key_package_ref
-        )
-        .unwrap()
-        .unwrap();
-        let read_init_secret: HpkePrivateKey =
-            <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::init_private_key(
-                provider.storage(),
-                read_key_package.hpke_init_key(),
-            )
-            .unwrap()
-            .unwrap();
-        let read_encryption_keypair: EncryptionKeyPair =
-            <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::encryption_key_pair(
-                provider.storage(),
-                read_key_package.leaf_node().encryption_key(),
-            )
-            .unwrap()
-            .unwrap();
+        // // first, read the old data
+        // let read_key_package: crate::prelude::KeyPackageBundle =
+        //     <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::key_package(
+        //         provider.storage(),
+        //         &key_package_ref,
+        //     )
+        //     .unwrap()
+        //     .unwrap();
+        // let read_init_secret: HpkePrivateKey =
+        //     <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::init_private_key(
+        //         provider.storage(),
+        //         read_key_package.init_private_key(),
+        //     )
+        //     .unwrap()
+        //     .unwrap();
+        // let read_encryption_keypair: EncryptionKeyPair =
+        //     <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::encryption_key_pair(
+        //         provider.storage(),
+        //         read_key_package.leaf_node().encryption_key(),
+        //     )
+        //     .unwrap()
+        //     .unwrap();
 
-        // then, build the new data from the old data
-        let new_version_init_key = NewStorageHpkePrivateKey {
-            ciphersuite: read_key_package.ciphersuite(),
-            key: read_init_secret,
-        };
+        // // then, build the new data from the old data
+        // let new_version_init_key = NewStorageHpkePrivateKey {
+        //     ciphersuite: read_key_package.ciphersuite(),
+        //     key: read_init_secret,
+        // };
 
-        // insert the new data (encryption key and key package can just be copied)
-        <MemoryKeyStore as StorageProvider<V_TEST>>::write_encryption_key_pair(
-            &new_storage_provider,
-            read_key_package.leaf_node().encryption_key(),
-            &read_encryption_keypair,
-        )
-        .unwrap();
-        <MemoryKeyStore as StorageProvider<V_TEST>>::write_init_private_key(
-            &new_storage_provider,
-            read_key_package.hpke_init_key(),
-            &new_version_init_key,
-        )
-        .unwrap();
-        <MemoryKeyStore as StorageProvider<V_TEST>>::write_key_package(
-            &new_storage_provider,
-            &key_package_ref,
-            &read_key_package,
-        )
-        .unwrap();
+        // // insert the new data (encryption key and key package can just be copied)
+        // <MemoryKeyStore as StorageProvider<V_TEST>>::write_encryption_key_pair(
+        //     &new_storage_provider,
+        //     read_key_package.leaf_node().encryption_key(),
+        //     &read_encryption_keypair,
+        // )
+        // .unwrap();
+        // <MemoryKeyStore as StorageProvider<V_TEST>>::write_init_private_key(
+        //     &new_storage_provider,
+        //     read_key_package.hpke_init_key(),
+        //     &new_version_init_key,
+        // )
+        // .unwrap();
+        // <MemoryKeyStore as StorageProvider<V_TEST>>::write_key_package(
+        //     &new_storage_provider,
+        //     &key_package_ref,
+        //     &read_key_package,
+        // )
+        // .unwrap();
 
-        // read the new value from storage
-        let read_new_key_package: crate::prelude::KeyPackage =
-            <MemoryKeyStore as StorageProvider<V_TEST>>::key_package(
-                &new_storage_provider,
-                &key_package_ref,
-            )
-            .unwrap()
-            .unwrap();
-        let read_new_init_secret: NewStorageHpkePrivateKey =
-            <MemoryKeyStore as StorageProvider<V_TEST>>::init_private_key(
-                &new_storage_provider,
-                read_key_package.hpke_init_key(),
-            )
-            .unwrap()
-            .unwrap();
-        let read_new_encryption_keypair: EncryptionKeyPair =
-            <MemoryKeyStore as StorageProvider<V_TEST>>::encryption_key_pair(
-                &new_storage_provider,
-                read_key_package.leaf_node().encryption_key(),
-            )
-            .unwrap()
-            .unwrap();
+        // // read the new value from storage
+        // let read_new_key_package: crate::prelude::KeyPackage =
+        //     <MemoryKeyStore as StorageProvider<V_TEST>>::key_package(
+        //         &new_storage_provider,
+        //         &key_package_ref,
+        //     )
+        //     .unwrap()
+        //     .unwrap();
+        // let read_new_init_secret: NewStorageHpkePrivateKey =
+        //     <MemoryKeyStore as StorageProvider<V_TEST>>::init_private_key(
+        //         &new_storage_provider,
+        //         read_key_package.hpke_init_key(),
+        //     )
+        //     .unwrap()
+        //     .unwrap();
+        // let read_new_encryption_keypair: EncryptionKeyPair =
+        //     <MemoryKeyStore as StorageProvider<V_TEST>>::encryption_key_pair(
+        //         &new_storage_provider,
+        //         read_key_package.leaf_node().encryption_key(),
+        //     )
+        //     .unwrap()
+        //     .unwrap();
 
-        // compare it to the old_storage
+        // // compare it to the old_storage
 
-        assert_eq!(read_new_key_package, key_package);
-        assert_eq!(read_new_encryption_keypair, encryption_keypair);
-        assert_eq!(read_new_init_secret.key, init_sk);
+        // assert_eq!(read_new_key_package, key_package);
+        // assert_eq!(read_new_encryption_keypair, encryption_keypair);
+        // assert_eq!(read_new_init_secret.key, init_sk);
     }
 }

@@ -52,7 +52,7 @@ fn ratchet_tree_extension(
         test_utils::new_credential(provider, b"Bob", ciphersuite.signature_algorithm());
 
     // Generate KeyPackages
-    let bob_key_package_bundle = KeyPackageBundle::new(
+    let bob_key_package_bundle = KeyPackageBundle::generate(
         provider,
         &bob_signature_keys,
         ciphersuite,
@@ -131,7 +131,7 @@ fn ratchet_tree_extension(
     // === Alice creates a group without the ratchet tree extension ===
 
     // Generate KeyPackages
-    let bob_key_package_bundle = KeyPackageBundle::new(
+    let bob_key_package_bundle = KeyPackageBundle::generate(
         provider,
         &bob_signature_keys,
         ciphersuite,
@@ -396,8 +396,9 @@ fn last_resort_extension(
             },
         )
         .expect("error building key package with last resort extension");
-    assert!(kp.last_resort());
+    assert!(kp.key_package().last_resort());
     let encoded_kp = kp
+        .key_package()
         .tls_serialize_detached()
         .expect("error encoding key package with last resort extension");
     let decoded_kp = KeyPackageIn::tls_deserialize(&mut encoded_kp.as_slice())
@@ -434,7 +435,7 @@ fn last_resort_extension(
         .add_members(
             provider,
             &alice_credential_with_key_and_signer.signer,
-            &[kp.clone()],
+            &[kp.key_package().clone()],
         )
         .expect("An unexpected error occurred.");
 
@@ -455,10 +456,11 @@ fn last_resort_extension(
 
     use openmls_traits::storage::StorageProvider;
 
-    let _: KeyPackage = provider
+    let _: KeyPackageBundle = provider
         .storage()
         .key_package(
-            &kp.hash_ref(provider.crypto())
+            &kp.key_package()
+                .hash_ref(provider.crypto())
                 .expect("error hashing key package"),
         )
         .expect("error retrieving key package")

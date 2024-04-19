@@ -12,7 +12,6 @@ use crate::{
         group_info::{GroupInfo, VerifiableGroupInfo},
         Welcome,
     },
-    prelude::KeyPackage,
     schedule::psk::store::ResumptionPskStore,
     storage::RefinedProvider,
     treesync::RatchetTreeIn,
@@ -153,7 +152,7 @@ impl StagedWelcome {
     ) -> Result<Self, WelcomeError<Provider::StorageError>> {
         let resumption_psk_store =
             ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
-        let key_package: KeyPackage = welcome
+        let key_package_bundle: KeyPackageBundle = welcome
             .secrets()
             .iter()
             .find_map(|egs| {
@@ -167,19 +166,6 @@ impl StagedWelcome {
                 )
             })
             .ok_or(WelcomeError::NoMatchingKeyPackage)??;
-
-        // TODO #751
-        let private_key = provider
-            .storage()
-            .init_private_key(key_package.hpke_init_key())
-            // .read::<HpkePrivateKey>(key_package.hpke_init_key().as_slice())
-            .ok()
-            .flatten()
-            .ok_or(WelcomeError::NoMatchingKeyPackage)?;
-        let key_package_bundle = KeyPackageBundle {
-            key_package,
-            private_key,
-        };
 
         // Delete the [`KeyPackage`] and the corresponding private key from the
         // key store, but only if it doesn't have a last resort extension.

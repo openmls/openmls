@@ -109,7 +109,7 @@ fn test_update_proposal_encoding(provider: &impl crate::storage::RefinedProvider
             .get(&group_state.ciphersuite())
             .expect("An unexpected error occurred.");
 
-        let key_package_bundle = KeyPackageBundle::new(
+        let key_package_bundle = KeyPackageBundle::generate(
             provider,
             &credential_with_key_and_signer.signer,
             group_state.ciphersuite(),
@@ -163,7 +163,7 @@ fn test_add_proposal_encoding(provider: &impl crate::storage::RefinedProvider) {
             .get(&group_state.ciphersuite())
             .expect("An unexpected error occurred.");
 
-        let key_package_bundle = KeyPackageBundle::new(
+        let key_package_bundle = KeyPackageBundle::generate(
             provider,
             &credential_with_key_and_signer.signer,
             group_state.ciphersuite(),
@@ -258,7 +258,7 @@ fn test_commit_encoding(provider: &impl crate::storage::RefinedProvider) {
             .get(&group_state.ciphersuite())
             .expect("An unexpected error occurred.");
 
-        let alice_key_package_bundle = KeyPackageBundle::new(
+        let alice_key_package_bundle = KeyPackageBundle::generate(
             provider,
             &alice_credential_with_key_and_signer.signer,
             group_state.ciphersuite(),

@@ -25,6 +25,7 @@ fn test_store_key_package(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
     // ANCHOR: key_store_delete
     // Delete the key package
     key_package
+        .key_package()
         .delete(provider)
         .expect("Error deleting key package");
     // ANCHOR_END: key_store_delete

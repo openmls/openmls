@@ -25,11 +25,12 @@ fn test_client_info() {
 
     let client_key_package = vec![(
         client_key_package
+            .key_package()
             .hash_ref(crypto.crypto())
             .expect("Could not hash KeyPackage.")
             .as_slice()
             .to_vec(),
-        KeyPackageIn::from(client_key_package),
+        KeyPackageIn::from(client_key_package.key_package().clone()),
     )];
     let client_data = ClientInfo::new(client_key_package);
 

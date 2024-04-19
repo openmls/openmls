@@ -1010,19 +1010,10 @@ fn key_package_deletion<Provider: crate::storage::RefinedProvider>(
     .into_group(provider)
     .expect("Error creating group from staged join");
 
-    // TEST: The private key must be gone from the key store.
-    // let result =
-    let result: Option<HpkePrivateKey> = provider
-        .storage()
-        .init_private_key(bob_key_package.hpke_init_key())
-        .unwrap();
-    assert!(result.is_none(),
-        "The HPKE private key is still in the key store after creating a new group from the key package.");
-
     use openmls_traits::storage::StorageProvider;
 
     // TEST: The key package must be gone from the key store.
-    let result: Option<KeyPackage> = provider
+    let result: Option<KeyPackageBundle> = provider
         .storage()
         .key_package(&bob_key_package.hash_ref(provider.crypto()).unwrap())
         .unwrap();
@@ -1395,7 +1386,11 @@ fn update_group_context_with_unknown_extension(
         .expect("error building key package");
 
     let (_, welcome, _) = alice_group
-        .add_members(provider, &alice_signer, &[bob_key_package.clone()])
+        .add_members(
+            provider,
+            &alice_signer,
+            &[bob_key_package.key_package().clone()],
+        )
         .unwrap();
     alice_group.merge_pending_commit(provider).unwrap();
 
@@ -1548,14 +1543,18 @@ fn unknown_extensions(ciphersuite: Ciphersuite, provider: &impl crate::storage::
         .expect("error building key package");
 
     assert_eq!(
-        bob_key_package.extensions(),
+        bob_key_package.key_package().extensions(),
         &Extensions::single(unknown_kp_extension)
     );
 
     // alice adds bob and bob processes the welcome to ensure that the unknown
     // extensions are processed correctly
     let (_, welcome, _) = alice_group
-        .add_members(provider, &alice_signer, &[bob_key_package.clone()])
+        .add_members(
+            provider,
+            &alice_signer,
+            &[bob_key_package.key_package().clone()],
+        )
         .unwrap();
     alice_group.merge_pending_commit(provider).unwrap();
 
@@ -1615,7 +1614,11 @@ fn join_multiple_groups_last_resort_extension(
         .expect("error building key package for charlie");
     // alice calls add_members(...) with charlie's KeyPackage; produces Commit and Welcome messages
     let (_, alice_welcome, _) = alice_group
-        .add_members(provider, &alice_signer, &[charlie_keypkg.clone()])
+        .add_members(
+            provider,
+            &alice_signer,
+            &[charlie_keypkg.key_package().clone()],
+        )
         .expect("error adding charlie to alice's group");
     alice_group
         .merge_pending_commit(provider)
@@ -1639,7 +1642,11 @@ fn join_multiple_groups_last_resort_extension(
 
     // bob calls add_members(...) with charlie's KeyPackage; produces Commit and Welcome messages
     let (_, bob_welcome, _) = bob_group
-        .add_members(provider, &bob_signer, &[charlie_keypkg.clone()])
+        .add_members(
+            provider,
+            &bob_signer,
+            &[charlie_keypkg.key_package().clone()],
+        )
         .expect("error adding charlie to bob's group");
     bob_group
         .merge_pending_commit(provider)

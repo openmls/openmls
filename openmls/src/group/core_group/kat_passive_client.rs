@@ -253,18 +253,9 @@ impl PassiveClient {
         <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::write_key_package(
             self.provider.storage(),
             &hash_ref,
-            &key_package,
+            &key_package_bundle,
         )
         .unwrap();
-
-        // Store init key.
-        self.provider
-            .storage()
-            .write_init_private_key(
-                key_package.hpke_init_key(),
-                key_package_bundle.private_key(),
-            )
-            .unwrap();
 
         // Store encryption key
         let key_pair = EncryptionKeyPair::from((
@@ -367,7 +358,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> PassiveClientWelcomeTes
         .add_members(
             &creator_provider,
             &creator.signature_keypair,
-            &[passive.key_package.clone()],
+            &[passive.key_package.key_package().clone()],
         )
         .unwrap();
 
@@ -488,6 +479,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> PassiveClientWelcomeTes
     };
 
     let epochs = vec![epoch1, epoch2, epoch3, epoch4, epoch5, epoch6];
+    let init_priv = passive.key_package.init_private_key().to_vec();
 
     PassiveClientWelcomeTestVector {
         cipher_suite: ciphersuite.into(),
@@ -499,7 +491,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> PassiveClientWelcomeTes
 
         signature_priv: passive.signature_keypair.private().to_vec(),
         encryption_priv: passive.encryption_keypair.private_key().key().to_vec(),
-        init_priv: passive.init_keypair.private.to_vec(),
+        init_priv,
 
         welcome: mls_message_welcome.tls_serialize_detached().unwrap(),
         ratchet_tree: None,
@@ -529,7 +521,7 @@ fn propose_add(
         .propose_add_member(
             provider,
             &candidate.signature_keypair,
-            &add_candidate.key_package,
+            add_candidate.key_package.key_package(),
         )
         .unwrap();
     group.merge_pending_commit(provider).unwrap();

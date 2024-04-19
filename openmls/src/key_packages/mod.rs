@@ -362,11 +362,6 @@ impl KeyPackage {
             .delete_key_package(&self.hash_ref(provider.crypto())?)
             .map_err(KeyPackageStorageError::Storage)?;
 
-        provider
-            .storage()
-            .delete_init_private_key(self.hpke_init_key())
-            .map_err(KeyPackageStorageError::Storage)?;
-
         Ok(())
     }
 
@@ -525,7 +520,7 @@ impl KeyPackageBuilder {
         provider: &impl OpenMlsProvider,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
-    ) -> Result<KeyPackage, KeyPackageNewError> {
+    ) -> Result<KeyPackageBundle, KeyPackageNewError> {
         self.ensure_last_resort();
         let KeyPackageCreationResult {
             key_package,
@@ -544,9 +539,13 @@ impl KeyPackageBuilder {
 
         // Store the key package in the key store with the hash reference as id
         // for retrieval when parsing welcome messages.
+        let full_kp = KeyPackageBundle {
+            key_package,
+            private_key: init_private_key,
+        };
         provider
             .storage()
-            .write_key_package(&key_package.hash_ref(provider.crypto())?, &key_package)
+            .write_key_package(&full_kp.key_package.hash_ref(provider.crypto())?, &full_kp)
             .map_err(|_| KeyPackageNewError::StorageError)?;
 
         // Store the encryption key pair in the key store.
@@ -554,58 +553,52 @@ impl KeyPackageBuilder {
             .write(provider.storage())
             .map_err(|_| KeyPackageNewError::StorageError)?;
 
-        // Store the private part of the init_key into the key store.
-        // The key is the public key.
-        provider
-            .storage()
-            .write_init_private_key(key_package.hpke_init_key(), &init_private_key)
-            .map_err(|_| KeyPackageNewError::StorageError)?;
-
-        Ok(key_package)
+        Ok(full_kp)
     }
 }
 
-/// A [`KeyPackageBundle`] contains a [`KeyPackage`] and the corresponding private
+/// A [`KeyPackageBundle`] contains a [`KeyPackage`] and the init private
 /// key.
+///
+/// This is stored to ensure the private key is handled together with the key
+/// package.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
-pub(crate) struct KeyPackageBundle {
+pub struct KeyPackageBundle {
     pub(crate) key_package: KeyPackage,
     pub(crate) private_key: HpkePrivateKey,
 }
 
 // Public `KeyPackageBundle` functions.
 impl KeyPackageBundle {
+    /// Generate a new key package bundle with the private key.
+    pub fn new(key_package: KeyPackage, private_key: HpkePrivateKey) -> Self {
+        Self {
+            key_package,
+            private_key,
+        }
+    }
+
     /// Get a reference to the public part of this bundle, i.e. the [`KeyPackage`].
-    pub(crate) fn key_package(&self) -> &KeyPackage {
+    pub fn key_package(&self) -> &KeyPackage {
         &self.key_package
     }
 
-    /// Get a reference to the private key.
-    pub fn private_key(&self) -> &HpkePrivateKey {
+    /// Get a reference to the private init key.
+    pub fn init_private_key(&self) -> &HpkePrivateKey {
         &self.private_key
     }
 }
 
 #[cfg(test)]
 impl KeyPackageBundle {
-    pub(crate) fn new(
+    pub(crate) fn generate(
         provider: &impl OpenMlsProvider,
         signer: &impl Signer,
         ciphersuite: Ciphersuite,
         credential_with_key: CredentialWithKey,
     ) -> Self {
-        let key_package = KeyPackage::builder()
+        KeyPackage::builder()
             .build(ciphersuite, provider, signer, credential_with_key)
-            .unwrap();
-        let private_key = provider
-            .storage()
-            .init_private_key(key_package.hpke_init_key())
             .unwrap()
-            .unwrap();
-        Self {
-            key_package,
-            private_key,
-        }
     }
 }

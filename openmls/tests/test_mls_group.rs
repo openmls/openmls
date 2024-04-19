@@ -18,6 +18,8 @@ fn generate_key_package<Provider: RefinedProvider>(
         .key_package_extensions(extensions)
         .build(ciphersuite, provider, signer, credential_with_key)
         .unwrap()
+        .key_package()
+        .clone()
 }
 
 /// This test simulates various group operations like Add, Update, Remove in a

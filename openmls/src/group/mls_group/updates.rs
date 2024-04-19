@@ -1,10 +1,7 @@
 use core_group::create_commit_params::CreateCommitParams;
 use openmls_traits::signatures::Signer;
 
-use crate::{
-    messages::group_info::GroupInfo, storage::RefinedProvider, treesync::LeafNode,
-    versions::ProtocolVersion,
-};
+use crate::{messages::group_info::GroupInfo, storage::RefinedProvider, treesync::LeafNode};
 
 use super::*;
 
@@ -100,7 +97,6 @@ impl MlsGroup {
                 self.group_id(),
                 self.own_leaf_index(),
                 self.ciphersuite(),
-                ProtocolVersion::default(), // XXX: openmls/openmls#1065
                 provider,
                 signer,
             )?;

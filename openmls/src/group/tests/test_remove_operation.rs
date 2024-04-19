@@ -77,7 +77,10 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite) {
             .add_members(
                 &alice_provider,
                 &alice_credential_with_key_and_signer.signer,
-                &[bob_key_package, charlie_key_package],
+                &[
+                    bob_key_package.key_package().clone(),
+                    charlie_key_package.key_package().clone(),
+                ],
             )
             .expect("An unexpected error occurred.");
         alice_group

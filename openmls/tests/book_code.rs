@@ -44,7 +44,7 @@ fn generate_key_package(
     extensions: Extensions,
     provider: &impl crate::storage::RefinedProvider,
     signer: &impl Signer,
-) -> KeyPackage {
+) -> KeyPackageBundle {
     // ANCHOR: create_key_package
     // Create the key package
     KeyPackage::builder()
@@ -209,7 +209,11 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage::Ref
     // === Alice adds Bob ===
     // ANCHOR: alice_adds_bob
     let (mls_message_out, welcome, group_info) = alice_group
-        .add_members(provider, &alice_signature_keys, &[bob_key_package])
+        .add_members(
+            provider,
+            &alice_signature_keys,
+            &[bob_key_package.key_package().clone()],
+        )
         .expect("Could not add members.");
     // ANCHOR_END: alice_adds_bob
 
@@ -502,7 +506,11 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage::Ref
     );
 
     let (queued_message, welcome, _group_info) = bob_group
-        .add_members(provider, &bob_signature_keys, &[charlie_key_package])
+        .add_members(
+            provider,
+            &bob_signature_keys,
+            &[charlie_key_package.key_package().clone()],
+        )
         .unwrap();
 
     let alice_processed_message = alice_group
@@ -884,7 +892,11 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage::Ref
     // Create AddProposal and remove it
     // ANCHOR: rollback_proposal_by_ref
     let (_mls_message_out, proposal_ref) = alice_group
-        .propose_add_member(provider, &alice_signature_keys, &bob_key_package)
+        .propose_add_member(
+            provider,
+            &alice_signature_keys,
+            bob_key_package.key_package(),
+        )
         .expect("Could not create proposal to add Bob");
     alice_group
         .remove_pending_proposal(proposal_ref)
@@ -894,7 +906,11 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage::Ref
     // Create AddProposal and process it
     // ANCHOR: propose_add
     let (mls_message_out, _proposal_ref) = alice_group
-        .propose_add_member(provider, &alice_signature_keys, &bob_key_package)
+        .propose_add_member(
+            provider,
+            &alice_signature_keys,
+            bob_key_package.key_package(),
+        )
         .expect("Could not create proposal to add Bob");
     // ANCHOR_END: propose_add
 
@@ -1188,7 +1204,7 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage::Ref
 
     // ANCHOR: external_join_proposal
     let proposal = JoinProposal::new(
-        bob_key_package,
+        bob_key_package.key_package().clone(),
         alice_group.group_id().clone(),
         alice_group.epoch(),
         &bob_signature_keys,
@@ -1299,7 +1315,11 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage::Ref
 
     // Add Bob to the group
     let (_queued_message, welcome, _group_info) = alice_group
-        .add_members(provider, &alice_signature_keys, &[bob_key_package])
+        .add_members(
+            provider,
+            &alice_signature_keys,
+            &[bob_key_package.key_package().clone()],
+        )
         .expect("Could not add Bob");
 
     // Merge Commit
@@ -1433,7 +1453,11 @@ fn custom_proposal_usage(
 
     // Add Bob
     let (_mls_message, welcome, _group_info) = alice_group
-        .add_members(provider, &alice_signer, &[bob_key_package])
+        .add_members(
+            provider,
+            &alice_signer,
+            &[bob_key_package.key_package().clone()],
+        )
         .unwrap();
 
     alice_group.merge_pending_commit(provider).unwrap();

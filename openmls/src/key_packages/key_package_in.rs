@@ -15,7 +15,8 @@ use tls_codec::{
 };
 
 use super::{
-    errors::KeyPackageVerifyError, InitKey, KeyPackage, KeyPackageTbs, SIGNATURE_KEY_PACKAGE_LABEL,
+    errors::KeyPackageVerifyError, InitKey, KeyPackage, KeyPackageBundle, KeyPackageTbs,
+    SIGNATURE_KEY_PACKAGE_LABEL,
 };
 
 /// Intermediary struct for deserialization of a [`KeyPackageIn`].
@@ -235,6 +236,16 @@ impl From<KeyPackage> for KeyPackageIn {
         Self {
             payload: value.payload.into(),
             signature: value.signature,
+        }
+    }
+}
+
+#[cfg(any(feature = "test-utils", test))]
+impl From<KeyPackageBundle> for KeyPackageIn {
+    fn from(value: KeyPackageBundle) -> Self {
+        Self {
+            payload: value.key_package.payload.into(),
+            signature: value.key_package.signature,
         }
     }
 }
