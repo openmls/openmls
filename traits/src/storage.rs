@@ -19,6 +19,57 @@ pub trait StorageProvider<const VERSION: u16> {
     }
 
     //
+    //    --- to be doc'd & sorted ---
+    //
+
+    fn mls_group_join_config<
+        GroupId: traits::GroupId<VERSION>,
+        MlsGroupJoinConfig: traits::MlsGroupJoinConfig<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Option<MlsGroupJoinConfig>, Self::Error>;
+
+    fn write_mls_join_config<
+        GroupId: traits::GroupId<VERSION>,
+        MlsGroupJoinConfig: traits::MlsGroupJoinConfig<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        config: &MlsGroupJoinConfig,
+    ) -> Result<(), Self::Error>;
+
+    fn own_leaf_nodes<GroupId: traits::GroupId<VERSION>, LeafNode: traits::LeafNode<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Vec<LeafNode>, Self::Error>;
+
+    fn append_own_leaf_node<
+        GroupId: traits::GroupId<VERSION>,
+        LeafNode: traits::LeafNode<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        leaf_node: &LeafNode,
+    ) -> Result<(), Self::Error>;
+
+    fn clear_own_leaf_nodes<GroupId: traits::GroupId<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error>;
+
+    fn aad<GroupId: traits::GroupId<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Vec<u8>, Self::Error>;
+
+    fn write_aad<GroupId: traits::GroupId<VERSION>>(
+        &self,
+        group_id: &GroupId,
+        aad: &[u8],
+    ) -> Result<(), Self::Error>;
+
+    //
     //    ---   setters/writers/enqueuers for group state  ---
     //
 
@@ -223,11 +274,12 @@ pub trait StorageProvider<const VERSION: u16> {
     /// Returns all queued proposals for the group with group id `group_id`, or an empty vector of none are stored.
     fn queued_proposals<
         GroupId: traits::GroupId<VERSION>,
+        ProposalRef: traits::ProposalRef<VERSION>,
         QueuedProposal: traits::QueuedProposal<VERSION>,
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Vec<QueuedProposal>, Self::Error>;
+    ) -> Result<Vec<(ProposalRef, QueuedProposal)>, Self::Error>;
 
     /// Returns the TreeSync tree for the group with group id `group_id`.
     fn treesync<GroupId: traits::GroupId<VERSION>, TreeSync: traits::TreeSync<VERSION>>(
@@ -468,6 +520,9 @@ pub trait StorageProvider<const VERSION: u16> {
 pub trait Key<const VERSION: u16>: Serialize {}
 pub trait Entity<const VERSION: u16>: Serialize + DeserializeOwned {}
 
+impl Entity<CURRENT_VERSION> for bool {}
+impl Entity<CURRENT_VERSION> for u8 {}
+
 // in the following we define specific traits for Keys and Entities. That way
 // we can don't sacrifice type safety in the implementations of the storage provider.
 // note that there are types that are used both as keys and as entities.
@@ -486,7 +541,6 @@ pub mod traits {
 
     // traits for entity, one per type
     pub trait QueuedProposal<const VERSION: u16>: Entity<VERSION> {}
-    pub trait ProposalRef<const VERSION: u16>: Entity<VERSION> {}
     pub trait TreeSync<const VERSION: u16>: Entity<VERSION> {}
     pub trait GroupContext<const VERSION: u16>: Entity<VERSION> {}
     pub trait InterimTranscriptHash<const VERSION: u16>: Entity<VERSION> {}
@@ -501,4 +555,9 @@ pub mod traits {
     pub trait MessageSecrets<const VERSION: u16>: Entity<VERSION> {}
     pub trait ResumptionPskStore<const VERSION: u16>: Entity<VERSION> {}
     pub trait KeyPackage<const VERSION: u16>: Entity<VERSION> {}
+    pub trait MlsGroupJoinConfig<const VERSION: u16>: Entity<VERSION> {}
+    pub trait LeafNode<const VERSION: u16>: Entity<VERSION> {}
+
+    // traits for types that implement both
+    pub trait ProposalRef<const VERSION: u16>: Entity<VERSION> + Key<VERSION> {}
 }

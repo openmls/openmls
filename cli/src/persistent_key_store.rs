@@ -213,16 +213,6 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         todo!()
     }
 
-    fn queued_proposals<
-        GroupId: openmls_traits::storage::traits::GroupId<VERSION>,
-        QueuedProposal: openmls_traits::storage::traits::QueuedProposal<VERSION>,
-    >(
-        &self,
-        group_id: &GroupId,
-    ) -> Result<Vec<QueuedProposal>, Self::Error> {
-        todo!()
-    }
-
     fn treesync<
         GroupId: openmls_traits::storage::traits::GroupId<VERSION>,
         TreeSync: openmls_traits::storage::traits::TreeSync<VERSION>,
@@ -469,6 +459,81 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         &self,
         psk_id: &PskKey,
     ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    fn mls_group_join_config<
+        GroupId: openmls_traits::storage::traits::GroupId<VERSION>,
+        MlsGroupJoinConfig: openmls_traits::storage::traits::MlsGroupJoinConfig<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Option<MlsGroupJoinConfig>, Self::Error> {
+        todo!()
+    }
+
+    fn write_mls_join_config<
+        GroupId: openmls_traits::storage::traits::GroupId<VERSION>,
+        MlsGroupJoinConfig: openmls_traits::storage::traits::MlsGroupJoinConfig<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        config: &MlsGroupJoinConfig,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    fn own_leaf_nodes<
+        GroupId: openmls_traits::storage::traits::GroupId<VERSION>,
+        LeafNode: openmls_traits::storage::traits::LeafNode<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Vec<LeafNode>, Self::Error> {
+        todo!()
+    }
+
+    fn append_own_leaf_node<
+        GroupId: openmls_traits::storage::traits::GroupId<VERSION>,
+        LeafNode: openmls_traits::storage::traits::LeafNode<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        leaf_node: &LeafNode,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    fn clear_own_leaf_nodes<GroupId: openmls_traits::storage::traits::GroupId<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    fn aad<GroupId: openmls_traits::storage::traits::GroupId<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Vec<u8>, Self::Error> {
+        todo!()
+    }
+
+    fn write_aad<GroupId: openmls_traits::storage::traits::GroupId<VERSION>>(
+        &self,
+        group_id: &GroupId,
+        aad: &[u8],
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    fn queued_proposals<
+        GroupId: openmls_traits::storage::traits::GroupId<VERSION>,
+        ProposalRef: openmls_traits::storage::traits::ProposalRef<VERSION>,
+        QueuedProposal: openmls_traits::storage::traits::QueuedProposal<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Vec<(ProposalRef, QueuedProposal)>, Self::Error> {
         todo!()
     }
 }

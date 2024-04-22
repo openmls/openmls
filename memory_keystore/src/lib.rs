@@ -1,4 +1,4 @@
-use openmls_traits::storage::*;
+use openmls_traits::storage::{traits::ProposalRef, *};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, sync::RwLock};
 
@@ -18,7 +18,7 @@ impl MemoryKeyStore {
         &self,
         label: &[u8],
         key: &[u8],
-        value: &[u8],
+        value: Vec<u8>,
     ) -> Result<(), <Self as StorageProvider<CURRENT_VERSION>>::Error> {
         let mut values = self.values.write().unwrap();
 
@@ -31,6 +31,36 @@ impl MemoryKeyStore {
         log::trace!("{}", std::backtrace::Backtrace::capture());
 
         values.insert(storage_key, value.to_vec());
+        Ok(())
+    }
+
+    fn append<const VERSION: u16>(
+        &self,
+        label: &[u8],
+        key: &[u8],
+        value: Vec<u8>,
+    ) -> Result<(), <Self as StorageProvider<CURRENT_VERSION>>::Error> {
+        let mut values = self.values.write().unwrap();
+
+        let mut storage_key = label.to_vec();
+        storage_key.extend_from_slice(key);
+        storage_key.extend_from_slice(&u16::to_be_bytes(VERSION));
+
+        #[cfg(feature = "test-utils")]
+        log::debug!("  write key: {}", hex::encode(&storage_key));
+        log::trace!("{}", std::backtrace::Backtrace::capture());
+
+        // fetch value from db, falling back to an empty list if doens't exist
+        let list_bytes = values.entry(storage_key).or_insert(b"[]".to_vec());
+
+        // parse old value and push new data
+        let mut list: Vec<Vec<u8>> = serde_json::from_slice(&list_bytes)?;
+        list.push(value);
+
+        // write back, reusing the old buffer
+        list_bytes.truncate(0);
+        serde_json::to_writer(list_bytes, &list)?;
+
         Ok(())
     }
 
@@ -122,20 +152,32 @@ pub enum MemoryKeyStoreError {
     None,
 }
 
-const QUEUED_PROPOSAL_LABEL: &[u8] = b"QueuedProposal";
 const KEY_PACKAGE_LABEL: &[u8] = b"KeyPackage";
-const TREE_LABEL: &[u8] = b"Tree";
 const PSK_LABEL: &[u8] = b"Psk";
 const ENCRYPTION_KEY_PAIR_LABEL: &[u8] = b"EncryptionKeyPair";
 const SIGNATURE_KEY_PAIR_LABEL: &[u8] = b"SignatureKeyPair";
 const EPOCH_KEY_PAIRS_LABEL: &[u8] = b"EpochKeyPairs";
 
-const OWN_LEAF_NODE_LABEL: &[u8] = b"OwnLeafNode";
+// related to PublicGroup
+const TREE_LABEL: &[u8] = b"Tree";
+const GROUP_CONTEXT_LABEL: &[u8] = b"GroupContext";
+const INTERIM_TRANSCRIPT_HASH_LABEL: &[u8] = b"InterimTranscriptHash";
+const CONFIRMATION_TAG_LABEL: &[u8] = b"ConfirmationTag";
+
+// related to CoreGroup
+const OWN_LEAF_NODE_INDEX_LABEL: &[u8] = b"OwnLeafNodeIndex";
 const EPOCH_SECRETS_LABEL: &[u8] = b"EpochSecrets";
 const RESUMPTION_PSK_STORE_LABEL: &[u8] = b"ResumptionPsk";
 const MESSAGE_SECRETS_LABEL: &[u8] = b"MessageSecrets";
-const GROUP_STATE_LABEL: &[u8] = b"GroupState";
 const USE_RATCHET_TREE_LABEL: &[u8] = b"UseRatchetTree";
+
+// related to MlsGroup
+const JOIN_CONFIG_LABEL: &[u8] = b"MlsGroupJoinConfig";
+const OWN_LEAF_NODES_LABEL: &[u8] = b"OwnLeafNodes";
+const AAD_LABEL: &[u8] = b"AAD";
+const GROUP_STATE_LABEL: &[u8] = b"GroupState";
+const QUEUED_PROPOSAL_LABEL: &[u8] = b"QueuedProposal";
+const PROPOSAL_QUEUE_REFS_LABEL: &[u8] = b"ProposalQueueRefs";
 
 impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     type Error = MemoryKeyStoreError;
@@ -151,26 +193,15 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         proposal_ref: &ProposalRef,
         proposal: &QueuedProposal,
     ) -> Result<(), Self::Error> {
-        let mut values = self.values.write().unwrap();
+        // write proposal to key (group_id, proposal_ref)
+        let key = serde_json::to_vec(&(group_id, proposal_ref))?;
+        let value = serde_json::to_vec(proposal)?;
+        self.write::<CURRENT_VERSION>(QUEUED_PROPOSAL_LABEL, &key, value)?;
 
-        let mut key = QUEUED_PROPOSAL_LABEL.to_vec();
-        key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
-        key.extend_from_slice(&u16::to_be_bytes(CURRENT_VERSION));
-
-        let proposals = values.get_mut(&key);
-        let new_value = serde_json::to_vec(&proposal).unwrap();
-        if let Some(proposals) = proposals {
-            proposals.extend_from_slice(&new_value); // XXX: this doesn't actually work like this.
-        } else {
-            values.insert(key, new_value);
-        }
-
-        // XXX: actually append
-        let mut key = b"ProposalRef".to_vec();
-        key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
-        key.extend_from_slice(&u16::to_be_bytes(CURRENT_VERSION));
-        let value = serde_json::to_vec(&proposal_ref).unwrap();
-        values.insert(key, value);
+        // update proposal list for group_id
+        let key = serde_json::to_vec(group_id)?;
+        let value = serde_json::to_vec(proposal_ref)?;
+        self.append::<CURRENT_VERSION>(PROPOSAL_QUEUE_REFS_LABEL, &key, value)?;
 
         Ok(())
     }
@@ -186,7 +217,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         self.write::<CURRENT_VERSION>(
             TREE_LABEL,
             &serde_json::to_vec(&group_id).unwrap(),
-            &serde_json::to_vec(&tree).unwrap(),
+            serde_json::to_vec(&tree).unwrap(),
         )
     }
 
@@ -199,7 +230,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         interim_transcript_hash: &InterimTranscriptHash,
     ) -> Result<(), Self::Error> {
         let mut values = self.values.write().unwrap();
-        let mut key = b"InterimTranscriptHash".to_vec();
+        let mut key = INTERIM_TRANSCRIPT_HASH_LABEL.to_vec();
         key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
         key.extend_from_slice(&u16::to_be_bytes(CURRENT_VERSION));
         let value = serde_json::to_vec(&interim_transcript_hash).unwrap();
@@ -217,7 +248,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         group_context: &GroupContext,
     ) -> Result<(), Self::Error> {
         let mut values = self.values.write().unwrap();
-        let mut key = b"GroupContext".to_vec();
+        let mut key = GROUP_CONTEXT_LABEL.to_vec();
         key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
         key.extend_from_slice(&u16::to_be_bytes(CURRENT_VERSION));
         let value = serde_json::to_vec(&group_context).unwrap();
@@ -235,7 +266,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         confirmation_tag: &ConfirmationTag,
     ) -> Result<(), Self::Error> {
         let mut values = self.values.write().unwrap();
-        let mut key = b"ConfirmationTag".to_vec();
+        let mut key = CONFIRMATION_TAG_LABEL.to_vec();
         key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
         key.extend_from_slice(&u16::to_be_bytes(CURRENT_VERSION));
         let value = serde_json::to_vec(&confirmation_tag).unwrap();
@@ -269,36 +300,29 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         &self,
         group_id: &GroupId,
     ) -> Result<Vec<ProposalRef>, Self::Error> {
-        let values = self.values.read().unwrap();
-
-        let mut key = b"ProposalRef".to_vec();
-        key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
-        key.extend_from_slice(&u16::to_be_bytes(CURRENT_VERSION));
-
-        // XXX: This is wrong.
-        let value = values.get(&key).unwrap();
-        let value = serde_json::from_slice(value).unwrap();
-
-        Ok(vec![value])
+        self.read_list(PROPOSAL_QUEUE_REFS_LABEL, &serde_json::to_vec(group_id)?)
     }
 
     fn queued_proposals<
         GroupId: traits::GroupId<CURRENT_VERSION>,
+        ProposalRef: traits::ProposalRef<CURRENT_VERSION>,
         QueuedProposal: traits::QueuedProposal<CURRENT_VERSION>,
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Vec<QueuedProposal>, Self::Error> {
-        let values = self.values.read().unwrap();
+    ) -> Result<Vec<(ProposalRef, QueuedProposal)>, Self::Error> {
+        let refs: Vec<ProposalRef> =
+            self.read_list(PROPOSAL_QUEUE_REFS_LABEL, &serde_json::to_vec(group_id)?)?;
 
-        let mut key = QUEUED_PROPOSAL_LABEL.to_vec();
-        key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
-        key.extend_from_slice(&u16::to_be_bytes(CURRENT_VERSION));
+        refs.into_iter()
+            .map(|proposal_ref| -> Result<_, _> {
+                let key = (group_id, &proposal_ref);
+                let key = serde_json::to_vec(&key)?;
 
-        let value = values.get(&key).unwrap();
-        let value = serde_json::from_slice(value).unwrap();
-
-        Ok(vec![value])
+                let proposal = self.read(QUEUED_PROPOSAL_LABEL, &key)?.unwrap();
+                Ok((proposal_ref, proposal))
+            })
+            .collect::<Result<Vec<_>, _>>()
     }
 
     fn treesync<
@@ -330,7 +354,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     ) -> Result<Option<GroupContext>, Self::Error> {
         let values = self.values.read().unwrap();
 
-        let mut key = b"GroupContext".to_vec();
+        let mut key = GROUP_CONTEXT_LABEL.to_vec();
         key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
         key.extend_from_slice(&u16::to_be_bytes(CURRENT_VERSION));
 
@@ -349,7 +373,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     ) -> Result<Option<InterimTranscriptHash>, Self::Error> {
         let values = self.values.read().unwrap();
 
-        let mut key = b"InterimTranscriptHash".to_vec();
+        let mut key = INTERIM_TRANSCRIPT_HASH_LABEL.to_vec();
         key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
         key.extend_from_slice(&u16::to_be_bytes(CURRENT_VERSION));
 
@@ -368,7 +392,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     ) -> Result<Option<ConfirmationTag>, Self::Error> {
         let values = self.values.read().unwrap();
 
-        let mut key = b"ConfirmationTag".to_vec();
+        let mut key = CONFIRMATION_TAG_LABEL.to_vec();
         key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
         key.extend_from_slice(&u16::to_be_bytes(CURRENT_VERSION));
 
@@ -408,7 +432,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         let key = serde_json::to_vec(&hash_ref).unwrap();
         let value = serde_json::to_vec(&key_package).unwrap();
 
-        self.write::<CURRENT_VERSION>(KEY_PACKAGE_LABEL, &key, &value)
+        self.write::<CURRENT_VERSION>(KEY_PACKAGE_LABEL, &key, value)
             .unwrap();
 
         Ok(())
@@ -425,7 +449,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         self.write::<CURRENT_VERSION>(
             PSK_LABEL,
             &serde_json::to_vec(&psk_id).unwrap(),
-            &serde_json::to_vec(&psk).unwrap(),
+            serde_json::to_vec(&psk).unwrap(),
         )
     }
 
@@ -440,7 +464,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         self.write::<CURRENT_VERSION>(
             ENCRYPTION_KEY_PAIR_LABEL,
             &serde_json::to_vec(public_key).unwrap(),
-            &serde_json::to_vec(key_pair).unwrap(),
+            serde_json::to_vec(key_pair).unwrap(),
         )
     }
 
@@ -507,14 +531,14 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         &self,
         hash_ref: &KeyPackageRef,
     ) -> Result<(), Self::Error> {
-        self.delete::<CURRENT_VERSION>(KEY_PACKAGE_LABEL, &serde_json::to_vec(&hash_ref).unwrap())
+        self.delete::<CURRENT_VERSION>(KEY_PACKAGE_LABEL, &serde_json::to_vec(&hash_ref)?)
     }
 
     fn delete_psk<PskKey: traits::PskId<CURRENT_VERSION>>(
         &self,
         psk_id: &PskKey,
     ) -> Result<(), Self::Error> {
-        self.delete::<CURRENT_VERSION>(PSK_LABEL, &serde_json::to_vec(&psk_id).unwrap())
+        self.delete::<CURRENT_VERSION>(PSK_LABEL, &serde_json::to_vec(&psk_id)?)
     }
 
     fn group_state<
@@ -522,9 +546,9 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         GroupId: traits::GroupId<CURRENT_VERSION>,
     >(
         &self,
-        _group_id: &GroupId,
+        group_id: &GroupId,
     ) -> Result<Option<GroupState>, Self::Error> {
-        todo!()
+        self.read(GROUP_STATE_LABEL, &serde_json::to_vec(&group_id)?)
     }
 
     fn write_group_state<
@@ -538,15 +562,15 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         self.write::<CURRENT_VERSION>(
             GROUP_STATE_LABEL,
             &serde_json::to_vec(group_id)?,
-            &serde_json::to_vec(group_state)?,
+            serde_json::to_vec(group_state)?,
         )
     }
 
     fn delete_group_state<GroupId: traits::GroupId<CURRENT_VERSION>>(
         &self,
-        _group_id: &GroupId,
+        group_id: &GroupId,
     ) -> Result<(), Self::Error> {
-        todo!()
+        self.delete::<CURRENT_VERSION>(GROUP_STATE_LABEL, &serde_json::to_vec(group_id)?)
     }
 
     fn message_secrets<
@@ -554,9 +578,9 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         MessageSecrets: traits::MessageSecrets<CURRENT_VERSION>,
     >(
         &self,
-        _group_id: &GroupId,
+        group_id: &GroupId,
     ) -> Result<Option<MessageSecrets>, Self::Error> {
-        todo!()
+        self.read(MESSAGE_SECRETS_LABEL, &serde_json::to_vec(group_id)?)
     }
 
     fn write_message_secrets<
@@ -570,15 +594,15 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         self.write::<CURRENT_VERSION>(
             MESSAGE_SECRETS_LABEL,
             &serde_json::to_vec(group_id)?,
-            &serde_json::to_vec(message_secrets)?,
+            serde_json::to_vec(message_secrets)?,
         )
     }
 
     fn delete_message_secrets<GroupId: traits::GroupId<CURRENT_VERSION>>(
         &self,
-        _group_id: &GroupId,
+        group_id: &GroupId,
     ) -> Result<(), Self::Error> {
-        todo!()
+        self.delete::<CURRENT_VERSION>(MESSAGE_SECRETS_LABEL, &serde_json::to_vec(group_id)?)
     }
 
     fn resumption_psk_store<
@@ -586,9 +610,9 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         ResumptionPskStore: traits::ResumptionPskStore<CURRENT_VERSION>,
     >(
         &self,
-        _group_id: &GroupId,
+        group_id: &GroupId,
     ) -> Result<Option<ResumptionPskStore>, Self::Error> {
-        todo!()
+        self.read(RESUMPTION_PSK_STORE_LABEL, &serde_json::to_vec(group_id)?)
     }
 
     fn write_resumption_psk_store<
@@ -602,15 +626,15 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         self.write::<CURRENT_VERSION>(
             RESUMPTION_PSK_STORE_LABEL,
             &serde_json::to_vec(group_id)?,
-            &serde_json::to_vec(resumption_psk_store)?,
+            serde_json::to_vec(resumption_psk_store)?,
         )
     }
 
     fn delete_all_resumption_psk_secrets<GroupId: traits::GroupId<CURRENT_VERSION>>(
         &self,
-        _group_id: &GroupId,
+        group_id: &GroupId,
     ) -> Result<(), Self::Error> {
-        todo!()
+        self.delete::<CURRENT_VERSION>(RESUMPTION_PSK_STORE_LABEL, &serde_json::to_vec(group_id)?)
     }
 
     fn own_leaf_index<
@@ -618,9 +642,9 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         LeafNodeIndex: traits::LeafNodeIndex<CURRENT_VERSION>,
     >(
         &self,
-        _group_id: &GroupId,
+        group_id: &GroupId,
     ) -> Result<Option<LeafNodeIndex>, Self::Error> {
-        todo!()
+        self.read(OWN_LEAF_NODE_INDEX_LABEL, &serde_json::to_vec(group_id)?)
     }
 
     fn write_own_leaf_index<
@@ -632,24 +656,24 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         own_leaf_index: &LeafNodeIndex,
     ) -> Result<(), Self::Error> {
         self.write::<CURRENT_VERSION>(
-            OWN_LEAF_NODE_LABEL,
+            OWN_LEAF_NODE_INDEX_LABEL,
             &serde_json::to_vec(group_id)?,
-            &serde_json::to_vec(own_leaf_index)?,
+            serde_json::to_vec(own_leaf_index)?,
         )
     }
 
     fn delete_own_leaf_index<GroupId: traits::GroupId<CURRENT_VERSION>>(
         &self,
-        _group_id: &GroupId,
+        group_id: &GroupId,
     ) -> Result<(), Self::Error> {
-        todo!()
+        self.delete::<CURRENT_VERSION>(OWN_LEAF_NODE_INDEX_LABEL, &serde_json::to_vec(group_id)?)
     }
 
     fn use_ratchet_tree_extension<GroupId: traits::GroupId<CURRENT_VERSION>>(
         &self,
-        _group_id: &GroupId,
+        group_id: &GroupId,
     ) -> Result<Option<bool>, Self::Error> {
-        todo!()
+        self.read::<CURRENT_VERSION, bool>(USE_RATCHET_TREE_LABEL, &serde_json::to_vec(group_id)?)
     }
 
     fn set_use_ratchet_tree_extension<GroupId: traits::GroupId<CURRENT_VERSION>>(
@@ -660,15 +684,15 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         self.write::<CURRENT_VERSION>(
             USE_RATCHET_TREE_LABEL,
             &serde_json::to_vec(group_id)?,
-            &serde_json::to_vec(&value)?,
+            serde_json::to_vec(&value)?,
         )
     }
 
     fn delete_use_ratchet_tree_extension<GroupId: traits::GroupId<CURRENT_VERSION>>(
         &self,
-        _group_id: &GroupId,
+        group_id: &GroupId,
     ) -> Result<(), Self::Error> {
-        todo!()
+        self.delete::<CURRENT_VERSION>(USE_RATCHET_TREE_LABEL, &serde_json::to_vec(group_id)?)
     }
 
     fn group_epoch_secrets<
@@ -676,9 +700,9 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         GroupEpochSecrets: traits::GroupEpochSecrets<CURRENT_VERSION>,
     >(
         &self,
-        _group_id: &GroupId,
+        group_id: &GroupId,
     ) -> Result<Option<GroupEpochSecrets>, Self::Error> {
-        todo!()
+        self.read(EPOCH_SECRETS_LABEL, &serde_json::to_vec(group_id)?)
     }
 
     fn write_group_epoch_secrets<
@@ -692,15 +716,15 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         self.write::<CURRENT_VERSION>(
             EPOCH_SECRETS_LABEL,
             &serde_json::to_vec(group_id)?,
-            &serde_json::to_vec(group_epoch_secrets)?,
+            serde_json::to_vec(group_epoch_secrets)?,
         )
     }
 
     fn delete_group_epoch_secrets<GroupId: traits::GroupId<CURRENT_VERSION>>(
         &self,
-        _group_id: &GroupId,
+        group_id: &GroupId,
     ) -> Result<(), Self::Error> {
-        todo!()
+        self.delete::<CURRENT_VERSION>(EPOCH_SECRETS_LABEL, &serde_json::to_vec(group_id)?)
     }
 
     fn write_encryption_epoch_key_pairs<
@@ -723,7 +747,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
             log::debug!("  value: {}", hex::encode(&value));
         }
 
-        self.write::<CURRENT_VERSION>(EPOCH_KEY_PAIRS_LABEL, &key, &value)
+        self.write::<CURRENT_VERSION>(EPOCH_KEY_PAIRS_LABEL, &key, value)
     }
 
     fn encryption_epoch_key_pairs<
@@ -787,6 +811,78 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
         values.remove(&key);
 
         Ok(())
+    }
+
+    fn mls_group_join_config<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        MlsGroupJoinConfig: traits::MlsGroupJoinConfig<CURRENT_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Option<MlsGroupJoinConfig>, Self::Error> {
+        self.read(JOIN_CONFIG_LABEL, &serde_json::to_vec(group_id).unwrap())
+    }
+
+    fn write_mls_join_config<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        MlsGroupJoinConfig: traits::MlsGroupJoinConfig<CURRENT_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        config: &MlsGroupJoinConfig,
+    ) -> Result<(), Self::Error> {
+        let key = serde_json::to_vec(group_id).unwrap();
+        let value = serde_json::to_vec(config).unwrap();
+
+        self.write::<CURRENT_VERSION>(JOIN_CONFIG_LABEL, &key, value)
+    }
+
+    fn own_leaf_nodes<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        LeafNode: traits::LeafNode<CURRENT_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Vec<LeafNode>, Self::Error> {
+        self.read_list(OWN_LEAF_NODES_LABEL, &serde_json::to_vec(group_id).unwrap())
+    }
+
+    fn append_own_leaf_node<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        LeafNode: traits::LeafNode<CURRENT_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        leaf_node: &LeafNode,
+    ) -> Result<(), Self::Error> {
+        let key = serde_json::to_vec(group_id)?;
+        let value = serde_json::to_vec(leaf_node)?;
+        self.append::<CURRENT_VERSION>(OWN_LEAF_NODES_LABEL, &key, value)
+    }
+
+    fn clear_own_leaf_nodes<GroupId: traits::GroupId<CURRENT_VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        let key = serde_json::to_vec(group_id)?;
+        self.delete::<CURRENT_VERSION>(OWN_LEAF_NODES_LABEL, &key)
+    }
+
+    fn aad<GroupId: traits::GroupId<CURRENT_VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Vec<u8>, Self::Error> {
+        let key = serde_json::to_vec(group_id)?;
+        self.read_list(AAD_LABEL, &key)
+    }
+
+    fn write_aad<GroupId: traits::GroupId<CURRENT_VERSION>>(
+        &self,
+        group_id: &GroupId,
+        aad: &[u8],
+    ) -> Result<(), Self::Error> {
+        let key = serde_json::to_vec(group_id)?;
+        self.write::<CURRENT_VERSION>(AAD_LABEL, &key, aad.to_vec())
     }
 }
 

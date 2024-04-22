@@ -15,7 +15,7 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         self.write::<V_TEST>(
             ENCRYPTION_KEY_PAIR_LABEL,
             &serde_json::to_vec(&public_key).unwrap(),
-            &serde_json::to_vec(&key_pair).unwrap(),
+            serde_json::to_vec(&key_pair).unwrap(),
         )
     }
 
@@ -69,7 +69,7 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         println!("setting key package at {key:?} for version {V_TEST}");
         let value = serde_json::to_vec(&key_package).unwrap();
 
-        self.write::<V_TEST>(KEY_PACKAGE_LABEL, &key, &value)
+        self.write::<V_TEST>(KEY_PACKAGE_LABEL, &key, value)
             .unwrap();
 
         self.key_package::<HashReference, KeyPackage>(hash_ref)
@@ -172,16 +172,6 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         &self,
         _group_id: &GroupId,
     ) -> Result<Vec<ProposalRef>, Self::Error> {
-        todo!()
-    }
-
-    fn queued_proposals<
-        GroupId: traits::GroupId<V_TEST>,
-        QueuedProposal: traits::QueuedProposal<V_TEST>,
-    >(
-        &self,
-        _group_id: &GroupId,
-    ) -> Result<Vec<QueuedProposal>, Self::Error> {
         todo!()
     }
 
@@ -452,6 +442,78 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         &self,
         _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    fn mls_group_join_config<
+        GroupId: traits::GroupId<V_TEST>,
+        MlsGroupJoinConfig: traits::MlsGroupJoinConfig<V_TEST>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Option<MlsGroupJoinConfig>, Self::Error> {
+        todo!()
+    }
+
+    fn write_mls_join_config<
+        GroupId: traits::GroupId<V_TEST>,
+        MlsGroupJoinConfig: traits::MlsGroupJoinConfig<V_TEST>,
+    >(
+        &self,
+        group_id: &GroupId,
+        config: &MlsGroupJoinConfig,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    fn own_leaf_nodes<GroupId: traits::GroupId<V_TEST>, LeafNode: traits::LeafNode<V_TEST>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Vec<LeafNode>, Self::Error> {
+        todo!()
+    }
+
+    fn append_own_leaf_node<
+        GroupId: traits::GroupId<V_TEST>,
+        LeafNode: traits::LeafNode<V_TEST>,
+    >(
+        &self,
+        group_id: &GroupId,
+        leaf_node: &LeafNode,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    fn clear_own_leaf_nodes<GroupId: traits::GroupId<V_TEST>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    fn aad<GroupId: traits::GroupId<V_TEST>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Vec<u8>, Self::Error> {
+        todo!()
+    }
+
+    fn write_aad<GroupId: traits::GroupId<V_TEST>>(
+        &self,
+        group_id: &GroupId,
+        aad: &[u8],
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    fn queued_proposals<
+        GroupId: traits::GroupId<V_TEST>,
+        ProposalRef: traits::ProposalRef<V_TEST>,
+        QueuedProposal: traits::QueuedProposal<V_TEST>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Vec<(ProposalRef, QueuedProposal)>, Self::Error> {
         todo!()
     }
 }
