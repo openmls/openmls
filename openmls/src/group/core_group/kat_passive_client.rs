@@ -303,7 +303,8 @@ impl PassiveClient {
                 self.group
                     .as_mut()
                     .unwrap()
-                    .store_pending_proposal(*queued_proposal);
+                    .store_pending_proposal(self.provider.storage(), *queued_proposal)
+                    .unwrap();
             }
             ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
                 self.group

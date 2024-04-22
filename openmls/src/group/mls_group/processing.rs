@@ -3,7 +3,7 @@
 use std::mem;
 
 use core_group::staged_commit::StagedCommit;
-use openmls_traits::signatures::Signer;
+use openmls_traits::{signatures::Signer, storage::StorageProvider as _};
 
 use crate::storage::RefinedProvider;
 use crate::{
@@ -49,9 +49,6 @@ impl MlsGroup {
             return Err(ProcessMessageError::IncompatibleWireFormat);
         }
 
-        // Since the state of the group might be changed, arm the state flag
-        self.flag_state_change();
-
         // Parse the message
         let sender_ratchet_configuration =
             self.configuration().sender_ratchet_configuration().clone();
@@ -65,12 +62,16 @@ impl MlsGroup {
     }
 
     /// Stores a standalone proposal in the internal [ProposalStore]
-    pub fn store_pending_proposal(&mut self, proposal: QueuedProposal) {
+    pub fn store_pending_proposal<Storage: StorageProvider>(
+        &mut self,
+        storage: &Storage,
+        proposal: QueuedProposal,
+    ) -> Result<(), Storage::Error> {
+        storage.queue_proposal(self.group_id(), &proposal.proposal_reference(), &proposal)?;
         // Store the proposal in in the internal ProposalStore
         self.proposal_store.add(proposal);
 
-        // Since the state of the group might be changed, arm the state flag
-        self.flag_state_change();
+        Ok(())
     }
 
     /// Creates a Commit message that covers the pending proposals that are
@@ -111,9 +112,10 @@ impl MlsGroup {
         self.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
             create_commit_result.staged_commit,
         )));
-
-        // Since the state of the group might be changed, arm the state flag
-        self.flag_state_change();
+        provider
+            .storage()
+            .write_group_state(self.group_id(), &self.group_state)
+            .map_err(CommitToPendingProposalsError::StorageError)?;
 
         Ok((
             mls_message,
@@ -135,9 +137,10 @@ impl MlsGroup {
         if staged_commit.self_removed() {
             self.group_state = MlsGroupState::Inactive;
         }
-
-        // Since the state of the group might be changed, arm the state flag
-        self.flag_state_change();
+        provider
+            .storage()
+            .write_group_state(self.group_id(), &self.group_state)
+            .map_err(MergeCommitError::StorageError)?;
 
         // Merge staged commit
         self.group
@@ -151,9 +154,14 @@ impl MlsGroup {
 
         // Delete own KeyPackageBundles
         self.own_leaf_nodes.clear();
+        provider
+            .storage()
+            .clear_own_leaf_nodes(self.group_id())
+            .map_err(MergeCommitError::StorageError)?;
 
         // Delete a potential pending commit
-        self.clear_pending_commit();
+        self.clear_pending_commit(provider.storage())
+            .map_err(MergeCommitError::StorageError)?;
 
         Ok(())
     }

@@ -6,11 +6,12 @@ use openmls_traits::storage::{traits, Entity, Key, CURRENT_VERSION};
 use serde::Serialize;
 
 use crate::binary_tree::LeafNodeIndex;
+use crate::group::{MlsGroupJoinConfig, MlsGroupState};
 use crate::{
     ciphersuite::hash_ref::ProposalRef,
     group::{GroupContext, GroupId, InterimTranscriptHash, QueuedProposal},
     messages::ConfirmationTag,
-    treesync::TreeSync,
+    treesync::{LeafNode, TreeSync},
 };
 use crate::{
     group::{past_secrets::MessageSecretsStore, GroupEpoch},
@@ -65,6 +66,15 @@ impl traits::MessageSecrets<CURRENT_VERSION> for MessageSecretsStore {}
 
 impl Entity<CURRENT_VERSION> for ResumptionPskStore {}
 impl traits::ResumptionPskStore<CURRENT_VERSION> for ResumptionPskStore {}
+
+impl Entity<CURRENT_VERSION> for MlsGroupJoinConfig {}
+impl traits::MlsGroupJoinConfig<CURRENT_VERSION> for MlsGroupJoinConfig {}
+
+impl Entity<CURRENT_VERSION> for MlsGroupState {}
+impl traits::GroupState<CURRENT_VERSION> for MlsGroupState {}
+
+impl Entity<CURRENT_VERSION> for LeafNode {}
+impl traits::LeafNode<CURRENT_VERSION> for LeafNode {}
 
 // Crypto
 

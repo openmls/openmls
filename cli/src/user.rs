@@ -573,7 +573,9 @@ impl User {
             self.identity.borrow().credential_with_key.clone(),
         )
         .expect("Failed to create MlsGroup");
-        mls_group.set_aad(group_aad.as_slice());
+        mls_group
+            .set_aad(self.provider.storage(), group_aad.as_slice())
+            .expect("Failed to write the AAD for the new group to storage");
 
         let group = Group {
             group_name: name.clone(),
@@ -725,7 +727,9 @@ impl User {
         let group_name = String::from_utf8(group_id.clone()).unwrap();
         let group_aad = group_name.clone() + " AAD";
 
-        mls_group.set_aad(group_aad.as_bytes());
+        mls_group
+            .set_aad(self.provider.storage(), group_aad.as_bytes())
+            .expect("Failed to update the AAD in the storage");
 
         let group = Group {
             group_name: group_name.clone(),

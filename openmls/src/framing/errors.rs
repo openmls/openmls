@@ -35,7 +35,7 @@ pub enum MessageDecryptionError {
 
 /// Message encryption error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub(crate) enum MessageEncryptionError {
+pub(crate) enum MessageEncryptionError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -45,6 +45,9 @@ pub(crate) enum MessageEncryptionError {
     /// See [`SecretTreeError`] for more details.
     #[error(transparent)]
     SecretTreeError(#[from] SecretTreeError),
+    /// Error reading from or writing to storage
+    #[error("Error reading from or writing to storage: {0}")]
+    StorageError(StorageError),
 }
 
 /// MlsMessage error

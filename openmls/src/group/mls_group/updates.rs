@@ -1,5 +1,5 @@
 use core_group::create_commit_params::CreateCommitParams;
-use openmls_traits::signatures::Signer;
+use openmls_traits::{signatures::Signer, storage::StorageProvider as _};
 
 use crate::{messages::group_info::GroupInfo, storage::RefinedProvider, treesync::LeafNode};
 
@@ -51,8 +51,13 @@ impl MlsGroup {
             create_commit_result.staged_commit,
         )));
 
-        // Since the state of the group might be changed, arm the state flag
-        self.flag_state_change();
+        provider
+            .storage()
+            .write_group_state(self.group_id(), &self.group_state)
+            .map_err(SelfUpdateError::StorageError)?;
+        self.group
+            .store(provider.storage())
+            .map_err(SelfUpdateError::StorageError)?;
 
         Ok((
             mls_message,
@@ -112,6 +117,10 @@ impl MlsGroup {
             signer,
         )?;
 
+        provider
+            .storage()
+            .append_own_leaf_node(self.group_id(), &own_leaf)
+            .map_err(ProposeSelfUpdateError::KeyStoreError)?;
         self.own_leaf_nodes.push(own_leaf);
 
         Ok(update_proposal)
@@ -131,12 +140,13 @@ impl MlsGroup {
             update_proposal.clone(),
         )?;
         let proposal_ref = proposal.proposal_reference();
+        provider
+            .storage()
+            .queue_proposal(self.group_id(), &proposal_ref, &proposal)
+            .map_err(ProposeSelfUpdateError::KeyStoreError)?;
         self.proposal_store.add(proposal);
 
         let mls_message = self.content_to_mls_message(update_proposal, provider)?;
-
-        // Since the state of the group might be changed, arm the state flag
-        self.flag_state_change();
 
         Ok((mls_message, proposal_ref))
     }
@@ -155,12 +165,13 @@ impl MlsGroup {
             update_proposal.clone(),
         )?;
         let proposal_ref = proposal.proposal_reference();
+        provider
+            .storage()
+            .queue_proposal(self.group_id(), &proposal_ref, &proposal)
+            .map_err(ProposeSelfUpdateError::KeyStoreError)?;
         self.proposal_store.add(proposal);
 
         let mls_message = self.content_to_mls_message(update_proposal, provider)?;
-
-        // Since the state of the group might be changed, arm the state flag
-        self.flag_state_change();
 
         Ok((mls_message, proposal_ref))
     }

@@ -245,7 +245,9 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage
                     &alice_credential.credential
                 );
                 // Store proposal
-                alice_group.store_pending_proposal(*staged_proposal.clone());
+                alice_group
+                    .store_pending_proposal(provider.storage(), *staged_proposal.clone())
+                    .unwrap();
             } else {
                 unreachable!("Expected a Proposal.");
             }
@@ -256,7 +258,9 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage
                 Sender::Member(member) if *member == alice_group.own_leaf_index()
             ));
 
-            bob_group.store_pending_proposal(*staged_proposal);
+            bob_group
+                .store_pending_proposal(provider.storage(), *staged_proposal)
+                .unwrap();
         } else {
             unreachable!("Expected a QueuedProposal.");
         }
@@ -608,7 +612,9 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage
                 // Check that Charlie was removed
                 assert_eq!(remove_proposal.removed(), members[1].index);
                 // Store proposal
-                charlie_group.store_pending_proposal(*staged_proposal.clone());
+                charlie_group
+                    .store_pending_proposal(provider.storage(), *staged_proposal.clone())
+                    .unwrap();
             } else {
                 unreachable!("Expected a Proposal.");
             }
@@ -657,7 +663,9 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage
                 Sender::Member(member) if *member == members[0].index
             ));
             // Store proposal
-            charlie_group.store_pending_proposal(*staged_proposal);
+            charlie_group
+                .store_pending_proposal(provider.storage(), *staged_proposal)
+                .unwrap();
         } else {
             unreachable!("Expected a QueuedProposal.");
         }
@@ -792,7 +800,9 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage
             alice_processed_message.into_content()
         {
             // Store proposal
-            alice_group.store_pending_proposal(*staged_proposal);
+            alice_group
+                .store_pending_proposal(provider.storage(), *staged_proposal)
+                .unwrap();
         } else {
             unreachable!("Expected a QueuedProposal.");
         }

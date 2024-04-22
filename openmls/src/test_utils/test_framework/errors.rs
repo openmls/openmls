@@ -70,10 +70,10 @@ pub enum ClientError {
     RemoveMembersError(#[from] RemoveMembersError<MemoryKeyStoreError>),
     /// See [`ProposeAddMemberError`] for more details.
     #[error(transparent)]
-    ProposeAddMemberError(#[from] ProposeAddMemberError),
+    ProposeAddMemberError(#[from] ProposeAddMemberError<MemoryKeyStoreError>),
     /// See [`ProposeRemoveMemberError`] for more details.
     #[error(transparent)]
-    ProposeRemoveMemberError(#[from] ProposeRemoveMemberError),
+    ProposeRemoveMemberError(#[from] ProposeRemoveMemberError<MemoryKeyStoreError>),
     /// See [`ExportSecretError`] for more details.
     #[error(transparent)]
     ExportSecretError(#[from] ExportSecretError),

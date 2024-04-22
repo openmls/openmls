@@ -144,11 +144,14 @@ pub enum AddMembersError<StorageError> {
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
+    /// Error writing to storage.
+    #[error("Error writing to storage")]
+    StorageError(StorageError),
 }
 
 /// Propose add members error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum ProposeAddMemberError {
+pub enum ProposeAddMemberError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -161,11 +164,14 @@ pub enum ProposeAddMemberError {
     /// See [`LeafNodeValidationError`] for more details.
     #[error(transparent)]
     LeafNodeValidation(#[from] LeafNodeValidationError),
+    /// Error writing to storage
+    #[error("Error writing to storage: {0}")]
+    StorageError(StorageError),
 }
 
 /// Propose remove members error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum ProposeRemoveMemberError {
+pub enum ProposeRemoveMemberError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -175,11 +181,14 @@ pub enum ProposeRemoveMemberError {
     /// The member that should be removed can not be found.
     #[error("The member that should be removed can not be found.")]
     UnknownMember,
+    /// Error writing to storage
+    #[error("Error writing to storage: {0}")]
+    StorageError(StorageError),
 }
 
 /// Remove members error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum RemoveMembersError<KeyStoreError> {
+pub enum RemoveMembersError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -188,13 +197,16 @@ pub enum RemoveMembersError<KeyStoreError> {
     EmptyInput(#[from] EmptyInputError),
     /// See [`CreateCommitError`] for more details.
     #[error(transparent)]
-    CreateCommitError(#[from] CreateCommitError<KeyStoreError>),
+    CreateCommitError(#[from] CreateCommitError<StorageError>),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
     /// The member that should be removed can not be found.
     #[error("The member that should be removed can not be found.")]
     UnknownMember,
+    /// Error writing to storage
+    #[error("Error writing to storage: {0}")]
+    StorageError(StorageError),
 }
 
 /// Leave group error
@@ -210,19 +222,19 @@ pub enum LeaveGroupError {
 
 /// Self update error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum SelfUpdateError<KeyStoreError> {
+pub enum SelfUpdateError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
     /// See [`CreateCommitError`] for more details.
     #[error(transparent)]
-    CreateCommitError(#[from] CreateCommitError<KeyStoreError>),
+    CreateCommitError(#[from] CreateCommitError<StorageError>),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
-    /// Error accessing the key store.
-    #[error("Error accessing the key store.")]
-    KeyStoreError,
+    /// Error accessing the storage.
+    #[error("Error accessing the storage.")]
+    StorageError(StorageError),
 }
 
 /// Propose self update error
@@ -255,6 +267,9 @@ pub enum CommitToPendingProposalsError<StorageError> {
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
+    /// Error writing to storage
+    #[error("Error writing to storage: {0}")]
+    StorageError(StorageError),
 }
 
 /// Errors that can happen when exporting a group info object.
@@ -304,7 +319,7 @@ pub enum ProposalError<StorageError> {
     LibraryError(#[from] LibraryError),
     /// See [`ProposeAddMemberError`] for more details.
     #[error(transparent)]
-    ProposeAddMemberError(#[from] ProposeAddMemberError),
+    ProposeAddMemberError(#[from] ProposeAddMemberError<StorageError>),
     /// See [`CreateAddProposalError`] for more details.
     #[error(transparent)]
     CreateAddProposalError(#[from] CreateAddProposalError),
@@ -313,7 +328,7 @@ pub enum ProposalError<StorageError> {
     ProposeSelfUpdateError(#[from] ProposeSelfUpdateError<StorageError>),
     /// See [`ProposeRemoveMemberError`] for more details.
     #[error(transparent)]
-    ProposeRemoveMemberError(#[from] ProposeRemoveMemberError),
+    ProposeRemoveMemberError(#[from] ProposeRemoveMemberError<StorageError>),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),

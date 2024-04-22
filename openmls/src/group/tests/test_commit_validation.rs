@@ -164,7 +164,9 @@ fn test_valsem200(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
 
     // We have to clear the pending proposals so Alice doesn't try to commit to
     // her own remove.
-    alice_group.clear_pending_proposals();
+    alice_group
+        .clear_pending_proposals(provider.storage())
+        .unwrap();
 
     // Now let's stick it in the commit.
     let serialized_message = alice_group
@@ -340,9 +342,11 @@ fn test_valsem201(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
 
     for (proposal, is_path_required) in cases {
         // create a commit containing the proposals
-        proposal
-            .into_iter()
-            .for_each(|p| alice_group.store_pending_proposal(p));
+        proposal.into_iter().for_each(|p| {
+            alice_group
+                .store_pending_proposal(provider.storage(), p)
+                .unwrap()
+        });
 
         let params = CreateCommitParams::builder()
             .framing_parameters(alice_group.framing_parameters())
@@ -394,9 +398,13 @@ fn test_valsem201(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
         assert!(process_message_result.is_ok(), "{process_message_result:?}");
 
         // cleanup & restore for next iteration
-        alice_group.clear_pending_proposals();
-        alice_group.clear_pending_commit();
-        bob_group.clear_pending_commit();
+        alice_group
+            .clear_pending_proposals(provider.storage())
+            .unwrap();
+        alice_group
+            .clear_pending_commit(provider.storage())
+            .unwrap();
+        bob_group.clear_pending_commit(provider.storage()).unwrap();
     }
 }
 
@@ -806,7 +814,9 @@ fn test_partial_proposal_commit(
         .process_message(provider, proposal_1.try_into_protocol_message().unwrap())
         .unwrap();
     match proposal_1.into_content() {
-        ProcessedMessageContent::ProposalMessage(p) => bob_group.store_pending_proposal(*p),
+        ProcessedMessageContent::ProposalMessage(p) => bob_group
+            .store_pending_proposal(provider.storage(), *p)
+            .unwrap(),
         _ => unreachable!(),
     }
 
@@ -819,7 +829,9 @@ fn test_partial_proposal_commit(
         .process_message(provider, proposal_2.try_into_protocol_message().unwrap())
         .unwrap();
     match proposal_2.into_content() {
-        ProcessedMessageContent::ProposalMessage(p) => bob_group.store_pending_proposal(*p),
+        ProcessedMessageContent::ProposalMessage(p) => bob_group
+            .store_pending_proposal(provider.storage(), *p)
+            .unwrap(),
         _ => unreachable!(),
     }
 

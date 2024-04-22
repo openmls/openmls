@@ -152,7 +152,7 @@ impl Client {
         } else {
             if message.content_type() == ContentType::Commit {
                 // Clear any potential pending commits.
-                group_state.clear_pending_commit();
+                group_state.clear_pending_commit(self.provider.storage())?;
             }
             // Process the message.
             let processed_message = group_state.process_message(&self.provider, message.clone())?;
@@ -160,10 +160,12 @@ impl Client {
             match processed_message.into_content() {
                 ProcessedMessageContent::ApplicationMessage(_) => {}
                 ProcessedMessageContent::ProposalMessage(staged_proposal) => {
-                    group_state.store_pending_proposal(*staged_proposal);
+                    group_state
+                        .store_pending_proposal(self.provider.storage(), *staged_proposal)?;
                 }
                 ProcessedMessageContent::ExternalJoinProposalMessage(staged_proposal) => {
-                    group_state.store_pending_proposal(*staged_proposal);
+                    group_state
+                        .store_pending_proposal(self.provider.storage(), *staged_proposal)?;
                 }
                 ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
                     for credential in staged_commit.credentials_to_verify() {

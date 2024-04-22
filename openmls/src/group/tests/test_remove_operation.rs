@@ -145,7 +145,9 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite) {
 
                     match processed_message.into_content() {
                         ProcessedMessageContent::ProposalMessage(proposal) => {
-                            group.store_pending_proposal(*proposal);
+                            group
+                                .store_pending_proposal(charlie_provider.storage(), *proposal)
+                                .unwrap();
                         }
                         _ => unreachable!(),
                     }

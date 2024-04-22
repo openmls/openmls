@@ -33,7 +33,9 @@ mod test_past_secrets;
 mod test_proposals;
 
 use log::{debug, trace};
-use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer, types::Ciphersuite};
+use openmls_traits::{
+    crypto::OpenMlsCrypto, signatures::Signer, storage::StorageProvider as _, types::Ciphersuite,
+};
 use serde::{Deserialize, Serialize};
 use tls_codec::Serialize as TlsSerializeTrait;
 
@@ -486,14 +488,14 @@ impl CoreGroup {
     }
 
     // Create application message
-    pub(crate) fn create_application_message(
+    pub(crate) fn create_application_message<Provider: RefinedProvider>(
         &mut self,
         aad: &[u8],
         msg: &[u8],
         padding_size: usize,
-        provider: &impl OpenMlsProvider,
+        provider: &Provider,
         signer: &impl Signer,
-    ) -> Result<PrivateMessage, MessageEncryptionError> {
+    ) -> Result<PrivateMessage, MessageEncryptionError<Provider::StorageError>> {
         let public_message = AuthenticatedContent::new_application(
             self.own_leaf_index(),
             aad,
@@ -505,19 +507,26 @@ impl CoreGroup {
     }
 
     // Encrypt an PublicMessage into an PrivateMessage
-    pub(crate) fn encrypt(
+    pub(crate) fn encrypt<Provider: RefinedProvider>(
         &mut self,
         public_message: AuthenticatedContent,
         padding_size: usize,
-        provider: &impl OpenMlsProvider,
-    ) -> Result<PrivateMessage, MessageEncryptionError> {
-        PrivateMessage::try_from_authenticated_content(
+        provider: &Provider,
+    ) -> Result<PrivateMessage, MessageEncryptionError<Provider::StorageError>> {
+        let msg = PrivateMessage::try_from_authenticated_content(
             &public_message,
             self.ciphersuite(),
             provider,
             self.message_secrets_store.message_secrets_mut(),
             padding_size,
-        )
+        )?;
+
+        provider
+            .storage()
+            .write_message_secrets(self.group_id(), &self.message_secrets_store)
+            .map_err(MessageEncryptionError::StorageError)?;
+
+        Ok(msg)
     }
 
     /// Exporter

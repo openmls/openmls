@@ -236,12 +236,12 @@ impl MlsGroup {
     /// Creates proposals to add members to the group.
     ///
     /// Returns an error if there is a pending commit.
-    pub fn propose_add_member(
+    pub fn propose_add_member<Provider: RefinedProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider,
+        provider: &Provider,
         signer: &impl Signer,
         key_package: &KeyPackage,
-    ) -> Result<(MlsMessageOut, ProposalRef), ProposeAddMemberError> {
+    ) -> Result<(MlsMessageOut, ProposalRef), ProposeAddMemberError<Provider::StorageError>> {
         self.is_operational()?;
 
         let add_proposal = self
@@ -260,12 +260,13 @@ impl MlsGroup {
             add_proposal.clone(),
         )?;
         let proposal_ref = proposal.proposal_reference();
+        provider
+            .storage()
+            .queue_proposal(self.group_id(), &proposal_ref, &proposal)
+            .map_err(ProposeAddMemberError::StorageError)?;
         self.proposal_store.add(proposal);
 
         let mls_message = self.content_to_mls_message(add_proposal, provider)?;
-
-        // Since the state of the group might be changed, arm the state flag
-        self.flag_state_change();
 
         Ok((mls_message, proposal_ref))
     }
@@ -274,12 +275,12 @@ impl MlsGroup {
     /// The `member` has to be the member's leaf index.
     ///
     /// Returns an error if there is a pending commit.
-    pub fn propose_remove_member(
+    pub fn propose_remove_member<Provider: RefinedProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider,
+        provider: &Provider,
         signer: &impl Signer,
         member: LeafNodeIndex,
-    ) -> Result<(MlsMessageOut, ProposalRef), ProposeRemoveMemberError> {
+    ) -> Result<(MlsMessageOut, ProposalRef), ProposeRemoveMemberError<Provider::StorageError>> {
         self.is_operational()?;
 
         let remove_proposal = self
@@ -293,12 +294,13 @@ impl MlsGroup {
             remove_proposal.clone(),
         )?;
         let proposal_ref = proposal.proposal_reference();
+        provider
+            .storage()
+            .queue_proposal(self.group_id(), &proposal_ref, &proposal)
+            .map_err(ProposeRemoveMemberError::StorageError)?;
         self.proposal_store.add(proposal);
 
         let mls_message = self.content_to_mls_message(remove_proposal, provider)?;
-
-        // Since the state of the group might be changed, arm the state flag
-        self.flag_state_change();
 
         Ok((mls_message, proposal_ref))
     }
@@ -307,12 +309,13 @@ impl MlsGroup {
     /// The `member` has to be the member's credential.
     ///
     /// Returns an error if there is a pending commit.
-    pub fn propose_remove_member_by_credential(
+    pub fn propose_remove_member_by_credential<Provider: RefinedProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider,
+        provider: &Provider,
         signer: &impl Signer,
         member: &Credential,
-    ) -> Result<(MlsMessageOut, ProposalRef), ProposeRemoveMemberError> {
+    ) -> Result<(MlsMessageOut, ProposalRef), ProposeRemoveMemberError<Provider::StorageError>>
+    {
         // Find the user for the credential first.
         let member_index = self
             .group
@@ -380,12 +383,13 @@ impl MlsGroup {
         )?;
 
         let proposal_ref = queued_proposal.proposal_reference();
+        provider
+            .storage()
+            .queue_proposal(self.group_id(), &proposal_ref, &queued_proposal)
+            .map_err(ProposalError::StorageError)?;
         self.proposal_store.add(queued_proposal);
 
         let mls_message = self.content_to_mls_message(proposal, provider)?;
-
-        // Since the state of the group might be changed, arm the state flag
-        self.flag_state_change();
 
         Ok((mls_message, proposal_ref))
     }

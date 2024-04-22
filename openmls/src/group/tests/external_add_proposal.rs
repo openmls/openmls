@@ -10,6 +10,7 @@ use crate::{
         external_proposals::*,
         proposals::{AddProposal, Proposal, ProposalType},
     },
+    storage::RefinedProvider,
 };
 
 use openmls_traits::types::Ciphersuite;
@@ -112,9 +113,9 @@ fn validation_test_setup(
 }
 
 #[apply(ciphersuites_and_providers)]
-fn external_add_proposal_should_succeed(
+fn external_add_proposal_should_succeed<Provider: RefinedProvider>(
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &Provider,
 ) {
     for policy in WIRE_FORMAT_POLICIES {
         let ProposalValidationTestSetup {
@@ -141,7 +142,7 @@ fn external_add_proposal_should_succeed(
             charlie_credential.clone(),
         );
 
-        let proposal = JoinProposal::new(
+        let proposal = JoinProposal::new::<Provider::Storage>(
             charlie_kp.key_package().clone(),
             alice_group.group_id().clone(),
             alice_group.epoch(),
@@ -170,7 +171,9 @@ fn external_add_proposal_should_succeed(
                     proposal.proposal(),
                     Proposal::Add(AddProposal { key_package }) if key_package == charlie_kp.key_package()
                 ));
-                alice_group.store_pending_proposal(*proposal)
+                alice_group
+                    .store_pending_proposal(provider.storage(), *proposal)
+                    .unwrap()
             }
             _ => unreachable!(),
         }
@@ -180,9 +183,9 @@ fn external_add_proposal_should_succeed(
             .unwrap();
 
         match msg.into_content() {
-            ProcessedMessageContent::ExternalJoinProposalMessage(proposal) => {
-                bob_group.store_pending_proposal(*proposal)
-            }
+            ProcessedMessageContent::ExternalJoinProposalMessage(proposal) => bob_group
+                .store_pending_proposal(provider.storage(), *proposal)
+                .unwrap(),
             _ => unreachable!(),
         }
 
@@ -228,9 +231,11 @@ fn external_add_proposal_should_succeed(
 }
 
 #[apply(ciphersuites_and_providers)]
-fn external_add_proposal_should_be_signed_by_key_package_it_references(
+fn external_add_proposal_should_be_signed_by_key_package_it_references<
+    Provider: RefinedProvider,
+>(
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &Provider,
 ) {
     let ProposalValidationTestSetup { alice_group, .. } =
         validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, provider);
@@ -256,7 +261,7 @@ fn external_add_proposal_should_be_signed_by_key_package_it_references(
         attacker_credential,
     );
 
-    let invalid_proposal = JoinProposal::new(
+    let invalid_proposal = JoinProposal::new::<Provider::Storage>(
         charlie_kp.key_package().clone(),
         alice_group.group_id().clone(),
         alice_group.epoch(),
@@ -275,9 +280,9 @@ fn external_add_proposal_should_be_signed_by_key_package_it_references(
 
 // TODO #1093: move this test to a dedicated external proposal ValSem test module once all external proposals implemented
 #[apply(ciphersuites_and_providers)]
-fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
+fn new_member_proposal_sender_should_be_reserved_for_join_proposals<Provider: RefinedProvider>(
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &Provider,
 ) {
     let ProposalValidationTestSetup {
         alice_group,
@@ -297,7 +302,7 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
         any_credential.clone(),
     );
 
-    let join_proposal = JoinProposal::new(
+    let join_proposal = JoinProposal::new::<Provider::Storage>(
         any_kp.key_package().clone(),
         alice_group.group_id().clone(),
         alice_group.epoch(),
@@ -322,7 +327,9 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
     } else {
         panic!()
     };
-    alice_group.clear_pending_proposals();
+    alice_group
+        .clear_pending_proposals(provider.storage())
+        .unwrap();
 
     // Remove proposal cannot have a 'new_member_proposal' sender
     let remove_proposal = alice_group
@@ -338,7 +345,9 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
     } else {
         panic!()
     };
-    alice_group.clear_pending_proposals();
+    alice_group
+        .clear_pending_proposals(provider.storage())
+        .unwrap();
 
     // Update proposal cannot have a 'new_member_proposal' sender
     let update_proposal = alice_group
@@ -354,5 +363,7 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
     } else {
         panic!()
     };
-    alice_group.clear_pending_proposals();
+    alice_group
+        .clear_pending_proposals(provider.storage())
+        .unwrap();
 }

@@ -175,7 +175,7 @@ fn remover(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProv
             // Check that Bob was removed
             assert_eq!(remove_proposal.removed(), LeafNodeIndex::new(1));
             // Store proposal
-            charlie_group.store_pending_proposal(*staged_proposal.clone());
+            charlie_group.store_pending_proposal(provider.storage(), *staged_proposal.clone());
         } else {
             unreachable!("Expected a Proposal.");
         }
@@ -470,7 +470,7 @@ fn test_verify_staged_commit_credentials(
     if let ProcessedMessageContent::ProposalMessage(staged_proposal) =
         alice_processed_message.into_content()
     {
-        alice_group.store_pending_proposal(*staged_proposal);
+        alice_group.store_pending_proposal(provider.storage(), *staged_proposal);
     } else {
         unreachable!("Expected a StagedCommit.");
     }
@@ -639,7 +639,7 @@ fn test_commit_with_update_path_leaf_node(
     if let ProcessedMessageContent::ProposalMessage(staged_proposal) =
         alice_processed_message.into_content()
     {
-        alice_group.store_pending_proposal(*staged_proposal);
+        alice_group.store_pending_proposal(provider.storage(), *staged_proposal);
     } else {
         unreachable!("Expected a StagedCommit.");
     }
@@ -822,7 +822,7 @@ fn test_pending_commit_logic(
     if let ProcessedMessageContent::ProposalMessage(staged_proposal) =
         alice_processed_message.into_content()
     {
-        alice_group.store_pending_proposal(*staged_proposal);
+        alice_group.store_pending_proposal(provider.storage(), *staged_proposal);
     } else {
         unreachable!("Expected a StagedCommit.");
     }
@@ -892,7 +892,9 @@ fn test_pending_commit_logic(
     ));
 
     // Clearing the pending commit should actually clear it.
-    alice_group.clear_pending_commit();
+    alice_group
+        .clear_pending_commit(provider.storage())
+        .unwrap();
     assert!(alice_group.pending_commit().is_none());
 
     // Creating a new commit should commit the same proposals.

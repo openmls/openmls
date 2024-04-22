@@ -3,7 +3,7 @@
 //! This module contains membership-related operations and exposes [`RemoveOperation`].
 
 use core_group::create_commit_params::CreateCommitParams;
-use openmls_traits::signatures::Signer;
+use openmls_traits::{signatures::Signer, storage::StorageProvider as _};
 
 use super::{
     errors::{AddMembersError, LeaveGroupError, RemoveMembersError},
@@ -82,8 +82,10 @@ impl MlsGroup {
             create_commit_result.staged_commit,
         )));
 
-        // Since the state of the group might be changed, arm the state flag
-        self.flag_state_change();
+        provider
+            .storage()
+            .write_group_state(self.group_id(), &self.group_state)
+            .map_err(AddMembersError::StorageError)?;
 
         Ok((
             mls_messages,
@@ -155,8 +157,10 @@ impl MlsGroup {
             create_commit_result.staged_commit,
         )));
 
-        // Since the state of the group might be changed, arm the state flag
-        self.flag_state_change();
+        provider
+            .storage()
+            .write_group_state(self.group_id(), &self.group_state)
+            .map_err(RemoveMembersError::StorageError)?;
 
         Ok((
             mls_message,

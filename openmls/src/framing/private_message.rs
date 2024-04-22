@@ -1,4 +1,4 @@
-use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::types::Ciphersuite;
 use std::io::Write;
 use tls_codec::{Serialize, Size, TlsSerialize, TlsSize};
 
@@ -9,7 +9,7 @@ use super::{
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex, error::LibraryError,
-    tree::secret_tree::SecretType,
+    storage::RefinedProvider, tree::secret_tree::SecretType,
 };
 
 use super::*;
@@ -69,13 +69,13 @@ impl PrivateMessage {
     ///
     /// TODO #1148: Refactor theses constructors to avoid test code in main and
     /// to avoid validation using a special feature flag.
-    pub(crate) fn try_from_authenticated_content(
+    pub(crate) fn try_from_authenticated_content<Provider: RefinedProvider>(
         public_message: &AuthenticatedContent,
         ciphersuite: Ciphersuite,
-        provider: &impl OpenMlsProvider,
+        provider: &Provider,
         message_secrets: &mut MessageSecrets,
         padding_size: usize,
-    ) -> Result<PrivateMessage, MessageEncryptionError> {
+    ) -> Result<PrivateMessage, MessageEncryptionError<Provider::StorageError>> {
         log::debug!("PrivateMessage::try_from_authenticated_content");
         log::trace!("  ciphersuite: {}", ciphersuite);
         // Check the message has the correct wire format
@@ -93,13 +93,13 @@ impl PrivateMessage {
     }
 
     #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn encrypt_without_check(
+    pub(crate) fn encrypt_without_check<Provider: RefinedProvider>(
         public_message: &AuthenticatedContent,
         ciphersuite: Ciphersuite,
-        provider: &impl OpenMlsProvider,
+        provider: &Provider,
         message_secrets: &mut MessageSecrets,
         padding_size: usize,
-    ) -> Result<PrivateMessage, MessageEncryptionError> {
+    ) -> Result<PrivateMessage, MessageEncryptionError<Provider::StorageError>> {
         Self::encrypt_content(
             None,
             public_message,
@@ -111,14 +111,14 @@ impl PrivateMessage {
     }
 
     #[cfg(test)]
-    pub(crate) fn encrypt_with_different_header(
+    pub(crate) fn encrypt_with_different_header<Provider: RefinedProvider>(
         public_message: &AuthenticatedContent,
         ciphersuite: Ciphersuite,
-        provider: &impl OpenMlsProvider,
+        provider: &Provider,
         header: MlsMessageHeader,
         message_secrets: &mut MessageSecrets,
         padding_size: usize,
-    ) -> Result<PrivateMessage, MessageEncryptionError> {
+    ) -> Result<PrivateMessage, MessageEncryptionError<Provider::StorageError>> {
         Self::encrypt_content(
             Some(header),
             public_message,
@@ -131,14 +131,14 @@ impl PrivateMessage {
 
     /// Internal function to encrypt content. The extra message header is only used
     /// for tests. Otherwise, the data from the given `AuthenticatedContent` is used.
-    fn encrypt_content(
+    fn encrypt_content<Provider: RefinedProvider>(
         test_header: Option<MlsMessageHeader>,
         public_message: &AuthenticatedContent,
         ciphersuite: Ciphersuite,
-        provider: &impl OpenMlsProvider,
+        provider: &Provider,
         message_secrets: &mut MessageSecrets,
         padding_size: usize,
-    ) -> Result<PrivateMessage, MessageEncryptionError> {
+    ) -> Result<PrivateMessage, MessageEncryptionError<Provider::StorageError>> {
         let sender_index = if let Some(index) = public_message.sender().as_member() {
             index
         } else {

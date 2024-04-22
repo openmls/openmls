@@ -1177,10 +1177,14 @@ fn test_valsem105(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
                 }
             };
             // Reset alice's group state for the next test case.
-            alice_group.clear_pending_commit();
+            alice_group
+                .clear_pending_commit(provider.storage())
+                .unwrap();
         }
         // Now we create a valid commit and add the proposal afterwards. Once by value, once by reference.
-        alice_group.clear_pending_proposals();
+        alice_group
+            .clear_pending_proposals(provider.storage())
+            .unwrap();
 
         // Create the Commit.
         let serialized_update = alice_group
@@ -1226,15 +1230,18 @@ fn test_valsem105(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
             // If we're including by reference, we have to sneak the proposal
             // into Bob's queue.
             if matches!(proposal_inclusion, ProposalInclusion::ByReference) {
-                bob_group.store_pending_proposal(
-                    QueuedProposal::from_proposal_and_sender(
-                        ciphersuite,
-                        provider.crypto(),
-                        add_proposal.clone(),
-                        &Sender::build_member(alice_group.own_leaf_index()),
+                bob_group
+                    .store_pending_proposal(
+                        provider.storage(),
+                        QueuedProposal::from_proposal_and_sender(
+                            ciphersuite,
+                            provider.crypto(),
+                            add_proposal.clone(),
+                            &Sender::build_member(alice_group.own_leaf_index()),
+                        )
+                        .unwrap(),
                     )
-                    .unwrap(),
-                )
+                    .unwrap()
             }
 
             // Have bob process the resulting plaintext
@@ -1331,7 +1338,9 @@ fn test_valsem105(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
                 .unwrap();
         }
 
-        alice_group.clear_pending_commit();
+        alice_group
+            .clear_pending_commit(provider.storage())
+            .unwrap();
     }
 }
 
@@ -1409,7 +1418,9 @@ fn test_valsem107(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
         .expect("error while trying to commit to colliding remove proposals");
 
     // Clear commit to try another way of committing two identical removes.
-    alice_group.clear_pending_commit();
+    alice_group
+        .clear_pending_commit(provider.storage())
+        .unwrap();
 
     // Now let's verify that both commits only contain one proposal.
     let (commit_inline_remove, _welcome, _group_info) = alice_group
@@ -1516,7 +1527,9 @@ fn test_valsem108(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
         .commit_to_pending_proposals(provider, &alice_credential_with_key_and_signer.signer)
         .expect("No error while committing empty proposals");
     // FIXME: #1098 This shouldn't be necessary. Something is broken in the state logic.
-    alice_group.clear_pending_commit();
+    alice_group
+        .clear_pending_commit(provider.storage())
+        .unwrap();
 
     // Creating the proposal should fail already because the member is not known.
     let err = alice_group
@@ -1530,8 +1543,12 @@ fn test_valsem108(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
     assert_eq!(err, ProposeRemoveMemberError::UnknownMember);
 
     // Clear commit to try another way of committing a remove of a non-member.
-    alice_group.clear_pending_commit();
-    alice_group.clear_pending_proposals();
+    alice_group
+        .clear_pending_commit(provider.storage())
+        .unwrap();
+    alice_group
+        .clear_pending_proposals(provider.storage())
+        .unwrap();
 
     let err = alice_group
         .remove_members(
@@ -1677,7 +1694,9 @@ fn test_valsem110(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
         .expect("error processing proposal")
         .into_content()
     {
-        alice_group.store_pending_proposal(*proposal)
+        alice_group
+            .store_pending_proposal(provider.storage(), *proposal)
+            .unwrap()
     } else {
         panic!("Unexpected message type");
     };
@@ -1698,8 +1717,12 @@ fn test_valsem110(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
 
     // Clear commit to see if Bob will process a commit containing two colliding
     // keys.
-    alice_group.clear_pending_commit();
-    alice_group.clear_pending_proposals();
+    alice_group
+        .clear_pending_commit(provider.storage())
+        .unwrap();
+    alice_group
+        .clear_pending_proposals(provider.storage())
+        .unwrap();
 
     // We now have Alice create a commit. Then we artificially add an
     // update proposal with a colliding encryption key.
@@ -1852,21 +1875,26 @@ fn test_valsem111(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
 
     // Now we insert the proposal into Bob's proposal store so we can include it
     // in the commit by reference.
-    bob_group.store_pending_proposal(
-        QueuedProposal::from_proposal_and_sender(
-            ciphersuite,
-            provider.crypto(),
-            update_proposal.clone(),
-            &Sender::build_member(alice_group.own_leaf_index()),
+    bob_group
+        .store_pending_proposal(
+            provider.storage(),
+            QueuedProposal::from_proposal_and_sender(
+                ciphersuite,
+                provider.crypto(),
+                update_proposal.clone(),
+                &Sender::build_member(alice_group.own_leaf_index()),
+            )
+            .expect("error creating queued proposal"),
         )
-        .expect("error creating queued proposal"),
-    );
+        .expect("error writing to storage");
 
     // Now we can have Alice create a new commit and insert the proposal by
     // reference.
 
     // Wipe any pending commit first.
-    alice_group.clear_pending_commit();
+    alice_group
+        .clear_pending_commit(provider.storage())
+        .unwrap();
 
     let commit = alice_group
         .self_update(provider, &alice_credential_with_key_and_signer.signer)
@@ -2115,7 +2143,9 @@ fn valsem113(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedPr
 
         if let ProcessedMessageContent::ProposalMessage(proposal) = processed_message.into_content()
         {
-            bob_group.store_pending_proposal(*proposal);
+            bob_group
+                .store_pending_proposal(provider.storage(), *proposal)
+                .unwrap();
         } else {
             panic!("Unexpected message type");
         }
@@ -2258,8 +2288,12 @@ fn test_valsem401_valsem402(
             )
             .unwrap();
 
-        alice_group.clear_pending_proposals();
-        alice_group.clear_pending_commit();
+        alice_group
+            .clear_pending_proposals(provider.storage())
+            .unwrap();
+        alice_group
+            .clear_pending_commit(provider.storage())
+            .unwrap();
 
         for psk_proposal in proposals.into_iter() {
             let processed_message = bob_group
@@ -2268,7 +2302,9 @@ fn test_valsem401_valsem402(
 
             match processed_message.into_content() {
                 ProcessedMessageContent::ProposalMessage(queued_proposal) => {
-                    bob_group.store_pending_proposal(*queued_proposal);
+                    bob_group
+                        .store_pending_proposal(provider.storage(), *queued_proposal)
+                        .unwrap();
                 }
                 _ => unreachable!(),
             }
@@ -2281,7 +2317,9 @@ fn test_valsem401_valsem402(
                 .unwrap_err(),
         );
 
-        bob_group.clear_pending_proposals();
-        bob_group.clear_pending_commit();
+        bob_group
+            .clear_pending_proposals(provider.storage())
+            .unwrap();
+        bob_group.clear_pending_commit(provider.storage()).unwrap();
     }
 }

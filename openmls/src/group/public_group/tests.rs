@@ -201,7 +201,9 @@ fn public_group<Provider: RefinedProvider>(ciphersuite: Ciphersuite, provider: &
             // Check that Bob was removed
             assert_eq!(remove_proposal.removed(), LeafNodeIndex::new(1));
             // Store proposal
-            charlie_group.store_pending_proposal(*staged_proposal.clone());
+            charlie_group
+                .store_pending_proposal(provider.storage(), *staged_proposal.clone())
+                .expect("error writing to storage");
         } else {
             unreachable!("Expected a Proposal.");
         }

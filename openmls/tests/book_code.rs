@@ -69,7 +69,10 @@ fn generate_key_package(
 ///  - Bob leaves
 ///  - Test saving the group state
 #[apply(ciphersuites_and_providers)]
-fn book_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
+fn book_operations<Provider: crate::storage::RefinedProvider>(
+    ciphersuite: Ciphersuite,
+    provider: &Provider,
+) {
     // Generate credentials with keys
     let (alice_credential, alice_signature_keys) =
         generate_credential("Alice".into(), ciphersuite.signature_algorithm(), provider);
@@ -431,7 +434,9 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage::Ref
                 &alice_credential.credential
             );
             // Store proposal
-            alice_group.store_pending_proposal(*staged_proposal.clone());
+            alice_group
+                .store_pending_proposal(provider.storage(), *staged_proposal.clone())
+                .unwrap();
         } else {
             unreachable!("Expected a Proposal.");
         }
@@ -441,7 +446,9 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage::Ref
             staged_proposal.sender(),
             Sender::Member(member) if *member == alice_group.own_leaf_index()
         ));
-        bob_group.store_pending_proposal(*staged_proposal);
+        bob_group
+            .store_pending_proposal(provider.storage(), *staged_proposal)
+            .unwrap();
     } else {
         unreachable!("Expected a QueuedProposal.");
     }
@@ -875,7 +882,9 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage::Ref
             // Check that Charlie was removed
             assert_eq!(remove_proposal.removed(), charlie_group.own_leaf_index());
             // Store proposal
-            charlie_group.store_pending_proposal(*staged_proposal.clone());
+            charlie_group
+                .store_pending_proposal(provider.storage(), *staged_proposal.clone())
+                .unwrap();
         } else {
             unreachable!("Expected a Proposal.");
         }
@@ -945,7 +954,9 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage::Ref
             Sender::Member(member) if *member == alice_group.own_leaf_index()
         ));
         // Store proposal
-        charlie_group.store_pending_proposal(*staged_proposal);
+        charlie_group
+            .store_pending_proposal(provider.storage(), *staged_proposal)
+            .unwrap();
     }
     // ANCHOR_END: inspect_add_proposal
     else {
@@ -1099,7 +1110,9 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage::Ref
         alice_processed_message.into_content()
     {
         // Store proposal
-        alice_group.store_pending_proposal(*staged_proposal);
+        alice_group
+            .store_pending_proposal(provider.storage(), *staged_proposal)
+            .unwrap();
     } else {
         unreachable!("Expected a QueuedProposal.");
     }
@@ -1203,7 +1216,7 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage::Ref
     );
 
     // ANCHOR: external_join_proposal
-    let proposal = JoinProposal::new(
+    let proposal = JoinProposal::new::<Provider::Storage>(
         bob_key_package.key_package().clone(),
         alice_group.group_id().clone(),
         alice_group.epoch(),
@@ -1223,7 +1236,9 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage::Ref
         .expect("Could not process message.");
     match alice_processed_message.into_content() {
         ProcessedMessageContent::ExternalJoinProposalMessage(proposal) => {
-            alice_group.store_pending_proposal(*proposal);
+            alice_group
+                .store_pending_proposal(provider.storage(), *proposal)
+                .unwrap();
             let (_commit, welcome, _group_info) = alice_group
                 .commit_to_pending_proposals(provider, &alice_signature_keys)
                 .expect("Could not commit");
@@ -1267,7 +1282,7 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage::Ref
         .unwrap();
 
     // ANCHOR: external_remove_proposal
-    let proposal = ExternalProposal::new_remove(
+    let proposal = ExternalProposal::new_remove::<Provider::Storage>(
         bob_index,
         alice_group.group_id().clone(),
         alice_group.epoch(),
@@ -1288,7 +1303,9 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage::Ref
         .expect("Could not process message.");
     match alice_processed_message.into_content() {
         ProcessedMessageContent::ProposalMessage(proposal) => {
-            alice_group.store_pending_proposal(*proposal);
+            alice_group
+                .store_pending_proposal(provider.storage(), *proposal)
+                .unwrap();
             assert_eq!(alice_group.members().count(), 2);
             alice_group
                 .commit_to_pending_proposals(provider, &alice_signature_keys)
@@ -1496,7 +1513,9 @@ fn custom_proposal_usage(
         panic!("Unexpected message type");
     };
 
-    bob_group.store_pending_proposal(*proposal);
+    bob_group
+        .store_pending_proposal(provider.storage(), *proposal)
+        .unwrap();
 
     // Commit to the proposal
     let (commit, _, _) = alice_group
