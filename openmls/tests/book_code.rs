@@ -1379,8 +1379,9 @@ fn book_operations<Provider: crate::storage::RefinedProvider>(
     // Check that the state flag gets reset when saving
     assert_eq!(bob_group.state_changed(), InnerState::Persisted);
 
-    let bob_group =
-        MlsGroup::load(&group_id, provider.storage()).expect("Could not load group from file");
+    let bob_group = MlsGroup::load(provider.storage(), &group_id)
+        .expect("An error occurred while loading the group")
+        .expect("No group with provided group id exists");
 
     // Make sure the state is still the same
     assert_eq!(

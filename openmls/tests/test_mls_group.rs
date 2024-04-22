@@ -907,8 +907,9 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage
             .save(provider.storage())
             .expect("Could not save group state.");
 
-        let _test_group =
-            MlsGroup::load(&group_id, provider.storage()).expect("Could not load the group state.");
+        let _test_group = MlsGroup::load(provider.storage(), &group_id)
+            .expect("Could not load the group state due to an error.")
+            .expect("Could not load the group state because the group does not exist.");
 
         // Merge Commit
         alice_group
@@ -945,8 +946,9 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage
         // Check that the state flag gets reset when saving
         assert_eq!(bob_group.state_changed(), InnerState::Persisted);
 
-        let bob_group =
-            MlsGroup::load(&group_id, provider.storage()).expect("Could not load group from file");
+        let bob_group = MlsGroup::load(provider.storage(), &group_id)
+            .expect("Could not load group from file because of an error")
+            .expect("Could not load group from file because there is no group with given id");
 
         // Make sure the state is still the same
         assert_eq!(

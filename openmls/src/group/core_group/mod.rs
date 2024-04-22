@@ -740,6 +740,31 @@ impl CoreGroup {
         Ok(())
     }
 
+    pub(super) fn load<Storage: StorageProvider>(
+        storage: &Storage,
+        group_id: &GroupId,
+    ) -> Result<Option<Self>, Storage::Error> {
+        let public_group = PublicGroup::load(storage, group_id)?;
+        let group_epoch_secrets = storage.group_epoch_secrets(group_id)?;
+        let own_leaf_index = storage.own_leaf_index(group_id)?;
+        let use_ratchet_tree_extension = storage.use_ratchet_tree_extension(group_id)?;
+        let message_secrets_store = storage.message_secrets(group_id)?;
+        let resumption_psk_store = storage.resumption_psk_store(group_id)?;
+
+        let build = || -> Option<Self> {
+            Some(Self {
+                public_group: public_group?,
+                group_epoch_secrets: group_epoch_secrets?,
+                own_leaf_index: own_leaf_index?,
+                use_ratchet_tree_extension: use_ratchet_tree_extension?,
+                message_secrets_store: message_secrets_store?,
+                resumption_psk_store: resumption_psk_store?,
+            })
+        };
+
+        Ok(build())
+    }
+
     /// Store the given [`EncryptionKeyPair`]s in the `provider`'s key store
     /// indexed by this group's [`GroupId`] and [`GroupEpoch`].
     ///

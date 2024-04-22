@@ -110,7 +110,8 @@ impl MemoryKeyStore {
         log::debug!("  read list key: {}", hex::encode(&storage_key));
         log::trace!("{}", std::backtrace::Backtrace::capture());
 
-        let value = values.get(&storage_key).unwrap();
+        let default = b"[]".to_vec();
+        let value = values.get(&storage_key).unwrap_or(&default);
         let value = serde_json::from_slice(value).unwrap();
 
         Ok(value)

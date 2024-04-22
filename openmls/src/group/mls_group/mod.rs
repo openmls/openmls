@@ -336,12 +336,35 @@ impl MlsGroup {
     // === Load & save ===
 
     /// Loads the state from persisted state.
-    pub fn load<StorageProvider: crate::storage::StorageProvider>(
-        _group_id: &GroupId,
-        _store: &StorageProvider,
-    ) -> Option<MlsGroup> {
-        todo!("rewrite load group")
-        // store.read(group_id.as_slice())
+    pub fn load<Storage: crate::storage::StorageProvider>(
+        storage: &Storage,
+        group_id: &GroupId,
+    ) -> Result<Option<MlsGroup>, Storage::Error> {
+        let group_config = storage.mls_group_join_config(group_id)?;
+        let core_group = CoreGroup::load(storage, group_id)?;
+        let proposals: Vec<(ProposalRef, QueuedProposal)> = storage.queued_proposals(group_id)?;
+        let own_leaf_nodes = storage.own_leaf_nodes(group_id)?;
+        let aad = storage.aad(group_id)?;
+        let group_state = storage.group_state(group_id)?;
+        let mut proposal_store = ProposalStore::new();
+
+        for (_ref, proposal) in proposals {
+            proposal_store.add(proposal);
+        }
+
+        let build = || -> Option<Self> {
+            Some(Self {
+                mls_group_config: group_config?,
+                group: core_group?,
+                proposal_store,
+                own_leaf_nodes,
+                aad,
+                group_state: group_state?,
+                state_changed: InnerState::Persisted,
+            })
+        };
+
+        Ok(build())
     }
 
     /// Persists the state.
@@ -349,7 +372,10 @@ impl MlsGroup {
         &mut self,
         _store: &StorageProvider,
     ) -> Result<(), StorageProvider::Error> {
-        todo!("rewrite save group")
+        // no-op
+        Ok(())
+
+        //todo!("rewrite save group")
         // store.store(self.group_id().as_slice(), &*self)?;
 
         // self.state_changed = InnerState::Persisted;

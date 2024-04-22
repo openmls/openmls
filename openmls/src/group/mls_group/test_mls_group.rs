@@ -9,6 +9,7 @@ use crate::{
     key_packages::*,
     messages::proposals::*,
     prelude::Capabilities,
+    storage::RefinedProvider,
     test_utils::test_framework::{
         errors::ClientError, noop_authentication_service, ActionType::Commit, CodecUse,
         MlsGroupTestSetup,
@@ -18,9 +19,9 @@ use crate::{
 };
 
 #[apply(ciphersuites_and_providers)]
-fn test_mls_group_persistence(
+fn test_mls_group_persistence<Provider: RefinedProvider>(
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &Provider,
 ) {
     let group_id = GroupId::from_slice(b"Test Group");
 
@@ -47,8 +48,9 @@ fn test_mls_group_persistence(
         .save(provider.storage())
         .expect("Could not write group state to file");
 
-    let alice_group_deserialized =
-        MlsGroup::load(&group_id, provider.storage()).expect("Could not deserialize MlsGroup");
+    let alice_group_deserialized = MlsGroup::load(provider.storage(), &group_id)
+        .expect("Could not deserialize MlsGroup: error")
+        .expect("Could not deserialize MlsGroup: doesn't exist");
 
     assert_eq!(
         (
@@ -1472,8 +1474,9 @@ fn update_group_context_with_unknown_extension(
     );
 
     // === Verify Bob sees the group context extension updated ===
-    let bob_group_loaded = MlsGroup::load(bob_group.group().group_id(), provider.storage())
-        .expect("error loading group");
+    let bob_group_loaded = MlsGroup::load(provider.storage(), bob_group.group().group_id())
+        .expect("error loading group")
+        .expect("no such group");
     let group_context_extensions_2 = bob_group_loaded.export_group_context().extensions();
     let mut extracted_data_2 = None;
     for extension in group_context_extensions_2.iter() {

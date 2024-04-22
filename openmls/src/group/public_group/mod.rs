@@ -16,8 +16,9 @@ use crate::prelude::OpenMlsProvider;
 #[cfg(test)]
 use std::collections::HashSet;
 
-use openmls_traits::{crypto::OpenMlsCrypto, storage::StorageProvider, types::Ciphersuite};
+use openmls_traits::{crypto::OpenMlsCrypto, storage::StorageProvider as _, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 use self::{
     diff::{PublicGroupDiff, StagedPublicGroupDiff},
@@ -38,7 +39,7 @@ use crate::{
         ConfirmationTag, PathSecret,
     },
     schedule::CommitSecret,
-    storage::RefinedProvider,
+    storage::{RefinedProvider, StorageProvider},
     treesync::{
         errors::{DerivePathError, TreeSyncFromNodesError},
         node::{
@@ -353,7 +354,7 @@ impl PublicGroup {
         self.treesync().owned_encryption_keys(leaf_index)
     }
 
-    pub(crate) fn store<Storage: StorageProvider<1>>(
+    pub(crate) fn store<Storage: StorageProvider>(
         &self,
         storage: &Storage,
     ) -> Result<(), Storage::Error> {
@@ -376,6 +377,29 @@ impl PublicGroup {
         //         InterimTranscriptHash(self.interim_transcript_hash.clone()),
         //     ),
         // ])
+    }
+
+    pub(crate) fn load<Storage: StorageProvider>(
+        storage: &Storage,
+        group_id: &GroupId,
+    ) -> Result<Option<Self>, Storage::Error> {
+        let treesync = storage.treesync(group_id)?;
+        let group_context = storage.group_context(group_id)?;
+        let interim_transcript_hash: Option<InterimTranscriptHash> =
+            storage.interim_transcript_hash(group_id)?;
+        let confirmation_tag = storage.confirmation_tag(group_id)?;
+
+        let build = || -> Option<Self> {
+            Some(Self {
+                treesync: treesync?,
+                proposal_store: ProposalStore::new(),
+                group_context: group_context?,
+                interim_transcript_hash: interim_transcript_hash?.0,
+                confirmation_tag: confirmation_tag?,
+            })
+        };
+
+        Ok(build())
     }
 }
 
