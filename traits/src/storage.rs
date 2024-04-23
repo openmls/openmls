@@ -426,6 +426,7 @@ pub trait StorageProvider<const VERSION: u16> {
     //     ---    deleters for group state    ---
     //
 
+    /// Removes an individual proposal from the proposal queue of the group with the provided id
     fn remove_proposal<
         GroupId: traits::GroupId<VERSION>,
         ProposalRef: traits::ProposalRef<VERSION>,
