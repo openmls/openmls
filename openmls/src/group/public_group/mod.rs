@@ -73,7 +73,7 @@ pub struct PublicGroup {
     confirmation_tag: ConfirmationTag,
 }
 
-/// we need this type because we can't implement the storage traits on Vec<u8>.
+/// This is a wrapper type, because we can't implement the storage traits on `Vec<u8>`.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct InterimTranscriptHash(pub Vec<u8>);
 

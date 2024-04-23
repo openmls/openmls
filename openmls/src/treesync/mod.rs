@@ -345,14 +345,14 @@ impl fmt::Display for RatchetTree {
     }
 }
 
-/// The [`TreeSync`] struct holds an [`MlsBinaryTree`] instance, which contains
+/// The [`TreeSync`] struct holds an `MlsBinaryTree` instance, which contains
 /// the state that is synced across the group, as well as the [`LeafNodeIndex`]
 /// pointing to the leaf of this group member and the current hash of the tree.
 ///
 /// It follows the same pattern of tree and diff as the underlying
-/// [`MlsBinaryTree`], where the [`TreeSync`] instance is immutable safe for
-/// merging a [`TreeSyncDiff`], which can be created, staged and merged (see
-/// [`TreeSyncDiff`]).
+/// `MlsBinaryTree`, where the [`TreeSync`] instance is immutable safe for
+/// merging a `TreeSyncDiff`, which can be created, staged and merged (see
+/// `TreeSyncDiff`).
 ///
 /// [`TreeSync`] instance guarantee a few invariants that are checked upon
 /// creating a new instance from an imported set of nodes, as well as when
