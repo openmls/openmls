@@ -110,11 +110,19 @@ impl MemoryKeyStore {
         log::debug!("  read list key: {}", hex::encode(&storage_key));
         log::trace!("{}", std::backtrace::Backtrace::capture());
 
-        let default = b"[]".to_vec();
-        let value = values.get(&storage_key).unwrap_or(&default);
-        let value = serde_json::from_slice(value).unwrap();
+        let value: Vec<Vec<u8>> = match values.get(&storage_key) {
+            Some(list_bytes) => {
+                println!("{}", String::from_utf8(list_bytes.to_vec()).unwrap());
+                serde_json::from_slice(list_bytes).unwrap()
+            }
+            None => vec![],
+        };
 
-        Ok(value)
+        value
+            .iter()
+            .map(|value_bytes| serde_json::from_slice(value_bytes))
+            .collect::<Result<Vec<V>, _>>()
+            .map_err(|_| MemoryKeyStoreError::SerializationError)
     }
 
     /// Internal helper to abstract delete operations.

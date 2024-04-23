@@ -1326,12 +1326,13 @@ fn builder_pattern(ciphersuite: Ciphersuite, provider: &impl crate::storage::Ref
 
 // Test the successful update of Group Context Extension with type Extension::Unknown(0xff11)
 #[apply(ciphersuites_and_providers)]
-fn update_group_context_with_unknown_extension(
+fn update_group_context_with_unknown_extension<Provider: RefinedProvider + Default>(
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &Provider,
 ) {
+    let alice_provider = Provider::default();
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
-        setup_client("Alice", ciphersuite, provider);
+        setup_client("Alice", ciphersuite, &alice_provider);
 
     // === Define the unknown group context extension and initial data ===
     const UNKNOWN_EXTENSION_TYPE: u16 = 0xff11;
@@ -1359,7 +1360,7 @@ fn update_group_context_with_unknown_extension(
 
     // === Alice creates a group ===
     let mut alice_group = MlsGroup::new(
-        provider,
+        &alice_provider,
         &alice_signer,
         &mls_group_create_config,
         alice_credential_with_key,
@@ -1381,36 +1382,42 @@ fn update_group_context_with_unknown_extension(
     );
 
     // === Alice adds Bob ===
+    let bob_provider: Provider = Default::default();
     let (bob_credential_with_key, _bob_kpb, bob_signer, _bob_pk) =
-        setup_client("Bob", ciphersuite, provider);
+        setup_client("Bob", ciphersuite, &bob_provider);
 
     let bob_key_package = KeyPackage::builder()
         .leaf_node_capabilities(capabilities)
-        .build(ciphersuite, provider, &bob_signer, bob_credential_with_key)
+        .build(
+            ciphersuite,
+            &bob_provider,
+            &bob_signer,
+            bob_credential_with_key,
+        )
         .expect("error building key package");
 
     let (_, welcome, _) = alice_group
         .add_members(
-            provider,
+            &alice_provider,
             &alice_signer,
             &[bob_key_package.key_package().clone()],
         )
         .unwrap();
-    alice_group.merge_pending_commit(provider).unwrap();
+    alice_group.merge_pending_commit(&alice_provider).unwrap();
 
     let welcome: MlsMessageIn = welcome.into();
     let welcome = welcome
         .into_welcome()
         .expect("expected message to be a welcome");
 
-    let bob_group = StagedWelcome::new_from_welcome(
-        provider,
+    let mut bob_group = StagedWelcome::new_from_welcome(
+        &bob_provider,
         &MlsGroupJoinConfig::default(),
         welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
     .expect("Error creating staged join from Welcome")
-    .into_group(provider)
+    .into_group(&bob_provider)
     .expect("Error creating group from staged join");
 
     // === Verify Bob's initial group context extension data is correct ===
@@ -1436,7 +1443,7 @@ fn update_group_context_with_unknown_extension(
 
     let mut updated_extensions = test_gc_extensions.clone();
     updated_extensions.add_or_replace(updated_unknown_gc_extension);
-    alice_group
+    let (update_proposal, _) = alice_group
         .propose_group_context_extensions(provider, updated_extensions, &alice_signer)
         .expect("failed to propose group context extensions with unknown extension");
 
@@ -1447,7 +1454,7 @@ fn update_group_context_with_unknown_extension(
     );
 
     // === Commit to the proposed group context extension ===
-    alice_group
+    let (update_commit, _, _) = alice_group
         .commit_to_pending_proposals(provider, &alice_signer)
         .expect("failed to commit to pending group context extensions");
 
@@ -1458,6 +1465,49 @@ fn update_group_context_with_unknown_extension(
     alice_group
         .save(provider.storage())
         .expect("error saving group");
+
+    // === let bob process the updates  ===
+    assert_eq!(
+        bob_group.pending_proposals().count(),
+        0,
+        "Expected no pending proposals"
+    );
+
+    let processed_update_message = bob_group
+        .process_message(
+            &bob_provider,
+            update_proposal.into_protocol_message().unwrap(),
+        )
+        .expect("bob failed processing the update");
+
+    match processed_update_message.into_content() {
+        ProcessedMessageContent::ProposalMessage(msg) => {
+            bob_group
+                .store_pending_proposal(bob_provider.storage(), *msg)
+                .unwrap();
+        }
+        other => panic!("expected proposal, got {other:?}"),
+    }
+
+    assert_eq!(
+        bob_group.pending_proposals().count(),
+        1,
+        "Expected one pending proposal"
+    );
+
+    let processed_commit_message = bob_group
+        .process_message(
+            &bob_provider,
+            update_commit.into_protocol_message().unwrap(),
+        )
+        .expect("bob failed processing the update");
+
+    match processed_commit_message.into_content() {
+        ProcessedMessageContent::StagedCommitMessage(staged_commit) => bob_group
+            .merge_staged_commit(&bob_provider, *staged_commit)
+            .expect("error merging group context update commit"),
+        other => panic!("expected commit, got {other:?}"),
+    };
 
     // === Verify the group context extension was updated ===
     let group_context_extensions = alice_group.group().context().extensions();
@@ -1474,7 +1524,7 @@ fn update_group_context_with_unknown_extension(
     );
 
     // === Verify Bob sees the group context extension updated ===
-    let bob_group_loaded = MlsGroup::load(provider.storage(), bob_group.group().group_id())
+    let bob_group_loaded = MlsGroup::load(bob_provider.storage(), bob_group.group().group_id())
         .expect("error loading group")
         .expect("no such group");
     let group_context_extensions_2 = bob_group_loaded.export_group_context().extensions();

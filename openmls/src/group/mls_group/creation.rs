@@ -229,6 +229,15 @@ impl StagedWelcome {
             state_changed: InnerState::Changed,
         };
 
+        provider
+            .storage()
+            .write_mls_join_config(mls_group.group_id(), &mls_group.mls_group_config)
+            .map_err(WelcomeError::StorageError)?;
+        provider
+            .storage()
+            .write_group_state(mls_group.group_id(), &MlsGroupState::Operational)
+            .map_err(WelcomeError::StorageError)?;
+
         Ok(mls_group)
     }
 }
