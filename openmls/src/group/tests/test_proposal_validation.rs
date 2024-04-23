@@ -2185,7 +2185,7 @@ fn test_valsem401_valsem402<Provider: RefinedProvider<StorageError = MemoryKeySt
         ..
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, provider);
 
-    let mut alice_provider = OpenMlsRustCrypto::default();
+    let alice_provider = OpenMlsRustCrypto::default();
     let bob_provider = OpenMlsRustCrypto::default();
 
     // TODO(#1354): This is currently not tested because we can't easily create invalid commits.
@@ -2276,7 +2276,7 @@ fn test_valsem401_valsem402<Provider: RefinedProvider<StorageError = MemoryKeySt
 
             let (psk_proposal, _) = alice_group
                 .propose_external_psk(
-                    &mut alice_provider,
+                    &alice_provider,
                     &alice_credential_with_key_and_signer.signer,
                     psk_id,
                 )
