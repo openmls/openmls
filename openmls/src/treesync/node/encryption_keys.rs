@@ -69,7 +69,7 @@ impl EncryptionKey {
     Clone, Serialize, Deserialize, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
 )]
 #[cfg_attr(test, derive(PartialEq, Eq))]
-pub(crate) struct EncryptionPrivateKey {
+pub struct EncryptionPrivateKey {
     key: HpkePrivateKey,
 }
 

@@ -29,9 +29,9 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         QueuedProposal: openmls_traits::storage::traits::QueuedProposal<VERSION>,
     >(
         &self,
-        group_id: &GroupId,
-        proposal_ref: &ProposalRef,
-        proposal: &QueuedProposal,
+        _group_id: &GroupId,
+        _proposal_ref: &ProposalRef,
+        _proposal: &QueuedProposal,
     ) -> Result<(), Self::Error> {
         todo!()
     }
@@ -41,8 +41,8 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         TreeSync: openmls_traits::storage::traits::TreeSync<VERSION>,
     >(
         &self,
-        group_id: &GroupId,
-        tree: &TreeSync,
+        _group_id: &GroupId,
+        _tree: &TreeSync,
     ) -> Result<(), Self::Error> {
         todo!()
     }
@@ -52,8 +52,8 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         InterimTranscriptHash: openmls_traits::storage::traits::InterimTranscriptHash<VERSION>,
     >(
         &self,
-        group_id: &GroupId,
-        interim_transcript_hash: &InterimTranscriptHash,
+        _group_id: &GroupId,
+        _interim_transcript_hash: &InterimTranscriptHash,
     ) -> Result<(), Self::Error> {
         todo!()
     }
@@ -63,8 +63,8 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         GroupContext: openmls_traits::storage::traits::GroupContext<VERSION>,
     >(
         &self,
-        group_id: &GroupId,
-        group_context: &GroupContext,
+        _group_id: &GroupId,
+        _group_context: &GroupContext,
     ) -> Result<(), Self::Error> {
         todo!()
     }
@@ -74,8 +74,8 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         ConfirmationTag: openmls_traits::storage::traits::ConfirmationTag<VERSION>,
     >(
         &self,
-        group_id: &GroupId,
-        confirmation_tag: &ConfirmationTag,
+        _group_id: &GroupId,
+        _confirmation_tag: &ConfirmationTag,
     ) -> Result<(), Self::Error> {
         todo!()
     }
@@ -85,8 +85,8 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         GroupId: openmls_traits::storage::traits::GroupId<VERSION>,
     >(
         &self,
-        group_id: &GroupId,
-        group_state: &GroupState,
+        _group_id: &GroupId,
+        _group_state: &GroupState,
     ) -> Result<(), Self::Error> {
         todo!()
     }
@@ -96,8 +96,8 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         MessageSecrets: openmls_traits::storage::traits::MessageSecrets<VERSION>,
     >(
         &self,
-        group_id: &GroupId,
-        message_secrets: &MessageSecrets,
+        _group_id: &GroupId,
+        _message_secrets: &MessageSecrets,
     ) -> Result<(), Self::Error> {
         todo!()
     }
@@ -107,8 +107,8 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         ResumptionPskStore: openmls_traits::storage::traits::ResumptionPskStore<VERSION>,
     >(
         &self,
-        group_id: &GroupId,
-        resumption_psk_store: &ResumptionPskStore,
+        _group_id: &GroupId,
+        _resumption_psk_store: &ResumptionPskStore,
     ) -> Result<(), Self::Error> {
         todo!()
     }
@@ -118,8 +118,8 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         LeafNodeIndex: openmls_traits::storage::traits::LeafNodeIndex<VERSION>,
     >(
         &self,
-        group_id: &GroupId,
-        own_leaf_index: &LeafNodeIndex,
+        _group_id: &GroupId,
+        _own_leaf_index: &LeafNodeIndex,
     ) -> Result<(), Self::Error> {
         todo!()
     }
@@ -128,8 +128,8 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         GroupId: openmls_traits::storage::traits::GroupId<VERSION>,
     >(
         &self,
-        group_id: &GroupId,
-        value: bool,
+        _group_id: &GroupId,
+        _value: bool,
     ) -> Result<(), Self::Error> {
         todo!()
     }
@@ -139,8 +139,8 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         GroupEpochSecrets: openmls_traits::storage::traits::GroupEpochSecrets<VERSION>,
     >(
         &self,
-        group_id: &GroupId,
-        group_epoch_secrets: &GroupEpochSecrets,
+        _group_id: &GroupId,
+        _group_epoch_secrets: &GroupEpochSecrets,
     ) -> Result<(), Self::Error> {
         todo!()
     }
@@ -150,8 +150,8 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         SignatureKeyPair: openmls_traits::storage::traits::SignatureKeyPair<VERSION>,
     >(
         &self,
-        public_key: &SignaturePublicKey,
-        signature_key_pair: &SignatureKeyPair,
+        _public_key: &SignaturePublicKey,
+        _signature_key_pair: &SignatureKeyPair,
     ) -> Result<(), Self::Error> {
         todo!()
     }
@@ -161,8 +161,8 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         HpkeKeyPair: openmls_traits::storage::traits::HpkeKeyPair<VERSION>,
     >(
         &self,
-        public_key: &EncryptionKey,
-        key_pair: &HpkeKeyPair,
+        _public_key: &EncryptionKey,
+        _key_pair: &HpkeKeyPair,
     ) -> Result<(), Self::Error> {
         todo!()
     }
@@ -173,10 +173,10 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         HpkeKeyPair: openmls_traits::storage::traits::HpkeKeyPair<VERSION>,
     >(
         &self,
-        group_id: &GroupId,
-        epoch: &EpochKey,
-        leaf_index: u32,
-        key_pairs: &[HpkeKeyPair],
+        _group_id: &GroupId,
+        _epoch: &EpochKey,
+        _leaf_index: u32,
+        _key_pairs: &[HpkeKeyPair],
     ) -> Result<(), Self::Error> {
         todo!()
     }
@@ -186,8 +186,8 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         KeyPackage: openmls_traits::storage::traits::KeyPackage<VERSION>,
     >(
         &self,
-        hash_ref: &HashReference,
-        key_package: &KeyPackage,
+        _hash_ref: &HashReference,
+        _key_package: &KeyPackage,
     ) -> Result<(), Self::Error> {
         todo!()
     }
@@ -197,8 +197,8 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         PskBundle: openmls_traits::storage::traits::PskBundle<VERSION>,
     >(
         &self,
-        psk_id: &PskId,
-        psk: &PskBundle,
+        _psk_id: &PskId,
+        _psk: &PskBundle,
     ) -> Result<(), Self::Error> {
         todo!()
     }
@@ -208,7 +208,7 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         ProposalRef: openmls_traits::storage::traits::ProposalRef<VERSION>,
     >(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<Vec<ProposalRef>, Self::Error> {
         todo!()
     }
@@ -218,7 +218,7 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         TreeSync: openmls_traits::storage::traits::TreeSync<VERSION>,
     >(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<Option<TreeSync>, Self::Error> {
         todo!()
     }
@@ -228,7 +228,7 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         GroupContext: openmls_traits::storage::traits::GroupContext<VERSION>,
     >(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<Option<GroupContext>, Self::Error> {
         todo!()
     }
@@ -238,7 +238,7 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         InterimTranscriptHash: openmls_traits::storage::traits::InterimTranscriptHash<VERSION>,
     >(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<Option<InterimTranscriptHash>, Self::Error> {
         todo!()
     }
@@ -248,7 +248,7 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         ConfirmationTag: openmls_traits::storage::traits::ConfirmationTag<VERSION>,
     >(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<Option<ConfirmationTag>, Self::Error> {
         todo!()
     }
@@ -258,7 +258,7 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         GroupId: openmls_traits::storage::traits::GroupId<VERSION>,
     >(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<Option<GroupState>, Self::Error> {
         todo!()
     }
@@ -268,7 +268,7 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         MessageSecrets: openmls_traits::storage::traits::MessageSecrets<VERSION>,
     >(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<Option<MessageSecrets>, Self::Error> {
         todo!()
     }
@@ -278,7 +278,7 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         ResumptionPskStore: openmls_traits::storage::traits::ResumptionPskStore<VERSION>,
     >(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<Option<ResumptionPskStore>, Self::Error> {
         todo!()
     }
@@ -288,14 +288,14 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         LeafNodeIndex: openmls_traits::storage::traits::LeafNodeIndex<VERSION>,
     >(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<Option<LeafNodeIndex>, Self::Error> {
         todo!()
     }
 
     fn use_ratchet_tree_extension<GroupId: openmls_traits::storage::traits::GroupId<VERSION>>(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<Option<bool>, Self::Error> {
         todo!()
     }
@@ -305,7 +305,7 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         GroupEpochSecrets: openmls_traits::storage::traits::GroupEpochSecrets<VERSION>,
     >(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<Option<GroupEpochSecrets>, Self::Error> {
         todo!()
     }
@@ -315,7 +315,7 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         SignatureKeyPair: openmls_traits::storage::traits::SignatureKeyPair<VERSION>,
     >(
         &self,
-        public_key: &SignaturePublicKey,
+        _public_key: &SignaturePublicKey,
     ) -> Result<Option<SignatureKeyPair>, Self::Error> {
         todo!()
     }
@@ -325,7 +325,7 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         EncryptionKey: openmls_traits::storage::traits::EncryptionKey<VERSION>,
     >(
         &self,
-        public_key: &EncryptionKey,
+        _public_key: &EncryptionKey,
     ) -> Result<Option<HpkeKeyPair>, Self::Error> {
         todo!()
     }
@@ -336,9 +336,9 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         HpkeKeyPair: openmls_traits::storage::traits::HpkeKeyPair<VERSION>,
     >(
         &self,
-        group_id: &GroupId,
-        epoch: &EpochKey,
-        leaf_index: u32,
+        _group_id: &GroupId,
+        _epoch: &EpochKey,
+        _leaf_index: u32,
     ) -> Result<Vec<HpkeKeyPair>, Self::Error> {
         todo!()
     }
@@ -348,7 +348,7 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         KeyPackage: openmls_traits::storage::traits::KeyPackage<VERSION>,
     >(
         &self,
-        hash_ref: &KeyPackageRef,
+        _hash_ref: &KeyPackageRef,
     ) -> Result<Option<KeyPackage>, Self::Error> {
         todo!()
     }
@@ -358,21 +358,21 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         PskId: openmls_traits::storage::traits::PskId<VERSION>,
     >(
         &self,
-        psk_id: &PskId,
+        _psk_id: &PskId,
     ) -> Result<Option<PskBundle>, Self::Error> {
         todo!()
     }
 
     fn delete_group_state<GroupId: openmls_traits::storage::traits::GroupId<VERSION>>(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn delete_message_secrets<GroupId: openmls_traits::storage::traits::GroupId<VERSION>>(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
@@ -381,14 +381,14 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         GroupId: openmls_traits::storage::traits::GroupId<VERSION>,
     >(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn delete_own_leaf_index<GroupId: openmls_traits::storage::traits::GroupId<VERSION>>(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
@@ -397,21 +397,21 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         GroupId: openmls_traits::storage::traits::GroupId<VERSION>,
     >(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn delete_group_epoch_secrets<GroupId: openmls_traits::storage::traits::GroupId<VERSION>>(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn clear_proposal_queue<GroupId: openmls_traits::storage::traits::GroupId<VERSION>>(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
@@ -420,7 +420,7 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         SignaturePublicKeuy: openmls_traits::storage::traits::SignaturePublicKey<VERSION>,
     >(
         &self,
-        public_key: &SignaturePublicKeuy,
+        _public_key: &SignaturePublicKeuy,
     ) -> Result<(), Self::Error> {
         todo!()
     }
@@ -429,7 +429,7 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         EncryptionKey: openmls_traits::storage::traits::EncryptionKey<VERSION>,
     >(
         &self,
-        public_key: &EncryptionKey,
+        _public_key: &EncryptionKey,
     ) -> Result<(), Self::Error> {
         todo!()
     }
@@ -439,9 +439,9 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         EpochKey: openmls_traits::storage::traits::EpochKey<VERSION>,
     >(
         &self,
-        group_id: &GroupId,
-        epoch: &EpochKey,
-        leaf_index: u32,
+        _group_id: &GroupId,
+        _epoch: &EpochKey,
+        _leaf_index: u32,
     ) -> Result<(), Self::Error> {
         todo!()
     }
@@ -450,14 +450,14 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         KeyPackageRef: openmls_traits::storage::traits::HashReference<VERSION>,
     >(
         &self,
-        hash_ref: &KeyPackageRef,
+        _hash_ref: &KeyPackageRef,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn delete_psk<PskKey: openmls_traits::storage::traits::PskId<VERSION>>(
         &self,
-        psk_id: &PskKey,
+        _psk_id: &PskKey,
     ) -> Result<(), Self::Error> {
         todo!()
     }
@@ -467,7 +467,7 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         MlsGroupJoinConfig: openmls_traits::storage::traits::MlsGroupJoinConfig<VERSION>,
     >(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<Option<MlsGroupJoinConfig>, Self::Error> {
         todo!()
     }
@@ -477,8 +477,8 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         MlsGroupJoinConfig: openmls_traits::storage::traits::MlsGroupJoinConfig<VERSION>,
     >(
         &self,
-        group_id: &GroupId,
-        config: &MlsGroupJoinConfig,
+        _group_id: &GroupId,
+        _config: &MlsGroupJoinConfig,
     ) -> Result<(), Self::Error> {
         todo!()
     }
@@ -488,7 +488,7 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         LeafNode: openmls_traits::storage::traits::LeafNode<VERSION>,
     >(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<Vec<LeafNode>, Self::Error> {
         todo!()
     }
@@ -498,30 +498,30 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         LeafNode: openmls_traits::storage::traits::LeafNode<VERSION>,
     >(
         &self,
-        group_id: &GroupId,
-        leaf_node: &LeafNode,
+        _group_id: &GroupId,
+        _leaf_node: &LeafNode,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn clear_own_leaf_nodes<GroupId: openmls_traits::storage::traits::GroupId<VERSION>>(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn aad<GroupId: openmls_traits::storage::traits::GroupId<VERSION>>(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<Vec<u8>, Self::Error> {
         todo!()
     }
 
     fn write_aad<GroupId: openmls_traits::storage::traits::GroupId<VERSION>>(
         &self,
-        group_id: &GroupId,
-        aad: &[u8],
+        _group_id: &GroupId,
+        _aad: &[u8],
     ) -> Result<(), Self::Error> {
         todo!()
     }
@@ -532,7 +532,7 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         QueuedProposal: openmls_traits::storage::traits::QueuedProposal<VERSION>,
     >(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<Vec<(ProposalRef, QueuedProposal)>, Self::Error> {
         todo!()
     }
@@ -542,50 +542,50 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         ProposalRef: openmls_traits::storage::traits::ProposalRef<VERSION>,
     >(
         &self,
-        group_id: &GroupId,
-        proposal_ref: &ProposalRef,
+        _group_id: &GroupId,
+        _proposal_ref: &ProposalRef,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn delete_aad<GroupId: openmls_traits::storage::traits::GroupId<VERSION>>(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn delete_own_leaf_nodes<GroupId: openmls_traits::storage::traits::GroupId<VERSION>>(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn delete_group_config<GroupId: openmls_traits::storage::traits::GroupId<VERSION>>(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn delete_tree<GroupId: openmls_traits::storage::traits::GroupId<VERSION>>(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn delete_confirmation_tag<GroupId: openmls_traits::storage::traits::GroupId<VERSION>>(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn delete_context<GroupId: openmls_traits::storage::traits::GroupId<VERSION>>(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
@@ -594,7 +594,7 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
         GroupId: openmls_traits::storage::traits::GroupId<VERSION>,
     >(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
@@ -661,5 +661,5 @@ impl PersistentStorage {
 #[derive(thiserror::Error, Debug, Copy, Clone, PartialEq, Eq)]
 pub enum PersistentKeyStoreError {
     #[error("Error serializing value.")]
-    SerializationError,
+    _SerializationError,
 }

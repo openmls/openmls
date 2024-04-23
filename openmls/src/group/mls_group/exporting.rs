@@ -1,4 +1,3 @@
-use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::signatures::Signer;
 
 use crate::{group::errors::ExporterError, schedule::EpochAuthenticator, storage::RefinedProvider};

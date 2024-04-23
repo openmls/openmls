@@ -450,7 +450,7 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         MlsGroupJoinConfig: traits::MlsGroupJoinConfig<V_TEST>,
     >(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<Option<MlsGroupJoinConfig>, Self::Error> {
         todo!()
     }
@@ -460,15 +460,15 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         MlsGroupJoinConfig: traits::MlsGroupJoinConfig<V_TEST>,
     >(
         &self,
-        group_id: &GroupId,
-        config: &MlsGroupJoinConfig,
+        _group_id: &GroupId,
+        _config: &MlsGroupJoinConfig,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn own_leaf_nodes<GroupId: traits::GroupId<V_TEST>, LeafNode: traits::LeafNode<V_TEST>>(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<Vec<LeafNode>, Self::Error> {
         todo!()
     }
@@ -478,30 +478,30 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         LeafNode: traits::LeafNode<V_TEST>,
     >(
         &self,
-        group_id: &GroupId,
-        leaf_node: &LeafNode,
+        _group_id: &GroupId,
+        _leaf_node: &LeafNode,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn clear_own_leaf_nodes<GroupId: traits::GroupId<V_TEST>>(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn aad<GroupId: traits::GroupId<V_TEST>>(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<Vec<u8>, Self::Error> {
         todo!()
     }
 
     fn write_aad<GroupId: traits::GroupId<V_TEST>>(
         &self,
-        group_id: &GroupId,
-        aad: &[u8],
+        _group_id: &GroupId,
+        _aad: &[u8],
     ) -> Result<(), Self::Error> {
         todo!()
     }
@@ -512,7 +512,7 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         QueuedProposal: traits::QueuedProposal<V_TEST>,
     >(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<Vec<(ProposalRef, QueuedProposal)>, Self::Error> {
         todo!()
     }
@@ -522,57 +522,57 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
         ProposalRef: traits::ProposalRef<V_TEST>,
     >(
         &self,
-        group_id: &GroupId,
-        proposal_ref: &ProposalRef,
+        _group_id: &GroupId,
+        _proposal_ref: &ProposalRef,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn delete_aad<GroupId: traits::GroupId<V_TEST>>(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn delete_own_leaf_nodes<GroupId: traits::GroupId<V_TEST>>(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn delete_group_config<GroupId: traits::GroupId<V_TEST>>(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn delete_tree<GroupId: traits::GroupId<V_TEST>>(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn delete_confirmation_tag<GroupId: traits::GroupId<V_TEST>>(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn delete_context<GroupId: traits::GroupId<V_TEST>>(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn delete_interim_transcript_hash<GroupId: traits::GroupId<V_TEST>>(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
