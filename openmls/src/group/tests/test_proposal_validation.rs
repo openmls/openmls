@@ -2,6 +2,7 @@
 //! https://openmls.tech/book/message_validation.html#semantic-validation-of-proposals-covered-by-a-commit
 
 use crate::{storage::RefinedProvider, test_utils::OpenMlsRustCrypto};
+use openmls_rust_crypto::MemoryKeyStoreError;
 use openmls_traits::{signatures::Signer, types::Ciphersuite};
 use rstest::*;
 use rstest_reuse::{self, *};
@@ -2173,9 +2174,9 @@ fn valsem113(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedPr
 // --- PreSharedKey Proposals ---
 
 #[apply(ciphersuites_and_providers)]
-fn test_valsem401_valsem402(
+fn test_valsem401_valsem402<Provider: RefinedProvider<StorageError = MemoryKeyStoreError>>(
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &Provider,
 ) {
     let ProposalValidationTestSetup {
         mut alice_group,
@@ -2188,7 +2189,10 @@ fn test_valsem401_valsem402(
     let bob_provider = OpenMlsRustCrypto::default();
 
     // TODO(#1354): This is currently not tested because we can't easily create invalid commits.
-    let bad_psks: [(Vec<PreSharedKeyId>, ProcessMessageError); 0] = [
+    let bad_psks: [(
+        Vec<PreSharedKeyId>,
+        ProcessMessageError<Provider::StorageError>,
+    ); 0] = [
         // // ValSem401
         // (
         //     vec![PreSharedKeyId::external(

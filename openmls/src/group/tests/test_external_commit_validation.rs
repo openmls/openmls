@@ -192,7 +192,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
     alice_group.merge_pending_commit(provider).unwrap();
 
     let verifiable_group_info = alice_group
-        .export_group_info(provider.crypto(), &alice_credential.signer, true)
+        .export_group_info(provider, &alice_credential.signer, true)
         .unwrap()
         .into_verifiable_group_info()
         .unwrap();
@@ -573,7 +573,7 @@ fn test_pure_ciphertest(ciphersuite: Ciphersuite, provider: &impl crate::storage
 
     // Have Alice export everything that bob needs.
     let verifiable_group_info = alice_group
-        .export_group_info(provider.crypto(), &alice_credential.signer, true)
+        .export_group_info(provider, &alice_credential.signer, true)
         .unwrap()
         .into_verifiable_group_info()
         .unwrap();
@@ -657,7 +657,7 @@ mod utils {
 
         // Have Alice export everything that bob needs.
         let verifiable_group_info = alice_group
-            .export_group_info(provider.crypto(), &alice_credential.signer, false)
+            .export_group_info(provider, &alice_credential.signer, false)
             .unwrap()
             .into_verifiable_group_info()
             .unwrap();

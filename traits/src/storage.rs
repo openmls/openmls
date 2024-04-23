@@ -426,8 +426,59 @@ pub trait StorageProvider<const VERSION: u16> {
     //     ---    deleters for group state    ---
     //
 
+    fn remove_proposal<
+        GroupId: traits::GroupId<VERSION>,
+        ProposalRef: traits::ProposalRef<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        proposal_ref: &ProposalRef,
+    ) -> Result<(), Self::Error>;
+
+    /// Deletes the AAD for the given id from storage
+    fn delete_aad<GroupId: traits::GroupId<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error>;
+
+    /// Deletes own leaf nodes for the given id from storage
+    fn delete_own_leaf_nodes<GroupId: traits::GroupId<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error>;
+
+    /// Deletes the MlsGroupJoinConfig for the given id from storage
+    fn delete_group_config<GroupId: traits::GroupId<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error>;
+
+    /// Deletes the tree from storage
+    fn delete_tree<GroupId: traits::GroupId<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error>;
+
+    /// Deletes the confirmation tag from storage
+    fn delete_confirmation_tag<GroupId: traits::GroupId<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error>;
+
     /// Deletes the MlsGroupState for group with given id.
     fn delete_group_state<GroupId: traits::GroupId<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error>;
+
+    /// Deletes the group context for the group with given id
+    fn delete_context<GroupId: traits::GroupId<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error>;
+
+    /// Deletes the interim transcript hash for the group with given id
+    fn delete_interim_transcript_hash<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error>;
@@ -535,7 +586,6 @@ pub mod traits {
 
     // traits for keys, one per data type
     pub trait GroupId<const VERSION: u16>: Key<VERSION> {}
-    pub trait ProposalRefKey<const VERSION: u16>: Key<VERSION> {}
     pub trait SignaturePublicKey<const VERSION: u16>: Key<VERSION> {}
     pub trait HashReference<const VERSION: u16>: Key<VERSION> {}
     pub trait PskId<const VERSION: u16>: Key<VERSION> {}

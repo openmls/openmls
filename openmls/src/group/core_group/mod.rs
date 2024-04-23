@@ -765,6 +765,20 @@ impl CoreGroup {
         Ok(build())
     }
 
+    pub(super) fn delete<Storage: StorageProvider>(
+        &self,
+        storage: &Storage,
+    ) -> Result<(), Storage::Error> {
+        self.public_group.delete(storage)?;
+        storage.delete_own_leaf_index(self.group_id())?;
+        storage.delete_group_epoch_secrets(self.group_id())?;
+        storage.delete_use_ratchet_tree_extension(self.group_id())?;
+        storage.delete_message_secrets(self.group_id())?;
+        storage.delete_all_resumption_psk_secrets(self.group_id())?;
+
+        Ok(())
+    }
+
     /// Store the given [`EncryptionKeyPair`]s in the `provider`'s key store
     /// indexed by this group's [`GroupId`] and [`GroupEpoch`].
     ///

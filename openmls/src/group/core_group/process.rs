@@ -39,19 +39,19 @@ impl CoreGroup {
     ///  - ValSem242
     ///  - ValSem244
     ///  - ValSem246 (as part of ValSem010)
-    pub(crate) fn process_unverified_message(
+    pub(crate) fn process_unverified_message<Provider: RefinedProvider>(
         &self,
-        provider: &impl OpenMlsProvider,
+        provider: &Provider,
         unverified_message: UnverifiedMessage,
         proposal_store: &ProposalStore,
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
-    ) -> Result<ProcessedMessage, ProcessMessageError> {
+    ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
         // Checks the following semantic validation:
         //  - ValSem010
         //  - ValSem246 (as part of ValSem010)
         let (content, credential) =
-            unverified_message.verify(self.ciphersuite(), provider.crypto(), self.version())?;
+            unverified_message.verify(self.ciphersuite(), provider, self.version())?;
 
         match content.sender() {
             Sender::Member(_) | Sender::NewMemberCommit | Sender::NewMemberProposal => {
@@ -169,14 +169,14 @@ impl CoreGroup {
     ///  - ValSem244
     ///  - ValSem245
     ///  - ValSem246 (as part of ValSem010)
-    pub(crate) fn process_message(
+    pub(crate) fn process_message<Provider: RefinedProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider,
+        provider: &Provider,
         message: impl Into<ProtocolMessage>,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
         proposal_store: &ProposalStore,
         own_leaf_nodes: &[LeafNode],
-    ) -> Result<ProcessedMessage, ProcessMessageError> {
+    ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
         let message: ProtocolMessage = message.into();
 
         // Checks the following semantic validation:

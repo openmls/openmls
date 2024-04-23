@@ -177,11 +177,11 @@ impl MlsGroup {
     /// The Remove Proposal is returned as a [`MlsMessageOut`].
     ///
     /// Returns an error if there is a pending commit.
-    pub fn leave_group(
+    pub fn leave_group<Provider: RefinedProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider,
+        provider: &Provider,
         signer: &impl Signer,
-    ) -> Result<MlsMessageOut, LeaveGroupError> {
+    ) -> Result<MlsMessageOut, LeaveGroupError<Provider::StorageError>> {
         self.is_operational()?;
 
         let removed = self.group.own_leaf_index();

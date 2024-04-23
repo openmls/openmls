@@ -516,4 +516,64 @@ impl StorageProvider<V_TEST> for MemoryKeyStore {
     ) -> Result<Vec<(ProposalRef, QueuedProposal)>, Self::Error> {
         todo!()
     }
+
+    fn remove_proposal<
+        GroupId: traits::GroupId<V_TEST>,
+        ProposalRef: traits::ProposalRef<V_TEST>,
+    >(
+        &self,
+        group_id: &GroupId,
+        proposal_ref: &ProposalRef,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    fn delete_aad<GroupId: traits::GroupId<V_TEST>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    fn delete_own_leaf_nodes<GroupId: traits::GroupId<V_TEST>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    fn delete_group_config<GroupId: traits::GroupId<V_TEST>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    fn delete_tree<GroupId: traits::GroupId<V_TEST>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    fn delete_confirmation_tag<GroupId: traits::GroupId<V_TEST>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    fn delete_context<GroupId: traits::GroupId<V_TEST>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    fn delete_interim_transcript_hash<GroupId: traits::GroupId<V_TEST>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
 }

@@ -48,7 +48,7 @@ fn public_group<Provider: RefinedProvider>(ciphersuite: Ciphersuite, provider: &
 
     // === Create a public group that tracks the changes throughout this test ===
     let verifiable_group_info = alice_group
-        .export_group_info(provider.crypto(), &alice_signer, false)
+        .export_group_info(provider, &alice_signer, false)
         .unwrap()
         .into_verifiable_group_info()
         .unwrap();
@@ -75,7 +75,7 @@ fn public_group<Provider: RefinedProvider>(ciphersuite: Ciphersuite, provider: &
         ProtocolMessage::PublicMessage(public_message) => public_message,
     };
     let processed_message = public_group
-        .process_message(provider.crypto(), public_message)
+        .process_message(provider, public_message)
         .unwrap();
 
     // Further inspection of the message can take place here ...
@@ -135,7 +135,7 @@ fn public_group<Provider: RefinedProvider>(ciphersuite: Ciphersuite, provider: &
 
     // The public group processes
     let ppm = public_group
-        .process_message(provider.crypto(), into_public_message(queued_messages))
+        .process_message(provider, into_public_message(queued_messages))
         .unwrap();
     public_group.merge_commit(extract_staged_commit(ppm));
 
@@ -177,7 +177,7 @@ fn public_group<Provider: RefinedProvider>(ciphersuite: Ciphersuite, provider: &
 
     // The public group processes
     let ppm = public_group
-        .process_message(provider.crypto(), into_public_message(queued_messages))
+        .process_message(provider, into_public_message(queued_messages))
         .unwrap();
     // We have to add the proposal to the public group's proposal store.
     match ppm.into_content() {
@@ -224,10 +224,7 @@ fn public_group<Provider: RefinedProvider>(ciphersuite: Ciphersuite, provider: &
 
     // The public group processes
     let ppm = public_group
-        .process_message(
-            provider.crypto(),
-            into_public_message(queued_messages.clone()),
-        )
+        .process_message(provider, into_public_message(queued_messages.clone()))
         .unwrap();
     public_group.merge_commit(extract_staged_commit(ppm));
 

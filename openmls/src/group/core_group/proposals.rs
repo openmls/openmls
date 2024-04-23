@@ -14,6 +14,7 @@ use crate::{
         AddProposal, PreSharedKeyProposal, Proposal, ProposalOrRef, ProposalOrRefType,
         ProposalType, RemoveProposal, UpdateProposal,
     },
+    storage::StorageProvider,
     utils::vector_converter,
 };
 

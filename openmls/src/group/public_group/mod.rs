@@ -16,9 +16,8 @@ use crate::prelude::OpenMlsProvider;
 #[cfg(test)]
 use std::collections::HashSet;
 
-use openmls_traits::{crypto::OpenMlsCrypto, storage::StorageProvider as _, types::Ciphersuite};
+use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
 
 use self::{
     diff::{PublicGroupDiff, StagedPublicGroupDiff},
@@ -367,16 +366,18 @@ impl PublicGroup {
             &InterimTranscriptHash(self.interim_transcript_hash.clone()),
         )?;
         Ok(())
+    }
 
-        // storage.apply_updates(vec![
-        //     Update::WriteTreeSync(group_id.clone(), self.treesync().clone()),
-        //     Update::WriteConfirmationTag(group_id.clone(), self.confirmation_tag.clone()),
-        //     Update::WriteGroupContext(group_id.clone(), self.group_context.clone()),
-        //     Update::WriteInterimTranscriptHash(
-        //         group_id.clone(),
-        //         InterimTranscriptHash(self.interim_transcript_hash.clone()),
-        //     ),
-        // ])
+    pub(crate) fn delete<Storage: StorageProvider>(
+        &self,
+        storage: &Storage,
+    ) -> Result<(), Storage::Error> {
+        storage.delete_tree(self.group_id())?;
+        storage.delete_confirmation_tag(self.group_id())?;
+        storage.delete_context(self.group_id())?;
+        storage.delete_interim_transcript_hash(self.group_id())?;
+
+        Ok(())
     }
 
     pub(crate) fn load<Storage: StorageProvider>(

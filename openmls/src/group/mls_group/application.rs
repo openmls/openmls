@@ -1,5 +1,7 @@
 use openmls_traits::signatures::Signer;
 
+use crate::storage::RefinedProvider;
+
 use super::{errors::CreateMessageError, *};
 
 impl MlsGroup {
@@ -11,12 +13,12 @@ impl MlsGroup {
     /// Returns `CreateMessageError::MlsGroupStateError::PendingProposal` if pending proposals
     /// exist. In that case `.process_pending_proposals()` must be called first
     /// and incoming messages from the DS must be processed afterwards.
-    pub fn create_message(
+    pub fn create_message<Provider: RefinedProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider,
+        provider: &Provider,
         signer: &impl Signer,
         message: &[u8],
-    ) -> Result<MlsMessageOut, CreateMessageError> {
+    ) -> Result<MlsMessageOut, CreateMessageError<Provider::StorageError>> {
         if !self.is_active() {
             return Err(CreateMessageError::GroupStateError(
                 MlsGroupStateError::UseAfterEviction,

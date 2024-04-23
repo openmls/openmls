@@ -1,4 +1,4 @@
-use openmls_traits::storage::{traits::ProposalRef, *};
+use openmls_traits::storage::*;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, sync::RwLock};
 
@@ -54,8 +54,40 @@ impl MemoryKeyStore {
         let list_bytes = values.entry(storage_key).or_insert(b"[]".to_vec());
 
         // parse old value and push new data
-        let mut list: Vec<Vec<u8>> = serde_json::from_slice(&list_bytes)?;
+        let mut list: Vec<Vec<u8>> = serde_json::from_slice(list_bytes)?;
         list.push(value);
+
+        // write back, reusing the old buffer
+        list_bytes.truncate(0);
+        serde_json::to_writer(list_bytes, &list)?;
+
+        Ok(())
+    }
+
+    fn remove_item<const VERSION: u16>(
+        &self,
+        label: &[u8],
+        key: &[u8],
+        value: Vec<u8>,
+    ) -> Result<(), <Self as StorageProvider<CURRENT_VERSION>>::Error> {
+        let mut values = self.values.write().unwrap();
+
+        let mut storage_key = label.to_vec();
+        storage_key.extend_from_slice(key);
+        storage_key.extend_from_slice(&u16::to_be_bytes(VERSION));
+
+        #[cfg(feature = "test-utils")]
+        log::debug!("  write key: {}", hex::encode(&storage_key));
+        log::trace!("{}", std::backtrace::Backtrace::capture());
+
+        // fetch value from db, falling back to an empty list if doens't exist
+        let list_bytes = values.entry(storage_key).or_insert(b"[]".to_vec());
+
+        // parse old value, find value to delete and remove it from list
+        let mut list: Vec<Vec<u8>> = serde_json::from_slice(list_bytes)?;
+        if let Some(pos) = list.iter().position(|stored_item| stored_item == &value) {
+            list.remove(pos);
+        }
 
         // write back, reusing the old buffer
         list_bytes.truncate(0);
@@ -785,7 +817,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
 
         if let Some(value) = value {
             #[cfg(feature = "test-utils")]
-            log::debug!("  value: {}", hex::encode(&value));
+            log::debug!("  value: {}", hex::encode(value));
             return Ok(serde_json::from_slice(value).unwrap());
         }
 
@@ -892,6 +924,78 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
     ) -> Result<(), Self::Error> {
         let key = serde_json::to_vec(group_id)?;
         self.write::<CURRENT_VERSION>(AAD_LABEL, &key, aad.to_vec())
+    }
+
+    fn delete_aad<GroupId: traits::GroupId<CURRENT_VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        self.delete::<CURRENT_VERSION>(AAD_LABEL, &serde_json::to_vec(group_id).unwrap())
+    }
+
+    fn delete_own_leaf_nodes<GroupId: traits::GroupId<CURRENT_VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        self.delete::<CURRENT_VERSION>(OWN_LEAF_NODES_LABEL, &serde_json::to_vec(group_id).unwrap())
+    }
+
+    fn delete_group_config<GroupId: traits::GroupId<CURRENT_VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        self.delete::<CURRENT_VERSION>(JOIN_CONFIG_LABEL, &serde_json::to_vec(group_id).unwrap())
+    }
+
+    fn delete_tree<GroupId: traits::GroupId<CURRENT_VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        self.delete::<CURRENT_VERSION>(TREE_LABEL, &serde_json::to_vec(group_id).unwrap())
+    }
+
+    fn delete_confirmation_tag<GroupId: traits::GroupId<CURRENT_VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        self.delete::<CURRENT_VERSION>(
+            CONFIRMATION_TAG_LABEL,
+            &serde_json::to_vec(group_id).unwrap(),
+        )
+    }
+
+    fn delete_context<GroupId: traits::GroupId<CURRENT_VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        self.delete::<CURRENT_VERSION>(GROUP_CONTEXT_LABEL, &serde_json::to_vec(group_id).unwrap())
+    }
+
+    fn delete_interim_transcript_hash<GroupId: traits::GroupId<CURRENT_VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        self.delete::<CURRENT_VERSION>(
+            INTERIM_TRANSCRIPT_HASH_LABEL,
+            &serde_json::to_vec(group_id).unwrap(),
+        )
+    }
+
+    fn remove_proposal<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        ProposalRef: traits::ProposalRef<CURRENT_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        proposal_ref: &ProposalRef,
+    ) -> Result<(), Self::Error> {
+        let key = serde_json::to_vec(group_id).unwrap();
+        let value = serde_json::to_vec(proposal_ref).unwrap();
+
+        self.remove_item::<CURRENT_VERSION>(PROPOSAL_QUEUE_REFS_LABEL, &key, value)?;
+
+        let key = serde_json::to_vec(&(group_id, proposal_ref)).unwrap();
+        self.delete::<CURRENT_VERSION>(QUEUED_PROPOSAL_LABEL, &key)
     }
 }
 

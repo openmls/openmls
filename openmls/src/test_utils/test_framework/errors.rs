@@ -23,7 +23,7 @@ pub enum SetupError {
     ClientError(#[from] ClientError),
     /// See [`ExportSecretError`] for more details.
     #[error(transparent)]
-    ExportSecretError(#[from] ExportSecretError),
+    ExportSecretError(#[from] ExportSecretError<MemoryKeyStoreError>),
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -56,10 +56,10 @@ pub enum ClientError {
     TlsCodecError(#[from] tls_codec::Error),
     /// See [`ProcessMessageError`] for more details.
     #[error(transparent)]
-    ProcessMessageError(#[from] ProcessMessageError),
+    ProcessMessageError(#[from] ProcessMessageError<MemoryKeyStoreError>),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
-    MlsGroupStateError(#[from] MlsGroupStateError),
+    MlsGroupStateError(#[from] MlsGroupStateError<MemoryKeyStoreError>),
     /// See [`AddMembersError`] for more details.
     #[error(transparent)]
     AddMembersError(#[from] AddMembersError<MemoryKeyStoreError>),
@@ -74,7 +74,7 @@ pub enum ClientError {
     ProposeRemoveMemberError(#[from] ProposeRemoveMemberError<MemoryKeyStoreError>),
     /// See [`ExportSecretError`] for more details.
     #[error(transparent)]
-    ExportSecretError(#[from] ExportSecretError),
+    ExportSecretError(#[from] ExportSecretError<MemoryKeyStoreError>),
     /// See [`NewGroupError`] for more details.
     #[error(transparent)]
     NewGroupError(#[from] NewGroupError<MemoryKeyStoreError>),

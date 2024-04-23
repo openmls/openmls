@@ -284,7 +284,7 @@ fn book_operations<Provider: crate::storage::RefinedProvider>(
 
     // ANCHOR: alice_exports_group_info
     let verifiable_group_info = alice_group
-        .export_group_info(provider.crypto(), &alice_signature_keys, true)
+        .export_group_info(provider, &alice_signature_keys, true)
         .expect("Cannot export group info")
         .into_verifiable_group_info()
         .expect("Could not get group info");
@@ -393,8 +393,8 @@ fn book_operations<Provider: crate::storage::RefinedProvider>(
 
     // Check that both groups have the same state
     assert_eq!(
-        alice_group.export_secret(provider.crypto(), "", &[], 32),
-        bob_group.export_secret(provider.crypto(), "", &[], 32)
+        alice_group.export_secret(provider, "", &[], 32),
+        bob_group.export_secret(provider, "", &[], 32)
     );
 
     // Make sure that both groups have the same public tree
@@ -493,8 +493,8 @@ fn book_operations<Provider: crate::storage::RefinedProvider>(
 
     // Check that both groups have the same state
     assert_eq!(
-        alice_group.export_secret(provider.crypto(), "", &[], 32),
-        bob_group.export_secret(provider.crypto(), "", &[], 32)
+        alice_group.export_secret(provider, "", &[], 32),
+        bob_group.export_secret(provider, "", &[], 32)
     );
 
     // Make sure that both groups have the same public tree
@@ -655,12 +655,12 @@ fn book_operations<Provider: crate::storage::RefinedProvider>(
 
     // Check that all groups have the same state
     assert_eq!(
-        alice_group.export_secret(provider.crypto(), "", &[], 32),
-        bob_group.export_secret(provider.crypto(), "", &[], 32)
+        alice_group.export_secret(provider, "", &[], 32),
+        bob_group.export_secret(provider, "", &[], 32)
     );
     assert_eq!(
-        alice_group.export_secret(provider.crypto(), "", &[], 32),
-        charlie_group.export_secret(provider.crypto(), "", &[], 32)
+        alice_group.export_secret(provider, "", &[], 32),
+        charlie_group.export_secret(provider, "", &[], 32)
     );
 
     // Make sure that all groups have the same public tree
@@ -908,7 +908,7 @@ fn book_operations<Provider: crate::storage::RefinedProvider>(
         )
         .expect("Could not create proposal to add Bob");
     alice_group
-        .remove_pending_proposal(proposal_ref)
+        .remove_pending_proposal(provider.storage(), proposal_ref)
         .expect("The proposal was not found");
     // ANCHOR_END: rollback_proposal_by_ref
 
@@ -1082,7 +1082,9 @@ fn book_operations<Provider: crate::storage::RefinedProvider>(
         assert_eq!(sender_cred_from_msg, sender_cred_from_group);
         assert_eq!(
             &sender_cred_from_msg,
-            alice_group.credential().expect("Expected a credential.")
+            alice_group
+                .credential::<Provider::StorageError>()
+                .expect("Expected a credential.")
         );
     } else {
         unreachable!("Expected an ApplicationMessage.");
@@ -1364,8 +1366,8 @@ fn book_operations<Provider: crate::storage::RefinedProvider>(
         .expect("Could not create group from StagedWelcome");
 
     assert_eq!(
-        alice_group.export_secret(provider.crypto(), "before load", &[], 32),
-        bob_group.export_secret(provider.crypto(), "before load", &[], 32)
+        alice_group.export_secret(provider, "before load", &[], 32),
+        bob_group.export_secret(provider, "before load", &[], 32)
     );
 
     bob_group = MlsGroup::load(provider.storage(), &group_id)
@@ -1374,8 +1376,8 @@ fn book_operations<Provider: crate::storage::RefinedProvider>(
 
     // Make sure the state is still the same
     assert_eq!(
-        alice_group.export_secret(provider.crypto(), "after load", &[], 32),
-        bob_group.export_secret(provider.crypto(), "after load", &[], 32)
+        alice_group.export_secret(provider, "after load", &[], 32),
+        bob_group.export_secret(provider, "after load", &[], 32)
     );
 }
 

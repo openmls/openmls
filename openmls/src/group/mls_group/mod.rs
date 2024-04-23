@@ -217,7 +217,9 @@ impl MlsGroup {
 
     /// Returns own credential. If the group is inactive, it returns a
     /// `UseAfterEviction` error.
-    pub fn credential(&self) -> Result<&Credential, MlsGroupStateError> {
+    pub fn credential<StorageError>(
+        &self,
+    ) -> Result<&Credential, MlsGroupStateError<StorageError>> {
         if !self.is_active() {
             return Err(MlsGroupStateError::UseAfterEviction);
         }
@@ -362,19 +364,19 @@ impl MlsGroup {
         Ok(build())
     }
 
-    /// Persists the state.
-    pub fn save<StorageProvider: crate::storage::StorageProvider>(
+    /// Remove the persisted state from storage
+    pub fn delete<StorageProvider: crate::storage::StorageProvider>(
         &mut self,
-        _store: &StorageProvider,
+        storage: &StorageProvider,
     ) -> Result<(), StorageProvider::Error> {
-        // no-op
+        self.group.delete(storage)?;
+        storage.delete_group_config(self.group_id())?;
+        storage.clear_proposal_queue(self.group_id())?;
+        storage.delete_own_leaf_nodes(self.group_id())?;
+        storage.delete_aad(self.group_id())?;
+        storage.delete_group_state(self.group_id())?;
+
         Ok(())
-
-        //todo!("rewrite save group")
-        // store.store(self.group_id().as_slice(), &*self)?;
-
-        // self.state_changed = InnerState::Persisted;
-        // Ok(())
     }
 
     // === Extensions ===
@@ -435,7 +437,7 @@ impl MlsGroup {
 
     /// Check if the group is operational. Throws an error if the group is
     /// inactive or if there is a pending commit.
-    fn is_operational(&self) -> Result<(), MlsGroupStateError> {
+    fn is_operational<StorageError>(&self) -> Result<(), MlsGroupStateError<StorageError>> {
         match self.group_state {
             MlsGroupState::PendingCommit(_) => Err(MlsGroupStateError::PendingCommit),
             MlsGroupState::Inactive => Err(MlsGroupStateError::UseAfterEviction),
@@ -468,10 +470,14 @@ impl MlsGroup {
     }
 
     /// Removes a specific proposal from the store.
-    pub fn remove_pending_proposal(
+    pub fn remove_pending_proposal<Storage: StorageProvider>(
         &mut self,
+        storage: &Storage,
         proposal_ref: ProposalRef,
-    ) -> Result<(), MlsGroupStateError> {
+    ) -> Result<(), MlsGroupStateError<Storage::Error>> {
+        storage
+            .remove_proposal(self.group_id(), &proposal_ref)
+            .map_err(MlsGroupStateError::StorageError)?;
         self.proposal_store
             .remove(proposal_ref)
             .ok_or(MlsGroupStateError::PendingProposalNotFound)

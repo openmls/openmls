@@ -37,7 +37,7 @@ fn generate_key_package<Provider: RefinedProvider>(
 ///  - Bob leaves
 ///  - Test saving the group state
 #[apply(ciphersuites_and_providers)]
-fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
+fn mls_group_operations<Provider: RefinedProvider>(ciphersuite: Ciphersuite, provider: &Provider) {
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
         let group_id = GroupId::from_slice(b"Test Group");
 
@@ -167,7 +167,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage
             assert_eq!(
                 &sender,
                 alice_group
-                    .credential()
+                    .credential::<Provider::StorageError>()
                     .expect("An unexpected error occurred.")
             );
         } else {
@@ -209,8 +209,8 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage
 
         // Check that both groups have the same state
         assert_eq!(
-            alice_group.export_secret(provider.crypto(), "", &[], 32),
-            bob_group.export_secret(provider.crypto(), "", &[], 32)
+            alice_group.export_secret(provider, "", &[], 32),
+            bob_group.export_secret(provider, "", &[], 32)
         );
 
         // Make sure that both groups have the same public tree
@@ -296,8 +296,8 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage
 
         // Check that both groups have the same state
         assert_eq!(
-            alice_group.export_secret(provider.crypto(), "", &[], 32),
-            bob_group.export_secret(provider.crypto(), "", &[], 32)
+            alice_group.export_secret(provider, "", &[], 32),
+            bob_group.export_secret(provider, "", &[], 32)
         );
 
         // Make sure that both groups have the same public tree
@@ -456,12 +456,12 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage
 
         // Check that all groups have the same state
         assert_eq!(
-            alice_group.export_secret(provider.crypto(), "", &[], 32),
-            bob_group.export_secret(provider.crypto(), "", &[], 32)
+            alice_group.export_secret(provider, "", &[], 32),
+            bob_group.export_secret(provider, "", &[], 32)
         );
         assert_eq!(
-            alice_group.export_secret(provider.crypto(), "", &[], 32),
-            charlie_group.export_secret(provider.crypto(), "", &[], 32)
+            alice_group.export_secret(provider, "", &[], 32),
+            charlie_group.export_secret(provider, "", &[], 32)
         );
 
         // Make sure that all groups have the same public tree
@@ -773,7 +773,9 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage
             // Check that Alice sent the message
             assert_eq!(
                 &sender,
-                alice_group.credential().expect("Expected a credential")
+                alice_group
+                    .credential::<Provider::StorageError>()
+                    .expect("Expected a credential")
             );
         } else {
             unreachable!("Expected an ApplicationMessage.");
@@ -927,8 +929,8 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage
         .expect("Could not create group from staged join");
 
         assert_eq!(
-            alice_group.export_secret(provider.crypto(), "before load", &[], 32),
-            bob_group.export_secret(provider.crypto(), "before load", &[], 32)
+            alice_group.export_secret(provider, "before load", &[], 32),
+            bob_group.export_secret(provider, "before load", &[], 32)
         );
 
         bob_group = MlsGroup::load(provider.storage(), &group_id)
@@ -937,8 +939,8 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage
 
         // Make sure the state is still the same
         assert_eq!(
-            alice_group.export_secret(provider.crypto(), "after load", &[], 32),
-            bob_group.export_secret(provider.crypto(), "after load", &[], 32)
+            alice_group.export_secret(provider, "after load", &[], 32),
+            bob_group.export_secret(provider, "after load", &[], 32)
         );
     }
 }

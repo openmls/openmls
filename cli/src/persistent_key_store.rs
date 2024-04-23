@@ -536,6 +536,68 @@ impl<const VERSION: u16> StorageProvider<VERSION> for PersistentStorage {
     ) -> Result<Vec<(ProposalRef, QueuedProposal)>, Self::Error> {
         todo!()
     }
+
+    fn remove_proposal<
+        GroupId: openmls_traits::storage::traits::GroupId<VERSION>,
+        ProposalRef: openmls_traits::storage::traits::ProposalRef<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        proposal_ref: &ProposalRef,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    fn delete_aad<GroupId: openmls_traits::storage::traits::GroupId<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    fn delete_own_leaf_nodes<GroupId: openmls_traits::storage::traits::GroupId<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    fn delete_group_config<GroupId: openmls_traits::storage::traits::GroupId<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    fn delete_tree<GroupId: openmls_traits::storage::traits::GroupId<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    fn delete_confirmation_tag<GroupId: openmls_traits::storage::traits::GroupId<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    fn delete_context<GroupId: openmls_traits::storage::traits::GroupId<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    fn delete_interim_transcript_hash<
+        GroupId: openmls_traits::storage::traits::GroupId<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
 }
 
 impl PersistentStorage {

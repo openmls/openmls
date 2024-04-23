@@ -145,16 +145,6 @@ impl User {
         match File::create(output_path) {
             Err(e) => log::error!("Error saving user state: {:?}", e.to_string()),
             Ok(output_file) => {
-                let groups = self.groups.get_mut();
-                for (group_name, group) in groups {
-                    self.group_list.replace(group_name.clone());
-                    group
-                        .mls_group
-                        .borrow_mut()
-                        .save(self.provider.storage())
-                        .unwrap();
-                }
-
                 self.save_to_file(&output_file);
 
                 match self.provider.save_keystore(self.username()) {

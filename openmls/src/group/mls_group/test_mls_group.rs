@@ -48,11 +48,11 @@ fn test_mls_group_persistence<Provider: RefinedProvider>(
     assert_eq!(
         (
             alice_group.export_ratchet_tree(),
-            alice_group.export_secret(provider.crypto(), "test", &[], 32)
+            alice_group.export_secret(provider, "test", &[], 32)
         ),
         (
             alice_group_deserialized.export_ratchet_tree(),
-            alice_group_deserialized.export_secret(provider.crypto(), "test", &[], 32)
+            alice_group_deserialized.export_secret(provider, "test", &[], 32)
         )
     );
 }
@@ -234,18 +234,18 @@ fn export_secret(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refin
 
     assert!(
         alice_group
-            .export_secret(provider.crypto(), "test1", &[], ciphersuite.hash_length())
+            .export_secret(provider, "test1", &[], ciphersuite.hash_length())
             .expect("An unexpected error occurred.")
             != alice_group
-                .export_secret(provider.crypto(), "test2", &[], ciphersuite.hash_length())
+                .export_secret(provider, "test2", &[], ciphersuite.hash_length())
                 .expect("An unexpected error occurred.")
     );
     assert!(
         alice_group
-            .export_secret(provider.crypto(), "test", &[0u8], ciphersuite.hash_length())
+            .export_secret(provider, "test", &[0u8], ciphersuite.hash_length())
             .expect("An unexpected error occurred.")
             != alice_group
-                .export_secret(provider.crypto(), "test", &[1u8], ciphersuite.hash_length())
+                .export_secret(provider, "test", &[1u8], ciphersuite.hash_length())
                 .expect("An unexpected error occurred.")
     )
 }
@@ -308,10 +308,10 @@ fn staged_join(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refined
 
     assert_eq!(
         alice_group
-            .export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
+            .export_secret(provider, "test", &[], ciphersuite.hash_length())
             .expect("An unexpected error occurred."),
         bob_group
-            .export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
+            .export_secret(provider, "test", &[], ciphersuite.hash_length())
             .expect("An unexpected error occurred.")
     );
 }
@@ -506,8 +506,8 @@ fn test_verify_staged_commit_credentials(
         alice_group.export_ratchet_tree()
     );
     assert_eq!(
-        bob_group.export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length()),
-        alice_group.export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
+        bob_group.export_secret(provider, "test", &[], ciphersuite.hash_length()),
+        alice_group.export_secret(provider, "test", &[], ciphersuite.hash_length())
     );
     // Bob is added and the state aligns.
 
@@ -583,8 +583,8 @@ fn test_verify_staged_commit_credentials(
             alice_group.export_ratchet_tree()
         );
         assert_eq!(
-            bob_group.export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length()),
-            alice_group.export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
+            bob_group.export_secret(provider, "test", &[], ciphersuite.hash_length()),
+            alice_group.export_secret(provider, "test", &[], ciphersuite.hash_length())
         );
     } else {
         unreachable!()
@@ -679,8 +679,8 @@ fn test_commit_with_update_path_leaf_node(
         alice_group.export_ratchet_tree()
     );
     assert_eq!(
-        bob_group.export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length()),
-        alice_group.export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
+        bob_group.export_secret(provider, "test", &[], ciphersuite.hash_length()),
+        alice_group.export_secret(provider, "test", &[], ciphersuite.hash_length())
     );
     // Bob is added and the state aligns.
 
@@ -768,8 +768,8 @@ fn test_commit_with_update_path_leaf_node(
             alice_group.export_ratchet_tree()
         );
         assert_eq!(
-            bob_group.export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length()),
-            alice_group.export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
+            bob_group.export_secret(provider, "test", &[], ciphersuite.hash_length()),
+            alice_group.export_secret(provider, "test", &[], ciphersuite.hash_length())
         );
     } else {
         unreachable!()
@@ -932,8 +932,8 @@ fn test_pending_commit_logic(
         alice_group.export_ratchet_tree()
     );
     assert_eq!(
-        bob_group.export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length()),
-        alice_group.export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
+        bob_group.export_secret(provider, "test", &[], ciphersuite.hash_length()),
+        alice_group.export_secret(provider, "test", &[], ciphersuite.hash_length())
     );
 
     // While a commit is pending, merging Bob's commit should clear the pending commit.
@@ -1087,12 +1087,14 @@ fn remove_prosposal_by_ref(
     assert_eq!(alice_group.proposal_store.proposals().count(), 1);
     // clearing the proposal by reference
     alice_group
-        .remove_pending_proposal(reference.clone())
+        .remove_pending_proposal(provider.storage(), reference.clone())
         .unwrap();
     assert!(alice_group.proposal_store.is_empty());
 
     // the proposal should not be stored anymore
-    let err = alice_group.remove_pending_proposal(reference).unwrap_err();
+    let err = alice_group
+        .remove_pending_proposal(provider.storage(), reference)
+        .unwrap_err();
     assert_eq!(err, MlsGroupStateError::PendingProposalNotFound);
 
     // the commit should have no proposal
