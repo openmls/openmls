@@ -15,9 +15,11 @@ use tls_codec::{
 };
 
 use super::{
-    errors::KeyPackageVerifyError, InitKey, KeyPackage, KeyPackageBundle, KeyPackageTbs,
-    SIGNATURE_KEY_PACKAGE_LABEL,
+    errors::KeyPackageVerifyError, InitKey, KeyPackage, KeyPackageTbs, SIGNATURE_KEY_PACKAGE_LABEL,
 };
+
+#[cfg(any(feature = "test-utils", test))]
+use super::KeyPackageBundle;
 
 /// Intermediary struct for deserialization of a [`KeyPackageIn`].
 struct VerifiableKeyPackage {
