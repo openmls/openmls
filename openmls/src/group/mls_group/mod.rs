@@ -478,17 +478,6 @@ impl MlsGroup {
     }
 }
 
-/// `Enum` that indicates whether the inner group state has been modified since the last time it was persisted.
-/// `InnerState::Changed` indicates that the state has changed and that [`.save()`] should be called.
-/// `InnerState::Persisted` indicates that the state has not been modified and therefore doesn't need to be persisted.
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum InnerState {
-    /// The inner group state has changed and needs to be persisted.
-    Changed,
-    /// The inner group state hasn't changed and doesn't need to be persisted.
-    Persisted,
-}
-
 /// A [`StagedWelcome`] can be inspected and then turned into a [`MlsGroup`].
 /// This allows checking who authored the Welcome message.
 #[derive(Debug)]
