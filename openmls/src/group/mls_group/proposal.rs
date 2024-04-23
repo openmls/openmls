@@ -1,6 +1,4 @@
-use openmls_traits::{
-    signatures::Signer, storage::StorageProvider, types::Ciphersuite, OpenMlsProvider,
-};
+use openmls_traits::{signatures::Signer, storage::StorageProvider, types::Ciphersuite};
 
 use super::{
     errors::{ProposalError, ProposeAddMemberError, ProposeRemoveMemberError},
@@ -83,23 +81,15 @@ macro_rules! impl_propose_fun {
                 $ref_or_value,
             )?;
             let proposal_ref = queued_proposal.proposal_reference();
+
             log::trace!("Storing proposal in queue {:?}", queued_proposal);
-            self.proposal_store.add(queued_proposal.clone());
-            // let update = openmls_traits::storage::Update::<1>::QueueProposal(
-            //     self.group.group_id().clone(),
-            //     proposal_ref.clone(),
-            //     queued_proposal,
-            // );
             provider
                 .storage()
                 .queue_proposal(self.group.group_id(), &proposal_ref, &queued_proposal)
-                // .apply_update(update)
                 .map_err(ProposalError::StorageError)?;
+            self.proposal_store.add(queued_proposal);
 
             let mls_message = self.content_to_mls_message(proposal, provider)?;
-
-            // Since the state of the group might be changed, arm the state flag
-            self.flag_state_change();
 
             Ok((mls_message, proposal_ref))
         }
@@ -280,7 +270,8 @@ impl MlsGroup {
         provider: &Provider,
         signer: &impl Signer,
         member: LeafNodeIndex,
-    ) -> Result<(MlsMessageOut, ProposalRef), ProposeRemoveMemberError<Provider::StorageError>> {
+    ) -> Result<(MlsMessageOut, ProposalRef), ProposeRemoveMemberError<Provider::StorageError>>
+    {
         self.is_operational()?;
 
         let remove_proposal = self

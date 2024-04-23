@@ -1368,18 +1368,7 @@ fn book_operations<Provider: crate::storage::RefinedProvider>(
         bob_group.export_secret(provider.crypto(), "before load", &[], 32)
     );
 
-    // Check that the state flag gets reset when saving
-    assert_eq!(bob_group.state_changed(), InnerState::Changed);
-    //save(&mut bob_group);
-
-    bob_group
-        .save(provider.storage())
-        .expect("Could not write group state to file");
-
-    // Check that the state flag gets reset when saving
-    assert_eq!(bob_group.state_changed(), InnerState::Persisted);
-
-    let bob_group = MlsGroup::load(provider.storage(), &group_id)
+    bob_group = MlsGroup::load(provider.storage(), &group_id)
         .expect("An error occurred while loading the group")
         .expect("No group with provided group id exists");
 

@@ -167,10 +167,6 @@ pub struct MlsGroup {
     // A variable that indicates the state of the group. See [`MlsGroupState`]
     // for more information.
     group_state: MlsGroupState,
-    // A flag that indicates if the group state has changed and needs to be persisted again. The value
-    // is set to `InnerState::Changed` whenever an the internal group state is change and is set to
-    // `InnerState::Persisted` once the state has been persisted.
-    state_changed: InnerState,
 }
 
 impl MlsGroup {
@@ -360,7 +356,6 @@ impl MlsGroup {
                 own_leaf_nodes,
                 aad,
                 group_state: group_state?,
-                state_changed: InnerState::Persisted,
             })
         };
 
@@ -380,12 +375,6 @@ impl MlsGroup {
 
         // self.state_changed = InnerState::Persisted;
         // Ok(())
-    }
-
-    /// Returns `true` if the internal state has changed and needs to be persisted and
-    /// `false` otherwise. Calling [`Self::save()`] resets the value to `false`.
-    pub fn state_changed(&self) -> InnerState {
-        self.state_changed
     }
 
     // === Extensions ===
@@ -434,11 +423,6 @@ impl MlsGroup {
             }
         };
         Ok(msg)
-    }
-
-    /// Arm the state changed flag function
-    fn flag_state_change(&mut self) {
-        self.state_changed = InnerState::Changed;
     }
 
     /// Group framing parameters

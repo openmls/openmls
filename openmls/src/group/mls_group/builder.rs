@@ -15,7 +15,7 @@ use crate::{
     treesync::node::leaf_node::Capabilities,
 };
 
-use super::{InnerState, MlsGroup, MlsGroupState};
+use super::{MlsGroup, MlsGroupState};
 
 #[derive(Default, Debug)]
 pub struct MlsGroupBuilder {
@@ -107,7 +107,6 @@ impl MlsGroupBuilder {
             own_leaf_nodes: vec![],
             aad: vec![],
             group_state: MlsGroupState::Operational,
-            state_changed: InnerState::Changed,
         };
 
         use openmls_traits::storage::StorageProvider as _;

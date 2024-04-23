@@ -115,8 +115,20 @@ impl MlsGroup {
             group_state: MlsGroupState::PendingCommit(Box::new(PendingCommitState::External(
                 create_commit_result.staged_commit,
             ))),
-            state_changed: InnerState::Changed,
         };
+
+        provider
+            .storage()
+            .write_mls_join_config(mls_group.group_id(), &mls_group.mls_group_config)
+            .map_err(ExternalCommitError::StorageError)?;
+        provider
+            .storage()
+            .write_group_state(mls_group.group_id(), &mls_group.group_state)
+            .map_err(ExternalCommitError::StorageError)?;
+        mls_group
+            .group
+            .store(provider.storage())
+            .map_err(ExternalCommitError::StorageError)?;
 
         let public_message: PublicMessage = create_commit_result.commit.into();
 
@@ -226,7 +238,6 @@ impl StagedWelcome {
             own_leaf_nodes: vec![],
             aad: vec![],
             group_state: MlsGroupState::Operational,
-            state_changed: InnerState::Changed,
         };
 
         provider

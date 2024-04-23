@@ -13,7 +13,6 @@ use mls_client::{
 };
 use mls_interop_proto::mls_client;
 use openmls::{
-    ciphersuite::HpkePrivateKey,
     credentials::{BasicCredential, Credential, CredentialType, CredentialWithKey},
     framing::{MlsMessageBodyIn, MlsMessageIn, MlsMessageOut, ProcessedMessageContent},
     group::{
@@ -23,21 +22,12 @@ use openmls::{
     key_packages::{KeyPackage, KeyPackageBundle},
     prelude::{Capabilities, ExtensionType, SenderRatchetConfiguration},
     schedule::{psk::ResumptionPskUsage, ExternalPsk, PreSharedKeyId, Psk},
-    test_utils::frankenstein::key_package,
-    treesync::{
-        test_utils::{read_keys_from_key_store, write_keys_from_key_store},
-        RatchetTreeIn,
-    },
+    treesync::RatchetTreeIn,
     versions::ProtocolVersion,
 };
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{
-    random::OpenMlsRand,
-    storage::StorageProvider as StorageProviderTrait,
-    types::{Ciphersuite, HpkeKeyPair},
-    OpenMlsProvider,
-};
+use openmls_traits::{random::OpenMlsRand, types::Ciphersuite, OpenMlsProvider};
 use tls_codec::{Deserialize, Serialize};
 use tonic::{async_trait, transport::Server, Code, Request, Response, Status};
 use tracing::{debug, error, info, instrument, trace, Span};
@@ -612,7 +602,13 @@ impl MlsClient for MlsClientImpl {
             .get_mut(request.state_id as usize)
             .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
 
-        interop_group.group.set_aad(&request.authenticated_data);
+        interop_group
+            .group
+            .set_aad(
+                interop_group.crypto_provider.storage(),
+                &request.authenticated_data,
+            )
+            .map_err(|err| tonic::Status::internal(format!("error setting aad: {err}")))?;
 
         let ciphertext = interop_group
             .group
@@ -777,7 +773,12 @@ impl MlsClient for MlsClientImpl {
             .number_of_resumption_psks(32)
             .wire_format_policy(interop_group.wire_format_policy)
             .build();
-        interop_group.group.set_configuration(&mls_group_config);
+        interop_group
+            .group
+            .set_configuration(interop_group.crypto_provider.storage(), &mls_group_config)
+            .map_err(|err| {
+                tonic::Status::internal(format!("error setting configuration: {err}"))
+            })?;
         let (proposal, _) = interop_group
             .group
             .propose_add_member(
@@ -821,7 +822,12 @@ impl MlsClient for MlsClientImpl {
             .use_ratchet_tree_extension(true)
             .wire_format_policy(interop_group.wire_format_policy)
             .build();
-        interop_group.group.set_configuration(&mls_group_config);
+        interop_group
+            .group
+            .set_configuration(interop_group.crypto_provider.storage(), &mls_group_config)
+            .map_err(|err| {
+                tonic::Status::internal(format!("error setting configuration: {err}"))
+            })?;
         let (proposal, _) = interop_group
             .group
             .propose_self_update(
@@ -870,7 +876,12 @@ impl MlsClient for MlsClientImpl {
             .use_ratchet_tree_extension(true)
             .wire_format_policy(interop_group.wire_format_policy)
             .build();
-        interop_group.group.set_configuration(&mls_group_config);
+        interop_group
+            .group
+            .set_configuration(interop_group.crypto_provider.storage(), &mls_group_config)
+            .map_err(|err| {
+                tonic::Status::internal(format!("error setting configuration: {err}"))
+            })?;
         trace!("   prepared remove");
 
         let (proposal, _) = interop_group
@@ -947,7 +958,11 @@ impl MlsClient for MlsClientImpl {
             match processed_message.into_content() {
                 ProcessedMessageContent::ApplicationMessage(_) => unreachable!(),
                 ProcessedMessageContent::ProposalMessage(proposal) => {
-                    group.store_pending_proposal(*proposal);
+                    group
+                        .store_pending_proposal(interop_group.crypto_provider.storage(), *proposal)
+                        .map_err(|err| {
+                            tonic::Status::internal(format!("error storing proposal: {err}"))
+                        })?;
                 }
                 ProcessedMessageContent::ExternalJoinProposalMessage(_) => unreachable!(),
                 ProcessedMessageContent::StagedCommitMessage(_) => unreachable!(),
@@ -1125,7 +1140,13 @@ impl MlsClient for MlsClientImpl {
             match processed_message.into_content() {
                 ProcessedMessageContent::ApplicationMessage(_) => unreachable!(),
                 ProcessedMessageContent::ProposalMessage(proposal) => {
-                    group.store_pending_proposal(*proposal);
+                    group
+                        .store_pending_proposal(interop_group.crypto_provider.storage(), *proposal)
+                        .map_err(|err| {
+                            tonic::Status::internal(format!(
+                                "error storing pending proposal: {err}"
+                            ))
+                        })?;
                 }
                 ProcessedMessageContent::ExternalJoinProposalMessage(_) => unreachable!(),
                 ProcessedMessageContent::StagedCommitMessage(_) => unreachable!(),

@@ -125,9 +125,8 @@ pub enum ExternalCommitError<StorageError> {
     #[error("Credential is missing from external commit.")]
     MissingCredential,
     /// An erorr occurred when writing group to storage
-    // TODO: add a field containing the error. is tricky because that is a generic type
     #[error("An erorr occurred when writing group to storage.")]
-    StorageUpdateError,
+    StorageError(StorageError),
 }
 
 /// Stage Commit error

@@ -136,7 +136,7 @@ impl CoreGroup {
 
         group
             .store(provider.storage())
-            .map_err(|_| ExternalCommitError::StorageUpdateError)?;
+            .map_err(ExternalCommitError::StorageError)?;
 
         Ok((
             group,

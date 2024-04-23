@@ -35,7 +35,6 @@ impl Into<MlsGroup> for SerializedMlsGroup {
             own_leaf_nodes: self.own_leaf_nodes,
             aad: self.aad,
             group_state: self.group_state,
-            state_changed: InnerState::Persisted,
         }
     }
 }

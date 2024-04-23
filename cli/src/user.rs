@@ -111,11 +111,11 @@ impl User {
                             let groups = user.groups.get_mut();
                             for group_name in &user.group_list {
                                 let mlsgroup = MlsGroup::load(
-                                    &GroupId::from_slice(group_name.as_bytes()),
                                     user.provider.storage(),
+                                    &GroupId::from_slice(group_name.as_bytes()),
                                 );
                                 let grp = Group {
-                                    mls_group: RefCell::new(mlsgroup.unwrap()),
+                                    mls_group: RefCell::new(mlsgroup.unwrap().unwrap()),
                                     group_name: group_name.clone(),
                                     conversation: Conversation::default(),
                                 };

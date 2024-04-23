@@ -2,8 +2,6 @@ use thiserror::Error;
 
 use crate::{error::LibraryError, group::errors::*};
 use openmls_rust_crypto::{MemoryKeyStore, MemoryKeyStoreError};
-// use openmls_storage_kv::mem_kv_store::Infallible;
-// use openmls_storage_kv::UpdateError as KvStorageUpdateError;
 
 /// Setup error
 #[derive(Error, Debug, PartialEq)]
