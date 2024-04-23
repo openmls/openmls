@@ -32,7 +32,7 @@ fn test_mls_group_persistence<Provider: RefinedProvider>(
     let mls_group_config = MlsGroupCreateConfig::test_default(ciphersuite);
 
     // === Alice creates a group ===
-    let mut alice_group = MlsGroup::new_with_group_id(
+    let alice_group = MlsGroup::new_with_group_id(
         provider,
         &alice_signer,
         &mls_group_config,
@@ -40,10 +40,6 @@ fn test_mls_group_persistence<Provider: RefinedProvider>(
         alice_credential_with_key,
     )
     .expect("An unexpected error occurred.");
-
-    alice_group
-        .save(provider.storage())
-        .expect("Could not write group state to file");
 
     let alice_group_deserialized = MlsGroup::load(provider.storage(), &group_id)
         .expect("Could not deserialize MlsGroup: error")
@@ -1466,10 +1462,6 @@ fn update_group_context_with_unknown_extension<Provider: RefinedProvider + Defau
     alice_group
         .merge_pending_commit(provider)
         .expect("error merging pending commit");
-
-    alice_group
-        .save(provider.storage())
-        .expect("error saving group");
 
     // === let bob process the updates  ===
     assert_eq!(

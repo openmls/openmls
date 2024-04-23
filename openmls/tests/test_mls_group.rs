@@ -902,11 +902,6 @@ fn mls_group_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage
             .add_members(provider, &alice_signer, &[bob_key_package])
             .expect("Could not add Bob");
 
-        // Test saving & loading the group state when there is a pending commit
-        alice_group
-            .save(provider.storage())
-            .expect("Could not save group state.");
-
         let _test_group = MlsGroup::load(provider.storage(), &group_id)
             .expect("Could not load the group state due to an error.")
             .expect("Could not load the group state because the group does not exist.");
