@@ -110,6 +110,21 @@ impl MlsGroupBuilder {
             state_changed: InnerState::Changed,
         };
 
+        use openmls_traits::storage::StorageProvider as _;
+
+        provider
+            .storage()
+            .write_mls_join_config(mls_group.group_id(), &mls_group.mls_group_config)
+            .map_err(NewGroupError::StorageError)?;
+        provider
+            .storage()
+            .write_group_state(mls_group.group_id(), &mls_group.group_state)
+            .map_err(NewGroupError::StorageError)?;
+        mls_group
+            .group
+            .store(provider.storage())
+            .map_err(NewGroupError::StorageError)?;
+
         Ok(mls_group)
     }
 
