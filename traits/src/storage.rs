@@ -19,17 +19,10 @@ pub trait StorageProvider<const VERSION: u16> {
     }
 
     //
-    //    --- to be doc'd & sorted ---
+    //    ---   setters/writers/enqueuers for group state  ---
     //
 
-    fn mls_group_join_config<
-        GroupId: traits::GroupId<VERSION>,
-        MlsGroupJoinConfig: traits::MlsGroupJoinConfig<VERSION>,
-    >(
-        &self,
-        group_id: &GroupId,
-    ) -> Result<Option<MlsGroupJoinConfig>, Self::Error>;
-
+    /// Writes the MlsGroupJoinConfig for the group with given id to storage
     fn write_mls_join_config<
         GroupId: traits::GroupId<VERSION>,
         MlsGroupJoinConfig: traits::MlsGroupJoinConfig<VERSION>,
@@ -39,11 +32,14 @@ pub trait StorageProvider<const VERSION: u16> {
         config: &MlsGroupJoinConfig,
     ) -> Result<(), Self::Error>;
 
-    fn own_leaf_nodes<GroupId: traits::GroupId<VERSION>, LeafNode: traits::LeafNode<VERSION>>(
+    /// Writes the AAD for the group with given id to storage
+    fn write_aad<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<Vec<LeafNode>, Self::Error>;
+        aad: &[u8],
+    ) -> Result<(), Self::Error>;
 
+    /// Adds an own leaf node for the group with given id to storage
     fn append_own_leaf_node<
         GroupId: traits::GroupId<VERSION>,
         LeafNode: traits::LeafNode<VERSION>,
@@ -53,25 +49,11 @@ pub trait StorageProvider<const VERSION: u16> {
         leaf_node: &LeafNode,
     ) -> Result<(), Self::Error>;
 
+    /// Clears the own leaf node for the group with given id to storage
     fn clear_own_leaf_nodes<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error>;
-
-    fn aad<GroupId: traits::GroupId<VERSION>>(
-        &self,
-        group_id: &GroupId,
-    ) -> Result<Vec<u8>, Self::Error>;
-
-    fn write_aad<GroupId: traits::GroupId<VERSION>>(
-        &self,
-        group_id: &GroupId,
-        aad: &[u8],
-    ) -> Result<(), Self::Error>;
-
-    //
-    //    ---   setters/writers/enqueuers for group state  ---
-    //
 
     /// Enqueue a proposal.
     ///
@@ -261,6 +243,27 @@ pub trait StorageProvider<const VERSION: u16> {
     //
     //    ---   getters for group state  ---
     //
+
+    /// Returns the MlsGroupJoinConfig for the group with given id
+    fn mls_group_join_config<
+        GroupId: traits::GroupId<VERSION>,
+        MlsGroupJoinConfig: traits::MlsGroupJoinConfig<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Option<MlsGroupJoinConfig>, Self::Error>;
+
+    /// Returns the own leaf nodes for the group with given id
+    fn own_leaf_nodes<GroupId: traits::GroupId<VERSION>, LeafNode: traits::LeafNode<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Vec<LeafNode>, Self::Error>;
+
+    /// Returns the AAD for the group with given id
+    fn aad<GroupId: traits::GroupId<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Vec<u8>, Self::Error>;
 
     /// Returns references of all queued proposals for the group with group id `group_id`, or an empty vector of none are stored.
     fn queued_proposal_refs<
