@@ -125,7 +125,6 @@ impl MemoryKeyStore {
     }
 
     /// Internal helper to abstract read operations.
-    #[cfg(any(test, feature = "test-utils"))]
     #[inline(always)]
     fn read_list<const VERSION: u16, V: Entity<VERSION>>(
         &self,
