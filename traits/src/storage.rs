@@ -1,5 +1,9 @@
-use serde::{de::DeserializeOwned, Serialize};
+//! This module describes the storage provider and type traits.
+//! The concept is that the type traits are implemented by OpenMLS, and the storage provider
+//! implements the [`StorageProvider`] trait. The trait mostly defines getters and setters, but
+//! also a few methods that append to lists (which behave similar to setters).
 
+use serde::{de::DeserializeOwned, Serialize};
 /// The storage version used by OpenMLS
 pub const CURRENT_VERSION: u16 = 1;
 
@@ -9,8 +13,17 @@ pub const CURRENT_VERSION: u16 = 1;
 #[cfg(any(test, feature = "test-utils"))]
 pub const V_TEST: u16 = u16::MAX;
 
+/// StorageProvider describes the storage backing OpenMLS and persists the state of OpenMLS groups.
+///
+/// The getters for individual values usually return a `Result<Option<T>, E>`, where `Err(_)`
+/// indicates that some sort of IO or internal error occurred, and `Ok(None)` indicates that no
+/// error occurred, but no value exists.
+/// Many getters for lists return a `Result<Vec<T>, E>`. In this case, if there was no error but
+/// the value doesn't exist, an empty vector should be returned.
+///
+/// More details can be taken from the comments on the respective method.
 pub trait StorageProvider<const VERSION: u16> {
-    // source for errors
+    /// An opaque error returned by all methods on this trait.
     type Error: core::fmt::Debug + std::error::Error + PartialEq;
 
     /// Get the version of this provider.
@@ -260,6 +273,7 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<Vec<LeafNode>, Self::Error>;
 
     /// Returns the AAD for the group with given id
+    /// If the value has not been set, returns an empty vector.
     fn aad<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
