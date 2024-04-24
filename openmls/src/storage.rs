@@ -23,6 +23,36 @@ use crate::{
     treesync::{node::encryption_keys::EncryptionKeyPair, EncryptionKey},
 };
 
+/// A convenience trait for the current version of the storage.
+/// Throughout the code, this one should be used instead of `openmls_traits::storage::StorageProvider`.
+pub trait StorageProvider: openmls_traits::storage::StorageProvider<CURRENT_VERSION> {}
+
+impl<P: openmls_traits::storage::StorageProvider<CURRENT_VERSION>> StorageProvider for P {}
+
+/// A convenience trait for the OpenMLS provider that defines the storage provider
+/// for the current version of storage.
+/// Throughout the code, this one should be used instead of `openmls_traits::OpenMlsProvider`.
+pub trait RefinedProvider:
+    openmls_traits::OpenMlsProvider<StorageProvider = Self::Storage>
+{
+    /// The storage to use
+    type Storage: StorageProvider<Error = Self::StorageError>;
+    /// The storage error type
+    type StorageError: std::error::Error + PartialEq;
+}
+
+impl<
+        Error: std::error::Error + PartialEq,
+        SP: StorageProvider<Error = Error>,
+        OP: openmls_traits::OpenMlsProvider<StorageProvider = SP>,
+    > RefinedProvider for OP
+{
+    type Storage = SP;
+    type StorageError = Error;
+}
+
+// Implementations for the Entity and Key traits
+
 impl Entity<CURRENT_VERSION> for QueuedProposal {}
 impl traits::QueuedProposal<CURRENT_VERSION> for QueuedProposal {}
 
@@ -94,31 +124,6 @@ impl traits::PskId<CURRENT_VERSION> for Psk {}
 impl Entity<CURRENT_VERSION> for PskBundle {}
 impl traits::PskBundle<CURRENT_VERSION> for PskBundle {}
 
-/// A convenience trait for the current version of the storage.
-pub trait StorageProvider: openmls_traits::storage::StorageProvider<CURRENT_VERSION> {}
-
-impl<P: openmls_traits::storage::StorageProvider<CURRENT_VERSION>> StorageProvider for P {}
-
-/// A convenience trait for the OpenMLS provider that defines the storage provider
-/// for the current version of storage.
-pub trait RefinedProvider:
-    openmls_traits::OpenMlsProvider<StorageProvider = Self::Storage>
-{
-    /// The storage to use
-    type Storage: StorageProvider<Error = Self::StorageError>;
-    /// THe storage error type
-    type StorageError: std::error::Error + PartialEq;
-}
-
-impl<
-        Error: std::error::Error + PartialEq,
-        SP: StorageProvider<Error = Error>,
-        OP: openmls_traits::OpenMlsProvider<StorageProvider = SP>,
-    > RefinedProvider for OP
-{
-    type Storage = SP;
-    type StorageError = Error;
-}
 #[cfg(test)]
 mod test {
     use crate::{group::test_core_group::setup_client, prelude::KeyPackageBuilder};
