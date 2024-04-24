@@ -35,7 +35,7 @@ rstest_reuse = { version = "0.4", optional = true }
 wasm-bindgen-test = { version = "0.3.40", optional = true }
 getrandom = { version = "0.2.12", optional = true, features = ["js"] }
 fluvio-wasm-timer = { version = "0.2.5", optional = true }
-openmls_memory_storage = { path = "../memory_keystore", features = [
+openmls_memory_storage = { path = "../memory_storage", features = [
   "test-utils",
 ], optional = true }
 

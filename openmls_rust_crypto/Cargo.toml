@@ -12,7 +12,7 @@ readme = "README.md"
 [dependencies]
 openmls_traits = { version = "0.2.0", path = "../traits" }
 # openmls-storage-kv = { path = "../storage-kv/" }
-openmls_memory_storage = { version = "0.2.0", path = "../memory_keystore" }
+openmls_memory_storage = { version = "0.2.0", path = "../memory_storage" }
 hpke = { version = "0.2.0", package = "hpke-rs", default-features = false, features = [
   "hazmat",
   "serialization",
