@@ -87,7 +87,9 @@ fn public_group<Provider: RefinedProvider>(ciphersuite: Ciphersuite, provider: &
         }
         ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
             // Merge the diff
-            public_group.merge_commit(*staged_commit)
+            public_group
+                .merge_commit(provider.storage(), *staged_commit)
+                .unwrap()
         }
     };
 
@@ -137,7 +139,9 @@ fn public_group<Provider: RefinedProvider>(ciphersuite: Ciphersuite, provider: &
     let ppm = public_group
         .process_message(provider, into_public_message(queued_messages))
         .unwrap();
-    public_group.merge_commit(extract_staged_commit(ppm));
+    public_group
+        .merge_commit(provider.storage(), extract_staged_commit(ppm))
+        .unwrap();
 
     // Bob merges
     bob_group
@@ -226,7 +230,9 @@ fn public_group<Provider: RefinedProvider>(ciphersuite: Ciphersuite, provider: &
     let ppm = public_group
         .process_message(provider, into_public_message(queued_messages.clone()))
         .unwrap();
-    public_group.merge_commit(extract_staged_commit(ppm));
+    public_group
+        .merge_commit(provider.storage(), extract_staged_commit(ppm))
+        .unwrap();
 
     // Check that we receive the correct proposal
     if let Some(staged_commit) = charlie_group.pending_commit() {
