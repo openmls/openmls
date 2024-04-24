@@ -572,7 +572,13 @@ pub trait StorageProvider<const VERSION: u16> {
 }
 
 // base traits for keys and values
+
+/// Key is a trait implemented by all types that serve as a key (in the database sense) to in the
+/// storage. For example, a GroupId is a key to the stored entities for the group with that id.
+/// The point of a key is not to be stored, it's to address something that is stored.
 pub trait Key<const VERSION: u16>: Serialize {}
+
+/// Entity is a trait implemented by the values being stored.
 pub trait Entity<const VERSION: u16>: Serialize + DeserializeOwned {}
 
 impl Entity<CURRENT_VERSION> for bool {}
@@ -582,6 +588,8 @@ impl Entity<CURRENT_VERSION> for u8 {}
 // we can don't sacrifice type safety in the implementations of the storage provider.
 // note that there are types that are used both as keys and as entities.
 
+/// Each trait in this module corresponds to a type in OpenMLS. Some are used as keys, some as
+/// entities, and some both. Therefore, the Key and/or Entity traits also need to be implemented.
 pub mod traits {
     use super::{Entity, Key};
 

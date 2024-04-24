@@ -62,7 +62,7 @@
 //! as follows;
 //!
 //! ```
-//! use openmls::{prelude::{*, tls_codec::*}};
+//! use openmls::prelude::{*, tls_codec::*};
 //! use openmls::test_utils::hex_to_bytes;
 //! use openmls_rust_crypto::OpenMlsRustCrypto;
 //!
@@ -350,9 +350,6 @@ impl KeyPackage {
     }
 
     /// Delete this key package and its private keys from the key store.
-    ///
-    /// Note that this DOES NOT delete eny encryption key pairs.
-    /// This is because they may being used in the leaf node for the group.
     pub fn delete<Provider: RefinedProvider>(
         &self,
         provider: &Provider,
@@ -558,8 +555,8 @@ impl KeyPackageBuilder {
     }
 }
 
-/// A [`KeyPackageBundle`] contains a [`KeyPackage`] and the init private
-/// key.
+/// A [`KeyPackageBundle`] contains a [`KeyPackage`] and the init and encryption
+/// private key.
 ///
 /// This is stored to ensure the private key is handled together with the key
 /// package.
@@ -581,11 +578,6 @@ impl KeyPackageBundle {
     pub fn init_private_key(&self) -> &HpkePrivateKey {
         &self.private_init_key
     }
-
-    // /// Get a reference to the private encryption key.
-    // pub(crate) fn encryption_private_key(&self) -> &EncryptionPrivateKey {
-    //     &self.private_encryption_key
-    // }
 
     /// Get the encryption key pair.
     pub(crate) fn encryption_key_pair(&self) -> EncryptionKeyPair {
