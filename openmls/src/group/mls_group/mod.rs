@@ -331,9 +331,9 @@ impl MlsGroup {
         self.group.public_group().ext_commit_sender_index(commit)
     }
 
-    // === Load ===
+    // === Storage Methods ===
 
-    /// Loads the state from persisted state.
+    /// Loads the state of the group with given id from persisted state.
     pub fn load<Storage: crate::storage::StorageProvider>(
         storage: &Storage,
         group_id: &GroupId,

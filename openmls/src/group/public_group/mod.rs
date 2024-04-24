@@ -354,7 +354,9 @@ impl PublicGroup {
     }
 
     /// Stores the [`PublicGroup`] to storage. Called from methods creating a new group and mutating an
-    /// existing group.
+    /// existing group, both inside [`PublicGroup`] and in [`CoreGroup`].
+    ///
+    /// [`CoreGroup`]: crate::group::core_group::CoreGroup
     pub(crate) fn store<Storage: StorageProvider>(
         &self,
         storage: &Storage,

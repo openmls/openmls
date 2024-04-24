@@ -725,7 +725,7 @@ impl CoreGroup {
     }
 
     /// Stores the [`CoreGroup`]. Called from methods creating a new group and mutating an
-    /// existing group.
+    /// existing group, both inside [`CoreGroup`] and in [`MlsGroup`].
     pub(super) fn store<Storage: StorageProvider>(
         &self,
         storage: &Storage,
