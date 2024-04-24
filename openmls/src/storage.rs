@@ -1,6 +1,11 @@
 //! OpenMLS Storage
 //!
-//! TODO
+//! This module serves two purposes:
+//!
+//! - It implements the Key, Entity and typ traits from `openls_traits::storage::traits`.
+//! - It defines traits that specialize the Storage and Provider traits from `openmls_traits`.
+//!   This way, the Rust compiler knows that the concrete types match when we use the Provider in
+//!   the code.
 
 use openmls_traits::storage::{traits, Entity, Key, CURRENT_VERSION};
 use serde::Serialize;
