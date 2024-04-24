@@ -12,7 +12,6 @@ members = [
   "delivery-service/ds-lib",
   "basic_credential",
   "openmls-wasm",
-  # "storage-kv",
 ]
 resolver = "2"
 

@@ -1,4 +1,3 @@
-// use openmls_storage_kv::{mem_kv_store::HashMapKv, KvStoreStorage};
 use openmls_traits::OpenMlsProvider;
 
 mod crypto;
@@ -14,7 +13,6 @@ pub struct Provider {
     crypto: crypto::CryptoProvider,
     rand: rand::RandProvider,
     key_store: openmls_rust_crypto::MemoryKeyStore,
-    // storage: KvStoreStorage<HashMapKv, Types>,
 }
 
 impl OpenMlsProvider for Provider {

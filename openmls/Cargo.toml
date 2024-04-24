@@ -50,7 +50,6 @@ test-utils = [
   "dep:wasm-bindgen-test",
   "dep:openmls_basic_credential",
   "dep:openmls_memory_keystore"
-  # "dep:openmls-storage-kv",
 ]
 libcrux-provider = ["dep:openmls_libcrux_crypto"]
 crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
