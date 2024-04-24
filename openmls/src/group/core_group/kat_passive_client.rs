@@ -1,10 +1,5 @@
 use log::{debug, info, warn};
-use openmls_memory_storage::MemoryStorage;
-use openmls_traits::{
-    crypto::OpenMlsCrypto,
-    storage::{StorageProvider, CURRENT_VERSION},
-    OpenMlsProvider,
-};
+use openmls_traits::{crypto::OpenMlsCrypto, storage::StorageProvider, OpenMlsProvider};
 use serde::{self, Deserialize, Serialize};
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize};
 
@@ -251,12 +246,10 @@ impl PassiveClient {
 
         // Store key package.
         let hash_ref = key_package.hash_ref(self.provider.crypto()).unwrap();
-        <MemoryStorage as StorageProvider<CURRENT_VERSION>>::write_key_package(
-            self.provider.storage(),
-            &hash_ref,
-            &key_package_bundle,
-        )
-        .unwrap();
+        self.provider
+            .storage()
+            .write_key_package(&hash_ref, &key_package_bundle)
+            .unwrap();
 
         // Store encryption key
         let key_pair = EncryptionKeyPair::from((
