@@ -353,6 +353,8 @@ impl PublicGroup {
         self.treesync().owned_encryption_keys(leaf_index)
     }
 
+    /// Stores the [`PublicGroup`] to storage. Called from methods creating a new group and mutating an
+    /// existing group.
     pub(crate) fn store<Storage: StorageProvider>(
         &self,
         storage: &Storage,
@@ -368,6 +370,7 @@ impl PublicGroup {
         Ok(())
     }
 
+    /// Deletes the [`PublicGroup`] from storage.
     pub(crate) fn delete<Storage: StorageProvider>(
         &self,
         storage: &Storage,
@@ -380,6 +383,9 @@ impl PublicGroup {
         Ok(())
     }
 
+    /// Loads the [`PublicGroup`] from storage. Called from [`CoreGroup::load`].
+    ///
+    /// [`CoreGroup::load`]: crate::group::core_group::CoreGroup::load
     pub(crate) fn load<Storage: StorageProvider>(
         storage: &Storage,
         group_id: &GroupId,

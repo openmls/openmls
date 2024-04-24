@@ -724,6 +724,8 @@ impl CoreGroup {
             .ok_or_else(|| LibraryError::custom("Tree has no own leaf."))
     }
 
+    /// Stores the [`CoreGroup`]. Called from methods creating a new group and mutating an
+    /// existing group.
     pub(super) fn store<Storage: StorageProvider>(
         &self,
         storage: &Storage,
@@ -740,6 +742,7 @@ impl CoreGroup {
         Ok(())
     }
 
+    /// Loads a [`CoreGroup`]. Called in [`MlsGroup::load`].
     pub(super) fn load<Storage: StorageProvider>(
         storage: &Storage,
         group_id: &GroupId,
