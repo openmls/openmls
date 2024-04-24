@@ -14,6 +14,7 @@ use crate::{
     prelude::{Capabilities, RatchetTreeIn},
     prelude_test::HpkePublicKey,
     schedule::psk::store::ResumptionPskStore,
+    storage::RefinedProvider,
     test_utils::*,
     versions::ProtocolVersion,
 };
@@ -37,10 +38,7 @@ fn application_id() {
 // This tests the ratchet tree extension to deliver the public ratcheting tree
 // in-band
 #[apply(ciphersuites_and_providers)]
-fn ratchet_tree_extension(
-    ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
-) {
+fn ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl RefinedProvider) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -244,10 +242,7 @@ fn required_capabilities() {
 }
 
 #[apply(ciphersuites_and_providers)]
-fn with_group_context_extensions(
-    ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
-) {
+fn with_group_context_extensions(ciphersuite: Ciphersuite, provider: &impl RefinedProvider) {
     // create an extension that we can check for later
     let test_extension = Extension::Unknown(0xf023, UnknownExtension(vec![0xca, 0xfe]));
     let extensions = Extensions::single(test_extension.clone());
@@ -285,7 +280,7 @@ fn with_group_context_extensions(
 #[apply(ciphersuites_and_providers)]
 fn wrong_extension_with_group_context_extensions(
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &impl RefinedProvider,
 ) {
     // Extension types that are known to not be allowed here:
     // - application id
@@ -363,10 +358,7 @@ fn wrong_extension_with_group_context_extensions(
 }
 
 #[apply(ciphersuites_and_providers)]
-fn last_resort_extension(
-    ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
-) {
+fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl RefinedProvider) {
     let last_resort = Extension::LastResort(LastResortExtension::default());
 
     // Build a KeyPackage with a last resort extension

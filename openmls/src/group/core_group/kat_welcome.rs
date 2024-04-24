@@ -21,12 +21,7 @@
 
 use crate::test_utils::OpenMlsRustCrypto;
 use kat_welcome::core_group::node::encryption_keys::EncryptionPrivateKey;
-use openmls_memory_keystore::MemoryKeyStore;
-use openmls_traits::{
-    crypto::OpenMlsCrypto,
-    storage::{StorageProvider, CURRENT_VERSION},
-    OpenMlsProvider,
-};
+use openmls_traits::{crypto::OpenMlsCrypto, storage::StorageProvider, OpenMlsProvider};
 use serde::{self, Deserialize, Serialize};
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize};
 
@@ -174,12 +169,10 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
     };
 
     let hash_ref = key_package.hash_ref(provider.crypto()).unwrap();
-    <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::write_key_package(
-        provider.storage(),
-        &hash_ref,
-        &key_package_bundle,
-    )
-    .unwrap();
+    provider
+        .storage()
+        .write_key_package(&hash_ref, &key_package_bundle)
+        .unwrap();
 
     // Verification:
     // * Decrypt the Welcome message:
