@@ -125,7 +125,7 @@ mod test {
 
     use super::*;
 
-    use openmls_rust_crypto::{MemoryKeyStore, OpenMlsRustCrypto};
+    use openmls_rust_crypto::{MemoryStorage, OpenMlsRustCrypto};
     use openmls_traits::{
         storage::{traits as type_traits, StorageProvider, V_TEST},
         types::{Ciphersuite, HpkePrivateKey},
@@ -183,11 +183,11 @@ mod test {
         //let _old_storage = serde_json::to_string(provider.storage()).unwrap();
 
         // ---- migration starts here ----
-        let new_storage_provider = MemoryKeyStore::default();
+        let new_storage_provider = MemoryStorage::default();
 
         // first, read the old data
         let read_key_package_bundle: crate::prelude::KeyPackageBundle =
-            <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::key_package(
+            <MemoryStorage as StorageProvider<CURRENT_VERSION>>::key_package(
                 provider.storage(),
                 &key_package_ref,
             )
@@ -203,7 +203,7 @@ mod test {
         };
 
         // insert the data in the new format
-        <MemoryKeyStore as StorageProvider<V_TEST>>::write_key_package(
+        <MemoryStorage as StorageProvider<V_TEST>>::write_key_package(
             &new_storage_provider,
             &key_package_ref,
             &new_key_package_bundle,
@@ -212,7 +212,7 @@ mod test {
 
         // read the new value from storage
         let read_new_key_package_bundle: NewKeyPackageBundle =
-            <MemoryKeyStore as StorageProvider<V_TEST>>::key_package(
+            <MemoryStorage as StorageProvider<V_TEST>>::key_package(
                 &new_storage_provider,
                 &key_package_ref,
             )

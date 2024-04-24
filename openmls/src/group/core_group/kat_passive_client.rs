@@ -1,5 +1,5 @@
 use log::{debug, info, warn};
-use openmls_memory_keystore::MemoryKeyStore;
+use openmls_memory_storage::MemoryStorage;
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     storage::{StorageProvider, CURRENT_VERSION},
@@ -251,7 +251,7 @@ impl PassiveClient {
 
         // Store key package.
         let hash_ref = key_package.hash_ref(self.provider.crypto()).unwrap();
-        <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::write_key_package(
+        <MemoryStorage as StorageProvider<CURRENT_VERSION>>::write_key_package(
             self.provider.storage(),
             &hash_ref,
             &key_package_bundle,

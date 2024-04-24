@@ -7,11 +7,11 @@ use std::{collections::HashMap, sync::RwLock};
 mod test_store;
 
 #[derive(Debug, Default, Serialize, Deserialize)]
-pub struct MemoryKeyStore {
+pub struct MemoryStorage {
     values: RwLock<HashMap<Vec<u8>, Vec<u8>>>,
 }
 
-impl MemoryKeyStore {
+impl MemoryStorage {
     /// Internal helper to abstract write operations.
     #[inline(always)]
     fn write<const VERSION: u16>(
@@ -117,7 +117,7 @@ impl MemoryKeyStore {
 
         if let Some(value) = value {
             serde_json::from_slice(value)
-                .map_err(|_| MemoryKeyStoreError::SerializationError)
+                .map_err(|_| MemoryStorageError::SerializationError)
                 .map(|v| Some(v))
         } else {
             Ok(None)
@@ -153,7 +153,7 @@ impl MemoryKeyStore {
             .iter()
             .map(|value_bytes| serde_json::from_slice(value_bytes))
             .collect::<Result<Vec<V>, _>>()
-            .map_err(|_| MemoryKeyStoreError::SerializationError)
+            .map_err(|_| MemoryStorageError::SerializationError)
     }
 
     /// Internal helper to abstract delete operations.
@@ -181,7 +181,7 @@ impl MemoryKeyStore {
 
 /// Errors thrown by the key store.
 #[derive(thiserror::Error, Debug, Copy, Clone, PartialEq, Eq)]
-pub enum MemoryKeyStoreError {
+pub enum MemoryStorageError {
     #[error("The key store does not allow storing serialized values.")]
     UnsupportedValueTypeBytes,
     #[error("Updating is not supported by this key store.")]
@@ -219,8 +219,8 @@ const GROUP_STATE_LABEL: &[u8] = b"GroupState";
 const QUEUED_PROPOSAL_LABEL: &[u8] = b"QueuedProposal";
 const PROPOSAL_QUEUE_REFS_LABEL: &[u8] = b"ProposalQueueRefs";
 
-impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
-    type Error = MemoryKeyStoreError;
+impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
+    type Error = MemoryStorageError;
     // type Types = Types;
 
     fn queue_proposal<
@@ -820,7 +820,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryKeyStore {
             return Ok(serde_json::from_slice(value).unwrap());
         }
 
-        Err(MemoryKeyStoreError::None)
+        Err(MemoryStorageError::None)
     }
 
     fn delete_encryption_epoch_key_pairs<
@@ -1002,14 +1002,14 @@ fn epoch_key_pairs_id(
     group_id: &impl traits::GroupId<CURRENT_VERSION>,
     epoch: &impl traits::EpochKey<CURRENT_VERSION>,
     leaf_index: u32,
-) -> Result<Vec<u8>, <MemoryKeyStore as StorageProvider<CURRENT_VERSION>>::Error> {
+) -> Result<Vec<u8>, <MemoryStorage as StorageProvider<CURRENT_VERSION>>::Error> {
     let mut key = serde_json::to_vec(group_id)?;
     key.extend_from_slice(&serde_json::to_vec(epoch)?);
     key.extend_from_slice(&serde_json::to_vec(&leaf_index)?);
     Ok(key)
 }
 
-impl From<serde_json::Error> for MemoryKeyStoreError {
+impl From<serde_json::Error> for MemoryStorageError {
     fn from(_: serde_json::Error) -> Self {
         Self::SerializationError
     }

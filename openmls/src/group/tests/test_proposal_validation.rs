@@ -2,7 +2,7 @@
 //! https://openmls.tech/book/message_validation.html#semantic-validation-of-proposals-covered-by-a-commit
 
 use crate::{storage::RefinedProvider, test_utils::OpenMlsRustCrypto};
-use openmls_rust_crypto::MemoryKeyStoreError;
+use openmls_rust_crypto::MemoryStorageError;
 use openmls_traits::{signatures::Signer, types::Ciphersuite};
 use rstest::*;
 use rstest_reuse::{self, *};
@@ -2174,7 +2174,7 @@ fn valsem113(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedPr
 // --- PreSharedKey Proposals ---
 
 #[apply(ciphersuites_and_providers)]
-fn test_valsem401_valsem402<Provider: RefinedProvider<StorageError = MemoryKeyStoreError>>(
+fn test_valsem401_valsem402<Provider: RefinedProvider<StorageError = MemoryStorageError>>(
     ciphersuite: Ciphersuite,
     provider: &Provider,
 ) {

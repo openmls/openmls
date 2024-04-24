@@ -1,8 +1,8 @@
 use super::*;
 use std::io::Write;
 
-impl StorageProvider<V_TEST> for MemoryKeyStore {
-    type Error = MemoryKeyStoreError;
+impl StorageProvider<V_TEST> for MemoryStorage {
+    type Error = MemoryStorageError;
 
     fn write_encryption_key_pair<
         EncryptionKey: traits::EncryptionKey<V_TEST>,

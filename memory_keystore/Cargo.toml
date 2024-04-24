@@ -1,12 +1,12 @@
 [package]
-name = "openmls_memory_keystore"
+name = "openmls_memory_storage"
 authors = ["OpenMLS Authors"]
 version = "0.2.0"
 edition = "2021"
-description = "A very basic key store for OpenMLS implementing openmls_traits."
+description = "A very basic storage for OpenMLS implementing openmls_traits."
 license = "MIT"
-documentation = "https://docs.rs/openmls_memory_keystore"
-repository = "https://github.com/openmls/openmls/tree/main/memory_keystore"
+documentation = "https://docs.rs/openmls_memory_storage"
+repository = "https://github.com/openmls/openmls/tree/main/memory_storage"
 readme = "README.md"
 
 [dependencies]
@@ -21,4 +21,4 @@ hex = { version = "0.4", features = ["serde"], optional = true }
 test-utils = ["hex", "openmls_traits/test-utils"] # Enable test utilites
 
 [dev-dependencies]
-openmls_memory_keystore = { path = ".", features = ["test-utils"] }
+openmls_memory_storage = { path = ".", features = ["test-utils"] }

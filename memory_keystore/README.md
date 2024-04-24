@@ -1,3 +1,3 @@
-# OpenMLS Memory Keystore
+# OpenMLS Memory Storage
 
-A very basic in-memory key store implementing the `OpenMlsKeyStore` trait from `openmls_traits`.
+A very basic in-memory storage implementing the `StorageProvider` trait from `openmls_traits`.
