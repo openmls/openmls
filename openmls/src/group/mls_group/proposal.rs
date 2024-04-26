@@ -363,7 +363,7 @@ impl MlsGroup {
     ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
         self.is_operational()?;
 
-        let proposal = self.group.create_group_context_ext_proposal::<KeyStore>(
+        let proposal = self.group.create_group_context_ext_proposal::<Provider>(
             self.framing_parameters(),
             extensions,
             signer,
@@ -392,14 +392,14 @@ impl MlsGroup {
     /// Returns an error when the group does not support all the required capabilities
     /// in the new `extensions`.
     #[allow(clippy::type_complexity)]
-    pub fn update_group_context_extensions<KeyStore: OpenMlsKeyStore>(
+    pub fn update_group_context_extensions<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &impl OpenMlsProvider,
         extensions: Extensions,
         signer: &impl Signer,
     ) -> Result<
         (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
-        CreateGroupContextExtProposalError<KeyStore::Error>,
+        CreateGroupContextExtProposalError<Provider::StorageError>,
     > {
         self.is_operational()?;
 

@@ -515,7 +515,7 @@ fn test_group_context_extension_proposal_fails(
 }
 
 #[apply(ciphersuites_and_providers)]
-fn test_group_context_extension_proposal<KeyStore: OpenMlsKeyStore>(
+fn test_group_context_extension_proposal<Provider: OpenMlsProvider>(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,
 ) {
@@ -589,7 +589,7 @@ fn test_group_context_extension_proposal<KeyStore: OpenMlsKeyStore>(
             &[CredentialType::Basic],
         ));
     let gce_proposal = alice_group
-        .create_group_context_ext_proposal::<KeyStore>(
+        .create_group_context_ext_proposal::<Provider>(
             framing_parameters,
             Extensions::single(required_application_id),
             &alice_signer,
