@@ -237,9 +237,7 @@ details.</p>
 <p>Most operations in OpenMLS require a <code>provider</code> object that provides all required cryptographic algorithms via the <a href="https://docs.rs/openmls/latest/openmls/prelude/trait.OpenMlsCryptoProvider.html"><code>OpenMlsCryptoProvider</code></a> trait.
 Currently, there are two implementations available through the <a href="https://crates.io/crates/openmls_rust_crypto">openmls_rust_crypto</a> crate.</p>
 <p>Thus, you can create the <code>provider</code> object for the following examples using ...</p>
-<pre><code class="language-rust no_run noplayground">    use openmls_rust_crypto::OpenMlsRustCrypto;
-
-    let provider = OpenMlsRustCrypto::default();</code></pre>
+<pre><code class="language-rust no_run noplayground">    let provider: OpenMlsRustCrypto = OpenMlsRustCrypto::default();</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="credentials"><a class="header" href="#credentials">Credentials</a></h1>
 <p>MLS relies on credentials to encode the identity of clients in the context of a group.
 There are different types of credentials, with the OpenMLS library currently only supporting the <code>BasicCredential</code> credential type (see below).
@@ -262,7 +260,7 @@ Thus, to create a fresh <code>Credential</code>, the following inputs are requir
 <p>After creating the credential bundle, clients should create keys for it.
 OpenMLS provides a simple implementation of <a href="https://github.com/openmls/openmls/tree/main/basic-credential"><code>BasicCredential</code></a> for tests and to demonstrate how to use credentials.</p>
 <pre><code class="language-rust no_run noplayground">    let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
-    signature_keys.store(provider.key_store()).unwrap();</code></pre>
+    signature_keys.store(provider.storage()).unwrap();</code></pre>
 <p>All functions and structs related to credentials can be found in the <a href="https://docs.rs/crate/openmls/latest/credentials/index.html"><code>credentials</code></a> module.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="key-packages"><a class="header" href="#key-packages">Key packages</a></h1>
 <p>To enable the asynchronous establishment of groups through pre-publishing key material, as well as to represent clients in the group, MLS relies on key packages. Key packages hold several pieces of information:</p>
@@ -432,20 +430,28 @@ with an invalid MLS group instance.</p>
 <h2 id="immediate-operation"><a class="header" href="#immediate-operation">Immediate operation</a></h2>
 <p>Members can be added to the group atomically with the <code>.add_members()</code> function. The application needs to fetch the corresponding key packages from every new member from the Delivery Service first.</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, welcome, group_info) = alice_group
-        .add_members(provider, &amp;alice_signature_keys, &amp;[bob_key_package])
+        .add_members(
+            provider,
+            &amp;alice_signature_keys,
+            &amp;[bob_key_package.key_package().clone()],
+        )
         .expect("Could not add members.");</code></pre>
 <p>The function returns the tuple <code>(MlsMessageOut, Welcome)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing group members. The <code>Welcome</code> message must be sent to the newly added members.</p>
 <h2 id="proposal"><a class="header" href="#proposal">Proposal</a></h2>
 <p>Members can also be added as a proposal (without the corresponding Commit message) by using the <code>.propose_add_member()</code> function:</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, _proposal_ref) = alice_group
-        .propose_add_member(provider, &amp;alice_signature_keys, &amp;bob_key_package)
+        .propose_add_member(
+            provider,
+            &amp;alice_signature_keys,
+            bob_key_package.key_package(),
+        )
         .expect("Could not create proposal to add Bob");</code></pre>
 <p>In this case, the function returns an <code>MlsMessageOut</code> that needs to be fanned out to existing group members.</p>
 <h2 id="external-proposal"><a class="header" href="#external-proposal">External proposal</a></h2>
 <p>Parties outside the group can also make proposals to add themselves to the group with an external proposal. Since those
 proposals are crafted by outsiders, they are always plaintext messages.</p>
-<pre><code class="language-rust no_run noplayground">    let proposal = JoinProposal::new(
-        bob_key_package,
+<pre><code class="language-rust no_run noplayground">    let proposal = JoinProposal::new::&lt;Provider::Storage&gt;(
+        bob_key_package.key_package().clone(),
         alice_group.group_id().clone(),
         alice_group.epoch(),
         &amp;bob_signature_keys,
@@ -463,7 +469,9 @@ Note that in this scenario it is up to the application to define a proper author
         .expect("Could not process message.");
     match alice_processed_message.into_content() {
         ProcessedMessageContent::ExternalJoinProposalMessage(proposal) =&gt; {
-            alice_group.store_pending_proposal(*proposal);
+            alice_group
+                .store_pending_proposal(provider.storage(), *proposal)
+                .unwrap();
             let (_commit, welcome, _group_info) = alice_group
                 .commit_to_pending_proposals(provider, &amp;alice_signature_keys)
                 .expect("Could not commit");
@@ -556,7 +564,7 @@ Even though members were removed in this operation, the Commit message could pot
 <h2 id="external-proposal-1"><a class="header" href="#external-proposal-1">External Proposal</a></h2>
 <p>Parties outside the group can also make proposals to remove members as long as they are registered as part of the <code>ExternalSendersExtension</code> extension.
 Since those proposals are crafted by outsiders, they are always public messages.</p>
-<pre><code class="language-rust no_run noplayground">    let proposal = ExternalProposal::new_remove(
+<pre><code class="language-rust no_run noplayground">    let proposal = ExternalProposal::new_remove::&lt;Provider::Storage&gt;(
         bob_index,
         alice_group.group_id().clone(),
         alice_group.epoch(),
@@ -647,7 +655,9 @@ Even though the member updates its own key package only in this operation, the C
         panic!("Unexpected message type");
     };
 
-    bob_group.store_pending_proposal(*proposal);
+    bob_group
+        .store_pending_proposal(provider.storage(), *proposal)
+        .unwrap();
 
     // Commit to the proposal
     let (commit, _, _) = alice_group
@@ -757,16 +767,22 @@ sender, and authenticated data. It also exposes the message's content. There are
             Sender::Member(member) if *member == alice_group.own_leaf_index()
         ));
         // Store proposal
-        charlie_group.store_pending_proposal(*staged_proposal);
+        charlie_group
+            .store_pending_proposal(provider.storage(), *staged_proposal)
+            .unwrap();
     }</code></pre>
 <h4 id="rolling-back-proposals"><a class="header" href="#rolling-back-proposals">Rolling back proposals</a></h4>
 <p>Operations that add a proposal to the proposal store, will return its reference. This reference can be used to remove
 a proposal from the proposal store. This can be useful for example to roll back in case of errors.</p>
 <pre><code class="language-rust no_run noplayground">    let (_mls_message_out, proposal_ref) = alice_group
-        .propose_add_member(provider, &amp;alice_signature_keys, &amp;bob_key_package)
+        .propose_add_member(
+            provider,
+            &amp;alice_signature_keys,
+            bob_key_package.key_package(),
+        )
         .expect("Could not create proposal to add Bob");
     alice_group
-        .remove_pending_proposal(proposal_ref)
+        .remove_pending_proposal(provider.storage(), proposal_ref)
         .expect("The proposal was not found");</code></pre>
 <h3 id="commit-messages"><a class="header" href="#commit-messages">Commit messages</a></h3>
 <p>Commit messages are returned as <code>StagedCommit</code> objects. The proposals they cover can be inspected through different functions, depending on the proposal type. After the application has inspected the <code>StagedCommit</code> and approved all the proposals it covers, the <code>StagedCommit</code> can be merged in the current group state by calling the <code>.merge_staged_commit()</code> function. For more details, see the <code>StagedCommit</code> documentation.</p>
@@ -890,6 +906,7 @@ to be provided as a byte slice.</p>
 <p>The <code>delete</code> is called with the identifier to delete a value.</p>
 <pre><code class="language-rust no_run noplayground">    // Delete the key package
     key_package
+        .key_package()
         .delete(provider)
         .expect("Error deleting key package");</code></pre>
 <p>Retrieving a value from the key store is as simple as calling <code>read</code>.
@@ -950,32 +967,7 @@ key material from OpenMLS.</p>
 <p>The key store provides functions to <code>store</code>, <code>read</code>, and <code>delete</code> values.
 Note that it does not allow updating values.
 Instead, entries must be deleted and newly stored.</p>
-<pre><code class="language-rust no_run noplayground">    /// Identifier used to downcast the actual entity within an [OpenMlsKeyStore] method.
-    /// In case for example you need to select a SQL table depending on the entity type
-    const ID: MlsEntityId;
-}
-
-/// Blanket impl for when you have to lookup a list of entities from the keystore
-impl&lt;T&gt; MlsEntity for Vec&lt;T&gt;
-where
-    T: MlsEntity + std::fmt::Debug,
-{
-    const ID: MlsEntityId = T::ID;
-}
-
-/// The Key Store trait
-pub trait OpenMlsKeyStore {
-    /// The error type returned by the [`OpenMlsKeyStore`].
-    type Error: std::error::Error + std::fmt::Debug;
-
-    /// Store a value `v` that implements the [`MlsEntity`] trait for
-    /// serialization for ID `k`.
-    ///
-    /// Returns an error if storing fails.
-    fn store&lt;V: MlsEntity&gt;(&amp;self, k: &amp;[u8], v: &amp;V) -&gt; Result&lt;(), Self::Error&gt;
-    where
-        Self: Sized;
-</code></pre>
+<pre><code class="language-rust no_run noplayground">{{#include ../../../traits/src/key_store.rs:15:40}}</code></pre>
 <p><strong>NOTE:</strong> Right now, key material must be extracted from the key store.
 This will most likely change in the future.</p>
 <h3 id="openmlscryptoprovider"><a class="header" href="#openmlscryptoprovider">OpenMlsCryptoProvider</a></h3>
@@ -986,16 +978,16 @@ Some OpenMLS APIs require only one of the sub-traits, though.</p>
 pub trait OpenMlsProvider {
     type CryptoProvider: crypto::OpenMlsCrypto;
     type RandProvider: random::OpenMlsRand;
-    type KeyStoreProvider: key_store::OpenMlsKeyStore;
+    type StorageProvider: storage::StorageProvider&lt;{ storage::CURRENT_VERSION }&gt;;
+
+    // Get the storage provider.
+    fn storage(&amp;self) -&gt; &amp;Self::StorageProvider;
 
     /// Get the crypto provider.
     fn crypto(&amp;self) -&gt; &amp;Self::CryptoProvider;
 
     /// Get the randomness provider.
-    fn rand(&amp;self) -&gt; &amp;Self::RandProvider;
-
-    /// Get the key store provider.
-    fn key_store(&amp;self) -&gt; &amp;Self::KeyStoreProvider;</code></pre>
+    fn rand(&amp;self) -&gt; &amp;Self::RandProvider;</code></pre>
 <h2 id="implementation-notes"><a class="header" href="#implementation-notes">Implementation Notes</a></h2>
 <p>It is not necessary to implement all sub-traits if one functionality is missing.
 Suppose you want to use a persisting key store. In that case, it is sufficient to do a new implementation of the key store trait and combine it with one of the provided crypto and randomness trait implementations.</p>
@@ -1004,16 +996,16 @@ Suppose you want to use a persisting key store. In that case, it is sufficient t
 identifiers.</p>
 <p><strong>AEADs</strong></p>
 <p>The following AEADs are defined.</p>
-<pre><code class="language-rust no_run noplayground">use crate::key_store::{MlsEntity, MlsEntityId};
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
+<pre><code class="language-rust no_run noplayground">#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
 #[repr(u16)]
 /// AEAD types
 pub enum AeadType {
     /// AES GCM 128
     Aes128Gcm = 0x0001,
 
-    /// AES GCM 256</code></pre>
+    /// AES GCM 256
+    Aes256Gcm = 0x0002,
+</code></pre>
 <p>An AEAD provides the following functions to get the according values for each
 algorithm.</p>
 <ul>
@@ -1023,11 +1015,11 @@ algorithm.</p>
 </ul>
 <p><strong>Hashing</strong></p>
 <p>The following hash algorithms are defined.</p>
-<pre><code class="language-rust no_run noplayground">
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-#[repr(u8)]
+<pre><code class="language-rust no_run noplayground">#[repr(u8)]
 #[allow(non_camel_case_types)]
-/// Hash types</code></pre>
+/// Hash types
+pub enum HashType {
+    Sha2_256 = 0x04,</code></pre>
 <p>A hash algorithm provides the following functions to get the according values for each
 algorithm.</p>
 <ul>
@@ -1035,9 +1027,7 @@ algorithm.</p>
 </ul>
 <p><strong>Signatures</strong></p>
 <p>The following signature schemes are defined.</p>
-<pre><code class="language-rust no_run noplayground">    TlsSerialize,
-    TlsDeserialize,
-    TlsDeserializeBytes,
+<pre><code class="language-rust no_run noplayground">    TlsDeserializeBytes,
     TlsSize,
 )]
 #[repr(u16)]
@@ -1046,14 +1036,14 @@ pub enum SignatureScheme {
     ECDSA_SECP256R1_SHA256 = 0x0403,
     /// ECDSA_SECP384R1_SHA384
     ECDSA_SECP384R1_SHA384 = 0x0503,
-    /// ECDSA_SECP521R1_SHA512</code></pre>
+    /// ECDSA_SECP521R1_SHA512
+    ECDSA_SECP521R1_SHA512 = 0x0603,
+    /// ED25519</code></pre>
 <h1 id="hpke-types"><a class="header" href="#hpke-types">HPKE Types</a></h1>
 <p>The HPKE implementation is part of the crypto provider as well.
 The crate, therefore, defines the necessary types too.</p>
 <p>The HPKE algorithms are defined as follows.</p>
-<pre><code class="language-rust no_run noplayground">#[derive(Debug)]
-pub struct HpkeConfig(pub HpkeKemType, pub HpkeKdfType, pub HpkeAeadType);
-
+<pre><code class="language-rust no_run noplayground">
 /// KEM Types for HPKE
 #[derive(PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
 #[repr(u16)]
@@ -1066,20 +1056,20 @@ pub enum HpkeKemType {
 
     /// DH KEM on P521
     DhKemP521 = 0x0012,
-</code></pre>
-<pre><code class="language-rust no_run noplayground">    DhKem448 = 0x0021,
 
-    /// XWing combiner for ML-KEM and X25519
+    /// DH KEM on x25519
+    DhKem25519 = 0x0020,</code></pre>
+<pre><code class="language-rust no_run noplayground">    /// XWing combiner for ML-KEM and X25519
     XWingKemDraft2 = 0x004D,
 }
 
 /// KDF Types for HPKE
 #[derive(PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
 #[repr(u16)]
-pub enum HpkeKdfType {</code></pre>
-<pre><code class="language-rust no_run noplayground">    HkdfSha384 = 0x0002,
-
-    /// HKDF SHA 512
+pub enum HpkeKdfType {
+    /// HKDF SHA 256
+    HkdfSha256 = 0x0001,</code></pre>
+<pre><code class="language-rust no_run noplayground">    /// HKDF SHA 512
     HkdfSha512 = 0x0003,
 }
 
@@ -1089,16 +1079,18 @@ pub enum HpkeKdfType {</code></pre>
 pub enum HpkeAeadType {
     /// AES GCM 128
     AesGcm128 = 0x0001,
-</code></pre>
+
+    /// AES GCM 256
+    AesGcm256 = 0x0002,</code></pre>
 <p>In addition, helper structs for <code>HpkeCiphertext</code> and <code>HpkeKeyPair</code> are defined.</p>
-<pre><code class="language-rust no_run noplayground">/// ```text
-/// struct {
-///     opaque kem_output&lt;V&gt;;
-///     opaque ciphertext&lt;V&gt;;</code></pre>
-<pre><code class="language-rust no_run noplayground">    Debug,
-    PartialEq,
-    Eq,
-    Clone,</code></pre>
+<pre><code class="language-rust no_run noplayground">///     opaque kem_output&lt;V&gt;;
+///     opaque ciphertext&lt;V&gt;;
+/// } HPKECiphertext;
+/// ```</code></pre>
+<pre><code class="language-rust no_run noplayground">    Eq,
+    Clone,
+    Serialize,
+    Deserialize,</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="message-validation"><a class="header" href="#message-validation">Message Validation</a></h1>
 <p>OpenMLS implements a variety of syntactical and semantical checks, both when parsing and processing incoming commits and when creating own commits.</p>
 <h2 id="validation-steps"><a class="header" href="#validation-steps">Validation steps</a></h2>

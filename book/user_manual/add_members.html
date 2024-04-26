@@ -177,20 +177,28 @@
 <h2 id="immediate-operation"><a class="header" href="#immediate-operation">Immediate operation</a></h2>
 <p>Members can be added to the group atomically with the <code>.add_members()</code> function. The application needs to fetch the corresponding key packages from every new member from the Delivery Service first.</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, welcome, group_info) = alice_group
-        .add_members(provider, &amp;alice_signature_keys, &amp;[bob_key_package])
+        .add_members(
+            provider,
+            &amp;alice_signature_keys,
+            &amp;[bob_key_package.key_package().clone()],
+        )
         .expect("Could not add members.");</code></pre>
 <p>The function returns the tuple <code>(MlsMessageOut, Welcome)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing group members. The <code>Welcome</code> message must be sent to the newly added members.</p>
 <h2 id="proposal"><a class="header" href="#proposal">Proposal</a></h2>
 <p>Members can also be added as a proposal (without the corresponding Commit message) by using the <code>.propose_add_member()</code> function:</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, _proposal_ref) = alice_group
-        .propose_add_member(provider, &amp;alice_signature_keys, &amp;bob_key_package)
+        .propose_add_member(
+            provider,
+            &amp;alice_signature_keys,
+            bob_key_package.key_package(),
+        )
         .expect("Could not create proposal to add Bob");</code></pre>
 <p>In this case, the function returns an <code>MlsMessageOut</code> that needs to be fanned out to existing group members.</p>
 <h2 id="external-proposal"><a class="header" href="#external-proposal">External proposal</a></h2>
 <p>Parties outside the group can also make proposals to add themselves to the group with an external proposal. Since those
 proposals are crafted by outsiders, they are always plaintext messages.</p>
-<pre><code class="language-rust no_run noplayground">    let proposal = JoinProposal::new(
-        bob_key_package,
+<pre><code class="language-rust no_run noplayground">    let proposal = JoinProposal::new::&lt;Provider::Storage&gt;(
+        bob_key_package.key_package().clone(),
         alice_group.group_id().clone(),
         alice_group.epoch(),
         &amp;bob_signature_keys,
@@ -208,7 +216,9 @@ Note that in this scenario it is up to the application to define a proper author
         .expect("Could not process message.");
     match alice_processed_message.into_content() {
         ProcessedMessageContent::ExternalJoinProposalMessage(proposal) =&gt; {
-            alice_group.store_pending_proposal(*proposal);
+            alice_group
+                .store_pending_proposal(provider.storage(), *proposal)
+                .unwrap();
             let (_commit, welcome, _group_info) = alice_group
                 .commit_to_pending_proposals(provider, &amp;alice_signature_keys)
                 .expect("Could not commit");

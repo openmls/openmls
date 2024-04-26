@@ -67,6 +67,9 @@
 <a href="#65" id="65">65</a>
 <a href="#66" id="66">66</a>
 <a href="#67" id="67">67</a>
+<a href="#68" id="68">68</a>
+<a href="#69" id="69">69</a>
+<a href="#70" id="70">70</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Framing errors.
 //!
 //! This module contains errors related to message framing operations.
@@ -104,7 +107,7 @@
 
 <span class="doccomment">/// Message encryption error
 </span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>MessageEncryptionError {
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>MessageEncryptionError&lt;StorageError&gt; {
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
@@ -114,6 +117,9 @@
     <span class="doccomment">/// See [`SecretTreeError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>SecretTreeError(<span class="attr">#[from] </span>SecretTreeError),
+    <span class="doccomment">/// Error reading from or writing to storage
+    </span><span class="attr">#[error(<span class="string">"Error reading from or writing to storage: {0}"</span>)]
+    </span>StorageError(StorageError),
 }
 
 <span class="doccomment">/// MlsMessage error

@@ -66,10 +66,10 @@
 <a href="#64" id="64">64</a>
 <a href="#65" id="65">65</a>
 <a href="#66" id="66">66</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
-<span class="kw">use </span>openmls_traits::signatures::Signer;
+<a href="#67" id="67">67</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::signatures::Signer;
 
-<span class="kw">use crate</span>::{group::errors::ExporterError, schedule::EpochAuthenticator};
+<span class="kw">use crate</span>::{group::errors::ExporterError, schedule::EpochAuthenticator, storage::OpenMlsProvider};
 
 <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
@@ -81,13 +81,15 @@
     /// key length is too long.
     /// Returns [`ExportSecretError::GroupStateError(MlsGroupStateError::UseAfterEviction)`](MlsGroupStateError::UseAfterEviction)
     /// if the group is not active.
-    </span><span class="kw">pub fn </span>export_secret(
+    </span><span class="kw">pub fn </span>export_secret&lt;Provider: OpenMlsProvider&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+        provider: <span class="kw-2">&amp;</span>Provider,
         label: <span class="kw-2">&amp;</span>str,
         context: <span class="kw-2">&amp;</span>[u8],
         key_length: usize,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ExportSecretError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ExportSecretError&lt;Provider::StorageError&gt;&gt; {
+        <span class="kw">let </span>crypto = provider.crypto();
+
         <span class="kw">if </span><span class="self">self</span>.is_active() {
             <span class="prelude-val">Ok</span>(<span class="self">self
                 </span>.group
@@ -120,15 +122,15 @@
     }
 
     <span class="doccomment">/// Export a group info object for this group.
-    </span><span class="kw">pub fn </span>export_group_info(
+    </span><span class="kw">pub fn </span>export_group_info&lt;Provider: OpenMlsProvider&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+        provider: <span class="kw-2">&amp;</span>Provider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         with_ratchet_tree: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, ExportGroupInfoError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, ExportGroupInfoError&lt;Provider::StorageError&gt;&gt; {
         <span class="prelude-val">Ok</span>(<span class="self">self
             </span>.group
-            .export_group_info(crypto, signer, with_ratchet_tree)<span class="question-mark">?
+            .export_group_info(provider.crypto(), signer, with_ratchet_tree)<span class="question-mark">?
             </span>.into())
     }
 }

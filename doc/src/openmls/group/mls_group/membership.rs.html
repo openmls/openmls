@@ -274,12 +274,18 @@
 <a href="#272" id="272">272</a>
 <a href="#273" id="273">273</a>
 <a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! MLS group membership
 //!
 //! This module contains membership-related operations and exposes [`RemoveOperation`].
 
 </span><span class="kw">use </span>core_group::create_commit_params::CreateCommitParams;
-<span class="kw">use </span>openmls_traits::signatures::Signer;
+<span class="kw">use </span>openmls_traits::{signatures::Signer, storage::StorageProvider <span class="kw">as _</span>};
 
 <span class="kw">use super</span>::{
     errors::{AddMembersError, LeaveGroupError, RemoveMembersError},
@@ -287,7 +293,7 @@
 };
 <span class="kw">use crate</span>::{
     binary_tree::array_representation::LeafNodeIndex, messages::group_info::GroupInfo,
-    treesync::LeafNode,
+    storage::OpenMlsProvider, treesync::LeafNode,
 };
 
 <span class="kw">impl </span>MlsGroup {
@@ -307,13 +313,15 @@
     /// [`Welcome`]: crate::messages::Welcome
     </span><span class="comment">// FIXME: #1217
     </span><span class="attr">#[allow(clippy::type_complexity)]
-    </span><span class="kw">pub fn </span>add_members&lt;KeyStore: OpenMlsKeyStore&gt;(
+    </span><span class="kw">pub fn </span>add_members&lt;Provider: OpenMlsProvider&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        provider: <span class="kw-2">&amp;</span>Provider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         key_packages: <span class="kw-2">&amp;</span>[KeyPackage],
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, MlsMessageOut, <span class="prelude-ty">Option</span>&lt;GroupInfo&gt;), AddMembersError&lt;KeyStore::Error&gt;&gt;
-    {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;
+        (MlsMessageOut, MlsMessageOut, <span class="prelude-ty">Option</span>&lt;GroupInfo&gt;),
+        AddMembersError&lt;Provider::StorageError&gt;,
+    &gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
         <span class="kw">if </span>key_packages.is_empty() {
@@ -356,8 +364,10 @@
             create_commit_result.staged_commit,
         )));
 
-        <span class="comment">// Since the state of the group might be changed, arm the state flag
-        </span><span class="self">self</span>.flag_state_change();
+        provider
+            .storage()
+            .write_group_state(<span class="self">self</span>.group_id(), <span class="kw-2">&amp;</span><span class="self">self</span>.group_state)
+            .map_err(AddMembersError::StorageError)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>((
             mls_messages,
@@ -387,14 +397,14 @@
     /// [`Welcome`]: crate::messages::Welcome
     </span><span class="comment">// FIXME: #1217
     </span><span class="attr">#[allow(clippy::type_complexity)]
-    </span><span class="kw">pub fn </span>remove_members&lt;KeyStore: OpenMlsKeyStore&gt;(
+    </span><span class="kw">pub fn </span>remove_members&lt;Provider: OpenMlsProvider&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        provider: <span class="kw-2">&amp;</span>Provider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         members: <span class="kw-2">&amp;</span>[LeafNodeIndex],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;
         (MlsMessageOut, <span class="prelude-ty">Option</span>&lt;MlsMessageOut&gt;, <span class="prelude-ty">Option</span>&lt;GroupInfo&gt;),
-        RemoveMembersError&lt;KeyStore::Error&gt;,
+        RemoveMembersError&lt;Provider::StorageError&gt;,
     &gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
@@ -429,8 +439,10 @@
             create_commit_result.staged_commit,
         )));
 
-        <span class="comment">// Since the state of the group might be changed, arm the state flag
-        </span><span class="self">self</span>.flag_state_change();
+        provider
+            .storage()
+            .write_group_state(<span class="self">self</span>.group_id(), <span class="kw-2">&amp;</span><span class="self">self</span>.group_state)
+            .map_err(RemoveMembersError::StorageError)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>((
             mls_message,
@@ -447,11 +459,11 @@
     /// The Remove Proposal is returned as a [`MlsMessageOut`].
     ///
     /// Returns an error if there is a pending commit.
-    </span><span class="kw">pub fn </span>leave_group(
+    </span><span class="kw">pub fn </span>leave_group&lt;Provider: OpenMlsProvider&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
+        provider: <span class="kw-2">&amp;</span>Provider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, LeaveGroupError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, LeaveGroupError&lt;Provider::StorageError&gt;&gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
         <span class="kw">let </span>removed = <span class="self">self</span>.group.own_leaf_index();

@@ -224,9 +224,20 @@
 <a href="#222" id="222">222</a>
 <a href="#223" id="223">223</a>
 <a href="#224" id="224">224</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::{
-    key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite, OpenMlsProvider,
-};
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::{signatures::Signer, types::Ciphersuite};
 
 <span class="kw">use crate</span>::{
     credentials::CredentialWithKey,
@@ -238,11 +249,12 @@
         ProposalStore, WireFormatPolicy,
     },
     key_packages::Lifetime,
+    storage::OpenMlsProvider,
     tree::sender_ratchet::SenderRatchetConfiguration,
     treesync::node::leaf_node::Capabilities,
 };
 
-<span class="kw">use super</span>::{InnerState, MlsGroup, MlsGroupState};
+<span class="kw">use super</span>::{MlsGroup, MlsGroupState};
 
 <span class="attr">#[derive(Default, Debug)]
 </span><span class="kw">pub struct </span>MlsGroupBuilder {
@@ -262,12 +274,12 @@
     </span>}
 
     <span class="doccomment">/// Build a new group as configured by this builder.
-    </span><span class="kw">pub fn </span>build&lt;KeyStore: OpenMlsKeyStore&gt;(
+    </span><span class="kw">pub fn </span>build&lt;Provider: OpenMlsProvider&gt;(
         <span class="self">self</span>,
-        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        provider: <span class="kw-2">&amp;</span>Provider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         credential_with_key: CredentialWithKey,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsGroup, NewGroupError&lt;KeyStore::Error&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsGroup, NewGroupError&lt;Provider::StorageError&gt;&gt; {
         <span class="self">self</span>.build_internal(provider, signer, credential_with_key, <span class="prelude-val">None</span>)
     }
 
@@ -276,13 +288,13 @@
     /// If an [`MlsGroupCreateConfig`] is provided, it will be used to configure the
     /// group. Otherwise, the internal builder is used to build one with the
     /// parameters set on this builder.
-    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>build_internal&lt;KeyStore: OpenMlsKeyStore&gt;(
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>build_internal&lt;Provider: OpenMlsProvider&gt;(
         <span class="self">self</span>,
-        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        provider: <span class="kw-2">&amp;</span>Provider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         credential_with_key: CredentialWithKey,
         mls_group_create_config_option: <span class="prelude-ty">Option</span>&lt;MlsGroupCreateConfig&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsGroup, NewGroupError&lt;KeyStore::Error&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsGroup, NewGroupError&lt;Provider::StorageError&gt;&gt; {
         <span class="kw">let </span>mls_group_create_config = mls_group_create_config_option
             .unwrap_or_else(|| <span class="self">self</span>.mls_group_create_config_builder.build());
         <span class="kw">let </span>group_id = <span class="self">self
@@ -314,7 +326,7 @@
                 <span class="macro">log::debug!</span>(<span class="string">"Unexpected PSK error: {:?}"</span>, e);
                 LibraryError::custom(<span class="string">"Unexpected PSK error"</span>).into()
             }
-            CoreGroupBuildError::KeyStoreError(e) =&gt; NewGroupError::KeyStoreError(e),
+            CoreGroupBuildError::StorageError(e) =&gt; NewGroupError::StorageError(e),
             CoreGroupBuildError::PublicGroupBuildError(e) =&gt; <span class="kw">match </span>e {
                 PublicGroupBuildError::LibraryError(e) =&gt; e.into(),
                 PublicGroupBuildError::InvalidExtensions(e) =&gt; NewGroupError::InvalidExtensions(e),
@@ -334,8 +346,22 @@
             own_leaf_nodes: <span class="macro">vec!</span>[],
             aad: <span class="macro">vec!</span>[],
             group_state: MlsGroupState::Operational,
-            state_changed: InnerState::Changed,
         };
+
+        <span class="kw">use </span>openmls_traits::storage::StorageProvider <span class="kw">as _</span>;
+
+        provider
+            .storage()
+            .write_mls_join_config(mls_group.group_id(), <span class="kw-2">&amp;</span>mls_group.mls_group_config)
+            .map_err(NewGroupError::StorageError)<span class="question-mark">?</span>;
+        provider
+            .storage()
+            .write_group_state(mls_group.group_id(), <span class="kw-2">&amp;</span>mls_group.group_state)
+            .map_err(NewGroupError::StorageError)<span class="question-mark">?</span>;
+        mls_group
+            .group
+            .store(provider.storage())
+            .map_err(NewGroupError::StorageError)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(mls_group)
     }

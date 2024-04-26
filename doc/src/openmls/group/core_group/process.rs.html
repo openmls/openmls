@@ -354,19 +354,19 @@
     ///  - ValSem242
     ///  - ValSem244
     ///  - ValSem246 (as part of ValSem010)
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>process_unverified_message(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>process_unverified_message&lt;Provider: OpenMlsProvider&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
+        provider: <span class="kw-2">&amp;</span>Provider,
         unverified_message: UnverifiedMessage,
         proposal_store: <span class="kw-2">&amp;</span>ProposalStore,
         old_epoch_keypairs: Vec&lt;EncryptionKeyPair&gt;,
         leaf_node_keypairs: Vec&lt;EncryptionKeyPair&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;ProcessedMessage, ProcessMessageError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ProcessedMessage, ProcessMessageError&lt;Provider::StorageError&gt;&gt; {
         <span class="comment">// Checks the following semantic validation:
         //  - ValSem010
         //  - ValSem246 (as part of ValSem010)
         </span><span class="kw">let </span>(content, credential) =
-            unverified_message.verify(<span class="self">self</span>.ciphersuite(), provider.crypto(), <span class="self">self</span>.version())<span class="question-mark">?</span>;
+            unverified_message.verify(<span class="self">self</span>.ciphersuite(), provider, <span class="self">self</span>.version())<span class="question-mark">?</span>;
 
         <span class="kw">match </span>content.sender() {
             Sender::Member(<span class="kw">_</span>) | Sender::NewMemberCommit | Sender::NewMemberProposal =&gt; {
@@ -484,14 +484,14 @@
     ///  - ValSem244
     ///  - ValSem245
     ///  - ValSem246 (as part of ValSem010)
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>process_message(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>process_message&lt;Provider: OpenMlsProvider&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
+        provider: <span class="kw-2">&amp;</span>Provider,
         message: <span class="kw">impl </span>Into&lt;ProtocolMessage&gt;,
         sender_ratchet_configuration: <span class="kw-2">&amp;</span>SenderRatchetConfiguration,
         proposal_store: <span class="kw-2">&amp;</span>ProposalStore,
         own_leaf_nodes: <span class="kw-2">&amp;</span>[LeafNode],
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;ProcessedMessage, ProcessMessageError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ProcessedMessage, ProcessMessageError&lt;Provider::StorageError&gt;&gt; {
         <span class="kw">let </span>message: ProtocolMessage = message.into();
 
         <span class="comment">// Checks the following semantic validation:
@@ -588,7 +588,7 @@
         own_leaf_nodes: <span class="kw-2">&amp;</span>[LeafNode],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;EncryptionKeyPair&gt;, Vec&lt;EncryptionKeyPair&gt;), StageCommitError&gt; {
         <span class="comment">// All keys from the previous epoch are potential decryption keypairs.
-        </span><span class="kw">let </span>old_epoch_keypairs = <span class="self">self</span>.read_epoch_keypairs(provider.key_store());
+        </span><span class="kw">let </span>old_epoch_keypairs = <span class="self">self</span>.read_epoch_keypairs(provider.storage());
 
         <span class="comment">// If we are processing an update proposal that originally came from
         // us, the keypair corresponding to the leaf in the update is also a
@@ -596,7 +596,7 @@
         </span><span class="kw">let </span>leaf_node_keypairs = own_leaf_nodes
             .iter()
             .map(|leaf_node| {
-                EncryptionKeyPair::read_from_key_store(provider, leaf_node.encryption_key())
+                EncryptionKeyPair::read(provider, leaf_node.encryption_key())
                     .ok_or(StageCommitError::MissingDecryptionKey)
             })
             .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;EncryptionKeyPair&gt;, StageCommitError&gt;&gt;()<span class="question-mark">?</span>;
@@ -605,12 +605,12 @@
     }
 
     <span class="doccomment">/// Merge a [StagedCommit] into the group after inspection
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>merge_staged_commit&lt;KeyStore: OpenMlsKeyStore&gt;(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>merge_staged_commit&lt;Provider: OpenMlsProvider&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        provider: <span class="kw-2">&amp;</span>Provider,
         staged_commit: StagedCommit,
         proposal_store: <span class="kw-2">&amp;mut </span>ProposalStore,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), MergeCommitError&lt;KeyStore::Error&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), MergeCommitError&lt;Provider::StorageError&gt;&gt; {
         <span class="comment">// Save the past epoch
         </span><span class="kw">let </span>past_epoch = <span class="self">self</span>.context().epoch();
         <span class="comment">// Get all the full leaves

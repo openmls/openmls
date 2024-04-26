@@ -150,12 +150,12 @@
     <span class="doccomment">/// More than 2^16 PSKs were provided.
     </span><span class="attr">#[error(<span class="string">"More than 2^16 PSKs were provided."</span>)]
     </span>TooManyKeys,
-    <span class="doccomment">/// The PSK could not be found in the key store.
-    </span><span class="attr">#[error(<span class="string">"The PSK could not be found in the key store."</span>)]
+    <span class="doccomment">/// The PSK could not be found in the store.
+    </span><span class="attr">#[error(<span class="string">"The PSK could not be found in the store."</span>)]
     </span>KeyNotFound,
-    <span class="doccomment">/// Failed to write PSK into keystore.
-    </span><span class="attr">#[error(<span class="string">"Failed to write PSK into keystore."</span>)]
-    </span>KeyStore,
+    <span class="doccomment">/// Failed to write PSK into storage.
+    </span><span class="attr">#[error(<span class="string">"Failed to write PSK storage."</span>)]
+    </span>Storage,
     <span class="doccomment">/// Type mismatch.
     </span><span class="attr">#[error(<span class="string">"Type mismatch. Expected {allowed:?}, got {got:?}."</span>)]
     </span>TypeMismatch {

@@ -381,9 +381,13 @@
 <a href="#379" id="379">379</a>
 <a href="#380" id="380">380</a>
 <a href="#381" id="381">381</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::{
-    key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite, OpenMlsProvider,
-};
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::{signatures::Signer, storage::StorageProvider, types::Ciphersuite};
 
 <span class="kw">use super</span>::{
     errors::{ProposalError, ProposeAddMemberError, ProposeRemoveMemberError},
@@ -400,6 +404,7 @@
     messages::proposals::ProposalOrRefType,
     prelude::LibraryError,
     schedule::PreSharedKeyId,
+    storage::OpenMlsProvider,
     treesync::LeafNode,
     versions::ProtocolVersion,
 };
@@ -446,12 +451,12 @@
         </span><span class="doccomment">/// Creates proposals to add an external PSK to the key schedule.
         ///
         /// Returns an error if there is a pending commit.
-        </span><span class="kw">pub fn </span><span class="macro-nonterminal">$name</span>&lt;KeyStore: OpenMlsKeyStore&gt;(
+        </span><span class="kw">pub fn </span><span class="macro-nonterminal">$name</span>&lt;Provider: OpenMlsProvider&gt;(
             <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-            provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
+            provider: <span class="kw-2">&amp;</span>Provider,
             signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
             value: <span class="macro-nonterminal">$value_ty</span>,
-        ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposalError&lt;KeyStore::Error&gt;&gt; {
+        ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposalError&lt;Provider::StorageError&gt;&gt; {
             <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
             <span class="kw">let </span>proposal = <span class="self">self
@@ -465,13 +470,15 @@
                 <span class="macro-nonterminal">$ref_or_value</span>,
             )<span class="question-mark">?</span>;
             <span class="kw">let </span>proposal_ref = queued_proposal.proposal_reference();
+
             <span class="macro">log::trace!</span>(<span class="string">"Storing proposal in queue {:?}"</span>, queued_proposal);
+            provider
+                .storage()
+                .queue_proposal(<span class="self">self</span>.group.group_id(), <span class="kw-2">&amp;</span>proposal_ref, <span class="kw-2">&amp;</span>queued_proposal)
+                .map_err(ProposalError::StorageError)<span class="question-mark">?</span>;
             <span class="self">self</span>.proposal_store.add(queued_proposal);
 
             <span class="kw">let </span>mls_message = <span class="self">self</span>.content_to_mls_message(proposal, provider)<span class="question-mark">?</span>;
-
-            <span class="comment">// Since the state of the group might be changed, arm the state flag
-            </span><span class="self">self</span>.flag_state_change();
 
             <span class="prelude-val">Ok</span>((mls_message, proposal_ref))
         }
@@ -522,13 +529,13 @@
     );
 
     <span class="doccomment">/// Generate a proposal
-    </span><span class="kw">pub fn </span>propose&lt;KeyStore: OpenMlsKeyStore&gt;(
+    </span><span class="kw">pub fn </span>propose&lt;Provider: OpenMlsProvider&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        provider: <span class="kw-2">&amp;</span>Provider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         propose: Propose,
         ref_or_value: ProposalOrRefType,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposalError&lt;KeyStore::Error&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposalError&lt;Provider::StorageError&gt;&gt; {
         <span class="kw">match </span>propose {
             Propose::Add(key_package) =&gt; <span class="kw">match </span>ref_or_value {
                 ProposalOrRefType::Proposal =&gt; {
@@ -608,12 +615,12 @@
     <span class="doccomment">/// Creates proposals to add members to the group.
     ///
     /// Returns an error if there is a pending commit.
-    </span><span class="kw">pub fn </span>propose_add_member(
+    </span><span class="kw">pub fn </span>propose_add_member&lt;Provider: OpenMlsProvider&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
+        provider: <span class="kw-2">&amp;</span>Provider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         key_package: <span class="kw-2">&amp;</span>KeyPackage,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposeAddMemberError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposeAddMemberError&lt;Provider::StorageError&gt;&gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
         <span class="kw">let </span>add_proposal = <span class="self">self
@@ -632,12 +639,13 @@
             add_proposal.clone(),
         )<span class="question-mark">?</span>;
         <span class="kw">let </span>proposal_ref = proposal.proposal_reference();
+        provider
+            .storage()
+            .queue_proposal(<span class="self">self</span>.group_id(), <span class="kw-2">&amp;</span>proposal_ref, <span class="kw-2">&amp;</span>proposal)
+            .map_err(ProposeAddMemberError::StorageError)<span class="question-mark">?</span>;
         <span class="self">self</span>.proposal_store.add(proposal);
 
         <span class="kw">let </span>mls_message = <span class="self">self</span>.content_to_mls_message(add_proposal, provider)<span class="question-mark">?</span>;
-
-        <span class="comment">// Since the state of the group might be changed, arm the state flag
-        </span><span class="self">self</span>.flag_state_change();
 
         <span class="prelude-val">Ok</span>((mls_message, proposal_ref))
     }
@@ -646,12 +654,13 @@
     /// The `member` has to be the member's leaf index.
     ///
     /// Returns an error if there is a pending commit.
-    </span><span class="kw">pub fn </span>propose_remove_member(
+    </span><span class="kw">pub fn </span>propose_remove_member&lt;Provider: OpenMlsProvider&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
+        provider: <span class="kw-2">&amp;</span>Provider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         member: LeafNodeIndex,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposeRemoveMemberError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposeRemoveMemberError&lt;Provider::StorageError&gt;&gt;
+    {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
         <span class="kw">let </span>remove_proposal = <span class="self">self
@@ -665,12 +674,13 @@
             remove_proposal.clone(),
         )<span class="question-mark">?</span>;
         <span class="kw">let </span>proposal_ref = proposal.proposal_reference();
+        provider
+            .storage()
+            .queue_proposal(<span class="self">self</span>.group_id(), <span class="kw-2">&amp;</span>proposal_ref, <span class="kw-2">&amp;</span>proposal)
+            .map_err(ProposeRemoveMemberError::StorageError)<span class="question-mark">?</span>;
         <span class="self">self</span>.proposal_store.add(proposal);
 
         <span class="kw">let </span>mls_message = <span class="self">self</span>.content_to_mls_message(remove_proposal, provider)<span class="question-mark">?</span>;
-
-        <span class="comment">// Since the state of the group might be changed, arm the state flag
-        </span><span class="self">self</span>.flag_state_change();
 
         <span class="prelude-val">Ok</span>((mls_message, proposal_ref))
     }
@@ -679,12 +689,13 @@
     /// The `member` has to be the member's credential.
     ///
     /// Returns an error if there is a pending commit.
-    </span><span class="kw">pub fn </span>propose_remove_member_by_credential(
+    </span><span class="kw">pub fn </span>propose_remove_member_by_credential&lt;Provider: OpenMlsProvider&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
+        provider: <span class="kw-2">&amp;</span>Provider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         member: <span class="kw-2">&amp;</span>Credential,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposeRemoveMemberError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposeRemoveMemberError&lt;Provider::StorageError&gt;&gt;
+    {
         <span class="comment">// Find the user for the credential first.
         </span><span class="kw">let </span>member_index = <span class="self">self
             </span>.group
@@ -704,12 +715,12 @@
     /// The `member` has to be the member's credential.
     ///
     /// Returns an error if there is a pending commit.
-    </span><span class="kw">pub fn </span>propose_remove_member_by_credential_by_value&lt;KeyStore: OpenMlsKeyStore&gt;(
+    </span><span class="kw">pub fn </span>propose_remove_member_by_credential_by_value&lt;Provider: OpenMlsProvider&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        provider: <span class="kw-2">&amp;</span>Provider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         member: <span class="kw-2">&amp;</span>Credential,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposalError&lt;KeyStore::Error&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposalError&lt;Provider::StorageError&gt;&gt; {
         <span class="comment">// Find the user for the credential first.
         </span><span class="kw">let </span>member_index = <span class="self">self
             </span>.group
@@ -731,12 +742,12 @@
     ///
     /// Returns an error when the group does not support all the required capabilities
     /// in the new `extensions`.
-    </span><span class="kw">pub fn </span>propose_group_context_extensions(
+    </span><span class="kw">pub fn </span>propose_group_context_extensions&lt;Provider: OpenMlsProvider&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
+        provider: <span class="kw-2">&amp;</span>Provider,
         extensions: Extensions,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposalError&lt;()&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposalError&lt;Provider::StorageError&gt;&gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
         <span class="kw">let </span>proposal = <span class="self">self</span>.group.create_group_context_ext_proposal(
@@ -752,12 +763,13 @@
         )<span class="question-mark">?</span>;
 
         <span class="kw">let </span>proposal_ref = queued_proposal.proposal_reference();
+        provider
+            .storage()
+            .queue_proposal(<span class="self">self</span>.group_id(), <span class="kw-2">&amp;</span>proposal_ref, <span class="kw-2">&amp;</span>queued_proposal)
+            .map_err(ProposalError::StorageError)<span class="question-mark">?</span>;
         <span class="self">self</span>.proposal_store.add(queued_proposal);
 
         <span class="kw">let </span>mls_message = <span class="self">self</span>.content_to_mls_message(proposal, provider)<span class="question-mark">?</span>;
-
-        <span class="comment">// Since the state of the group might be changed, arm the state flag
-        </span><span class="self">self</span>.flag_state_change();
 
         <span class="prelude-val">Ok</span>((mls_message, proposal_ref))
     }

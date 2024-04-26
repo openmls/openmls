@@ -200,13 +200,17 @@
 <a href="#198" id="198">198</a>
 <a href="#199" id="199">199</a>
 <a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
 </pre></div><pre class="rust"><code><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">"../README.md"</span>)]
 </span><span class="doccomment">//! ## Quick Start
 //! For a quick start to learn how OpenMLS works here's the basic code to set
 //! up to parties and have them create a group.
 //!
 //! ```
-//! use openmls::prelude::{*,  tls_codec::*};
+//! use openmls::{prelude::{*,  tls_codec::*}};
 //! use openmls_rust_crypto::{OpenMlsRustCrypto};
 //! use openmls_basic_credential::SignatureKeyPair;
 //!
@@ -232,7 +236,7 @@
 //!     // Store the signature key into the key store so OpenMLS has access
 //!     // to it.
 //!     signature_keys
-//!         .store(provider.key_store())
+//!         .store(provider.storage())
 //!         .expect("Error storing signature keys in key store.");
 //!     
 //!     (
@@ -250,7 +254,7 @@
 //!     provider: &amp;impl OpenMlsProvider,
 //!     signer: &amp;SignatureKeyPair,
 //!     credential_with_key: CredentialWithKey,
-//! ) -&gt; KeyPackage {
+//! ) -&gt; KeyPackageBundle {
 //!     // Create the key package
 //!     KeyPackage::builder()
 //!         .build(
@@ -296,7 +300,7 @@
 //! // The key package has to be retrieved from Maxim in some way. Most likely
 //! // via a server storing key packages for users.
 //! let (mls_message_out, welcome_out, group_info) = sasha_group
-//!     .add_members(provider, &amp;sasha_signer, &amp;[maxim_key_package])
+//!     .add_members(provider, &amp;sasha_signer, &amp;[maxim_key_package.key_package().clone()])
 //!     .expect("Could not add members.");
 //!
 //! // Sasha merges the pending commit that adds Maxim.
@@ -387,6 +391,10 @@
 <span class="kw">pub mod </span>schedule;
 <span class="kw">pub mod </span>treesync;
 <span class="kw">pub mod </span>versions;
+
+<span class="comment">// implement storage traits
+// public
+</span><span class="kw">pub mod </span>storage;
 
 <span class="comment">// Private
 </span><span class="kw">mod </span>binary_tree;

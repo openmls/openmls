@@ -124,15 +124,9 @@
 <a href="#122" id="122">122</a>
 <a href="#123" id="123">123</a>
 <a href="#124" id="124">124</a>
-<a href="#125" id="125">125</a>
-<a href="#126" id="126">126</a>
-<a href="#127" id="127">127</a>
-<a href="#128" id="128">128</a>
-<a href="#129" id="129">129</a>
-<a href="#130" id="130">130</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashSet;
 
-<span class="kw">use </span>openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, OpenMlsProvider};
+<span class="kw">use </span>openmls_traits::signatures::Signer;
 <span class="kw">use </span>tls_codec::Serialize;
 
 <span class="kw">use crate</span>::{
@@ -143,6 +137,7 @@
     group::{core_group::create_commit_params::CommitType, errors::CreateCommitError},
     key_packages::{KeyPackage, KeyPackageCreationResult},
     schedule::CommitSecret,
+    storage::OpenMlsProvider,
     treesync::{
         node::{
             encryption_keys::EncryptionKeyPair, leaf_node::LeafNode,
@@ -166,17 +161,16 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; PublicGroupDiff&lt;<span class="lifetime">'a</span>&gt; {
     <span class="attr">#[allow(clippy::too_many_arguments)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>compute_path&lt;KeyStore: OpenMlsKeyStore&gt;(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>compute_path&lt;Provider: OpenMlsProvider&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        provider: <span class="kw-2">&amp;</span>Provider,
         leaf_index: LeafNodeIndex,
         exclusion_list: HashSet&lt;<span class="kw-2">&amp;</span>LeafNodeIndex&gt;,
         commit_type: CommitType,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         credential_with_key: <span class="prelude-ty">Option</span>&lt;CredentialWithKey&gt;,
         extensions: <span class="prelude-ty">Option</span>&lt;Extensions&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;PathComputationResult, CreateCommitError&lt;KeyStore::Error&gt;&gt; {
-        <span class="kw">let </span>version = <span class="self">self</span>.group_context().protocol_version();
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;PathComputationResult, CreateCommitError&lt;Provider::StorageError&gt;&gt; {
         <span class="kw">let </span>ciphersuite = <span class="self">self</span>.group_context().ciphersuite();
         <span class="kw">let </span>group_id = <span class="self">self</span>.group_context().group_id().clone();
 
@@ -190,7 +184,7 @@
                 <span class="comment">// The KeyPackage is immediately put into the group. No need for
                 // the init key.
                 </span>init_private_key: <span class="kw">_</span>,
-            } = KeyPackage::builder().build_without_key_storage(
+            } = KeyPackage::builder().build_without_storage(
                 ciphersuite,
                 provider,
                 signer,
@@ -208,14 +202,8 @@
                 </span>.diff
                 .leaf_mut(leaf_index)
                 .ok_or_else(|| LibraryError::custom(<span class="string">"Unable to get own leaf from diff"</span>))<span class="question-mark">?</span>;
-            <span class="kw">let </span>encryption_keypair = own_diff_leaf.rekey(
-                <span class="kw-2">&amp;</span>group_id,
-                leaf_index,
-                ciphersuite,
-                version,
-                provider,
-                signer,
-            )<span class="question-mark">?</span>;
+            <span class="kw">let </span>encryption_keypair =
+                own_diff_leaf.rekey(<span class="kw-2">&amp;</span>group_id, leaf_index, ciphersuite, provider, signer)<span class="question-mark">?</span>;
             <span class="macro">vec!</span>[encryption_keypair]
         };
 

@@ -549,6 +549,9 @@
 <a href="#547" id="547">547</a>
 <a href="#548" id="548">548</a>
 <a href="#549" id="549">549</a>
+<a href="#550" id="550">550</a>
+<a href="#551" id="551">551</a>
+<a href="#552" id="552">552</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # MLS group errors
 //!
 //! This module contains errors that originate at lower levels and are partially re-exported in errors thrown by functions of the `MlsGroup` API.
@@ -571,7 +574,7 @@
 
 <span class="doccomment">/// Welcome error
 </span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub enum </span>WelcomeError&lt;KeyStoreError&gt; {
+</span><span class="kw">pub enum </span>WelcomeError&lt;StorageError&gt; {
     <span class="doccomment">/// See [`GroupSecretsError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>GroupSecrets(<span class="attr">#[from] </span>GroupSecretsError),
@@ -629,24 +632,24 @@
     <span class="doccomment">/// No matching key package was found in the key store.
     </span><span class="attr">#[error(<span class="string">"No matching key package was found in the key store."</span>)]
     </span>NoMatchingKeyPackage,
-    <span class="doccomment">/// Error accessing the key store.
-    </span><span class="attr">#[error(<span class="string">"Error accessing the key store."</span>)]
-    </span>KeyStoreError(KeyStoreError),
     <span class="doccomment">/// This error indicates the public tree is invalid. See [`PublicTreeError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>PublicTreeError(<span class="attr">#[from] </span>PublicTreeError),
     <span class="doccomment">/// This error indicates the public tree is invalid. See
     /// [`CreationFromExternalError`] for more details.
     </span><span class="attr">#[error(transparent)]
-    </span>PublicGroupError(<span class="attr">#[from] </span>CreationFromExternalError),
+    </span>PublicGroupError(<span class="attr">#[from] </span>CreationFromExternalError&lt;StorageError&gt;),
     <span class="doccomment">/// This error indicates the leaf node is invalid. See [`LeafNodeValidationError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>LeafNodeValidation(<span class="attr">#[from] </span>LeafNodeValidationError),
+    <span class="doccomment">/// This error indicates that an error occurred while reading or writing from/to storage.
+    </span><span class="attr">#[error(<span class="string">"An error occurred when querying storage"</span>)]
+    </span>StorageError(StorageError),
 }
 
 <span class="doccomment">/// External Commit error
 </span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub enum </span>ExternalCommitError {
+</span><span class="kw">pub enum </span>ExternalCommitError&lt;StorageError&gt; {
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
@@ -671,10 +674,13 @@
     <span class="doccomment">/// This error indicates the public tree is invalid. See
     /// [`CreationFromExternalError`] for more details.
     </span><span class="attr">#[error(transparent)]
-    </span>PublicGroupError(<span class="attr">#[from] </span>CreationFromExternalError),
+    </span>PublicGroupError(<span class="attr">#[from] </span>CreationFromExternalError&lt;StorageError&gt;),
     <span class="doccomment">/// Credential is missing from external commit.
     </span><span class="attr">#[error(<span class="string">"Credential is missing from external commit."</span>)]
     </span>MissingCredential,
+    <span class="doccomment">/// An erorr occurred when writing group to storage
+    </span><span class="attr">#[error(<span class="string">"An error occurred when writing group to storage."</span>)]
+    </span>StorageError(StorageError),
 }
 
 <span class="doccomment">/// Stage Commit error
@@ -752,7 +758,7 @@
 
 <span class="doccomment">/// Create commit error
 </span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub enum </span>CreateCommitError&lt;KeyStoreError&gt; {
+</span><span class="kw">pub enum </span>CreateCommitError&lt;StorageError&gt; {
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
@@ -774,12 +780,12 @@
     <span class="doccomment">/// See [`ProposalValidationError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>ProposalValidationError(<span class="attr">#[from] </span>ProposalValidationError),
-    <span class="doccomment">/// Error interacting with the key store.
-    </span><span class="attr">#[error(<span class="string">"Error interacting with the key store."</span>)]
-    </span>KeyStoreError(KeyStoreError),
+    <span class="doccomment">/// Error interacting with storage.
+    </span><span class="attr">#[error(<span class="string">"Error interacting with storage."</span>)]
+    </span>KeyStoreError(StorageError),
     <span class="doccomment">/// See [`KeyPackageNewError`] for more details.
     </span><span class="attr">#[error(transparent)]
-    </span>KeyPackageGenerationError(<span class="attr">#[from] </span>KeyPackageNewError&lt;KeyStoreError&gt;),
+    </span>KeyPackageGenerationError(<span class="attr">#[from] </span>KeyPackageNewError),
     <span class="doccomment">/// See [`SignatureError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>SignatureError(<span class="attr">#[from] </span>SignatureError),
@@ -1018,7 +1024,7 @@
 
 <span class="comment">// Core group build error
 </span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>CoreGroupBuildError&lt;KeyStoreError&gt; {
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>CoreGroupBuildError&lt;StorageError&gt; {
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
@@ -1029,8 +1035,8 @@
     </span><span class="attr">#[error(transparent)]
     </span>Psk(<span class="attr">#[from] </span>PskError),
     <span class="doccomment">/// Error storing leaf private key in key store.
-    </span><span class="attr">#[error(<span class="string">"Error storing leaf private key in key store."</span>)]
-    </span>KeyStoreError(KeyStoreError),
+    </span><span class="attr">#[error(<span class="string">"Error saving data to storage: {0}."</span>)]
+    </span>StorageError(StorageError),
 }
 
 <span class="comment">// CoreGroup parse message error
@@ -1065,13 +1071,13 @@
 
 <span class="doccomment">/// Error merging a commit.
 </span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub enum </span>MergeCommitError&lt;KeyStoreError&gt; {
+</span><span class="kw">pub enum </span>MergeCommitError&lt;StorageError&gt; {
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
-    <span class="doccomment">/// Error accessing the key store.
-    </span><span class="attr">#[error(<span class="string">"Error accessing the key store."</span>)]
-    </span>KeyStoreError(KeyStoreError),
+    <span class="doccomment">/// Error writing updated group to storage.
+    </span><span class="attr">#[error(<span class="string">"Error writing updated group data to storage."</span>)]
+    </span>StorageError(StorageError),
 }
 
 <span class="doccomment">/// Error validation a GroupContextExtensions proposal.

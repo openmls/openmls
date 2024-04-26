@@ -179,9 +179,7 @@
 <p>Most operations in OpenMLS require a <code>provider</code> object that provides all required cryptographic algorithms via the <a href="https://docs.rs/openmls/latest/openmls/prelude/trait.OpenMlsCryptoProvider.html"><code>OpenMlsCryptoProvider</code></a> trait.
 Currently, there are two implementations available through the <a href="https://crates.io/crates/openmls_rust_crypto">openmls_rust_crypto</a> crate.</p>
 <p>Thus, you can create the <code>provider</code> object for the following examples using ...</p>
-<pre><code class="language-rust no_run noplayground">    use openmls_rust_crypto::OpenMlsRustCrypto;
-
-    let provider = OpenMlsRustCrypto::default();</code></pre>
+<pre><code class="language-rust no_run noplayground">    let provider: OpenMlsRustCrypto = OpenMlsRustCrypto::default();</code></pre>
 
                     </main>
 

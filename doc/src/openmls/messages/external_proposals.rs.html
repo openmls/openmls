@@ -90,6 +90,7 @@
 <a href="#88" id="88">88</a>
 <a href="#89" id="89">89</a>
 <a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! External Proposals
 //!
 //! Contains the types and methods to build external proposal to add/remove a client from a MLS group
@@ -106,6 +107,7 @@
     },
     key_packages::KeyPackage,
     messages::{AddProposal, Proposal},
+    storage::StorageProvider,
 };
 <span class="kw">use </span>openmls_traits::signatures::Signer;
 
@@ -132,12 +134,12 @@
     /// * `epoch` - group's epoch
     /// * `signer` - of the sender to sign the message
     </span><span class="attr">#[allow(clippy::new_ret_no_self)]
-    </span><span class="kw">pub fn </span>new(
+    </span><span class="kw">pub fn </span>new&lt;Storage: StorageProvider&gt;(
         key_package: KeyPackage,
         group_id: GroupId,
         epoch: GroupEpoch,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, ProposeAddMemberError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, ProposeAddMemberError&lt;Storage::Error&gt;&gt; {
         AuthenticatedContent::new_join_proposal(
             Proposal::Add(AddProposal { key_package }),
             group_id,
@@ -161,13 +163,13 @@
     /// * `signer` - of the sender to sign the message
     /// * `sender` - index of the sender of the proposal (in the [crate::extensions::ExternalSendersExtension] array
     /// from the Group Context)
-    </span><span class="kw">pub fn </span>new_remove(
+    </span><span class="kw">pub fn </span>new_remove&lt;Storage: StorageProvider&gt;(
         removed: LeafNodeIndex,
         group_id: GroupId,
         epoch: GroupEpoch,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         sender_index: SenderExtensionIndex,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, ProposeRemoveMemberError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, ProposeRemoveMemberError&lt;Storage::Error&gt;&gt; {
         AuthenticatedContent::new_external_proposal(
             Proposal::Remove(RemoveProposal { removed }),
             group_id,

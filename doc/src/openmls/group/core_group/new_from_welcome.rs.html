@@ -289,52 +289,14 @@
 <a href="#287" id="287">287</a>
 <a href="#288" id="288">288</a>
 <a href="#289" id="289">289</a>
-<a href="#290" id="290">290</a>
-<a href="#291" id="291">291</a>
-<a href="#292" id="292">292</a>
-<a href="#293" id="293">293</a>
-<a href="#294" id="294">294</a>
-<a href="#295" id="295">295</a>
-<a href="#296" id="296">296</a>
-<a href="#297" id="297">297</a>
-<a href="#298" id="298">298</a>
-<a href="#299" id="299">299</a>
-<a href="#300" id="300">300</a>
-<a href="#301" id="301">301</a>
-<a href="#302" id="302">302</a>
-<a href="#303" id="303">303</a>
-<a href="#304" id="304">304</a>
-<a href="#305" id="305">305</a>
-<a href="#306" id="306">306</a>
-<a href="#307" id="307">307</a>
-<a href="#308" id="308">308</a>
-<a href="#309" id="309">309</a>
-<a href="#310" id="310">310</a>
-<a href="#311" id="311">311</a>
-<a href="#312" id="312">312</a>
-<a href="#313" id="313">313</a>
-<a href="#314" id="314">314</a>
-<a href="#315" id="315">315</a>
-<a href="#316" id="316">316</a>
-<a href="#317" id="317">317</a>
-<a href="#318" id="318">318</a>
-<a href="#319" id="319">319</a>
-<a href="#320" id="320">320</a>
-<a href="#321" id="321">321</a>
-<a href="#322" id="322">322</a>
-<a href="#323" id="323">323</a>
-<a href="#324" id="324">324</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>log::debug;
-<span class="kw">use </span>openmls_traits::key_store::OpenMlsKeyStore;
 
 <span class="kw">use crate</span>::{
     ciphersuite::hash_ref::HashReference,
     group::{core_group::<span class="kw-2">*</span>, errors::WelcomeError},
     schedule::psk::store::ResumptionPskStore,
-    treesync::{
-        errors::{DerivePathError, PublicTreeError},
-        node::encryption_keys::EncryptionKeyPair,
-    },
+    storage::OpenMlsProvider,
+    treesync::errors::{DerivePathError, PublicTreeError},
 };
 
 <span class="kw">impl </span>StagedCoreWelcome {
@@ -343,36 +305,14 @@
     /// group.
     /// Note: calling this function will consume the key material for decrypting the [`Welcome`]
     /// message, even if the caller does not turn the [`StagedCoreWelcome`] into a [`CoreGroup`].
-    </span><span class="kw">pub fn </span>new_from_welcome&lt;KeyStore: OpenMlsKeyStore&gt;(
+    </span><span class="kw">pub fn </span>new_from_welcome&lt;Provider: OpenMlsProvider&gt;(
         welcome: Welcome,
         ratchet_tree: <span class="prelude-ty">Option</span>&lt;RatchetTreeIn&gt;,
         key_package_bundle: KeyPackageBundle,
-        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        provider: <span class="kw-2">&amp;</span>Provider,
         <span class="kw-2">mut </span>resumption_psk_store: ResumptionPskStore,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, WelcomeError&lt;KeyStore::Error&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, WelcomeError&lt;Provider::StorageError&gt;&gt; {
         <span class="macro">log::debug!</span>(<span class="string">"CoreGroup::new_from_welcome_internal"</span>);
-
-        <span class="comment">// Read the encryption key pair from the key store and delete it there.
-        // TODO #1207: Key store access happens as early as possible so it can
-        // be pulled up later more easily.
-        </span><span class="kw">let </span>leaf_keypair = EncryptionKeyPair::read_from_key_store(
-            provider,
-            key_package_bundle.key_package.leaf_node().encryption_key(),
-        )
-        .ok_or(WelcomeError::NoMatchingEncryptionKey)<span class="question-mark">?</span>;
-
-        <span class="comment">// Delete the leaf encryption keypair from the
-        // key store, but only if it doesn't have a last resort extension.
-        </span><span class="kw">if </span>!key_package_bundle.key_package().last_resort() {
-            leaf_keypair
-                .delete_from_key_store(provider.key_store())
-                .map_err(|<span class="kw">_</span>| WelcomeError::NoMatchingEncryptionKey)<span class="question-mark">?</span>;
-        } <span class="kw">else </span>{
-            <span class="macro">log::debug!</span>(
-                <span class="string">"Found last resort extension, not deleting leaf encryption keypair from key store"
-            </span>);
-        }
-
         <span class="kw">let </span>ciphersuite = welcome.ciphersuite();
 
         <span class="comment">// Find key_package in welcome secrets
@@ -393,7 +333,7 @@
         }
 
         <span class="kw">let </span>group_secrets = GroupSecrets::try_from_ciphertext(
-            key_package_bundle.private_key(),
+            key_package_bundle.init_private_key(),
             egs.encrypted_group_secrets(),
             welcome.encrypted_group_info(),
             ciphersuite,
@@ -403,7 +343,7 @@
         <span class="comment">// Prepare the PskSecret
         </span><span class="kw">let </span>psk_secret = {
             <span class="kw">let </span>psks = load_psks(
-                provider.key_store(),
+                provider.storage(),
                 <span class="kw-2">&amp;</span>resumption_psk_store,
                 <span class="kw-2">&amp;</span>group_secrets.psks,
             )<span class="question-mark">?</span>;
@@ -465,7 +405,7 @@
         <span class="comment">// Since there is currently only the external pub extension, there is no
         // group info extension of interest here.
         </span><span class="kw">let </span>(public_group, _group_info_extensions) = PublicGroup::from_external(
-            provider.crypto(),
+            provider,
             ratchet_tree,
             verifiable_group_info.clone(),
             ProposalStore::new(),
@@ -566,7 +506,7 @@
             message_secrets_store,
             resumption_psk_store,
             verifiable_group_info,
-            leaf_keypair,
+            key_package_bundle,
             path_keypairs,
         };
 
@@ -589,45 +529,35 @@
     }
 
     <span class="doccomment">/// Consumes the [`StagedCoreWelcome`] and returns the respective [`CoreGroup`].
-    </span><span class="kw">pub fn </span>into_core_group&lt;KeyStore: OpenMlsKeyStore&gt;(
+    </span><span class="kw">pub fn </span>into_core_group&lt;Provider: OpenMlsProvider&gt;(
         <span class="self">self</span>,
-        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;CoreGroup, WelcomeError&lt;KeyStore::Error&gt;&gt; {
-        <span class="kw">let </span><span class="self">Self </span>{
-            public_group,
-            group_epoch_secrets,
-            own_leaf_index,
-            use_ratchet_tree_extension,
-            message_secrets_store,
-            resumption_psk_store,
-            leaf_keypair,
-            path_keypairs,
-            ..
-        } = <span class="self">self</span>;
-
+        provider: <span class="kw-2">&amp;</span>Provider,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;CoreGroup, WelcomeError&lt;Provider::StorageError&gt;&gt; {
         <span class="comment">// If we got a path secret, derive the path (which also checks if the
         // public keys match) and store the derived keys in the key store.
-        </span><span class="kw">let </span>group_keypairs = <span class="kw">if let </span><span class="prelude-val">Some</span>(path_keypairs) = path_keypairs {
-            <span class="macro">vec!</span>[leaf_keypair]
-                .into_iter()
-                .chain(path_keypairs)
-                .collect()
+        </span><span class="kw">let </span>group_keypairs = <span class="kw">if let </span><span class="prelude-val">Some</span>(path_keypairs) = <span class="self">self</span>.path_keypairs {
+            <span class="kw">let </span><span class="kw-2">mut </span>keypairs = <span class="macro">vec!</span>[<span class="self">self</span>.key_package_bundle.encryption_key_pair()];
+            keypairs.extend_from_slice(<span class="kw-2">&amp;</span>path_keypairs);
+            keypairs
         } <span class="kw">else </span>{
-            <span class="macro">vec!</span>[leaf_keypair]
+            <span class="macro">vec!</span>[<span class="self">self</span>.key_package_bundle.encryption_key_pair()]
         };
 
         <span class="kw">let </span>group = CoreGroup {
-            public_group,
-            group_epoch_secrets,
-            own_leaf_index,
-            use_ratchet_tree_extension,
-            message_secrets_store,
-            resumption_psk_store,
+            public_group: <span class="self">self</span>.public_group,
+            group_epoch_secrets: <span class="self">self</span>.group_epoch_secrets,
+            own_leaf_index: <span class="self">self</span>.own_leaf_index,
+            use_ratchet_tree_extension: <span class="self">self</span>.use_ratchet_tree_extension,
+            message_secrets_store: <span class="self">self</span>.message_secrets_store,
+            resumption_psk_store: <span class="self">self</span>.resumption_psk_store,
         };
 
         group
-            .store_epoch_keypairs(provider.key_store(), group_keypairs.as_slice())
-            .map_err(WelcomeError::KeyStoreError)<span class="question-mark">?</span>;
+            .store(provider.storage())
+            .map_err(WelcomeError::StorageError)<span class="question-mark">?</span>;
+        group
+            .store_epoch_keypairs(provider.storage(), group_keypairs.as_slice())
+            .map_err(WelcomeError::StorageError)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(group)
     }

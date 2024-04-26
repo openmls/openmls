@@ -141,6 +141,11 @@
 <a href="#139" id="139">139</a>
 <a href="#140" id="140">140</a>
 <a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     binary_tree::array_representation::LeafNodeIndex,
     group::{
@@ -148,6 +153,7 @@
         errors::ExternalCommitError,
     },
     messages::proposals::{ExternalInitProposal, Proposal},
+    storage::OpenMlsProvider,
 };
 
 <span class="kw">use </span><span class="kw">super</span>::CoreGroup;
@@ -167,13 +173,13 @@
     ///
     /// Note: If there is a group member in the group with the same identity as us,
     /// this will create a remove proposal.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>join_by_external_commit(
-        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>join_by_external_commit&lt;Provider: OpenMlsProvider&gt;(
+        provider: <span class="kw-2">&amp;</span>Provider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         <span class="kw-2">mut </span>params: CreateCommitParams,
         ratchet_tree: <span class="prelude-ty">Option</span>&lt;RatchetTreeIn&gt;,
         verifiable_group_info: VerifiableGroupInfo,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;ExternalCommitResult, ExternalCommitError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ExternalCommitResult, ExternalCommitError&lt;Provider::StorageError&gt;&gt; {
         <span class="comment">// Build the ratchet tree
 
         // Set nodes either from the extension or from the `nodes_option`.
@@ -190,7 +196,7 @@
             };
 
         <span class="kw">let </span>(public_group, group_info) = PublicGroup::from_external(
-            provider.crypto(),
+            provider,
             ratchet_tree,
             verifiable_group_info,
             <span class="comment">// Existing proposals are discarded when joining by external commit.
@@ -275,6 +281,10 @@
             create_commit_result.is_ok(),
             <span class="string">"Error creating commit {create_commit_result:?}"
         </span>);
+
+        group
+            .store(provider.storage())
+            .map_err(ExternalCommitError::StorageError)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>((
             group,

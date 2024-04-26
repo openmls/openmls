@@ -242,16 +242,22 @@ sender, and authenticated data. It also exposes the message's content. There are
             Sender::Member(member) if *member == alice_group.own_leaf_index()
         ));
         // Store proposal
-        charlie_group.store_pending_proposal(*staged_proposal);
+        charlie_group
+            .store_pending_proposal(provider.storage(), *staged_proposal)
+            .unwrap();
     }</code></pre>
 <h4 id="rolling-back-proposals"><a class="header" href="#rolling-back-proposals">Rolling back proposals</a></h4>
 <p>Operations that add a proposal to the proposal store, will return its reference. This reference can be used to remove
 a proposal from the proposal store. This can be useful for example to roll back in case of errors.</p>
 <pre><code class="language-rust no_run noplayground">    let (_mls_message_out, proposal_ref) = alice_group
-        .propose_add_member(provider, &amp;alice_signature_keys, &amp;bob_key_package)
+        .propose_add_member(
+            provider,
+            &amp;alice_signature_keys,
+            bob_key_package.key_package(),
+        )
         .expect("Could not create proposal to add Bob");
     alice_group
-        .remove_pending_proposal(proposal_ref)
+        .remove_pending_proposal(provider.storage(), proposal_ref)
         .expect("The proposal was not found");</code></pre>
 <h3 id="commit-messages"><a class="header" href="#commit-messages">Commit messages</a></h3>
 <p>Commit messages are returned as <code>StagedCommit</code> objects. The proposals they cover can be inspected through different functions, depending on the proposal type. After the application has inspected the <code>StagedCommit</code> and approved all the proposals it covers, the <code>StagedCommit</code> can be merged in the current group state by calling the <code>.merge_staged_commit()</code> function. For more details, see the <code>StagedCommit</code> documentation.</p>

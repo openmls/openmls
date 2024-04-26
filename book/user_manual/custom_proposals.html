@@ -224,7 +224,9 @@
         panic!("Unexpected message type");
     };
 
-    bob_group.store_pending_proposal(*proposal);
+    bob_group
+        .store_pending_proposal(provider.storage(), *proposal)
+        .unwrap();
 
     // Commit to the proposal
     let (commit, _, _) = alice_group

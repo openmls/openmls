@@ -209,6 +209,7 @@ to be provided as a byte slice.</p>
 <p>The <code>delete</code> is called with the identifier to delete a value.</p>
 <pre><code class="language-rust no_run noplayground">    // Delete the key package
     key_package
+        .key_package()
         .delete(provider)
         .expect("Error deleting key package");</code></pre>
 <p>Retrieving a value from the key store is as simple as calling <code>read</code>.

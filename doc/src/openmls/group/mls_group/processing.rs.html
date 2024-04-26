@@ -178,13 +178,23 @@
 <a href="#176" id="176">176</a>
 <a href="#177" id="177">177</a>
 <a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Processing functions of an [`MlsGroup`] for incoming messages.
 
 </span><span class="kw">use </span>std::mem;
 
 <span class="kw">use </span>core_group::staged_commit::StagedCommit;
-<span class="kw">use </span>openmls_traits::signatures::Signer;
+<span class="kw">use </span>openmls_traits::{signatures::Signer, storage::StorageProvider <span class="kw">as _</span>};
 
+<span class="kw">use </span><span class="kw">crate</span>::storage::OpenMlsProvider;
 <span class="kw">use crate</span>::{
     group::core_group::create_commit_params::CreateCommitParams, messages::group_info::GroupInfo,
 };
@@ -203,11 +213,11 @@
     /// # Errors:
     /// Returns an [`ProcessMessageError`] when the validation checks fail
     /// with the exact reason of the failure.
-    </span><span class="kw">pub fn </span>process_message(
+    </span><span class="kw">pub fn </span>process_message&lt;Provider: OpenMlsProvider&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
+        provider: <span class="kw-2">&amp;</span>Provider,
         message: <span class="kw">impl </span>Into&lt;ProtocolMessage&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;ProcessedMessage, ProcessMessageError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ProcessedMessage, ProcessMessageError&lt;Provider::StorageError&gt;&gt; {
         <span class="comment">// Make sure we are still a member of the group
         </span><span class="kw">if </span>!<span class="self">self</span>.is_active() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ProcessMessageError::GroupStateError(
@@ -228,9 +238,6 @@
             <span class="kw">return </span><span class="prelude-val">Err</span>(ProcessMessageError::IncompatibleWireFormat);
         }
 
-        <span class="comment">// Since the state of the group might be changed, arm the state flag
-        </span><span class="self">self</span>.flag_state_change();
-
         <span class="comment">// Parse the message
         </span><span class="kw">let </span>sender_ratchet_configuration =
             <span class="self">self</span>.configuration().sender_ratchet_configuration().clone();
@@ -244,12 +251,16 @@
     }
 
     <span class="doccomment">/// Stores a standalone proposal in the internal [ProposalStore]
-    </span><span class="kw">pub fn </span>store_pending_proposal(<span class="kw-2">&amp;mut </span><span class="self">self</span>, proposal: QueuedProposal) {
+    </span><span class="kw">pub fn </span>store_pending_proposal&lt;Storage: StorageProvider&gt;(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        storage: <span class="kw-2">&amp;</span>Storage,
+        proposal: QueuedProposal,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Storage::Error&gt; {
+        storage.queue_proposal(<span class="self">self</span>.group_id(), <span class="kw-2">&amp;</span>proposal.proposal_reference(), <span class="kw-2">&amp;</span>proposal)<span class="question-mark">?</span>;
         <span class="comment">// Store the proposal in in the internal ProposalStore
         </span><span class="self">self</span>.proposal_store.add(proposal);
 
-        <span class="comment">// Since the state of the group might be changed, arm the state flag
-        </span><span class="self">self</span>.flag_state_change();
+        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Creates a Commit message that covers the pending proposals that are
@@ -263,13 +274,13 @@
     /// [`Welcome`]: crate::messages::Welcome
     </span><span class="comment">// FIXME: #1217
     </span><span class="attr">#[allow(clippy::type_complexity)]
-    </span><span class="kw">pub fn </span>commit_to_pending_proposals&lt;KeyStore: OpenMlsKeyStore&gt;(
+    </span><span class="kw">pub fn </span>commit_to_pending_proposals&lt;Provider: OpenMlsProvider&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        provider: <span class="kw-2">&amp;</span>Provider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;
         (MlsMessageOut, <span class="prelude-ty">Option</span>&lt;MlsMessageOut&gt;, <span class="prelude-ty">Option</span>&lt;GroupInfo&gt;),
-        CommitToPendingProposalsError&lt;KeyStore::Error&gt;,
+        CommitToPendingProposalsError&lt;Provider::StorageError&gt;,
     &gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
@@ -290,9 +301,10 @@
         </span><span class="self">self</span>.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
             create_commit_result.staged_commit,
         )));
-
-        <span class="comment">// Since the state of the group might be changed, arm the state flag
-        </span><span class="self">self</span>.flag_state_change();
+        provider
+            .storage()
+            .write_group_state(<span class="self">self</span>.group_id(), <span class="kw-2">&amp;</span><span class="self">self</span>.group_state)
+            .map_err(CommitToPendingProposalsError::StorageError)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>((
             mls_message,
@@ -305,18 +317,19 @@
 
     <span class="doccomment">/// Merge a [StagedCommit] into the group after inspection. As this advances
     /// the epoch of the group, it also clears any pending commits.
-    </span><span class="kw">pub fn </span>merge_staged_commit&lt;KeyStore: OpenMlsKeyStore&gt;(
+    </span><span class="kw">pub fn </span>merge_staged_commit&lt;Provider: OpenMlsProvider&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        provider: <span class="kw-2">&amp;</span>Provider,
         staged_commit: StagedCommit,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), MergeCommitError&lt;KeyStore::Error&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), MergeCommitError&lt;Provider::StorageError&gt;&gt; {
         <span class="comment">// Check if we were removed from the group
         </span><span class="kw">if </span>staged_commit.self_removed() {
             <span class="self">self</span>.group_state = MlsGroupState::Inactive;
         }
-
-        <span class="comment">// Since the state of the group might be changed, arm the state flag
-        </span><span class="self">self</span>.flag_state_change();
+        provider
+            .storage()
+            .write_group_state(<span class="self">self</span>.group_id(), <span class="kw-2">&amp;</span><span class="self">self</span>.group_state)
+            .map_err(MergeCommitError::StorageError)<span class="question-mark">?</span>;
 
         <span class="comment">// Merge staged commit
         </span><span class="self">self</span>.group
@@ -330,19 +343,24 @@
 
         <span class="comment">// Delete own KeyPackageBundles
         </span><span class="self">self</span>.own_leaf_nodes.clear();
+        provider
+            .storage()
+            .clear_own_leaf_nodes(<span class="self">self</span>.group_id())
+            .map_err(MergeCommitError::StorageError)<span class="question-mark">?</span>;
 
         <span class="comment">// Delete a potential pending commit
-        </span><span class="self">self</span>.clear_pending_commit();
+        </span><span class="self">self</span>.clear_pending_commit(provider.storage())
+            .map_err(MergeCommitError::StorageError)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Merges the pending [`StagedCommit`] if there is one, and
     /// clears the field by setting it to `None`.
-    </span><span class="kw">pub fn </span>merge_pending_commit&lt;KeyStore: OpenMlsKeyStore&gt;(
+    </span><span class="kw">pub fn </span>merge_pending_commit&lt;Provider: OpenMlsProvider&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), MergePendingCommitError&lt;KeyStore::Error&gt;&gt; {
+        provider: <span class="kw-2">&amp;</span>Provider,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), MergePendingCommitError&lt;Provider::StorageError&gt;&gt; {
         <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.group_state {
             MlsGroupState::PendingCommit(<span class="kw">_</span>) =&gt; {
                 <span class="kw">let </span>old_state = mem::replace(<span class="kw-2">&amp;mut </span><span class="self">self</span>.group_state, MlsGroupState::Operational);

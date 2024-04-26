@@ -353,7 +353,7 @@
 <a href="#351" id="351">351</a>
 <a href="#352" id="352">352</a>
 <a href="#353" id="353">353</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::{types::Ciphersuite, OpenMlsProvider};
+</pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::types::Ciphersuite;
 <span class="kw">use </span>std::io::Write;
 <span class="kw">use </span>tls_codec::{Serialize, Size, TlsSerialize, TlsSize};
 
@@ -364,7 +364,7 @@
 
 <span class="kw">use crate</span>::{
     binary_tree::array_representation::LeafNodeIndex, error::LibraryError,
-    tree::secret_tree::SecretType,
+    storage::OpenMlsProvider, tree::secret_tree::SecretType,
 };
 
 <span class="kw">use super</span>::<span class="kw-2">*</span>;
@@ -424,13 +424,13 @@
     ///
     /// TODO #1148: Refactor theses constructors to avoid test code in main and
     /// to avoid validation using a special feature flag.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>try_from_authenticated_content(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>try_from_authenticated_content&lt;Provider: OpenMlsProvider&gt;(
         public_message: <span class="kw-2">&amp;</span>AuthenticatedContent,
         ciphersuite: Ciphersuite,
-        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
+        provider: <span class="kw-2">&amp;</span>Provider,
         message_secrets: <span class="kw-2">&amp;mut </span>MessageSecrets,
         padding_size: usize,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;PrivateMessage, MessageEncryptionError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;PrivateMessage, MessageEncryptionError&lt;Provider::StorageError&gt;&gt; {
         <span class="macro">log::debug!</span>(<span class="string">"PrivateMessage::try_from_authenticated_content"</span>);
         <span class="macro">log::trace!</span>(<span class="string">"  ciphersuite: {}"</span>, ciphersuite);
         <span class="comment">// Check the message has the correct wire format
@@ -448,13 +448,13 @@
     }
 
     <span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encrypt_without_check(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encrypt_without_check&lt;Provider: OpenMlsProvider&gt;(
         public_message: <span class="kw-2">&amp;</span>AuthenticatedContent,
         ciphersuite: Ciphersuite,
-        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
+        provider: <span class="kw-2">&amp;</span>Provider,
         message_secrets: <span class="kw-2">&amp;mut </span>MessageSecrets,
         padding_size: usize,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;PrivateMessage, MessageEncryptionError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;PrivateMessage, MessageEncryptionError&lt;Provider::StorageError&gt;&gt; {
         <span class="self">Self</span>::encrypt_content(
             <span class="prelude-val">None</span>,
             public_message,
@@ -466,14 +466,14 @@
     }
 
     <span class="attr">#[cfg(test)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encrypt_with_different_header(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encrypt_with_different_header&lt;Provider: OpenMlsProvider&gt;(
         public_message: <span class="kw-2">&amp;</span>AuthenticatedContent,
         ciphersuite: Ciphersuite,
-        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
+        provider: <span class="kw-2">&amp;</span>Provider,
         header: MlsMessageHeader,
         message_secrets: <span class="kw-2">&amp;mut </span>MessageSecrets,
         padding_size: usize,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;PrivateMessage, MessageEncryptionError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;PrivateMessage, MessageEncryptionError&lt;Provider::StorageError&gt;&gt; {
         <span class="self">Self</span>::encrypt_content(
             <span class="prelude-val">Some</span>(header),
             public_message,
@@ -486,14 +486,14 @@
 
     <span class="doccomment">/// Internal function to encrypt content. The extra message header is only used
     /// for tests. Otherwise, the data from the given `AuthenticatedContent` is used.
-    </span><span class="kw">fn </span>encrypt_content(
+    </span><span class="kw">fn </span>encrypt_content&lt;Provider: OpenMlsProvider&gt;(
         test_header: <span class="prelude-ty">Option</span>&lt;MlsMessageHeader&gt;,
         public_message: <span class="kw-2">&amp;</span>AuthenticatedContent,
         ciphersuite: Ciphersuite,
-        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
+        provider: <span class="kw-2">&amp;</span>Provider,
         message_secrets: <span class="kw-2">&amp;mut </span>MessageSecrets,
         padding_size: usize,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;PrivateMessage, MessageEncryptionError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;PrivateMessage, MessageEncryptionError&lt;Provider::StorageError&gt;&gt; {
         <span class="kw">let </span>sender_index = <span class="kw">if let </span><span class="prelude-val">Some</span>(index) = public_message.sender().as_member() {
             index
         } <span class="kw">else </span>{

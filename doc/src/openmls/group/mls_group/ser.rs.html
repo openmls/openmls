@@ -67,19 +67,12 @@
 <a href="#65" id="65">65</a>
 <a href="#66" id="66">66</a>
 <a href="#67" id="67">67</a>
-<a href="#68" id="68">68</a>
-<a href="#69" id="69">69</a>
-<a href="#70" id="70">70</a>
-<a href="#71" id="71">71</a>
-<a href="#72" id="72">72</a>
-<a href="#73" id="73">73</a>
 </pre></div><pre class="rust"><code><span class="comment">// TODO #245: Remove this once we have a proper serialization format
 </span><span class="attr">#![allow(deprecated)]
 
 </span><span class="kw">use super</span>::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::schedule::psk::store::ResumptionPskStore;
 
-<span class="kw">use </span>openmls_traits::key_store::{MlsEntity, MlsEntityId};
 <span class="kw">use </span>serde::{
     ser::{SerializeStruct, Serializer},
     Deserialize, Serialize,
@@ -111,13 +104,8 @@
             own_leaf_nodes: <span class="self">self</span>.own_leaf_nodes,
             aad: <span class="self">self</span>.aad,
             group_state: <span class="self">self</span>.group_state,
-            state_changed: InnerState::Persisted,
         }
     }
-}
-
-<span class="kw">impl </span>MlsEntity <span class="kw">for </span>MlsGroup {
-    <span class="kw">const </span>ID: MlsEntityId = MlsEntityId::GroupState;
 }
 
 <span class="kw">impl </span>Serialize <span class="kw">for </span>MlsGroup {
