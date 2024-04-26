@@ -2,7 +2,6 @@
 
 use super::utils::{generate_credential_with_key, generate_key_package};
 use crate::{framing::*, group::*, test_utils::*, *};
-use openmls_rust_crypto::OpenMlsRustCrypto;
 
 // Tests the different variants of the RemoveOperation enum.
 #[apply(ciphersuites)]
@@ -78,7 +77,10 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite) {
             .add_members(
                 &alice_provider,
                 &alice_credential_with_key_and_signer.signer,
-                &[bob_key_package, charlie_key_package],
+                &[
+                    bob_key_package.key_package().clone(),
+                    charlie_key_package.key_package().clone(),
+                ],
             )
             .expect("An unexpected error occurred.");
         alice_group
@@ -143,7 +145,9 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite) {
 
                     match processed_message.into_content() {
                         ProcessedMessageContent::ProposalMessage(proposal) => {
-                            group.store_pending_proposal(*proposal);
+                            group
+                                .store_pending_proposal(charlie_provider.storage(), *proposal)
+                                .unwrap();
                         }
                         _ => unreachable!(),
                     }

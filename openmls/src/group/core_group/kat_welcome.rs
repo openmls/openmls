@@ -19,8 +19,9 @@
 //!     from the key schedule epoch and the `confirmed_transcript_hash` from the
 //!     decrypted GroupContext
 
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, OpenMlsProvider};
+use crate::test_utils::OpenMlsRustCrypto;
+use kat_welcome::core_group::node::encryption_keys::EncryptionPrivateKey;
+use openmls_traits::{crypto::OpenMlsCrypto, storage::StorageProvider, OpenMlsProvider};
 use serde::{self, Deserialize, Serialize};
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize};
 
@@ -163,23 +164,14 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
 
     let key_package_bundle = KeyPackageBundle {
         key_package: key_package.clone(),
-        private_key: init_priv,
+        private_init_key: init_priv,
+        private_encryption_key: EncryptionPrivateKey::from(vec![]),
     };
 
+    let hash_ref = key_package.hash_ref(provider.crypto()).unwrap();
     provider
-        .key_store()
-        .store(
-            key_package.hash_ref(provider.crypto()).unwrap().as_slice(),
-            &key_package,
-        )
-        .unwrap();
-
-    provider
-        .key_store()
-        .store::<HpkePrivateKey>(
-            key_package.hpke_init_key().as_slice(),
-            key_package_bundle.private_key(),
-        )
+        .storage()
+        .write_key_package(&hash_ref, &key_package_bundle)
         .unwrap();
 
     // Verification:
@@ -197,7 +189,7 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
 
     // // //  * Decrypt the encrypted group secrets using `init_priv`
     let group_secrets = GroupSecrets::try_from_ciphertext(
-        key_package_bundle.private_key(),
+        key_package_bundle.init_private_key(),
         encrypted_group_secrets.encrypted_group_secrets(),
         welcome.encrypted_group_info(),
         welcome.ciphersuite(),
@@ -210,7 +202,7 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
     let psk_secret = {
         let resumption_psk_store = ResumptionPskStore::new(1024);
 
-        let psks = load_psks(provider.key_store(), &resumption_psk_store, &[]).unwrap();
+        let psks = load_psks(provider.storage(), &resumption_psk_store, &[]).unwrap();
 
         PskSecret::new(provider.crypto(), cipher_suite, psks).unwrap()
     };

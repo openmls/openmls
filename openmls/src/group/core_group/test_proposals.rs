@@ -1,5 +1,4 @@
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::types::Ciphersuite;
 
 use super::CoreGroup;
 use crate::{
@@ -27,7 +26,10 @@ use crate::{
 /// used in `create_commit` to filter the epoch proposals. Expected result:
 /// `filtered_queued_proposals` returns only proposals of a certain type
 #[apply(ciphersuites_and_providers)]
-fn proposal_queue_functions(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn proposal_queue_functions(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::OpenMlsProvider,
+) {
     // Framing parameters
     let framing_parameters = FramingParameters::new(&[], WireFormat::PublicMessage);
     // Define identities
@@ -38,7 +40,7 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
 
     let bob_key_package = bob_key_package_bundle.key_package();
     let alice_update_key_package_bundle =
-        KeyPackageBundle::new(provider, &alice_signer, ciphersuite, alice_credential);
+        KeyPackageBundle::generate(provider, &alice_signer, ciphersuite, alice_credential);
     let alice_update_key_package = alice_update_key_package_bundle.key_package();
     let kpi = KeyPackageIn::from(alice_update_key_package.clone());
     assert!(kpi
@@ -171,7 +173,7 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
 
 /// Test, that we QueuedProposalQueue is iterated in the right order.
 #[apply(ciphersuites_and_providers)]
-fn proposal_queue_order(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn proposal_queue_order(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     // Framing parameters
     let framing_parameters = FramingParameters::new(&[], WireFormat::PublicMessage);
     // Define identities
@@ -182,7 +184,7 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 
     let bob_key_package = bob_key_package_bundle.key_package();
     let alice_update_key_package_bundle =
-        KeyPackageBundle::new(provider, &alice_signer, ciphersuite, alice_credential);
+        KeyPackageBundle::generate(provider, &alice_signer, ciphersuite, alice_credential);
     let alice_update_key_package = alice_update_key_package_bundle.key_package();
     let kpi = KeyPackageIn::from(alice_update_key_package.clone());
     assert!(kpi
@@ -281,7 +283,7 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 #[apply(ciphersuites_and_providers)]
 fn test_required_extension_key_package_mismatch(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
@@ -329,7 +331,10 @@ fn test_required_extension_key_package_mismatch(
 }
 
 #[apply(ciphersuites_and_providers)]
-fn test_group_context_extensions(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_group_context_extensions(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::OpenMlsProvider,
+) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -412,7 +417,7 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, provider: &impl OpenM
 #[apply(ciphersuites_and_providers)]
 fn test_group_context_extension_proposal_fails(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
@@ -511,7 +516,7 @@ fn test_group_context_extension_proposal_fails(
 #[apply(ciphersuites_and_providers)]
 fn test_group_context_extension_proposal(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) {
     // Basic group setup.
     let group_aad = b"Alice's test group";

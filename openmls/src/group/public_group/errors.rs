@@ -7,7 +7,7 @@ use crate::{
 
 /// Public group creation from external error.
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum CreationFromExternalError {
+pub enum CreationFromExternalError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -26,6 +26,9 @@ pub enum CreationFromExternalError {
     /// We don't support the version of the group we are trying to join.
     #[error("We don't support the version of the group we are trying to join.")]
     UnsupportedMlsVersion,
+    /// Error writing to storage
+    #[error("Error writing to storage: {0}")]
+    WriteToStorageError(StorageError),
 }
 
 /// Public group builder error.

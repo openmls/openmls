@@ -1,6 +1,4 @@
 use framing::mls_content_in::FramedContentBodyIn;
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::key_store::OpenMlsKeyStore;
 use tests::utils::{generate_credential_with_key, generate_key_package};
 
 use crate::{
@@ -10,7 +8,10 @@ use crate::{
 };
 
 #[apply(ciphersuites_and_providers)]
-fn create_commit_optional_path(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn create_commit_optional_path(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::OpenMlsProvider,
+) {
     let group_aad = b"Alice's test group";
     // Framing parameters
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -47,7 +48,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, provider: &impl OpenMls
     let bob_add_proposal = group_alice
         .create_add_proposal(
             framing_parameters,
-            bob_key_package.clone(),
+            bob_key_package.key_package().clone(),
             &alice_credential_with_keys.signer,
         )
         .expect("Could not create proposal.");
@@ -86,7 +87,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, provider: &impl OpenMls
     let bob_add_proposal = group_alice
         .create_add_proposal(
             framing_parameters,
-            bob_key_package.clone(),
+            bob_key_package.key_package().clone(),
             &alice_credential_with_keys.signer,
         )
         .expect("Could not create proposal.");
@@ -123,22 +124,13 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, provider: &impl OpenMls
         .expect("error merging pending commit");
     let ratchet_tree = group_alice.public_group().export_ratchet_tree();
 
-    let bob_private_key = provider
-        .key_store()
-        .read::<HpkePrivateKey>(bob_key_package.hpke_init_key().as_slice())
-        .unwrap();
-    let bob_key_package_bundle = KeyPackageBundle {
-        key_package: bob_key_package,
-        private_key: bob_private_key,
-    };
-
     // Bob creates group from Welcome
     let group_bob = StagedCoreWelcome::new_from_welcome(
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
         Some(ratchet_tree.into()),
-        bob_key_package_bundle,
+        bob_key_package,
         provider,
         ResumptionPskStore::new(1024),
     )
@@ -203,7 +195,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, provider: &impl OpenMls
 }
 
 #[apply(ciphersuites_and_providers)]
-fn basic_group_setup(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn basic_group_setup(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     let group_aad = b"Alice's test group";
     // Framing parameters
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -238,7 +230,7 @@ fn basic_group_setup(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) 
     let bob_add_proposal = group_alice
         .create_add_proposal(
             framing_parameters,
-            bob_key_package,
+            bob_key_package.key_package().clone(),
             &alice_credential_with_keys.signer,
         )
         .expect("Could not create proposal.");
@@ -279,7 +271,7 @@ fn basic_group_setup(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) 
 ///  - Charlie updates and commits
 ///  - Charlie removes Bob
 #[apply(ciphersuites_and_providers)]
-fn group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn group_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     let group_aad = b"Alice's test group";
     // Framing parameters
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -295,7 +287,7 @@ fn group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         generate_credential_with_key(b"Bob".to_vec(), ciphersuite.signature_algorithm(), provider);
 
     // Generate KeyPackages
-    let bob_key_package_bundle = KeyPackageBundle::new(
+    let bob_key_package_bundle = KeyPackageBundle::generate(
         provider,
         &bob_credential_with_keys.signer,
         ciphersuite,
@@ -627,7 +619,7 @@ fn group_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         provider,
     );
 
-    let charlie_key_package_bundle = KeyPackageBundle::new(
+    let charlie_key_package_bundle = KeyPackageBundle::generate(
         provider,
         &charlie_credential_with_keys.signer,
         ciphersuite,

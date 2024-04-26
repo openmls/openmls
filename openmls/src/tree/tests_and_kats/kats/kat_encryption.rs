@@ -81,7 +81,6 @@
 
 use itertools::izip;
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{signatures::Signer, types::SignatureScheme, OpenMlsProvider};
 use serde::{self, Deserialize, Serialize};
 use thiserror::Error;
@@ -143,7 +142,7 @@ fn generate_credential(
 ) -> (CredentialWithKey, SignatureKeyPair) {
     let credential = BasicCredential::new(identity);
     let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
-    signature_keys.store(provider.key_store()).unwrap();
+    signature_keys.store(provider.storage()).unwrap();
 
     (
         CredentialWithKey {

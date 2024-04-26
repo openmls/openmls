@@ -12,7 +12,6 @@ use crate::extensions::*;
 #[cfg(test)]
 use crate::utils::*;
 
-use openmls_traits::OpenMlsProvider;
 use serde::{Deserialize, Serialize};
 use tls_codec::*;
 

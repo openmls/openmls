@@ -9,11 +9,11 @@ use crate::{
         CreateCommitParams,
     },
     messages::proposals::{ProposalOrRef, ProposalType},
+    storage::OpenMlsProvider,
     test_utils::*,
 };
 
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::types::Ciphersuite;
 
 use super::{proposals::ProposalStore, CoreGroup};
 
@@ -243,7 +243,10 @@ fn test_external_init_single_member_group(
 }
 
 #[apply(ciphersuites_and_providers)]
-fn test_external_init_broken_signature(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_external_init_broken_signature<Provider: OpenMlsProvider>(
+    ciphersuite: Ciphersuite,
+    provider: &Provider,
+) {
     let (
         framing_parameters,
         group_alice,
@@ -271,15 +274,19 @@ fn test_external_init_broken_signature(ciphersuite: Ciphersuite, provider: &impl
         .framing_parameters(framing_parameters)
         .proposal_store(&proposal_store)
         .build();
-    assert_eq!(
-        ExternalCommitError::PublicGroupError(CreationFromExternalError::InvalidGroupInfoSignature),
-        CoreGroup::join_by_external_commit(
-            provider,
-            &charlie_signer,
-            params,
-            None,
-            verifiable_group_info
+
+    let result = CoreGroup::join_by_external_commit(
+        provider,
+        &charlie_signer,
+        params,
+        None,
+        verifiable_group_info,
+    )
+    .expect_err("Signature was corrupted. This should have failed.");
+    assert!(matches!(
+        result,
+        ExternalCommitError::<Provider::StorageError>::PublicGroupError(
+            CreationFromExternalError::InvalidGroupInfoSignature
         )
-        .expect_err("Signature was corrupted. This should have failed.")
-    );
+    ));
 }

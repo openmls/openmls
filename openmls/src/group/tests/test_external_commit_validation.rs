@@ -2,8 +2,7 @@
 //! commit messages as defined in
 //! https://github.com/openmls/openmls/wiki/Message-validation
 
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::types::Ciphersuite;
 use rstest::rstest;
 use rstest_reuse::apply;
 use tls_codec::{Deserialize, Serialize};
@@ -33,7 +32,7 @@ use crate::{
 
 // ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
 #[apply(ciphersuites_and_providers)]
-fn test_valsem240(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem240(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     let ECValidationTestSetup {
         mut alice_group,
         bob_credential,
@@ -85,12 +84,12 @@ fn test_valsem240(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .process_message(provider, ProtocolMessage::from(public_message_commit_bad))
         .expect_err("Could process message despite missing external init proposal.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::InvalidCommit(StageCommitError::ExternalCommitValidation(
             ExternalCommitValidationError::NoExternalInitProposals
         ))
-    );
+    ));
 
     // Positive case
     alice_group
@@ -100,7 +99,7 @@ fn test_valsem240(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
 // ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
 #[apply(ciphersuites_and_providers)]
-fn test_valsem241(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem241(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     // Test with PublicMessage
     let ECValidationTestSetup {
         mut alice_group,
@@ -148,12 +147,12 @@ fn test_valsem241(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .process_message(provider, ProtocolMessage::from(public_message_commit_bad))
         .expect_err("Could process message despite second ext. init proposal in commit.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::InvalidCommit(StageCommitError::ExternalCommitValidation(
             ExternalCommitValidationError::MultipleExternalInitProposals
         ))
-    );
+    ));
 
     // Positive case
     alice_group
@@ -163,7 +162,7 @@ fn test_valsem241(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
 // ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
 #[apply(ciphersuites_and_providers)]
-fn test_valsem242(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem242(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     // Test with PublicMessage
     let ECValidationTestSetup {
         mut alice_group,
@@ -184,12 +183,16 @@ fn test_valsem242(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     );
 
     alice_group
-        .add_members(provider, &alice_credential.signer, &[bob_key_package])
+        .add_members(
+            provider,
+            &alice_credential.signer,
+            &[bob_key_package.key_package().clone()],
+        )
         .unwrap();
     alice_group.merge_pending_commit(provider).unwrap();
 
     let verifiable_group_info = alice_group
-        .export_group_info(provider.crypto(), &alice_credential.signer, true)
+        .export_group_info(provider, &alice_credential.signer, true)
         .unwrap()
         .into_verifiable_group_info()
         .unwrap();
@@ -237,7 +240,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             );
 
             ProposalOrRef::Proposal(Proposal::Add(AddProposal {
-                key_package: charlie_key_package,
+                key_package: charlie_key_package.key_package().clone(),
             }))
         };
 
@@ -295,12 +298,12 @@ fn test_valsem242(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             .process_message(provider, public_message_commit_bad)
             .unwrap_err();
 
-        assert_eq!(
+        assert!(matches!(
             err,
             ProcessMessageError::InvalidCommit(StageCommitError::ExternalCommitValidation(
                 ExternalCommitValidationError::InvalidInlineProposals
             ))
-        );
+        ));
 
         // Positive case
         alice_group
@@ -311,7 +314,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
 // ValSem244: External Commit must not include any proposals by reference
 #[apply(ciphersuites_and_providers)]
-fn test_valsem244(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem244(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     // Test with PublicMessage
     let ECValidationTestSetup {
         mut alice_group,
@@ -338,7 +341,7 @@ fn test_valsem244(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         );
 
         let add_proposal = Proposal::Add(AddProposal {
-            key_package: bob_key_package,
+            key_package: bob_key_package.key_package().clone(),
         });
 
         let proposal_ref =
@@ -373,12 +376,12 @@ fn test_valsem244(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .process_message(provider, ProtocolMessage::from(public_message_commit_bad))
         .unwrap_err();
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::InvalidCommit(StageCommitError::ExternalCommitValidation(
             ExternalCommitValidationError::ReferencedProposal
         ))
-    );
+    ));
 
     // Positive case
     alice_group
@@ -388,7 +391,7 @@ fn test_valsem244(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
 // ValSem245: External Commit: MUST contain a path.
 #[apply(ciphersuites_and_providers)]
-fn test_valsem245(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem245(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     // Test with PublicMessage
     let ECValidationTestSetup {
         mut alice_group,
@@ -431,10 +434,10 @@ fn test_valsem245(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .process_message(provider, ProtocolMessage::from(public_message_commit_bad))
         .expect_err("Could process message despite missing path.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::ValidationError(ValidationError::NoPath)
-    );
+    ));
 
     // Positive case
     alice_group
@@ -444,7 +447,7 @@ fn test_valsem245(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
 // ValSem246: External Commit: The signature of the PublicMessage MUST be verified with the credential of the KeyPackage in the included `path`.
 #[apply(ciphersuites_and_providers)]
-fn test_valsem246(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem246(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     // Test with PublicMessage
     let ECValidationTestSetup {
         mut alice_group,
@@ -477,7 +480,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         );
 
         if let Some(ref mut path) = commit_bad.path {
-            path.set_leaf_node(bob_new_key_package.leaf_node().clone())
+            path.set_leaf_node(bob_new_key_package.key_package().leaf_node().clone())
         }
 
         let mut public_message_commit_bad = public_message_commit.clone();
@@ -504,7 +507,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     // This shows that signature verification fails if the signature is not done
     // using the credential in the path.
-    assert_eq!(err, ProcessMessageError::InvalidSignature);
+    assert!(matches!(err, ProcessMessageError::InvalidSignature));
 
     // This shows that the credential in the original path key package is actually bob's credential.
     let commit = if let FramedContentBody::Commit(commit) = public_message_commit.content() {
@@ -557,7 +560,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
 // External Commit should work when group use ciphertext WireFormat
 #[apply(ciphersuites_and_providers)]
-fn test_pure_ciphertest(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_pure_ciphertest(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     // Test with PrivateMessage
     let ECValidationTestSetup {
         mut alice_group,
@@ -570,7 +573,7 @@ fn test_pure_ciphertest(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 
     // Have Alice export everything that bob needs.
     let verifiable_group_info = alice_group
-        .export_group_info(provider.crypto(), &alice_credential.signer, true)
+        .export_group_info(provider, &alice_credential.signer, true)
         .unwrap()
         .into_verifiable_group_info()
         .unwrap();
@@ -599,7 +602,7 @@ fn test_pure_ciphertest(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 }
 
 mod utils {
-    use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
+    use openmls_traits::types::Ciphersuite;
     use tls_codec::{Deserialize, Serialize};
 
     use crate::{
@@ -623,7 +626,7 @@ mod utils {
     pub(super) fn validation_test_setup(
         wire_format_policy: WireFormatPolicy,
         ciphersuite: Ciphersuite,
-        provider: &impl OpenMlsProvider,
+        provider: &impl crate::storage::OpenMlsProvider,
     ) -> ECValidationTestSetup {
         // Generate credentials with keys
         let alice_credential = generate_credential_with_key(
@@ -654,7 +657,7 @@ mod utils {
 
         // Have Alice export everything that bob needs.
         let verifiable_group_info = alice_group
-            .export_group_info(provider.crypto(), &alice_credential.signer, false)
+            .export_group_info(provider, &alice_credential.signer, false)
             .unwrap()
             .into_verifiable_group_info()
             .unwrap();

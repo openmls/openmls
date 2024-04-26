@@ -3,8 +3,9 @@
 use std::mem;
 
 use core_group::staged_commit::StagedCommit;
-use openmls_traits::signatures::Signer;
+use openmls_traits::{signatures::Signer, storage::StorageProvider as _};
 
+use crate::storage::OpenMlsProvider;
 use crate::{
     group::core_group::create_commit_params::CreateCommitParams, messages::group_info::GroupInfo,
 };
@@ -23,11 +24,11 @@ impl MlsGroup {
     /// # Errors:
     /// Returns an [`ProcessMessageError`] when the validation checks fail
     /// with the exact reason of the failure.
-    pub fn process_message(
+    pub fn process_message<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider,
+        provider: &Provider,
         message: impl Into<ProtocolMessage>,
-    ) -> Result<ProcessedMessage, ProcessMessageError> {
+    ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
         // Make sure we are still a member of the group
         if !self.is_active() {
             return Err(ProcessMessageError::GroupStateError(
@@ -48,9 +49,6 @@ impl MlsGroup {
             return Err(ProcessMessageError::IncompatibleWireFormat);
         }
 
-        // Since the state of the group might be changed, arm the state flag
-        self.flag_state_change();
-
         // Parse the message
         let sender_ratchet_configuration =
             self.configuration().sender_ratchet_configuration().clone();
@@ -64,12 +62,16 @@ impl MlsGroup {
     }
 
     /// Stores a standalone proposal in the internal [ProposalStore]
-    pub fn store_pending_proposal(&mut self, proposal: QueuedProposal) {
+    pub fn store_pending_proposal<Storage: StorageProvider>(
+        &mut self,
+        storage: &Storage,
+        proposal: QueuedProposal,
+    ) -> Result<(), Storage::Error> {
+        storage.queue_proposal(self.group_id(), &proposal.proposal_reference(), &proposal)?;
         // Store the proposal in in the internal ProposalStore
         self.proposal_store.add(proposal);
 
-        // Since the state of the group might be changed, arm the state flag
-        self.flag_state_change();
+        Ok(())
     }
 
     /// Creates a Commit message that covers the pending proposals that are
@@ -83,13 +85,13 @@ impl MlsGroup {
     /// [`Welcome`]: crate::messages::Welcome
     // FIXME: #1217
     #[allow(clippy::type_complexity)]
-    pub fn commit_to_pending_proposals<KeyStore: OpenMlsKeyStore>(
+    pub fn commit_to_pending_proposals<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &Provider,
         signer: &impl Signer,
     ) -> Result<
         (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
-        CommitToPendingProposalsError<KeyStore::Error>,
+        CommitToPendingProposalsError<Provider::StorageError>,
     > {
         self.is_operational()?;
 
@@ -110,9 +112,10 @@ impl MlsGroup {
         self.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
             create_commit_result.staged_commit,
         )));
-
-        // Since the state of the group might be changed, arm the state flag
-        self.flag_state_change();
+        provider
+            .storage()
+            .write_group_state(self.group_id(), &self.group_state)
+            .map_err(CommitToPendingProposalsError::StorageError)?;
 
         Ok((
             mls_message,
@@ -125,18 +128,19 @@ impl MlsGroup {
 
     /// Merge a [StagedCommit] into the group after inspection. As this advances
     /// the epoch of the group, it also clears any pending commits.
-    pub fn merge_staged_commit<KeyStore: OpenMlsKeyStore>(
+    pub fn merge_staged_commit<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &Provider,
         staged_commit: StagedCommit,
-    ) -> Result<(), MergeCommitError<KeyStore::Error>> {
+    ) -> Result<(), MergeCommitError<Provider::StorageError>> {
         // Check if we were removed from the group
         if staged_commit.self_removed() {
             self.group_state = MlsGroupState::Inactive;
         }
-
-        // Since the state of the group might be changed, arm the state flag
-        self.flag_state_change();
+        provider
+            .storage()
+            .write_group_state(self.group_id(), &self.group_state)
+            .map_err(MergeCommitError::StorageError)?;
 
         // Merge staged commit
         self.group
@@ -150,19 +154,24 @@ impl MlsGroup {
 
         // Delete own KeyPackageBundles
         self.own_leaf_nodes.clear();
+        provider
+            .storage()
+            .clear_own_leaf_nodes(self.group_id())
+            .map_err(MergeCommitError::StorageError)?;
 
         // Delete a potential pending commit
-        self.clear_pending_commit();
+        self.clear_pending_commit(provider.storage())
+            .map_err(MergeCommitError::StorageError)?;
 
         Ok(())
     }
 
     /// Merges the pending [`StagedCommit`] if there is one, and
     /// clears the field by setting it to `None`.
-    pub fn merge_pending_commit<KeyStore: OpenMlsKeyStore>(
+    pub fn merge_pending_commit<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
-    ) -> Result<(), MergePendingCommitError<KeyStore::Error>> {
+        provider: &Provider,
+    ) -> Result<(), MergePendingCommitError<Provider::StorageError>> {
         match &self.group_state {
             MlsGroupState::PendingCommit(_) => {
                 let old_state = mem::replace(&mut self.group_state, MlsGroupState::Operational);

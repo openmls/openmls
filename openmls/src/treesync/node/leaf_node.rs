@@ -1,13 +1,11 @@
 //! This module contains the [`LeafNode`] struct and its implementation.
-use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::{signatures::Signer, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
 use tls_codec::{
     Serialize as TlsSerializeTrait, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
     VLBytes,
 };
 
-#[cfg(test)]
-use openmls_traits::key_store::OpenMlsKeyStore;
 #[cfg(test)]
 use thiserror::Error;
 
@@ -23,8 +21,9 @@ use crate::{
     extensions::{ExtensionType, Extensions},
     group::GroupId,
     key_packages::{KeyPackage, Lifetime},
+    prelude::KeyPackageBundle,
+    storage::OpenMlsProvider,
     treesync::errors::PublicTreeError,
-    versions::ProtocolVersion,
 };
 
 use crate::treesync::errors::LeafNodeValidationError;
@@ -175,13 +174,13 @@ impl LeafNode {
     /// This function can be used when generating an update. In most other cases
     /// a leaf node should be generated as part of a new [`KeyPackage`].
     #[cfg(test)]
-    pub(crate) fn updated<KeyStore: OpenMlsKeyStore>(
+    pub(crate) fn updated<Provider: OpenMlsProvider>(
         &self,
         ciphersuite: Ciphersuite,
         tree_info_tbs: TreeInfoTbs,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &Provider,
         signer: &impl Signer,
-    ) -> Result<Self, LeafNodeGenerationError<KeyStore::Error>> {
+    ) -> Result<Self, LeafNodeGenerationError<Provider::StorageError>> {
         Self::generate_update(
             ciphersuite,
             CredentialWithKey {
@@ -204,15 +203,15 @@ impl LeafNode {
     /// This function can be used when generating an update. In most other cases
     /// a leaf node should be generated as part of a new [`KeyPackage`].
     #[cfg(test)]
-    pub(crate) fn generate_update<KeyStore: OpenMlsKeyStore>(
+    pub(crate) fn generate_update<Provider: OpenMlsProvider>(
         ciphersuite: Ciphersuite,
         credential_with_key: CredentialWithKey,
         capabilities: Capabilities,
         extensions: Extensions,
         tree_info_tbs: TreeInfoTbs,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &Provider,
         signer: &impl Signer,
-    ) -> Result<Self, LeafNodeGenerationError<KeyStore::Error>> {
+    ) -> Result<Self, LeafNodeGenerationError<Provider::StorageError>> {
         // Note that this function is supposed to be used in the public API only
         // because it is interacting with the key store.
 
@@ -229,8 +228,8 @@ impl LeafNode {
 
         // Store the encryption key pair in the key store.
         encryption_key_pair
-            .write_to_key_store(provider.key_store())
-            .map_err(LeafNodeGenerationError::KeyStoreError)?;
+            .write(provider.storage())
+            .map_err(LeafNodeGenerationError::StorageError)?;
 
         Ok(leaf_node)
     }
@@ -284,7 +283,6 @@ impl LeafNode {
         group_id: &GroupId,
         leaf_index: LeafNodeIndex,
         ciphersuite: Ciphersuite,
-        protocol_version: ProtocolVersion,
         provider: &impl OpenMlsProvider,
         signer: &impl Signer,
     ) -> Result<EncryptionKeyPair, PublicTreeError> {
@@ -293,13 +291,12 @@ impl LeafNode {
             .capabilities
             .ciphersuites
             .contains(&ciphersuite.into())
-            || !self.capabilities().versions.contains(&protocol_version)
         {
             debug_assert!(
                 false,
                 "Ciphersuite or protocol version is not supported by this leaf node.\
-                 \ncapabilities: {:?}\nprotocol version: {:?}\nciphersuite: {:?}",
-                self.payload.capabilities, protocol_version, ciphersuite
+                 \ncapabilities: {:?}\nciphersuite: {:?}",
+                self.payload.capabilities, ciphersuite
             );
             return Err(LibraryError::custom(
                 "Ciphersuite or protocol version is not supported by this leaf node.",
@@ -655,6 +652,12 @@ impl From<KeyPackage> for LeafNode {
     }
 }
 
+impl From<KeyPackageBundle> for LeafNode {
+    fn from(key_package: KeyPackageBundle) -> Self {
+        key_package.key_package().leaf_node().clone()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum VerifiableLeafNode {
     KeyPackage(VerifiableKeyPackageLeafNode),
@@ -844,11 +847,12 @@ impl SignedStruct<LeafNodeTbs> for LeafNode {
 
 #[cfg(test)]
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum LeafNodeGenerationError<KeyStoreError> {
+pub enum LeafNodeGenerationError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    /// Error storing leaf private key in key store.
-    #[error("Error storing leaf private key in key store.")]
-    KeyStoreError(KeyStoreError),
+
+    /// Error storing leaf private key in storage.
+    #[error("Error storing leaf private key.")]
+    StorageError(StorageError),
 }

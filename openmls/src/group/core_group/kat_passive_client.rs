@@ -1,6 +1,5 @@
 use log::{debug, info, warn};
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, OpenMlsProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, storage::StorageProvider, OpenMlsProvider};
 use serde::{self, Deserialize, Serialize};
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize};
 
@@ -211,7 +210,7 @@ impl PassiveClient {
             // We only construct this to easily save the PSK in the keystore.
             // The nonce is not saved, so it can be empty...
             let psk_id = PreSharedKeyId::external(psk.psk_id, vec![]);
-            psk_id.write_to_key_store(&provider, &psk.psk).unwrap();
+            psk_id.store(&provider, &psk.psk).unwrap();
         }
 
         Self {
@@ -241,28 +240,15 @@ impl PassiveClient {
 
         let key_package_bundle = KeyPackageBundle {
             key_package: key_package.clone(),
-            private_key: init_priv,
+            private_init_key: init_priv,
+            private_encryption_key: encryption_priv.clone().into(),
         };
 
         // Store key package.
+        let hash_ref = key_package.hash_ref(self.provider.crypto()).unwrap();
         self.provider
-            .key_store()
-            .store(
-                key_package
-                    .hash_ref(self.provider.crypto())
-                    .unwrap()
-                    .as_slice(),
-                &key_package,
-            )
-            .unwrap();
-
-        // Store init key.
-        self.provider
-            .key_store()
-            .store::<HpkePrivateKey>(
-                key_package.hpke_init_key().as_slice(),
-                key_package_bundle.private_key(),
-            )
+            .storage()
+            .write_key_package(&hash_ref, &key_package_bundle)
             .unwrap();
 
         // Store encryption key
@@ -271,9 +257,7 @@ impl PassiveClient {
             EncryptionPrivateKey::from(encryption_priv),
         ));
 
-        key_pair
-            .write_to_key_store(self.provider.key_store())
-            .unwrap();
+        key_pair.write(self.provider.storage()).unwrap();
     }
 
     fn join_by_welcome(
@@ -312,7 +296,8 @@ impl PassiveClient {
                 self.group
                     .as_mut()
                     .unwrap()
-                    .store_pending_proposal(*queued_proposal);
+                    .store_pending_proposal(self.provider.storage(), *queued_proposal)
+                    .unwrap();
             }
             ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
                 self.group
@@ -368,7 +353,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> PassiveClientWelcomeTes
         .add_members(
             &creator_provider,
             &creator.signature_keypair,
-            &[passive.key_package.clone()],
+            &[passive.key_package.key_package().clone()],
         )
         .unwrap();
 
@@ -489,6 +474,8 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> PassiveClientWelcomeTes
     };
 
     let epochs = vec![epoch1, epoch2, epoch3, epoch4, epoch5, epoch6];
+    let init_priv = passive.key_package.init_private_key().to_vec();
+    let encryption_priv = passive.key_package.encryption_private_key().to_vec();
 
     PassiveClientWelcomeTestVector {
         cipher_suite: ciphersuite.into(),
@@ -499,8 +486,8 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> PassiveClientWelcomeTes
             .unwrap(),
 
         signature_priv: passive.signature_keypair.private().to_vec(),
-        encryption_priv: passive.encryption_keypair.private_key().key().to_vec(),
-        init_priv: passive.init_keypair.private.to_vec(),
+        encryption_priv,
+        init_priv,
 
         welcome: mls_message_welcome.tls_serialize_detached().unwrap(),
         ratchet_tree: None,
@@ -530,7 +517,7 @@ fn propose_add(
         .propose_add_member(
             provider,
             &candidate.signature_keypair,
-            &add_candidate.key_package,
+            add_candidate.key_package.key_package(),
         )
         .unwrap();
     group.merge_pending_commit(provider).unwrap();

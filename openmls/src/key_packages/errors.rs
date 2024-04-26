@@ -48,17 +48,28 @@ pub enum KeyPackageExtensionSupportError {
 
 /// KeyPackage new error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum KeyPackageNewError<KeyStoreError> {
+pub enum KeyPackageNewError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
     /// The ciphersuite does not match the signature scheme.
     #[error("The ciphersuite does not match the signature scheme.")]
     CiphersuiteSignatureSchemeMismatch,
-    /// Accessing the key store failed.
-    #[error("Accessing the key store failed.")]
-    KeyStoreError(KeyStoreError),
+    /// Accessing storage failed.
+    #[error("Accessing storage failed.")]
+    StorageError,
     /// See [`SignatureError`] for more details.
     #[error(transparent)]
     SignatureError(#[from] SignatureError),
+}
+
+/// KeyPackage storage error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum KeyPackageStorageError<StorageError> {
+    /// See [`LibraryError`] for more details.
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    /// Accessing storage failed.
+    #[error("Storage error.")]
+    Storage(StorageError),
 }

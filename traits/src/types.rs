@@ -9,8 +9,6 @@ use tls_codec::{
     SecretVLBytes, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes,
 };
 
-use crate::key_store::{MlsEntity, MlsEntityId};
-
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
 #[repr(u16)]
 /// AEAD types
@@ -275,10 +273,6 @@ impl std::ops::Deref for HpkePrivateKey {
     fn deref(&self) -> &Self::Target {
         self.0.as_slice()
     }
-}
-
-impl MlsEntity for HpkePrivateKey {
-    const ID: MlsEntityId = MlsEntityId::HpkePrivateKey;
 }
 
 /// Helper holding a (private, public) key pair as byte vectors.

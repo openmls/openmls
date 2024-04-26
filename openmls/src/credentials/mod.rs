@@ -328,7 +328,7 @@ pub mod test_utils {
     ) -> (CredentialWithKey, SignatureKeyPair) {
         let credential = BasicCredential::new(identity.into());
         let signature_keys = SignatureKeyPair::new(signature_scheme).unwrap();
-        signature_keys.store(provider.key_store()).unwrap();
+        signature_keys.store(provider.storage()).unwrap();
 
         (
             CredentialWithKey {

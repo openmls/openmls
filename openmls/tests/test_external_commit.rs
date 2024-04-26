@@ -9,7 +9,7 @@ use openmls_basic_credential::SignatureKeyPair;
 
 fn create_alice_group(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
     use_ratchet_tree_extension: bool,
 ) -> (MlsGroup, CredentialWithKey, SignatureKeyPair) {
     let group_config = MlsGroupCreateConfig::builder()
@@ -32,14 +32,14 @@ fn create_alice_group(
 }
 
 #[apply(ciphersuites_and_providers)]
-fn test_external_commit(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_external_commit(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     // Alice creates a new group ...
     let (alice_group, _, alice_signer) = create_alice_group(ciphersuite, provider, false);
 
     // ... and exports a group info (with ratchet_tree).
     let verifiable_group_info = {
         let group_info = alice_group
-            .export_group_info(provider.crypto(), &alice_signer, true)
+            .export_group_info(provider, &alice_signer, true)
             .unwrap();
 
         let serialized_group_info = group_info.tls_serialize_detached().unwrap();
@@ -52,7 +52,7 @@ fn test_external_commit(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 
     let verifiable_group_info_broken = {
         let group_info = alice_group
-            .export_group_info(provider.crypto(), &alice_signer, true)
+            .export_group_info(provider, &alice_signer, true)
             .unwrap();
 
         let serialized_group_info = {
@@ -106,17 +106,17 @@ fn test_external_commit(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
         )
         .unwrap_err();
 
-        assert_eq!(
+        assert!(matches!(
             got_error,
             ExternalCommitError::PublicGroupError(
                 CreationFromExternalError::InvalidGroupInfoSignature
             )
-        );
+        ));
     }
 }
 
 #[apply(ciphersuites_and_providers)]
-fn test_group_info(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_group_info(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     // Alice creates a new group ...
     let (mut alice_group, _, alice_signer) = create_alice_group(ciphersuite, provider, true);
 
@@ -196,7 +196,10 @@ fn test_group_info(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 }
 
 #[apply(ciphersuites_and_providers)]
-fn test_not_present_group_info(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_not_present_group_info(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::OpenMlsProvider,
+) {
     // Alice creates a new group ...
     let (mut alice_group, _, alice_signer) = create_alice_group(ciphersuite, provider, false);
 

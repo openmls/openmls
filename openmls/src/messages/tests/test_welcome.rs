@@ -1,8 +1,5 @@
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{
-    crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsProvider,
-};
+use openmls_traits::{crypto::OpenMlsCrypto, storage::StorageProvider, types::Ciphersuite};
 use rstest::*;
 use rstest_reuse::{self, *};
 use tls_codec::{Deserialize, Serialize};
@@ -20,7 +17,6 @@ use crate::{
         group_info::{GroupInfoTBS, VerifiableGroupInfo},
         ConfirmationTag, EncryptedGroupSecrets, GroupSecrets, GroupSecretsError, Welcome,
     },
-    prelude::HpkePrivateKey,
     schedule::{
         psk::{load_psks, store::ResumptionPskStore, PskSecret},
         KeySchedule,
@@ -33,7 +29,10 @@ use crate::{
 /// group info, it is not possible to generate a matching encrypted group context with different
 /// parameters.
 #[apply(ciphersuites_and_providers)]
-fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_welcome_context_mismatch(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::OpenMlsProvider,
+) {
     let _ = pretty_env_logger::try_init();
 
     // We need a ciphersuite that is different from the current one to create
@@ -56,7 +55,7 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, provider: &impl OpenM
         crate::group::test_core_group::setup_client("Bob", ciphersuite, provider);
 
     let bob_kp = bob_kpb.key_package();
-    let bob_private_key = bob_kpb.private_key();
+    let bob_private_key = bob_kpb.init_private_key();
 
     // === Alice creates a group  and adds Bob ===
     let mut alice_group = MlsGroup::new_with_group_id(
@@ -101,7 +100,7 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, provider: &impl OpenM
     let psk_secret = {
         let resumption_psk_store = ResumptionPskStore::new(1024);
 
-        let psks = load_psks(provider.key_store(), &resumption_psk_store, &[]).unwrap();
+        let psks = load_psks(provider.storage(), &resumption_psk_store, &[]).unwrap();
 
         PskSecret::new(provider.crypto(), ciphersuite, psks).unwrap()
     };
@@ -151,11 +150,9 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, provider: &impl OpenM
     welcome.encrypted_group_info = encrypted_verifiable_group_info.into();
 
     // Create backup of encryption keypair, s.t. we can process the welcome a second time after failing.
-    let encryption_keypair = EncryptionKeyPair::read_from_key_store(
-        provider,
-        bob_kpb.key_package().leaf_node().encryption_key(),
-    )
-    .unwrap();
+    let encryption_keypair =
+        EncryptionKeyPair::read(provider, bob_kpb.key_package().leaf_node().encryption_key())
+            .unwrap();
 
     // Bob tries to join the group
     let err = StagedWelcome::new_from_welcome(
@@ -176,20 +173,11 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, provider: &impl OpenM
     // We need to store the key package and its encryption key again because it
     // has been consumed already.
     provider
-        .key_store()
-        .store(
-            bob_kp.hash_ref(provider.crypto()).unwrap().as_slice(),
-            bob_kp,
-        )
-        .unwrap();
-    provider
-        .key_store()
-        .store::<HpkePrivateKey>(bob_kp.hpke_init_key().as_slice(), bob_private_key)
+        .storage()
+        .write_key_package(&bob_kp.hash_ref(provider.crypto()).unwrap(), &bob_kpb)
         .unwrap();
 
-    encryption_keypair
-        .write_to_key_store(provider.key_store())
-        .unwrap();
+    encryption_keypair.write(provider.storage()).unwrap();
 
     let _group = StagedWelcome::new_from_welcome(
         provider,
@@ -203,11 +191,11 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, provider: &impl OpenM
 }
 
 #[apply(ciphersuites_and_providers)]
-fn test_welcome_msg(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_welcome_msg(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     test_welcome_message(ciphersuite, provider);
 }
 
-fn test_welcome_message(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_welcome_message(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     // We use this dummy group info in all test cases.
     let group_info_tbs = {
         let group_context = GroupContext::new(

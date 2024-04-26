@@ -4,9 +4,9 @@
 //! API of OpenMLS.
 
 pub mod crypto;
-pub mod key_store;
 pub mod random;
 pub mod signatures;
+pub mod storage;
 pub mod types;
 
 /// The OpenMLS Crypto Provider Trait
@@ -16,14 +16,14 @@ pub mod types;
 pub trait OpenMlsProvider {
     type CryptoProvider: crypto::OpenMlsCrypto;
     type RandProvider: random::OpenMlsRand;
-    type KeyStoreProvider: key_store::OpenMlsKeyStore;
+    type StorageProvider: storage::StorageProvider<{ storage::CURRENT_VERSION }>;
+
+    // Get the storage provider.
+    fn storage(&self) -> &Self::StorageProvider;
 
     /// Get the crypto provider.
     fn crypto(&self) -> &Self::CryptoProvider;
 
     /// Get the randomness provider.
     fn rand(&self) -> &Self::RandProvider;
-
-    /// Get the key store provider.
-    fn key_store(&self) -> &Self::KeyStoreProvider;
 }

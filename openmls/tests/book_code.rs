@@ -4,15 +4,12 @@ use openmls::{
     *,
 };
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{signatures::Signer, types::SignatureScheme, OpenMlsProvider};
+use openmls_traits::{signatures::Signer, types::SignatureScheme};
 
 #[test]
 fn create_provider_rust_crypto() {
     // ANCHOR: create_provider_rust_crypto
-    use openmls_rust_crypto::OpenMlsRustCrypto;
-
-    let provider = OpenMlsRustCrypto::default();
+    let provider: OpenMlsRustCrypto = OpenMlsRustCrypto::default();
     // ANCHOR_END: create_provider_rust_crypto
 
     // Suppress warning.
@@ -22,14 +19,14 @@ fn create_provider_rust_crypto() {
 fn generate_credential(
     identity: Vec<u8>,
     signature_algorithm: SignatureScheme,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) -> (CredentialWithKey, SignatureKeyPair) {
     // ANCHOR: create_basic_credential
     let credential = BasicCredential::new(identity);
     // ANCHOR_END: create_basic_credential
     // ANCHOR: create_credential_keys
     let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
-    signature_keys.store(provider.key_store()).unwrap();
+    signature_keys.store(provider.storage()).unwrap();
     // ANCHOR_END: create_credential_keys
 
     (
@@ -45,9 +42,9 @@ fn generate_key_package(
     ciphersuite: Ciphersuite,
     credential_with_key: CredentialWithKey,
     extensions: Extensions,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
     signer: &impl Signer,
-) -> KeyPackage {
+) -> KeyPackageBundle {
     // ANCHOR: create_key_package
     // Create the key package
     KeyPackage::builder()
@@ -72,7 +69,10 @@ fn generate_key_package(
 ///  - Bob leaves
 ///  - Test saving the group state
 #[apply(ciphersuites_and_providers)]
-fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn book_operations<Provider: crate::storage::OpenMlsProvider>(
+    ciphersuite: Ciphersuite,
+    provider: &Provider,
+) {
     // Generate credentials with keys
     let (alice_credential, alice_signature_keys) =
         generate_credential("Alice".into(), ciphersuite.signature_algorithm(), provider);
@@ -212,7 +212,11 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // === Alice adds Bob ===
     // ANCHOR: alice_adds_bob
     let (mls_message_out, welcome, group_info) = alice_group
-        .add_members(provider, &alice_signature_keys, &[bob_key_package])
+        .add_members(
+            provider,
+            &alice_signature_keys,
+            &[bob_key_package.key_package().clone()],
+        )
         .expect("Could not add members.");
     // ANCHOR_END: alice_adds_bob
 
@@ -280,7 +284,7 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     // ANCHOR: alice_exports_group_info
     let verifiable_group_info = alice_group
-        .export_group_info(provider.crypto(), &alice_signature_keys, true)
+        .export_group_info(provider, &alice_signature_keys, true)
         .expect("Cannot export group info")
         .into_verifiable_group_info()
         .expect("Could not get group info");
@@ -389,8 +393,8 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     // Check that both groups have the same state
     assert_eq!(
-        alice_group.export_secret(provider.crypto(), "", &[], 32),
-        bob_group.export_secret(provider.crypto(), "", &[], 32)
+        alice_group.export_secret(provider, "", &[], 32).unwrap(),
+        bob_group.export_secret(provider, "", &[], 32).unwrap()
     );
 
     // Make sure that both groups have the same public tree
@@ -430,7 +434,9 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
                 &alice_credential.credential
             );
             // Store proposal
-            alice_group.store_pending_proposal(*staged_proposal.clone());
+            alice_group
+                .store_pending_proposal(provider.storage(), *staged_proposal.clone())
+                .unwrap();
         } else {
             unreachable!("Expected a Proposal.");
         }
@@ -440,7 +446,9 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             staged_proposal.sender(),
             Sender::Member(member) if *member == alice_group.own_leaf_index()
         ));
-        bob_group.store_pending_proposal(*staged_proposal);
+        bob_group
+            .store_pending_proposal(provider.storage(), *staged_proposal)
+            .unwrap();
     } else {
         unreachable!("Expected a QueuedProposal.");
     }
@@ -485,8 +493,8 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     // Check that both groups have the same state
     assert_eq!(
-        alice_group.export_secret(provider.crypto(), "", &[], 32),
-        bob_group.export_secret(provider.crypto(), "", &[], 32)
+        alice_group.export_secret(provider, "", &[], 32).unwrap(),
+        bob_group.export_secret(provider, "", &[], 32).unwrap()
     );
 
     // Make sure that both groups have the same public tree
@@ -505,7 +513,11 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     );
 
     let (queued_message, welcome, _group_info) = bob_group
-        .add_members(provider, &bob_signature_keys, &[charlie_key_package])
+        .add_members(
+            provider,
+            &bob_signature_keys,
+            &[charlie_key_package.key_package().clone()],
+        )
         .unwrap();
 
     let alice_processed_message = alice_group
@@ -643,12 +655,12 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     // Check that all groups have the same state
     assert_eq!(
-        alice_group.export_secret(provider.crypto(), "", &[], 32),
-        bob_group.export_secret(provider.crypto(), "", &[], 32)
+        alice_group.export_secret(provider, "", &[], 32).unwrap(),
+        bob_group.export_secret(provider, "", &[], 32).unwrap()
     );
     assert_eq!(
-        alice_group.export_secret(provider.crypto(), "", &[], 32),
-        charlie_group.export_secret(provider.crypto(), "", &[], 32)
+        alice_group.export_secret(provider, "", &[], 32).unwrap(),
+        charlie_group.export_secret(provider, "", &[], 32).unwrap()
     );
 
     // Make sure that all groups have the same public tree
@@ -870,7 +882,9 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             // Check that Charlie was removed
             assert_eq!(remove_proposal.removed(), charlie_group.own_leaf_index());
             // Store proposal
-            charlie_group.store_pending_proposal(*staged_proposal.clone());
+            charlie_group
+                .store_pending_proposal(provider.storage(), *staged_proposal.clone())
+                .unwrap();
         } else {
             unreachable!("Expected a Proposal.");
         }
@@ -887,17 +901,25 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // Create AddProposal and remove it
     // ANCHOR: rollback_proposal_by_ref
     let (_mls_message_out, proposal_ref) = alice_group
-        .propose_add_member(provider, &alice_signature_keys, &bob_key_package)
+        .propose_add_member(
+            provider,
+            &alice_signature_keys,
+            bob_key_package.key_package(),
+        )
         .expect("Could not create proposal to add Bob");
     alice_group
-        .remove_pending_proposal(proposal_ref)
+        .remove_pending_proposal(provider.storage(), proposal_ref)
         .expect("The proposal was not found");
     // ANCHOR_END: rollback_proposal_by_ref
 
     // Create AddProposal and process it
     // ANCHOR: propose_add
     let (mls_message_out, _proposal_ref) = alice_group
-        .propose_add_member(provider, &alice_signature_keys, &bob_key_package)
+        .propose_add_member(
+            provider,
+            &alice_signature_keys,
+            bob_key_package.key_package(),
+        )
         .expect("Could not create proposal to add Bob");
     // ANCHOR_END: propose_add
 
@@ -932,7 +954,9 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             Sender::Member(member) if *member == alice_group.own_leaf_index()
         ));
         // Store proposal
-        charlie_group.store_pending_proposal(*staged_proposal);
+        charlie_group
+            .store_pending_proposal(provider.storage(), *staged_proposal)
+            .unwrap();
     }
     // ANCHOR_END: inspect_add_proposal
     else {
@@ -1058,7 +1082,9 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         assert_eq!(sender_cred_from_msg, sender_cred_from_group);
         assert_eq!(
             &sender_cred_from_msg,
-            alice_group.credential().expect("Expected a credential.")
+            alice_group
+                .credential::<Provider::StorageError>()
+                .expect("Expected a credential.")
         );
     } else {
         unreachable!("Expected an ApplicationMessage.");
@@ -1086,7 +1112,9 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         alice_processed_message.into_content()
     {
         // Store proposal
-        alice_group.store_pending_proposal(*staged_proposal);
+        alice_group
+            .store_pending_proposal(provider.storage(), *staged_proposal)
+            .unwrap();
     } else {
         unreachable!("Expected a QueuedProposal.");
     }
@@ -1190,8 +1218,8 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     );
 
     // ANCHOR: external_join_proposal
-    let proposal = JoinProposal::new(
-        bob_key_package,
+    let proposal = JoinProposal::new::<Provider::Storage>(
+        bob_key_package.key_package().clone(),
         alice_group.group_id().clone(),
         alice_group.epoch(),
         &bob_signature_keys,
@@ -1210,7 +1238,9 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .expect("Could not process message.");
     match alice_processed_message.into_content() {
         ProcessedMessageContent::ExternalJoinProposalMessage(proposal) => {
-            alice_group.store_pending_proposal(*proposal);
+            alice_group
+                .store_pending_proposal(provider.storage(), *proposal)
+                .unwrap();
             let (_commit, welcome, _group_info) = alice_group
                 .commit_to_pending_proposals(provider, &alice_signature_keys)
                 .expect("Could not commit");
@@ -1254,7 +1284,7 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .unwrap();
 
     // ANCHOR: external_remove_proposal
-    let proposal = ExternalProposal::new_remove(
+    let proposal = ExternalProposal::new_remove::<Provider::Storage>(
         bob_index,
         alice_group.group_id().clone(),
         alice_group.epoch(),
@@ -1275,7 +1305,9 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .expect("Could not process message.");
     match alice_processed_message.into_content() {
         ProcessedMessageContent::ProposalMessage(proposal) => {
-            alice_group.store_pending_proposal(*proposal);
+            alice_group
+                .store_pending_proposal(provider.storage(), *proposal)
+                .unwrap();
             assert_eq!(alice_group.members().count(), 2);
             alice_group
                 .commit_to_pending_proposals(provider, &alice_signature_keys)
@@ -1302,7 +1334,11 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     // Add Bob to the group
     let (_queued_message, welcome, _group_info) = alice_group
-        .add_members(provider, &alice_signature_keys, &[bob_key_package])
+        .add_members(
+            provider,
+            &alice_signature_keys,
+            &[bob_key_package.key_package().clone()],
+        )
         .expect("Could not add Bob");
 
     // Merge Commit
@@ -1330,33 +1366,34 @@ fn book_operations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .expect("Could not create group from StagedWelcome");
 
     assert_eq!(
-        alice_group.export_secret(provider.crypto(), "before load", &[], 32),
-        bob_group.export_secret(provider.crypto(), "before load", &[], 32)
+        alice_group
+            .export_secret(provider, "before load", &[], 32)
+            .unwrap(),
+        bob_group
+            .export_secret(provider, "before load", &[], 32)
+            .unwrap()
     );
 
-    // Check that the state flag gets reset when saving
-    assert_eq!(bob_group.state_changed(), InnerState::Changed);
-    //save(&mut bob_group);
-
-    bob_group
-        .save(provider.key_store())
-        .expect("Could not write group state to file");
-
-    // Check that the state flag gets reset when saving
-    assert_eq!(bob_group.state_changed(), InnerState::Persisted);
-
-    let bob_group =
-        MlsGroup::load(&group_id, provider.key_store()).expect("Could not load group from file");
+    bob_group = MlsGroup::load(provider.storage(), &group_id)
+        .expect("An error occurred while loading the group")
+        .expect("No group with provided group id exists");
 
     // Make sure the state is still the same
     assert_eq!(
-        alice_group.export_secret(provider.crypto(), "after load", &[], 32),
-        bob_group.export_secret(provider.crypto(), "after load", &[], 32)
+        alice_group
+            .export_secret(provider, "after load", &[], 32)
+            .unwrap(),
+        bob_group
+            .export_secret(provider, "after load", &[], 32)
+            .unwrap()
     );
 }
 
 #[apply(ciphersuites_and_providers)]
-fn test_empty_input_errors(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_empty_input_errors(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::OpenMlsProvider,
+) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Generate credentials with keys
@@ -1393,7 +1430,10 @@ fn test_empty_input_errors(ciphersuite: Ciphersuite, provider: &impl OpenMlsProv
 }
 
 #[apply(ciphersuites_and_providers)]
-fn custom_proposal_usage(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn custom_proposal_usage(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::OpenMlsProvider,
+) {
     // Generate credentials with keys
     let (alice_credential_with_key, alice_signer) =
         generate_credential(b"alice".into(), ciphersuite.signature_algorithm(), provider);
@@ -1430,7 +1470,11 @@ fn custom_proposal_usage(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
 
     // Add Bob
     let (_mls_message, welcome, _group_info) = alice_group
-        .add_members(provider, &alice_signer, &[bob_key_package])
+        .add_members(
+            provider,
+            &alice_signer,
+            &[bob_key_package.key_package().clone()],
+        )
         .unwrap();
 
     alice_group.merge_pending_commit(provider).unwrap();
@@ -1469,7 +1513,9 @@ fn custom_proposal_usage(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
         panic!("Unexpected message type");
     };
 
-    bob_group.store_pending_proposal(*proposal);
+    bob_group
+        .store_pending_proposal(provider.storage(), *proposal)
+        .unwrap();
 
     // Commit to the proposal
     let (commit, _, _) = alice_group

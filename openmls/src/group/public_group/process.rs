@@ -1,4 +1,3 @@
-use openmls_traits::crypto::OpenMlsCrypto;
 use tls_codec::Serialize;
 
 use crate::{
@@ -16,6 +15,7 @@ use crate::{
         past_secrets::MessageSecretsStore,
     },
     messages::proposals::Proposal,
+    storage::OpenMlsProvider,
 };
 
 use super::PublicGroup;
@@ -129,11 +129,12 @@ impl PublicGroup {
     ///  - ValSem244
     ///  - ValSem245
     ///  - ValSem246 (as part of ValSem010)
-    pub fn process_message(
+    pub fn process_message<Provider: OpenMlsProvider>(
         &self,
-        crypto: &impl OpenMlsCrypto,
+        provider: &Provider,
         message: impl Into<ProtocolMessage>,
-    ) -> Result<ProcessedMessage, ProcessMessageError> {
+    ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
+        let crypto = provider.crypto();
         let protocol_message = message.into();
         // Checks the following semantic validation:
         //  - ValSem002
@@ -160,7 +161,7 @@ impl PublicGroup {
         let unverified_message = self
             .parse_message(decrypted_message, None)
             .map_err(ProcessMessageError::from)?;
-        self.process_unverified_message(crypto, unverified_message, &self.proposal_store)
+        self.process_unverified_message(provider, unverified_message, &self.proposal_store)
     }
 }
 
@@ -191,17 +192,18 @@ impl PublicGroup {
     ///  - ValSem242
     ///  - ValSem244
     ///  - ValSem246 (as part of ValSem010)
-    pub(crate) fn process_unverified_message(
+    pub(crate) fn process_unverified_message<Provider: OpenMlsProvider>(
         &self,
-        crypto: &impl OpenMlsCrypto,
+        provider: &Provider,
         unverified_message: UnverifiedMessage,
         proposal_store: &ProposalStore,
-    ) -> Result<ProcessedMessage, ProcessMessageError> {
+    ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
+        let crypto = provider.crypto();
         // Checks the following semantic validation:
         //  - ValSem010
         //  - ValSem246 (as part of ValSem010)
         let (content, credential) =
-            unverified_message.verify(self.ciphersuite(), crypto, self.version())?;
+            unverified_message.verify(self.ciphersuite(), provider, self.version())?;
 
         match content.sender() {
             Sender::Member(_) | Sender::NewMemberCommit | Sender::NewMemberProposal => {

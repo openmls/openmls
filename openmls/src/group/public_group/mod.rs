@@ -12,8 +12,6 @@
 //! relies on a [`PublicGroup`] as well.
 
 #[cfg(test)]
-use crate::prelude::OpenMlsProvider;
-#[cfg(test)]
 use std::collections::HashSet;
 
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
@@ -38,6 +36,7 @@ use crate::{
         ConfirmationTag, PathSecret,
     },
     schedule::CommitSecret,
+    storage::{OpenMlsProvider, StorageProvider},
     treesync::{
         errors::{DerivePathError, TreeSyncFromNodesError},
         node::{
@@ -72,6 +71,10 @@ pub struct PublicGroup {
     confirmation_tag: ConfirmationTag,
 }
 
+/// This is a wrapper type, because we can't implement the storage traits on `Vec<u8>`.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct InterimTranscriptHash(pub Vec<u8>);
+
 impl PublicGroup {
     /// Create a new PublicGroup from a [`TreeSync`] instance and a
     /// [`GroupInfo`].
@@ -105,13 +108,14 @@ impl PublicGroup {
     /// This function performs basic validation checks and returns an error if
     /// one of the checks fails. See [`CreationFromExternalError`] for more
     /// details.
-    pub fn from_external(
-        crypto: &impl OpenMlsCrypto,
+    pub fn from_external<Provider: OpenMlsProvider>(
+        provider: &Provider,
         ratchet_tree: RatchetTreeIn,
         verifiable_group_info: VerifiableGroupInfo,
         proposal_store: ProposalStore,
-    ) -> Result<(Self, GroupInfo), CreationFromExternalError> {
+    ) -> Result<(Self, GroupInfo), CreationFromExternalError<Provider::StorageError>> {
         let ciphersuite = verifiable_group_info.ciphersuite();
+        let crypto = provider.crypto();
 
         let group_id = verifiable_group_info.group_id();
         let ratchet_tree = ratchet_tree
@@ -160,16 +164,19 @@ impl PublicGroup {
             )?
         };
 
-        Ok((
-            Self {
-                treesync,
-                group_context,
-                interim_transcript_hash,
-                confirmation_tag: group_info.confirmation_tag().clone(),
-                proposal_store,
-            },
-            group_info,
-        ))
+        let public_group = Self {
+            treesync,
+            group_context,
+            interim_transcript_hash,
+            confirmation_tag: group_info.confirmation_tag().clone(),
+            proposal_store,
+        };
+
+        public_group
+            .store(provider.storage())
+            .map_err(CreationFromExternalError::WriteToStorageError)?;
+
+        Ok((public_group, group_info))
     }
 
     /// Returns the index of the sender of a staged, external commit.
@@ -342,6 +349,64 @@ impl PublicGroup {
     /// the given `leaf_index` should have private key material.
     pub(crate) fn owned_encryption_keys(&self, leaf_index: LeafNodeIndex) -> Vec<EncryptionKey> {
         self.treesync().owned_encryption_keys(leaf_index)
+    }
+
+    /// Stores the [`PublicGroup`] to storage. Called from methods creating a new group and mutating an
+    /// existing group, both inside [`PublicGroup`] and in [`CoreGroup`].
+    ///
+    /// [`CoreGroup`]: crate::group::core_group::CoreGroup
+    pub(crate) fn store<Storage: StorageProvider>(
+        &self,
+        storage: &Storage,
+    ) -> Result<(), Storage::Error> {
+        let group_id = self.group_context.group_id();
+        storage.write_tree(group_id, self.treesync())?;
+        storage.write_confirmation_tag(group_id, self.confirmation_tag())?;
+        storage.write_context(group_id, self.group_context())?;
+        storage.write_interim_transcript_hash(
+            group_id,
+            &InterimTranscriptHash(self.interim_transcript_hash.clone()),
+        )?;
+        Ok(())
+    }
+
+    /// Deletes the [`PublicGroup`] from storage.
+    pub(crate) fn delete<Storage: StorageProvider>(
+        &self,
+        storage: &Storage,
+    ) -> Result<(), Storage::Error> {
+        storage.delete_tree(self.group_id())?;
+        storage.delete_confirmation_tag(self.group_id())?;
+        storage.delete_context(self.group_id())?;
+        storage.delete_interim_transcript_hash(self.group_id())?;
+
+        Ok(())
+    }
+
+    /// Loads the [`PublicGroup`] from storage. Called from [`CoreGroup::load`].
+    ///
+    /// [`CoreGroup::load`]: crate::group::core_group::CoreGroup::load
+    pub(crate) fn load<Storage: StorageProvider>(
+        storage: &Storage,
+        group_id: &GroupId,
+    ) -> Result<Option<Self>, Storage::Error> {
+        let treesync = storage.treesync(group_id)?;
+        let group_context = storage.group_context(group_id)?;
+        let interim_transcript_hash: Option<InterimTranscriptHash> =
+            storage.interim_transcript_hash(group_id)?;
+        let confirmation_tag = storage.confirmation_tag(group_id)?;
+
+        let build = || -> Option<Self> {
+            Some(Self {
+                treesync: treesync?,
+                proposal_store: ProposalStore::new(),
+                group_context: group_context?,
+                interim_transcript_hash: interim_transcript_hash?.0,
+                confirmation_tag: confirmation_tag?,
+            })
+        };
+
+        Ok(build())
     }
 }
 

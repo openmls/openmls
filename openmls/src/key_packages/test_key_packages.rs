@@ -1,15 +1,15 @@
 use crate::test_utils::*;
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_rust_crypto::OpenMlsRustCrypto;
+
 use tls_codec::Deserialize;
 
-use crate::{extensions::*, key_packages::*};
+use crate::{extensions::*, key_packages::*, storage::OpenMlsProvider};
 
 /// Helper function to generate key packages
 pub(crate) fn key_package(
     ciphersuite: Ciphersuite,
     provider: &impl OpenMlsProvider,
-) -> (KeyPackage, Credential, SignatureKeyPair) {
+) -> (KeyPackageBundle, Credential, SignatureKeyPair) {
     let credential = BasicCredential::new(b"Sasha".to_vec());
     let signer = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
@@ -33,7 +33,7 @@ pub(crate) fn key_package(
 fn generate_key_package(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let (key_package, _credential, _signature_keys) = key_package(ciphersuite, provider);
 
-    let kpi = KeyPackageIn::from(key_package);
+    let kpi = KeyPackageIn::from(key_package.key_package().clone());
     assert!(kpi
         .validate(provider.crypto(), ProtocolVersion::Mls10)
         .is_ok());
@@ -44,6 +44,7 @@ fn serialization(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let (key_package, _, _) = key_package(ciphersuite, provider);
 
     let encoded = key_package
+        .key_package()
         .tls_serialize_detached()
         .expect("An unexpected error occurred.");
 
@@ -51,7 +52,7 @@ fn serialization(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         KeyPackageIn::tls_deserialize(&mut encoded.as_slice())
             .expect("An unexpected error occurred."),
     );
-    assert_eq!(key_package, decoded_key_package);
+    assert_eq!(key_package.key_package(), &decoded_key_package);
 }
 
 #[apply(ciphersuites_and_providers)]
@@ -76,7 +77,7 @@ fn application_id_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
         )
         .expect("An unexpected error occurred.");
 
-    let kpi = KeyPackageIn::from(key_package.clone());
+    let kpi = KeyPackageIn::from(key_package.key_package().clone());
     assert!(kpi
         .validate(provider.crypto(), ProtocolVersion::Mls10)
         .is_ok());
@@ -85,6 +86,7 @@ fn application_id_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
     assert_eq!(
         Some(id),
         key_package
+            .key_package()
             .leaf_node()
             .extensions()
             .application_id()
@@ -101,7 +103,8 @@ fn key_package_validation(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
 
     // === Protocol version ===
 
-    let mut franken_key_package = frankenstein::FrankenKeyPackage::from(key_package_orig.clone());
+    let mut franken_key_package =
+        frankenstein::FrankenKeyPackage::from(key_package_orig.key_package().clone());
     // Set an invalid protocol version
     franken_key_package.protocol_version = 999;
 
@@ -116,7 +119,8 @@ fn key_package_validation(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
 
     // === Init/encryption key ===
 
-    let mut franken_key_package = frankenstein::FrankenKeyPackage::from(key_package_orig);
+    let mut franken_key_package =
+        frankenstein::FrankenKeyPackage::from(key_package_orig.key_package().clone());
     // Set an invalid init key
     franken_key_package.init_key = franken_key_package.leaf_node.encryption_key.clone();
 
@@ -150,7 +154,7 @@ fn last_resort_key_package(ciphersuite: Ciphersuite, provider: &impl OpenMlsProv
             },
         )
         .expect("An unexpected error occurred.");
-    assert!(key_package.last_resort());
+    assert!(key_package.key_package().last_resort());
 
     // build with empty extensions
     let key_package = KeyPackage::builder()
@@ -166,7 +170,7 @@ fn last_resort_key_package(ciphersuite: Ciphersuite, provider: &impl OpenMlsProv
             },
         )
         .expect("An unexpected error occurred.");
-    assert!(key_package.last_resort());
+    assert!(key_package.key_package().last_resort());
 
     // build with extension
     let key_package = KeyPackage::builder()
@@ -185,5 +189,5 @@ fn last_resort_key_package(ciphersuite: Ciphersuite, provider: &impl OpenMlsProv
             },
         )
         .expect("An unexpected error occurred.");
-    assert!(key_package.last_resort());
+    assert!(key_package.key_package().last_resort());
 }

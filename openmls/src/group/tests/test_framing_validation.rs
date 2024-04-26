@@ -1,8 +1,7 @@
 //! This module tests the validation of message framing as defined in
 //! https://openmls.tech/book/message_validation.html#semantic-validation-of-message-framing
 
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::types::Ciphersuite;
 use tls_codec::{Deserialize, Serialize};
 
 use rstest::*;
@@ -28,7 +27,7 @@ struct ValidationTestSetup {
 fn validation_test_setup(
     wire_format_policy: WireFormatPolicy,
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) -> ValidationTestSetup {
     let group_id = GroupId::from_slice(b"Test Group");
 
@@ -75,7 +74,7 @@ fn validation_test_setup(
         .add_members(
             provider,
             &alice_credential.signer,
-            &[bob_key_package.clone()],
+            &[bob_key_package.key_package().clone()],
         )
         .expect("Could not add member.");
 
@@ -103,14 +102,14 @@ fn validation_test_setup(
         bob_group,
         _alice_credential: alice_credential,
         _bob_credential: bob_credential,
-        _alice_key_package: alice_key_package,
-        _bob_key_package: bob_key_package,
+        _alice_key_package: alice_key_package.key_package().clone(),
+        _bob_key_package: bob_key_package.key_package().clone(),
     }
 }
 
 // ValSem002 Group id
 #[apply(ciphersuites_and_providers)]
-fn test_valsem002(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem002(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -143,10 +142,10 @@ fn test_valsem002(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .process_message(provider, message_in)
         .expect_err("Could parse message despite wrong group ID.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::ValidationError(ValidationError::WrongGroupId)
-    );
+    ));
 
     // Positive case
     bob_group
@@ -156,7 +155,7 @@ fn test_valsem002(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
 // ValSem003 Epoch
 #[apply(ciphersuites_and_providers)]
-fn test_valsem003(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem003(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -210,20 +209,20 @@ fn test_valsem003(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let err = bob_group
         .process_message(provider, plaintext.clone())
         .expect_err("Could parse message despite wrong epoch.");
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::ValidationError(ValidationError::WrongEpoch)
-    );
+    ));
 
     // Set the epoch too low
     plaintext.set_epoch(current_epoch.as_u64() - 1);
     let err = bob_group
         .process_message(provider, plaintext)
         .expect_err("Could parse message despite wrong epoch.");
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::ValidationError(ValidationError::WrongEpoch)
-    );
+    ));
 
     // Positive case
     let processed_msg = bob_group
@@ -242,15 +241,15 @@ fn test_valsem003(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     // Processing a commit twice should fail i.e. an epoch can only be used once in a commit message
     let process_twice = bob_group.process_message(provider, original_message);
-    assert_eq!(
+    assert!(matches!(
         process_twice.unwrap_err(),
         ProcessMessageError::ValidationError(ValidationError::WrongEpoch)
-    );
+    ));
 }
 
 // ValSem004 Sender: Member: check the member exists
 #[apply(ciphersuites_and_providers)]
-fn test_valsem004(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem004(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -294,10 +293,10 @@ fn test_valsem004(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .process_message(provider, message_in)
         .expect_err("Could parse message despite wrong sender.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::ValidationError(ValidationError::UnknownMember)
-    );
+    ));
 
     // Positive case
     bob_group
@@ -307,7 +306,7 @@ fn test_valsem004(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
 // ValSem005 Application messages must use ciphertext
 #[apply(ciphersuites_and_providers)]
-fn test_valsem005(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem005(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -350,10 +349,10 @@ fn test_valsem005(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .process_message(provider, message_in)
         .expect_err("Could parse message despite unencrypted application message.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::ValidationError(ValidationError::UnencryptedApplicationMessage)
-    );
+    ));
 
     // Positive case
     bob_group
@@ -363,7 +362,7 @@ fn test_valsem005(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
 // ValSem006 Ciphertext: decryption needs to work
 #[apply(ciphersuites_and_providers)]
-fn test_valsem006(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem006(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -396,12 +395,12 @@ fn test_valsem006(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .process_message(provider, message_in)
         .expect_err("Could parse message despite garbled ciphertext.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::ValidationError(ValidationError::UnableToDecrypt(
             MessageDecryptionError::AeadError
         ))
-    );
+    ));
 
     // Positive case
     bob_group
@@ -411,7 +410,7 @@ fn test_valsem006(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
 // ValSem007 Membership tag presence
 #[apply(ciphersuites_and_providers)]
-fn test_valsem007(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem007(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -444,10 +443,10 @@ fn test_valsem007(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .process_message(provider, message_in)
         .expect_err("Could parse message despite missing membership tag.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::ValidationError(ValidationError::MissingMembershipTag)
-    );
+    ));
 
     // Positive case
     bob_group
@@ -457,7 +456,7 @@ fn test_valsem007(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
 // ValSem008 Membership tag verification
 #[apply(ciphersuites_and_providers)]
-fn test_valsem008(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem008(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -499,10 +498,10 @@ fn test_valsem008(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .process_message(provider, message_in)
         .expect_err("Could process message despite wrong membership tag.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::ValidationError(ValidationError::InvalidMembershipTag)
-    );
+    ));
 
     // Positive case
     bob_group
@@ -512,7 +511,7 @@ fn test_valsem008(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
 // ValSem009 Confirmation tag presence
 #[apply(ciphersuites_and_providers)]
-fn test_valsem009(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem009(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -555,10 +554,10 @@ fn test_valsem009(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .process_message(provider, message_in)
         .expect_err("Could parse message despite missing confirmation tag.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::ValidationError(ValidationError::MissingConfirmationTag)
-    );
+    ));
 
     // Positive case
     bob_group
@@ -568,7 +567,7 @@ fn test_valsem009(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
 // ValSem010 Signature verification
 #[apply(ciphersuites_and_providers)]
-fn test_valsem010(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem010(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -613,7 +612,7 @@ fn test_valsem010(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .process_message(provider, message_in)
         .expect_err("Could process message despite wrong signature.");
 
-    assert_eq!(err, ProcessMessageError::InvalidSignature);
+    assert!(matches!(err, ProcessMessageError::InvalidSignature));
 
     // Positive case
     bob_group

@@ -9,6 +9,7 @@ use crate::{
         StagedCommit,
     },
     messages::{proposals::ProposalOrRef, Commit},
+    storage::StorageProvider,
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -277,16 +278,19 @@ impl PublicGroup {
     }
 
     /// Merges a [StagedCommit] into the public group state.
-    ///
-    /// This function should not fail and only returns a [`Result`], because it
-    /// might throw a `LibraryError`.
-    pub fn merge_commit(&mut self, staged_commit: StagedCommit) {
+    pub fn merge_commit<Storage: StorageProvider>(
+        &mut self,
+        storage: &Storage,
+        staged_commit: StagedCommit,
+    ) -> Result<(), MergeCommitError<Storage::Error>> {
         match staged_commit.into_state() {
             StagedCommitState::PublicState(staged_state) => {
-                self.merge_diff(staged_state.staged_diff)
+                self.merge_diff(staged_state.staged_diff);
             }
             StagedCommitState::GroupMember(_) => (),
         }
-        self.proposal_store.empty()
+
+        self.proposal_store.empty();
+        self.store(storage).map_err(MergeCommitError::StorageError)
     }
 }

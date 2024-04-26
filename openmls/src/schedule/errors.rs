@@ -17,12 +17,12 @@ pub enum PskError {
     /// More than 2^16 PSKs were provided.
     #[error("More than 2^16 PSKs were provided.")]
     TooManyKeys,
-    /// The PSK could not be found in the key store.
-    #[error("The PSK could not be found in the key store.")]
+    /// The PSK could not be found in the store.
+    #[error("The PSK could not be found in the store.")]
     KeyNotFound,
-    /// Failed to write PSK into keystore.
-    #[error("Failed to write PSK into keystore.")]
-    KeyStore,
+    /// Failed to write PSK into storage.
+    #[error("Failed to write PSK storage.")]
+    Storage,
     /// Type mismatch.
     #[error("Type mismatch. Expected {allowed:?}, got {got:?}.")]
     TypeMismatch {

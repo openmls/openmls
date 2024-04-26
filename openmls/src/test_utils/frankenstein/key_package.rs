@@ -12,6 +12,7 @@ use crate::{
     },
     credentials::{BasicCredential, CredentialWithKey},
     key_packages::{KeyPackage, KeyPackageIn},
+    prelude::KeyPackageBundle,
     test_utils::{apply, rstest, OpenMlsRustCrypto},
     versions::ProtocolVersion,
 };
@@ -83,6 +84,19 @@ impl From<KeyPackage> for FrankenKeyPackage {
     }
 }
 
+impl From<KeyPackageBundle> for FrankenKeyPackage {
+    fn from(kp: KeyPackageBundle) -> Self {
+        FrankenKeyPackage::tls_deserialize(
+            &mut kp
+                .key_package()
+                .tls_serialize_detached()
+                .unwrap()
+                .as_slice(),
+        )
+        .unwrap()
+    }
+}
+
 impl From<FrankenKeyPackage> for KeyPackage {
     fn from(fkp: FrankenKeyPackage) -> Self {
         KeyPackageIn::tls_deserialize(&mut fkp.tls_serialize_detached().unwrap().as_slice())
@@ -132,7 +146,7 @@ fn test_franken_key_package(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
     let (credential, signer) = {
         let credential = BasicCredential::new(b"test identity".to_vec());
         let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
-        signature_keys.store(provider.key_store()).unwrap();
+        signature_keys.store(provider.storage()).unwrap();
 
         (credential, signature_keys)
     };
@@ -151,12 +165,12 @@ fn test_franken_key_package(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
         .build(config, provider, &signer, credential_with_key)
         .unwrap();
 
-    let ser = kp.tls_serialize_detached().unwrap();
+    let ser = kp.key_package().tls_serialize_detached().unwrap();
     let fkp = FrankenKeyPackage::tls_deserialize(&mut ser.as_slice()).unwrap();
 
     let ser2 = fkp.tls_serialize_detached().unwrap();
     assert_eq!(ser, ser2);
 
     let kp2 = KeyPackage::from(fkp.clone());
-    assert_eq!(kp, kp2);
+    assert_eq!(kp.key_package(), &kp2);
 }

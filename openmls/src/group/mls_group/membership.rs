@@ -3,7 +3,7 @@
 //! This module contains membership-related operations and exposes [`RemoveOperation`].
 
 use core_group::create_commit_params::CreateCommitParams;
-use openmls_traits::signatures::Signer;
+use openmls_traits::{signatures::Signer, storage::StorageProvider as _};
 
 use super::{
     errors::{AddMembersError, LeaveGroupError, RemoveMembersError},
@@ -11,7 +11,7 @@ use super::{
 };
 use crate::{
     binary_tree::array_representation::LeafNodeIndex, messages::group_info::GroupInfo,
-    treesync::LeafNode,
+    storage::OpenMlsProvider, treesync::LeafNode,
 };
 
 impl MlsGroup {
@@ -31,13 +31,15 @@ impl MlsGroup {
     /// [`Welcome`]: crate::messages::Welcome
     // FIXME: #1217
     #[allow(clippy::type_complexity)]
-    pub fn add_members<KeyStore: OpenMlsKeyStore>(
+    pub fn add_members<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &Provider,
         signer: &impl Signer,
         key_packages: &[KeyPackage],
-    ) -> Result<(MlsMessageOut, MlsMessageOut, Option<GroupInfo>), AddMembersError<KeyStore::Error>>
-    {
+    ) -> Result<
+        (MlsMessageOut, MlsMessageOut, Option<GroupInfo>),
+        AddMembersError<Provider::StorageError>,
+    > {
         self.is_operational()?;
 
         if key_packages.is_empty() {
@@ -80,8 +82,10 @@ impl MlsGroup {
             create_commit_result.staged_commit,
         )));
 
-        // Since the state of the group might be changed, arm the state flag
-        self.flag_state_change();
+        provider
+            .storage()
+            .write_group_state(self.group_id(), &self.group_state)
+            .map_err(AddMembersError::StorageError)?;
 
         Ok((
             mls_messages,
@@ -111,14 +115,14 @@ impl MlsGroup {
     /// [`Welcome`]: crate::messages::Welcome
     // FIXME: #1217
     #[allow(clippy::type_complexity)]
-    pub fn remove_members<KeyStore: OpenMlsKeyStore>(
+    pub fn remove_members<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &Provider,
         signer: &impl Signer,
         members: &[LeafNodeIndex],
     ) -> Result<
         (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
-        RemoveMembersError<KeyStore::Error>,
+        RemoveMembersError<Provider::StorageError>,
     > {
         self.is_operational()?;
 
@@ -153,8 +157,10 @@ impl MlsGroup {
             create_commit_result.staged_commit,
         )));
 
-        // Since the state of the group might be changed, arm the state flag
-        self.flag_state_change();
+        provider
+            .storage()
+            .write_group_state(self.group_id(), &self.group_state)
+            .map_err(RemoveMembersError::StorageError)?;
 
         Ok((
             mls_message,
@@ -171,11 +177,11 @@ impl MlsGroup {
     /// The Remove Proposal is returned as a [`MlsMessageOut`].
     ///
     /// Returns an error if there is a pending commit.
-    pub fn leave_group(
+    pub fn leave_group<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider,
+        provider: &Provider,
         signer: &impl Signer,
-    ) -> Result<MlsMessageOut, LeaveGroupError> {
+    ) -> Result<MlsMessageOut, LeaveGroupError<Provider::StorageError>> {
         self.is_operational()?;
 
         let removed = self.group.own_leaf_index();

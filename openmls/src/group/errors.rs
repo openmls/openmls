@@ -20,7 +20,7 @@ use crate::{
 
 /// Welcome error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum WelcomeError<KeyStoreError> {
+pub enum WelcomeError<StorageError> {
     /// See [`GroupSecretsError`] for more details.
     #[error(transparent)]
     GroupSecrets(#[from] GroupSecretsError),
@@ -78,24 +78,24 @@ pub enum WelcomeError<KeyStoreError> {
     /// No matching key package was found in the key store.
     #[error("No matching key package was found in the key store.")]
     NoMatchingKeyPackage,
-    /// Error accessing the key store.
-    #[error("Error accessing the key store.")]
-    KeyStoreError(KeyStoreError),
     /// This error indicates the public tree is invalid. See [`PublicTreeError`] for more details.
     #[error(transparent)]
     PublicTreeError(#[from] PublicTreeError),
     /// This error indicates the public tree is invalid. See
     /// [`CreationFromExternalError`] for more details.
     #[error(transparent)]
-    PublicGroupError(#[from] CreationFromExternalError),
+    PublicGroupError(#[from] CreationFromExternalError<StorageError>),
     /// This error indicates the leaf node is invalid. See [`LeafNodeValidationError`] for more details.
     #[error(transparent)]
     LeafNodeValidation(#[from] LeafNodeValidationError),
+    /// This error indicates that an error occurred while reading or writing from/to storage.
+    #[error("An error occurred when querying storage")]
+    StorageError(StorageError),
 }
 
 /// External Commit error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum ExternalCommitError {
+pub enum ExternalCommitError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -120,10 +120,13 @@ pub enum ExternalCommitError {
     /// This error indicates the public tree is invalid. See
     /// [`CreationFromExternalError`] for more details.
     #[error(transparent)]
-    PublicGroupError(#[from] CreationFromExternalError),
+    PublicGroupError(#[from] CreationFromExternalError<StorageError>),
     /// Credential is missing from external commit.
     #[error("Credential is missing from external commit.")]
     MissingCredential,
+    /// An erorr occurred when writing group to storage
+    #[error("An error occurred when writing group to storage.")]
+    StorageError(StorageError),
 }
 
 /// Stage Commit error
@@ -201,7 +204,7 @@ pub enum StageCommitError {
 
 /// Create commit error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum CreateCommitError<KeyStoreError> {
+pub enum CreateCommitError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -223,12 +226,12 @@ pub enum CreateCommitError<KeyStoreError> {
     /// See [`ProposalValidationError`] for more details.
     #[error(transparent)]
     ProposalValidationError(#[from] ProposalValidationError),
-    /// Error interacting with the key store.
-    #[error("Error interacting with the key store.")]
-    KeyStoreError(KeyStoreError),
+    /// Error interacting with storage.
+    #[error("Error interacting with storage.")]
+    KeyStoreError(StorageError),
     /// See [`KeyPackageNewError`] for more details.
     #[error(transparent)]
-    KeyPackageGenerationError(#[from] KeyPackageNewError<KeyStoreError>),
+    KeyPackageGenerationError(#[from] KeyPackageNewError),
     /// See [`SignatureError`] for more details.
     #[error(transparent)]
     SignatureError(#[from] SignatureError),
@@ -467,7 +470,7 @@ pub(crate) enum FromCommittedProposalsError {
 
 // Core group build error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub(crate) enum CoreGroupBuildError<KeyStoreError> {
+pub(crate) enum CoreGroupBuildError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -478,8 +481,8 @@ pub(crate) enum CoreGroupBuildError<KeyStoreError> {
     #[error(transparent)]
     Psk(#[from] PskError),
     /// Error storing leaf private key in key store.
-    #[error("Error storing leaf private key in key store.")]
-    KeyStoreError(KeyStoreError),
+    #[error("Error saving data to storage: {0}.")]
+    StorageError(StorageError),
 }
 
 // CoreGroup parse message error
@@ -514,13 +517,13 @@ pub enum CreateGroupContextExtProposalError {
 
 /// Error merging a commit.
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum MergeCommitError<KeyStoreError> {
+pub enum MergeCommitError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    /// Error accessing the key store.
-    #[error("Error accessing the key store.")]
-    KeyStoreError(KeyStoreError),
+    /// Error writing updated group to storage.
+    #[error("Error writing updated group data to storage.")]
+    StorageError(StorageError),
 }
 
 /// Error validation a GroupContextExtensions proposal.

@@ -39,19 +39,19 @@ impl CoreGroup {
     ///  - ValSem242
     ///  - ValSem244
     ///  - ValSem246 (as part of ValSem010)
-    pub(crate) fn process_unverified_message(
+    pub(crate) fn process_unverified_message<Provider: OpenMlsProvider>(
         &self,
-        provider: &impl OpenMlsProvider,
+        provider: &Provider,
         unverified_message: UnverifiedMessage,
         proposal_store: &ProposalStore,
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
-    ) -> Result<ProcessedMessage, ProcessMessageError> {
+    ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
         // Checks the following semantic validation:
         //  - ValSem010
         //  - ValSem246 (as part of ValSem010)
         let (content, credential) =
-            unverified_message.verify(self.ciphersuite(), provider.crypto(), self.version())?;
+            unverified_message.verify(self.ciphersuite(), provider, self.version())?;
 
         match content.sender() {
             Sender::Member(_) | Sender::NewMemberCommit | Sender::NewMemberProposal => {
@@ -169,14 +169,14 @@ impl CoreGroup {
     ///  - ValSem244
     ///  - ValSem245
     ///  - ValSem246 (as part of ValSem010)
-    pub(crate) fn process_message(
+    pub(crate) fn process_message<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider,
+        provider: &Provider,
         message: impl Into<ProtocolMessage>,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
         proposal_store: &ProposalStore,
         own_leaf_nodes: &[LeafNode],
-    ) -> Result<ProcessedMessage, ProcessMessageError> {
+    ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
         let message: ProtocolMessage = message.into();
 
         // Checks the following semantic validation:
@@ -273,7 +273,7 @@ impl CoreGroup {
         own_leaf_nodes: &[LeafNode],
     ) -> Result<(Vec<EncryptionKeyPair>, Vec<EncryptionKeyPair>), StageCommitError> {
         // All keys from the previous epoch are potential decryption keypairs.
-        let old_epoch_keypairs = self.read_epoch_keypairs(provider.key_store());
+        let old_epoch_keypairs = self.read_epoch_keypairs(provider.storage());
 
         // If we are processing an update proposal that originally came from
         // us, the keypair corresponding to the leaf in the update is also a
@@ -281,7 +281,7 @@ impl CoreGroup {
         let leaf_node_keypairs = own_leaf_nodes
             .iter()
             .map(|leaf_node| {
-                EncryptionKeyPair::read_from_key_store(provider, leaf_node.encryption_key())
+                EncryptionKeyPair::read(provider, leaf_node.encryption_key())
                     .ok_or(StageCommitError::MissingDecryptionKey)
             })
             .collect::<Result<Vec<EncryptionKeyPair>, StageCommitError>>()?;
@@ -290,12 +290,12 @@ impl CoreGroup {
     }
 
     /// Merge a [StagedCommit] into the group after inspection
-    pub(crate) fn merge_staged_commit<KeyStore: OpenMlsKeyStore>(
+    pub(crate) fn merge_staged_commit<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &Provider,
         staged_commit: StagedCommit,
         proposal_store: &mut ProposalStore,
-    ) -> Result<(), MergeCommitError<KeyStore::Error>> {
+    ) -> Result<(), MergeCommitError<Provider::StorageError>> {
         // Save the past epoch
         let past_epoch = self.context().epoch();
         // Get all the full leaves

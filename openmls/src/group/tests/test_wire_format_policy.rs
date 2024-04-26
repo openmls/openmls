@@ -1,7 +1,6 @@
 //! This module tests the different values for `WireFormatPolicy`
 
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::{signatures::Signer, types::Ciphersuite};
 
 use rstest::*;
 use rstest_reuse::{self, *};
@@ -15,7 +14,7 @@ use super::utils::{
 // Creates a group with one member
 fn create_group(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
     wire_format_policy: WireFormatPolicy,
 ) -> (MlsGroup, CredentialWithKeyAndSigner) {
     let group_id = GroupId::from_slice(b"Test Group");
@@ -47,7 +46,7 @@ fn create_group(
 // Takes an existing group, adds a new member and sends a message from the second member to the first one, returns that message
 fn receive_message(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
     alice_group: &mut MlsGroup,
     alice_signer: &impl Signer,
 ) -> MlsMessageIn {
@@ -64,7 +63,11 @@ fn receive_message(
     );
 
     let (_message, welcome, _group_info) = alice_group
-        .add_members(provider, alice_signer, &[bob_key_package])
+        .add_members(
+            provider,
+            alice_signer,
+            &[bob_key_package.key_package().clone()],
+        )
         .expect("Could not add member.");
 
     alice_group
@@ -93,7 +96,10 @@ fn receive_message(
 
 // Test positive cases with all valid (pure & mixed) policies
 #[apply(ciphersuites_and_providers)]
-fn test_wire_policy_positive(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_wire_policy_positive(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::OpenMlsProvider,
+) {
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
         let (mut alice_group, alice_credential_with_key_and_signer) =
             create_group(ciphersuite, provider, *wire_format_policy);
@@ -111,7 +117,10 @@ fn test_wire_policy_positive(ciphersuite: Ciphersuite, provider: &impl OpenMlsPr
 
 // Test negative cases with only icompatible policies
 #[apply(ciphersuites_and_providers)]
-fn test_wire_policy_negative(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_wire_policy_negative(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::OpenMlsProvider,
+) {
     // All combinations that are not part of WIRE_FORMAT_POLICIES
     let incompatible_policies = vec![
         WireFormatPolicy::new(
@@ -135,6 +144,6 @@ fn test_wire_policy_negative(ciphersuite: Ciphersuite, provider: &impl OpenMlsPr
         let err = alice_group
             .process_message(provider, message.try_into_protocol_message().unwrap())
             .expect_err("An unexpected error occurred.");
-        assert_eq!(err, ProcessMessageError::IncompatibleWireFormat);
+        assert!(matches!(err, ProcessMessageError::IncompatibleWireFormat));
     }
 }

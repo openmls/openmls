@@ -2,8 +2,6 @@
 //! Some basic unit tests for extensions
 //! Proper testing is done through the public APIs.
 
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::key_store::OpenMlsKeyStore;
 use tls_codec::{Deserialize, Serialize};
 
 use super::*;
@@ -16,6 +14,7 @@ use crate::{
     prelude::{Capabilities, RatchetTreeIn},
     prelude_test::HpkePublicKey,
     schedule::psk::store::ResumptionPskStore,
+    storage::OpenMlsProvider,
     test_utils::*,
     versions::ProtocolVersion,
 };
@@ -51,7 +50,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
         test_utils::new_credential(provider, b"Bob", ciphersuite.signature_algorithm());
 
     // Generate KeyPackages
-    let bob_key_package_bundle = KeyPackageBundle::new(
+    let bob_key_package_bundle = KeyPackageBundle::generate(
         provider,
         &bob_signature_keys,
         ciphersuite,
@@ -130,7 +129,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
     // === Alice creates a group without the ratchet tree extension ===
 
     // Generate KeyPackages
-    let bob_key_package_bundle = KeyPackageBundle::new(
+    let bob_key_package_bundle = KeyPackageBundle::generate(
         provider,
         &bob_signature_keys,
         ciphersuite,
@@ -389,8 +388,9 @@ fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
             },
         )
         .expect("error building key package with last resort extension");
-    assert!(kp.last_resort());
+    assert!(kp.key_package().last_resort());
     let encoded_kp = kp
+        .key_package()
         .tls_serialize_detached()
         .expect("error encoding key package with last resort extension");
     let decoded_kp = KeyPackageIn::tls_deserialize(&mut encoded_kp.as_slice())
@@ -427,7 +427,7 @@ fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
         .add_members(
             provider,
             &alice_credential_with_key_and_signer.signer,
-            &[kp.clone()],
+            &[kp.key_package().clone()],
         )
         .expect("An unexpected error occurred.");
 
@@ -446,11 +446,15 @@ fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
     .into_group(provider)
     .expect("An unexpected error occurred.");
 
-    // This should not have deleted the KP from the store
-    let kp: Option<KeyPackage> = provider.key_store().read(
-        kp.hash_ref(provider.crypto())
-            .expect("error hashing kp")
-            .as_slice(),
-    );
-    assert!(kp.is_some());
+    use openmls_traits::storage::StorageProvider;
+
+    let _: KeyPackageBundle = provider
+        .storage()
+        .key_package(
+            &kp.key_package()
+                .hash_ref(provider.crypto())
+                .expect("error hashing key package"),
+        )
+        .expect("error retrieving key package")
+        .expect("key package does not exist");
 }

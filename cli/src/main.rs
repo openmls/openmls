@@ -7,11 +7,9 @@ use termion::input::TermRead;
 
 mod backend;
 mod conversation;
-mod file_helpers;
 mod identity;
 mod networking;
 mod openmls_rust_persistent_crypto;
-mod persistent_key_store;
 mod serialize_any_hashmap;
 mod user;
 

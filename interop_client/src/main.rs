@@ -13,30 +13,21 @@ use mls_client::{
 };
 use mls_interop_proto::mls_client;
 use openmls::{
-    ciphersuite::HpkePrivateKey,
     credentials::{BasicCredential, Credential, CredentialType, CredentialWithKey},
     framing::{MlsMessageBodyIn, MlsMessageIn, MlsMessageOut, ProcessedMessageContent},
     group::{
         GroupEpoch, GroupId, MlsGroup, MlsGroupCreateConfig, MlsGroupJoinConfig, StagedWelcome,
         WireFormatPolicy, PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
-    key_packages::KeyPackage,
+    key_packages::{KeyPackage, KeyPackageBundle},
     prelude::{Capabilities, ExtensionType, SenderRatchetConfiguration},
     schedule::{psk::ResumptionPskUsage, ExternalPsk, PreSharedKeyId, Psk},
-    treesync::{
-        test_utils::{read_keys_from_key_store, write_keys_from_key_store},
-        RatchetTreeIn,
-    },
+    treesync::RatchetTreeIn,
     versions::ProtocolVersion,
 };
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{
-    key_store::OpenMlsKeyStore,
-    random::OpenMlsRand,
-    types::{Ciphersuite, HpkeKeyPair},
-    OpenMlsProvider,
-};
+use openmls_traits::{random::OpenMlsRand, types::Ciphersuite, OpenMlsProvider};
 use tls_codec::{Deserialize, Serialize};
 use tonic::{async_trait, transport::Server, Code, Request, Response, Status};
 use tracing::{debug, error, info, instrument, trace, Span};
@@ -64,9 +55,7 @@ pub struct InteropGroup {
 }
 
 type PendingState = (
-    KeyPackage,
-    HpkePrivateKey,
-    HpkeKeyPair,
+    KeyPackageBundle,
     Credential,
     SignatureKeyPair,
     OpenMlsRustCrypto,
@@ -224,7 +213,7 @@ impl MlsClient for MlsClientImpl {
         let ciphersuite = Ciphersuite::try_from(request.cipher_suite as u16).unwrap();
         let credential = BasicCredential::new(request.identity.clone());
         let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
-        signature_keys.store(provider.key_store()).unwrap();
+        signature_keys.store(provider.storage()).unwrap();
 
         let wire_format_policy = wire_format_policy(request.encrypt_handshake);
         // Note: We just use some values here that make live testing work.
@@ -312,13 +301,6 @@ impl MlsClient for MlsClientImpl {
                 },
             )
             .unwrap();
-        let private_key = crypto_provider
-            .key_store()
-            .read::<HpkePrivateKey>(key_package.hpke_init_key().as_slice())
-            .unwrap();
-
-        let encryption_key_pair =
-            read_keys_from_key_store(&crypto_provider, key_package.leaf_node().encryption_key());
 
         let transaction_id: [u8; 4] = crypto_provider.rand().random_array().unwrap();
         let transaction_id = u32::from_be_bytes(transaction_id);
@@ -329,11 +311,14 @@ impl MlsClient for MlsClientImpl {
             key_package: key_package_msg
                 .tls_serialize_detached()
                 .expect("error serializing key package"),
-            encryption_priv: encryption_key_pair
-                .private
+            encryption_priv: key_package
+                .encryption_private_key()
                 .tls_serialize_detached()
                 .unwrap(),
-            init_priv: private_key.tls_serialize_detached().unwrap(),
+            init_priv: key_package
+                .init_private_key()
+                .tls_serialize_detached()
+                .unwrap(),
             signature_priv: signature_keys.private().to_vec(),
         };
 
@@ -345,8 +330,6 @@ impl MlsClient for MlsClientImpl {
             request.identity.clone(),
             (
                 key_package,
-                private_key,
-                encryption_key_pair,
                 credential.into(),
                 signature_keys,
                 crypto_provider,
@@ -380,47 +363,27 @@ impl MlsClient for MlsClientImpl {
             .build();
 
         let mut pending_key_packages = self.pending_state.lock().unwrap();
-        let (
-            my_key_package,
-            private_key,
-            encryption_keypair,
-            _my_credential,
-            my_signature_keys,
-            crypto_provider,
-        ) = pending_key_packages
-            .remove(&request.identity)
-            .ok_or(Status::aborted(format!(
-                "failed to find key package for identity {:x?}",
-                request.identity
-            )))?;
+        let (my_key_package, _my_credential, my_signature_keys, crypto_provider) =
+            pending_key_packages
+                .remove(&request.identity)
+                .ok_or(Status::aborted(format!(
+                    "failed to find key package for identity {:x?}",
+                    request.identity
+                )))?;
 
-        // Store keys so OpenMLS can find them.
-        crypto_provider
-            .key_store()
-            .store(my_key_package.hpke_init_key().as_slice(), &private_key)
-            .map_err(|_| Status::aborted("failed to interact with the key store"))?;
+        use openmls_traits::storage::StorageProvider as _;
 
         // Store the key package in the key store with the hash reference as id
         // for retrieval when parsing welcome messages.
         crypto_provider
-            .key_store()
-            .store(
-                my_key_package
+            .storage()
+            .write_key_package(
+                &my_key_package
+                    .key_package()
                     .hash_ref(crypto_provider.crypto())
-                    .map_err(into_status)?
-                    .as_slice(),
+                    .map_err(into_status)?,
                 &my_key_package,
             )
-            .map_err(into_status)?;
-
-        // Store the encryption key pair in the key store.
-        write_keys_from_key_store(&crypto_provider, encryption_keypair);
-
-        // Store the private part of the init_key into the key store.
-        // The key is the public key.
-        crypto_provider
-            .key_store()
-            .store::<HpkePrivateKey>(my_key_package.hpke_init_key().as_slice(), &private_key)
             .map_err(into_status)?;
 
         let welcome = MlsMessageIn::tls_deserialize(&mut request.welcome.as_slice())
@@ -503,7 +466,7 @@ impl MlsClient for MlsClientImpl {
                 let signature_keypair =
                     SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
-                signature_keypair.store(provider.key_store()).unwrap();
+                signature_keypair.store(provider.storage()).unwrap();
 
                 let credential_with_key = CredentialWithKey {
                     credential: credential.into(),
@@ -613,7 +576,7 @@ impl MlsClient for MlsClientImpl {
         let exported_secret = interop_group
             .group
             .export_secret(
-                interop_group.crypto_provider.crypto(),
+                &interop_group.crypto_provider,
                 &request.label,
                 &request.context,
                 request.key_length as usize,
@@ -639,7 +602,13 @@ impl MlsClient for MlsClientImpl {
             .get_mut(request.state_id as usize)
             .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
 
-        interop_group.group.set_aad(&request.authenticated_data);
+        interop_group
+            .group
+            .set_aad(
+                interop_group.crypto_provider.storage(),
+                &request.authenticated_data,
+            )
+            .map_err(|err| tonic::Status::internal(format!("error setting aad: {err}")))?;
 
         let ciphertext = interop_group
             .group
@@ -728,7 +697,7 @@ impl MlsClient for MlsClientImpl {
             let psk_id = PreSharedKeyId::new(ciphersuite, crypto_provider.rand(), external_psk)
                 .map_err(|_| Status::internal("unable to create PreSharedKeyId from raw psk_id"))?;
             psk_id
-                .write_to_key_store(crypto_provider, secret)
+                .store(crypto_provider, secret)
                 .map_err(|_| Status::new(Code::Internal, "unable to store PSK"))?;
             Ok(())
         }
@@ -744,8 +713,8 @@ impl MlsClient for MlsClientImpl {
                 .ok_or(Status::internal("Unable to retrieve pending state"))?;
 
             store(
-                pending_state.0.ciphersuite(),
-                &pending_state.5,
+                pending_state.0.key_package().ciphersuite(),
+                &pending_state.3,
                 external_psk,
                 &request.psk_secret,
             )?;
@@ -804,7 +773,12 @@ impl MlsClient for MlsClientImpl {
             .number_of_resumption_psks(32)
             .wire_format_policy(interop_group.wire_format_policy)
             .build();
-        interop_group.group.set_configuration(&mls_group_config);
+        interop_group
+            .group
+            .set_configuration(interop_group.crypto_provider.storage(), &mls_group_config)
+            .map_err(|err| {
+                tonic::Status::internal(format!("error setting configuration: {err}"))
+            })?;
         let (proposal, _) = interop_group
             .group
             .propose_add_member(
@@ -848,7 +822,12 @@ impl MlsClient for MlsClientImpl {
             .use_ratchet_tree_extension(true)
             .wire_format_policy(interop_group.wire_format_policy)
             .build();
-        interop_group.group.set_configuration(&mls_group_config);
+        interop_group
+            .group
+            .set_configuration(interop_group.crypto_provider.storage(), &mls_group_config)
+            .map_err(|err| {
+                tonic::Status::internal(format!("error setting configuration: {err}"))
+            })?;
         let (proposal, _) = interop_group
             .group
             .propose_self_update(
@@ -897,7 +876,12 @@ impl MlsClient for MlsClientImpl {
             .use_ratchet_tree_extension(true)
             .wire_format_policy(interop_group.wire_format_policy)
             .build();
-        interop_group.group.set_configuration(&mls_group_config);
+        interop_group
+            .group
+            .set_configuration(interop_group.crypto_provider.storage(), &mls_group_config)
+            .map_err(|err| {
+                tonic::Status::internal(format!("error setting configuration: {err}"))
+            })?;
         trace!("   prepared remove");
 
         let (proposal, _) = interop_group
@@ -974,7 +958,11 @@ impl MlsClient for MlsClientImpl {
             match processed_message.into_content() {
                 ProcessedMessageContent::ApplicationMessage(_) => unreachable!(),
                 ProcessedMessageContent::ProposalMessage(proposal) => {
-                    group.store_pending_proposal(*proposal);
+                    group
+                        .store_pending_proposal(interop_group.crypto_provider.storage(), *proposal)
+                        .map_err(|err| {
+                            tonic::Status::internal(format!("error storing proposal: {err}"))
+                        })?;
                 }
                 ProcessedMessageContent::ExternalJoinProposalMessage(_) => unreachable!(),
                 ProcessedMessageContent::StagedCommitMessage(_) => unreachable!(),
@@ -1152,7 +1140,13 @@ impl MlsClient for MlsClientImpl {
             match processed_message.into_content() {
                 ProcessedMessageContent::ApplicationMessage(_) => unreachable!(),
                 ProcessedMessageContent::ProposalMessage(proposal) => {
-                    group.store_pending_proposal(*proposal);
+                    group
+                        .store_pending_proposal(interop_group.crypto_provider.storage(), *proposal)
+                        .map_err(|err| {
+                            tonic::Status::internal(format!(
+                                "error storing pending proposal: {err}"
+                            ))
+                        })?;
                 }
                 ProcessedMessageContent::ExternalJoinProposalMessage(_) => unreachable!(),
                 ProcessedMessageContent::StagedCommitMessage(_) => unreachable!(),
@@ -1254,7 +1248,7 @@ impl MlsClient for MlsClientImpl {
 
         let group_info = group
             .export_group_info(
-                interop_group.crypto_provider.crypto(),
+                &interop_group.crypto_provider,
                 &interop_group.signature_keys,
                 !request.external_tree,
             )

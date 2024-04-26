@@ -1,7 +1,6 @@
-use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::signatures::Signer;
 
-use crate::{group::errors::ExporterError, schedule::EpochAuthenticator};
+use crate::{group::errors::ExporterError, schedule::EpochAuthenticator, storage::OpenMlsProvider};
 
 use super::*;
 
@@ -13,13 +12,15 @@ impl MlsGroup {
     /// key length is too long.
     /// Returns [`ExportSecretError::GroupStateError(MlsGroupStateError::UseAfterEviction)`](MlsGroupStateError::UseAfterEviction)
     /// if the group is not active.
-    pub fn export_secret(
+    pub fn export_secret<Provider: OpenMlsProvider>(
         &self,
-        crypto: &impl OpenMlsCrypto,
+        provider: &Provider,
         label: &str,
         context: &[u8],
         key_length: usize,
-    ) -> Result<Vec<u8>, ExportSecretError> {
+    ) -> Result<Vec<u8>, ExportSecretError<Provider::StorageError>> {
+        let crypto = provider.crypto();
+
         if self.is_active() {
             Ok(self
                 .group
@@ -52,15 +53,15 @@ impl MlsGroup {
     }
 
     /// Export a group info object for this group.
-    pub fn export_group_info(
+    pub fn export_group_info<Provider: OpenMlsProvider>(
         &self,
-        crypto: &impl OpenMlsCrypto,
+        provider: &Provider,
         signer: &impl Signer,
         with_ratchet_tree: bool,
-    ) -> Result<MlsMessageOut, ExportGroupInfoError> {
+    ) -> Result<MlsMessageOut, ExportGroupInfoError<Provider::StorageError>> {
         Ok(self
             .group
-            .export_group_info(crypto, signer, with_ratchet_tree)?
+            .export_group_info(provider.crypto(), signer, with_ratchet_tree)?
             .into())
     }
 }

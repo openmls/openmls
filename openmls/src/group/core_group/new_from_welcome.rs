@@ -1,14 +1,11 @@
 use log::debug;
-use openmls_traits::key_store::OpenMlsKeyStore;
 
 use crate::{
     ciphersuite::hash_ref::HashReference,
     group::{core_group::*, errors::WelcomeError},
     schedule::psk::store::ResumptionPskStore,
-    treesync::{
-        errors::{DerivePathError, PublicTreeError},
-        node::encryption_keys::EncryptionKeyPair,
-    },
+    storage::OpenMlsProvider,
+    treesync::errors::{DerivePathError, PublicTreeError},
 };
 
 impl StagedCoreWelcome {
@@ -17,36 +14,14 @@ impl StagedCoreWelcome {
     /// group.
     /// Note: calling this function will consume the key material for decrypting the [`Welcome`]
     /// message, even if the caller does not turn the [`StagedCoreWelcome`] into a [`CoreGroup`].
-    pub fn new_from_welcome<KeyStore: OpenMlsKeyStore>(
+    pub fn new_from_welcome<Provider: OpenMlsProvider>(
         welcome: Welcome,
         ratchet_tree: Option<RatchetTreeIn>,
         key_package_bundle: KeyPackageBundle,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &Provider,
         mut resumption_psk_store: ResumptionPskStore,
-    ) -> Result<Self, WelcomeError<KeyStore::Error>> {
+    ) -> Result<Self, WelcomeError<Provider::StorageError>> {
         log::debug!("CoreGroup::new_from_welcome_internal");
-
-        // Read the encryption key pair from the key store and delete it there.
-        // TODO #1207: Key store access happens as early as possible so it can
-        // be pulled up later more easily.
-        let leaf_keypair = EncryptionKeyPair::read_from_key_store(
-            provider,
-            key_package_bundle.key_package.leaf_node().encryption_key(),
-        )
-        .ok_or(WelcomeError::NoMatchingEncryptionKey)?;
-
-        // Delete the leaf encryption keypair from the
-        // key store, but only if it doesn't have a last resort extension.
-        if !key_package_bundle.key_package().last_resort() {
-            leaf_keypair
-                .delete_from_key_store(provider.key_store())
-                .map_err(|_| WelcomeError::NoMatchingEncryptionKey)?;
-        } else {
-            log::debug!(
-                "Found last resort extension, not deleting leaf encryption keypair from key store"
-            );
-        }
-
         let ciphersuite = welcome.ciphersuite();
 
         // Find key_package in welcome secrets
@@ -67,7 +42,7 @@ impl StagedCoreWelcome {
         }
 
         let group_secrets = GroupSecrets::try_from_ciphertext(
-            key_package_bundle.private_key(),
+            key_package_bundle.init_private_key(),
             egs.encrypted_group_secrets(),
             welcome.encrypted_group_info(),
             ciphersuite,
@@ -77,7 +52,7 @@ impl StagedCoreWelcome {
         // Prepare the PskSecret
         let psk_secret = {
             let psks = load_psks(
-                provider.key_store(),
+                provider.storage(),
                 &resumption_psk_store,
                 &group_secrets.psks,
             )?;
@@ -139,7 +114,7 @@ impl StagedCoreWelcome {
         // Since there is currently only the external pub extension, there is no
         // group info extension of interest here.
         let (public_group, _group_info_extensions) = PublicGroup::from_external(
-            provider.crypto(),
+            provider,
             ratchet_tree,
             verifiable_group_info.clone(),
             ProposalStore::new(),
@@ -240,7 +215,7 @@ impl StagedCoreWelcome {
             message_secrets_store,
             resumption_psk_store,
             verifiable_group_info,
-            leaf_keypair,
+            key_package_bundle,
             path_keypairs,
         };
 
@@ -263,45 +238,35 @@ impl StagedCoreWelcome {
     }
 
     /// Consumes the [`StagedCoreWelcome`] and returns the respective [`CoreGroup`].
-    pub fn into_core_group<KeyStore: OpenMlsKeyStore>(
+    pub fn into_core_group<Provider: OpenMlsProvider>(
         self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
-    ) -> Result<CoreGroup, WelcomeError<KeyStore::Error>> {
-        let Self {
-            public_group,
-            group_epoch_secrets,
-            own_leaf_index,
-            use_ratchet_tree_extension,
-            message_secrets_store,
-            resumption_psk_store,
-            leaf_keypair,
-            path_keypairs,
-            ..
-        } = self;
-
+        provider: &Provider,
+    ) -> Result<CoreGroup, WelcomeError<Provider::StorageError>> {
         // If we got a path secret, derive the path (which also checks if the
         // public keys match) and store the derived keys in the key store.
-        let group_keypairs = if let Some(path_keypairs) = path_keypairs {
-            vec![leaf_keypair]
-                .into_iter()
-                .chain(path_keypairs)
-                .collect()
+        let group_keypairs = if let Some(path_keypairs) = self.path_keypairs {
+            let mut keypairs = vec![self.key_package_bundle.encryption_key_pair()];
+            keypairs.extend_from_slice(&path_keypairs);
+            keypairs
         } else {
-            vec![leaf_keypair]
+            vec![self.key_package_bundle.encryption_key_pair()]
         };
 
         let group = CoreGroup {
-            public_group,
-            group_epoch_secrets,
-            own_leaf_index,
-            use_ratchet_tree_extension,
-            message_secrets_store,
-            resumption_psk_store,
+            public_group: self.public_group,
+            group_epoch_secrets: self.group_epoch_secrets,
+            own_leaf_index: self.own_leaf_index,
+            use_ratchet_tree_extension: self.use_ratchet_tree_extension,
+            message_secrets_store: self.message_secrets_store,
+            resumption_psk_store: self.resumption_psk_store,
         };
 
         group
-            .store_epoch_keypairs(provider.key_store(), group_keypairs.as_slice())
-            .map_err(WelcomeError::KeyStoreError)?;
+            .store(provider.storage())
+            .map_err(WelcomeError::StorageError)?;
+        group
+            .store_epoch_keypairs(provider.storage(), group_keypairs.as_slice())
+            .map_err(WelcomeError::StorageError)?;
 
         Ok(group)
     }

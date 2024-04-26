@@ -1,7 +1,6 @@
 //! This module contains tests regarding the use of [`MessageSecretsStore`] in [`MlsGroup`]
 
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::types::Ciphersuite;
 
 use rstest::*;
 use rstest_reuse::{self, *};
@@ -13,7 +12,10 @@ use crate::{
 };
 
 #[apply(ciphersuites_and_providers)]
-fn test_past_secrets_in_group(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_past_secrets_in_group(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::OpenMlsProvider,
+) {
     // Test this for different parameters
     for max_epochs in (0..10usize).step_by(2) {
         let group_id = GroupId::from_slice(b"Test Group");
@@ -60,7 +62,7 @@ fn test_past_secrets_in_group(ciphersuite: Ciphersuite, provider: &impl OpenMlsP
             .add_members(
                 provider,
                 &alice_credential_with_keys.signer,
-                &[bob_key_package],
+                &[bob_key_package.key_package().clone()],
             )
             .expect("An unexpected error occurred.");
 
@@ -131,12 +133,12 @@ fn test_past_secrets_in_group(ciphersuite: Ciphersuite, provider: &impl OpenMlsP
             let err = bob_group
                 .process_message(provider, application_message.clone())
                 .expect_err("An unexpected error occurred.");
-            assert_eq!(
+            assert!(matches!(
                 err,
                 ProcessMessageError::ValidationError(ValidationError::UnableToDecrypt(
                     MessageDecryptionError::AeadError
                 ),)
-            );
+            ));
         }
 
         // The last messages should not fail

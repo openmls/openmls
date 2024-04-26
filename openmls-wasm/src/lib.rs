@@ -38,6 +38,12 @@ impl AsRef<OpenMlsRustCrypto> for Provider {
     }
 }
 
+impl AsMut<OpenMlsRustCrypto> for Provider {
+    fn as_mut(&mut self) -> &mut OpenMlsRustCrypto {
+        &mut self.0
+    }
+}
+
 #[wasm_bindgen]
 impl Provider {
     #[wasm_bindgen(constructor)]
@@ -66,7 +72,7 @@ impl Identity {
         let credential = BasicCredential::new(identity);
         let keypair = SignatureKeyPair::new(signature_scheme)?;
 
-        keypair.store(provider.0.key_store())?;
+        keypair.store(provider.0.storage())?;
 
         let credential_with_key = CredentialWithKey {
             credential: credential.into(),
@@ -88,7 +94,9 @@ impl Identity {
                     &self.keypair,
                     self.credential_with_key.clone(),
                 )
-                .unwrap(),
+                .unwrap()
+                .key_package()
+                .clone(),
         )
     }
 }
@@ -196,15 +204,15 @@ impl Group {
         })
     }
 
-    pub fn merge_pending_commit(&mut self, provider: &Provider) -> Result<(), JsError> {
+    pub fn merge_pending_commit(&mut self, provider: &mut Provider) -> Result<(), JsError> {
         self.mls_group
-            .merge_pending_commit(provider.as_ref())
+            .merge_pending_commit(provider.as_mut())
             .map_err(|e| e.into())
     }
 
     pub fn process_message(
         &mut self,
-        provider: &Provider,
+        provider: &mut Provider,
         mut msg: &[u8],
     ) -> Result<Vec<u8>, JsError> {
         let msg = MlsMessageIn::tls_deserialize(&mut msg).unwrap();
@@ -232,7 +240,7 @@ impl Group {
             }
             openmls::framing::ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
                 self.mls_group
-                    .merge_staged_commit(provider.as_ref(), *staged_commit)?;
+                    .merge_staged_commit(provider.as_mut(), *staged_commit)?;
                 Ok(vec![])
             }
         }
@@ -246,7 +254,7 @@ impl Group {
         key_length: usize,
     ) -> Result<Vec<u8>, JsError> {
         self.mls_group
-            .export_secret(provider.as_ref().crypto(), label, context, key_length)
+            .export_secret(provider.as_ref(), label, context, key_length)
             .map_err(|e| {
                 println!("export key error: {e}");
                 e.into()
@@ -350,7 +358,7 @@ mod tests {
 
     #[test]
     fn basic() {
-        let alice_provider = Provider::new();
+        let mut alice_provider = Provider::new();
         let bob_provider = Provider::new();
 
         let alice = Identity::new(&alice_provider, "alice")
@@ -370,7 +378,7 @@ mod tests {
             .unwrap();
 
         chess_club_alice
-            .merge_pending_commit(&alice_provider)
+            .merge_pending_commit(&mut alice_provider)
             .map_err(js_error_to_string)
             .unwrap();
 
