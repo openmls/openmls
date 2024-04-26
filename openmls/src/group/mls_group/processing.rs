@@ -5,7 +5,7 @@ use std::mem;
 use core_group::staged_commit::StagedCommit;
 use openmls_traits::{signatures::Signer, storage::StorageProvider as _};
 
-use crate::storage::RefinedProvider;
+use crate::storage::OpenMlsProvider;
 use crate::{
     group::core_group::create_commit_params::CreateCommitParams, messages::group_info::GroupInfo,
 };
@@ -24,7 +24,7 @@ impl MlsGroup {
     /// # Errors:
     /// Returns an [`ProcessMessageError`] when the validation checks fail
     /// with the exact reason of the failure.
-    pub fn process_message<Provider: RefinedProvider>(
+    pub fn process_message<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         message: impl Into<ProtocolMessage>,
@@ -85,7 +85,7 @@ impl MlsGroup {
     /// [`Welcome`]: crate::messages::Welcome
     // FIXME: #1217
     #[allow(clippy::type_complexity)]
-    pub fn commit_to_pending_proposals<Provider: RefinedProvider>(
+    pub fn commit_to_pending_proposals<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -128,7 +128,7 @@ impl MlsGroup {
 
     /// Merge a [StagedCommit] into the group after inspection. As this advances
     /// the epoch of the group, it also clears any pending commits.
-    pub fn merge_staged_commit<Provider: RefinedProvider>(
+    pub fn merge_staged_commit<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         staged_commit: StagedCommit,
@@ -168,7 +168,7 @@ impl MlsGroup {
 
     /// Merges the pending [`StagedCommit`] if there is one, and
     /// clears the field by setting it to `None`.
-    pub fn merge_pending_commit<Provider: RefinedProvider>(
+    pub fn merge_pending_commit<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
     ) -> Result<(), MergePendingCommitError<Provider::StorageError>> {

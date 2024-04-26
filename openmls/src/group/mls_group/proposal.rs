@@ -15,7 +15,7 @@ use crate::{
     messages::proposals::ProposalOrRefType,
     prelude::LibraryError,
     schedule::PreSharedKeyId,
-    storage::RefinedProvider,
+    storage::OpenMlsProvider,
     treesync::LeafNode,
     versions::ProtocolVersion,
 };
@@ -62,7 +62,7 @@ macro_rules! impl_propose_fun {
         /// Creates proposals to add an external PSK to the key schedule.
         ///
         /// Returns an error if there is a pending commit.
-        pub fn $name<Provider: RefinedProvider>(
+        pub fn $name<Provider: OpenMlsProvider>(
             &mut self,
             provider: &Provider,
             signer: &impl Signer,
@@ -140,7 +140,7 @@ impl MlsGroup {
     );
 
     /// Generate a proposal
-    pub fn propose<Provider: RefinedProvider>(
+    pub fn propose<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -226,7 +226,7 @@ impl MlsGroup {
     /// Creates proposals to add members to the group.
     ///
     /// Returns an error if there is a pending commit.
-    pub fn propose_add_member<Provider: RefinedProvider>(
+    pub fn propose_add_member<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -265,7 +265,7 @@ impl MlsGroup {
     /// The `member` has to be the member's leaf index.
     ///
     /// Returns an error if there is a pending commit.
-    pub fn propose_remove_member<Provider: RefinedProvider>(
+    pub fn propose_remove_member<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -300,7 +300,7 @@ impl MlsGroup {
     /// The `member` has to be the member's credential.
     ///
     /// Returns an error if there is a pending commit.
-    pub fn propose_remove_member_by_credential<Provider: RefinedProvider>(
+    pub fn propose_remove_member_by_credential<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -326,7 +326,7 @@ impl MlsGroup {
     /// The `member` has to be the member's credential.
     ///
     /// Returns an error if there is a pending commit.
-    pub fn propose_remove_member_by_credential_by_value<Provider: RefinedProvider>(
+    pub fn propose_remove_member_by_credential_by_value<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -353,7 +353,7 @@ impl MlsGroup {
     ///
     /// Returns an error when the group does not support all the required capabilities
     /// in the new `extensions`.
-    pub fn propose_group_context_extensions<Provider: RefinedProvider>(
+    pub fn propose_group_context_extensions<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         extensions: Extensions,

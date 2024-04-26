@@ -28,7 +28,7 @@ use crate::{
 #[apply(ciphersuites_and_providers)]
 fn proposal_queue_functions(
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) {
     // Framing parameters
     let framing_parameters = FramingParameters::new(&[], WireFormat::PublicMessage);
@@ -173,7 +173,7 @@ fn proposal_queue_functions(
 
 /// Test, that we QueuedProposalQueue is iterated in the right order.
 #[apply(ciphersuites_and_providers)]
-fn proposal_queue_order(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
+fn proposal_queue_order(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     // Framing parameters
     let framing_parameters = FramingParameters::new(&[], WireFormat::PublicMessage);
     // Define identities
@@ -283,7 +283,7 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, provider: &impl crate::storage
 #[apply(ciphersuites_and_providers)]
 fn test_required_extension_key_package_mismatch(
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
@@ -333,7 +333,7 @@ fn test_required_extension_key_package_mismatch(
 #[apply(ciphersuites_and_providers)]
 fn test_group_context_extensions(
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
@@ -417,7 +417,7 @@ fn test_group_context_extensions(
 #[apply(ciphersuites_and_providers)]
 fn test_group_context_extension_proposal_fails(
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
@@ -516,7 +516,7 @@ fn test_group_context_extension_proposal_fails(
 #[apply(ciphersuites_and_providers)]
 fn test_group_context_extension_proposal(
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) {
     // Basic group setup.
     let group_aad = b"Alice's test group";

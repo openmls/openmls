@@ -31,7 +31,7 @@ use crate::{
 #[apply(ciphersuites_and_providers)]
 fn test_welcome_context_mismatch(
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) {
     let _ = pretty_env_logger::try_init();
 
@@ -191,11 +191,11 @@ fn test_welcome_context_mismatch(
 }
 
 #[apply(ciphersuites_and_providers)]
-fn test_welcome_msg(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
+fn test_welcome_msg(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     test_welcome_message(ciphersuite, provider);
 }
 
-fn test_welcome_message(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
+fn test_welcome_message(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     // We use this dummy group info in all test cases.
     let group_info_tbs = {
         let group_context = GroupContext::new(

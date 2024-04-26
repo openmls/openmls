@@ -804,7 +804,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
 
         let key = build_key::<CURRENT_VERSION, &GroupId>(QUEUED_PROPOSAL_LABEL, group_id);
 
-        // XXX: also remove the proposal refs. can't be done now because they are stored in a
+        // XXX #1566: also remove the proposal refs. can't be done now because they are stored in a
         // non-recoverable way
         values.remove(&key);
 

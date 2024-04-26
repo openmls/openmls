@@ -1,13 +1,13 @@
 use openmls::{
     prelude::{test_utils::new_credential, *},
-    storage::RefinedProvider,
+    storage::OpenMlsProvider,
     test_utils::*,
     *,
 };
 
 use openmls_traits::signatures::Signer;
 
-fn generate_key_package<Provider: RefinedProvider>(
+fn generate_key_package<Provider: OpenMlsProvider>(
     ciphersuite: Ciphersuite,
     extensions: Extensions,
     provider: &Provider,
@@ -37,7 +37,7 @@ fn generate_key_package<Provider: RefinedProvider>(
 ///  - Bob leaves
 ///  - Test saving the group state
 #[apply(ciphersuites_and_providers)]
-fn mls_group_operations<Provider: RefinedProvider>(ciphersuite: Ciphersuite, provider: &Provider) {
+fn mls_group_operations<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider: &Provider) {
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
         let group_id = GroupId::from_slice(b"Test Group");
 
@@ -954,7 +954,7 @@ fn mls_group_operations<Provider: RefinedProvider>(ciphersuite: Ciphersuite, pro
 }
 
 #[apply(ciphersuites_and_providers)]
-fn addition_order(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
+fn addition_order(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
         let group_id = GroupId::from_slice(b"Test Group");
         // Generate credentials with keys
@@ -1057,7 +1057,7 @@ fn addition_order(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
 #[apply(ciphersuites_and_providers)]
 fn test_empty_input_errors(
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) {
     let group_id = GroupId::from_slice(b"Test Group");
 
@@ -1098,7 +1098,7 @@ fn test_empty_input_errors(
 #[apply(ciphersuites_and_providers)]
 fn mls_group_ratchet_tree_extension(
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) {
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
         let group_id = GroupId::from_slice(b"Test Group");
@@ -1215,7 +1215,7 @@ fn mls_group_ratchet_tree_extension(
 #[apply(ciphersuites_and_providers)]
 fn group_context_extensions_proposal(
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) {
     let (alice_credential_with_key, alice_signer) =
         new_credential(provider, b"Alice", ciphersuite.signature_algorithm());

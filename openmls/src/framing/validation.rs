@@ -34,7 +34,7 @@ use crate::{
         core_group::{proposals::QueuedProposal, staged_commit::StagedCommit},
         errors::ValidationError,
     },
-    storage::RefinedProvider,
+    storage::OpenMlsProvider,
     tree::sender_ratchet::SenderRatchetConfiguration,
     treesync::TreeSync,
     versions::ProtocolVersion,
@@ -271,7 +271,7 @@ impl UnverifiedMessage {
 
     /// Verify the [`UnverifiedMessage`]. Returns the [`AuthenticatedContent`]
     /// and the internal [`Credential`].
-    pub(crate) fn verify<Provider: RefinedProvider>(
+    pub(crate) fn verify<Provider: OpenMlsProvider>(
         self,
         ciphersuite: Ciphersuite,
         provider: &Provider,

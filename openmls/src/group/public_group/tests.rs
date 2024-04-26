@@ -13,13 +13,13 @@ use crate::{
         StagedCommit, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     messages::proposals::Proposal,
-    storage::RefinedProvider,
+    storage::OpenMlsProvider,
 };
 
 use super::{super::mls_group::StagedWelcome, PublicGroup};
 
 #[apply(ciphersuites_and_providers)]
-fn public_group<Provider: RefinedProvider>(ciphersuite: Ciphersuite, provider: &Provider) {
+fn public_group<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider: &Provider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =

@@ -17,7 +17,7 @@ use crate::{
     messages::ConfirmationTag, schedule::psk::store::ResumptionPskStore, test_utils::*, *,
 };
 
-use self::storage::RefinedProvider;
+use self::storage::OpenMlsProvider;
 
 /// Configuration of a client meant to be used in a test setup.
 #[derive(Clone)]
@@ -79,7 +79,7 @@ const KEY_PACKAGE_COUNT: usize = 10;
 /// The setup function creates a set of groups and clients.
 pub(crate) fn setup(
     config: TestSetupConfig,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) -> TestSetup {
     let mut test_clients: HashMap<&'static str, RefCell<TestClient>> = HashMap::new();
     let mut key_store: HashMap<(&'static str, Ciphersuite), Vec<KeyPackage>> = HashMap::new();
@@ -301,7 +301,7 @@ fn test_random() {
 }
 
 #[apply(providers)]
-fn test_setup(provider: &impl crate::storage::RefinedProvider) {
+fn test_setup(provider: &impl crate::storage::OpenMlsProvider) {
     let test_client_config_a = TestClientConfig {
         name: "TestClientConfigA",
         ciphersuites: vec![Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519],
@@ -333,7 +333,7 @@ pub(crate) struct CredentialWithKeyAndSigner {
 pub(crate) fn generate_credential_with_key(
     identity: Vec<u8>,
     signature_scheme: SignatureScheme,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) -> CredentialWithKeyAndSigner {
     let (credential, signer) = {
         let credential = BasicCredential::new(identity);
@@ -355,7 +355,7 @@ pub(crate) fn generate_credential_with_key(
 }
 
 // Helper function to generate a KeyPackageBundle
-pub(crate) fn generate_key_package<Provider: RefinedProvider>(
+pub(crate) fn generate_key_package<Provider: OpenMlsProvider>(
     ciphersuite: Ciphersuite,
     extensions: Extensions,
     provider: &Provider,
@@ -377,7 +377,7 @@ pub(crate) fn resign_message(
     alice_group: &MlsGroup,
     plaintext: PublicMessage,
     original_plaintext: &PublicMessage,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
     signer: &impl Signer,
     ciphersuite: Ciphersuite,
 ) -> PublicMessage {

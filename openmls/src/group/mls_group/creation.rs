@@ -13,7 +13,7 @@ use crate::{
         Welcome,
     },
     schedule::psk::store::ResumptionPskStore,
-    storage::RefinedProvider,
+    storage::OpenMlsProvider,
     treesync::RatchetTreeIn,
 };
 
@@ -31,7 +31,7 @@ impl MlsGroup {
     ///
     /// This function removes the private key corresponding to the
     /// `key_package` from the key store.
-    pub fn new<Provider: RefinedProvider>(
+    pub fn new<Provider: OpenMlsProvider>(
         provider: &Provider,
         signer: &impl Signer,
         mls_group_create_config: &MlsGroupCreateConfig,
@@ -47,7 +47,7 @@ impl MlsGroup {
 
     /// Creates a new group with a given group ID with the creator as the only
     /// member.
-    pub fn new_with_group_id<Provider: RefinedProvider>(
+    pub fn new_with_group_id<Provider: OpenMlsProvider>(
         provider: &Provider,
         signer: &impl Signer,
         mls_group_create_config: &MlsGroupCreateConfig,
@@ -78,7 +78,7 @@ impl MlsGroup {
     ///
     /// Note: If there is a group member in the group with the same identity as
     /// us, this will create a remove proposal.
-    pub fn join_by_external_commit<Provider: RefinedProvider>(
+    pub fn join_by_external_commit<Provider: OpenMlsProvider>(
         provider: &Provider,
         signer: &impl Signer,
         ratchet_tree: Option<RatchetTreeIn>,
@@ -156,7 +156,7 @@ impl StagedWelcome {
     /// message, even if the caller does not turn the [`StagedWelcome`] into an [`MlsGroup`].
     ///
     /// [`Welcome`]: crate::messages::Welcome
-    pub fn new_from_welcome<Provider: RefinedProvider>(
+    pub fn new_from_welcome<Provider: OpenMlsProvider>(
         provider: &Provider,
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
@@ -224,7 +224,7 @@ impl StagedWelcome {
     }
 
     /// Consumes the [`StagedWelcome`] and returns the respective [`MlsGroup`].
-    pub fn into_group<Provider: RefinedProvider>(
+    pub fn into_group<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
     ) -> Result<MlsGroup, WelcomeError<Provider::StorageError>> {

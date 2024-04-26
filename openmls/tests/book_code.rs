@@ -19,7 +19,7 @@ fn create_provider_rust_crypto() {
 fn generate_credential(
     identity: Vec<u8>,
     signature_algorithm: SignatureScheme,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) -> (CredentialWithKey, SignatureKeyPair) {
     // ANCHOR: create_basic_credential
     let credential = BasicCredential::new(identity);
@@ -42,7 +42,7 @@ fn generate_key_package(
     ciphersuite: Ciphersuite,
     credential_with_key: CredentialWithKey,
     extensions: Extensions,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
     signer: &impl Signer,
 ) -> KeyPackageBundle {
     // ANCHOR: create_key_package
@@ -69,7 +69,7 @@ fn generate_key_package(
 ///  - Bob leaves
 ///  - Test saving the group state
 #[apply(ciphersuites_and_providers)]
-fn book_operations<Provider: crate::storage::RefinedProvider>(
+fn book_operations<Provider: crate::storage::OpenMlsProvider>(
     ciphersuite: Ciphersuite,
     provider: &Provider,
 ) {
@@ -1392,7 +1392,7 @@ fn book_operations<Provider: crate::storage::RefinedProvider>(
 #[apply(ciphersuites_and_providers)]
 fn test_empty_input_errors(
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) {
     let group_id = GroupId::from_slice(b"Test Group");
 
@@ -1432,7 +1432,7 @@ fn test_empty_input_errors(
 #[apply(ciphersuites_and_providers)]
 fn custom_proposal_usage(
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) {
     // Generate credentials with keys
     let (alice_credential_with_key, alice_signer) =

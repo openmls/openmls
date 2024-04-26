@@ -23,7 +23,7 @@ use crate::{
 };
 
 #[apply(providers)]
-fn padding(provider: &impl crate::storage::RefinedProvider) {
+fn padding(provider: &impl crate::storage::OpenMlsProvider) {
     // Create a test config for a single client supporting all possible
     // ciphersuites.
     let alice_config = TestClientConfig {
@@ -96,7 +96,7 @@ fn padding(provider: &impl crate::storage::RefinedProvider) {
 
 /// Check that PrivateMessageContent's padding field is verified to be all-zero.
 #[apply(ciphersuites_and_providers)]
-fn bad_padding(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
+fn bad_padding(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     let tests = {
         // { 2^i } ∪ { 2^i +- 1 }
         let padding_sizes = [

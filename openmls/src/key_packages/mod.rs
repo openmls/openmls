@@ -99,7 +99,7 @@ use crate::{
     credentials::*,
     error::LibraryError,
     extensions::{Extension, ExtensionType, Extensions, LastResortExtension},
-    storage::RefinedProvider,
+    storage::OpenMlsProvider,
     treesync::{
         node::{
             encryption_keys::{EncryptionKeyPair, EncryptionPrivateKey},
@@ -111,7 +111,6 @@ use crate::{
 };
 use openmls_traits::{
     crypto::OpenMlsCrypto, signatures::Signer, storage::StorageProvider, types::Ciphersuite,
-    OpenMlsProvider,
 };
 use serde::{Deserialize, Serialize};
 use tls_codec::{
@@ -350,7 +349,7 @@ impl KeyPackage {
     }
 
     /// Delete this key package and its private keys from the key store.
-    pub fn delete<Provider: RefinedProvider>(
+    pub fn delete<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
     ) -> Result<(), KeyPackageStorageError<Provider::StorageError>> {

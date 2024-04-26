@@ -3,7 +3,7 @@ use rstest_reuse::{self, *};
 
 use crate::{
     credentials::BasicCredential, framing::*, group::*, messages::external_proposals::*,
-    storage::RefinedProvider,
+    storage::OpenMlsProvider,
 };
 
 use openmls_traits::types::Ciphersuite;
@@ -15,7 +15,7 @@ fn new_test_group(
     identity: &str,
     wire_format_policy: WireFormatPolicy,
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
     external_senders: ExternalSendersExtension,
 ) -> (MlsGroup, CredentialWithKeyAndSigner) {
     let group_id = GroupId::from_slice(b"Test Group");
@@ -51,7 +51,7 @@ fn new_test_group(
 fn validation_test_setup(
     wire_format_policy: WireFormatPolicy,
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
     external_senders: ExternalSendersExtension,
 ) -> (MlsGroup, CredentialWithKeyAndSigner) {
     // === Alice creates a group ===
@@ -90,7 +90,7 @@ fn validation_test_setup(
 }
 
 #[apply(ciphersuites_and_providers)]
-fn external_remove_proposal_should_remove_member<Provider: RefinedProvider>(
+fn external_remove_proposal_should_remove_member<Provider: OpenMlsProvider>(
     ciphersuite: Ciphersuite,
     provider: &Provider,
 ) {
@@ -213,7 +213,7 @@ fn external_remove_proposal_should_remove_member<Provider: RefinedProvider>(
 
 #[apply(ciphersuites_and_providers)]
 fn external_remove_proposal_should_fail_when_invalid_external_senders_index<
-    Provider: RefinedProvider,
+    Provider: OpenMlsProvider,
 >(
     ciphersuite: Ciphersuite,
     provider: &Provider,
@@ -275,7 +275,7 @@ fn external_remove_proposal_should_fail_when_invalid_external_senders_index<
 }
 
 #[apply(ciphersuites_and_providers)]
-fn external_remove_proposal_should_fail_when_invalid_signature<Provider: RefinedProvider>(
+fn external_remove_proposal_should_fail_when_invalid_signature<Provider: OpenMlsProvider>(
     ciphersuite: Ciphersuite,
     provider: &Provider,
 ) {
@@ -336,7 +336,7 @@ fn external_remove_proposal_should_fail_when_invalid_signature<Provider: Refined
 }
 
 #[apply(ciphersuites_and_providers)]
-fn external_remove_proposal_should_fail_when_no_external_senders<Provider: RefinedProvider>(
+fn external_remove_proposal_should_fail_when_no_external_senders<Provider: OpenMlsProvider>(
     ciphersuite: Ciphersuite,
     provider: &Provider,
 ) {

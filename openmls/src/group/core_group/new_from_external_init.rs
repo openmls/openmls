@@ -5,7 +5,7 @@ use crate::{
         errors::ExternalCommitError,
     },
     messages::proposals::{ExternalInitProposal, Proposal},
-    storage::RefinedProvider,
+    storage::OpenMlsProvider,
 };
 
 use super::CoreGroup;
@@ -25,7 +25,7 @@ impl CoreGroup {
     ///
     /// Note: If there is a group member in the group with the same identity as us,
     /// this will create a remove proposal.
-    pub(crate) fn join_by_external_commit<Provider: RefinedProvider>(
+    pub(crate) fn join_by_external_commit<Provider: OpenMlsProvider>(
         provider: &Provider,
         signer: &impl Signer,
         mut params: CreateCommitParams,

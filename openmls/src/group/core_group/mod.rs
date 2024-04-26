@@ -75,7 +75,7 @@ use crate::{
         psk::{load_psks, store::ResumptionPskStore, PskSecret},
         *,
     },
-    storage::{RefinedProvider, StorageProvider},
+    storage::{OpenMlsProvider, StorageProvider},
     tree::{secret_tree::SecretTreeError, sender_ratchet::SenderRatchetConfiguration},
     treesync::{node::encryption_keys::EncryptionKeyPair, *},
     versions::ProtocolVersion,
@@ -266,7 +266,7 @@ impl CoreGroupBuilder {
     ///
     /// This function performs cryptographic operations and there requires an
     /// [`OpenMlsProvider`].
-    pub(crate) fn build<Provider: RefinedProvider>(
+    pub(crate) fn build<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
         signer: &impl Signer,
@@ -488,7 +488,7 @@ impl CoreGroup {
     }
 
     // Create application message
-    pub(crate) fn create_application_message<Provider: RefinedProvider>(
+    pub(crate) fn create_application_message<Provider: OpenMlsProvider>(
         &mut self,
         aad: &[u8],
         msg: &[u8],
@@ -507,7 +507,7 @@ impl CoreGroup {
     }
 
     // Encrypt an PublicMessage into an PrivateMessage
-    pub(crate) fn encrypt<Provider: RefinedProvider>(
+    pub(crate) fn encrypt<Provider: OpenMlsProvider>(
         &mut self,
         public_message: AuthenticatedContent,
         padding_size: usize,
@@ -832,7 +832,7 @@ impl CoreGroup {
         )
     }
 
-    pub(crate) fn create_commit<Provider: RefinedProvider>(
+    pub(crate) fn create_commit<Provider: OpenMlsProvider>(
         &self,
         mut params: CreateCommitParams,
         provider: &Provider,

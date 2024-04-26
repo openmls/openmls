@@ -12,8 +12,6 @@
 //! relies on a [`PublicGroup`] as well.
 
 #[cfg(test)]
-use crate::prelude::OpenMlsProvider;
-#[cfg(test)]
 use std::collections::HashSet;
 
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
@@ -38,7 +36,7 @@ use crate::{
         ConfirmationTag, PathSecret,
     },
     schedule::CommitSecret,
-    storage::{RefinedProvider, StorageProvider},
+    storage::{OpenMlsProvider, StorageProvider},
     treesync::{
         errors::{DerivePathError, TreeSyncFromNodesError},
         node::{
@@ -110,7 +108,7 @@ impl PublicGroup {
     /// This function performs basic validation checks and returns an error if
     /// one of the checks fails. See [`CreationFromExternalError`] for more
     /// details.
-    pub fn from_external<Provider: RefinedProvider>(
+    pub fn from_external<Provider: OpenMlsProvider>(
         provider: &Provider,
         ratchet_tree: RatchetTreeIn,
         verifiable_group_info: VerifiableGroupInfo,

@@ -9,7 +9,7 @@ use super::{
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex, error::LibraryError,
-    storage::RefinedProvider, tree::secret_tree::SecretType,
+    storage::OpenMlsProvider, tree::secret_tree::SecretType,
 };
 
 use super::*;
@@ -69,7 +69,7 @@ impl PrivateMessage {
     ///
     /// TODO #1148: Refactor theses constructors to avoid test code in main and
     /// to avoid validation using a special feature flag.
-    pub(crate) fn try_from_authenticated_content<Provider: RefinedProvider>(
+    pub(crate) fn try_from_authenticated_content<Provider: OpenMlsProvider>(
         public_message: &AuthenticatedContent,
         ciphersuite: Ciphersuite,
         provider: &Provider,
@@ -93,7 +93,7 @@ impl PrivateMessage {
     }
 
     #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn encrypt_without_check<Provider: RefinedProvider>(
+    pub(crate) fn encrypt_without_check<Provider: OpenMlsProvider>(
         public_message: &AuthenticatedContent,
         ciphersuite: Ciphersuite,
         provider: &Provider,
@@ -111,7 +111,7 @@ impl PrivateMessage {
     }
 
     #[cfg(test)]
-    pub(crate) fn encrypt_with_different_header<Provider: RefinedProvider>(
+    pub(crate) fn encrypt_with_different_header<Provider: OpenMlsProvider>(
         public_message: &AuthenticatedContent,
         ciphersuite: Ciphersuite,
         provider: &Provider,
@@ -131,7 +131,7 @@ impl PrivateMessage {
 
     /// Internal function to encrypt content. The extra message header is only used
     /// for tests. Otherwise, the data from the given `AuthenticatedContent` is used.
-    fn encrypt_content<Provider: RefinedProvider>(
+    fn encrypt_content<Provider: OpenMlsProvider>(
         test_header: Option<MlsMessageHeader>,
         public_message: &AuthenticatedContent,
         ciphersuite: Ciphersuite,

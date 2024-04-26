@@ -2,7 +2,7 @@
 //!
 //! This module serves two purposes:
 //!
-//! - It implements the Key, Entity and typ traits from `openls_traits::storage::traits`.
+//! - It implements the Key, Entity and type traits from `openmls_traits::storage::traits`.
 //! - It defines traits that specialize the Storage and Provider traits from `openmls_traits`.
 //!   This way, the Rust compiler knows that the concrete types match when we use the Provider in
 //!   the code.
@@ -37,7 +37,7 @@ impl<P: openmls_traits::storage::StorageProvider<CURRENT_VERSION>> StorageProvid
 /// A convenience trait for the OpenMLS provider that defines the storage provider
 /// for the current version of storage.
 /// Throughout the code, this one should be used instead of `openmls_traits::OpenMlsProvider`.
-pub trait RefinedProvider:
+pub trait OpenMlsProvider:
     openmls_traits::OpenMlsProvider<StorageProvider = Self::Storage>
 {
     /// The storage to use
@@ -50,7 +50,7 @@ impl<
         Error: std::error::Error + PartialEq,
         SP: StorageProvider<Error = Error>,
         OP: openmls_traits::OpenMlsProvider<StorageProvider = SP>,
-    > RefinedProvider for OP
+    > OpenMlsProvider for OP
 {
     type Storage = SP;
     type StorageError = Error;

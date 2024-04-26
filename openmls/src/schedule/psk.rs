@@ -8,7 +8,7 @@ use super::*;
 use crate::{
     group::{GroupEpoch, GroupId},
     schedule::psk::store::ResumptionPskStore,
-    storage::{RefinedProvider, StorageProvider},
+    storage::{OpenMlsProvider, StorageProvider},
 };
 
 /// Resumption PSK usage.
@@ -277,7 +277,7 @@ impl PreSharedKeyId {
     /// Save this `PreSharedKeyId` in the keystore.
     ///
     /// Note: The nonce is not saved as it must be unique for each time it's being applied.
-    pub fn store<Provider: RefinedProvider>(
+    pub fn store<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
         psk: &[u8],

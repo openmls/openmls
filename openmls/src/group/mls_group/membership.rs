@@ -11,7 +11,7 @@ use super::{
 };
 use crate::{
     binary_tree::array_representation::LeafNodeIndex, messages::group_info::GroupInfo,
-    storage::RefinedProvider, treesync::LeafNode,
+    storage::OpenMlsProvider, treesync::LeafNode,
 };
 
 impl MlsGroup {
@@ -31,7 +31,7 @@ impl MlsGroup {
     /// [`Welcome`]: crate::messages::Welcome
     // FIXME: #1217
     #[allow(clippy::type_complexity)]
-    pub fn add_members<Provider: RefinedProvider>(
+    pub fn add_members<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -115,7 +115,7 @@ impl MlsGroup {
     /// [`Welcome`]: crate::messages::Welcome
     // FIXME: #1217
     #[allow(clippy::type_complexity)]
-    pub fn remove_members<Provider: RefinedProvider>(
+    pub fn remove_members<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -177,7 +177,7 @@ impl MlsGroup {
     /// The Remove Proposal is returned as a [`MlsMessageOut`].
     ///
     /// Returns an error if there is a pending commit.
-    pub fn leave_group<Provider: RefinedProvider>(
+    pub fn leave_group<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,

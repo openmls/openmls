@@ -17,7 +17,7 @@ use crate::{
 
 pub(crate) fn setup_alice_group(
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) -> (
     CoreGroup,
     CredentialWithKey,
@@ -57,7 +57,7 @@ pub fn flip_last_byte(ctxt: &mut HpkeCiphertext) {
 #[apply(ciphersuites_and_providers)]
 fn test_failed_groupinfo_decryption(
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) {
     let epoch = 123;
     let group_id = GroupId::random(provider.rand());
@@ -172,7 +172,7 @@ fn test_failed_groupinfo_decryption(
 /// Test what happens if the KEM ciphertext for the receiver in the UpdatePath
 /// is broken.
 #[apply(ciphersuites_and_providers)]
-fn test_update_path(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
+fn test_update_path(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     // === Alice creates a group with her and Bob ===
     let (
         framing_parameters,
@@ -272,7 +272,7 @@ fn test_update_path(ciphersuite: Ciphersuite, provider: &impl crate::storage::Re
 
 fn setup_alice_bob(
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) -> (
     CredentialWithKey,
     SignatureKeyPair,
@@ -299,7 +299,7 @@ fn setup_alice_bob(
 
 // Test several scenarios when PSKs are used in a group
 #[apply(ciphersuites_and_providers)]
-fn test_psks(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
+fn test_psks(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -429,7 +429,7 @@ fn test_psks(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedPr
 #[apply(ciphersuites_and_providers)]
 fn test_staged_commit_creation(
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
@@ -505,7 +505,7 @@ fn test_staged_commit_creation(
 #[apply(ciphersuites_and_providers)]
 fn test_own_commit_processing(
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
@@ -545,7 +545,7 @@ fn test_own_commit_processing(
 pub(crate) fn setup_client(
     id: &str,
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) -> (
     CredentialWithKey,
     KeyPackageBundle,
@@ -573,7 +573,7 @@ pub(crate) fn setup_client(
 #[apply(ciphersuites_and_providers)]
 fn test_proposal_application_after_self_was_removed(
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) {
     // We're going to test if proposals are still applied, even after a client
     // notices that it was removed from a group.  We do so by having Alice

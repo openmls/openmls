@@ -14,7 +14,7 @@ use crate::{
 #[apply(ciphersuites_and_providers)]
 fn test_past_secrets_in_group(
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) {
     // Test this for different parameters
     for max_epochs in (0..10usize).step_by(2) {

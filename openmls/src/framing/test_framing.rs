@@ -1,7 +1,5 @@
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_traits::{
-    random::OpenMlsRand, storage::StorageProvider, types::Ciphersuite, OpenMlsProvider,
-};
+use openmls_traits::{random::OpenMlsRand, types::Ciphersuite};
 
 use rstest::*;
 use rstest_reuse::{self, *};
@@ -21,17 +19,14 @@ use crate::{
     },
     key_packages::{test_key_packages::key_package, KeyPackageBundle},
     schedule::psk::{store::ResumptionPskStore, PskSecret},
-    storage::RefinedProvider,
+    storage::OpenMlsProvider,
     test_utils::frankenstein::*,
     tree::{secret_tree::SecretTree, sender_ratchet::SenderRatchetConfiguration},
 };
 
 /// This tests serializing/deserializing PublicMessage
 #[apply(ciphersuites_and_providers)]
-fn codec_plaintext<Storage: StorageProvider<1>>(
-    ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider<StorageProvider = Storage>,
-) {
+fn codec_plaintext<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider: &Provider) {
     let (_credential, signature_keys) =
         test_utils::new_credential(provider, b"Creator", ciphersuite.signature_algorithm());
     let sender = Sender::build_member(LeafNodeIndex::new(987543210));
@@ -272,7 +267,7 @@ fn wire_format_checks(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider)
     message_secrets.replace_secret_tree(sender_secret_tree);
 
     // Try to encrypt an PublicMessage with the wrong wire format
-    assert_eq!(
+    assert!(matches!(
         PrivateMessage::try_from_authenticated_content(
             &plaintext,
             ciphersuite,
@@ -282,7 +277,7 @@ fn wire_format_checks(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider)
         )
         .expect_err("Could encrypt despite wrong wire format."),
         MessageEncryptionError::WrongWireFormat
-    );
+    ));
 }
 
 fn create_content(
@@ -387,7 +382,7 @@ fn membership_tag(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 }
 
 #[apply(ciphersuites_and_providers)]
-fn unknown_sender<Provider: RefinedProvider>(ciphersuite: Ciphersuite, provider: &Provider) {
+fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider: &Provider) {
     let _ = pretty_env_logger::try_init();
 
     let alice_provider = provider;
@@ -609,9 +604,9 @@ fn unknown_sender<Provider: RefinedProvider>(ciphersuite: Ciphersuite, provider:
 }
 
 #[apply(ciphersuites_and_providers)]
-fn confirmation_tag_presence<Storage: StorageProvider<1>>(
+fn confirmation_tag_presence<Provider: OpenMlsProvider>(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider<StorageProvider = Storage>,
+    provider: &Provider,
 ) {
     let (framing_parameters, group_alice, alice_signature_keys, group_bob, _, _) =
         setup_alice_bob_group(ciphersuite, provider);
@@ -637,9 +632,9 @@ fn confirmation_tag_presence<Storage: StorageProvider<1>>(
     assert_eq!(err, StageCommitError::ConfirmationTagMissing);
 }
 
-pub(crate) fn setup_alice_bob_group<Storage: StorageProvider<1>>(
+pub(crate) fn setup_alice_bob_group<Provider: OpenMlsProvider>(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider<StorageProvider = Storage>,
+    provider: &Provider,
 ) -> (
     FramingParameters,
     CoreGroup,

@@ -1,4 +1,5 @@
 use core_group::test_core_group::setup_client;
+use openmls_traits::OpenMlsProvider as _;
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
@@ -9,7 +10,7 @@ use crate::{
     key_packages::*,
     messages::proposals::*,
     prelude::Capabilities,
-    storage::RefinedProvider,
+    storage::OpenMlsProvider,
     test_utils::test_framework::{
         errors::ClientError, noop_authentication_service, ActionType::Commit, CodecUse,
         MlsGroupTestSetup,
@@ -19,7 +20,7 @@ use crate::{
 };
 
 #[apply(ciphersuites_and_providers)]
-fn test_mls_group_persistence<Provider: RefinedProvider>(
+fn test_mls_group_persistence<Provider: OpenMlsProvider>(
     ciphersuite: Ciphersuite,
     provider: &Provider,
 ) {
@@ -64,7 +65,7 @@ fn test_mls_group_persistence<Provider: RefinedProvider>(
 // This tests if the remover is correctly passed to the callback when one member
 // issues a RemoveProposal and another members issues the next Commit.
 #[apply(ciphersuites_and_providers)]
-fn remover(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
+fn remover(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
@@ -217,7 +218,7 @@ fn remover(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProv
 }
 
 #[apply(ciphersuites_and_providers)]
-fn export_secret(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
+fn export_secret(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
@@ -255,7 +256,7 @@ fn export_secret(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refin
 }
 
 #[apply(ciphersuites_and_providers)]
-fn staged_join(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
+fn staged_join(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, alice_kpb, alice_signer, _alice_pk) =
@@ -431,7 +432,7 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite) {
 #[apply(ciphersuites_and_providers)]
 fn test_verify_staged_commit_credentials(
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) {
     let group_id = GroupId::from_slice(b"Test Group");
 
@@ -610,7 +611,7 @@ fn test_verify_staged_commit_credentials(
 #[apply(ciphersuites_and_providers)]
 fn test_commit_with_update_path_leaf_node(
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) {
     let group_id = GroupId::from_slice(b"Test Group");
 
@@ -803,7 +804,7 @@ fn test_commit_with_update_path_leaf_node(
 #[apply(ciphersuites_and_providers)]
 fn test_pending_commit_logic(
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) {
     let group_id = GroupId::from_slice(b"Test Group");
 
@@ -989,7 +990,7 @@ fn test_pending_commit_logic(
 // Test that the key package and the corresponding private key are deleted when
 // creating a new group for a welcome message.
 #[apply(ciphersuites_and_providers)]
-fn key_package_deletion<Provider: crate::storage::RefinedProvider>(
+fn key_package_deletion<Provider: crate::storage::OpenMlsProvider>(
     ciphersuite: Ciphersuite,
     provider: &Provider,
 ) {
@@ -1055,7 +1056,7 @@ fn key_package_deletion<Provider: crate::storage::RefinedProvider>(
 #[apply(ciphersuites_and_providers)]
 fn remove_prosposal_by_ref(
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) {
     let group_id = GroupId::from_slice(b"Test Group");
 
@@ -1148,7 +1149,7 @@ fn remove_prosposal_by_ref(
 
 // Test that the builder pattern accurately configures the new group.
 #[apply(ciphersuites_and_providers)]
-fn group_context_extensions_proposal<Provider: crate::storage::RefinedProvider>(
+fn group_context_extensions_proposal<Provider: crate::storage::OpenMlsProvider>(
     ciphersuite: Ciphersuite,
     provider: &Provider,
 ) {
@@ -1238,7 +1239,7 @@ fn group_context_extensions_proposal<Provider: crate::storage::RefinedProvider>(
 
 // Test that the builder pattern accurately configures the new group.
 #[apply(ciphersuites_and_providers)]
-fn builder_pattern(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
+fn builder_pattern(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
         setup_client("Alice", ciphersuite, provider);
 
@@ -1353,7 +1354,7 @@ fn builder_pattern(ciphersuite: Ciphersuite, provider: &impl crate::storage::Ref
 
 // Test the successful update of Group Context Extension with type Extension::Unknown(0xff11)
 #[apply(ciphersuites_and_providers)]
-fn update_group_context_with_unknown_extension<Provider: RefinedProvider + Default>(
+fn update_group_context_with_unknown_extension<Provider: OpenMlsProvider + Default>(
     ciphersuite: Ciphersuite,
     provider: &Provider,
 ) {
@@ -1566,7 +1567,7 @@ fn update_group_context_with_unknown_extension<Provider: RefinedProvider + Defau
 
 // Test that unknown group context and leaf node extensions can be used in groups
 #[apply(ciphersuites_and_providers)]
-fn unknown_extensions(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
+fn unknown_extensions(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
         setup_client("Alice", ciphersuite, provider);
 
@@ -1655,7 +1656,7 @@ fn unknown_extensions(ciphersuite: Ciphersuite, provider: &impl crate::storage::
 #[apply(ciphersuites_and_providers)]
 fn join_multiple_groups_last_resort_extension(
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) {
     // start with alice, bob, charlie, common config items
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =

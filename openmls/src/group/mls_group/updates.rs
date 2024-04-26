@@ -1,7 +1,7 @@
 use core_group::create_commit_params::CreateCommitParams;
 use openmls_traits::{signatures::Signer, storage::StorageProvider as _};
 
-use crate::{messages::group_info::GroupInfo, storage::RefinedProvider, treesync::LeafNode};
+use crate::{messages::group_info::GroupInfo, storage::OpenMlsProvider, treesync::LeafNode};
 
 use super::*;
 
@@ -23,7 +23,7 @@ impl MlsGroup {
     /// [`Welcome`]: crate::messages::Welcome
     // FIXME: #1217
     #[allow(clippy::type_complexity)]
-    pub fn self_update<Provider: RefinedProvider>(
+    pub fn self_update<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -71,7 +71,7 @@ impl MlsGroup {
     /// Creates a proposal to update the own leaf node. Optionally, a
     /// [`LeafNode`] can be provided to update the leaf node. Note that its
     /// private key must be manually added to the key store.
-    fn _propose_self_update<Provider: RefinedProvider>(
+    fn _propose_self_update<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -108,7 +108,7 @@ impl MlsGroup {
             // TODO #1207: Move to the top of the function.
             keypair
                 .write(provider.storage())
-                .map_err(|_| ProposeSelfUpdateError::LibraryError(LibraryError::custom("FIXME")))?;
+                .map_err(ProposeSelfUpdateError::StorageError)?;
         };
 
         let update_proposal = self.group.create_update_proposal(
@@ -120,14 +120,14 @@ impl MlsGroup {
         provider
             .storage()
             .append_own_leaf_node(self.group_id(), &own_leaf)
-            .map_err(ProposeSelfUpdateError::KeyStoreError)?;
+            .map_err(ProposeSelfUpdateError::StorageError)?;
         self.own_leaf_nodes.push(own_leaf);
 
         Ok(update_proposal)
     }
 
     /// Creates a proposal to update the own leaf node.
-    pub fn propose_self_update<Provider: RefinedProvider>(
+    pub fn propose_self_update<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -143,7 +143,7 @@ impl MlsGroup {
         provider
             .storage()
             .queue_proposal(self.group_id(), &proposal_ref, &proposal)
-            .map_err(ProposeSelfUpdateError::KeyStoreError)?;
+            .map_err(ProposeSelfUpdateError::StorageError)?;
         self.proposal_store.add(proposal);
 
         let mls_message = self.content_to_mls_message(update_proposal, provider)?;
@@ -152,7 +152,7 @@ impl MlsGroup {
     }
 
     /// Creates a proposal to update the own leaf node.
-    pub fn propose_self_update_by_value<Provider: RefinedProvider>(
+    pub fn propose_self_update_by_value<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -168,7 +168,7 @@ impl MlsGroup {
         provider
             .storage()
             .queue_proposal(self.group_id(), &proposal_ref, &proposal)
-            .map_err(ProposeSelfUpdateError::KeyStoreError)?;
+            .map_err(ProposeSelfUpdateError::StorageError)?;
         self.proposal_store.add(proposal);
 
         let mls_message = self.content_to_mls_message(update_proposal, provider)?;

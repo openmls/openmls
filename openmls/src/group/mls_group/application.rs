@@ -1,6 +1,6 @@
 use openmls_traits::signatures::Signer;
 
-use crate::storage::RefinedProvider;
+use crate::storage::OpenMlsProvider;
 
 use super::{errors::CreateMessageError, *};
 
@@ -13,7 +13,7 @@ impl MlsGroup {
     /// Returns `CreateMessageError::MlsGroupStateError::PendingProposal` if pending proposals
     /// exist. In that case `.process_pending_proposals()` must be called first
     /// and incoming messages from the DS must be processed afterwards.
-    pub fn create_message<Provider: RefinedProvider>(
+    pub fn create_message<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,

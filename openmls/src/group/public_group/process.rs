@@ -15,7 +15,7 @@ use crate::{
         past_secrets::MessageSecretsStore,
     },
     messages::proposals::Proposal,
-    storage::RefinedProvider,
+    storage::OpenMlsProvider,
 };
 
 use super::PublicGroup;
@@ -129,7 +129,7 @@ impl PublicGroup {
     ///  - ValSem244
     ///  - ValSem245
     ///  - ValSem246 (as part of ValSem010)
-    pub fn process_message<Provider: RefinedProvider>(
+    pub fn process_message<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
         message: impl Into<ProtocolMessage>,
@@ -192,7 +192,7 @@ impl PublicGroup {
     ///  - ValSem242
     ///  - ValSem244
     ///  - ValSem246 (as part of ValSem010)
-    pub(crate) fn process_unverified_message<Provider: RefinedProvider>(
+    pub(crate) fn process_unverified_message<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
         unverified_message: UnverifiedMessage,

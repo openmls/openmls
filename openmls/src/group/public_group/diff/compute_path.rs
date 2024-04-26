@@ -11,7 +11,7 @@ use crate::{
     group::{core_group::create_commit_params::CommitType, errors::CreateCommitError},
     key_packages::{KeyPackage, KeyPackageCreationResult},
     schedule::CommitSecret,
-    storage::RefinedProvider,
+    storage::OpenMlsProvider,
     treesync::{
         node::{
             encryption_keys::EncryptionKeyPair, leaf_node::LeafNode,
@@ -35,7 +35,7 @@ pub(crate) struct PathComputationResult {
 
 impl<'a> PublicGroupDiff<'a> {
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn compute_path<Provider: RefinedProvider>(
+    pub(crate) fn compute_path<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         leaf_index: LeafNodeIndex,

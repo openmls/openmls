@@ -252,7 +252,7 @@ pub enum ProposeSelfUpdateError<StorageError> {
     GroupStateError(#[from] MlsGroupStateError<StorageError>),
     /// Error accessing storage.
     #[error("Error accessing storage.")]
-    KeyStoreError(StorageError),
+    StorageError(StorageError),
     /// See [`PublicTreeError`] for more details.
     #[error(transparent)]
     PublicTreeError(#[from] PublicTreeError),

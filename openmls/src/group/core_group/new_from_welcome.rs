@@ -4,7 +4,7 @@ use crate::{
     ciphersuite::hash_ref::HashReference,
     group::{core_group::*, errors::WelcomeError},
     schedule::psk::store::ResumptionPskStore,
-    storage::RefinedProvider,
+    storage::OpenMlsProvider,
     treesync::errors::{DerivePathError, PublicTreeError},
 };
 
@@ -14,7 +14,7 @@ impl StagedCoreWelcome {
     /// group.
     /// Note: calling this function will consume the key material for decrypting the [`Welcome`]
     /// message, even if the caller does not turn the [`StagedCoreWelcome`] into a [`CoreGroup`].
-    pub fn new_from_welcome<Provider: RefinedProvider>(
+    pub fn new_from_welcome<Provider: OpenMlsProvider>(
         welcome: Welcome,
         ratchet_tree: Option<RatchetTreeIn>,
         key_package_bundle: KeyPackageBundle,
@@ -238,7 +238,7 @@ impl StagedCoreWelcome {
     }
 
     /// Consumes the [`StagedCoreWelcome`] and returns the respective [`CoreGroup`].
-    pub fn into_core_group<Provider: RefinedProvider>(
+    pub fn into_core_group<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
     ) -> Result<CoreGroup, WelcomeError<Provider::StorageError>> {

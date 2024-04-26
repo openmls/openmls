@@ -10,7 +10,7 @@ use crate::{
         external_proposals::*,
         proposals::{AddProposal, Proposal, ProposalType},
     },
-    storage::RefinedProvider,
+    storage::OpenMlsProvider,
 };
 
 use openmls_traits::types::Ciphersuite;
@@ -27,7 +27,7 @@ fn new_test_group(
     identity: &str,
     wire_format_policy: WireFormatPolicy,
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) -> (MlsGroup, CredentialWithKeyAndSigner) {
     let group_id = GroupId::from_slice(b"Test Group");
 
@@ -58,7 +58,7 @@ fn new_test_group(
 fn validation_test_setup(
     wire_format_policy: WireFormatPolicy,
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) -> ProposalValidationTestSetup {
     // === Alice creates a group ===
     let (mut alice_group, alice_signer_with_keys) =
@@ -113,7 +113,7 @@ fn validation_test_setup(
 }
 
 #[apply(ciphersuites_and_providers)]
-fn external_add_proposal_should_succeed<Provider: RefinedProvider>(
+fn external_add_proposal_should_succeed<Provider: OpenMlsProvider>(
     ciphersuite: Ciphersuite,
     provider: &Provider,
 ) {
@@ -232,7 +232,7 @@ fn external_add_proposal_should_succeed<Provider: RefinedProvider>(
 
 #[apply(ciphersuites_and_providers)]
 fn external_add_proposal_should_be_signed_by_key_package_it_references<
-    Provider: RefinedProvider,
+    Provider: OpenMlsProvider,
 >(
     ciphersuite: Ciphersuite,
     provider: &Provider,
@@ -280,7 +280,7 @@ fn external_add_proposal_should_be_signed_by_key_package_it_references<
 
 // TODO #1093: move this test to a dedicated external proposal ValSem test module once all external proposals implemented
 #[apply(ciphersuites_and_providers)]
-fn new_member_proposal_sender_should_be_reserved_for_join_proposals<Provider: RefinedProvider>(
+fn new_member_proposal_sender_should_be_reserved_for_join_proposals<Provider: OpenMlsProvider>(
     ciphersuite: Ciphersuite,
     provider: &Provider,
 ) {

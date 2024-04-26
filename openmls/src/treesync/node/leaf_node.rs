@@ -1,13 +1,11 @@
 //! This module contains the [`LeafNode`] struct and its implementation.
-use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::{signatures::Signer, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
 use tls_codec::{
     Serialize as TlsSerializeTrait, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
     VLBytes,
 };
 
-#[cfg(test)]
-use crate::storage::RefinedProvider;
 #[cfg(test)]
 use thiserror::Error;
 
@@ -24,6 +22,7 @@ use crate::{
     group::GroupId,
     key_packages::{KeyPackage, Lifetime},
     prelude::KeyPackageBundle,
+    storage::OpenMlsProvider,
     treesync::errors::PublicTreeError,
 };
 
@@ -175,7 +174,7 @@ impl LeafNode {
     /// This function can be used when generating an update. In most other cases
     /// a leaf node should be generated as part of a new [`KeyPackage`].
     #[cfg(test)]
-    pub(crate) fn updated<Provider: RefinedProvider>(
+    pub(crate) fn updated<Provider: OpenMlsProvider>(
         &self,
         ciphersuite: Ciphersuite,
         tree_info_tbs: TreeInfoTbs,
@@ -204,7 +203,7 @@ impl LeafNode {
     /// This function can be used when generating an update. In most other cases
     /// a leaf node should be generated as part of a new [`KeyPackage`].
     #[cfg(test)]
-    pub(crate) fn generate_update<Provider: RefinedProvider>(
+    pub(crate) fn generate_update<Provider: OpenMlsProvider>(
         ciphersuite: Ciphersuite,
         credential_with_key: CredentialWithKey,
         capabilities: Capabilities,

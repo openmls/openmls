@@ -10,7 +10,7 @@ use crate::{
         ProposalStore, WireFormatPolicy,
     },
     key_packages::Lifetime,
-    storage::RefinedProvider,
+    storage::OpenMlsProvider,
     tree::sender_ratchet::SenderRatchetConfiguration,
     treesync::node::leaf_node::Capabilities,
 };
@@ -35,7 +35,7 @@ impl MlsGroupBuilder {
     }
 
     /// Build a new group as configured by this builder.
-    pub fn build<Provider: RefinedProvider>(
+    pub fn build<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
         signer: &impl Signer,
@@ -49,7 +49,7 @@ impl MlsGroupBuilder {
     /// If an [`MlsGroupCreateConfig`] is provided, it will be used to configure the
     /// group. Otherwise, the internal builder is used to build one with the
     /// parameters set on this builder.
-    pub(super) fn build_internal<Provider: RefinedProvider>(
+    pub(super) fn build_internal<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
         signer: &impl Signer,

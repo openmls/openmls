@@ -3,7 +3,7 @@ use openmls_basic_credential::SignatureKeyPair;
 
 use tls_codec::Deserialize;
 
-use crate::{extensions::*, key_packages::*};
+use crate::{extensions::*, key_packages::*, storage::OpenMlsProvider};
 
 /// Helper function to generate key packages
 pub(crate) fn key_package(

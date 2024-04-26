@@ -8,7 +8,7 @@ use crate::{
 };
 
 /// Creates a simple test setup for various encoding tests.
-fn create_encoding_test_setup(provider: &impl crate::storage::RefinedProvider) -> TestSetup {
+fn create_encoding_test_setup(provider: &impl crate::storage::OpenMlsProvider) -> TestSetup {
     // Create a test config for a single client supporting all possible
     // ciphersuites.
     let alice_config = TestClientConfig {
@@ -51,7 +51,7 @@ fn create_encoding_test_setup(provider: &impl crate::storage::RefinedProvider) -
 
 /// This test tests encoding and decoding of application messages.
 #[apply(providers)]
-fn test_application_message_encoding(provider: &impl crate::storage::RefinedProvider) {
+fn test_application_message_encoding(provider: &impl crate::storage::OpenMlsProvider) {
     let test_setup = create_encoding_test_setup(provider);
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients
@@ -93,7 +93,7 @@ fn test_application_message_encoding(provider: &impl crate::storage::RefinedProv
 
 /// This test tests encoding and decoding of update proposals.
 #[apply(providers)]
-fn test_update_proposal_encoding(provider: &impl crate::storage::RefinedProvider) {
+fn test_update_proposal_encoding(provider: &impl crate::storage::OpenMlsProvider) {
     let test_setup = create_encoding_test_setup(provider);
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients
@@ -147,7 +147,7 @@ fn test_update_proposal_encoding(provider: &impl crate::storage::RefinedProvider
 
 /// This test tests encoding and decoding of add proposals.
 #[apply(providers)]
-fn test_add_proposal_encoding(provider: &impl crate::storage::RefinedProvider) {
+fn test_add_proposal_encoding(provider: &impl crate::storage::OpenMlsProvider) {
     let test_setup = create_encoding_test_setup(provider);
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients
@@ -198,7 +198,7 @@ fn test_add_proposal_encoding(provider: &impl crate::storage::RefinedProvider) {
 
 /// This test tests encoding and decoding of remove proposals.
 #[apply(providers)]
-fn test_remove_proposal_encoding(provider: &impl crate::storage::RefinedProvider) {
+fn test_remove_proposal_encoding(provider: &impl crate::storage::OpenMlsProvider) {
     let test_setup = create_encoding_test_setup(provider);
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients
@@ -242,7 +242,7 @@ fn test_remove_proposal_encoding(provider: &impl crate::storage::RefinedProvider
 
 /// This test tests encoding and decoding of commit messages.
 #[apply(providers)]
-fn test_commit_encoding(provider: &impl crate::storage::RefinedProvider) {
+fn test_commit_encoding(provider: &impl crate::storage::OpenMlsProvider) {
     let test_setup = create_encoding_test_setup(provider);
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients
@@ -343,7 +343,7 @@ fn test_commit_encoding(provider: &impl crate::storage::RefinedProvider) {
 }
 
 #[apply(providers)]
-fn test_welcome_message_encoding(provider: &impl crate::storage::RefinedProvider) {
+fn test_welcome_message_encoding(provider: &impl crate::storage::OpenMlsProvider) {
     let test_setup = create_encoding_test_setup(provider);
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients

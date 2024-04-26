@@ -1,6 +1,6 @@
 use openmls_traits::signatures::Signer;
 
-use crate::{group::errors::ExporterError, schedule::EpochAuthenticator, storage::RefinedProvider};
+use crate::{group::errors::ExporterError, schedule::EpochAuthenticator, storage::OpenMlsProvider};
 
 use super::*;
 
@@ -12,7 +12,7 @@ impl MlsGroup {
     /// key length is too long.
     /// Returns [`ExportSecretError::GroupStateError(MlsGroupStateError::UseAfterEviction)`](MlsGroupStateError::UseAfterEviction)
     /// if the group is not active.
-    pub fn export_secret<Provider: RefinedProvider>(
+    pub fn export_secret<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
         label: &str,
@@ -53,7 +53,7 @@ impl MlsGroup {
     }
 
     /// Export a group info object for this group.
-    pub fn export_group_info<Provider: RefinedProvider>(
+    pub fn export_group_info<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
         signer: &impl Signer,
