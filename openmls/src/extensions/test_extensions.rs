@@ -6,6 +6,7 @@ use tls_codec::{Deserialize, Serialize};
 
 use super::*;
 use crate::{
+    ciphersuite::HpkePrivateKey,
     credentials::*,
     framing::*,
     group::{errors::*, *},
@@ -16,6 +17,7 @@ use crate::{
     schedule::psk::store::ResumptionPskStore,
     storage::OpenMlsProvider,
     test_utils::*,
+    treesync::node::encryption_keys::EncryptionKeyPair,
     versions::ProtocolVersion,
 };
 
@@ -242,6 +244,49 @@ fn required_capabilities() {
 }
 
 #[apply(ciphersuites_and_providers)]
+fn test_metadata(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+    // Create credentials and keys
+    let alice_credential_with_key_and_signer = tests::utils::generate_credential_with_key(
+        b"Alice".into(),
+        ciphersuite.signature_algorithm(),
+        provider,
+    );
+
+    // example metadata (opaque data -- test hex string is "1cedc0ffee")
+    let metadata = vec![0x1c, 0xed, 0xc0, 0xff, 0xee];
+    let ext = Extension::Unknown(0xf001, UnknownExtension(metadata.clone()));
+    let extensions = Extensions::from_vec(vec![ext]).expect("could not build extensions struct");
+
+    let config = MlsGroupCreateConfig::builder()
+        .with_group_context_extensions(extensions)
+        .unwrap()
+        .build();
+
+    // === Alice creates a group with the ratchet tree extension ===
+    let alice_group = MlsGroup::new(
+        provider,
+        &alice_credential_with_key_and_signer.signer,
+        &config,
+        alice_credential_with_key_and_signer
+            .credential_with_key
+            .clone(),
+    )
+    .expect("failed to build group");
+
+    let got_metadata = alice_group
+        .export_group_context()
+        .extensions()
+        .find_by_type(ExtensionType::Unknown(0xf001))
+        .expect("failed to read group metadata");
+
+    if let Extension::Unknown(0xf001, UnknownExtension(got_metadata)) = got_metadata {
+        assert_eq!(got_metadata, &metadata);
+    } else {
+        panic!("metadata extension has wrong extension enum variant")
+    }
+}
+
+#[apply(ciphersuites_and_providers)]
 fn with_group_context_extensions(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // create an extension that we can check for later
     let test_extension = Extension::Unknown(0xf023, UnknownExtension(vec![0xca, 0xfe]));
@@ -436,7 +481,7 @@ fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
     let welcome: MlsMessageIn = welcome.into();
     let welcome = welcome.into_welcome().expect("expected a welcome");
 
-    let _bob_group = StagedWelcome::new_from_welcome(
+    let mut bob_group = StagedWelcome::new_from_welcome(
         provider,
         mls_group_create_config.join_config(),
         welcome,
