@@ -6,6 +6,9 @@ use std::{collections::HashMap, sync::RwLock};
 #[cfg(any(test, feature = "test-utils"))]
 mod test_store;
 
+#[cfg(feature = "persistence")]
+pub mod persistence;
+
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct MemoryStorage {
     values: RwLock<HashMap<Vec<u8>, Vec<u8>>>,

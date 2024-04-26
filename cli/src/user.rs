@@ -11,7 +11,7 @@ use openmls::prelude::{tls_codec::*, *};
 use openmls_traits::OpenMlsProvider;
 
 use super::{
-    backend::Backend, conversation::Conversation, conversation::ConversationMessage, file_helpers,
+    backend::Backend, conversation::Conversation, conversation::ConversationMessage,
     identity::Identity, openmls_rust_persistent_crypto::OpenMlsRustPersistentCrypto,
     serialize_any_hashmap,
 };
@@ -79,7 +79,9 @@ impl User {
     }
 
     fn get_file_path(user_name: &String) -> PathBuf {
-        file_helpers::get_file_path(&("openmls_cli_".to_owned() + user_name + ".json"))
+        openmls_memory_storage::persistence::get_file_path(
+            &("openmls_cli_".to_owned() + user_name + ".json"),
+        )
     }
 
     fn load_from_file(input_file: &File) -> Result<Self, String> {

@@ -3,19 +3,19 @@
 //! This is an implementation of the [`OpenMlsCryptoProvider`] trait to use with
 //! OpenMLS.
 
-use super::persistent_key_store::PersistentStorage;
-use openmls_rust_crypto::RustCrypto;
+use openmls_rust_crypto::{MemoryStorage, RustCrypto};
 use openmls_traits::OpenMlsProvider;
 
 #[derive(Default, Debug)]
 pub struct OpenMlsRustPersistentCrypto {
     crypto: RustCrypto,
-    storage: PersistentStorage,
+    storage: MemoryStorage,
 }
 
 impl OpenMlsProvider for OpenMlsRustPersistentCrypto {
     type CryptoProvider = RustCrypto;
     type RandProvider = RustCrypto;
+    type StorageProvider = MemoryStorage;
 
     fn crypto(&self) -> &Self::CryptoProvider {
         &self.crypto
@@ -24,8 +24,6 @@ impl OpenMlsProvider for OpenMlsRustPersistentCrypto {
     fn rand(&self) -> &Self::RandProvider {
         &self.crypto
     }
-
-    type StorageProvider = PersistentStorage;
 
     fn storage(&self) -> &Self::StorageProvider {
         &self.storage
