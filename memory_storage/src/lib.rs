@@ -100,10 +100,6 @@ impl MemoryStorage {
         let values = self.values.read().unwrap();
         let storage_key = build_key_from_vec::<VERSION>(label, key.to_vec());
 
-        // let mut storage_key = label.to_vec();
-        // storage_key.extend_from_slice(key);
-        // storage_key.extend_from_slice(&u16::to_be_bytes(VERSION));
-
         #[cfg(feature = "test-utils")]
         log::debug!("  read key: {}", hex::encode(&storage_key));
         log::trace!("{}", std::backtrace::Backtrace::capture());
