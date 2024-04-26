@@ -21,10 +21,7 @@ impl MemoryStorage {
         value: Vec<u8>,
     ) -> Result<(), <Self as StorageProvider<CURRENT_VERSION>>::Error> {
         let mut values = self.values.write().unwrap();
-
-        let mut storage_key = label.to_vec();
-        storage_key.extend_from_slice(key);
-        storage_key.extend_from_slice(&u16::to_be_bytes(VERSION));
+        let storage_key = build_key_from_vec::<VERSION>(label, key.to_vec());
 
         #[cfg(feature = "test-utils")]
         log::debug!("  write key: {}", hex::encode(&storage_key));
@@ -41,10 +38,7 @@ impl MemoryStorage {
         value: Vec<u8>,
     ) -> Result<(), <Self as StorageProvider<CURRENT_VERSION>>::Error> {
         let mut values = self.values.write().unwrap();
-
-        let mut storage_key = label.to_vec();
-        storage_key.extend_from_slice(key);
-        storage_key.extend_from_slice(&u16::to_be_bytes(VERSION));
+        let storage_key = build_key_from_vec::<VERSION>(label, key.to_vec());
 
         #[cfg(feature = "test-utils")]
         log::debug!("  write key: {}", hex::encode(&storage_key));
@@ -71,10 +65,7 @@ impl MemoryStorage {
         value: Vec<u8>,
     ) -> Result<(), <Self as StorageProvider<CURRENT_VERSION>>::Error> {
         let mut values = self.values.write().unwrap();
-
-        let mut storage_key = label.to_vec();
-        storage_key.extend_from_slice(key);
-        storage_key.extend_from_slice(&u16::to_be_bytes(VERSION));
+        let storage_key = build_key_from_vec::<VERSION>(label, key.to_vec());
 
         #[cfg(feature = "test-utils")]
         log::debug!("  write key: {}", hex::encode(&storage_key));
@@ -104,10 +95,11 @@ impl MemoryStorage {
         key: &[u8],
     ) -> Result<Option<V>, <Self as StorageProvider<CURRENT_VERSION>>::Error> {
         let values = self.values.read().unwrap();
+        let storage_key = build_key_from_vec::<VERSION>(label, key.to_vec());
 
-        let mut storage_key = label.to_vec();
-        storage_key.extend_from_slice(key);
-        storage_key.extend_from_slice(&u16::to_be_bytes(VERSION));
+        // let mut storage_key = label.to_vec();
+        // storage_key.extend_from_slice(key);
+        // storage_key.extend_from_slice(&u16::to_be_bytes(VERSION));
 
         #[cfg(feature = "test-utils")]
         log::debug!("  read key: {}", hex::encode(&storage_key));
@@ -221,7 +213,6 @@ const PROPOSAL_QUEUE_REFS_LABEL: &[u8] = b"ProposalQueueRefs";
 
 impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
     type Error = MemoryStorageError;
-    // type Types = Types;
 
     fn queue_proposal<
         GroupId: traits::GroupId<CURRENT_VERSION>,
@@ -270,9 +261,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         interim_transcript_hash: &InterimTranscriptHash,
     ) -> Result<(), Self::Error> {
         let mut values = self.values.write().unwrap();
-        let mut key = INTERIM_TRANSCRIPT_HASH_LABEL.to_vec();
-        key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
-        key.extend_from_slice(&u16::to_be_bytes(CURRENT_VERSION));
+        let key = build_key::<CURRENT_VERSION, &GroupId>(INTERIM_TRANSCRIPT_HASH_LABEL, group_id);
         let value = serde_json::to_vec(&interim_transcript_hash).unwrap();
 
         values.insert(key, value);
@@ -288,9 +277,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         group_context: &GroupContext,
     ) -> Result<(), Self::Error> {
         let mut values = self.values.write().unwrap();
-        let mut key = GROUP_CONTEXT_LABEL.to_vec();
-        key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
-        key.extend_from_slice(&u16::to_be_bytes(CURRENT_VERSION));
+        let key = build_key::<CURRENT_VERSION, &GroupId>(GROUP_CONTEXT_LABEL, group_id);
         let value = serde_json::to_vec(&group_context).unwrap();
 
         values.insert(key, value);
@@ -306,9 +293,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         confirmation_tag: &ConfirmationTag,
     ) -> Result<(), Self::Error> {
         let mut values = self.values.write().unwrap();
-        let mut key = CONFIRMATION_TAG_LABEL.to_vec();
-        key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
-        key.extend_from_slice(&u16::to_be_bytes(CURRENT_VERSION));
+        let key = build_key::<CURRENT_VERSION, &GroupId>(CONFIRMATION_TAG_LABEL, group_id);
         let value = serde_json::to_vec(&confirmation_tag).unwrap();
 
         values.insert(key, value);
@@ -324,9 +309,8 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         signature_key_pair: &SignatureKeyPair,
     ) -> Result<(), Self::Error> {
         let mut values = self.values.write().unwrap();
-        let mut key = SIGNATURE_KEY_PAIR_LABEL.to_vec();
-        key.extend_from_slice(&serde_json::to_vec(&public_key).unwrap());
-        key.extend_from_slice(&u16::to_be_bytes(CURRENT_VERSION));
+        let key =
+            build_key::<CURRENT_VERSION, &SignaturePublicKey>(SIGNATURE_KEY_PAIR_LABEL, public_key);
         let value = serde_json::to_vec(&signature_key_pair).unwrap();
 
         values.insert(key, value);
@@ -373,11 +357,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         group_id: &GroupId,
     ) -> Result<Option<TreeSync>, Self::Error> {
         let values = self.values.read().unwrap();
-
-        // XXX: These domain separators should be constants.
-        let mut key = b"Tree".to_vec();
-        key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
-        key.extend_from_slice(&u16::to_be_bytes(CURRENT_VERSION));
+        let key = build_key::<CURRENT_VERSION, &GroupId>(TREE_LABEL, group_id);
 
         let value = values.get(&key).unwrap();
         let value = serde_json::from_slice(value).unwrap();
@@ -393,10 +373,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         group_id: &GroupId,
     ) -> Result<Option<GroupContext>, Self::Error> {
         let values = self.values.read().unwrap();
-
-        let mut key = GROUP_CONTEXT_LABEL.to_vec();
-        key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
-        key.extend_from_slice(&u16::to_be_bytes(CURRENT_VERSION));
+        let key = build_key::<CURRENT_VERSION, &GroupId>(GROUP_CONTEXT_LABEL, group_id);
 
         let value = values.get(&key).unwrap();
         let value = serde_json::from_slice(value).unwrap();
@@ -412,10 +389,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         group_id: &GroupId,
     ) -> Result<Option<InterimTranscriptHash>, Self::Error> {
         let values = self.values.read().unwrap();
-
-        let mut key = INTERIM_TRANSCRIPT_HASH_LABEL.to_vec();
-        key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
-        key.extend_from_slice(&u16::to_be_bytes(CURRENT_VERSION));
+        let key = build_key::<CURRENT_VERSION, &GroupId>(INTERIM_TRANSCRIPT_HASH_LABEL, group_id);
 
         let value = values.get(&key).unwrap();
         let value = serde_json::from_slice(value).unwrap();
@@ -431,10 +405,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         group_id: &GroupId,
     ) -> Result<Option<ConfirmationTag>, Self::Error> {
         let values = self.values.read().unwrap();
-
-        let mut key = CONFIRMATION_TAG_LABEL.to_vec();
-        key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
-        key.extend_from_slice(&u16::to_be_bytes(CURRENT_VERSION));
+        let key = build_key::<CURRENT_VERSION, &GroupId>(CONFIRMATION_TAG_LABEL, group_id);
 
         let value = values.get(&key).unwrap();
         let value = serde_json::from_slice(value).unwrap();
@@ -451,9 +422,8 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
     ) -> Result<Option<SignatureKeyPair>, Self::Error> {
         let values = self.values.read().unwrap();
 
-        let mut key = SIGNATURE_KEY_PAIR_LABEL.to_vec();
-        key.extend_from_slice(&serde_json::to_vec(&public_key).unwrap());
-        key.extend_from_slice(&u16::to_be_bytes(CURRENT_VERSION));
+        let key =
+            build_key::<CURRENT_VERSION, &SignaturePublicKey>(SIGNATURE_KEY_PAIR_LABEL, public_key);
 
         let value = values.get(&key).unwrap();
         let value = serde_json::from_slice(value).unwrap();
@@ -516,12 +486,6 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         hash_ref: &KeyPackageRef,
     ) -> Result<Option<KeyPackage>, Self::Error> {
         let key = serde_json::to_vec(&hash_ref).unwrap();
-
-        println!("getting key package at {key:?} for version {CURRENT_VERSION}");
-        println!(
-            "the whole store when trying to get the key package: {:?}",
-            self.values.read().unwrap()
-        );
         self.read(KEY_PACKAGE_LABEL, &key)
     }
 
@@ -713,7 +677,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         &self,
         group_id: &GroupId,
     ) -> Result<Option<bool>, Self::Error> {
-        self.read::<CURRENT_VERSION, bool>(USE_RATCHET_TREE_LABEL, &serde_json::to_vec(group_id)?)
+        self.read(USE_RATCHET_TREE_LABEL, &serde_json::to_vec(group_id)?)
     }
 
     fn set_use_ratchet_tree_extension<GroupId: traits::GroupId<CURRENT_VERSION>>(
@@ -801,14 +765,10 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         leaf_index: u32,
     ) -> Result<Vec<HpkeKeyPair>, Self::Error> {
         let key = epoch_key_pairs_id(group_id, epoch, leaf_index)?;
+        let storage_key = build_key_from_vec::<CURRENT_VERSION>(EPOCH_KEY_PAIRS_LABEL, key);
         log::debug!("Reading encryption epoch key pairs");
 
         let values = self.values.read().unwrap();
-
-        let mut storage_key = EPOCH_KEY_PAIRS_LABEL.to_vec();
-        storage_key.extend_from_slice(&key);
-        storage_key.extend_from_slice(&u16::to_be_bytes(CURRENT_VERSION));
-
         let value = values.get(&storage_key);
 
         #[cfg(feature = "test-utils")]
@@ -842,9 +802,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
     ) -> Result<(), Self::Error> {
         let mut values = self.values.write().unwrap();
 
-        let mut key = QUEUED_PROPOSAL_LABEL.to_vec();
-        key.extend_from_slice(&serde_json::to_vec(&group_id).unwrap());
-        key.extend_from_slice(&u16::to_be_bytes(CURRENT_VERSION));
+        let key = build_key::<CURRENT_VERSION, &GroupId>(QUEUED_PROPOSAL_LABEL, group_id);
 
         // XXX: also remove the proposal refs. can't be done now because they are stored in a
         // non-recoverable way
@@ -996,6 +954,19 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         let key = serde_json::to_vec(&(group_id, proposal_ref)).unwrap();
         self.delete::<CURRENT_VERSION>(QUEUED_PROPOSAL_LABEL, &key)
     }
+}
+
+/// Build a key with version and label.
+fn build_key_from_vec<const V: u16>(label: &[u8], key: Vec<u8>) -> Vec<u8> {
+    let mut key_out = label.to_vec();
+    key_out.extend_from_slice(&key);
+    key_out.extend_from_slice(&u16::to_be_bytes(V));
+    key_out
+}
+
+/// Build a key with version and label.
+fn build_key<const V: u16, K: Serialize>(label: &[u8], key: K) -> Vec<u8> {
+    build_key_from_vec::<V>(label, serde_json::to_vec(&key).unwrap())
 }
 
 fn epoch_key_pairs_id(

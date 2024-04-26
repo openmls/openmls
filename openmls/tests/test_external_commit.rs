@@ -106,12 +106,12 @@ fn test_external_commit(ciphersuite: Ciphersuite, provider: &impl crate::storage
         )
         .unwrap_err();
 
-        assert_eq!(
+        assert!(matches!(
             got_error,
             ExternalCommitError::PublicGroupError(
                 CreationFromExternalError::InvalidGroupInfoSignature
             )
-        );
+        ));
     }
 }
 

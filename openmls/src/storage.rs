@@ -43,7 +43,7 @@ pub trait RefinedProvider:
     /// The storage to use
     type Storage: StorageProvider<Error = Self::StorageError>;
     /// The storage error type
-    type StorageError: std::error::Error + PartialEq;
+    type StorageError: std::error::Error;
 }
 
 impl<
@@ -189,8 +189,7 @@ mod test {
         let key_package = key_package_bundle.key_package();
         let key_package_ref = key_package.hash_ref(provider.crypto()).unwrap();
 
-        // Serialize the old storage. This should become a kat test file
-        //let _old_storage = serde_json::to_string(provider.storage()).unwrap();
+        // TODO #1566: Serialize the old storage. This should become a kat test file
 
         // ---- migration starts here ----
         let new_storage_provider = MemoryStorage::default();

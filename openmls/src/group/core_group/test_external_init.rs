@@ -9,6 +9,7 @@ use crate::{
         CreateCommitParams,
     },
     messages::proposals::{ProposalOrRef, ProposalType},
+    storage::RefinedProvider,
     test_utils::*,
 };
 
@@ -17,7 +18,7 @@ use openmls_traits::types::Ciphersuite;
 use super::{proposals::ProposalStore, CoreGroup};
 
 #[apply(ciphersuites_and_providers)]
-fn test_external_init(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
+fn test_external_init(ciphersuite: Ciphersuite, provider: &impl RefinedProvider) {
     let (
         framing_parameters,
         mut group_alice,
@@ -182,7 +183,7 @@ fn test_external_init(ciphersuite: Ciphersuite, provider: &impl crate::storage::
 #[apply(ciphersuites_and_providers)]
 fn test_external_init_single_member_group(
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &impl RefinedProvider,
 ) {
     let (mut group_alice, _alice_credential_with_key, alice_signer, _alice_pk) =
         setup_alice_group(ciphersuite, provider);
@@ -242,9 +243,9 @@ fn test_external_init_single_member_group(
 }
 
 #[apply(ciphersuites_and_providers)]
-fn test_external_init_broken_signature(
+fn test_external_init_broken_signature<Provider: RefinedProvider>(
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::RefinedProvider,
+    provider: &Provider,
 ) {
     let (
         framing_parameters,
@@ -273,15 +274,19 @@ fn test_external_init_broken_signature(
         .framing_parameters(framing_parameters)
         .proposal_store(&proposal_store)
         .build();
-    assert_eq!(
-        ExternalCommitError::PublicGroupError(CreationFromExternalError::InvalidGroupInfoSignature),
-        CoreGroup::join_by_external_commit(
-            provider,
-            &charlie_signer,
-            params,
-            None,
-            verifiable_group_info
+
+    let result = CoreGroup::join_by_external_commit(
+        provider,
+        &charlie_signer,
+        params,
+        None,
+        verifiable_group_info,
+    )
+    .expect_err("Signature was corrupted. This should have failed.");
+    assert!(matches!(
+        result,
+        ExternalCommitError::<Provider::StorageError>::PublicGroupError(
+            CreationFromExternalError::InvalidGroupInfoSignature
         )
-        .expect_err("Signature was corrupted. This should have failed.")
-    );
+    ));
 }

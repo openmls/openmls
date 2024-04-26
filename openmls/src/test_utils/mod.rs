@@ -252,8 +252,8 @@ pub fn ciphersuites(ciphersuite: Ciphersuite) {}
 )]
 #[allow(non_snake_case)]
 #[cfg_attr(target_arch = "wasm32", openmls::wasm::test)]
-pub fn ciphersuites_and_providers<Storage: StorageProvider<Types = OpenMlsTypes>>(
+pub fn ciphersuites_and_providers<Provider: RefinedProvider>(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider<StorageProvider = Storage>,
+    provider: &Provider,
 ) {
 }

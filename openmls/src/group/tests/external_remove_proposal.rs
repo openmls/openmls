@@ -268,10 +268,10 @@ fn external_remove_proposal_should_fail_when_invalid_external_senders_index<
                 .unwrap(),
         )
         .unwrap_err();
-    assert_eq!(
+    assert!(matches!(
         error,
         ProcessMessageError::ValidationError(ValidationError::UnauthorizedExternalSender)
-    );
+    ));
 }
 
 #[apply(ciphersuites_and_providers)]
@@ -332,7 +332,7 @@ fn external_remove_proposal_should_fail_when_invalid_signature<Provider: Refined
                 .unwrap(),
         )
         .unwrap_err();
-    assert_eq!(error, ProcessMessageError::InvalidSignature);
+    assert!(matches!(error, ProcessMessageError::InvalidSignature));
 }
 
 #[apply(ciphersuites_and_providers)]
@@ -380,8 +380,8 @@ fn external_remove_proposal_should_fail_when_no_external_senders<Provider: Refin
                 .unwrap(),
         )
         .unwrap_err();
-    assert_eq!(
+    assert!(matches!(
         error,
         ProcessMessageError::ValidationError(ValidationError::UnauthorizedExternalSender)
-    );
+    ));
 }

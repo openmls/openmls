@@ -48,11 +48,15 @@ fn test_mls_group_persistence<Provider: RefinedProvider>(
     assert_eq!(
         (
             alice_group.export_ratchet_tree(),
-            alice_group.export_secret(provider, "test", &[], 32)
+            alice_group
+                .export_secret(provider, "test", &[], 32)
+                .unwrap()
         ),
         (
             alice_group_deserialized.export_ratchet_tree(),
-            alice_group_deserialized.export_secret(provider, "test", &[], 32)
+            alice_group_deserialized
+                .export_secret(provider, "test", &[], 32)
+                .unwrap()
         )
     );
 }
@@ -506,8 +510,12 @@ fn test_verify_staged_commit_credentials(
         alice_group.export_ratchet_tree()
     );
     assert_eq!(
-        bob_group.export_secret(provider, "test", &[], ciphersuite.hash_length()),
-        alice_group.export_secret(provider, "test", &[], ciphersuite.hash_length())
+        bob_group
+            .export_secret(provider, "test", &[], ciphersuite.hash_length())
+            .unwrap(),
+        alice_group
+            .export_secret(provider, "test", &[], ciphersuite.hash_length())
+            .unwrap()
     );
     // Bob is added and the state aligns.
 
@@ -583,8 +591,12 @@ fn test_verify_staged_commit_credentials(
             alice_group.export_ratchet_tree()
         );
         assert_eq!(
-            bob_group.export_secret(provider, "test", &[], ciphersuite.hash_length()),
-            alice_group.export_secret(provider, "test", &[], ciphersuite.hash_length())
+            bob_group
+                .export_secret(provider, "test", &[], ciphersuite.hash_length())
+                .unwrap(),
+            alice_group
+                .export_secret(provider, "test", &[], ciphersuite.hash_length())
+                .unwrap()
         );
     } else {
         unreachable!()
@@ -679,8 +691,12 @@ fn test_commit_with_update_path_leaf_node(
         alice_group.export_ratchet_tree()
     );
     assert_eq!(
-        bob_group.export_secret(provider, "test", &[], ciphersuite.hash_length()),
-        alice_group.export_secret(provider, "test", &[], ciphersuite.hash_length())
+        bob_group
+            .export_secret(provider, "test", &[], ciphersuite.hash_length())
+            .unwrap(),
+        alice_group
+            .export_secret(provider, "test", &[], ciphersuite.hash_length())
+            .unwrap()
     );
     // Bob is added and the state aligns.
 
@@ -768,8 +784,12 @@ fn test_commit_with_update_path_leaf_node(
             alice_group.export_ratchet_tree()
         );
         assert_eq!(
-            bob_group.export_secret(provider, "test", &[], ciphersuite.hash_length()),
-            alice_group.export_secret(provider, "test", &[], ciphersuite.hash_length())
+            bob_group
+                .export_secret(provider, "test", &[], ciphersuite.hash_length())
+                .unwrap(),
+            alice_group
+                .export_secret(provider, "test", &[], ciphersuite.hash_length())
+                .unwrap()
         );
     } else {
         unreachable!()
@@ -854,10 +874,10 @@ fn test_pending_commit_logic(
     let error = alice_group
         .propose_add_member(provider, &alice_signer, bob_key_package)
         .expect_err("no error creating a proposal while a commit is pending");
-    assert_eq!(
+    assert!(matches!(
         error,
         ProposeAddMemberError::GroupStateError(MlsGroupStateError::PendingCommit)
-    );
+    ));
     let error = alice_group
         .remove_members(provider, &alice_signer, &[LeafNodeIndex::new(1)])
         .expect_err("no error committing while a commit is pending");
@@ -868,10 +888,10 @@ fn test_pending_commit_logic(
     let error = alice_group
         .propose_remove_member(provider, &alice_signer, LeafNodeIndex::new(1))
         .expect_err("no error creating a proposal while a commit is pending");
-    assert_eq!(
+    assert!(matches!(
         error,
         ProposeRemoveMemberError::GroupStateError(MlsGroupStateError::PendingCommit)
-    );
+    ));
     let error = alice_group
         .commit_to_pending_proposals(provider, &alice_signer)
         .expect_err("no error committing while a commit is pending");
@@ -932,8 +952,12 @@ fn test_pending_commit_logic(
         alice_group.export_ratchet_tree()
     );
     assert_eq!(
-        bob_group.export_secret(provider, "test", &[], ciphersuite.hash_length()),
-        alice_group.export_secret(provider, "test", &[], ciphersuite.hash_length())
+        bob_group
+            .export_secret(provider, "test", &[], ciphersuite.hash_length())
+            .unwrap(),
+        alice_group
+            .export_secret(provider, "test", &[], ciphersuite.hash_length())
+            .unwrap()
     );
 
     // While a commit is pending, merging Bob's commit should clear the pending commit.
@@ -1095,7 +1119,7 @@ fn remove_prosposal_by_ref(
     let err = alice_group
         .remove_pending_proposal(provider.storage(), reference)
         .unwrap_err();
-    assert_eq!(err, MlsGroupStateError::PendingProposalNotFound);
+    assert!(matches!(err, MlsGroupStateError::PendingProposalNotFound));
 
     // the commit should have no proposal
     let (commit, _, _) = alice_group

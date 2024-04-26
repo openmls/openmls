@@ -209,8 +209,8 @@ fn mls_group_operations<Provider: RefinedProvider>(ciphersuite: Ciphersuite, pro
 
         // Check that both groups have the same state
         assert_eq!(
-            alice_group.export_secret(provider, "", &[], 32),
-            bob_group.export_secret(provider, "", &[], 32)
+            alice_group.export_secret(provider, "", &[], 32).unwrap(),
+            bob_group.export_secret(provider, "", &[], 32).unwrap()
         );
 
         // Make sure that both groups have the same public tree
@@ -296,8 +296,8 @@ fn mls_group_operations<Provider: RefinedProvider>(ciphersuite: Ciphersuite, pro
 
         // Check that both groups have the same state
         assert_eq!(
-            alice_group.export_secret(provider, "", &[], 32),
-            bob_group.export_secret(provider, "", &[], 32)
+            alice_group.export_secret(provider, "", &[], 32).unwrap(),
+            bob_group.export_secret(provider, "", &[], 32).unwrap()
         );
 
         // Make sure that both groups have the same public tree
@@ -456,12 +456,12 @@ fn mls_group_operations<Provider: RefinedProvider>(ciphersuite: Ciphersuite, pro
 
         // Check that all groups have the same state
         assert_eq!(
-            alice_group.export_secret(provider, "", &[], 32),
-            bob_group.export_secret(provider, "", &[], 32)
+            alice_group.export_secret(provider, "", &[], 32).unwrap(),
+            bob_group.export_secret(provider, "", &[], 32).unwrap()
         );
         assert_eq!(
-            alice_group.export_secret(provider, "", &[], 32),
-            charlie_group.export_secret(provider, "", &[], 32)
+            alice_group.export_secret(provider, "", &[], 32).unwrap(),
+            charlie_group.export_secret(provider, "", &[], 32).unwrap()
         );
 
         // Make sure that all groups have the same public tree
@@ -929,8 +929,12 @@ fn mls_group_operations<Provider: RefinedProvider>(ciphersuite: Ciphersuite, pro
         .expect("Could not create group from staged join");
 
         assert_eq!(
-            alice_group.export_secret(provider, "before load", &[], 32),
-            bob_group.export_secret(provider, "before load", &[], 32)
+            alice_group
+                .export_secret(provider, "before load", &[], 32)
+                .unwrap(),
+            bob_group
+                .export_secret(provider, "before load", &[], 32)
+                .unwrap()
         );
 
         bob_group = MlsGroup::load(provider.storage(), &group_id)
@@ -939,8 +943,12 @@ fn mls_group_operations<Provider: RefinedProvider>(ciphersuite: Ciphersuite, pro
 
         // Make sure the state is still the same
         assert_eq!(
-            alice_group.export_secret(provider, "after load", &[], 32),
-            bob_group.export_secret(provider, "after load", &[], 32)
+            alice_group
+                .export_secret(provider, "after load", &[], 32)
+                .unwrap(),
+            bob_group
+                .export_secret(provider, "after load", &[], 32)
+                .unwrap()
         );
     }
 }

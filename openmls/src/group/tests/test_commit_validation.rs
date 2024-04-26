@@ -235,10 +235,10 @@ fn test_valsem200(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
         .process_message(provider, message_in)
         .expect_err("Could process unverified message despite self remove.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::InvalidCommit(StageCommitError::AttemptedSelfRemoval)
-    );
+    ));
 
     // Positive case
     bob_group
@@ -387,10 +387,10 @@ fn test_valsem201(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
                 &alice_credential.signer,
             );
             let processed_msg = bob_group.process_message(provider, commit_wo_path);
-            assert_eq!(
+            assert!(matches!(
                 processed_msg.unwrap_err(),
                 ProcessMessageError::InvalidCommit(StageCommitError::RequiredPathNotFound)
-            );
+            ));
         }
 
         // Positive case
@@ -494,12 +494,12 @@ fn test_valsem202(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
         .process_message(provider, update_message_in)
         .expect_err("Could process unverified message despite path length mismatch.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::InvalidCommit(StageCommitError::UpdatePathError(
             ApplyUpdatePathError::PathLengthMismatch
         ))
-    );
+    ));
 
     let original_update_plaintext =
         MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
@@ -573,12 +573,12 @@ fn test_valsem203(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
         .process_message(provider, update_message_in)
         .expect_err("Could process unverified message despite scrambled ciphertexts.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::InvalidCommit(StageCommitError::UpdatePathError(
             ApplyUpdatePathError::UnableToDecrypt
         ))
-    );
+    ));
 
     let original_update_plaintext =
         MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
@@ -696,12 +696,12 @@ fn test_valsem204(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
         .process_message(provider, update_message_in)
         .expect_err("Could process unverified message despite modified public key in path.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::InvalidCommit(StageCommitError::UpdatePathError(
             ApplyUpdatePathError::PathMismatch
         ))
-    );
+    ));
 
     let original_update_plaintext =
         MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
@@ -774,10 +774,10 @@ fn test_valsem205(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
         .process_message(provider, update_message_in)
         .expect_err("Could process unverified message despite confirmation tag mismatch.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::InvalidCommit(StageCommitError::ConfirmationTagMismatch)
-    );
+    ));
 
     // Positive case
     bob_group

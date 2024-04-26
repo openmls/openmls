@@ -84,12 +84,12 @@ fn test_valsem240(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
         .process_message(provider, ProtocolMessage::from(public_message_commit_bad))
         .expect_err("Could process message despite missing external init proposal.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::InvalidCommit(StageCommitError::ExternalCommitValidation(
             ExternalCommitValidationError::NoExternalInitProposals
         ))
-    );
+    ));
 
     // Positive case
     alice_group
@@ -147,12 +147,12 @@ fn test_valsem241(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
         .process_message(provider, ProtocolMessage::from(public_message_commit_bad))
         .expect_err("Could process message despite second ext. init proposal in commit.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::InvalidCommit(StageCommitError::ExternalCommitValidation(
             ExternalCommitValidationError::MultipleExternalInitProposals
         ))
-    );
+    ));
 
     // Positive case
     alice_group
@@ -298,12 +298,12 @@ fn test_valsem242(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
             .process_message(provider, public_message_commit_bad)
             .unwrap_err();
 
-        assert_eq!(
+        assert!(matches!(
             err,
             ProcessMessageError::InvalidCommit(StageCommitError::ExternalCommitValidation(
                 ExternalCommitValidationError::InvalidInlineProposals
             ))
-        );
+        ));
 
         // Positive case
         alice_group
@@ -376,12 +376,12 @@ fn test_valsem244(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
         .process_message(provider, ProtocolMessage::from(public_message_commit_bad))
         .unwrap_err();
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::InvalidCommit(StageCommitError::ExternalCommitValidation(
             ExternalCommitValidationError::ReferencedProposal
         ))
-    );
+    ));
 
     // Positive case
     alice_group
@@ -434,10 +434,10 @@ fn test_valsem245(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
         .process_message(provider, ProtocolMessage::from(public_message_commit_bad))
         .expect_err("Could process message despite missing path.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::ValidationError(ValidationError::NoPath)
-    );
+    ));
 
     // Positive case
     alice_group
@@ -507,7 +507,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
 
     // This shows that signature verification fails if the signature is not done
     // using the credential in the path.
-    assert_eq!(err, ProcessMessageError::InvalidSignature);
+    assert!(matches!(err, ProcessMessageError::InvalidSignature));
 
     // This shows that the credential in the original path key package is actually bob's credential.
     let commit = if let FramedContentBody::Commit(commit) = public_message_commit.content() {

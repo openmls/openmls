@@ -395,12 +395,12 @@ fn test_valsem101a(ciphersuite: Ciphersuite, provider: &impl crate::storage::Ref
         .process_message(provider, update_message_in)
         .expect_err("Could process message despite modified public key in path.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
             ProposalValidationError::DuplicateSignatureKey
         ))
-    );
+    ));
 
     let original_update_plaintext =
         MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
@@ -562,12 +562,12 @@ fn test_valsem102(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
         .process_message(provider, update_message_in)
         .expect_err("Could process message despite modified encryption key in path.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
             ProposalValidationError::DuplicateInitKey
         ))
-    );
+    ));
 
     let original_update_plaintext =
         MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
@@ -972,12 +972,12 @@ fn test_valsem103_valsem104(
         .process_message(provider, update_message_in)
         .expect_err("Could process message despite modified public key in path.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
             ProposalValidationError::DuplicateEncryptionKey
         ))
-    );
+    ));
 
     let original_update_plaintext =
         MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
@@ -1017,7 +1017,7 @@ enum ProposalInclusion {
 /// Add Proposal:
 /// Ciphersuite & protocol version must match the group
 #[apply(ciphersuites_and_providers)]
-fn test_valsem105(ciphersuite: Ciphersuite, provider: &impl crate::storage::RefinedProvider) {
+fn test_valsem105<Provider: RefinedProvider>(ciphersuite: Ciphersuite, provider: &Provider) {
     let _ = pretty_env_logger::try_init();
 
     // Ciphersuite & protocol version validation includes checking the
@@ -1256,71 +1256,94 @@ fn test_valsem105(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
                 // be longer due to the included Add proposal. Since we added
                 // the Add artificially, we thus have a path length mismatch.
                 KeyPackageTestVersion::ValidTestCase => {
-                    let expected_error = ProcessMessageError::InvalidCommit(
-                        StageCommitError::UpdatePathError(ApplyUpdatePathError::PathLengthMismatch),
-                    );
-                    assert_eq!(err, expected_error);
+                    assert!(matches!(
+                        err,
+                        ProcessMessageError::<Provider::StorageError>::InvalidCommit(
+                            StageCommitError::UpdatePathError(
+                                ApplyUpdatePathError::PathLengthMismatch,
+                            ),
+                        )
+                    ));
                 }
                 KeyPackageTestVersion::WrongCiphersuite => {
                     // In this case we need to differentiate, since we
                     // manipulated the ciphersuite. The signature algorithm can
                     // also have a mismatch and therefore invalidate the
                     // signature, and/or the ciphersuite doesn't match.
-                    let expected_error_1 = ProcessMessageError::InvalidCommit(
-                        StageCommitError::ProposalValidationError(
-                            ProposalValidationError::InvalidAddProposalCiphersuiteOrVersion,
-                        ),
-                    );
-                    let expected_error_2 = ProcessMessageError::ValidationError(
-                        ValidationError::KeyPackageVerifyError(
-                            KeyPackageVerifyError::InvalidLeafNodeSignature,
-                        ),
-                    );
-                    let expected_error_3 = ProcessMessageError::ValidationError(
-                        ValidationError::InvalidAddProposalCiphersuite,
-                    );
+
                     assert!(
-                        err == expected_error_1
-                            || err == expected_error_2
-                            || err == expected_error_3
+                        matches!(
+                            err,
+                            ProcessMessageError::<Provider::StorageError>::InvalidCommit(
+                                StageCommitError::ProposalValidationError(
+                                    ProposalValidationError::InvalidAddProposalCiphersuiteOrVersion,
+                                ),
+                            )
+                        ) || matches!(
+                            err,
+                            ProcessMessageError::<Provider::StorageError>::ValidationError(
+                                ValidationError::KeyPackageVerifyError(
+                                    KeyPackageVerifyError::InvalidLeafNodeSignature,
+                                ),
+                            )
+                        ) || matches!(
+                            err,
+                            ProcessMessageError::<Provider::StorageError>::ValidationError(
+                                ValidationError::InvalidAddProposalCiphersuite,
+                            )
+                        )
                     );
                 }
                 KeyPackageTestVersion::WrongVersion => {
                     // We need to distinguish between the two cases where the
                     // version is wrong, depending on whether it's a proposal by
                     // value or by reference.
-                    let expected_error_1 = ProcessMessageError::InvalidCommit(
-                        StageCommitError::ProposalValidationError(
-                            ProposalValidationError::InvalidAddProposalCiphersuiteOrVersion,
-                        ),
+                    assert!(
+                        matches!(
+                            err,
+                            ProcessMessageError::<Provider::StorageError>::InvalidCommit(
+                                StageCommitError::ProposalValidationError(
+                                    ProposalValidationError::InvalidAddProposalCiphersuiteOrVersion,
+                                ),
+                            )
+                        ) || matches!(
+                            err,
+                            ProcessMessageError::<Provider::StorageError>::ValidationError(
+                                ValidationError::KeyPackageVerifyError(
+                                    KeyPackageVerifyError::InvalidProtocolVersion,
+                                ),
+                            )
+                        )
                     );
-                    let expected_error_2 = ProcessMessageError::ValidationError(
-                        ValidationError::KeyPackageVerifyError(
-                            KeyPackageVerifyError::InvalidProtocolVersion,
-                        ),
-                    );
-                    assert!(err == expected_error_1 || err == expected_error_2);
                 }
                 KeyPackageTestVersion::UnsupportedVersion => {
-                    let expected_error_1 = ProcessMessageError::ValidationError(
-                        ValidationError::KeyPackageVerifyError(
-                            KeyPackageVerifyError::InvalidProtocolVersion,
-                        ),
+                    assert!(
+                        matches!(
+                            err,
+                            ProcessMessageError::<Provider::StorageError>::ValidationError(
+                                ValidationError::KeyPackageVerifyError(
+                                    KeyPackageVerifyError::InvalidProtocolVersion,
+                                ),
+                            )
+                        ) || matches!(
+                            err,
+                            ProcessMessageError::<Provider::StorageError>::InvalidCommit(
+                                StageCommitError::ProposalValidationError(
+                                    ProposalValidationError::InsufficientCapabilities,
+                                ),
+                            )
+                        )
                     );
-                    let expected_error_2 = ProcessMessageError::InvalidCommit(
-                        StageCommitError::ProposalValidationError(
-                            ProposalValidationError::InsufficientCapabilities,
-                        ),
-                    );
-                    assert!(err == expected_error_1 || err == expected_error_2);
                 }
                 KeyPackageTestVersion::UnsupportedCiphersuite => {
-                    let expected_error = ProcessMessageError::InvalidCommit(
-                        StageCommitError::ProposalValidationError(
-                            ProposalValidationError::InsufficientCapabilities,
-                        ),
-                    );
-                    assert_eq!(err, expected_error);
+                    assert!(matches!(
+                        err,
+                        ProcessMessageError::<Provider::StorageError>::InvalidCommit(
+                            StageCommitError::ProposalValidationError(
+                                ProposalValidationError::InsufficientCapabilities,
+                            ),
+                        )
+                    ));
                 }
             };
 
@@ -1541,7 +1564,7 @@ fn test_valsem108(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
         )
         .expect_err("Successfully created remove proposal for unknown member");
 
-    assert_eq!(err, ProposeRemoveMemberError::UnknownMember);
+    assert!(matches!(err, ProposeRemoveMemberError::UnknownMember));
 
     // Clear commit to try another way of committing a remove of a non-member.
     alice_group
@@ -1608,12 +1631,12 @@ fn test_valsem108(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
         .process_message(provider, update_message_in)
         .expect_err("Could process message despite modified public key in path.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
             ProposalValidationError::UnknownMemberRemoval
         ))
-    );
+    ));
 
     let original_update_plaintext =
         MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
@@ -1774,10 +1797,10 @@ fn test_valsem110(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
         .process_message(provider, update_message_in)
         .expect_err("Could process message despite modified public key in path.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::ValidationError(ValidationError::CommitterIncludedOwnUpdate)
-    );
+    ));
 }
 
 /// ValSem111
@@ -1869,10 +1892,10 @@ fn test_valsem111(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
         .process_message(provider, update_message_in)
         .expect_err("Could process message despite modified public key in path.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::ValidationError(ValidationError::CommitterIncludedOwnUpdate)
-    );
+    ));
 
     // Now we insert the proposal into Bob's proposal store so we can include it
     // in the commit by reference.
@@ -1935,12 +1958,12 @@ fn test_valsem111(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
         .process_message(provider, update_message_in)
         .expect_err("Could process message despite modified public key in path.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
             ProposalValidationError::CommitterIncludedOwnUpdate
         ))
-    );
+    ));
 
     let original_update_plaintext =
         MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
@@ -2006,10 +2029,10 @@ fn test_valsem112(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
         .process_message(provider, update_message_in)
         .expect_err("Could parse message despite modified public key in path.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::ValidationError(ValidationError::NotACommit)
-    );
+    ));
 
     // We can't test with sender type External, since that currently panics
     // with `unimplemented`.

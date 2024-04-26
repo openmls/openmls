@@ -133,12 +133,12 @@ fn test_past_secrets_in_group(
             let err = bob_group
                 .process_message(provider, application_message.clone())
                 .expect_err("An unexpected error occurred.");
-            assert_eq!(
+            assert!(matches!(
                 err,
                 ProcessMessageError::ValidationError(ValidationError::UnableToDecrypt(
                     MessageDecryptionError::AeadError
                 ),)
-            );
+            ));
         }
 
         // The last messages should not fail

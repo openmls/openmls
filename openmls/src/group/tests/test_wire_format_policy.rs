@@ -144,6 +144,6 @@ fn test_wire_policy_negative(
         let err = alice_group
             .process_message(provider, message.try_into_protocol_message().unwrap())
             .expect_err("An unexpected error occurred.");
-        assert_eq!(err, ProcessMessageError::IncompatibleWireFormat);
+        assert!(matches!(err, ProcessMessageError::IncompatibleWireFormat));
     }
 }

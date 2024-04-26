@@ -142,10 +142,10 @@ fn test_valsem002(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
         .process_message(provider, message_in)
         .expect_err("Could parse message despite wrong group ID.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::ValidationError(ValidationError::WrongGroupId)
-    );
+    ));
 
     // Positive case
     bob_group
@@ -209,20 +209,20 @@ fn test_valsem003(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
     let err = bob_group
         .process_message(provider, plaintext.clone())
         .expect_err("Could parse message despite wrong epoch.");
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::ValidationError(ValidationError::WrongEpoch)
-    );
+    ));
 
     // Set the epoch too low
     plaintext.set_epoch(current_epoch.as_u64() - 1);
     let err = bob_group
         .process_message(provider, plaintext)
         .expect_err("Could parse message despite wrong epoch.");
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::ValidationError(ValidationError::WrongEpoch)
-    );
+    ));
 
     // Positive case
     let processed_msg = bob_group
@@ -241,10 +241,10 @@ fn test_valsem003(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
 
     // Processing a commit twice should fail i.e. an epoch can only be used once in a commit message
     let process_twice = bob_group.process_message(provider, original_message);
-    assert_eq!(
+    assert!(matches!(
         process_twice.unwrap_err(),
         ProcessMessageError::ValidationError(ValidationError::WrongEpoch)
-    );
+    ));
 }
 
 // ValSem004 Sender: Member: check the member exists
@@ -293,10 +293,10 @@ fn test_valsem004(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
         .process_message(provider, message_in)
         .expect_err("Could parse message despite wrong sender.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::ValidationError(ValidationError::UnknownMember)
-    );
+    ));
 
     // Positive case
     bob_group
@@ -349,10 +349,10 @@ fn test_valsem005(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
         .process_message(provider, message_in)
         .expect_err("Could parse message despite unencrypted application message.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::ValidationError(ValidationError::UnencryptedApplicationMessage)
-    );
+    ));
 
     // Positive case
     bob_group
@@ -395,12 +395,12 @@ fn test_valsem006(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
         .process_message(provider, message_in)
         .expect_err("Could parse message despite garbled ciphertext.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::ValidationError(ValidationError::UnableToDecrypt(
             MessageDecryptionError::AeadError
         ))
-    );
+    ));
 
     // Positive case
     bob_group
@@ -443,10 +443,10 @@ fn test_valsem007(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
         .process_message(provider, message_in)
         .expect_err("Could parse message despite missing membership tag.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::ValidationError(ValidationError::MissingMembershipTag)
-    );
+    ));
 
     // Positive case
     bob_group
@@ -498,10 +498,10 @@ fn test_valsem008(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
         .process_message(provider, message_in)
         .expect_err("Could process message despite wrong membership tag.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::ValidationError(ValidationError::InvalidMembershipTag)
-    );
+    ));
 
     // Positive case
     bob_group
@@ -554,10 +554,10 @@ fn test_valsem009(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
         .process_message(provider, message_in)
         .expect_err("Could parse message despite missing confirmation tag.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::ValidationError(ValidationError::MissingConfirmationTag)
-    );
+    ));
 
     // Positive case
     bob_group
@@ -612,7 +612,7 @@ fn test_valsem010(ciphersuite: Ciphersuite, provider: &impl crate::storage::Refi
         .process_message(provider, message_in)
         .expect_err("Could process message despite wrong signature.");
 
-    assert_eq!(err, ProcessMessageError::InvalidSignature);
+    assert!(matches!(err, ProcessMessageError::InvalidSignature));
 
     // Positive case
     bob_group
