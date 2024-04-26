@@ -1,10 +1,9 @@
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_traits::{random::OpenMlsRand, types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::{random::OpenMlsRand, types::Ciphersuite};
 
 use rstest::*;
 use rstest_reuse::{self, *};
 
-use openmls_rust_crypto::OpenMlsRustCrypto;
 use signable::Verifiable;
 use tls_codec::{Deserialize, Serialize};
 
@@ -20,13 +19,14 @@ use crate::{
     },
     key_packages::{test_key_packages::key_package, KeyPackageBundle},
     schedule::psk::{store::ResumptionPskStore, PskSecret},
+    storage::OpenMlsProvider,
+    test_utils::frankenstein::*,
     tree::{secret_tree::SecretTree, sender_ratchet::SenderRatchetConfiguration},
-    versions::ProtocolVersion,
 };
 
 /// This tests serializing/deserializing PublicMessage
 #[apply(ciphersuites_and_providers)]
-fn codec_plaintext(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn codec_plaintext<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider: &Provider) {
     let (_credential, signature_keys) =
         test_utils::new_credential(provider, b"Creator", ciphersuite.signature_algorithm());
     let sender = Sender::build_member(LeafNodeIndex::new(987543210));
@@ -57,11 +57,15 @@ fn codec_plaintext(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .into();
 
     let membership_key = MembershipKey::from_secret(
-        Secret::random(ciphersuite, provider.rand(), None /* MLS version */)
-            .expect("Not enough randomness."),
+        Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness."),
     );
-    orig.set_membership_tag(provider.crypto(), &membership_key, &serialized_context)
-        .expect("Error setting membership tag.");
+    orig.set_membership_tag(
+        provider.crypto(),
+        ciphersuite,
+        &membership_key,
+        &serialized_context,
+    )
+    .expect("Error setting membership tag.");
 
     let enc = orig
         .tls_serialize_detached()
@@ -106,8 +110,8 @@ fn codec_ciphertext(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let mut key_schedule = KeySchedule::init(
         ciphersuite,
         provider.crypto(),
-        &JoinerSecret::random(ciphersuite, provider.rand(), ProtocolVersion::default()),
-        PskSecret::from(Secret::zero(ciphersuite, ProtocolVersion::Mls10)),
+        &JoinerSecret::random(ciphersuite, provider.rand()),
+        PskSecret::from(Secret::zero(ciphersuite)),
     )
     .expect("Could not create KeySchedule.");
 
@@ -159,16 +163,8 @@ fn wire_format_checks(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider)
         .rand()
         .random_vec(ciphersuite.hash_length())
         .expect("An unexpected error occurred.");
-    let sender_encryption_secret = EncryptionSecret::from_slice(
-        &encryption_secret_bytes[..],
-        ProtocolVersion::default(),
-        ciphersuite,
-    );
-    let receiver_encryption_secret = EncryptionSecret::from_slice(
-        &encryption_secret_bytes[..],
-        ProtocolVersion::default(),
-        ciphersuite,
-    );
+    let sender_encryption_secret = EncryptionSecret::from_slice(&encryption_secret_bytes[..]);
+    let receiver_encryption_secret = EncryptionSecret::from_slice(&encryption_secret_bytes[..]);
     let sender_secret_tree = SecretTree::new(
         sender_encryption_secret,
         TreeSize::new(2u32),
@@ -271,7 +267,7 @@ fn wire_format_checks(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider)
     message_secrets.replace_secret_tree(sender_secret_tree);
 
     // Try to encrypt an PublicMessage with the wrong wire format
-    assert_eq!(
+    assert!(matches!(
         PrivateMessage::try_from_authenticated_content(
             &plaintext,
             ciphersuite,
@@ -281,7 +277,7 @@ fn wire_format_checks(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider)
         )
         .expect_err("Could encrypt despite wrong wire format."),
         MessageEncryptionError::WrongWireFormat
-    );
+    ));
 }
 
 fn create_content(
@@ -332,8 +328,7 @@ fn membership_tag(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         Extensions::empty(),
     );
     let membership_key = MembershipKey::from_secret(
-        Secret::random(ciphersuite, provider.rand(), None /* MLS version */)
-            .expect("Not enough randomness."),
+        Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness."),
     );
     let public_message: PublicMessage = AuthenticatedContent::new_application(
         LeafNodeIndex::new(987543210),
@@ -349,17 +344,27 @@ fn membership_tag(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     let serialized_context = group_context.tls_serialize_detached().unwrap();
     public_message
-        .set_membership_tag(provider, &membership_key, &serialized_context)
+        .set_membership_tag(provider, ciphersuite, &membership_key, &serialized_context)
         .expect("Error setting membership tag.");
 
     println!(
         "Membership tag error: {:?}",
-        public_message.verify_membership(provider.crypto(), &membership_key, &serialized_context)
+        public_message.verify_membership(
+            provider.crypto(),
+            ciphersuite,
+            &membership_key,
+            &serialized_context
+        )
     );
 
     // Verify signature & membership tag
     assert!(public_message
-        .verify_membership(provider.crypto(), &membership_key, &serialized_context)
+        .verify_membership(
+            provider.crypto(),
+            ciphersuite,
+            &membership_key,
+            &serialized_context
+        )
         .is_ok());
 
     // Change the content of the plaintext message
@@ -367,31 +372,49 @@ fn membership_tag(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     // Expect the signature & membership tag verification to fail
     assert!(public_message
-        .verify_membership(provider.crypto(), &membership_key, &serialized_context)
+        .verify_membership(
+            provider.crypto(),
+            ciphersuite,
+            &membership_key,
+            &serialized_context
+        )
         .is_err());
 }
 
 #[apply(ciphersuites_and_providers)]
-fn unknown_sender(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider: &Provider) {
+    let _ = pretty_env_logger::try_init();
+
+    let alice_provider = provider;
+    let bob_provider = provider;
+    let charlie_provider = provider;
+
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
     let configuration = &SenderRatchetConfiguration::default();
 
     // Define credentials with keys
     let (alice_credential, alice_signature_keys) =
-        test_utils::new_credential(provider, b"Alice", ciphersuite.signature_algorithm());
+        test_utils::new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
     let (bob_credential, bob_signature_keys) =
-        test_utils::new_credential(provider, b"Bob", ciphersuite.signature_algorithm());
-    let (charlie_credential, charlie_signature_keys) =
-        test_utils::new_credential(provider, b"Charlie", ciphersuite.signature_algorithm());
+        test_utils::new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
+    let (charlie_credential, charlie_signature_keys) = test_utils::new_credential(
+        charlie_provider,
+        b"Charlie",
+        ciphersuite.signature_algorithm(),
+    );
 
     // Generate KeyPackages
-    let bob_key_package_bundle =
-        KeyPackageBundle::new(provider, &bob_signature_keys, ciphersuite, bob_credential);
+    let bob_key_package_bundle = KeyPackageBundle::generate(
+        bob_provider,
+        &bob_signature_keys,
+        ciphersuite,
+        bob_credential,
+    );
     let bob_key_package = bob_key_package_bundle.key_package();
 
-    let charlie_key_package_bundle = KeyPackageBundle::new(
-        provider,
+    let charlie_key_package_bundle = KeyPackageBundle::generate(
+        charlie_provider,
         &charlie_signature_keys,
         ciphersuite,
         charlie_credential,
@@ -400,11 +423,11 @@ fn unknown_sender(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     // Alice creates a group
     let mut group_alice = CoreGroup::builder(
-        GroupId::random(provider.rand()),
-        config::CryptoConfig::with_default_version(ciphersuite),
+        GroupId::random(alice_provider.rand()),
+        ciphersuite,
         alice_credential,
     )
-    .build(provider, &alice_signature_keys)
+    .build(alice_provider, &alice_signature_keys)
     .expect("Error creating group.");
 
     // Alice adds Bob
@@ -419,7 +442,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let mut proposal_store = ProposalStore::from_queued_proposal(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
-            provider.crypto(),
+            alice_provider.crypto(),
             bob_add_proposal,
         )
         .expect("Could not create QueuedProposal."),
@@ -431,11 +454,11 @@ fn unknown_sender(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .force_self_update(false)
         .build();
     let create_commit_result = group_alice
-        .create_commit(params, provider, &alice_signature_keys)
+        .create_commit(params, alice_provider, &alice_signature_keys)
         .expect("Error creating Commit");
 
     group_alice
-        .merge_commit(provider, create_commit_result.staged_commit)
+        .merge_commit(alice_provider, create_commit_result.staged_commit)
         .expect("error merging pending commit");
 
     let _group_bob = StagedCoreWelcome::new_from_welcome(
@@ -444,10 +467,10 @@ fn unknown_sender(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             .expect("An unexpected error occurred."),
         Some(group_alice.public_group().export_ratchet_tree().into()),
         bob_key_package_bundle,
-        provider,
+        bob_provider,
         ResumptionPskStore::new(1024),
     )
-    .and_then(|staged_join| staged_join.into_core_group(provider))
+    .and_then(|staged_join| staged_join.into_core_group(bob_provider))
     .expect("Bob: Error creating group from Welcome");
 
     // Alice adds Charlie
@@ -464,7 +487,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     proposal_store.add(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
-            provider.crypto(),
+            alice_provider.crypto(),
             charlie_add_proposal,
         )
         .expect("Could not create staged proposal."),
@@ -476,11 +499,11 @@ fn unknown_sender(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .force_self_update(false)
         .build();
     let create_commit_result = group_alice
-        .create_commit(params, provider, &alice_signature_keys)
+        .create_commit(params, alice_provider, &alice_signature_keys)
         .expect("Error creating Commit");
 
     group_alice
-        .merge_commit(provider, create_commit_result.staged_commit)
+        .merge_commit(alice_provider, create_commit_result.staged_commit)
         .expect("error merging pending commit");
 
     let mut group_charlie = StagedCoreWelcome::new_from_welcome(
@@ -489,10 +512,10 @@ fn unknown_sender(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             .expect("An unexpected error occurred."),
         Some(group_alice.public_group().export_ratchet_tree().into()),
         charlie_key_package_bundle,
-        provider,
+        charlie_provider,
         ResumptionPskStore::new(1024),
     )
-    .and_then(|staged_join| staged_join.into_core_group(provider))
+    .and_then(|staged_join| staged_join.into_core_group(charlie_provider))
     .expect("Charlie: Error creating group from Welcome");
 
     // Alice removes Bob
@@ -508,7 +531,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     proposal_store.add(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
-            provider.crypto(),
+            alice_provider.crypto(),
             bob_remove_proposal,
         )
         .expect("Could not create staged proposal."),
@@ -520,18 +543,23 @@ fn unknown_sender(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .force_self_update(false)
         .build();
     let create_commit_result = group_alice
-        .create_commit(params, provider, &alice_signature_keys)
+        .create_commit(params, alice_provider, &alice_signature_keys)
         .expect("Error creating Commit");
 
     let staged_commit = group_charlie
-        .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], provider)
+        .read_keys_and_stage_commit(
+            &create_commit_result.commit,
+            &proposal_store,
+            &[],
+            alice_provider,
+        )
         .expect("Charlie: Could not stage Commit");
     group_charlie
-        .merge_commit(provider, staged_commit)
+        .merge_commit(charlie_provider, staged_commit)
         .expect("error merging commit");
 
     group_alice
-        .merge_commit(provider, create_commit_result.staged_commit)
+        .merge_commit(alice_provider, create_commit_result.staged_commit)
         .expect("error merging pending commit");
 
     group_alice.print_ratchet_tree("Alice tree");
@@ -551,7 +579,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let enc_message = PrivateMessage::encrypt_with_different_header(
         &bogus_sender_message,
         ciphersuite,
-        provider,
+        alice_provider,
         MlsMessageHeader {
             group_id: group_alice.group_id().clone(),
             epoch: group_alice.context().epoch(),
@@ -563,7 +591,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     .expect("Encryption error");
 
     let received_message = group_charlie.decrypt_message(
-        provider.crypto(),
+        charlie_provider.crypto(),
         ProtocolMessage::from(PrivateMessageIn::from(enc_message)),
         configuration,
     );
@@ -576,7 +604,10 @@ fn unknown_sender(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 }
 
 #[apply(ciphersuites_and_providers)]
-fn confirmation_tag_presence(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn confirmation_tag_presence<Provider: OpenMlsProvider>(
+    ciphersuite: Ciphersuite,
+    provider: &Provider,
+) {
     let (framing_parameters, group_alice, alice_signature_keys, group_bob, _, _) =
         setup_alice_bob_group(ciphersuite, provider);
 
@@ -601,9 +632,9 @@ fn confirmation_tag_presence(ciphersuite: Ciphersuite, provider: &impl OpenMlsPr
     assert_eq!(err, StageCommitError::ConfirmationTagMissing);
 }
 
-pub(crate) fn setup_alice_bob_group(
+pub(crate) fn setup_alice_bob_group<Provider: OpenMlsProvider>(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &Provider,
 ) -> (
     FramingParameters,
     CoreGroup,
@@ -622,7 +653,7 @@ pub(crate) fn setup_alice_bob_group(
         test_utils::new_credential(provider, b"Bob", ciphersuite.signature_algorithm());
 
     // Generate KeyPackages
-    let bob_key_package_bundle = KeyPackageBundle::new(
+    let bob_key_package_bundle = KeyPackageBundle::generate(
         provider,
         &bob_signature_keys,
         ciphersuite,
@@ -633,7 +664,7 @@ pub(crate) fn setup_alice_bob_group(
     // Alice creates a group
     let mut group_alice = CoreGroup::builder(
         GroupId::random(provider.rand()),
-        config::CryptoConfig::with_default_version(ciphersuite),
+        ciphersuite,
         alice_credential,
     )
     .build(provider, &alice_signature_keys)
@@ -706,14 +737,16 @@ pub(crate) fn setup_alice_bob_group(
 /// Test divergent protocol versions in KeyPackages
 #[apply(ciphersuites_and_providers)]
 fn key_package_version(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
-    let (mut key_package, _, _) = key_package(ciphersuite, provider);
+    let (key_package, _, _) = key_package(ciphersuite, provider);
+
+    let mut franken_key_package = FrankenKeyPackage::from(key_package);
 
     // Set an invalid protocol version
-    key_package.set_version(ProtocolVersion::Mls10Draft11);
+    franken_key_package.payload.protocol_version = 999;
 
-    let message = MlsMessageOut {
-        version: ProtocolVersion::Mls10,
-        body: MlsMessageBodyOut::KeyPackage(key_package),
+    let message = FrankenMlsMessage {
+        version: 1,
+        body: FrankenMlsMessageBody::KeyPackage(franken_key_package),
     };
 
     let encoded = message

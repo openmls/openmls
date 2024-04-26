@@ -1,5 +1,4 @@
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::types::Ciphersuite;
 use rstest::*;
 use rstest_reuse::{self, *};
 
@@ -10,16 +9,17 @@ use crate::{
         ProcessedMessageContent, ProtocolMessage, Sender,
     },
     group::{
-        config::CryptoConfig, test_core_group::setup_client, GroupId, MlsGroup,
-        MlsGroupCreateConfig, ProposalStore, StagedCommit, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        test_core_group::setup_client, GroupId, MlsGroup, MlsGroupCreateConfig, ProposalStore,
+        StagedCommit, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     messages::proposals::Proposal,
+    storage::OpenMlsProvider,
 };
 
 use super::{super::mls_group::StagedWelcome, PublicGroup};
 
 #[apply(ciphersuites_and_providers)]
-fn public_group(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn public_group<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider: &Provider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
@@ -33,7 +33,7 @@ fn public_group(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // Set plaintext wire format policy s.t. the public group can track changes.
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
-        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .ciphersuite(ciphersuite)
         .build();
 
     // === Alice creates a group ===
@@ -48,13 +48,13 @@ fn public_group(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     // === Create a public group that tracks the changes throughout this test ===
     let verifiable_group_info = alice_group
-        .export_group_info(provider.crypto(), &alice_signer, false)
+        .export_group_info(provider, &alice_signer, false)
         .unwrap()
         .into_verifiable_group_info()
         .unwrap();
     let ratchet_tree = alice_group.export_ratchet_tree();
     let (mut public_group, _extensions) = PublicGroup::from_external(
-        provider.crypto(),
+        provider,
         ratchet_tree.into(),
         verifiable_group_info,
         ProposalStore::new(),
@@ -75,7 +75,7 @@ fn public_group(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         ProtocolMessage::PublicMessage(public_message) => public_message,
     };
     let processed_message = public_group
-        .process_message(provider.crypto(), public_message)
+        .process_message(provider, public_message)
         .unwrap();
 
     // Further inspection of the message can take place here ...
@@ -87,7 +87,9 @@ fn public_group(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         }
         ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
             // Merge the diff
-            public_group.merge_commit(*staged_commit)
+            public_group
+                .merge_commit(provider.storage(), *staged_commit)
+                .unwrap()
         }
     };
 
@@ -135,9 +137,11 @@ fn public_group(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     // The public group processes
     let ppm = public_group
-        .process_message(provider.crypto(), into_public_message(queued_messages))
+        .process_message(provider, into_public_message(queued_messages))
         .unwrap();
-    public_group.merge_commit(extract_staged_commit(ppm));
+    public_group
+        .merge_commit(provider.storage(), extract_staged_commit(ppm))
+        .unwrap();
 
     // Bob merges
     bob_group
@@ -177,7 +181,7 @@ fn public_group(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     // The public group processes
     let ppm = public_group
-        .process_message(provider.crypto(), into_public_message(queued_messages))
+        .process_message(provider, into_public_message(queued_messages))
         .unwrap();
     // We have to add the proposal to the public group's proposal store.
     match ppm.into_content() {
@@ -201,7 +205,9 @@ fn public_group(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             // Check that Bob was removed
             assert_eq!(remove_proposal.removed(), LeafNodeIndex::new(1));
             // Store proposal
-            charlie_group.store_pending_proposal(*staged_proposal.clone());
+            charlie_group
+                .store_pending_proposal(provider.storage(), *staged_proposal.clone())
+                .expect("error writing to storage");
         } else {
             unreachable!("Expected a Proposal.");
         }
@@ -222,12 +228,11 @@ fn public_group(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     // The public group processes
     let ppm = public_group
-        .process_message(
-            provider.crypto(),
-            into_public_message(queued_messages.clone()),
-        )
+        .process_message(provider, into_public_message(queued_messages.clone()))
         .unwrap();
-    public_group.merge_commit(extract_staged_commit(ppm));
+    public_group
+        .merge_commit(provider.storage(), extract_staged_commit(ppm))
+        .unwrap();
 
     // Check that we receive the correct proposal
     if let Some(staged_commit) = charlie_group.pending_commit() {

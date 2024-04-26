@@ -64,9 +64,13 @@ impl OpenMlsCrypto for CryptoProvider {
                 Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
                 Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
                 Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
+                Ciphersuite::MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519,
             ]
         } else {
-            vec![Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519]
+            vec![
+                Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+                Ciphersuite::MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519,
+            ]
         }
     }
 
@@ -425,6 +429,7 @@ fn hpke_kem(kem: HpkeKemType) -> libcrux::hpke::kem::KEM {
         HpkeKemType::DhKemP521 => libcrux::hpke::kem::KEM::DHKEM_P521_HKDF_SHA512,
         HpkeKemType::DhKem25519 => libcrux::hpke::kem::KEM::DHKEM_X25519_HKDF_SHA256,
         HpkeKemType::DhKem448 => libcrux::hpke::kem::KEM::DHKEM_X448_HKDF_SHA512,
+        HpkeKemType::XWingKemDraft2 => libcrux::hpke::kem::KEM::XWingDraft02,
     }
 }
 

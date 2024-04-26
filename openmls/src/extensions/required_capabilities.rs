@@ -5,7 +5,7 @@ use crate::{
     treesync::node::leaf_node::default_extensions,
 };
 
-use super::{Deserialize, ExtensionError, ExtensionType, Serialize};
+use super::{Deserialize, ExtensionType, Serialize};
 
 /// # Required Capabilities Extension.
 ///
@@ -64,33 +64,22 @@ impl RequiredCapabilitiesExtension {
     }
 
     /// Get a slice with the required extension types.
-    pub(crate) fn extension_types(&self) -> &[ExtensionType] {
+    pub fn extension_types(&self) -> &[ExtensionType] {
         self.extension_types.as_slice()
     }
 
     /// Get a slice with the required proposal types.
-    pub(crate) fn proposal_types(&self) -> &[ProposalType] {
+    pub fn proposal_types(&self) -> &[ProposalType] {
         self.proposal_types.as_slice()
     }
 
     /// Get a slice with the required credential types.
-    #[allow(unused)]
-    pub(crate) fn credential_types(&self) -> &[CredentialType] {
+    pub fn credential_types(&self) -> &[CredentialType] {
         self.credential_types.as_slice()
     }
 
     /// Checks whether support for the provided extension type is required.
     pub(crate) fn requires_extension_type_support(&self, ext_type: ExtensionType) -> bool {
         self.extension_types.contains(&ext_type) || default_extensions().contains(&ext_type)
-    }
-
-    /// Check if all extension and proposal types are supported.
-    pub(crate) fn check_support(&self) -> Result<(), ExtensionError> {
-        for proposal in self.proposal_types() {
-            if !proposal.is_supported() {
-                return Err(ExtensionError::UnsupportedProposalType);
-            }
-        }
-        Ok(())
     }
 }

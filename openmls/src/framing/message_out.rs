@@ -11,7 +11,10 @@ use tls_codec::Serialize;
 
 use super::*;
 
-use crate::{key_packages::KeyPackage, messages::group_info::GroupInfo, versions::ProtocolVersion};
+use crate::{
+    key_packages::KeyPackage, messages::group_info::GroupInfo, prelude::KeyPackageBundle,
+    versions::ProtocolVersion,
+};
 
 #[cfg(any(feature = "test-utils", test))]
 use crate::messages::group_info::VerifiableGroupInfo;
@@ -112,6 +115,15 @@ impl From<KeyPackage> for MlsMessageOut {
         Self {
             version: key_package.protocol_version(),
             body: MlsMessageBodyOut::KeyPackage(key_package),
+        }
+    }
+}
+
+impl From<KeyPackageBundle> for MlsMessageOut {
+    fn from(key_package: KeyPackageBundle) -> Self {
+        Self {
+            version: key_package.key_package().protocol_version(),
+            body: MlsMessageBodyOut::KeyPackage(key_package.key_package),
         }
     }
 }

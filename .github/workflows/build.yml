@@ -67,3 +67,18 @@ jobs:
       - name: Build
         if: ${{ matrix.arch != 'wasm32-unknown-unknown'  }} 
         run: cargo build $TEST_MODE --verbose --target ${{ matrix.arch }} -p openmls
+
+  # Check feature powerset
+  check:
+    strategy:
+      fail-fast: false
+
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@cargo-hack
+
+      - name: Cargo hack
+        run: cargo hack check --feature-powerset --no-dev-deps --verbose -p openmls

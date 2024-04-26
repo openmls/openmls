@@ -2,7 +2,7 @@
 //! Include this to get access to all the public functions of OpenMLS.
 
 // MlsGroup
-pub use crate::group::{config::CryptoConfig, core_group::Member, ser::*, *};
+pub use crate::group::{core_group::Member, ser::*, *};
 
 pub use crate::group::public_group::{errors::*, PublicGroup};
 
@@ -61,7 +61,4 @@ pub use tls_codec::{self, *};
 pub use crate::error::*;
 
 // OpenMLS traits
-pub use openmls_traits::{
-    crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, random::OpenMlsRand, types::*,
-    OpenMlsProvider,
-};
+pub use openmls_traits::{crypto::OpenMlsCrypto, random::OpenMlsRand, types::*, OpenMlsProvider};

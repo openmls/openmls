@@ -21,6 +21,7 @@
 //! can be manipulated manually via the `Client` struct, which contains their
 //! group states.
 
+use crate::test_utils::OpenMlsRustCrypto;
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::{hash_ref::KeyPackageRef, *},
@@ -33,10 +34,8 @@ use crate::{
 };
 use ::rand::{rngs::OsRng, RngCore};
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
     crypto::OpenMlsCrypto,
-    key_store::OpenMlsKeyStore,
     types::{Ciphersuite, HpkeKeyPair, SignatureScheme},
     OpenMlsProvider,
 };
@@ -150,10 +149,10 @@ impl MlsGroupTestSetup {
             let crypto = OpenMlsRustCrypto::default();
             let mut credentials = HashMap::new();
             for ciphersuite in crypto.crypto().supported_ciphersuites().iter() {
-                let credential = BasicCredential::new(identity.clone()).unwrap();
+                let credential = BasicCredential::new(identity.clone());
                 let signature_keys =
                     SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
-                signature_keys.store(crypto.key_store()).unwrap();
+                signature_keys.store(crypto.storage()).unwrap();
                 let signature_key = OpenMlsSignaturePublicKey::new(
                     signature_keys.public().into(),
                     signature_keys.signature_scheme(),
@@ -171,7 +170,7 @@ impl MlsGroupTestSetup {
             let client = Client {
                 identity: identity.clone(),
                 credentials,
-                crypto,
+                provider: crypto,
                 groups: RwLock::new(HashMap::new()),
             };
             clients.insert(identity, RwLock::new(client));
@@ -202,7 +201,7 @@ impl MlsGroupTestSetup {
             .expect("An unexpected error occurred.")
             .insert(
                 key_package
-                    .hash_ref(client.crypto.crypto())?
+                    .hash_ref(client.provider.crypto())?
                     .as_slice()
                     .to_vec(),
                 client.identity.clone(),
@@ -346,16 +345,11 @@ impl MlsGroupTestSetup {
             .map(
                 |Member {
                      index, credential, ..
-                 }| {
-                    let identity =
-                        VLBytes::tls_deserialize_exact(credential.serialized_content()).unwrap();
-                    (index.usize(), identity.as_slice().to_vec())
-                },
+                 }| { (index.usize(), credential.serialized_content().to_vec()) },
             )
             .collect();
         group.public_tree = sender_group.export_ratchet_tree();
-        group.exporter_secret =
-            sender_group.export_secret(sender.crypto.crypto(), "test", &[], 32)?;
+        group.exporter_secret = sender_group.export_secret(&sender.provider, "test", &[], 32)?;
         Ok(())
     }
 
@@ -389,7 +383,7 @@ impl MlsGroupTestSetup {
                     assert_eq!(group_state.export_ratchet_tree(), group.public_tree);
                     assert_eq!(
                         group_state
-                            .export_secret(m.crypto.crypto(), "test", &[], 32)
+                            .export_secret(&m.provider, "test", &[], 32)
                             .expect("An unexpected error occurred."),
                         group.exporter_secret
                     );
@@ -397,13 +391,13 @@ impl MlsGroupTestSetup {
                     // key store.
                     let signature_pk = group_state.own_leaf().unwrap().signature_key();
                     let signer = SignatureKeyPair::read(
-                        m.crypto.key_store(),
+                        m.provider.storage(),
                         signature_pk.as_slice(),
                         group_state.ciphersuite().signature_algorithm(),
                     )
                     .unwrap();
                     let message = group_state
-                        .create_message(&m.crypto, &signer, "Hello World!".as_bytes())
+                        .create_message(&m.provider, &signer, "Hello World!".as_bytes())
                         .expect("Error composing message while checking group states.");
                     Some((m_id.to_vec(), message))
                 } else {
@@ -482,8 +476,7 @@ impl MlsGroupTestSetup {
             .get(&group_id)
             .expect("An unexpected error occurred.");
         let public_tree = group.export_ratchet_tree();
-        let exporter_secret =
-            group.export_secret(group_creator.crypto.crypto(), "test", &[], 32)?;
+        let exporter_secret = group.export_secret(&group_creator.provider, "test", &[], 32)?;
         let member_ids = vec![(0, group_creator_id)];
         let group = Group {
             group_id: group_id.clone(),

@@ -97,7 +97,7 @@ mod test {
             let mut external_sender_extensions = Vec::new();
 
             for _ in 0..8 {
-                let credential = BasicCredential::new(b"Alice".to_vec()).unwrap();
+                let credential = BasicCredential::new(b"Alice".to_vec());
                 let signature_keys =
                     SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 

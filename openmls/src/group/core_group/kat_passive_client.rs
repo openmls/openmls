@@ -1,12 +1,11 @@
 use log::{debug, info, warn};
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, OpenMlsProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, storage::StorageProvider, OpenMlsProvider};
 use serde::{self, Deserialize, Serialize};
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize};
 
 use crate::{
     framing::{MlsMessageBodyIn, MlsMessageIn, MlsMessageOut, ProcessedMessageContent},
-    group::{config::CryptoConfig, *},
+    group::*,
     key_packages::*,
     schedule::psk::PreSharedKeyId,
     test_utils::*,
@@ -127,11 +126,7 @@ pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
         .number_of_resumption_psks(16)
         .build();
 
-    let mut passive_client = PassiveClient::new(
-        group_config,
-        cipher_suite,
-        test_vector.external_psks.clone(),
-    );
+    let mut passive_client = PassiveClient::new(group_config, test_vector.external_psks.clone());
 
     passive_client.inject_key_package(
         test_vector.key_package,
@@ -206,11 +201,7 @@ struct PassiveClient {
 }
 
 impl PassiveClient {
-    fn new(
-        group_config: MlsGroupJoinConfig,
-        ciphersuite: Ciphersuite,
-        psks: Vec<ExternalPskTest>,
-    ) -> Self {
+    fn new(group_config: MlsGroupJoinConfig, psks: Vec<ExternalPskTest>) -> Self {
         let provider = OpenMlsRustCrypto::default();
 
         // Load all PSKs into key store.
@@ -219,9 +210,7 @@ impl PassiveClient {
             // We only construct this to easily save the PSK in the keystore.
             // The nonce is not saved, so it can be empty...
             let psk_id = PreSharedKeyId::external(psk.psk_id, vec![]);
-            psk_id
-                .write_to_key_store(&provider, ciphersuite, &psk.psk)
-                .unwrap();
+            psk_id.store(&provider, &psk.psk).unwrap();
         }
 
         Self {
@@ -251,28 +240,15 @@ impl PassiveClient {
 
         let key_package_bundle = KeyPackageBundle {
             key_package: key_package.clone(),
-            private_key: init_priv,
+            private_init_key: init_priv,
+            private_encryption_key: encryption_priv.clone().into(),
         };
 
         // Store key package.
+        let hash_ref = key_package.hash_ref(self.provider.crypto()).unwrap();
         self.provider
-            .key_store()
-            .store(
-                key_package
-                    .hash_ref(self.provider.crypto())
-                    .unwrap()
-                    .as_slice(),
-                &key_package,
-            )
-            .unwrap();
-
-        // Store init key.
-        self.provider
-            .key_store()
-            .store::<HpkePrivateKey>(
-                key_package.hpke_init_key().as_slice(),
-                key_package_bundle.private_key(),
-            )
+            .storage()
+            .write_key_package(&hash_ref, &key_package_bundle)
             .unwrap();
 
         // Store encryption key
@@ -281,9 +257,7 @@ impl PassiveClient {
             EncryptionPrivateKey::from(encryption_priv),
         ));
 
-        key_pair
-            .write_to_key_store(self.provider.key_store())
-            .unwrap();
+        key_pair.write(self.provider.storage()).unwrap();
     }
 
     fn join_by_welcome(
@@ -322,7 +296,8 @@ impl PassiveClient {
                 self.group
                     .as_mut()
                     .unwrap()
-                    .store_pending_proposal(*queued_proposal);
+                    .store_pending_proposal(self.provider.storage(), *queued_proposal)
+                    .unwrap();
             }
             ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
                 self.group
@@ -345,16 +320,16 @@ impl PassiveClient {
     }
 }
 
-pub fn generate_test_vector(cipher_suite: Ciphersuite) -> PassiveClientWelcomeTestVector {
+pub fn generate_test_vector(ciphersuite: Ciphersuite) -> PassiveClientWelcomeTestVector {
     let group_config = MlsGroupCreateConfig::builder()
-        .crypto_config(CryptoConfig::with_default_version(cipher_suite))
+        .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
         .build();
 
     let creator_provider = OpenMlsRustCrypto::default();
 
     let creator =
-        generate_group_candidate(b"Alice (Creator)", cipher_suite, &creator_provider, true);
+        generate_group_candidate(b"Alice (Creator)", ciphersuite, &creator_provider, true);
 
     let mut creator_group = MlsGroup::new(
         &creator_provider,
@@ -369,7 +344,7 @@ pub fn generate_test_vector(cipher_suite: Ciphersuite) -> PassiveClientWelcomeTe
 
     let passive = generate_group_candidate(
         b"Bob (Passive Client)",
-        cipher_suite,
+        ciphersuite,
         &OpenMlsRustCrypto::default(),
         false,
     );
@@ -378,7 +353,7 @@ pub fn generate_test_vector(cipher_suite: Ciphersuite) -> PassiveClientWelcomeTe
         .add_members(
             &creator_provider,
             &creator.signature_keypair,
-            &[passive.key_package.clone()],
+            &[passive.key_package.key_package().clone()],
         )
         .unwrap();
 
@@ -392,7 +367,7 @@ pub fn generate_test_vector(cipher_suite: Ciphersuite) -> PassiveClientWelcomeTe
 
     let epoch2 = {
         let proposals = vec![propose_add(
-            cipher_suite,
+            ciphersuite,
             &creator_provider,
             &creator,
             &mut creator_group,
@@ -432,14 +407,14 @@ pub fn generate_test_vector(cipher_suite: Ciphersuite) -> PassiveClientWelcomeTe
     let epoch4 = {
         let proposals = vec![
             propose_add(
-                cipher_suite,
+                ciphersuite,
                 &creator_provider,
                 &creator,
                 &mut creator_group,
                 b"Daniel",
             ),
             propose_add(
-                cipher_suite,
+                ciphersuite,
                 &creator_provider,
                 &creator,
                 &mut creator_group,
@@ -462,7 +437,7 @@ pub fn generate_test_vector(cipher_suite: Ciphersuite) -> PassiveClientWelcomeTe
         let proposals = vec![
             propose_remove(&creator_provider, &creator, &mut creator_group, b"Daniel"),
             propose_add(
-                cipher_suite,
+                ciphersuite,
                 &creator_provider,
                 &creator,
                 &mut creator_group,
@@ -499,9 +474,11 @@ pub fn generate_test_vector(cipher_suite: Ciphersuite) -> PassiveClientWelcomeTe
     };
 
     let epochs = vec![epoch1, epoch2, epoch3, epoch4, epoch5, epoch6];
+    let init_priv = passive.key_package.init_private_key().to_vec();
+    let encryption_priv = passive.key_package.encryption_private_key().to_vec();
 
     PassiveClientWelcomeTestVector {
-        cipher_suite: cipher_suite.into(),
+        cipher_suite: ciphersuite.into(),
         external_psks: vec![],
 
         key_package: MlsMessageOut::from(passive.key_package)
@@ -509,8 +486,8 @@ pub fn generate_test_vector(cipher_suite: Ciphersuite) -> PassiveClientWelcomeTe
             .unwrap(),
 
         signature_priv: passive.signature_keypair.private().to_vec(),
-        encryption_priv: passive.encryption_keypair.private_key().key().to_vec(),
-        init_priv: passive.init_keypair.private.to_vec(),
+        encryption_priv,
+        init_priv,
 
         welcome: mls_message_welcome.tls_serialize_detached().unwrap(),
         ratchet_tree: None,
@@ -540,7 +517,7 @@ fn propose_add(
         .propose_add_member(
             provider,
             &candidate.signature_keypair,
-            &add_candidate.key_package,
+            add_candidate.key_package.key_package(),
         )
         .unwrap();
     group.merge_pending_commit(provider).unwrap();
@@ -556,10 +533,7 @@ fn propose_remove(
 ) -> TestProposal {
     let remove = group
         .members()
-        .find(|Member { credential, .. }| {
-            let identity = VLBytes::tls_deserialize_exact(credential.serialized_content()).unwrap();
-            identity.as_slice() == remove_identity
-        })
+        .find(|Member { credential, .. }| credential.serialized_content() == remove_identity)
         .unwrap()
         .index;
 

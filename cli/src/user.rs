@@ -5,12 +5,13 @@ use std::io::{BufReader, BufWriter};
 use std::path::PathBuf;
 use std::{cell::RefCell, collections::HashMap, str};
 
+use ds_lib::messages::AuthToken;
 use ds_lib::{ClientKeyPackages, GroupMessage};
 use openmls::prelude::{tls_codec::*, *};
 use openmls_traits::OpenMlsProvider;
 
 use super::{
-    backend::Backend, conversation::Conversation, conversation::ConversationMessage, file_helpers,
+    backend::Backend, conversation::Conversation, conversation::ConversationMessage,
     identity::Identity, openmls_rust_persistent_crypto::OpenMlsRustPersistentCrypto,
     serialize_any_hashmap,
 };
@@ -19,8 +20,13 @@ const CIPHERSUITE: Ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA2
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct Contact {
-    username: String,
     id: Vec<u8>,
+}
+
+impl Contact {
+    fn username(&self) -> String {
+        String::from_utf8(self.id.clone()).unwrap()
+    }
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -32,7 +38,6 @@ pub struct Group {
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct User {
-    pub(crate) username: String,
     #[serde(
         serialize_with = "serialize_any_hashmap::serialize_hashmap",
         deserialize_with = "serialize_any_hashmap::deserialize_hashmap"
@@ -45,8 +50,9 @@ pub struct User {
     #[serde(skip)]
     backend: Backend,
     #[serde(skip)]
-    crypto: OpenMlsRustPersistentCrypto,
+    provider: OpenMlsRustPersistentCrypto,
     autosave_enabled: bool,
+    auth_token: Option<AuthToken>,
 }
 
 #[derive(PartialEq)]
@@ -60,20 +66,22 @@ impl User {
     pub fn new(username: String) -> Self {
         let crypto = OpenMlsRustPersistentCrypto::default();
         let out = Self {
-            username: username.clone(),
             groups: RefCell::new(HashMap::new()),
             group_list: HashSet::new(),
             contacts: HashMap::new(),
             identity: RefCell::new(Identity::new(CIPHERSUITE, &crypto, username.as_bytes())),
             backend: Backend::default(),
-            crypto,
+            provider: crypto,
             autosave_enabled: false,
+            auth_token: None,
         };
         out
     }
 
     fn get_file_path(user_name: &String) -> PathBuf {
-        file_helpers::get_file_path(&("openmls_cli_".to_owned() + user_name + ".json"))
+        openmls_memory_storage::persistence::get_file_path(
+            &("openmls_cli_".to_owned() + user_name + ".json"),
+        )
     }
 
     fn load_from_file(input_file: &File) -> Result<Self, String> {
@@ -100,16 +108,16 @@ impl User {
 
                 if user_result.is_ok() {
                     let mut user = user_result.ok().unwrap();
-                    match user.crypto.load_keystore(user_name) {
+                    match user.provider.load_keystore(user_name) {
                         Ok(_) => {
                             let groups = user.groups.get_mut();
                             for group_name in &user.group_list {
                                 let mlsgroup = MlsGroup::load(
+                                    user.provider.storage(),
                                     &GroupId::from_slice(group_name.as_bytes()),
-                                    user.crypto.key_store(),
                                 );
                                 let grp = Group {
-                                    mls_group: RefCell::new(mlsgroup.unwrap()),
+                                    mls_group: RefCell::new(mlsgroup.unwrap().unwrap()),
                                     group_name: group_name.clone(),
                                     conversation: Conversation::default(),
                                 };
@@ -135,23 +143,13 @@ impl User {
     }
 
     pub fn save(&mut self) {
-        let output_path = User::get_file_path(&self.username);
+        let output_path = User::get_file_path(&self.identity.borrow().identity_as_string());
         match File::create(output_path) {
             Err(e) => log::error!("Error saving user state: {:?}", e.to_string()),
             Ok(output_file) => {
-                let groups = self.groups.get_mut();
-                for (group_name, group) in groups {
-                    self.group_list.replace(group_name.clone());
-                    group
-                        .mls_group
-                        .borrow_mut()
-                        .save(self.crypto.key_store())
-                        .unwrap();
-                }
-
                 self.save_to_file(&output_file);
 
-                match self.crypto.save_keystore(self.username.clone()) {
+                match self.provider.save_keystore(self.username()) {
                     Ok(_) => log::info!("User state saved"),
                     Err(e) => log::error!("Error saving user state : {:?}", e.to_string()),
                 }
@@ -175,9 +173,9 @@ impl User {
         let kp = self
             .identity
             .borrow_mut()
-            .add_key_package(CIPHERSUITE, &self.crypto);
+            .add_key_package(CIPHERSUITE, &self.provider);
         (
-            kp.hash_ref(self.crypto.crypto())
+            kp.hash_ref(self.provider.crypto())
                 .unwrap()
                 .as_slice()
                 .to_vec(),
@@ -195,7 +193,7 @@ impl User {
             credential,
         } in mls_group.members()
         {
-            let credential = BasicCredential::try_from(&credential).unwrap();
+            let credential = BasicCredential::try_from(credential).unwrap();
             if credential.identity() == name.as_bytes() {
                 return Ok(index);
             }
@@ -210,9 +208,12 @@ impl User {
         Vec::from_iter(kpgs)
     }
 
-    pub fn register(&self) {
-        match self.backend.register_client(self) {
-            Ok(r) => log::debug!("Created new user: {:?}", r),
+    pub fn register(&mut self) {
+        match self.backend.register_client(self.key_packages()) {
+            Ok(token) => {
+                log::debug!("Created new user: {:?}", self.username());
+                self.set_auth_token(token)
+            }
             Err(e) => log::error!("Error creating user: {:?}", e),
         }
     }
@@ -237,7 +238,7 @@ impl User {
                 .as_slice()
                 != signature_key.as_slice()
             {
-                let credential = BasicCredential::try_from(&credential).unwrap();
+                let credential = BasicCredential::try_from(credential).unwrap();
                 log::debug!(
                     "Searching for contact {:?}",
                     str::from_utf8(credential.identity()).unwrap()
@@ -279,7 +280,7 @@ impl User {
                 .into(),
         );
 
-        match self.backend.publish_key_packages(self, &ckp) {
+        match self.backend.publish_key_packages(self, ckp) {
             Ok(()) => (),
             Err(e) => println!("Error sending new key package: {e:?}"),
         };
@@ -296,7 +297,11 @@ impl User {
         let message_out = group
             .mls_group
             .borrow_mut()
-            .create_message(&self.crypto, &self.identity.borrow().signer, msg.as_bytes())
+            .create_message(
+                &self.provider,
+                &self.identity.borrow().signer,
+                msg.as_bytes(),
+            )
             .map_err(|e| format!("{e}"))?;
 
         let msg = GroupMessage::new(message_out.into(), &self.recipients(group));
@@ -317,20 +322,18 @@ impl User {
     fn update_clients(&mut self) {
         match self.backend.list_clients() {
             Ok(mut v) => {
-                for c in v.drain(..) {
-                    let client_id = c.id.clone();
+                for client_id in v.drain(..) {
                     log::debug!(
                         "update::Processing client for contact {:?}",
                         str::from_utf8(&client_id).unwrap()
                     );
-                    if c.id != self.identity.borrow().identity()
+                    if client_id != self.identity.borrow().identity()
                         && self
                             .contacts
                             .insert(
-                                c.id.clone(),
+                                client_id.clone(),
                                 Contact {
-                                    username: c.client_name,
-                                    id: c.id,
+                                    id: client_id.clone(),
                                 },
                             )
                             .is_some()
@@ -354,65 +357,57 @@ impl User {
         }
     }
 
-    /// Update the user. This involves:
-    /// * retrieving all new messages from the server
-    /// * update the contacts with all other clients known to the server
-    pub fn update(
+    fn process_protocol_message(
         &mut self,
         group_name: Option<String>,
-    ) -> Result<Vec<ConversationMessage>, String> {
-        log::debug!("Updating {} ...", self.username);
+        message: ProtocolMessage,
+    ) -> Result<
+        (
+            PostUpdateActions,
+            Option<GroupId>,
+            Option<ConversationMessage>,
+        ),
+        String,
+    > {
+        let processed_message: ProcessedMessage;
+        let mut groups = self.groups.borrow_mut();
 
-        let mut messages_out: Vec<ConversationMessage> = Vec::new();
+        let group = match groups.get_mut(str::from_utf8(message.group_id().as_slice()).unwrap()) {
+            Some(g) => g,
+            None => {
+                log::error!(
+                    "Error getting group {:?} for a message. Dropping message.",
+                    message.group_id()
+                );
+                return Err("error".to_string());
+            }
+        };
+        let mut mls_group = group.mls_group.borrow_mut();
 
-        let mut process_protocol_message = |message: ProtocolMessage| -> Result<
-            (PostUpdateActions, Option<GroupId>),
-            String,
-        > {
-            let processed_message: ProcessedMessage;
-            let mut groups = self.groups.borrow_mut();
+        processed_message = match mls_group.process_message(&self.provider, message) {
+            Ok(msg) => msg,
+            Err(e) => {
+                log::error!(
+                    "Error processing unverified message: {:?} -  Dropping message.",
+                    e
+                );
+                return Err("error".to_string());
+            }
+        };
 
-            let group = match groups.get_mut(str::from_utf8(message.group_id().as_slice()).unwrap())
-            {
-                Some(g) => g,
-                None => {
-                    log::error!(
-                        "Error getting group {:?} for a message. Dropping message.",
-                        message.group_id()
-                    );
-                    return Err("error".to_string());
-                }
-            };
-            let mut mls_group = group.mls_group.borrow_mut();
+        let processed_message_credential: Credential = processed_message.credential().clone();
 
-            processed_message = match mls_group.process_message(&self.crypto, message) {
-                Ok(msg) => msg,
-                Err(e) => {
-                    log::error!(
-                        "Error processing unverified message: {:?} -  Dropping message.",
-                        e
-                    );
-                    return Err("error".to_string());
-                }
-            };
-
-            let processed_message_credential: Credential = processed_message.credential().clone();
-
-            match processed_message.into_content() {
-                ProcessedMessageContent::ApplicationMessage(application_message) => {
-                    let processed_message_credential =
-                        BasicCredential::try_from(&processed_message_credential).unwrap();
-
-                    let sender_name = match self
-                        .contacts
-                        .get(processed_message_credential.identity())
-                    {
-                        Some(c) => c.username.clone(),
-                        None => {
-                            // Contact list is not updated right now, get the identity from the
-                            // mls_group member
-                            let user_id = mls_group.members().find_map(|m| {
-                                let m_credential = BasicCredential::try_from(&m.credential).unwrap();
+        let message_out = match processed_message.into_content() {
+            ProcessedMessageContent::ApplicationMessage(application_message) => {
+                let processed_message_credential =
+                    BasicCredential::try_from(processed_message_credential.clone()).unwrap();
+                let sender_name = match self.contacts.get(processed_message_credential.identity()) {
+                    Some(c) => c.id.clone(),
+                    None => {
+                        // Contact list is not updated right now, get the identity from the
+                        // mls_group member
+                        let user_id = mls_group.members().find_map(|m| {
+                                let m_credential = BasicCredential::try_from(m.credential.clone()).unwrap();
                                 if m_credential.identity()
                                     == processed_message_credential.identity()
                                     && (self
@@ -431,49 +426,70 @@ impl User {
                                     None
                                 }
                             });
-                            user_id.unwrap_or("".to_owned())
-                        }
-                    };
-                    let conversation_message = ConversationMessage::new(
-                        String::from_utf8(application_message.into_bytes())
-                            .unwrap()
-                            .clone(),
-                        sender_name.to_string(),
-                    );
-                    if group_name.is_none() || group_name.clone().unwrap() == group.group_name {
-                        messages_out.push(conversation_message.clone());
+                        user_id.unwrap_or("".to_owned()).as_bytes().to_vec()
                     }
-                    group.conversation.add(conversation_message);
-                }
-                ProcessedMessageContent::ProposalMessage(_proposal_ptr) => {
-                    // intentionally left blank.
-                }
-                ProcessedMessageContent::ExternalJoinProposalMessage(_external_proposal_ptr) => {
-                    // intentionally left blank.
-                }
-                ProcessedMessageContent::StagedCommitMessage(commit_ptr) => {
-                    let mut remove_proposal: bool = false;
-                    if commit_ptr.self_removed() {
-                        remove_proposal = true;
-                    }
-                    match mls_group.merge_staged_commit(&self.crypto, *commit_ptr) {
-                        Ok(()) => {
-                            if remove_proposal {
-                                log::debug!("update::Processing StagedCommitMessage removing {} from group {} ", self.username, group.group_name);
-                                return Ok((
-                                    PostUpdateActions::Remove,
-                                    Some(mls_group.group_id().clone()),
-                                ));
-                            }
-                        }
-                        Err(e) => return Err(e.to_string()),
-                    }
+                };
+                let conversation_message = ConversationMessage::new(
+                    String::from_utf8(application_message.into_bytes())
+                        .unwrap()
+                        .clone(),
+                    String::from_utf8(sender_name).unwrap(),
+                );
+                group.conversation.add(conversation_message.clone());
+                if group_name.is_none() || group_name.clone().unwrap() == group.group_name {
+                    Some(conversation_message)
+                } else {
+                    None
                 }
             }
-            Ok((PostUpdateActions::None, None))
+            ProcessedMessageContent::ProposalMessage(_proposal_ptr) => {
+                // intentionally left blank.
+                None
+            }
+            ProcessedMessageContent::ExternalJoinProposalMessage(_external_proposal_ptr) => {
+                // intentionally left blank.
+                None
+            }
+            ProcessedMessageContent::StagedCommitMessage(commit_ptr) => {
+                let mut remove_proposal: bool = false;
+                if commit_ptr.self_removed() {
+                    remove_proposal = true;
+                }
+                match mls_group.merge_staged_commit(&self.provider, *commit_ptr) {
+                    Ok(()) => {
+                        if remove_proposal {
+                            log::debug!(
+                                "update::Processing StagedCommitMessage removing {} from group {} ",
+                                self.username(),
+                                group.group_name
+                            );
+                            return Ok((
+                                PostUpdateActions::Remove,
+                                Some(mls_group.group_id().clone()),
+                                None,
+                            ));
+                        }
+                    }
+                    Err(e) => return Err(e.to_string()),
+                }
+                None
+            }
         };
+        Ok((PostUpdateActions::None, None, message_out))
+    }
 
-        log::debug!("update::Processing messages for {} ", self.username);
+    /// Update the user. This involves:
+    /// * retrieving all new messages from the server
+    /// * update the contacts with all other clients known to the server
+    pub fn update(
+        &mut self,
+        group_name: Option<String>,
+    ) -> Result<Vec<ConversationMessage>, String> {
+        log::debug!("Updating {} ...", self.username());
+
+        let mut messages_out: Vec<ConversationMessage> = Vec::new();
+
+        log::debug!("update::Processing messages for {} ", self.username());
         // Go through the list of messages and process or store them.
         for message in self.backend.recv_msgs(self)?.drain(..) {
             log::debug!("Reading message format {:#?} ...", message.wire_format());
@@ -484,10 +500,13 @@ impl User {
                     self.join_group(welcome)?;
                 }
                 MlsMessageBodyIn::PrivateMessage(message) => {
-                    match process_protocol_message(message.into()) {
-                        Ok(p) => {
-                            if p.0 == PostUpdateActions::Remove {
-                                match p.1 {
+                    match self.process_protocol_message(group_name.clone(), message.into()) {
+                        Ok((post_update_actions, group_id_option, message_out_option)) => {
+                            if let Some(message_out) = message_out_option {
+                                messages_out.push(message_out);
+                            }
+                            if post_update_actions == PostUpdateActions::Remove {
+                                match group_id_option {
                                     Some(gid) => {
                                         let mut grps = self.groups.borrow_mut();
                                         grps.remove_entry(str::from_utf8(gid.as_slice()).unwrap());
@@ -506,7 +525,10 @@ impl User {
                     };
                 }
                 MlsMessageBodyIn::PublicMessage(message) => {
-                    if process_protocol_message(message.into()).is_err() {
+                    if self
+                        .process_protocol_message(group_name.clone(), message.into())
+                        .is_err()
+                    {
                         continue;
                     }
                 }
@@ -524,7 +546,7 @@ impl User {
 
     /// Create a group with the given name.
     pub fn create_group(&mut self, name: String) {
-        log::debug!("{} creates group {}", self.username, name);
+        log::debug!("{} creates group {}", self.username(), name);
         let group_id = name.as_bytes();
         let mut group_aad = group_id.to_vec();
         group_aad.extend(b" AAD");
@@ -536,14 +558,16 @@ impl User {
             .build();
 
         let mut mls_group = MlsGroup::new_with_group_id(
-            &self.crypto,
+            &self.provider,
             &self.identity.borrow().signer,
             &group_config,
             GroupId::from_slice(group_id),
             self.identity.borrow().credential_with_key.clone(),
         )
         .expect("Failed to create MlsGroup");
-        mls_group.set_aad(group_aad.as_slice());
+        mls_group
+            .set_aad(self.provider.storage(), group_aad.as_slice())
+            .expect("Failed to write the AAD for the new group to storage");
 
         let group = Group {
             group_name: name.clone(),
@@ -563,7 +587,7 @@ impl User {
     /// Invite user with the given name to the group.
     pub fn invite(&mut self, name: String, group_name: String) -> Result<(), String> {
         // First we need to get the key package for {id} from the DS.
-        let contact = match self.contacts.values().find(|c| c.username == name) {
+        let contact = match self.contacts.values().find(|c| c.username() == name) {
             Some(v) => v,
             None => return Err(format!("No contact with name {name} known.")),
         };
@@ -582,7 +606,7 @@ impl User {
             .mls_group
             .borrow_mut()
             .add_members(
-                &self.crypto,
+                &self.provider,
                 &self.identity.borrow().signer,
                 &[joiner_key_package.into()],
             )
@@ -602,7 +626,7 @@ impl User {
         group
             .mls_group
             .borrow_mut()
-            .merge_pending_commit(&self.crypto)
+            .merge_pending_commit(&self.provider)
             .expect("error merging pending commit");
 
         // Finally, send Welcome to the joiner.
@@ -639,7 +663,11 @@ impl User {
         let (remove_message, _welcome, _group_info) = group
             .mls_group
             .borrow_mut()
-            .remove_members(&self.crypto, &self.identity.borrow().signer, &[leaf_index])
+            .remove_members(
+                &self.provider,
+                &self.identity.borrow().signer,
+                &[leaf_index],
+            )
             .map_err(|e| format!("Failed to remove member from group - {e}"))?;
 
         // First, send the MlsMessage remove commit to the group.
@@ -654,7 +682,7 @@ impl User {
         group
             .mls_group
             .borrow_mut()
-            .merge_pending_commit(&self.crypto)
+            .merge_pending_commit(&self.provider)
             .expect("error merging pending commit");
 
         drop(groups);
@@ -666,7 +694,7 @@ impl User {
 
     /// Join a group with the provided welcome message.
     fn join_group(&self, welcome: Welcome) -> Result<(), String> {
-        log::debug!("{} joining group ...", self.username);
+        log::debug!("{} joining group ...", self.username());
 
         let mut ident = self.identity.borrow_mut();
         for secret in welcome.secrets().iter() {
@@ -681,9 +709,9 @@ impl User {
             .use_ratchet_tree_extension(true)
             .build();
         let mut mls_group =
-            StagedWelcome::new_from_welcome(&self.crypto, &group_config, welcome, None)
+            StagedWelcome::new_from_welcome(&self.provider, &group_config, welcome, None)
                 .expect("Failed to create staged join")
-                .into_group(&self.crypto)
+                .into_group(&self.provider)
                 .expect("Failed to create MlsGroup");
 
         let group_id = mls_group.group_id().to_vec();
@@ -691,7 +719,9 @@ impl User {
         let group_name = String::from_utf8(group_id.clone()).unwrap();
         let group_aad = group_name.clone() + " AAD";
 
-        mls_group.set_aad(group_aad.as_bytes());
+        mls_group
+            .set_aad(self.provider.storage(), group_aad.as_bytes())
+            .expect("Failed to update the AAD in the storage");
 
         let group = Group {
             group_name: group_name.clone(),
@@ -705,5 +735,17 @@ impl User {
             Some(old) => Err(format!("Overrode the group {:?}", old.group_name)),
             None => Ok(()),
         }
+    }
+
+    pub(crate) fn username(&self) -> String {
+        self.identity.borrow().identity_as_string()
+    }
+
+    pub(super) fn set_auth_token(&mut self, token: AuthToken) {
+        self.auth_token = Some(token);
+    }
+
+    pub(super) fn auth_token(&self) -> Option<&AuthToken> {
+        self.auth_token.as_ref()
     }
 }

@@ -1,14 +1,17 @@
 use core::fmt::Debug;
 use std::mem;
 
-use openmls_traits::key_store::OpenMlsKeyStore;
 use public_group::diff::{apply_proposals::ApplyProposalsValues, StagedPublicGroupDiff};
+
+use self::public_group::staged_commit::PublicStagedCommitState;
 
 use super::{super::errors::*, proposals::ProposalStore, *};
 use crate::{
-    framing::mls_auth_content::AuthenticatedContent,
+    ciphersuite::Secret, framing::mls_auth_content::AuthenticatedContent,
     treesync::node::encryption_keys::EncryptionKeyPair,
 };
+
+use openmls_traits::storage::StorageProvider as _;
 
 impl CoreGroup {
     fn derive_epoch_secrets(
@@ -39,6 +42,7 @@ impl CoreGroup {
             )?;
             JoinerSecret::new(
                 provider.crypto(),
+                self.ciphersuite(),
                 commit_secret,
                 &init_secret,
                 serialized_provisional_group_context,
@@ -47,6 +51,7 @@ impl CoreGroup {
         } else {
             JoinerSecret::new(
                 provider.crypto(),
+                self.ciphersuite(),
                 commit_secret,
                 epoch_secrets.init_secret(),
                 serialized_provisional_group_context,
@@ -56,8 +61,8 @@ impl CoreGroup {
 
         // Prepare the PskSecret
         let psk_secret = {
-            let psks = load_psks(
-                provider.key_store(),
+            let psks: Vec<(&PreSharedKeyId, Secret)> = load_psks(
+                provider.storage(),
                 &self.resumption_psk_store,
                 &apply_proposals_values.presharedkeys,
             )?;
@@ -77,21 +82,21 @@ impl CoreGroup {
             .add_context(provider.crypto(), serialized_provisional_group_context)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
         Ok(key_schedule
-            .epoch_secrets(provider.crypto())
+            .epoch_secrets(provider.crypto(), self.ciphersuite())
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?)
     }
 
-    /// Stages a commit message that was sent by another group member.
-    /// This function does the following:
+    /// Stages a commit message that was sent by another group member. This
+    /// function does the following:
     ///  - Applies the proposals covered by the commit to the tree
     ///  - Applies the (optional) update path to the tree
     ///  - Decrypts and calculates the path secrets
     ///  - Initializes the key schedule for epoch rollover
     ///  - Verifies the confirmation tag
     ///
-    /// Returns a [StagedCommit] that can be inspected and later merged
-    /// into the group state with [CoreGroup::merge_commit()]
-    /// This function does the following checks:
+    /// Returns a [StagedCommit] that can be inspected and later merged into the
+    /// group state with [CoreGroup::merge_commit()] This function does the
+    /// following checks:
     ///  - ValSem101
     ///  - ValSem102
     ///  - ValSem104
@@ -102,6 +107,8 @@ impl CoreGroup {
     ///  - ValSem110
     ///  - ValSem111
     ///  - ValSem112
+    ///  - ValSem113: All Proposals: The proposal type must be supported by all
+    ///               members of the group
     ///  - ValSem200
     ///  - ValSem201
     ///  - ValSem202: Path must be the right length
@@ -112,9 +119,8 @@ impl CoreGroup {
     ///  - ValSem240
     ///  - ValSem241
     ///  - ValSem242
-    ///  - ValSem244
-    /// Returns an error if the given commit was sent by the owner of this
-    /// group.
+    ///  - ValSem244 Returns an error if the given commit was sent by the owner
+    /// of this group.
     pub(crate) fn stage_commit(
         &self,
         mls_content: &AuthenticatedContent,
@@ -146,9 +152,13 @@ impl CoreGroup {
         // Check if we were removed from the group
         if apply_proposals_values.self_removed {
             let staged_diff = diff.into_staged_diff(provider.crypto(), ciphersuite)?;
+            let staged_state = PublicStagedCommitState::new(
+                staged_diff,
+                commit.path.as_ref().map(|path| path.leaf_node().clone()),
+            );
             return Ok(StagedCommit::new(
                 proposal_queue,
-                StagedCommitState::PublicState(Box::new(staged_diff)),
+                StagedCommitState::PublicState(Box::new(staged_state)),
             ));
         }
 
@@ -229,12 +239,7 @@ impl CoreGroup {
                     apply_proposals_values.extensions.clone(),
                 )?;
 
-                (
-                    CommitSecret::zero_secret(ciphersuite, self.version()),
-                    vec![],
-                    None,
-                    None,
-                )
+                (CommitSecret::zero_secret(ciphersuite), vec![], None, None)
             };
 
         // Update the confirmed transcript hash before we compute the confirmation tag.
@@ -269,6 +274,7 @@ impl CoreGroup {
             .confirmation_key()
             .tag(
                 provider.crypto(),
+                self.ciphersuite(),
                 diff.group_context().confirmed_transcript_hash(),
             )
             .map_err(LibraryError::unexpected_crypto_error)?;
@@ -303,17 +309,20 @@ impl CoreGroup {
     ///
     /// This function should not fail and only returns a [`Result`], because it
     /// might throw a `LibraryError`.
-    pub(crate) fn merge_commit<KeyStore: OpenMlsKeyStore>(
+    pub(crate) fn merge_commit<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &Provider,
         staged_commit: StagedCommit,
-    ) -> Result<Option<MessageSecrets>, MergeCommitError<KeyStore::Error>> {
+    ) -> Result<Option<MessageSecrets>, MergeCommitError<Provider::StorageError>> {
         // Get all keypairs from the old epoch, so we can later store the ones
         // that are still relevant in the new epoch.
-        let old_epoch_keypairs = self.read_epoch_keypairs(provider.key_store());
+        let old_epoch_keypairs = self.read_epoch_keypairs(provider.storage());
         match staged_commit.state {
-            StagedCommitState::PublicState(staged_diff) => {
-                self.public_group.merge_diff(*staged_diff);
+            StagedCommitState::PublicState(staged_state) => {
+                self.public_group
+                    .merge_diff(staged_state.into_staged_diff());
+                self.store(provider.storage())
+                    .map_err(MergeCommitError::StorageError)?;
                 Ok(None)
             }
             StagedCommitState::GroupMember(state) => {
@@ -349,8 +358,8 @@ impl CoreGroup {
                     .chain(leaf_keypair)
                     .filter(|keypair| new_owned_encryption_keys.contains(keypair.public_key()))
                     .collect();
-                // We should have private keys for all owned encryption keys.
 
+                // We should have private keys for all owned encryption keys.
                 debug_assert_eq!(new_owned_encryption_keys.len(), epoch_keypairs.len());
                 if new_owned_encryption_keys.len() != epoch_keypairs.len() {
                     return Err(LibraryError::custom(
@@ -358,16 +367,32 @@ impl CoreGroup {
                     )
                     .into());
                 }
+
+                // store the updated group state
+                let storage = provider.storage();
+                let group_id = self.group_id();
+
+                self.public_group
+                    .store(storage)
+                    .map_err(MergeCommitError::StorageError)?;
+                storage
+                    .write_group_epoch_secrets(group_id, &self.group_epoch_secrets)
+                    .map_err(MergeCommitError::StorageError)?;
+                storage
+                    .write_message_secrets(group_id, &self.message_secrets_store)
+                    .map_err(MergeCommitError::StorageError)?;
+
                 // Store the relevant keys under the new epoch
-                self.store_epoch_keypairs(provider.key_store(), epoch_keypairs.as_slice())
-                    .map_err(MergeCommitError::KeyStoreError)?;
+                self.store_epoch_keypairs(storage, epoch_keypairs.as_slice())
+                    .map_err(MergeCommitError::StorageError)?;
+
                 // Delete the old keys.
-                self.delete_previous_epoch_keypairs(provider.key_store())
-                    .map_err(MergeCommitError::KeyStoreError)?;
+                self.delete_previous_epoch_keypairs(storage)
+                    .map_err(MergeCommitError::StorageError)?;
                 if let Some(keypair) = state.new_leaf_keypair_option {
                     keypair
-                        .delete_from_key_store(provider.key_store())
-                        .map_err(MergeCommitError::KeyStoreError)?;
+                        .delete(storage)
+                        .map_err(MergeCommitError::StorageError)?;
                 }
 
                 Ok(Some(message_secrets))
@@ -400,7 +425,7 @@ impl CoreGroup {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) enum StagedCommitState {
-    PublicState(Box<StagedPublicGroupDiff>),
+    PublicState(Box<PublicStagedCommitState>),
     GroupMember(Box<MemberStagedCommitState>),
 }
 
@@ -449,7 +474,9 @@ impl StagedCommit {
     /// Returns the leaf node of the (optional) update path.
     pub fn update_path_leaf_node(&self) -> Option<&LeafNode> {
         match self.state {
-            StagedCommitState::PublicState(_) => None,
+            StagedCommitState::PublicState(ref public_state) => {
+                public_state.update_path_leaf_node()
+            }
             StagedCommitState::GroupMember(ref group_member_state) => {
                 group_member_state.update_path_leaf_node.as_ref()
             }
@@ -512,7 +539,7 @@ impl StagedCommit {
     /// Returns the [`GroupContext`] of the staged commit state.
     pub fn group_context(&self) -> &GroupContext {
         match self.state {
-            StagedCommitState::PublicState(ref ps) => ps.group_context(),
+            StagedCommitState::PublicState(ref ps) => ps.staged_diff().group_context(),
             StagedCommitState::GroupMember(ref gm) => gm.group_context(),
         }
     }

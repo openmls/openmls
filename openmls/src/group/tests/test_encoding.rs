@@ -1,4 +1,3 @@
-use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::crypto::OpenMlsCrypto;
 use tls_codec::{Deserialize, Serialize};
 
@@ -9,7 +8,7 @@ use crate::{
 };
 
 /// Creates a simple test setup for various encoding tests.
-fn create_encoding_test_setup(provider: &impl OpenMlsProvider) -> TestSetup {
+fn create_encoding_test_setup(provider: &impl crate::storage::OpenMlsProvider) -> TestSetup {
     // Create a test config for a single client supporting all possible
     // ciphersuites.
     let alice_config = TestClientConfig {
@@ -52,7 +51,7 @@ fn create_encoding_test_setup(provider: &impl OpenMlsProvider) -> TestSetup {
 
 /// This test tests encoding and decoding of application messages.
 #[apply(providers)]
-fn test_application_message_encoding(provider: &impl OpenMlsProvider) {
+fn test_application_message_encoding(provider: &impl crate::storage::OpenMlsProvider) {
     let test_setup = create_encoding_test_setup(provider);
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients
@@ -94,7 +93,7 @@ fn test_application_message_encoding(provider: &impl OpenMlsProvider) {
 
 /// This test tests encoding and decoding of update proposals.
 #[apply(providers)]
-fn test_update_proposal_encoding(provider: &impl OpenMlsProvider) {
+fn test_update_proposal_encoding(provider: &impl crate::storage::OpenMlsProvider) {
     let test_setup = create_encoding_test_setup(provider);
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients
@@ -110,7 +109,7 @@ fn test_update_proposal_encoding(provider: &impl OpenMlsProvider) {
             .get(&group_state.ciphersuite())
             .expect("An unexpected error occurred.");
 
-        let key_package_bundle = KeyPackageBundle::new(
+        let key_package_bundle = KeyPackageBundle::generate(
             provider,
             &credential_with_key_and_signer.signer,
             group_state.ciphersuite(),
@@ -128,6 +127,7 @@ fn test_update_proposal_encoding(provider: &impl OpenMlsProvider) {
         update
             .set_membership_tag(
                 provider.crypto(),
+                group_state.ciphersuite(),
                 group_state.message_secrets().membership_key(),
                 group_state.message_secrets().serialized_context(),
             )
@@ -147,7 +147,7 @@ fn test_update_proposal_encoding(provider: &impl OpenMlsProvider) {
 
 /// This test tests encoding and decoding of add proposals.
 #[apply(providers)]
-fn test_add_proposal_encoding(provider: &impl OpenMlsProvider) {
+fn test_add_proposal_encoding(provider: &impl crate::storage::OpenMlsProvider) {
     let test_setup = create_encoding_test_setup(provider);
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients
@@ -163,7 +163,7 @@ fn test_add_proposal_encoding(provider: &impl OpenMlsProvider) {
             .get(&group_state.ciphersuite())
             .expect("An unexpected error occurred.");
 
-        let key_package_bundle = KeyPackageBundle::new(
+        let key_package_bundle = KeyPackageBundle::generate(
             provider,
             &credential_with_key_and_signer.signer,
             group_state.ciphersuite(),
@@ -181,6 +181,7 @@ fn test_add_proposal_encoding(provider: &impl OpenMlsProvider) {
             .into();
         add.set_membership_tag(
             provider.crypto(),
+            group_state.ciphersuite(),
             group_state.message_secrets().membership_key(),
             group_state.message_secrets().serialized_context(),
         )
@@ -197,7 +198,7 @@ fn test_add_proposal_encoding(provider: &impl OpenMlsProvider) {
 
 /// This test tests encoding and decoding of remove proposals.
 #[apply(providers)]
-fn test_remove_proposal_encoding(provider: &impl OpenMlsProvider) {
+fn test_remove_proposal_encoding(provider: &impl crate::storage::OpenMlsProvider) {
     let test_setup = create_encoding_test_setup(provider);
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients
@@ -224,6 +225,7 @@ fn test_remove_proposal_encoding(provider: &impl OpenMlsProvider) {
         remove
             .set_membership_tag(
                 provider.crypto(),
+                group_state.ciphersuite(),
                 group_state.message_secrets().membership_key(),
                 group_state.message_secrets().serialized_context(),
             )
@@ -240,7 +242,7 @@ fn test_remove_proposal_encoding(provider: &impl OpenMlsProvider) {
 
 /// This test tests encoding and decoding of commit messages.
 #[apply(providers)]
-fn test_commit_encoding(provider: &impl OpenMlsProvider) {
+fn test_commit_encoding(provider: &impl crate::storage::OpenMlsProvider) {
     let test_setup = create_encoding_test_setup(provider);
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients
@@ -256,7 +258,7 @@ fn test_commit_encoding(provider: &impl OpenMlsProvider) {
             .get(&group_state.ciphersuite())
             .expect("An unexpected error occurred.");
 
-        let alice_key_package_bundle = KeyPackageBundle::new(
+        let alice_key_package_bundle = KeyPackageBundle::generate(
             provider,
             &alice_credential_with_key_and_signer.signer,
             group_state.ciphersuite(),
@@ -324,6 +326,7 @@ fn test_commit_encoding(provider: &impl OpenMlsProvider) {
         commit
             .set_membership_tag(
                 provider.crypto(),
+                group_state.ciphersuite(),
                 group_state.message_secrets().membership_key(),
                 group_state.message_secrets().serialized_context(),
             )
@@ -340,7 +343,7 @@ fn test_commit_encoding(provider: &impl OpenMlsProvider) {
 }
 
 #[apply(providers)]
-fn test_welcome_message_encoding(provider: &impl OpenMlsProvider) {
+fn test_welcome_message_encoding(provider: &impl crate::storage::OpenMlsProvider) {
     let test_setup = create_encoding_test_setup(provider);
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients

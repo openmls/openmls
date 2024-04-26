@@ -4,13 +4,13 @@
 use std::{collections::HashMap, sync::RwLock};
 
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
-    key_store::OpenMlsKeyStore,
     types::{Ciphersuite, HpkeKeyPair, SignatureScheme},
     OpenMlsProvider,
 };
 use tls_codec::{Deserialize, Serialize};
+
+use super::OpenMlsRustCrypto;
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
@@ -18,7 +18,7 @@ use crate::{
     credentials::*,
     extensions::*,
     framing::*,
-    group::{config::CryptoConfig, *},
+    group::*,
     key_packages::*,
     messages::{group_info::GroupInfo, *},
     treesync::{
@@ -41,7 +41,7 @@ pub struct Client {
     pub identity: Vec<u8>,
     /// Ciphersuites supported by the client.
     pub credentials: HashMap<Ciphersuite, CredentialWithKey>,
-    pub crypto: OpenMlsRustCrypto,
+    pub provider: OpenMlsRustCrypto,
     pub groups: RwLock<HashMap<GroupId, MlsGroup>>,
 }
 
@@ -58,7 +58,7 @@ impl Client {
             .get(&ciphersuite)
             .ok_or(ClientError::CiphersuiteNotSupported)?;
         let keys = SignatureKeyPair::read(
-            self.crypto.key_store(),
+            self.provider.storage(),
             credential_with_key.signature_key.as_slice(),
             ciphersuite.signature_algorithm(),
         )
@@ -66,17 +66,14 @@ impl Client {
 
         let key_package = KeyPackage::builder()
             .build(
-                CryptoConfig {
-                    ciphersuite,
-                    version: ProtocolVersion::default(),
-                },
-                &self.crypto,
+                ciphersuite,
+                &self.provider,
                 &keys,
                 credential_with_key.clone(),
             )
             .unwrap();
 
-        Ok(key_package)
+        Ok(key_package.key_package)
     }
 
     /// Create a group with the given [MlsGroupCreateConfig] and [Ciphersuite], and return the created [GroupId].
@@ -92,14 +89,14 @@ impl Client {
             .get(&ciphersuite)
             .ok_or(ClientError::CiphersuiteNotSupported)?;
         let signer = SignatureKeyPair::read(
-            self.crypto.key_store(),
+            self.provider.storage(),
             credential_with_key.signature_key.as_slice(),
             ciphersuite.signature_algorithm(),
         )
         .unwrap();
 
         let group_state = MlsGroup::new(
-            &self.crypto,
+            &self.provider,
             &signer,
             &mls_group_create_config,
             credential_with_key.clone(),
@@ -123,12 +120,12 @@ impl Client {
         ratchet_tree: Option<RatchetTreeIn>,
     ) -> Result<(), ClientError> {
         let staged_join = StagedWelcome::new_from_welcome(
-            &self.crypto,
+            &self.provider,
             &mls_group_config,
             welcome,
             ratchet_tree,
         )?;
-        let new_group = staged_join.into_group(&self.crypto)?;
+        let new_group = staged_join.into_group(&self.provider)?;
         self.groups
             .write()
             .expect("An unexpected error occurred.")
@@ -151,22 +148,24 @@ impl Client {
             .get_mut(group_id)
             .ok_or(ClientError::NoMatchingGroup)?;
         if sender_id == self.identity && message.content_type() == ContentType::Commit {
-            group_state.merge_pending_commit(&self.crypto)?
+            group_state.merge_pending_commit(&self.provider)?
         } else {
             if message.content_type() == ContentType::Commit {
                 // Clear any potential pending commits.
-                group_state.clear_pending_commit();
+                group_state.clear_pending_commit(self.provider.storage())?;
             }
             // Process the message.
-            let processed_message = group_state.process_message(&self.crypto, message.clone())?;
+            let processed_message = group_state.process_message(&self.provider, message.clone())?;
 
             match processed_message.into_content() {
                 ProcessedMessageContent::ApplicationMessage(_) => {}
                 ProcessedMessageContent::ProposalMessage(staged_proposal) => {
-                    group_state.store_pending_proposal(*staged_proposal);
+                    group_state
+                        .store_pending_proposal(self.provider.storage(), *staged_proposal)?;
                 }
                 ProcessedMessageContent::ExternalJoinProposalMessage(staged_proposal) => {
-                    group_state.store_pending_proposal(*staged_proposal);
+                    group_state
+                        .store_pending_proposal(self.provider.storage(), *staged_proposal)?;
                 }
                 ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
                     for credential in staged_commit.credentials_to_verify() {
@@ -177,7 +176,7 @@ impl Client {
                             return Err(ClientError::NoMatchingCredential);
                         }
                     }
-                    group_state.merge_staged_commit(&self.crypto, *staged_commit)?;
+                    group_state.merge_staged_commit(&self.provider, *staged_commit)?;
                 }
             }
         }
@@ -215,16 +214,16 @@ impl Client {
         // key store.
         let signature_pk = group.own_leaf().unwrap().signature_key();
         let signer = SignatureKeyPair::read(
-            self.crypto.key_store(),
+            self.provider.storage(),
             signature_pk.as_slice(),
             group.ciphersuite().signature_algorithm(),
         )
         .unwrap();
         let (msg, welcome_option, group_info) = match action_type {
-            ActionType::Commit => group.self_update(&self.crypto, &signer)?,
+            ActionType::Commit => group.self_update(&self.provider, &signer)?,
             ActionType::Proposal => (
                 group
-                    .propose_self_update(&self.crypto, &signer, leaf_node)
+                    .propose_self_update(&self.provider, &signer, leaf_node)
                     .map(|(out, _)| out)?,
                 None,
                 None,
@@ -257,7 +256,7 @@ impl Client {
         // key store.
         let signature_pk = group.own_leaf().unwrap().signature_key();
         let signer = SignatureKeyPair::read(
-            self.crypto.key_store(),
+            self.provider.storage(),
             signature_pk.as_slice(),
             group.ciphersuite().signature_algorithm(),
         )
@@ -265,7 +264,7 @@ impl Client {
         let action_results = match action_type {
             ActionType::Commit => {
                 let (messages, welcome_message, group_info) =
-                    group.add_members(&self.crypto, &signer, key_packages)?;
+                    group.add_members(&self.provider, &signer, key_packages)?;
                 (
                     vec![messages],
                     Some(
@@ -280,7 +279,7 @@ impl Client {
                 let mut messages = Vec::new();
                 for key_package in key_packages {
                     let message = group
-                        .propose_add_member(&self.crypto, &signer, key_package)
+                        .propose_add_member(&self.provider, &signer, key_package)
                         .map(|(out, _)| out)?;
                     messages.push(message);
                 }
@@ -310,7 +309,7 @@ impl Client {
         // key store.
         let signature_pk = group.own_leaf().unwrap().signature_key();
         let signer = SignatureKeyPair::read(
-            self.crypto.key_store(),
+            self.provider.storage(),
             signature_pk.as_slice(),
             group.ciphersuite().signature_algorithm(),
         )
@@ -318,7 +317,7 @@ impl Client {
         let action_results = match action_type {
             ActionType::Commit => {
                 let (message, welcome_option, group_info) =
-                    group.remove_members(&self.crypto, &signer, targets)?;
+                    group.remove_members(&self.provider, &signer, targets)?;
                 (
                     vec![message],
                     welcome_option.map(|w| w.into_welcome().expect("Unexpected message type.")),
@@ -329,7 +328,7 @@ impl Client {
                 let mut messages = Vec::new();
                 for target in targets {
                     let message = group
-                        .propose_remove_member(&self.crypto, &signer, *target)
+                        .propose_remove_member(&self.provider, &signer, *target)
                         .map(|(out, _)| out)?;
                     messages.push(message);
                 }
@@ -345,7 +344,7 @@ impl Client {
         let group = groups.get(group_id).unwrap();
         let leaf = group.own_leaf();
         leaf.map(|l| {
-            let credential = BasicCredential::try_from(l.credential()).unwrap();
+            let credential = BasicCredential::try_from(l.credential().clone()).unwrap();
             credential.identity().to_vec()
         })
     }

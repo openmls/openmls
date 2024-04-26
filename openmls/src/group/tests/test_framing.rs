@@ -1,9 +1,7 @@
 use std::io::Write;
 
 use itertools::iproduct;
-use openmls_traits::{
-    crypto::OpenMlsCrypto, random::OpenMlsRand, types::Ciphersuite, OpenMlsProvider,
-};
+use openmls_traits::{crypto::OpenMlsCrypto, random::OpenMlsRand, types::Ciphersuite};
 use rstest::*;
 use rstest_reuse::{self, *};
 use tls_codec::Serialize;
@@ -21,12 +19,11 @@ use crate::{
         secret_tree::SecretTree, secret_tree::SecretType,
         sender_ratchet::SenderRatchetConfiguration,
     },
-    versions::ProtocolVersion,
     *,
 };
 
 #[apply(providers)]
-fn padding(provider: &impl OpenMlsProvider) {
+fn padding(provider: &impl crate::storage::OpenMlsProvider) {
     // Create a test config for a single client supporting all possible
     // ciphersuites.
     let alice_config = TestClientConfig {
@@ -99,7 +96,7 @@ fn padding(provider: &impl OpenMlsProvider) {
 
 /// Check that PrivateMessageContent's padding field is verified to be all-zero.
 #[apply(ciphersuites_and_providers)]
-fn bad_padding(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn bad_padding(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     let tests = {
         // { 2^i } ∪ { 2^i +- 1 }
         let padding_sizes = [
@@ -159,11 +156,8 @@ fn bad_padding(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             .unwrap();
 
         let sender_secret_tree = {
-            let sender_encryption_secret = EncryptionSecret::from_slice(
-                &encryption_secret_bytes[..],
-                ProtocolVersion::default(),
-                ciphersuite,
-            );
+            let sender_encryption_secret =
+                EncryptionSecret::from_slice(&encryption_secret_bytes[..]);
 
             SecretTree::new(
                 sender_encryption_secret,
@@ -173,11 +167,8 @@ fn bad_padding(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         };
 
         let receiver_secret_tree = {
-            let receiver_encryption_secret = EncryptionSecret::from_slice(
-                &encryption_secret_bytes[..],
-                ProtocolVersion::default(),
-                ciphersuite,
-            );
+            let receiver_encryption_secret =
+                EncryptionSecret::from_slice(&encryption_secret_bytes[..]);
 
             SecretTree::new(
                 receiver_encryption_secret,
@@ -285,7 +276,7 @@ fn bad_padding(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             // Derive the sender data key from the key schedule using the ciphertext.
             let sender_data_key = message_secrets
                 .sender_data_secret()
-                .derive_aead_key(provider.crypto(), &ciphertext)
+                .derive_aead_key(provider.crypto(), ciphersuite, &ciphertext)
                 .unwrap();
             // Derive initial nonce from the key schedule using the ciphertext.
             let sender_data_nonce = message_secrets

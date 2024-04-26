@@ -2,7 +2,6 @@ use std::collections::HashSet;
 
 use log::{debug, trace};
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsProvider};
 use serde::{Deserialize, Serialize};
 use tls_codec::{Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait};
@@ -14,13 +13,12 @@ use crate::{
     messages::PathSecret,
     prelude_test::Secret,
     schedule::CommitSecret,
-    test_utils::hex_to_bytes,
+    test_utils::{hex_to_bytes, OpenMlsRustCrypto},
     treesync::{
         node::encryption_keys::EncryptionKeyPair,
         treekem::{DecryptPathParams, UpdatePath, UpdatePathIn},
         TreeSync,
     },
-    versions::ProtocolVersion,
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -125,11 +123,7 @@ pub fn run_test_vector(test: TreeKemTest, provider: &impl OpenMlsProvider) {
             )];
 
             for path_secret in path_secrets_test {
-                let my_path_secret = PathSecret::from(Secret::from_slice(
-                    &path_secret.path_secret,
-                    ProtocolVersion::Mls10,
-                    ciphersuite,
-                ));
+                let my_path_secret = PathSecret::from(Secret::from_slice(&path_secret.path_secret));
                 let keypair = my_path_secret
                     .derive_key_pair(provider.crypto(), ciphersuite)
                     .unwrap();
@@ -299,7 +293,6 @@ pub fn run_test_vector(test: TreeKemTest, provider: &impl OpenMlsProvider) {
             }
 
             let params = DecryptPathParams {
-                version: ProtocolVersion::Mls10,
                 update_path: update_path.nodes(),
                 sender_leaf_index: LeafNodeIndex::new(path_test.sender),
                 exclusion_list: &HashSet::default(),
@@ -336,7 +329,6 @@ fn apply_update_path(
     leaf_node_info_test: &LeafNodeInfoTest,
 ) -> CommitSecret {
     let params = DecryptPathParams {
-        version: ProtocolVersion::Mls10,
         update_path: update_path.nodes(),
         sender_leaf_index: LeafNodeIndex::new(sender),
         exclusion_list: &HashSet::default(),
@@ -366,11 +358,7 @@ fn apply_update_path(
             .as_ref()
             .unwrap();
 
-        let path_secret = PathSecret::from(Secret::from_slice(
-            &hex_to_bytes(expected_path_secret),
-            ProtocolVersion::Mls10,
-            ciphersuite,
-        ));
+        let path_secret = PathSecret::from(Secret::from_slice(&hex_to_bytes(expected_path_secret)));
 
         path_secret
             .derive_key_pair(provider.crypto(), ciphersuite)

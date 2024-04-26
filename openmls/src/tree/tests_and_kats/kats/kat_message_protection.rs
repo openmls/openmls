@@ -62,8 +62,7 @@
 //!     * When protecting the Commit message, add the supplied confirmation tag
 
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{types::SignatureScheme, OpenMlsProvider};
+use openmls_traits::types::SignatureScheme;
 use serde::{self, Deserialize, Serialize};
 
 use crate::{
@@ -108,11 +107,11 @@ pub struct MessageProtectionTest {
 fn generate_credential(
     identity: Vec<u8>,
     signature_algorithm: SignatureScheme,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) -> (CredentialWithKey, SignatureKeyPair) {
-    let credential = BasicCredential::new(identity).unwrap();
+    let credential = BasicCredential::new(identity);
     let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
-    signature_keys.store(provider.key_store()).unwrap();
+    signature_keys.store(provider.storage()).unwrap();
 
     (
         CredentialWithKey {
@@ -126,10 +125,8 @@ fn generate_credential(
 #[cfg(any(feature = "test-utils", test))]
 fn group(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) -> (CoreGroup, CredentialWithKey, SignatureKeyPair) {
-    use crate::group::config::CryptoConfig;
-
     let (credential_with_key, signer) = generate_credential(
         "Kreator".into(),
         ciphersuite.signature_algorithm(),
@@ -138,7 +135,7 @@ fn group(
 
     let group = CoreGroup::builder(
         GroupId::random(provider.rand()),
-        CryptoConfig::with_default_version(ciphersuite),
+        ciphersuite,
         credential_with_key.clone(),
     )
     .build(provider, &signer)
@@ -150,24 +147,18 @@ fn group(
 #[cfg(any(feature = "test-utils", test))]
 fn receiver_group(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
     group_id: GroupId,
 ) -> (CoreGroup, CredentialWithKey, SignatureKeyPair) {
-    use crate::group::config::CryptoConfig;
-
     let (credential_with_key, signer) = generate_credential(
         "Receiver".into(),
         ciphersuite.signature_algorithm(),
         provider,
     );
 
-    let group = CoreGroup::builder(
-        group_id,
-        CryptoConfig::with_default_version(ciphersuite),
-        credential_with_key.clone(),
-    )
-    .build(provider, &signer)
-    .unwrap();
+    let group = CoreGroup::builder(group_id, ciphersuite, credential_with_key.clone())
+        .build(provider, &signer)
+        .unwrap();
 
     (group, credential_with_key, signer)
 }
@@ -175,7 +166,7 @@ fn receiver_group(
 #[cfg(test)]
 pub fn run_test_vector(
     test: MessageProtectionTest,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) -> Result<(), String> {
     use openmls_traits::crypto::OpenMlsCrypto;
     use tls_codec::{Deserialize, Serialize};
@@ -183,7 +174,6 @@ pub fn run_test_vector(
     use crate::{
         binary_tree::array_representation::TreeSize,
         extensions::Extensions,
-        group::config::CryptoConfig,
         messages::{proposals_in::ProposalIn, CommitIn, ConfirmationTag},
         prelude::KeyPackageBundle,
         prelude_test::{Mac, Secret},
@@ -224,7 +214,7 @@ pub fn run_test_vector(
 
     // Make the group think it has two members.
     fn setup_group(
-        provider: &impl OpenMlsProvider,
+        provider: &impl crate::storage::OpenMlsProvider,
         ciphersuite: Ciphersuite,
         test: &MessageProtectionTest,
         sender: bool,
@@ -239,7 +229,7 @@ pub fn run_test_vector(
         );
 
         // Set up the group, unfortunately we can't do without.
-        let credential = BasicCredential::new(b"This is not needed".to_vec()).unwrap();
+        let credential = BasicCredential::new(b"This is not needed".to_vec());
         let signature_private_key = hex_to_bytes(&test.signature_priv);
         let random_own_signature_key =
             SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
@@ -252,7 +242,7 @@ pub fn run_test_vector(
 
         let mut group = CoreGroup::builder(
             group_context.group_id().clone(),
-            CryptoConfig::with_default_version(ciphersuite),
+            ciphersuite,
             CredentialWithKey {
                 credential: credential.into(),
                 signature_key: random_own_signature_key.into(),
@@ -261,9 +251,9 @@ pub fn run_test_vector(
         .build(provider, &signer)
         .unwrap();
 
-        let credential = BasicCredential::new("Fake user".into()).unwrap();
+        let credential = BasicCredential::new("Fake user".into());
         let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
-        let bob_key_package_bundle = KeyPackageBundle::new(
+        let bob_key_package_bundle = KeyPackageBundle::generate(
             provider,
             &signature_keys,
             ciphersuite,
@@ -303,11 +293,8 @@ pub fn run_test_vector(
 
         // Inject the test values into the group
 
-        let encryption_secret = EncryptionSecret::from_slice(
-            &hex_to_bytes(&test.encryption_secret),
-            group_context.protocol_version(),
-            ciphersuite,
-        );
+        let encryption_secret =
+            EncryptionSecret::from_slice(&hex_to_bytes(&test.encryption_secret));
         let own_index = LeafNodeIndex::new(0);
         let sender_index = LeafNodeIndex::new(1);
         let secret_tree = SecretTree::new(encryption_secret.clone(), TreeSize::new(2), own_index);
@@ -328,16 +315,9 @@ pub fn run_test_vector(
             message_secrets.replace_secret_tree(secret_tree);
         }
         message_secrets.set_serialized_context(serialized_group_context);
-        *message_secrets.sender_data_secret_mut() = SenderDataSecret::from_slice(
-            &hex_to_bytes(&test.sender_data_secret),
-            ProtocolVersion::Mls10,
-            ciphersuite,
-        );
-        message_secrets.set_membership_key(Secret::from_slice(
-            &hex_to_bytes(&test.membership_key),
-            ProtocolVersion::Mls10,
-            ciphersuite,
-        ));
+        *message_secrets.sender_data_secret_mut() =
+            SenderDataSecret::from_slice(&hex_to_bytes(&test.sender_data_secret));
+        message_secrets.set_membership_key(Secret::from_slice(&hex_to_bytes(&test.membership_key)));
 
         group
     }
@@ -352,7 +332,7 @@ pub fn run_test_vector(
 
         fn test_proposal_pub(
             mut group: CoreGroup,
-            provider: &impl OpenMlsProvider,
+            provider: &impl crate::storage::OpenMlsProvider,
             ciphersuite: Ciphersuite,
             proposal: ProposalIn,
             proposal_pub: MlsMessageIn,
@@ -374,7 +354,7 @@ pub fn run_test_vector(
                 .parse_message(decrypted_message, group.message_secrets_store())
                 .unwrap();
             let processed_message: AuthenticatedContent = processed_unverified_message
-                .verify(ciphersuite, provider.crypto(), ProtocolVersion::Mls10)
+                .verify(ciphersuite, provider, ProtocolVersion::Mls10)
                 .unwrap()
                 .0;
             match processed_message.content().to_owned() {
@@ -393,7 +373,7 @@ pub fn run_test_vector(
 
         fn test_proposal_priv(
             mut group: CoreGroup,
-            provider: &impl OpenMlsProvider,
+            provider: &impl crate::storage::OpenMlsProvider,
             proposal: ProposalIn,
             proposal_priv: MlsMessageIn,
         ) {
@@ -463,6 +443,7 @@ pub fn run_test_vector(
         my_proposal_pub
             .set_membership_tag(
                 provider.crypto(),
+                ciphersuite,
                 sender_group.message_secrets().membership_key(),
                 sender_group.message_secrets().serialized_context(),
             )
@@ -488,7 +469,7 @@ pub fn run_test_vector(
 
         fn test_commit_pub(
             mut group: CoreGroup,
-            provider: &impl OpenMlsProvider,
+            provider: &impl crate::storage::OpenMlsProvider,
             ciphersuite: Ciphersuite,
             commit: CommitIn,
             commit_pub: MlsMessageIn,
@@ -510,7 +491,7 @@ pub fn run_test_vector(
                 .parse_message(decrypted_message, group.message_secrets_store())
                 .unwrap();
             let processed_message: AuthenticatedContent = processed_unverified_message
-                .verify(ciphersuite, provider.crypto(), ProtocolVersion::Mls10)
+                .verify(ciphersuite, provider, ProtocolVersion::Mls10)
                 .unwrap()
                 .0;
             match processed_message.content().to_owned() {
@@ -531,7 +512,7 @@ pub fn run_test_vector(
 
         fn test_commit_priv(
             mut group: CoreGroup,
-            provider: &impl OpenMlsProvider,
+            provider: &impl crate::storage::OpenMlsProvider,
             ciphersuite: Ciphersuite,
             commit: CommitIn,
             commit_priv: MlsMessageIn,
@@ -553,7 +534,7 @@ pub fn run_test_vector(
                 .parse_message(decrypted_message, group.message_secrets_store())
                 .unwrap();
             let processed_message: AuthenticatedContent = processed_unverified_message
-                .verify(ciphersuite, provider.crypto(), ProtocolVersion::Mls10)
+                .verify(ciphersuite, provider, ProtocolVersion::Mls10)
                 .unwrap()
                 .0;
             match processed_message.content().to_owned() {
@@ -618,6 +599,7 @@ pub fn run_test_vector(
         my_commit_pub_msg
             .set_membership_tag(
                 provider.crypto(),
+                ciphersuite,
                 sender_group.message_secrets().membership_key(),
                 sender_group.message_secrets().serialized_context(),
             )
@@ -641,7 +623,7 @@ pub fn run_test_vector(
 
         fn test_application_priv(
             mut group: CoreGroup,
-            provider: &impl OpenMlsProvider,
+            provider: &impl crate::storage::OpenMlsProvider,
             application: Vec<u8>,
             application_priv: MlsMessageIn,
         ) {
@@ -696,7 +678,7 @@ pub fn run_test_vector(
 }
 
 #[apply(providers)]
-fn read_test_vectors_mp(provider: &impl OpenMlsProvider) {
+fn read_test_vectors_mp(provider: &impl crate::storage::OpenMlsProvider) {
     let _ = pretty_env_logger::try_init();
     log::debug!("Reading test vectors ...");
 

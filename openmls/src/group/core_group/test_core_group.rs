@@ -1,14 +1,13 @@
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{crypto::OpenMlsCrypto, types::HpkeCiphertext, OpenMlsProvider};
-use tls_codec::{Deserialize, Serialize};
+use openmls_traits::{crypto::OpenMlsCrypto, types::HpkeCiphertext};
+use tls_codec::Serialize;
 
 use crate::{
     binary_tree::*,
     ciphersuite::{signable::Signable, AeadNonce},
     credentials::*,
     framing::*,
-    group::{config::CryptoConfig, errors::*, *},
+    group::{errors::*, *},
     key_packages::*,
     messages::{group_info::GroupInfoTBS, *},
     schedule::psk::{store::ResumptionPskStore, ExternalPsk, PreSharedKeyId, Psk},
@@ -18,7 +17,7 @@ use crate::{
 
 pub(crate) fn setup_alice_group(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) -> (
     CoreGroup,
     CredentialWithKey,
@@ -37,7 +36,7 @@ pub(crate) fn setup_alice_group(
     // Alice creates a group
     let group = CoreGroup::builder(
         GroupId::random(provider.rand()),
-        config::CryptoConfig::with_default_version(ciphersuite),
+        ciphersuite,
         alice_credential_with_key.clone(),
     )
     .build(provider, &alice_signature_keys)
@@ -56,7 +55,10 @@ pub fn flip_last_byte(ctxt: &mut HpkeCiphertext) {
 }
 
 #[apply(ciphersuites_and_providers)]
-fn test_failed_groupinfo_decryption(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_failed_groupinfo_decryption(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::OpenMlsProvider,
+) {
     let epoch = 123;
     let group_id = GroupId::random(provider.rand());
     let tree_hash = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
@@ -70,7 +72,7 @@ fn test_failed_groupinfo_decryption(ciphersuite: Ciphersuite, provider: &impl Op
     let (alice_credential_with_key, alice_signature_keys) =
         test_utils::new_credential(provider, b"Alice", ciphersuite.signature_algorithm());
 
-    let key_package_bundle = KeyPackageBundle::new(
+    let key_package_bundle = KeyPackageBundle::generate(
         provider,
         &alice_signature_keys,
         ciphersuite,
@@ -104,7 +106,7 @@ fn test_failed_groupinfo_decryption(ciphersuite: Ciphersuite, provider: &impl Op
         .crypto()
         .derive_hpke_keypair(
             ciphersuite.hpke_config(),
-            Secret::random(ciphersuite, provider.rand(), None)
+            Secret::random(ciphersuite, provider.rand())
                 .expect("Not enough randomness.")
                 .as_slice(),
         )
@@ -161,16 +163,16 @@ fn test_failed_groupinfo_decryption(ciphersuite: Ciphersuite, provider: &impl Op
     .and_then(|staged_join| staged_join.into_core_group(provider))
     .expect_err("Creation of core group from a broken Welcome was successful.");
 
-    assert_eq!(
+    assert!(matches!(
         error,
         WelcomeError::GroupSecrets(GroupSecretsError::DecryptionFailed)
-    )
+    ))
 }
 
 /// Test what happens if the KEM ciphertext for the receiver in the UpdatePath
 /// is broken.
 #[apply(ciphersuites_and_providers)]
-fn test_update_path(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_update_path(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     // === Alice creates a group with her and Bob ===
     let (
         framing_parameters,
@@ -185,7 +187,7 @@ fn test_update_path(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let bob_old_leaf = group_bob.own_leaf_node().unwrap();
     let bob_update_leaf_node = bob_old_leaf
         .updated(
-            CryptoConfig::with_default_version(ciphersuite),
+            ciphersuite,
             TreeInfoTbs::Update(group_bob.own_tree_position()),
             provider,
             &bob_signature_keys,
@@ -270,7 +272,7 @@ fn test_update_path(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
 fn setup_alice_bob(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) -> (
     CredentialWithKey,
     SignatureKeyPair,
@@ -285,7 +287,7 @@ fn setup_alice_bob(
 
     // Generate Bob's KeyPackage
     let bob_key_package_bundle =
-        KeyPackageBundle::new(provider, &bob_signer, ciphersuite, bob_credential_with_key);
+        KeyPackageBundle::generate(provider, &bob_signer, ciphersuite, bob_credential_with_key);
 
     (
         alice_credential_with_key,
@@ -297,7 +299,7 @@ fn setup_alice_bob(
 
 // Test several scenarios when PSKs are used in a group
 #[apply(ciphersuites_and_providers)]
-fn test_psks(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_psks(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -312,18 +314,15 @@ fn test_psks(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     // === Alice creates a group with a PSK ===
     let psk_id = vec![1u8, 2, 3];
 
-    let secret = Secret::random(ciphersuite, provider.rand(), None /* MLS version */)
-        .expect("Not enough randomness.");
+    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
     let external_psk = ExternalPsk::new(psk_id);
     let preshared_key_id =
         PreSharedKeyId::new(ciphersuite, provider.rand(), Psk::External(external_psk))
             .expect("An unexpected error occured.");
-    preshared_key_id
-        .write_to_key_store(provider, ciphersuite, secret.as_slice())
-        .unwrap();
+    preshared_key_id.store(provider, secret.as_slice()).unwrap();
     let mut alice_group = CoreGroup::builder(
         GroupId::random(provider.rand()),
-        config::CryptoConfig::with_default_version(ciphersuite),
+        ciphersuite,
         alice_credential_with_key,
     )
     .with_psk(vec![preshared_key_id.clone()])
@@ -394,7 +393,7 @@ fn test_psks(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     let bob_old_leaf = group_bob.own_leaf_node().unwrap();
     let bob_update_leaf_node = bob_old_leaf
         .updated(
-            CryptoConfig::with_default_version(ciphersuite),
+            ciphersuite,
             TreeInfoTbs::Update(group_bob.own_tree_position()),
             provider,
             &bob_signature_keys,
@@ -428,7 +427,10 @@ fn test_psks(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
 // Test several scenarios when PSKs are used in a group
 #[apply(ciphersuites_and_providers)]
-fn test_staged_commit_creation(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_staged_commit_creation(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::OpenMlsProvider,
+) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -439,7 +441,7 @@ fn test_staged_commit_creation(ciphersuite: Ciphersuite, provider: &impl OpenMls
     // === Alice creates a group ===
     let mut alice_group = CoreGroup::builder(
         GroupId::random(provider.rand()),
-        config::CryptoConfig::with_default_version(ciphersuite),
+        ciphersuite,
         alice_credential_with_key,
     )
     .build(provider, &alice_signature_keys)
@@ -501,7 +503,10 @@ fn test_staged_commit_creation(ciphersuite: Ciphersuite, provider: &impl OpenMls
 
 // Test processing of own commits
 #[apply(ciphersuites_and_providers)]
-fn test_own_commit_processing(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_own_commit_processing(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::OpenMlsProvider,
+) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -513,7 +518,7 @@ fn test_own_commit_processing(ciphersuite: Ciphersuite, provider: &impl OpenMlsP
     // === Alice creates a group ===
     let alice_group = CoreGroup::builder(
         GroupId::random(provider.rand()),
-        config::CryptoConfig::with_default_version(ciphersuite),
+        ciphersuite,
         alice_credential_with_key,
     )
     .build(provider, &alice_signature_keys)
@@ -540,7 +545,7 @@ fn test_own_commit_processing(ciphersuite: Ciphersuite, provider: &impl OpenMlsP
 pub(crate) fn setup_client(
     id: &str,
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) -> (
     CredentialWithKey,
     KeyPackageBundle,
@@ -556,7 +561,7 @@ pub(crate) fn setup_client(
     .unwrap();
 
     // Generate the KeyPackage
-    let key_package_bundle = KeyPackageBundle::new(
+    let key_package_bundle = KeyPackageBundle::generate(
         provider,
         &signature_keys,
         ciphersuite,
@@ -568,7 +573,7 @@ pub(crate) fn setup_client(
 #[apply(ciphersuites_and_providers)]
 fn test_proposal_application_after_self_was_removed(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) {
     // We're going to test if proposals are still applied, even after a client
     // notices that it was removed from a group.  We do so by having Alice
@@ -587,7 +592,7 @@ fn test_proposal_application_after_self_was_removed(
 
     let mut alice_group = CoreGroup::builder(
         GroupId::random(provider.rand()),
-        config::CryptoConfig::with_default_version(ciphersuite),
+        ciphersuite,
         alice_credential_with_key,
     )
     .build(provider, &alice_signature_keys)
@@ -647,11 +652,7 @@ fn test_proposal_application_after_self_was_removed(
                  index: _,
                  credential,
                  ..
-             }| {
-                let identity =
-                    VLBytes::tls_deserialize_exact(credential.serialized_content()).unwrap();
-                identity.as_slice() == b"Bob"
-            },
+             }| { credential.serialized_content() == b"Bob" },
         )
         .expect("Couldn't find Bob in tree.")
         .index;
@@ -740,28 +741,23 @@ fn test_proposal_application_after_self_was_removed(
         // didn't get updated.
         assert_eq!(alice_member.index, bob_member.index);
 
-        let alice_id =
-            VLBytes::tls_deserialize_exact(alice_member.credential.serialized_content()).unwrap();
-        let bob_id =
-            VLBytes::tls_deserialize_exact(bob_member.credential.serialized_content()).unwrap();
-        let charlie_id =
-            VLBytes::tls_deserialize_exact(charlie_member.credential.serialized_content()).unwrap();
-        assert_eq!(alice_id.as_slice(), bob_id.as_slice());
+        let alice_id = alice_member.credential.serialized_content();
+        let bob_id = bob_member.credential.serialized_content();
+        let charlie_id = charlie_member.credential.serialized_content();
+        assert_eq!(alice_id, bob_id);
         assert_eq!(alice_member.signature_key, bob_member.signature_key);
         assert_eq!(charlie_member.index, bob_member.index);
-        assert_eq!(charlie_id.as_slice(), bob_id.as_slice());
+        assert_eq!(charlie_id, bob_id);
         assert_eq!(charlie_member.signature_key, bob_member.signature_key);
         assert_eq!(charlie_member.encryption_key, alice_member.encryption_key);
     }
 
     let mut bob_members = bob_group.public_group().members();
 
-    let bob_next_id =
-        VLBytes::tls_deserialize_exact(bob_members.next().unwrap().credential.serialized_content())
-            .unwrap();
-    assert_eq!(bob_next_id.as_slice(), b"Alice");
-    let bob_next_id =
-        VLBytes::tls_deserialize_exact(bob_members.next().unwrap().credential.serialized_content())
-            .unwrap();
-    assert_eq!(bob_next_id.as_slice(), b"Charlie");
+    let member = bob_members.next().unwrap();
+    let bob_next_id = member.credential.serialized_content();
+    assert_eq!(bob_next_id, b"Alice");
+    let member = bob_members.next().unwrap();
+    let bob_next_id = member.credential.serialized_content();
+    assert_eq!(bob_next_id, b"Charlie");
 }

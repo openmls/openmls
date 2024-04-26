@@ -1,7 +1,6 @@
 //! This module tests the validation of commits as defined in
 //! https://openmls.tech/book/message_validation.html#commit-message-validation
 
-use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{signatures::Signer, types::Ciphersuite};
 use rstest::*;
 use rstest_reuse::{self, *};
@@ -14,13 +13,12 @@ use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::signable::Signable,
     framing::*,
-    group::{config::CryptoConfig, *},
+    group::*,
     messages::proposals::*,
     schedule::{ExternalPsk, PreSharedKeyId, Psk},
     treesync::{
         errors::ApplyUpdatePathError, node::parent_node::PlainUpdatePathNode, treekem::UpdatePath,
     },
-    versions::ProtocolVersion,
 };
 
 struct CommitValidationTestSetup {
@@ -34,7 +32,7 @@ struct CommitValidationTestSetup {
 fn validation_test_setup(
     wire_format_policy: WireFormatPolicy,
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) -> CommitValidationTestSetup {
     let group_id = GroupId::from_slice(b"Test Group");
 
@@ -66,7 +64,7 @@ fn validation_test_setup(
 
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .wire_format_policy(wire_format_policy)
-        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .ciphersuite(ciphersuite)
         .build();
 
     // === Alice creates a group ===
@@ -83,7 +81,10 @@ fn validation_test_setup(
         .add_members(
             provider,
             &alice_credential.signer,
-            &[bob_key_package, charlie_key_package],
+            &[
+                bob_key_package.key_package().clone(),
+                charlie_key_package.key_package().clone(),
+            ],
         )
         .expect("error adding Bob to group");
 
@@ -126,7 +127,7 @@ fn validation_test_setup(
 
 // ValSem200: Commit must not cover inline self Remove proposal
 #[apply(ciphersuites_and_providers)]
-fn test_valsem200(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem200(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     // Test with PublicMessage
     let CommitValidationTestSetup {
         mut alice_group,
@@ -163,7 +164,9 @@ fn test_valsem200(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     // We have to clear the pending proposals so Alice doesn't try to commit to
     // her own remove.
-    alice_group.clear_pending_proposals();
+    alice_group
+        .clear_pending_proposals(provider.storage())
+        .unwrap();
 
     // Now let's stick it in the commit.
     let serialized_message = alice_group
@@ -219,6 +222,7 @@ fn test_valsem200(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     signed_plaintext
         .set_membership_tag(
             provider.crypto(),
+            ciphersuite,
             membership_key,
             alice_group.group().message_secrets().serialized_context(),
         )
@@ -231,10 +235,10 @@ fn test_valsem200(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .process_message(provider, message_in)
         .expect_err("Could process unverified message despite self remove.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::InvalidCommit(StageCommitError::AttemptedSelfRemoval)
-    );
+    ));
 
     // Positive case
     bob_group
@@ -244,7 +248,7 @@ fn test_valsem200(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
 // ValSem201: Path must be present, if at least one proposal requires a path
 #[apply(ciphersuites_and_providers)]
-fn test_valsem201(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem201(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     let wire_format_policy = PURE_PLAINTEXT_WIRE_FORMAT_POLICY;
     // Test with PublicMessage
     let CommitValidationTestSetup {
@@ -275,12 +279,12 @@ fn test_valsem201(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             generate_key_package(ciphersuite, Extensions::empty(), provider, dave_credential);
 
         queued(Proposal::Add(AddProposal {
-            key_package: dave_key_package,
+            key_package: dave_key_package.key_package().clone(),
         }))
     };
 
     let psk_proposal = || {
-        let secret = Secret::random(ciphersuite, provider.rand(), None).unwrap();
+        let secret = Secret::random(ciphersuite, provider.rand()).unwrap();
         let rand = provider
             .rand()
             .random_vec(ciphersuite.hash_length())
@@ -291,9 +295,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             Psk::External(ExternalPsk::new(rand)),
         )
         .unwrap();
-        psk_id
-            .write_to_key_store(provider, ciphersuite, secret.as_slice())
-            .unwrap();
+        psk_id.store(provider, secret.as_slice()).unwrap();
         queued(Proposal::PreSharedKey(PreSharedKeyProposal::new(psk_id)))
     };
 
@@ -340,9 +342,11 @@ fn test_valsem201(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     for (proposal, is_path_required) in cases {
         // create a commit containing the proposals
-        proposal
-            .into_iter()
-            .for_each(|p| alice_group.store_pending_proposal(p));
+        proposal.into_iter().for_each(|p| {
+            alice_group
+                .store_pending_proposal(provider.storage(), p)
+                .unwrap()
+        });
 
         let params = CreateCommitParams::builder()
             .framing_parameters(alice_group.framing_parameters())
@@ -368,6 +372,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         commit
             .set_membership_tag(
                 provider.crypto(),
+                ciphersuite,
                 membership_key,
                 alice_group.group().message_secrets().serialized_context(),
             )
@@ -376,15 +381,16 @@ fn test_valsem201(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         if is_path_required {
             let commit_wo_path = erase_path(
                 provider,
+                ciphersuite,
                 commit.clone(),
                 &alice_group,
                 &alice_credential.signer,
             );
             let processed_msg = bob_group.process_message(provider, commit_wo_path);
-            assert_eq!(
+            assert!(matches!(
                 processed_msg.unwrap_err(),
                 ProcessMessageError::InvalidCommit(StageCommitError::RequiredPathNotFound)
-            );
+            ));
         }
 
         // Positive case
@@ -392,14 +398,19 @@ fn test_valsem201(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         assert!(process_message_result.is_ok(), "{process_message_result:?}");
 
         // cleanup & restore for next iteration
-        alice_group.clear_pending_proposals();
-        alice_group.clear_pending_commit();
-        bob_group.clear_pending_commit();
+        alice_group
+            .clear_pending_proposals(provider.storage())
+            .unwrap();
+        alice_group
+            .clear_pending_commit(provider.storage())
+            .unwrap();
+        bob_group.clear_pending_commit(provider.storage()).unwrap();
     }
 }
 
 fn erase_path(
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
+    ciphersuite: Ciphersuite,
     mut plaintext: PublicMessage,
     alice_group: &MlsGroup,
     alice_signer: &impl Signer,
@@ -422,6 +433,7 @@ fn erase_path(
         &original_plaintext,
         provider,
         alice_signer,
+        ciphersuite,
     );
 
     plaintext.into()
@@ -429,7 +441,7 @@ fn erase_path(
 
 // ValSem202: Path must be the right length
 #[apply(ciphersuites_and_providers)]
-fn test_valsem202(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem202(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     // Test with PublicMessage
     let CommitValidationTestSetup {
         mut alice_group,
@@ -473,6 +485,7 @@ fn test_valsem202(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         &original_plaintext,
         provider,
         &alice_credential.signer,
+        ciphersuite,
     );
 
     let update_message_in = ProtocolMessage::from(plaintext);
@@ -481,12 +494,12 @@ fn test_valsem202(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .process_message(provider, update_message_in)
         .expect_err("Could process unverified message despite path length mismatch.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::InvalidCommit(StageCommitError::UpdatePathError(
             ApplyUpdatePathError::PathLengthMismatch
         ))
-    );
+    ));
 
     let original_update_plaintext =
         MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
@@ -505,7 +518,7 @@ fn test_valsem202(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
 // ValSem203: Path secrets must decrypt correctly
 #[apply(ciphersuites_and_providers)]
-fn test_valsem203(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem203(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     // Test with PublicMessage
     let CommitValidationTestSetup {
         mut alice_group,
@@ -551,6 +564,7 @@ fn test_valsem203(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         &original_plaintext,
         provider,
         &alice_credential.signer,
+        ciphersuite,
     );
 
     let update_message_in = ProtocolMessage::from(plaintext);
@@ -559,12 +573,12 @@ fn test_valsem203(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .process_message(provider, update_message_in)
         .expect_err("Could process unverified message despite scrambled ciphertexts.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::InvalidCommit(StageCommitError::UpdatePathError(
             ApplyUpdatePathError::UnableToDecrypt
         ))
-    );
+    ));
 
     let original_update_plaintext =
         MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
@@ -583,7 +597,7 @@ fn test_valsem203(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
 // ValSem204: Public keys from Path must be verified and match the private keys from the direct path
 #[apply(ciphersuites_and_providers)]
-fn test_valsem204(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem204(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     // Test with PublicMessage
     let CommitValidationTestSetup {
         mut alice_group,
@@ -645,9 +659,7 @@ fn test_valsem204(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             .map(|upn| {
                 PlainUpdatePathNode::new(
                     upn.encryption_key().clone(),
-                    Secret::random(ciphersuite, provider.rand(), ProtocolVersion::default())
-                        .unwrap()
-                        .into(),
+                    Secret::random(ciphersuite, provider.rand()).unwrap().into(),
                 )
             })
             .collect();
@@ -675,6 +687,7 @@ fn test_valsem204(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         &original_plaintext,
         provider,
         &alice_credential.signer,
+        ciphersuite,
     );
 
     let update_message_in = ProtocolMessage::from(plaintext);
@@ -683,12 +696,12 @@ fn test_valsem204(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .process_message(provider, update_message_in)
         .expect_err("Could process unverified message despite modified public key in path.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::InvalidCommit(StageCommitError::UpdatePathError(
             ApplyUpdatePathError::PathMismatch
         ))
-    );
+    ));
 
     let original_update_plaintext =
         MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
@@ -707,7 +720,7 @@ fn test_valsem204(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
 // ValSem205: Confirmation tag must be successfully verified
 #[apply(ciphersuites_and_providers)]
-fn test_valsem205(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_valsem205(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     // Test with PublicMessage
     let CommitValidationTestSetup {
         mut alice_group,
@@ -749,6 +762,7 @@ fn test_valsem205(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     plaintext
         .set_membership_tag(
             provider.crypto(),
+            ciphersuite,
             membership_key,
             alice_group.group().message_secrets().serialized_context(),
         )
@@ -760,10 +774,10 @@ fn test_valsem205(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .process_message(provider, update_message_in)
         .expect_err("Could process unverified message despite confirmation tag mismatch.");
 
-    assert_eq!(
+    assert!(matches!(
         err,
         ProcessMessageError::InvalidCommit(StageCommitError::ConfirmationTagMismatch)
-    );
+    ));
 
     // Positive case
     bob_group
@@ -773,7 +787,10 @@ fn test_valsem205(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
 // this ensures that a member can process commits not containing all the stored proposals
 #[apply(ciphersuites_and_providers)]
-fn test_partial_proposal_commit(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_partial_proposal_commit(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::OpenMlsProvider,
+) {
     // Test with PublicMessage
     let CommitValidationTestSetup {
         mut alice_group,
@@ -784,11 +801,7 @@ fn test_partial_proposal_commit(ciphersuite: Ciphersuite, provider: &impl OpenMl
 
     let charlie_index = alice_group
         .members()
-        .find(|m| {
-            let identity =
-                VLBytes::tls_deserialize_exact(m.credential.serialized_content()).unwrap();
-            identity.as_slice() == b"Charlie"
-        })
+        .find(|m| m.credential.serialized_content() == b"Charlie")
         .unwrap()
         .index;
 
@@ -801,7 +814,9 @@ fn test_partial_proposal_commit(ciphersuite: Ciphersuite, provider: &impl OpenMl
         .process_message(provider, proposal_1.try_into_protocol_message().unwrap())
         .unwrap();
     match proposal_1.into_content() {
-        ProcessedMessageContent::ProposalMessage(p) => bob_group.store_pending_proposal(*p),
+        ProcessedMessageContent::ProposalMessage(p) => bob_group
+            .store_pending_proposal(provider.storage(), *p)
+            .unwrap(),
         _ => unreachable!(),
     }
 
@@ -814,7 +829,9 @@ fn test_partial_proposal_commit(ciphersuite: Ciphersuite, provider: &impl OpenMl
         .process_message(provider, proposal_2.try_into_protocol_message().unwrap())
         .unwrap();
     match proposal_2.into_content() {
-        ProcessedMessageContent::ProposalMessage(p) => bob_group.store_pending_proposal(*p),
+        ProcessedMessageContent::ProposalMessage(p) => bob_group
+            .store_pending_proposal(provider.storage(), *p)
+            .unwrap(),
         _ => unreachable!(),
     }
 

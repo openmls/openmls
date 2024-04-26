@@ -1,20 +1,21 @@
-use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, OpenMlsProvider};
+use openmls_traits::{signatures::Signer, types::Ciphersuite};
 
 use crate::{
     credentials::CredentialWithKey,
     error::LibraryError,
     extensions::{errors::InvalidExtensionError, Extensions},
     group::{
-        config::CryptoConfig, public_group::errors::PublicGroupBuildError, CoreGroup,
-        CoreGroupBuildError, CoreGroupConfig, GroupId, MlsGroupCreateConfig,
-        MlsGroupCreateConfigBuilder, NewGroupError, ProposalStore, WireFormatPolicy,
+        public_group::errors::PublicGroupBuildError, CoreGroup, CoreGroupBuildError,
+        CoreGroupConfig, GroupId, MlsGroupCreateConfig, MlsGroupCreateConfigBuilder, NewGroupError,
+        ProposalStore, WireFormatPolicy,
     },
     key_packages::Lifetime,
+    storage::OpenMlsProvider,
     tree::sender_ratchet::SenderRatchetConfiguration,
     treesync::node::leaf_node::Capabilities,
 };
 
-use super::{InnerState, MlsGroup, MlsGroupState};
+use super::{MlsGroup, MlsGroupState};
 
 #[derive(Default, Debug)]
 pub struct MlsGroupBuilder {
@@ -34,12 +35,12 @@ impl MlsGroupBuilder {
     }
 
     /// Build a new group as configured by this builder.
-    pub fn build<KeyStore: OpenMlsKeyStore>(
+    pub fn build<Provider: OpenMlsProvider>(
         self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &Provider,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
-    ) -> Result<MlsGroup, NewGroupError<KeyStore::Error>> {
+    ) -> Result<MlsGroup, NewGroupError<Provider::StorageError>> {
         self.build_internal(provider, signer, credential_with_key, None)
     }
 
@@ -48,13 +49,13 @@ impl MlsGroupBuilder {
     /// If an [`MlsGroupCreateConfig`] is provided, it will be used to configure the
     /// group. Otherwise, the internal builder is used to build one with the
     /// parameters set on this builder.
-    pub(super) fn build_internal<KeyStore: OpenMlsKeyStore>(
+    pub(super) fn build_internal<Provider: OpenMlsProvider>(
         self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &Provider,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
         mls_group_create_config_option: Option<MlsGroupCreateConfig>,
-    ) -> Result<MlsGroup, NewGroupError<KeyStore::Error>> {
+    ) -> Result<MlsGroup, NewGroupError<Provider::StorageError>> {
         let mls_group_create_config = mls_group_create_config_option
             .unwrap_or_else(|| self.mls_group_create_config_builder.build());
         let group_id = self
@@ -69,7 +70,7 @@ impl MlsGroupBuilder {
 
         let mut group = CoreGroup::builder(
             group_id,
-            mls_group_create_config.crypto_config,
+            mls_group_create_config.ciphersuite,
             credential_with_key,
         )
         .with_config(group_config)
@@ -86,15 +87,9 @@ impl MlsGroupBuilder {
                 log::debug!("Unexpected PSK error: {:?}", e);
                 LibraryError::custom("Unexpected PSK error").into()
             }
-            CoreGroupBuildError::KeyStoreError(e) => NewGroupError::KeyStoreError(e),
+            CoreGroupBuildError::StorageError(e) => NewGroupError::StorageError(e),
             CoreGroupBuildError::PublicGroupBuildError(e) => match e {
                 PublicGroupBuildError::LibraryError(e) => e.into(),
-                PublicGroupBuildError::UnsupportedProposalType => {
-                    NewGroupError::UnsupportedProposalType
-                }
-                PublicGroupBuildError::UnsupportedExtensionType => {
-                    NewGroupError::UnsupportedExtensionType
-                }
                 PublicGroupBuildError::InvalidExtensions(e) => NewGroupError::InvalidExtensions(e),
             },
         })?;
@@ -112,8 +107,22 @@ impl MlsGroupBuilder {
             own_leaf_nodes: vec![],
             aad: vec![],
             group_state: MlsGroupState::Operational,
-            state_changed: InnerState::Changed,
         };
+
+        use openmls_traits::storage::StorageProvider as _;
+
+        provider
+            .storage()
+            .write_mls_join_config(mls_group.group_id(), &mls_group.mls_group_config)
+            .map_err(NewGroupError::StorageError)?;
+        provider
+            .storage()
+            .write_group_state(mls_group.group_id(), &mls_group.group_state)
+            .map_err(NewGroupError::StorageError)?;
+        mls_group
+            .group
+            .store(provider.storage())
+            .map_err(NewGroupError::StorageError)?;
 
         Ok(mls_group)
     }
@@ -188,10 +197,11 @@ impl MlsGroupBuilder {
         self
     }
 
-    /// Sets the `crypto_config` of the MlsGroup.
-    pub fn crypto_config(mut self, config: CryptoConfig) -> Self {
-        self.mls_group_create_config_builder =
-            self.mls_group_create_config_builder.crypto_config(config);
+    /// Sets the `ciphersuite` of the MlsGroup.
+    pub fn ciphersuite(mut self, ciphersuite: Ciphersuite) -> Self {
+        self.mls_group_create_config_builder = self
+            .mls_group_create_config_builder
+            .ciphersuite(ciphersuite);
         self
     }
 

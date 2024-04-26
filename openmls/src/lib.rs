@@ -4,7 +4,7 @@
 //! up to parties and have them create a group.
 //!
 //! ```
-//! use openmls::prelude::{*, config::CryptoConfig, tls_codec::*};
+//! use openmls::{prelude::{*,  tls_codec::*}};
 //! use openmls_rust_crypto::{OpenMlsRustCrypto};
 //! use openmls_basic_credential::SignatureKeyPair;
 //!
@@ -22,8 +22,7 @@
 //!     signature_algorithm: SignatureScheme,
 //!     provider: &impl OpenMlsProvider,
 //! ) -> (CredentialWithKey, SignatureKeyPair) {
-//!     let credential = BasicCredential::new(identity)
-//!         .expect("Error creating a credential.");
+//!     let credential = BasicCredential::new(identity);
 //!     let signature_keys =
 //!         SignatureKeyPair::new(signature_algorithm)
 //!             .expect("Error generating a signature key pair.");
@@ -31,7 +30,7 @@
 //!     // Store the signature key into the key store so OpenMLS has access
 //!     // to it.
 //!     signature_keys
-//!         .store(provider.key_store())
+//!         .store(provider.storage())
 //!         .expect("Error storing signature keys in key store.");
 //!     
 //!     (
@@ -49,14 +48,11 @@
 //!     provider: &impl OpenMlsProvider,
 //!     signer: &SignatureKeyPair,
 //!     credential_with_key: CredentialWithKey,
-//! ) -> KeyPackage {
+//! ) -> KeyPackageBundle {
 //!     // Create the key package
 //!     KeyPackage::builder()
 //!         .build(
-//!             CryptoConfig {
-//!                 ciphersuite,
-//!                 version: ProtocolVersion::default(),
-//!             },
+//!             ciphersuite,
 //!             provider,
 //!             signer,
 //!             credential_with_key,
@@ -98,7 +94,7 @@
 //! // The key package has to be retrieved from Maxim in some way. Most likely
 //! // via a server storing key packages for users.
 //! let (mls_message_out, welcome_out, group_info) = sasha_group
-//!     .add_members(provider, &sasha_signer, &[maxim_key_package])
+//!     .add_members(provider, &sasha_signer, &[maxim_key_package.key_package().clone()])
 //!     .expect("Could not add members.");
 //!
 //! // Sasha merges the pending commit that adds Maxim.
@@ -189,6 +185,10 @@ pub mod messages;
 pub mod schedule;
 pub mod treesync;
 pub mod versions;
+
+// implement storage traits
+// public
+pub mod storage;
 
 // Private
 mod binary_tree;

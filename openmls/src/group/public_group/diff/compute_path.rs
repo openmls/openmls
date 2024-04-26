@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, OpenMlsProvider};
+use openmls_traits::signatures::Signer;
 use tls_codec::Serialize;
 
 use crate::{
@@ -8,12 +8,10 @@ use crate::{
     credentials::CredentialWithKey,
     error::LibraryError,
     extensions::Extensions,
-    group::{
-        config::CryptoConfig, core_group::create_commit_params::CommitType,
-        errors::CreateCommitError,
-    },
+    group::{core_group::create_commit_params::CommitType, errors::CreateCommitError},
     key_packages::{KeyPackage, KeyPackageCreationResult},
     schedule::CommitSecret,
+    storage::OpenMlsProvider,
     treesync::{
         node::{
             encryption_keys::EncryptionKeyPair, leaf_node::LeafNode,
@@ -37,17 +35,16 @@ pub(crate) struct PathComputationResult {
 
 impl<'a> PublicGroupDiff<'a> {
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn compute_path<KeyStore: OpenMlsKeyStore>(
+    pub(crate) fn compute_path<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &Provider,
         leaf_index: LeafNodeIndex,
         exclusion_list: HashSet<&LeafNodeIndex>,
         commit_type: CommitType,
         signer: &impl Signer,
         credential_with_key: Option<CredentialWithKey>,
         extensions: Option<Extensions>,
-    ) -> Result<PathComputationResult, CreateCommitError<KeyStore::Error>> {
-        let version = self.group_context().protocol_version();
+    ) -> Result<PathComputationResult, CreateCommitError<Provider::StorageError>> {
         let ciphersuite = self.group_context().ciphersuite();
         let group_id = self.group_context().group_id().clone();
 
@@ -61,11 +58,8 @@ impl<'a> PublicGroupDiff<'a> {
                 // The KeyPackage is immediately put into the group. No need for
                 // the init key.
                 init_private_key: _,
-            } = KeyPackage::builder().build_without_key_storage(
-                CryptoConfig {
-                    ciphersuite,
-                    version,
-                },
+            } = KeyPackage::builder().build_without_storage(
+                ciphersuite,
                 provider,
                 signer,
                 credential_with_key.ok_or(CreateCommitError::MissingCredential)?,
@@ -82,14 +76,8 @@ impl<'a> PublicGroupDiff<'a> {
                 .diff
                 .leaf_mut(leaf_index)
                 .ok_or_else(|| LibraryError::custom("Unable to get own leaf from diff"))?;
-            let encryption_keypair = own_diff_leaf.rekey(
-                &group_id,
-                leaf_index,
-                ciphersuite,
-                version,
-                provider,
-                signer,
-            )?;
+            let encryption_keypair =
+                own_diff_leaf.rekey(&group_id, leaf_index, ciphersuite, provider, signer)?;
             vec![encryption_keypair]
         };
 

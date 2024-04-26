@@ -1,16 +1,16 @@
 use core_group::test_core_group::setup_client;
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsProvider};
+use openmls_traits::OpenMlsProvider as _;
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
     binary_tree::LeafNodeIndex,
     extensions::errors::InvalidExtensionError,
     framing::*,
-    group::{config::CryptoConfig, errors::*, *},
+    group::{errors::*, *},
     key_packages::*,
     messages::proposals::*,
     prelude::Capabilities,
+    storage::OpenMlsProvider,
     test_utils::test_framework::{
         errors::ClientError, noop_authentication_service, ActionType::Commit, CodecUse,
         MlsGroupTestSetup,
@@ -20,7 +20,10 @@ use crate::{
 };
 
 #[apply(ciphersuites_and_providers)]
-fn test_mls_group_persistence(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_mls_group_persistence<Provider: OpenMlsProvider>(
+    ciphersuite: Ciphersuite,
+    provider: &Provider,
+) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
@@ -30,7 +33,7 @@ fn test_mls_group_persistence(ciphersuite: Ciphersuite, provider: &impl OpenMlsP
     let mls_group_config = MlsGroupCreateConfig::test_default(ciphersuite);
 
     // === Alice creates a group ===
-    let mut alice_group = MlsGroup::new_with_group_id(
+    let alice_group = MlsGroup::new_with_group_id(
         provider,
         &alice_signer,
         &mls_group_config,
@@ -39,24 +42,22 @@ fn test_mls_group_persistence(ciphersuite: Ciphersuite, provider: &impl OpenMlsP
     )
     .expect("An unexpected error occurred.");
 
-    // Check the internal state has changed
-    assert_eq!(alice_group.state_changed(), InnerState::Changed);
-
-    alice_group
-        .save(provider.key_store())
-        .expect("Could not write group state to file");
-
-    let alice_group_deserialized =
-        MlsGroup::load(&group_id, provider.key_store()).expect("Could not deserialize MlsGroup");
+    let alice_group_deserialized = MlsGroup::load(provider.storage(), &group_id)
+        .expect("Could not deserialize MlsGroup: error")
+        .expect("Could not deserialize MlsGroup: doesn't exist");
 
     assert_eq!(
         (
             alice_group.export_ratchet_tree(),
-            alice_group.export_secret(provider.crypto(), "test", &[], 32)
+            alice_group
+                .export_secret(provider, "test", &[], 32)
+                .unwrap()
         ),
         (
             alice_group_deserialized.export_ratchet_tree(),
-            alice_group_deserialized.export_secret(provider.crypto(), "test", &[], 32)
+            alice_group_deserialized
+                .export_secret(provider, "test", &[], 32)
+                .unwrap()
         )
     );
 }
@@ -64,7 +65,7 @@ fn test_mls_group_persistence(ciphersuite: Ciphersuite, provider: &impl OpenMlsP
 // This tests if the remover is correctly passed to the callback when one member
 // issues a RemoveProposal and another members issues the next Commit.
 #[apply(ciphersuites_and_providers)]
-fn remover(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn remover(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
@@ -76,7 +77,7 @@ fn remover(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     // Define the MlsGroup configuration
     let mls_group_create_config = MlsGroupCreateConfig::builder()
-        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .ciphersuite(ciphersuite)
         .build();
 
     // === Alice creates a group ===
@@ -174,7 +175,9 @@ fn remover(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
             // Check that Bob was removed
             assert_eq!(remove_proposal.removed(), LeafNodeIndex::new(1));
             // Store proposal
-            charlie_group.store_pending_proposal(*staged_proposal.clone());
+            charlie_group
+                .store_pending_proposal(provider.storage(), *staged_proposal.clone())
+                .unwrap();
         } else {
             unreachable!("Expected a Proposal.");
         }
@@ -215,7 +218,7 @@ fn remover(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 }
 
 #[apply(ciphersuites_and_providers)]
-fn export_secret(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn export_secret(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
@@ -236,24 +239,24 @@ fn export_secret(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     assert!(
         alice_group
-            .export_secret(provider.crypto(), "test1", &[], ciphersuite.hash_length())
+            .export_secret(provider, "test1", &[], ciphersuite.hash_length())
             .expect("An unexpected error occurred.")
             != alice_group
-                .export_secret(provider.crypto(), "test2", &[], ciphersuite.hash_length())
+                .export_secret(provider, "test2", &[], ciphersuite.hash_length())
                 .expect("An unexpected error occurred.")
     );
     assert!(
         alice_group
-            .export_secret(provider.crypto(), "test", &[0u8], ciphersuite.hash_length())
+            .export_secret(provider, "test", &[0u8], ciphersuite.hash_length())
             .expect("An unexpected error occurred.")
             != alice_group
-                .export_secret(provider.crypto(), "test", &[1u8], ciphersuite.hash_length())
+                .export_secret(provider, "test", &[1u8], ciphersuite.hash_length())
                 .expect("An unexpected error occurred.")
     )
 }
 
 #[apply(ciphersuites_and_providers)]
-fn staged_join(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn staged_join(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, alice_kpb, alice_signer, _alice_pk) =
@@ -310,16 +313,16 @@ fn staged_join(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
     assert_eq!(
         alice_group
-            .export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
+            .export_secret(provider, "test", &[], ciphersuite.hash_length())
             .expect("An unexpected error occurred."),
         bob_group
-            .export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
+            .export_secret(provider, "test", &[], ciphersuite.hash_length())
             .expect("An unexpected error occurred.")
     );
 }
 
-#[apply(ciphersuites_and_providers)]
-fn test_invalid_plaintext(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+#[apply(ciphersuites)]
+fn test_invalid_plaintext(ciphersuite: Ciphersuite) {
     // Some basic setup functions for the MlsGroup.
     let mls_group_create_config = MlsGroupCreateConfig::test_default(ciphersuite);
 
@@ -375,7 +378,8 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
         MlsMessageBodyOut::PublicMessage(pt) => {
             pt.set_sender(random_sender);
             pt.set_membership_tag(
-                provider.crypto(),
+                client.provider.crypto(),
+                ciphersuite,
                 membership_key,
                 client_group.group().message_secrets().serialized_context(),
             )
@@ -428,7 +432,7 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
 #[apply(ciphersuites_and_providers)]
 fn test_verify_staged_commit_credentials(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) {
     let group_id = GroupId::from_slice(b"Test Group");
 
@@ -468,7 +472,9 @@ fn test_verify_staged_commit_credentials(
     if let ProcessedMessageContent::ProposalMessage(staged_proposal) =
         alice_processed_message.into_content()
     {
-        alice_group.store_pending_proposal(*staged_proposal);
+        alice_group
+            .store_pending_proposal(provider.storage(), *staged_proposal)
+            .unwrap();
     } else {
         unreachable!("Expected a StagedCommit.");
     }
@@ -505,8 +511,12 @@ fn test_verify_staged_commit_credentials(
         alice_group.export_ratchet_tree()
     );
     assert_eq!(
-        bob_group.export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length()),
-        alice_group.export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
+        bob_group
+            .export_secret(provider, "test", &[], ciphersuite.hash_length())
+            .unwrap(),
+        alice_group
+            .export_secret(provider, "test", &[], ciphersuite.hash_length())
+            .unwrap()
     );
     // Bob is added and the state aligns.
 
@@ -582,8 +592,12 @@ fn test_verify_staged_commit_credentials(
             alice_group.export_ratchet_tree()
         );
         assert_eq!(
-            bob_group.export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length()),
-            alice_group.export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
+            bob_group
+                .export_secret(provider, "test", &[], ciphersuite.hash_length())
+                .unwrap(),
+            alice_group
+                .export_secret(provider, "test", &[], ciphersuite.hash_length())
+                .unwrap()
         );
     } else {
         unreachable!()
@@ -597,7 +611,7 @@ fn test_verify_staged_commit_credentials(
 #[apply(ciphersuites_and_providers)]
 fn test_commit_with_update_path_leaf_node(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) {
     let group_id = GroupId::from_slice(b"Test Group");
 
@@ -637,7 +651,9 @@ fn test_commit_with_update_path_leaf_node(
     if let ProcessedMessageContent::ProposalMessage(staged_proposal) =
         alice_processed_message.into_content()
     {
-        alice_group.store_pending_proposal(*staged_proposal);
+        alice_group
+            .store_pending_proposal(provider.storage(), *staged_proposal)
+            .unwrap();
     } else {
         unreachable!("Expected a StagedCommit.");
     }
@@ -676,8 +692,12 @@ fn test_commit_with_update_path_leaf_node(
         alice_group.export_ratchet_tree()
     );
     assert_eq!(
-        bob_group.export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length()),
-        alice_group.export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
+        bob_group
+            .export_secret(provider, "test", &[], ciphersuite.hash_length())
+            .unwrap(),
+        alice_group
+            .export_secret(provider, "test", &[], ciphersuite.hash_length())
+            .unwrap()
     );
     // Bob is added and the state aligns.
 
@@ -765,8 +785,12 @@ fn test_commit_with_update_path_leaf_node(
             alice_group.export_ratchet_tree()
         );
         assert_eq!(
-            bob_group.export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length()),
-            alice_group.export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
+            bob_group
+                .export_secret(provider, "test", &[], ciphersuite.hash_length())
+                .unwrap(),
+            alice_group
+                .export_secret(provider, "test", &[], ciphersuite.hash_length())
+                .unwrap()
         );
     } else {
         unreachable!()
@@ -778,7 +802,10 @@ fn test_commit_with_update_path_leaf_node(
 }
 
 #[apply(ciphersuites_and_providers)]
-fn test_pending_commit_logic(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn test_pending_commit_logic(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::OpenMlsProvider,
+) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
@@ -817,7 +844,9 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, provider: &impl OpenMlsPr
     if let ProcessedMessageContent::ProposalMessage(staged_proposal) =
         alice_processed_message.into_content()
     {
-        alice_group.store_pending_proposal(*staged_proposal);
+        alice_group
+            .store_pending_proposal(provider.storage(), *staged_proposal)
+            .unwrap();
     } else {
         unreachable!("Expected a StagedCommit.");
     }
@@ -839,55 +868,57 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, provider: &impl OpenMlsPr
     let error = alice_group
         .add_members(provider, &alice_signer, &[bob_key_package.clone()])
         .expect_err("no error committing while a commit is pending");
-    assert_eq!(
+    assert!(matches!(
         error,
         AddMembersError::GroupStateError(MlsGroupStateError::PendingCommit)
-    );
+    ));
     let error = alice_group
         .propose_add_member(provider, &alice_signer, bob_key_package)
         .expect_err("no error creating a proposal while a commit is pending");
-    assert_eq!(
+    assert!(matches!(
         error,
         ProposeAddMemberError::GroupStateError(MlsGroupStateError::PendingCommit)
-    );
+    ));
     let error = alice_group
         .remove_members(provider, &alice_signer, &[LeafNodeIndex::new(1)])
         .expect_err("no error committing while a commit is pending");
-    assert_eq!(
+    assert!(matches!(
         error,
         RemoveMembersError::GroupStateError(MlsGroupStateError::PendingCommit)
-    );
+    ));
     let error = alice_group
         .propose_remove_member(provider, &alice_signer, LeafNodeIndex::new(1))
         .expect_err("no error creating a proposal while a commit is pending");
-    assert_eq!(
+    assert!(matches!(
         error,
         ProposeRemoveMemberError::GroupStateError(MlsGroupStateError::PendingCommit)
-    );
+    ));
     let error = alice_group
         .commit_to_pending_proposals(provider, &alice_signer)
         .expect_err("no error committing while a commit is pending");
-    assert_eq!(
+    assert!(matches!(
         error,
         CommitToPendingProposalsError::GroupStateError(MlsGroupStateError::PendingCommit)
-    );
+    ));
     let error = alice_group
         .self_update(provider, &alice_signer)
         .expect_err("no error committing while a commit is pending");
-    assert_eq!(
+    assert!(matches!(
         error,
         SelfUpdateError::GroupStateError(MlsGroupStateError::PendingCommit)
-    );
+    ));
     let error = alice_group
         .propose_self_update(provider, &alice_signer, None)
         .expect_err("no error creating a proposal while a commit is pending");
-    assert_eq!(
+    assert!(matches!(
         error,
         ProposeSelfUpdateError::GroupStateError(MlsGroupStateError::PendingCommit)
-    );
+    ));
 
     // Clearing the pending commit should actually clear it.
-    alice_group.clear_pending_commit();
+    alice_group
+        .clear_pending_commit(provider.storage())
+        .unwrap();
     assert!(alice_group.pending_commit().is_none());
 
     // Creating a new commit should commit the same proposals.
@@ -922,8 +953,12 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, provider: &impl OpenMlsPr
         alice_group.export_ratchet_tree()
     );
     assert_eq!(
-        bob_group.export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length()),
-        alice_group.export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
+        bob_group
+            .export_secret(provider, "test", &[], ciphersuite.hash_length())
+            .unwrap(),
+        alice_group
+            .export_secret(provider, "test", &[], ciphersuite.hash_length())
+            .unwrap()
     );
 
     // While a commit is pending, merging Bob's commit should clear the pending commit.
@@ -955,7 +990,10 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, provider: &impl OpenMlsPr
 // Test that the key package and the corresponding private key are deleted when
 // creating a new group for a welcome message.
 #[apply(ciphersuites_and_providers)]
-fn key_package_deletion(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn key_package_deletion<Provider: crate::storage::OpenMlsProvider>(
+    ciphersuite: Ciphersuite,
+    provider: &Provider,
+) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
@@ -966,7 +1004,7 @@ fn key_package_deletion(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 
     // Define the MlsGroup configuration
     let mls_group_create_config = MlsGroupCreateConfig::builder()
-        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .ciphersuite(ciphersuite)
         .build();
 
     // === Alice creates a group ===
@@ -1002,30 +1040,24 @@ fn key_package_deletion(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
     .into_group(provider)
     .expect("Error creating group from staged join");
 
-    // TEST: The private key must be gone from the key store.
-    assert!(provider
-        .key_store()
-        .read::<HpkePrivateKey>(bob_key_package.hpke_init_key().as_slice())
-        .is_none(),
-        "The HPKE private key is still in the key store after creating a new group from the key package.");
+    use openmls_traits::storage::StorageProvider;
 
     // TEST: The key package must be gone from the key store.
+    let result: Option<KeyPackageBundle> = provider
+        .storage()
+        .key_package(&bob_key_package.hash_ref(provider.crypto()).unwrap())
+        .unwrap();
     assert!(
-        provider
-            .key_store()
-            .read::<KeyPackage>(
-                bob_key_package
-                    .hash_ref(provider.crypto())
-                    .unwrap()
-                    .as_slice()
-            )
-            .is_none(),
+        result.is_none(),
         "The key package is still in the key store after creating a new group from it."
     );
 }
 
 #[apply(ciphersuites_and_providers)]
-fn remove_prosposal_by_ref(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn remove_prosposal_by_ref(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::OpenMlsProvider,
+) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
@@ -1039,7 +1071,7 @@ fn remove_prosposal_by_ref(ciphersuite: Ciphersuite, provider: &impl OpenMlsProv
 
     // Define the MlsGroup configuration
     let mls_group_create_config = MlsGroupCreateConfig::builder()
-        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .ciphersuite(ciphersuite)
         .build();
 
     // === Alice creates a group ===
@@ -1080,13 +1112,15 @@ fn remove_prosposal_by_ref(ciphersuite: Ciphersuite, provider: &impl OpenMlsProv
     assert_eq!(alice_group.proposal_store.proposals().count(), 1);
     // clearing the proposal by reference
     alice_group
-        .remove_pending_proposal(reference.clone())
+        .remove_pending_proposal(provider.storage(), reference.clone())
         .unwrap();
     assert!(alice_group.proposal_store.is_empty());
 
     // the proposal should not be stored anymore
-    let err = alice_group.remove_pending_proposal(reference).unwrap_err();
-    assert_eq!(err, MlsGroupStateError::PendingProposalNotFound);
+    let err = alice_group
+        .remove_pending_proposal(provider.storage(), reference)
+        .unwrap_err();
+    assert!(matches!(err, MlsGroupStateError::PendingProposalNotFound));
 
     // the commit should have no proposal
     let (commit, _, _) = alice_group
@@ -1252,7 +1286,10 @@ fn immutable_metadata(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider)
 
 // Test that the builder pattern accurately configures the new group.
 #[apply(ciphersuites_and_providers)]
-fn group_context_extensions_proposal(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn group_context_extensions_proposal<Provider: crate::storage::OpenMlsProvider>(
+    ciphersuite: Ciphersuite,
+    provider: &Provider,
+) {
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
         setup_client("Alice", ciphersuite, provider);
 
@@ -1339,7 +1376,7 @@ fn group_context_extensions_proposal(ciphersuite: Ciphersuite, provider: &impl O
 
 // Test that the builder pattern accurately configures the new group.
 #[apply(ciphersuites_and_providers)]
-fn builder_pattern(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn builder_pattern(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
         setup_client("Alice", ciphersuite, provider);
 
@@ -1361,7 +1398,7 @@ fn builder_pattern(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     ])
     .expect("error creating group context extensions");
 
-    let test_crypto_config = CryptoConfig::with_default_version(ciphersuite);
+    let test_ciphersuite = ciphersuite;
     let test_sender_ratchet_config = SenderRatchetConfiguration::new(10, 2000);
     let test_max_past_epochs = 10;
     let test_number_of_resumption_psks = 5;
@@ -1384,7 +1421,7 @@ fn builder_pattern(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .sender_ratchet_configuration(test_sender_ratchet_config.clone())
         .with_group_context_extensions(test_gc_extensions.clone())
         .expect("error adding group context extension to builder")
-        .crypto_config(test_crypto_config)
+        .ciphersuite(test_ciphersuite)
         .with_wire_format_policy(test_wire_format_policy)
         .lifetime(test_lifetime)
         .use_ratchet_tree_extension(true)
@@ -1425,11 +1462,7 @@ fn builder_pattern(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         Extension::ExternalSenders(external_senders),
         test_external_senders
     );
-    let crypto_config = CryptoConfig {
-        ciphersuite,
-        version: group_context.protocol_version(),
-    };
-    assert_eq!(crypto_config, test_crypto_config);
+    assert_eq!(ciphersuite, test_ciphersuite);
     let extensions = group_context.extensions();
     assert_eq!(extensions, &test_gc_extensions);
     let lifetime = alice_group
@@ -1456,9 +1489,222 @@ fn builder_pattern(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     assert_eq!(builder_err, InvalidExtensionError::IllegalInLeafNodes);
 }
 
+// Test the successful update of Group Context Extension with type Extension::Unknown(0xff11)
+#[apply(ciphersuites_and_providers)]
+fn update_group_context_with_unknown_extension<Provider: OpenMlsProvider + Default>(
+    ciphersuite: Ciphersuite,
+    provider: &Provider,
+) {
+    let alice_provider = Provider::default();
+    let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
+        setup_client("Alice", ciphersuite, &alice_provider);
+
+    // === Define the unknown group context extension and initial data ===
+    const UNKNOWN_EXTENSION_TYPE: u16 = 0xff11;
+    let unknown_extension_data = vec![1, 2];
+    let unknown_gc_extension = Extension::Unknown(
+        UNKNOWN_EXTENSION_TYPE,
+        UnknownExtension(unknown_extension_data),
+    );
+    let required_extension_types = &[ExtensionType::Unknown(UNKNOWN_EXTENSION_TYPE)];
+    let required_capabilities = Extension::RequiredCapabilities(
+        RequiredCapabilitiesExtension::new(required_extension_types, &[], &[]),
+    );
+    let capabilities = Capabilities::new(None, None, Some(required_extension_types), None, None);
+    let test_gc_extensions = Extensions::from_vec(vec![
+        unknown_gc_extension.clone(),
+        required_capabilities.clone(),
+    ])
+    .expect("error creating test group context extensions");
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .with_group_context_extensions(test_gc_extensions.clone())
+        .expect("error adding unknown extension to config")
+        .capabilities(capabilities.clone())
+        .ciphersuite(ciphersuite)
+        .build();
+
+    // === Alice creates a group ===
+    let mut alice_group = MlsGroup::new(
+        &alice_provider,
+        &alice_signer,
+        &mls_group_create_config,
+        alice_credential_with_key,
+    )
+    .expect("error creating group");
+
+    // === Verify the initial group context extension data is correct ===
+    let group_context_extensions = alice_group.group().context().extensions();
+    let mut extracted_data = None;
+    for extension in group_context_extensions.iter() {
+        if let Extension::Unknown(UNKNOWN_EXTENSION_TYPE, UnknownExtension(data)) = extension {
+            extracted_data = Some(data.clone());
+        }
+    }
+    assert_eq!(
+        extracted_data.unwrap(),
+        vec![1, 2],
+        "The data of Extension::Unknown(0xff11) does not match the expected data"
+    );
+
+    // === Alice adds Bob ===
+    let bob_provider: Provider = Default::default();
+    let (bob_credential_with_key, _bob_kpb, bob_signer, _bob_pk) =
+        setup_client("Bob", ciphersuite, &bob_provider);
+
+    let bob_key_package = KeyPackage::builder()
+        .leaf_node_capabilities(capabilities)
+        .build(
+            ciphersuite,
+            &bob_provider,
+            &bob_signer,
+            bob_credential_with_key,
+        )
+        .expect("error building key package");
+
+    let (_, welcome, _) = alice_group
+        .add_members(
+            &alice_provider,
+            &alice_signer,
+            &[bob_key_package.key_package().clone()],
+        )
+        .unwrap();
+    alice_group.merge_pending_commit(&alice_provider).unwrap();
+
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome
+        .into_welcome()
+        .expect("expected message to be a welcome");
+
+    let mut bob_group = StagedWelcome::new_from_welcome(
+        &bob_provider,
+        &MlsGroupJoinConfig::default(),
+        welcome,
+        Some(alice_group.export_ratchet_tree().into()),
+    )
+    .expect("Error creating staged join from Welcome")
+    .into_group(&bob_provider)
+    .expect("Error creating group from staged join");
+
+    // === Verify Bob's initial group context extension data is correct ===
+    let group_context_extensions = bob_group.group().context().extensions();
+    let mut extracted_data_2 = None;
+    for extension in group_context_extensions.iter() {
+        if let Extension::Unknown(UNKNOWN_EXTENSION_TYPE, UnknownExtension(data)) = extension {
+            extracted_data_2 = Some(data.clone());
+        }
+    }
+    assert_eq!(
+        extracted_data_2.unwrap(),
+        vec![1, 2],
+        "The data of Extension::Unknown(0xff11) does not match the expected data"
+    );
+
+    // === Propose the new group context extension ===
+    let updated_unknown_extension_data = vec![3, 4]; // Sample data for the extension
+    let updated_unknown_gc_extension = Extension::Unknown(
+        UNKNOWN_EXTENSION_TYPE,
+        UnknownExtension(updated_unknown_extension_data.clone()),
+    );
+
+    let mut updated_extensions = test_gc_extensions.clone();
+    updated_extensions.add_or_replace(updated_unknown_gc_extension);
+    let (update_proposal, _) = alice_group
+        .propose_group_context_extensions(provider, updated_extensions, &alice_signer)
+        .expect("failed to propose group context extensions with unknown extension");
+
+    assert_eq!(
+        alice_group.pending_proposals().count(),
+        1,
+        "Expected one pending proposal"
+    );
+
+    // === Commit to the proposed group context extension ===
+    let (update_commit, _, _) = alice_group
+        .commit_to_pending_proposals(provider, &alice_signer)
+        .expect("failed to commit to pending group context extensions");
+
+    alice_group
+        .merge_pending_commit(provider)
+        .expect("error merging pending commit");
+
+    // === let bob process the updates  ===
+    assert_eq!(
+        bob_group.pending_proposals().count(),
+        0,
+        "Expected no pending proposals"
+    );
+
+    let processed_update_message = bob_group
+        .process_message(
+            &bob_provider,
+            update_proposal.into_protocol_message().unwrap(),
+        )
+        .expect("bob failed processing the update");
+
+    match processed_update_message.into_content() {
+        ProcessedMessageContent::ProposalMessage(msg) => {
+            bob_group
+                .store_pending_proposal(bob_provider.storage(), *msg)
+                .unwrap();
+        }
+        other => panic!("expected proposal, got {other:?}"),
+    }
+
+    assert_eq!(
+        bob_group.pending_proposals().count(),
+        1,
+        "Expected one pending proposal"
+    );
+
+    let processed_commit_message = bob_group
+        .process_message(
+            &bob_provider,
+            update_commit.into_protocol_message().unwrap(),
+        )
+        .expect("bob failed processing the update");
+
+    match processed_commit_message.into_content() {
+        ProcessedMessageContent::StagedCommitMessage(staged_commit) => bob_group
+            .merge_staged_commit(&bob_provider, *staged_commit)
+            .expect("error merging group context update commit"),
+        other => panic!("expected commit, got {other:?}"),
+    };
+
+    // === Verify the group context extension was updated ===
+    let group_context_extensions = alice_group.group().context().extensions();
+    let mut extracted_data_updated = None;
+    for extension in group_context_extensions.iter() {
+        if let Extension::Unknown(UNKNOWN_EXTENSION_TYPE, UnknownExtension(data)) = extension {
+            extracted_data_updated = Some(data.clone());
+        }
+    }
+    assert_eq!(
+        extracted_data_updated.unwrap(),
+        vec![3, 4],
+        "The data of Extension::Unknown(0xff11) does not match the expected data"
+    );
+
+    // === Verify Bob sees the group context extension updated ===
+    let bob_group_loaded = MlsGroup::load(bob_provider.storage(), bob_group.group().group_id())
+        .expect("error loading group")
+        .expect("no such group");
+    let group_context_extensions_2 = bob_group_loaded.export_group_context().extensions();
+    let mut extracted_data_2 = None;
+    for extension in group_context_extensions_2.iter() {
+        if let Extension::Unknown(UNKNOWN_EXTENSION_TYPE, UnknownExtension(data)) = extension {
+            extracted_data_2 = Some(data.clone());
+        }
+    }
+    assert_eq!(
+        extracted_data_2.unwrap(),
+        vec![3, 4],
+        "The data of Extension::Unknown(0xff11) does not match the expected data"
+    );
+}
+
 // Test that unknown group context and leaf node extensions can be used in groups
 #[apply(ciphersuites_and_providers)]
-fn unknown_extensions(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+fn unknown_extensions(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
         setup_client("Alice", ciphersuite, provider);
 
@@ -1480,12 +1726,8 @@ fn unknown_extensions(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider)
     let test_kp_extensions = Extensions::single(unknown_kp_extension.clone());
 
     // === Alice creates a group ===
-    let config = CryptoConfig {
-        ciphersuite,
-        version: crate::versions::ProtocolVersion::default(),
-    };
     let mut alice_group = MlsGroup::builder()
-        .crypto_config(config)
+        .ciphersuite(ciphersuite)
         .with_capabilities(capabilities.clone())
         .with_leaf_node_extensions(Extensions::single(unknown_leaf_extension.clone()))
         .expect("error adding unknown leaf extension to builder")
@@ -1513,18 +1755,22 @@ fn unknown_extensions(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider)
     let bob_key_package = KeyPackage::builder()
         .leaf_node_capabilities(capabilities)
         .key_package_extensions(test_kp_extensions.clone())
-        .build(config, provider, &bob_signer, bob_credential_with_key)
+        .build(ciphersuite, provider, &bob_signer, bob_credential_with_key)
         .expect("error building key package");
 
     assert_eq!(
-        bob_key_package.extensions(),
+        bob_key_package.key_package().extensions(),
         &Extensions::single(unknown_kp_extension)
     );
 
     // alice adds bob and bob processes the welcome to ensure that the unknown
     // extensions are processed correctly
     let (_, welcome, _) = alice_group
-        .add_members(provider, &alice_signer, &[bob_key_package.clone()])
+        .add_members(
+            provider,
+            &alice_signer,
+            &[bob_key_package.key_package().clone()],
+        )
         .unwrap();
     alice_group.merge_pending_commit(provider).unwrap();
 
@@ -1710,7 +1956,7 @@ fn update_group_context_with_unknown_extension(
 #[apply(ciphersuites_and_providers)]
 fn join_multiple_groups_last_resort_extension(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) {
     // start with alice, bob, charlie, common config items
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
@@ -1719,22 +1965,18 @@ fn join_multiple_groups_last_resort_extension(
         setup_client("bob", ciphersuite, provider);
     let (charlie_credential_with_key, _charlie_kpb, charlie_signer, _charlie_pk) =
         setup_client("charlie", ciphersuite, provider);
-    let config = CryptoConfig {
-        ciphersuite,
-        version: crate::versions::ProtocolVersion::default(),
-    };
     let leaf_capabilities =
         Capabilities::new(None, None, Some(&[ExtensionType::LastResort]), None, None);
     let keypkg_extensions = Extensions::single(Extension::LastResort(LastResortExtension::new()));
     // alice creates MlsGroup
     let mut alice_group = MlsGroup::builder()
-        .crypto_config(config)
+        .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
         .build(provider, &alice_signer, alice_credential_with_key)
         .expect("error creating group for alice using builder");
     // bob creates MlsGroup
     let mut bob_group = MlsGroup::builder()
-        .crypto_config(config)
+        .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
         .build(provider, &bob_signer, bob_credential_with_key)
         .expect("error creating group for bob using builder");
@@ -1743,7 +1985,7 @@ fn join_multiple_groups_last_resort_extension(
         .leaf_node_capabilities(leaf_capabilities)
         .key_package_extensions(keypkg_extensions.clone())
         .build(
-            config,
+            ciphersuite,
             provider,
             &charlie_signer,
             charlie_credential_with_key,
@@ -1751,7 +1993,11 @@ fn join_multiple_groups_last_resort_extension(
         .expect("error building key package for charlie");
     // alice calls add_members(...) with charlie's KeyPackage; produces Commit and Welcome messages
     let (_, alice_welcome, _) = alice_group
-        .add_members(provider, &alice_signer, &[charlie_keypkg.clone()])
+        .add_members(
+            provider,
+            &alice_signer,
+            &[charlie_keypkg.key_package().clone()],
+        )
         .expect("error adding charlie to alice's group");
     alice_group
         .merge_pending_commit(provider)
@@ -1775,7 +2021,11 @@ fn join_multiple_groups_last_resort_extension(
 
     // bob calls add_members(...) with charlie's KeyPackage; produces Commit and Welcome messages
     let (_, bob_welcome, _) = bob_group
-        .add_members(provider, &bob_signer, &[charlie_keypkg.clone()])
+        .add_members(
+            provider,
+            &bob_signer,
+            &[charlie_keypkg.key_package().clone()],
+        )
         .expect("error adding charlie to bob's group");
     bob_group
         .merge_pending_commit(provider)

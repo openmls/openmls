@@ -1,4 +1,3 @@
-use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::random::OpenMlsRand;
 
 use crate::{
@@ -6,7 +5,6 @@ use crate::{
     schedule::EncryptionSecret,
     test_utils::*,
     tree::{secret_tree::*, sender_ratchet::SenderRatchetConfiguration},
-    versions::ProtocolVersion,
 };
 use std::collections::HashMap;
 
@@ -235,8 +233,6 @@ fn secret_tree(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
                 .rand()
                 .random_vec(ciphersuite.hash_length())
                 .expect("An unexpected error occurred.")[..],
-            ProtocolVersion::default(),
-            ciphersuite,
         ),
         TreeSize::new(n_leaves),
         LeafNodeIndex::new(1u32),

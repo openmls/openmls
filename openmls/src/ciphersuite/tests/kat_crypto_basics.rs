@@ -226,7 +226,6 @@ pub fn run_test_vector(
     use crate::{
         prelude_test::{hash_ref, hpke, OpenMlsSignaturePublicKey, Secret},
         tree::secret_tree::derive_tree_secret,
-        versions::ProtocolVersion,
     };
 
     let ciphersuite = Ciphersuite::try_from(test.cipher_suite).unwrap();
@@ -258,8 +257,14 @@ pub fn run_test_vector(
         let label = test.expand_with_label.label;
         let context = hex_to_bytes(&test.expand_with_label.context);
         let length = test.expand_with_label.length;
-        let out = Secret::from_slice(&secret, ProtocolVersion::default(), ciphersuite)
-            .kdf_expand_label(provider.crypto(), &label, &context, length.into())
+        let out = Secret::from_slice(&secret)
+            .kdf_expand_label(
+                provider.crypto(),
+                ciphersuite,
+                &label,
+                &context,
+                length.into(),
+            )
             .unwrap();
 
         assert_eq!(&hex_to_bytes(&test.expand_with_label.out), out.as_slice());
@@ -269,8 +274,8 @@ pub fn run_test_vector(
     {
         let label = test.derive_secret.label;
         let secret = hex_to_bytes(&test.derive_secret.secret);
-        let out = Secret::from_slice(&secret, ProtocolVersion::default(), ciphersuite)
-            .derive_secret(provider.crypto(), &label)
+        let out = Secret::from_slice(&secret)
+            .derive_secret(provider.crypto(), ciphersuite, &label)
             .unwrap();
 
         assert_eq!(&hex_to_bytes(&test.derive_secret.out), out.as_slice());
@@ -378,7 +383,8 @@ pub fn run_test_vector(
         let out = hex_to_bytes(&test.derive_tree_secret.out);
 
         let tree_secret = derive_tree_secret(
-            &Secret::from_slice(&secret, ProtocolVersion::Mls10, ciphersuite),
+            ciphersuite,
+            &Secret::from_slice(&secret),
             &label,
             generation,
             length.into(),

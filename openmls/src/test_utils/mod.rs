@@ -9,8 +9,11 @@ use std::{
 };
 
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_traits::{key_store::OpenMlsKeyStore, types::HpkeKeyPair};
-pub use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
+pub use openmls_traits::{
+    storage::StorageProvider as StorageProviderTrait,
+    types::{Ciphersuite, HpkeKeyPair},
+    OpenMlsProvider,
+};
 pub use rstest::*;
 pub use rstest_reuse::{self, *};
 use serde::{self, de::DeserializeOwned, Serialize};
@@ -21,11 +24,12 @@ pub use crate::utils::*;
 use crate::{
     ciphersuite::{HpkePrivateKey, OpenMlsSignaturePublicKey},
     credentials::{Credential, CredentialType, CredentialWithKey},
-    key_packages::KeyPackage,
-    prelude::{CryptoConfig, KeyPackageBuilder},
+    key_packages::{KeyPackage, KeyPackageBuilder},
+    prelude::KeyPackageBundle,
     treesync::node::encryption_keys::{EncryptionKeyPair, EncryptionPrivateKey},
 };
 
+pub mod frankenstein;
 pub mod test_framework;
 
 pub(crate) fn write(file_name: &str, obj: impl Serialize) {
@@ -97,9 +101,7 @@ pub fn hex_to_bytes_option(hex: Option<String>) -> Vec<u8> {
 #[cfg(test)]
 pub(crate) struct GroupCandidate {
     pub identity: Vec<u8>,
-    pub key_package: KeyPackage,
-    pub encryption_keypair: EncryptionKeyPair,
-    pub init_keypair: HpkeKeyPair,
+    pub key_package: KeyPackageBundle,
     pub signature_keypair: SignatureKeyPair,
     pub credential_with_key_and_signer: CredentialWithKeyAndSigner,
 }
@@ -111,16 +113,16 @@ pub(crate) fn generate_group_candidate(
     provider: &impl OpenMlsProvider,
     use_store: bool,
 ) -> GroupCandidate {
-    use crate::credentials::BasicCredential;
+    use crate::{credentials::BasicCredential, prelude::KeyPackageBundle};
 
     let credential_with_key_and_signer = {
-        let credential = BasicCredential::new(identity.to_vec()).unwrap();
+        let credential = BasicCredential::new(identity.to_vec());
 
         let signature_keypair = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
         // Store if there is a key store.
         if use_store {
-            signature_keypair.store(provider.key_store()).unwrap();
+            signature_keypair.store(provider.storage()).unwrap();
         }
 
         let signature_pkey = OpenMlsSignaturePublicKey::new(
@@ -138,63 +140,38 @@ pub(crate) fn generate_group_candidate(
         }
     };
 
-    let (key_package, encryption_keypair, init_keypair) = {
+    let key_package = {
         let builder = KeyPackageBuilder::new();
 
         if use_store {
-            let key_package = builder
+            builder
                 .build(
-                    CryptoConfig::with_default_version(ciphersuite),
+                    ciphersuite,
                     provider,
                     &credential_with_key_and_signer.signer,
                     credential_with_key_and_signer.credential_with_key.clone(),
                 )
-                .unwrap();
-
-            let encryption_keypair = EncryptionKeyPair::read_from_key_store(
-                provider,
-                key_package.leaf_node().encryption_key(),
-            )
-            .unwrap();
-            let init_keypair = {
-                let private = provider
-                    .key_store()
-                    .read::<HpkePrivateKey>(key_package.hpke_init_key().as_slice())
-                    .unwrap();
-
-                HpkeKeyPair {
-                    private,
-                    public: key_package.hpke_init_key().as_slice().to_vec(),
-                }
-            };
-
-            (key_package, encryption_keypair, init_keypair)
+                .unwrap()
         } else {
             // We don't want to store anything. So...
             let provider = OpenMlsRustCrypto::default();
 
             let key_package_creation_result = builder
-                .build_without_key_storage(
-                    CryptoConfig::with_default_version(ciphersuite),
+                .build_without_storage(
+                    ciphersuite,
                     &provider,
                     &credential_with_key_and_signer.signer,
                     credential_with_key_and_signer.credential_with_key.clone(),
                 )
                 .unwrap();
 
-            let init_keypair = HpkeKeyPair {
-                private: key_package_creation_result.init_private_key,
-                public: key_package_creation_result
-                    .key_package
-                    .hpke_init_key()
-                    .as_slice()
-                    .to_vec(),
-            };
-
-            (
+            KeyPackageBundle::new(
                 key_package_creation_result.key_package,
-                key_package_creation_result.encryption_keypair,
-                init_keypair,
+                key_package_creation_result.init_private_key,
+                key_package_creation_result
+                    .encryption_keypair
+                    .private_key()
+                    .clone(),
             )
         }
     };
@@ -202,8 +179,6 @@ pub(crate) fn generate_group_candidate(
     GroupCandidate {
         identity: identity.as_ref().to_vec(),
         key_package,
-        encryption_keypair,
-        init_keypair,
         signature_keypair: credential_with_key_and_signer.signer.clone(),
         credential_with_key_and_signer,
     }
@@ -213,8 +188,8 @@ pub(crate) fn generate_group_candidate(
 
 // This provider is currently used on all platforms
 #[cfg(feature = "libcrux-provider")]
-pub use openmls_libcrux_crypto::Provider as OpenMlsLibcrux;
-pub use openmls_rust_crypto::OpenMlsRustCrypto;
+pub type OpenMlsLibcrux = openmls_libcrux_crypto::Provider;
+pub type OpenMlsRustCrypto = openmls_rust_crypto::OpenMlsRustCrypto;
 
 // === providers ===
 
@@ -260,20 +235,25 @@ pub fn ciphersuites(ciphersuite: Ciphersuite) {}
 #[template]
 #[export]
 #[cfg_attr(feature = "libcrux-provider", rstest(ciphersuite, provider,
-    case::rust_crypto_MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519, &OpenMlsRustCrypto::default()),
-    case::rust_crypto_MLS_128_DHKEMP256_AES128GCM_SHA256_P256(Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256, &OpenMlsRustCrypto::default()),
-    case::rust_crypto_MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519, &OpenMlsRustCrypto::default()),
-    case::libcrux_MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519, &$crate::test_utils::OpenMlsLibcrux::default()),
-    case::libcrux_MLS_128_DHKEMP256_AES128GCM_SHA256_P256(Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256, &$crate::test_utils::OpenMlsLibcrux::default()),
-    case::libcrux_MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519, &$crate::test_utils::OpenMlsLibcrux::default()),
+    case::rust_crypto_MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519, &mut $crate::test_utils::OpenMlsRustCrypto::default()),
+    case::rust_crypto_MLS_128_DHKEMP256_AES128GCM_SHA256_P256(Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256, &mut $crate::test_utils::OpenMlsRustCrypto::default()),
+    case::rust_crypto_MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519, &mut $crate::test_utils::OpenMlsRustCrypto::default()),
+    case::libcrux_MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519, &mut $crate::test_utils::OpenMlsLibcrux::default()),
+    case::libcrux_MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519, &mut $crate::test_utils::OpenMlsLibcrux::default()),
+    case::libcrux_MLS_128_DHKEMP256_AES128GCM_SHA256_P256(Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256, &mut $crate::test_utils::OpenMlsLibcrux::default()),
+    case::libcrux_MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519, &mut $crate::test_utils::OpenMlsLibcrux::default()),
   )
 )]
 #[cfg_attr(not(feature = "libcrux-provider"),rstest(ciphersuite, provider,
-    case::rust_crypto_MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519, &OpenMlsRustCrypto::default()),
-    case::rust_crypto_MLS_128_DHKEMP256_AES128GCM_SHA256_P256(Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256, &OpenMlsRustCrypto::default()),
-    case::rust_crypto_MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519, &OpenMlsRustCrypto::default()),
+    case::rust_crypto_MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519, &mut $crate::test_utils::OpenMlsRustCrypto::default()),
+    case::rust_crypto_MLS_128_DHKEMP256_AES128GCM_SHA256_P256(Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256, &mut $crate::test_utils::OpenMlsRustCrypto::default()),
+    case::rust_crypto_MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519, &mut $crate::test_utils::OpenMlsRustCrypto::default()),
   )
 )]
 #[allow(non_snake_case)]
 #[cfg_attr(target_arch = "wasm32", openmls::wasm::test)]
-pub fn ciphersuites_and_providers(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {}
+pub fn ciphersuites_and_providers<Provider: OpenMlsProvider>(
+    ciphersuite: Ciphersuite,
+    provider: &Provider,
+) {
+}

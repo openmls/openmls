@@ -1,5 +1,5 @@
 //! Unit tests for the ciphersuites.
-use openmls_rust_crypto::OpenMlsRustCrypto;
+
 use openmls_traits::types::HpkeCiphertext;
 
 use crate::{ciphersuite::*, test_utils::*};
@@ -12,7 +12,7 @@ fn test_hpke_seal_open(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider
         .crypto()
         .derive_hpke_keypair(
             ciphersuite.hpke_config(),
-            Secret::random(ciphersuite, provider.rand(), None)
+            Secret::random(ciphersuite, provider.rand())
                 .expect("Not enough randomness.")
                 .as_slice(),
         )
