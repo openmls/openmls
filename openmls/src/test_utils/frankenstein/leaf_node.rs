@@ -4,7 +4,7 @@ use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsProvider};
 use tls_codec::*;
 
-use super::key_package::{FrankenExtension, FrankenLifetime};
+use super::{extensions::FrankenExtension, key_package::FrankenLifetime, FrankenCredential};
 use crate::{
     ciphersuite::{
         signable::{Signable, SignedStruct},
@@ -97,14 +97,6 @@ pub struct FrankenLeafNodeTbs {
     pub capabilities: FrankenCapabilities,
     pub leaf_node_source: FrankenLeafNodeSource,
     pub extensions: Vec<FrankenExtension>,
-}
-
-#[derive(
-    Debug, Clone, PartialEq, Eq, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize,
-)]
-pub struct FrankenCredential {
-    pub credential_type: u16,
-    pub serialized_credential_content: VLBytes,
 }
 
 #[derive(
