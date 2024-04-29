@@ -232,6 +232,7 @@ pub trait StorageProvider<const VERSION: u16> {
     /// Note that it is recommended to store a list of the hash references as well
     /// in order to iterate over key packages. OpenMLS does not have a reference
     /// for them.
+    // ANCHOR: write_key_package
     fn write_key_package<
         HashReference: traits::HashReference<VERSION>,
         KeyPackage: traits::KeyPackage<VERSION>,
@@ -240,6 +241,7 @@ pub trait StorageProvider<const VERSION: u16> {
         hash_ref: &HashReference,
         key_package: &KeyPackage,
     ) -> Result<(), Self::Error>;
+    // ANCHOR_END: write_key_package
 
     /// Store a PSK.
     ///
@@ -587,13 +589,17 @@ pub trait StorageProvider<const VERSION: u16> {
 
 // base traits for keys and values
 
+// ANCHOR: key_trait
 /// Key is a trait implemented by all types that serve as a key (in the database sense) to in the
 /// storage. For example, a GroupId is a key to the stored entities for the group with that id.
 /// The point of a key is not to be stored, it's to address something that is stored.
 pub trait Key<const VERSION: u16>: Serialize {}
+// ANCHOR_END: key_trait
 
+// ANCHOR: entity_trait
 /// Entity is a trait implemented by the values being stored.
 pub trait Entity<const VERSION: u16>: Serialize + DeserializeOwned {}
+// ANCHOR_END: entity_trait
 
 impl Entity<CURRENT_VERSION> for bool {}
 impl Entity<CURRENT_VERSION> for u8 {}
@@ -602,7 +608,8 @@ impl Entity<CURRENT_VERSION> for u8 {}
 // we can don't sacrifice type safety in the implementations of the storage provider.
 // note that there are types that are used both as keys and as entities.
 
-/// Each trait in this module corresponds to a type in OpenMLS. Some are used as keys, some as
+// ANCHOR: traits
+/// Each trait in this module corresponds to a type. Some are used as keys, some as
 /// entities, and some both. Therefore, the Key and/or Entity traits also need to be implemented.
 pub mod traits {
     use super::{Entity, Key};
@@ -637,3 +644,4 @@ pub mod traits {
     // traits for types that implement both
     pub trait ProposalRef<const VERSION: u16>: Entity<VERSION> + Key<VERSION> {}
 }
+// ANCHOR_END: traits
