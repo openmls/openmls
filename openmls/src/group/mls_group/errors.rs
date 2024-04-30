@@ -340,7 +340,7 @@ pub enum ProposalError<StorageError> {
     ValidationError(#[from] ValidationError),
     /// See [`CreateGroupContextExtProposalError`] for more details.
     #[error(transparent)]
-    CreateGroupContextExtProposalError(#[from] CreateGroupContextExtProposalError),
+    CreateGroupContextExtProposalError(#[from] CreateGroupContextExtProposalError<StorageError>),
     /// Error writing proposal to storage.
     #[error("error writing proposal to storage")]
     StorageError(StorageError),
