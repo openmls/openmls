@@ -413,15 +413,12 @@ impl MlsGroup {
             .proposal_store(&self.proposal_store)
             .inline_proposals(inline_proposals)
             .build();
-        let create_commit_result = self.group.create_commit(params, provider, signer)?;
+        let create_commit_result = self.group.create_commit(params, provider, signer).unwrap();
 
         let mls_messages = self.content_to_mls_message(create_commit_result.commit, provider)?;
         self.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
             create_commit_result.staged_commit,
         )));
-
-        // Since the state of the group might be changed, arm the state flag
-        self.flag_state_change();
 
         Ok((
             mls_messages,

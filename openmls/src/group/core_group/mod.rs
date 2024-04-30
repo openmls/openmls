@@ -1140,7 +1140,7 @@ impl CoreGroup {
     }
 
     /// Create a new group context extension proposal
-    pub(crate) fn create_group_context_ext_proposal(
+    pub(crate) fn create_group_context_ext_proposal<Provider: OpenMlsProvider>(
         &self,
         framing_parameters: FramingParameters,
         extensions: Extensions,
