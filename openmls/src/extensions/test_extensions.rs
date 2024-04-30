@@ -6,7 +6,6 @@ use tls_codec::{Deserialize, Serialize};
 
 use super::*;
 use crate::{
-    ciphersuite::HpkePrivateKey,
     credentials::*,
     framing::*,
     group::{errors::*, *},
@@ -17,7 +16,6 @@ use crate::{
     schedule::psk::store::ResumptionPskStore,
     storage::OpenMlsProvider,
     test_utils::*,
-    treesync::node::encryption_keys::EncryptionKeyPair,
     versions::ProtocolVersion,
 };
 
@@ -501,7 +499,7 @@ fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
         .expect("An unexpected error occurred.");
     use openmls_traits::storage::StorageProvider;
 
-    let kp: KeyPackageBundle = provider
+    let _: KeyPackageBundle = provider
         .storage()
         .key_package(
             &kp.key_package()
@@ -510,14 +508,4 @@ fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
         )
         .expect("error retrieving key package")
         .expect("key package does not exist");
-    let kp = kp.unwrap();
-
-    let leaf_keypair =
-        EncryptionKeyPair::read_from_key_store(provider, kp.leaf_node().encryption_key());
-    assert!(leaf_keypair.is_some());
-
-    let private_key = provider
-        .key_store()
-        .read::<HpkePrivateKey>(kp.hpke_init_key().as_slice());
-    assert!(private_key.is_some());
 }

@@ -1,4 +1,3 @@
-use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::types::Ciphersuite;
 
 use super::CoreGroup;
@@ -517,7 +516,7 @@ fn test_group_context_extension_proposal_fails(
 #[apply(ciphersuites_and_providers)]
 fn test_group_context_extension_proposal<Provider: OpenMlsProvider>(
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::OpenMlsProvider,
+    provider: &Provider,
 ) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
