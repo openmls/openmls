@@ -520,5 +520,4 @@ fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
         .key_store()
         .read::<HpkePrivateKey>(kp.hpke_init_key().as_slice());
     assert!(private_key.is_some());
-
 }

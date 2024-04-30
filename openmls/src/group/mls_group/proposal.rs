@@ -3,8 +3,8 @@ use openmls_traits::{signatures::Signer, storage::StorageProvider, types::Cipher
 use super::{
     core_group::create_commit_params::CreateCommitParams,
     errors::{ProposalError, ProposeAddMemberError, ProposeRemoveMemberError},
-    CreateGroupContextExtProposalError, GroupContextExtensionProposal, CustomProposal, MlsGroup, MlsGroupState,
-    PendingCommitState, Proposal,
+    CreateGroupContextExtProposalError, CustomProposal, GroupContextExtensionProposal, MlsGroup,
+    MlsGroupState, PendingCommitState, Proposal,
 };
 use crate::{
     binary_tree::LeafNodeIndex,
