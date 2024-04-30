@@ -1210,7 +1210,9 @@ fn immutable_metadata(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider)
         .commit_to_pending_proposals(provider, &alice_signer)
         .expect_err("should not have been able to commit to proposal that changes metadata");
 
-    group_with_metadata.clear_pending_proposals(provider.storage()).unwrap();
+    group_with_metadata
+        .clear_pending_proposals(provider.storage())
+        .unwrap();
 
     assert_eq!(group_with_metadata.pending_proposals().count(), 0);
 
