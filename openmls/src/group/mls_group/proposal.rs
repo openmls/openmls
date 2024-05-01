@@ -394,7 +394,7 @@ impl MlsGroup {
     #[allow(clippy::type_complexity)]
     pub fn update_group_context_extensions<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider,
+        provider: &Provider,
         extensions: Extensions,
         signer: &impl Signer,
     ) -> Result<
