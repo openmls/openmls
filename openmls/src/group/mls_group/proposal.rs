@@ -413,7 +413,7 @@ impl MlsGroup {
             .proposal_store(&self.proposal_store)
             .inline_proposals(inline_proposals)
             .build();
-        let create_commit_result = self.group.create_commit(params, provider, signer).unwrap();
+        let create_commit_result = self.group.create_commit(params, provider, signer)?;
 
         let mls_messages = self.content_to_mls_message(create_commit_result.commit, provider)?;
         self.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
