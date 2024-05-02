@@ -90,18 +90,18 @@ efficiently handle values.
 
 #### Example: Key packages
 
-This is only an example, but illustrate that the application may need to do more
+This is only an example, but it illustrates that the application may need to do more
 when it comes to implementing storage.
 
 Key packages are only deleted by OpenMLS when they are used and _not_ last resort
-key packages (which are supposed to be used multiple times).
+key packages (which may be used multiple times).
 The application needs to implement some logic to manage last resort key packages.
 
 ```rust,no_run,noplayground
 {{#include ../../../traits/src/storage.rs:write_key_package}}
 ```
 
-The application may store the has references in a separate list with a validity
+The application may store the hash references in a separate list with a validity
 period.
 
 ```rust,ro_run,noplayground
