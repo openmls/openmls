@@ -348,19 +348,6 @@ impl KeyPackage {
         Ok((key_package, encryption_key_pair))
     }
 
-    /// Delete this key package and its private keys from the key store.
-    pub fn delete<Provider: OpenMlsProvider>(
-        &self,
-        provider: &Provider,
-    ) -> Result<(), KeyPackageStorageError<Provider::StorageError>> {
-        provider
-            .storage()
-            .delete_key_package(&self.hash_ref(provider.crypto())?)
-            .map_err(KeyPackageStorageError::Storage)?;
-
-        Ok(())
-    }
-
     /// Get a reference to the extensions of this key package.
     pub fn extensions(&self) -> &Extensions {
         &self.payload.extensions

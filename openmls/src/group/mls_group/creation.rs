@@ -7,7 +7,6 @@ use crate::{
         core_group::create_commit_params::CreateCommitParams,
         errors::{ExternalCommitError, WelcomeError},
     },
-    key_packages::errors::KeyPackageStorageError,
     messages::{
         group_info::{GroupInfo, VerifiableGroupInfo},
         Welcome,
@@ -182,13 +181,10 @@ impl StagedWelcome {
         // Delete the [`KeyPackage`] and the corresponding private key from the
         // key store, but only if it doesn't have a last resort extension.
         if !key_package_bundle.key_package().last_resort() {
-            key_package_bundle
-                .key_package
-                .delete(provider)
-                .map_err(|e| match e {
-                    KeyPackageStorageError::LibraryError(l) => WelcomeError::LibraryError(l),
-                    KeyPackageStorageError::Storage(e) => WelcomeError::StorageError(e),
-                })?;
+            provider
+                .storage()
+                .delete_key_package(&key_package_bundle.key_package.hash_ref(provider.crypto())?)
+                .map_err(WelcomeError::StorageError)?;
         } else {
             log::debug!("Key package has last resort extension, not deleting");
         }
