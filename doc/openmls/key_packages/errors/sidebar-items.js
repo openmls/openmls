@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["KeyPackageExtensionSupportError","KeyPackageNewError","KeyPackageStorageError","KeyPackageVerifyError"]};
+window.SIDEBAR_ITEMS = {"enum":["KeyPackageExtensionSupportError","KeyPackageNewError","KeyPackageVerifyError"]};

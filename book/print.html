@@ -881,17 +881,17 @@ enclaves.</p>
 <li><a href="traits/./traits.html">Traits</a></li>
 <li><a href="traits/./types.html">External Types</a></li>
 </ul>
-<h2 id="using-the-key-store"><a class="header" href="#using-the-key-store">Using the key store</a></h2>
-<p>The key store is probably one of the most interesting traits because applications
+<h2 id="using-storage"><a class="header" href="#using-storage">Using storage</a></h2>
+<p>The store is probably one of the most interesting traits because applications
 that use OpenMLS will interact with it.
-See the <a href="traits/./traits.html#openmlskeystore">OpenMlsKeyStore trait</a> description for details
-but note that the key used to store, read, and delete values in the key store has
-to be provided as a byte slice.</p>
-<p>In the following examples, we have a <code>ciphersuite</code> and a <code>provider</code> (<code>OpenMlsCryptoProvider</code>).</p>
+See the <a href="traits/./traits.html#storageprovider">StorageProvider trait</a> description for details.</p>
+<p>In the following examples, we have a <code>ciphersuite</code> and a <code>provider</code> (<code>OpenMlsProvider</code>).</p>
 <pre><code class="language-rust no_run noplayground">    // First we generate a credential and key package for our user.
     let credential = BasicCredential::new(b"User ID".to_vec());
     let signature_keys = SignatureKeyPair::new(ciphersuite.into()).unwrap();
 
+    // This key package includes the private init and encryption key as well.
+    // See [`KeyPackageBundle`].
     let key_package = KeyPackage::builder()
         .build(
             ciphersuite,
@@ -903,15 +903,28 @@ to be provided as a byte slice.</p>
             },
         )
         .unwrap();</code></pre>
+<p>Retrieving a value from the store is as simple as calling <code>read</code>.
+The retrieved key package bundles the private keys for the init and encryption keys
+as well.</p>
+<pre><code class="language-rust no_run noplayground">    // Read the key package
+    let read_key_package: Option&lt;KeyPackageBundle&gt; = provider
+        .storage()
+        .key_package(&amp;hash_ref)
+        .expect("Error reading key package");
+    assert_eq!(
+        read_key_package.unwrap().key_package(),
+        key_package.key_package()
+    );</code></pre>
 <p>The <code>delete</code> is called with the identifier to delete a value.</p>
 <pre><code class="language-rust no_run noplayground">    // Delete the key package
-    key_package
+    let hash_ref = key_package
         .key_package()
-        .delete(provider)
+        .hash_ref(provider.crypto())
+        .unwrap();
+    provider
+        .storage()
+        .delete_key_package(&amp;hash_ref)
         .expect("Error deleting key package");</code></pre>
-<p>Retrieving a value from the key store is as simple as calling <code>read</code>.
-In this example, we assume we got a <code>credential</code> where we want to retrieve the credential bundle, i.e., the private key material.</p>
-<pre><code class="language-rust no_run noplayground"></code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="openmls-traits"><a class="header" href="#openmls-traits">OpenMLS Traits</a></h1>
 <blockquote>
 <p><strong>⚠️ These traits are responsible for all cryptographic operations and randomness
@@ -961,15 +974,105 @@ randomness and store it in an array or vector.</p>
 <li>HPKE</li>
 </ul>
 <pre><code class="language-rust no_run noplayground">};</code></pre>
-<h3 id="openmlskeystore"><a class="header" href="#openmlskeystore">OpenMlsKeyStore</a></h3>
-<p>This trait defines a CRUD API for a key store that is used to store long-term
-key material from OpenMLS.</p>
-<p>The key store provides functions to <code>store</code>, <code>read</code>, and <code>delete</code> values.
+<h3 id="storageprovider"><a class="header" href="#storageprovider">StorageProvider</a></h3>
+<p>This trait defines an API for a storage backend that is used for all OpenMLS
+persistence.</p>
+<p>The store provides functions to <code>store</code>, <code>read</code>, and <code>delete</code> values.
 Note that it does not allow updating values.
 Instead, entries must be deleted and newly stored.</p>
-<pre><code class="language-rust no_run noplayground">{{#include ../../../traits/src/key_store.rs:15:40}}</code></pre>
-<p><strong>NOTE:</strong> Right now, key material must be extracted from the key store.
-This will most likely change in the future.</p>
+<pre><code class="language-rust no_run noplayground">/// StorageProvider describes the storage backing OpenMLS and persists the state of OpenMLS groups.
+///
+/// The getters for individual values usually return a `Result&lt;Option&lt;T&gt;, E&gt;`, where `Err(_)`
+/// indicates that some sort of IO or internal error occurred, and `Ok(None)` indicates that no
+/// error occurred, but no value exists.
+/// Many getters for lists return a `Result&lt;Vec&lt;T&gt;, E&gt;`. In this case, if there was no error but
+/// the value doesn't exist, an empty vector should be returned.
+///
+/// More details can be taken from the comments on the respective method.
+pub trait StorageProvider&lt;const VERSION: u16&gt; {</code></pre>
+<p>The trait is generic over a <code>VERSION</code>, which is used to ensure that the values
+that are persisted can be upgraded when OpenMLS changes the stored structs.</p>
+<p>Every function takes <code>Key</code> and <code>Value</code> arguments.</p>
+<pre><code class="language-rust no_run noplayground">/// Key is a trait implemented by all types that serve as a key (in the database sense) to in the
+/// storage. For example, a GroupId is a key to the stored entities for the group with that id.
+/// The point of a key is not to be stored, it's to address something that is stored.
+pub trait Key&lt;const VERSION: u16&gt;: Serialize {}</code></pre>
+<pre><code class="language-rust no_run noplayground">/// Entity is a trait implemented by the values being stored.
+pub trait Entity&lt;const VERSION: u16&gt;: Serialize + DeserializeOwned {}</code></pre>
+<p>To ensure that each function takes the correct input, they use trait bounds.
+These are the available traits.</p>
+<pre><code class="language-rust no_run noplayground">/// Each trait in this module corresponds to a type. Some are used as keys, some as
+/// entities, and some both. Therefore, the Key and/or Entity traits also need to be implemented.
+pub mod traits {
+    use super::{Entity, Key};
+
+    // traits for keys, one per data type
+    pub trait GroupId&lt;const VERSION: u16&gt;: Key&lt;VERSION&gt; {}
+    pub trait SignaturePublicKey&lt;const VERSION: u16&gt;: Key&lt;VERSION&gt; {}
+    pub trait HashReference&lt;const VERSION: u16&gt;: Key&lt;VERSION&gt; {}
+    pub trait PskId&lt;const VERSION: u16&gt;: Key&lt;VERSION&gt; {}
+    pub trait EncryptionKey&lt;const VERSION: u16&gt;: Key&lt;VERSION&gt; {}
+    pub trait EpochKey&lt;const VERSION: u16&gt;: Key&lt;VERSION&gt; {}
+
+    // traits for entity, one per type
+    pub trait QueuedProposal&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
+    pub trait TreeSync&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
+    pub trait GroupContext&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
+    pub trait InterimTranscriptHash&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
+    pub trait ConfirmationTag&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
+    pub trait SignatureKeyPair&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
+    pub trait PskBundle&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
+    pub trait HpkeKeyPair&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
+    pub trait GroupState&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
+    pub trait GroupEpochSecrets&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
+    pub trait LeafNodeIndex&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
+    pub trait GroupUseRatchetTreeExtension&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
+    pub trait MessageSecrets&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
+    pub trait ResumptionPskStore&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
+    pub trait KeyPackage&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
+    pub trait MlsGroupJoinConfig&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
+    pub trait LeafNode&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
+
+    // traits for types that implement both
+    pub trait ProposalRef&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; + Key&lt;VERSION&gt; {}
+}</code></pre>
+<p>An implementation of the storage trait should ensure that it can address and
+efficiently handle values.</p>
+<h4 id="example-key-packages"><a class="header" href="#example-key-packages">Example: Key packages</a></h4>
+<p>This is only an example, but it illustrates that the application may need to do more
+when it comes to implementing storage.</p>
+<p>Key packages are only deleted by OpenMLS when they are used and <em>not</em> last resort
+key packages (which may be used multiple times).
+The application needs to implement some logic to manage last resort key packages.</p>
+<pre><code class="language-rust no_run noplayground">    fn write_key_package&lt;
+        HashReference: traits::HashReference&lt;VERSION&gt;,
+        KeyPackage: traits::KeyPackage&lt;VERSION&gt;,
+    &gt;(
+        &amp;self,
+        hash_ref: &amp;HashReference,
+        key_package: &amp;KeyPackage,
+    ) -&gt; Result&lt;(), Self::Error&gt;;</code></pre>
+<p>The application may store the hash references in a separate list with a validity
+period.</p>
+<pre><code class="language-rust ro_run noplayground">fn write_key_package&lt;
+    HashReference: traits::HashReference&lt;VERSION&gt;,
+    KeyPackage: traits::KeyPackage&lt;VERSION&gt;,
+&gt;(
+    &amp;self,
+    hash_ref: &amp;HashReference,
+    key_package: &amp;KeyPackage,
+) -&gt; Result&lt;(), Self::Error&gt; {
+    // Get the validity from the application in some way.
+    let validity = self.get_validity(hash_ref);
+
+    // Store the reference and its validity period.
+    self.store_hash_ref(hash_ref, validity);
+
+    // Store the actual key package.
+    self.store_key_package(hash_ref, key_package);
+}</code></pre>
+<p>This allows the application to iterate over the hash references and delete outdated
+key packages.</p>
 <h3 id="openmlscryptoprovider"><a class="header" href="#openmlscryptoprovider">OpenMlsCryptoProvider</a></h3>
 <p>Additionally, there's a wrapper trait defined that is expected to be passed into
 the public OpenMLS API.

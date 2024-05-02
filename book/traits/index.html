@@ -184,17 +184,17 @@ enclaves.</p>
 <li><a href="./traits.html">Traits</a></li>
 <li><a href="./types.html">External Types</a></li>
 </ul>
-<h2 id="using-the-key-store"><a class="header" href="#using-the-key-store">Using the key store</a></h2>
-<p>The key store is probably one of the most interesting traits because applications
+<h2 id="using-storage"><a class="header" href="#using-storage">Using storage</a></h2>
+<p>The store is probably one of the most interesting traits because applications
 that use OpenMLS will interact with it.
-See the <a href="./traits.html#openmlskeystore">OpenMlsKeyStore trait</a> description for details
-but note that the key used to store, read, and delete values in the key store has
-to be provided as a byte slice.</p>
-<p>In the following examples, we have a <code>ciphersuite</code> and a <code>provider</code> (<code>OpenMlsCryptoProvider</code>).</p>
+See the <a href="./traits.html#storageprovider">StorageProvider trait</a> description for details.</p>
+<p>In the following examples, we have a <code>ciphersuite</code> and a <code>provider</code> (<code>OpenMlsProvider</code>).</p>
 <pre><code class="language-rust no_run noplayground">    // First we generate a credential and key package for our user.
     let credential = BasicCredential::new(b"User ID".to_vec());
     let signature_keys = SignatureKeyPair::new(ciphersuite.into()).unwrap();
 
+    // This key package includes the private init and encryption key as well.
+    // See [`KeyPackageBundle`].
     let key_package = KeyPackage::builder()
         .build(
             ciphersuite,
@@ -206,15 +206,28 @@ to be provided as a byte slice.</p>
             },
         )
         .unwrap();</code></pre>
+<p>Retrieving a value from the store is as simple as calling <code>read</code>.
+The retrieved key package bundles the private keys for the init and encryption keys
+as well.</p>
+<pre><code class="language-rust no_run noplayground">    // Read the key package
+    let read_key_package: Option&lt;KeyPackageBundle&gt; = provider
+        .storage()
+        .key_package(&amp;hash_ref)
+        .expect("Error reading key package");
+    assert_eq!(
+        read_key_package.unwrap().key_package(),
+        key_package.key_package()
+    );</code></pre>
 <p>The <code>delete</code> is called with the identifier to delete a value.</p>
 <pre><code class="language-rust no_run noplayground">    // Delete the key package
-    key_package
+    let hash_ref = key_package
         .key_package()
-        .delete(provider)
+        .hash_ref(provider.crypto())
+        .unwrap();
+    provider
+        .storage()
+        .delete_key_package(&amp;hash_ref)
         .expect("Error deleting key package");</code></pre>
-<p>Retrieving a value from the key store is as simple as calling <code>read</code>.
-In this example, we assume we got a <code>credential</code> where we want to retrieve the credential bundle, i.e., the private key material.</p>
-<pre><code class="language-rust no_run noplayground"></code></pre>
 
                     </main>
 
