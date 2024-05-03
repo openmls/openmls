@@ -1,5 +1,5 @@
-use std::io::{Read, Write};
-use tls_codec::{Deserialize, Serialize, Size};
+use std::io::Read;
+use tls_codec::{Deserialize, Size};
 
 use crate::versions::ProtocolVersion;
 
@@ -7,34 +7,6 @@ use super::{
     mls_auth_content::FramedContentAuthData, mls_content_in::FramedContentBodyIn,
     private_message_in::PrivateMessageContentIn, *,
 };
-
-impl Size for PrivateMessageContent {
-    fn tls_serialized_len(&self) -> usize {
-        self.content.tls_serialized_len() +
-           self.auth.tls_serialized_len() +
-            // Note: The padding is appended as a "raw" all-zero byte slice
-            // with length `length_of_padding`. Thus, we only need to add
-            // this length here.
-            self.length_of_padding
-    }
-}
-
-impl Serialize for PrivateMessageContent {
-    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, Error> {
-        let mut written = 0;
-
-        // The `content` field is serialized without the `content_type`, which
-        // is not part of the struct as per MLS spec.
-        written += self.content.serialize_without_type(writer)?;
-
-        written += self.auth.tls_serialize(writer)?;
-        let padding = vec![0u8; self.length_of_padding];
-        writer.write_all(&padding)?;
-        written += self.length_of_padding;
-
-        Ok(written)
-    }
-}
 
 /// This function implements deserialization manually, as it requires `content_type` as additional input.
 pub(super) fn deserialize_ciphertext_content<R: Read>(
