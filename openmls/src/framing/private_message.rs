@@ -2,10 +2,7 @@ use openmls_traits::types::Ciphersuite;
 use std::io::Write;
 use tls_codec::{Serialize, Size, TlsSerialize, TlsSize};
 
-use super::{
-    mls_auth_content::{AuthenticatedContent, FramedContentAuthData},
-    mls_content::FramedContentBody,
-};
+use super::mls_auth_content::AuthenticatedContent;
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex, error::LibraryError,
@@ -297,51 +294,6 @@ impl PrivateMessage {
     pub(crate) fn ciphertext(&self) -> &[u8] {
         self.ciphertext.as_slice()
     }
-}
-
-// === Helper structs ===
-
-/// PrivateMessageContent
-///
-/// ```c
-/// struct {
-///     select (PrivateMessage.content_type) {
-///         case application:
-///           opaque application_data<V>;
-///
-///         case proposal:
-///           Proposal proposal;
-///
-///         case commit:
-///           Commit commit;
-///     }
-///
-///     FramedContentAuthData auth;
-///     opaque padding[length_of_padding];
-/// } PrivateMessageContent;
-/// ```
-#[derive(Debug, Clone)]
-pub(crate) struct PrivateMessageContent {
-    // The `content` field is serialized and deserialized manually without the
-    // `content_type`, which is not part of the struct as per MLS spec. See the
-    // implementation of `TlsSerialize` for `PrivateMessageContent`, as well as
-    // `deserialize_ciphertext_content`.
-    pub(crate) content: FramedContentBody,
-    pub(crate) auth: FramedContentAuthData,
-    /// Length of the all-zero padding.
-    ///
-    /// We do not retain any bytes here to avoid the need to
-    /// keep track that all of them are zero. Instead, we only
-    /// use `length_of_padding` to track the (theoretical) size
-    /// of the all-zero byte slice.
-    ///
-    /// Note, however, that we MUST make sure to (de)serialize these bytes!
-    /// Otherwise this mechanism would not make any sense because it would
-    /// not add to the ciphertext size to hide the original message length.
-    ///
-    /// Sadly, we cannot `derive(TlsSerialize, TlsDeserialize)` due to this
-    /// "custom" mechanism.
-    pub(crate) length_of_padding: usize,
 }
 
 #[derive(TlsSerialize, TlsSize)]
