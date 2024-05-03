@@ -8,7 +8,6 @@
 //!   the code.
 
 use openmls_traits::storage::{traits, Entity, Key, CURRENT_VERSION};
-use serde::Serialize;
 
 use crate::binary_tree::LeafNodeIndex;
 use crate::group::{MlsGroupJoinConfig, MlsGroupState};
@@ -112,13 +111,6 @@ impl Entity<CURRENT_VERSION> for LeafNode {}
 impl traits::LeafNode<CURRENT_VERSION> for LeafNode {}
 
 // Crypto
-
-/// Helper to use slices as keys
-#[derive(Serialize)]
-pub(crate) struct StorageReference<'a>(pub(crate) &'a [u8]);
-
-impl<'a> Key<CURRENT_VERSION> for StorageReference<'a> {}
-impl<'a> traits::HashReference<CURRENT_VERSION> for StorageReference<'a> {}
 
 impl Key<CURRENT_VERSION> for GroupEpoch {}
 impl traits::EpochKey<CURRENT_VERSION> for GroupEpoch {}
