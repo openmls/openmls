@@ -21,6 +21,7 @@
 //! can be manipulated manually via the `Client` struct, which contains their
 //! group states.
 
+use crate::storage::OpenMlsProvider;
 use crate::test_utils::OpenMlsRustCrypto;
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
@@ -37,14 +38,11 @@ use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     types::{Ciphersuite, HpkeKeyPair, SignatureScheme},
-    OpenMlsProvider,
+    OpenMlsProvider as _,
 };
 
 use std::{collections::HashMap, sync::RwLock};
 use tls_codec::*;
-
-#[cfg(not(target_arch = "wasm32"))]
-use rayon::prelude::*;
 
 pub mod client;
 pub mod errors;
@@ -104,9 +102,9 @@ pub enum CodecUse {
 /// that the `MlsGroupTestSetup` can only be initialized with a fixed number of
 /// clients and that `create_clients` has to be called before it can be
 /// otherwise used.
-pub struct MlsGroupTestSetup {
+pub struct MlsGroupTestSetup<Provider: OpenMlsProvider> {
     // The clients identity is its position in the vector in be_bytes.
-    pub clients: RwLock<HashMap<Vec<u8>, RwLock<Client>>>,
+    pub clients: RwLock<HashMap<Vec<u8>, RwLock<Client<Provider>>>>,
     pub groups: RwLock<HashMap<GroupId, Group>>,
     // This maps key package hashes to client ids.
     pub waiting_for_welcome: RwLock<HashMap<Vec<u8>, Vec<u8>>>,
@@ -132,7 +130,7 @@ pub struct MlsGroupTestSetup {
 // context that the `MlsGroupTestSetup` lives in, because otherwise the
 // references don't live long enough.
 
-impl MlsGroupTestSetup {
+impl<Provider: OpenMlsProvider> MlsGroupTestSetup<Provider> {
     /// Create a new `MlsGroupTestSetup` with the given default
     /// `MlsGroupCreateConfig` and the given number of clients. For lifetime
     /// reasons, `create_clients` has to be called in addition with the same
@@ -145,14 +143,13 @@ impl MlsGroupTestSetup {
         let mut clients = HashMap::new();
         for i in 0..number_of_clients {
             let identity = i.to_be_bytes().to_vec();
-            // For now, everyone supports all ciphersuites.
-            let crypto = OpenMlsRustCrypto::default();
+            let provider = Provider::default();
             let mut credentials = HashMap::new();
-            for ciphersuite in crypto.crypto().supported_ciphersuites().iter() {
+            for ciphersuite in provider.crypto().supported_ciphersuites().iter() {
                 let credential = BasicCredential::new(identity.clone());
                 let signature_keys =
                     SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
-                signature_keys.store(crypto.storage()).unwrap();
+                signature_keys.store(provider.storage()).unwrap();
                 let signature_key = OpenMlsSignaturePublicKey::new(
                     signature_keys.public().into(),
                     signature_keys.signature_scheme(),
@@ -170,7 +167,7 @@ impl MlsGroupTestSetup {
             let client = Client {
                 identity: identity.clone(),
                 credentials,
-                provider: crypto,
+                provider,
                 groups: RwLock::new(HashMap::new()),
             };
             clients.insert(identity, RwLock::new(client));
@@ -192,9 +189,9 @@ impl MlsGroupTestSetup {
     /// error if the client does not support the given ciphersuite.
     pub fn get_fresh_key_package(
         &self,
-        client: &Client,
+        client: &Client<Provider>,
         ciphersuite: Ciphersuite,
-    ) -> Result<KeyPackage, SetupError> {
+    ) -> Result<KeyPackage, SetupError<Provider::StorageError>> {
         let key_package = client.get_fresh_key_package(ciphersuite)?;
         self.waiting_for_welcome
             .write()
@@ -247,7 +244,11 @@ impl MlsGroupTestSetup {
     /// distribute the commit adding the members to the group. This function
     /// will throw an error if no key package was previously created for the
     /// client by `get_fresh_key_package`.
-    pub fn deliver_welcome(&self, welcome: Welcome, group: &Group) -> Result<(), SetupError> {
+    pub fn deliver_welcome(
+        &self,
+        welcome: Welcome,
+        group: &Group,
+    ) -> Result<(), SetupError<Provider::StorageError>> {
         // Serialize and de-serialize the Welcome if the bit was set.
         let welcome = match self.use_codec {
             CodecUse::SerializedMessages => {
@@ -292,14 +293,17 @@ impl MlsGroupTestSetup {
         group: &mut Group,
         message: &MlsMessageIn,
         authentication_service: &AS,
-    ) -> Result<(), ClientError> {
+    ) -> Result<(), ClientError<Provider::StorageError>> {
         // Test serialization if mandated by config
         let message: ProtocolMessage = match self.use_codec {
             CodecUse::SerializedMessages => {
                 let mls_message_out: MlsMessageOut = message.clone().into();
-                let serialized_message = mls_message_out.tls_serialize_detached()?;
+                let serialized_message = mls_message_out
+                    .tls_serialize_detached()
+                    .map_err(ClientError::TlsCodecError)?;
 
-                MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())?
+                MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())
+                    .map_err(ClientError::TlsCodecError)?
             }
             CodecUse::StructMessages => message.clone(),
         }
@@ -365,9 +369,6 @@ impl MlsGroupTestSetup {
     ) {
         let clients = self.clients.read().expect("An unexpected error occurred.");
 
-        #[cfg(not(target_arch = "wasm32"))]
-        let group_members = group.members.par_iter();
-        #[cfg(target_arch = "wasm32")]
         let group_members = group.members.iter();
 
         let messages = group_members
@@ -421,7 +422,7 @@ impl MlsGroupTestSetup {
         &self,
         group: &Group,
         number_of_members: usize,
-    ) -> Result<Vec<Vec<u8>>, SetupError> {
+    ) -> Result<Vec<Vec<u8>>, SetupError<Provider::StorageError>> {
         let clients = self.clients.read().expect("An unexpected error occurred.");
         if number_of_members + group.members.len() > clients.len() {
             return Err(SetupError::NotEnoughClients);
@@ -455,7 +456,10 @@ impl MlsGroupTestSetup {
     /// does not support the given ciphersuite. TODO #310: Fix to always work
     /// reliably, probably by introducing a mapping from ciphersuite to the set
     /// of client ids supporting it.
-    pub fn create_group(&self, ciphersuite: Ciphersuite) -> Result<GroupId, SetupError> {
+    pub fn create_group(
+        &self,
+        ciphersuite: Ciphersuite,
+    ) -> Result<GroupId, SetupError<Provider::StorageError>> {
         // Pick a random group creator.
         let clients = self.clients.read().expect("An unexpected error occurred.");
         let group_creator_id = ((OsRng.next_u32() as usize) % clients.len())
@@ -496,7 +500,7 @@ impl MlsGroupTestSetup {
         target_group_size: usize,
         ciphersuite: Ciphersuite,
         authentication_service: AS,
-    ) -> Result<GroupId, SetupError> {
+    ) -> Result<GroupId, SetupError<Provider::StorageError>> {
         // Create the initial group.
         let group_id = self.create_group(ciphersuite)?;
 
@@ -536,7 +540,7 @@ impl MlsGroupTestSetup {
         client_id: &[u8],
         leaf_node: Option<LeafNode>,
         authentication_service: &AS,
-    ) -> Result<(), SetupError> {
+    ) -> Result<(), SetupError<Provider::StorageError>> {
         let clients = self.clients.read().expect("An unexpected error occurred.");
         let client = clients
             .get(client_id)
@@ -570,7 +574,7 @@ impl MlsGroupTestSetup {
         adder_id: &[u8],
         addees: Vec<Vec<u8>>,
         authentication_service: &AS,
-    ) -> Result<(), SetupError> {
+    ) -> Result<(), SetupError<Provider::StorageError>> {
         let clients = self.clients.read().expect("An unexpected error occurred.");
         let adder = clients
             .get(adder_id)
@@ -616,7 +620,7 @@ impl MlsGroupTestSetup {
         remover_id: &[u8],
         target_members: &[LeafNodeIndex],
         authentication_service: AS,
-    ) -> Result<(), SetupError> {
+    ) -> Result<(), SetupError<Provider::StorageError>> {
         let clients = self.clients.read().expect("An unexpected error occurred.");
         let remover = clients
             .get(remover_id)
@@ -646,7 +650,7 @@ impl MlsGroupTestSetup {
         &self,
         group: &mut Group,
         authentication_service: &AS,
-    ) -> Result<(), SetupError> {
+    ) -> Result<(), SetupError<Provider::StorageError>> {
         // Who's going to do it?
         let member_id = group.random_group_member();
         println!("Member performing the operation: {member_id:?}");

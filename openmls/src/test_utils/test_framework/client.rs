@@ -6,7 +6,7 @@ use std::{collections::HashMap, sync::RwLock};
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::{
     types::{Ciphersuite, HpkeKeyPair, SignatureScheme},
-    OpenMlsProvider,
+    OpenMlsProvider as _,
 };
 use tls_codec::{Deserialize, Serialize};
 
@@ -21,6 +21,7 @@ use crate::{
     group::*,
     key_packages::*,
     messages::{group_info::GroupInfo, *},
+    storage::OpenMlsProvider,
     treesync::{
         node::{leaf_node::Capabilities, Node},
         LeafNode, RatchetTree, RatchetTreeIn,
@@ -36,23 +37,23 @@ use super::{errors::ClientError, ActionType};
 /// containing its `CredentialWithKey`s. The `key_package_bundles` field
 /// contains generated `KeyPackageBundle`s that are waiting to be used for new
 /// groups.
-pub struct Client {
+pub struct Client<Provider: OpenMlsProvider> {
     /// Name of the client.
     pub identity: Vec<u8>,
     /// Ciphersuites supported by the client.
     pub credentials: HashMap<Ciphersuite, CredentialWithKey>,
-    pub provider: OpenMlsRustCrypto,
+    pub provider: Provider,
     pub groups: RwLock<HashMap<GroupId, MlsGroup>>,
 }
 
-impl Client {
+impl<Provider: OpenMlsProvider> Client<Provider> {
     /// Generate a fresh key package and return it.
     /// The first ciphersuite determines the
     /// credential used to generate the `KeyPackage`.
     pub fn get_fresh_key_package(
         &self,
         ciphersuite: Ciphersuite,
-    ) -> Result<KeyPackage, ClientError> {
+    ) -> Result<KeyPackage, ClientError<Provider::StorageError>> {
         let credential_with_key = self
             .credentials
             .get(&ciphersuite)
@@ -83,11 +84,14 @@ impl Client {
         &self,
         mls_group_create_config: MlsGroupCreateConfig,
         ciphersuite: Ciphersuite,
-    ) -> Result<GroupId, ClientError> {
+    ) -> Result<GroupId, ClientError<Provider::StorageError>> {
+        eprintln!("credentials: {:?}", self.credentials.keys());
         let credential_with_key = self
             .credentials
             .get(&ciphersuite)
-            .ok_or(ClientError::CiphersuiteNotSupported)?;
+            .ok_or(ClientError::CiphersuiteNotSupported);
+        eprintln!("credential_with_key: {credential_with_key:?}");
+        let credential_with_key = credential_with_key?;
         let signer = SignatureKeyPair::read(
             self.provider.storage(),
             credential_with_key.signature_key.as_slice(),
@@ -118,7 +122,7 @@ impl Client {
         mls_group_config: MlsGroupJoinConfig,
         welcome: Welcome,
         ratchet_tree: Option<RatchetTreeIn>,
-    ) -> Result<(), ClientError> {
+    ) -> Result<(), ClientError<Provider::StorageError>> {
         let staged_join = StagedWelcome::new_from_welcome(
             &self.provider,
             &mls_group_config,
@@ -141,7 +145,7 @@ impl Client {
         message: &ProtocolMessage,
         sender_id: &[u8],
         authentication_service: &AS,
-    ) -> Result<(), ClientError> {
+    ) -> Result<(), ClientError<Provider::StorageError>> {
         let mut group_states = self.groups.write().expect("An unexpected error occurred.");
         let group_id = message.group_id();
         let group_state = group_states
@@ -187,7 +191,10 @@ impl Client {
     /// Get the credential and the index of each group member of the group with
     /// the given id. Returns an error if no group exists with the given group
     /// id.
-    pub fn get_members_of_group(&self, group_id: &GroupId) -> Result<Vec<Member>, ClientError> {
+    pub fn get_members_of_group(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Vec<Member>, ClientError<Provider::StorageError>> {
         let groups = self.groups.read().expect("An unexpected error occurred.");
         let group = groups.get(group_id).ok_or(ClientError::NoMatchingGroup)?;
         let members = group.members().collect();
@@ -205,7 +212,10 @@ impl Client {
         action_type: ActionType,
         group_id: &GroupId,
         leaf_node: Option<LeafNode>,
-    ) -> Result<(MlsMessageOut, Option<Welcome>, Option<GroupInfo>), ClientError> {
+    ) -> Result<
+        (MlsMessageOut, Option<Welcome>, Option<GroupInfo>),
+        ClientError<Provider::StorageError>,
+    > {
         let mut groups = self.groups.write().expect("An unexpected error occurred.");
         let group = groups
             .get_mut(group_id)
@@ -247,7 +257,10 @@ impl Client {
         action_type: ActionType,
         group_id: &GroupId,
         key_packages: &[KeyPackage],
-    ) -> Result<(Vec<MlsMessageOut>, Option<Welcome>, Option<GroupInfo>), ClientError> {
+    ) -> Result<
+        (Vec<MlsMessageOut>, Option<Welcome>, Option<GroupInfo>),
+        ClientError<Provider::StorageError>,
+    > {
         let mut groups = self.groups.write().expect("An unexpected error occurred.");
         let group = groups
             .get_mut(group_id)
@@ -300,7 +313,10 @@ impl Client {
         action_type: ActionType,
         group_id: &GroupId,
         targets: &[LeafNodeIndex],
-    ) -> Result<(Vec<MlsMessageOut>, Option<Welcome>, Option<GroupInfo>), ClientError> {
+    ) -> Result<
+        (Vec<MlsMessageOut>, Option<Welcome>, Option<GroupInfo>),
+        ClientError<Provider::StorageError>,
+    > {
         let mut groups = self.groups.write().expect("An unexpected error occurred.");
         let group = groups
             .get_mut(group_id)

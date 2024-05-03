@@ -14,7 +14,7 @@ use crate::{
     },
     key_packages::KeyPackage,
     messages::{AddProposal, Proposal},
-    storage::{OpenMlsProvider, StorageProvider},
+    storage::OpenMlsProvider,
 };
 use openmls_traits::signatures::Signer;
 

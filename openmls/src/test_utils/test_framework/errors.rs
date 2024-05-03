@@ -1,11 +1,11 @@
 use thiserror::Error;
 
 use crate::{error::LibraryError, group::errors::*};
-use openmls_rust_crypto::{MemoryStorage, MemoryStorageError};
+use openmls_rust_crypto::MemoryStorage;
 
 /// Setup error
 #[derive(Error, Debug, PartialEq)]
-pub enum SetupError {
+pub enum SetupError<StorageError> {
     #[error("")]
     UnknownGroupId,
     #[error("")]
@@ -20,10 +20,10 @@ pub enum SetupError {
     NoFreshKeyPackage,
     /// See [`ClientError`] for more details.
     #[error(transparent)]
-    ClientError(#[from] ClientError),
+    ClientError(#[from] ClientError<StorageError>),
     /// See [`ExportSecretError`] for more details.
     #[error(transparent)]
-    ExportSecretError(#[from] ExportSecretError<MemoryStorageError>),
+    ExportSecretError(#[from] ExportSecretError<StorageError>),
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -38,7 +38,7 @@ pub enum SetupGroupError {
 
 /// Errors that can occur when processing messages with the client.
 #[derive(Error, Debug, PartialEq)]
-pub enum ClientError {
+pub enum ClientError<StorageError> {
     #[error("")]
     NoMatchingKeyPackage,
     #[error("")]
@@ -51,51 +51,52 @@ pub enum ClientError {
     NoCiphersuite,
     /// See [`WelcomeError`] for more details.
     #[error(transparent)]
-    FailedToJoinGroup(#[from] WelcomeError<MemoryStorageError>),
+    FailedToJoinGroup(#[from] WelcomeError<StorageError>),
+    /// See [`tls_codec::Error`] for more details.
     #[error(transparent)]
-    TlsCodecError(#[from] tls_codec::Error),
+    TlsCodecError(tls_codec::Error),
     /// See [`ProcessMessageError`] for more details.
     #[error(transparent)]
-    ProcessMessageError(#[from] ProcessMessageError<MemoryStorageError>),
+    ProcessMessageError(#[from] ProcessMessageError<StorageError>),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
-    MlsGroupStateError(#[from] MlsGroupStateError<MemoryStorageError>),
+    MlsGroupStateError(#[from] MlsGroupStateError<StorageError>),
     /// See [`AddMembersError`] for more details.
     #[error(transparent)]
-    AddMembersError(#[from] AddMembersError<MemoryStorageError>),
+    AddMembersError(#[from] AddMembersError<StorageError>),
     /// See [`RemoveMembersError`] for more details.
     #[error(transparent)]
-    RemoveMembersError(#[from] RemoveMembersError<MemoryStorageError>),
+    RemoveMembersError(#[from] RemoveMembersError<StorageError>),
     /// See [`ProposeAddMemberError`] for more details.
     #[error(transparent)]
-    ProposeAddMemberError(#[from] ProposeAddMemberError<MemoryStorageError>),
+    ProposeAddMemberError(#[from] ProposeAddMemberError<StorageError>),
     /// See [`ProposeRemoveMemberError`] for more details.
     #[error(transparent)]
-    ProposeRemoveMemberError(#[from] ProposeRemoveMemberError<MemoryStorageError>),
+    ProposeRemoveMemberError(#[from] ProposeRemoveMemberError<StorageError>),
     /// See [`ExportSecretError`] for more details.
     #[error(transparent)]
-    ExportSecretError(#[from] ExportSecretError<MemoryStorageError>),
+    ExportSecretError(#[from] ExportSecretError<StorageError>),
     /// See [`NewGroupError`] for more details.
     #[error(transparent)]
-    NewGroupError(#[from] NewGroupError<MemoryStorageError>),
+    NewGroupError(#[from] NewGroupError<StorageError>),
     /// See [`SelfUpdateError`] for more details.
     #[error(transparent)]
-    SelfUpdateError(#[from] SelfUpdateError<MemoryStorageError>),
+    SelfUpdateError(#[from] SelfUpdateError<StorageError>),
     /// See [`ProposeSelfUpdateError`] for more details.
     #[error(transparent)]
-    ProposeSelfUpdateError(#[from] ProposeSelfUpdateError<MemoryStorageError>),
+    ProposeSelfUpdateError(#[from] ProposeSelfUpdateError<StorageError>),
     /// See [`MergePendingCommitError`] for more details.
     #[error(transparent)]
-    MergePendingCommitError(#[from] MergePendingCommitError<MemoryStorageError>),
+    MergePendingCommitError(#[from] MergePendingCommitError<StorageError>),
     /// See [`MergeCommitError`] for more details.
     #[error(transparent)]
-    MergeCommitError(#[from] MergeCommitError<MemoryStorageError>),
-    /// See [`MemoryStorageError`] for more details.
+    MergeCommitError(#[from] MergeCommitError<StorageError>),
+    /// See [`StorageError>`] for more details.
     #[error(transparent)]
-    KeyStoreError(#[from] MemoryStorageError),
+    KeyStoreError(#[from] StorageError),
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
-    LibraryError(#[from] LibraryError),
+    LibraryError(LibraryError),
     #[error("")]
     Unknown,
 }

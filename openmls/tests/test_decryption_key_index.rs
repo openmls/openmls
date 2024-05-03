@@ -1,21 +1,20 @@
 //! Test decryption key index computation in larger trees.
 use openmls::{
     prelude::*,
-    test_utils::{
-        test_framework::{noop_authentication_service, ActionType, CodecUse, MlsGroupTestSetup},
-        *,
+    test_utils::test_framework::{
+        noop_authentication_service, ActionType, CodecUse, MlsGroupTestSetup,
     },
-    *,
 };
+use openmls_test::openmls_test;
 
-#[apply(ciphersuites)]
-fn decryption_key_index_computation(ciphersuite: Ciphersuite) {
+#[openmls_test]
+fn decryption_key_index_computation() {
     println!("Testing ciphersuite {ciphersuite:?}");
 
     // Some basic setup functions for the MlsGroup.
     let mls_group_create_config = MlsGroupCreateConfig::test_default(ciphersuite);
     let number_of_clients = 20;
-    let setup = MlsGroupTestSetup::new(
+    let setup = MlsGroupTestSetup::<Provider>::new(
         mls_group_create_config,
         number_of_clients,
         CodecUse::StructMessages,

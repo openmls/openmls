@@ -1,10 +1,10 @@
 use openmls::{
     prelude::{test_utils::new_credential, *},
     storage::OpenMlsProvider,
-    test_utils::*,
-    *,
 };
+use openmls_traits::OpenMlsProvider as _;
 
+use openmls_test::openmls_test;
 use openmls_traits::signatures::Signer;
 
 fn generate_key_package<Provider: OpenMlsProvider>(
@@ -36,8 +36,8 @@ fn generate_key_package<Provider: OpenMlsProvider>(
 ///  - Alice removes Charlie and adds Bob
 ///  - Bob leaves
 ///  - Test saving the group state
-#[apply(ciphersuites_and_providers)]
-fn mls_group_operations<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider: &Provider) {
+#[openmls_test]
+fn mls_group_operations() {
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
         let group_id = GroupId::from_slice(b"Test Group");
 
@@ -167,7 +167,7 @@ fn mls_group_operations<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, pro
             assert_eq!(
                 &sender,
                 alice_group
-                    .credential::<Provider::StorageError>()
+                    .credential::<Provider>()
                     .expect("An unexpected error occurred.")
             );
         } else {
@@ -774,7 +774,7 @@ fn mls_group_operations<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, pro
             assert_eq!(
                 &sender,
                 alice_group
-                    .credential::<Provider::StorageError>()
+                    .credential::<Provider>()
                     .expect("Expected a credential")
             );
         } else {
@@ -953,7 +953,7 @@ fn mls_group_operations<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, pro
     }
 }
 
-#[apply(ciphersuites_and_providers)]
+#[openmls_test]
 fn addition_order(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
         let group_id = GroupId::from_slice(b"Test Group");
@@ -1054,7 +1054,7 @@ fn addition_order(ciphersuite: Ciphersuite, provider: &impl crate::storage::Open
     }
 }
 
-#[apply(ciphersuites_and_providers)]
+#[openmls_test]
 fn test_empty_input_errors(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,
@@ -1095,7 +1095,7 @@ fn test_empty_input_errors(
 }
 
 // This tests the ratchet tree extension usage flag in the configuration
-#[apply(ciphersuites_and_providers)]
+#[openmls_test]
 fn mls_group_ratchet_tree_extension(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,
@@ -1212,7 +1212,7 @@ fn mls_group_ratchet_tree_extension(
 }
 
 /// Test that the a group context extensions proposal is correctly applied when valid, and rejected when not.
-#[apply(ciphersuites_and_providers)]
+#[openmls_test]
 fn group_context_extensions_proposal(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,

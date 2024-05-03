@@ -2,14 +2,13 @@ use openmls::{
     credentials::test_utils::new_credential,
     messages::group_info::VerifiableGroupInfo,
     prelude::{tls_codec::*, *},
-    test_utils::*,
-    *,
 };
 use openmls_basic_credential::SignatureKeyPair;
+use openmls_test::openmls_test;
 
 fn create_alice_group(
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::OpenMlsProvider,
+    provider: &impl openmls::storage::OpenMlsProvider,
     use_ratchet_tree_extension: bool,
 ) -> (MlsGroup, CredentialWithKey, SignatureKeyPair) {
     let group_config = MlsGroupCreateConfig::builder()
@@ -31,8 +30,8 @@ fn create_alice_group(
     (group, credential_with_key, signature_keys)
 }
 
-#[apply(ciphersuites_and_providers)]
-fn test_external_commit(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
+#[openmls_test]
+fn test_external_commit() {
     // Alice creates a new group ...
     let (alice_group, _, alice_signer) = create_alice_group(ciphersuite, provider, false);
 
@@ -115,8 +114,8 @@ fn test_external_commit(ciphersuite: Ciphersuite, provider: &impl crate::storage
     }
 }
 
-#[apply(ciphersuites_and_providers)]
-fn test_group_info(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
+#[openmls_test]
+fn test_group_info() {
     // Alice creates a new group ...
     let (mut alice_group, _, alice_signer) = create_alice_group(ciphersuite, provider, true);
 
@@ -195,7 +194,7 @@ fn test_group_info(ciphersuite: Ciphersuite, provider: &impl crate::storage::Ope
     bob_group.merge_pending_commit(provider).unwrap();
 }
 
-#[apply(ciphersuites_and_providers)]
+#[openmls_test]
 fn test_not_present_group_info(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,

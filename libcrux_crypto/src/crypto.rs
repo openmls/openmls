@@ -473,16 +473,6 @@ pub trait ReadU8: std::io::Read {
     }
 }
 
-impl<W: std::io::Write + ?Sized> WriteU8 for W {}
-
-pub trait WriteU8: std::io::Write {
-    /// A small helper function to write a u8 to a Writer.
-    #[inline]
-    fn write_u8(&mut self, n: u8) -> std::io::Result<()> {
-        self.write_all(&[n])
-    }
-}
-
 /// This function takes a DER encoded ECDSA signature and decodes it to the
 /// bytes representing the concatenated scalars. If the decoding fails, it
 /// will throw a `CryptoError`.
