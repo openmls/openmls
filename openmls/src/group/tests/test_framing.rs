@@ -18,7 +18,6 @@ use crate::{
         secret_tree::SecretTree, secret_tree::SecretType,
         sender_ratchet::SenderRatchetConfiguration,
     },
-    *,
 };
 
 #[openmls_test::openmls_test]

@@ -70,8 +70,6 @@ openmls_traits = { version = "0.2.0", path = "../traits", features = [
     "test-utils",
 ] }
 pretty_env_logger = "0.5"
-rstest = "^0.16"
-rstest_reuse = "0.4"
 tempfile = "3"
 wasm-bindgen = "0.2.90"
 wasm-bindgen-test = "0.3.40"

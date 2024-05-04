@@ -1,5 +1,3 @@
-use openmls_traits::types::Ciphersuite;
-
 use super::CoreGroup;
 use crate::{
     binary_tree::LeafNodeIndex,

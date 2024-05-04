@@ -4,7 +4,7 @@ use tls_codec::{Deserialize, Serialize};
 use super::utils::*;
 use crate::{
     binary_tree::LeafNodeIndex, framing::*, group::*, key_packages::*, messages::*,
-    schedule::psk::store::ResumptionPskStore, test_utils::*, *,
+    schedule::psk::store::ResumptionPskStore, test_utils::*,
 };
 
 /// Creates a simple test setup for various encoding tests.

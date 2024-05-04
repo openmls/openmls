@@ -6,7 +6,6 @@ use super::PskSecret;
 use crate::{
     ciphersuite::Secret,
     schedule::psk::{store::ResumptionPskStore, *},
-    test_utils::*,
 };
 
 #[openmls_test::openmls_test]

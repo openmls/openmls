@@ -18,10 +18,6 @@
 // Finally, this module contains the [`treekem`] module, which allows the
 // encryption and decryption of updates to the tree.
 
-#[cfg(test)]
-
-#[cfg(test)]
-use rstest_reuse::apply;
 #[cfg(any(feature = "test-utils", test))]
 use std::fmt;
 

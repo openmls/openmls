@@ -82,7 +82,6 @@
 use itertools::izip;
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::{
-    prelude::*,
     signatures::Signer,
     types::{Ciphersuite, SignatureScheme},
 };
@@ -435,6 +434,8 @@ pub fn generate_test_vector(
 
 #[test]
 fn write_test_vectors() {
+    use openmls_traits::prelude::*;
+
     let _ = pretty_env_logger::try_init();
     let mut tests = Vec::new();
     const NUM_LEAVES: u32 = 10;
