@@ -130,7 +130,7 @@ pub struct MlsGroupTestSetup<Provider: OpenMlsProvider> {
 // context that the `MlsGroupTestSetup` lives in, because otherwise the
 // references don't live long enough.
 
-impl<Provider: OpenMlsProvider> MlsGroupTestSetup<Provider> {
+impl<Provider: OpenMlsProvider + Default> MlsGroupTestSetup<Provider> {
     /// Create a new `MlsGroupTestSetup` with the given default
     /// `MlsGroupCreateConfig` and the given number of clients. For lifetime
     /// reasons, `create_clients` has to be called in addition with the same

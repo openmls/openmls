@@ -23,7 +23,7 @@ pub mod prelude {
 ///
 /// An implementation of this trait must be passed in to the public OpenMLS API
 /// to perform randomness generation, cryptographic operations, and key storage.
-pub trait OpenMlsProvider: Default {
+pub trait OpenMlsProvider {
     type CryptoProvider: crypto::OpenMlsCrypto;
     type RandProvider: random::OpenMlsRand;
     type StorageProvider: storage::StorageProvider<{ storage::CURRENT_VERSION }>;
