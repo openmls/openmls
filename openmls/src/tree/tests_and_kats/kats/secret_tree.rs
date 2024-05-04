@@ -181,8 +181,8 @@ pub fn run_test_vector(test: SecretTree, provider: &impl OpenMlsProvider) -> Res
     Ok(())
 }
 
-#[apply(providers)]
-fn read_test_vectors_st(provider: &impl OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn read_test_vectors_st() {
     let _ = pretty_env_logger::try_init();
     log::debug!("Reading test vectors ...");
 

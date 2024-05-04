@@ -95,7 +95,7 @@ fn receive_message(
 }
 
 // Test positive cases with all valid (pure & mixed) policies
-#[apply(ciphersuites_and_providers)]
+#[openmls_test::openmls_test]
 fn test_wire_policy_positive(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,
@@ -116,7 +116,7 @@ fn test_wire_policy_positive(
 }
 
 // Test negative cases with only icompatible policies
-#[apply(ciphersuites_and_providers)]
+#[openmls_test::openmls_test]
 fn test_wire_policy_negative(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,

@@ -11,8 +11,8 @@ use crate::{
 };
 
 /// Tests the creation of an [UnverifiedGroupInfo] and verifies it was correctly signed.
-#[apply(ciphersuites_and_providers)]
-fn export_group_info(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn export_group_info() {
     // Alice creates a group
     let (group_alice, _, signer, pk) = setup_alice_group(ciphersuite, provider);
 

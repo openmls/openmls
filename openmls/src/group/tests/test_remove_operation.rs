@@ -1,15 +1,12 @@
 //! This module tests the classification of remove operations with RemoveOperation
 
 use super::utils::{generate_credential_with_key, generate_key_package};
-use crate::{framing::*, group::*, test_utils::*, *};
+use crate::{framing::*, group::*};
+use openmls_traits::prelude::*;
 
 // Tests the different variants of the RemoveOperation enum.
-#[apply(ciphersuites)]
-fn test_remove_operation_variants(ciphersuite: Ciphersuite) {
-    let alice_provider = OpenMlsRustCrypto::default();
-    let bob_provider = OpenMlsRustCrypto::default();
-    let charlie_provider = OpenMlsRustCrypto::default();
-
+#[openmls_test::openmls_test]
+fn test_remove_operation_variants() {
     // We define two test cases, one where the member is removed by another member
     // and one where the member leaves the group on its own
     #[derive(Debug, Clone, Copy)]
@@ -25,32 +22,29 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite) {
         let alice_credential_with_key_and_signer = generate_credential_with_key(
             "Alice".into(),
             ciphersuite.signature_algorithm(),
-            &alice_provider,
+            provider,
         );
 
-        let bob_credential_with_key_and_signer = generate_credential_with_key(
-            "Bob".into(),
-            ciphersuite.signature_algorithm(),
-            &bob_provider,
-        );
+        let bob_credential_with_key_and_signer =
+            generate_credential_with_key("Bob".into(), ciphersuite.signature_algorithm(), provider);
 
         let charlie_credential_with_key_and_signer = generate_credential_with_key(
             "Charlie".into(),
             ciphersuite.signature_algorithm(),
-            &charlie_provider,
+            provider,
         );
 
         // Generate KeyPackages
         let bob_key_package = generate_key_package(
             ciphersuite,
             Extensions::empty(),
-            &bob_provider,
+            provider,
             bob_credential_with_key_and_signer.clone(),
         );
         let charlie_key_package = generate_key_package(
             ciphersuite,
             Extensions::empty(),
-            &charlie_provider,
+            provider,
             charlie_credential_with_key_and_signer,
         );
 
@@ -61,7 +55,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite) {
 
         // === Alice creates a group ===
         let mut alice_group = MlsGroup::new_with_group_id(
-            &alice_provider,
+            provider,
             &alice_credential_with_key_and_signer.signer,
             &mls_group_create_config,
             group_id,
@@ -75,7 +69,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite) {
 
         let (_message, welcome, _group_info) = alice_group
             .add_members(
-                &alice_provider,
+                provider,
                 &alice_credential_with_key_and_signer.signer,
                 &[
                     bob_key_package.key_package().clone(),
@@ -84,7 +78,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite) {
             )
             .expect("An unexpected error occurred.");
         alice_group
-            .merge_pending_commit(&alice_provider)
+            .merge_pending_commit(provider)
             .expect("error merging pending commit");
 
         let welcome: MlsMessageIn = welcome.into();
@@ -93,23 +87,23 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite) {
             .expect("expected message to be a welcome");
 
         let mut bob_group = StagedWelcome::new_from_welcome(
-            &bob_provider,
+            provider,
             mls_group_create_config.join_config(),
             welcome.clone(),
             Some(alice_group.export_ratchet_tree().into()),
         )
         .expect("Error creating staged join from Welcome")
-        .into_group(&bob_provider)
+        .into_group(provider)
         .expect("Error creating group from staged join");
 
         let mut charlie_group = StagedWelcome::new_from_welcome(
-            &charlie_provider,
+            provider,
             mls_group_create_config.join_config(),
             welcome,
             Some(alice_group.export_ratchet_tree().into()),
         )
         .expect("Error creating staged join from Welcome")
-        .into_group(&charlie_provider)
+        .into_group(provider)
         .expect("Error creating group from staged join");
 
         // === Remove operation ===
@@ -122,7 +116,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite) {
             // Alice removes Bob
             TestCase::Remove => alice_group
                 .remove_members(
-                    &alice_provider,
+                    provider,
                     &alice_credential_with_key_and_signer.signer,
                     &[bob_index],
                 )
@@ -131,22 +125,19 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite) {
             TestCase::Leave => {
                 // Bob leaves the group
                 let message = bob_group
-                    .leave_group(&bob_provider, &bob_credential_with_key_and_signer.signer)
+                    .leave_group(provider, &bob_credential_with_key_and_signer.signer)
                     .expect("Could not leave group.");
 
                 // Alice & Charlie store the pending proposal
                 for group in [&mut alice_group, &mut charlie_group] {
                     let processed_message = group
-                        .process_message(
-                            &charlie_provider,
-                            message.clone().into_protocol_message().unwrap(),
-                        )
+                        .process_message(provider, message.clone().into_protocol_message().unwrap())
                         .expect("Could not process message.");
 
                     match processed_message.into_content() {
                         ProcessedMessageContent::ProposalMessage(proposal) => {
                             group
-                                .store_pending_proposal(charlie_provider.storage(), *proposal)
+                                .store_pending_proposal(provider.storage(), *proposal)
                                 .unwrap();
                         }
                         _ => unreachable!(),
@@ -156,7 +147,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite) {
                 // Alice commits to Bob's proposal
                 alice_group
                     .commit_to_pending_proposals(
-                        &alice_provider,
+                        provider,
                         &alice_credential_with_key_and_signer.signer,
                     )
                     .expect("An unexpected error occurred.")
@@ -201,10 +192,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite) {
         // === Remove operation from Bob's perspective ===
 
         let bob_processed_message = bob_group
-            .process_message(
-                &bob_provider,
-                message.clone().into_protocol_message().unwrap(),
-            )
+            .process_message(provider, message.clone().into_protocol_message().unwrap())
             .expect("Could not process message.");
 
         match bob_processed_message.into_content() {
@@ -257,7 +245,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite) {
         let protocol_message = message.into_protocol_message().unwrap();
 
         let charlie_processed_message = charlie_group
-            .process_message(&charlie_provider, protocol_message)
+            .process_message(provider, protocol_message)
             .expect("Could not process message.");
 
         match charlie_processed_message.into_content() {

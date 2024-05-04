@@ -1,10 +1,11 @@
 use std::ops::{Deref, DerefMut};
 
 use openmls_basic_credential::SignatureKeyPair;
+use openmls_test::openmls_test;
 use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsProvider};
 use tls_codec::*;
 
-use super::{ciphersuites_and_providers, leaf_node::FrankenLeafNode};
+use super::leaf_node::FrankenLeafNode;
 use crate::{
     ciphersuite::{
         signable::{Signable, SignedStruct},
@@ -139,8 +140,8 @@ pub struct FrankenExtension {
     pub extension_data: VLBytes,
 }
 
-#[apply(ciphersuites_and_providers)]
-fn test_franken_key_package(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+#[openmls_test]
+fn test_franken_key_package() {
     let config = ciphersuite;
 
     let (credential, signer) = {

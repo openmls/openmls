@@ -228,10 +228,7 @@ fn external_add_proposal_should_succeed<Provider: OpenMlsProvider>() {
 #[openmls_test]
 fn external_add_proposal_should_be_signed_by_key_package_it_references<
     Provider: OpenMlsProvider,
->(
-    ciphersuite: Ciphersuite,
-    provider: &Provider,
-) {
+>() {
     let ProposalValidationTestSetup { alice_group, .. } =
         validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, provider);
     let (mut alice_group, _alice_signer) = alice_group;
@@ -275,10 +272,7 @@ fn external_add_proposal_should_be_signed_by_key_package_it_references<
 
 // TODO #1093: move this test to a dedicated external proposal ValSem test module once all external proposals implemented
 #[openmls_test]
-fn new_member_proposal_sender_should_be_reserved_for_join_proposals<Provider: OpenMlsProvider>(
-    ciphersuite: Ciphersuite,
-    provider: &Provider,
-) {
+fn new_member_proposal_sender_should_be_reserved_for_join_proposals<Provider: OpenMlsProvider>() {
     let ProposalValidationTestSetup {
         alice_group,
         bob_group,

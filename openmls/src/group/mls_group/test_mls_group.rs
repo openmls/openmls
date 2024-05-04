@@ -61,7 +61,7 @@ fn test_mls_group_persistence<Provider: OpenMlsProvider>() {
 // This tests if the remover is correctly passed to the callback when one member
 // issues a RemoveProposal and another members issues the next Commit.
 #[openmls_test]
-fn remover(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
+fn remover() {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
@@ -214,7 +214,7 @@ fn remover(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProv
 }
 
 #[openmls_test]
-fn export_secret(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
+fn export_secret() {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
@@ -252,7 +252,7 @@ fn export_secret(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenM
 }
 
 #[openmls_test]
-fn staged_join(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
+fn staged_join() {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, alice_kpb, alice_signer, _alice_pk) =
@@ -1229,7 +1229,7 @@ fn group_context_extensions_proposal() {
 
 // Test that the builder pattern accurately configures the new group.
 #[openmls_test]
-fn builder_pattern(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
+fn builder_pattern() {
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
         setup_client("Alice", ciphersuite, provider);
 
@@ -1554,7 +1554,7 @@ fn update_group_context_with_unknown_extension<Provider: OpenMlsProvider + Defau
 
 // Test that unknown group context and leaf node extensions can be used in groups
 #[openmls_test]
-fn unknown_extensions(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
+fn unknown_extensions() {
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
         setup_client("Alice", ciphersuite, provider);
 

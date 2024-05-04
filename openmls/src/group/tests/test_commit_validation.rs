@@ -1,9 +1,7 @@
 //! This module tests the validation of commits as defined in
 //! https://openmls.tech/book/message_validation.html#commit-message-validation
 
-use openmls_traits::{signatures::Signer, types::Ciphersuite};
-use rstest::*;
-use rstest_reuse::{self, *};
+use openmls_traits::{prelude::*, signatures::Signer, types::Ciphersuite};
 use tls_codec::{Deserialize, Serialize};
 
 use super::utils::{
@@ -126,8 +124,8 @@ fn validation_test_setup(
 }
 
 // ValSem200: Commit must not cover inline self Remove proposal
-#[apply(ciphersuites_and_providers)]
-fn test_valsem200(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn test_valsem200() {
     // Test with PublicMessage
     let CommitValidationTestSetup {
         mut alice_group,
@@ -247,8 +245,8 @@ fn test_valsem200(ciphersuite: Ciphersuite, provider: &impl crate::storage::Open
 }
 
 // ValSem201: Path must be present, if at least one proposal requires a path
-#[apply(ciphersuites_and_providers)]
-fn test_valsem201(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn test_valsem201() {
     let wire_format_policy = PURE_PLAINTEXT_WIRE_FORMAT_POLICY;
     // Test with PublicMessage
     let CommitValidationTestSetup {
@@ -440,8 +438,8 @@ fn erase_path(
 }
 
 // ValSem202: Path must be the right length
-#[apply(ciphersuites_and_providers)]
-fn test_valsem202(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn test_valsem202() {
     // Test with PublicMessage
     let CommitValidationTestSetup {
         mut alice_group,
@@ -517,8 +515,8 @@ fn test_valsem202(ciphersuite: Ciphersuite, provider: &impl crate::storage::Open
 }
 
 // ValSem203: Path secrets must decrypt correctly
-#[apply(ciphersuites_and_providers)]
-fn test_valsem203(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn test_valsem203() {
     // Test with PublicMessage
     let CommitValidationTestSetup {
         mut alice_group,
@@ -596,8 +594,8 @@ fn test_valsem203(ciphersuite: Ciphersuite, provider: &impl crate::storage::Open
 }
 
 // ValSem204: Public keys from Path must be verified and match the private keys from the direct path
-#[apply(ciphersuites_and_providers)]
-fn test_valsem204(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn test_valsem204() {
     // Test with PublicMessage
     let CommitValidationTestSetup {
         mut alice_group,
@@ -719,8 +717,8 @@ fn test_valsem204(ciphersuite: Ciphersuite, provider: &impl crate::storage::Open
 }
 
 // ValSem205: Confirmation tag must be successfully verified
-#[apply(ciphersuites_and_providers)]
-fn test_valsem205(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn test_valsem205() {
     // Test with PublicMessage
     let CommitValidationTestSetup {
         mut alice_group,
@@ -786,7 +784,7 @@ fn test_valsem205(ciphersuite: Ciphersuite, provider: &impl crate::storage::Open
 }
 
 // this ensures that a member can process commits not containing all the stored proposals
-#[apply(ciphersuites_and_providers)]
+#[openmls_test::openmls_test]
 fn test_partial_proposal_commit(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,

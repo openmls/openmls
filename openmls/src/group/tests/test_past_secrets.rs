@@ -11,7 +11,7 @@ use crate::{
     group::*,
 };
 
-#[apply(ciphersuites_and_providers)]
+#[openmls_test::openmls_test]
 fn test_past_secrets_in_group(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,

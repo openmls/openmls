@@ -134,8 +134,8 @@ fn run_test_vector(test: TestElement, provider: &impl OpenMlsProvider) -> Result
     Ok(())
 }
 
-#[apply(providers)]
-fn read_test_vectors_tree_operations(provider: &impl OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn read_test_vectors_tree_operations() {
     let _ = pretty_env_logger::try_init();
     log::debug!("Reading test vectors ...");
 

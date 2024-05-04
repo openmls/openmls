@@ -300,7 +300,7 @@ fn test_random() {
     randombytes(0);
 }
 
-#[apply(providers)]
+#[openmls_test::openmls_test]
 fn test_setup(provider: &impl crate::storage::OpenMlsProvider) {
     let test_client_config_a = TestClientConfig {
         name: "TestClientConfigA",
@@ -330,10 +330,10 @@ pub(crate) struct CredentialWithKeyAndSigner {
 }
 
 // Helper function to generate a CredentialWithKeyAndSigner
-pub(crate) fn generate_credential_with_key(
+pub(crate) fn generate_credential_with_key<Provider: OpenMlsProvider>(
     identity: Vec<u8>,
     signature_scheme: SignatureScheme,
-    provider: &impl crate::storage::OpenMlsProvider,
+    provider: &Provider,
 ) -> CredentialWithKeyAndSigner {
     let (credential, signer) = {
         let credential = BasicCredential::new(identity);

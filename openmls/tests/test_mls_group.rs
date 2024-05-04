@@ -954,7 +954,7 @@ fn mls_group_operations() {
 }
 
 #[openmls_test]
-fn addition_order(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
+fn addition_order() {
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
         let group_id = GroupId::from_slice(b"Test Group");
         // Generate credentials with keys
