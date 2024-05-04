@@ -51,8 +51,6 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::test_utils::*;
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SenderData {
     sender_data_secret: String,
@@ -80,12 +78,16 @@ pub struct SecretTree {
 }
 
 #[cfg(test)]
-pub fn run_test_vector(test: SecretTree, provider: &impl OpenMlsProvider) -> Result<(), String> {
-    use openmls_traits::crypto::OpenMlsCrypto;
+pub fn run_test_vector<Provider: openmls::storage::OpenMlsProvider>(
+    test: SecretTree,
+    provider: &Provider,
+) -> Result<(), String> {
+    use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 
     use crate::{
         binary_tree::{array_representation::TreeSize, LeafNodeIndex},
         schedule::{EncryptionSecret, SenderDataSecret},
+        test_utils::hex_to_bytes,
         tree::secret_tree::{SecretTree, SecretType},
     };
 

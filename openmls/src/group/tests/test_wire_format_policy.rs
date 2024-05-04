@@ -2,7 +2,7 @@
 
 use openmls_traits::{signatures::Signer, types::Ciphersuite};
 
-use rstest::*;
+
 use rstest_reuse::{self, *};
 
 use crate::{framing::*, group::*};

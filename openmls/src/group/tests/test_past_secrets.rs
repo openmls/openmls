@@ -2,7 +2,7 @@
 
 use openmls_traits::types::Ciphersuite;
 
-use rstest::*;
+
 use rstest_reuse::{self, *};
 
 use super::utils::{generate_credential_with_key, generate_key_package};

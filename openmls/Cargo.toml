@@ -30,8 +30,6 @@ openmls_basic_credential = { version = "0.2.0", path = "../basic_credential", op
     "clonable",
     "test-utils",
 ] }
-rstest = { version = "^0.16", optional = true }
-rstest_reuse = { version = "0.4", optional = true }
 wasm-bindgen-test = { version = "0.3.40", optional = true }
 getrandom = { version = "0.2.12", optional = true, features = ["js"] }
 fluvio-wasm-timer = { version = "0.2.5", optional = true }
@@ -48,8 +46,6 @@ test-utils = [
     "dep:itertools",
     "dep:openmls_rust_crypto",
     "dep:rand",
-    "dep:rstest",
-    "dep:rstest_reuse",
     "dep:wasm-bindgen-test",
     "dep:openmls_basic_credential",
     "dep:openmls_memory_storage",

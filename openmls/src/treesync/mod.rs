@@ -19,7 +19,7 @@
 // encryption and decryption of updates to the tree.
 
 #[cfg(test)]
-use rstest::*;
+
 #[cfg(test)]
 use rstest_reuse::apply;
 #[cfg(any(feature = "test-utils", test))]

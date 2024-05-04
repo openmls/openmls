@@ -1,6 +1,4 @@
-use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
-use rstest::*;
-use rstest_reuse::apply;
+use openmls_traits::prelude::*;
 
 use crate::{
     credentials::test_utils::new_credential,

@@ -1,5 +1,5 @@
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_traits::{crypto::OpenMlsCrypto, types::HpkeCiphertext};
+use openmls_traits::types::HpkeCiphertext;
 use tls_codec::Serialize;
 
 use crate::{

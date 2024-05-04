@@ -14,7 +14,7 @@ use crate::{
     credentials::{BasicCredential, CredentialWithKey},
     key_packages::{KeyPackage, KeyPackageIn},
     prelude::KeyPackageBundle,
-    test_utils::{apply, rstest, OpenMlsRustCrypto},
+    test_utils::OpenMlsRustCrypto,
     versions::ProtocolVersion,
 };
 

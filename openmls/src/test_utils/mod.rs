@@ -14,8 +14,6 @@ pub use openmls_traits::{
     types::{Ciphersuite, HpkeKeyPair},
     OpenMlsProvider,
 };
-pub use rstest::*;
-pub use rstest_reuse::{self, *};
 use serde::{self, de::DeserializeOwned, Serialize};
 
 #[cfg(test)]

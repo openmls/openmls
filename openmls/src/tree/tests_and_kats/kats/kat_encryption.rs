@@ -81,7 +81,11 @@
 
 use itertools::izip;
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_traits::{signatures::Signer, types::SignatureScheme, OpenMlsProvider};
+use openmls_traits::{
+    prelude::*,
+    signatures::Signer,
+    types::{Ciphersuite, SignatureScheme},
+};
 use serde::{self, Deserialize, Serialize};
 use thiserror::Error;
 
@@ -95,7 +99,8 @@ use crate::{
     group::*,
     messages::proposals::{Proposal, RemoveProposal},
     schedule::{EncryptionSecret, SenderDataSecret},
-    test_utils::*,
+    storage::OpenMlsProvider,
+    test_utils::bytes_to_hex,
     tree::{
         secret_tree::{SecretTree, SecretType},
         sender_ratchet::SenderRatchetConfiguration,
@@ -311,7 +316,8 @@ pub fn generate_test_vector(
     n_leaves: u32,
     ciphersuite: Ciphersuite,
 ) -> EncryptionTestVector {
-    use openmls_traits::random::OpenMlsRand;
+    use openmls_rust_crypto::OpenMlsRustCrypto;
+    use openmls_traits::prelude::*;
 
     use crate::binary_tree::array_representation::TreeSize;
 
@@ -430,14 +436,13 @@ pub fn generate_test_vector(
 #[test]
 fn write_test_vectors() {
     let _ = pretty_env_logger::try_init();
-    use openmls_traits::crypto::OpenMlsCrypto;
     let mut tests = Vec::new();
     const NUM_LEAVES: u32 = 10;
     const NUM_GENERATIONS: u32 = 15;
 
     log::debug!("Generating new test vectors ...");
 
-    for &ciphersuite in OpenMlsRustCrypto::default()
+    for &ciphersuite in openmls_rust_crypto::OpenMlsRustCrypto::default()
         .crypto()
         .supported_ciphersuites()
         .iter()
@@ -448,7 +453,7 @@ fn write_test_vectors() {
         }
     }
 
-    write("test_vectors/kat_encryption_openmls-new.json", &tests);
+    crate::test_utils::write("test_vectors/kat_encryption_openmls-new.json", &tests);
 }
 
 #[cfg(any(feature = "test-utils", test))]
@@ -461,6 +466,7 @@ pub fn run_test_vector(
     use crate::{
         binary_tree::array_representation::TreeSize,
         schedule::{message_secrets::MessageSecrets, ConfirmationKey, MembershipKey},
+        test_utils::hex_to_bytes,
     };
 
     let n_leaves = test_vector.n_leaves;
@@ -816,7 +822,7 @@ fn read_test_vectors_encryption() {
         */
     ];
     for &tv_file in tv_files.iter() {
-        let tv: EncryptionTestVector = read(tv_file);
+        let tv: EncryptionTestVector = crate::test_utils::read(tv_file);
         run_test_vector(tv, provider).expect("Error while checking key schedule test vector.");
     }
 
