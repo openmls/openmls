@@ -412,6 +412,8 @@ impl MlsGroup {
                 plaintext.into()
             }
             OutgoingWireFormatPolicy::AlwaysCiphertext => {
+                eprintln!("content_to_mls_message ...");
+                eprintln!("    ciphersuite: {}", self.ciphersuite());
                 let ciphertext = self
                     .group
                     .encrypt(

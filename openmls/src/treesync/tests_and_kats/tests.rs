@@ -5,7 +5,7 @@ use crate::{
     },
     key_packages::KeyPackage,
     prelude::*,
-    test_utils::*,
+    storage::OpenMlsProvider,
 };
 
 mod test_diff;
@@ -20,20 +20,20 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root() {
         .use_ratchet_tree_extension(true)
         .build();
 
-    struct Member {
+    struct Member<Provider: OpenMlsProvider> {
         id: Vec<u8>,
         credential_with_key_and_signer: CredentialWithKeyAndSigner,
         key_package: KeyPackage,
-        // FIXME: the own_leaf_index from the group is beeing computed incorrectly, so we can't use
+        // FIXME: the own_leaf_index from the group is being computed incorrectly, so we can't use
         // the provider from the function parameter. #1221
-        provider: OpenMlsRustCrypto,
+        provider: Provider,
     }
 
-    fn create_member(
+    fn create_member<Provider: OpenMlsProvider>(
         ciphersuite: Ciphersuite,
-        provider: OpenMlsRustCrypto,
+        provider: Provider,
         name: Vec<u8>,
-    ) -> Member {
+    ) -> Member<Provider> {
         let credential_with_key_and_signer = generate_credential_with_key(
             name.clone(),
             ciphersuite.signature_algorithm(),
@@ -69,10 +69,10 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root() {
             .unwrap()
     }
 
-    let alice = create_member(ciphersuite, OpenMlsRustCrypto::default(), "alice".into());
-    let bob = create_member(ciphersuite, OpenMlsRustCrypto::default(), "bob".into());
-    let charlie = create_member(ciphersuite, OpenMlsRustCrypto::default(), "charlie".into());
-    let dave = create_member(ciphersuite, OpenMlsRustCrypto::default(), "dave".into());
+    let alice = create_member(ciphersuite, Provider::default(), "alice".into());
+    let bob = create_member(ciphersuite, Provider::default(), "bob".into());
+    let charlie = create_member(ciphersuite, Provider::default(), "charlie".into());
+    let dave = create_member(ciphersuite, Provider::default(), "dave".into());
 
     // `A` creates a group with `B`, `C`, and `D` ...
     let mut alice_group = MlsGroup::new(

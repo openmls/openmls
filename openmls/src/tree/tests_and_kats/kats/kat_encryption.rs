@@ -797,34 +797,21 @@ pub fn run_test_vector(
     Ok(())
 }
 
-#[openmls_test::openmls_test]
+#[test]
 fn read_test_vectors_encryption() {
     let _ = pretty_env_logger::try_init();
     log::debug!("Reading test vectors ...");
+    // The ciphersuite is defined in here and libcrux can't do all of them yet.
+    let provider = openmls_rust_crypto::OpenMlsRustCrypto::default();
 
     let tests: Vec<EncryptionTestVector> =
         read_json!("../../../../test_vectors/kat_encryption_openmls.json");
 
     for test_vector in tests {
-        match run_test_vector(test_vector, provider) {
+        match run_test_vector(test_vector, &provider) {
             Ok(_) => {}
             Err(e) => panic!("Error while checking encryption test vector.\n{e:?}"),
         }
-    }
-
-    // mlspp test vectors
-    let tv_files = [
-        /*
-        mlspp test vectors are not compatible for now because they don't implement
-        the new wire_format field in framing yet. This is tracked in #495.
-        "test_vectors/mlspp/mlspp_encryption_1_10.json",
-        "test_vectors/mlspp/mlspp_encryption_2_10.json",
-        "test_vectors/mlspp/mlspp_encryption_3_10.json",
-        */
-    ];
-    for &tv_file in tv_files.iter() {
-        let tv: EncryptionTestVector = crate::test_utils::read(tv_file);
-        run_test_vector(tv, provider).expect("Error while checking key schedule test vector.");
     }
 
     log::trace!("Finished test vector verification");

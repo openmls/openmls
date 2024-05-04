@@ -1222,6 +1222,7 @@ fn group_context_extensions_proposal(
 
     // === Alice creates a group ===
     let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
         .build(provider, &alice_signer, alice_credential_with_key)
         .expect("error creating group using builder");
 
