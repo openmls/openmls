@@ -130,9 +130,6 @@ impl OpenMlsCrypto for CryptoProvider {
             libcrux::aead::InvalidArgumentError::InvalidIv => CryptoError::InvalidLength,
             _ => CryptoError::CryptoLibraryError,
         })?;
-        eprintln!("    build key ...");
-        eprintln!("    key: {key:x?} ({})", key.len());
-        eprintln!("    nonce: {:x?} ({})", iv.0, iv.0.len());
         let key = aead_key(alg, key)?;
 
         let mut msg_ctx: Vec<u8> = data.to_vec();
@@ -142,7 +139,6 @@ impl OpenMlsCrypto for CryptoProvider {
             ) => CryptoError::UnsupportedAeadAlgorithm,
             _ => CryptoError::CryptoLibraryError,
         })?;
-        eprintln!("    encrypted ...");
 
         msg_ctx.extend_from_slice(tag.as_ref());
         Ok(msg_ctx)
