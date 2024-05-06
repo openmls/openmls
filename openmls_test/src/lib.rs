@@ -47,7 +47,7 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
         feature = "libcrux-provider",
         not(any(
             target_arch = "wasm32",
-            all(target_arch = "x86", target_os = "Windows")
+            all(target_arch = "x86", target_os = "windows")
         ))
     ))]
     {
@@ -64,12 +64,20 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 #[test]
                 fn #name() {
                     use openmls_libcrux_crypto::Provider as OpenMlsLibcrux;
-                    use openmls_traits::{types::Ciphersuite, crypto::OpenMlsCrypto};
+                    use openmls_traits::{types::Ciphersuite, prelude::*};
 
                     type Provider = OpenMlsLibcrux;
 
                     let ciphersuite = Ciphersuite::try_from(#val).unwrap();
                     let provider = OpenMlsLibcrux::default();
+
+                    // When cross-compiling the supported ciphersuites may be wrong.
+                    // They are set at compile-time.
+                    if provider.crypto().supports(ciphersuite).is_err() {
+                        eprintln!("Skipping unsupported ciphersuite {ciphersuite:?}.");
+                        return;
+                    }
+
                     let provider = &provider;
                     #(#body)*
                 }

@@ -76,9 +76,9 @@ wasm-bindgen = "0.2.90"
 wasm-bindgen-test = "0.3.40"
 
 # Disable for wasm32 and Win32
-[target.'cfg(not(any(target_arch = "wasm32", all(target_arch = "x86", target_os = "Windows"))))'.dev-dependencies]
+[target.'cfg(not(any(target_arch = "wasm32", all(target_arch = "x86", target_os = "windows"))))'.dev-dependencies]
 openmls = { path = ".", features = ["test-utils", "libcrux-provider"] }
-[target.'cfg(any(target_arch = "wasm32", all(target_arch = "x86", target_os = "Windows")))'.dev-dependencies]
+[target.'cfg(any(target_arch = "wasm32", all(target_arch = "x86", target_os = "windows")))'.dev-dependencies]
 openmls = { path = ".", features = ["test-utils"] }
 
 [[bench]]
