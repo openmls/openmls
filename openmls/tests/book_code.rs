@@ -1216,13 +1216,14 @@ fn book_operations() {
     );
 
     // ANCHOR: external_join_proposal
-    let proposal = JoinProposal::new::<Provider>(
-        bob_key_package.key_package().clone(),
-        alice_group.group_id().clone(),
-        alice_group.epoch(),
-        &bob_signature_keys,
-    )
-    .expect("Could not create external Add proposal");
+    let proposal =
+        JoinProposal::new::<<Provider as openmls_traits::OpenMlsProvider>::StorageProvider>(
+            bob_key_package.key_package().clone(),
+            alice_group.group_id().clone(),
+            alice_group.epoch(),
+            &bob_signature_keys,
+        )
+        .expect("Could not create external Add proposal");
     // ANCHOR_END: external_join_proposal
 
     // ANCHOR: decrypt_external_join_proposal

@@ -1,4 +1,3 @@
-use openmls_libcrux_crypto::Provider as OpenMlsLibcrux;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsProvider};
 use proc_macro::TokenStream;
@@ -15,10 +14,8 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let body = func.block.stmts;
 
     let rc = OpenMlsRustCrypto::default();
-    let libcrux = OpenMlsLibcrux::default();
 
     let rc_ciphersuites = rc.crypto().supported_ciphersuites();
-    let libcrux_ciphersuites = libcrux.crypto().supported_ciphersuites();
 
     let mut test_funs = Vec::new();
 
@@ -46,28 +43,40 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
         test_funs.push(test_fun);
     }
 
-    for ciphersuite in libcrux_ciphersuites {
-        let val = ciphersuite as u16;
-        let ciphersuite_name = format!("{:?}", ciphersuite);
-        let name = format_ident!("{}_libcrux_{}", fn_name, ciphersuite_name);
-        let test_fun = quote! {
-            #(#attrs)*
-            #[allow(non_snake_case)]
-            #[test]
-            fn #name() {
-                use openmls_libcrux_crypto::Provider as OpenMlsLibcrux;
-                use openmls_traits::{types::Ciphersuite, crypto::OpenMlsCrypto};
+    #[cfg(all(
+        feature = "libcrux-provider",
+        not(any(
+            target_arch = "wasm32",
+            all(target_arch = "x86", target_os = "Windows")
+        ))
+    ))]
+    {
+        let libcrux = openmls_libcrux_crypto::Provider::default();
+        let libcrux_ciphersuites = libcrux.crypto().supported_ciphersuites();
 
-                type Provider = OpenMlsLibcrux;
+        for ciphersuite in libcrux_ciphersuites {
+            let val = ciphersuite as u16;
+            let ciphersuite_name = format!("{:?}", ciphersuite);
+            let name = format_ident!("{}_libcrux_{}", fn_name, ciphersuite_name);
+            let test_fun = quote! {
+                #(#attrs)*
+                #[allow(non_snake_case)]
+                #[test]
+                fn #name() {
+                    use openmls_libcrux_crypto::Provider as OpenMlsLibcrux;
+                    use openmls_traits::{types::Ciphersuite, crypto::OpenMlsCrypto};
 
-                let ciphersuite = Ciphersuite::try_from(#val).unwrap();
-                let provider = OpenMlsLibcrux::default();
-                let provider = &provider;
-                #(#body)*
-            }
-        };
+                    type Provider = OpenMlsLibcrux;
 
-        test_funs.push(test_fun);
+                    let ciphersuite = Ciphersuite::try_from(#val).unwrap();
+                    let provider = OpenMlsLibcrux::default();
+                    let provider = &provider;
+                    #(#body)*
+                }
+            };
+
+            test_funs.push(test_fun);
+        }
     }
 
     let out = quote! {

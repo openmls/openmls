@@ -85,12 +85,10 @@ impl<Provider: OpenMlsProvider> Client<Provider> {
         mls_group_create_config: MlsGroupCreateConfig,
         ciphersuite: Ciphersuite,
     ) -> Result<GroupId, ClientError<Provider::StorageError>> {
-        eprintln!("credentials: {:?}", self.credentials.keys());
         let credential_with_key = self
             .credentials
             .get(&ciphersuite)
             .ok_or(ClientError::CiphersuiteNotSupported);
-        eprintln!("credential_with_key: {credential_with_key:?}");
         let credential_with_key = credential_with_key?;
         let signer = SignatureKeyPair::read(
             self.provider.storage(),

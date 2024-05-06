@@ -14,7 +14,7 @@ use crate::{
     },
     key_packages::KeyPackage,
     messages::{AddProposal, Proposal},
-    storage::OpenMlsProvider,
+    storage::{OpenMlsProvider, StorageProvider},
 };
 use openmls_traits::signatures::Signer;
 
@@ -41,12 +41,12 @@ impl JoinProposal {
     /// * `epoch` - group's epoch
     /// * `signer` - of the sender to sign the message
     #[allow(clippy::new_ret_no_self)]
-    pub fn new<Provider: OpenMlsProvider>(
+    pub fn new<Storage: StorageProvider>(
         key_package: KeyPackage,
         group_id: GroupId,
         epoch: GroupEpoch,
         signer: &impl Signer,
-    ) -> Result<MlsMessageOut, ProposeAddMemberError<Provider::StorageError>> {
+    ) -> Result<MlsMessageOut, ProposeAddMemberError<Storage::Error>> {
         AuthenticatedContent::new_join_proposal(
             Proposal::Add(AddProposal { key_package }),
             group_id,

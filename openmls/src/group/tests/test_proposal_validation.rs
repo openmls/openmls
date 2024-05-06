@@ -1,7 +1,7 @@
 //! This module tests the validation of proposals as defined in
 //! https://openmls.tech/book/message_validation.html#semantic-validation-of-proposals-covered-by-a-commit
 
-use crate::{storage::OpenMlsProvider, test_utils::OpenMlsRustCrypto};
+use crate::storage::OpenMlsProvider;
 use openmls_traits::{
     prelude::{openmls_types::*, *},
     signatures::Signer,
@@ -2202,8 +2202,8 @@ fn test_valsem401_valsem402() {
         ..
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, provider);
 
-    let alice_provider = OpenMlsRustCrypto::default();
-    let bob_provider = OpenMlsRustCrypto::default();
+    let alice_provider = Provider::default();
+    let bob_provider = Provider::default();
 
     // TODO(#1354): This is currently not tested because we can't easily create invalid commits.
     let bad_psks: [(

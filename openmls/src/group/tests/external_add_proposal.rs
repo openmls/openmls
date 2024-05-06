@@ -137,13 +137,14 @@ fn external_add_proposal_should_succeed<Provider: OpenMlsProvider>() {
             charlie_credential.clone(),
         );
 
-        let proposal = JoinProposal::new::<Provider>(
-            charlie_kp.key_package().clone(),
-            alice_group.group_id().clone(),
-            alice_group.epoch(),
-            &charlie_credential.signer,
-        )
-        .unwrap();
+        let proposal =
+            JoinProposal::new::<<Provider as openmls_traits::OpenMlsProvider>::StorageProvider>(
+                charlie_kp.key_package().clone(),
+                alice_group.group_id().clone(),
+                alice_group.epoch(),
+                &charlie_credential.signer,
+            )
+            .unwrap();
 
         // an external proposal is always plaintext and has sender type 'new_member_proposal'
         let verify_proposal = |msg: &PublicMessage| {
@@ -253,13 +254,14 @@ fn external_add_proposal_should_be_signed_by_key_package_it_references<
         attacker_credential,
     );
 
-    let invalid_proposal = JoinProposal::new::<Provider>(
-        charlie_kp.key_package().clone(),
-        alice_group.group_id().clone(),
-        alice_group.epoch(),
-        &charlie_credential.signer,
-    )
-    .unwrap();
+    let invalid_proposal =
+        JoinProposal::new::<<Provider as openmls_traits::OpenMlsProvider>::StorageProvider>(
+            charlie_kp.key_package().clone(),
+            alice_group.group_id().clone(),
+            alice_group.epoch(),
+            &charlie_credential.signer,
+        )
+        .unwrap();
 
     // fails because the message was not signed by the same credential as the one in the Add proposal
     assert!(matches!(
@@ -291,13 +293,14 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals<Provider: Op
         any_credential.clone(),
     );
 
-    let join_proposal = JoinProposal::new::<Provider>(
-        any_kp.key_package().clone(),
-        alice_group.group_id().clone(),
-        alice_group.epoch(),
-        &any_credential.signer,
-    )
-    .unwrap();
+    let join_proposal =
+        JoinProposal::new::<<Provider as openmls_traits::OpenMlsProvider>::StorageProvider>(
+            any_kp.key_package().clone(),
+            alice_group.group_id().clone(),
+            alice_group.epoch(),
+            &any_credential.signer,
+        )
+        .unwrap();
 
     if let MlsMessageBodyOut::PublicMessage(plaintext) = &join_proposal.body {
         // Make sure it's an add proposal...
