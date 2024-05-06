@@ -4,7 +4,7 @@ use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsProvider};
 use tls_codec::*;
 
-use super::{ciphersuites_and_providers, leaf_node::FrankenLeafNode};
+use super::{ciphersuites_and_providers, extensions::FrankenExtension, leaf_node::FrankenLeafNode};
 use crate::{
     ciphersuite::{
         signable::{Signable, SignedStruct},
@@ -129,14 +129,6 @@ pub struct FrankenKeyPackageTbs {
 pub struct FrankenLifetime {
     pub not_before: u64,
     pub not_after: u64,
-}
-
-#[derive(
-    Debug, Clone, PartialEq, Eq, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize,
-)]
-pub struct FrankenExtension {
-    pub extension_type: u16,
-    pub extension_data: VLBytes,
 }
 
 #[apply(ciphersuites_and_providers)]
