@@ -345,8 +345,8 @@
     <span class="doccomment">/// Make sure that xoring works by xoring a nonce with a reuse guard, testing if
     /// it has changed, xoring it again and testing that it's back in its original
     /// state.
-    </span><span class="attr">#[apply(providers)]
-    </span><span class="kw">fn </span>test_xor(provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider) {
+    </span><span class="attr">#[openmls_test::openmls_test]
+    </span><span class="kw">fn </span>test_xor() {
         <span class="kw">let </span>reuse_guard: ReuseGuard =
             ReuseGuard::try_from_random(provider.rand()).expect(<span class="string">"An unexpected error occurred."</span>);
         <span class="kw">let </span>original_nonce = AeadNonce::random(provider.rand());

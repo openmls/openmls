@@ -450,13 +450,14 @@ with an invalid MLS group instance.</p>
 <h2 id="external-proposal"><a class="header" href="#external-proposal">External proposal</a></h2>
 <p>Parties outside the group can also make proposals to add themselves to the group with an external proposal. Since those
 proposals are crafted by outsiders, they are always plaintext messages.</p>
-<pre><code class="language-rust no_run noplayground">    let proposal = JoinProposal::new::&lt;Provider::Storage&gt;(
-        bob_key_package.key_package().clone(),
-        alice_group.group_id().clone(),
-        alice_group.epoch(),
-        &amp;bob_signature_keys,
-    )
-    .expect("Could not create external Add proposal");</code></pre>
+<pre><code class="language-rust no_run noplayground">    let proposal =
+        JoinProposal::new::&lt;&lt;Provider as openmls_traits::OpenMlsProvider&gt;::StorageProvider&gt;(
+            bob_key_package.key_package().clone(),
+            alice_group.group_id().clone(),
+            alice_group.epoch(),
+            &amp;bob_signature_keys,
+        )
+        .expect("Could not create external Add proposal");</code></pre>
 <p>It is then up to the group members to validate the proposal and commit it.
 Note that in this scenario it is up to the application to define a proper authorization policy to grant the sender.</p>
 <pre><code class="language-rust no_run noplayground">    let alice_processed_message = alice_group
@@ -564,7 +565,7 @@ Even though members were removed in this operation, the Commit message could pot
 <h2 id="external-proposal-1"><a class="header" href="#external-proposal-1">External Proposal</a></h2>
 <p>Parties outside the group can also make proposals to remove members as long as they are registered as part of the <code>ExternalSendersExtension</code> extension.
 Since those proposals are crafted by outsiders, they are always public messages.</p>
-<pre><code class="language-rust no_run noplayground">    let proposal = ExternalProposal::new_remove::&lt;Provider::Storage&gt;(
+<pre><code class="language-rust no_run noplayground">    let proposal = ExternalProposal::new_remove::&lt;Provider&gt;(
         bob_index,
         alice_group.group_id().clone(),
         alice_group.epoch(),
@@ -1077,20 +1078,20 @@ key packages.</p>
 <p>Additionally, there's a wrapper trait defined that is expected to be passed into
 the public OpenMLS API.
 Some OpenMLS APIs require only one of the sub-traits, though.</p>
-<pre><code class="language-rust no_run noplayground">/// to perform randomness generation, cryptographic operations, and key storage.
+<pre><code class="language-rust no_run noplayground">    pub use super::random::OpenMlsRand as _;
+    pub use super::signatures::Signer as _;
+    pub use super::storage::StorageProvider as _;
+    pub use super::types as openmls_types;
+    pub use super::OpenMlsProvider as _;
+}
+
+/// The OpenMLS Crypto Provider Trait
+///
+/// An implementation of this trait must be passed in to the public OpenMLS API
+/// to perform randomness generation, cryptographic operations, and key storage.
 pub trait OpenMlsProvider {
     type CryptoProvider: crypto::OpenMlsCrypto;
-    type RandProvider: random::OpenMlsRand;
-    type StorageProvider: storage::StorageProvider&lt;{ storage::CURRENT_VERSION }&gt;;
-
-    // Get the storage provider.
-    fn storage(&amp;self) -&gt; &amp;Self::StorageProvider;
-
-    /// Get the crypto provider.
-    fn crypto(&amp;self) -&gt; &amp;Self::CryptoProvider;
-
-    /// Get the randomness provider.
-    fn rand(&amp;self) -&gt; &amp;Self::RandProvider;</code></pre>
+    type RandProvider: random::OpenMlsRand;</code></pre>
 <h2 id="implementation-notes"><a class="header" href="#implementation-notes">Implementation Notes</a></h2>
 <p>It is not necessary to implement all sub-traits if one functionality is missing.
 Suppose you want to use a persisting key store. In that case, it is sufficient to do a new implementation of the key store trait and combine it with one of the provided crypto and randomness trait implementations.</p>

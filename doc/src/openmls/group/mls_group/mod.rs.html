@@ -511,10 +511,10 @@
     key_packages::{KeyPackage, KeyPackageBundle},
     messages::proposals::<span class="kw-2">*</span>,
     schedule::ResumptionPskSecret,
-    storage::StorageProvider,
+    storage::{OpenMlsProvider, StorageProvider},
     treesync::{node::leaf_node::LeafNode, RatchetTree},
 };
-<span class="kw">use </span>openmls_traits::{types::Ciphersuite, OpenMlsProvider};
+<span class="kw">use </span>openmls_traits::types::Ciphersuite;
 
 <span class="comment">// Private
 </span><span class="kw">mod </span>application;
@@ -715,9 +715,9 @@
 
     <span class="doccomment">/// Returns own credential. If the group is inactive, it returns a
     /// `UseAfterEviction` error.
-    </span><span class="kw">pub fn </span>credential&lt;StorageError&gt;(
+    </span><span class="kw">pub fn </span>credential&lt;Provider: OpenMlsProvider&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>Credential, MlsGroupStateError&lt;StorageError&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>Credential, MlsGroupStateError&lt;Provider::StorageError&gt;&gt; {
         <span class="kw">if </span>!<span class="self">self</span>.is_active() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(MlsGroupStateError::UseAfterEviction);
         }

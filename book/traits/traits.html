@@ -325,20 +325,20 @@ key packages.</p>
 <p>Additionally, there's a wrapper trait defined that is expected to be passed into
 the public OpenMLS API.
 Some OpenMLS APIs require only one of the sub-traits, though.</p>
-<pre><code class="language-rust no_run noplayground">/// to perform randomness generation, cryptographic operations, and key storage.
+<pre><code class="language-rust no_run noplayground">    pub use super::random::OpenMlsRand as _;
+    pub use super::signatures::Signer as _;
+    pub use super::storage::StorageProvider as _;
+    pub use super::types as openmls_types;
+    pub use super::OpenMlsProvider as _;
+}
+
+/// The OpenMLS Crypto Provider Trait
+///
+/// An implementation of this trait must be passed in to the public OpenMLS API
+/// to perform randomness generation, cryptographic operations, and key storage.
 pub trait OpenMlsProvider {
     type CryptoProvider: crypto::OpenMlsCrypto;
-    type RandProvider: random::OpenMlsRand;
-    type StorageProvider: storage::StorageProvider&lt;{ storage::CURRENT_VERSION }&gt;;
-
-    // Get the storage provider.
-    fn storage(&amp;self) -&gt; &amp;Self::StorageProvider;
-
-    /// Get the crypto provider.
-    fn crypto(&amp;self) -&gt; &amp;Self::CryptoProvider;
-
-    /// Get the randomness provider.
-    fn rand(&amp;self) -&gt; &amp;Self::RandProvider;</code></pre>
+    type RandProvider: random::OpenMlsRand;</code></pre>
 <h2 id="implementation-notes"><a class="header" href="#implementation-notes">Implementation Notes</a></h2>
 <p>It is not necessary to implement all sub-traits if one functionality is missing.
 Suppose you want to use a persisting key store. In that case, it is sufficient to do a new implementation of the key store trait and combine it with one of the provided crypto and randomness trait implementations.</p>

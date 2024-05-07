@@ -775,10 +775,6 @@
 <a href="#773" id="773">773</a>
 <a href="#774" id="774">774</a>
 <a href="#775" id="775">775</a>
-<a href="#776" id="776">776</a>
-<a href="#777" id="777">777</a>
-<a href="#778" id="778">778</a>
-<a href="#779" id="779">779</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements the ratchet tree component of MLS.
 //!
 //! It exposes the [`Node`] enum that can contain either a [`LeafNode`] or a [`ParentNode`].
@@ -799,11 +795,7 @@
 // Finally, this module contains the [`treekem`] module, which allows the
 // encryption and decryption of updates to the tree.
 
-</span><span class="attr">#[cfg(test)]
-</span><span class="kw">use </span>rstest::<span class="kw-2">*</span>;
-<span class="attr">#[cfg(test)]
-</span><span class="kw">use </span>rstest_reuse::apply;
-<span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
+</span><span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
 </span><span class="kw">use </span>std::fmt;
 
 <span class="kw">use </span>openmls_traits::{
@@ -1507,7 +1499,7 @@
         RatchetTree::trimmed(<span class="macro">vec!</span>[<span class="prelude-val">None</span>]);
     }
 
-    <span class="attr">#[apply(ciphersuites_and_providers)]
+    <span class="attr">#[openmls_test::openmls_test]
     </span><span class="kw">fn </span>test_ratchet_tree_trailing_blank_nodes(
         ciphersuite: Ciphersuite,
         provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,

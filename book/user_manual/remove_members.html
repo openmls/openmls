@@ -238,7 +238,7 @@ Even though members were removed in this operation, the Commit message could pot
 <h2 id="external-proposal"><a class="header" href="#external-proposal">External Proposal</a></h2>
 <p>Parties outside the group can also make proposals to remove members as long as they are registered as part of the <code>ExternalSendersExtension</code> extension.
 Since those proposals are crafted by outsiders, they are always public messages.</p>
-<pre><code class="language-rust no_run noplayground">    let proposal = ExternalProposal::new_remove::&lt;Provider::Storage&gt;(
+<pre><code class="language-rust no_run noplayground">    let proposal = ExternalProposal::new_remove::&lt;Provider&gt;(
         bob_index,
         alice_group.group_id().clone(),
         alice_group.epoch(),
