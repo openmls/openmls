@@ -553,7 +553,7 @@ fn test_valsem009() {
 
     assert!(matches!(
         err,
-        ProcessMessageError::ValidationError(ValidationError::MissingConfirmationTag)
+        ProcessMessageError::InvalidCommit(StageCommitError::ConfirmationTagMissing)
     ));
 
     // Positive case

@@ -31,8 +31,6 @@ impl PublicGroup {
         provider: &Provider,
         message: impl Into<ProtocolMessage>,
     ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
-        let crypto = provider.crypto();
-
         // Incoming protocol message.
         let message = message.into();
 
@@ -43,15 +41,15 @@ impl PublicGroup {
             ProtocolMessage::PrivateMessage(_) => {
                 return Err(ProcessMessageError::IncompatibleWireFormat)
             }
-            ProtocolMessage::PublicMessage(public_message) => Message::from_inbound_public_message(
-                public_message,
-                None,
-                self.group_context()
-                    .tls_serialize_detached()
-                    .map_err(LibraryError::missing_bound_check)?,
-                crypto,
-                self.ciphersuite(),
-            )?,
+            ProtocolMessage::PublicMessage(public_message) => {
+                let verifiable_content = public_message.into_verifiable_content(
+                    self.group_context()
+                        .tls_serialize_detached()
+                        .map_err(LibraryError::missing_bound_check)?,
+                );
+
+                Message { verifiable_content }
+            }
         };
 
         let message = self
@@ -67,45 +65,22 @@ impl PublicGroup {
     /// If the input is a [PrivateMessage] message, it will be decrypted.
     /// Returns an [UnverifiedMessage] that can be inspected and later processed in
     /// [Self::process_unverified_message()].
-    /// Checks the following semantic validation:
-    ///  - ValSem002
-    ///  - ValSem003
-    ///  - ValSem004
-    ///  - ValSem005
-    ///  - ValSem006
-    ///  - ValSem007
-    ///  - ValSem009
-    ///  - ValSem112
-    ///  - ValSem245
     pub(crate) fn parse_message<'a>(
         &self,
-        decrypted_message: Message,
+        message: Message,
         message_secrets_store_option: impl Into<Option<&'a MessageSecretsStore>>,
     ) -> Result<UnverifiedMessage, ValidationError> {
         let message_secrets_store_option = message_secrets_store_option.into();
-        // Checks the following semantic validation:
-        //  - ValSem004
-        //  - ValSem005
-        //  - ValSem009
-        self.validate_verifiable_content(
-            decrypted_message.verifiable_content(),
-            message_secrets_store_option,
-        )?;
 
         // Extract the credential if the sender is a member or a new member.
-        // Checks the following semantic validation:
-        //  - ValSem112
-        //  - ValSem245
-        //  - Prepares ValSem246 by setting the right credential. The remainder
-        //    of ValSem246 is validated as part of ValSem010.
         // External senders are not supported yet #106/#151.
         let CredentialWithKey {
             credential,
             signature_key,
-        } = decrypted_message.credential(
+        } = message.credential(
             self.treesync(),
             message_secrets_store_option
-                .map(|store| store.leaves_for_epoch(decrypted_message.verifiable_content().epoch()))
+                .map(|store| store.leaves_for_epoch(message.verifiable_content().epoch()))
                 .unwrap_or_default(),
             self.group_context().extensions().external_senders(),
         )?;
@@ -116,7 +91,7 @@ impl PublicGroup {
 
         // For commit messages, we need to check if the sender is a member or a
         // new member and set the tree position accordingly.
-        let sender_context = match decrypted_message.sender() {
+        let sender_context = match message.sender() {
             Sender::Member(leaf_index) => Some(SenderContext::Member((
                 self.group_id().clone(),
                 *leaf_index,
@@ -128,8 +103,8 @@ impl PublicGroup {
             Sender::External(_) | Sender::NewMemberProposal => None,
         };
 
-        Ok(UnverifiedMessage::from_decrypted_message(
-            decrypted_message,
+        Ok(UnverifiedMessage::from_message(
+            message,
             credential,
             signature_public_key,
             sender_context,

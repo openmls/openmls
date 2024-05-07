@@ -9,8 +9,8 @@ use self::utils::*;
 use crate::{
     ciphersuite::{hash_ref::ProposalRef, signable::Verifiable},
     framing::{
-        mls_auth_content_in::AuthenticatedContentIn, ContentType, FramedContentBody, Message,
-        MlsMessageIn, ProtocolMessage, Sender, WireFormat,
+        mls_auth_content_in::AuthenticatedContentIn, ContentType, FramedContentBody, MlsMessageIn,
+        ProtocolMessage, Sender, WireFormat,
     },
     group::{
         errors::{
@@ -26,6 +26,7 @@ use crate::{
         AddProposal, ExternalInitProposal, GroupContextExtensionProposal, Proposal, ProposalOrRef,
         ProposalType, ReInitProposal,
     },
+    prelude::PublicMessageIn,
 };
 
 // ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
@@ -526,26 +527,21 @@ fn test_valsem246() {
     );
 
     // This shows that the message is actually signed using this credential.
-    let decrypted_message = Message::from_inbound_public_message(
-        public_message_commit.clone().into(),
-        alice_group.group().message_secrets(),
-        alice_group
-            .group()
-            .message_secrets()
-            .serialized_context()
-            .to_vec(),
-        provider.crypto(),
-        ciphersuite,
-    )
-    .unwrap();
-    let verification_result: Result<AuthenticatedContentIn, _> =
-        decrypted_message.verifiable_content().clone().verify(
-            provider.crypto(),
-            &OpenMlsSignaturePublicKey::from_signature_key(
-                bob_credential.credential_with_key.signature_key,
-                ciphersuite.signature_algorithm(),
-            ),
+    let verifiable_content = PublicMessageIn::from(public_message_commit.clone())
+        .into_verifiable_content(
+            alice_group
+                .group()
+                .message_secrets()
+                .serialized_context()
+                .to_vec(),
         );
+    let verification_result: Result<AuthenticatedContentIn, _> = verifiable_content.clone().verify(
+        provider.crypto(),
+        &OpenMlsSignaturePublicKey::from_signature_key(
+            bob_credential.credential_with_key.signature_key,
+            ciphersuite.signature_algorithm(),
+        ),
+    );
     assert!(verification_result.is_ok());
 
     // Positive case

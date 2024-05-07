@@ -10,16 +10,14 @@ use crate::extensions::RequiredCapabilitiesExtension;
 use crate::group::GroupContextExtensionsProposalValidationError;
 use crate::prelude::LibraryError;
 use crate::treesync::errors::LeafNodeValidationError;
-use crate::validation::sender_is_in_tree;
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     framing::{
-        mls_auth_content_in::VerifiableAuthenticatedContentIn, ContentType, ProtocolMessage,
-        Sender, WireFormat,
+        ContentType, ProtocolMessage,
+        Sender,
     },
     group::{
         errors::{ExternalCommitValidationError, ProposalValidationError, ValidationError},
-        past_secrets::MessageSecretsStore,
         Member, ProposalQueue,
     },
     messages::{
@@ -69,28 +67,6 @@ impl PublicGroup {
                     return Err(ValidationError::WrongEpoch);
                 }
             }
-        }
-
-        Ok(())
-    }
-
-    /// Checks the following semantic validation:
-    ///  - ValSem004
-    ///  - ValSem005
-    ///  - ValSem009
-    pub(super) fn validate_verifiable_content(
-        &self,
-        verifiable_content: &VerifiableAuthenticatedContentIn,
-        message_secrets_store_option: Option<&MessageSecretsStore>,
-    ) -> Result<(), ValidationError> {
-        // ValSem004
-        sender_is_in_tree(self, verifiable_content, message_secrets_store_option)?;
-
-        // ValSem009
-        if verifiable_content.content_type() == ContentType::Commit
-            && verifiable_content.confirmation_tag().is_none()
-        {
-            return Err(ValidationError::MissingConfirmationTag);
         }
 
         Ok(())

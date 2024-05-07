@@ -7,7 +7,7 @@
 //!                                  │                      │
 //!                                  │                      │
 //!                                  ▼                      │
-//!                           DecryptedMessage              +-- parse_message
+//!                               Message                   +-- parse_message
 //!                                  │                      │
 //!                                  │                      │
 //!                                  │                      │
@@ -23,7 +23,7 @@
 //! ```
 // TODO #106/#151: Update the above diagram
 
-use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
+use openmls_traits::types::Ciphersuite;
 
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -34,7 +34,6 @@ use crate::{
         errors::ValidationError,
     },
     storage::OpenMlsProvider,
-    tree::sender_ratchet::SenderRatchetConfiguration,
     treesync::TreeSync,
     versions::ProtocolVersion,
 };
@@ -44,8 +43,6 @@ use self::mls_group::errors::ProcessMessageError;
 use super::{
     mls_auth_content::AuthenticatedContent,
     mls_auth_content_in::{AuthenticatedContentIn, VerifiableAuthenticatedContentIn},
-    private_message_in::PrivateMessageIn,
-    public_message_in::PublicMessageIn,
     *,
 };
 
@@ -53,64 +50,10 @@ use super::{
 /// If it is constructed from a ciphertext message, the ciphertext message is decrypted first.
 #[derive(Debug)]
 pub(crate) struct Message {
-    verifiable_content: VerifiableAuthenticatedContentIn,
+    pub(crate) verifiable_content: VerifiableAuthenticatedContentIn,
 }
 
 impl Message {
-    /// Constructs a [Message] from a [VerifiableAuthenticatedContent](VerifiableAuthenticatedContentIn).
-    pub(crate) fn from_inbound_public_message<'a>(
-        public_message: PublicMessageIn,
-        message_secrets_option: impl Into<Option<&'a MessageSecrets>>,
-        serialized_context: Vec<u8>,
-        crypto: &impl OpenMlsCrypto,
-        ciphersuite: Ciphersuite,
-    ) -> Result<Self, ValidationError> {
-        if public_message.sender().is_member() {
-            if let Some(message_secrets) = message_secrets_option.into() {
-                // Verify the membership tag. This needs to be done explicitly for PublicMessage messages,
-                // it is implicit for PrivateMessage messages (because the encryption can only be known by members).
-                public_message.verify_membership(
-                    crypto,
-                    ciphersuite,
-                    message_secrets.membership_key(),
-                    message_secrets.serialized_context(),
-                )?;
-            }
-        }
-
-        let verifiable_content = public_message.into_verifiable_content(serialized_context);
-
-        Ok(Message { verifiable_content })
-    }
-
-    /// Constructs a [DecryptedMessage] from a [PrivateMessage] by attempting to decrypt it
-    /// to a [VerifiableAuthenticatedContent] first.
-    pub(crate) fn decrypt_private_message(
-        ciphertext: PrivateMessageIn,
-        crypto: &impl OpenMlsCrypto,
-        group: &mut CoreGroup,
-        sender_ratchet_configuration: &SenderRatchetConfiguration,
-    ) -> Result<Self, ValidationError> {
-        let ciphersuite = group.ciphersuite();
-        let message_secrets = group
-            .message_secrets_and_leaves_mut(ciphertext.epoch())
-            .map_err(|_| MessageDecryptionError::AeadError)?;
-        let sender_data = ciphertext.sender_data(message_secrets, crypto, ciphersuite)?;
-        let message_secrets = group
-            .message_secrets_mut(ciphertext.epoch())
-            .map_err(|_| MessageDecryptionError::AeadError)?;
-        let verifiable_content = ciphertext.decrypt_to_verifiable_content(
-            ciphersuite,
-            crypto,
-            message_secrets,
-            sender_data.leaf_index,
-            sender_ratchet_configuration,
-            sender_data,
-        )?;
-
-        Ok(Message { verifiable_content })
-    }
-
     /// Gets the correct credential from the message depending on the sender type.
     ///
     /// - Member:
@@ -187,7 +130,7 @@ impl Message {
     }
 
     /// Returns the sender.
-    pub fn sender(&self) -> &Sender {
+    pub(crate) fn sender(&self) -> &Sender {
         self.verifiable_content.sender()
     }
 
@@ -220,7 +163,7 @@ pub(crate) struct UnverifiedMessage {
 
 impl UnverifiedMessage {
     /// Construct an [UnverifiedMessage] from a [DecryptedMessage] and an optional [Credential].
-    pub(crate) fn from_decrypted_message(
+    pub(crate) fn from_message(
         decrypted_message: Message,
         credential: Credential,
         sender_pk: OpenMlsSignaturePublicKey,

@@ -174,22 +174,43 @@ impl CoreGroup {
                         )
                         .into(),
                     })?;
-                Message::from_inbound_public_message(
-                    public_message,
-                    message_secrets,
-                    message_secrets.serialized_context().to_vec(),
-                    crypto,
-                    self.ciphersuite(),
-                )
+
+                if public_message.sender().is_member() {
+                    // Verify the membership tag. This needs to be done explicitly for PublicMessage messages,
+                    // it is implicit for PrivateMessage messages (because the encryption can only be known by members).
+                    public_message.verify_membership(
+                        crypto,
+                        self.ciphersuite(),
+                        message_secrets.membership_key(),
+                        message_secrets.serialized_context(),
+                    )?;
+                }
+
+                let verifiable_content = public_message
+                    .into_verifiable_content(message_secrets.serialized_context().to_vec());
+
+                Ok(Message { verifiable_content })
             }
             ProtocolMessage::PrivateMessage(ciphertext) => {
                 // If the message is older than the current epoch, we need to fetch the correct secret tree first
-                Message::decrypt_private_message(
-                    ciphertext,
+                let ciphersuite = self.ciphersuite();
+                let message_secrets = self
+                    .message_secrets_and_leaves_mut(ciphertext.epoch())
+                    .map_err(|_| MessageDecryptionError::AeadError)?;
+                let sender_data = ciphertext.sender_data(message_secrets, crypto, ciphersuite)?;
+                let message_secrets = self
+                    .message_secrets_mut(ciphertext.epoch())
+                    .map_err(|_| MessageDecryptionError::AeadError)?;
+                let verifiable_content = ciphertext.decrypt_to_verifiable_content(
+                    ciphersuite,
                     crypto,
-                    self,
+                    message_secrets,
+                    sender_data.leaf_index,
                     sender_ratchet_configuration,
-                )
+                    sender_data,
+                )?;
+
+                Ok(Message { verifiable_content })
             }
         }
     }
