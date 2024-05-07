@@ -14,7 +14,7 @@ use crate::{
     },
     key_packages::KeyPackage,
     messages::{AddProposal, Proposal},
-    storage::StorageProvider,
+    storage::{OpenMlsProvider, StorageProvider},
 };
 use openmls_traits::signatures::Signer;
 
@@ -70,13 +70,13 @@ impl ExternalProposal {
     /// * `signer` - of the sender to sign the message
     /// * `sender` - index of the sender of the proposal (in the [crate::extensions::ExternalSendersExtension] array
     /// from the Group Context)
-    pub fn new_remove<Storage: StorageProvider>(
+    pub fn new_remove<Provider: OpenMlsProvider>(
         removed: LeafNodeIndex,
         group_id: GroupId,
         epoch: GroupEpoch,
         signer: &impl Signer,
         sender_index: SenderExtensionIndex,
-    ) -> Result<MlsMessageOut, ProposeRemoveMemberError<Storage::Error>> {
+    ) -> Result<MlsMessageOut, ProposeRemoveMemberError<Provider::StorageError>> {
         AuthenticatedContent::new_external_proposal(
             Proposal::Remove(RemoveProposal { removed }),
             group_id,

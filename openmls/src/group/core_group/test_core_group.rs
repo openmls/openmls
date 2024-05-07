@@ -1,5 +1,5 @@
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_traits::{crypto::OpenMlsCrypto, types::HpkeCiphertext};
+use openmls_traits::types::HpkeCiphertext;
 use tls_codec::Serialize;
 
 use crate::{
@@ -54,7 +54,7 @@ pub fn flip_last_byte(ctxt: &mut HpkeCiphertext) {
     ctxt.ciphertext.push(last_bits);
 }
 
-#[apply(ciphersuites_and_providers)]
+#[openmls_test::openmls_test]
 fn test_failed_groupinfo_decryption(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,
@@ -171,8 +171,8 @@ fn test_failed_groupinfo_decryption(
 
 /// Test what happens if the KEM ciphertext for the receiver in the UpdatePath
 /// is broken.
-#[apply(ciphersuites_and_providers)]
-fn test_update_path(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn test_update_path() {
     // === Alice creates a group with her and Bob ===
     let (
         framing_parameters,
@@ -298,8 +298,8 @@ fn setup_alice_bob(
 }
 
 // Test several scenarios when PSKs are used in a group
-#[apply(ciphersuites_and_providers)]
-fn test_psks(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn test_psks() {
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -426,7 +426,7 @@ fn test_psks(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsPr
 }
 
 // Test several scenarios when PSKs are used in a group
-#[apply(ciphersuites_and_providers)]
+#[openmls_test::openmls_test]
 fn test_staged_commit_creation(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,
@@ -502,7 +502,7 @@ fn test_staged_commit_creation(
 }
 
 // Test processing of own commits
-#[apply(ciphersuites_and_providers)]
+#[openmls_test::openmls_test]
 fn test_own_commit_processing(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,
@@ -570,7 +570,7 @@ pub(crate) fn setup_client(
     (credential_with_key, key_package_bundle, signature_keys, pk)
 }
 
-#[apply(ciphersuites_and_providers)]
+#[openmls_test::openmls_test]
 fn test_proposal_application_after_self_was_removed(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,

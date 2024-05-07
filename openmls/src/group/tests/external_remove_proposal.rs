@@ -1,12 +1,8 @@
-use rstest::*;
-use rstest_reuse::{self, *};
+use openmls_test::openmls_test;
 
-use crate::{
-    credentials::BasicCredential, framing::*, group::*, messages::external_proposals::*,
-    storage::OpenMlsProvider,
-};
+use crate::{credentials::BasicCredential, framing::*, group::*, messages::external_proposals::*};
 
-use openmls_traits::types::Ciphersuite;
+use openmls_traits::{types::Ciphersuite, OpenMlsProvider as _};
 
 use super::utils::*;
 
@@ -89,11 +85,8 @@ fn validation_test_setup(
     (alice_group, alice_signer_when_keys)
 }
 
-#[apply(ciphersuites_and_providers)]
-fn external_remove_proposal_should_remove_member<Provider: OpenMlsProvider>(
-    ciphersuite: Ciphersuite,
-    provider: &Provider,
-) {
+#[openmls_test]
+fn external_remove_proposal_should_remove_member() {
     // delivery service credentials. DS will craft an external remove proposal
     let ds_credential_with_key = generate_credential_with_key(
         "delivery-service".into(),
@@ -136,16 +129,15 @@ fn external_remove_proposal_should_remove_member<Provider: OpenMlsProvider>(
         .map(|member| member.index)
         .unwrap();
     // Now Delivery Service wants to (already) remove Bob
-    let bob_external_remove_proposal: MlsMessageIn =
-        ExternalProposal::new_remove::<Provider::Storage>(
-            bob_index,
-            alice_group.group_id().clone(),
-            alice_group.epoch(),
-            &ds_credential_with_key.signer,
-            SenderExtensionIndex::new(0),
-        )
-        .unwrap()
-        .into();
+    let bob_external_remove_proposal: MlsMessageIn = ExternalProposal::new_remove::<Provider>(
+        bob_index,
+        alice_group.group_id().clone(),
+        alice_group.epoch(),
+        &ds_credential_with_key.signer,
+        SenderExtensionIndex::new(0),
+    )
+    .unwrap()
+    .into();
 
     // Alice validates the message
     let processed_message = alice_group
@@ -172,7 +164,7 @@ fn external_remove_proposal_should_remove_member<Provider: OpenMlsProvider>(
 
     // Trying to do an external remove proposal of Bob now should fail as he no longer is in the group
     let invalid_bob_external_remove_proposal: MlsMessageIn =
-        ExternalProposal::new_remove::<Provider::Storage>(
+        ExternalProposal::new_remove::<Provider>(
             // Bob is no longer in the group
             bob_index,
             alice_group.group_id().clone(),
@@ -211,13 +203,10 @@ fn external_remove_proposal_should_remove_member<Provider: OpenMlsProvider>(
     ));
 }
 
-#[apply(ciphersuites_and_providers)]
+#[openmls_test]
 fn external_remove_proposal_should_fail_when_invalid_external_senders_index<
     Provider: OpenMlsProvider,
->(
-    ciphersuite: Ciphersuite,
-    provider: &Provider,
-) {
+>() {
     // delivery service credentials. DS will craft an external remove proposal
     let ds_credential_with_key = generate_credential_with_key(
         "delivery-service".into(),
@@ -248,16 +237,15 @@ fn external_remove_proposal_should_fail_when_invalid_external_senders_index<
         .map(|member| member.index)
         .unwrap();
     // Now Delivery Service wants to (already) remove Bob with invalid sender index
-    let bob_external_remove_proposal: MlsMessageIn =
-        ExternalProposal::new_remove::<Provider::Storage>(
-            bob_index,
-            alice_group.group_id().clone(),
-            alice_group.epoch(),
-            &ds_credential_with_key.signer,
-            SenderExtensionIndex::new(10), // invalid sender index
-        )
-        .unwrap()
-        .into();
+    let bob_external_remove_proposal: MlsMessageIn = ExternalProposal::new_remove::<Provider>(
+        bob_index,
+        alice_group.group_id().clone(),
+        alice_group.epoch(),
+        &ds_credential_with_key.signer,
+        SenderExtensionIndex::new(10), // invalid sender index
+    )
+    .unwrap()
+    .into();
 
     // Alice tries to validate the message and should fail as sender is invalid
     let error = alice_group
@@ -274,11 +262,8 @@ fn external_remove_proposal_should_fail_when_invalid_external_senders_index<
     ));
 }
 
-#[apply(ciphersuites_and_providers)]
-fn external_remove_proposal_should_fail_when_invalid_signature<Provider: OpenMlsProvider>(
-    ciphersuite: Ciphersuite,
-    provider: &Provider,
-) {
+#[openmls_test]
+fn external_remove_proposal_should_fail_when_invalid_signature() {
     // delivery service credentials. DS will craft an external remove proposal
     let ds_credential_with_key = generate_credential_with_key(
         "delivery-service".into(),
@@ -312,16 +297,15 @@ fn external_remove_proposal_should_fail_when_invalid_signature<Provider: OpenMls
         .map(|member| member.index)
         .unwrap();
     // Now Delivery Service wants to (already) remove Bob with invalid sender index
-    let bob_external_remove_proposal: MlsMessageIn =
-        ExternalProposal::new_remove::<Provider::Storage>(
-            bob_index,
-            alice_group.group_id().clone(),
-            alice_group.epoch(),
-            &ds_invalid_credential_with_key.signer,
-            SenderExtensionIndex::new(0),
-        )
-        .unwrap()
-        .into();
+    let bob_external_remove_proposal: MlsMessageIn = ExternalProposal::new_remove::<Provider>(
+        bob_index,
+        alice_group.group_id().clone(),
+        alice_group.epoch(),
+        &ds_invalid_credential_with_key.signer,
+        SenderExtensionIndex::new(0),
+    )
+    .unwrap()
+    .into();
 
     // Alice tries to validate the message and should fail as sender is invalid
     let error = alice_group
@@ -335,11 +319,8 @@ fn external_remove_proposal_should_fail_when_invalid_signature<Provider: OpenMls
     assert!(matches!(error, ProcessMessageError::InvalidSignature));
 }
 
-#[apply(ciphersuites_and_providers)]
-fn external_remove_proposal_should_fail_when_no_external_senders<Provider: OpenMlsProvider>(
-    ciphersuite: Ciphersuite,
-    provider: &Provider,
-) {
+#[openmls_test]
+fn external_remove_proposal_should_fail_when_no_external_senders() {
     let (mut alice_group, _) = validation_test_setup(
         PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
         ciphersuite,
@@ -360,16 +341,15 @@ fn external_remove_proposal_should_fail_when_no_external_senders<Provider: OpenM
         .map(|member| member.index)
         .unwrap();
     // Now Delivery Service wants to remove Bob with invalid sender index but there's no extension
-    let bob_external_remove_proposal: MlsMessageIn =
-        ExternalProposal::new_remove::<Provider::Storage>(
-            bob_index,
-            alice_group.group_id().clone(),
-            alice_group.epoch(),
-            &ds_credential_with_key.signer,
-            SenderExtensionIndex::new(1), // invalid sender index
-        )
-        .unwrap()
-        .into();
+    let bob_external_remove_proposal: MlsMessageIn = ExternalProposal::new_remove::<Provider>(
+        bob_index,
+        alice_group.group_id().clone(),
+        alice_group.epoch(),
+        &ds_credential_with_key.signer,
+        SenderExtensionIndex::new(1), // invalid sender index
+    )
+    .unwrap()
+    .into();
 
     // Alice tries to validate the message and should fail as sender is invalid
     let error = alice_group

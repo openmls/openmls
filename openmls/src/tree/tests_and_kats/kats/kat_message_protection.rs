@@ -677,7 +677,7 @@ pub fn run_test_vector(
     Ok(())
 }
 
-#[apply(providers)]
+#[openmls_test::openmls_test]
 fn read_test_vectors_mp(provider: &impl crate::storage::OpenMlsProvider) {
     let _ = pretty_env_logger::try_init();
     log::debug!("Reading test vectors ...");

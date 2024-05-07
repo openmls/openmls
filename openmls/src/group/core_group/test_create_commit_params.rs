@@ -1,9 +1,7 @@
-use crate::{storage::OpenMlsProvider, test_utils::*};
-
 use super::*;
 
 // Tests that the builder for CreateCommitParams works as expected
-#[apply(providers)]
+#[openmls_test::openmls_test]
 fn build_create_commit_params<Provider: OpenMlsProvider>(provider: &Provider) {
     let _ = provider;
     let framing_parameters: FramingParameters =

@@ -28,9 +28,16 @@ impl Default for CryptoProvider {
     }
 }
 
+impl CryptoProvider {
+    #[inline(always)]
+    fn aes_support(&self) -> bool {
+        libcrux::aes_ni_support() && cfg!(target_arch = "x86_64")
+    }
+}
+
 impl OpenMlsCrypto for CryptoProvider {
     fn supports(&self, ciphersuite: Ciphersuite) -> Result<(), CryptoError> {
-        match (ciphersuite.aead_algorithm(), libcrux::aes_ni_support()) {
+        match (ciphersuite.aead_algorithm(), self.aes_support()) {
             (AeadType::Aes128Gcm, true)
             | (AeadType::Aes256Gcm, true)
             | (AeadType::ChaCha20Poly1305, true)
@@ -49,9 +56,7 @@ impl OpenMlsCrypto for CryptoProvider {
 
         match ciphersuite.hpke_aead_algorithm() {
             HpkeAeadType::ChaCha20Poly1305 => Ok(()),
-            HpkeAeadType::AesGcm128 | HpkeAeadType::AesGcm256 if libcrux::aes_ni_support() => {
-                Ok(())
-            }
+            HpkeAeadType::AesGcm128 | HpkeAeadType::AesGcm256 if self.aes_support() => Ok(()),
             _ => Err(CryptoError::UnsupportedCiphersuite),
         }?;
 
@@ -59,7 +64,7 @@ impl OpenMlsCrypto for CryptoProvider {
     }
 
     fn supported_ciphersuites(&self) -> Vec<Ciphersuite> {
-        if libcrux::aes_ni_support() {
+        if self.aes_support() {
             vec![
                 Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
                 Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
@@ -465,16 +470,6 @@ pub trait ReadU8: std::io::Read {
         let mut buf = [0; 1];
         self.read_exact(&mut buf)?;
         Ok(buf[0])
-    }
-}
-
-impl<W: std::io::Write + ?Sized> WriteU8 for W {}
-
-pub trait WriteU8: std::io::Write {
-    /// A small helper function to write a u8 to a Writer.
-    #[inline]
-    fn write_u8(&mut self, n: u8) -> std::io::Result<()> {
-        self.write_all(&[n])
     }
 }
 
