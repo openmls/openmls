@@ -234,6 +234,11 @@ impl ProtocolMessage {
     pub fn is_handshake_message(&self) -> bool {
         self.content_type().is_handshake_message()
     }
+
+    /// Returns `true` if this is an application message and `false` otherwise.
+    pub fn is_application_message(&self) -> bool {
+        matches!(self.content_type(), ContentType::Application)
+    }
 }
 
 impl From<PrivateMessageIn> for ProtocolMessage {

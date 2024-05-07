@@ -322,7 +322,7 @@ fn bad_padding(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMls
             .sender_data(&message_secrets, provider.crypto(), ciphersuite)
             .expect("Could not decrypt sender data.");
 
-        let verifiable_plaintext_result = tampered_ciphertext.to_verifiable_content(
+        let verifiable_plaintext_result = tampered_ciphertext.decrypt_to_verifiable_content(
             ciphersuite,
             provider.crypto(),
             &mut message_secrets,

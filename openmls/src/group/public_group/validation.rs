@@ -10,6 +10,7 @@ use crate::extensions::RequiredCapabilitiesExtension;
 use crate::group::GroupContextExtensionsProposalValidationError;
 use crate::prelude::LibraryError;
 use crate::treesync::errors::LeafNodeValidationError;
+use crate::validation::sender_is_in_tree;
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     framing::{
@@ -83,31 +84,7 @@ impl PublicGroup {
         message_secrets_store_option: Option<&MessageSecretsStore>,
     ) -> Result<(), ValidationError> {
         // ValSem004
-        let sender = verifiable_content.sender();
-        if let Sender::Member(leaf_index) = sender {
-            // If the sender is a member, it has to be in the tree, except if
-            // it's an application message. Then it might be okay if it's in an
-            // old secret tree instance, but we'll leave that to the CoreGroup
-            // to validate.
-            let is_in_secrets_store = if let Some(mss) = message_secrets_store_option {
-                mss.epoch_has_leaf(verifiable_content.epoch(), *leaf_index)
-            } else {
-                false
-            };
-            if !self.treesync().is_leaf_in_tree(*leaf_index) && !is_in_secrets_store {
-                return Err(ValidationError::UnknownMember);
-            }
-        }
-
-        // ValSem005
-        // Application messages must always be encrypted
-        if verifiable_content.content_type() == ContentType::Application {
-            if verifiable_content.wire_format() != WireFormat::PrivateMessage {
-                return Err(ValidationError::UnencryptedApplicationMessage);
-            } else if !verifiable_content.sender().is_member() {
-                return Err(ValidationError::NonMemberApplicationMessage);
-            }
-        }
+        sender_is_in_tree(self, verifiable_content, message_secrets_store_option)?;
 
         // ValSem009
         if verifiable_content.content_type() == ContentType::Commit

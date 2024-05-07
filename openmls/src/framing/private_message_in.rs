@@ -144,7 +144,7 @@ impl PrivateMessageIn {
     /// This function decrypts a [`PrivateMessage`] into a
     /// [`VerifiableAuthenticatedContent`]. In order to get an
     /// [`FramedContent`] the result must be verified.
-    pub(crate) fn to_verifiable_content(
+    pub(crate) fn decrypt_to_verifiable_content(
         &self,
         ciphersuite: Ciphersuite,
         crypto: &impl OpenMlsCrypto,

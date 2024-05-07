@@ -28,7 +28,6 @@ use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::signable::Verifiable,
-    error::LibraryError,
     extensions::ExternalSendersExtension,
     group::{
         core_group::{proposals::QueuedProposal, staged_commit::StagedCommit},
@@ -51,18 +50,14 @@ use super::{
 };
 
 /// Intermediate message that can be constructed either from a public message or from private message.
-/// If it it constructed from a ciphertext message, the ciphertext message is decrypted first.
-/// This function implements the following checks:
-///  - ValSem005
-///  - ValSem007
-///  - ValSem009
+/// If it is constructed from a ciphertext message, the ciphertext message is decrypted first.
 #[derive(Debug)]
-pub(crate) struct DecryptedMessage {
+pub(crate) struct Message {
     verifiable_content: VerifiableAuthenticatedContentIn,
 }
 
-impl DecryptedMessage {
-    /// Constructs a [DecryptedMessage] from a [VerifiableAuthenticatedContent].
+impl Message {
+    /// Constructs a [Message] from a [VerifiableAuthenticatedContent](VerifiableAuthenticatedContentIn).
     pub(crate) fn from_inbound_public_message<'a>(
         public_message: PublicMessageIn,
         message_secrets_option: impl Into<Option<&'a MessageSecrets>>,
@@ -71,15 +66,9 @@ impl DecryptedMessage {
         ciphersuite: Ciphersuite,
     ) -> Result<Self, ValidationError> {
         if public_message.sender().is_member() {
-            // ValSem007 Membership tag presence
-            if public_message.membership_tag().is_none() {
-                return Err(ValidationError::MissingMembershipTag);
-            }
-
             if let Some(message_secrets) = message_secrets_option.into() {
                 // Verify the membership tag. This needs to be done explicitly for PublicMessage messages,
                 // it is implicit for PrivateMessage messages (because the encryption can only be known by members).
-                // ValSem008
                 public_message.verify_membership(
                     crypto,
                     ciphersuite,
@@ -91,29 +80,26 @@ impl DecryptedMessage {
 
         let verifiable_content = public_message.into_verifiable_content(serialized_context);
 
-        Self::from_verifiable_content(verifiable_content)
+        Ok(Message { verifiable_content })
     }
 
     /// Constructs a [DecryptedMessage] from a [PrivateMessage] by attempting to decrypt it
     /// to a [VerifiableAuthenticatedContent] first.
-    pub(crate) fn from_inbound_ciphertext(
+    pub(crate) fn decrypt_private_message(
         ciphertext: PrivateMessageIn,
         crypto: &impl OpenMlsCrypto,
         group: &mut CoreGroup,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
     ) -> Result<Self, ValidationError> {
-        // This will be refactored with #265.
         let ciphersuite = group.ciphersuite();
-        // TODO: #819 The old leaves should not be needed any more.
-        //       Revisit when the transition is further along.
-        let (message_secrets, _old_leaves) = group
+        let message_secrets = group
             .message_secrets_and_leaves_mut(ciphertext.epoch())
             .map_err(|_| MessageDecryptionError::AeadError)?;
         let sender_data = ciphertext.sender_data(message_secrets, crypto, ciphersuite)?;
         let message_secrets = group
             .message_secrets_mut(ciphertext.epoch())
             .map_err(|_| MessageDecryptionError::AeadError)?;
-        let verifiable_content = ciphertext.to_verifiable_content(
+        let verifiable_content = ciphertext.decrypt_to_verifiable_content(
             ciphersuite,
             crypto,
             message_secrets,
@@ -121,40 +107,19 @@ impl DecryptedMessage {
             sender_ratchet_configuration,
             sender_data,
         )?;
-        Self::from_verifiable_content(verifiable_content)
-    }
 
-    // Internal constructor function. Does the following checks:
-    // - Confirmation tag must be present for Commit messages
-    // - Membership tag must be present for member messages, if the original incoming message was not an PrivateMessage
-    // - Ensures application messages were originally PrivateMessage messages
-    fn from_verifiable_content(
-        verifiable_content: VerifiableAuthenticatedContentIn,
-    ) -> Result<Self, ValidationError> {
-        // ValSem009
-        if verifiable_content.content_type() == ContentType::Commit
-            && verifiable_content.confirmation_tag().is_none()
-        {
-            return Err(ValidationError::MissingConfirmationTag);
-        }
-        // ValSem005
-        if verifiable_content.content_type() == ContentType::Application {
-            if verifiable_content.wire_format() != WireFormat::PrivateMessage {
-                return Err(ValidationError::UnencryptedApplicationMessage);
-            } else if !verifiable_content.sender().is_member() {
-                // This should not happen because the sender of an PrivateMessage should always be a member
-                return Err(LibraryError::custom("Expected sender to be member.").into());
-            }
-        }
-        Ok(DecryptedMessage { verifiable_content })
+        Ok(Message { verifiable_content })
     }
 
     /// Gets the correct credential from the message depending on the sender type.
-    /// Checks the following semantic validation:
-    ///  - ValSem112
-    ///  - ValSem245
-    ///  - Prepares ValSem246 by setting the right credential. The remainder
-    ///    of ValSem246 is validated as part of ValSem010.
+    ///
+    /// - Member:
+    ///     - Credential from the leaf node
+    ///     - Credential from an old leaf when the leaf index is not valid anymore
+    /// - External: Credential from the `ExternalSender` extensions
+    /// - NewMember:
+    ///     - Commit: Credential from the leaf node in the update path
+    ///     - Proposal: Credential from the key package in the add proposal (no other proposals are allowed)
     ///
     /// Returns the [`Credential`] and the leaf's [`SignaturePublicKey`].
     pub(crate) fn credential(
@@ -256,7 +221,7 @@ pub(crate) struct UnverifiedMessage {
 impl UnverifiedMessage {
     /// Construct an [UnverifiedMessage] from a [DecryptedMessage] and an optional [Credential].
     pub(crate) fn from_decrypted_message(
-        decrypted_message: DecryptedMessage,
+        decrypted_message: Message,
         credential: Credential,
         sender_pk: OpenMlsSignaturePublicKey,
         sender_context: Option<SenderContext>,

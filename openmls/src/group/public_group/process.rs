@@ -5,7 +5,7 @@ use crate::{
     credentials::CredentialWithKey,
     error::LibraryError,
     framing::{
-        mls_content::FramedContentBody, ApplicationMessage, DecryptedMessage, ProcessedMessage,
+        mls_content::FramedContentBody, ApplicationMessage, Message, ProcessedMessage,
         ProcessedMessageContent, ProtocolMessage, Sender, SenderContext, UnverifiedMessage,
     },
     group::{
@@ -19,6 +19,47 @@ use crate::{
 };
 
 use super::PublicGroup;
+
+impl PublicGroup {
+    /// This function is used to parse messages from the DS. It checks for
+    /// syntactic errors and does semantic validation as well. It returns a
+    /// [ProcessedMessage] enum.
+    ///
+    /// ProtocolMessage -> Message -> UnverifiedMessage -> ProcessedMessage
+    pub fn process_message<Provider: OpenMlsProvider>(
+        &self,
+        provider: &Provider,
+        message: impl Into<ProtocolMessage>,
+    ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
+        let crypto = provider.crypto();
+
+        // Incoming protocol message.
+        let message = message.into();
+
+        self.validate_framing(&message)?;
+        crate::validation::application_msg_is_always_private(&message)?;
+
+        let message = match message {
+            ProtocolMessage::PrivateMessage(_) => {
+                return Err(ProcessMessageError::IncompatibleWireFormat)
+            }
+            ProtocolMessage::PublicMessage(public_message) => Message::from_inbound_public_message(
+                public_message,
+                None,
+                self.group_context()
+                    .tls_serialize_detached()
+                    .map_err(LibraryError::missing_bound_check)?,
+                crypto,
+                self.ciphersuite(),
+            )?,
+        };
+
+        let message = self
+            .parse_message(message, None)
+            .map_err(ProcessMessageError::from)?;
+        self.process_unverified_message(provider, message, &self.proposal_store)
+    }
+}
 
 impl PublicGroup {
     /// This function is used to parse messages from the DS.
@@ -38,7 +79,7 @@ impl PublicGroup {
     ///  - ValSem245
     pub(crate) fn parse_message<'a>(
         &self,
-        decrypted_message: DecryptedMessage,
+        decrypted_message: Message,
         message_secrets_store_option: impl Into<Option<&'a MessageSecretsStore>>,
     ) -> Result<UnverifiedMessage, ValidationError> {
         let message_secrets_store_option = message_secrets_store_option.into();
@@ -95,104 +136,9 @@ impl PublicGroup {
         ))
     }
 
-    /// This function is used to parse messages from the DS. It checks for
-    /// syntactic errors and does semantic validation as well. It returns a
-    /// [ProcessedMessage] enum. Checks the following semantic validation:
-    ///  - ValSem002
-    ///  - ValSem003
-    ///  - ValSem004
-    ///  - ValSem005
-    ///  - ValSem006
-    ///  - ValSem007
-    ///  - ValSem008
-    ///  - ValSem009
-    ///  - ValSem010
-    ///  - ValSem101
-    ///  - ValSem102
-    ///  - ValSem104
-    ///  - ValSem106
-    ///  - ValSem107
-    ///  - ValSem108
-    ///  - ValSem110
-    ///  - ValSem111
-    ///  - ValSem112
-    ///  - ValSem200
-    ///  - ValSem201
-    ///  - ValSem202: Path must be the right length
-    ///  - ValSem203: Path secrets must decrypt correctly
-    ///  - ValSem204: Public keys from Path must be verified and match the
-    ///               private keys from the direct path
-    ///  - ValSem205
-    ///  - ValSem240
-    ///  - ValSem241
-    ///  - ValSem242
-    ///  - ValSem244
-    ///  - ValSem245
-    ///  - ValSem246 (as part of ValSem010)
-    pub fn process_message<Provider: OpenMlsProvider>(
-        &self,
-        provider: &Provider,
-        message: impl Into<ProtocolMessage>,
-    ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
-        let crypto = provider.crypto();
-        let protocol_message = message.into();
-        // Checks the following semantic validation:
-        //  - ValSem002
-        //  - ValSem003
-        self.validate_framing(&protocol_message)?;
-
-        let decrypted_message = match protocol_message {
-            ProtocolMessage::PrivateMessage(_) => {
-                return Err(ProcessMessageError::IncompatibleWireFormat)
-            }
-            ProtocolMessage::PublicMessage(public_message) => {
-                DecryptedMessage::from_inbound_public_message(
-                    public_message,
-                    None,
-                    self.group_context()
-                        .tls_serialize_detached()
-                        .map_err(LibraryError::missing_bound_check)?,
-                    crypto,
-                    self.ciphersuite(),
-                )?
-            }
-        };
-
-        let unverified_message = self
-            .parse_message(decrypted_message, None)
-            .map_err(ProcessMessageError::from)?;
-        self.process_unverified_message(provider, unverified_message, &self.proposal_store)
-    }
-}
-
-impl PublicGroup {
     /// This processing function does most of the semantic verifications.
     /// It returns a [ProcessedMessage] enum.
-    /// Checks the following semantic validation:
-    ///  - ValSem008
-    ///  - ValSem010
-    ///  - ValSem101
-    ///  - ValSem102
-    ///  - ValSem104
-    ///  - ValSem106
-    ///  - ValSem107
-    ///  - ValSem108
-    ///  - ValSem110
-    ///  - ValSem111
-    ///  - ValSem112
-    ///  - ValSem200
-    ///  - ValSem201
-    ///  - ValSem202: Path must be the right length
-    ///  - ValSem203: Path secrets must decrypt correctly
-    ///  - ValSem204: Public keys from Path must be verified and match the
-    ///               private keys from the direct path
-    ///  - ValSem205
-    ///  - ValSem240
-    ///  - ValSem241
-    ///  - ValSem242
-    ///  - ValSem244
-    ///  - ValSem246 (as part of ValSem010)
-    pub(crate) fn process_unverified_message<Provider: OpenMlsProvider>(
+    fn process_unverified_message<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
         unverified_message: UnverifiedMessage,

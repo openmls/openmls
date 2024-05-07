@@ -202,7 +202,7 @@ fn wire_format_checks(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider)
         .sender_data(&message_secrets, provider.crypto(), ciphersuite)
         .expect("Could not decrypt sender data.");
     let verifiable_plaintext = ciphertext
-        .to_verifiable_content(
+        .decrypt_to_verifiable_content(
             ciphersuite,
             provider.crypto(),
             &mut message_secrets,
@@ -245,7 +245,7 @@ fn wire_format_checks(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider)
         .sender_data(&message_secrets, provider.crypto(), ciphersuite)
         .expect("Could not decrypt sender data.");
     let verifiable_plaintext = ciphertext
-        .to_verifiable_content(
+        .decrypt_to_verifiable_content(
             ciphersuite,
             provider.crypto(),
             &mut message_secrets,
@@ -590,7 +590,7 @@ fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider:
     )
     .expect("Encryption error");
 
-    let received_message = group_charlie.decrypt_message(
+    let received_message = group_charlie.message_from_protocol_message(
         charlie_provider.crypto(),
         ProtocolMessage::from(PrivateMessageIn::from(enc_message)),
         configuration,

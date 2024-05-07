@@ -127,11 +127,11 @@ impl MessageSecretsStore {
     pub(crate) fn secrets_and_leaves_for_epoch_mut(
         &mut self,
         group_epoch: impl Into<GroupEpoch>,
-    ) -> Option<(&mut MessageSecrets, &[Member])> {
+    ) -> Option<&mut MessageSecrets> {
         let epoch = group_epoch.into().as_u64();
         for epoch_tree in self.past_epoch_trees.iter_mut() {
             if epoch_tree.epoch == epoch {
-                return Some((&mut epoch_tree.message_secrets, &epoch_tree.leaves));
+                return Some(&mut epoch_tree.message_secrets);
             }
         }
         None

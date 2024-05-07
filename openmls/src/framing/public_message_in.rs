@@ -188,11 +188,6 @@ impl PublicMessageIn {
         )
     }
 
-    /// Get the [`MembershipTag`].
-    pub(crate) fn membership_tag(&self) -> Option<&MembershipTag> {
-        self.membership_tag.as_ref()
-    }
-
     /// Get the [`ConfirmationTag`].
     pub fn confirmation_tag(&self) -> Option<&ConfirmationTag> {
         self.auth.confirmation_tag.as_ref()

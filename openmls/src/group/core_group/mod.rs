@@ -122,6 +122,22 @@ impl Member {
             credential,
         }
     }
+
+    /// Check if this member has a given `index`.
+    pub fn has_index(&self, index: &LeafNodeIndex) -> bool {
+        self.index == *index
+    }
+}
+
+/// Functions to find members
+pub trait FindMember {
+    fn by_index(&self, index: &LeafNodeIndex) -> Option<&Member>;
+}
+
+impl FindMember for &[Member] {
+    fn by_index(&self, index: &LeafNodeIndex) -> Option<&Member> {
+        self.iter().find(|&member| member.has_index(index))
+    }
 }
 
 /// A [`StagedCoreWelcome`] can be inspected and then turned into a [`CoreGroup`].
@@ -704,7 +720,7 @@ impl CoreGroup {
     pub(crate) fn message_secrets_and_leaves_mut(
         &mut self,
         epoch: GroupEpoch,
-    ) -> Result<(&mut MessageSecrets, &[Member]), MessageDecryptionError> {
+    ) -> Result<&mut MessageSecrets, MessageDecryptionError> {
         if epoch < self.context().epoch() {
             self.message_secrets_store
                 .secrets_and_leaves_for_epoch_mut(epoch)
@@ -714,7 +730,7 @@ impl CoreGroup {
         } else {
             // No need for leaves here. The tree of the current epoch is
             // available to the caller.
-            Ok((self.message_secrets_store.message_secrets_mut(), &[]))
+            Ok(self.message_secrets_store.message_secrets_mut())
         }
     }
 

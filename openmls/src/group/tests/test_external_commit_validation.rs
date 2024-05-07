@@ -11,8 +11,8 @@ use self::utils::*;
 use crate::{
     ciphersuite::{hash_ref::ProposalRef, signable::Verifiable},
     framing::{
-        mls_auth_content_in::AuthenticatedContentIn, ContentType, DecryptedMessage,
-        FramedContentBody, MlsMessageIn, ProtocolMessage, Sender, WireFormat,
+        mls_auth_content_in::AuthenticatedContentIn, ContentType, FramedContentBody, Message,
+        MlsMessageIn, ProtocolMessage, Sender, WireFormat,
     },
     group::{
         errors::{
@@ -528,7 +528,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, provider: &impl crate::storage::Open
     );
 
     // This shows that the message is actually signed using this credential.
-    let decrypted_message = DecryptedMessage::from_inbound_public_message(
+    let decrypted_message = Message::from_inbound_public_message(
         public_message_commit.clone().into(),
         alice_group.group().message_secrets(),
         alice_group

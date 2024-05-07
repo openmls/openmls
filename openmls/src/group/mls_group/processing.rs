@@ -36,6 +36,8 @@ impl MlsGroup {
             ));
         }
         let message = message.into();
+        crate::validation::application_msg_is_always_private(&message)?;
+
 
         // Check that handshake messages are compatible with the incoming wire format policy
         if !message.is_external()

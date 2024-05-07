@@ -342,7 +342,7 @@ pub fn run_test_vector(
 
             // check that the proposal in proposal_pub == proposal
             let decrypted_message = group
-                .decrypt_message(
+                .message_from_protocol_message(
                     provider.crypto(),
                     proposal_pub.into_protocol_message().unwrap(),
                     &sender_ratchet_config,
@@ -479,7 +479,7 @@ pub fn run_test_vector(
 
             // check that the proposal in proposal_pub == proposal
             let decrypted_message = group
-                .decrypt_message(
+                .message_from_protocol_message(
                     provider.crypto(),
                     commit_pub.into_protocol_message().unwrap(),
                     &sender_ratchet_config,
@@ -522,7 +522,7 @@ pub fn run_test_vector(
 
             // check that the proposal in proposal_priv == proposal
             let decrypted_message = group
-                .decrypt_message(
+                .message_from_protocol_message(
                     provider.crypto(),
                     commit_priv.into_protocol_message().unwrap(),
                     &sender_ratchet_config,

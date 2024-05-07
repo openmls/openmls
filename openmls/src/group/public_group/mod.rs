@@ -321,7 +321,7 @@ impl PublicGroup {
     }
 
     /// Get treesync.
-    fn treesync(&self) -> &TreeSync {
+    pub(crate) fn treesync(&self) -> &TreeSync {
         &self.treesync
     }
 

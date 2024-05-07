@@ -383,7 +383,7 @@ fn group_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage::Op
         .into();
 
     let verifiable_plaintext = group_bob
-        .decrypt_message(
+        .message_from_protocol_message(
             provider.crypto(),
             mls_ciphertext_alice.into(),
             &sender_ratchet_configuration,
@@ -717,7 +717,7 @@ fn group_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage::Op
 
     // Alice decrypts and verifies
     let verifiable_plaintext = group_alice
-        .decrypt_message(
+        .message_from_protocol_message(
             provider.crypto(),
             mls_ciphertext_charlie.clone().into(),
             &sender_ratchet_configuration,
@@ -743,7 +743,7 @@ fn group_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage::Op
 
     // Bob decrypts and verifies
     let verifiable_plaintext = group_bob
-        .decrypt_message(
+        .message_from_protocol_message(
             provider.crypto(),
             mls_ciphertext_charlie.into(),
             &sender_ratchet_configuration,
