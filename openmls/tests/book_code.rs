@@ -4,6 +4,7 @@ use openmls::{
     *,
 };
 use openmls_basic_credential::SignatureKeyPair;
+use openmls_test::openmls_test;
 use openmls_traits::{signatures::Signer, types::SignatureScheme};
 
 #[test]
@@ -68,11 +69,8 @@ fn generate_key_package(
 ///  - Alice removes Charlie and adds Bob
 ///  - Bob leaves
 ///  - Test saving the group state
-#[apply(ciphersuites_and_providers)]
-fn book_operations<Provider: crate::storage::OpenMlsProvider>(
-    ciphersuite: Ciphersuite,
-    provider: &Provider,
-) {
+#[openmls_test]
+fn book_operations() {
     // Generate credentials with keys
     let (alice_credential, alice_signature_keys) =
         generate_credential("Alice".into(), ciphersuite.signature_algorithm(), provider);
@@ -1083,7 +1081,7 @@ fn book_operations<Provider: crate::storage::OpenMlsProvider>(
         assert_eq!(
             &sender_cred_from_msg,
             alice_group
-                .credential::<Provider::StorageError>()
+                .credential::<Provider>()
                 .expect("Expected a credential.")
         );
     } else {
@@ -1218,13 +1216,14 @@ fn book_operations<Provider: crate::storage::OpenMlsProvider>(
     );
 
     // ANCHOR: external_join_proposal
-    let proposal = JoinProposal::new::<Provider::Storage>(
-        bob_key_package.key_package().clone(),
-        alice_group.group_id().clone(),
-        alice_group.epoch(),
-        &bob_signature_keys,
-    )
-    .expect("Could not create external Add proposal");
+    let proposal =
+        JoinProposal::new::<<Provider as openmls_traits::OpenMlsProvider>::StorageProvider>(
+            bob_key_package.key_package().clone(),
+            alice_group.group_id().clone(),
+            alice_group.epoch(),
+            &bob_signature_keys,
+        )
+        .expect("Could not create external Add proposal");
     // ANCHOR_END: external_join_proposal
 
     // ANCHOR: decrypt_external_join_proposal
@@ -1284,7 +1283,7 @@ fn book_operations<Provider: crate::storage::OpenMlsProvider>(
         .unwrap();
 
     // ANCHOR: external_remove_proposal
-    let proposal = ExternalProposal::new_remove::<Provider::Storage>(
+    let proposal = ExternalProposal::new_remove::<Provider>(
         bob_index,
         alice_group.group_id().clone(),
         alice_group.epoch(),
@@ -1389,11 +1388,8 @@ fn book_operations<Provider: crate::storage::OpenMlsProvider>(
     );
 }
 
-#[apply(ciphersuites_and_providers)]
-fn test_empty_input_errors(
-    ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::OpenMlsProvider,
-) {
+#[openmls_test]
+fn test_empty_input_errors() {
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Generate credentials with keys
@@ -1429,7 +1425,7 @@ fn test_empty_input_errors(
     ));
 }
 
-#[apply(ciphersuites_and_providers)]
+#[openmls_test]
 fn custom_proposal_usage(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,

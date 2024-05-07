@@ -3,16 +3,15 @@ use openmls::{
     test_utils::test_framework::{
         noop_authentication_service, ActionType, CodecUse, MlsGroupTestSetup,
     },
-    test_utils::*,
-    *,
 };
+use openmls_test::openmls_test;
 
-#[apply(ciphersuites)]
-fn test_mls_group_api(ciphersuite: Ciphersuite) {
+#[openmls_test]
+fn test_mls_group_api() {
     // Some basic setup functions for the MlsGroup.
     let mls_group_create_config = MlsGroupCreateConfig::test_default(ciphersuite);
     let number_of_clients = 20;
-    let setup = MlsGroupTestSetup::new(
+    let setup = MlsGroupTestSetup::<Provider>::new(
         mls_group_create_config,
         number_of_clients,
         CodecUse::SerializedMessages,

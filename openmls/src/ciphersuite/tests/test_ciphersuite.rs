@@ -5,8 +5,8 @@ use openmls_traits::types::HpkeCiphertext;
 use crate::{ciphersuite::*, test_utils::*};
 
 // Spot test to make sure hpke seal/open work.
-#[apply(ciphersuites_and_providers)]
-fn test_hpke_seal_open(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn test_hpke_seal_open() {
     let plaintext = &[1, 2, 3];
     let kp = provider
         .crypto()

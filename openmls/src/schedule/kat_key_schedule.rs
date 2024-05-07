@@ -254,8 +254,8 @@ fn write_test_vectors() {
     write("test_vectors/key-schedule-new.json", &tests);
 }
 
-#[apply(providers)]
-fn read_test_vectors_key_schedule(provider: &impl OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn read_test_vectors_key_schedule() {
     let _ = pretty_env_logger::try_init();
 
     let tests: Vec<KeyScheduleTestVector> = read_json!("../../test_vectors/key-schedule.json");

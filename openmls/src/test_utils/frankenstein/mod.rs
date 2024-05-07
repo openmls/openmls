@@ -3,7 +3,6 @@
 //! The Frankenstein test utilities are used to build and manipulate test
 //! structures in a way that is not possible with the public API. This is
 //! useful for testing and fuzzing.
-use super::ciphersuites_and_providers;
 
 mod codec;
 mod commit;

@@ -18,10 +18,6 @@
 // Finally, this module contains the [`treekem`] module, which allows the
 // encryption and decryption of updates to the tree.
 
-#[cfg(test)]
-use rstest::*;
-#[cfg(test)]
-use rstest_reuse::apply;
 #[cfg(any(feature = "test-utils", test))]
 use std::fmt;
 
@@ -726,7 +722,7 @@ mod test {
         RatchetTree::trimmed(vec![None]);
     }
 
-    #[apply(ciphersuites_and_providers)]
+    #[openmls_test::openmls_test]
     fn test_ratchet_tree_trailing_blank_nodes(
         ciphersuite: Ciphersuite,
         provider: &impl OpenMlsProvider,

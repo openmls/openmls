@@ -1,8 +1,6 @@
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_traits::{random::OpenMlsRand, types::Ciphersuite};
-
-use rstest::*;
-use rstest_reuse::{self, *};
+use openmls_traits::prelude::*;
+use openmls_traits::types::Ciphersuite;
 
 use signable::Verifiable;
 use tls_codec::{Deserialize, Serialize};
@@ -25,7 +23,7 @@ use crate::{
 };
 
 /// This tests serializing/deserializing PublicMessage
-#[apply(ciphersuites_and_providers)]
+#[openmls_test::openmls_test]
 fn codec_plaintext<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider: &Provider) {
     let (_credential, signature_keys) =
         test_utils::new_credential(provider, b"Creator", ciphersuite.signature_algorithm());
@@ -77,8 +75,8 @@ fn codec_plaintext<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider
 }
 
 /// This tests serializing/deserializing PrivateMessage
-#[apply(ciphersuites_and_providers)]
-fn codec_ciphertext(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn codec_ciphertext() {
     let (_credential, signature_keys) =
         test_utils::new_credential(provider, b"Creator", ciphersuite.signature_algorithm());
     let sender = Sender::build_member(LeafNodeIndex::new(0));
@@ -151,8 +149,8 @@ fn codec_ciphertext(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 }
 
 /// This tests the correctness of wire format checks
-#[apply(ciphersuites_and_providers)]
-fn wire_format_checks(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn wire_format_checks() {
     let configuration = &SenderRatchetConfiguration::default();
     let (plaintext, _credential, _keys) =
         create_content(ciphersuite, WireFormat::PrivateMessage, provider);
@@ -315,8 +313,8 @@ fn create_content(
     (content, credential, signature_keys)
 }
 
-#[apply(ciphersuites_and_providers)]
-fn membership_tag(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn membership_tag() {
     let (_credential, signature_keys) =
         test_utils::new_credential(provider, b"Creator", ciphersuite.signature_algorithm());
     let group_context = GroupContext::new(
@@ -381,7 +379,7 @@ fn membership_tag(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .is_err());
 }
 
-#[apply(ciphersuites_and_providers)]
+#[openmls_test::openmls_test]
 fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider: &Provider) {
     let _ = pretty_env_logger::try_init();
 
@@ -603,11 +601,8 @@ fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider:
     );
 }
 
-#[apply(ciphersuites_and_providers)]
-fn confirmation_tag_presence<Provider: OpenMlsProvider>(
-    ciphersuite: Ciphersuite,
-    provider: &Provider,
-) {
+#[openmls_test::openmls_test]
+fn confirmation_tag_presence<Provider: OpenMlsProvider>() {
     let (framing_parameters, group_alice, alice_signature_keys, group_bob, _, _) =
         setup_alice_bob_group(ciphersuite, provider);
 
@@ -735,8 +730,8 @@ pub(crate) fn setup_alice_bob_group<Provider: OpenMlsProvider>(
 }
 
 /// Test divergent protocol versions in KeyPackages
-#[apply(ciphersuites_and_providers)]
-fn key_package_version(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn key_package_version() {
     let (key_package, _, _) = key_package(ciphersuite, provider);
 
     let mut franken_key_package = FrankenKeyPackage::from(key_package);

@@ -14,8 +14,6 @@ pub use openmls_traits::{
     types::{Ciphersuite, HpkeKeyPair},
     OpenMlsProvider,
 };
-pub use rstest::*;
-pub use rstest_reuse::{self, *};
 use serde::{self, de::DeserializeOwned, Serialize};
 
 #[cfg(test)]
@@ -184,76 +182,12 @@ pub(crate) fn generate_group_candidate(
     }
 }
 
-// === Define provider per platform ===
-
-// This provider is currently used on all platforms
-#[cfg(feature = "libcrux-provider")]
+#[cfg(all(
+    feature = "libcrux-provider",
+    not(any(
+        target_arch = "wasm32",
+        all(target_arch = "x86", target_os = "windows")
+    ))
+))]
 pub type OpenMlsLibcrux = openmls_libcrux_crypto::Provider;
 pub type OpenMlsRustCrypto = openmls_rust_crypto::OpenMlsRustCrypto;
-
-// === providers ===
-
-#[template]
-#[export]
-#[cfg_attr(feature = "libcrux-provider", rstest(provider,
-    case::rust_crypto(&OpenMlsRustCrypto::default()),
-    case::libcrux(&OpenMlsLibcrux::default()),
-  )
-)]
-#[cfg_attr(not(feature = "libcrux-provider"),rstest(provider,
-    case::rust_crypto(&OpenMlsRustCrypto::default()),
-  )
-)]
-#[allow(non_snake_case)]
-#[cfg_attr(target_arch = "wasm32", openmls::wasm::test)]
-pub fn providers(provider: &impl OpenMlsProvider) {}
-
-// === Ciphersuites ===
-
-// For now we support all ciphersuites, regardless of the provider
-
-#[template]
-#[export]
-#[rstest(
-    ciphersuite,
-    case::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(
-        Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
-    ),
-    case::MLS_128_DHKEMP256_AES128GCM_SHA256_P256(
-        Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256
-    ),
-    case::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(
-        Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519
-    )
-)]
-#[allow(non_snake_case)]
-#[cfg_attr(target_arch = "wasm32", openmls::wasm::test)]
-pub fn ciphersuites(ciphersuite: Ciphersuite) {}
-
-// === Ciphersuites & providers ===
-
-#[template]
-#[export]
-#[cfg_attr(feature = "libcrux-provider", rstest(ciphersuite, provider,
-    case::rust_crypto_MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519, &mut $crate::test_utils::OpenMlsRustCrypto::default()),
-    case::rust_crypto_MLS_128_DHKEMP256_AES128GCM_SHA256_P256(Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256, &mut $crate::test_utils::OpenMlsRustCrypto::default()),
-    case::rust_crypto_MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519, &mut $crate::test_utils::OpenMlsRustCrypto::default()),
-    case::libcrux_MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519, &mut $crate::test_utils::OpenMlsLibcrux::default()),
-    case::libcrux_MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519, &mut $crate::test_utils::OpenMlsLibcrux::default()),
-    case::libcrux_MLS_128_DHKEMP256_AES128GCM_SHA256_P256(Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256, &mut $crate::test_utils::OpenMlsLibcrux::default()),
-    case::libcrux_MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519, &mut $crate::test_utils::OpenMlsLibcrux::default()),
-  )
-)]
-#[cfg_attr(not(feature = "libcrux-provider"),rstest(ciphersuite, provider,
-    case::rust_crypto_MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519, &mut $crate::test_utils::OpenMlsRustCrypto::default()),
-    case::rust_crypto_MLS_128_DHKEMP256_AES128GCM_SHA256_P256(Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256, &mut $crate::test_utils::OpenMlsRustCrypto::default()),
-    case::rust_crypto_MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519, &mut $crate::test_utils::OpenMlsRustCrypto::default()),
-  )
-)]
-#[allow(non_snake_case)]
-#[cfg_attr(target_arch = "wasm32", openmls::wasm::test)]
-pub fn ciphersuites_and_providers<Provider: OpenMlsProvider>(
-    ciphersuite: Ciphersuite,
-    provider: &Provider,
-) {
-}

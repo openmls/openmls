@@ -1,5 +1,3 @@
-use openmls_traits::types::Ciphersuite;
-
 use super::CoreGroup;
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -25,7 +23,7 @@ use crate::{
 /// This test makes sure ProposalQueue works as intended. This functionality is
 /// used in `create_commit` to filter the epoch proposals. Expected result:
 /// `filtered_queued_proposals` returns only proposals of a certain type
-#[apply(ciphersuites_and_providers)]
+#[openmls_test::openmls_test]
 fn proposal_queue_functions(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,
@@ -172,8 +170,8 @@ fn proposal_queue_functions(
 }
 
 /// Test, that we QueuedProposalQueue is iterated in the right order.
-#[apply(ciphersuites_and_providers)]
-fn proposal_queue_order(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn proposal_queue_order() {
     // Framing parameters
     let framing_parameters = FramingParameters::new(&[], WireFormat::PublicMessage);
     // Define identities
@@ -280,7 +278,7 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, provider: &impl crate::storage
     assert_eq!(proposal_collection[1].proposal(), &proposal_add_alice1);
 }
 
-#[apply(ciphersuites_and_providers)]
+#[openmls_test::openmls_test]
 fn test_required_extension_key_package_mismatch(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,
@@ -330,7 +328,7 @@ fn test_required_extension_key_package_mismatch(
     );
 }
 
-#[apply(ciphersuites_and_providers)]
+#[openmls_test::openmls_test]
 fn test_group_context_extensions(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,
@@ -414,7 +412,7 @@ fn test_group_context_extensions(
     .expect("Error joining group.");
 }
 
-#[apply(ciphersuites_and_providers)]
+#[openmls_test::openmls_test]
 fn test_group_context_extension_proposal_fails(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,
@@ -513,7 +511,7 @@ fn test_group_context_extension_proposal_fails(
     // );
 }
 
-#[apply(ciphersuites_and_providers)]
+#[openmls_test::openmls_test]
 fn test_group_context_extension_proposal(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,

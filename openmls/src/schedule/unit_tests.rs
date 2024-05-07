@@ -6,11 +6,10 @@ use super::PskSecret;
 use crate::{
     ciphersuite::Secret,
     schedule::psk::{store::ResumptionPskStore, *},
-    test_utils::*,
 };
 
-#[apply(ciphersuites_and_providers)]
-fn test_psks(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn test_psks() {
     // Create a new PSK secret from multiple PSKs.
     let prng = provider.rand();
 
