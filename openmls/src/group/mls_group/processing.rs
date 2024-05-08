@@ -3,14 +3,18 @@
 use std::mem;
 
 use core_group::staged_commit::StagedCommit;
+use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::{signatures::Signer, storage::StorageProvider as _};
 
 use crate::storage::OpenMlsProvider;
+use crate::versions::ProtocolVersion;
 use crate::{
     group::core_group::create_commit_params::CreateCommitParams, messages::group_info::GroupInfo,
 };
 
 use crate::group::errors::MergeCommitError;
+
+use self::traits::Group;
 
 use super::{errors::ProcessMessageError, *};
 
@@ -35,32 +39,32 @@ impl MlsGroup {
                 MlsGroupStateError::UseAfterEviction,
             ));
         }
-        let message = message.into();
-        crate::validation::application_msg_is_always_private(&message)?;
-
+        let protocol_message = message.into();
 
         // Check that handshake messages are compatible with the incoming wire format policy
-        if !message.is_external()
-            && message.is_handshake_message()
+        if !protocol_message.is_external()
+            && protocol_message.is_handshake_message()
             && !self
                 .configuration()
                 .wire_format_policy()
                 .incoming()
-                .is_compatible_with(message.wire_format())
+                .is_compatible_with(protocol_message.wire_format())
         {
             return Err(ProcessMessageError::IncompatibleWireFormat);
         }
 
         // Parse the message
-        let sender_ratchet_configuration =
-            self.configuration().sender_ratchet_configuration().clone();
-        self.group.process_message(
-            provider,
-            message,
-            &sender_ratchet_configuration,
-            &self.proposal_store,
-            &self.own_leaf_nodes,
-        )
+        // Check for syntactic errors and check semantic validation as well.
+        // If the input is a [PrivateMessage] message, it will be decrypted.
+        let message = message_from_protocol_message(self, provider.crypto(), protocol_message)?;
+
+        let unverified_message = self
+            .group
+            .public_group()
+            .parse_message(message, &self.group.message_secrets_store)
+            .map_err(ProcessMessageError::from)?;
+
+        self.process_unverified_message(provider, unverified_message, &self.proposal_store)
     }
 
     /// Stores a standalone proposal in the internal [ProposalStore]
@@ -184,6 +188,139 @@ impl MlsGroup {
             }
             MlsGroupState::Inactive => Err(MlsGroupStateError::UseAfterEviction)?,
             MlsGroupState::Operational => Ok(()),
+        }
+    }
+}
+
+impl Group for MlsGroup {
+    fn message_from_public(
+        &mut self,
+        crypto: &impl OpenMlsCrypto,
+        public_message: PublicMessageIn,
+    ) -> Result<Message, ValidationError> {
+        // If the message is older than the current epoch, we need to fetch the correct secret tree first.
+        let message_secrets = self
+            .group
+            .message_secrets_for_epoch(public_message.epoch())
+            .map_err(|e| match e {
+                SecretTreeError::TooDistantInThePast => ValidationError::NoPastEpochData,
+                _ => LibraryError::custom(
+                    "Unexpected error while retrieving message secrets for epoch.",
+                )
+                .into(),
+            })?;
+
+        if public_message.sender().is_member() {
+            // Verify the membership tag. This needs to be done explicitly for PublicMessage messages,
+            // it is implicit for PrivateMessage messages (because the encryption can only be known by members).
+            public_message.verify_membership(
+                crypto,
+                self.ciphersuite(),
+                message_secrets.membership_key(),
+                message_secrets.serialized_context(),
+            )?;
+        }
+
+        let verifiable_content =
+            public_message.into_verifiable_content(message_secrets.serialized_context().to_vec());
+
+        Ok(Message { verifiable_content })
+    }
+
+    fn message_from_private(
+        &mut self,
+        crypto: &impl OpenMlsCrypto,
+        ciphertext: PrivateMessageIn,
+    ) -> Result<Message, ValidationError> {
+        let sender_ratchet_configuration =
+            self.configuration().sender_ratchet_configuration().clone();
+
+        // If the message is older than the current epoch, we need to fetch the correct secret tree first
+        let ciphersuite = self.ciphersuite();
+        let message_secrets = self
+            .group
+            .message_secrets_and_leaves_mut(ciphertext.epoch())
+            .map_err(|_| MessageDecryptionError::AeadError)?;
+        let sender_data = ciphertext.sender_data(message_secrets, crypto, ciphersuite)?;
+        let message_secrets = self
+            .group
+            .message_secrets_mut(ciphertext.epoch())
+            .map_err(|_| MessageDecryptionError::AeadError)?;
+        let verifiable_content = ciphertext.decrypt_to_verifiable_content(
+            ciphersuite,
+            crypto,
+            message_secrets,
+            sender_data.leaf_index,
+            &sender_ratchet_configuration,
+            sender_data,
+        )?;
+
+        Ok(Message { verifiable_content })
+    }
+
+    fn ciphersuite(&self) -> Ciphersuite {
+        self.group.ciphersuite()
+    }
+
+    fn version(&self) -> ProtocolVersion {
+        self.group.version()
+    }
+
+    fn group_id(&self) -> &GroupId {
+        self.group.group_id()
+    }
+
+    fn context(&self) -> &GroupContext {
+        self.group.context()
+    }
+
+    fn stage_commit(
+        &self,
+        mls_content: &AuthenticatedContent,
+        proposal_store: &ProposalStore,
+        provider: &impl OpenMlsProvider,
+    ) -> Result<StagedCommit, StageCommitError> {
+        // If this is a commit, we need to load the private key material we need for decryption.
+        let (old_epoch_keypairs, leaf_node_keypairs) =
+            if let ContentType::Commit = mls_content.content().content_type() {
+                self.group
+                    .read_decryption_keypairs(provider, &self.own_leaf_nodes)?
+            } else {
+                (vec![], vec![])
+            };
+
+        self.group.stage_commit(
+            mls_content,
+            proposal_store,
+            old_epoch_keypairs,
+            leaf_node_keypairs,
+            provider,
+        )
+    }
+
+    fn public_group(&self) -> &PublicGroup {
+        self.group.public_group()
+    }
+}
+
+/// Performs framing validation and, if necessary, decrypts the given message.
+///
+/// Returns the [`DecryptedMessage`] if processing is successful, or a
+/// [`ValidationError`] if it is not.
+pub(crate) fn message_from_protocol_message<G: Group>(
+    group: &mut G,
+    crypto: &impl OpenMlsCrypto,
+    message: ProtocolMessage,
+) -> Result<Message, ValidationError> {
+    // Convert to Protocol message and check its validity.
+    message.validate(group.public_group())?;
+
+    match message {
+        ProtocolMessage::PublicMessage(public_message) => {
+            group.message_from_public(crypto, public_message)
+        }
+        ProtocolMessage::PrivateMessage(ciphertext) => {
+            group.message_from_private(crypto, ciphertext)
         }
     }
 }

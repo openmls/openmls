@@ -7,15 +7,13 @@ use openmls_traits::types::VerifiableCiphersuite;
 
 use super::PublicGroup;
 use crate::extensions::RequiredCapabilitiesExtension;
+use crate::group::traits::Group as _;
 use crate::group::GroupContextExtensionsProposalValidationError;
 use crate::prelude::LibraryError;
 use crate::treesync::errors::LeafNodeValidationError;
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
-    framing::{
-        ContentType, ProtocolMessage,
-        Sender,
-    },
+    framing::{ContentType, ProtocolMessage, Sender},
     group::{
         errors::{ExternalCommitValidationError, ProposalValidationError, ValidationError},
         Member, ProposalQueue,
@@ -30,18 +28,16 @@ use crate::{
 impl PublicGroup {
     // === Messages ===
 
-    /// Checks the following semantic validation:
-    ///  - ValSem002
-    ///  - ValSem003
-    pub(crate) fn validate_framing(
-        &self,
-        message: &ProtocolMessage,
-    ) -> Result<(), ValidationError> {
+    pub(crate) fn check_group_id(&self, message: &ProtocolMessage) -> Result<(), ValidationError> {
         // ValSem002
         if message.group_id() != self.group_id() {
             return Err(ValidationError::WrongGroupId);
         }
 
+        Ok(())
+    }
+
+    pub(crate) fn check_epoch(&self, message: &ProtocolMessage) -> Result<(), ValidationError> {
         // ValSem003: Check boundaries for the epoch
         // We differentiate depending on the content type
         match message.content_type() {

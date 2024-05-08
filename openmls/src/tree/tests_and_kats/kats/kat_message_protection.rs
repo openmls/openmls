@@ -213,12 +213,12 @@ pub fn run_test_vector(
     );
 
     // Make the group think it has two members.
-    fn setup_group(
-        provider: &impl crate::storage::OpenMlsProvider,
+    fn setup_group<Provider: crate::storage::OpenMlsProvider>(
+        provider: &Provider,
         ciphersuite: Ciphersuite,
         test: &MessageProtectionTest,
         sender: bool,
-    ) -> CoreGroup {
+    ) -> MlsGroup {
         let group_context = GroupContext::new(
             ciphersuite,
             GroupId::from_slice(&hex_to_bytes(&test.group_id)),
@@ -240,16 +240,22 @@ pub fn run_test_vector(
             random_own_signature_key.to_vec(),
         );
 
-        let mut group = CoreGroup::builder(
+        let mls_group_create_config = MlsGroupCreateConfig::builder()
+            .use_ratchet_tree_extension(true)
+            .ciphersuite(ciphersuite)
+            .build();
+
+        let mut alice_group = MlsGroup::new_with_group_id(
+            provider,
+            &signer,
+            &mls_group_create_config,
             group_context.group_id().clone(),
-            ciphersuite,
             CredentialWithKey {
                 credential: credential.into(),
                 signature_key: random_own_signature_key.into(),
             },
         )
-        .build(provider, &signer)
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
         let credential = BasicCredential::new("Fake user".into());
         let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
@@ -262,34 +268,28 @@ pub fn run_test_vector(
                 signature_key: hex_to_bytes(&test.signature_pub).into(),
             },
         );
+
         let bob_key_package = bob_key_package_bundle.key_package();
         let framing_parameters = FramingParameters::new(&[], WireFormat::PublicMessage);
-        let bob_add_proposal = group
-            .create_add_proposal(framing_parameters, bob_key_package.clone(), &signer)
+        let (_, welcome, _) = alice_group
+            .add_members(provider, &signer, &[*bob_key_package])
             .expect("Could not create proposal.");
+        alice_group.merge_pending_commit(provider);
 
-        let proposal_store = ProposalStore::from_queued_proposal(
-            QueuedProposal::from_authenticated_content_by_ref(
-                ciphersuite,
-                provider.crypto(),
-                bob_add_proposal,
-            )
-            .expect("Could not create QueuedProposal."),
-        );
+        let welcome: MlsMessageIn = welcome.into();
+        let welcome = welcome
+            .into_welcome()
+            .expect("expected the message to be a welcome message");
 
-        let params = CreateCommitParams::builder()
-            .framing_parameters(framing_parameters)
-            .proposal_store(&proposal_store)
-            .force_self_update(false)
-            .build();
-
-        let create_commit_result = group
-            .create_commit(params, provider, &signer)
-            .expect("Error creating Commit");
-
-        group
-            .merge_commit(provider, create_commit_result.staged_commit)
-            .expect("error merging pending commit");
+        let mut group = StagedWelcome::new_from_welcome(
+            provider,
+            mls_group_create_config.join_config(),
+            welcome,
+            None,
+        )
+        .expect("Error creating staged join from Welcome")
+        .into_group(provider)
+        .expect("Error creating group from staged join");
 
         // Inject the test values into the group
 
@@ -331,7 +331,7 @@ pub fn run_test_vector(
             MlsMessageIn::tls_deserialize_exact(hex_to_bytes(&test.proposal_priv)).unwrap();
 
         fn test_proposal_pub(
-            mut group: CoreGroup,
+            mut group: MlsGroup,
             provider: &impl crate::storage::OpenMlsProvider,
             ciphersuite: Ciphersuite,
             proposal: ProposalIn,
@@ -511,7 +511,7 @@ pub fn run_test_vector(
         );
 
         fn test_commit_priv(
-            mut group: CoreGroup,
+            mut group: MlsGroup,
             provider: &impl crate::storage::OpenMlsProvider,
             ciphersuite: Ciphersuite,
             commit: CommitIn,

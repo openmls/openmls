@@ -169,65 +169,7 @@ impl PublicGroup {
         Ok((commit, proposal_queue, sender_index))
     }
 
-    /// Stages a commit message that was sent by another group member.
-    /// This function does the following:
-    ///  - Applies the proposals covered by the commit to the tree
-    ///  - Applies the (optional) update path to the tree
-    ///  - Updates the [`GroupContext`]
-    ///
-    /// A similar function to this exists in [`CoreGroup`], which in addition
-    /// does the following:
-    ///  - Decrypts and derives the path secrets
-    ///  - Initializes the key schedule for epoch rollover
-    ///  - Verifies the confirmation tag
-    ///
-    /// Returns a [`StagedCommit`] that can be inspected and later merged into
-    /// the group state either with [`CoreGroup::merge_commit()`] or
-    /// [`PublicGroup::merge_diff()`] This function does the following checks:
-    ///  - ValSem101
-    ///  - ValSem102
-    ///  - ValSem104
-    ///  - ValSem105
-    ///  - ValSem106
-    ///  - ValSem107
-    ///  - ValSem108
-    ///  - ValSem110
-    ///  - ValSem111
-    ///  - ValSem112
-    ///  - ValSem200
-    ///  - ValSem201
-    ///  - ValSem202: Path must be the right length
-    ///  - ValSem203: Path secrets must decrypt correctly
-    ///  - ValSem204: Public keys from Path must be verified and match the
-    ///               private keys from the direct path
-    ///  - ValSem205
-    ///  - ValSem240
-    ///  - ValSem241
-    ///  - ValSem242
-    ///  - ValSem244
-    /// Returns an error if the given commit was sent by the owner of this
-    /// group.
-    pub(crate) fn stage_commit(
-        &self,
-        mls_content: &AuthenticatedContent,
-        proposal_store: &ProposalStore,
-        crypto: &impl OpenMlsCrypto,
-    ) -> Result<StagedCommit, StageCommitError> {
-        let (commit, proposal_queue, sender_index) =
-            self.validate_commit(mls_content, proposal_store, crypto)?;
-
-        let staged_diff = self.stage_diff(mls_content, &proposal_queue, sender_index, crypto)?;
-        let staged_state = PublicStagedCommitState {
-            staged_diff,
-            update_path_leaf_node: commit.path.as_ref().map(|p| p.leaf_node().clone()),
-        };
-
-        let staged_commit_state = StagedCommitState::PublicState(Box::new(staged_state));
-
-        Ok(StagedCommit::new(proposal_queue, staged_commit_state))
-    }
-
-    fn stage_diff(
+    pub(super) fn stage_diff(
         &self,
         mls_content: &AuthenticatedContent,
         proposal_queue: &ProposalQueue,

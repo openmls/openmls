@@ -44,6 +44,7 @@ use self::{
     node::leaf_node::Capabilities,
     past_secrets::MessageSecretsStore,
     staged_commit::{MemberStagedCommitState, StagedCommit, StagedCommitState},
+    traits::Group as _,
 };
 
 use super::{
@@ -177,9 +178,9 @@ pub(crate) struct StagedCoreWelcome {
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq, Clone))]
 pub(crate) struct CoreGroup {
-    public_group: PublicGroup,
+    pub(crate) public_group: PublicGroup,
     group_epoch_secrets: GroupEpochSecrets,
-    own_leaf_index: LeafNodeIndex,
+    pub(crate) own_leaf_index: LeafNodeIndex,
     /// Group config.
     /// Set to true if the ratchet tree extension is added to the `GroupInfo`.
     /// Defaults to `false`.
@@ -190,7 +191,7 @@ pub(crate) struct CoreGroup {
     /// If more secrets from past epochs should be kept in order to be
     /// able to decrypt application messages from previous epochs, the size of
     /// the store must be increased through [`max_past_epochs()`].
-    message_secrets_store: MessageSecretsStore,
+    pub(super) message_secrets_store: MessageSecretsStore,
     // Resumption psk store. This is where the resumption psks are kept in a rollover list.
     pub(crate) resumption_psk_store: ResumptionPskStore,
 }

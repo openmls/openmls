@@ -22,8 +22,9 @@ impl MlsGroup {
     /// This operation results in a Commit with a `path`, i.e. it includes an
     /// update of the committer's leaf [KeyPackage].
     ///
-    /// If successful, it returns a triple of [`MlsMessageOut`]s, where the first
-    /// contains the commit, the second one the [`Welcome`] and the third an optional [GroupInfo] that
+    /// If successful, it returns a triple of [`MlsMessageOut`]s
+    /// (Commit, Welcome, GroupInfo), where the first contains the commit,
+    /// the second one the [`Welcome`] and the third an optional [GroupInfo] that
     /// will be [Some] if the group has the `use_ratchet_tree_extension` flag set.
     ///
     /// Returns an error if there is a pending commit.

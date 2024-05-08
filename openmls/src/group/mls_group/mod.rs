@@ -2,6 +2,8 @@
 //!
 //! This module contains [`MlsGroup`] and its submodules.
 
+use self::traits::Group as _;
+
 use super::proposals::{ProposalStore, QueuedProposal};
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
@@ -34,6 +36,7 @@ pub(crate) mod membership;
 pub(crate) mod processing;
 pub(crate) mod proposal;
 pub(crate) mod ser;
+pub(crate) mod traits;
 
 // Tests
 #[cfg(test)]
@@ -203,11 +206,6 @@ impl MlsGroup {
     }
 
     // === Advanced functions ===
-
-    /// Returns the group's ciphersuite.
-    pub fn ciphersuite(&self) -> Ciphersuite {
-        self.group.ciphersuite()
-    }
 
     /// Returns whether the own client is still a member of the group or if it
     /// was already evicted
@@ -467,6 +465,23 @@ impl MlsGroup {
     #[cfg(test)]
     pub(crate) fn group(&self) -> &CoreGroup {
         &self.group
+    }
+
+    #[cfg(any(feature = "test-utils", test))]
+    pub(crate) fn set_group_context(&mut self, group_context: GroupContext) {
+        self.group.public_group.set_group_context(group_context)
+    }
+
+    #[cfg(any(feature = "test-utils", test))]
+    pub(crate) fn set_own_leaf_index(&mut self, own_leaf_index: LeafNodeIndex) {
+        self.group.own_leaf_index = own_leaf_index;
+    }
+
+    #[cfg(any(feature = "test-utils", test))]
+    pub(crate) fn message_secrets_test_mut(
+        &mut self,
+    ) -> &mut crate::schedule::message_secrets::MessageSecrets {
+        self.group.message_secrets_store.message_secrets_mut()
     }
 
     /// Removes a specific proposal from the store.

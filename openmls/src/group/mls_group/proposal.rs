@@ -2,6 +2,7 @@ use openmls_traits::{signatures::Signer, storage::StorageProvider, types::Cipher
 
 use super::{
     errors::{ProposalError, ProposeAddMemberError, ProposeRemoveMemberError},
+    traits::Group as _,
     CustomProposal, MlsGroup,
 };
 use crate::{

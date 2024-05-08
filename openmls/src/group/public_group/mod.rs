@@ -21,7 +21,9 @@ use self::{
     diff::{PublicGroupDiff, StagedPublicGroupDiff},
     errors::CreationFromExternalError,
 };
-use super::{GroupContext, GroupId, Member, ProposalStore, QueuedProposal, StagedCommit};
+use super::{
+    traits::Group as _, GroupContext, GroupId, Member, ProposalStore, QueuedProposal, StagedCommit,
+};
 #[cfg(test)]
 use crate::treesync::{node::parent_node::PlainUpdatePathNode, treekem::UpdatePathNode};
 use crate::{
@@ -295,21 +297,6 @@ impl PublicGroup {
 
 // Getters
 impl PublicGroup {
-    /// Get the ciphersuite.
-    pub fn ciphersuite(&self) -> Ciphersuite {
-        self.group_context.ciphersuite()
-    }
-
-    /// Get the version.
-    pub fn version(&self) -> ProtocolVersion {
-        self.group_context.protocol_version()
-    }
-
-    /// Get the group id.
-    pub fn group_id(&self) -> &GroupId {
-        self.group_context.group_id()
-    }
-
     /// Get the group context.
     pub fn group_context(&self) -> &GroupContext {
         &self.group_context
@@ -417,7 +404,7 @@ impl PublicGroup {
         &mut self.group_context
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn set_group_context(&mut self, group_context: GroupContext) {
         self.group_context = group_context;
     }

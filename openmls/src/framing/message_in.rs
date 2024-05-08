@@ -14,6 +14,8 @@
 //! If an [`MlsMessageIn`] contains a [`PublicMessage`] or [`PrivateMessage`],
 //! can be used to determine which group can be used to process the message.
 
+use self::mls_group::traits::Group as _;
+
 use super::*;
 use crate::{
     key_packages::KeyPackageIn, messages::group_info::VerifiableGroupInfo,
@@ -238,6 +240,48 @@ impl ProtocolMessage {
     /// Returns `true` if this is an application message and `false` otherwise.
     pub fn is_application_message(&self) -> bool {
         matches!(self.content_type(), ContentType::Application)
+    }
+
+    /// Validate this message
+    ///
+    /// - application messages must be private messages
+    pub(crate) fn validate(&self, group: &PublicGroup) -> Result<(), ValidationError> {
+        if self.is_application_message() && matches!(self, ProtocolMessage::PublicMessage(_)) {
+            return Err(ValidationError::UnencryptedApplicationMessage);
+        }
+
+        if group.group_id() != self.group_id() {
+            return Err(ValidationError::WrongGroupId);
+        }
+
+        // ValSem003: Check boundaries for the epoch
+        // We differentiate depending on the content type
+        match self.content_type() {
+            // For application messages we allow messages for older epochs as well
+            ContentType::Application => {
+                if self.epoch() > group.group_context().epoch() {
+                    log::error!(
+                        "Wrong Epoch: message.epoch() {} > {} self.group_context().epoch()",
+                        self.epoch(),
+                        group.group_context().epoch()
+                    );
+                    return Err(ValidationError::WrongEpoch);
+                }
+            }
+            // For all other messages we only only accept the current epoch
+            _ => {
+                if self.epoch() != group.group_context().epoch() {
+                    log::error!(
+                        "Wrong Epoch: message.epoch() {} != {} self.group_context().epoch()",
+                        self.epoch(),
+                        group.group_context().epoch()
+                    );
+                    return Err(ValidationError::WrongEpoch);
+                }
+            }
+        }
+
+        Ok(())
     }
 }
 
