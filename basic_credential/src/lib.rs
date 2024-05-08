@@ -161,7 +161,7 @@ impl SignatureKeyPair {
 // Storage
 
 #[derive(Debug, Serialize, Deserialize)]
-struct StorageId {
+pub struct StorageId {
     value: Vec<u8>,
 }
 
