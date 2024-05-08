@@ -165,6 +165,12 @@ pub struct StorageId {
     value: Vec<u8>,
 }
 
+impl From<Vec<u8>> for StorageId {
+    fn from(vec: Vec<u8>) -> Self {
+        StorageId { value: vec }
+    }
+}
+
 // Implement key traits for the storage id
 impl storage::Key<CURRENT_VERSION> for StorageId {}
 impl storage::traits::SignaturePublicKey<CURRENT_VERSION> for StorageId {}
