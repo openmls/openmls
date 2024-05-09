@@ -109,7 +109,7 @@ impl SignatureKeyPair {
         }
     }
 
-    fn id(&self) -> StorageId {
+    pub fn id(&self) -> StorageId {
         StorageId {
             value: id(&self.public, self.signature_scheme),
         }
@@ -161,8 +161,14 @@ impl SignatureKeyPair {
 // Storage
 
 #[derive(Debug, Serialize, Deserialize)]
-struct StorageId {
+pub struct StorageId {
     value: Vec<u8>,
+}
+
+impl From<Vec<u8>> for StorageId {
+    fn from(vec: Vec<u8>) -> Self {
+        StorageId { value: vec }
+    }
 }
 
 // Implement key traits for the storage id
