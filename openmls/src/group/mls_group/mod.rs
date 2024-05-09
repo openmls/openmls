@@ -456,32 +456,10 @@ impl MlsGroup {
         self.group.public_group().group_context().tree_hash()
     }
 
-    #[cfg(any(feature = "test-utils", test))]
-    pub fn print_ratchet_tree(&self, message: &str) {
-        self.group.print_ratchet_tree(message)
-    }
-
     /// Returns the underlying [CoreGroup].
     #[cfg(test)]
     pub(crate) fn group(&self) -> &CoreGroup {
         &self.group
-    }
-
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn set_group_context(&mut self, group_context: GroupContext) {
-        self.group.public_group.set_group_context(group_context)
-    }
-
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn set_own_leaf_index(&mut self, own_leaf_index: LeafNodeIndex) {
-        self.group.own_leaf_index = own_leaf_index;
-    }
-
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn message_secrets_test_mut(
-        &mut self,
-    ) -> &mut crate::schedule::message_secrets::MessageSecrets {
-        self.group.message_secrets_store.message_secrets_mut()
     }
 
     /// Removes a specific proposal from the store.
@@ -496,6 +474,64 @@ impl MlsGroup {
         self.proposal_store
             .remove(proposal_ref)
             .ok_or(MlsGroupStateError::PendingProposalNotFound)
+    }
+}
+
+#[cfg(test)]
+impl MlsGroup {
+    pub(crate) fn use_ratchet_tree_extension(&self) -> bool {
+        self.group.use_ratchet_tree_extension
+    }
+
+    pub(crate) fn set_own_leaf_index(&mut self, own_leaf_index: LeafNodeIndex) {
+        self.group.own_leaf_index = own_leaf_index;
+    }
+
+    pub(crate) fn own_tree_position(&self) -> crate::treesync::node::leaf_node::TreePosition {
+        crate::treesync::node::leaf_node::TreePosition::new(
+            self.group_id().clone(),
+            self.own_leaf_index(),
+        )
+    }
+
+    pub(crate) fn message_secrets_store(&self) -> &past_secrets::MessageSecretsStore {
+        &self.group.message_secrets_store
+    }
+
+    pub(crate) fn set_group_context(&mut self, group_context: GroupContext) {
+        self.group.public_group.set_group_context(group_context)
+    }
+}
+
+// Test and test-utils functions
+#[cfg(any(feature = "test-utils", test))]
+impl MlsGroup {
+    pub(crate) fn context_mut(&mut self) -> &mut GroupContext {
+        self.group.public_group.context_mut()
+    }
+
+    pub(crate) fn message_secrets_test_mut(
+        &mut self,
+    ) -> &mut crate::schedule::message_secrets::MessageSecrets {
+        self.group.message_secrets_store.message_secrets_mut()
+    }
+
+    /// Get a reference to the message secrets from a group
+    pub(crate) fn message_secrets(&self) -> &crate::schedule::message_secrets::MessageSecrets {
+        self.group.message_secrets_store.message_secrets()
+    }
+
+    pub(crate) fn print_ratchet_tree(&self, message: &str) {
+        println!("{}: {}", message, self.public_group().export_ratchet_tree());
+    }
+
+    /// For tests, expose the raw authenticated content to message function
+    pub(crate) fn content_to_mls_message_test(
+        &mut self,
+        mls_auth_content: AuthenticatedContent,
+        provider: &impl OpenMlsProvider,
+    ) -> Result<MlsMessageOut, LibraryError> {
+        self.content_to_mls_message(mls_auth_content, provider)
     }
 }
 

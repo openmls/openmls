@@ -34,6 +34,7 @@ use crate::{
     treesync::{node::Node, LeafNode, RatchetTree, RatchetTreeIn},
 };
 use ::rand::{rngs::OsRng, RngCore};
+use mls_group::traits::Group as _;
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::{
     crypto::OpenMlsCrypto,

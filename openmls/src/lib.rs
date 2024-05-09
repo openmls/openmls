@@ -148,6 +148,8 @@
     target_pointer_width = "128"
 ))]
 
+use std::sync::atomic::AtomicBool;
+
 #[cfg(all(target_arch = "wasm32", not(feature = "js")))]
 compile_error!("In order for OpenMLS to build for WebAssembly, JavaScript APIs must be available (for access to secure randomness and the current time). This can be signalled by setting the `js` feature on OpenMLS.");
 
@@ -199,4 +201,16 @@ pub mod prelude;
 #[cfg(any(test, feature = "test-utils"))]
 pub mod wasm {
     pub use wasm_bindgen_test::wasm_bindgen_test as test;
+}
+
+// --- HAZMAT --- //
+static DISABLE_VERIFICATION: AtomicBool = AtomicBool::new(false);
+pub(crate) fn disable_verification() {
+    DISABLE_VERIFICATION.store(true, core::sync::atomic::Ordering::Relaxed)
+}
+pub(crate) fn enable_verification() {
+    DISABLE_VERIFICATION.store(false, core::sync::atomic::Ordering::Relaxed)
+}
+pub(crate) fn verification_disabled() -> bool {
+    DISABLE_VERIFICATION.load(core::sync::atomic::Ordering::Relaxed)
 }

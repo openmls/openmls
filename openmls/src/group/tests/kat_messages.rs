@@ -308,7 +308,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         .unwrap();
     // Replace the secret tree
     let verifiable_public_message_application: VerifiableAuthenticatedContentIn = receiver_group
-        .message_from_protocol_message(
+        .decrypt_message(
             provider.crypto(),
             ProtocolMessage::from(PrivateMessageIn::from(private_message_application)),
             &SenderRatchetConfiguration::default(),

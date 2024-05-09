@@ -383,7 +383,7 @@ fn group_operations() {
         .into();
 
     let verifiable_plaintext = group_bob
-        .message_from_protocol_message(
+        .decrypt_message(
             provider.crypto(),
             mls_ciphertext_alice.into(),
             &sender_ratchet_configuration,
@@ -717,7 +717,7 @@ fn group_operations() {
 
     // Alice decrypts and verifies
     let verifiable_plaintext = group_alice
-        .message_from_protocol_message(
+        .decrypt_message(
             provider.crypto(),
             mls_ciphertext_charlie.clone().into(),
             &sender_ratchet_configuration,
@@ -743,7 +743,7 @@ fn group_operations() {
 
     // Bob decrypts and verifies
     let verifiable_plaintext = group_bob
-        .message_from_protocol_message(
+        .decrypt_message(
             provider.crypto(),
             mls_ciphertext_charlie.into(),
             &sender_ratchet_configuration,

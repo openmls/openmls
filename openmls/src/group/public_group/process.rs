@@ -135,7 +135,7 @@ impl Group for PublicGroup {
     }
 
     fn context(&self) -> &crate::group::GroupContext {
-        todo!()
+        &self.group_context
     }
 
     fn stage_commit(

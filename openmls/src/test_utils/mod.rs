@@ -22,10 +22,13 @@ pub use crate::utils::*;
 use crate::{
     ciphersuite::{HpkePrivateKey, OpenMlsSignaturePublicKey},
     credentials::{Credential, CredentialType, CredentialWithKey},
+    group::{MlsGroup, MlsGroupCreateConfig},
     key_packages::{KeyPackage, KeyPackageBuilder},
     prelude::KeyPackageBundle,
     treesync::node::encryption_keys::{EncryptionKeyPair, EncryptionPrivateKey},
 };
+#[cfg(test)]
+use openmls_traits::signatures::Signer;
 
 pub mod frankenstein;
 pub mod test_framework;
@@ -102,6 +105,48 @@ pub(crate) struct GroupCandidate {
     pub key_package: KeyPackageBundle,
     pub signature_keypair: SignatureKeyPair,
     pub credential_with_key_and_signer: CredentialWithKeyAndSigner,
+    pub group_config: MlsGroupCreateConfig,
+}
+
+#[cfg(test)]
+impl GroupCandidate {
+    /// Get the group when this one is creating the group
+    pub fn creator<Provider: OpenMlsProvider>(&self, provider: &Provider) -> MlsGroup {
+        MlsGroup::new(
+            provider,
+            &self.signature_keypair,
+            &self.group_config,
+            self.credential_with_key_and_signer
+                .credential_with_key
+                .clone(),
+        )
+        .unwrap()
+    }
+}
+
+/// Add a member with a key package.
+/// This also merges the commit for the inviter and returns the welcome, consumable
+/// by the invitee.
+///
+/// This does nothing with the commit, so is not usable for actual group actions.
+#[cfg(test)]
+pub(crate) fn add_member<Provider: OpenMlsProvider, S: Signer>(
+    group: &mut MlsGroup,
+    key_package: KeyPackage,
+    provider: &Provider,
+    signer: &S,
+) -> crate::messages::Welcome {
+    use crate::prelude::MlsMessageIn;
+
+    let (_, welcome, _) = group
+        .add_members(provider, signer, &[key_package])
+        .expect("Could not create proposal.");
+    group.merge_pending_commit(provider).unwrap();
+
+    let welcome: MlsMessageIn = welcome.into();
+    welcome
+        .into_welcome()
+        .expect("expected the message to be a welcome message")
 }
 
 #[cfg(test)]
@@ -111,7 +156,14 @@ pub(crate) fn generate_group_candidate(
     provider: &impl OpenMlsProvider,
     use_store: bool,
 ) -> GroupCandidate {
-    use crate::{credentials::BasicCredential, prelude::KeyPackageBundle};
+    use crate::{
+        credentials::BasicCredential, group::MlsGroupCreateConfig, prelude::KeyPackageBundle,
+    };
+
+    let group_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .build();
 
     let credential_with_key_and_signer = {
         let credential = BasicCredential::new(identity.to_vec());
@@ -179,6 +231,7 @@ pub(crate) fn generate_group_candidate(
         key_package,
         signature_keypair: credential_with_key_and_signer.signer.clone(),
         credential_with_key_and_signer,
+        group_config,
     }
 }
 

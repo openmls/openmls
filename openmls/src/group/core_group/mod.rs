@@ -184,7 +184,7 @@ pub(crate) struct CoreGroup {
     /// Group config.
     /// Set to true if the ratchet tree extension is added to the `GroupInfo`.
     /// Defaults to `false`.
-    use_ratchet_tree_extension: bool,
+    pub(super) use_ratchet_tree_extension: bool,
     /// A [`MessageSecretsStore`] that stores message secrets.
     /// By default this store has the length of 1, i.e. only the [`MessageSecrets`]
     /// of the current epoch is kept.

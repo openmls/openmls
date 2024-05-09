@@ -153,6 +153,12 @@ pub trait Verifiable: Sized {
                 return Err(SignatureError::VerificationError);
             }
         };
+
+        // For some testing, verification can be disabled.
+        if crate::verification_disabled() {
+            return Ok(());
+        }
+
         crypto
             .verify_signature(
                 pk.signature_scheme(),

@@ -588,7 +588,7 @@ fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider:
     )
     .expect("Encryption error");
 
-    let received_message = group_charlie.message_from_protocol_message(
+    let received_message = group_charlie.decrypt_message(
         charlie_provider.crypto(),
         ProtocolMessage::from(PrivateMessageIn::from(enc_message)),
         configuration,
