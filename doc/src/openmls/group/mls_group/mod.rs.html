@@ -810,7 +810,7 @@
             </span><span class="self">self</span>.proposal_store.empty();
 
             <span class="comment">// Clear proposals in storage
-            </span>storage.clear_proposal_queue(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
+            </span>storage.clear_proposal_queue::&lt;GroupId, ProposalRef&gt;(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
         }
 
         <span class="prelude-val">Ok</span>(())
@@ -869,7 +869,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), StorageProvider::Error&gt; {
         <span class="self">self</span>.group.delete(storage)<span class="question-mark">?</span>;
         storage.delete_group_config(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
-        storage.clear_proposal_queue(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
+        storage.clear_proposal_queue::&lt;GroupId, ProposalRef&gt;(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
         storage.delete_own_leaf_nodes(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
         storage.delete_aad(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
         storage.delete_group_state(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
