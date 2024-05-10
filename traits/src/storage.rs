@@ -620,6 +620,7 @@ pub mod traits {
     pub trait EpochKey<const VERSION: u16>: Key<VERSION> {}
 
     // traits for entity, one per type
+    pub trait ByteWrapper<const VERSION: u16>: Entity<VERSION> {}
     pub trait QueuedProposal<const VERSION: u16>: Entity<VERSION> {}
     pub trait TreeSync<const VERSION: u16>: Entity<VERSION> {}
     pub trait GroupContext<const VERSION: u16>: Entity<VERSION> {}

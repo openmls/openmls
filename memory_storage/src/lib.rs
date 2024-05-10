@@ -877,7 +877,11 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         group_id: &GroupId,
     ) -> Result<ByteWrapper, Self::Error> {
         let key = serde_json::to_vec(group_id)?;
-        self.read(AAD_LABEL, &key)
+        match self.read(AAD_LABEL, &key) {
+            Ok(Some(data)) => Ok(data),
+            Ok(None) => Ok(ByteWrapper::from(Vec::new())),
+            Err(e) => Err(e),
+        }
     }
 
     fn write_aad<
@@ -889,7 +893,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         aad: &ByteWrapper,
     ) -> Result<(), Self::Error> {
         let key = serde_json::to_vec(group_id)?;
-        self.write::<CURRENT_VERSION>(AAD_LABEL, &key, aad.to_vec())
+        self.write::<CURRENT_VERSION>(AAD_LABEL, &key, serde_json::to_vec(aad).unwrap())
     }
 
     fn delete_aad<GroupId: traits::GroupId<CURRENT_VERSION>>(

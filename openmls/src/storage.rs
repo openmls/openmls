@@ -63,6 +63,18 @@ struct ByteWrapper {
     data: Vec<u8>,
 }
 
+impl ByteWrapper {
+    fn from(data: Vec<u8>) -> Self {
+        ByteWrapper { data }
+    }
+}
+
+impl From<Vec<u8>> for ByteWrapper {
+    fn from(data: Vec<u8>) -> Self {
+        ByteWrapper { data }
+    }
+}
+
 impl Entity<CURRENT_VERSION> for ByteWrapper {}
 impl traits::ByteWrapper<CURRENT_VERSION> for ByteWrapper {}
 
