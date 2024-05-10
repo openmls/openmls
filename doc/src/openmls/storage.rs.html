@@ -290,7 +290,7 @@
 }
 
 <span class="kw">impl</span>&lt;
-        Error: std::error::Error + PartialEq,
+        Error: std::error::Error,
         SP: StorageProvider&lt;Error = Error&gt;,
         OP: openmls_traits::OpenMlsProvider&lt;StorageProvider = SP&gt;,
     &gt; OpenMlsProvider <span class="kw">for </span>OP
