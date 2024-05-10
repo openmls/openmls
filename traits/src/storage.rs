@@ -648,3 +648,5 @@ pub mod traits {
     pub trait ProposalRef<const VERSION: u16>: Entity<VERSION> + Key<VERSION> {}
 }
 // ANCHOR_END: traits
+
+impl<const VERSION: u16> Entity<VERSION> for Vec<u8> {}
