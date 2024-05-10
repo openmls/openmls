@@ -1,7 +1,5 @@
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_traits::{crypto::OpenMlsCrypto, storage::StorageProvider, types::Ciphersuite};
-use rstest::*;
-use rstest_reuse::{self, *};
+use openmls_traits::prelude::{openmls_types::*, *};
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
@@ -28,7 +26,7 @@ use crate::{
 /// the encrypted group info. As the group info is part of the decryption context of the encrypted
 /// group info, it is not possible to generate a matching encrypted group context with different
 /// parameters.
-#[apply(ciphersuites_and_providers)]
+#[openmls_test::openmls_test]
 fn test_welcome_context_mismatch(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,
@@ -190,8 +188,8 @@ fn test_welcome_context_mismatch(
     .expect("Error creating group from a valid staged join.");
 }
 
-#[apply(ciphersuites_and_providers)]
-fn test_welcome_msg(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn test_welcome_msg() {
     test_welcome_message(ciphersuite, provider);
 }
 

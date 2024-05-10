@@ -1,5 +1,6 @@
 use crate::test_utils::*;
 use openmls_basic_credential::SignatureKeyPair;
+use openmls_traits::prelude::*;
 
 use tls_codec::Deserialize;
 
@@ -29,8 +30,8 @@ pub(crate) fn key_package(
     (key_package, credential.into(), signer)
 }
 
-#[apply(ciphersuites_and_providers)]
-fn generate_key_package(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn generate_key_package() {
     let (key_package, _credential, _signature_keys) = key_package(ciphersuite, provider);
 
     let kpi = KeyPackageIn::from(key_package.key_package().clone());
@@ -39,8 +40,8 @@ fn generate_key_package(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
         .is_ok());
 }
 
-#[apply(ciphersuites_and_providers)]
-fn serialization(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn serialization() {
     let (key_package, _, _) = key_package(ciphersuite, provider);
 
     let encoded = key_package
@@ -55,8 +56,8 @@ fn serialization(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
     assert_eq!(key_package.key_package(), &decoded_key_package);
 }
 
-#[apply(ciphersuites_and_providers)]
-fn application_id_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn application_id_extension() {
     let credential = BasicCredential::new(b"Sasha".to_vec());
     let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
@@ -97,8 +98,8 @@ fn application_id_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
 /// Test that the key package is correctly validated:
 /// - The protocol version is correct
 /// - The init key is not equal to the encryption key
-#[apply(ciphersuites_and_providers)]
-fn key_package_validation(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn key_package_validation() {
     let (key_package_orig, _, _) = key_package(ciphersuite, provider);
 
     // === Protocol version ===
@@ -136,8 +137,8 @@ fn key_package_validation(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
 
 /// Test that a key package is correctly built with a last resort extension when
 /// the last resort flag is set during the build process.
-#[apply(ciphersuites_and_providers)]
-fn last_resort_key_package(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn last_resort_key_package() {
     let credential = Credential::from(BasicCredential::new(b"Sasha".to_vec()));
     let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 

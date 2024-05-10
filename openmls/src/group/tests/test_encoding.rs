@@ -4,7 +4,7 @@ use tls_codec::{Deserialize, Serialize};
 use super::utils::*;
 use crate::{
     binary_tree::LeafNodeIndex, framing::*, group::*, key_packages::*, messages::*,
-    schedule::psk::store::ResumptionPskStore, test_utils::*, *,
+    schedule::psk::store::ResumptionPskStore, test_utils::*,
 };
 
 /// Creates a simple test setup for various encoding tests.
@@ -50,7 +50,7 @@ fn create_encoding_test_setup(provider: &impl crate::storage::OpenMlsProvider) -
 }
 
 /// This test tests encoding and decoding of application messages.
-#[apply(providers)]
+#[openmls_test::openmls_test]
 fn test_application_message_encoding(provider: &impl crate::storage::OpenMlsProvider) {
     let test_setup = create_encoding_test_setup(provider);
     let test_clients = test_setup.clients.borrow();
@@ -92,7 +92,7 @@ fn test_application_message_encoding(provider: &impl crate::storage::OpenMlsProv
 }
 
 /// This test tests encoding and decoding of update proposals.
-#[apply(providers)]
+#[openmls_test::openmls_test]
 fn test_update_proposal_encoding(provider: &impl crate::storage::OpenMlsProvider) {
     let test_setup = create_encoding_test_setup(provider);
     let test_clients = test_setup.clients.borrow();
@@ -146,7 +146,7 @@ fn test_update_proposal_encoding(provider: &impl crate::storage::OpenMlsProvider
 }
 
 /// This test tests encoding and decoding of add proposals.
-#[apply(providers)]
+#[openmls_test::openmls_test]
 fn test_add_proposal_encoding(provider: &impl crate::storage::OpenMlsProvider) {
     let test_setup = create_encoding_test_setup(provider);
     let test_clients = test_setup.clients.borrow();
@@ -197,7 +197,7 @@ fn test_add_proposal_encoding(provider: &impl crate::storage::OpenMlsProvider) {
 }
 
 /// This test tests encoding and decoding of remove proposals.
-#[apply(providers)]
+#[openmls_test::openmls_test]
 fn test_remove_proposal_encoding(provider: &impl crate::storage::OpenMlsProvider) {
     let test_setup = create_encoding_test_setup(provider);
     let test_clients = test_setup.clients.borrow();
@@ -241,7 +241,7 @@ fn test_remove_proposal_encoding(provider: &impl crate::storage::OpenMlsProvider
 }
 
 /// This test tests encoding and decoding of commit messages.
-#[apply(providers)]
+#[openmls_test::openmls_test]
 fn test_commit_encoding(provider: &impl crate::storage::OpenMlsProvider) {
     let test_setup = create_encoding_test_setup(provider);
     let test_clients = test_setup.clients.borrow();
@@ -342,7 +342,7 @@ fn test_commit_encoding(provider: &impl crate::storage::OpenMlsProvider) {
     }
 }
 
-#[apply(providers)]
+#[openmls_test::openmls_test]
 fn test_welcome_message_encoding(provider: &impl crate::storage::OpenMlsProvider) {
     let test_setup = create_encoding_test_setup(provider);
     let test_clients = test_setup.clients.borrow();

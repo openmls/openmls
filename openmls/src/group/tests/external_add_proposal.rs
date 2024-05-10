@@ -1,6 +1,5 @@
 use openmls_basic_credential::SignatureKeyPair;
-use rstest::*;
-use rstest_reuse::{self, *};
+use openmls_test::openmls_test;
 
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -10,10 +9,9 @@ use crate::{
         external_proposals::*,
         proposals::{AddProposal, Proposal, ProposalType},
     },
-    storage::OpenMlsProvider,
 };
 
-use openmls_traits::types::Ciphersuite;
+use openmls_traits::{types::Ciphersuite, OpenMlsProvider as _};
 
 use super::utils::*;
 
@@ -112,11 +110,8 @@ fn validation_test_setup(
     }
 }
 
-#[apply(ciphersuites_and_providers)]
-fn external_add_proposal_should_succeed<Provider: OpenMlsProvider>(
-    ciphersuite: Ciphersuite,
-    provider: &Provider,
-) {
+#[openmls_test]
+fn external_add_proposal_should_succeed<Provider: OpenMlsProvider>() {
     for policy in WIRE_FORMAT_POLICIES {
         let ProposalValidationTestSetup {
             alice_group,
@@ -142,13 +137,14 @@ fn external_add_proposal_should_succeed<Provider: OpenMlsProvider>(
             charlie_credential.clone(),
         );
 
-        let proposal = JoinProposal::new::<Provider::Storage>(
-            charlie_kp.key_package().clone(),
-            alice_group.group_id().clone(),
-            alice_group.epoch(),
-            &charlie_credential.signer,
-        )
-        .unwrap();
+        let proposal =
+            JoinProposal::new::<<Provider as openmls_traits::OpenMlsProvider>::StorageProvider>(
+                charlie_kp.key_package().clone(),
+                alice_group.group_id().clone(),
+                alice_group.epoch(),
+                &charlie_credential.signer,
+            )
+            .unwrap();
 
         // an external proposal is always plaintext and has sender type 'new_member_proposal'
         let verify_proposal = |msg: &PublicMessage| {
@@ -230,13 +226,10 @@ fn external_add_proposal_should_succeed<Provider: OpenMlsProvider>(
     }
 }
 
-#[apply(ciphersuites_and_providers)]
+#[openmls_test]
 fn external_add_proposal_should_be_signed_by_key_package_it_references<
     Provider: OpenMlsProvider,
->(
-    ciphersuite: Ciphersuite,
-    provider: &Provider,
-) {
+>() {
     let ProposalValidationTestSetup { alice_group, .. } =
         validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, provider);
     let (mut alice_group, _alice_signer) = alice_group;
@@ -261,13 +254,14 @@ fn external_add_proposal_should_be_signed_by_key_package_it_references<
         attacker_credential,
     );
 
-    let invalid_proposal = JoinProposal::new::<Provider::Storage>(
-        charlie_kp.key_package().clone(),
-        alice_group.group_id().clone(),
-        alice_group.epoch(),
-        &charlie_credential.signer,
-    )
-    .unwrap();
+    let invalid_proposal =
+        JoinProposal::new::<<Provider as openmls_traits::OpenMlsProvider>::StorageProvider>(
+            charlie_kp.key_package().clone(),
+            alice_group.group_id().clone(),
+            alice_group.epoch(),
+            &charlie_credential.signer,
+        )
+        .unwrap();
 
     // fails because the message was not signed by the same credential as the one in the Add proposal
     assert!(matches!(
@@ -279,11 +273,8 @@ fn external_add_proposal_should_be_signed_by_key_package_it_references<
 }
 
 // TODO #1093: move this test to a dedicated external proposal ValSem test module once all external proposals implemented
-#[apply(ciphersuites_and_providers)]
-fn new_member_proposal_sender_should_be_reserved_for_join_proposals<Provider: OpenMlsProvider>(
-    ciphersuite: Ciphersuite,
-    provider: &Provider,
-) {
+#[openmls_test]
+fn new_member_proposal_sender_should_be_reserved_for_join_proposals<Provider: OpenMlsProvider>() {
     let ProposalValidationTestSetup {
         alice_group,
         bob_group,
@@ -302,13 +293,14 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals<Provider: Op
         any_credential.clone(),
     );
 
-    let join_proposal = JoinProposal::new::<Provider::Storage>(
-        any_kp.key_package().clone(),
-        alice_group.group_id().clone(),
-        alice_group.epoch(),
-        &any_credential.signer,
-    )
-    .unwrap();
+    let join_proposal =
+        JoinProposal::new::<<Provider as openmls_traits::OpenMlsProvider>::StorageProvider>(
+            any_kp.key_package().clone(),
+            alice_group.group_id().clone(),
+            alice_group.epoch(),
+            &any_credential.signer,
+        )
+        .unwrap();
 
     if let MlsMessageBodyOut::PublicMessage(plaintext) = &join_proposal.body {
         // Make sure it's an add proposal...

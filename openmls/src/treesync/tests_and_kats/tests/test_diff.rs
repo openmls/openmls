@@ -1,6 +1,4 @@
-use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
-use rstest::*;
-use rstest_reuse::apply;
+use openmls_traits::prelude::*;
 
 use crate::{
     credentials::test_utils::new_credential,
@@ -9,8 +7,8 @@ use crate::{
 };
 
 // Verifies that when we add a leaf to a tree with blank leaf nodes, the leaf will be added at the leftmost free leaf index
-#[apply(ciphersuites_and_providers)]
-fn test_free_leaf_computation(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn test_free_leaf_computation() {
     let (c_0, sk_0) = new_credential(provider, b"leaf0", ciphersuite.signature_algorithm());
 
     let kpb_0 = KeyPackageBundle::generate(provider, &sk_0, ciphersuite, c_0);

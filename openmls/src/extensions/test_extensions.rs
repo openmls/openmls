@@ -2,20 +2,23 @@
 //! Some basic unit tests for extensions
 //! Proper testing is done through the public APIs.
 
+use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::key_store::OpenMlsKeyStore;
 use tls_codec::{Deserialize, Serialize};
 
 use super::*;
 use crate::{
+    ciphersuite::HpkePrivateKey,
     credentials::*,
     framing::*,
-    group::{errors::*, *},
+    group::{config::CryptoConfig, errors::*, *},
     key_packages::*,
     messages::proposals::ProposalType,
     prelude::{Capabilities, RatchetTreeIn},
     prelude_test::HpkePublicKey,
     schedule::psk::store::ResumptionPskStore,
-    storage::OpenMlsProvider,
     test_utils::*,
+    treesync::node::encryption_keys::EncryptionKeyPair,
     versions::ProtocolVersion,
 };
 
@@ -50,7 +53,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
         test_utils::new_credential(provider, b"Bob", ciphersuite.signature_algorithm());
 
     // Generate KeyPackages
-    let bob_key_package_bundle = KeyPackageBundle::generate(
+    let bob_key_package_bundle = KeyPackageBundle::new(
         provider,
         &bob_signature_keys,
         ciphersuite,
@@ -65,7 +68,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
     // === Alice creates a group with the ratchet tree extension ===
     let mut alice_group = CoreGroup::builder(
         GroupId::random(provider.rand()),
-        ciphersuite,
+        config::CryptoConfig::with_default_version(ciphersuite),
         alice_credential_with_key.clone(),
     )
     .with_config(config)
@@ -129,7 +132,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
     // === Alice creates a group without the ratchet tree extension ===
 
     // Generate KeyPackages
-    let bob_key_package_bundle = KeyPackageBundle::generate(
+    let bob_key_package_bundle = KeyPackageBundle::new(
         provider,
         &bob_signature_keys,
         ciphersuite,
@@ -143,7 +146,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
 
     let mut alice_group = CoreGroup::builder(
         GroupId::random(provider.rand()),
-        ciphersuite,
+        config::CryptoConfig::with_default_version(ciphersuite),
         alice_credential_with_key,
     )
     .with_config(config)
@@ -194,10 +197,10 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvi
     .err();
 
     // We expect an error because the ratchet tree is missing
-    assert!(matches!(
+    assert_eq!(
         error.expect("We expected an error"),
         WelcomeError::MissingRatchetTree
-    ));
+    );
 }
 
 #[test]
@@ -299,7 +302,7 @@ fn with_group_context_extensions(ciphersuite: Ciphersuite, provider: &impl OpenM
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .with_group_context_extensions(extensions)
         .expect("failed to apply extensions at group config builder")
-        .ciphersuite(ciphersuite)
+        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 
     // === Alice creates a group ===
@@ -336,6 +339,8 @@ fn wrong_extension_with_group_context_extensions(
         provider,
     );
 
+    let crypto_config = CryptoConfig::with_default_version(ciphersuite);
+
     // create an extension that we can check for later
     let test_extension = Extension::ApplicationId(ApplicationIdExtension::new(&[0xca, 0xfe]));
     let extensions = Extensions::single(test_extension.clone());
@@ -347,7 +352,7 @@ fn wrong_extension_with_group_context_extensions(
     assert_eq!(err, InvalidExtensionError::IllegalInGroupContext);
     let err = PublicGroup::builder(
         GroupId::from_slice(&[0xbe, 0xef]),
-        ciphersuite,
+        crypto_config,
         alice_credential_with_key_and_signer
             .credential_with_key
             .clone(),
@@ -368,7 +373,7 @@ fn wrong_extension_with_group_context_extensions(
 
     let err = PublicGroup::builder(
         GroupId::from_slice(&[0xbe, 0xef]),
-        ciphersuite,
+        crypto_config,
         alice_credential_with_key_and_signer
             .credential_with_key
             .clone(),
@@ -390,7 +395,7 @@ fn wrong_extension_with_group_context_extensions(
 
     let err = PublicGroup::builder(
         GroupId::from_slice(&[0xbe, 0xef]),
-        ciphersuite,
+        crypto_config,
         alice_credential_with_key_and_signer
             .credential_with_key
             .clone(),
@@ -405,11 +410,12 @@ fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
     let last_resort = Extension::LastResort(LastResortExtension::default());
 
     // Build a KeyPackage with a last resort extension
-    let credential = BasicCredential::new(b"Bob".to_vec());
+    let credential = BasicCredential::new(b"Bob".to_vec()).unwrap();
     let signer =
         openmls_basic_credential::SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
     let extensions = Extensions::single(last_resort);
+    let crypto_config = CryptoConfig::with_default_version(ciphersuite);
     let capabilities = Capabilities::new(
         None,
         None,
@@ -422,7 +428,7 @@ fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
         .key_package_extensions(extensions)
         .leaf_node_capabilities(capabilities)
         .build(
-            ciphersuite,
+            crypto_config,
             provider,
             &signer,
             CredentialWithKey {
@@ -431,9 +437,8 @@ fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
             },
         )
         .expect("error building key package with last resort extension");
-    assert!(kp.key_package().last_resort());
+    assert!(kp.last_resort());
     let encoded_kp = kp
-        .key_package()
         .tls_serialize_detached()
         .expect("error encoding key package with last resort extension");
     let decoded_kp = KeyPackageIn::tls_deserialize(&mut encoded_kp.as_slice())
@@ -452,7 +457,7 @@ fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
     );
 
     let mls_group_create_config = MlsGroupCreateConfig::builder()
-        .ciphersuite(ciphersuite)
+        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 
     // === Alice creates a group ===
@@ -470,7 +475,7 @@ fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
         .add_members(
             provider,
             &alice_credential_with_key_and_signer.signer,
-            &[kp.key_package().clone()],
+            &[kp.clone()],
         )
         .expect("An unexpected error occurred.");
 
@@ -497,15 +502,23 @@ fn last_resort_extension(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvid
     bob_group
         .merge_pending_commit(provider)
         .expect("An unexpected error occurred.");
-    use openmls_traits::storage::StorageProvider;
 
-    let _: KeyPackageBundle = provider
-        .storage()
-        .key_package(
-            &kp.key_package()
-                .hash_ref(provider.crypto())
-                .expect("error hashing key package"),
-        )
-        .expect("error retrieving key package")
-        .expect("key package does not exist");
+    // This should not have deleted the KP or private keys from the store
+    let kp: Option<KeyPackage> = provider.key_store().read(
+        kp.hash_ref(provider.crypto())
+            .expect("error hashing kp")
+            .as_slice(),
+    );
+    assert!(kp.is_some());
+
+    let kp = kp.unwrap();
+
+    let leaf_keypair =
+        EncryptionKeyPair::read_from_key_store(provider, kp.leaf_node().encryption_key());
+    assert!(leaf_keypair.is_some());
+
+    let private_key = provider
+        .key_store()
+        .read::<HpkePrivateKey>(kp.hpke_init_key().as_slice());
+    assert!(private_key.is_some());
 }

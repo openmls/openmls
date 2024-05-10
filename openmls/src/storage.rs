@@ -133,13 +133,6 @@ impl traits::LeafNode<CURRENT_VERSION> for LeafNode {}
 
 // Crypto
 
-/// Helper to use slices as keys
-#[derive(Serialize)]
-pub(crate) struct StorageReference<'a>(pub(crate) &'a [u8]);
-
-impl<'a> Key<CURRENT_VERSION> for StorageReference<'a> {}
-impl<'a> traits::HashReference<CURRENT_VERSION> for StorageReference<'a> {}
-
 impl Key<CURRENT_VERSION> for GroupEpoch {}
 impl traits::EpochKey<CURRENT_VERSION> for GroupEpoch {}
 

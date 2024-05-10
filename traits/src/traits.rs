@@ -9,6 +9,16 @@ pub mod signatures;
 pub mod storage;
 pub mod types;
 
+/// A prelude to include to get all traits in scope and expose `openmls_types`.
+pub mod prelude {
+    pub use super::crypto::OpenMlsCrypto as _;
+    pub use super::random::OpenMlsRand as _;
+    pub use super::signatures::Signer as _;
+    pub use super::storage::StorageProvider as _;
+    pub use super::types as openmls_types;
+    pub use super::OpenMlsProvider as _;
+}
+
 /// The OpenMLS Crypto Provider Trait
 ///
 /// An implementation of this trait must be passed in to the public OpenMLS API

@@ -3,9 +3,8 @@ use openmls::{
     test_utils::test_framework::{
         noop_authentication_service, ActionType, CodecUse, MlsGroupTestSetup,
     },
-    test_utils::*,
-    *,
 };
+use openmls_test::openmls_test;
 
 // The following tests correspond to the interop test scenarios detailed here:
 // https://github.com/mlswg/mls-implementations/blob/master/test-scenarios.md
@@ -17,11 +16,11 @@ use openmls::{
 // B->A: KeyPackage
 // A->B: Welcome
 // ***:  Verify group state
-#[apply(ciphersuites)]
-fn one_to_one_join(ciphersuite: Ciphersuite) {
+#[openmls_test]
+fn one_to_one_join() {
     println!("Testing ciphersuite {ciphersuite:?}");
     let number_of_clients = 2;
-    let setup = MlsGroupTestSetup::new(
+    let setup = MlsGroupTestSetup::<Provider>::new(
         MlsGroupCreateConfig::test_default(ciphersuite),
         number_of_clients,
         CodecUse::StructMessages,
@@ -68,12 +67,12 @@ fn one_to_one_join(ciphersuite: Ciphersuite) {
 // A->B: Add(C), Commit
 // A->C: Welcome
 // ***:  Verify group state
-#[apply(ciphersuites)]
-fn three_party_join(ciphersuite: Ciphersuite) {
+#[openmls_test]
+fn three_party_join() {
     println!("Testing ciphersuite {ciphersuite:?}");
 
     let number_of_clients = 3;
-    let setup = MlsGroupTestSetup::new(
+    let setup = MlsGroupTestSetup::<Provider>::new(
         MlsGroupCreateConfig::test_default(ciphersuite),
         number_of_clients,
         CodecUse::StructMessages,
@@ -135,12 +134,12 @@ fn three_party_join(ciphersuite: Ciphersuite) {
 // A->B: Welcome
 // A->C: Welcome
 // ***:  Verify group state
-#[apply(ciphersuites)]
-fn multiple_joins(ciphersuite: Ciphersuite) {
+#[openmls_test]
+fn multiple_joins() {
     println!("Testing ciphersuite {ciphersuite:?}");
 
     let number_of_clients = 3;
-    let setup = MlsGroupTestSetup::new(
+    let setup = MlsGroupTestSetup::<Provider>::new(
         MlsGroupCreateConfig::test_default(ciphersuite),
         number_of_clients,
         CodecUse::StructMessages,
@@ -188,12 +187,12 @@ fn multiple_joins(ciphersuite: Ciphersuite) {
 // A->B: Welcome
 // A->B: Update, Commit
 // ***:  Verify group state
-#[apply(ciphersuites)]
-fn update(ciphersuite: Ciphersuite) {
+#[openmls_test]
+fn update() {
     println!("Testing ciphersuite {ciphersuite:?}");
 
     let number_of_clients = 2;
-    let setup = MlsGroupTestSetup::new(
+    let setup = MlsGroupTestSetup::<Provider>::new(
         MlsGroupCreateConfig::test_default(ciphersuite),
         number_of_clients,
         CodecUse::StructMessages,
@@ -236,12 +235,12 @@ fn update(ciphersuite: Ciphersuite) {
 // A->C: Welcome
 // A->B: Remove(B), Commit
 // ***:  Verify group state
-#[apply(ciphersuites)]
-fn remove(ciphersuite: Ciphersuite) {
+#[openmls_test]
+fn remove() {
     println!("Testing ciphersuite {ciphersuite:?}");
 
     let number_of_clients = 2;
-    let setup = MlsGroupTestSetup::new(
+    let setup = MlsGroupTestSetup::<Provider>::new(
         MlsGroupCreateConfig::test_default(ciphersuite),
         number_of_clients,
         CodecUse::StructMessages,
@@ -291,13 +290,13 @@ fn remove(ciphersuite: Ciphersuite) {
 // * All members update
 // * While the group size is >1, a randomly-chosen group member removes a
 //   randomly-chosen other group member
-#[apply(ciphersuites)]
-fn large_group_lifecycle(ciphersuite: Ciphersuite) {
+#[openmls_test]
+fn large_group_lifecycle() {
     println!("Testing ciphersuite {ciphersuite:?}");
 
     // "Large" is 20 for now.
     let number_of_clients = 20;
-    let setup = MlsGroupTestSetup::new(
+    let setup = MlsGroupTestSetup::<Provider>::new(
         MlsGroupCreateConfig::test_default(ciphersuite),
         number_of_clients,
         CodecUse::StructMessages,

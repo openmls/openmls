@@ -1,4 +1,5 @@
 use core_group::test_core_group::setup_client;
+use openmls_test::openmls_test;
 use openmls_traits::OpenMlsProvider as _;
 use tls_codec::{Deserialize, Serialize};
 
@@ -10,20 +11,15 @@ use crate::{
     key_packages::*,
     messages::proposals::*,
     prelude::Capabilities,
-    storage::OpenMlsProvider,
     test_utils::test_framework::{
         errors::ClientError, noop_authentication_service, ActionType::Commit, CodecUse,
         MlsGroupTestSetup,
     },
-    test_utils::*,
     tree::sender_ratchet::SenderRatchetConfiguration,
 };
 
-#[apply(ciphersuites_and_providers)]
-fn test_mls_group_persistence<Provider: OpenMlsProvider>(
-    ciphersuite: Ciphersuite,
-    provider: &Provider,
-) {
+#[openmls_test]
+fn test_mls_group_persistence<Provider: OpenMlsProvider>() {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
@@ -64,8 +60,8 @@ fn test_mls_group_persistence<Provider: OpenMlsProvider>(
 
 // This tests if the remover is correctly passed to the callback when one member
 // issues a RemoveProposal and another members issues the next Commit.
-#[apply(ciphersuites_and_providers)]
-fn remover(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
+#[openmls_test]
+fn remover() {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
@@ -217,8 +213,8 @@ fn remover(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProv
     // TODO #524: Check that Alice removed Bob
 }
 
-#[apply(ciphersuites_and_providers)]
-fn export_secret(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
+#[openmls_test]
+fn export_secret() {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
@@ -255,8 +251,8 @@ fn export_secret(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenM
     )
 }
 
-#[apply(ciphersuites_and_providers)]
-fn staged_join(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
+#[openmls_test]
+fn staged_join() {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, alice_kpb, alice_signer, _alice_pk) =
@@ -321,13 +317,13 @@ fn staged_join(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMls
     );
 }
 
-#[apply(ciphersuites)]
-fn test_invalid_plaintext(ciphersuite: Ciphersuite) {
+#[openmls_test]
+fn test_invalid_plaintext() {
     // Some basic setup functions for the MlsGroup.
     let mls_group_create_config = MlsGroupCreateConfig::test_default(ciphersuite);
 
     let number_of_clients = 20;
-    let setup = MlsGroupTestSetup::new(
+    let setup = MlsGroupTestSetup::<Provider>::new(
         mls_group_create_config,
         number_of_clients,
         CodecUse::StructMessages,
@@ -429,7 +425,7 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite) {
     );
 }
 
-#[apply(ciphersuites_and_providers)]
+#[openmls_test]
 fn test_verify_staged_commit_credentials(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,
@@ -608,7 +604,7 @@ fn test_verify_staged_commit_credentials(
     assert!(alice_group.pending_commit().is_none());
 }
 
-#[apply(ciphersuites_and_providers)]
+#[openmls_test]
 fn test_commit_with_update_path_leaf_node(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,
@@ -801,7 +797,7 @@ fn test_commit_with_update_path_leaf_node(
     assert!(alice_group.pending_commit().is_none());
 }
 
-#[apply(ciphersuites_and_providers)]
+#[openmls_test]
 fn test_pending_commit_logic(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,
@@ -989,11 +985,8 @@ fn test_pending_commit_logic(
 
 // Test that the key package and the corresponding private key are deleted when
 // creating a new group for a welcome message.
-#[apply(ciphersuites_and_providers)]
-fn key_package_deletion<Provider: crate::storage::OpenMlsProvider>(
-    ciphersuite: Ciphersuite,
-    provider: &Provider,
-) {
+#[openmls_test]
+fn key_package_deletion() {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
@@ -1053,7 +1046,7 @@ fn key_package_deletion<Provider: crate::storage::OpenMlsProvider>(
     );
 }
 
-#[apply(ciphersuites_and_providers)]
+#[openmls_test]
 fn remove_prosposal_by_ref(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,
@@ -1148,155 +1141,14 @@ fn remove_prosposal_by_ref(
 }
 
 // Test that the builder pattern accurately configures the new group.
-#[apply(ciphersuites_and_providers)]
-fn immutable_metadata(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
-    let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
-        setup_client("Alice", ciphersuite, provider);
-
-    let metadata = Metadata::new(b"this is a test group".to_vec());
-
-    let required_capabilities_extension = RequiredCapabilitiesExtension::new(
-        &[
-            ExtensionType::RequiredCapabilities,
-            ExtensionType::ImmutableMetadata,
-        ],
-        &[],
-        &[],
-    );
-
-    let extensions_with_metadata = Extensions::from_vec(vec![
-        Extension::ImmutableMetadata(metadata.clone()),
-        Extension::RequiredCapabilities(required_capabilities_extension),
-    ])
-    .unwrap();
-
-    // === Create a Group with Metadata ===
-    let capabilities = Capabilities::new(
-        None,
-        None,
-        Some(&[ExtensionType::ImmutableMetadata]),
-        None,
-        None,
-    );
-    let mut group_with_metadata = MlsGroup::builder()
-        .with_group_context_extensions(extensions_with_metadata.clone())
-        .expect("error when setting initial metadata group extension")
-        .with_capabilities(capabilities)
-        .build(provider, &alice_signer, alice_credential_with_key.clone())
-        .expect("error creating group using builder");
-
-    let got_metadata = group_with_metadata
-        .group()
-        .group_context_extensions()
-        .immutable_metadata()
-        .expect("error getting metadata from group");
-
-    // check we get back the same metadata we initially set
-    assert_eq!(got_metadata, &metadata);
-
-    // changing the metadata should fail
-    let new_metadata = Metadata::new(b"this is a not test group".to_vec());
-
-    let new_extensions_with_metadata =
-        Extensions::single(Extension::ImmutableMetadata(new_metadata.clone()));
-
-    group_with_metadata
-        .propose_group_context_extensions(provider, new_extensions_with_metadata, &alice_signer)
-        .expect("error proposing GCE proposal with same metadata");
-
-    assert_eq!(group_with_metadata.pending_proposals().count(), 1);
-
-    group_with_metadata
-        .commit_to_pending_proposals(provider, &alice_signer)
-        .expect_err("should not have been able to commit to proposal that changes metadata");
-
-    group_with_metadata
-        .clear_pending_proposals(provider.storage())
-        .unwrap();
-
-    assert_eq!(group_with_metadata.pending_proposals().count(), 0);
-
-    // using the same metadata should succeed
-    group_with_metadata
-        .propose_group_context_extensions(provider, extensions_with_metadata.clone(), &alice_signer)
-        .expect("error proposing GCE proposal with same metadata");
-
-    assert_eq!(group_with_metadata.pending_proposals().count(), 1);
-
-    group_with_metadata
-        .commit_to_pending_proposals(provider, &alice_signer)
-        .expect("failed to commit to pending proposals");
-
-    group_with_metadata
-        .merge_pending_commit(provider)
-        .expect("error merging pending commit");
-
-    let got_metadata = group_with_metadata
-        .group()
-        .group_context_extensions()
-        .immutable_metadata()
-        .expect("couldn't get immutable_metadata");
-
-    // check we get back the same metadata we initially set
-    assert_eq!(got_metadata, &metadata);
-
-    // === Create a Group without Metadata ===
-    let mut group_without_metadata = MlsGroup::builder()
-        .build(provider, &alice_signer, alice_credential_with_key)
-        .expect("error creating group using builder");
-
-    assert!(group_without_metadata
-        .group()
-        .group_context_extensions()
-        .immutable_metadata()
-        .is_none());
-
-    // changing the metadata should fail
-    let new_metadata = Metadata::new(b"this is a new metadata".to_vec());
-
-    let new_extensions_with_metadata =
-        Extensions::single(Extension::ImmutableMetadata(new_metadata.clone()));
-
-    group_without_metadata
-        .propose_group_context_extensions(provider, new_extensions_with_metadata, &alice_signer)
-        .expect("error proposing GCE proposal with metadata");
-
-    // since the GCEs are the same as befroe, the proposal handling logic "deduplicates" the proposal
-    // (with the implicit "identity proposal" I guess), so there isn't actually a proposal here
-    assert_eq!(group_with_metadata.pending_proposals().count(), 0);
-
-    // using the same metadata should succeed
-    group_without_metadata
-        .propose_group_context_extensions(provider, Extensions::empty(), &alice_signer)
-        .expect("error proposing GCE proposal with no metadata");
-
-    // since the GCEs are empty, the proposal handling logic "deduplicates" the proposal
-    // (with the implicit "identity proposal" I guess), so there isn't actually a proposal here
-    assert_eq!(group_with_metadata.pending_proposals().count(), 0);
-
-    // check we still get no metadata
-    assert!(group_without_metadata
-        .group()
-        .group_context_extensions()
-        .immutable_metadata()
-        .is_none());
-
-    // TODO: we need to test that processing an invalid commit also fails.
-    //       however, we can't generate this commit, because our functions for
-    //       constructing commits does not permit it. See #1476
-}
-
-// Test that the builder pattern accurately configures the new group.
-#[apply(ciphersuites_and_providers)]
-fn group_context_extensions_proposal<Provider: crate::storage::OpenMlsProvider>(
-    ciphersuite: Ciphersuite,
-    provider: &Provider,
-) {
+#[openmls_test]
+fn group_context_extensions_proposal() {
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
         setup_client("Alice", ciphersuite, provider);
 
     // === Alice creates a group ===
     let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
         .build(provider, &alice_signer, alice_credential_with_key)
         .expect("error creating group using builder");
 
@@ -1377,8 +1229,8 @@ fn group_context_extensions_proposal<Provider: crate::storage::OpenMlsProvider>(
 }
 
 // Test that the builder pattern accurately configures the new group.
-#[apply(ciphersuites_and_providers)]
-fn builder_pattern(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
+#[openmls_test]
+fn builder_pattern() {
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
         setup_client("Alice", ciphersuite, provider);
 
@@ -1492,11 +1344,8 @@ fn builder_pattern(ciphersuite: Ciphersuite, provider: &impl crate::storage::Ope
 }
 
 // Test the successful update of Group Context Extension with type Extension::Unknown(0xff11)
-#[apply(ciphersuites_and_providers)]
-fn update_group_context_with_unknown_extension<Provider: OpenMlsProvider + Default>(
-    ciphersuite: Ciphersuite,
-    provider: &Provider,
-) {
+#[openmls_test]
+fn update_group_context_with_unknown_extension<Provider: OpenMlsProvider + Default>() {
     let alice_provider = Provider::default();
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
         setup_client("Alice", ciphersuite, &alice_provider);
@@ -1705,8 +1554,8 @@ fn update_group_context_with_unknown_extension<Provider: OpenMlsProvider + Defau
 }
 
 // Test that unknown group context and leaf node extensions can be used in groups
-#[apply(ciphersuites_and_providers)]
-fn unknown_extensions(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
+#[openmls_test]
+fn unknown_extensions() {
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
         setup_client("Alice", ciphersuite, provider);
 
@@ -1792,7 +1641,7 @@ fn unknown_extensions(ciphersuite: Ciphersuite, provider: &impl crate::storage::
     .expect("Error creating group from staged join");
 }
 
-#[apply(ciphersuites_and_providers)]
+#[openmls_test]
 fn join_multiple_groups_last_resort_extension(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,

@@ -1,17 +1,12 @@
 //! This module contains tests regarding the use of [`MessageSecretsStore`] in [`MlsGroup`]
 
-use openmls_traits::types::Ciphersuite;
-
-use rstest::*;
-use rstest_reuse::{self, *};
-
 use super::utils::{generate_credential_with_key, generate_key_package};
 use crate::{
     framing::{MessageDecryptionError, MlsMessageIn, ProcessedMessageContent},
     group::*,
 };
 
-#[apply(ciphersuites_and_providers)]
+#[openmls_test::openmls_test]
 fn test_past_secrets_in_group(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,

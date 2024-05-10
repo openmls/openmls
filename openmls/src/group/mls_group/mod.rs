@@ -13,10 +13,10 @@ use crate::{
     key_packages::{KeyPackage, KeyPackageBundle},
     messages::proposals::*,
     schedule::ResumptionPskSecret,
-    storage::StorageProvider,
+    storage::{OpenMlsProvider, StorageProvider},
     treesync::{node::leaf_node::LeafNode, RatchetTree},
 };
-use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::types::Ciphersuite;
 
 // Private
 mod application;
@@ -217,9 +217,9 @@ impl MlsGroup {
 
     /// Returns own credential. If the group is inactive, it returns a
     /// `UseAfterEviction` error.
-    pub fn credential<StorageError>(
+    pub fn credential<Provider: OpenMlsProvider>(
         &self,
-    ) -> Result<&Credential, MlsGroupStateError<StorageError>> {
+    ) -> Result<&Credential, MlsGroupStateError<Provider::StorageError>> {
         if !self.is_active() {
             return Err(MlsGroupStateError::UseAfterEviction);
         }

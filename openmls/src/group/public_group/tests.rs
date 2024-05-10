@@ -1,6 +1,4 @@
-use openmls_traits::types::Ciphersuite;
-use rstest::*;
-use rstest_reuse::{self, *};
+use openmls_traits::prelude::*;
 
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -13,12 +11,11 @@ use crate::{
         StagedCommit, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     messages::proposals::Proposal,
-    storage::OpenMlsProvider,
 };
 
 use super::{super::mls_group::StagedWelcome, PublicGroup};
 
-#[apply(ciphersuites_and_providers)]
+#[openmls_test::openmls_test]
 fn public_group<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider: &Provider) {
     let group_id = GroupId::from_slice(b"Test Group");
 

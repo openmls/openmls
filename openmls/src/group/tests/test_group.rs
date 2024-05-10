@@ -7,7 +7,7 @@ use crate::{
     tree::sender_ratchet::SenderRatchetConfiguration, treesync::node::leaf_node::TreeInfoTbs, *,
 };
 
-#[apply(ciphersuites_and_providers)]
+#[openmls_test::openmls_test]
 fn create_commit_optional_path(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,
@@ -194,8 +194,8 @@ fn create_commit_optional_path(
         .expect("error merging pending commit");
 }
 
-#[apply(ciphersuites_and_providers)]
-fn basic_group_setup(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn basic_group_setup() {
     let group_aad = b"Alice's test group";
     // Framing parameters
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -270,8 +270,8 @@ fn basic_group_setup(ciphersuite: Ciphersuite, provider: &impl crate::storage::O
 ///  - Charlie sends a message to the group
 ///  - Charlie updates and commits
 ///  - Charlie removes Bob
-#[apply(ciphersuites_and_providers)]
-fn group_operations(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn group_operations() {
     let group_aad = b"Alice's test group";
     // Framing parameters
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
