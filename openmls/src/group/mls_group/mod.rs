@@ -312,7 +312,7 @@ impl MlsGroup {
             self.proposal_store.empty();
 
             // Clear proposals in storage
-            storage.clear_proposal_queue(self.group_id())?;
+            storage.clear_proposal_queue(self.group_id(), &self.proposal_store)?;
         }
 
         Ok(())
@@ -371,7 +371,7 @@ impl MlsGroup {
     ) -> Result<(), StorageProvider::Error> {
         self.group.delete(storage)?;
         storage.delete_group_config(self.group_id())?;
-        storage.clear_proposal_queue(self.group_id())?;
+        storage.clear_proposal_queue(self.group_id(), &self.proposal_store)?;
         storage.delete_own_leaf_nodes(self.group_id())?;
         storage.delete_aad(self.group_id())?;
         storage.delete_group_state(self.group_id())?;

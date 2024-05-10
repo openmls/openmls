@@ -8,7 +8,7 @@
 //!   the code.
 
 use openmls_traits::storage::{traits, Entity, Key, CURRENT_VERSION};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::binary_tree::LeafNodeIndex;
 use crate::group::{MlsGroupJoinConfig, MlsGroupState};
@@ -57,6 +57,14 @@ impl<
 }
 
 // Implementations for the Entity and Key traits
+
+#[derive(Debug, Serialize, Deserialize)]
+struct ByteWrapper {
+    data: Vec<u8>,
+}
+
+impl Entity<CURRENT_VERSION> for ByteWrapper {}
+impl traits::ByteWrapper<CURRENT_VERSION> for ByteWrapper {}
 
 impl Entity<CURRENT_VERSION> for QueuedProposal {}
 impl traits::QueuedProposal<CURRENT_VERSION> for QueuedProposal {}

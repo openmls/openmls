@@ -438,9 +438,13 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn clear_proposal_queue<GroupId: traits::GroupId<V_TEST>>(
+    fn clear_proposal_queue<
+        GroupId: traits::GroupId<V_TEST>,
+        ProposalRef: traits::ProposalRef<V_TEST>,
+    >(
         &self,
         _group_id: &GroupId,
+        proposal_ref: &ProposalRef,
     ) -> Result<(), Self::Error> {
         todo!()
     }
@@ -491,17 +495,17 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn aad<GroupId: traits::GroupId<V_TEST>>(
+    fn aad<GroupId: traits::GroupId<V_TEST>, ByteWrapper: traits::ByteWrapper<V_TEST>>(
         &self,
         _group_id: &GroupId,
-    ) -> Result<Vec<u8>, Self::Error> {
+    ) -> Result<ByteWrapper, Self::Error> {
         todo!()
     }
 
-    fn write_aad<GroupId: traits::GroupId<V_TEST>>(
+    fn write_aad<GroupId: traits::GroupId<V_TEST>, ByteWrapper: traits::ByteWrapper<V_TEST>>(
         &self,
         _group_id: &GroupId,
-        _aad: &[u8],
+        _aad: &ByteWrapper,
     ) -> Result<(), Self::Error> {
         todo!()
     }

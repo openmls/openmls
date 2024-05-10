@@ -46,10 +46,10 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<(), Self::Error>;
 
     /// Writes the AAD for the group with given id to storage
-    fn write_aad<GroupId: traits::GroupId<VERSION>>(
+    fn write_aad<GroupId: traits::GroupId<VERSION>, ByteWrapper: traits::ByteWrapper<VERSION>>(
         &self,
         group_id: &GroupId,
-        aad: &[u8],
+        aad: &ByteWrapper,
     ) -> Result<(), Self::Error>;
 
     /// Adds an own leaf node for the group with given id to storage
@@ -274,10 +274,10 @@ pub trait StorageProvider<const VERSION: u16> {
 
     /// Returns the AAD for the group with given id
     /// If the value has not been set, returns an empty vector.
-    fn aad<GroupId: traits::GroupId<VERSION>>(
+    fn aad<GroupId: traits::GroupId<VERSION>, ByteWrapper: traits::ByteWrapper<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<Vec<u8>, Self::Error>;
+    ) -> Result<ByteWrapper, Self::Error>;
 
     /// Returns references of all queued proposals for the group with group id `group_id`, or an empty vector of none are stored.
     fn queued_proposal_refs<
@@ -529,9 +529,13 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<(), Self::Error>;
 
     /// Clear the proposal queue for the grou pwith the given id.
-    fn clear_proposal_queue<GroupId: traits::GroupId<VERSION>>(
+    fn clear_proposal_queue<
+        GroupId: traits::GroupId<VERSION>,
+        ProposalRef: traits::ProposalRef<VERSION>,
+    >(
         &self,
         group_id: &GroupId,
+        proposal_ref: &ProposalRef,
     ) -> Result<(), Self::Error>;
 
     //

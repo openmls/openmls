@@ -795,9 +795,13 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         self.delete::<CURRENT_VERSION>(EPOCH_KEY_PAIRS_LABEL, &key)
     }
 
-    fn clear_proposal_queue<GroupId: traits::GroupId<CURRENT_VERSION>>(
+    fn clear_proposal_queue<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        ProposalRef: traits::ProposalRef<CURRENT_VERSION>,
+    >(
         &self,
         group_id: &GroupId,
+        proposal_ref: &ProposalRef,
     ) -> Result<(), Self::Error> {
         let mut values = self.values.write().unwrap();
 
@@ -865,18 +869,24 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         self.delete::<CURRENT_VERSION>(OWN_LEAF_NODES_LABEL, &key)
     }
 
-    fn aad<GroupId: traits::GroupId<CURRENT_VERSION>>(
+    fn aad<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        ByteWrapper: traits::ByteWrapper<CURRENT_VERSION>,
+    >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Vec<u8>, Self::Error> {
+    ) -> Result<ByteWrapper, Self::Error> {
         let key = serde_json::to_vec(group_id)?;
-        self.read_list(AAD_LABEL, &key)
+        self.read(AAD_LABEL, &key)
     }
 
-    fn write_aad<GroupId: traits::GroupId<CURRENT_VERSION>>(
+    fn write_aad<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        ByteWrapper: traits::ByteWrapper<CURRENT_VERSION>,
+    >(
         &self,
         group_id: &GroupId,
-        aad: &[u8],
+        aad: &ByteWrapper,
     ) -> Result<(), Self::Error> {
         let key = serde_json::to_vec(group_id)?;
         self.write::<CURRENT_VERSION>(AAD_LABEL, &key, aad.to_vec())
