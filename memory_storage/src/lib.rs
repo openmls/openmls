@@ -870,7 +870,12 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         group_id: &GroupId,
     ) -> Result<Vec<u8>, Self::Error> {
         let key = serde_json::to_vec(group_id)?;
-        self.read_list(AAD_LABEL, &key)
+        self.read::<CURRENT_VERSION, Vec<u8>>(AAD_LABEL, &key)
+            .map(|v| {
+                // When we didn't find the value, we return an empty vector as
+                // required by the trait.
+                v.unwrap_or_default()
+            })
     }
 
     fn write_aad<GroupId: traits::GroupId<CURRENT_VERSION>>(
