@@ -444,7 +444,6 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     >(
         &self,
         _group_id: &GroupId,
-        proposal_ref: &ProposalRef,
     ) -> Result<(), Self::Error> {
         todo!()
     }

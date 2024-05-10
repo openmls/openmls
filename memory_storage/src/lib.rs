@@ -801,7 +801,6 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
     >(
         &self,
         group_id: &GroupId,
-        proposal_ref: &ProposalRef,
     ) -> Result<(), Self::Error> {
         let mut values = self.values.write().unwrap();
 
@@ -876,12 +875,13 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         &self,
         group_id: &GroupId,
     ) -> Result<ByteWrapper, Self::Error> {
-        let key = serde_json::to_vec(group_id)?;
-        match self.read(AAD_LABEL, &key) {
-            Ok(Some(data)) => Ok(data),
-            Ok(None) => Ok(ByteWrapper::from(Vec::new())),
-            Err(e) => Err(e),
-        }
+        let key: Vec<u8> = serde_json::to_vec(group_id)?;
+        let values = self.values.read().unwrap();
+
+        let value = values.get(&key).unwrap();
+        let value = serde_json::from_slice(value).unwrap();
+        
+        Ok(value)
     }
 
     fn write_aad<

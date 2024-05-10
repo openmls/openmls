@@ -3,7 +3,7 @@
 //! implements the [`StorageProvider`] trait. The trait mostly defines getters and setters, but
 //! also a few methods that append to lists (which behave similar to setters).
 
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 /// The storage version used by OpenMLS
 pub const CURRENT_VERSION: u16 = 1;
 
@@ -537,7 +537,6 @@ pub trait StorageProvider<const VERSION: u16> {
     >(
         &self,
         group_id: &GroupId,
-        proposal_ref: &ProposalRef,
     ) -> Result<(), Self::Error>;
 
     //

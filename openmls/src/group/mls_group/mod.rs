@@ -16,7 +16,7 @@ use crate::{
     storage::{OpenMlsProvider, StorageProvider},
     treesync::{node::leaf_node::LeafNode, RatchetTree},
 };
-use openmls_traits::types::Ciphersuite;
+use openmls_traits::{storage::traits::ByteWrapper, types::Ciphersuite};
 
 // Private
 mod application;
@@ -312,7 +312,7 @@ impl MlsGroup {
             self.proposal_store.empty();
 
             // Clear proposals in storage
-            storage.clear_proposal_queue(self.group_id(), &self.proposal_store)?;
+            storage.clear_proposal_queue::<GroupId, ProposalRef>(self.group_id())?;
         }
 
         Ok(())
@@ -371,7 +371,7 @@ impl MlsGroup {
     ) -> Result<(), StorageProvider::Error> {
         self.group.delete(storage)?;
         storage.delete_group_config(self.group_id())?;
-        storage.clear_proposal_queue(self.group_id(), &self.proposal_store)?;
+        storage.clear_proposal_queue::<GroupId, ProposalRef>(self.group_id())?;
         storage.delete_own_leaf_nodes(self.group_id())?;
         storage.delete_aad(self.group_id())?;
         storage.delete_group_state(self.group_id())?;
