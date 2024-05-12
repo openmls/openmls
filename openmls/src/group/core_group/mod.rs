@@ -636,11 +636,6 @@ impl CoreGroup {
         self.public_group.group_context()
     }
 
-    #[cfg(test)]
-    pub(crate) fn group_context_extensions(&self) -> &Extensions {
-        self.context().extensions()
-    }
-
     /// Get the group ID
     pub(crate) fn group_id(&self) -> &GroupId {
         self.public_group.group_id()
