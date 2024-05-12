@@ -1,4 +1,5 @@
 use openmls_traits::storage::*;
+
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, sync::RwLock};
 
@@ -868,29 +869,23 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         self.delete::<CURRENT_VERSION>(OWN_LEAF_NODES_LABEL, &key)
     }
 
-    fn aad<
-        GroupId: traits::GroupId<CURRENT_VERSION>,
-        ByteWrapper: traits::ByteWrapper<CURRENT_VERSION>,
-    >(
+    fn aad<GroupId: traits::GroupId<CURRENT_VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<ByteWrapper, Self::Error> {
-        let key: Vec<u8> = serde_json::to_vec(group_id)?;
-        let values = self.values.read().unwrap();
-
-        let value = values.get(&key).unwrap();
-        let value = serde_json::from_slice(value).unwrap();
-        
-        Ok(value)
+    ) -> Result<Vec<u8>, Self::Error> {
+        let key = serde_json::to_vec(group_id)?;
+        self.read::<CURRENT_VERSION, Vec<u8>>(AAD_LABEL, &key)
+            .map(|v| {
+                // When we didn't find the value, we return an empty vector as
+                // required by the trait.
+                v.unwrap_or_default()
+            })
     }
 
-    fn write_aad<
-        GroupId: traits::GroupId<CURRENT_VERSION>,
-        ByteWrapper: traits::ByteWrapper<CURRENT_VERSION>,
-    >(
+    fn write_aad<GroupId: traits::GroupId<CURRENT_VERSION>>(
         &self,
         group_id: &GroupId,
-        aad: &ByteWrapper,
+        aad: &[u8],
     ) -> Result<(), Self::Error> {
         let key = serde_json::to_vec(group_id)?;
         self.write::<CURRENT_VERSION>(AAD_LABEL, &key, serde_json::to_vec(aad).unwrap())

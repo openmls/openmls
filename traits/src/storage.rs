@@ -3,7 +3,7 @@
 //! implements the [`StorageProvider`] trait. The trait mostly defines getters and setters, but
 //! also a few methods that append to lists (which behave similar to setters).
 
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Serialize};
 /// The storage version used by OpenMLS
 pub const CURRENT_VERSION: u16 = 1;
 
@@ -46,10 +46,10 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<(), Self::Error>;
 
     /// Writes the AAD for the group with given id to storage
-    fn write_aad<GroupId: traits::GroupId<VERSION>, ByteWrapper: traits::ByteWrapper<VERSION>>(
+    fn write_aad<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
-        aad: &ByteWrapper,
+        aad: &[u8],
     ) -> Result<(), Self::Error>;
 
     /// Adds an own leaf node for the group with given id to storage
@@ -276,10 +276,10 @@ pub trait StorageProvider<const VERSION: u16> {
 
     /// Returns the AAD for the group with given id
     /// If the value has not been set, returns an empty vector.
-    fn aad<GroupId: traits::GroupId<VERSION>, ByteWrapper: traits::ByteWrapper<VERSION>>(
+    fn aad<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<ByteWrapper, Self::Error>;
+    ) -> Result<Vec<u8>, Self::Error>;
 
     /// Returns references of all queued proposals for the group with group id `group_id`, or an empty vector of none are stored.
     fn queued_proposal_refs<
@@ -626,7 +626,6 @@ pub mod traits {
     pub trait EpochKey<const VERSION: u16>: Key<VERSION> {}
 
     // traits for entity, one per type
-    pub trait ByteWrapper<const VERSION: u16>: Entity<VERSION> {}
     pub trait QueuedProposal<const VERSION: u16>: Entity<VERSION> {}
     pub trait TreeSync<const VERSION: u16>: Entity<VERSION> {}
     pub trait GroupContext<const VERSION: u16>: Entity<VERSION> {}
@@ -649,3 +648,5 @@ pub mod traits {
     pub trait ProposalRef<const VERSION: u16>: Entity<VERSION> + Key<VERSION> {}
 }
 // ANCHOR_END: traits
+
+impl<const VERSION: u16> Entity<VERSION> for Vec<u8> {}

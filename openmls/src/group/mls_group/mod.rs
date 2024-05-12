@@ -16,7 +16,7 @@ use crate::{
     storage::{OpenMlsProvider, StorageProvider},
     treesync::{node::leaf_node::LeafNode, RatchetTree},
 };
-use openmls_traits::{storage::traits::ByteWrapper, types::Ciphersuite};
+use openmls_traits::types::Ciphersuite;
 
 // Private
 mod application;

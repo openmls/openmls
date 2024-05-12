@@ -494,17 +494,17 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn aad<GroupId: traits::GroupId<V_TEST>, ByteWrapper: traits::ByteWrapper<V_TEST>>(
+    fn aad<GroupId: traits::GroupId<V_TEST>>(
         &self,
         _group_id: &GroupId,
-    ) -> Result<ByteWrapper, Self::Error> {
+    ) -> Result<Vec<u8>, Self::Error> {
         todo!()
     }
 
-    fn write_aad<GroupId: traits::GroupId<V_TEST>, ByteWrapper: traits::ByteWrapper<V_TEST>>(
+    fn write_aad<GroupId: traits::GroupId<V_TEST>>(
         &self,
         _group_id: &GroupId,
-        _aad: &ByteWrapper,
+        _aad: &[u8],
     ) -> Result<(), Self::Error> {
         todo!()
     }

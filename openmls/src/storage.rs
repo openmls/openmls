@@ -8,7 +8,6 @@
 //!   the code.
 
 use openmls_traits::storage::{traits, Entity, Key, CURRENT_VERSION};
-use serde::{Deserialize, Serialize};
 
 use crate::binary_tree::LeafNodeIndex;
 use crate::group::{MlsGroupJoinConfig, MlsGroupState};
@@ -56,20 +55,7 @@ impl<
     type StorageError = Error;
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ByteWrapper {
-    data: Vec<u8>,
-}
-
-impl ByteWrapper {
-    pub fn from(data: Vec<u8>) -> Self {
-        ByteWrapper { data }
-    }
-}
-
 // Implementations for the Entity and Key traits
-impl Entity<CURRENT_VERSION> for ByteWrapper {}
-impl traits::ByteWrapper<CURRENT_VERSION> for ByteWrapper {}
 
 impl Entity<CURRENT_VERSION> for QueuedProposal {}
 impl traits::QueuedProposal<CURRENT_VERSION> for QueuedProposal {}
