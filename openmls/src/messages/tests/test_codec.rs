@@ -1,4 +1,3 @@
-use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
@@ -11,8 +10,8 @@ use crate::{
 
 /// Test the encoding for PreSharedKeyProposal, that also covers some of the
 /// other PSK-related structs
-#[apply(providers)]
-fn test_pre_shared_key_proposal_codec(provider: &impl OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn test_pre_shared_key_proposal_codec() {
     // External
     let psk = PreSharedKeyId {
         psk: Psk::External(ExternalPsk::new(vec![1, 2, 3])),
@@ -79,8 +78,8 @@ fn test_pre_shared_key_proposal_codec(provider: &impl OpenMlsProvider) {
 }
 /// Test the encoding for ReInitProposal, that also covers some of the
 /// other PSK-related structs
-#[apply(ciphersuites_and_providers)]
-fn test_reinit_proposal_codec(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn test_reinit_proposal_codec() {
     let orig = ReInitProposal {
         group_id: GroupId::random(provider.rand()),
         version: ProtocolVersion::default(),

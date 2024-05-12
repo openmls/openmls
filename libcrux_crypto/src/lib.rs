@@ -12,15 +12,17 @@ pub use rand::RandProvider;
 pub struct Provider {
     crypto: crypto::CryptoProvider,
     rand: rand::RandProvider,
-    key_store: openmls_rust_crypto::MemoryKeyStore,
+    key_store: openmls_rust_crypto::MemoryStorage,
 }
 
 impl OpenMlsProvider for Provider {
     type CryptoProvider = CryptoProvider;
-
     type RandProvider = RandProvider;
+    type StorageProvider = openmls_rust_crypto::MemoryStorage;
 
-    type KeyStoreProvider = openmls_rust_crypto::MemoryKeyStore;
+    fn storage(&self) -> &Self::StorageProvider {
+        &self.key_store
+    }
 
     fn crypto(&self) -> &Self::CryptoProvider {
         &self.crypto
@@ -28,9 +30,5 @@ impl OpenMlsProvider for Provider {
 
     fn rand(&self) -> &Self::RandProvider {
         &self.rand
-    }
-
-    fn key_store(&self) -> &Self::KeyStoreProvider {
-        &self.key_store
     }
 }

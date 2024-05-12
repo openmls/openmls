@@ -4,10 +4,11 @@ extern crate openmls;
 extern crate rand;
 
 use criterion::Criterion;
-use openmls::prelude::{config::CryptoConfig, *};
+use openmls::prelude::*;
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsProvider};
+
+pub type OpenMlsRustCrypto = openmls_rust_crypto::OpenMlsRustCrypto;
 
 fn criterion_kp_bundle(c: &mut Criterion, provider: &impl OpenMlsProvider) {
     for &ciphersuite in provider.crypto().supported_ciphersuites().iter() {
@@ -16,7 +17,7 @@ fn criterion_kp_bundle(c: &mut Criterion, provider: &impl OpenMlsProvider) {
             move |b| {
                 b.iter_with_setup(
                     || {
-                        let credential = BasicCredential::new(vec![1, 2, 3]).unwrap();
+                        let credential = BasicCredential::new(vec![1, 2, 3]);
                         let signer =
                             SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
                         let credential_with_key = CredentialWithKey {
@@ -28,15 +29,7 @@ fn criterion_kp_bundle(c: &mut Criterion, provider: &impl OpenMlsProvider) {
                     },
                     |(credential_with_key, signer)| {
                         let _key_package = KeyPackage::builder()
-                            .build(
-                                CryptoConfig {
-                                    ciphersuite,
-                                    version: ProtocolVersion::default(),
-                                },
-                                provider,
-                                &signer,
-                                credential_with_key,
-                            )
+                            .build(ciphersuite, provider, &signer, credential_with_key)
                             .expect("An unexpected error occurred.");
                     },
                 );

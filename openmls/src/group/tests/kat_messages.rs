@@ -4,7 +4,6 @@
 //! See <https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md>
 //! for more description on the test vectors.
 
-use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{random::OpenMlsRand, types::SignatureScheme, OpenMlsProvider};
 use rand::{rngs::OsRng, RngCore};
 use serde::{self, Deserialize, Serialize};
@@ -16,7 +15,6 @@ use crate::{
     ciphersuite::Mac,
     framing::*,
     group::{
-        config::CryptoConfig,
         tests::utils::{generate_credential_with_key, generate_key_package, randombytes},
         *,
     },
@@ -139,7 +137,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     // Let's create a group
     let mut alice_group = CoreGroup::builder(
         GroupId::random(provider.rand()),
-        CryptoConfig::with_default_version(ciphersuite),
+        ciphersuite,
         alice_credential_with_key_and_signer
             .credential_with_key
             .clone(),
@@ -172,10 +170,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         );
 
         LeafNode::generate_update(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::Mls10,
-            },
+            ciphersuite,
             alice_credential_with_key_and_signer
                 .credential_with_key
                 .clone(),
@@ -199,7 +194,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         &provider,
     );
 
-    let bob_key_package_bundle = KeyPackageBundle::new(
+    let bob_key_package_bundle = KeyPackageBundle::generate(
         &provider,
         &bob_credential_with_key_and_signer.signer,
         ciphersuite,
@@ -361,12 +356,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
             .tls_serialize_detached()
             .unwrap(),
 
-        group_secrets: GroupSecrets::random_encoded(
-            ciphersuite,
-            provider.rand(),
-            ProtocolVersion::default(),
-        )
-        .unwrap(),
+        group_secrets: GroupSecrets::random_encoded(ciphersuite, provider.rand()).unwrap(),
         ratchet_tree: alice_ratchet_tree.tls_serialize_detached().unwrap(),
 
         add_proposal: add_proposal.tls_serialize_detached().unwrap(),

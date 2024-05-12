@@ -12,7 +12,6 @@ use crate::extensions::*;
 #[cfg(test)]
 use crate::utils::*;
 
-use openmls_traits::OpenMlsProvider;
 use serde::{Deserialize, Serialize};
 use tls_codec::*;
 
@@ -20,12 +19,10 @@ use tls_codec::*;
 pub(crate) mod core_group;
 pub(crate) mod public_group;
 pub(crate) use core_group::*;
+pub(crate) mod errors;
 pub(crate) mod mls_group;
 
 // Public
-pub mod config;
-pub(crate) mod errors;
-
 pub use core_group::proposals::*;
 pub use core_group::staged_commit::StagedCommit;
 pub use errors::*;

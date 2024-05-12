@@ -9,16 +9,14 @@ use crate::{
         CreateCommitParams,
     },
     messages::proposals::{ProposalOrRef, ProposalType},
-    test_utils::*,
+    storage::OpenMlsProvider,
 };
-
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::prelude::*;
 
 use super::{proposals::ProposalStore, CoreGroup};
 
-#[apply(ciphersuites_and_providers)]
-fn test_external_init(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn test_external_init() {
     let (
         framing_parameters,
         mut group_alice,
@@ -180,11 +178,8 @@ fn test_external_init(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider)
     );
 }
 
-#[apply(ciphersuites_and_providers)]
-fn test_external_init_single_member_group(
-    ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
-) {
+#[openmls_test::openmls_test]
+fn test_external_init_single_member_group() {
     let (mut group_alice, _alice_credential_with_key, alice_signer, _alice_pk) =
         setup_alice_group(ciphersuite, provider);
 
@@ -242,8 +237,8 @@ fn test_external_init_single_member_group(
     );
 }
 
-#[apply(ciphersuites_and_providers)]
-fn test_external_init_broken_signature(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn test_external_init_broken_signature() {
     let (
         framing_parameters,
         group_alice,
@@ -271,15 +266,19 @@ fn test_external_init_broken_signature(ciphersuite: Ciphersuite, provider: &impl
         .framing_parameters(framing_parameters)
         .proposal_store(&proposal_store)
         .build();
-    assert_eq!(
-        ExternalCommitError::PublicGroupError(CreationFromExternalError::InvalidGroupInfoSignature),
-        CoreGroup::join_by_external_commit(
-            provider,
-            &charlie_signer,
-            params,
-            None,
-            verifiable_group_info
+
+    let result = CoreGroup::join_by_external_commit(
+        provider,
+        &charlie_signer,
+        params,
+        None,
+        verifiable_group_info,
+    )
+    .expect_err("Signature was corrupted. This should have failed.");
+    assert!(matches!(
+        result,
+        ExternalCommitError::<<Provider as OpenMlsProvider>::StorageError>::PublicGroupError(
+            CreationFromExternalError::InvalidGroupInfoSignature
         )
-        .expect_err("Signature was corrupted. This should have failed.")
-    );
+    ));
 }

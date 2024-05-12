@@ -23,15 +23,13 @@ impl Mac {
     /// Compute the HMAC on `salt` with key `ikm`.
     pub(crate) fn new(
         crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
         salt: &Secret,
         ikm: &[u8],
     ) -> Result<Self, CryptoError> {
         Ok(Mac {
             mac_value: salt
-                .hkdf_extract(
-                    crypto,
-                    &Secret::from_slice(ikm, salt.mls_version, salt.ciphersuite),
-                )?
+                .hkdf_extract(crypto, ciphersuite, &Secret::from_slice(ikm))?
                 .value
                 .as_slice()
                 .into(),

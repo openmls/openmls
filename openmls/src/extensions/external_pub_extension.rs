@@ -39,12 +39,12 @@ impl ExternalPubExtension {
 
 #[cfg(test)]
 mod test {
-    use openmls_rust_crypto::OpenMlsRustCrypto;
+    use crate::test_utils::OpenMlsRustCrypto;
     use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsProvider};
     use tls_codec::{Deserialize, Serialize};
 
     use super::*;
-    use crate::{prelude_test::Secret, versions::ProtocolVersion};
+    use crate::prelude_test::Secret;
 
     #[test]
     fn test_serialize_deserialize() {
@@ -59,7 +59,6 @@ mod test {
                         let ikm = Secret::random(
                             Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
                             provider.rand(),
-                            ProtocolVersion::default(),
                         )
                         .unwrap();
                         let init_key = provider.crypto().derive_hpke_keypair(

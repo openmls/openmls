@@ -6,7 +6,6 @@
 //! If values are not present, they are encoded as empty strings.
 
 use log::info;
-use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{random::OpenMlsRand, types::HpkeKeyPair, OpenMlsProvider};
 use serde::{self, Deserialize, Serialize};
 use tls_codec::Serialize as TlsSerializeTrait;
@@ -91,9 +90,9 @@ fn generate(
     // PSK secret can sometimes be the all zero vector
     let a: [u8; 1] = crypto.rand().random_array().unwrap();
     let psk_secret = if a[0] > 127 {
-        PskSecret::from(Secret::random(ciphersuite, crypto.rand(), ProtocolVersion::Mls10).unwrap())
+        PskSecret::from(Secret::random(ciphersuite, crypto.rand()).unwrap())
     } else {
-        PskSecret::from(Secret::zero(ciphersuite, ProtocolVersion::Mls10))
+        PskSecret::from(Secret::zero(ciphersuite))
     };
 
     let group_context = GroupContext::new(
@@ -107,6 +106,7 @@ fn generate(
 
     let joiner_secret = JoinerSecret::new(
         crypto.crypto(),
+        ciphersuite,
         commit_secret.clone(),
         init_secret,
         &group_context.tls_serialize_detached().unwrap(),
@@ -120,7 +120,7 @@ fn generate(
     )
     .expect("Could not create KeySchedule.");
     let welcome_secret = key_schedule
-        .welcome(crypto.crypto())
+        .welcome(crypto.crypto(), ciphersuite)
         .expect("An unexpected error occurred.");
 
     let serialized_group_context = group_context
@@ -131,7 +131,7 @@ fn generate(
         .add_context(crypto.crypto(), &serialized_group_context)
         .expect("An unexpected error occurred.");
     let epoch_secrets = key_schedule
-        .epoch_secrets(crypto.crypto())
+        .epoch_secrets(crypto.crypto(), ciphersuite)
         .expect("An unexpected error occurred.");
 
     // Calculate external HPKE key pair
@@ -163,8 +163,7 @@ pub fn generate_test_vector(
 
     // Set up setting.
     let mut init_secret =
-        InitSecret::random(ciphersuite, provider.rand(), ProtocolVersion::default())
-            .expect("Not enough randomness.");
+        InitSecret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
     let initial_init_secret = init_secret.clone();
     let group_id = provider
         .rand()
@@ -255,8 +254,8 @@ fn write_test_vectors() {
     write("test_vectors/key-schedule-new.json", &tests);
 }
 
-#[apply(providers)]
-fn read_test_vectors_key_schedule(provider: &impl OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn read_test_vectors_key_schedule() {
     let _ = pretty_env_logger::try_init();
 
     let tests: Vec<KeyScheduleTestVector> = read_json!("../../test_vectors/key-schedule.json");
@@ -292,20 +291,12 @@ pub fn run_test_vector(
         "  InitSecret from tve: {:?}",
         test_vector.initial_init_secret
     );
-    let mut init_secret = InitSecret::from(Secret::from_slice(
-        &init_secret,
-        ProtocolVersion::default(),
-        ciphersuite,
-    ));
+    let mut init_secret = InitSecret::from(Secret::from_slice(&init_secret));
 
     for (epoch_ctr, epoch) in test_vector.epochs.iter().enumerate() {
         let tree_hash = hex_to_bytes(&epoch.tree_hash);
         let secret = hex_to_bytes(&epoch.commit_secret);
-        let commit_secret = CommitSecret::from(PathSecret::from(Secret::from_slice(
-            &secret,
-            ProtocolVersion::default(),
-            ciphersuite,
-        )));
+        let commit_secret = CommitSecret::from(PathSecret::from(Secret::from_slice(&secret)));
         log::trace!("    CommitSecret from tve {:?}", epoch.commit_secret);
 
         let confirmed_transcript_hash = hex_to_bytes(&epoch.confirmed_transcript_hash);
@@ -321,6 +312,7 @@ pub fn run_test_vector(
 
         let joiner_secret = JoinerSecret::new(
             provider.crypto(),
+            ciphersuite,
             commit_secret,
             &init_secret,
             &group_context.tls_serialize_detached().unwrap(),
@@ -333,18 +325,14 @@ pub fn run_test_vector(
             return Err(KsTestVectorError::JoinerSecretMismatch);
         }
 
-        let psk_secret_inner = Secret::from_slice(
-            &hex_to_bytes(&epoch.psk_secret),
-            ProtocolVersion::Mls10,
-            ciphersuite,
-        );
+        let psk_secret_inner = Secret::from_slice(&hex_to_bytes(&epoch.psk_secret));
         let psk_secret = PskSecret::from(psk_secret_inner);
 
         let mut key_schedule =
             KeySchedule::init(ciphersuite, provider.crypto(), &joiner_secret, psk_secret)
                 .expect("Could not create KeySchedule.");
         let welcome_secret = key_schedule
-            .welcome(provider.crypto())
+            .welcome(provider.crypto(), ciphersuite)
             .expect("An unexpected error occurred.");
 
         if hex_to_bytes(&epoch.welcome_secret) != welcome_secret.as_slice() {
@@ -373,7 +361,7 @@ pub fn run_test_vector(
             .expect("An unexpected error occurred.");
 
         let epoch_secrets = key_schedule
-            .epoch_secrets(provider.crypto())
+            .epoch_secrets(provider.crypto(), ciphersuite)
             .expect("An unexpected error occurred.");
 
         init_secret = epoch_secrets.init_secret().clone();

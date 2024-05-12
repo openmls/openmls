@@ -13,9 +13,10 @@ use crate::{
     key_packages::{KeyPackage, KeyPackageBundle},
     messages::proposals::*,
     schedule::ResumptionPskSecret,
+    storage::{OpenMlsProvider, StorageProvider},
     treesync::{node::leaf_node::LeafNode, RatchetTree},
 };
-use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::types::Ciphersuite;
 
 // Private
 mod application;
@@ -25,7 +26,6 @@ mod exporting;
 mod updates;
 
 use config::*;
-use errors::*;
 
 // Crate
 pub(crate) mod config;
@@ -167,10 +167,6 @@ pub struct MlsGroup {
     // A variable that indicates the state of the group. See [`MlsGroupState`]
     // for more information.
     group_state: MlsGroupState,
-    // A flag that indicates if the group state has changed and needs to be persisted again. The value
-    // is set to `InnerState::Changed` whenever an the internal group state is change and is set to
-    // `InnerState::Persisted` once the state has been persisted.
-    state_changed: InnerState,
 }
 
 impl MlsGroup {
@@ -182,11 +178,13 @@ impl MlsGroup {
     }
 
     /// Sets the configuration.
-    pub fn set_configuration(&mut self, mls_group_config: &MlsGroupJoinConfig) {
+    pub fn set_configuration<Storage: StorageProvider>(
+        &mut self,
+        storage: &Storage,
+        mls_group_config: &MlsGroupJoinConfig,
+    ) -> Result<(), Storage::Error> {
         self.mls_group_config = mls_group_config.clone();
-
-        // Since the state of the group might be changed, arm the state flag
-        self.flag_state_change();
+        storage.write_mls_join_config(self.group_id(), mls_group_config)
     }
 
     /// Returns the AAD used in the framing.
@@ -195,11 +193,13 @@ impl MlsGroup {
     }
 
     /// Sets the AAD used in the framing.
-    pub fn set_aad(&mut self, aad: &[u8]) {
+    pub fn set_aad<Storage: StorageProvider>(
+        &mut self,
+        storage: &Storage,
+        aad: &[u8],
+    ) -> Result<(), Storage::Error> {
         self.aad = aad.to_vec();
-
-        // Since the state of the group might be changed, arm the state flag
-        self.flag_state_change();
+        storage.write_aad(self.group_id(), aad)
     }
 
     // === Advanced functions ===
@@ -217,7 +217,9 @@ impl MlsGroup {
 
     /// Returns own credential. If the group is inactive, it returns a
     /// `UseAfterEviction` error.
-    pub fn credential(&self) -> Result<&Credential, MlsGroupStateError> {
+    pub fn credential<Provider: OpenMlsProvider>(
+        &self,
+    ) -> Result<&Credential, MlsGroupStateError<Provider::StorageError>> {
         if !self.is_active() {
             return Err(MlsGroupStateError::UseAfterEviction);
         }
@@ -277,14 +279,20 @@ impl MlsGroup {
     /// the pending commit will not be used in the group. In particular, if a
     /// pending commit is later accepted by the group, this client will lack the
     /// key material to encrypt or decrypt group messages.
-    pub fn clear_pending_commit(&mut self) {
+    pub fn clear_pending_commit<Storage: StorageProvider>(
+        &mut self,
+        storage: &Storage,
+    ) -> Result<(), Storage::Error> {
         match self.group_state {
             MlsGroupState::PendingCommit(ref pending_commit_state) => {
                 if let PendingCommitState::Member(_) = **pending_commit_state {
-                    self.group_state = MlsGroupState::Operational
+                    self.group_state = MlsGroupState::Operational;
+                    storage.write_group_state(self.group_id(), &self.group_state)
+                } else {
+                    Ok(())
                 }
             }
-            MlsGroupState::Operational | MlsGroupState::Inactive => (),
+            MlsGroupState::Operational | MlsGroupState::Inactive => Ok(()),
         }
     }
 
@@ -294,14 +302,20 @@ impl MlsGroup {
     /// a Commit message that references those proposals. Only use this
     /// function as a last resort, e.g. when a call to
     /// `MlsGroup::commit_to_pending_proposals` fails.
-    pub fn clear_pending_proposals(&mut self) {
+    pub fn clear_pending_proposals<Storage: StorageProvider>(
+        &mut self,
+        storage: &Storage,
+    ) -> Result<(), Storage::Error> {
         // If the proposal store is not empty...
         if !self.proposal_store.is_empty() {
             // Empty the proposal store
             self.proposal_store.empty();
-            // Since the state of the group is changed, arm the state flag
-            self.flag_state_change();
+
+            // Clear proposals in storage
+            storage.clear_proposal_queue::<GroupId, ProposalRef>(self.group_id())?;
         }
+
+        Ok(())
     }
 
     /// Get a reference to the group context [`Extensions`] of this [`MlsGroup`].
@@ -309,28 +323,60 @@ impl MlsGroup {
         self.group.public_group().group_context().extensions()
     }
 
-    // === Load & save ===
-
-    /// Loads the state from persisted state.
-    pub fn load(group_id: &GroupId, store: &impl OpenMlsKeyStore) -> Option<MlsGroup> {
-        store.read(group_id.as_slice())
+    /// Returns the index of the sender of a staged, external commit.
+    pub fn ext_commit_sender_index(
+        &self,
+        commit: &StagedCommit,
+    ) -> Result<LeafNodeIndex, LibraryError> {
+        self.group.public_group().ext_commit_sender_index(commit)
     }
 
-    /// Persists the state.
-    pub fn save<KeyStore: OpenMlsKeyStore>(
+    // === Storage Methods ===
+
+    /// Loads the state of the group with given id from persisted state.
+    pub fn load<Storage: crate::storage::StorageProvider>(
+        storage: &Storage,
+        group_id: &GroupId,
+    ) -> Result<Option<MlsGroup>, Storage::Error> {
+        let group_config = storage.mls_group_join_config(group_id)?;
+        let core_group = CoreGroup::load(storage, group_id)?;
+        let proposals: Vec<(ProposalRef, QueuedProposal)> = storage.queued_proposals(group_id)?;
+        let own_leaf_nodes = storage.own_leaf_nodes(group_id)?;
+        let aad = storage.aad(group_id)?;
+        let group_state = storage.group_state(group_id)?;
+        let mut proposal_store = ProposalStore::new();
+
+        for (_ref, proposal) in proposals {
+            proposal_store.add(proposal);
+        }
+
+        let build = || -> Option<Self> {
+            Some(Self {
+                mls_group_config: group_config?,
+                group: core_group?,
+                proposal_store,
+                own_leaf_nodes,
+                aad,
+                group_state: group_state?,
+            })
+        };
+
+        Ok(build())
+    }
+
+    /// Remove the persisted state from storage
+    pub fn delete<StorageProvider: crate::storage::StorageProvider>(
         &mut self,
-        store: &KeyStore,
-    ) -> Result<(), KeyStore::Error> {
-        store.store(self.group_id().as_slice(), &*self)?;
+        storage: &StorageProvider,
+    ) -> Result<(), StorageProvider::Error> {
+        self.group.delete(storage)?;
+        storage.delete_group_config(self.group_id())?;
+        storage.clear_proposal_queue::<GroupId, ProposalRef>(self.group_id())?;
+        storage.delete_own_leaf_nodes(self.group_id())?;
+        storage.delete_aad(self.group_id())?;
+        storage.delete_group_state(self.group_id())?;
 
-        self.state_changed = InnerState::Persisted;
         Ok(())
-    }
-
-    /// Returns `true` if the internal state has changed and needs to be persisted and
-    /// `false` otherwise. Calling [`Self::save()`] resets the value to `false`.
-    pub fn state_changed(&self) -> InnerState {
-        self.state_changed
     }
 
     // === Extensions ===
@@ -358,6 +404,7 @@ impl MlsGroup {
                 if plaintext.sender().is_member() {
                     plaintext.set_membership_tag(
                         provider.crypto(),
+                        self.ciphersuite(),
                         self.group.message_secrets().membership_key(),
                         self.group.message_secrets().serialized_context(),
                     )?;
@@ -380,11 +427,6 @@ impl MlsGroup {
         Ok(msg)
     }
 
-    /// Arm the state changed flag function
-    fn flag_state_change(&mut self) {
-        self.state_changed = InnerState::Changed;
-    }
-
     /// Group framing parameters
     pub(crate) fn framing_parameters(&self) -> FramingParameters {
         FramingParameters::new(
@@ -395,7 +437,7 @@ impl MlsGroup {
 
     /// Check if the group is operational. Throws an error if the group is
     /// inactive or if there is a pending commit.
-    fn is_operational(&self) -> Result<(), MlsGroupStateError> {
+    fn is_operational<StorageError>(&self) -> Result<(), MlsGroupStateError<StorageError>> {
         match self.group_state {
             MlsGroupState::PendingCommit(_) => Err(MlsGroupStateError::PendingCommit),
             MlsGroupState::Inactive => Err(MlsGroupStateError::UseAfterEviction),
@@ -428,25 +470,18 @@ impl MlsGroup {
     }
 
     /// Removes a specific proposal from the store.
-    pub fn remove_pending_proposal(
+    pub fn remove_pending_proposal<Storage: StorageProvider>(
         &mut self,
+        storage: &Storage,
         proposal_ref: ProposalRef,
-    ) -> Result<(), MlsGroupStateError> {
+    ) -> Result<(), MlsGroupStateError<Storage::Error>> {
+        storage
+            .remove_proposal(self.group_id(), &proposal_ref)
+            .map_err(MlsGroupStateError::StorageError)?;
         self.proposal_store
             .remove(proposal_ref)
             .ok_or(MlsGroupStateError::PendingProposalNotFound)
     }
-}
-
-/// `Enum` that indicates whether the inner group state has been modified since the last time it was persisted.
-/// `InnerState::Changed` indicates that the state has changed and that [`.save()`] should be called.
-/// `InnerState::Persisted` indicates that the state has not been modified and therefore doesn't need to be persisted.
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum InnerState {
-    /// The inner group state has changed and needs to be persisted.
-    Changed,
-    /// The inner group state hasn't changed and doesn't need to be persisted.
-    Persisted,
 }
 
 /// A [`StagedWelcome`] can be inspected and then turned into a [`MlsGroup`].

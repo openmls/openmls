@@ -5,6 +5,7 @@ use crate::{
         errors::ExternalCommitError,
     },
     messages::proposals::{ExternalInitProposal, Proposal},
+    storage::OpenMlsProvider,
 };
 
 use super::CoreGroup;
@@ -24,13 +25,13 @@ impl CoreGroup {
     ///
     /// Note: If there is a group member in the group with the same identity as us,
     /// this will create a remove proposal.
-    pub(crate) fn join_by_external_commit(
-        provider: &impl OpenMlsProvider,
+    pub(crate) fn join_by_external_commit<Provider: OpenMlsProvider>(
+        provider: &Provider,
         signer: &impl Signer,
         mut params: CreateCommitParams,
         ratchet_tree: Option<RatchetTreeIn>,
         verifiable_group_info: VerifiableGroupInfo,
-    ) -> Result<ExternalCommitResult, ExternalCommitError> {
+    ) -> Result<ExternalCommitResult, ExternalCommitError<Provider::StorageError>> {
         // Build the ratchet tree
 
         // Set nodes either from the extension or from the `nodes_option`.
@@ -47,7 +48,7 @@ impl CoreGroup {
             };
 
         let (public_group, group_info) = PublicGroup::from_external(
-            provider.crypto(),
+            provider,
             ratchet_tree,
             verifiable_group_info,
             // Existing proposals are discarded when joining by external commit.
@@ -72,8 +73,12 @@ impl CoreGroup {
         // The `EpochSecrets` we create here are essentially zero, with the
         // exception of the `InitSecret`, which is all we need here for the
         // external commit.
-        let epoch_secrets = EpochSecrets::with_init_secret(provider.crypto(), init_secret)
-            .map_err(LibraryError::unexpected_crypto_error)?;
+        let epoch_secrets = EpochSecrets::with_init_secret(
+            provider.crypto(),
+            group_info.group_context().ciphersuite(),
+            init_secret,
+        )
+        .map_err(LibraryError::unexpected_crypto_error)?;
         let (group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
             group_context
                 .tls_serialize_detached()
@@ -128,6 +133,10 @@ impl CoreGroup {
             create_commit_result.is_ok(),
             "Error creating commit {create_commit_result:?}"
         );
+
+        group
+            .store(provider.storage())
+            .map_err(ExternalCommitError::StorageError)?;
 
         Ok((
             group,

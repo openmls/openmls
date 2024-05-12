@@ -18,12 +18,6 @@
 // Finally, this module contains the [`treekem`] module, which allows the
 // encryption and decryption of updates to the tree.
 
-#[cfg(test)]
-use openmls_rust_crypto::OpenMlsRustCrypto;
-#[cfg(test)]
-use rstest::*;
-#[cfg(test)]
-use rstest_reuse::apply;
 #[cfg(any(feature = "test-utils", test))]
 use std::fmt;
 
@@ -64,7 +58,7 @@ use crate::{
     credentials::CredentialWithKey,
     error::LibraryError,
     extensions::Extensions,
-    group::{config::CryptoConfig, GroupId, Member},
+    group::{GroupId, Member},
     key_packages::Lifetime,
     messages::{PathSecret, PathSecretError},
     schedule::CommitSecret,
@@ -347,14 +341,14 @@ impl fmt::Display for RatchetTree {
     }
 }
 
-/// The [`TreeSync`] struct holds an [`MlsBinaryTree`] instance, which contains
+/// The [`TreeSync`] struct holds an `MlsBinaryTree` instance, which contains
 /// the state that is synced across the group, as well as the [`LeafNodeIndex`]
 /// pointing to the leaf of this group member and the current hash of the tree.
 ///
 /// It follows the same pattern of tree and diff as the underlying
-/// [`MlsBinaryTree`], where the [`TreeSync`] instance is immutable safe for
-/// merging a [`TreeSyncDiff`], which can be created, staged and merged (see
-/// [`TreeSyncDiff`]).
+/// `MlsBinaryTree`, where the [`TreeSync`] instance is immutable safe for
+/// merging a `TreeSyncDiff`, which can be created, staged and merged (see
+/// `TreeSyncDiff`).
 ///
 /// [`TreeSync`] instance guarantee a few invariants that are checked upon
 /// creating a new instance from an imported set of nodes, as well as when
@@ -374,14 +368,14 @@ impl TreeSync {
     pub(crate) fn new(
         provider: &impl OpenMlsProvider,
         signer: &impl Signer,
-        config: CryptoConfig,
+        ciphersuite: Ciphersuite,
         credential_with_key: CredentialWithKey,
         life_time: Lifetime,
         capabilities: Capabilities,
         extensions: Extensions,
     ) -> Result<(Self, CommitSecret, EncryptionKeyPair), LibraryError> {
         let new_leaf_node_params = NewLeafNodeParams {
-            config,
+            ciphersuite,
             credential_with_key,
             // Creation of a group is considered to be from a key package.
             leaf_node_source: LeafNodeSource::KeyPackage(life_time),
@@ -392,11 +386,11 @@ impl TreeSync {
         let (leaf, encryption_key_pair) = LeafNode::new(provider, signer, new_leaf_node_params)?;
 
         let node = Node::LeafNode(leaf);
-        let path_secret: PathSecret = Secret::random(config.ciphersuite, provider.rand(), None)
+        let path_secret: PathSecret = Secret::random(ciphersuite, provider.rand())
             .map_err(LibraryError::unexpected_crypto_error)?
             .into();
         let commit_secret: CommitSecret = path_secret
-            .derive_path_secret(provider.crypto(), config.ciphersuite)?
+            .derive_path_secret(provider.crypto(), ciphersuite)?
             .into();
         let nodes = vec![TreeSyncNode::from(node).into()];
         let tree = MlsBinaryTree::new(nodes)
@@ -406,7 +400,7 @@ impl TreeSync {
             tree_hash: vec![],
         };
         // Populate tree hash caches.
-        tree_sync.populate_parent_hashes(provider.crypto(), config.ciphersuite)?;
+        tree_sync.populate_parent_hashes(provider.crypto(), ciphersuite)?;
 
         Ok((tree_sync, commit_secret, encryption_key_pair))
     }
@@ -728,7 +722,7 @@ mod test {
         RatchetTree::trimmed(vec![None]);
     }
 
-    #[apply(ciphersuites_and_providers)]
+    #[openmls_test::openmls_test]
     fn test_ratchet_tree_trailing_blank_nodes(
         ciphersuite: Ciphersuite,
         provider: &impl OpenMlsProvider,

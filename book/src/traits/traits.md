@@ -52,21 +52,80 @@ This trait defines all cryptographic functions required by OpenMLS. In particula
 {{#include ../../../traits/src/crypto.rs:10}}
 ```
 
-### OpenMlsKeyStore
+### StorageProvider
 
-This trait defines a CRUD API for a key store that is used to store long-term
-key material from OpenMLS.
+This trait defines an API for a storage backend that is used for all OpenMLS
+persistence.
 
-The key store provides functions to `store`, `read`, and `delete` values.
+The store provides functions to `store`, `read`, and `delete` values.
 Note that it does not allow updating values.
 Instead, entries must be deleted and newly stored.
 
 ```rust,no_run,noplayground
-{{#include ../../../traits/src/key_store.rs:15:40}}
+{{#include ../../../traits/src/storage.rs:16:25}}
 ```
 
-**NOTE:** Right now, key material must be extracted from the key store.
-This will most likely change in the future.
+The trait is generic over a `VERSION`, which is used to ensure that the values
+that are persisted can be upgraded when OpenMLS changes the stored structs.
+
+Every function takes `Key` and `Value` arguments.
+
+```rust,no_run,noplayground
+{{#include ../../../traits/src/storage.rs:key_trait}}
+```
+
+```rust,no_run,noplayground
+{{#include ../../../traits/src/storage.rs:entity_trait}}
+```
+
+To ensure that each function takes the correct input, they use trait bounds.
+These are the available traits.
+
+```rust,no_run,noplayground
+{{#include ../../../traits/src/storage.rs:traits}}
+```
+
+An implementation of the storage trait should ensure that it can address and
+efficiently handle values.
+
+#### Example: Key packages
+
+This is only an example, but it illustrates that the application may need to do more
+when it comes to implementing storage.
+
+Key packages are only deleted by OpenMLS when they are used and _not_ last resort
+key packages (which may be used multiple times).
+The application needs to implement some logic to manage last resort key packages.
+
+```rust,no_run,noplayground
+{{#include ../../../traits/src/storage.rs:write_key_package}}
+```
+
+The application may store the hash references in a separate list with a validity
+period.
+
+```rust,ro_run,noplayground
+fn write_key_package<
+    HashReference: traits::HashReference<VERSION>,
+    KeyPackage: traits::KeyPackage<VERSION>,
+>(
+    &self,
+    hash_ref: &HashReference,
+    key_package: &KeyPackage,
+) -> Result<(), Self::Error> {
+    // Get the validity from the application in some way.
+    let validity = self.get_validity(hash_ref);
+
+    // Store the reference and its validity period.
+    self.store_hash_ref(hash_ref, validity);
+
+    // Store the actual key package.
+    self.store_key_package(hash_ref, key_package);
+}
+```
+
+This allows the application to iterate over the hash references and delete outdated
+key packages.
 
 ### OpenMlsCryptoProvider
 

@@ -80,9 +80,7 @@ fn run_test_vector(test: TestElement, provider: &impl OpenMlsProvider) -> Result
 
             let psk_id = PreSharedKeyId::new_with_nonce(psk_type, psk.psk_nonce.clone());
 
-            psk_id
-                .write_to_key_store(provider, ciphersuite, &psk.psk)
-                .unwrap();
+            psk_id.store(provider, &psk.psk).unwrap();
             psk_id
         })
         .collect::<Vec<_>>();
@@ -91,7 +89,7 @@ fn run_test_vector(test: TestElement, provider: &impl OpenMlsProvider) -> Result
     let psk_secret = {
         let resumption_psk_store = ResumptionPskStore::new(1024);
 
-        let psks = load_psks(provider.key_store(), &resumption_psk_store, &psk_ids).unwrap();
+        let psks = load_psks(provider.storage(), &resumption_psk_store, &psk_ids).unwrap();
 
         PskSecret::new(provider.crypto(), ciphersuite, psks).unwrap()
     };
@@ -103,8 +101,8 @@ fn run_test_vector(test: TestElement, provider: &impl OpenMlsProvider) -> Result
     }
 }
 
-#[apply(providers)]
-fn read_test_vectors_ps(provider: &impl OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn read_test_vectors_ps() {
     let _ = pretty_env_logger::try_init();
     log::debug!("Reading test vectors ...");
 

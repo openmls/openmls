@@ -138,6 +138,7 @@ impl PublicMessage {
     pub(crate) fn set_membership_tag(
         &mut self,
         crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
         membership_key: &MembershipKey,
         serialized_context: &[u8],
     ) -> Result<(), LibraryError> {
@@ -150,7 +151,7 @@ impl PublicMessage {
         )
         .map_err(LibraryError::missing_bound_check)?;
         let tbm_payload = AuthenticatedContentTbm::new(&tbs_payload, &self.auth)?;
-        let membership_tag = membership_key.tag_message(crypto, tbm_payload)?;
+        let membership_tag = membership_key.tag_message(crypto, ciphersuite, tbm_payload)?;
 
         self.membership_tag = Some(membership_tag);
         Ok(())

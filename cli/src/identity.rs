@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use openmls::prelude::{config::CryptoConfig, *};
+use openmls::prelude::*;
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::OpenMlsProvider;
 
@@ -21,22 +21,19 @@ impl Identity {
     pub(crate) fn new(
         ciphersuite: Ciphersuite,
         crypto: &OpenMlsRustPersistentCrypto,
-        id: &[u8],
+        username: &[u8],
     ) -> Self {
-        let credential = BasicCredential::new(id.to_vec()).unwrap();
+        let credential = BasicCredential::new(username.to_vec());
         let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
         let credential_with_key = CredentialWithKey {
             credential: credential.into(),
             signature_key: signature_keys.to_public_vec().into(),
         };
-        signature_keys.store(crypto.key_store()).unwrap();
+        signature_keys.store(crypto.storage()).unwrap();
 
         let key_package = KeyPackage::builder()
             .build(
-                CryptoConfig {
-                    ciphersuite,
-                    version: ProtocolVersion::default(),
-                },
+                ciphersuite,
                 crypto,
                 &signature_keys,
                 credential_with_key.clone(),
@@ -46,11 +43,12 @@ impl Identity {
         Self {
             kp: HashMap::from([(
                 key_package
+                    .key_package()
                     .hash_ref(crypto.crypto())
                     .unwrap()
                     .as_slice()
                     .to_vec(),
-                key_package,
+                key_package.key_package().clone(),
             )]),
             credential_with_key,
             signer: signature_keys,
@@ -65,10 +63,7 @@ impl Identity {
     ) -> KeyPackage {
         let key_package = KeyPackage::builder()
             .build(
-                CryptoConfig {
-                    ciphersuite,
-                    version: ProtocolVersion::default(),
-                },
+                ciphersuite,
                 crypto,
                 &self.signer,
                 self.credential_with_key.clone(),
@@ -77,17 +72,25 @@ impl Identity {
 
         self.kp.insert(
             key_package
+                .key_package()
                 .hash_ref(crypto.crypto())
                 .unwrap()
                 .as_slice()
                 .to_vec(),
-            key_package.clone(),
+            key_package.key_package().clone(),
         );
-        key_package
+        key_package.key_package().clone()
     }
 
     /// Get the plain identity as byte vector.
     pub fn identity(&self) -> &[u8] {
         self.credential_with_key.credential.serialized_content()
+    }
+
+    /// Get the plain identity as byte vector.
+    pub fn identity_as_string(&self) -> String {
+        std::str::from_utf8(self.credential_with_key.credential.serialized_content())
+            .unwrap()
+            .to_string()
     }
 }

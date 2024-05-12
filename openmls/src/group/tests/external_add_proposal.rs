@@ -1,19 +1,17 @@
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use rstest::*;
-use rstest_reuse::{self, *};
+use openmls_test::openmls_test;
 
 use crate::{
     binary_tree::LeafNodeIndex,
     framing::*,
-    group::{config::CryptoConfig, *},
+    group::*,
     messages::{
         external_proposals::*,
         proposals::{AddProposal, Proposal, ProposalType},
     },
 };
 
-use openmls_traits::types::Ciphersuite;
+use openmls_traits::{types::Ciphersuite, OpenMlsProvider as _};
 
 use super::utils::*;
 
@@ -27,7 +25,7 @@ fn new_test_group(
     identity: &str,
     wire_format_policy: WireFormatPolicy,
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) -> (MlsGroup, CredentialWithKeyAndSigner) {
     let group_id = GroupId::from_slice(b"Test Group");
 
@@ -38,7 +36,7 @@ fn new_test_group(
     // Define the MlsGroup configuration
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .wire_format_policy(wire_format_policy)
-        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .ciphersuite(ciphersuite)
         .build();
 
     (
@@ -58,7 +56,7 @@ fn new_test_group(
 fn validation_test_setup(
     wire_format_policy: WireFormatPolicy,
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) -> ProposalValidationTestSetup {
     // === Alice creates a group ===
     let (mut alice_group, alice_signer_with_keys) =
@@ -75,7 +73,11 @@ fn validation_test_setup(
     );
 
     let (_message, welcome, _group_info) = alice_group
-        .add_members(provider, &alice_signer_with_keys.signer, &[bob_key_package])
+        .add_members(
+            provider,
+            &alice_signer_with_keys.signer,
+            &[bob_key_package.key_package().clone()],
+        )
         .expect("error adding Bob to group");
 
     alice_group
@@ -108,8 +110,8 @@ fn validation_test_setup(
     }
 }
 
-#[apply(ciphersuites_and_providers)]
-fn external_add_proposal_should_succeed(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+#[openmls_test]
+fn external_add_proposal_should_succeed<Provider: OpenMlsProvider>() {
     for policy in WIRE_FORMAT_POLICIES {
         let ProposalValidationTestSetup {
             alice_group,
@@ -135,13 +137,14 @@ fn external_add_proposal_should_succeed(ciphersuite: Ciphersuite, provider: &imp
             charlie_credential.clone(),
         );
 
-        let proposal = JoinProposal::new(
-            charlie_kp.clone(),
-            alice_group.group_id().clone(),
-            alice_group.epoch(),
-            &charlie_credential.signer,
-        )
-        .unwrap();
+        let proposal =
+            JoinProposal::new::<<Provider as openmls_traits::OpenMlsProvider>::StorageProvider>(
+                charlie_kp.key_package().clone(),
+                alice_group.group_id().clone(),
+                alice_group.epoch(),
+                &charlie_credential.signer,
+            )
+            .unwrap();
 
         // an external proposal is always plaintext and has sender type 'new_member_proposal'
         let verify_proposal = |msg: &PublicMessage| {
@@ -162,9 +165,11 @@ fn external_add_proposal_should_succeed(ciphersuite: Ciphersuite, provider: &imp
                 assert!(matches!(proposal.sender(), Sender::NewMemberProposal));
                 assert!(matches!(
                     proposal.proposal(),
-                    Proposal::Add(AddProposal { key_package }) if key_package == &charlie_kp
+                    Proposal::Add(AddProposal { key_package }) if key_package == charlie_kp.key_package()
                 ));
-                alice_group.store_pending_proposal(*proposal)
+                alice_group
+                    .store_pending_proposal(provider.storage(), *proposal)
+                    .unwrap()
             }
             _ => unreachable!(),
         }
@@ -174,9 +179,9 @@ fn external_add_proposal_should_succeed(ciphersuite: Ciphersuite, provider: &imp
             .unwrap();
 
         match msg.into_content() {
-            ProcessedMessageContent::ExternalJoinProposalMessage(proposal) => {
-                bob_group.store_pending_proposal(*proposal)
-            }
+            ProcessedMessageContent::ExternalJoinProposalMessage(proposal) => bob_group
+                .store_pending_proposal(provider.storage(), *proposal)
+                .unwrap(),
             _ => unreachable!(),
         }
 
@@ -221,11 +226,10 @@ fn external_add_proposal_should_succeed(ciphersuite: Ciphersuite, provider: &imp
     }
 }
 
-#[apply(ciphersuites_and_providers)]
-fn external_add_proposal_should_be_signed_by_key_package_it_references(
-    ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
-) {
+#[openmls_test]
+fn external_add_proposal_should_be_signed_by_key_package_it_references<
+    Provider: OpenMlsProvider,
+>() {
     let ProposalValidationTestSetup { alice_group, .. } =
         validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, provider);
     let (mut alice_group, _alice_signer) = alice_group;
@@ -250,13 +254,14 @@ fn external_add_proposal_should_be_signed_by_key_package_it_references(
         attacker_credential,
     );
 
-    let invalid_proposal = JoinProposal::new(
-        charlie_kp,
-        alice_group.group_id().clone(),
-        alice_group.epoch(),
-        &charlie_credential.signer,
-    )
-    .unwrap();
+    let invalid_proposal =
+        JoinProposal::new::<<Provider as openmls_traits::OpenMlsProvider>::StorageProvider>(
+            charlie_kp.key_package().clone(),
+            alice_group.group_id().clone(),
+            alice_group.epoch(),
+            &charlie_credential.signer,
+        )
+        .unwrap();
 
     // fails because the message was not signed by the same credential as the one in the Add proposal
     assert!(matches!(
@@ -268,11 +273,8 @@ fn external_add_proposal_should_be_signed_by_key_package_it_references(
 }
 
 // TODO #1093: move this test to a dedicated external proposal ValSem test module once all external proposals implemented
-#[apply(ciphersuites_and_providers)]
-fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
-    ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
-) {
+#[openmls_test]
+fn new_member_proposal_sender_should_be_reserved_for_join_proposals<Provider: OpenMlsProvider>() {
     let ProposalValidationTestSetup {
         alice_group,
         bob_group,
@@ -291,13 +293,14 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
         any_credential.clone(),
     );
 
-    let join_proposal = JoinProposal::new(
-        any_kp,
-        alice_group.group_id().clone(),
-        alice_group.epoch(),
-        &any_credential.signer,
-    )
-    .unwrap();
+    let join_proposal =
+        JoinProposal::new::<<Provider as openmls_traits::OpenMlsProvider>::StorageProvider>(
+            any_kp.key_package().clone(),
+            alice_group.group_id().clone(),
+            alice_group.epoch(),
+            &any_credential.signer,
+        )
+        .unwrap();
 
     if let MlsMessageBodyOut::PublicMessage(plaintext) = &join_proposal.body {
         // Make sure it's an add proposal...
@@ -316,7 +319,9 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
     } else {
         panic!()
     };
-    alice_group.clear_pending_proposals();
+    alice_group
+        .clear_pending_proposals(provider.storage())
+        .unwrap();
 
     // Remove proposal cannot have a 'new_member_proposal' sender
     let remove_proposal = alice_group
@@ -332,7 +337,9 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
     } else {
         panic!()
     };
-    alice_group.clear_pending_proposals();
+    alice_group
+        .clear_pending_proposals(provider.storage())
+        .unwrap();
 
     // Update proposal cannot have a 'new_member_proposal' sender
     let update_proposal = alice_group
@@ -348,5 +355,7 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
     } else {
         panic!()
     };
-    alice_group.clear_pending_proposals();
+    alice_group
+        .clear_pending_proposals(provider.storage())
+        .unwrap();
 }

@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use openmls_traits::{
     crypto::OpenMlsCrypto,
-    key_store::{MlsEntity, MlsEntityId, OpenMlsKeyStore},
+    storage::{StorageProvider as StorageProviderTrait, CURRENT_VERSION},
     types::{Ciphersuite, HpkeCiphertext, HpkeKeyPair},
     OpenMlsProvider,
 };
@@ -12,8 +12,7 @@ use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBy
 use crate::{
     ciphersuite::{hpke, HpkePrivateKey, HpkePublicKey, Secret},
     error::LibraryError,
-    group::config::CryptoConfig,
-    versions::ProtocolVersion,
+    storage::StorageProvider,
 };
 
 /// [`EncryptionKey`] contains an HPKE public key that allows the encryption of
@@ -46,16 +45,6 @@ impl EncryptionKey {
         self.key.as_slice()
     }
 
-    /// Helper function to prefix the given (serialized) [`EncryptionKey`] with
-    /// the `ENCRYPTION_KEY_LABEL`.
-    ///
-    /// Returns the resulting bytes.
-    fn to_bytes_with_prefix(&self) -> Vec<u8> {
-        let mut key_store_index = ENCRYPTION_KEY_LABEL.to_vec();
-        key_store_index.extend_from_slice(self.as_slice());
-        key_store_index
-    }
-
     /// Encrypt to this HPKE public key.
     pub(crate) fn encrypt(
         &self,
@@ -80,7 +69,7 @@ impl EncryptionKey {
     Clone, Serialize, Deserialize, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
 )]
 #[cfg_attr(test, derive(PartialEq, Eq))]
-pub(crate) struct EncryptionPrivateKey {
+pub struct EncryptionPrivateKey {
     key: HpkePrivateKey,
 }
 
@@ -119,7 +108,6 @@ impl EncryptionPrivateKey {
         &self,
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
-        version: ProtocolVersion,
         ciphertext: &HpkeCiphertext,
         group_context: &[u8],
     ) -> Result<Secret, hpke::Error> {
@@ -132,11 +120,11 @@ impl EncryptionPrivateKey {
             ciphersuite,
             crypto,
         )
-        .map(|secret_bytes| Secret::from_slice(&secret_bytes, version, ciphersuite))
+        .map(|secret_bytes| Secret::from_slice(&secret_bytes))
     }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-utils"))]
 impl EncryptionPrivateKey {
     pub(crate) fn key(&self) -> &HpkePrivateKey {
         &self.key
@@ -158,45 +146,49 @@ pub(crate) struct EncryptionKeyPair {
     private_key: EncryptionPrivateKey,
 }
 
-const ENCRYPTION_KEY_LABEL: &[u8; 19] = b"leaf_encryption_key";
-
 impl EncryptionKeyPair {
-    /// Write the [`EncryptionKeyPair`] to the key store of the `provider`. This
-    /// function is meant to store standalone keypairs, not ones that are
-    /// already in use with an MLS group.
+    /// Write the [`EncryptionKeyPair`] to the store of the `provider`.
     ///
-    /// Returns a key store error if access to the key store fails.
-    pub(crate) fn write_to_key_store<KeyStore: OpenMlsKeyStore>(
+    /// This must only be used for encryption key pairs that are generated for
+    /// update leaf nodes. All other encryption key pairs are stored as part
+    /// of the key package or the epoch encryption key pairs.
+    pub(crate) fn write<Storage: StorageProvider>(
         &self,
-        store: &KeyStore,
-    ) -> Result<(), KeyStore::Error> {
-        store.store(&self.public_key().to_bytes_with_prefix(), self)
+        store: &Storage,
+    ) -> Result<(), Storage::Error> {
+        store.write_encryption_key_pair(self.public_key(), self)
     }
 
     /// Read the [`EncryptionKeyPair`] from the key store of the `provider`. This
     /// function is meant to read standalone keypairs, not ones that are
     /// already in use with an MLS group.
     ///
+    /// This must only be used for encryption key pairs that are generated for
+    /// update leaf nodes. All other encryption key pairs are stored as part
+    /// of the key package or the epoch encryption key pairs.
+    ///
     /// Returns `None` if the keypair cannot be read from the store.
-    pub(crate) fn read_from_key_store(
+    pub(crate) fn read(
         provider: &impl OpenMlsProvider,
         encryption_key: &EncryptionKey,
     ) -> Option<EncryptionKeyPair> {
         provider
-            .key_store()
-            .read(&encryption_key.to_bytes_with_prefix())
+            .storage()
+            .encryption_key_pair(encryption_key)
+            .ok()
+            .flatten()
     }
 
-    /// Delete the [`EncryptionKeyPair`] from the key store of the `provider`.
-    /// This function is meant to delete standalone keypairs, not ones that are
-    /// already in use with an MLS group.
+    /// Delete the [`EncryptionKeyPair`] from the store of the `provider`.
     ///
-    /// Returns a key store error if access to the key store fails.
-    pub(crate) fn delete_from_key_store<KeyStore: OpenMlsKeyStore>(
+    /// This must only be used for encryption key pairs that are generated for
+    /// update leaf nodes. All other encryption key pairs are stored as part
+    /// of the key package or the epoch encryption key pairs.
+    pub(crate) fn delete<Storage: StorageProviderTrait<CURRENT_VERSION>>(
         &self,
-        store: &KeyStore,
-    ) -> Result<(), KeyStore::Error> {
-        store.delete::<Self>(&self.public_key().to_bytes_with_prefix())
+        store: &Storage,
+    ) -> Result<(), Storage::Error> {
+        store.delete_encryption_key_pair(self.public_key())
     }
 
     pub(crate) fn public_key(&self) -> &EncryptionKey {
@@ -209,13 +201,13 @@ impl EncryptionKeyPair {
 
     pub(crate) fn random(
         provider: &impl OpenMlsProvider,
-        config: CryptoConfig,
+        ciphersuite: Ciphersuite,
     ) -> Result<Self, LibraryError> {
-        let ikm = Secret::random(config.ciphersuite, provider.rand(), config.version)
+        let ikm = Secret::random(ciphersuite, provider.rand())
             .map_err(LibraryError::unexpected_crypto_error)?;
         Ok(provider
             .crypto()
-            .derive_hpke_keypair(config.ciphersuite.hpke_config(), ikm.as_slice())
+            .derive_hpke_keypair(ciphersuite.hpke_config(), ikm.as_slice())
             .map_err(LibraryError::unexpected_crypto_error)?
             .into())
     }
@@ -229,7 +221,7 @@ pub mod test_utils {
         provider: &impl OpenMlsProvider,
         encryption_key: &EncryptionKey,
     ) -> HpkeKeyPair {
-        let keys = EncryptionKeyPair::read_from_key_store(provider, encryption_key).unwrap();
+        let keys = EncryptionKeyPair::read(provider, encryption_key).unwrap();
 
         HpkeKeyPair {
             private: keys.private_key.key,
@@ -240,7 +232,7 @@ pub mod test_utils {
     pub fn write_keys_from_key_store(provider: &impl OpenMlsProvider, encryption_key: HpkeKeyPair) {
         let keypair = EncryptionKeyPair::from(encryption_key);
 
-        keypair.write_to_key_store(provider.key_store()).unwrap();
+        keypair.write(provider.storage()).unwrap();
     }
 }
 
@@ -286,8 +278,4 @@ impl From<(EncryptionKey, EncryptionPrivateKey)> for EncryptionKeyPair {
             private_key,
         }
     }
-}
-
-impl MlsEntity for EncryptionKeyPair {
-    const ID: MlsEntityId = MlsEntityId::EncryptionKeyPair;
 }

@@ -1,4 +1,3 @@
-use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
@@ -13,8 +12,8 @@ use crate::{
 
 /// This test encodes and decodes the `ProposalOrRef` struct and makes sure the
 /// decoded values are the same as the original
-#[apply(ciphersuites_and_providers)]
-fn proposals_codec(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn proposals_codec() {
     // Proposal
 
     let remove_proposal = RemoveProposal {

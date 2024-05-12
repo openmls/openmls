@@ -7,14 +7,15 @@
 use std::fmt::Debug;
 
 use openmls_traits::{
-    key_store::{MlsEntity, MlsEntityId, OpenMlsKeyStore},
     signatures::{Signer, SignerError},
+    storage::{self, StorageProvider, CURRENT_VERSION},
     types::{CryptoError, SignatureScheme},
 };
 
 use p256::ecdsa::{signature::Signer as P256Signer, Signature, SigningKey};
 
 use rand::rngs::OsRng;
+use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
 /// A signature key pair for the basic credential.
@@ -75,10 +76,6 @@ fn id(public_key: &[u8], signature_scheme: SignatureScheme) -> Vec<u8> {
     id
 }
 
-impl MlsEntity for SignatureKeyPair {
-    const ID: MlsEntityId = MlsEntityId::SignatureKeyPair;
-}
-
 impl SignatureKeyPair {
     /// Generates a fresh signature keypair using the [`SignatureScheme`].
     pub fn new(signature_scheme: SignatureScheme) -> Result<Self, CryptoError> {
@@ -112,25 +109,32 @@ impl SignatureKeyPair {
         }
     }
 
-    fn id(&self) -> Vec<u8> {
-        id(&self.public, self.signature_scheme)
+    fn id(&self) -> StorageId {
+        StorageId {
+            value: id(&self.public, self.signature_scheme),
+        }
     }
 
     /// Store this signature key pair in the key store.
-    pub fn store<T>(&self, key_store: &T) -> Result<(), <T as OpenMlsKeyStore>::Error>
+    pub fn store<T>(&self, store: &T) -> Result<(), T::Error>
     where
-        T: OpenMlsKeyStore,
+        T: StorageProvider<CURRENT_VERSION>,
     {
-        key_store.store(&self.id(), self)
+        store.write_signature_key_pair(&self.id(), self)
     }
 
     /// Read a signature key pair from the key store.
     pub fn read(
-        key_store: &impl OpenMlsKeyStore,
+        store: &impl StorageProvider<CURRENT_VERSION>,
         public_key: &[u8],
         signature_scheme: SignatureScheme,
     ) -> Option<Self> {
-        key_store.read(&id(public_key, signature_scheme))
+        store
+            .signature_key_pair(&StorageId {
+                value: id(public_key, signature_scheme),
+            })
+            .ok()
+            .flatten()
     }
 
     /// Get the public key as byte slice.
@@ -153,3 +157,24 @@ impl SignatureKeyPair {
         &self.private
     }
 }
+
+// Storage
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct StorageId {
+    value: Vec<u8>,
+}
+
+impl From<Vec<u8>> for StorageId {
+    fn from(vec: Vec<u8>) -> Self {
+        StorageId { value: vec }
+    }
+}
+
+// Implement key traits for the storage id
+impl storage::Key<CURRENT_VERSION> for StorageId {}
+impl storage::traits::SignaturePublicKey<CURRENT_VERSION> for StorageId {}
+
+// Implement entity trait for the signature key pair
+impl storage::Entity<CURRENT_VERSION> for SignatureKeyPair {}
+impl storage::traits::SignatureKeyPair<CURRENT_VERSION> for SignatureKeyPair {}

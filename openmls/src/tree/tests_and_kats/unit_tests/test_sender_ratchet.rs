@@ -1,16 +1,12 @@
-use openmls_rust_crypto::OpenMlsRustCrypto;
-
 use crate::{
-    ciphersuite::Secret, test_utils::*, tree::secret_tree::SecretTreeError,
-    tree::sender_ratchet::*, versions::ProtocolVersion,
+    ciphersuite::Secret, test_utils::*, tree::secret_tree::SecretTreeError, tree::sender_ratchet::*,
 };
 
 // Test the maximum forward ratcheting
-#[apply(ciphersuites_and_providers)]
-fn test_max_forward_distance(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn test_max_forward_distance() {
     let configuration = &SenderRatchetConfiguration::default();
-    let secret = Secret::random(ciphersuite, provider.rand(), ProtocolVersion::Mls10)
-        .expect("Not enough randomness.");
+    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
     let mut ratchet1 = DecryptionRatchet::new(secret.clone());
     let mut ratchet2 = DecryptionRatchet::new(secret);
 
@@ -44,11 +40,10 @@ fn test_max_forward_distance(ciphersuite: Ciphersuite, provider: &impl OpenMlsPr
 }
 
 // Test out-of-order generations
-#[apply(ciphersuites_and_providers)]
-fn test_out_of_order_generations(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn test_out_of_order_generations() {
     let configuration = &SenderRatchetConfiguration::default();
-    let secret = Secret::random(ciphersuite, provider.rand(), ProtocolVersion::Mls10)
-        .expect("Not enough randomness.");
+    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
     let mut ratchet1 = DecryptionRatchet::new(secret);
 
     // Ratchet forward twice the size of the window
@@ -82,13 +77,12 @@ fn test_out_of_order_generations(ciphersuite: Ciphersuite, provider: &impl OpenM
 }
 
 // Test forward secrecy
-#[apply(ciphersuites_and_providers)]
-fn test_forward_secrecy(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn test_forward_secrecy() {
     // Encryption Ratchets are forward-secret by default, since they don't store
     // any keys. Thus, we can only test FS on Decryption Ratchets.
     let configuration = &SenderRatchetConfiguration::default();
-    let secret = Secret::random(ciphersuite, provider.rand(), ProtocolVersion::Mls10)
-        .expect("Not enough randomness.");
+    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
     let mut ratchet = DecryptionRatchet::new(secret);
 
     // Let's ratchet once and see if the ratchet keeps any keys around.
@@ -138,8 +132,7 @@ fn test_forward_secrecy(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 fn sender_ratchet_generation_overflow() {
     let provider = OpenMlsRustCrypto::default();
     let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
-    let secret = Secret::random(ciphersuite, provider.rand(), ProtocolVersion::Mls10)
-        .expect("Not enough randomness.");
+    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
     let mut ratchet = RatchetSecret::initial_ratchet_secret(secret);
     ratchet.set_generation(u32::MAX - 1);
     let _ = ratchet

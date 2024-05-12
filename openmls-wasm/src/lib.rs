@@ -4,11 +4,10 @@ use js_sys::Uint8Array;
 use openmls::{
     credentials::{BasicCredential, CredentialWithKey},
     framing::{MlsMessageBodyIn, MlsMessageIn, MlsMessageOut},
-    group::{config::CryptoConfig, GroupId, MlsGroup, MlsGroupJoinConfig, StagedWelcome},
+    group::{GroupId, MlsGroup, MlsGroupJoinConfig, StagedWelcome},
     key_packages::KeyPackage as OpenMlsKeyPackage,
     prelude::SignatureScheme,
     treesync::RatchetTreeIn,
-    versions::ProtocolVersion,
 };
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
@@ -29,15 +28,6 @@ extern "C" {
 /// The ciphersuite used here. Fixed in order to reduce the binary size.
 static CIPHERSUITE: Ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519;
 
-/// The protocol version. We only support RFC MLS.
-static VERSION: ProtocolVersion = ProtocolVersion::Mls10;
-
-/// The config used in all calls that need a CryptoConfig, using hardcoded settings.
-static CRYPTO_CONFIG: CryptoConfig = CryptoConfig {
-    ciphersuite: CIPHERSUITE,
-    version: VERSION,
-};
-
 #[wasm_bindgen]
 #[derive(Default)]
 pub struct Provider(OpenMlsRustCrypto);
@@ -45,6 +35,12 @@ pub struct Provider(OpenMlsRustCrypto);
 impl AsRef<OpenMlsRustCrypto> for Provider {
     fn as_ref(&self) -> &OpenMlsRustCrypto {
         &self.0
+    }
+}
+
+impl AsMut<OpenMlsRustCrypto> for Provider {
+    fn as_mut(&mut self) -> &mut OpenMlsRustCrypto {
+        &mut self.0
     }
 }
 
@@ -73,10 +69,10 @@ impl Identity {
     pub fn new(provider: &Provider, name: &str) -> Result<Identity, JsError> {
         let signature_scheme = SignatureScheme::ED25519;
         let identity = name.bytes().collect();
-        let credential = BasicCredential::new(identity)?;
+        let credential = BasicCredential::new(identity);
         let keypair = SignatureKeyPair::new(signature_scheme)?;
 
-        keypair.store(provider.0.key_store())?;
+        keypair.store(provider.0.storage())?;
 
         let credential_with_key = CredentialWithKey {
             credential: credential.into(),
@@ -93,12 +89,14 @@ impl Identity {
         KeyPackage(
             OpenMlsKeyPackage::builder()
                 .build(
-                    CRYPTO_CONFIG,
+                    CIPHERSUITE,
                     &provider.0,
                     &self.keypair,
                     self.credential_with_key.clone(),
                 )
-                .unwrap(),
+                .unwrap()
+                .key_package()
+                .clone(),
         )
     }
 }
@@ -145,7 +143,7 @@ impl Group {
         let group_id_bytes = group_id.bytes().collect::<Vec<_>>();
 
         let mls_group = MlsGroup::builder()
-            .crypto_config(CRYPTO_CONFIG)
+            .ciphersuite(CIPHERSUITE)
             .with_group_id(GroupId::from_slice(&group_id_bytes))
             .build(
                 &provider.0,
@@ -206,15 +204,15 @@ impl Group {
         })
     }
 
-    pub fn merge_pending_commit(&mut self, provider: &Provider) -> Result<(), JsError> {
+    pub fn merge_pending_commit(&mut self, provider: &mut Provider) -> Result<(), JsError> {
         self.mls_group
-            .merge_pending_commit(provider.as_ref())
+            .merge_pending_commit(provider.as_mut())
             .map_err(|e| e.into())
     }
 
     pub fn process_message(
         &mut self,
-        provider: &Provider,
+        provider: &mut Provider,
         mut msg: &[u8],
     ) -> Result<Vec<u8>, JsError> {
         let msg = MlsMessageIn::tls_deserialize(&mut msg).unwrap();
@@ -242,7 +240,7 @@ impl Group {
             }
             openmls::framing::ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
                 self.mls_group
-                    .merge_staged_commit(provider.as_ref(), *staged_commit)?;
+                    .merge_staged_commit(provider.as_mut(), *staged_commit)?;
                 Ok(vec![])
             }
         }
@@ -256,7 +254,7 @@ impl Group {
         key_length: usize,
     ) -> Result<Vec<u8>, JsError> {
         self.mls_group
-            .export_secret(provider.as_ref().crypto(), label, context, key_length)
+            .export_secret(provider.as_ref(), label, context, key_length)
             .map_err(|e| {
                 println!("export key error: {e}");
                 e.into()
@@ -360,7 +358,7 @@ mod tests {
 
     #[test]
     fn basic() {
-        let alice_provider = Provider::new();
+        let mut alice_provider = Provider::new();
         let bob_provider = Provider::new();
 
         let alice = Identity::new(&alice_provider, "alice")
@@ -380,7 +378,7 @@ mod tests {
             .unwrap();
 
         chess_club_alice
-            .merge_pending_commit(&alice_provider)
+            .merge_pending_commit(&mut alice_provider)
             .map_err(js_error_to_string)
             .unwrap();
 

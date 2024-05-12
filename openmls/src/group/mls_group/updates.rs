@@ -1,7 +1,7 @@
 use core_group::create_commit_params::CreateCommitParams;
-use openmls_traits::signatures::Signer;
+use openmls_traits::{signatures::Signer, storage::StorageProvider as _};
 
-use crate::{messages::group_info::GroupInfo, treesync::LeafNode, versions::ProtocolVersion};
+use crate::{messages::group_info::GroupInfo, storage::OpenMlsProvider, treesync::LeafNode};
 
 use super::*;
 
@@ -23,13 +23,13 @@ impl MlsGroup {
     /// [`Welcome`]: crate::messages::Welcome
     // FIXME: #1217
     #[allow(clippy::type_complexity)]
-    pub fn self_update<KeyStore: OpenMlsKeyStore>(
+    pub fn self_update<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &Provider,
         signer: &impl Signer,
     ) -> Result<
         (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
-        SelfUpdateError<KeyStore::Error>,
+        SelfUpdateError<Provider::StorageError>,
     > {
         self.is_operational()?;
 
@@ -51,8 +51,13 @@ impl MlsGroup {
             create_commit_result.staged_commit,
         )));
 
-        // Since the state of the group might be changed, arm the state flag
-        self.flag_state_change();
+        provider
+            .storage()
+            .write_group_state(self.group_id(), &self.group_state)
+            .map_err(SelfUpdateError::StorageError)?;
+        self.group
+            .store(provider.storage())
+            .map_err(SelfUpdateError::StorageError)?;
 
         Ok((
             mls_message,
@@ -66,12 +71,12 @@ impl MlsGroup {
     /// Creates a proposal to update the own leaf node. Optionally, a
     /// [`LeafNode`] can be provided to update the leaf node. Note that its
     /// private key must be manually added to the key store.
-    fn _propose_self_update<KeyStore: OpenMlsKeyStore>(
+    fn _propose_self_update<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &Provider,
         signer: &impl Signer,
         leaf_node: Option<LeafNode>,
-    ) -> Result<AuthenticatedContent, ProposeSelfUpdateError<KeyStore::Error>> {
+    ) -> Result<AuthenticatedContent, ProposeSelfUpdateError<Provider::StorageError>> {
         self.is_operational()?;
 
         // Here we clone our own leaf to rekey it such that we don't change the
@@ -97,14 +102,13 @@ impl MlsGroup {
                 self.group_id(),
                 self.own_leaf_index(),
                 self.ciphersuite(),
-                ProtocolVersion::default(), // XXX: openmls/openmls#1065
                 provider,
                 signer,
             )?;
             // TODO #1207: Move to the top of the function.
             keypair
-                .write_to_key_store(provider.key_store())
-                .map_err(ProposeSelfUpdateError::KeyStoreError)?;
+                .write(provider.storage())
+                .map_err(ProposeSelfUpdateError::StorageError)?;
         };
 
         let update_proposal = self.group.create_update_proposal(
@@ -113,18 +117,22 @@ impl MlsGroup {
             signer,
         )?;
 
+        provider
+            .storage()
+            .append_own_leaf_node(self.group_id(), &own_leaf)
+            .map_err(ProposeSelfUpdateError::StorageError)?;
         self.own_leaf_nodes.push(own_leaf);
 
         Ok(update_proposal)
     }
 
     /// Creates a proposal to update the own leaf node.
-    pub fn propose_self_update<KeyStore: OpenMlsKeyStore>(
+    pub fn propose_self_update<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &Provider,
         signer: &impl Signer,
         leaf_node: Option<LeafNode>,
-    ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<KeyStore::Error>> {
+    ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<Provider::StorageError>> {
         let update_proposal = self._propose_self_update(provider, signer, leaf_node)?;
         let proposal = QueuedProposal::from_authenticated_content_by_ref(
             self.ciphersuite(),
@@ -132,23 +140,24 @@ impl MlsGroup {
             update_proposal.clone(),
         )?;
         let proposal_ref = proposal.proposal_reference();
+        provider
+            .storage()
+            .queue_proposal(self.group_id(), &proposal_ref, &proposal)
+            .map_err(ProposeSelfUpdateError::StorageError)?;
         self.proposal_store.add(proposal);
 
         let mls_message = self.content_to_mls_message(update_proposal, provider)?;
-
-        // Since the state of the group might be changed, arm the state flag
-        self.flag_state_change();
 
         Ok((mls_message, proposal_ref))
     }
 
     /// Creates a proposal to update the own leaf node.
-    pub fn propose_self_update_by_value<KeyStore: OpenMlsKeyStore>(
+    pub fn propose_self_update_by_value<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &Provider,
         signer: &impl Signer,
         leaf_node: Option<LeafNode>,
-    ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<KeyStore::Error>> {
+    ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<Provider::StorageError>> {
         let update_proposal = self._propose_self_update(provider, signer, leaf_node)?;
         let proposal = QueuedProposal::from_authenticated_content_by_value(
             self.ciphersuite(),
@@ -156,12 +165,13 @@ impl MlsGroup {
             update_proposal.clone(),
         )?;
         let proposal_ref = proposal.proposal_reference();
+        provider
+            .storage()
+            .queue_proposal(self.group_id(), &proposal_ref, &proposal)
+            .map_err(ProposeSelfUpdateError::StorageError)?;
         self.proposal_store.add(proposal);
 
         let mls_message = self.content_to_mls_message(update_proposal, provider)?;
-
-        // Since the state of the group might be changed, arm the state flag
-        self.flag_state_change();
 
         Ok((mls_message, proposal_ref))
     }

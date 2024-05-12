@@ -1,6 +1,3 @@
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsProvider};
-
 use super::CoreGroup;
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -11,10 +8,8 @@ use crate::{
         mls_auth_content::AuthenticatedContent, sender::Sender, FramingParameters, WireFormat,
     },
     group::{
-        config::CryptoConfig,
         errors::*,
         proposals::{ProposalQueue, ProposalStore, QueuedProposal},
-        public_group::errors::PublicGroupBuildError,
         test_core_group::setup_client,
         CreateCommitParams, GroupContext, GroupId, StagedCoreWelcome,
     },
@@ -28,8 +23,11 @@ use crate::{
 /// This test makes sure ProposalQueue works as intended. This functionality is
 /// used in `create_commit` to filter the epoch proposals. Expected result:
 /// `filtered_queued_proposals` returns only proposals of a certain type
-#[apply(ciphersuites_and_providers)]
-fn proposal_queue_functions(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn proposal_queue_functions(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::OpenMlsProvider,
+) {
     // Framing parameters
     let framing_parameters = FramingParameters::new(&[], WireFormat::PublicMessage);
     // Define identities
@@ -40,7 +38,7 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
 
     let bob_key_package = bob_key_package_bundle.key_package();
     let alice_update_key_package_bundle =
-        KeyPackageBundle::new(provider, &alice_signer, ciphersuite, alice_credential);
+        KeyPackageBundle::generate(provider, &alice_signer, ciphersuite, alice_credential);
     let alice_update_key_package = alice_update_key_package_bundle.key_package();
     let kpi = KeyPackageIn::from(alice_update_key_package.clone());
     assert!(kpi
@@ -172,8 +170,8 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
 }
 
 /// Test, that we QueuedProposalQueue is iterated in the right order.
-#[apply(ciphersuites_and_providers)]
-fn proposal_queue_order(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn proposal_queue_order() {
     // Framing parameters
     let framing_parameters = FramingParameters::new(&[], WireFormat::PublicMessage);
     // Define identities
@@ -184,7 +182,7 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
 
     let bob_key_package = bob_key_package_bundle.key_package();
     let alice_update_key_package_bundle =
-        KeyPackageBundle::new(provider, &alice_signer, ciphersuite, alice_credential);
+        KeyPackageBundle::generate(provider, &alice_signer, ciphersuite, alice_credential);
     let alice_update_key_package = alice_update_key_package_bundle.key_package();
     let kpi = KeyPackageIn::from(alice_update_key_package.clone());
     assert!(kpi
@@ -280,42 +278,10 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
     assert_eq!(proposal_collection[1].proposal(), &proposal_add_alice1);
 }
 
-#[apply(ciphersuites_and_providers)]
-fn test_required_unsupported_proposals(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
-    let (alice_credential, _, alice_signer, _alice_pk) =
-        setup_client("Alice", ciphersuite, provider);
-
-    // Set required capabilities
-    let extensions = &[];
-    let proposals = &[ProposalType::GroupContextExtensions, ProposalType::AppAck];
-    let credentials = &[CredentialType::Basic];
-    let required_capabilities =
-        RequiredCapabilitiesExtension::new(extensions, proposals, credentials);
-
-    // This must fail because we don't actually support AppAck proposals
-    let e = CoreGroup::builder(
-        GroupId::random(provider.rand()),
-        CryptoConfig::with_default_version(ciphersuite),
-        alice_credential,
-    )
-    .with_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
-        required_capabilities,
-    )))
-    .unwrap()
-    .build(provider, &alice_signer)
-    .expect_err(
-        "CoreGroup creation must fail because AppAck proposals aren't supported in OpenMLS yet.",
-    );
-    assert_eq!(
-        e,
-        CoreGroupBuildError::PublicGroupBuildError(PublicGroupBuildError::UnsupportedProposalType)
-    )
-}
-
-#[apply(ciphersuites_and_providers)]
+#[openmls_test::openmls_test]
 fn test_required_extension_key_package_mismatch(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
@@ -337,7 +303,7 @@ fn test_required_extension_key_package_mismatch(
 
     let alice_group = CoreGroup::builder(
         GroupId::random(provider.rand()),
-        CryptoConfig::with_default_version(ciphersuite),
+        ciphersuite,
         alice_credential,
     )
     .with_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
@@ -362,8 +328,11 @@ fn test_required_extension_key_package_mismatch(
     );
 }
 
-#[apply(ciphersuites_and_providers)]
-fn test_group_context_extensions(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn test_group_context_extensions(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::OpenMlsProvider,
+) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -389,7 +358,7 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, provider: &impl OpenM
 
     let mut alice_group = CoreGroup::builder(
         GroupId::random(provider.rand()),
-        CryptoConfig::with_default_version(ciphersuite),
+        ciphersuite,
         alice_credential,
     )
     .with_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
@@ -443,10 +412,10 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, provider: &impl OpenM
     .expect("Error joining group.");
 }
 
-#[apply(ciphersuites_and_providers)]
+#[openmls_test::openmls_test]
 fn test_group_context_extension_proposal_fails(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &impl crate::storage::OpenMlsProvider,
 ) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
@@ -471,7 +440,7 @@ fn test_group_context_extension_proposal_fails(
 
     let mut alice_group = CoreGroup::builder(
         GroupId::random(provider.rand()),
-        CryptoConfig::with_default_version(ciphersuite),
+        ciphersuite,
         alice_credential,
     )
     .with_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
@@ -542,11 +511,8 @@ fn test_group_context_extension_proposal_fails(
     // );
 }
 
-#[apply(ciphersuites_and_providers)]
-fn test_group_context_extension_proposal<KeyStore: OpenMlsKeyStore>(
-    ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
-) {
+#[openmls_test::openmls_test]
+fn test_group_context_extension_proposal(ciphersuite: Ciphersuite, provider: &Provider) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -560,7 +526,7 @@ fn test_group_context_extension_proposal<KeyStore: OpenMlsKeyStore>(
 
     let mut alice_group = CoreGroup::builder(
         GroupId::random(provider.rand()),
-        CryptoConfig::with_default_version(ciphersuite),
+        ciphersuite,
         alice_credential,
     )
     .build(provider, &alice_signer)
@@ -617,7 +583,7 @@ fn test_group_context_extension_proposal<KeyStore: OpenMlsKeyStore>(
             &[CredentialType::Basic],
         ));
     let gce_proposal = alice_group
-        .create_group_context_ext_proposal::<KeyStore>(
+        .create_group_context_ext_proposal::<Provider>(
             framing_parameters,
             Extensions::single(required_application_id),
             &alice_signer,

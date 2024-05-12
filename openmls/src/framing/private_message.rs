@@ -1,15 +1,12 @@
-use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::types::Ciphersuite;
 use std::io::Write;
 use tls_codec::{Serialize, Size, TlsSerialize, TlsSize};
 
-use super::{
-    mls_auth_content::{AuthenticatedContent, FramedContentAuthData},
-    mls_content::FramedContentBody,
-};
+use super::mls_auth_content::AuthenticatedContent;
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex, error::LibraryError,
-    tree::secret_tree::SecretType,
+    storage::OpenMlsProvider, tree::secret_tree::SecretType,
 };
 
 use super::*;
@@ -69,13 +66,13 @@ impl PrivateMessage {
     ///
     /// TODO #1148: Refactor theses constructors to avoid test code in main and
     /// to avoid validation using a special feature flag.
-    pub(crate) fn try_from_authenticated_content(
+    pub(crate) fn try_from_authenticated_content<Provider: OpenMlsProvider>(
         public_message: &AuthenticatedContent,
         ciphersuite: Ciphersuite,
-        provider: &impl OpenMlsProvider,
+        provider: &Provider,
         message_secrets: &mut MessageSecrets,
         padding_size: usize,
-    ) -> Result<PrivateMessage, MessageEncryptionError> {
+    ) -> Result<PrivateMessage, MessageEncryptionError<Provider::StorageError>> {
         log::debug!("PrivateMessage::try_from_authenticated_content");
         log::trace!("  ciphersuite: {}", ciphersuite);
         // Check the message has the correct wire format
@@ -93,13 +90,13 @@ impl PrivateMessage {
     }
 
     #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn encrypt_without_check(
+    pub(crate) fn encrypt_without_check<Provider: OpenMlsProvider>(
         public_message: &AuthenticatedContent,
         ciphersuite: Ciphersuite,
-        provider: &impl OpenMlsProvider,
+        provider: &Provider,
         message_secrets: &mut MessageSecrets,
         padding_size: usize,
-    ) -> Result<PrivateMessage, MessageEncryptionError> {
+    ) -> Result<PrivateMessage, MessageEncryptionError<Provider::StorageError>> {
         Self::encrypt_content(
             None,
             public_message,
@@ -111,14 +108,14 @@ impl PrivateMessage {
     }
 
     #[cfg(test)]
-    pub(crate) fn encrypt_with_different_header(
+    pub(crate) fn encrypt_with_different_header<Provider: OpenMlsProvider>(
         public_message: &AuthenticatedContent,
         ciphersuite: Ciphersuite,
-        provider: &impl OpenMlsProvider,
+        provider: &Provider,
         header: MlsMessageHeader,
         message_secrets: &mut MessageSecrets,
         padding_size: usize,
-    ) -> Result<PrivateMessage, MessageEncryptionError> {
+    ) -> Result<PrivateMessage, MessageEncryptionError<Provider::StorageError>> {
         Self::encrypt_content(
             Some(header),
             public_message,
@@ -131,14 +128,14 @@ impl PrivateMessage {
 
     /// Internal function to encrypt content. The extra message header is only used
     /// for tests. Otherwise, the data from the given `AuthenticatedContent` is used.
-    fn encrypt_content(
+    fn encrypt_content<Provider: OpenMlsProvider>(
         test_header: Option<MlsMessageHeader>,
         public_message: &AuthenticatedContent,
         ciphersuite: Ciphersuite,
-        provider: &impl OpenMlsProvider,
+        provider: &Provider,
         message_secrets: &mut MessageSecrets,
         padding_size: usize,
-    ) -> Result<PrivateMessage, MessageEncryptionError> {
+    ) -> Result<PrivateMessage, MessageEncryptionError<Provider::StorageError>> {
         let sender_index = if let Some(index) = public_message.sender().as_member() {
             index
         } else {
@@ -197,7 +194,7 @@ impl PrivateMessage {
         // Derive the sender data key from the key schedule using the ciphertext.
         let sender_data_key = message_secrets
             .sender_data_secret()
-            .derive_aead_key(provider.crypto(), &ciphertext)
+            .derive_aead_key(provider.crypto(), ciphersuite, &ciphertext)
             .map_err(LibraryError::unexpected_crypto_error)?;
         // Derive initial nonce from the key schedule using the ciphertext.
         let sender_data_nonce = message_secrets
@@ -297,51 +294,6 @@ impl PrivateMessage {
     pub(crate) fn ciphertext(&self) -> &[u8] {
         self.ciphertext.as_slice()
     }
-}
-
-// === Helper structs ===
-
-/// PrivateMessageContent
-///
-/// ```c
-/// struct {
-///     select (PrivateMessage.content_type) {
-///         case application:
-///           opaque application_data<V>;
-///
-///         case proposal:
-///           Proposal proposal;
-///
-///         case commit:
-///           Commit commit;
-///     }
-///
-///     FramedContentAuthData auth;
-///     opaque padding[length_of_padding];
-/// } PrivateMessageContent;
-/// ```
-#[derive(Debug, Clone)]
-pub(crate) struct PrivateMessageContent {
-    // The `content` field is serialized and deserialized manually without the
-    // `content_type`, which is not part of the struct as per MLS spec. See the
-    // implementation of `TlsSerialize` for `PrivateMessageContent`, as well as
-    // `deserialize_ciphertext_content`.
-    pub(crate) content: FramedContentBody,
-    pub(crate) auth: FramedContentAuthData,
-    /// Length of the all-zero padding.
-    ///
-    /// We do not retain any bytes here to avoid the need to
-    /// keep track that all of them are zero. Instead, we only
-    /// use `length_of_padding` to track the (theoretical) size
-    /// of the all-zero byte slice.
-    ///
-    /// Note, however, that we MUST make sure to (de)serialize these bytes!
-    /// Otherwise this mechanism would not make any sense because it would
-    /// not add to the ciphertext size to hide the original message length.
-    ///
-    /// Sadly, we cannot `derive(TlsSerialize, TlsDeserialize)` due to this
-    /// "custom" mechanism.
-    pub(crate) length_of_padding: usize,
 }
 
 #[derive(TlsSerialize, TlsSize)]

@@ -34,6 +34,7 @@ use crate::{
         core_group::{proposals::QueuedProposal, staged_commit::StagedCommit},
         errors::ValidationError,
     },
+    storage::OpenMlsProvider,
     tree::sender_ratchet::SenderRatchetConfiguration,
     treesync::TreeSync,
     versions::ProtocolVersion,
@@ -67,6 +68,7 @@ impl DecryptedMessage {
         message_secrets_option: impl Into<Option<&'a MessageSecrets>>,
         serialized_context: Vec<u8>,
         crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
     ) -> Result<Self, ValidationError> {
         if public_message.sender().is_member() {
             // ValSem007 Membership tag presence
@@ -80,6 +82,7 @@ impl DecryptedMessage {
                 // ValSem008
                 public_message.verify_membership(
                     crypto,
+                    ciphersuite,
                     message_secrets.membership_key(),
                     message_secrets.serialized_context(),
                 )?;
@@ -268,18 +271,23 @@ impl UnverifiedMessage {
 
     /// Verify the [`UnverifiedMessage`]. Returns the [`AuthenticatedContent`]
     /// and the internal [`Credential`].
-    pub(crate) fn verify(
+    pub(crate) fn verify<Provider: OpenMlsProvider>(
         self,
         ciphersuite: Ciphersuite,
-        crypto: &impl OpenMlsCrypto,
+        provider: &Provider,
         protocol_version: ProtocolVersion,
-    ) -> Result<(AuthenticatedContent, Credential), ProcessMessageError> {
+    ) -> Result<(AuthenticatedContent, Credential), ProcessMessageError<Provider::StorageError>>
+    {
         let content: AuthenticatedContentIn = self
             .verifiable_content
-            .verify(crypto, &self.sender_pk)
+            .verify(provider.crypto(), &self.sender_pk)
             .map_err(|_| ProcessMessageError::InvalidSignature)?;
-        let content =
-            content.validate(ciphersuite, crypto, self.sender_context, protocol_version)?;
+        let content = content.validate(
+            ciphersuite,
+            provider.crypto(),
+            self.sender_context,
+            protocol_version,
+        )?;
         Ok((content, self.credential))
     }
 

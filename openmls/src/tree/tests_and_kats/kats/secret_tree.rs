@@ -51,8 +51,6 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::test_utils::*;
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SenderData {
     sender_data_secret: String,
@@ -80,14 +78,17 @@ pub struct SecretTree {
 }
 
 #[cfg(test)]
-pub fn run_test_vector(test: SecretTree, provider: &impl OpenMlsProvider) -> Result<(), String> {
-    use openmls_traits::crypto::OpenMlsCrypto;
+pub fn run_test_vector<Provider: openmls::storage::OpenMlsProvider>(
+    test: SecretTree,
+    provider: &Provider,
+) -> Result<(), String> {
+    use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 
     use crate::{
         binary_tree::{array_representation::TreeSize, LeafNodeIndex},
         schedule::{EncryptionSecret, SenderDataSecret},
+        test_utils::hex_to_bytes,
         tree::secret_tree::{SecretTree, SecretType},
-        versions::ProtocolVersion,
     };
 
     let ciphersuite = Ciphersuite::try_from(test.cipher_suite).unwrap();
@@ -104,14 +105,13 @@ pub fn run_test_vector(test: SecretTree, provider: &impl OpenMlsProvider) -> Res
 
     // Check sender data
     let sender_data_secret = hex_to_bytes(&test.sender_data.sender_data_secret);
-    let sender_data_secret =
-        SenderDataSecret::from_slice(&sender_data_secret, ProtocolVersion::Mls10, ciphersuite);
+    let sender_data_secret = SenderDataSecret::from_slice(&sender_data_secret);
     let sender_data_ciphertext = hex_to_bytes(&test.sender_data.ciphertext);
     let sender_data_key = hex_to_bytes(&test.sender_data.key);
     let sender_data_nonce = hex_to_bytes(&test.sender_data.nonce);
 
     let my_sender_data_key = sender_data_secret
-        .derive_aead_key(provider.crypto(), &sender_data_ciphertext)
+        .derive_aead_key(provider.crypto(), ciphersuite, &sender_data_ciphertext)
         .unwrap();
     assert_eq!(&sender_data_key, my_sender_data_key.as_slice());
     let my_sender_data_nonce = sender_data_secret
@@ -131,11 +131,7 @@ pub fn run_test_vector(test: SecretTree, provider: &impl OpenMlsProvider) -> Res
             log::trace!("   Testing generation {generation}");
 
             let mut secret_tree = SecretTree::new(
-                EncryptionSecret::from_slice(
-                    &encryption_secret,
-                    ProtocolVersion::Mls10,
-                    ciphersuite,
-                ),
+                EncryptionSecret::from_slice(&encryption_secret),
                 TreeSize::new(num_leaves as u32),
                 LeafNodeIndex::new(leaf_index as u32),
             );
@@ -187,8 +183,8 @@ pub fn run_test_vector(test: SecretTree, provider: &impl OpenMlsProvider) -> Res
     Ok(())
 }
 
-#[apply(providers)]
-fn read_test_vectors_st(provider: &impl OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn read_test_vectors_st() {
     let _ = pretty_env_logger::try_init();
     log::debug!("Reading test vectors ...");
 

@@ -14,6 +14,7 @@ use crate::{
     },
     key_packages::KeyPackage,
     messages::{AddProposal, Proposal},
+    storage::{OpenMlsProvider, StorageProvider},
 };
 use openmls_traits::signatures::Signer;
 
@@ -40,12 +41,12 @@ impl JoinProposal {
     /// * `epoch` - group's epoch
     /// * `signer` - of the sender to sign the message
     #[allow(clippy::new_ret_no_self)]
-    pub fn new(
+    pub fn new<Storage: StorageProvider>(
         key_package: KeyPackage,
         group_id: GroupId,
         epoch: GroupEpoch,
         signer: &impl Signer,
-    ) -> Result<MlsMessageOut, ProposeAddMemberError> {
+    ) -> Result<MlsMessageOut, ProposeAddMemberError<Storage::Error>> {
         AuthenticatedContent::new_join_proposal(
             Proposal::Add(AddProposal { key_package }),
             group_id,
@@ -69,13 +70,13 @@ impl ExternalProposal {
     /// * `signer` - of the sender to sign the message
     /// * `sender` - index of the sender of the proposal (in the [crate::extensions::ExternalSendersExtension] array
     /// from the Group Context)
-    pub fn new_remove(
+    pub fn new_remove<Provider: OpenMlsProvider>(
         removed: LeafNodeIndex,
         group_id: GroupId,
         epoch: GroupEpoch,
         signer: &impl Signer,
         sender_index: SenderExtensionIndex,
-    ) -> Result<MlsMessageOut, ProposeRemoveMemberError> {
+    ) -> Result<MlsMessageOut, ProposeRemoveMemberError<Provider::StorageError>> {
         AuthenticatedContent::new_external_proposal(
             Proposal::Remove(RemoveProposal { removed }),
             group_id,

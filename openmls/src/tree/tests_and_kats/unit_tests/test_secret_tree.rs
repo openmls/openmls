@@ -1,4 +1,3 @@
-use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::random::OpenMlsRand;
 
 use crate::{
@@ -6,13 +5,12 @@ use crate::{
     schedule::EncryptionSecret,
     test_utils::*,
     tree::{secret_tree::*, sender_ratchet::SenderRatchetConfiguration},
-    versions::ProtocolVersion,
 };
 use std::collections::HashMap;
 
 // This tests the boundaries of the generations from a SecretTree
-#[apply(ciphersuites_and_providers)]
-fn test_boundaries(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn test_boundaries() {
     let configuration = &SenderRatchetConfiguration::default();
     let encryption_secret = EncryptionSecret::random(ciphersuite, provider.rand());
     let mut secret_tree = SecretTree::new(
@@ -156,8 +154,8 @@ fn test_boundaries(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
 
 // This tests if the generation gets incremented correctly and that the returned
 // values are unique.
-#[apply(ciphersuites_and_providers)]
-fn increment_generation(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn increment_generation() {
     const SIZE: usize = 100;
     const MAX_GENERATIONS: usize = 10;
 
@@ -223,8 +221,8 @@ fn increment_generation(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvide
     }
 }
 
-#[apply(ciphersuites_and_providers)]
-fn secret_tree(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+#[openmls_test::openmls_test]
+fn secret_tree() {
     let leaf_index = 0u32;
     let generation = 0;
     let n_leaves = 10u32;
@@ -235,8 +233,6 @@ fn secret_tree(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
                 .rand()
                 .random_vec(ciphersuite.hash_length())
                 .expect("An unexpected error occurred.")[..],
-            ProtocolVersion::default(),
-            ciphersuite,
         ),
         TreeSize::new(n_leaves),
         LeafNodeIndex::new(1u32),

@@ -7,11 +7,12 @@ members = [
   "fuzz",
   "cli",
   "interop_client",
-  "memory_keystore",
+  "memory_storage",
   "delivery-service/ds",
   "delivery-service/ds-lib",
   "basic_credential",
   "openmls-wasm",
+  "openmls_test",
 ]
 resolver = "2"
 

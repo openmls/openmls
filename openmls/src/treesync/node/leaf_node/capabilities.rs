@@ -211,6 +211,7 @@ pub(super) fn default_ciphersuites() -> Vec<Ciphersuite> {
         Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
         Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
         Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+        Ciphersuite::MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519,
     ]
 }
 
@@ -255,7 +256,7 @@ mod tests {
 
     #[test]
     fn that_unknown_capabilities_are_de_serialized_correctly() {
-        let versions = vec![ProtocolVersion::Mls10, ProtocolVersion::Mls10Draft11];
+        let versions = vec![ProtocolVersion::Mls10, ProtocolVersion::Other(999)];
         let ciphersuites = vec![
             Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519.into(),
             Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256.into(),
@@ -276,7 +277,7 @@ mod tests {
             ExtensionType::Unknown(0xFAFA),
         ];
 
-        let proposals = vec![ProposalType::Unknown(0x7A7A)];
+        let proposals = vec![ProposalType::Custom(0x7A7A)];
 
         let credentials = vec![
             CredentialType::Basic,
