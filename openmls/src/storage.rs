@@ -46,7 +46,7 @@ pub trait OpenMlsProvider:
 }
 
 impl<
-        Error: std::error::Error + PartialEq,
+        Error: std::error::Error,
         SP: StorageProvider<Error = Error>,
         OP: openmls_traits::OpenMlsProvider<StorageProvider = SP>,
     > OpenMlsProvider for OP

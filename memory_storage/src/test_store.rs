@@ -438,7 +438,10 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn clear_proposal_queue<GroupId: traits::GroupId<V_TEST>>(
+    fn clear_proposal_queue<
+        GroupId: traits::GroupId<V_TEST>,
+        ProposalRef: traits::ProposalRef<V_TEST>,
+    >(
         &self,
         _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
