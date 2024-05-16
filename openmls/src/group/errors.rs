@@ -519,6 +519,9 @@ pub enum CreateGroupContextExtProposalError<StorageError> {
     /// See [`CreateCommitError`] for more details.
     #[error(transparent)]
     CreateCommitError(#[from] CreateCommitError<StorageError>),
+    /// Error writing updated group to storage.
+    #[error("Error writing updated group data to storage.")]
+    StorageError(StorageError),
 }
 
 /// Error merging a commit.

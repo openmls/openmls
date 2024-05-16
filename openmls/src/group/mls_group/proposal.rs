@@ -420,6 +420,11 @@ impl MlsGroup {
             create_commit_result.staged_commit,
         )));
 
+        provider
+            .storage()
+            .write_group_state(self.group_id(), &self.group_state)
+            .map_err(CreateGroupContextExtProposalError::StorageError)?;
+
         Ok((
             mls_messages,
             create_commit_result

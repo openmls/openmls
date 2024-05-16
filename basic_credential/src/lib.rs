@@ -109,7 +109,7 @@ impl SignatureKeyPair {
         }
     }
 
-    fn id(&self) -> StorageId {
+    pub fn id(&self) -> StorageId {
         StorageId {
             value: id(&self.public, self.signature_scheme),
         }
