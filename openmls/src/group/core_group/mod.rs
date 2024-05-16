@@ -1140,7 +1140,8 @@ impl CoreGroup {
         framing_parameters: FramingParameters,
         extensions: Extensions,
         signer: &impl Signer,
-    ) -> Result<AuthenticatedContent, CreateGroupContextExtProposalError<Provider::StorageError>> {
+    ) -> Result<AuthenticatedContent, CreateGroupContextExtProposalError<Provider::StorageError>>
+    {
         // Ensure that the group supports all the extensions that are wanted.
         let required_extension = extensions
             .iter()
