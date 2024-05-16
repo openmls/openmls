@@ -803,12 +803,18 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
+        // Get all proposal refs for this group.
+        let proposal_refs: Vec<ProposalRef> =
+            self.read_list(PROPOSAL_QUEUE_REFS_LABEL, &serde_json::to_vec(group_id)?)?;
         let mut values = self.values.write().unwrap();
+        for proposal_ref in proposal_refs {
+            // Delete all proposals.
+            let key = serde_json::to_vec(&(group_id, proposal_ref))?;
+            values.remove(&key);
+        }
 
-        let key = build_key::<CURRENT_VERSION, &GroupId>(QUEUED_PROPOSAL_LABEL, group_id);
-
-        // XXX #1566: also remove the proposal refs. can't be done now because they are stored in a
-        // non-recoverable way
+        // Delete the proposal refs from the store.
+        let key = build_key::<CURRENT_VERSION, &GroupId>(PROPOSAL_QUEUE_REFS_LABEL, group_id);
         values.remove(&key);
 
         Ok(())
