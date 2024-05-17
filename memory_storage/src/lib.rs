@@ -795,16 +795,25 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         self.delete::<CURRENT_VERSION>(EPOCH_KEY_PAIRS_LABEL, &key)
     }
 
-    fn clear_proposal_queue<GroupId: traits::GroupId<CURRENT_VERSION>>(
+    fn clear_proposal_queue<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        ProposalRef: traits::ProposalRef<CURRENT_VERSION>,
+    >(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
+        // Get all proposal refs for this group.
+        let proposal_refs: Vec<ProposalRef> =
+            self.read_list(PROPOSAL_QUEUE_REFS_LABEL, &serde_json::to_vec(group_id)?)?;
         let mut values = self.values.write().unwrap();
+        for proposal_ref in proposal_refs {
+            // Delete all proposals.
+            let key = serde_json::to_vec(&(group_id, proposal_ref))?;
+            values.remove(&key);
+        }
 
-        let key = build_key::<CURRENT_VERSION, &GroupId>(QUEUED_PROPOSAL_LABEL, group_id);
-
-        // XXX #1566: also remove the proposal refs. can't be done now because they are stored in a
-        // non-recoverable way
+        // Delete the proposal refs from the store.
+        let key = build_key::<CURRENT_VERSION, &GroupId>(PROPOSAL_QUEUE_REFS_LABEL, group_id);
         values.remove(&key);
 
         Ok(())
@@ -870,7 +879,12 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         group_id: &GroupId,
     ) -> Result<Vec<u8>, Self::Error> {
         let key = serde_json::to_vec(group_id)?;
-        self.read_list(AAD_LABEL, &key)
+        self.read::<CURRENT_VERSION, Vec<u8>>(AAD_LABEL, &key)
+            .map(|v| {
+                // When we didn't find the value, we return an empty vector as
+                // required by the trait.
+                v.unwrap_or_default()
+            })
     }
 
     fn write_aad<GroupId: traits::GroupId<CURRENT_VERSION>>(
