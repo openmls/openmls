@@ -405,7 +405,7 @@ impl MlsGroup {
 
         // Create group context extension proposals
         let inline_proposals = vec![Proposal::GroupContextExtensions(
-            GroupContextExtensionProposal { extensions },
+            GroupContextExtensionProposal::new(extensions),
         )];
 
         let params = CreateCommitParams::builder()

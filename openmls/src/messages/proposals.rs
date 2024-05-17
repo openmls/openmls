@@ -468,7 +468,7 @@ pub struct AppAckProposal {
     TlsSize,
 )]
 pub struct GroupContextExtensionProposal {
-    pub(crate) extensions: Extensions,
+    extensions: Extensions,
 }
 
 impl GroupContextExtensionProposal {
