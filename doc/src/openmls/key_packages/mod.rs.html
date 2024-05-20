@@ -605,11 +605,6 @@
 <a href="#603" id="603">603</a>
 <a href="#604" id="604">604</a>
 <a href="#605" id="605">605</a>
-<a href="#606" id="606">606</a>
-<a href="#607" id="607">607</a>
-<a href="#608" id="608">608</a>
-<a href="#609" id="609">609</a>
-<a href="#610" id="610">610</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Key Packages
 //!
 //! Key packages are pre-published public keys that provide some information
@@ -1142,11 +1137,6 @@
         provider
             .storage()
             .write_key_package(<span class="kw-2">&amp;</span>full_kp.key_package.hash_ref(provider.crypto())<span class="question-mark">?</span>, <span class="kw-2">&amp;</span>full_kp)
-            .map_err(|<span class="kw">_</span>| KeyPackageNewError::StorageError)<span class="question-mark">?</span>;
-
-        <span class="comment">// Store the encryption key pair in the key store.
-        </span>encryption_keypair
-            .write(provider.storage())
             .map_err(|<span class="kw">_</span>| KeyPackageNewError::StorageError)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(full_kp)

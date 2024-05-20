@@ -989,8 +989,8 @@ Instead, entries must be deleted and newly stored.</p>
 /// Many getters for lists return a `Result&lt;Vec&lt;T&gt;, E&gt;`. In this case, if there was no error but
 /// the value doesn't exist, an empty vector should be returned.
 ///
-/// More details can be taken from the comments on the respective method.
-pub trait StorageProvider&lt;const VERSION: u16&gt; {</code></pre>
+/// Any value that uses the group id as key is required by the group.
+/// Returning `None` or an error for any of them will cause a failure when</code></pre>
 <p>The trait is generic over a <code>VERSION</code>, which is used to ensure that the values
 that are persisted can be upgraded when OpenMLS changes the stored structs.</p>
 <p>Every function takes <code>Key</code> and <code>Value</code> arguments.</p>
