@@ -15,6 +15,72 @@ use crate::{
 };
 
 impl MlsGroup {
+    /// Updates the group membership using only inline proposals.
+    /// Adds and removes members and updates the group context.
+    pub fn update_group_membership<KeyStore: OpenMlsKeyStore>(
+        &mut self,
+        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        signer: &impl Signer,
+        key_packages_to_add: &[KeyPackage],
+        leaf_nodes_to_remove: &[LeafNodeIndex],
+        new_extensions: Extensions,
+    ) -> Result<
+        (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
+        AddMembersError<KeyStore::Error>,
+    > {
+        self.is_operational()?;
+
+        // Create inline add proposals from any provided key packages
+        let add_proposals = key_packages_to_add
+            .iter()
+            .map(|key_package| {
+                Proposal::Add(AddProposal {
+                    key_package: key_package.clone(),
+                })
+            })
+            .collect::<Vec<Proposal>>();
+
+        let extensions_proposals = vec![Proposal::GroupContextExtensions(
+            GroupContextExtensionProposal {
+                extensions: new_extensions,
+            },
+        )];
+
+        let mut remove_proposals = Vec::new();
+        for member in leaf_nodes_to_remove.iter() {
+            remove_proposals.push(Proposal::Remove(RemoveProposal { removed: *member }))
+        }
+
+        let proposals = [add_proposals, extensions_proposals, remove_proposals].concat();
+
+        let params = CreateCommitParams::builder()
+            .framing_parameters(self.framing_parameters())
+            .proposal_store(&self.proposal_store)
+            .inline_proposals(proposals)
+            .build();
+        let create_commit_result = self.group.create_commit(params, provider, signer)?;
+
+        // Convert PublicMessage messages to MLSMessage and encrypt them if required by
+        // the configuration
+        let mls_messages = self.content_to_mls_message(create_commit_result.commit, provider)?;
+
+        // Set the current group state to [`MlsGroupState::PendingCommit`],
+        // storing the current [`StagedCommit`] from the commit results
+        self.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
+            create_commit_result.staged_commit,
+        )));
+
+        // Since the state of the group might be changed, arm the state flag
+        self.flag_state_change();
+
+        Ok((
+            mls_messages,
+            create_commit_result
+                .welcome_option
+                .map(|w| MlsMessageOut::from_welcome(w, self.group.version())),
+            create_commit_result.group_info,
+        ))
+    }
     /// Adds members to the group.
     ///
     /// New members are added by providing a `KeyPackage` for each member.
