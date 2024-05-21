@@ -17,16 +17,16 @@ use crate::{
 impl MlsGroup {
     /// Updates the group membership using only inline proposals.
     /// Adds and removes members and updates the group context.
-    pub fn update_group_membership<KeyStore: OpenMlsKeyStore>(
+    pub fn update_group_membership<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &impl OpenMlsProvider<KeyStoreProvider = KeyStore>,
+        provider: &Provider,
         signer: &impl Signer,
         key_packages_to_add: &[KeyPackage],
         leaf_nodes_to_remove: &[LeafNodeIndex],
         new_extensions: Extensions,
     ) -> Result<
         (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
-        AddMembersError<KeyStore::Error>,
+        UpdateGroupMembershipError<Provider::StorageError>,
     > {
         self.is_operational()?;
 
@@ -70,8 +70,10 @@ impl MlsGroup {
             create_commit_result.staged_commit,
         )));
 
-        // Since the state of the group might be changed, arm the state flag
-        self.flag_state_change();
+        provider
+            .storage()
+            .write_group_state(self.group_id(), &self.group_state)
+            .map_err(UpdateGroupMembershipError::StorageError)?;
 
         Ok((
             mls_messages,

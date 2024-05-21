@@ -212,6 +212,25 @@ pub enum RemoveMembersError<StorageError> {
     StorageError(StorageError),
 }
 
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum UpdateGroupMembershipError<StorageError> {
+    /// See [`LibraryError`] for more details.
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    /// See [`CreateCommitError`] for more details.
+    #[error(transparent)]
+    CreateCommitError(#[from] CreateCommitError<StorageError>),
+    /// See [`MlsGroupStateError`] for more details.
+    #[error(transparent)]
+    GroupStateError(#[from] MlsGroupStateError<StorageError>),
+    /// The member that should be removed can not be found.
+    #[error("The member that should be removed can not be found.")]
+    UnknownMember,
+    /// Error writing to storage
+    #[error("Error writing to storage: {0}")]
+    StorageError(StorageError),
+}
+
 /// Leave group error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum LeaveGroupError<StorageError> {
