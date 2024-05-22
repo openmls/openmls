@@ -16,7 +16,7 @@ use crate::{
         mls_group::errors::ProcessMessageError,
         past_secrets::MessageSecretsStore,
         processing::message_from_protocol_message,
-        traits::Group,
+        traits::{Group, GroupOperations},
         StagedCommit,
     },
     storage::OpenMlsProvider,
@@ -122,22 +122,6 @@ impl Group for PublicGroup {
         )))
     }
 
-    fn ciphersuite(&self) -> openmls_traits::prelude::openmls_types::Ciphersuite {
-        self.group_context.ciphersuite()
-    }
-
-    fn version(&self) -> crate::versions::ProtocolVersion {
-        self.group_context.protocol_version()
-    }
-
-    fn group_id(&self) -> &crate::group::GroupId {
-        self.group_context.group_id()
-    }
-
-    fn context(&self) -> &crate::group::GroupContext {
-        &self.group_context
-    }
-
     fn stage_commit(
         &self,
         mls_content: &AuthenticatedContent,
@@ -165,5 +149,23 @@ impl Group for PublicGroup {
 
     fn public_group(&self) -> &PublicGroup {
         self
+    }
+}
+
+impl GroupOperations for PublicGroup {
+    fn ciphersuite(&self) -> openmls_traits::prelude::openmls_types::Ciphersuite {
+        self.group_context.ciphersuite()
+    }
+
+    fn version(&self) -> crate::versions::ProtocolVersion {
+        self.group_context.protocol_version()
+    }
+
+    fn group_id(&self) -> &crate::group::GroupId {
+        self.group_context.group_id()
+    }
+
+    fn context(&self) -> &crate::group::GroupContext {
+        &self.group_context
     }
 }

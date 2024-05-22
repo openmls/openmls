@@ -168,6 +168,7 @@ pub fn run_test_vector(
     test: MessageProtectionTest,
     provider: &impl crate::storage::OpenMlsProvider,
 ) -> Result<(), String> {
+    use itertools::Itertools;
     use openmls_traits::crypto::OpenMlsCrypto;
     use tls_codec::{Deserialize, Serialize};
 
@@ -175,7 +176,9 @@ pub fn run_test_vector(
         binary_tree::array_representation::TreeSize,
         extensions::Extensions,
         messages::{
-            proposals::Proposal, proposals_in::ProposalIn, Commit, CommitIn, ConfirmationTag,
+            proposals::{Proposal, ProposalOrRef},
+            proposals_in::ProposalIn,
+            Commit, CommitIn, ConfirmationTag,
         },
         prelude::KeyPackageBundle,
         prelude_test::{Mac, Secret},
@@ -429,7 +432,6 @@ pub fn run_test_vector(
         fn test_commit_pub(
             mut group: MlsGroup,
             provider: &impl crate::storage::OpenMlsProvider,
-            ciphersuite: Ciphersuite,
             commit: Commit,
             commit_pub: MlsMessageOut,
         ) {
@@ -438,41 +440,29 @@ pub fn run_test_vector(
                 .process_message(provider, commit_pub.into_protocol_message().unwrap())
                 .unwrap();
 
-            // match processed_message.content().to_owned() {
-            //     ProcessedMessageContent::ProposalMessage(p) => assert_eq!(&proposal, p.proposal()),
-            //     _ => panic!("Wrong processed message content"),
-            // }
-            // let decrypted_message = group
-            //     .decrypt_message(
-            //         provider.crypto(),
-            //         commit_pub.into_protocol_message().unwrap(),
-            //         &sender_ratchet_config,
-            //     )
-            //     .unwrap();
+            if let ProcessedMessageContent::StagedCommitMessage(c) = processed_message.content() {
+                // Unfortunately we don't have the commit anymore.
+                // Check the individual parts manually.
 
-            // let processed_unverified_message = group
-            //     .public_group()
-            //     .parse_message(decrypted_message, group.message_secrets_store())
-            //     .unwrap();
-            // let processed_message: AuthenticatedContent = processed_unverified_message
-            //     .verify(ciphersuite, provider, ProtocolVersion::Mls10)
-            //     .unwrap()
-            //     .0;
-            match processed_message.content().to_owned() {
-                ProcessedMessageContent::StagedCommitMessage(c) => {
-                    assert_eq!(commit, c.)
+                // Proposals
+                let proposals = c.proposals().collect::<Vec<_>>();
+                for expected_proposal in commit.proposals.iter() {
+                    let mut by_value = proposals
+                        .iter()
+                        .map(|qp| ProposalOrRef::Proposal(qp.proposal().clone()));
+                    assert!(by_value.contains(expected_proposal));
                 }
-                _ => panic!("Wrong processed message content"),
+            } else {
+                panic!("Wrong processed message content")
             }
         }
 
-        //     test_commit_pub(
-        //         setup_group(provider, ciphersuite, &test, false),
-        //         provider,
-        //         ciphersuite,
-        //         commit.clone(),
-        //         commit_pub,
-        //     );
+        test_commit_pub(
+            setup_group(provider, ciphersuite, &test, false),
+            provider,
+            commit.clone(),
+            commit_pub,
+        );
 
         //     fn test_commit_priv(
         //         mut group: CoreGroup,

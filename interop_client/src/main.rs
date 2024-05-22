@@ -20,6 +20,7 @@ use openmls::{
         WireFormatPolicy, PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     key_packages::{KeyPackage, KeyPackageBundle},
+    prelude::*,
     prelude::{Capabilities, ExtensionType, SenderRatchetConfiguration},
     schedule::{psk::ResumptionPskUsage, ExternalPsk, PreSharedKeyId, Psk},
     treesync::RatchetTreeIn,

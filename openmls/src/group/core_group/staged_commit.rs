@@ -8,7 +8,7 @@ use self::public_group::staged_commit::PublicStagedCommitState;
 use super::{super::errors::*, proposals::ProposalStore, *};
 use crate::{
     ciphersuite::Secret, framing::mls_auth_content::AuthenticatedContent,
-    treesync::node::encryption_keys::EncryptionKeyPair,
+    treesync::node::encryption_keys::EncryptionKeyPair, verification_disabled,
 };
 
 use openmls_traits::storage::StorageProvider as _;
@@ -230,7 +230,9 @@ impl CoreGroup {
             } else {
                 if apply_proposals_values.path_required {
                     // ValSem201
-                    return Err(StageCommitError::RequiredPathNotFound);
+                    if !verification_disabled() {
+                        return Err(StageCommitError::RequiredPathNotFound);
+                    }
                 }
 
                 // Even if there is no path, we have to update the group context.
@@ -285,7 +287,9 @@ impl CoreGroup {
             // TODO: We have tests expecting this error.
             //       They need to be rewritten.
             // debug_assert!(false, "Confirmation tag mismatch");
-            return Err(StageCommitError::ConfirmationTagMismatch);
+            if !verification_disabled() {
+                return Err(StageCommitError::ConfirmationTagMismatch);
+            }
         }
 
         diff.update_interim_transcript_hash(ciphersuite, provider.crypto(), own_confirmation_tag)?;
@@ -444,6 +448,11 @@ impl StagedCommit {
             staged_proposal_queue,
             state,
         }
+    }
+
+    /// Returns the proposals that are covered by the Commit message as in iterator over [QueuedProposal].
+    pub fn proposals(&self) -> impl Iterator<Item = &QueuedProposal> {
+        self.staged_proposal_queue.queued_proposals()
     }
 
     /// Returns the Add proposals that are covered by the Commit message as in iterator over [QueuedAddProposal].

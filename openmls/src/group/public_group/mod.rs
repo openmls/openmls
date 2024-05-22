@@ -22,7 +22,8 @@ use self::{
     errors::CreationFromExternalError,
 };
 use super::{
-    traits::Group as _, GroupContext, GroupId, Member, ProposalStore, QueuedProposal, StagedCommit,
+    traits::GroupOperations as _, GroupContext, GroupId, Member, ProposalStore, QueuedProposal,
+    StagedCommit,
 };
 #[cfg(test)]
 use crate::treesync::{node::parent_node::PlainUpdatePathNode, treekem::UpdatePathNode};

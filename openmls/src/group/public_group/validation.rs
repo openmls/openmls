@@ -6,23 +6,22 @@ use std::collections::{BTreeSet, HashSet};
 use openmls_traits::types::VerifiableCiphersuite;
 
 use super::PublicGroup;
-use crate::extensions::RequiredCapabilitiesExtension;
-use crate::group::traits::Group as _;
-use crate::group::GroupContextExtensionsProposalValidationError;
-use crate::prelude::LibraryError;
-use crate::treesync::errors::LeafNodeValidationError;
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
+    extensions::RequiredCapabilitiesExtension,
     framing::{ContentType, ProtocolMessage, Sender},
     group::{
         errors::{ExternalCommitValidationError, ProposalValidationError, ValidationError},
-        Member, ProposalQueue,
+        traits::GroupOperations as _,
+        GroupContextExtensionsProposalValidationError, Member, ProposalQueue,
     },
     messages::{
         proposals::{Proposal, ProposalOrRefType, ProposalType},
         Commit,
     },
+    prelude::LibraryError,
     schedule::errors::PskError,
+    treesync::errors::LeafNodeValidationError,
 };
 
 impl PublicGroup {

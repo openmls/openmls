@@ -44,7 +44,7 @@ use self::{
     node::leaf_node::Capabilities,
     past_secrets::MessageSecretsStore,
     staged_commit::{MemberStagedCommitState, StagedCommit, StagedCommitState},
-    traits::Group as _,
+    traits::GroupOperations as _,
 };
 
 use super::{

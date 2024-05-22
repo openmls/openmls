@@ -14,7 +14,7 @@ use crate::{
 
 use crate::group::errors::MergeCommitError;
 
-use self::traits::Group;
+use self::traits::{Group, GroupOperations};
 
 use super::{errors::ProcessMessageError, *};
 
@@ -258,22 +258,6 @@ impl Group for MlsGroup {
         Ok(Message { verifiable_content })
     }
 
-    fn ciphersuite(&self) -> Ciphersuite {
-        self.group.ciphersuite()
-    }
-
-    fn version(&self) -> ProtocolVersion {
-        self.group.version()
-    }
-
-    fn group_id(&self) -> &GroupId {
-        self.group.group_id()
-    }
-
-    fn context(&self) -> &GroupContext {
-        self.group.context()
-    }
-
     fn stage_commit(
         &self,
         mls_content: &AuthenticatedContent,
@@ -300,6 +284,24 @@ impl Group for MlsGroup {
 
     fn public_group(&self) -> &PublicGroup {
         self.group.public_group()
+    }
+}
+
+impl GroupOperations for MlsGroup {
+    fn ciphersuite(&self) -> Ciphersuite {
+        self.group.ciphersuite()
+    }
+
+    fn version(&self) -> ProtocolVersion {
+        self.group.version()
+    }
+
+    fn group_id(&self) -> &GroupId {
+        self.group.group_id()
+    }
+
+    fn context(&self) -> &GroupContext {
+        self.group.context()
     }
 }
 

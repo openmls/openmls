@@ -204,6 +204,8 @@ pub mod wasm {
 }
 
 // --- HAZMAT --- //
+
+/// A way of disabling all verification and validation.
 static DISABLE_VERIFICATION: AtomicBool = AtomicBool::new(false);
 pub(crate) fn disable_verification() {
     DISABLE_VERIFICATION.store(true, core::sync::atomic::Ordering::Relaxed)

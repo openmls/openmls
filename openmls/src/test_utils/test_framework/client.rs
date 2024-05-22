@@ -10,7 +10,7 @@ use openmls_traits::{
 };
 use tls_codec::{Deserialize, Serialize};
 
-use self::mls_group::traits::Group as _;
+use self::mls_group::traits::GroupOperations as _;
 
 use super::OpenMlsRustCrypto;
 

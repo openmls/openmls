@@ -6,6 +6,7 @@ use crate::{
     schedule::psk::store::ResumptionPskStore,
     storage::OpenMlsProvider,
     treesync::errors::{DerivePathError, PublicTreeError},
+    verification_disabled,
 };
 
 impl StagedCoreWelcome {
@@ -177,7 +178,9 @@ impl StagedCoreWelcome {
             log_crypto!(trace, "  Got:      {:x?}", confirmation_tag);
             log_crypto!(trace, "  Expected: {:x?}", public_group.confirmation_tag());
             debug_assert!(false, "Confirmation tag mismatch");
-            return Err(WelcomeError::ConfirmationTagMismatch);
+            if !verification_disabled() {
+                return Err(WelcomeError::ConfirmationTagMismatch);
+            }
         }
 
         let message_secrets_store = MessageSecretsStore::new_with_secret(0, message_secrets);

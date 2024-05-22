@@ -14,7 +14,7 @@
 //! If an [`MlsMessageIn`] contains a [`PublicMessage`] or [`PrivateMessage`],
 //! can be used to determine which group can be used to process the message.
 
-use self::mls_group::traits::Group as _;
+use self::mls_group::traits::GroupOperations as _;
 
 use super::*;
 use crate::{

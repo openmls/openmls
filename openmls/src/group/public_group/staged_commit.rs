@@ -10,6 +10,7 @@ use crate::{
     },
     messages::{proposals::ProposalOrRef, Commit},
     storage::StorageProvider,
+    verification_disabled,
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -193,7 +194,9 @@ impl PublicGroup {
             diff.apply_received_update_path(crypto, ciphersuite, sender_index, update_path)?;
         } else if apply_proposals_values.path_required {
             // ValSem201
-            return Err(StageCommitError::RequiredPathNotFound);
+            if !verification_disabled() {
+                return Err(StageCommitError::RequiredPathNotFound);
+            }
         };
 
         // Update group context

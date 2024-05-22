@@ -2,7 +2,7 @@
 //!
 //! This module contains [`MlsGroup`] and its submodules.
 
-use self::traits::Group as _;
+use self::traits::{Group as _, GroupOperations as _};
 
 use super::proposals::{ProposalStore, QueuedProposal};
 use crate::{
