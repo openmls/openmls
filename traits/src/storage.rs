@@ -21,6 +21,10 @@ pub const V_TEST: u16 = u16::MAX;
 /// Many getters for lists return a `Result<Vec<T>, E>`. In this case, if there was no error but
 /// the value doesn't exist, an empty vector should be returned.
 ///
+/// Any value that uses the group id as key is required by the group.
+/// Returning `None` or an error for any of them will cause a failure when
+/// loading a group.
+///
 /// More details can be taken from the comments on the respective method.
 pub trait StorageProvider<const VERSION: u16> {
     /// An opaque error returned by all methods on this trait.
@@ -349,6 +353,9 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<Option<MessageSecrets>, Self::Error>;
 
     /// Returns the ResumptionPskStore for the group with the given id.
+    ///
+    /// Returning `None` here is considered an error because the store is needed
+    /// by OpenMLS when loading a group.
     fn resumption_psk_store<
         GroupId: traits::GroupId<VERSION>,
         ResumptionPskStore: traits::ResumptionPskStore<VERSION>,
