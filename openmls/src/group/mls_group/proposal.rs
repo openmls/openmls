@@ -387,7 +387,9 @@ impl MlsGroup {
         Ok((mls_message, proposal_ref))
     }
 
-    /// Updates group context extensions
+    /// Updates Group Context Extensions
+    /// 
+    /// Commits to the Group Context Extension inline proposal using the [`Extensions`]
     ///
     /// Returns an error when the group does not support all the required capabilities
     /// in the new `extensions`.
