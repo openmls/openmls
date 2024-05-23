@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [#1506](https://github.com/openmls/openmls/pull/1506): Add `StagedWelcome` and `StagedCoreWelcome` to make joining a group staged in order to inspect the `Welcome` message. This was followed up with PR [#1533](https://github.com/openmls/openmls/pull/1533) to adjust the API.
 - [#1516](https://github.com/openmls/openmls/pull/1516): Add `MlsGroup::clear_pending_proposals` to the public API; this allows users to clear a group's internal `ProposalStore`
+- [#1565](https://github.com/openmls/openmls/pull/1565): Add new `StorageProvider` trait to the `openmls_traits` crate.
 
 ### Changed
 
@@ -27,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#1548](https://github.com/openmls/openmls/pull/1548): CryptoConfig is now replaced by just Ciphersuite.
 - [#1542](https://github.com/openmls/openmls/pull/1542): Add support for custom proposals. ProposalType::Unknown is now called ProposalType::Other. Proposal::Unknown is now called Proposal::Other.
 - [#1559](https://github.com/openmls/openmls/pull/1559): Remove the `PartialEq` type constraint on the error type of both the `OpenMlsRand` and `OpenMlsKeyStore` traits. Additionally, remove the `Clone` type constraint on the error type of the `OpenMlsRand` trait.
+- [#1565](https://github.com/openmls/openmls/pull/1565): Removed `OpenMlsKeyStore` and replace it with a new `StorageProvider` trait in the `openmls_traits` crate.
 
 ### Fixed
 
