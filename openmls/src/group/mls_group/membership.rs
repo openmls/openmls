@@ -14,6 +14,11 @@ use crate::{
     storage::OpenMlsProvider, treesync::LeafNode,
 };
 
+type UpdateResult<Provider> = Result<
+    (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
+    UpdateGroupMembershipError<<Provider as OpenMlsProvider>::StorageError>,
+>;
+
 impl MlsGroup {
     /// Updates the group membership using only inline proposals.
     /// Adds and removes members and updates the group context.
@@ -24,10 +29,7 @@ impl MlsGroup {
         key_packages_to_add: &[KeyPackage],
         leaf_nodes_to_remove: &[LeafNodeIndex],
         new_extensions: Extensions,
-    ) -> Result<
-        (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
-        UpdateGroupMembershipError<Provider::StorageError>,
-    > {
+    ) -> UpdateResult<Provider> {
         self.is_operational()?;
 
         // Create inline add proposals from any provided key packages
