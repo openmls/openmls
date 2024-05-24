@@ -15,6 +15,27 @@ pub struct OpenMlsRustCrypto {
     key_store: MemoryStorage,
 }
 
+impl serde::ser::Serialize for OpenMlsRustCrypto {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.key_store.serialize(serializer)
+    }
+}
+
+impl<'de> serde::de::Deserialize<'de> for OpenMlsRustCrypto {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let key_store = MemoryStorage::deserialize(deserializer)?;
+        let crypto = RustCrypto::default();
+
+        Ok(Self { crypto, key_store })
+    }
+}
+
 impl OpenMlsProvider for OpenMlsRustCrypto {
     type CryptoProvider = RustCrypto;
     type RandProvider = RustCrypto;

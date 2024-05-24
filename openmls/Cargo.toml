@@ -74,6 +74,7 @@ pretty_env_logger = "0.5"
 tempfile = "3"
 wasm-bindgen = "0.2.90"
 wasm-bindgen-test = "0.3.40"
+clap = { version = "4", features = ["derive"] }
 
 # Disable for wasm32 and Win32
 [target.'cfg(not(any(target_arch = "wasm32", all(target_arch = "x86", target_os = "windows"))))'.dev-dependencies]
@@ -83,4 +84,8 @@ openmls = { path = ".", features = ["test-utils"] }
 
 [[bench]]
 name = "benchmark"
+harness = false
+
+[[bench]]
+name = "large-balanced-group"
 harness = false

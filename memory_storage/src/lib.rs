@@ -1,5 +1,5 @@
 use openmls_traits::storage::*;
-use serde::{Deserialize, Serialize};
+use serde::{ser::SerializeStruct, Serialize};
 use std::{collections::HashMap, sync::RwLock};
 
 /// A storage for the V_TEST version.
@@ -9,9 +9,36 @@ mod test_store;
 #[cfg(feature = "persistence")]
 pub mod persistence;
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default)]
 pub struct MemoryStorage {
     values: RwLock<HashMap<Vec<u8>, Vec<u8>>>,
+}
+
+impl serde::ser::Serialize for MemoryStorage {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut store = serializer.serialize_struct("MemoryStorage", 2)?;
+        let values = self.values.read().unwrap();
+        let values_vec: Vec<(Vec<u8>, Vec<u8>)> =
+            values.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+        store.serialize_field("values", &values_vec)?;
+        store.end()
+    }
+}
+
+impl<'de> serde::de::Deserialize<'de> for MemoryStorage {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let values = Vec::<(Vec<u8>, Vec<u8>)>::deserialize(deserializer)?;
+        let values = values.into_iter().collect();
+        Ok(Self {
+            values: RwLock::new(values),
+        })
+    }
 }
 
 impl MemoryStorage {
