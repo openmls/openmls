@@ -212,6 +212,7 @@ pub enum RemoveMembersError<StorageError> {
     StorageError(StorageError),
 }
 
+/// Update group membership error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum UpdateGroupMembershipError<StorageError> {
     /// See [`LibraryError`] for more details.
