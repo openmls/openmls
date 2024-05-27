@@ -148,9 +148,10 @@ fn test_welcome_context_mismatch(
     welcome.encrypted_group_info = encrypted_verifiable_group_info.into();
 
     // Create backup of encryption keypair, s.t. we can process the welcome a second time after failing.
-    let encryption_keypair =
-        EncryptionKeyPair::read(provider, bob_kpb.key_package().leaf_node().encryption_key())
-            .unwrap();
+    let encryption_keypair = EncryptionKeyPair::from((
+        bob_kpb.key_package().leaf_node().encryption_key().clone(),
+        bob_kpb.private_encryption_key.clone(),
+    ));
 
     // Bob tries to join the group
     let err = StagedWelcome::new_from_welcome(
