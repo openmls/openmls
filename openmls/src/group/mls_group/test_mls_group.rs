@@ -2,6 +2,7 @@ use core_group::test_core_group::setup_client;
 use openmls_test::openmls_test;
 use openmls_traits::OpenMlsProvider as _;
 use tls_codec::{Deserialize, Serialize};
+use traits::ProtocolVersion;
 
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -11,9 +12,12 @@ use crate::{
     key_packages::*,
     messages::proposals::*,
     prelude::Capabilities,
-    test_utils::test_framework::{
-        errors::ClientError, noop_authentication_service, ActionType::Commit, CodecUse,
-        MlsGroupTestSetup,
+    test_utils::{
+        frankenstein,
+        test_framework::{
+            errors::ClientError, noop_authentication_service, ActionType::Commit, CodecUse,
+            MlsGroupTestSetup,
+        },
     },
     tree::sender_ratchet::SenderRatchetConfiguration,
 };
@@ -1222,10 +1226,62 @@ fn group_context_extensions_proposal() {
     alice_group
         .propose_group_context_extensions(provider, new_extensions, &alice_signer)
         .expect_err("expected an error building GCE proposal with bad required_capabilities");
-
+    //
     // TODO: we need to test that processing a commit with multiple group context extensions
     //       proposal also fails. however, we can't generate this commit, because our functions for
     //       constructing commits does not permit it. See #1476
+    //
+    //       implemented in the following lines, but re-signing is missing
+
+    let version: u16 = 1; // didn't work: ProtocolVersion::Mls10 as u16;
+
+    let proposal = frankenstein::FrankenProposal::GroupContextExtensions(vec![
+        frankenstein::FrankenExtension::RequiredCapabilities(
+            frankenstein::FrankenRequiredCapabilitiesExtension {
+                extension_types: vec![],
+                proposal_types: vec![],
+                credential_types: vec![],
+            },
+        ),
+    ]);
+
+    let invalid_gce_commit = frankenstein::FrankenMlsMessage {
+        version,
+        body: frankenstein::FrankenMlsMessageBody::PublicMessage(
+            frankenstein::FrankenPublicMessage {
+                content: frankenstein::FrankenFramedContent {
+                    group_id: alice_group.group_id().value.clone(),
+                    epoch: alice_group.epoch().0,
+                    sender: frankenstein::FrankenSender::Member(alice_group.own_leaf_index().u32()),
+                    authenticated_data: VLBytes::from(vec![]),
+                    body: frankenstein::FrankenFramedContentBody::Commit(
+                        frankenstein::FrankenCommit {
+                            proposals: vec![
+                                frankenstein::FrankenProposalOrRef::Proposal(proposal.clone()),
+                                frankenstein::FrankenProposalOrRef::Proposal(proposal.clone()),
+                            ],
+                            path: None,
+                        },
+                    ),
+                },
+                auth: frankenstein::FrankenFramedContentAuthData {
+                    signature: vec![].into(),
+                    confirmation_tag: None,
+                },
+                membership_tag: None,
+            },
+        ),
+    };
+
+
+    let invalid_gce_commit.resign( ... );
+    let mls_invalid_gce_commit: MlsMessageIn = invalid_gce_commit.into();
+    alice_group.process_message(provider, &mls_invalid_gce_commit).expect_err("expected failing to process invalid GCE commit")
+    /* TODO: implement resign for FrankenCommit
+    */
+
+    // TODO: implement a test that checks that processing an invalid proposal with validation off
+    //          produces the correct commit -> is that really helpful?
 }
 
 // Test that the builder pattern accurately configures the new group.
