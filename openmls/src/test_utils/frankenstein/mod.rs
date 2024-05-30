@@ -7,6 +7,7 @@
 mod codec;
 mod commit;
 mod credentials;
+mod crypto;
 mod extensions;
 mod framing;
 mod group_info;
@@ -16,6 +17,7 @@ mod proposals;
 
 pub use self::commit::*;
 pub use self::credentials::*;
+pub use self::crypto::*;
 pub use self::extensions::*;
 pub use self::framing::*;
 pub use self::key_package::*;

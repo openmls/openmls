@@ -10,7 +10,10 @@ use crate::{
         signable::{Signable, SignedStruct},
         signature::Signature,
     },
-    treesync::{node::leaf_node::LeafNodeIn, LeafNode},
+    treesync::{
+        node::leaf_node::{LeafNodeIn, LeafNodeTbs},
+        LeafNode,
+    },
 };
 
 #[derive(
@@ -48,6 +51,15 @@ impl SignedStruct<FrankenLeafNodeTbs> for FrankenLeafNode {
         Self {
             payload,
             signature: signature.as_slice().to_owned().into(),
+        }
+    }
+}
+
+impl From<LeafNode> for FrankenLeafNode {
+    fn from(value: LeafNode) -> Self {
+        FrankenLeafNode {
+            payload: value.payload().into(),
+            signature: todo!(),
         }
     }
 }
@@ -99,6 +111,18 @@ pub struct FrankenLeafNodeTbs {
     pub extensions: Vec<FrankenExtension>,
 }
 
+impl From<LeafNodeTbs> for FrankenLeafNodeTbs {
+    fn from(value: LeafNodeTbs) -> Self {
+        FrankenLeafNodeTbs {
+            encryption_key: value.payload().encryption_key,
+            signature_key: todo!(),
+            credential: todo!(),
+            capabilities: todo!(),
+            leaf_node_source: todo!(),
+            extensions: todo!(),
+        }
+    }
+}
 #[derive(
     Debug, Clone, PartialEq, Eq, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize,
 )]

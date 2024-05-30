@@ -2,7 +2,6 @@ use core_group::test_core_group::setup_client;
 use openmls_test::openmls_test;
 use openmls_traits::OpenMlsProvider as _;
 use tls_codec::{Deserialize, Serialize};
-use traits::ProtocolVersion;
 
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -1245,39 +1244,44 @@ fn group_context_extensions_proposal() {
         ),
     ]);
 
+    let invalid_gce_framed_content = frankenstein::FrankenFramedContent {
+        group_id: alice_group.group_id().value.clone(),
+        epoch: alice_group.epoch().0,
+        sender: frankenstein::FrankenSender::Member(alice_group.own_leaf_index().u32()),
+        authenticated_data: VLBytes::from(vec![]),
+        body: frankenstein::FrankenFramedContentBody::Commit(frankenstein::FrankenCommit {
+            proposals: vec![
+                frankenstein::FrankenProposalOrRef::Proposal(proposal.clone()),
+                frankenstein::FrankenProposalOrRef::Proposal(proposal.clone()),
+            ],
+            path: None,
+        }),
+    };
+
+    let secrets = alice_group.group.message_secrets();
+    let membership_key = secrets.membership_key().as_slice();
+
+    let group_context = alice_group.export_group_context().clone().into();
+
     let invalid_gce_commit = frankenstein::FrankenMlsMessage {
         version,
         body: frankenstein::FrankenMlsMessageBody::PublicMessage(
-            frankenstein::FrankenPublicMessage {
-                content: frankenstein::FrankenFramedContent {
-                    group_id: alice_group.group_id().value.clone(),
-                    epoch: alice_group.epoch().0,
-                    sender: frankenstein::FrankenSender::Member(alice_group.own_leaf_index().u32()),
-                    authenticated_data: VLBytes::from(vec![]),
-                    body: frankenstein::FrankenFramedContentBody::Commit(
-                        frankenstein::FrankenCommit {
-                            proposals: vec![
-                                frankenstein::FrankenProposalOrRef::Proposal(proposal.clone()),
-                                frankenstein::FrankenProposalOrRef::Proposal(proposal.clone()),
-                            ],
-                            path: None,
-                        },
-                    ),
-                },
-                auth: frankenstein::FrankenFramedContentAuthData {
-                    signature: vec![].into(),
-                    confirmation_tag: None,
-                },
-                membership_tag: None,
-            },
+            frankenstein::FrankenPublicMessage::auth(
+                provider,
+                ciphersuite,
+                &alice_signer,
+                invalid_gce_framed_content,
+                Some(group_context),
+                Some(membership_key),
+                Some((&[], &[])),
+            ),
         ),
     };
 
-
+    /* TODO: implement resign for FrankenPublicMessage
     let invalid_gce_commit.resign( ... );
     let mls_invalid_gce_commit: MlsMessageIn = invalid_gce_commit.into();
     alice_group.process_message(provider, &mls_invalid_gce_commit).expect_err("expected failing to process invalid GCE commit")
-    /* TODO: implement resign for FrankenCommit
     */
 
     // TODO: implement a test that checks that processing an invalid proposal with validation off
