@@ -12,13 +12,13 @@
 //! | Update       |                  |                  |                   |                   |
 
 use std::{
+    collections::HashMap,
     fs::File,
     io::{BufReader, BufWriter},
     time::{Duration, Instant},
 };
 
-use clap::{arg, command, Parser};
-use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
+use clap::Parser;
 use openmls::{
     credentials::{BasicCredential, CredentialWithKey},
     framing::{MlsMessageIn, MlsMessageOut, ProcessedMessageContent},
@@ -28,15 +28,58 @@ use openmls::{
 };
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::types::Ciphersuite;
+use openmls_traits::{types::Ciphersuite, OpenMlsProvider as _};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug, Clone)]
 #[allow(dead_code)]
 struct Member {
     provider: OpenMlsRustCrypto,
     credential_with_key: CredentialWithKey,
     signer: SignatureKeyPair,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+struct SerializableStore {
+    values: HashMap<String, String>,
+}
+
+impl Member {
+    fn serialize(&self) -> (Vec<u8>, Vec<u8>, Vec<u8>) {
+        let storage = self.provider.storage();
+
+        let mut serializable_storage = SerializableStore::default();
+        for (key, value) in &*storage.values.read().unwrap() {
+            serializable_storage
+                .values
+                .insert(base64::encode(key), base64::encode(value));
+        }
+
+        (
+            serde_json::to_vec(&serializable_storage).unwrap(),
+            serde_json::to_vec(&self.credential_with_key).unwrap(),
+            serde_json::to_vec(&self.signer).unwrap(),
+        )
+    }
+
+    fn load(storage: &[u8], ckey: &[u8], signer: &[u8]) -> Self {
+        let serializable_storage: SerializableStore = serde_json::from_slice(storage).unwrap();
+        let credential_with_key: CredentialWithKey = serde_json::from_slice(ckey).unwrap();
+        let signer: SignatureKeyPair = serde_json::from_slice(signer).unwrap();
+
+        let provider = OpenMlsRustCrypto::default();
+        let mut ks_map = provider.storage().values.write().unwrap();
+        for (key, value) in serializable_storage.values {
+            ks_map.insert(base64::decode(key).unwrap(), base64::decode(value).unwrap());
+        }
+        drop(ks_map);
+
+        Self {
+            provider,
+            credential_with_key,
+            signer,
+        }
+    }
 }
 
 #[inline(always)]
@@ -69,6 +112,15 @@ fn self_update(
     group.merge_pending_commit(provider).unwrap();
 
     commit
+}
+
+#[inline(always)]
+fn bench_update(mut groups: Vec<(MlsGroup, Member)>) {
+    // Let group 1 update and merge the commit.
+    let (updater_group, updater) = &mut groups[1];
+    let provider = &updater.provider;
+    let signer = &updater.signer;
+    let _ = self_update(updater_group, provider, signer);
 }
 
 /// Remove member 1
@@ -128,8 +180,8 @@ fn add_member(
     commit
 }
 
-// const GROUP_SIZES: &[usize] = &[2, 3, 4, 5, 10, 25, 50, 100, 200, 500];
-const GROUP_SIZES: &[usize] = &[3, 10];
+const GROUP_SIZES: &[usize] = &[2, 3, 4, 5, 10, 25, 50, 100, 200, 500];
+// const GROUP_SIZES: &[usize] = &[2, 3, 4, 5];
 // const GROUP_SIZES: &[usize] = &[100, 200];
 const CIPHERSUITE: Ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519;
 
@@ -226,32 +278,6 @@ fn setup(num: usize) -> Vec<(MlsGroup, Member)> {
     members
 }
 
-fn add(c: &mut Criterion) {
-    let mut group = c.benchmark_group("Add");
-
-    for group_size in GROUP_SIZES.iter() {
-        group.bench_with_input(
-            BenchmarkId::new("Adder", group_size),
-            group_size,
-            |b, group_size| {
-                b.iter_batched(
-                    || {
-                        let groups = setup(*group_size);
-
-                        let (_member_provider, _signer, _credential_with_key, key_package) =
-                            new_member(&format!("New Member"));
-                        (groups, key_package.key_package().clone())
-                    },
-                    |(mut groups, key_package)| {
-                        add_bench(groups, key_package);
-                    },
-                    BatchSize::LargeInput,
-                )
-            },
-        );
-    }
-}
-
 /// Benchmarking the time for member 1 in the list of `groups` to add a new
 /// member.
 fn add_bench(mut groups: Vec<(MlsGroup, Member)>, key_package: KeyPackage) {
@@ -262,201 +288,205 @@ fn add_bench(mut groups: Vec<(MlsGroup, Member)>, key_package: KeyPackage) {
     let _ = add_member(updater_group, provider, signer, key_package);
 }
 
-fn remove(c: &mut Criterion) {
-    let mut group = c.benchmark_group("Remove");
+const ITERATIONS: usize = 1000;
+const WARMUP_ITERATIONS: usize = 5;
 
-    for group_size in GROUP_SIZES.iter() {
-        group.bench_with_input(
-            BenchmarkId::new("Remover", group_size),
-            group_size,
-            |b, group_size| {
-                b.iter_batched(
-                    || {
-                        let groups = setup(*group_size);
-                        groups
-                    },
-                    |mut groups| {
-                        // Let group 1 update and merge the commit.
-                        let (updater_group, updater) = &mut groups[0];
-                        let provider = &updater.provider;
-                        let signer = &updater.signer;
-                        let _ = remove_member(updater_group, provider, signer);
-                    },
-                    BatchSize::LargeInput,
-                )
-            },
-        );
-    }
-}
-
-fn update(c: &mut Criterion) {
-    let mut group = c.benchmark_group("Update");
-
-    for group_size in GROUP_SIZES.iter() {
-        group.bench_with_input(
-            BenchmarkId::new("Updater", group_size),
-            group_size,
-            |b, group_size| {
-                b.iter_batched(
-                    || {
-                        let groups = setup(*group_size);
-                        groups
-                    },
-                    |mut groups| {
-                        // Let group 1 update and merge the commit.
-                        let (updater_group, updater) = &mut groups[1];
-                        let provider = &updater.provider;
-                        let signer = &updater.signer;
-                        let _ = self_update(updater_group, provider, signer);
-                    },
-                    BatchSize::LargeInput,
-                )
-            },
-        );
-    }
-
-    for group_size in GROUP_SIZES.iter() {
-        group.bench_with_input(
-            BenchmarkId::new("Member", group_size),
-            group_size,
-            |b, group_size| {
-                b.iter_batched(
-                    || {
-                        let mut groups = setup(*group_size);
-
-                        // Let group 1 update and merge the commit.
-                        let (updater_group, updater) = &mut groups[1];
-                        let provider = &updater.provider;
-                        let signer = &updater.signer;
-                        let commit = self_update(updater_group, provider, signer);
-
-                        (groups, commit)
-                    },
-                    |(mut groups, commit)| {
-                        // Apply the commit at member 0
-                        let (member_group, member) = &mut groups[0];
-                        let provider = &member.provider;
-
-                        process_commit(member_group, provider, commit);
-                    },
-                    BatchSize::LargeInput,
-                )
-            },
-        );
-    }
-}
-
-fn criterion_benchmark(c: &mut Criterion) {
-    add(c);
-    // remove(c);
-    // update(c);
-}
-
-// Criterion is super slow. So we're doing manual benchmarks here as well
-// criterion_group!(benches, criterion_benchmark);
-// criterion_main!(benches);
-
-const ITERATIONS: usize = 10;
-const WARMUP_ITERATIONS: usize = 1;
-
-fn duration(d: Duration) -> f64 {
-    ((d.as_secs() as f64) + (d.subsec_nanos() as f64 * 1e-9)) * 1000000f64
-}
-
-fn bench<I, O, S, R>(mut setup: S, mut routine: R) -> f64
+/// A custom benchmarking function.
+fn bench<I, O, S, SI, R>(si: SI, mut setup: S, mut routine: R) -> Duration
 where
-    S: FnMut() -> I,
+    SI: Clone,
+    S: FnMut(SI) -> I,
     R: FnMut(I) -> O,
 {
-    let mut time = 0f64;
+    let mut time = Duration::ZERO;
 
     // Warmup
     for _ in 0..WARMUP_ITERATIONS {
-        let input = setup();
+        let input = setup(si.clone());
         routine(input);
     }
 
     // Benchmark
     for _ in 0..ITERATIONS {
-        let input = setup();
+        let input = setup(si.clone());
 
         let start = Instant::now();
         core::hint::black_box(routine(input));
         let end = Instant::now();
 
-        time += duration(end.duration_since(start));
+        time += end.duration_since(start);
     }
 
     time
 }
 
-// #[derive(Parser, Debug)]
-// #[command(version, about, long_about = None)]
-// struct Args {
-//     /// Write groups out.
-//     #[arg(short, long, num_args = 0)]
-//     write: Option<bool>,
-// }
+#[derive(Parser)]
+struct Args {
+    #[clap(short, long, action)]
+    write: bool,
+}
+mod util {
+    use super::*;
 
-fn main() {
-    // let args = Args::parse();
+    /// Read benchmark setups from the fiels previously written.
+    pub fn read() -> Vec<Vec<(MlsGroup, Member)>> {
+        let file = File::open("large-balanced-group-groups.json").unwrap();
+        let mut reader = BufReader::new(file);
+        let groups: Vec<Vec<MlsGroup>> = serde_json::from_reader(&mut reader).unwrap();
 
-    let mut groups = vec![];
+        let file = File::open("large-balanced-group-members.json").unwrap();
+        let mut reader = BufReader::new(file);
+        let members: Vec<Vec<(Vec<u8>, Vec<u8>, Vec<u8>)>> =
+            serde_json::from_reader(&mut reader).unwrap();
 
-    if false {
+        let members: Vec<Vec<Member>> = members
+            .into_iter()
+            .map(|members| {
+                members
+                    .into_iter()
+                    .map(|m| Member::load(&m.0, &m.1, &m.2))
+                    .collect()
+            })
+            .collect();
+
+        let mut out = vec![];
+        for (g, m) in groups.into_iter().zip(members.into_iter()) {
+            out.push(g.into_iter().zip(m.into_iter()).collect())
+        }
+
+        out
+    }
+
+    /// Generate benchmark setups and write them out.
+    pub fn write() {
+        let mut groups = vec![];
+        let mut members = vec![];
+
         println!("Writing groups for benchmarks ...");
         for num in GROUP_SIZES {
             println!("Generating group of size {num} ...");
             // Generate and write out groups.
             let new_groups = setup(*num);
-            // let (groups, members): (Vec<MlsGroup>, Vec<Member>) = new_groups.into_iter().unzip();
-            // eprintln!("{:?}", serde_json::to_vec(&new_groups));
+            let (new_groups, new_members): (Vec<MlsGroup>, Vec<Member>) =
+                new_groups.into_iter().unzip();
+            let new_members: Vec<(Vec<u8>, Vec<u8>, Vec<u8>)> =
+                new_members.into_iter().map(|m| m.serialize()).collect();
             groups.push(new_groups);
+            members.push(new_members);
         }
-        let file = File::create("large-balanced-group.json").unwrap();
+        let file = File::create("large-balanced-group-groups.json").unwrap();
         let mut writer = BufWriter::new(file);
         serde_json::to_writer(&mut writer, &groups).unwrap();
+        let file = File::create("large-balanced-group-members.json").unwrap();
+        let mut writer = BufWriter::new(file);
+        serde_json::to_writer(&mut writer, &members).unwrap();
 
         println!("Wrote new test groups to file.");
+    }
+}
+use util::*;
+
+fn print_time(label: &str, d: Duration) {
+    let micros = d.as_micros();
+    let time = if micros < (1_000 * ITERATIONS as u128) {
+        format!("{} μs", micros / ITERATIONS as u128)
+    } else if micros < (1_000_000 * ITERATIONS as u128) {
+        format!(
+            "{:.2} ms",
+            (micros as f64 / (1_000_f64 * ITERATIONS as f64))
+        )
+    } else {
+        format!(
+            "{:.2}s",
+            (micros as f64 / (1_000_000_f64 * ITERATIONS as f64))
+        )
+    };
+    let space = if label.len() < 6 {
+        format!("\t\t")
+    } else {
+        format!("\t")
+    };
+
+    println!("{label}:{space}{time}");
+}
+
+fn main() {
+    let args = Args::parse();
+
+    if args.write {
+        // Only generate groups and write them out.
+        write();
+
         return;
     }
 
-    let file = File::open("large-balanced-group.json").unwrap();
-    let mut reader = BufReader::new(file);
-    let groups: Vec<Vec<(MlsGroup, Member)>> = serde_json::from_reader(&mut reader).unwrap();
+    let all_groups = read();
+    for groups in all_groups {
+        if groups.len() > 25 {
+            break;
+        }
+        println!("{} Members", groups.len());
 
-    // for num in GROUP_SIZES {
-    //     println!("{num} Members");
+        // Add
+        let time = bench(
+            groups.clone(),
+            |groups| {
+                let (_member_provider, _signer, _credential_with_key, key_package) =
+                    new_member(&format!("New Member"));
+                let key_package = key_package.key_package().clone();
 
-    //     // Add
-    //     let time = bench(
-    //         || {
-    //             let groups = setup(*num);
-    //             let (_member_provider, _signer, _credential_with_key, key_package) =
-    //                 new_member(&format!("New Member"));
-    //             let key_package = key_package.key_package().clone();
+                (groups, key_package)
+            },
+            |(groups, key_package)| add_bench(groups, key_package),
+        );
+        print_time("Adder", time);
 
-    //             (groups, key_package)
-    //         },
-    //         |(groups, key_package)| add_bench(groups, key_package),
-    //     );
-    //     println!("  Adder: {}μs", time / (ITERATIONS as f64));
+        // Update
+        let time = bench(
+            groups.clone(),
+            |groups| groups,
+            |groups| {
+                bench_update(groups);
+            },
+        );
+        print_time("Updater", time);
 
-    //     // Update
-    //     let time = bench(
-    //         || setup(*num),
-    //         |groups| {
-    //             bench_update(groups);
-    //         },
-    //     );
-    //     println!("  Updater: {}μs", time / (ITERATIONS as f64));
-    // }
-}
+        // Remove
+        let time = bench(
+            groups.clone(),
+            |groups| groups,
+            |mut groups| {
+                // Let group 1 update and merge the commit.
+                let (updater_group, updater) = &mut groups[0];
+                let provider = &updater.provider;
+                let signer = &updater.signer;
+                let _ = remove_member(updater_group, provider, signer);
+            },
+        );
+        print_time("Remover", time);
 
-fn bench_update(mut groups: Vec<(MlsGroup, Member)>) {
-    // Let group 1 update and merge the commit.
-    let (updater_group, updater) = &mut groups[1];
-    let provider = &updater.provider;
-    let signer = &updater.signer;
-    let _ = self_update(updater_group, provider, signer);
+        // Process an update
+        let time = bench(
+            groups,
+            |mut groups| {
+                // Let group 1 update and merge the commit.
+                let (updater_group, updater) = &mut groups[1];
+                let provider = &updater.provider;
+                let signer = &updater.signer;
+                let commit = self_update(updater_group, provider, signer);
+
+                (groups, commit)
+            },
+            |(mut groups, commit)| {
+                // Apply the commit at member 0
+                let (member_group, member) = &mut groups[0];
+                let provider = &member.provider;
+
+                process_commit(member_group, provider, commit);
+            },
+        );
+        print_time("Process update", time);
+
+        println!("");
+    }
 }

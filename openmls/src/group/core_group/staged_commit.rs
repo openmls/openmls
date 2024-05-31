@@ -424,6 +424,7 @@ impl CoreGroup {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Clone))]
 pub(crate) enum StagedCommitState {
     PublicState(Box<PublicStagedCommitState>),
     GroupMember(Box<MemberStagedCommitState>),
@@ -431,6 +432,7 @@ pub(crate) enum StagedCommitState {
 
 /// Contains the changes from a commit to the group state.
 #[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Clone))]
 pub struct StagedCommit {
     staged_proposal_queue: ProposalQueue,
     state: StagedCommitState,
@@ -563,6 +565,7 @@ impl StagedCommit {
 
 /// This struct is used internally by [StagedCommit] to encapsulate all the modified group state.
 #[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Clone))]
 pub(crate) struct MemberStagedCommitState {
     group_epoch_secrets: GroupEpochSecrets,
     message_secrets: MessageSecrets,

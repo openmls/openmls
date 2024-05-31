@@ -159,7 +159,8 @@ pub(crate) struct StagedCoreWelcome {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq, Clone))]
+#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Clone))]
 pub(crate) struct CoreGroup {
     public_group: PublicGroup,
     group_epoch_secrets: GroupEpochSecrets,
