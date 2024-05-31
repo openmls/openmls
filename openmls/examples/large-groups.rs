@@ -5,11 +5,12 @@
 //!
 //! ## Measurements
 //!
-//! | Operation    | Time (2 Members) | Time (5 Members) | Time (10 Members) | Time (25 Members) |
-//! | ------------ | ---------------- | ---------------- | ----------------- | ----------------- |
-//! | Add          |                  |                  |                   |                   |
-//! | Remove       |                  |                  |                   |                   |
-//! | Update       |                  |                  |                   |                   |
+//! |                | 2      | 3      | 4      | 5      | 10     | 25      | 50      | 100      | 200      | 500       |
+//! | -------------- | ------ | ------ | ------ | ------ | ------ | ------- | ------- | -------- | -------- | --------- |
+//! | Adder          | 613 μs | 935 μs | 680 μs | 711 μs | 901 μs | 1.40 ms | 3.18 ms | 9.97 ms  | 39.80 ms | 260.49 ms |
+//! | Updater        | 308 μs | 510 μs | 496 μs | 595 μs | 748 μs | 1.32 ms | 3.01 ms | 10.47 ms | 39.99 ms | 249.49 ms |
+//! | Remover        | 193 μs | 305 μs | 320 μs | 474 μs | 698 μs | 1.23 ms | 3.10 ms | 10.07 ms | 38.10 ms | 257.24 ms |
+//! | Process update | 303 μs | 433 μs | 429 μs | 529 μs | 698 μs | 1.16 ms | 2.86 ms | 9.61 ms  | 35.27 ms | 249.96 ms |
 
 use std::{
     collections::HashMap,
@@ -422,9 +423,6 @@ fn main() {
 
     let all_groups = read();
     for groups in all_groups {
-        if groups.len() > 25 {
-            break;
-        }
         println!("{} Members", groups.len());
 
         // Add
