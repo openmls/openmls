@@ -15,7 +15,6 @@
 use std::{
     collections::HashMap,
     fs::File,
-    io::{BufReader, BufWriter},
     time::{Duration, Instant},
 };
 
@@ -115,15 +114,6 @@ fn self_update(
     commit
 }
 
-#[inline(always)]
-fn bench_update(mut groups: Vec<(MlsGroup, Member)>) {
-    // Let group 1 update and merge the commit.
-    let (updater_group, updater) = &mut groups[1];
-    let provider = &updater.provider;
-    let signer = &updater.signer;
-    let _ = self_update(updater_group, provider, signer);
-}
-
 /// Remove member 1
 #[inline(always)]
 fn remove_member(
@@ -181,112 +171,109 @@ fn add_member(
     commit
 }
 
-const GROUP_SIZES: &[usize] = &[2, 3, 4, 5, 10, 25, 50, 100, 200, 500];
-// const GROUP_SIZES: &[usize] = &[2, 3, 4, 5];
-// const GROUP_SIZES: &[usize] = &[100, 200];
-const CIPHERSUITE: Ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519;
+use generate::CIPHERSUITE;
 
-/// Create a group of `num` clients.
-/// All of them committed after joining.
-fn setup(num: usize) -> Vec<(MlsGroup, Member)> {
-    let creator_provider = OpenMlsRustCrypto::default();
-    let creator_credential = BasicCredential::new(format!("Creator").into());
-    let creator_signer = SignatureKeyPair::new(CIPHERSUITE.signature_algorithm()).unwrap();
-    let creator_credential_with_key = CredentialWithKey {
-        credential: creator_credential.into(),
-        signature_key: creator_signer.to_public_vec().into(),
-    };
+mod generate {
+    use super::*;
 
-    let mls_group_create_config = MlsGroupCreateConfig::builder()
-        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
-        .ciphersuite(CIPHERSUITE)
-        .build();
+    pub const GROUP_SIZES: &[usize] = &[2, 3, 4, 5, 10, 25, 50, 100, 200, 500, 1000];
+    // const GROUP_SIZES: &[usize] = &[2, 3, 4, 5, 10, 25, 50, 100];
+    // const GROUP_SIZES: &[usize] = &[100, 200];
+    pub const CIPHERSUITE: Ciphersuite =
+        Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519;
 
-    // Create the group
-    let creator_group = MlsGroup::new(
-        &creator_provider,
-        &creator_signer,
-        &mls_group_create_config,
-        creator_credential_with_key.clone(),
-    )
-    .expect("An unexpected error occurred.");
+    /// Create a group of `num` clients.
+    /// All of them committed after joining.
+    pub fn setup(num: usize) -> Vec<(MlsGroup, Member)> {
+        let creator_provider = OpenMlsRustCrypto::default();
+        let creator_credential = BasicCredential::new(format!("Creator").into());
+        let creator_signer = SignatureKeyPair::new(CIPHERSUITE.signature_algorithm()).unwrap();
+        let creator_credential_with_key = CredentialWithKey {
+            credential: creator_credential.into(),
+            signature_key: creator_signer.to_public_vec().into(),
+        };
 
-    let mut members: Vec<(MlsGroup, Member)> = vec![(
-        creator_group,
-        Member {
-            provider: creator_provider,
-            credential_with_key: creator_credential_with_key,
-            signer: creator_signer,
-        },
-    )];
+        let mls_group_create_config = MlsGroupCreateConfig::builder()
+            .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+            .ciphersuite(CIPHERSUITE)
+            .build();
 
-    for member_i in 0..num - 1 {
-        let (member_provider, signer, credential_with_key, key_package) =
-            new_member(&format!("Member {member_i}"));
+        // Create the group
+        let creator_group = MlsGroup::new(
+            &creator_provider,
+            &creator_signer,
+            &mls_group_create_config,
+            creator_credential_with_key.clone(),
+        )
+        .expect("An unexpected error occurred.");
 
-        let creator = &mut members[0];
-        let creator_group = &mut creator.0;
-        let creator_provider = &creator.1.provider;
-        let creator_signer = &creator.1.signer;
-        let (commit, welcome, _) = creator_group
-            .add_members(
-                creator_provider,
-                creator_signer,
-                &[key_package.key_package().clone()],
+        let mut members: Vec<(MlsGroup, Member)> = vec![(
+            creator_group,
+            Member {
+                provider: creator_provider,
+                credential_with_key: creator_credential_with_key,
+                signer: creator_signer,
+            },
+        )];
+
+        for member_i in 0..num - 1 {
+            let (member_provider, signer, credential_with_key, key_package) =
+                new_member(&format!("Member {member_i}"));
+
+            let creator = &mut members[0];
+            let creator_group = &mut creator.0;
+            let creator_provider = &creator.1.provider;
+            let creator_signer = &creator.1.signer;
+            let (commit, welcome, _) = creator_group
+                .add_members(
+                    creator_provider,
+                    creator_signer,
+                    &[key_package.key_package().clone()],
+                )
+                .unwrap();
+
+            creator_group
+                .merge_pending_commit(creator_provider)
+                .expect("error merging pending commit");
+
+            let welcome: MlsMessageIn = welcome.into();
+            let welcome = welcome
+                .into_welcome()
+                .expect("expected the message to be a welcome message");
+            let mut member_i_group = StagedWelcome::new_from_welcome(
+                &member_provider,
+                mls_group_create_config.join_config(),
+                welcome,
+                Some(creator_group.export_ratchet_tree().into()),
             )
+            .unwrap()
+            .into_group(&member_provider)
             .unwrap();
 
-        creator_group
-            .merge_pending_commit(creator_provider)
-            .expect("error merging pending commit");
+            // Merge commit on all other members
+            for (group, member) in members.iter_mut().skip(1) {
+                process_commit(group, &member.provider, commit.clone());
+            }
 
-        let welcome: MlsMessageIn = welcome.into();
-        let welcome = welcome
-            .into_welcome()
-            .expect("expected the message to be a welcome message");
-        let mut member_i_group = StagedWelcome::new_from_welcome(
-            &member_provider,
-            mls_group_create_config.join_config(),
-            welcome,
-            Some(creator_group.export_ratchet_tree().into()),
-        )
-        .unwrap()
-        .into_group(&member_provider)
-        .unwrap();
+            // The new member commits and everyone else processes it.
+            let update_commit = self_update(&mut member_i_group, &member_provider, &signer);
+            for (group, member) in members.iter_mut() {
+                process_commit(group, &member.provider, update_commit.clone());
+            }
 
-        // Merge commit on all other members
-        for (group, member) in members.iter_mut().skip(1) {
-            process_commit(group, &member.provider, commit.clone());
+            // Add new member to list
+            members.push((
+                member_i_group,
+                Member {
+                    provider: member_provider,
+                    credential_with_key,
+                    signer,
+                },
+            ));
         }
 
-        // The new member commits and everyone else processes it.
-        let update_commit = self_update(&mut member_i_group, &member_provider, &signer);
-        for (group, member) in members.iter_mut() {
-            process_commit(group, &member.provider, update_commit.clone());
-        }
-
-        // Add new member to list
-        members.push((
-            member_i_group,
-            Member {
-                provider: member_provider,
-                credential_with_key,
-                signer,
-            },
-        ));
+        members
     }
-
-    members
-}
-
-/// Benchmarking the time for member 1 in the list of `groups` to add a new
-/// member.
-fn add_bench(mut groups: Vec<(MlsGroup, Member)>, key_package: KeyPackage) {
-    // Let group 1 add a member and merge the commit.
-    let (updater_group, updater) = &mut groups[1];
-    let provider = &updater.provider;
-    let signer = &updater.signer;
-    let _ = add_member(updater_group, provider, signer, key_package);
 }
 
 const ITERATIONS: usize = 1000;
@@ -327,16 +314,16 @@ struct Args {
     write: bool,
 }
 mod util {
-    use super::*;
+    use super::{generate, *};
 
     /// Read benchmark setups from the fiels previously written.
     pub fn read() -> Vec<Vec<(MlsGroup, Member)>> {
-        let file = File::open("large-balanced-group-groups.json").unwrap();
-        let mut reader = BufReader::new(file);
+        let file = File::open("large-balanced-group-groups.json.gzip").unwrap();
+        let mut reader = flate2::read::GzDecoder::new(file);
         let groups: Vec<Vec<MlsGroup>> = serde_json::from_reader(&mut reader).unwrap();
 
-        let file = File::open("large-balanced-group-members.json").unwrap();
-        let mut reader = BufReader::new(file);
+        let file = File::open("large-balanced-group-members.json.gzip").unwrap();
+        let mut reader = flate2::read::GzDecoder::new(file);
         let members: Vec<Vec<(Vec<u8>, Vec<u8>, Vec<u8>)>> =
             serde_json::from_reader(&mut reader).unwrap();
 
@@ -364,10 +351,10 @@ mod util {
         let mut members = vec![];
 
         println!("Writing groups for benchmarks ...");
-        for num in GROUP_SIZES {
+        for num in generate::GROUP_SIZES {
             println!("Generating group of size {num} ...");
             // Generate and write out groups.
-            let new_groups = setup(*num);
+            let new_groups = generate::setup(*num);
             let (new_groups, new_members): (Vec<MlsGroup>, Vec<Member>) =
                 new_groups.into_iter().unzip();
             let new_members: Vec<(Vec<u8>, Vec<u8>, Vec<u8>)> =
@@ -375,11 +362,11 @@ mod util {
             groups.push(new_groups);
             members.push(new_members);
         }
-        let file = File::create("large-balanced-group-groups.json").unwrap();
-        let mut writer = BufWriter::new(file);
+        let file = File::create("large-balanced-group-groups.json.gzip").unwrap();
+        let mut writer = flate2::write::GzEncoder::new(file, flate2::Compression::default());
         serde_json::to_writer(&mut writer, &groups).unwrap();
-        let file = File::create("large-balanced-group-members.json").unwrap();
-        let mut writer = BufWriter::new(file);
+        let file = File::create("large-balanced-group-members.json.gzip").unwrap();
+        let mut writer = flate2::write::GzEncoder::new(file, flate2::Compression::default());
         serde_json::to_writer(&mut writer, &members).unwrap();
 
         println!("Wrote new test groups to file.");
@@ -423,6 +410,9 @@ fn main() {
 
     let all_groups = read();
     for groups in all_groups {
+        if groups.len() != 10 {
+            continue;
+        }
         println!("{} Members", groups.len());
 
         // Add
@@ -435,7 +425,12 @@ fn main() {
 
                 (groups, key_package)
             },
-            |(groups, key_package)| add_bench(groups, key_package),
+            |(mut groups, key_package)| {
+                let (updater_group, updater) = &mut groups[1];
+                let provider = &updater.provider;
+                let signer = &updater.signer;
+                let _ = add_member(updater_group, provider, signer, key_package);
+            },
         );
         print_time("Adder", time);
 
@@ -443,8 +438,12 @@ fn main() {
         let time = bench(
             groups.clone(),
             |groups| groups,
-            |groups| {
-                bench_update(groups);
+            |mut groups| {
+                // Let group 1 update and merge the commit.
+                let (updater_group, updater) = &mut groups[1];
+                let provider = &updater.provider;
+                let signer = &updater.signer;
+                let _ = self_update(updater_group, provider, signer);
             },
         );
         print_time("Updater", time);
