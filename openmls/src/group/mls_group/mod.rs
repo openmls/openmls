@@ -11,7 +11,7 @@ use crate::{
     framing::{mls_auth_content::AuthenticatedContent, *},
     group::*,
     key_packages::{KeyPackage, KeyPackageBundle},
-    messages::proposals::*,
+    messages::{proposals::*, GroupSecrets},
     schedule::ResumptionPskSecret,
     storage::{OpenMlsProvider, StorageProvider},
     treesync::{node::leaf_node::LeafNode, RatchetTree},
@@ -493,4 +493,24 @@ pub struct StagedWelcome {
     // The internal `CoreGroup` used for lower level operations. See `CoreGroup` for more
     // information.
     group: StagedCoreWelcome,
+}
+
+/// A parsed, but not fully processed `Welcome` message.
+///
+/// This may be used in order to retrieve information from the `Welcome` about
+/// the ratchet tree.
+///
+/// Use `into_staged_welcome` to get the [`StagedWelcome`] on this.
+pub struct ProcessedWelcome {
+    // The group configuration. See [`MlsGroupJoinConfig`] for more information.
+    mls_group_config: MlsGroupJoinConfig,
+
+    // The following is the state after parsing the Welcome message, before actually
+    // building the group.
+    ciphersuite: Ciphersuite,
+    group_secrets: GroupSecrets,
+    key_schedule: crate::schedule::KeySchedule,
+    verifiable_group_info: crate::messages::group_info::VerifiableGroupInfo,
+    resumption_psk_store: crate::schedule::psk::store::ResumptionPskStore,
+    key_package_bundle: KeyPackageBundle,
 }

@@ -6,7 +6,7 @@
 //! error, will still return a `Result` since they may throw a `LibraryError`.
 
 // Private
-mod new_from_welcome;
+pub(super) mod new_from_welcome;
 
 // Crate
 pub(crate) mod create_commit_params;
