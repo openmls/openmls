@@ -91,6 +91,7 @@ impl StagedCoreWelcome {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(in crate::group) fn build_staged_welcome<Provider: OpenMlsProvider>(
     verifiable_group_info: VerifiableGroupInfo,
     ratchet_tree: Option<RatchetTreeIn>,
