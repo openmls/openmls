@@ -307,23 +307,27 @@ const ITERATIONS: usize = 1000;
 const WARMUP_ITERATIONS: usize = 5;
 
 /// A custom benchmarking function.
-fn bench<I, O, S, SI, R>(si: SI, mut setup: S, mut routine: R) -> Duration
+///
+/// DO NOT USE THIS WITH LARGE INPUTS
+#[inline(always)]
+#[allow(dead_code)]
+fn bench<I, O, S, SI, R>(si: &SI, mut setup: S, mut routine: R) -> Duration
 where
     SI: Clone,
-    S: FnMut(SI) -> I,
+    S: FnMut(&SI) -> I,
     R: FnMut(I) -> O,
 {
     let mut time = Duration::ZERO;
 
     // Warmup
     for _ in 0..WARMUP_ITERATIONS {
-        let input = setup(si.clone());
+        let input = setup(si);
         routine(input);
     }
 
     // Benchmark
     for _ in 0..ITERATIONS {
-        let input = setup(si.clone());
+        let input = setup(si);
 
         let start = Instant::now();
         core::hint::black_box(routine(input));
@@ -333,6 +337,32 @@ where
     }
 
     time
+}
+
+// A benchmarking macro to avoid copying memory and skewing the results.
+macro_rules! bench {
+    ($groups:expr, $setup:expr, $routine:expr) => {{
+        let mut time = Duration::ZERO;
+
+        // Warmup
+        for _ in 0..WARMUP_ITERATIONS {
+            let input = $setup($groups);
+            $routine(input);
+        }
+
+        // Benchmark
+        for _ in 0..ITERATIONS {
+            let input = $setup($groups);
+
+            let start = Instant::now();
+            core::hint::black_box($routine(input));
+            let end = Instant::now();
+
+            time += end.duration_since(start);
+        }
+
+        time
+    }};
 }
 
 #[derive(clap::ValueEnum, Clone, Copy, Debug)]
@@ -474,7 +504,7 @@ fn main() {
     }
 
     let all_groups = read(args.data);
-    for groups in all_groups {
+    for groups in all_groups.iter() {
         if let Some(group_sizes) = &args.groups {
             // Only run the groups of the sizes from the cli
             if !group_sizes.contains(&groups.len()) {
@@ -484,71 +514,71 @@ fn main() {
         println!("{} Members", groups.len());
 
         // Add
-        let time = bench(
-            groups.clone(),
-            |groups| {
+        let time = bench!(
+            groups,
+            |groups: &Vec<(MlsGroup, Member)>| {
                 let (_member_provider, _signer, _credential_with_key, key_package) =
                     new_member(&format!("New Member"));
                 let key_package = key_package.key_package().clone();
 
-                (groups, key_package)
+                (groups[1].clone(), key_package)
             },
-            |(mut groups, key_package)| {
-                let (updater_group, updater) = &mut groups[1];
+            |(group1, key_package): ((MlsGroup, Member), KeyPackage)| {
+                let (mut updater_group, updater) = group1;
                 let provider = &updater.provider;
                 let signer = &updater.signer;
-                let _ = add_member(updater_group, provider, signer, key_package);
-            },
+                let _ = add_member(&mut updater_group, provider, signer, key_package);
+            }
         );
         print_time("Adder", time);
 
         // Update
-        let time = bench(
-            groups.clone(),
-            |groups| groups,
-            |mut groups| {
+        let time = bench!(
+            groups,
+            |groups: &Vec<(MlsGroup, Member)>| groups[1].clone(),
+            |group1: (MlsGroup, Member)| {
                 // Let group 1 update and merge the commit.
-                let (updater_group, updater) = &mut groups[1];
+                let (mut updater_group, updater) = group1;
                 let provider = &updater.provider;
                 let signer = &updater.signer;
-                let _ = self_update(updater_group, provider, signer);
-            },
+                let _ = self_update(&mut updater_group, provider, signer);
+            }
         );
         print_time("Updater", time);
 
         // Remove
-        let time = bench(
-            groups.clone(),
-            |groups| groups,
-            |mut groups| {
+        let time = bench!(
+            groups,
+            |groups: &Vec<(MlsGroup, Member)>| groups[0].clone(),
+            |group0: (MlsGroup, Member)| {
                 // Let group 1 update and merge the commit.
-                let (updater_group, updater) = &mut groups[0];
+                let (mut updater_group, updater) = group0;
                 let provider = &updater.provider;
                 let signer = &updater.signer;
-                let _ = remove_member(updater_group, provider, signer);
-            },
+                let _ = remove_member(&mut updater_group, provider, signer);
+            }
         );
         print_time("Remover", time);
 
         // Process an update
-        let time = bench(
+        let time = bench!(
             groups,
-            |mut groups| {
+            |groups: &Vec<(MlsGroup, Member)>| {
                 // Let group 1 update and merge the commit.
-                let (updater_group, updater) = &mut groups[1];
+                let (updater_group, updater) = &groups[1];
                 let provider = &updater.provider;
                 let signer = &updater.signer;
-                let commit = self_update(updater_group, provider, signer);
+                let commit = self_update(&mut updater_group.clone(), provider, signer);
 
-                (groups, commit)
+                (groups[0].clone(), commit)
             },
-            |(mut groups, commit)| {
+            |(group0, commit): ((MlsGroup, Member), MlsMessageOut)| {
                 // Apply the commit at member 0
-                let (member_group, member) = &mut groups[0];
+                let (mut member_group, member) = group0;
                 let provider = &member.provider;
 
-                process_commit(member_group, provider, commit);
-            },
+                process_commit(&mut member_group, provider, commit);
+            }
         );
         print_time("Process update", time);
 
