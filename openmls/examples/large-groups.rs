@@ -2,15 +2,6 @@
 //! when the tree is fully populated.
 //!
 //! In particular do we assume that each member commits after joining the group.
-//!
-//! ## Measurements
-//!
-//! |                | 2      | 3      | 4      | 5      | 10     | 25      | 50      | 100      | 200      | 500       |
-//! | -------------- | ------ | ------ | ------ | ------ | ------ | ------- | ------- | -------- | -------- | --------- |
-//! | Adder          | 613 μs | 935 μs | 680 μs | 711 μs | 901 μs | 1.40 ms | 3.18 ms | 9.97 ms  | 39.80 ms | 260.49 ms |
-//! | Updater        | 308 μs | 510 μs | 496 μs | 595 μs | 748 μs | 1.32 ms | 3.01 ms | 10.47 ms | 39.99 ms | 249.49 ms |
-//! | Remover        | 193 μs | 305 μs | 320 μs | 474 μs | 698 μs | 1.23 ms | 3.10 ms | 10.07 ms | 38.10 ms | 257.24 ms |
-//! | Process update | 303 μs | 433 μs | 429 μs | 529 μs | 698 μs | 1.16 ms | 2.86 ms | 9.61 ms  | 35.27 ms | 249.96 ms |
 
 use std::{
     collections::HashMap,
@@ -18,6 +9,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use base64::prelude::*;
 use clap::Parser;
 use openmls::{
     credentials::{BasicCredential, CredentialWithKey},
@@ -52,7 +44,7 @@ impl Member {
         for (key, value) in &*storage.values.read().unwrap() {
             serializable_storage
                 .values
-                .insert(base64::encode(key), base64::encode(value));
+                .insert(BASE64_STANDARD.encode(key), BASE64_STANDARD.encode(value));
         }
 
         (
@@ -70,7 +62,10 @@ impl Member {
         let provider = OpenMlsRustCrypto::default();
         let mut ks_map = provider.storage().values.write().unwrap();
         for (key, value) in serializable_storage.values {
-            ks_map.insert(base64::decode(key).unwrap(), base64::decode(value).unwrap());
+            ks_map.insert(
+                BASE64_STANDARD.decode(key).unwrap(),
+                BASE64_STANDARD.decode(value).unwrap(),
+            );
         }
         drop(ks_map);
 
