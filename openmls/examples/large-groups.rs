@@ -176,15 +176,16 @@ use generate::CIPHERSUITE;
 mod generate {
     use super::*;
 
-    pub const GROUP_SIZES: &[usize] = &[2, 3, 4, 5, 10, 25, 50, 100, 200, 500, 1000];
-    // const GROUP_SIZES: &[usize] = &[2, 3, 4, 5, 10, 25, 50, 100];
-    // const GROUP_SIZES: &[usize] = &[100, 200];
+    pub const GROUP_SIZES: &[usize] = &[2, 3, 4, 5, 10, 25, 50, 100];
     pub const CIPHERSUITE: Ciphersuite =
         Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519;
 
     /// Create a group of `num` clients.
     /// All of them committed after joining.
-    pub fn setup(num: usize) -> Vec<(MlsGroup, Member)> {
+    pub fn setup(num: usize, variant: Option<SetupVariants>) -> Vec<(MlsGroup, Member)> {
+        // We default to a bare group unless variant wants something else.
+        let variant = variant.unwrap_or(SetupVariants::Bare);
+
         let creator_provider = OpenMlsRustCrypto::default();
         let creator_credential = BasicCredential::new(format!("Creator").into());
         let creator_signer = SignatureKeyPair::new(CIPHERSUITE.signature_algorithm()).unwrap();
@@ -255,10 +256,17 @@ mod generate {
                 process_commit(group, &member.provider, commit.clone());
             }
 
-            // The new member commits and everyone else processes it.
-            let update_commit = self_update(&mut member_i_group, &member_provider, &signer);
-            for (group, member) in members.iter_mut() {
-                process_commit(group, &member.provider, update_commit.clone());
+            // Depending on the variant we do something here.
+            match variant {
+                SetupVariants::Bare => (), // Nothing to do in this case.
+                SetupVariants::CommitAfterJoin => {
+                    // The new member commits and everyone else processes it.
+                    let update_commit = self_update(&mut member_i_group, &member_provider, &signer);
+                    for (group, member) in members.iter_mut() {
+                        process_commit(group, &member.provider, update_commit.clone());
+                    }
+                }
+                SetupVariants::CommitToFullGroup => (), // Commit after everyone was added.
             }
 
             // Add new member to list
@@ -270,6 +278,25 @@ mod generate {
                     signer,
                 },
             ));
+        }
+
+        // Depending on the variant we do something once everyone was added.
+        match variant {
+            SetupVariants::Bare => (),            // Nothing to do in this case.
+            SetupVariants::CommitAfterJoin => (), // Noting to do in this case.
+            SetupVariants::CommitToFullGroup => {
+                // Every member commits and everyone else processes it.
+                for i in 0..members.len() {
+                    let (member_i_group, member_i) = &mut members[i];
+                    let update_commit =
+                        self_update(member_i_group, &member_i.provider, &member_i.signer);
+                    for (j, (group, member)) in members.iter_mut().enumerate() {
+                        if i != j {
+                            process_commit(group, &member.provider, update_commit.clone());
+                        }
+                    }
+                }
+            }
         }
 
         members
@@ -308,21 +335,42 @@ where
     time
 }
 
+#[derive(clap::ValueEnum, Clone, Copy, Debug)]
+enum SetupVariants {
+    Bare,
+    CommitAfterJoin,
+    CommitToFullGroup,
+}
+
 #[derive(Parser)]
 struct Args {
     #[clap(short, long, action)]
     write: bool,
+
+    #[clap(short, long)]
+    data: Option<String>,
+
+    #[clap(short, long, value_delimiter = ' ', num_args = 1..)]
+    groups: Option<Vec<usize>>,
+
+    #[clap(short, long)]
+    setup: Option<SetupVariants>,
 }
 mod util {
+    use std::path::Path;
+
     use super::{generate, *};
 
+    const GROUPS_PATH: &str = "large-balanced-group-groups.json.gzip";
+    const MEMBERS_PATH: &str = "large-balanced-group-members.json.gzip";
+
     /// Read benchmark setups from the fiels previously written.
-    pub fn read() -> Vec<Vec<(MlsGroup, Member)>> {
-        let file = File::open("large-balanced-group-groups.json.gzip").unwrap();
+    pub fn read(path: Option<String>) -> Vec<Vec<(MlsGroup, Member)>> {
+        let file = File::open(groups_file(&path)).unwrap();
         let mut reader = flate2::read::GzDecoder::new(file);
         let groups: Vec<Vec<MlsGroup>> = serde_json::from_reader(&mut reader).unwrap();
 
-        let file = File::open("large-balanced-group-members.json.gzip").unwrap();
+        let file = File::open(members_file(&path)).unwrap();
         let mut reader = flate2::read::GzDecoder::new(file);
         let members: Vec<Vec<(Vec<u8>, Vec<u8>, Vec<u8>)>> =
             serde_json::from_reader(&mut reader).unwrap();
@@ -345,16 +393,33 @@ mod util {
         out
     }
 
+    fn groups_file(path: &Option<String>) -> std::path::PathBuf {
+        let path = path.clone().unwrap_or_default();
+        let path = Path::new(&path);
+        path.join(GROUPS_PATH)
+    }
+
+    fn members_file(path: &Option<String>) -> std::path::PathBuf {
+        let path = path.clone().unwrap_or_default();
+        let path = Path::new(&path);
+        path.join(MEMBERS_PATH)
+    }
+
     /// Generate benchmark setups and write them out.
-    pub fn write() {
+    pub fn write(
+        path: Option<String>,
+        group_sizes: Option<Vec<usize>>,
+        variant: Option<SetupVariants>,
+    ) {
         let mut groups = vec![];
         let mut members = vec![];
 
-        println!("Writing groups for benchmarks ...");
-        for num in generate::GROUP_SIZES {
+        let group_sizes = group_sizes.unwrap_or(generate::GROUP_SIZES.to_vec());
+        println!("Writing groups for benchmarks {group_sizes:?}...");
+        for num in group_sizes {
             println!("Generating group of size {num} ...");
             // Generate and write out groups.
-            let new_groups = generate::setup(*num);
+            let new_groups = generate::setup(num, variant);
             let (new_groups, new_members): (Vec<MlsGroup>, Vec<Member>) =
                 new_groups.into_iter().unzip();
             let new_members: Vec<(Vec<u8>, Vec<u8>, Vec<u8>)> =
@@ -362,10 +427,10 @@ mod util {
             groups.push(new_groups);
             members.push(new_members);
         }
-        let file = File::create("large-balanced-group-groups.json.gzip").unwrap();
+        let file = File::create(groups_file(&path)).unwrap();
         let mut writer = flate2::write::GzEncoder::new(file, flate2::Compression::default());
         serde_json::to_writer(&mut writer, &groups).unwrap();
-        let file = File::create("large-balanced-group-members.json.gzip").unwrap();
+        let file = File::create(members_file(&path)).unwrap();
         let mut writer = flate2::write::GzEncoder::new(file, flate2::Compression::default());
         serde_json::to_writer(&mut writer, &members).unwrap();
 
@@ -403,15 +468,18 @@ fn main() {
 
     if args.write {
         // Only generate groups and write them out.
-        write();
+        write(args.data, args.groups, args.setup);
 
         return;
     }
 
-    let all_groups = read();
+    let all_groups = read(args.data);
     for groups in all_groups {
-        if groups.len() != 10 {
-            continue;
+        if let Some(group_sizes) = &args.groups {
+            // Only run the groups of the sizes from the cli
+            if !group_sizes.contains(&groups.len()) {
+                continue;
+            }
         }
         println!("{} Members", groups.len());
 
