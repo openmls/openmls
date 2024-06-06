@@ -393,8 +393,8 @@ impl MlsGroup {
     ///
     /// Returns an error when the group does not support all the required capabilities
     /// in the new `extensions` or if there is a pending commit.
-    /// // FIXME: #1217
     //// FIXME: #1217
+    #[allow(clippy::type_complexity)]
     pub fn update_group_context_extensions<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
