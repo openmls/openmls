@@ -11,7 +11,7 @@ use crate::{
         group_info::{GroupInfo, VerifiableGroupInfo},
         Welcome,
     },
-    schedule::psk::store::ResumptionPskStore,
+    schedule::psk::{store::ResumptionPskStore, PreSharedKeyId},
     storage::OpenMlsProvider,
     treesync::RatchetTreeIn,
 };
@@ -186,6 +186,13 @@ impl ProcessedWelcome {
     /// **NOTE:** The group info contains **unverified** values. Use with caution.
     pub fn unverified_group_info(&self) -> &VerifiableGroupInfo {
         &self.verifiable_group_info
+    }
+
+    /// Get a reference to the PSKs in this Welcome message.
+    ///
+    /// **NOTE:** The group info contains **unverified** values. Use with caution.
+    pub fn psks(&self) -> &[PreSharedKeyId] {
+        &self.group_secrets.psks
     }
 
     /// Consume the `ProcessedWelcome` and combine it witht he ratchet tree into
