@@ -586,7 +586,7 @@ fn test_group_context_extension_proposal(
             &[CredentialType::Basic],
         ));
     let gce_proposal = alice_group
-        .create_group_context_ext_proposal(
+        .create_group_context_ext_proposal::<Provider>(
             framing_parameters,
             Extensions::single(required_application_id),
             &alice_signer,

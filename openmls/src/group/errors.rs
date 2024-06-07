@@ -500,7 +500,7 @@ pub(crate) enum CoreGroupParseMessageError {
 
 /// Create group context ext proposal error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum CreateGroupContextExtProposalError {
+pub enum CreateGroupContextExtProposalError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -513,6 +513,15 @@ pub enum CreateGroupContextExtProposalError {
     /// See [`LeafNodeValidationError`] for more details.
     #[error(transparent)]
     LeafNodeValidation(#[from] LeafNodeValidationError),
+    /// See [`MlsGroupStateError`] for more details.
+    #[error(transparent)]
+    MlsGroupStateError(#[from] MlsGroupStateError<StorageError>),
+    /// See [`CreateCommitError`] for more details.
+    #[error(transparent)]
+    CreateCommitError(#[from] CreateCommitError<StorageError>),
+    /// Error writing updated group to storage.
+    #[error("Error writing updated group data to storage.")]
+    StorageError(StorageError),
 }
 
 /// Error merging a commit.
@@ -536,6 +545,15 @@ pub enum GroupContextExtensionsProposalValidationError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
+
+    /// The new extension types in required capabilties contails extensions that are not supported by all group members.
+    #[error(
+        "The new required capabilties contain extension types that are not supported by all group members."
+    )]
+    ExtensionNotSupportedByAllMembers,
+    /// Proposal changes the immutable metadata extension, which is not allowed.
+    #[error("Proposal changes the immutable metadata extension, which is not allowed.")]
+    ChangedImmutableMetadata,
 
     /// The new extension types in required capabilties contails extensions that are not supported by all group members.
     #[error(

@@ -1,8 +1,10 @@
 use openmls_traits::{signatures::Signer, storage::StorageProvider, types::Ciphersuite};
 
 use super::{
+    core_group::create_commit_params::CreateCommitParams,
     errors::{ProposalError, ProposeAddMemberError, ProposeRemoveMemberError},
-    CustomProposal, MlsGroup,
+    CreateGroupContextExtProposalError, CustomProposal, GroupContextExtensionProposal, MlsGroup,
+    MlsGroupState, PendingCommitState, Proposal,
 };
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -12,7 +14,7 @@ use crate::{
     framing::MlsMessageOut,
     group::{errors::CreateAddProposalError, GroupId, QueuedProposal},
     key_packages::KeyPackage,
-    messages::proposals::ProposalOrRefType,
+    messages::{group_info::GroupInfo, proposals::ProposalOrRefType},
     prelude::LibraryError,
     schedule::PreSharedKeyId,
     storage::OpenMlsProvider,
@@ -361,7 +363,7 @@ impl MlsGroup {
     ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
         self.is_operational()?;
 
-        let proposal = self.group.create_group_context_ext_proposal(
+        let proposal = self.group.create_group_context_ext_proposal::<Provider>(
             self.framing_parameters(),
             extensions,
             signer,
@@ -383,5 +385,59 @@ impl MlsGroup {
         let mls_message = self.content_to_mls_message(proposal, provider)?;
 
         Ok((mls_message, proposal_ref))
+    }
+
+    /// Updates Group Context Extensions
+    ///
+    /// Commits to the Group Context Extension inline proposal using the [`Extensions`]
+    ///
+    /// Returns an error when the group does not support all the required capabilities
+    /// in the new `extensions` or if there is a pending commit.
+    //// FIXME: #1217
+    #[allow(clippy::type_complexity)]
+    pub fn update_group_context_extensions<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        extensions: Extensions,
+        signer: &impl Signer,
+    ) -> Result<
+        (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
+        CreateGroupContextExtProposalError<Provider::StorageError>,
+    > {
+        self.is_operational()?;
+
+        // Create inline group context extension proposals
+        let inline_proposals = vec![Proposal::GroupContextExtensions(
+            GroupContextExtensionProposal::new(extensions),
+        )];
+
+        // Create Commit over all proposals
+        let params = CreateCommitParams::builder()
+            .framing_parameters(self.framing_parameters())
+            .proposal_store(&self.proposal_store)
+            .inline_proposals(inline_proposals)
+            .build();
+        let create_commit_result = self.group.create_commit(params, provider, signer)?;
+
+        let mls_messages = self.content_to_mls_message(create_commit_result.commit, provider)?;
+
+        // Set the current group state to [`MlsGroupState::PendingCommit`],
+        // storing the current [`StagedCommit`] from the commit results
+        self.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
+            create_commit_result.staged_commit,
+        )));
+
+        provider
+            .storage()
+            .write_group_state(self.group_id(), &self.group_state)
+            .map_err(CreateGroupContextExtProposalError::StorageError)?;
+
+        Ok((
+            mls_messages,
+            create_commit_result
+                .welcome_option
+                .map(|w| MlsMessageOut::from_welcome(w, self.group.version())),
+            create_commit_result.group_info,
+        ))
     }
 }
