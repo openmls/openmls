@@ -228,7 +228,7 @@ pub(in crate::group) fn build_staged_welcome<Provider: OpenMlsProvider>(
     Ok(group)
 }
 
-/// Process a Welcome message up to the point where the ratchet tree is is required.
+/// Process a Welcome message up to the point where the ratchet tree is required.
 pub(in crate::group) fn process_welcome<Provider: OpenMlsProvider>(
     welcome: Welcome,
     key_package_bundle: &KeyPackageBundle,
