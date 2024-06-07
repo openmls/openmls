@@ -537,11 +537,6 @@ impl KeyPackageBuilder {
             .write_key_package(&full_kp.key_package.hash_ref(provider.crypto())?, &full_kp)
             .map_err(|_| KeyPackageNewError::StorageError)?;
 
-        // Store the encryption key pair in the key store.
-        encryption_keypair
-            .write(provider.storage())
-            .map_err(|_| KeyPackageNewError::StorageError)?;
-
         Ok(full_kp)
     }
 }

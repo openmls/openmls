@@ -103,7 +103,7 @@ impl VerifiableGroupInfo {
     /// Get (unverified) extensions of the verifiable group info.
     ///
     /// Note: This method should only be used when necessary to verify the group info signature.
-    pub(crate) fn extensions(&self) -> &Extensions {
+    pub fn extensions(&self) -> &Extensions {
         &self.payload.extensions
     }
 
@@ -111,7 +111,7 @@ impl VerifiableGroupInfo {
     ///
     /// Note: This method should only be used when necessary to verify the group
     /// info signature.
-    pub(crate) fn group_id(&self) -> &GroupId {
+    pub fn group_id(&self) -> &GroupId {
         self.payload.group_context.group_id()
     }
 }
