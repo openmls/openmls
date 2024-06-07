@@ -1135,12 +1135,13 @@ impl CoreGroup {
     }
 
     /// Create a new group context extension proposal
-    pub(crate) fn create_group_context_ext_proposal(
+    pub(crate) fn create_group_context_ext_proposal<Provider: OpenMlsProvider>(
         &self,
         framing_parameters: FramingParameters,
         extensions: Extensions,
         signer: &impl Signer,
-    ) -> Result<AuthenticatedContent, CreateGroupContextExtProposalError> {
+    ) -> Result<AuthenticatedContent, CreateGroupContextExtProposalError<Provider::StorageError>>
+    {
         // Ensure that the group supports all the extensions that are wanted.
         let required_extension = extensions
             .iter()
