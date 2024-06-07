@@ -289,6 +289,40 @@
 <a href="#287" id="287">287</a>
 <a href="#288" id="288">288</a>
 <a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>log::debug;
 
 <span class="kw">use crate</span>::{
@@ -310,207 +344,26 @@
         ratchet_tree: <span class="prelude-ty">Option</span>&lt;RatchetTreeIn&gt;,
         key_package_bundle: KeyPackageBundle,
         provider: <span class="kw-2">&amp;</span>Provider,
-        <span class="kw-2">mut </span>resumption_psk_store: ResumptionPskStore,
+        resumption_psk_store: ResumptionPskStore,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, WelcomeError&lt;Provider::StorageError&gt;&gt; {
         <span class="macro">log::debug!</span>(<span class="string">"CoreGroup::new_from_welcome_internal"</span>);
-        <span class="kw">let </span>ciphersuite = welcome.ciphersuite();
-
-        <span class="comment">// Find key_package in welcome secrets
-        </span><span class="kw">let </span>egs = <span class="kw">if let </span><span class="prelude-val">Some</span>(egs) = CoreGroup::find_key_package_from_welcome_secrets(
-            key_package_bundle
-                .key_package()
-                .hash_ref(provider.crypto())<span class="question-mark">?</span>,
-            welcome.secrets(),
-        ) {
-            egs
-        } <span class="kw">else </span>{
-            <span class="kw">return </span><span class="prelude-val">Err</span>(WelcomeError::JoinerSecretNotFound);
-        };
-        <span class="kw">if </span>ciphersuite != key_package_bundle.key_package().ciphersuite() {
-            <span class="kw">let </span>e = WelcomeError::CiphersuiteMismatch;
-            <span class="macro">debug!</span>(<span class="string">"new_from_welcome {:?}"</span>, e);
-            <span class="kw">return </span><span class="prelude-val">Err</span>(e);
-        }
-
-        <span class="kw">let </span>group_secrets = GroupSecrets::try_from_ciphertext(
-            key_package_bundle.init_private_key(),
-            egs.encrypted_group_secrets(),
-            welcome.encrypted_group_info(),
-            ciphersuite,
-            provider.crypto(),
-        )<span class="question-mark">?</span>;
-
-        <span class="comment">// Prepare the PskSecret
-        </span><span class="kw">let </span>psk_secret = {
-            <span class="kw">let </span>psks = load_psks(
-                provider.storage(),
-                <span class="kw-2">&amp;</span>resumption_psk_store,
-                <span class="kw-2">&amp;</span>group_secrets.psks,
-            )<span class="question-mark">?</span>;
-
-            PskSecret::new(provider.crypto(), ciphersuite, psks)<span class="question-mark">?
-        </span>};
-
-        <span class="comment">// Create key schedule
-        </span><span class="kw">let </span><span class="kw-2">mut </span>key_schedule = KeySchedule::init(
-            ciphersuite,
-            provider.crypto(),
-            <span class="kw-2">&amp;</span>group_secrets.joiner_secret,
-            psk_secret,
-        )<span class="question-mark">?</span>;
-
-        <span class="comment">// Derive welcome key &amp; nonce from the key schedule
-        </span><span class="kw">let </span>(welcome_key, welcome_nonce) = key_schedule
-            .welcome(provider.crypto(), ciphersuite)
-            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"Using the key schedule in the wrong state"</span>))<span class="question-mark">?
-            </span>.derive_welcome_key_nonce(provider.crypto(), ciphersuite)
-            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
-
-        <span class="kw">let </span>verifiable_group_info = VerifiableGroupInfo::try_from_ciphertext(
-            <span class="kw-2">&amp;</span>welcome_key,
-            <span class="kw-2">&amp;</span>welcome_nonce,
-            welcome.encrypted_group_info(),
-            <span class="kw-2">&amp;</span>[],
-            provider.crypto(),
-        )<span class="question-mark">?</span>;
-
-        <span class="comment">// Make sure that we can support the required capabilities in the group info.
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(required_capabilities) =
-            verifiable_group_info.extensions().required_capabilities()
-        {
-            <span class="comment">// Also check that our key package actually supports the extensions.
-            // Per spec the sender must have checked this. But you never know.
-            </span>key_package_bundle
-                .key_package()
-                .leaf_node()
-                .capabilities()
-                .supports_required_capabilities(required_capabilities)<span class="question-mark">?</span>;
-        }
-
-        <span class="comment">// Build the ratchet tree
-
-        // Set nodes either from the extension or from the `nodes_option`.
-        // If we got a ratchet tree extension in the welcome, we enable it for
-        // this group. Note that this is not strictly necessary. But there's
-        // currently no other mechanism to enable the extension.
-        </span><span class="kw">let </span>(ratchet_tree, enable_ratchet_tree_extension) =
-            <span class="kw">match </span>verifiable_group_info.extensions().ratchet_tree() {
-                <span class="prelude-val">Some</span>(extension) =&gt; (extension.ratchet_tree().clone(), <span class="bool-val">true</span>),
-                <span class="prelude-val">None </span>=&gt; <span class="kw">match </span>ratchet_tree {
-                    <span class="prelude-val">Some</span>(ratchet_tree) =&gt; (ratchet_tree, <span class="bool-val">false</span>),
-                    <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(WelcomeError::MissingRatchetTree),
-                },
-            };
-
-        <span class="comment">// Since there is currently only the external pub extension, there is no
-        // group info extension of interest here.
-        </span><span class="kw">let </span>(public_group, _group_info_extensions) = PublicGroup::from_external(
+        <span class="kw">let </span>(ciphersuite, group_secrets, key_schedule, verifiable_group_info) = process_welcome(
+            welcome,
+            <span class="kw-2">&amp;</span>key_package_bundle,
             provider,
-            ratchet_tree,
-            verifiable_group_info.clone(),
-            ProposalStore::new(),
+            <span class="kw-2">&amp;</span>resumption_psk_store,
         )<span class="question-mark">?</span>;
 
-        <span class="comment">// Find our own leaf in the tree.
-        </span><span class="kw">let </span>own_leaf_index = public_group
-            .members()
-            .find_map(|m| {
-                <span class="kw">if </span>m.signature_key
-                    == key_package_bundle
-                        .key_package()
-                        .leaf_node()
-                        .signature_key()
-                        .as_slice()
-                {
-                    <span class="prelude-val">Some</span>(m.index)
-                } <span class="kw">else </span>{
-                    <span class="prelude-val">None
-                </span>}
-            })
-            .ok_or(WelcomeError::PublicTreeError(
-                PublicTreeError::MalformedTree,
-            ))<span class="question-mark">?</span>;
-
-        <span class="kw">let </span>(group_epoch_secrets, message_secrets) = {
-            <span class="kw">let </span>serialized_group_context = public_group
-                .group_context()
-                .tls_serialize_detached()
-                .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
-
-            <span class="comment">// TODO #751: Implement PSK
-            </span>key_schedule
-                .add_context(provider.crypto(), <span class="kw-2">&amp;</span>serialized_group_context)
-                .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"Using the key schedule in the wrong state"</span>))<span class="question-mark">?</span>;
-
-            <span class="kw">let </span>epoch_secrets = key_schedule
-                .epoch_secrets(provider.crypto(), ciphersuite)
-                .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"Using the key schedule in the wrong state"</span>))<span class="question-mark">?</span>;
-
-            epoch_secrets.split_secrets(
-                serialized_group_context,
-                public_group.tree_size(),
-                own_leaf_index,
-            )
-        };
-
-        <span class="kw">let </span>confirmation_tag = message_secrets
-            .confirmation_key()
-            .tag(
-                provider.crypto(),
-                ciphersuite,
-                public_group.group_context().confirmed_transcript_hash(),
-            )
-            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
-
-        <span class="comment">// Verify confirmation tag
-        </span><span class="kw">if </span><span class="kw-2">&amp;</span>confirmation_tag != public_group.confirmation_tag() {
-            <span class="macro">log::error!</span>(<span class="string">"Confirmation tag mismatch"</span>);
-            <span class="macro">log_crypto!</span>(trace, <span class="string">"  Got:      {:x?}"</span>, confirmation_tag);
-            <span class="macro">log_crypto!</span>(trace, <span class="string">"  Expected: {:x?}"</span>, public_group.confirmation_tag());
-            <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>, <span class="string">"Confirmation tag mismatch"</span>);
-            <span class="kw">return </span><span class="prelude-val">Err</span>(WelcomeError::ConfirmationTagMismatch);
-        }
-
-        <span class="kw">let </span>message_secrets_store = MessageSecretsStore::new_with_secret(<span class="number">0</span>, message_secrets);
-
-        <span class="comment">// Extract and store the resumption PSK for the current epoch.
-        </span><span class="kw">let </span>resumption_psk = group_epoch_secrets.resumption_psk();
-        resumption_psk_store.add(public_group.group_context().epoch(), resumption_psk.clone());
-
-        <span class="kw">let </span>welcome_sender_index = verifiable_group_info.signer();
-        <span class="kw">let </span>path_keypairs = <span class="kw">if let </span><span class="prelude-val">Some</span>(path_secret) = group_secrets.path_secret {
-            <span class="kw">let </span>(path_keypairs, _commit_secret) = public_group
-                .derive_path_secrets(
-                    provider.crypto(),
-                    ciphersuite,
-                    path_secret,
-                    welcome_sender_index,
-                    own_leaf_index,
-                )
-                .map_err(|e| <span class="kw">match </span>e {
-                    DerivePathError::LibraryError(e) =&gt; e.into(),
-                    DerivePathError::PublicKeyMismatch =&gt; {
-                        WelcomeError::PublicTreeError(PublicTreeError::PublicKeyMismatch)
-                    }
-                })<span class="question-mark">?</span>;
-            <span class="prelude-val">Some</span>(path_keypairs)
-        } <span class="kw">else </span>{
-            <span class="prelude-val">None
-        </span>};
-
-        <span class="kw">let </span>group = StagedCoreWelcome {
-            public_group,
-            group_epoch_secrets,
-            own_leaf_index,
-            use_ratchet_tree_extension: enable_ratchet_tree_extension,
-            message_secrets_store,
-            resumption_psk_store,
+        build_staged_welcome(
             verifiable_group_info,
+            ratchet_tree,
+            provider,
             key_package_bundle,
-            path_keypairs,
-        };
-
-        <span class="prelude-val">Ok</span>(group)
+            key_schedule,
+            ciphersuite,
+            resumption_psk_store,
+            group_secrets,
+        )
     }
 
     <span class="doccomment">/// Returns the [`LeafNodeIndex`] of the group member that authored the [`Welcome`] message.
@@ -561,6 +414,221 @@
 
         <span class="prelude-val">Ok</span>(group)
     }
+}
+
+<span class="attr">#[allow(clippy::too_many_arguments)]
+</span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::group) <span class="kw">fn </span>build_staged_welcome&lt;Provider: OpenMlsProvider&gt;(
+    verifiable_group_info: VerifiableGroupInfo,
+    ratchet_tree: <span class="prelude-ty">Option</span>&lt;RatchetTreeIn&gt;,
+    provider: <span class="kw-2">&amp;</span>Provider,
+    key_package_bundle: KeyPackageBundle,
+    <span class="kw-2">mut </span>key_schedule: KeySchedule,
+    ciphersuite: Ciphersuite,
+    <span class="kw-2">mut </span>resumption_psk_store: ResumptionPskStore,
+    group_secrets: GroupSecrets,
+) -&gt; <span class="prelude-ty">Result</span>&lt;StagedCoreWelcome, WelcomeError&lt;Provider::StorageError&gt;&gt; {
+    <span class="comment">// Build the ratchet tree and group
+
+    // Set nodes either from the extension or from the `nodes_option`.
+    // If we got a ratchet tree extension in the welcome, we enable it for
+    // this group. Note that this is not strictly necessary. But there's
+    // currently no other mechanism to enable the extension.
+    </span><span class="kw">let </span>(ratchet_tree, enable_ratchet_tree_extension) =
+        <span class="kw">match </span>verifiable_group_info.extensions().ratchet_tree() {
+            <span class="prelude-val">Some</span>(extension) =&gt; (extension.ratchet_tree().clone(), <span class="bool-val">true</span>),
+            <span class="prelude-val">None </span>=&gt; <span class="kw">match </span>ratchet_tree {
+                <span class="prelude-val">Some</span>(ratchet_tree) =&gt; (ratchet_tree, <span class="bool-val">false</span>),
+                <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(WelcomeError::MissingRatchetTree),
+            },
+        };
+
+    <span class="comment">// Since there is currently only the external pub extension, there is no
+    // group info extension of interest here.
+    </span><span class="kw">let </span>(public_group, _group_info_extensions) = PublicGroup::from_external(
+        provider,
+        ratchet_tree,
+        verifiable_group_info.clone(),
+        ProposalStore::new(),
+    )<span class="question-mark">?</span>;
+
+    <span class="comment">// Find our own leaf in the tree.
+    </span><span class="kw">let </span>own_leaf_index = public_group
+        .members()
+        .find_map(|m| {
+            <span class="kw">if </span>m.signature_key
+                == key_package_bundle
+                    .key_package()
+                    .leaf_node()
+                    .signature_key()
+                    .as_slice()
+            {
+                <span class="prelude-val">Some</span>(m.index)
+            } <span class="kw">else </span>{
+                <span class="prelude-val">None
+            </span>}
+        })
+        .ok_or(WelcomeError::PublicTreeError(
+            PublicTreeError::MalformedTree,
+        ))<span class="question-mark">?</span>;
+
+    <span class="kw">let </span>(group_epoch_secrets, message_secrets) = {
+        <span class="kw">let </span>serialized_group_context = public_group
+            .group_context()
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
+
+        <span class="comment">// TODO #751: Implement PSK
+        </span>key_schedule
+            .add_context(provider.crypto(), <span class="kw-2">&amp;</span>serialized_group_context)
+            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"Using the key schedule in the wrong state"</span>))<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>epoch_secrets = key_schedule
+            .epoch_secrets(provider.crypto(), ciphersuite)
+            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"Using the key schedule in the wrong state"</span>))<span class="question-mark">?</span>;
+
+        epoch_secrets.split_secrets(
+            serialized_group_context,
+            public_group.tree_size(),
+            own_leaf_index,
+        )
+    };
+
+    <span class="kw">let </span>confirmation_tag = message_secrets
+        .confirmation_key()
+        .tag(
+            provider.crypto(),
+            ciphersuite,
+            public_group.group_context().confirmed_transcript_hash(),
+        )
+        .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
+
+    <span class="comment">// Verify confirmation tag
+    </span><span class="kw">if </span><span class="kw-2">&amp;</span>confirmation_tag != public_group.confirmation_tag() {
+        <span class="macro">log::error!</span>(<span class="string">"Confirmation tag mismatch"</span>);
+        <span class="macro">log_crypto!</span>(trace, <span class="string">"  Got:      {:x?}"</span>, confirmation_tag);
+        <span class="macro">log_crypto!</span>(trace, <span class="string">"  Expected: {:x?}"</span>, public_group.confirmation_tag());
+        <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>, <span class="string">"Confirmation tag mismatch"</span>);
+        <span class="kw">return </span><span class="prelude-val">Err</span>(WelcomeError::ConfirmationTagMismatch);
+    }
+
+    <span class="kw">let </span>message_secrets_store = MessageSecretsStore::new_with_secret(<span class="number">0</span>, message_secrets);
+
+    <span class="comment">// Extract and store the resumption PSK for the current epoch.
+    </span><span class="kw">let </span>resumption_psk = group_epoch_secrets.resumption_psk();
+    resumption_psk_store.add(public_group.group_context().epoch(), resumption_psk.clone());
+
+    <span class="kw">let </span>welcome_sender_index = verifiable_group_info.signer();
+    <span class="kw">let </span>path_keypairs = <span class="kw">if let </span><span class="prelude-val">Some</span>(path_secret) = group_secrets.path_secret {
+        <span class="kw">let </span>(path_keypairs, _commit_secret) = public_group
+            .derive_path_secrets(
+                provider.crypto(),
+                ciphersuite,
+                path_secret,
+                welcome_sender_index,
+                own_leaf_index,
+            )
+            .map_err(|e| <span class="kw">match </span>e {
+                DerivePathError::LibraryError(e) =&gt; e.into(),
+                DerivePathError::PublicKeyMismatch =&gt; {
+                    WelcomeError::PublicTreeError(PublicTreeError::PublicKeyMismatch)
+                }
+            })<span class="question-mark">?</span>;
+        <span class="prelude-val">Some</span>(path_keypairs)
+    } <span class="kw">else </span>{
+        <span class="prelude-val">None
+    </span>};
+
+    <span class="kw">let </span>group = StagedCoreWelcome {
+        public_group,
+        group_epoch_secrets,
+        own_leaf_index,
+        use_ratchet_tree_extension: enable_ratchet_tree_extension,
+        message_secrets_store,
+        resumption_psk_store,
+        verifiable_group_info,
+        key_package_bundle,
+        path_keypairs,
+    };
+
+    <span class="prelude-val">Ok</span>(group)
+}
+
+<span class="doccomment">/// Process a Welcome message up to the point where the ratchet tree is required.
+</span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::group) <span class="kw">fn </span>process_welcome&lt;Provider: OpenMlsProvider&gt;(
+    welcome: Welcome,
+    key_package_bundle: <span class="kw-2">&amp;</span>KeyPackageBundle,
+    provider: <span class="kw-2">&amp;</span>Provider,
+    resumption_psk_store: <span class="kw-2">&amp;</span>ResumptionPskStore,
+) -&gt; <span class="prelude-ty">Result</span>&lt;
+    (Ciphersuite, GroupSecrets, KeySchedule, VerifiableGroupInfo),
+    WelcomeError&lt;Provider::StorageError&gt;,
+&gt; {
+    <span class="kw">let </span>ciphersuite = welcome.ciphersuite();
+    <span class="kw">let </span>egs = <span class="kw">if let </span><span class="prelude-val">Some</span>(egs) = CoreGroup::find_key_package_from_welcome_secrets(
+        key_package_bundle
+            .key_package()
+            .hash_ref(provider.crypto())<span class="question-mark">?</span>,
+        welcome.secrets(),
+    ) {
+        egs
+    } <span class="kw">else </span>{
+        <span class="kw">return </span><span class="prelude-val">Err</span>(WelcomeError::JoinerSecretNotFound);
+    };
+    <span class="kw">if </span>ciphersuite != key_package_bundle.key_package().ciphersuite() {
+        <span class="kw">let </span>e = WelcomeError::CiphersuiteMismatch;
+        <span class="macro">debug!</span>(<span class="string">"new_from_welcome {:?}"</span>, e);
+        <span class="kw">return </span><span class="prelude-val">Err</span>(e);
+    }
+    <span class="kw">let </span>group_secrets = GroupSecrets::try_from_ciphertext(
+        key_package_bundle.init_private_key(),
+        egs.encrypted_group_secrets(),
+        welcome.encrypted_group_info(),
+        ciphersuite,
+        provider.crypto(),
+    )<span class="question-mark">?</span>;
+    <span class="kw">let </span>psk_secret = {
+        <span class="kw">let </span>psks = load_psks(
+            provider.storage(),
+            resumption_psk_store,
+            <span class="kw-2">&amp;</span>group_secrets.psks,
+        )<span class="question-mark">?</span>;
+
+        PskSecret::new(provider.crypto(), ciphersuite, psks)<span class="question-mark">?
+    </span>};
+    <span class="kw">let </span>key_schedule = KeySchedule::init(
+        ciphersuite,
+        provider.crypto(),
+        <span class="kw-2">&amp;</span>group_secrets.joiner_secret,
+        psk_secret,
+    )<span class="question-mark">?</span>;
+    <span class="kw">let </span>(welcome_key, welcome_nonce) = key_schedule
+        .welcome(provider.crypto(), ciphersuite)
+        .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"Using the key schedule in the wrong state"</span>))<span class="question-mark">?
+        </span>.derive_welcome_key_nonce(provider.crypto(), ciphersuite)
+        .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
+    <span class="kw">let </span>verifiable_group_info = VerifiableGroupInfo::try_from_ciphertext(
+        <span class="kw-2">&amp;</span>welcome_key,
+        <span class="kw-2">&amp;</span>welcome_nonce,
+        welcome.encrypted_group_info(),
+        <span class="kw-2">&amp;</span>[],
+        provider.crypto(),
+    )<span class="question-mark">?</span>;
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(required_capabilities) = verifiable_group_info.extensions().required_capabilities()
+    {
+        <span class="comment">// Also check that our key package actually supports the extensions.
+        // Per spec the sender must have checked this. But you never know.
+        </span>key_package_bundle
+            .key_package()
+            .leaf_node()
+            .capabilities()
+            .supports_required_capabilities(required_capabilities)<span class="question-mark">?</span>;
+    }
+    <span class="prelude-val">Ok</span>((
+        ciphersuite,
+        group_secrets,
+        key_schedule,
+        verifiable_group_info,
+    ))
 }
 
 <span class="kw">impl </span>CoreGroup {

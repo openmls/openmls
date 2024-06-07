@@ -412,7 +412,7 @@
     <span class="doccomment">/// Get (unverified) extensions of the verifiable group info.
     ///
     /// Note: This method should only be used when necessary to verify the group info signature.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>extensions(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Extensions {
+    </span><span class="kw">pub fn </span>extensions(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Extensions {
         <span class="kw-2">&amp;</span><span class="self">self</span>.payload.extensions
     }
 
@@ -420,7 +420,7 @@
     ///
     /// Note: This method should only be used when necessary to verify the group
     /// info signature.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>group_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupId {
+    </span><span class="kw">pub fn </span>group_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupId {
         <span class="self">self</span>.payload.group_context.group_id()
     }
 }
