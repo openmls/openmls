@@ -11,7 +11,7 @@ use crate::{
         group_info::{GroupInfo, VerifiableGroupInfo},
         Welcome,
     },
-    schedule::psk::store::ResumptionPskStore,
+    schedule::psk::{store::ResumptionPskStore, PreSharedKeyId},
     storage::OpenMlsProvider,
     treesync::RatchetTreeIn,
 };
@@ -147,6 +147,81 @@ fn transpose_err_opt<T, E>(v: Result<Option<T>, E>) -> Option<Result<T, E>> {
     }
 }
 
+impl ProcessedWelcome {
+    /// Creates a new processed [`Welcome`] message that can be used to parse
+    /// it before creating a [`StagedWelcome`].
+    ///
+    /// This does not require a ratchet tree yet.
+    ///
+    /// [`Welcome`]: crate::messages::Welcome
+    pub fn new_from_welcome<Provider: OpenMlsProvider>(
+        provider: &Provider,
+        mls_group_config: &MlsGroupJoinConfig,
+        welcome: Welcome,
+    ) -> Result<Self, WelcomeError<Provider::StorageError>> {
+        let (resumption_psk_store, key_package_bundle) =
+            keys_for_welcome(mls_group_config, &welcome, provider)?;
+
+        let (ciphersuite, group_secrets, key_schedule, verifiable_group_info) =
+            crate::group::core_group::new_from_welcome::process_welcome(
+                welcome,
+                &key_package_bundle,
+                provider,
+                &resumption_psk_store,
+            )?;
+
+        Ok(Self {
+            mls_group_config: mls_group_config.clone(),
+            ciphersuite,
+            group_secrets,
+            key_schedule,
+            verifiable_group_info,
+            resumption_psk_store,
+            key_package_bundle,
+        })
+    }
+
+    /// Get a reference to the GroupInfo in this Welcome message.
+    ///
+    /// **NOTE:** The group info contains **unverified** values. Use with caution.
+    pub fn unverified_group_info(&self) -> &VerifiableGroupInfo {
+        &self.verifiable_group_info
+    }
+
+    /// Get a reference to the PSKs in this Welcome message.
+    ///
+    /// **NOTE:** The group info contains **unverified** values. Use with caution.
+    pub fn psks(&self) -> &[PreSharedKeyId] {
+        &self.group_secrets.psks
+    }
+
+    /// Consume the `ProcessedWelcome` and combine it witht he ratchet tree into
+    /// a `StagedWelcome`.
+    pub fn into_staged_welcome<Provider: OpenMlsProvider>(
+        self,
+        provider: &Provider,
+        ratchet_tree: Option<RatchetTreeIn>,
+    ) -> Result<StagedWelcome, WelcomeError<Provider::StorageError>> {
+        let group = crate::group::core_group::new_from_welcome::build_staged_welcome(
+            self.verifiable_group_info,
+            ratchet_tree,
+            provider,
+            self.key_package_bundle,
+            self.key_schedule,
+            self.ciphersuite,
+            self.resumption_psk_store,
+            self.group_secrets,
+        )?;
+
+        let staged_welcome = StagedWelcome {
+            mls_group_config: self.mls_group_config,
+            group,
+        };
+
+        Ok(staged_welcome)
+    }
+}
+
 impl StagedWelcome {
     /// Creates a new staged welcome from a [`Welcome`] message. Returns an error
     /// ([`WelcomeError::NoMatchingKeyPackage`]) if no [`KeyPackage`]
@@ -161,33 +236,8 @@ impl StagedWelcome {
         welcome: Welcome,
         ratchet_tree: Option<RatchetTreeIn>,
     ) -> Result<Self, WelcomeError<Provider::StorageError>> {
-        let resumption_psk_store =
-            ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
-        let key_package_bundle: KeyPackageBundle = welcome
-            .secrets()
-            .iter()
-            .find_map(|egs| {
-                let hash_ref = egs.new_member();
-
-                transpose_err_opt(
-                    provider
-                        .storage()
-                        .key_package(&hash_ref)
-                        .map_err(WelcomeError::StorageError),
-                )
-            })
-            .ok_or(WelcomeError::NoMatchingKeyPackage)??;
-
-        // Delete the [`KeyPackage`] and the corresponding private key from the
-        // key store, but only if it doesn't have a last resort extension.
-        if !key_package_bundle.key_package().last_resort() {
-            provider
-                .storage()
-                .delete_key_package(&key_package_bundle.key_package.hash_ref(provider.crypto())?)
-                .map_err(WelcomeError::StorageError)?;
-        } else {
-            log::debug!("Key package has last resort extension, not deleting");
-        }
+        let (resumption_psk_store, key_package_bundle) =
+            keys_for_welcome(mls_group_config, &welcome, provider)?;
 
         let group = StagedCoreWelcome::new_from_welcome(
             welcome,
@@ -247,4 +297,38 @@ impl StagedWelcome {
 
         Ok(mls_group)
     }
+}
+
+fn keys_for_welcome<Provider: OpenMlsProvider>(
+    mls_group_config: &MlsGroupJoinConfig,
+    welcome: &Welcome,
+    provider: &Provider,
+) -> Result<
+    (ResumptionPskStore, KeyPackageBundle),
+    WelcomeError<<Provider as OpenMlsProvider>::StorageError>,
+> {
+    let resumption_psk_store = ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
+    let key_package_bundle: KeyPackageBundle = welcome
+        .secrets()
+        .iter()
+        .find_map(|egs| {
+            let hash_ref = egs.new_member();
+
+            transpose_err_opt(
+                provider
+                    .storage()
+                    .key_package(&hash_ref)
+                    .map_err(WelcomeError::StorageError),
+            )
+        })
+        .ok_or(WelcomeError::NoMatchingKeyPackage)??;
+    if !key_package_bundle.key_package().last_resort() {
+        provider
+            .storage()
+            .delete_key_package(&key_package_bundle.key_package.hash_ref(provider.crypto())?)
+            .map_err(WelcomeError::StorageError)?;
+    } else {
+        log::debug!("Key package has last resort extension, not deleting");
+    }
+    Ok((resumption_psk_store, key_package_bundle))
 }

@@ -32,6 +32,7 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 use openmls_traits::{types::Ciphersuite, crypto::OpenMlsCrypto};
 
                 type Provider = OpenMlsRustCrypto;
+                let _ = pretty_env_logger::try_init();
 
                 let ciphersuite = Ciphersuite::try_from(#val).unwrap();
                 let provider = OpenMlsRustCrypto::default();
@@ -67,6 +68,7 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
                     use openmls_traits::{types::Ciphersuite, prelude::*};
 
                     type Provider = OpenMlsLibcrux;
+                    let _ = pretty_env_logger::try_init();
 
                     let ciphersuite = Ciphersuite::try_from(#val).unwrap();
                     let provider = OpenMlsLibcrux::default();

@@ -1229,6 +1229,10 @@ fn group_context_extensions_proposal(
     // No required capabilities, so no specifically required extensions.
     assert!(alice_group.extensions().required_capabilities().is_none());
 
+    // The old group context
+    let group_context_before = alice_group.export_group_context().clone();
+    assert_eq!(group_context_before.extensions(), &Extensions::empty());
+
     let new_extensions = Extensions::single(Extension::RequiredCapabilities(
         RequiredCapabilitiesExtension::new(&[ExtensionType::RequiredCapabilities], &[], &[]),
     ));
@@ -1246,6 +1250,14 @@ fn group_context_extensions_proposal(
     alice_group
         .commit_to_pending_proposals(provider, &alice_signer)
         .expect("failed to commit to pending proposals");
+
+    // The staged commit has the new group context extensions.
+    let group_context_staged = alice_group
+        .pending_commit()
+        .unwrap()
+        .group_context()
+        .clone();
+    assert_eq!(group_context_staged.extensions(), &new_extensions);
 
     alice_group
         .merge_pending_commit(provider)
