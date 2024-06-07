@@ -689,7 +689,7 @@
     </span>ValidationError(<span class="attr">#[from] </span>ValidationError),
     <span class="doccomment">/// See [`CreateGroupContextExtProposalError`] for more details.
     </span><span class="attr">#[error(transparent)]
-    </span>CreateGroupContextExtProposalError(<span class="attr">#[from] </span>CreateGroupContextExtProposalError),
+    </span>CreateGroupContextExtProposalError(<span class="attr">#[from] </span>CreateGroupContextExtProposalError&lt;StorageError&gt;),
     <span class="doccomment">/// Error writing proposal to storage.
     </span><span class="attr">#[error(<span class="string">"error writing proposal to storage"</span>)]
     </span>StorageError(StorageError),

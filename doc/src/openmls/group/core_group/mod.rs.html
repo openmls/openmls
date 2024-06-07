@@ -1219,6 +1219,7 @@
 <a href="#1217" id="1217">1217</a>
 <a href="#1218" id="1218">1218</a>
 <a href="#1219" id="1219">1219</a>
+<a href="#1220" id="1220">1220</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! ### Don't Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -2356,12 +2357,13 @@
     }
 
     <span class="doccomment">/// Create a new group context extension proposal
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>create_group_context_ext_proposal(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>create_group_context_ext_proposal&lt;Provider: OpenMlsProvider&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         framing_parameters: FramingParameters,
         extensions: Extensions,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;AuthenticatedContent, CreateGroupContextExtProposalError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;AuthenticatedContent, CreateGroupContextExtProposalError&lt;Provider::StorageError&gt;&gt;
+    {
         <span class="comment">// Ensure that the group supports all the extensions that are wanted.
         </span><span class="kw">let </span>required_extension = extensions
             .iter()
