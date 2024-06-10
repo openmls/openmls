@@ -169,6 +169,8 @@ fn add_member(
 use generate::CIPHERSUITE;
 
 mod generate {
+    use indicatif::ProgressBar;
+
     use super::*;
 
     pub const GROUP_SIZES: &[usize] = &[2, 3, 4, 5, 10, 25, 50, 100];
@@ -177,42 +179,54 @@ mod generate {
 
     /// Create a group of `num` clients.
     /// All of them committed after joining.
-    pub fn setup(num: usize, variant: Option<SetupVariants>) -> Vec<(MlsGroup, Member)> {
+    pub fn setup(
+        num: usize,
+        variant: Option<SetupVariants>,
+        members: Option<(Vec<MlsGroup>, Vec<Member>)>,
+    ) -> Vec<(MlsGroup, Member)> {
         // We default to a bare group unless variant wants something else.
         let variant = variant.unwrap_or(SetupVariants::Bare);
-
-        let creator_provider = OpenMlsRustCrypto::default();
-        let creator_credential = BasicCredential::new(format!("Creator").into());
-        let creator_signer = SignatureKeyPair::new(CIPHERSUITE.signature_algorithm()).unwrap();
-        let creator_credential_with_key = CredentialWithKey {
-            credential: creator_credential.into(),
-            signature_key: creator_signer.to_public_vec().into(),
-        };
 
         let mls_group_create_config = MlsGroupCreateConfig::builder()
             .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
             .ciphersuite(CIPHERSUITE)
             .build();
 
-        // Create the group
-        let creator_group = MlsGroup::new(
-            &creator_provider,
-            &creator_signer,
-            &mls_group_create_config,
-            creator_credential_with_key.clone(),
-        )
-        .expect("An unexpected error occurred.");
+        // If we have a previous group/member setup, let's use it.
+        // The creator is always at 0.
+        let mut members = if let Some(members) = members {
+            members.0.into_iter().zip(members.1.into_iter()).collect()
+        } else {
+            // Create a new setup.
+            let creator_provider = OpenMlsRustCrypto::default();
+            let creator_credential = BasicCredential::new(format!("Creator").into());
+            let creator_signer = SignatureKeyPair::new(CIPHERSUITE.signature_algorithm()).unwrap();
+            let creator_credential_with_key = CredentialWithKey {
+                credential: creator_credential.into(),
+                signature_key: creator_signer.to_public_vec().into(),
+            };
 
-        let mut members: Vec<(MlsGroup, Member)> = vec![(
-            creator_group,
-            Member {
-                provider: creator_provider,
-                credential_with_key: creator_credential_with_key,
-                signer: creator_signer,
-            },
-        )];
+            // Create the group
+            let creator_group = MlsGroup::new(
+                &creator_provider,
+                &creator_signer,
+                &mls_group_create_config,
+                creator_credential_with_key.clone(),
+            )
+            .expect("An unexpected error occurred.");
 
-        for member_i in 0..num - 1 {
+            vec![(
+                creator_group,
+                Member {
+                    provider: creator_provider,
+                    credential_with_key: creator_credential_with_key,
+                    signer: creator_signer,
+                },
+            )]
+        };
+
+        let pb = ProgressBar::new((num - members.len()) as u64);
+        for member_i in members.len()..num {
             let (member_provider, signer, credential_with_key, key_package) =
                 new_member(&format!("Member {member_i}"));
 
@@ -273,13 +287,17 @@ mod generate {
                     signer,
                 },
             ));
+            pb.inc(1);
         }
+        pb.finish();
 
         // Depending on the variant we do something once everyone was added.
         match variant {
             SetupVariants::Bare => (),            // Nothing to do in this case.
             SetupVariants::CommitAfterJoin => (), // Noting to do in this case.
             SetupVariants::CommitToFullGroup => {
+                println!("Commit to the full group.");
+                let pb = ProgressBar::new((num - members.len()) as u64);
                 // Every member commits and everyone else processes it.
                 for i in 0..members.len() {
                     let (member_i_group, member_i) = &mut members[i];
@@ -291,6 +309,7 @@ mod generate {
                         }
                     }
                 }
+                pb.finish();
             }
         }
 
@@ -384,6 +403,8 @@ struct Args {
 mod util {
     use std::path::Path;
 
+    use itertools::Itertools;
+
     use super::{generate, *};
 
     const GROUPS_PATH: &str = "large-balanced-group-groups.json.gzip";
@@ -440,18 +461,22 @@ mod util {
         let mut members = vec![];
 
         let group_sizes = group_sizes.unwrap_or(generate::GROUP_SIZES.to_vec());
-        println!("Writing groups for benchmarks {group_sizes:?}...");
-        for num in group_sizes {
+        println!("Generating groups for benchmarks {group_sizes:?}...");
+        let mut smaller_groups = None;
+        for num in group_sizes.into_iter().sorted() {
             println!("Generating group of size {num} ...");
             // Generate and write out groups.
-            let new_groups = generate::setup(num, variant);
+            let new_groups = generate::setup(num, variant, smaller_groups);
             let (new_groups, new_members): (Vec<MlsGroup>, Vec<Member>) =
                 new_groups.into_iter().unzip();
+            smaller_groups = Some((new_groups.clone(), new_members.clone()));
             let new_members: Vec<(Vec<u8>, Vec<u8>, Vec<u8>)> =
                 new_members.into_iter().map(|m| m.serialize()).collect();
             groups.push(new_groups);
             members.push(new_members);
         }
+
+        println!("Writing out files.");
         let file = File::create(groups_file(&path)).unwrap();
         let mut writer = flate2::write::GzEncoder::new(file, flate2::Compression::default());
         serde_json::to_writer(&mut writer, &groups).unwrap();
