@@ -9,7 +9,8 @@ use crate::{
     },
     extensions::Extensions,
     group::{
-        errors::WelcomeError, GroupContext, GroupId, MlsGroup, MlsGroupCreateConfig, StagedWelcome,
+        errors::WelcomeError, GroupContext, GroupId, MlsGroup, MlsGroupCreateConfig,
+        ProcessedWelcome, StagedWelcome,
     },
     messages::{
         group_info::{GroupInfoTBS, VerifiableGroupInfo},
@@ -31,8 +32,6 @@ fn test_welcome_context_mismatch(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,
 ) {
-    let _ = pretty_env_logger::try_init();
-
     // We need a ciphersuite that is different from the current one to create
     // the mismatch
     let mismatched_ciphersuite = match ciphersuite {
@@ -295,6 +294,81 @@ fn test_welcome_message(ciphersuite: Ciphersuite, provider: &impl crate::storage
         msg_decoded.encrypted_group_info.as_slice(),
         encrypted_group_info.as_slice()
     );
+}
+
+/// Test the parsed welcome flow where the Welcome is first processed to give
+/// the caller the GroupInfo.
+/// This allows transporting information in the Welcome for retrieving the ratchet
+/// tree.
+#[openmls_test::openmls_test]
+fn test_welcome_processing() {
+    let group_id = GroupId::random(provider.rand());
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .build();
+
+    let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_signature_key) =
+        crate::group::test_core_group::setup_client("Alice", ciphersuite, provider);
+    let (_bob_credential, bob_kpb, _bob_signer, _bob_signature_key) =
+        crate::group::test_core_group::setup_client("Bob", ciphersuite, provider);
+
+    let bob_kp = bob_kpb.key_package();
+
+    // === Alice creates a group  and adds Bob ===
+    let mut alice_group = MlsGroup::new_with_group_id(
+        provider,
+        &alice_signer,
+        &mls_group_create_config,
+        group_id,
+        alice_credential_with_key,
+    )
+    .expect("An unexpected error occurred.");
+
+    let (_queued_message, welcome, _group_info) = alice_group
+        .add_members(provider, &alice_signer, &[bob_kp.clone()])
+        .expect("Could not add member to group.");
+
+    alice_group
+        .merge_pending_commit(provider)
+        .expect("error merging pending commit");
+
+    let welcome = welcome.into_welcome().expect("Unexpected message type.");
+
+    provider
+        .storage()
+        .write_key_package(&bob_kp.hash_ref(provider.crypto()).unwrap(), &bob_kpb)
+        .unwrap();
+
+    // Process the welcome
+    let processed_welcome = ProcessedWelcome::new_from_welcome(
+        provider,
+        mls_group_create_config.join_config(),
+        welcome,
+    )
+    .unwrap();
+
+    // Check values in processed welcome
+    let unverified_group_info = processed_welcome.unverified_group_info();
+    let group_id = unverified_group_info.group_id();
+    assert_eq!(group_id, alice_group.group_id());
+    let alice_group_info = alice_group
+        .export_group_info(provider, &alice_signer, false)
+        .unwrap()
+        .into_verifiable_group_info()
+        .unwrap();
+    assert_eq!(
+        unverified_group_info.extensions(),
+        alice_group_info.extensions()
+    );
+    // Use the group id or extensions to get the ratchet tree.
+
+    // Stage the welcome
+    let staged_welcome = processed_welcome
+        .into_staged_welcome(provider, Some(alice_group.export_ratchet_tree().into()))
+        .unwrap();
+    let _group = staged_welcome
+        .into_group(provider)
+        .expect("Error creating group from a valid staged join.");
 }
 
 #[test]
