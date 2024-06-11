@@ -1,6 +1,11 @@
 use tls_codec::*;
 
-use crate::{extensions::{ApplicationIdExtension, Extension, RatchetTreeExtension}, treesync::{node::NodeIn, Node, ParentNode}};
+use crate::{
+    extensions::{
+        ApplicationIdExtension, Extension, RatchetTreeExtension, RequiredCapabilitiesExtension,
+    },
+    treesync::{node::NodeIn, Node, ParentNode},
+};
 
 use super::{FrankenCredential, FrankenLeafNode};
 
@@ -71,17 +76,8 @@ impl FrankenExtension {
 
 impl From<Extension> for FrankenExtension {
     fn from(value: Extension) -> Self {
-        match value {
-            Extension::ApplicationId(app_id) => FrankenExtension::ApplicationId(app_id.into()),
-            Extension::RatchetTree(ratchet_tree) => {
-                FrankenExtension::RatchetTree(ratchet_tree.into())
-            }
-            Extension::RequiredCapabilities(req_cap) => FrankenExtension::RequiredCapabilities(req_cap.into())
-            Extension::ExternalPub(ext_pub) => FrankenExtension::ExternalPub(ext_pub.into()),
-            Extension::ExternalSenders(ext_senders) => FrankenExtension::ExternalSenders(ext_senders.into()),
-            Extension::LastResort(last_resort) => FrankenExtension::LastResort(last_resort.into()),
-            Extension::Unknown(ext_type, data) => FrankenExtension::Unknown(ext_type, data.0.into()),
-        }
+        let bytes = value.tls_serialize_detached().unwrap();
+        FrankenExtension::tls_deserialize(&mut bytes.as_slice()).unwrap()
     }
 }
 
@@ -92,28 +88,11 @@ pub struct FrankenApplicationIdExtension {
     pub key_id: VLBytes,
 }
 
-impl From<ApplicationIdExtension> for FrankenApplicationIdExtension {
-    fn from(value: ApplicationIdExtension) -> Self {
-        FrankenApplicationIdExtension {
-            key_id: value.as_slice().to_vec().into(),
-        }
-    }
-}
-
 #[derive(
     Debug, Clone, PartialEq, Eq, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize,
 )]
 pub struct FrankenRatchetTreeExtension {
     pub ratchet_tree: Vec<Option<FrankenNode>>,
-}
-
-#[cfg(feature = "test-utils")]
-impl From<RatchetTreeExtension> for FrankenRatchetTreeExtension {
-    fn from(value: RatchetTreeExtension) -> Self {
-        FrankenRatchetTreeExtension {
-            ratchet_tree: value.ratchet_tree().nodes().iter().map(|opt_node|{opt_node.map(|node| node.into())}).collect()
-        }
-    }
 }
 
 #[derive(
@@ -129,19 +108,15 @@ pub enum FrankenNode {
 
 impl From<Node> for FrankenNode {
     fn from(value: Node) -> Self {
-        match value {
-            Node::LeafNode(leaf) => FrankenNode::LeafNode(leaf.into()),
-            Node::ParentNode(parent) => FrankenNode::ParentNode(parent.into()),
-        }
+        let bytes = value.tls_serialize_detached().unwrap();
+        FrankenNode::tls_deserialize(&mut bytes.as_slice()).unwrap()
     }
 }
 
 impl From<NodeIn> for FrankenNode {
     fn from(value: NodeIn) -> Self {
-        match value {
-            NodeIn::LeafNode(leaf) => FrankenNode::LeafNode(leaf.into()),
-            NodeIn::ParentNode(parent) => FrankenNode::ParentNode(parent.into()),
-        }
+        let bytes = value.tls_serialize_detached().unwrap();
+        FrankenNode::tls_deserialize(&mut bytes.as_slice()).unwrap()
     }
 }
 
@@ -159,7 +134,11 @@ impl From<ParentNode> for FrankenParentNode {
         FrankenParentNode {
             encryption_key: value.encryption_key().as_slice().to_vec().into(),
             parent_hash: value.parent_hash().to_vec().into(),
-            unmerged_leaves: value.unmerged_leaves().iter().map(|idx| idx.u32()).collect(),
+            unmerged_leaves: value
+                .unmerged_leaves()
+                .iter()
+                .map(|idx| idx.u32())
+                .collect(),
         }
     }
 }
@@ -171,6 +150,28 @@ pub struct FrankenRequiredCapabilitiesExtension {
     pub extension_types: Vec<u16>,
     pub proposal_types: Vec<u16>,
     pub credential_types: Vec<u16>,
+}
+
+impl From<RequiredCapabilitiesExtension> for FrankenRequiredCapabilitiesExtension {
+    fn from(value: RequiredCapabilitiesExtension) -> Self {
+        Self {
+            extension_types: value
+                .extension_types()
+                .iter()
+                .map(|ext_type| (*ext_type).into())
+                .collect(),
+            proposal_types: value
+                .proposal_types()
+                .iter()
+                .map(|prop_type| (*prop_type).into())
+                .collect(),
+            credential_types: value
+                .credential_types()
+                .iter()
+                .map(|cred_type| (*cred_type).into())
+                .collect(),
+        }
+    }
 }
 
 #[derive(

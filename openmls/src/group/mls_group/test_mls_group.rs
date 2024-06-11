@@ -1271,7 +1271,7 @@ fn group_context_extensions_proposal() {
                 ciphersuite,
                 &alice_signer,
                 invalid_gce_framed_content,
-                Some(group_context),
+                Some(&group_context),
                 Some(membership_key),
                 Some((&[], &[])),
             ),

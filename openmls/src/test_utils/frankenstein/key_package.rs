@@ -29,7 +29,7 @@ pub struct FrankenKeyPackage {
 impl FrankenKeyPackage {
     // Re-sign both the KeyPackage and the enclosed LeafNode
     pub fn resign(&mut self, signer: &impl Signer) {
-        self.payload.leaf_node.resign(signer);
+        self.payload.leaf_node.resign(None, signer);
         let new_self = self.payload.clone().sign(signer).unwrap();
         let _ = std::mem::replace(self, new_self);
     }

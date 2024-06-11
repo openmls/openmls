@@ -4,12 +4,11 @@ use tls_codec::*;
 use crate::{
     binary_tree::LeafNodeIndex,
     extensions::SenderExtensionIndex,
-    framing::Sender,
     framing::{
         mls_content::{AuthenticatedContentTbm, FramedContentBody, FramedContentTbs},
         mls_content_in::FramedContentBodyIn,
         MlsMessageIn, MlsMessageOut, PrivateMessage, PrivateMessageIn, PublicMessage,
-        PublicMessageIn, WireFormat,
+        PublicMessageIn, Sender, WireFormat,
     },
     group::GroupContext,
     messages::{ConfirmationTag, Welcome},
@@ -50,13 +49,91 @@ pub enum FrankenMlsMessageBody {
     KeyPackage(FrankenKeyPackage),
 }
 
-#[derive(
-    Debug, Clone, PartialEq, Eq, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize,
-)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FrankenPublicMessage {
     pub content: FrankenFramedContent,
     pub auth: FrankenFramedContentAuthData,
     pub membership_tag: Option<VLBytes>,
+}
+
+impl tls_codec::Size for FrankenPublicMessage {
+    fn tls_serialized_len(&self) -> usize {
+        let tag_len = self
+            .membership_tag
+            .as_ref()
+            .map_or(0, |tag| tag.tls_serialized_len());
+
+        self.content.tls_serialized_len() + self.auth.tls_serialized_len() + tag_len
+    }
+}
+
+impl Deserialize for FrankenPublicMessage {
+    fn tls_deserialize<R: std::io::prelude::Read>(bytes: &mut R) -> Result<Self, Error>
+    where
+        Self: Sized,
+    {
+        let content = FrankenFramedContent::tls_deserialize(bytes)?;
+        let auth = match content.body {
+            FrankenFramedContentBody::Commit(_) => {
+                FrankenFramedContentAuthData::tls_deserialize_with_tag(bytes)
+            }
+            _ => FrankenFramedContentAuthData::tls_deserialize_without_tag(bytes),
+        }?;
+        let membership_tag = match content.sender {
+            FrankenSender::Member(_) => Some(VLBytes::tls_deserialize(bytes)?),
+            _ => None,
+        };
+
+        Ok(Self {
+            content,
+            auth,
+            membership_tag,
+        })
+    }
+}
+
+impl DeserializeBytes for FrankenPublicMessage {
+    fn tls_deserialize_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), Error>
+    where
+        Self: Sized,
+    {
+        let (content, bytes) = FrankenFramedContent::tls_deserialize_bytes(bytes)?;
+        let (auth, bytes) = match content.body {
+            FrankenFramedContentBody::Commit(_) => {
+                FrankenFramedContentAuthData::tls_deserialize_bytes_with_tag(bytes)
+            }
+            _ => FrankenFramedContentAuthData::tls_deserialize_bytes_without_tag(bytes),
+        }?;
+        let (membership_tag, bytes) = match content.sender {
+            FrankenSender::Member(_) => {
+                let (tag, bytes) = VLBytes::tls_deserialize_bytes(bytes)?;
+                (Some(tag), bytes)
+            }
+            _ => (None, bytes),
+        };
+
+        Ok((
+            Self {
+                content,
+                auth,
+                membership_tag,
+            },
+            bytes,
+        ))
+    }
+}
+
+impl Serialize for FrankenPublicMessage {
+    fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, Error> {
+        let mut written = 0;
+        written += self.content.tls_serialize(writer)?;
+        written += self.auth.tls_serialize(writer)?;
+        if let Some(tag) = &self.membership_tag {
+            written += tag.tls_serialize(writer)?;
+        }
+
+        Ok(written)
+    }
 }
 
 impl FrankenPublicMessage {
@@ -164,10 +241,72 @@ pub struct FrankenWelcome {
     pub encrypted_group_info: VLBytes,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, TlsDeserialize, TlsDeserializeBytes, TlsSize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FrankenFramedContentAuthData {
     pub signature: VLBytes,
     pub confirmation_tag: Option<VLBytes>,
+}
+
+impl FrankenFramedContentAuthData {
+    pub fn tls_deserialize_with_tag<R: std::io::Read>(
+        bytes: &mut R,
+    ) -> Result<Self, tls_codec::Error> {
+        let signature = VLBytes::tls_deserialize(bytes)?;
+        let confirmation_tag = VLBytes::tls_deserialize(bytes)?;
+
+        Ok(Self {
+            signature,
+            confirmation_tag: Some(confirmation_tag),
+        })
+    }
+
+    pub fn tls_deserialize_bytes_with_tag(bytes: &[u8]) -> Result<(Self, &[u8]), tls_codec::Error> {
+        let (signature, bytes) = VLBytes::tls_deserialize_bytes(bytes)?;
+        let (confirmation_tag, bytes) = VLBytes::tls_deserialize_bytes(bytes)?;
+
+        Ok((
+            Self {
+                signature,
+                confirmation_tag: Some(confirmation_tag),
+            },
+            bytes,
+        ))
+    }
+
+    pub fn tls_deserialize_without_tag<R: std::io::Read>(
+        bytes: &mut R,
+    ) -> Result<Self, tls_codec::Error> {
+        let signature = VLBytes::tls_deserialize(bytes)?;
+
+        Ok(Self {
+            signature,
+            confirmation_tag: None,
+        })
+    }
+
+    pub fn tls_deserialize_bytes_without_tag(
+        bytes: &[u8],
+    ) -> Result<(Self, &[u8]), tls_codec::Error> {
+        let (signature, bytes) = VLBytes::tls_deserialize_bytes(bytes)?;
+
+        Ok((
+            Self {
+                signature,
+                confirmation_tag: None,
+            },
+            bytes,
+        ))
+    }
+}
+
+impl tls_codec::Size for FrankenFramedContentAuthData {
+    fn tls_serialized_len(&self) -> usize {
+        if let Some(tag) = &self.confirmation_tag {
+            self.signature.tls_serialized_len() + tag.tls_serialized_len()
+        } else {
+            self.signature.tls_serialized_len()
+        }
+    }
 }
 
 impl Serialize for FrankenFramedContentAuthData {
@@ -221,7 +360,7 @@ impl FrankenFramedContentAuthData {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, TlsSize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FrankenFramedContentTbs<'a> {
     version: u16,
     wire_format: u16,
@@ -229,11 +368,22 @@ pub struct FrankenFramedContentTbs<'a> {
     group_context: Option<&'a FrankenGroupContext>,
 }
 
+impl<'a> tls_codec::Size for FrankenFramedContentTbs<'a> {
+    fn tls_serialized_len(&self) -> usize {
+        if let Some(ctx) = self.group_context {
+            4 + self.content.tls_serialized_len() + ctx.tls_serialized_len()
+        } else {
+            4 + self.content.tls_serialized_len()
+        }
+    }
+}
+
 impl<'a> Serialize for FrankenFramedContentTbs<'a> {
     fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, Error> {
-        let mut written = 4; // contains the two u16 version and wire_format
         writer.write_all(&self.version.to_be_bytes())?;
         writer.write_all(&self.wire_format.to_be_bytes())?;
+
+        let mut written = 4; // contains the two u16 version and wire_format
         written += self.content.tls_serialize(writer)?;
         if let Some(group_context) = &self.group_context {
             written += group_context.tls_serialize(writer)?;
