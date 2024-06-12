@@ -12,7 +12,7 @@ use crate::{
     messages::proposals::*,
     prelude::Capabilities,
     test_utils::{
-        frankenstein,
+        frankenstein::{self, FrankenMlsMessage},
         test_framework::{
             errors::ClientError, noop_authentication_service, ActionType::Commit, CodecUse,
             MlsGroupTestSetup,
@@ -1145,15 +1145,57 @@ fn remove_prosposal_by_ref(
 
 // Test that the builder pattern accurately configures the new group.
 #[openmls_test]
-fn group_context_extensions_proposal() {
+fn group_context_extensions_proposal<Provider: OpenMlsProvider + Default>() {
+    let alice_provider = &mut Provider::default();
+    let bob_provider = &mut Provider::default();
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
-        setup_client("Alice", ciphersuite, provider);
+        setup_client("Alice", ciphersuite, alice_provider);
+    let (bob_credential_with_key, _bob_kpb, bob_signer, _bob_pk) =
+        setup_client("bob", ciphersuite, bob_provider);
 
     // === Alice creates a group ===
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
-        .build(provider, &alice_signer, alice_credential_with_key)
+        .with_wire_format_policy(WireFormatPolicy::new(
+            OutgoingWireFormatPolicy::AlwaysPlaintext,
+            IncomingWireFormatPolicy::Mixed,
+        ))
+        .build(alice_provider, &alice_signer, alice_credential_with_key)
         .expect("error creating group using builder");
+
+    // === Alice addes Bob ===
+    let bob_key_package = KeyPackage::builder()
+        .build(
+            ciphersuite,
+            bob_provider,
+            &bob_signer,
+            bob_credential_with_key,
+        )
+        .expect("error building key package");
+
+    let (_, welcome, _) = alice_group
+        .add_members(
+            alice_provider,
+            &alice_signer,
+            &[bob_key_package.key_package().clone()],
+        )
+        .unwrap();
+    alice_group.merge_pending_commit(alice_provider).unwrap();
+
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome
+        .into_welcome()
+        .expect("expected message to be a welcome");
+
+    let mut bob_group = StagedWelcome::new_from_welcome(
+        bob_provider,
+        alice_group.configuration(),
+        welcome,
+        Some(alice_group.export_ratchet_tree().into()),
+    )
+    .expect("Error creating staged join from Welcome")
+    .into_group(bob_provider)
+    .expect("Error creating group from staged join");
 
     // No required capabilities, so no specifically required extensions.
     assert!(alice_group
@@ -1171,19 +1213,87 @@ fn group_context_extensions_proposal() {
         RequiredCapabilitiesExtension::new(&[ExtensionType::RatchetTree], &[], &[]),
     ));
 
-    alice_group
-        .propose_group_context_extensions(provider, new_extensions.clone(), &alice_signer)
+    let (proposal, _) = alice_group
+        .propose_group_context_extensions(alice_provider, new_extensions.clone(), &alice_signer)
         .expect("failed to build group context extensions proposal");
+
+    let proc_msg = bob_group
+        .process_message(bob_provider, proposal.into_protocol_message().unwrap())
+        .unwrap();
+    match proc_msg.into_content() {
+        ProcessedMessageContent::ProposalMessage(proposal) => bob_group
+            .store_pending_proposal(bob_provider.storage(), *proposal)
+            .unwrap(),
+        _ => unreachable!(),
+    };
 
     assert_eq!(alice_group.pending_proposals().count(), 1);
 
-    alice_group
-        .commit_to_pending_proposals(provider, &alice_signer)
+    let (commit, _, _) = alice_group
+        .commit_to_pending_proposals(alice_provider, &alice_signer)
         .expect("failed to commit to pending proposals");
 
+    // we'll change the commit we feed to bob to include two GCE proposals
+    let mut franken_commit = FrankenMlsMessage::tls_deserialize(
+        &mut commit.tls_serialize_detached().unwrap().as_slice(),
+    )
+    .unwrap();
+
+    // change the commit before alice commits, so alice's state is still in the old epoch and we can
+    // use her state to forge the macs and signatures
+    match &mut franken_commit.body {
+        frankenstein::FrankenMlsMessageBody::PublicMessage(msg) => {
+            match &mut msg.content.body {
+                frankenstein::FrankenFramedContentBody::Commit(commit) => {
+                    commit.proposals.push(commit.proposals[0].clone())
+                }
+                _ => unreachable!(),
+            }
+
+            let group_context = alice_group.export_group_context().clone();
+
+            let bob_group_context = bob_group.export_group_context();
+            assert_eq!(
+                bob_group_context.confirmed_transcript_hash(),
+                group_context.confirmed_transcript_hash()
+            );
+
+            let secrets = alice_group.group.message_secrets();
+            let membership_key = secrets.membership_key().as_slice();
+            let confirmation_key = secrets.confirmation_key().as_slice();
+
+            *msg = frankenstein::FrankenPublicMessage::auth(
+                alice_provider,
+                group_context.ciphersuite(),
+                &alice_signer,
+                msg.content.clone(),
+                Some(&group_context.clone().into()),
+                Some(membership_key),
+                Some((confirmation_key, group_context.confirmed_transcript_hash())),
+            );
+        }
+        _ => unreachable!(),
+    }
+
+    // alice merges the unmodified commit
     alice_group
-        .merge_pending_commit(provider)
+        .merge_pending_commit(alice_provider)
         .expect("error merging pending commit");
+
+    let fake_commit = MlsMessageIn::tls_deserialize(
+        &mut franken_commit.tls_serialize_detached().unwrap().as_slice(),
+    )
+    .unwrap();
+
+    let proc_msg = bob_group
+        .process_message(bob_provider, fake_commit.into_protocol_message().unwrap())
+        .unwrap();
+    match proc_msg.into_content() {
+        ProcessedMessageContent::StagedCommitMessage(commit) => bob_group
+            .merge_staged_commit(bob_provider, *commit)
+            .unwrap(),
+        _ => unreachable!(),
+    };
 
     let required_capabilities = alice_group
         .group()
@@ -1198,18 +1308,18 @@ fn group_context_extensions_proposal() {
     // === committing to two group context extensions should fail
 
     alice_group
-        .propose_group_context_extensions(provider, new_extensions, &alice_signer)
+        .propose_group_context_extensions(alice_provider, new_extensions, &alice_signer)
         .expect("failed to build group context extensions proposal");
 
     // the proposals need to be different or they will be deduplicated
     alice_group
-        .propose_group_context_extensions(provider, new_extensions_2, &alice_signer)
+        .propose_group_context_extensions(alice_provider, new_extensions_2, &alice_signer)
         .expect("failed to build group context extensions proposal");
 
     assert_eq!(alice_group.pending_proposals().count(), 2);
 
     alice_group
-        .commit_to_pending_proposals(provider, &alice_signer)
+        .commit_to_pending_proposals(alice_provider, &alice_signer)
         .expect_err(
             "expected error when committing to multiple group context extensions proposals",
         );
@@ -1223,86 +1333,8 @@ fn group_context_extensions_proposal() {
     ));
 
     alice_group
-        .propose_group_context_extensions(provider, new_extensions, &alice_signer)
+        .propose_group_context_extensions(alice_provider, new_extensions, &alice_signer)
         .expect_err("expected an error building GCE proposal with bad required_capabilities");
-    //
-    // TODO: we need to test that processing a commit with multiple group context extensions
-    //       proposal also fails. however, we can't generate this commit, because our functions for
-    //       constructing commits does not permit it. See #1476
-    //
-    //       implemented in the following lines, but re-signing is missing
-
-    let version: u16 = 1; // didn't work: ProtocolVersion::Mls10 as u16;
-
-    let proposal = frankenstein::FrankenProposal::GroupContextExtensions(vec![
-        frankenstein::FrankenExtension::RequiredCapabilities(
-            frankenstein::FrankenRequiredCapabilitiesExtension {
-                extension_types: vec![],
-                proposal_types: vec![],
-                credential_types: vec![],
-            },
-        ),
-    ]);
-
-    let invalid_gce_framed_content = frankenstein::FrankenFramedContent {
-        group_id: alice_group.group_id().value.clone(),
-        epoch: alice_group.epoch().0,
-        sender: frankenstein::FrankenSender::Member(alice_group.own_leaf_index().u32()),
-        authenticated_data: VLBytes::from(vec![]),
-        body: frankenstein::FrankenFramedContentBody::Commit(frankenstein::FrankenCommit {
-            proposals: vec![
-                frankenstein::FrankenProposalOrRef::Proposal(proposal.clone()),
-                frankenstein::FrankenProposalOrRef::Proposal(proposal.clone()),
-            ],
-            path: None,
-        }),
-    };
-
-    let secrets = alice_group.group.message_secrets();
-    let membership_key = secrets.membership_key().as_slice();
-
-    let group_context = alice_group.export_group_context().clone().into();
-
-    let invalid_gce_commit = frankenstein::FrankenMlsMessage {
-        version,
-        body: frankenstein::FrankenMlsMessageBody::PublicMessage(
-            frankenstein::FrankenPublicMessage::auth(
-                provider,
-                ciphersuite,
-                &alice_signer,
-                invalid_gce_framed_content,
-                Some(&group_context),
-                Some(membership_key),
-                Some((&[], &[])),
-            ),
-        ),
-    };
-
-    let (content_serialized, auth_ser, tag_ser) =
-        if let frankenstein::FrankenMlsMessageBody::PublicMessage(body) =
-            invalid_gce_commit.clone().body
-        {
-            (
-                body.content.tls_serialize_detached().unwrap(),
-                body.auth.tls_serialize_detached().unwrap(),
-                body.membership_tag
-                    .map(|tag| tag.tls_serialize_detached().unwrap()),
-            )
-        } else {
-            unreachable!()
-        };
-
-    let content_in = FramedContentIn::tls_deserialize(&mut content_serialized.as_slice()).unwrap();
-    let auth_in =
-        FramedContentAuthData::deserialize(&mut auth_ser.as_slice(), ContentType::Commit).unwrap();
-
-    let invalid_gce_commit_serialized = invalid_gce_commit.tls_serialize_detached().unwrap();
-    let invalid_gce_commit_in =
-        PublicMessageIn::tls_deserialize(&mut invalid_gce_commit_serialized.as_slice()).unwrap();
-
-    alice_group
-        .process_message(provider, invalid_gce_commit_in)
-        .expect_err("expected failing to process invalid GCE commit");
 
     // TODO: implement a test that checks that processing an invalid proposal with validation off
     //          produces the correct commit -> is that really helpful?
