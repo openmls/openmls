@@ -73,15 +73,16 @@ impl Deserialize for FrankenPublicMessage {
         Self: Sized,
     {
         let content = FrankenFramedContent::tls_deserialize(bytes)?;
-        let auth = match content.body {
-            FrankenFramedContentBody::Commit(_) => {
-                FrankenFramedContentAuthData::tls_deserialize_with_tag(bytes)
-            }
-            _ => FrankenFramedContentAuthData::tls_deserialize_without_tag(bytes),
-        }?;
-        let membership_tag = match content.sender {
-            FrankenSender::Member(_) => Some(VLBytes::tls_deserialize(bytes)?),
-            _ => None,
+        let auth = if matches!(content.body, FrankenFramedContentBody::Commit(_)) {
+            FrankenFramedContentAuthData::tls_deserialize_with_tag(bytes)?
+        } else {
+            FrankenFramedContentAuthData::tls_deserialize_without_tag(bytes)?
+        };
+
+        let membership_tag = if matches!(content.sender, FrankenSender::Member(_)) {
+            Some(VLBytes::tls_deserialize(bytes)?)
+        } else {
+            None
         };
 
         Ok(Self {

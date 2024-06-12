@@ -224,11 +224,15 @@ impl<'a> TryFrom<&'a PublicMessageIn> for InterimTranscriptHashInput<'a> {
 
 impl TlsDeserializeTrait for PublicMessageIn {
     fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, Error> {
+        println!("xxx0");
         let content = FramedContentIn::tls_deserialize(bytes)?;
+        println!("xxx1");
         let auth = FramedContentAuthData::deserialize(bytes, content.body.content_type())?;
         let membership_tag = if content.sender.is_member() {
+            println!("xxx3");
             Some(MembershipTag::tls_deserialize(bytes)?)
         } else {
+            println!("xxx2");
             None
         };
 

@@ -1278,11 +1278,31 @@ fn group_context_extensions_proposal() {
         ),
     };
 
-    /* TODO: implement resign for FrankenPublicMessage
-    let invalid_gce_commit.resign( ... );
-    let mls_invalid_gce_commit: MlsMessageIn = invalid_gce_commit.into();
-    alice_group.process_message(provider, &mls_invalid_gce_commit).expect_err("expected failing to process invalid GCE commit")
-    */
+    let (content_serialized, auth_ser, tag_ser) =
+        if let frankenstein::FrankenMlsMessageBody::PublicMessage(body) =
+            invalid_gce_commit.clone().body
+        {
+            (
+                body.content.tls_serialize_detached().unwrap(),
+                body.auth.tls_serialize_detached().unwrap(),
+                body.membership_tag
+                    .map(|tag| tag.tls_serialize_detached().unwrap()),
+            )
+        } else {
+            unreachable!()
+        };
+
+    let content_in = FramedContentIn::tls_deserialize(&mut content_serialized.as_slice()).unwrap();
+    let auth_in =
+        FramedContentAuthData::deserialize(&mut auth_ser.as_slice(), ContentType::Commit).unwrap();
+
+    let invalid_gce_commit_serialized = invalid_gce_commit.tls_serialize_detached().unwrap();
+    let invalid_gce_commit_in =
+        PublicMessageIn::tls_deserialize(&mut invalid_gce_commit_serialized.as_slice()).unwrap();
+
+    alice_group
+        .process_message(provider, invalid_gce_commit_in)
+        .expect_err("expected failing to process invalid GCE commit");
 
     // TODO: implement a test that checks that processing an invalid proposal with validation off
     //          produces the correct commit -> is that really helpful?

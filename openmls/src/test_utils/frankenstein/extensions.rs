@@ -131,15 +131,8 @@ pub struct FrankenParentNode {
 
 impl From<ParentNode> for FrankenParentNode {
     fn from(value: ParentNode) -> Self {
-        FrankenParentNode {
-            encryption_key: value.encryption_key().as_slice().to_vec().into(),
-            parent_hash: value.parent_hash().to_vec().into(),
-            unmerged_leaves: value
-                .unmerged_leaves()
-                .iter()
-                .map(|idx| idx.u32())
-                .collect(),
-        }
+        let bytes = value.tls_serialize_detached().unwrap();
+        Self::tls_deserialize(&mut bytes.as_slice()).unwrap()
     }
 }
 
@@ -154,23 +147,8 @@ pub struct FrankenRequiredCapabilitiesExtension {
 
 impl From<RequiredCapabilitiesExtension> for FrankenRequiredCapabilitiesExtension {
     fn from(value: RequiredCapabilitiesExtension) -> Self {
-        Self {
-            extension_types: value
-                .extension_types()
-                .iter()
-                .map(|ext_type| (*ext_type).into())
-                .collect(),
-            proposal_types: value
-                .proposal_types()
-                .iter()
-                .map(|prop_type| (*prop_type).into())
-                .collect(),
-            credential_types: value
-                .credential_types()
-                .iter()
-                .map(|cred_type| (*cred_type).into())
-                .collect(),
-        }
+        let bytes = value.tls_serialize_detached().unwrap();
+        Self::tls_deserialize(&mut bytes.as_slice()).unwrap()
     }
 }
 
