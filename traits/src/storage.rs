@@ -66,12 +66,6 @@ pub trait StorageProvider<const VERSION: u16> {
         leaf_node: &LeafNode,
     ) -> Result<(), Self::Error>;
 
-    /// Clears the own leaf node for the group with given id to storage
-    fn clear_own_leaf_nodes<GroupId: traits::GroupId<VERSION>>(
-        &self,
-        group_id: &GroupId,
-    ) -> Result<(), Self::Error>;
-
     /// Enqueue a proposal.
     ///
     /// A good way to implement this could be to add a proposal to a proposal store, indexed by the
