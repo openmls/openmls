@@ -3,6 +3,7 @@ use tls_codec::{Serialize, TlsSerialize, TlsSize, VLBytes};
 
 use super::FrankenAuthenticatedContentTbm;
 
+/// Computes a valid membership tag for the provided content.
 pub fn compute_membership_tag(
     crypto: &impl OpenMlsCrypto,
     ciphersuite: Ciphersuite,
@@ -21,23 +22,7 @@ pub fn compute_membership_tag(
         .into()
 }
 
-pub fn compute_confirmation_tag(
-    crypto: &impl OpenMlsCrypto,
-    ciphersuite: Ciphersuite,
-    confirmation_key: &[u8],
-    confirmed_transcript_hash: &[u8],
-) -> VLBytes {
-    crypto
-        .hkdf_extract(
-            ciphersuite.hash_algorithm(),
-            confirmation_key,          // Extract salt is HMAC key
-            confirmed_transcript_hash, // Extract ikm is HMAC message
-        )
-        .unwrap()
-        .as_slice()
-        .into()
-}
-
+/// Implements the "sign with label" function of the spec.
 pub fn sign_with_label(signer: &impl Signer, label: &[u8], msg: &[u8]) -> Vec<u8> {
     let data = FrankenSignContent::new(label, msg)
         .tls_serialize_detached()

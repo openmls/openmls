@@ -11,8 +11,8 @@
 //! For example, a test could cann [`checks::confirmation_tag::handle`] to get a handle to disable
 //! and re-enable the validation of confirmation tags.
 
-use once_cell::sync::Lazy;
-use std::sync::{atomic::AtomicBool, Mutex};
+#[cfg(feature = "test-utils")]
+use std::sync::atomic::AtomicBool;
 
 pub(crate) mod is_disabled {
     use super::checks::*;
@@ -24,14 +24,24 @@ pub(crate) mod is_disabled {
 
 /// Contains the flags and functions that return handles to control them.
 pub(crate) mod checks {
-    use super::*;
+    #[cfg(feature = "test-utils")]
+    use super::SkipValidationHandle;
 
     /// Disables validation of the confirmation_tag.
     pub(crate) mod confirmation_tag {
-        use std::sync::MutexGuard;
+        use std::sync::atomic::AtomicBool;
 
-        use super::*;
+        #[cfg(feature = "test-utils")]
+        use super::SkipValidationHandle;
 
+        #[cfg(feature = "test-utils")]
+        use once_cell::sync::Lazy;
+
+        #[cfg(feature = "test-utils")]
+        use std::sync::{Mutex, MutexGuard};
+
+        #[cfg(feature = "test-utils")]
+        /// The name of the check that can be skipped here
         const NAME: &str = "confirmation_tag";
 
         /// A way of disabling verification and validation of confirmation tags.
@@ -50,6 +60,7 @@ pub(crate) mod checks {
                 .unwrap_or_else(|e| panic!("error taking skip-validation mutex for '{NAME}': {e}"))
         }
 
+        #[cfg(feature = "test-utils")]
         impl SkipValidationHandle {
             pub fn new_confirmation_tag_handle() -> Self {
                 Self {
@@ -63,11 +74,13 @@ pub(crate) mod checks {
 
 /// Contains a reference to a flag. Provides convenience functions to set and clear the flag.
 #[derive(Clone, Copy, Debug)]
+#[cfg(feature = "test-utils")]
 pub(crate) struct SkipValidationHandle {
     name: &'static str,
     flag: &'static AtomicBool,
 }
 
+#[cfg(feature = "test-utils")]
 impl SkipValidationHandle {
     /// Disables validation for the check controlled by this handle
     #[cfg(feature = "test-utils")]

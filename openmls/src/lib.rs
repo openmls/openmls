@@ -148,9 +148,6 @@
     target_pointer_width = "128"
 ))]
 
-use once_cell::sync::Lazy;
-use std::sync::{atomic::AtomicBool, Mutex, MutexGuard};
-
 #[cfg(all(target_arch = "wasm32", not(feature = "js")))]
 compile_error!("In order for OpenMLS to build for WebAssembly, JavaScript APIs must be available (for access to secure randomness and the current time). This can be signalled by setting the `js` feature on OpenMLS.");
 

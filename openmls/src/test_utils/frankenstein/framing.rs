@@ -18,7 +18,7 @@ use crate::{
 
 use super::{
     commit::FrankenCommit,
-    compute_confirmation_tag, compute_membership_tag,
+    compute_membership_tag,
     group_info::{FrankenGroupContext, FrankenGroupInfo},
     sign_with_label, FrankenKeyPackage, FrankenProposal,
 };
