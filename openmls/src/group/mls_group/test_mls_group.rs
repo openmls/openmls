@@ -1146,6 +1146,8 @@ fn remove_prosposal_by_ref(
 // Test that the builder pattern accurately configures the new group.
 #[openmls_test]
 fn group_context_extensions_proposal<Provider: OpenMlsProvider + Default>() {
+    let validation_skip_handle = crate::skip_validation::checks::confirmation_tag::handle();
+
     let alice_provider = &mut Provider::default();
     let bob_provider = &mut Provider::default();
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
@@ -1284,17 +1286,11 @@ fn group_context_extensions_proposal<Provider: OpenMlsProvider + Default>() {
     )
     .unwrap();
 
-    #[allow(clippy::redundant_closure_call)]
-    (|| {
-        println!("setting disable verification flag...");
-        crate::disable_confirmation_tag_verification();
-    })();
+    println!("setting disable verification flag...");
+    validation_skip_handle.disable_validation();
 
-    #[allow(clippy::redundant_closure_call)]
-    (|| {
-        println!("reading flag right after setting...",);
-        crate::confirmation_tag_verification_disabled();
-    })();
+    println!("reading flag right after setting...",);
+    crate::skip_validation::is_disabled::confirmation_tag();
 
     let proc_msg = bob_group
         .process_message(bob_provider, fake_commit.into_protocol_message().unwrap())
@@ -1305,7 +1301,7 @@ fn group_context_extensions_proposal<Provider: OpenMlsProvider + Default>() {
             .unwrap(),
         _ => unreachable!(),
     };
-    crate::enable_confirmation_tag_verification();
+    validation_skip_handle.enable_validation();
 
     let required_capabilities = alice_group
         .group()

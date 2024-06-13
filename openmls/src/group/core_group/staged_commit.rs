@@ -290,7 +290,7 @@ impl CoreGroup {
 
             // in some tests we need to be able to proceed despite the tag being wrong,
             // e.g. to test whether a later validation check is performed correctly.
-            if !crate::confirmation_tag_verification_disabled() {
+            if !crate::skip_validation::is_disabled::confirmation_tag() {
                 return Err(StageCommitError::ConfirmationTagMismatch);
             }
         }
