@@ -1260,16 +1260,15 @@ fn group_context_extensions_proposal<Provider: OpenMlsProvider + Default>() {
 
             let secrets = alice_group.group.message_secrets();
             let membership_key = secrets.membership_key().as_slice();
-            let confirmation_key = secrets.confirmation_key().as_slice();
 
             *msg = frankenstein::FrankenPublicMessage::auth(
                 alice_provider,
                 group_context.ciphersuite(),
                 &alice_signer,
                 msg.content.clone(),
-                Some(&group_context.clone().into()),
+                Some(&group_context.into()),
                 Some(membership_key),
-                Some((confirmation_key, group_context.confirmed_transcript_hash())),
+                Some(vec![0u8; 32].into()),
             );
         }
         _ => unreachable!(),
@@ -1285,6 +1284,18 @@ fn group_context_extensions_proposal<Provider: OpenMlsProvider + Default>() {
     )
     .unwrap();
 
+    #[allow(clippy::redundant_closure_call)]
+    (|| {
+        println!("setting disable verification flag...");
+        crate::disable_confirmation_tag_verification();
+    })();
+
+    #[allow(clippy::redundant_closure_call)]
+    (|| {
+        println!("reading flag right after setting...",);
+        crate::confirmation_tag_verification_disabled();
+    })();
+
     let proc_msg = bob_group
         .process_message(bob_provider, fake_commit.into_protocol_message().unwrap())
         .unwrap();
@@ -1294,6 +1305,7 @@ fn group_context_extensions_proposal<Provider: OpenMlsProvider + Default>() {
             .unwrap(),
         _ => unreachable!(),
     };
+    crate::enable_confirmation_tag_verification();
 
     let required_capabilities = alice_group
         .group()

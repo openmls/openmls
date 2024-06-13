@@ -138,6 +138,15 @@ impl Serialize for FrankenPublicMessage {
 }
 
 impl FrankenPublicMessage {
+    /// auth builds a mostly(!) valid fake public message. However, it does not compute a correct
+    /// confirmation_tag. If the caller wants to process a message that requires a
+    /// confirmation_tag, they have two options:
+    ///
+    /// 1. build a valid tag themselves and provide it through the option
+    /// 2. provide a dummy tag and disable the verification of confirmation tags using
+    ///    [`crate::disable_confirmation_tag_verification`].
+    ///    NB: Usually, confirmation tag verification should be turned back on after the call that
+    ///    needs to be tricked!
     pub(crate) fn auth(
         provider: &impl crate::storage::OpenMlsProvider,
         ciphersuite: openmls_traits::types::Ciphersuite,
@@ -145,7 +154,7 @@ impl FrankenPublicMessage {
         content: FrankenFramedContent,
         group_context: Option<&FrankenGroupContext>,
         membership_key: Option<&[u8]>,
-        confirmation_tag_info: Option<(&[u8], &[u8])>, // ConfirmationKey and confirmed_transcript_hash
+        confirmation_tag: Option<VLBytes>,
     ) -> Self {
         let version = 1; // MLS 1.0
         let wire_format = 1; // PublicMessage
@@ -158,14 +167,12 @@ impl FrankenPublicMessage {
         };
 
         let auth = FrankenFramedContentAuthData::build(
-            provider.crypto(),
-            ciphersuite,
             signer,
             version,
             wire_format,
             &content,
             group_context,
-            confirmation_tag_info,
+            confirmation_tag,
         );
 
         let tbm = FrankenAuthenticatedContentTbm {
@@ -323,14 +330,12 @@ impl Serialize for FrankenFramedContentAuthData {
 
 impl FrankenFramedContentAuthData {
     pub fn build(
-        crypto: &impl OpenMlsCrypto,
-        ciphersuite: Ciphersuite,
         signer: &impl Signer,
         version: u16,
         wire_format: u16,
         content: &FrankenFramedContent,
         group_context: Option<&FrankenGroupContext>,
-        confirmation_tag_info: Option<(&[u8], &[u8])>, // conf_key and conf_ts_hash
+        confirmation_tag: Option<VLBytes>,
     ) -> Self {
         let content_tbs = FrankenFramedContentTbs {
             version,
@@ -338,16 +343,6 @@ impl FrankenFramedContentAuthData {
             content,
             group_context,
         };
-
-        let confirmation_tag =
-            confirmation_tag_info.map(|(confirmation_key, confirmed_transcript_hash)| {
-                compute_confirmation_tag(
-                    crypto,
-                    ciphersuite,
-                    confirmation_key,
-                    confirmed_transcript_hash,
-                )
-            });
 
         let content_tbs_serialized = content_tbs.tls_serialize_detached().unwrap();
 
