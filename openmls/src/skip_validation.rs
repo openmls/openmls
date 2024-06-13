@@ -1,3 +1,16 @@
+//! This module contains helpers for skipping validation. It is built such that setting the flag to
+//! disable validation can only by set when the "test-utils" feature is enabled.
+//! This module is used in two places, and they use different parts of it.
+//! Code that performs validation and wants to check whether a check is disabled only uses the
+//! [`is_disabled`] submodule. It contains getter functions that read the current state of the
+//! flag.
+//! Test code that disables checks uses the code in the [`checks`] submodule. It contains a module
+//! for each check that can be disabled, and a getter for a handle, protected by a [`Mutex`]. This
+//! is done because the flag state is shared between tests, and tests that set and unset the same
+//! tests are not safe to run concurrently.
+//! For example, a test could cann [`checks::confirmation_tag::handle`] to get a handle to disable
+//! and re-enable the validation of confirmation tags.
+
 use once_cell::sync::Lazy;
 use std::sync::{atomic::AtomicBool, Mutex};
 
@@ -5,15 +18,15 @@ pub(crate) mod is_disabled {
     use super::checks::*;
 
     pub(crate) fn confirmation_tag() -> bool {
-        let value = confirmation_tag::FLAG.load(core::sync::atomic::Ordering::Relaxed);
-        println!("READING FLAG: ATOMIC BOOL 'confirmation_tag' HAS VALUE {value}");
-        value
+        confirmation_tag::FLAG.load(core::sync::atomic::Ordering::Relaxed)
     }
 }
 
+/// Contains the flags and functions that return handles to control them.
 pub(crate) mod checks {
     use super::*;
 
+    /// Disables validation of the confirmation_tag.
     pub(crate) mod confirmation_tag {
         use std::sync::MutexGuard;
 
@@ -29,7 +42,7 @@ pub(crate) mod checks {
         pub static MUTEX: Lazy<Mutex<SkipValidationHandle>> =
             Lazy::new(|| Mutex::new(SkipValidationHandle::new_confirmation_tag_handle()));
 
-        /// takes the mutex and returns the control handle to the validation skipper
+        /// Takes the mutex and returns the control handle to the validation skipper
         #[cfg(feature = "test-utils")]
         pub(crate) fn handle() -> MutexGuard<'static, SkipValidationHandle> {
             MUTEX
@@ -38,7 +51,7 @@ pub(crate) mod checks {
         }
 
         impl SkipValidationHandle {
-            pub(in crate::skip_validation) fn new_confirmation_tag_handle() -> Self {
+            pub fn new_confirmation_tag_handle() -> Self {
                 Self {
                     name: NAME,
                     flag: &FLAG,
@@ -48,6 +61,7 @@ pub(crate) mod checks {
     }
 }
 
+/// Contains a reference to a flag. Provides convenience functions to set and clear the flag.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct SkipValidationHandle {
     name: &'static str,
@@ -55,13 +69,14 @@ pub(crate) struct SkipValidationHandle {
 }
 
 impl SkipValidationHandle {
+    /// Disables validation for the check controlled by this handle
+    #[cfg(feature = "test-utils")]
     pub(crate) fn disable_validation(self) {
-        println!("DISABLING VALIDATION OF '{}'", self.name);
         self.flag.store(true, core::sync::atomic::Ordering::Relaxed);
     }
 
+    /// Enables validation for the check controlled by this handle
     pub(crate) fn enable_validation(self) {
-        println!("ENABLING VALIDATION OF  '{}'", self.name);
         self.flag
             .store(false, core::sync::atomic::Ordering::Relaxed);
     }
