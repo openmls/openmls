@@ -1241,7 +1241,8 @@ fn group_context_extensions_proposal<Provider: OpenMlsProvider + Default>() {
     )
     .unwrap();
 
-    // change the commit before alice commits, so alice's state is still in the old epoch and we can
+    // Craft a commit that has two GroupContextExtension proposals. This is forbidden by the RFC.
+    // Change the commit before alice commits, so alice's state is still in the old epoch and we can
     // use her state to forge the macs and signatures
     match &mut franken_commit.body {
         frankenstein::FrankenMlsMessageBody::PublicMessage(msg) => {
@@ -1276,6 +1277,7 @@ fn group_context_extensions_proposal<Provider: OpenMlsProvider + Default>() {
                 msg.content.clone(),
                 Some(&group_context.into()),
                 Some(membership_key),
+                // this is a dummy confirmation_tag:
                 Some(vec![0u8; 32].into()),
             );
         }
@@ -1351,9 +1353,6 @@ fn group_context_extensions_proposal<Provider: OpenMlsProvider + Default>() {
     alice_group
         .propose_group_context_extensions(alice_provider, new_extensions, &alice_signer)
         .expect_err("expected an error building GCE proposal with bad required_capabilities");
-
-    // TODO: implement a test that checks that processing an invalid proposal with validation off
-    //          produces the correct commit -> is that really helpful?
 }
 
 // Test that the builder pattern accurately configures the new group.
