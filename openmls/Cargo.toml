@@ -36,6 +36,7 @@ openmls_memory_storage = { path = "../memory_storage", features = [
 ], optional = true }
 openmls_test = { path = "../openmls_test", optional = true }
 openmls_libcrux_crypto = { path = "../libcrux_crypto", optional = true }
+once_cell = "1.19.0"
 
 [features]
 default = ["backtrace"]

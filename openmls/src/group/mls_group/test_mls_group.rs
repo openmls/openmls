@@ -1247,7 +1247,13 @@ fn group_context_extensions_proposal<Provider: OpenMlsProvider + Default>() {
         frankenstein::FrankenMlsMessageBody::PublicMessage(msg) => {
             match &mut msg.content.body {
                 frankenstein::FrankenFramedContentBody::Commit(commit) => {
-                    commit.proposals.push(commit.proposals[0].clone())
+                    let second_gces = frankenstein::FrankenProposalOrRef::Proposal(
+                        frankenstein::FrankenProposal::GroupContextExtensions(vec![
+                            frankenstein::FrankenExtension::LastResort,
+                        ]),
+                    );
+
+                    commit.proposals.push(second_gces);
                 }
                 _ => unreachable!(),
             }
@@ -1292,15 +1298,17 @@ fn group_context_extensions_proposal<Provider: OpenMlsProvider + Default>() {
     println!("reading flag right after setting...",);
     crate::skip_validation::is_disabled::confirmation_tag();
 
-    let proc_msg = bob_group
+    let err = bob_group
         .process_message(bob_provider, fake_commit.into_protocol_message().unwrap())
-        .unwrap();
-    match proc_msg.into_content() {
-        ProcessedMessageContent::StagedCommitMessage(commit) => bob_group
-            .merge_staged_commit(bob_provider, *commit)
-            .unwrap(),
-        _ => unreachable!(),
-    };
+        .expect_err("expected an error");
+    assert!(matches!(
+        err,
+        ProcessMessageError::InvalidCommit(
+            StageCommitError::GroupContextExtensionsProposalValidationError(
+                GroupContextExtensionsProposalValidationError::TooManyGCEProposals
+            )
+        )
+    ));
     validation_skip_handle.enable_validation();
 
     let required_capabilities = alice_group
