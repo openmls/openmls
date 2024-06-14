@@ -87,7 +87,10 @@ jobs:
           # TODO(#1366)
           go mod edit -go=1.18
           go get -u google.golang.org/grpc
-          go mod tidy -e
+          cd ..
+          protoc --go_out=proto --go_opt=paths=source_relative --go-grpc_out=proto --go-grpc_opt=paths=source_relative -I proto mls_client.proto
+          cd test-runner
+          # go mod tidy -e
           patch main.go main.go.patch
           go build
 
