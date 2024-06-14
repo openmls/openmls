@@ -85,6 +85,7 @@ jobs:
           make run-go || echo "Build despite errors."
           cd test-runner
           # TODO(#1366)
+          go mod edit -go=1.18
           go get -u google.golang.org/grpc
           go mod tidy -e
           patch main.go main.go.patch
