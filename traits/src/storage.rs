@@ -28,7 +28,7 @@ pub const V_TEST: u16 = u16::MAX;
 /// More details can be taken from the comments on the respective method.
 pub trait StorageProvider<const VERSION: u16> {
     /// An opaque error returned by all methods on this trait.
-    type Error: core::fmt::Debug + std::error::Error + PartialEq;
+    type Error: core::fmt::Debug + std::error::Error;
 
     /// Get the version of this provider.
     fn version() -> u16 {
