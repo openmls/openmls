@@ -80,6 +80,7 @@ jobs:
           # TODO(#1366)
           cp interop_client/docker/test-runner/main.go.patch mls-implementations/interop/test-runner
           cd mls-implementations/interop
+          go mod edit -go=1.18
           go mod tidy -e
           make run-go || echo "Build despite errors."
           cd test-runner
