@@ -80,12 +80,12 @@ jobs:
           # TODO(#1366)
           cp interop_client/docker/test-runner/main.go.patch mls-implementations/interop/test-runner
           cd mls-implementations/interop
-          go mod edit -go=1.18
+          go mod edit -go=1.22
           go mod tidy -e
           make run-go || echo "Build despite errors."
           cd test-runner
           # TODO(#1366)
-          go mod edit -go=1.18
+          go mod edit -go=1.22
           go get -u google.golang.org/grpc
           cd ..
           protoc --go_out=proto --go_opt=paths=source_relative --go-grpc_out=proto --go-grpc_opt=paths=source_relative -I proto mls_client.proto
