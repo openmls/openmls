@@ -7,7 +7,7 @@
 //! Test code that disables checks uses the code in the [`checks`] submodule. It contains a module
 //! for each check that can be disabled, and a getter for a handle, protected by a [`Mutex`]. This
 //! is done because the flag state is shared between tests, and tests that set and unset the same
-//! tests are not safe to run concurrently.
+//! checks are not safe to run concurrently.
 //! For example, a test could cann [`checks::confirmation_tag::handle`] to get a handle to disable
 //! and re-enable the validation of confirmation tags.
 
@@ -92,5 +92,13 @@ impl SkipValidationHandle {
     pub(crate) fn enable_validation(self) {
         self.flag
             .store(false, core::sync::atomic::Ordering::Relaxed);
+    }
+
+    /// Runs function `f` with validation disabled
+    pub(crate) fn with_disabled<R, F: FnMut() -> R>(self, mut f: F) -> R {
+        self.disable_validation();
+        let r = f();
+        self.enable_validation();
+        r
     }
 }

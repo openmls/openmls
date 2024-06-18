@@ -1145,9 +1145,7 @@ fn remove_prosposal_by_ref(
 
 // Test that the builder pattern accurately configures the new group.
 #[openmls_test]
-fn group_context_extensions_proposal<Provider: OpenMlsProvider + Default>() {
-    let validation_skip_handle = crate::skip_validation::checks::confirmation_tag::handle();
-
+fn group_context_extensions_proposal() {
     let alice_provider = &mut Provider::default();
     let bob_provider = &mut Provider::default();
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
@@ -1165,7 +1163,7 @@ fn group_context_extensions_proposal<Provider: OpenMlsProvider + Default>() {
         .build(alice_provider, &alice_signer, alice_credential_with_key)
         .expect("error creating group using builder");
 
-    // === Alice addes Bob ===
+    // === Alice adds Bob ===
     let bob_key_package = KeyPackage::builder()
         .build(
             ciphersuite,
@@ -1294,15 +1292,16 @@ fn group_context_extensions_proposal<Provider: OpenMlsProvider + Default>() {
     )
     .unwrap();
 
-    println!("setting disable verification flag...");
-    validation_skip_handle.disable_validation();
+    let validation_skip_handle = crate::skip_validation::checks::confirmation_tag::handle();
 
-    println!("reading flag right after setting...",);
-    crate::skip_validation::is_disabled::confirmation_tag();
-
-    let err = bob_group
-        .process_message(bob_provider, fake_commit.into_protocol_message().unwrap())
-        .expect_err("expected an error");
+    let err = validation_skip_handle.with_disabled(|| {
+        bob_group
+            .process_message(
+                bob_provider,
+                fake_commit.clone().into_protocol_message().unwrap(),
+            )
+            .expect_err("expected an error")
+    });
     assert!(matches!(
         err,
         ProcessMessageError::InvalidCommit(
@@ -1311,7 +1310,6 @@ fn group_context_extensions_proposal<Provider: OpenMlsProvider + Default>() {
             )
         )
     ));
-    validation_skip_handle.enable_validation();
 
     let required_capabilities = alice_group
         .group()

@@ -286,8 +286,6 @@ impl CoreGroup {
             //       They need to be rewritten.
             // debug_assert!(false, "Confirmation tag mismatch");
 
-            println!("reading flag in validation...",);
-
             // in some tests we need to be able to proceed despite the tag being wrong,
             // e.g. to test whether a later validation check is performed correctly.
             if !crate::skip_validation::is_disabled::confirmation_tag() {
