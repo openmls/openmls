@@ -1678,6 +1678,137 @@ fn update_group_context_with_unknown_extension<Provider: OpenMlsProvider + Defau
     );
 }
 
+#[openmls_test]
+fn test_update_group_context_with_unknown_extension_using_update_function<
+    Provider: OpenMlsProvider + Default,
+>() {
+    let alice_provider = Provider::default();
+    let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
+        setup_client("Alice", ciphersuite, &alice_provider);
+
+    // === Define the unknown group context extension and initial data ===
+    const UNKNOWN_EXTENSION_TYPE: u16 = 0xff11;
+    let unknown_extension_data = vec![1, 2];
+    let unknown_gc_extension = Extension::Unknown(
+        UNKNOWN_EXTENSION_TYPE,
+        UnknownExtension(unknown_extension_data),
+    );
+    let required_extension_types = &[ExtensionType::Unknown(UNKNOWN_EXTENSION_TYPE)];
+    let required_capabilities = Extension::RequiredCapabilities(
+        RequiredCapabilitiesExtension::new(required_extension_types, &[], &[]),
+    );
+    let capabilities = Capabilities::new(None, None, Some(required_extension_types), None, None);
+    let test_gc_extensions = Extensions::from_vec(vec![
+        unknown_gc_extension.clone(),
+        required_capabilities.clone(),
+    ])
+    .expect("error creating test group context extensions");
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .with_group_context_extensions(test_gc_extensions.clone())
+        .expect("error adding unknown extension to config")
+        .capabilities(capabilities.clone())
+        .ciphersuite(ciphersuite)
+        .build();
+
+    // === Alice creates a group ===
+    let mut alice_group = MlsGroup::new(
+        &alice_provider,
+        &alice_signer,
+        &mls_group_create_config,
+        alice_credential_with_key,
+    )
+    .expect("error creating group");
+
+    // === Verify the initial group context extension data is correct ===
+    let group_context_extensions = alice_group.group().context().extensions();
+    let mut extracted_data = None;
+    for extension in group_context_extensions.iter() {
+        if let Extension::Unknown(UNKNOWN_EXTENSION_TYPE, UnknownExtension(data)) = extension {
+            extracted_data = Some(data.clone());
+        }
+    }
+    assert_eq!(
+        extracted_data.unwrap(),
+        vec![1, 2],
+        "The data of Extension::Unknown(0xff11) does not match the expected data"
+    );
+
+    // === Propose the new group context extension using update_group_context_extensions ===
+    let updated_unknown_extension_data = vec![3, 4];
+    let updated_unknown_gc_extension = Extension::Unknown(
+        UNKNOWN_EXTENSION_TYPE,
+        UnknownExtension(updated_unknown_extension_data.clone()),
+    );
+
+    let mut updated_extensions = test_gc_extensions.clone();
+    updated_extensions.add_or_replace(updated_unknown_gc_extension);
+
+    let update_result = alice_group.update_group_context_extensions(
+        &alice_provider,
+        updated_extensions,
+        &alice_signer,
+    );
+    assert!(
+        update_result.is_ok(),
+        "Failed to update group context extensions: {:?}",
+        update_result.err()
+    );
+
+    // === Test clearing staged commit before merge, verify context shows expected data ===
+    alice_group
+        .clear_pending_commit(provider.storage())
+        .unwrap();
+    let group_context_extensions = alice_group.group().context().extensions();
+    let mut extracted_data = None;
+    for extension in group_context_extensions.iter() {
+        if let Extension::Unknown(UNKNOWN_EXTENSION_TYPE, UnknownExtension(data)) = extension {
+            extracted_data = Some(data.clone());
+        }
+    }
+    assert_eq!(
+        extracted_data.unwrap(),
+        vec![1, 2],
+        "The data of Extension::Unknown(0xff11) does not match the expected data"
+    );
+
+    // === Propose the new group context extension using update_group_context_extensions ===
+    let updated_unknown_extension_data = vec![4, 5]; // Sample data for the extension
+    let updated_unknown_gc_extension = Extension::Unknown(
+        UNKNOWN_EXTENSION_TYPE,
+        UnknownExtension(updated_unknown_extension_data.clone()),
+    );
+
+    let mut updated_extensions = test_gc_extensions.clone();
+    updated_extensions.add_or_replace(updated_unknown_gc_extension);
+    let update_result = alice_group.update_group_context_extensions(
+        &alice_provider,
+        updated_extensions,
+        &alice_signer,
+    );
+    assert!(
+        update_result.is_ok(),
+        "Failed to update group context extensions: {:?}",
+        update_result.err()
+    );
+
+    // === Merge Pending Commit ===
+    alice_group.merge_pending_commit(&alice_provider).unwrap();
+
+    // === Verify the group context extension was updated ===
+    let group_context_extensions = alice_group.group().context().extensions();
+    let mut extracted_data_updated = None;
+    for extension in group_context_extensions.iter() {
+        if let Extension::Unknown(UNKNOWN_EXTENSION_TYPE, UnknownExtension(data)) = extension {
+            extracted_data_updated = Some(data.clone());
+        }
+    }
+    assert_eq!(
+        extracted_data_updated.unwrap(),
+        vec![4, 5],
+        "The data of Extension::Unknown(0xff11) does not match the expected data"
+    );
+}
+
 // Test that unknown group context and leaf node extensions can be used in groups
 #[openmls_test]
 fn unknown_extensions() {
