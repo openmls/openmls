@@ -1292,16 +1292,16 @@ fn group_context_extensions_proposal() {
     )
     .unwrap();
 
-    let validation_skip_handle = crate::skip_validation::checks::confirmation_tag::handle();
+    let fake_commit_protocol_msg = fake_commit.into_protocol_message().unwrap();
 
-    let err = validation_skip_handle.with_disabled(|| {
-        bob_group
-            .process_message(
-                bob_provider,
-                fake_commit.clone().into_protocol_message().unwrap(),
-            )
-            .expect_err("expected an error")
-    });
+    let err = {
+        let validation_skip_handle = crate::skip_validation::checks::confirmation_tag::handle();
+        validation_skip_handle.with_disabled(|| {
+            bob_group.process_message(bob_provider, fake_commit_protocol_msg.clone())
+        })
+    }
+    .expect_err("expected an error");
+
     assert!(matches!(
         err,
         ProcessMessageError::InvalidCommit(
