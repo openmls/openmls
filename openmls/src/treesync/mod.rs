@@ -248,11 +248,6 @@ impl RatchetTreeIn {
     pub(crate) fn from_nodes(nodes: Vec<Option<NodeIn>>) -> Self {
         Self(nodes)
     }
-
-    #[cfg(feature = "test-utils")]
-    pub(crate) fn nodes(&self) -> &Vec<Option<NodeIn>> {
-        &self.0
-    }
 }
 
 impl From<RatchetTree> for RatchetTreeIn {
