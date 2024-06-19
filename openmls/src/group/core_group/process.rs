@@ -1,4 +1,6 @@
 use core_group::proposals::QueuedProposal;
+#[cfg(feature = "async")]
+use futures::{stream, StreamExt};
 
 use crate::{
     framing::mls_content::FramedContentBody,
@@ -10,6 +12,8 @@ use crate::{
 
 use super::{proposals::ProposalStore, *};
 
+#[cfg_attr(feature = "async", maybe_async::must_be_async)]
+#[cfg_attr(not(feature = "async"), maybe_async::must_be_sync)]
 impl CoreGroup {
     /// This processing function does most of the semantic verifications.
     /// It returns a [ProcessedMessage] enum.
@@ -39,7 +43,7 @@ impl CoreGroup {
     ///  - ValSem242
     ///  - ValSem244
     ///  - ValSem246 (as part of ValSem010)
-    pub(crate) fn process_unverified_message<Provider: OpenMlsProvider>(
+    pub(crate) async fn process_unverified_message<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
         unverified_message: UnverifiedMessage,
@@ -84,7 +88,7 @@ impl CoreGroup {
                             old_epoch_keypairs,
                             leaf_node_keypairs,
                             provider,
-                        )?;
+                        ).await?;
                         ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))
                     }
                 };
@@ -169,7 +173,7 @@ impl CoreGroup {
     ///  - ValSem244
     ///  - ValSem245
     ///  - ValSem246 (as part of ValSem010)
-    pub(crate) fn process_message<Provider: OpenMlsProvider>(
+    pub(crate) async fn process_message<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         message: impl Into<ProtocolMessage>,
@@ -195,7 +199,8 @@ impl CoreGroup {
         // If this is a commit, we need to load the private key material we need for decryption.
         let (old_epoch_keypairs, leaf_node_keypairs) =
             if let ContentType::Commit = unverified_message.content_type() {
-                self.read_decryption_keypairs(provider, own_leaf_nodes)?
+                self.read_decryption_keypairs(provider, own_leaf_nodes)
+                    .await?
             } else {
                 (vec![], vec![])
             };
@@ -206,7 +211,7 @@ impl CoreGroup {
             proposal_store,
             old_epoch_keypairs,
             leaf_node_keypairs,
-        )
+        ).await
     }
 
     /// Performs framing validation and, if necessary, decrypts the given message.
@@ -267,30 +272,56 @@ impl CoreGroup {
     }
 
     /// Helper function to read decryption keypairs.
-    pub(super) fn read_decryption_keypairs(
+    pub(super) async fn read_decryption_keypairs(
         &self,
         provider: &impl OpenMlsProvider,
         own_leaf_nodes: &[LeafNode],
     ) -> Result<(Vec<EncryptionKeyPair>, Vec<EncryptionKeyPair>), StageCommitError> {
         // All keys from the previous epoch are potential decryption keypairs.
-        let old_epoch_keypairs = self.read_epoch_keypairs(provider.storage());
+        let old_epoch_keypairs = self.read_epoch_keypairs(provider.storage()).await;
 
         // If we are processing an update proposal that originally came from
         // us, the keypair corresponding to the leaf in the update is also a
         // potential decryption keypair.
-        let leaf_node_keypairs = own_leaf_nodes
+        let leaf_node_keypairs =
+            Self::encryption_key_pairs_from_own_leaf_nodes(provider, own_leaf_nodes).await?;
+
+        Ok((old_epoch_keypairs, leaf_node_keypairs))
+    }
+
+    #[cfg(feature = "async")]
+    async fn encryption_key_pairs_from_own_leaf_nodes(
+        provider: &impl OpenMlsProvider,
+        own_leaf_nodes: &[LeafNode],
+    ) -> Result<Vec<EncryptionKeyPair>, StageCommitError> {
+        stream::iter(own_leaf_nodes)
+            .then(|leaf_node| async {
+                EncryptionKeyPair::read(provider, leaf_node.encryption_key())
+                    .await
+                    .ok_or(StageCommitError::MissingDecryptionKey)
+            })
+            .collect::<Vec<_>>()
+            .await
+            .into_iter()
+            .collect()
+    }
+
+    #[cfg(not(feature = "async"))]
+    async fn encryption_key_pairs_from_own_leaf_nodes(
+        provider: &impl OpenMlsProvider,
+        own_leaf_nodes: &[LeafNode],
+    ) -> Result<Vec<EncryptionKeyPair>, StageCommitError> {
+        own_leaf_nodes
             .iter()
             .map(|leaf_node| {
                 EncryptionKeyPair::read(provider, leaf_node.encryption_key())
                     .ok_or(StageCommitError::MissingDecryptionKey)
             })
-            .collect::<Result<Vec<EncryptionKeyPair>, StageCommitError>>()?;
-
-        Ok((old_epoch_keypairs, leaf_node_keypairs))
+            .collect()
     }
 
     /// Merge a [StagedCommit] into the group after inspection
-    pub(crate) fn merge_staged_commit<Provider: OpenMlsProvider>(
+    pub(crate) async fn merge_staged_commit<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         staged_commit: StagedCommit,
@@ -302,7 +333,7 @@ impl CoreGroup {
         let leaves = self.public_group().members().collect();
         // Merge the staged commit into the group state and store the secret tree from the
         // previous epoch in the message secrets store.
-        if let Some(message_secrets) = self.merge_commit(provider, staged_commit)? {
+        if let Some(message_secrets) = self.merge_commit(provider, staged_commit).await? {
             self.message_secrets_store
                 .add(past_epoch, message_secrets, leaves);
         }

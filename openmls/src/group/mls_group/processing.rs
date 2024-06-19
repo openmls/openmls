@@ -14,6 +14,8 @@ use crate::group::errors::MergeCommitError;
 
 use super::{errors::ProcessMessageError, *};
 
+#[cfg_attr(feature = "async", maybe_async::must_be_async)]
+#[cfg_attr(not(feature = "async"), maybe_async::must_be_sync)]
 impl MlsGroup {
     /// Parses incoming messages from the DS. Checks for syntactic errors and
     /// makes some semantic checks as well. If the input is an encrypted
@@ -24,7 +26,7 @@ impl MlsGroup {
     /// # Errors:
     /// Returns an [`ProcessMessageError`] when the validation checks fail
     /// with the exact reason of the failure.
-    pub fn process_message<Provider: OpenMlsProvider>(
+    pub async fn process_message<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         message: impl Into<ProtocolMessage>,
@@ -58,16 +60,16 @@ impl MlsGroup {
             &sender_ratchet_configuration,
             &self.proposal_store,
             &self.own_leaf_nodes,
-        )
+        ).await
     }
 
     /// Stores a standalone proposal in the internal [ProposalStore]
-    pub fn store_pending_proposal<Storage: StorageProvider>(
+    pub async fn store_pending_proposal<Storage: StorageProvider>(
         &mut self,
         storage: &Storage,
         proposal: QueuedProposal,
     ) -> Result<(), Storage::Error> {
-        storage.queue_proposal(self.group_id(), &proposal.proposal_reference(), &proposal)?;
+        storage.queue_proposal(self.group_id(), &proposal.proposal_reference(), &proposal).await?;
         // Store the proposal in in the internal ProposalStore
         self.proposal_store.add(proposal);
 
@@ -85,7 +87,7 @@ impl MlsGroup {
     /// [`Welcome`]: crate::messages::Welcome
     // FIXME: #1217
     #[allow(clippy::type_complexity)]
-    pub fn commit_to_pending_proposals<Provider: OpenMlsProvider>(
+    pub async fn commit_to_pending_proposals<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -101,11 +103,11 @@ impl MlsGroup {
             .framing_parameters(self.framing_parameters())
             .proposal_store(&self.proposal_store)
             .build();
-        let create_commit_result = self.group.create_commit(params, provider, signer)?;
+        let create_commit_result = self.group.create_commit(params, provider, signer).await?;
 
         // Convert PublicMessage messages to MLSMessage and encrypt them if required by
         // the configuration
-        let mls_message = self.content_to_mls_message(create_commit_result.commit, provider)?;
+        let mls_message = self.content_to_mls_message(create_commit_result.commit, provider).await?;
 
         // Set the current group state to [`MlsGroupState::PendingCommit`],
         // storing the current [`StagedCommit`] from the commit results
@@ -115,6 +117,7 @@ impl MlsGroup {
         provider
             .storage()
             .write_group_state(self.group_id(), &self.group_state)
+            .await
             .map_err(CommitToPendingProposalsError::StorageError)?;
 
         Ok((
@@ -128,7 +131,7 @@ impl MlsGroup {
 
     /// Merge a [StagedCommit] into the group after inspection. As this advances
     /// the epoch of the group, it also clears any pending commits.
-    pub fn merge_staged_commit<Provider: OpenMlsProvider>(
+    pub async fn merge_staged_commit<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         staged_commit: StagedCommit,
@@ -140,11 +143,12 @@ impl MlsGroup {
         provider
             .storage()
             .write_group_state(self.group_id(), &self.group_state)
+            .await
             .map_err(MergeCommitError::StorageError)?;
 
         // Merge staged commit
         self.group
-            .merge_staged_commit(provider, staged_commit, &mut self.proposal_store)?;
+            .merge_staged_commit(provider, staged_commit, &mut self.proposal_store).await?;
 
         // Extract and store the resumption psk for the current epoch
         let resumption_psk = self.group.group_epoch_secrets().resumption_psk();
@@ -157,10 +161,12 @@ impl MlsGroup {
         provider
             .storage()
             .delete_own_leaf_nodes(self.group_id())
+            .await
             .map_err(MergeCommitError::StorageError)?;
 
         // Delete a potential pending commit
         self.clear_pending_commit(provider.storage())
+            .await
             .map_err(MergeCommitError::StorageError)?;
 
         Ok(())
@@ -168,7 +174,7 @@ impl MlsGroup {
 
     /// Merges the pending [`StagedCommit`] if there is one, and
     /// clears the field by setting it to `None`.
-    pub fn merge_pending_commit<Provider: OpenMlsProvider>(
+    pub async fn merge_pending_commit<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
     ) -> Result<(), MergePendingCommitError<Provider::StorageError>> {
@@ -176,7 +182,7 @@ impl MlsGroup {
             MlsGroupState::PendingCommit(_) => {
                 let old_state = mem::replace(&mut self.group_state, MlsGroupState::Operational);
                 if let MlsGroupState::PendingCommit(pending_commit_state) = old_state {
-                    self.merge_staged_commit(provider, (*pending_commit_state).into())?;
+                    self.merge_staged_commit(provider, (*pending_commit_state).into()).await?;
                 }
                 Ok(())
             }

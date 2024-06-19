@@ -187,6 +187,8 @@ pub(crate) struct CoreGroupBuilder {
     max_past_epochs: usize,
 }
 
+#[cfg_attr(feature = "async", maybe_async::must_be_async)]
+#[cfg_attr(not(feature = "async"), maybe_async::must_be_sync)]
 impl CoreGroupBuilder {
     /// Create a new [`CoreGroupBuilder`].
     pub(crate) fn new(
@@ -266,7 +268,7 @@ impl CoreGroupBuilder {
     ///
     /// This function performs cryptographic operations and there requires an
     /// [`OpenMlsProvider`].
-    pub(crate) fn build<Provider: OpenMlsProvider>(
+    pub(crate) async fn build<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
         signer: &impl Signer,
@@ -302,7 +304,7 @@ impl CoreGroupBuilder {
 
         // Prepare the PskSecret
         let psk_secret = {
-            let psks = load_psks(provider.storage(), &resumption_psk_store, &self.psk_ids)?;
+            let psks = load_psks(provider.storage(), &resumption_psk_store, &self.psk_ids).await?;
 
             PskSecret::new(provider.crypto(), ciphersuite, psks)?
         };
@@ -347,17 +349,21 @@ impl CoreGroupBuilder {
         // Store the group state
         group
             .store(provider.storage())
+            .await
             .map_err(CoreGroupBuildError::StorageError)?;
 
         // Store the private key of the own leaf in the key store as an epoch keypair.
         group
             .store_epoch_keypairs(provider.storage(), &[leaf_keypair])
+            .await
             .map_err(CoreGroupBuildError::StorageError)?;
 
         Ok(group)
     }
 }
 
+#[cfg_attr(feature = "async", maybe_async::must_be_async)]
+#[cfg_attr(not(feature = "async"), maybe_async::must_be_sync)]
 impl CoreGroup {
     /// Get a builder for [`CoreGroup`].
     pub(crate) fn builder(
@@ -488,7 +494,7 @@ impl CoreGroup {
     }
 
     // Create application message
-    pub(crate) fn create_application_message<Provider: OpenMlsProvider>(
+    pub(crate) async fn create_application_message<Provider: OpenMlsProvider>(
         &mut self,
         aad: &[u8],
         msg: &[u8],
@@ -503,11 +509,11 @@ impl CoreGroup {
             self.context(),
             signer,
         )?;
-        self.encrypt(public_message, padding_size, provider)
+        self.encrypt(public_message, padding_size, provider).await
     }
 
     // Encrypt an PublicMessage into an PrivateMessage
-    pub(crate) fn encrypt<Provider: OpenMlsProvider>(
+    pub(crate) async fn encrypt<Provider: OpenMlsProvider>(
         &mut self,
         public_message: AuthenticatedContent,
         padding_size: usize,
@@ -524,6 +530,7 @@ impl CoreGroup {
         provider
             .storage()
             .write_message_secrets(self.group_id(), &self.message_secrets_store)
+            .await
             .map_err(MessageEncryptionError::StorageError)?;
 
         Ok(msg)
@@ -726,33 +733,43 @@ impl CoreGroup {
 
     /// Stores the [`CoreGroup`]. Called from methods creating a new group and mutating an
     /// existing group, both inside [`CoreGroup`] and in [`MlsGroup`].
-    pub(super) fn store<Storage: StorageProvider>(
+    pub(super) async fn store<Storage: StorageProvider>(
         &self,
         storage: &Storage,
     ) -> Result<(), Storage::Error> {
         let group_id = self.group_id();
 
-        self.public_group.store(storage)?;
-        storage.write_own_leaf_index(group_id, &self.own_leaf_index())?;
-        storage.write_group_epoch_secrets(group_id, &self.group_epoch_secrets)?;
-        storage.set_use_ratchet_tree_extension(group_id, self.use_ratchet_tree_extension)?;
-        storage.write_message_secrets(group_id, &self.message_secrets_store)?;
-        storage.write_resumption_psk_store(group_id, &self.resumption_psk_store)?;
+        self.public_group.store(storage).await?;
+        storage
+            .write_own_leaf_index(group_id, &self.own_leaf_index())
+            .await?;
+        storage
+            .write_group_epoch_secrets(group_id, &self.group_epoch_secrets)
+            .await?;
+        storage
+            .set_use_ratchet_tree_extension(group_id, self.use_ratchet_tree_extension)
+            .await?;
+        storage
+            .write_message_secrets(group_id, &self.message_secrets_store)
+            .await?;
+        storage
+            .write_resumption_psk_store(group_id, &self.resumption_psk_store)
+            .await?;
 
         Ok(())
     }
 
     /// Loads a [`CoreGroup`]. Called in [`MlsGroup::load`].
-    pub(super) fn load<Storage: StorageProvider>(
+    pub(super) async fn load<Storage: StorageProvider>(
         storage: &Storage,
         group_id: &GroupId,
     ) -> Result<Option<Self>, Storage::Error> {
-        let public_group = PublicGroup::load(storage, group_id)?;
-        let group_epoch_secrets = storage.group_epoch_secrets(group_id)?;
-        let own_leaf_index = storage.own_leaf_index(group_id)?;
-        let use_ratchet_tree_extension = storage.use_ratchet_tree_extension(group_id)?;
-        let message_secrets_store = storage.message_secrets(group_id)?;
-        let resumption_psk_store = storage.resumption_psk_store(group_id)?;
+        let public_group = PublicGroup::load(storage, group_id).await?;
+        let group_epoch_secrets = storage.group_epoch_secrets(group_id).await?;
+        let own_leaf_index = storage.own_leaf_index(group_id).await?;
+        let use_ratchet_tree_extension = storage.use_ratchet_tree_extension(group_id).await?;
+        let message_secrets_store = storage.message_secrets(group_id).await?;
+        let resumption_psk_store = storage.resumption_psk_store(group_id).await?;
 
         let build = || -> Option<Self> {
             Some(Self {
@@ -768,16 +785,20 @@ impl CoreGroup {
         Ok(build())
     }
 
-    pub(super) fn delete<Storage: StorageProvider>(
+    pub(super) async fn delete<Storage: StorageProvider>(
         &self,
         storage: &Storage,
     ) -> Result<(), Storage::Error> {
-        self.public_group.delete(storage)?;
-        storage.delete_own_leaf_index(self.group_id())?;
-        storage.delete_group_epoch_secrets(self.group_id())?;
-        storage.delete_use_ratchet_tree_extension(self.group_id())?;
-        storage.delete_message_secrets(self.group_id())?;
-        storage.delete_all_resumption_psk_secrets(self.group_id())?;
+        self.public_group.delete(storage).await?;
+        storage.delete_own_leaf_index(self.group_id()).await?;
+        storage.delete_group_epoch_secrets(self.group_id()).await?;
+        storage
+            .delete_use_ratchet_tree_extension(self.group_id())
+            .await?;
+        storage.delete_message_secrets(self.group_id()).await?;
+        storage
+            .delete_all_resumption_psk_secrets(self.group_id())
+            .await?;
 
         Ok(())
     }
@@ -786,17 +807,19 @@ impl CoreGroup {
     /// indexed by this group's [`GroupId`] and [`GroupEpoch`].
     ///
     /// Returns an error if access to the key store fails.
-    pub(super) fn store_epoch_keypairs<Storage: StorageProvider>(
+    pub(super) async fn store_epoch_keypairs<Storage: StorageProvider>(
         &self,
         store: &Storage,
         keypair_references: &[EncryptionKeyPair],
     ) -> Result<(), Storage::Error> {
-        store.write_encryption_epoch_key_pairs(
-            self.group_id(),
-            &self.context().epoch(),
-            self.own_leaf_index().u32(),
-            keypair_references,
-        )
+        store
+            .write_encryption_epoch_key_pairs(
+                self.group_id(),
+                &self.context().epoch(),
+                self.own_leaf_index().u32(),
+                keypair_references,
+            )
+            .await
     }
 
     /// Read the [`EncryptionKeyPair`]s of this group and its current
@@ -804,7 +827,7 @@ impl CoreGroup {
     ///
     /// Returns an empty vector if access to the store fails or it can't find
     /// any keys.
-    pub(super) fn read_epoch_keypairs<Storage: StorageProvider>(
+    pub(super) async fn read_epoch_keypairs<Storage: StorageProvider>(
         &self,
         store: &Storage,
     ) -> Vec<EncryptionKeyPair> {
@@ -814,6 +837,7 @@ impl CoreGroup {
                 &self.context().epoch(),
                 self.own_leaf_index().u32(),
             )
+            .await
             .unwrap_or_default()
     }
 
@@ -821,20 +845,22 @@ impl CoreGroup {
     /// the `provider`'s key store.
     ///
     /// Returns an error if access to the key store fails.
-    pub(super) fn delete_previous_epoch_keypairs<Storage: StorageProvider>(
+    pub(super) async fn delete_previous_epoch_keypairs<Storage: StorageProvider>(
         &self,
         store: &Storage,
     ) -> Result<(), Storage::Error> {
-        store.delete_encryption_epoch_key_pairs(
-            self.group_id(),
-            &GroupEpoch::from(self.context().epoch().as_u64() - 1),
-            self.own_leaf_index().u32(),
-        )
+        store
+            .delete_encryption_epoch_key_pairs(
+                self.group_id(),
+                &GroupEpoch::from(self.context().epoch().as_u64() - 1),
+                self.own_leaf_index().u32(),
+            )
+            .await
     }
 
-    pub(crate) fn create_commit<Provider: OpenMlsProvider>(
+    pub(crate) async fn create_commit<Provider: OpenMlsProvider>(
         &self,
-        mut params: CreateCommitParams,
+        mut params: CreateCommitParams<'_>,
         provider: &Provider,
         signer: &impl Signer,
     ) -> Result<CreateCommitResult, CreateCommitError<Provider::StorageError>> {
@@ -986,7 +1012,7 @@ impl CoreGroup {
                 provider.storage(),
                 &self.resumption_psk_store,
                 &apply_proposals_values.presharedkeys,
-            )?;
+            ).await?;
 
             PskSecret::new(provider.crypto(), ciphersuite, psks)?
         };

@@ -15,7 +15,11 @@ path = "src/traits.rs"
 [features]
 default = []
 test-utils = []
+async = ["dep:async-trait"]
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 tls_codec = { workspace = true }
+# async
+maybe-async = { workspace = true }
+async-trait = { workspace = true, optional = true }

@@ -146,17 +146,23 @@ pub(crate) struct EncryptionKeyPair {
     private_key: EncryptionPrivateKey,
 }
 
+#[cfg_attr(feature = "async", maybe_async::must_be_async)]
+#[cfg_attr(not(feature = "async"), maybe_async::must_be_sync)]
 impl EncryptionKeyPair {
     /// Write the [`EncryptionKeyPair`] to the store of the `provider`.
     ///
     /// This must only be used for encryption key pairs that are generated for
     /// update leaf nodes. All other encryption key pairs are stored as part
     /// of the key package or the epoch encryption key pairs.
-    pub(crate) fn write<Storage: StorageProvider>(
+    #[cfg_attr(feature = "async", maybe_async::must_be_async)]
+    #[cfg_attr(not(feature = "async"), maybe_async::must_be_sync)]
+    pub(crate) async fn write<Storage: StorageProvider>(
         &self,
         store: &Storage,
     ) -> Result<(), Storage::Error> {
-        store.write_encryption_key_pair(self.public_key(), self)
+        store
+            .write_encryption_key_pair(self.public_key(), self)
+            .await
     }
 
     /// Read the [`EncryptionKeyPair`] from the key store of the `provider`. This
@@ -168,13 +174,14 @@ impl EncryptionKeyPair {
     /// of the key package or the epoch encryption key pairs.
     ///
     /// Returns `None` if the keypair cannot be read from the store.
-    pub(crate) fn read(
+    pub(crate) async fn read(
         provider: &impl OpenMlsProvider,
         encryption_key: &EncryptionKey,
     ) -> Option<EncryptionKeyPair> {
         provider
             .storage()
             .encryption_key_pair(encryption_key)
+            .await
             .ok()
             .flatten()
     }
@@ -184,11 +191,11 @@ impl EncryptionKeyPair {
     /// This must only be used for encryption key pairs that are generated for
     /// update leaf nodes. All other encryption key pairs are stored as part
     /// of the key package or the epoch encryption key pairs.
-    pub(crate) fn delete<Storage: StorageProviderTrait<CURRENT_VERSION>>(
+    pub(crate) async fn delete<Storage: StorageProviderTrait<CURRENT_VERSION>>(
         &self,
         store: &Storage,
     ) -> Result<(), Storage::Error> {
-        store.delete_encryption_key_pair(self.public_key())
+        store.delete_encryption_key_pair(self.public_key()).await
     }
 
     pub(crate) fn public_key(&self) -> &EncryptionKey {

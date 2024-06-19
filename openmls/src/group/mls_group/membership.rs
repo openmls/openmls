@@ -14,6 +14,8 @@ use crate::{
     storage::OpenMlsProvider, treesync::LeafNode,
 };
 
+#[cfg_attr(feature = "async", maybe_async::must_be_async)]
+#[cfg_attr(not(feature = "async"), maybe_async::must_be_sync)]
 impl MlsGroup {
     /// Adds members to the group.
     ///
@@ -31,7 +33,7 @@ impl MlsGroup {
     /// [`Welcome`]: crate::messages::Welcome
     // FIXME: #1217
     #[allow(clippy::type_complexity)]
-    pub fn add_members<Provider: OpenMlsProvider>(
+    pub async fn add_members<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -63,7 +65,7 @@ impl MlsGroup {
             .proposal_store(&self.proposal_store)
             .inline_proposals(inline_proposals)
             .build();
-        let create_commit_result = self.group.create_commit(params, provider, signer)?;
+        let create_commit_result = self.group.create_commit(params, provider, signer).await?;
 
         let welcome = match create_commit_result.welcome_option {
             Some(welcome) => welcome,
@@ -74,7 +76,7 @@ impl MlsGroup {
 
         // Convert PublicMessage messages to MLSMessage and encrypt them if required by
         // the configuration
-        let mls_messages = self.content_to_mls_message(create_commit_result.commit, provider)?;
+        let mls_messages = self.content_to_mls_message(create_commit_result.commit, provider).await?;
 
         // Set the current group state to [`MlsGroupState::PendingCommit`],
         // storing the current [`StagedCommit`] from the commit results
@@ -85,6 +87,7 @@ impl MlsGroup {
         provider
             .storage()
             .write_group_state(self.group_id(), &self.group_state)
+            .await
             .map_err(AddMembersError::StorageError)?;
 
         Ok((
@@ -115,7 +118,7 @@ impl MlsGroup {
     /// [`Welcome`]: crate::messages::Welcome
     // FIXME: #1217
     #[allow(clippy::type_complexity)]
-    pub fn remove_members<Provider: OpenMlsProvider>(
+    pub async fn remove_members<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -145,11 +148,11 @@ impl MlsGroup {
             .proposal_store(&self.proposal_store)
             .inline_proposals(inline_proposals)
             .build();
-        let create_commit_result = self.group.create_commit(params, provider, signer)?;
+        let create_commit_result = self.group.create_commit(params, provider, signer).await?;
 
         // Convert PublicMessage messages to MLSMessage and encrypt them if required by
         // the configuration
-        let mls_message = self.content_to_mls_message(create_commit_result.commit, provider)?;
+        let mls_message = self.content_to_mls_message(create_commit_result.commit, provider).await?;
 
         // Set the current group state to [`MlsGroupState::PendingCommit`],
         // storing the current [`StagedCommit`] from the commit results
@@ -160,6 +163,7 @@ impl MlsGroup {
         provider
             .storage()
             .write_group_state(self.group_id(), &self.group_state)
+            .await
             .map_err(RemoveMembersError::StorageError)?;
 
         Ok((
@@ -177,7 +181,7 @@ impl MlsGroup {
     /// The Remove Proposal is returned as a [`MlsMessageOut`].
     ///
     /// Returns an error if there is a pending commit.
-    pub fn leave_group<Provider: OpenMlsProvider>(
+    pub async fn leave_group<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -197,7 +201,7 @@ impl MlsGroup {
                 remove_proposal.clone(),
             )?);
 
-        Ok(self.content_to_mls_message(remove_proposal, provider)?)
+        Ok(self.content_to_mls_message(remove_proposal, provider).await?)
     }
 
     /// Returns a list of [`Member`]s in the group.

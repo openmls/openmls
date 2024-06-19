@@ -23,3 +23,5 @@ tls_codec = { version = "0.4.2-pre.1", features = [
   "serde",
   "mls",
 ], git = "https://github.com/rustcrypto/formats" }
+maybe-async = "0.2.10"
+async-trait = "0.1.80"

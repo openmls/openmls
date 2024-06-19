@@ -23,6 +23,8 @@ pub struct MlsGroupBuilder {
     mls_group_create_config_builder: MlsGroupCreateConfigBuilder,
 }
 
+#[cfg_attr(feature = "async", maybe_async::must_be_async)]
+#[cfg_attr(not(feature = "async"), maybe_async::must_be_sync)]
 impl MlsGroupBuilder {
     pub(super) fn new() -> Self {
         Self::default()
@@ -35,13 +37,14 @@ impl MlsGroupBuilder {
     }
 
     /// Build a new group as configured by this builder.
-    pub fn build<Provider: OpenMlsProvider>(
+    pub async fn build<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
     ) -> Result<MlsGroup, NewGroupError<Provider::StorageError>> {
         self.build_internal(provider, signer, credential_with_key, None)
+            .await
     }
 
     /// Build a new group with the given group ID.
@@ -49,7 +52,7 @@ impl MlsGroupBuilder {
     /// If an [`MlsGroupCreateConfig`] is provided, it will be used to configure the
     /// group. Otherwise, the internal builder is used to build one with the
     /// parameters set on this builder.
-    pub(super) fn build_internal<Provider: OpenMlsProvider>(
+    pub(super) async fn build_internal<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
         signer: &impl Signer,
@@ -80,6 +83,7 @@ impl MlsGroupBuilder {
         .with_max_past_epoch_secrets(mls_group_create_config.join_config.max_past_epochs)
         .with_lifetime(*mls_group_create_config.lifetime())
         .build(provider, signer)
+        .await
         .map_err(|e| match e {
             CoreGroupBuildError::LibraryError(e) => e.into(),
             // We don't support PSKs yet
@@ -114,14 +118,17 @@ impl MlsGroupBuilder {
         provider
             .storage()
             .write_mls_join_config(mls_group.group_id(), &mls_group.mls_group_config)
+            .await
             .map_err(NewGroupError::StorageError)?;
         provider
             .storage()
             .write_group_state(mls_group.group_id(), &mls_group.group_state)
+            .await
             .map_err(NewGroupError::StorageError)?;
         mls_group
             .group
             .store(provider.storage())
+            .await
             .map_err(NewGroupError::StorageError)?;
 
         Ok(mls_group)

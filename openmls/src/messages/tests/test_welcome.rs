@@ -300,6 +300,7 @@ fn test_welcome_message(ciphersuite: Ciphersuite, provider: &impl crate::storage
 /// the caller the GroupInfo.
 /// This allows transporting information in the Welcome for retrieving the ratchet
 /// tree.
+#[cfg_attr()]
 #[openmls_test::openmls_test]
 fn test_welcome_processing() {
     let group_id = GroupId::random(provider.rand());

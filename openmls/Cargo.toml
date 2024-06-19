@@ -37,6 +37,9 @@ openmls_memory_storage = { path = "../memory_storage", features = [
 openmls_test = { path = "../openmls_test", optional = true }
 openmls_libcrux_crypto = { path = "../libcrux_crypto", optional = true }
 once_cell = { version = "1.19.0", optional = true }
+maybe-async = {workspace = true}
+async-trait = { workspace = true, optional = true }
+futures = { version = "0.3.30", optional = true }
 
 [features]
 default = ["backtrace"]
@@ -62,6 +65,7 @@ js = [
     "dep:getrandom",
     "dep:fluvio-wasm-timer",
 ] # enable js randomness source for provider
+async = ["dep:async-trait", "openmls_traits/async", "dep:futures"]
 
 [dev-dependencies]
 backtrace = "0.3"

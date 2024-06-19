@@ -4,6 +4,8 @@ use crate::storage::OpenMlsProvider;
 
 use super::{errors::CreateMessageError, *};
 
+#[cfg_attr(feature = "async", maybe_async::must_be_async)]
+#[cfg_attr(not(feature = "async"), maybe_async::must_be_sync)]
 impl MlsGroup {
     // === Application messages ===
 
@@ -13,7 +15,7 @@ impl MlsGroup {
     /// Returns `CreateMessageError::MlsGroupStateError::PendingProposal` if pending proposals
     /// exist. In that case `.process_pending_proposals()` must be called first
     /// and incoming messages from the DS must be processed afterwards.
-    pub fn create_message<Provider: OpenMlsProvider>(
+    pub async fn create_message<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -39,6 +41,7 @@ impl MlsGroup {
                 provider,
                 signer,
             )
+            .await
             // We know the application message is wellformed and we have the key material of the current epoch
             .map_err(|_| LibraryError::custom("Malformed plaintext"))?;
 

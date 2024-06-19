@@ -13,6 +13,8 @@ use crate::group::core_group::*;
 
 pub(crate) type ExternalCommitResult = (CoreGroup, CreateCommitResult);
 
+#[cfg_attr(feature = "async", maybe_async::must_be_async)]
+#[cfg_attr(not(feature = "async"), maybe_async::must_be_sync)]
 impl CoreGroup {
     /// Join a group without the help of an internal member. This function
     /// requires a [GroupInfo], as well as the corresponding public tree
@@ -25,10 +27,10 @@ impl CoreGroup {
     ///
     /// Note: If there is a group member in the group with the same identity as us,
     /// this will create a remove proposal.
-    pub(crate) fn join_by_external_commit<Provider: OpenMlsProvider>(
+    pub(crate) async fn join_by_external_commit<Provider: OpenMlsProvider>(
         provider: &Provider,
         signer: &impl Signer,
-        mut params: CreateCommitParams,
+        mut params: CreateCommitParams<'_>,
         ratchet_tree: Option<RatchetTreeIn>,
         verifiable_group_info: VerifiableGroupInfo,
     ) -> Result<ExternalCommitResult, ExternalCommitError<Provider::StorageError>> {
@@ -53,7 +55,8 @@ impl CoreGroup {
             verifiable_group_info,
             // Existing proposals are discarded when joining by external commit.
             ProposalStore::new(),
-        )?;
+        )
+        .await?;
         let group_context = public_group.group_context();
 
         // Obtain external_pub from GroupInfo extensions.
@@ -128,7 +131,7 @@ impl CoreGroup {
             .build();
 
         // Immediately create the commit to add ourselves to the group.
-        let create_commit_result = group.create_commit(params, provider, signer);
+        let create_commit_result = group.create_commit(params, provider, signer).await;
         debug_assert!(
             create_commit_result.is_ok(),
             "Error creating commit {create_commit_result:?}"
@@ -136,6 +139,7 @@ impl CoreGroup {
 
         group
             .store(provider.storage())
+            .await
             .map_err(ExternalCommitError::StorageError)?;
 
         Ok((

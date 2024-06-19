@@ -8,13 +8,15 @@ use crate::{
     treesync::errors::{DerivePathError, PublicTreeError},
 };
 
+#[cfg_attr(feature = "async", maybe_async::must_be_async)]
+#[cfg_attr(not(feature = "async"), maybe_async::must_be_sync)]
 impl StagedCoreWelcome {
     /// Create a staged join from a welcome message. The purpose of this type is to be able to
     /// extract information, such as the identify of who created the welcome, before joining the
     /// group.
     /// Note: calling this function will consume the key material for decrypting the [`Welcome`]
     /// message, even if the caller does not turn the [`StagedCoreWelcome`] into a [`CoreGroup`].
-    pub fn new_from_welcome<Provider: OpenMlsProvider>(
+    pub async fn new_from_welcome<Provider: OpenMlsProvider>(
         welcome: Welcome,
         ratchet_tree: Option<RatchetTreeIn>,
         key_package_bundle: KeyPackageBundle,
@@ -27,7 +29,7 @@ impl StagedCoreWelcome {
             &key_package_bundle,
             provider,
             &resumption_psk_store,
-        )?;
+        ).await?;
 
         build_staged_welcome(
             verifiable_group_info,
@@ -39,6 +41,7 @@ impl StagedCoreWelcome {
             resumption_psk_store,
             group_secrets,
         )
+        .await
     }
 
     /// Returns the [`LeafNodeIndex`] of the group member that authored the [`Welcome`] message.
@@ -57,7 +60,7 @@ impl StagedCoreWelcome {
     }
 
     /// Consumes the [`StagedCoreWelcome`] and returns the respective [`CoreGroup`].
-    pub fn into_core_group<Provider: OpenMlsProvider>(
+    pub async fn into_core_group<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
     ) -> Result<CoreGroup, WelcomeError<Provider::StorageError>> {
@@ -82,17 +85,21 @@ impl StagedCoreWelcome {
 
         group
             .store(provider.storage())
+            .await
             .map_err(WelcomeError::StorageError)?;
         group
             .store_epoch_keypairs(provider.storage(), group_keypairs.as_slice())
+            .await
             .map_err(WelcomeError::StorageError)?;
 
         Ok(group)
     }
 }
 
+#[cfg_attr(feature = "async", maybe_async::must_be_async)]
+#[cfg_attr(not(feature = "async"), maybe_async::must_be_sync)]
 #[allow(clippy::too_many_arguments)]
-pub(in crate::group) fn build_staged_welcome<Provider: OpenMlsProvider>(
+pub(in crate::group) async fn build_staged_welcome<Provider: OpenMlsProvider>(
     verifiable_group_info: VerifiableGroupInfo,
     ratchet_tree: Option<RatchetTreeIn>,
     provider: &Provider,
@@ -124,7 +131,8 @@ pub(in crate::group) fn build_staged_welcome<Provider: OpenMlsProvider>(
         ratchet_tree,
         verifiable_group_info.clone(),
         ProposalStore::new(),
-    )?;
+    )
+    .await?;
 
     // Find our own leaf in the tree.
     let own_leaf_index = public_group
@@ -234,7 +242,9 @@ pub(in crate::group) fn build_staged_welcome<Provider: OpenMlsProvider>(
 }
 
 /// Process a Welcome message up to the point where the ratchet tree is required.
-pub(in crate::group) fn process_welcome<Provider: OpenMlsProvider>(
+#[cfg_attr(feature = "async", maybe_async::must_be_async)]
+#[cfg_attr(not(feature = "async"), maybe_async::must_be_sync)]
+pub(in crate::group) async fn process_welcome<Provider: OpenMlsProvider>(
     welcome: Welcome,
     key_package_bundle: &KeyPackageBundle,
     provider: &Provider,
@@ -271,7 +281,7 @@ pub(in crate::group) fn process_welcome<Provider: OpenMlsProvider>(
             provider.storage(),
             resumption_psk_store,
             &group_secrets.psks,
-        )?;
+        ).await?;
 
         PskSecret::new(provider.crypto(), ciphersuite, psks)?
     };

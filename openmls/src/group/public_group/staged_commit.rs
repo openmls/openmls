@@ -42,6 +42,8 @@ impl PublicStagedCommitState {
     }
 }
 
+#[cfg_attr(feature = "async", maybe_async::must_be_async)]
+#[cfg_attr(not(feature = "async"), maybe_async::must_be_sync)]
 impl PublicGroup {
     pub(crate) fn validate_commit<'a>(
         &self,
@@ -278,7 +280,7 @@ impl PublicGroup {
     }
 
     /// Merges a [StagedCommit] into the public group state.
-    pub fn merge_commit<Storage: StorageProvider>(
+    pub async fn merge_commit<Storage: StorageProvider>(
         &mut self,
         storage: &Storage,
         staged_commit: StagedCommit,
@@ -291,6 +293,8 @@ impl PublicGroup {
         }
 
         self.proposal_store.empty();
-        self.store(storage).map_err(MergeCommitError::StorageError)
+        self.store(storage)
+            .await
+            .map_err(MergeCommitError::StorageError)
     }
 }

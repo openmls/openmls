@@ -13,8 +13,10 @@ use crate::{
 
 use openmls_traits::storage::StorageProvider as _;
 
+#[cfg_attr(feature = "async", maybe_async::must_be_async)]
+#[cfg_attr(not(feature = "async"), maybe_async::must_be_sync)]
 impl CoreGroup {
-    fn derive_epoch_secrets(
+    async fn derive_epoch_secrets(
         &self,
         provider: &impl OpenMlsProvider,
         apply_proposals_values: ApplyProposalsValues,
@@ -65,7 +67,7 @@ impl CoreGroup {
                 provider.storage(),
                 &self.resumption_psk_store,
                 &apply_proposals_values.presharedkeys,
-            )?;
+            ).await?;
 
             PskSecret::new(provider.crypto(), self.ciphersuite(), psks)?
         };
@@ -121,7 +123,7 @@ impl CoreGroup {
     ///  - ValSem242
     ///  - ValSem244 Returns an error if the given commit was sent by the owner
     /// of this group.
-    pub(crate) fn stage_commit(
+    pub(crate) async fn stage_commit(
         &self,
         mls_content: &AuthenticatedContent,
         proposal_store: &ProposalStore,
@@ -261,7 +263,7 @@ impl CoreGroup {
                 self.group_epoch_secrets(),
                 commit_secret,
                 &serialized_provisional_group_context,
-            )?
+            ).await?
             .split_secrets(
                 serialized_provisional_group_context,
                 diff.tree_size(),
@@ -314,19 +316,20 @@ impl CoreGroup {
     ///
     /// This function should not fail and only returns a [`Result`], because it
     /// might throw a `LibraryError`.
-    pub(crate) fn merge_commit<Provider: OpenMlsProvider>(
+    pub(crate) async fn merge_commit<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         staged_commit: StagedCommit,
     ) -> Result<Option<MessageSecrets>, MergeCommitError<Provider::StorageError>> {
         // Get all keypairs from the old epoch, so we can later store the ones
         // that are still relevant in the new epoch.
-        let old_epoch_keypairs = self.read_epoch_keypairs(provider.storage());
+        let old_epoch_keypairs = self.read_epoch_keypairs(provider.storage()).await;
         match staged_commit.state {
             StagedCommitState::PublicState(staged_state) => {
                 self.public_group
                     .merge_diff(staged_state.into_staged_diff());
                 self.store(provider.storage())
+                    .await
                     .map_err(MergeCommitError::StorageError)?;
                 Ok(None)
             }
@@ -379,24 +382,30 @@ impl CoreGroup {
 
                 self.public_group
                     .store(storage)
+                    .await
                     .map_err(MergeCommitError::StorageError)?;
                 storage
                     .write_group_epoch_secrets(group_id, &self.group_epoch_secrets)
+                    .await
                     .map_err(MergeCommitError::StorageError)?;
                 storage
                     .write_message_secrets(group_id, &self.message_secrets_store)
+                    .await
                     .map_err(MergeCommitError::StorageError)?;
 
                 // Store the relevant keys under the new epoch
                 self.store_epoch_keypairs(storage, epoch_keypairs.as_slice())
+                    .await
                     .map_err(MergeCommitError::StorageError)?;
 
                 // Delete the old keys.
                 self.delete_previous_epoch_keypairs(storage)
+                    .await
                     .map_err(MergeCommitError::StorageError)?;
                 if let Some(keypair) = state.new_leaf_keypair_option {
                     keypair
                         .delete(storage)
+                        .await
                         .map_err(MergeCommitError::StorageError)?;
                 }
 

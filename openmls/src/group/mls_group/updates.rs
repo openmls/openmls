@@ -5,6 +5,8 @@ use crate::{messages::group_info::GroupInfo, storage::OpenMlsProvider, treesync:
 
 use super::*;
 
+#[cfg_attr(feature = "async", maybe_async::must_be_async)]
+#[cfg_attr(not(feature = "async"), maybe_async::must_be_sync)]
 impl MlsGroup {
     /// Updates the own leaf node.
     ///
@@ -23,7 +25,7 @@ impl MlsGroup {
     /// [`Welcome`]: crate::messages::Welcome
     // FIXME: #1217
     #[allow(clippy::type_complexity)]
-    pub fn self_update<Provider: OpenMlsProvider>(
+    pub async fn self_update<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -39,11 +41,11 @@ impl MlsGroup {
             .build();
         // Create Commit over all proposals.
         // TODO #751
-        let create_commit_result = self.group.create_commit(params, provider, signer)?;
+        let create_commit_result = self.group.create_commit(params, provider, signer).await?;
 
         // Convert PublicMessage messages to MLSMessage and encrypt them if required by
         // the configuration
-        let mls_message = self.content_to_mls_message(create_commit_result.commit, provider)?;
+        let mls_message = self.content_to_mls_message(create_commit_result.commit, provider).await?;
 
         // Set the current group state to [`MlsGroupState::PendingCommit`],
         // storing the current [`StagedCommit`] from the commit results
@@ -54,9 +56,11 @@ impl MlsGroup {
         provider
             .storage()
             .write_group_state(self.group_id(), &self.group_state)
+            .await
             .map_err(SelfUpdateError::StorageError)?;
         self.group
             .store(provider.storage())
+            .await
             .map_err(SelfUpdateError::StorageError)?;
 
         Ok((
@@ -71,7 +75,7 @@ impl MlsGroup {
     /// Creates a proposal to update the own leaf node. Optionally, a
     /// [`LeafNode`] can be provided to update the leaf node. Note that its
     /// private key must be manually added to the key store.
-    fn _propose_self_update<Provider: OpenMlsProvider>(
+    async fn _propose_self_update<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -108,6 +112,7 @@ impl MlsGroup {
             // TODO #1207: Move to the top of the function.
             keypair
                 .write(provider.storage())
+                .await
                 .map_err(ProposeSelfUpdateError::StorageError)?;
         };
 
@@ -120,6 +125,7 @@ impl MlsGroup {
         provider
             .storage()
             .append_own_leaf_node(self.group_id(), &own_leaf)
+            .await
             .map_err(ProposeSelfUpdateError::StorageError)?;
         self.own_leaf_nodes.push(own_leaf);
 
@@ -127,13 +133,13 @@ impl MlsGroup {
     }
 
     /// Creates a proposal to update the own leaf node.
-    pub fn propose_self_update<Provider: OpenMlsProvider>(
+    pub async fn propose_self_update<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
         leaf_node: Option<LeafNode>,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<Provider::StorageError>> {
-        let update_proposal = self._propose_self_update(provider, signer, leaf_node)?;
+        let update_proposal = self._propose_self_update(provider, signer, leaf_node).await?;
         let proposal = QueuedProposal::from_authenticated_content_by_ref(
             self.ciphersuite(),
             provider.crypto(),
@@ -143,22 +149,23 @@ impl MlsGroup {
         provider
             .storage()
             .queue_proposal(self.group_id(), &proposal_ref, &proposal)
+            .await
             .map_err(ProposeSelfUpdateError::StorageError)?;
         self.proposal_store.add(proposal);
 
-        let mls_message = self.content_to_mls_message(update_proposal, provider)?;
+        let mls_message = self.content_to_mls_message(update_proposal, provider).await?;
 
         Ok((mls_message, proposal_ref))
     }
 
     /// Creates a proposal to update the own leaf node.
-    pub fn propose_self_update_by_value<Provider: OpenMlsProvider>(
+    pub async fn propose_self_update_by_value<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
         leaf_node: Option<LeafNode>,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<Provider::StorageError>> {
-        let update_proposal = self._propose_self_update(provider, signer, leaf_node)?;
+        let update_proposal = self._propose_self_update(provider, signer, leaf_node).await?;
         let proposal = QueuedProposal::from_authenticated_content_by_value(
             self.ciphersuite(),
             provider.crypto(),
@@ -168,10 +175,11 @@ impl MlsGroup {
         provider
             .storage()
             .queue_proposal(self.group_id(), &proposal_ref, &proposal)
+            .await
             .map_err(ProposeSelfUpdateError::StorageError)?;
         self.proposal_store.add(proposal);
 
-        let mls_message = self.content_to_mls_message(update_proposal, provider)?;
+        let mls_message = self.content_to_mls_message(update_proposal, provider).await?;
 
         Ok((mls_message, proposal_ref))
     }

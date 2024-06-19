@@ -222,6 +222,8 @@ pub struct PreSharedKeyId {
     pub(crate) psk_nonce: VLBytes,
 }
 
+#[cfg_attr(feature = "async", maybe_async::must_be_async)]
+#[cfg_attr(not(feature = "async"), maybe_async::must_be_sync)]
 impl PreSharedKeyId {
     /// Construct a `PreSharedKeyID` with a random nonce.
     pub fn new(
@@ -277,7 +279,7 @@ impl PreSharedKeyId {
     /// Save this `PreSharedKeyId` in the keystore.
     ///
     /// Note: The nonce is not saved as it must be unique for each time it's being applied.
-    pub fn store<Provider: OpenMlsProvider>(
+    pub async fn store<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
         psk: &[u8],
@@ -291,6 +293,7 @@ impl PreSharedKeyId {
         provider
             .storage()
             .write_psk(&self.psk, &psk_bundle)
+            .await
             .map_err(|_| PskError::Storage)
     }
 
@@ -446,7 +449,9 @@ impl From<Secret> for PskSecret {
     }
 }
 
-pub(crate) fn load_psks<'p, Storage: StorageProvider>(
+#[cfg_attr(feature = "async", maybe_async::must_be_async)]
+#[cfg_attr(not(feature = "async"), maybe_async::must_be_sync)]
+pub(crate) async fn load_psks<'p, Storage: StorageProvider>(
     storage: &Storage,
     resumption_psk_store: &ResumptionPskStore,
     psk_ids: &'p [PreSharedKeyId],
@@ -467,6 +472,7 @@ pub(crate) fn load_psks<'p, Storage: StorageProvider>(
             Psk::External(_) => {
                 let psk_bundle: Option<PskBundle> = storage
                     .psk(psk_id.psk())
+                    .await
                     .map_err(|_| PskError::KeyNotFound)?;
                 if let Some(psk_bundle) = psk_bundle {
                     psk_bundles.push((psk_id, psk_bundle.secret));

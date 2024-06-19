@@ -53,6 +53,7 @@ impl ProposalStore {
 
     /// Removes a proposal from the store using its reference. It will return
     /// None if it wasn't found in the store.
+    #[cfg(not(feature = "async"))]
     pub(crate) fn remove(&mut self, proposal_ref: ProposalRef) -> Option<()> {
         let index = self
             .queued_proposals

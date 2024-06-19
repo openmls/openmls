@@ -75,6 +75,8 @@ pub struct PublicGroup {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct InterimTranscriptHash(pub Vec<u8>);
 
+#[cfg_attr(feature = "async", maybe_async::must_be_async)]
+#[cfg_attr(not(feature = "async"), maybe_async::must_be_sync)]
 impl PublicGroup {
     /// Create a new PublicGroup from a [`TreeSync`] instance and a
     /// [`GroupInfo`].
@@ -108,7 +110,7 @@ impl PublicGroup {
     /// This function performs basic validation checks and returns an error if
     /// one of the checks fails. See [`CreationFromExternalError`] for more
     /// details.
-    pub fn from_external<Provider: OpenMlsProvider>(
+    pub async fn from_external<Provider: OpenMlsProvider>(
         provider: &Provider,
         ratchet_tree: RatchetTreeIn,
         verifiable_group_info: VerifiableGroupInfo,
@@ -174,6 +176,7 @@ impl PublicGroup {
 
         public_group
             .store(provider.storage())
+            .await
             .map_err(CreationFromExternalError::WriteToStorageError)?;
 
         Ok((public_group, group_info))
@@ -294,6 +297,8 @@ impl PublicGroup {
 }
 
 // Getters
+#[cfg_attr(feature = "async", maybe_async::must_be_async)]
+#[cfg_attr(not(feature = "async"), maybe_async::must_be_sync)]
 impl PublicGroup {
     /// Get the ciphersuite.
     pub fn ciphersuite(&self) -> Ciphersuite {
@@ -355,30 +360,38 @@ impl PublicGroup {
     /// existing group, both inside [`PublicGroup`] and in [`CoreGroup`].
     ///
     /// [`CoreGroup`]: crate::group::core_group::CoreGroup
-    pub(crate) fn store<Storage: StorageProvider>(
+    pub(crate) async fn store<Storage: StorageProvider>(
         &self,
         storage: &Storage,
     ) -> Result<(), Storage::Error> {
         let group_id = self.group_context.group_id();
-        storage.write_tree(group_id, self.treesync())?;
-        storage.write_confirmation_tag(group_id, self.confirmation_tag())?;
-        storage.write_context(group_id, self.group_context())?;
-        storage.write_interim_transcript_hash(
-            group_id,
-            &InterimTranscriptHash(self.interim_transcript_hash.clone()),
-        )?;
+        storage.write_tree(group_id, self.treesync()).await?;
+        storage
+            .write_confirmation_tag(group_id, self.confirmation_tag())
+            .await?;
+        storage
+            .write_context(group_id, self.group_context())
+            .await?;
+        storage
+            .write_interim_transcript_hash(
+                group_id,
+                &InterimTranscriptHash(self.interim_transcript_hash.clone()),
+            )
+            .await?;
         Ok(())
     }
 
     /// Deletes the [`PublicGroup`] from storage.
-    pub(crate) fn delete<Storage: StorageProvider>(
+    pub(crate) async fn delete<Storage: StorageProvider>(
         &self,
         storage: &Storage,
     ) -> Result<(), Storage::Error> {
-        storage.delete_tree(self.group_id())?;
-        storage.delete_confirmation_tag(self.group_id())?;
-        storage.delete_context(self.group_id())?;
-        storage.delete_interim_transcript_hash(self.group_id())?;
+        storage.delete_tree(self.group_id()).await?;
+        storage.delete_confirmation_tag(self.group_id()).await?;
+        storage.delete_context(self.group_id()).await?;
+        storage
+            .delete_interim_transcript_hash(self.group_id())
+            .await?;
 
         Ok(())
     }
@@ -386,15 +399,15 @@ impl PublicGroup {
     /// Loads the [`PublicGroup`] from storage. Called from [`CoreGroup::load`].
     ///
     /// [`CoreGroup::load`]: crate::group::core_group::CoreGroup::load
-    pub(crate) fn load<Storage: StorageProvider>(
+    pub(crate) async fn load<Storage: StorageProvider>(
         storage: &Storage,
         group_id: &GroupId,
     ) -> Result<Option<Self>, Storage::Error> {
-        let treesync = storage.treesync(group_id)?;
-        let group_context = storage.group_context(group_id)?;
+        let treesync = storage.treesync(group_id).await?;
+        let group_context = storage.group_context(group_id).await?;
         let interim_transcript_hash: Option<InterimTranscriptHash> =
-            storage.interim_transcript_hash(group_id)?;
-        let confirmation_tag = storage.confirmation_tag(group_id)?;
+            storage.interim_transcript_hash(group_id).await?;
+        let confirmation_tag = storage.confirmation_tag(group_id).await?;
 
         let build = || -> Option<Self> {
             Some(Self {

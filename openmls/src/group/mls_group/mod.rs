@@ -169,6 +169,8 @@ pub struct MlsGroup {
     group_state: MlsGroupState,
 }
 
+#[cfg_attr(feature = "async", maybe_async::must_be_async)]
+#[cfg_attr(not(feature = "async"), maybe_async::must_be_sync)]
 impl MlsGroup {
     // === Configuration ===
 
@@ -178,13 +180,13 @@ impl MlsGroup {
     }
 
     /// Sets the configuration.
-    pub fn set_configuration<Storage: StorageProvider>(
+    pub async fn set_configuration<Storage: StorageProvider>(
         &mut self,
         storage: &Storage,
         mls_group_config: &MlsGroupJoinConfig,
     ) -> Result<(), Storage::Error> {
         self.mls_group_config = mls_group_config.clone();
-        storage.write_mls_join_config(self.group_id(), mls_group_config)
+        storage.write_mls_join_config(self.group_id(), mls_group_config).await
     }
 
     /// Returns the AAD used in the framing.
@@ -193,13 +195,13 @@ impl MlsGroup {
     }
 
     /// Sets the AAD used in the framing.
-    pub fn set_aad<Storage: StorageProvider>(
+    pub async fn set_aad<Storage: StorageProvider>(
         &mut self,
         storage: &Storage,
         aad: &[u8],
     ) -> Result<(), Storage::Error> {
         self.aad = aad.to_vec();
-        storage.write_aad(self.group_id(), aad)
+        storage.write_aad(self.group_id(), aad).await
     }
 
     // === Advanced functions ===
@@ -279,7 +281,7 @@ impl MlsGroup {
     /// the pending commit will not be used in the group. In particular, if a
     /// pending commit is later accepted by the group, this client will lack the
     /// key material to encrypt or decrypt group messages.
-    pub fn clear_pending_commit<Storage: StorageProvider>(
+    pub async fn clear_pending_commit<Storage: StorageProvider>(
         &mut self,
         storage: &Storage,
     ) -> Result<(), Storage::Error> {
@@ -287,7 +289,7 @@ impl MlsGroup {
             MlsGroupState::PendingCommit(ref pending_commit_state) => {
                 if let PendingCommitState::Member(_) = **pending_commit_state {
                     self.group_state = MlsGroupState::Operational;
-                    storage.write_group_state(self.group_id(), &self.group_state)
+                    storage.write_group_state(self.group_id(), &self.group_state).await
                 } else {
                     Ok(())
                 }
@@ -302,7 +304,7 @@ impl MlsGroup {
     /// a Commit message that references those proposals. Only use this
     /// function as a last resort, e.g. when a call to
     /// `MlsGroup::commit_to_pending_proposals` fails.
-    pub fn clear_pending_proposals<Storage: StorageProvider>(
+    pub async fn clear_pending_proposals<Storage: StorageProvider>(
         &mut self,
         storage: &Storage,
     ) -> Result<(), Storage::Error> {
@@ -312,7 +314,7 @@ impl MlsGroup {
             self.proposal_store.empty();
 
             // Clear proposals in storage
-            storage.clear_proposal_queue::<GroupId, ProposalRef>(self.group_id())?;
+            storage.clear_proposal_queue::<GroupId, ProposalRef>(self.group_id()).await?;
         }
 
         Ok(())
@@ -334,16 +336,16 @@ impl MlsGroup {
     // === Storage Methods ===
 
     /// Loads the state of the group with given id from persisted state.
-    pub fn load<Storage: crate::storage::StorageProvider>(
+    pub async fn load<Storage: crate::storage::StorageProvider>(
         storage: &Storage,
         group_id: &GroupId,
     ) -> Result<Option<MlsGroup>, Storage::Error> {
-        let group_config = storage.mls_group_join_config(group_id)?;
-        let core_group = CoreGroup::load(storage, group_id)?;
-        let proposals: Vec<(ProposalRef, QueuedProposal)> = storage.queued_proposals(group_id)?;
-        let own_leaf_nodes = storage.own_leaf_nodes(group_id)?;
-        let aad = storage.aad(group_id)?;
-        let group_state = storage.group_state(group_id)?;
+        let group_config = storage.mls_group_join_config(group_id).await?;
+        let core_group = CoreGroup::load(storage, group_id).await?;
+        let proposals: Vec<(ProposalRef, QueuedProposal)> = storage.queued_proposals(group_id).await?;
+        let own_leaf_nodes = storage.own_leaf_nodes(group_id).await?;
+        let aad = storage.aad(group_id).await?;
+        let group_state = storage.group_state(group_id).await?;
         let mut proposal_store = ProposalStore::new();
 
         for (_ref, proposal) in proposals {
@@ -365,16 +367,16 @@ impl MlsGroup {
     }
 
     /// Remove the persisted state from storage
-    pub fn delete<StorageProvider: crate::storage::StorageProvider>(
+    pub async fn delete<StorageProvider: crate::storage::StorageProvider>(
         &mut self,
         storage: &StorageProvider,
     ) -> Result<(), StorageProvider::Error> {
-        self.group.delete(storage)?;
-        storage.delete_group_config(self.group_id())?;
-        storage.clear_proposal_queue::<GroupId, ProposalRef>(self.group_id())?;
-        storage.delete_own_leaf_nodes(self.group_id())?;
-        storage.delete_aad(self.group_id())?;
-        storage.delete_group_state(self.group_id())?;
+        self.group.delete(storage).await?;
+        storage.delete_group_config(self.group_id()).await?;
+        storage.clear_proposal_queue::<GroupId, ProposalRef>(self.group_id()).await?;
+        storage.delete_own_leaf_nodes(self.group_id()).await?;
+        storage.delete_aad(self.group_id()).await?;
+        storage.delete_group_state(self.group_id()).await?;
 
         Ok(())
     }
@@ -388,11 +390,13 @@ impl MlsGroup {
 }
 
 // Private methods of MlsGroup
+#[cfg_attr(feature = "async", maybe_async::must_be_async)]
+#[cfg_attr(not(feature = "async"), maybe_async::must_be_sync)]
 impl MlsGroup {
     /// Converts PublicMessage to MlsMessage. Depending on whether handshake
     /// message should be encrypted, PublicMessage messages are encrypted to
     /// PrivateMessage first.
-    fn content_to_mls_message(
+    async fn content_to_mls_message(
         &mut self,
         mls_auth_content: AuthenticatedContent,
         provider: &impl OpenMlsProvider,
@@ -419,6 +423,7 @@ impl MlsGroup {
                         self.configuration().padding_size(),
                         provider,
                     )
+                    .await
                     // We can be sure the encryption will work because the plaintext was created by us
                     .map_err(|_| LibraryError::custom("Malformed plaintext"))?;
                 MlsMessageOut::from_private_message(ciphertext, self.group.version())
@@ -447,6 +452,8 @@ impl MlsGroup {
 }
 
 // Methods used in tests
+#[cfg(not(feature = "async"))]
+#[maybe_async::must_be_sync]
 impl MlsGroup {
     #[cfg(any(feature = "test-utils", test))]
     pub fn export_group_context(&self) -> &GroupContext {
@@ -470,13 +477,14 @@ impl MlsGroup {
     }
 
     /// Removes a specific proposal from the store.
-    pub fn remove_pending_proposal<Storage: StorageProvider>(
+    pub async fn remove_pending_proposal<Storage: StorageProvider>(
         &mut self,
         storage: &Storage,
         proposal_ref: ProposalRef,
     ) -> Result<(), MlsGroupStateError<Storage::Error>> {
         storage
             .remove_proposal(self.group_id(), &proposal_ref)
+            .await
             .map_err(MlsGroupStateError::StorageError)?;
         self.proposal_store
             .remove(proposal_ref)
