@@ -1,5 +1,12 @@
 use tls_codec::*;
 
+use crate::{
+    extensions::{
+        ApplicationIdExtension, Extension, RatchetTreeExtension, RequiredCapabilitiesExtension,
+    },
+    treesync::{node::NodeIn, Node, ParentNode},
+};
+
 use super::{FrankenCredential, FrankenLeafNode};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -67,6 +74,13 @@ impl FrankenExtension {
     }
 }
 
+impl From<Extension> for FrankenExtension {
+    fn from(value: Extension) -> Self {
+        let bytes = value.tls_serialize_detached().unwrap();
+        FrankenExtension::tls_deserialize(&mut bytes.as_slice()).unwrap()
+    }
+}
+
 #[derive(
     Debug, Clone, PartialEq, Eq, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize,
 )]
@@ -92,6 +106,20 @@ pub enum FrankenNode {
     ParentNode(FrankenParentNode),
 }
 
+impl From<Node> for FrankenNode {
+    fn from(value: Node) -> Self {
+        let bytes = value.tls_serialize_detached().unwrap();
+        FrankenNode::tls_deserialize(&mut bytes.as_slice()).unwrap()
+    }
+}
+
+impl From<NodeIn> for FrankenNode {
+    fn from(value: NodeIn) -> Self {
+        let bytes = value.tls_serialize_detached().unwrap();
+        FrankenNode::tls_deserialize(&mut bytes.as_slice()).unwrap()
+    }
+}
+
 #[derive(
     Debug, Clone, PartialEq, Eq, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize,
 )]
@@ -101,6 +129,13 @@ pub struct FrankenParentNode {
     pub unmerged_leaves: Vec<u32>,
 }
 
+impl From<ParentNode> for FrankenParentNode {
+    fn from(value: ParentNode) -> Self {
+        let bytes = value.tls_serialize_detached().unwrap();
+        Self::tls_deserialize(&mut bytes.as_slice()).unwrap()
+    }
+}
+
 #[derive(
     Debug, Clone, PartialEq, Eq, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize,
 )]
@@ -108,6 +143,13 @@ pub struct FrankenRequiredCapabilitiesExtension {
     pub extension_types: Vec<u16>,
     pub proposal_types: Vec<u16>,
     pub credential_types: Vec<u16>,
+}
+
+impl From<RequiredCapabilitiesExtension> for FrankenRequiredCapabilitiesExtension {
+    fn from(value: RequiredCapabilitiesExtension) -> Self {
+        let bytes = value.tls_serialize_detached().unwrap();
+        Self::tls_deserialize(&mut bytes.as_slice()).unwrap()
+    }
 }
 
 #[derive(

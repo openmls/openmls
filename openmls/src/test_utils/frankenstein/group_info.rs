@@ -10,6 +10,7 @@ use crate::{
         signable::{Signable, SignedStruct},
         signature::{OpenMlsSignaturePublicKey, Signature},
     },
+    group::GroupContext,
     messages::group_info::GroupInfo,
 };
 
@@ -89,6 +90,28 @@ pub struct FrankenGroupContext {
     tree_hash: VLBytes,
     confirmed_transcript_hash: VLBytes,
     extensions: Vec<FrankenExtension>,
+}
+
+impl From<GroupContext> for FrankenGroupContext {
+    fn from(value: GroupContext) -> Self {
+        let extensions = value
+            .extensions()
+            .iter()
+            .map(|ext| ext.clone().into())
+            .collect();
+        FrankenGroupContext {
+            protocol_version: match value.protocol_version() {
+                crate::versions::ProtocolVersion::Mls10 => 1,
+                crate::versions::ProtocolVersion::Other(other) => other,
+            },
+            ciphersuite: value.ciphersuite().into(),
+            group_id: value.group_id().as_slice().to_vec().into(),
+            epoch: value.epoch().as_u64(),
+            tree_hash: value.tree_hash().to_vec().into(),
+            confirmed_transcript_hash: value.confirmed_transcript_hash().to_vec().into(),
+            extensions,
+        }
+    }
 }
 
 impl From<GroupInfo> for FrankenGroupInfo {

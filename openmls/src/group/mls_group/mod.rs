@@ -495,12 +495,12 @@ pub struct StagedWelcome {
     group: StagedCoreWelcome,
 }
 
-/// A parsed, but not fully processed `Welcome` message.
+/// A `Welcome` message that has been processed but not staged yet.
 ///
 /// This may be used in order to retrieve information from the `Welcome` about
-/// the ratchet tree.
+/// the ratchet tree and PSKs.
 ///
-/// Use `into_staged_welcome` to get the [`StagedWelcome`] on this.
+/// Use `into_staged_welcome` to stage it into a [`StagedWelcome`].
 pub struct ProcessedWelcome {
     // The group configuration. See [`MlsGroupJoinConfig`] for more information.
     mls_group_config: MlsGroupJoinConfig,

@@ -214,7 +214,9 @@ impl Size for FrankenExtension {
 impl Serialize for FrankenExtension {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
         let written = self.extension_type().tls_serialize(writer)?;
-        let extension_data_len = self.tls_serialized_len();
+
+        // subtract the two bytes for the type header
+        let extension_data_len = self.tls_serialized_len() - 2;
         let mut extension_data = Vec::with_capacity(extension_data_len);
 
         let _ = match self {

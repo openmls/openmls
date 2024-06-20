@@ -487,13 +487,6 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn clear_own_leaf_nodes<GroupId: traits::GroupId<V_TEST>>(
-        &self,
-        _group_id: &GroupId,
-    ) -> Result<(), Self::Error> {
-        todo!()
-    }
-
     fn aad<GroupId: traits::GroupId<V_TEST>>(
         &self,
         _group_id: &GroupId,

@@ -148,8 +148,8 @@ fn transpose_err_opt<T, E>(v: Result<Option<T>, E>) -> Option<Result<T, E>> {
 }
 
 impl ProcessedWelcome {
-    /// Creates a new processed [`Welcome`] message that can be used to parse
-    /// it before creating a [`StagedWelcome`].
+    /// Creates a new processed [`Welcome`] message , which can be
+    /// inspected before creating a [`StagedWelcome`].
     ///
     /// This does not require a ratchet tree yet.
     ///
