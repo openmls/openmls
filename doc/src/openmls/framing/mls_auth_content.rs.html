@@ -387,7 +387,7 @@
 }
 
 <span class="kw">impl </span>FramedContentAuthData {
-    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>deserialize&lt;R: Read&gt;(
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>deserialize&lt;R: Read&gt;(
         bytes: <span class="kw-2">&amp;mut </span>R,
         content_type: ContentType,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, tls_codec::Error&gt; {

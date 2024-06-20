@@ -321,6 +321,11 @@
 <a href="#321" id="321">321</a>
 <a href="#322" id="322">322</a>
 <a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>log::debug;
 
 <span class="kw">use crate</span>::{
@@ -506,7 +511,12 @@
         <span class="macro">log_crypto!</span>(trace, <span class="string">"  Got:      {:x?}"</span>, confirmation_tag);
         <span class="macro">log_crypto!</span>(trace, <span class="string">"  Expected: {:x?}"</span>, public_group.confirmation_tag());
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>, <span class="string">"Confirmation tag mismatch"</span>);
-        <span class="kw">return </span><span class="prelude-val">Err</span>(WelcomeError::ConfirmationTagMismatch);
+
+        <span class="comment">// in some tests we need to be able to proceed despite the tag being wrong,
+        // e.g. to test whether a later validation check is performed correctly.
+        </span><span class="kw">if </span>!<span class="kw">crate</span>::skip_validation::is_disabled::confirmation_tag() {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(WelcomeError::ConfirmationTagMismatch);
+        }
     }
 
     <span class="kw">let </span>message_secrets_store = MessageSecretsStore::new_with_secret(<span class="number">0</span>, message_secrets);
