@@ -343,7 +343,7 @@
         </span><span class="self">self</span>.own_leaf_nodes.clear();
         provider
             .storage()
-            .clear_own_leaf_nodes(<span class="self">self</span>.group_id())
+            .delete_own_leaf_nodes(<span class="self">self</span>.group_id())
             .map_err(MergeCommitError::StorageError)<span class="question-mark">?</span>;
 
         <span class="comment">// Delete a potential pending commit
