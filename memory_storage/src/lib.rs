@@ -866,14 +866,6 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         self.append::<CURRENT_VERSION>(OWN_LEAF_NODES_LABEL, &key, value)
     }
 
-    fn clear_own_leaf_nodes<GroupId: traits::GroupId<CURRENT_VERSION>>(
-        &self,
-        group_id: &GroupId,
-    ) -> Result<(), Self::Error> {
-        let key = serde_json::to_vec(group_id)?;
-        self.delete::<CURRENT_VERSION>(OWN_LEAF_NODES_LABEL, &key)
-    }
-
     fn aad<GroupId: traits::GroupId<CURRENT_VERSION>>(
         &self,
         group_id: &GroupId,
