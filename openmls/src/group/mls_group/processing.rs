@@ -156,7 +156,7 @@ impl MlsGroup {
         self.own_leaf_nodes.clear();
         provider
             .storage()
-            .clear_own_leaf_nodes(self.group_id())
+            .delete_own_leaf_nodes(self.group_id())
             .map_err(MergeCommitError::StorageError)?;
 
         // Delete a potential pending commit

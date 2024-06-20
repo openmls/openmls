@@ -183,7 +183,12 @@ pub(in crate::group) fn build_staged_welcome<Provider: OpenMlsProvider>(
         log_crypto!(trace, "  Got:      {:x?}", confirmation_tag);
         log_crypto!(trace, "  Expected: {:x?}", public_group.confirmation_tag());
         debug_assert!(false, "Confirmation tag mismatch");
-        return Err(WelcomeError::ConfirmationTagMismatch);
+
+        // in some tests we need to be able to proceed despite the tag being wrong,
+        // e.g. to test whether a later validation check is performed correctly.
+        if !crate::skip_validation::is_disabled::confirmation_tag() {
+            return Err(WelcomeError::ConfirmationTagMismatch);
+        }
     }
 
     let message_secrets_store = MessageSecretsStore::new_with_secret(0, message_secrets);

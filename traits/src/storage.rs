@@ -28,7 +28,7 @@ pub const V_TEST: u16 = u16::MAX;
 /// More details can be taken from the comments on the respective method.
 pub trait StorageProvider<const VERSION: u16> {
     /// An opaque error returned by all methods on this trait.
-    type Error: core::fmt::Debug + std::error::Error + PartialEq;
+    type Error: core::fmt::Debug + std::error::Error;
 
     /// Get the version of this provider.
     fn version() -> u16 {
@@ -64,12 +64,6 @@ pub trait StorageProvider<const VERSION: u16> {
         &self,
         group_id: &GroupId,
         leaf_node: &LeafNode,
-    ) -> Result<(), Self::Error>;
-
-    /// Clears the own leaf node for the group with given id to storage
-    fn clear_own_leaf_nodes<GroupId: traits::GroupId<VERSION>>(
-        &self,
-        group_id: &GroupId,
     ) -> Result<(), Self::Error>;
 
     /// Enqueue a proposal.

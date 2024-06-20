@@ -51,7 +51,7 @@ pub(crate) struct FramedContentAuthData {
 }
 
 impl FramedContentAuthData {
-    pub(super) fn deserialize<R: Read>(
+    pub(crate) fn deserialize<R: Read>(
         bytes: &mut R,
         content_type: ContentType,
     ) -> Result<Self, tls_codec::Error> {

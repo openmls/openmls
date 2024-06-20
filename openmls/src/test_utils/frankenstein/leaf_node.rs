@@ -6,31 +6,39 @@ use tls_codec::*;
 
 use super::{extensions::FrankenExtension, key_package::FrankenLifetime, FrankenCredential};
 use crate::{
+    binary_tree::array_representation::tree,
     ciphersuite::{
         signable::{Signable, SignedStruct},
         signature::Signature,
     },
-    treesync::{node::leaf_node::LeafNodeIn, LeafNode},
+    treesync::{
+        node::leaf_node::{LeafNodeIn, LeafNodeTbs, TreePosition},
+        LeafNode,
+    },
 };
 
 #[derive(
     Debug, Clone, PartialEq, Eq, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize,
 )]
 pub struct FrankenLeafNode {
-    pub payload: FrankenLeafNodeTbs,
+    pub payload: FrankenLeafNodePayload,
     pub signature: VLBytes,
 }
 
 impl FrankenLeafNode {
     // Re-sign the LeafNode
-    pub fn resign(&mut self, signer: &impl Signer) {
-        let new_self = self.payload.clone().sign(signer).unwrap();
+    pub fn resign(&mut self, tree_position: Option<FrankenTreePosition>, signer: &impl Signer) {
+        let tbs = FrankenLeafNodeTbs {
+            payload: self.payload.clone(),
+            tree_position,
+        };
+        let new_self = tbs.sign(signer).unwrap();
         let _ = std::mem::replace(self, new_self);
     }
 }
 
 impl Deref for FrankenLeafNode {
-    type Target = FrankenLeafNodeTbs;
+    type Target = FrankenLeafNodePayload;
 
     fn deref(&self) -> &Self::Target {
         &self.payload
@@ -44,9 +52,9 @@ impl DerefMut for FrankenLeafNode {
 }
 
 impl SignedStruct<FrankenLeafNodeTbs> for FrankenLeafNode {
-    fn from_payload(payload: FrankenLeafNodeTbs, signature: Signature) -> Self {
+    fn from_payload(tbs: FrankenLeafNodeTbs, signature: Signature) -> Self {
         Self {
-            payload,
+            payload: tbs.payload,
             signature: signature.as_slice().to_owned().into(),
         }
     }
@@ -90,13 +98,104 @@ impl From<FrankenLeafNode> for LeafNodeIn {
 #[derive(
     Debug, Clone, PartialEq, Eq, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize,
 )]
-pub struct FrankenLeafNodeTbs {
+pub struct FrankenLeafNodePayload {
     pub encryption_key: VLBytes,
     pub signature_key: VLBytes,
     pub credential: FrankenCredential,
     pub capabilities: FrankenCapabilities,
     pub leaf_node_source: FrankenLeafNodeSource,
     pub extensions: Vec<FrankenExtension>,
+}
+
+#[derive(
+    Debug, Clone, PartialEq, Eq, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize,
+)]
+pub struct FrankenTreePosition {
+    pub group_id: VLBytes,
+    pub leaf_index: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, TlsSize)]
+pub struct FrankenLeafNodeTbs {
+    pub payload: FrankenLeafNodePayload,
+    pub tree_position: Option<FrankenTreePosition>,
+}
+
+impl FrankenLeafNodeTbs {
+    fn deserialize_without_treeposition<R: std::io::Read>(bytes: &mut R) -> Result<Self, Error> {
+        let payload = FrankenLeafNodePayload::tls_deserialize(bytes)?;
+
+        Ok(Self {
+            payload,
+            tree_position: None,
+        })
+    }
+
+    fn deserialize_with_treeposition<R: std::io::Read>(bytes: &mut R) -> Result<Self, Error> {
+        let payload = FrankenLeafNodePayload::tls_deserialize(bytes)?;
+        let tree_position = FrankenTreePosition::tls_deserialize(bytes)?;
+        Ok(Self {
+            payload,
+            tree_position: Some(tree_position),
+        })
+    }
+}
+
+impl Deserialize for FrankenLeafNodeTbs {
+    fn tls_deserialize<R: std::io::prelude::Read>(bytes: &mut R) -> Result<Self, Error>
+    where
+        Self: Sized,
+    {
+        let payload = FrankenLeafNodePayload::tls_deserialize(bytes)?;
+        let tree_position = match payload.leaf_node_source {
+            FrankenLeafNodeSource::KeyPackage(_) => None,
+            FrankenLeafNodeSource::Update | FrankenLeafNodeSource::Commit(_) => {
+                let tree_position = FrankenTreePosition::tls_deserialize(bytes)?;
+                Some(tree_position)
+            }
+        };
+
+        Ok(Self {
+            payload,
+            tree_position,
+        })
+    }
+}
+
+impl DeserializeBytes for FrankenLeafNodeTbs {
+    fn tls_deserialize_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), Error>
+    where
+        Self: Sized,
+    {
+        let (payload, rest) = FrankenLeafNodePayload::tls_deserialize_bytes(bytes)?;
+        let (tree_position, rest) = match payload.leaf_node_source {
+            FrankenLeafNodeSource::KeyPackage(_) => (None, rest),
+            FrankenLeafNodeSource::Update | FrankenLeafNodeSource::Commit(_) => {
+                let (tree_position, rest) = FrankenTreePosition::tls_deserialize_bytes(bytes)?;
+                (Some(tree_position), rest)
+            }
+        };
+
+        Ok((
+            Self {
+                payload,
+                tree_position,
+            },
+            rest,
+        ))
+    }
+}
+
+impl Serialize for FrankenLeafNodeTbs {
+    fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, Error> {
+        let mut written = self.payload.tls_serialize(writer)?;
+
+        if let Some(tree_info) = &self.tree_position {
+            written += tree_info.tls_serialize(writer)?
+        };
+
+        Ok(written)
+    }
 }
 
 #[derive(

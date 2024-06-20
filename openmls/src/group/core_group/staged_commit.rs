@@ -285,7 +285,12 @@ impl CoreGroup {
             // TODO: We have tests expecting this error.
             //       They need to be rewritten.
             // debug_assert!(false, "Confirmation tag mismatch");
-            return Err(StageCommitError::ConfirmationTagMismatch);
+
+            // in some tests we need to be able to proceed despite the tag being wrong,
+            // e.g. to test whether a later validation check is performed correctly.
+            if !crate::skip_validation::is_disabled::confirmation_tag() {
+                return Err(StageCommitError::ConfirmationTagMismatch);
+            }
         }
 
         diff.update_interim_transcript_hash(ciphersuite, provider.crypto(), own_confirmation_tag)?;
