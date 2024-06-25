@@ -1212,10 +1212,6 @@ mod group_context_extensions {
             RequiredCapabilitiesExtension::new(&[ExtensionType::RequiredCapabilities], &[], &[]),
         ));
 
-        let new_extensions_2 = Extensions::single(Extension::RequiredCapabilities(
-            RequiredCapabilitiesExtension::new(&[ExtensionType::RatchetTree], &[], &[]),
-        ));
-
         let (proposal, _) = alice_group
             .propose_group_context_extensions(alice_provider, new_extensions.clone(), &alice_signer)
             .expect("failed to build group context extensions proposal");
@@ -1325,6 +1321,9 @@ mod group_context_extensions {
         assert!(required_capabilities.extension_types() == [ExtensionType::RequiredCapabilities]);
 
         // === committing to two group context extensions should fail
+        let new_extensions_2 = Extensions::single(Extension::RequiredCapabilities(
+            RequiredCapabilitiesExtension::new(&[ExtensionType::RatchetTree], &[], &[]),
+        ));
 
         alice_group
             .propose_group_context_extensions(alice_provider, new_extensions, &alice_signer)
