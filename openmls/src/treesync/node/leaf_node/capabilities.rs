@@ -5,6 +5,7 @@ use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 #[cfg(doc)]
 use super::LeafNode;
 use crate::{
+    ciphersuite,
     credentials::CredentialType,
     extensions::{Extension, ExtensionType, Extensions, RequiredCapabilitiesExtension},
     messages::proposals::ProposalType,
@@ -93,6 +94,10 @@ impl Capabilities {
         }
     }
 
+    pub fn builder() -> CapabilitiesBuilder {
+        CapabilitiesBuilder(Self::default())
+    }
+
     // ---------------------------------------------------------------------------------------------
 
     /// Get a reference to the list of versions in this extension.
@@ -121,6 +126,27 @@ impl Capabilities {
     }
 
     // ---------------------------------------------------------------------------------------------
+
+    pub(crate) fn supports_extension_type(&self, extension_type: ExtensionType) -> bool {
+        default_extensions().contains(&extension_type) || self.extensions.contains(&extension_type)
+    }
+
+    pub(crate) fn supports_proposal_type(&self, proposal_type: ProposalType) -> bool {
+        default_proposals().contains(&proposal_type) || self.proposals.contains(&proposal_type)
+    }
+
+    pub(crate) fn supports_credential_type(&self, credential_type: CredentialType) -> bool {
+        default_credentials().contains(&credential_type)
+            || self.credentials.contains(&credential_type)
+    }
+    pub(crate) fn supports_ciphersuite(&self, ciphersuite: Ciphersuite) -> bool {
+        default_ciphersuites().contains(&ciphersuite)
+            || self.ciphersuites.contains(&ciphersuite.into())
+    }
+
+    pub(crate) fn supports_version(&self, version: ProtocolVersion) -> bool {
+        default_versions().contains(&version) || self.versions.contains(&version)
+    }
 
     /// Check if these [`Capabilities`] support all the capabilities required by
     /// the given [`RequiredCapabilitiesExtension`].
@@ -162,15 +188,57 @@ impl Capabilities {
 
     /// Check if these [`Capabilities`] contain all the extensions.
     pub(crate) fn contain_extensions(&self, extension: &Extensions) -> bool {
-        extension
-            .iter()
-            .map(Extension::extension_type)
-            .all(|e| self.extensions().contains(&e))
+        extension.iter().map(Extension::extension_type).all(|e| {
+            println!("{e:?}");
+            self.extensions().contains(&e)
+        })
     }
 
     /// Check if these [`Capabilities`] contain all the credentials.
     pub(crate) fn contains_credential(&self, credential_type: &CredentialType) -> bool {
         self.credentials().contains(credential_type)
+    }
+}
+
+pub struct CapabilitiesBuilder(Capabilities);
+
+impl CapabilitiesBuilder {
+    pub fn versions(self, versions: Vec<ProtocolVersion>) -> Self {
+        Self(Capabilities { versions, ..self.0 })
+    }
+
+    pub fn ciphersuites(self, ciphersuites: Vec<Ciphersuite>) -> Self {
+        let ciphersuites = ciphersuites.into_iter().map(|cs| cs.into()).collect();
+
+        Self(Capabilities {
+            ciphersuites,
+            ..self.0
+        })
+    }
+
+    pub fn extensions(self, extensions: Vec<ExtensionType>) -> Self {
+        Self(Capabilities {
+            extensions,
+            ..self.0
+        })
+    }
+
+    pub fn proposals(self, proposals: Vec<ProposalType>) -> Self {
+        Self(Capabilities {
+            proposals,
+            ..self.0
+        })
+    }
+
+    pub fn credentials(self, credentials: Vec<CredentialType>) -> Self {
+        Self(Capabilities {
+            credentials,
+            ..self.0
+        })
+    }
+
+    pub fn build(self) -> Capabilities {
+        self.0
     }
 }
 

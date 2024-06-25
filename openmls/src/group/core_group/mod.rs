@@ -838,6 +838,7 @@ impl CoreGroup {
         provider: &Provider,
         signer: &impl Signer,
     ) -> Result<CreateCommitResult, CreateCommitError<Provider::StorageError>> {
+        println!("JKL1");
         let ciphersuite = self.ciphersuite();
 
         let sender = match params.commit_type() {
@@ -861,6 +862,7 @@ impl CoreGroup {
                 CreateCommitError::WrongProposalSenderType
             }
         })?;
+        println!("JKL2");
 
         // TODO: #581 Filter proposals by support
         // 11.2:
@@ -877,17 +879,21 @@ impl CoreGroup {
         // members of the group
         self.public_group
             .validate_proposal_type_support(&proposal_queue)?;
+        println!("JKL3");
         // ValSem101
         // ValSem102
         // ValSem103
         // ValSem104
         self.public_group
             .validate_key_uniqueness(&proposal_queue, None)?;
+        println!("JKL4");
         // ValSem105
         self.public_group.validate_add_proposals(&proposal_queue)?;
+        println!("JKL5");
         // ValSem106
         // ValSem109
         self.public_group.validate_capabilities(&proposal_queue)?;
+        println!("JKL6");
         // ValSem107
         // ValSem108
         self.public_group

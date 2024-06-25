@@ -1147,8 +1147,10 @@ mod group_context_extensions {
     use openmls_basic_credential::SignatureKeyPair;
     use openmls_traits::types::Ciphersuite;
 
+    use self::mls_group::hash_ref::ProposalRef;
+
     use super::*;
-    use crate::credentials::CredentialWithKey;
+    use crate::{credentials::CredentialWithKey, messages::group_info::GroupInfo};
 
     struct PartyState<Provider> {
         provider: Provider,
@@ -1157,6 +1159,7 @@ mod group_context_extensions {
         signer: SignatureKeyPair,
         sig_pk: OpenMlsSignaturePublicKey,
         group: MlsGroup,
+        name: &'static str,
     }
 
     struct TestState<Provider> {
@@ -1164,6 +1167,11 @@ mod group_context_extensions {
         bob: PartyState<Provider>,
     }
 
+    /*
+     * sets up a group with two parties alice and bob, where alice has capabilities for unknown
+     * extensions 0xf001 and  0xf002, and bob has capabilities for extension 0xf001, 0xf002 and
+     * 0xf003.
+     */
     fn setup<Provider: crate::storage::OpenMlsProvider + Default>(
         ciphersuite: Ciphersuite,
     ) -> TestState<Provider> {
@@ -1181,6 +1189,14 @@ mod group_context_extensions {
                 OutgoingWireFormatPolicy::AlwaysPlaintext,
                 IncomingWireFormatPolicy::Mixed,
             ))
+            .with_capabilities(
+                Capabilities::builder()
+                    .extensions(vec![
+                        ExtensionType::Unknown(0xf001),
+                        ExtensionType::Unknown(0xf002),
+                    ])
+                    .build(),
+            )
             .build(
                 &alice_provider,
                 &alice_signer,
@@ -1190,6 +1206,15 @@ mod group_context_extensions {
 
         // === Alice adds Bob ===
         let bob_key_package = KeyPackage::builder()
+            .leaf_node_capabilities(
+                Capabilities::builder()
+                    .extensions(vec![
+                        ExtensionType::Unknown(0xf001),
+                        ExtensionType::Unknown(0xf002),
+                        ExtensionType::Unknown(0xf003),
+                    ])
+                    .build(),
+            )
             .build(
                 ciphersuite,
                 &bob_provider,
@@ -1230,6 +1255,7 @@ mod group_context_extensions {
                 signer: alice_signer,
                 sig_pk: _alice_pk,
                 group: alice_group,
+                name: "alice",
             },
             bob: PartyState {
                 provider: bob_provider,
@@ -1238,14 +1264,147 @@ mod group_context_extensions {
                 signer: bob_signer,
                 sig_pk: _bob_pk,
                 group: bob_group,
+                name: "bob",
             },
         }
     }
 
-    // Test that the builder pattern accurately configures the new group.
+    impl<Provider: crate::storage::OpenMlsProvider> PartyState<Provider> {
+        fn propose_group_context_extensions(
+            &mut self,
+            extensions: Extensions,
+        ) -> (MlsMessageOut, ProposalRef) {
+            self.group
+                .propose_group_context_extensions(&self.provider, extensions, &self.signer)
+                .unwrap_or_else(|err| panic!("couldn't propose GCE at {}: {err}", self.name))
+        }
+
+        fn process_and_merge_commit(&mut self, msg: MlsMessageIn) {
+            let msg = msg.into_protocol_message().unwrap();
+
+            let processed_msg = self
+                .group
+                .process_message(&self.provider, msg)
+                .unwrap_or_else(|err| panic!("error processing message at {}: {err}", self.name));
+
+            match processed_msg.into_content() {
+                ProcessedMessageContent::StagedCommitMessage(staged_commit) => self
+                    .group
+                    .merge_staged_commit(&self.provider, *staged_commit)
+                    .unwrap_or_else(|err| {
+                        panic!("error merging staged commit at {}: {err}", self.name)
+                    }),
+
+                other => {
+                    panic!(
+                        "expected a commit message at {}, got {:?}",
+                        self.name, other
+                    )
+                }
+            }
+        }
+
+        fn process_and_store_proposal(&mut self, msg: MlsMessageIn) {
+            let msg = msg.into_protocol_message().unwrap();
+
+            let processed_msg = self
+                .group
+                .process_message(&self.provider, msg)
+                .unwrap_or_else(|err| panic!("error processing message at {}: {err}", self.name));
+
+            match processed_msg.into_content() {
+                ProcessedMessageContent::ProposalMessage(proposal) => self
+                    .group
+                    .store_pending_proposal(self.provider.storage(), *proposal)
+                    .unwrap_or_else(|err| panic!("error storing proposal at {}: {err}", self.name)),
+                other => {
+                    panic!(
+                        "expected a proposal message at {}, got {:?}",
+                        self.name, other
+                    )
+                }
+            }
+        }
+
+        fn processing_fails(
+            &mut self,
+            msg: MlsMessageIn,
+        ) -> ProcessMessageError<Provider::StorageError> {
+            let msg = msg.into_protocol_message().unwrap();
+            let err_msg = format!("expected an error when processing message at {}", self.name);
+
+            self.group
+                .process_message(&self.provider, msg)
+                .expect_err(&err_msg)
+        }
+
+        fn commit_to_pending_proposals(
+            &mut self,
+        ) -> (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>) {
+            self.group
+                .commit_to_pending_proposals(&self.provider, &self.signer)
+                .unwrap_or_else(|err| {
+                    panic!("{} couldn't commit pending proposal: {err}", self.name)
+                })
+        }
+
+        fn merge_pending_commit(&mut self) {
+            self.group
+                .merge_pending_commit(&self.provider)
+                .unwrap_or_else(|err| panic!("{} couldn't merge commit: {err}", self.name));
+        }
+
+        fn merge(&mut self, msg: MlsMessageIn) {}
+
+        fn commit_and_merge_pending(
+            &mut self,
+        ) -> (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>) {
+            let commit_out = self.commit_to_pending_proposals();
+            self.merge_pending_commit();
+            commit_out
+        }
+    }
+
+    // Test that the happy case of group context extensions works
+    // 1. set up group
+    // 2. alice sets gce, commits
     #[openmls_test]
-    fn proposal() {
-        let TestState { mut alice, mut bob }: TestState<Provider> = setup(ciphersuite);
+    fn happy_case() {
+        let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite);
+
+        let (proposal, _) = alice.propose_group_context_extensions(Extensions::single(
+            Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
+                &[ExtensionType::Unknown(0xf001)],
+                &[],
+                &[],
+            )),
+        ));
+
+        let (commit, _, _) = alice.commit_and_merge_pending();
+
+        bob.process_and_store_proposal(proposal.into());
+        bob.process_and_merge_commit(commit.into());
+
+        let (proposal, _) = bob.propose_group_context_extensions(Extensions::single(
+            Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
+                &[
+                    ExtensionType::Unknown(0xf001),
+                    ExtensionType::Unknown(0xf002),
+                ],
+                &[],
+                &[],
+            )),
+        ));
+
+        let (commit, _, _) = bob.commit_and_merge_pending();
+
+        alice.process_and_store_proposal(proposal.into());
+        alice.process_and_merge_commit(commit.into());
+    }
+
+    #[openmls_test]
+    fn fail_2_gce_proposals_1_commit() {
+        let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite);
 
         // No required capabilities, so no specifically required extensions.
         assert!(alice
@@ -1257,36 +1416,15 @@ mod group_context_extensions {
             .is_none());
 
         let new_extensions = Extensions::single(Extension::RequiredCapabilities(
-            RequiredCapabilitiesExtension::new(&[ExtensionType::RequiredCapabilities], &[], &[]),
+            RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xf001)], &[], &[]),
         ));
 
-        let (proposal, _) = alice
-            .group
-            .propose_group_context_extensions(
-                &alice.provider,
-                new_extensions.clone(),
-                &alice.signer,
-            )
-            .expect("failed to build group context extensions proposal");
-
-        let proc_msg = bob
-            .group
-            .process_message(&bob.provider, proposal.into_protocol_message().unwrap())
-            .unwrap();
-        match proc_msg.into_content() {
-            ProcessedMessageContent::ProposalMessage(proposal) => bob
-                .group
-                .store_pending_proposal(bob.provider.storage(), *proposal)
-                .unwrap(),
-            _ => unreachable!(),
-        };
+        let (proposal, _) = alice.propose_group_context_extensions(new_extensions.clone());
+        bob.process_and_store_proposal(proposal.into());
 
         assert_eq!(alice.group.pending_proposals().count(), 1);
 
-        let (commit, _, _) = alice
-            .group
-            .commit_to_pending_proposals(&alice.provider, &alice.signer)
-            .expect("failed to commit to pending proposals");
+        let (commit, _, _) = alice.commit_to_pending_proposals();
 
         // we'll change the commit we feed to bob to include two GCE proposals
         let mut franken_commit = FrankenMlsMessage::tls_deserialize(
@@ -1303,6 +1441,8 @@ mod group_context_extensions {
                     frankenstein::FrankenFramedContentBody::Commit(commit) => {
                         let second_gces = frankenstein::FrankenProposalOrRef::Proposal(
                             frankenstein::FrankenProposal::GroupContextExtensions(vec![
+                                // ideally this should be some unknown extension, but it's tricky
+                                // to get the payload set up correctly so we'll just go with this
                                 frankenstein::FrankenExtension::LastResort,
                             ]),
                         );
@@ -1337,27 +1477,15 @@ mod group_context_extensions {
             _ => unreachable!(),
         }
 
-        // alice merges the unmodified commit
-        alice
-            .group
-            .merge_pending_commit(&alice.provider)
-            .expect("error merging pending commit");
-
         let fake_commit = MlsMessageIn::tls_deserialize(
             &mut franken_commit.tls_serialize_detached().unwrap().as_slice(),
         )
         .unwrap();
 
-        let fake_commit_protocol_msg = fake_commit.into_protocol_message().unwrap();
-
         let err = {
             let validation_skip_handle = crate::skip_validation::checks::confirmation_tag::handle();
-            validation_skip_handle.with_disabled(|| {
-                bob.group
-                    .process_message(&bob.provider, fake_commit_protocol_msg.clone())
-            })
-        }
-        .expect_err("expected an error");
+            validation_skip_handle.with_disabled(|| bob.processing_fails(fake_commit.clone()))
+        };
 
         assert!(matches!(
             err,
@@ -1367,6 +1495,34 @@ mod group_context_extensions {
                 )
             )
         ));
+    }
+
+    // Test that the builder pattern accurately configures the new group.
+    #[openmls_test]
+    fn proposal() {
+        let TestState { mut alice, mut bob }: TestState<Provider> = setup(ciphersuite);
+
+        // No required capabilities, so no specifically required extensions.
+        assert!(alice
+            .group
+            .group()
+            .context()
+            .extensions()
+            .required_capabilities()
+            .is_none());
+
+        let new_extensions = Extensions::single(Extension::RequiredCapabilities(
+            RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xf001)], &[], &[]),
+        ));
+
+        let (proposal, _) = alice.propose_group_context_extensions(new_extensions.clone());
+        bob.process_and_store_proposal(proposal.into());
+
+        assert_eq!(alice.group.pending_proposals().count(), 1);
+
+        let (commit, _, _) = alice.commit_and_merge_pending();
+        bob.process_and_merge_commit(commit.into());
+        assert_eq!(alice.group.pending_proposals().count(), 0);
 
         let required_capabilities = alice
             .group
@@ -1377,7 +1533,7 @@ mod group_context_extensions {
             .expect("couldn't get required_capabilities");
 
         // has required_capabilities as required capability
-        assert!(required_capabilities.extension_types() == [ExtensionType::RequiredCapabilities]);
+        assert!(required_capabilities.extension_types() == [ExtensionType::Unknown(0xf001)]);
 
         // === committing to two group context extensions should fail
         let new_extensions_2 = Extensions::single(Extension::RequiredCapabilities(
