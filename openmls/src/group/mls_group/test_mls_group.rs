@@ -10,7 +10,6 @@ use crate::{
     group::{errors::*, *},
     key_packages::*,
     messages::proposals::*,
-    prelude::Capabilities,
     test_utils::{
         frankenstein::{self, FrankenMlsMessage},
         test_framework::{
@@ -19,6 +18,7 @@ use crate::{
         },
     },
     tree::sender_ratchet::SenderRatchetConfiguration,
+    treesync::node::leaf_node::Capabilities,
 };
 
 #[openmls_test]
@@ -1150,7 +1150,10 @@ mod group_context_extensions {
     use self::mls_group::hash_ref::ProposalRef;
 
     use super::*;
-    use crate::{credentials::CredentialWithKey, messages::group_info::GroupInfo};
+    use crate::{
+        credentials::CredentialWithKey, key_packages::errors::KeyPackageVerifyError,
+        messages::group_info::GroupInfo,
+    };
 
     struct MemberState<Provider> {
         party: PartyState<Provider>,
@@ -1537,7 +1540,6 @@ mod group_context_extensions {
 
     // this currently doesn't work because of an issue with the conversion using the frankenstein
     // framework. I don't have time do debug this now.
-    #[ignore]
     #[openmls_test]
     fn fail_insufficient_capabilities_update_valno103() {
         let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite);
@@ -1803,6 +1805,123 @@ mod group_context_extensions {
                 )
             )
         ));
+    }
+
+    #[openmls_test]
+    fn fail_unsupported_gces_add_valno1001() {
+        let TestState { alice, mut bob }: TestState<Provider> = setup(ciphersuite);
+
+        // No required capabilities, so no specifically required extensions.
+        assert!(alice
+            .group
+            .group()
+            .context()
+            .extensions()
+            .required_capabilities()
+            .is_none());
+
+        let new_extensions = Extensions::single(Extension::RequiredCapabilities(
+            RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xf001)], &[], &[]),
+        ));
+
+        let (original_proposal, _) = bob.propose_group_context_extensions(new_extensions.clone());
+
+        assert_eq!(bob.group.pending_proposals().count(), 1);
+        bob.group
+            .clear_pending_proposals(bob.party.provider.storage())
+            .unwrap();
+
+        let Ok(frankenstein::FrankenMlsMessage {
+            version,
+            body:
+                frankenstein::FrankenMlsMessageBody::PublicMessage(frankenstein::FrankenPublicMessage {
+                    content:
+                        frankenstein::FrankenFramedContent {
+                            group_id,
+                            epoch,
+                            sender,
+                            authenticated_data,
+                            body:
+                                frankenstein::FrankenFramedContentBody::Proposal(
+                                    frankenstein::FrankenProposal::GroupContextExtensions(mut gces),
+                                ),
+                        },
+                    ..
+                }),
+        }) = frankenstein::FrankenMlsMessage::tls_deserialize(
+            &mut original_proposal
+                .tls_serialize_detached()
+                .unwrap()
+                .as_slice(),
+        )
+        else {
+            panic!("proposal message has unexpected format: {original_proposal:#?}")
+        };
+
+        let Some(frankenstein::FrankenExtension::RequiredCapabilities(
+            frankenstein::FrankenRequiredCapabilitiesExtension {
+                extension_types, ..
+            },
+        )) = gces.get_mut(0)
+        else {
+            panic!("required capabilities are malformed")
+        };
+
+        // this one is supported by bob, but not alice
+        extension_types.push(0xf003);
+
+        let group_context = bob.group.export_group_context().clone();
+        let secrets = bob.group.group.message_secrets();
+        let membership_key = secrets.membership_key().as_slice();
+
+        let franken_commit_message = frankenstein::FrankenMlsMessage {
+            version,
+            body: frankenstein::FrankenMlsMessageBody::PublicMessage(
+                frankenstein::FrankenPublicMessage::auth(
+                    &bob.party.provider,
+                    ciphersuite,
+                    &bob.party.signer,
+                    frankenstein::FrankenFramedContent {
+                        group_id,
+                        epoch,
+                        sender,
+                        authenticated_data,
+                        body: frankenstein::FrankenFramedContentBody::Proposal(
+                            frankenstein::FrankenProposal::GroupContextExtensions(gces),
+                        ),
+                    },
+                    Some(&group_context.into()),
+                    Some(membership_key),
+                    // this is a dummy confirmation_tag:
+                    Some(vec![0u8; 32].into()),
+                ),
+            ),
+        };
+
+        let fake_commit = MlsMessageIn::tls_deserialize(
+            &mut franken_commit_message
+                .tls_serialize_detached()
+                .unwrap()
+                .as_slice(),
+        )
+        .unwrap();
+
+        let err = {
+            let validation_skip_handle = crate::skip_validation::checks::confirmation_tag::handle();
+            validation_skip_handle.with_disabled(|| bob.fail_processing(fake_commit.clone()))
+        };
+
+        assert!(
+            matches!(
+                err,
+                ProcessMessageError::InvalidCommit(
+                    StageCommitError::GroupContextExtensionsProposalValidationError(
+                        GroupContextExtensionsProposalValidationError::RequiredExtensionNotSupportedByAllMembers
+                    )
+                )
+            ),
+            "expected different error. got {err:?}"
+        );
     }
 
     // Test that the builder pattern accurately configures the new group.
