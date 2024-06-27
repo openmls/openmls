@@ -1150,17 +1150,14 @@ mod group_context_extensions {
     use self::mls_group::hash_ref::ProposalRef;
 
     use super::*;
-    use crate::{
-        credentials::CredentialWithKey,
-        messages::group_info::GroupInfo,
-        treesync::{node::leaf_node::LeafNodeIn, LeafNode},
-    };
+    use crate::{credentials::CredentialWithKey, messages::group_info::GroupInfo};
 
     struct MemberState<Provider> {
         party: PartyState<Provider>,
         group: MlsGroup,
     }
 
+    #[allow(dead_code)]
     struct PartyState<Provider> {
         provider: Provider,
         credential_with_key: CredentialWithKey,
@@ -1219,7 +1216,7 @@ mod group_context_extensions {
         let bob_party = PartyState::generate("bob", ciphersuite);
 
         // === Alice creates a group ===
-        let mut alice_group = MlsGroup::builder()
+        let alice_group = MlsGroup::builder()
             .ciphersuite(ciphersuite)
             .with_wire_format_policy(WireFormatPolicy::new(
                 OutgoingWireFormatPolicy::AlwaysPlaintext,
@@ -1240,6 +1237,11 @@ mod group_context_extensions {
             )
             .expect("error creating group using builder");
 
+        let mut alice = MemberState {
+            party: alice_party,
+            group: alice_group,
+        };
+
         // === Alice adds Bob ===
         let bob_key_package = bob_party.key_package(ciphersuite, |builder| {
             builder.leaf_node_capabilities(
@@ -1253,16 +1255,10 @@ mod group_context_extensions {
             )
         });
 
-        let (_, welcome, _) = alice_group
-            .add_members(
-                &alice_party.provider,
-                &alice_party.signer,
-                &[bob_key_package.key_package().clone()],
-            )
-            .unwrap();
-        alice_group
-            .merge_pending_commit(&alice_party.provider)
-            .unwrap();
+        alice.propose_add_member(bob_key_package.key_package());
+        let (_, Some(welcome), _) = alice.commit_and_merge_pending() else {
+            panic!("expected receiving a welcome")
+        };
 
         let welcome: MlsMessageIn = welcome.into();
         let welcome = welcome
@@ -1271,19 +1267,16 @@ mod group_context_extensions {
 
         let bob_group = StagedWelcome::new_from_welcome(
             &bob_party.provider,
-            alice_group.configuration(),
+            alice.group.configuration(),
             welcome,
-            Some(alice_group.export_ratchet_tree().into()),
+            Some(alice.group.export_ratchet_tree().into()),
         )
         .expect("Error creating staged join from Welcome")
         .into_group(&bob_party.provider)
         .expect("Error creating group from staged join");
 
         TestState {
-            alice: MemberState {
-                party: alice_party,
-                group: alice_group,
-            },
+            alice,
             bob: MemberState {
                 party: bob_party,
                 group: bob_group,
@@ -1404,8 +1397,6 @@ mod group_context_extensions {
                 .merge_pending_commit(&self.party.provider)
                 .unwrap_or_else(|err| panic!("{} couldn't merge commit: {err}", self.party.name));
         }
-
-        fn merge(&mut self, msg: MlsMessageIn) {}
 
         fn commit_and_merge_pending(
             &mut self,
@@ -1659,7 +1650,7 @@ mod group_context_extensions {
         )
         .unwrap();
 
-        let proposal_ref = alice.process_and_store_proposal(fake_proposal.clone());
+        alice.process_and_store_proposal(fake_proposal.clone());
 
         bob.group
             .clear_pending_proposals(bob.party.provider.storage())
