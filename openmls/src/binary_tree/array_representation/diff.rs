@@ -42,6 +42,7 @@ use super::{
 /// was created from. However, the lack of the internal reference means that its
 /// lifetime is not tied to that of the original tree.
 #[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Clone))]
 pub(crate) struct StagedAbDiff<L: Clone + Debug + Default, P: Clone + Debug + Default> {
     leaf_diff: BTreeMap<LeafNodeIndex, L>,
     parent_diff: BTreeMap<ParentNodeIndex, P>,

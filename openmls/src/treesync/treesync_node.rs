@@ -57,7 +57,7 @@ impl From<TreeSyncNode> for TreeNode<TreeSyncLeafNode, TreeSyncParentNode> {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(any(test, feature = "test-utils"), derive(PartialEq))]
 /// This intermediate struct on top of `Option<Node>` allows us to cache tree
 /// hash values. Blank nodes are represented by [`TreeSyncNode`] instances where
 /// `node = None`.
@@ -109,7 +109,7 @@ impl From<TreeSyncLeafNode> for Option<Node> {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(any(test, feature = "test-utils"), derive(PartialEq))]
 /// This intermediate struct on top of `Option<Node>` allows us to cache tree
 /// hash values. Blank nodes are represented by [`TreeSyncNode`] instances where
 /// `node = None`.

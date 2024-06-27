@@ -31,6 +31,15 @@ pub struct RustCrypto {
     rng: RwLock<rand_chacha::ChaCha20Rng>,
 }
 
+// For testing we want to clone.
+// But really we just create a new Rng.
+#[cfg(feature = "test-utils")]
+impl Clone for RustCrypto {
+    fn clone(&self) -> Self {
+        Self::default()
+    }
+}
+
 impl Default for RustCrypto {
     fn default() -> Self {
         Self {

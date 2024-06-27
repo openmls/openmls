@@ -190,7 +190,7 @@ impl ResumptionPskSecret {
 /// A secret that can be used among members to make sure everyone has the same
 /// group state.
 #[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(Eq, PartialEq, Clone))]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Eq, PartialEq, Clone))]
 pub struct EpochAuthenticator {
     secret: Secret,
 }
@@ -255,7 +255,7 @@ impl CommitSecret {
 
 /// The `InitSecret` is used to connect the next epoch to the current one.
 #[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq, Clone))]
+#[cfg_attr(any(test, feature = "test-utils"), derive(PartialEq, Clone))]
 pub(crate) struct InitSecret {
     secret: Secret,
 }
@@ -711,7 +711,7 @@ impl EncryptionSecret {
 
 /// A secret that we can derive secrets from, that are used outside of OpenMLS.
 #[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq, Clone))]
+#[cfg_attr(any(test, feature = "test-utils"), derive(PartialEq, Clone))]
 pub(crate) struct ExporterSecret {
     secret: Secret,
 }
@@ -757,7 +757,7 @@ impl ExporterSecret {
 
 /// A secret used when joining a group with an external Commit.
 #[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq, Clone))]
+#[cfg_attr(any(test, feature = "test-utils"), derive(PartialEq, Clone))]
 pub(crate) struct ExternalSecret {
     secret: Secret,
 }
@@ -792,7 +792,7 @@ impl ExternalSecret {
 
 /// The confirmation key is used to calculate the `ConfirmationTag`.
 #[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq, Clone))]
+#[cfg_attr(any(test, feature = "test-utils"), derive(PartialEq, Clone))]
 pub(crate) struct ConfirmationKey {
     secret: Secret,
 }
@@ -864,7 +864,7 @@ impl ConfirmationKey {
 
 /// The membership key is used to calculate the `MembershipTag`.
 #[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq, Clone))]
+#[cfg_attr(any(test, feature = "test-utils"), derive(PartialEq, Clone))]
 pub(crate) struct MembershipKey {
     secret: Secret,
 }
@@ -1225,7 +1225,7 @@ impl EpochSecrets {
 }
 
 #[derive(Serialize, Deserialize)]
-#[cfg_attr(test, derive(Clone))]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Clone))]
 pub(crate) struct GroupEpochSecrets {
     init_secret: InitSecret,
     exporter_secret: ExporterSecret,

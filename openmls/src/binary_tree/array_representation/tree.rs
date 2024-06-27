@@ -27,7 +27,7 @@ where
     Parent(P),
 }
 
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(any(test, feature = "test-utils"), derive(PartialEq))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 /// A representation of a full, left-balanced binary tree that uses a simple
 /// vector to store nodes. Each tree has to consist of at least one node.

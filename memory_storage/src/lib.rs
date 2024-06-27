@@ -1,5 +1,5 @@
 use openmls_traits::storage::*;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::{collections::HashMap, sync::RwLock};
 
 /// A storage for the V_TEST version.
@@ -9,9 +9,20 @@ mod test_store;
 #[cfg(feature = "persistence")]
 pub mod persistence;
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default)]
 pub struct MemoryStorage {
-    values: RwLock<HashMap<Vec<u8>, Vec<u8>>>,
+    pub values: RwLock<HashMap<Vec<u8>, Vec<u8>>>,
+}
+
+// For testing we want to clone.
+#[cfg(feature = "test-utils")]
+impl Clone for MemoryStorage {
+    fn clone(&self) -> Self {
+        let values = self.values.read().unwrap();
+        Self {
+            values: RwLock::new(values.clone()),
+        }
+    }
 }
 
 impl MemoryStorage {
