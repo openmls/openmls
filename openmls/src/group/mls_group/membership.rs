@@ -60,7 +60,7 @@ impl MlsGroup {
         // TODO #751
         let params = CreateCommitParams::builder()
             .framing_parameters(self.framing_parameters())
-            .proposal_store(&self.proposal_store)
+            .proposal_store(self.proposal_store())
             .inline_proposals(inline_proposals)
             .build();
         let create_commit_result = self.group.create_commit(params, provider, signer)?;
@@ -142,7 +142,7 @@ impl MlsGroup {
         // TODO #751
         let params = CreateCommitParams::builder()
             .framing_parameters(self.framing_parameters())
-            .proposal_store(&self.proposal_store)
+            .proposal_store(self.proposal_store())
             .inline_proposals(inline_proposals)
             .build();
         let create_commit_result = self.group.create_commit(params, provider, signer)?;
@@ -190,9 +190,11 @@ impl MlsGroup {
             .create_remove_proposal(self.framing_parameters(), removed, signer)
             .map_err(|_| LibraryError::custom("Creating a self removal should not fail"))?;
 
-        self.proposal_store
+        let ciphersuite = self.ciphersuite();
+
+        self.proposal_store_mut()
             .add(QueuedProposal::from_authenticated_content_by_ref(
-                self.ciphersuite(),
+                ciphersuite,
                 provider.crypto(),
                 remove_proposal.clone(),
             )?);

@@ -7,7 +7,7 @@ use crate::{
     group::{
         public_group::errors::PublicGroupBuildError, CoreGroup, CoreGroupBuildError,
         CoreGroupConfig, GroupId, MlsGroupCreateConfig, MlsGroupCreateConfigBuilder, NewGroupError,
-        ProposalStore, WireFormatPolicy,
+        WireFormatPolicy,
     },
     key_packages::Lifetime,
     storage::OpenMlsProvider,
@@ -103,7 +103,6 @@ impl MlsGroupBuilder {
         let mls_group = MlsGroup {
             mls_group_config: mls_group_create_config.join_config.clone(),
             group,
-            proposal_store: ProposalStore::new(),
             own_leaf_nodes: vec![],
             aad: vec![],
             group_state: MlsGroupState::Operational,

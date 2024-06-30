@@ -108,7 +108,6 @@ impl MlsGroup {
         let mls_group = MlsGroup {
             mls_group_config: mls_group_config.clone(),
             group,
-            proposal_store: ProposalStore::new(),
             own_leaf_nodes: vec![],
             aad: vec![],
             group_state: MlsGroupState::PendingCommit(Box::new(PendingCommitState::External(
@@ -280,7 +279,6 @@ impl StagedWelcome {
         let mls_group = MlsGroup {
             mls_group_config: self.mls_group_config,
             group,
-            proposal_store: ProposalStore::new(),
             own_leaf_nodes: vec![],
             aad: vec![],
             group_state: MlsGroupState::Operational,

@@ -52,17 +52,15 @@ fn test_external_init() {
     .expect("Error initializing group externally.");
 
     // Have alice and bob process the commit resulting from external init.
-    let proposal_store = ProposalStore::default();
-
     let staged_commit = group_alice
-        .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], provider)
+        .read_keys_and_stage_commit(&create_commit_result.commit, &[], provider)
         .expect("error staging commit");
     group_alice
         .merge_commit(provider, staged_commit)
         .expect("error merging commit");
 
     let staged_commit = group_bob
-        .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], provider)
+        .read_keys_and_stage_commit(&create_commit_result.commit, &[], provider)
         .expect("error staging commit");
     group_bob
         .merge_commit(provider, staged_commit)
@@ -84,7 +82,6 @@ fn test_external_init() {
     );
 
     // Check if charly can create valid commits
-    let proposal_store = ProposalStore::default();
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
         .proposal_store(&proposal_store)
@@ -94,7 +91,7 @@ fn test_external_init() {
         .expect("Error creating commit");
 
     let staged_commit = group_alice
-        .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], provider)
+        .read_keys_and_stage_commit(&create_commit_result.commit, &[], provider)
         .expect("error staging commit");
     group_alice
         .merge_commit(provider, staged_commit)
@@ -147,16 +144,15 @@ fn test_external_init() {
     assert!(contains_remove);
 
     // Have alice and charly process the commit resulting from external init.
-    let proposal_store = ProposalStore::default();
     let staged_commit = group_alice
-        .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], provider)
+        .read_keys_and_stage_commit(&create_commit_result.commit, &[], provider)
         .expect("error staging commit");
     group_alice
         .merge_commit(provider, staged_commit)
         .expect("error merging commit");
 
     let staged_commit = group_charly
-        .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], provider)
+        .read_keys_and_stage_commit(&create_commit_result.commit, &[], provider)
         .expect("error staging commit");
     group_charly
         .merge_commit(provider, staged_commit)
@@ -214,9 +210,8 @@ fn test_external_init_single_member_group() {
     .expect("Error initializing group externally.");
 
     // Have alice and bob process the commit resulting from external init.
-    let proposal_store = ProposalStore::default();
     let staged_commit = group_alice
-        .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], provider)
+        .read_keys_and_stage_commit(&create_commit_result.commit, &[], provider)
         .expect("error staging commit");
     group_alice
         .merge_commit(provider, staged_commit)

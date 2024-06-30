@@ -379,7 +379,6 @@ pub fn run_test_vector(
         ) {
             // Group stuff we need for openmls
             let sender_ratchet_config = SenderRatchetConfiguration::new(0, 0);
-            let proposal_store = ProposalStore::default();
 
             // decrypt private message
             let processed_message = group
@@ -387,7 +386,6 @@ pub fn run_test_vector(
                     provider,
                     proposal_priv.into_protocol_message().unwrap(),
                     &sender_ratchet_config,
-                    &proposal_store,
                     &[],
                 )
                 .unwrap();
@@ -629,7 +627,6 @@ pub fn run_test_vector(
         ) {
             // Group stuff we need for openmls
             let sender_ratchet_config = SenderRatchetConfiguration::new(0, 0);
-            let proposal_store = ProposalStore::default();
 
             // check that the proposal in proposal_pub == proposal
             let processed_message = group
@@ -637,7 +634,6 @@ pub fn run_test_vector(
                     provider,
                     application_priv.into_ciphertext().unwrap(),
                     &sender_ratchet_config,
-                    &proposal_store,
                     &[],
                 )
                 .unwrap();

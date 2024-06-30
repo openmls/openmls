@@ -263,7 +263,7 @@ fn test_update_path() {
     );
 
     let staged_commit_res =
-        group_alice.read_keys_and_stage_commit(&broken_plaintext, &proposal_store, &[], provider);
+        group_alice.read_keys_and_stage_commit(&broken_plaintext, &[], provider);
     assert_eq!(
         staged_commit_res.expect_err("Successful processing of a broken commit."),
         StageCommitError::UpdatePathError(ApplyUpdatePathError::UnableToDecrypt)
@@ -537,7 +537,7 @@ fn test_own_commit_processing(
 
     // Alice attempts to process her own commit
     let error = alice_group
-        .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], provider)
+        .read_keys_and_stage_commit(&create_commit_result.commit, &[], provider)
         .expect_err("no error while processing own commit");
     assert_eq!(error, StageCommitError::OwnCommit);
 }
@@ -668,39 +668,43 @@ fn test_proposal_application_after_self_was_removed(
         )
         .expect("Could not create proposal");
 
-    let mut remove_add_proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content_by_ref(
-            ciphersuite,
-            provider.crypto(),
-            bob_remove_proposal,
-        )
-        .expect("Could not create QueuedProposal."),
-    );
+    let queued_bob_remove_proposal = QueuedProposal::from_authenticated_content_by_ref(
+        ciphersuite,
+        provider.crypto(),
+        bob_remove_proposal,
+    )
+    .unwrap();
 
-    remove_add_proposal_store.add(
-        QueuedProposal::from_authenticated_content_by_ref(
-            ciphersuite,
-            provider.crypto(),
-            charlie_add_proposal,
-        )
-        .expect("Could not create QueuedProposal."),
-    );
+    let queued_charlie_add_propsal = QueuedProposal::from_authenticated_content_by_ref(
+        ciphersuite,
+        provider.crypto(),
+        charlie_add_proposal,
+    )
+    .unwrap();
+
+    *alice_group.proposal_store_mut() =
+        ProposalStore::from_queued_proposal(queued_bob_remove_proposal.clone());
+    *bob_group.proposal_store_mut() =
+        ProposalStore::from_queued_proposal(queued_bob_remove_proposal);
+
+    alice_group
+        .proposal_store_mut()
+        .add(queued_charlie_add_propsal.clone());
+
+    bob_group
+        .proposal_store_mut()
+        .add(queued_charlie_add_propsal);
 
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .proposal_store(&remove_add_proposal_store)
+        .proposal_store(alice_group.proposal_store())
         .build();
     let remove_add_commit_result = alice_group
         .create_commit(params, provider, &alice_signature_keys)
         .expect("Error creating commit");
 
     let staged_commit = bob_group
-        .read_keys_and_stage_commit(
-            &remove_add_commit_result.commit,
-            &remove_add_proposal_store,
-            &[],
-            provider,
-        )
+        .read_keys_and_stage_commit(&remove_add_commit_result.commit, &[], provider)
         .expect("error staging commit");
     bob_group
         .merge_commit(provider, staged_commit)

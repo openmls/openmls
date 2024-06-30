@@ -348,7 +348,7 @@ fn test_valsem201() {
 
         let params = CreateCommitParams::builder()
             .framing_parameters(alice_group.framing_parameters())
-            .proposal_store(&alice_group.proposal_store)
+            .proposal_store(alice_group.proposal_store())
             // has to be turned off otherwise commit path is always present
             .force_self_update(false)
             .build();
@@ -835,13 +835,13 @@ fn test_partial_proposal_commit(
 
     // Alice creates a commit with only a subset of the epoch's proposals. Bob should still be able to process it.
     let remaining_proposal = alice_group
-        .proposal_store
+        .proposal_store()
         .proposals()
         .next()
         .cloned()
         .unwrap();
-    alice_group.proposal_store.empty();
-    alice_group.proposal_store.add(remaining_proposal);
+    alice_group.proposal_store_mut().empty();
+    alice_group.proposal_store_mut().add(remaining_proposal);
     let (commit, _, _) = alice_group
         .commit_to_pending_proposals(provider, &alice_credential.signer)
         .unwrap();

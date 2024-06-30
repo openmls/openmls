@@ -26,7 +26,7 @@ use super::{GroupContext, GroupId, Member, ProposalStore, QueuedProposal, Staged
 use crate::treesync::{node::parent_node::PlainUpdatePathNode, treekem::UpdatePathNode};
 use crate::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
-    ciphersuite::signable::Verifiable,
+    ciphersuite::{hash_ref::ProposalRef, signable::Verifiable},
     error::LibraryError,
     extensions::RequiredCapabilitiesExtension,
     framing::InterimTranscriptHashInput,
@@ -391,15 +391,21 @@ impl PublicGroup {
         group_id: &GroupId,
     ) -> Result<Option<Self>, Storage::Error> {
         let treesync = storage.treesync(group_id)?;
+        let proposals: Vec<(ProposalRef, QueuedProposal)> = storage.queued_proposals(group_id)?;
         let group_context = storage.group_context(group_id)?;
         let interim_transcript_hash: Option<InterimTranscriptHash> =
             storage.interim_transcript_hash(group_id)?;
         let confirmation_tag = storage.confirmation_tag(group_id)?;
+        let mut proposal_store = ProposalStore::new();
+
+        for (_ref, proposal) in proposals {
+            proposal_store.add(proposal);
+        }
 
         let build = || -> Option<Self> {
             Some(Self {
                 treesync: treesync?,
-                proposal_store: ProposalStore::new(),
+                proposal_store,
                 group_context: group_context?,
                 interim_transcript_hash: interim_transcript_hash?.0,
                 confirmation_tag: confirmation_tag?,
@@ -407,6 +413,16 @@ impl PublicGroup {
         };
 
         Ok(build())
+    }
+
+    /// Returns a reference to the [`ProposalStore`].
+    pub(crate) fn proposal_store(&self) -> &ProposalStore {
+        &self.proposal_store
+    }
+
+    /// Returns a mutable reference to the [`ProposalStore`].
+    pub(crate) fn proposal_store_mut(&mut self) -> &mut ProposalStore {
+        &mut self.proposal_store
     }
 }
 

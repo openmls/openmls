@@ -209,11 +209,7 @@ pub(crate) fn setup(
                 .expect("An unexpected error occurred.");
 
             core_group
-                .merge_staged_commit(
-                    provider,
-                    create_commit_result.staged_commit,
-                    &mut proposal_store,
-                )
+                .merge_staged_commit(provider, create_commit_result.staged_commit)
                 .expect("Error merging commit.");
 
             // Distribute the Welcome message to the other members.
