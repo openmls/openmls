@@ -593,7 +593,7 @@ fn test_group_context_extension_proposal(
         )
         .expect("Error creating gce proposal.");
 
-    let proposal_store = ProposalStore::from_queued_proposal(
+    *bob_group.proposal_store_mut() = ProposalStore::from_queued_proposal(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
             provider.crypto(),
@@ -604,7 +604,7 @@ fn test_group_context_extension_proposal(
     log::info!(" >>> Creating commit ...");
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .proposal_store(&proposal_store)
+        .proposal_store(bob_group.proposal_store())
         .force_self_update(false)
         .build();
     let create_commit_result = alice_group
@@ -614,7 +614,7 @@ fn test_group_context_extension_proposal(
     log::info!(" >>> Staging & merging commit ...");
 
     let staged_commit = bob_group
-        .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], provider)
+        .read_keys_and_stage_commit(&create_commit_result.commit, &[], provider)
         .expect("error staging commit");
     bob_group
         .merge_commit(provider, staged_commit)

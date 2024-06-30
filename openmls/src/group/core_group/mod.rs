@@ -621,6 +621,16 @@ impl CoreGroup {
         &self.public_group
     }
 
+    /// Returns a reference to the proposal store.
+    pub(crate) fn proposal_store(&self) -> &ProposalStore {
+        self.public_group.proposal_store()
+    }
+
+    /// Returns a mutable reference to the proposal store.
+    pub(crate) fn proposal_store_mut(&mut self) -> &mut ProposalStore {
+        self.public_group.proposal_store_mut()
+    }
+
     /// Get the ciphersuite implementation used in this group.
     pub(crate) fn ciphersuite(&self) -> Ciphersuite {
         self.public_group.ciphersuite()

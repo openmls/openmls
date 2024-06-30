@@ -5,7 +5,7 @@ use public_group::diff::{apply_proposals::ApplyProposalsValues, StagedPublicGrou
 
 use self::public_group::staged_commit::PublicStagedCommitState;
 
-use super::{super::errors::*, proposals::ProposalStore, *};
+use super::{super::errors::*, *};
 use crate::{
     ciphersuite::Secret, framing::mls_auth_content::AuthenticatedContent,
     treesync::node::encryption_keys::EncryptionKeyPair,
@@ -124,7 +124,6 @@ impl CoreGroup {
     pub(crate) fn stage_commit(
         &self,
         mls_content: &AuthenticatedContent,
-        proposal_store: &ProposalStore,
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
         provider: &impl OpenMlsProvider,
@@ -138,9 +137,11 @@ impl CoreGroup {
 
         let ciphersuite = self.ciphersuite();
 
-        let (commit, proposal_queue, sender_index) =
-            self.public_group
-                .validate_commit(mls_content, proposal_store, provider.crypto())?;
+        let (commit, proposal_queue, sender_index) = self.public_group.validate_commit(
+            mls_content,
+            self.proposal_store(),
+            provider.crypto(),
+        )?;
 
         // Create the provisional public group state (including the tree and
         // group context) and apply proposals.
@@ -411,7 +412,6 @@ impl CoreGroup {
     pub(crate) fn read_keys_and_stage_commit(
         &self,
         mls_content: &AuthenticatedContent,
-        proposal_store: &ProposalStore,
         own_leaf_nodes: &[LeafNode],
         provider: &impl OpenMlsProvider,
     ) -> Result<StagedCommit, StageCommitError> {
@@ -420,7 +420,6 @@ impl CoreGroup {
 
         self.stage_commit(
             mls_content,
-            proposal_store,
             old_epoch_keypairs,
             leaf_node_keypairs,
             provider,

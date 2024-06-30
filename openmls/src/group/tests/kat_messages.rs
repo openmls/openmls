@@ -251,7 +251,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         )
         .unwrap();
 
-    let mut proposal_store = ProposalStore::from_queued_proposal(
+    let proposal_store = ProposalStore::from_queued_proposal(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
             provider.crypto(),
@@ -271,11 +271,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         )
         .unwrap();
     alice_group
-        .merge_staged_commit(
-            &provider,
-            create_commit_result.staged_commit,
-            &mut proposal_store,
-        )
+        .merge_staged_commit(&provider, create_commit_result.staged_commit)
         .unwrap();
 
     let commit = if let FramedContentBody::Commit(commit) = create_commit_result.commit.content() {

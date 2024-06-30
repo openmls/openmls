@@ -56,7 +56,6 @@ impl MlsGroup {
             provider,
             message,
             &sender_ratchet_configuration,
-            &self.proposal_store,
             &self.own_leaf_nodes,
         )
     }
@@ -69,7 +68,7 @@ impl MlsGroup {
     ) -> Result<(), Storage::Error> {
         storage.queue_proposal(self.group_id(), &proposal.proposal_reference(), &proposal)?;
         // Store the proposal in in the internal ProposalStore
-        self.proposal_store.add(proposal);
+        self.proposal_store_mut().add(proposal);
 
         Ok(())
     }
@@ -99,7 +98,7 @@ impl MlsGroup {
         // TODO #751
         let params = CreateCommitParams::builder()
             .framing_parameters(self.framing_parameters())
-            .proposal_store(&self.proposal_store)
+            .proposal_store(self.proposal_store())
             .build();
         let create_commit_result = self.group.create_commit(params, provider, signer)?;
 
@@ -143,8 +142,7 @@ impl MlsGroup {
             .map_err(MergeCommitError::StorageError)?;
 
         // Merge staged commit
-        self.group
-            .merge_staged_commit(provider, staged_commit, &mut self.proposal_store)?;
+        self.group.merge_staged_commit(provider, staged_commit)?;
 
         // Extract and store the resumption psk for the current epoch
         let resumption_psk = self.group.group_epoch_secrets().resumption_psk();
