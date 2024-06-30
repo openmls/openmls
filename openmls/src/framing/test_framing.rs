@@ -437,8 +437,6 @@ fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider:
         )
         .expect("Could not create proposal.");
 
-    //let mut proposal_store = group_alice.proposal_store_mut();
-
     *group_alice.proposal_store_mut() = ProposalStore::from_queued_proposal(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
