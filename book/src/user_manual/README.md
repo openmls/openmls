@@ -5,7 +5,10 @@ The user manual describes how to use the different parts of the OpenMLS API.
 ## Prerequisites
 
 Most operations in OpenMLS require a `provider` object that provides all required cryptographic algorithms via the [`OpenMlsCryptoProvider`] trait.
-Currently, there are two implementations available through the [openmls_rust_crypto] crate.
+Currently, there are two implementations available:
+
+- one through the [openmls_rust_crypto] crate.
+- one through the [openmls_libcrux_crypto] crate.
 
 Thus, you can create the `provider` object for the following examples using ...
 
@@ -15,3 +18,4 @@ Thus, you can create the `provider` object for the following examples using ...
 
 [`openmlscryptoprovider`]: https://docs.rs/openmls/latest/openmls/prelude/trait.OpenMlsCryptoProvider.html
 [openmls_rust_crypto]: https://crates.io/crates/openmls_rust_crypto
+[openmls_libcrux_crypto]: https://crates.io/crates/openmls_libcrux_crypto

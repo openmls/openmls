@@ -8,6 +8,7 @@
   - [Group configuration](user_manual/group_config.md)
   - [Creating groups](user_manual/create_group.md)
   - [Join a group from a Welcome message](user_manual/join_from_welcome.md)
+  - [Join a group from an External Commit message](user_manual/join_from_external_commit.md)
   - [Adding members to a group](user_manual/add_members.md)
   - [Removing members from a group](user_manual/remove_members.md)
   - [Updating own key package](user_manual/updates.md)

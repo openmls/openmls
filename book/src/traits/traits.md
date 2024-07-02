@@ -57,15 +57,26 @@ This trait defines all cryptographic functions required by OpenMLS. In particula
 This trait defines an API for a storage backend that is used for all OpenMLS
 persistence.
 
-The store provides functions to `store`, `read`, and `delete` values.
-Note that it does not allow updating values.
-Instead, entries must be deleted and newly stored.
+The store provides functions for reading and updating stored values.
+Each sort of value has separate methods for accessing or mutating the state.
+In order to decouple the provider from the OpenMLS implementation, while still
+having legible types at the provider, there are traits that mirror all the types
+stored by OpenMLS.
 
 ```rust,no_run,noplayground
-{{#include ../../../traits/src/storage.rs:16:25}}
+{{#include ../../../traits/src/storage.rs:traits}}
 ```
 
-The trait is generic over a `VERSION`, which is used to ensure that the values
+The provider methods use values constrained by these traits as
+as arguments. For example, the method for querying the own leaf nodes for the group with given group ID has the signature is:
+
+```rust,no_run,noplayground
+{{#include ../../../traits/src/storage.rs:own_leaf_nodes}}
+```
+
+---
+
+The traits are generic over a `VERSION`, which is used to ensure that the values
 that are persisted can be upgraded when OpenMLS changes the stored structs.
 
 Every function takes `Key` and `Value` arguments.

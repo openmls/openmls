@@ -266,11 +266,13 @@ pub trait StorageProvider<const VERSION: u16> {
         group_id: &GroupId,
     ) -> Result<Option<MlsGroupJoinConfig>, Self::Error>;
 
+    ///ANCHOR: own_leaf_nodes
     /// Returns the own leaf nodes for the group with given id
     fn own_leaf_nodes<GroupId: traits::GroupId<VERSION>, LeafNode: traits::LeafNode<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<Vec<LeafNode>, Self::Error>;
+    ///ANCHOR_END: own_leaf_nodes
 
     /// Returns the AAD for the group with given id
     /// If the value has not been set, returns an empty vector.
