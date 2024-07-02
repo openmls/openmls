@@ -160,8 +160,8 @@ impl FrankenPublicMessage {
         let wire_format = 1; // PublicMessage
 
         let franken_tbs = FrankenFramedContentTbs {
-            version: 1,
-            wire_format: 1, // PublicMessage
+            version,
+            wire_format,
             content: &content,
             group_context,
         };
