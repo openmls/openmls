@@ -50,8 +50,9 @@ test-utils = [
   "dep:openmls_memory_storage",
   "dep:openmls_test",
   "dep:once_cell",
-  "dep:backtrace",
+  "backtrace",
 ]
+backtrace = ["dep:backtrace"]
 libcrux-provider = [
   "dep:openmls_libcrux_crypto",
   "openmls_test?/libcrux-provider",
