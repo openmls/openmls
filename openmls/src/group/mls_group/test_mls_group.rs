@@ -1447,6 +1447,14 @@ mod group_context_extensions {
         alice.process_and_merge_commit(commit.into());
     }
 
+    /// This tests makes sure that validation check 103 is performed:
+    ///
+    ///   Verify that the LeafNode is compatible with the group's parameters.
+    ///   If the GroupContext has a required_capabilities extension, then the
+    ///   required extensions, proposals, and credential types MUST be listed
+    ///   in the LeafNode's capabilities field.
+    ///
+    /// So far, we only test whether the check is done for extensions.
     #[openmls_test]
     fn fail_insufficient_capabilities_add_valno103() {
         let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite);
@@ -1558,11 +1566,18 @@ mod group_context_extensions {
     // this currently doesn't work because of an issue with the conversion using the frankenstein
     // framework. I don't have time do debug this now.
     //
-    // General test structure:
-    // - alice commits GCE required capabilities
-    // - bob also merges it
-    // - bob proposes a self-update, but we tamper with it:
-    //   -
+    // Test structure:
+    // - (alice creates group, adds bob, bob accepts)
+    //   - This is part of the setup function
+    // - alice proposal GCE with required capabilities and commits
+    // - bob adds the proposal and merges the commit
+    // - bob proposes a self-update, but we tamper with it by removing
+    //   an extension type from the capabilities. This makes it invalid.
+    // - we craft a commit by alice, committing the invalid proposal
+    //   - it can't be done by bob, because the sender of a commit
+    //     containing an update proposal can not be the owner of the
+    //     leaf node
+    // - bob processes the invalid commit, which should give an InsufficientCapabilities error
     #[openmls_test]
     fn fail_insufficient_capabilities_update_valno103() {
         let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite);
@@ -1623,17 +1638,6 @@ mod group_context_extensions {
         bob_franken_leaf_node.capabilities.extensions.remove(1);
 
         // make it pass validation again
-        /* I thought I need a distinct encryption_key, but that doesn't seem to be the case
-                bob_franken_leaf_node.encryption_key = {
-                    let mut key = bob_franken_leaf_node.encryption_key.as_slice().to_vec();
-
-                    key[1] = 0;
-                    key[3] = 0;
-                    key[5] = 0;
-
-                    key.into()
-                };
-        */
         bob_franken_leaf_node.leaf_node_source = frankenstein::FrankenLeafNodeSource::Update;
         bob_franken_leaf_node.resign(
             Some(frankenstein::FrankenTreePosition {
@@ -1757,6 +1761,10 @@ mod group_context_extensions {
         );
     }
 
+    // This test doesn't belong here, but it's nice to have. It would be nice to factor it out, but
+    // it relies on the testing functions.
+    //
+    // I suppose we need to talk about which test framework is the one we need.
     #[openmls_test]
     fn fail_key_package_version_valno201() {
         let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite);
@@ -1860,6 +1868,7 @@ mod group_context_extensions {
         ));
     }
 
+    // This tests that a commit containing more than one GCE Proposals does not pass validation.
     #[openmls_test]
     fn fail_2_gce_proposals_1_commit_valno308() {
         let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite);
@@ -1955,6 +1964,18 @@ mod group_context_extensions {
         ));
     }
 
+    /// This test makes sure that a commit to a GCE proposal with required_capabilities that are
+    /// not satisfied by all members' capabilities does not pass validation.
+    ///
+    // Test structure:
+    // - (alice creates group, adds bob, bob accepts)
+    //   - This is part of the setup function
+    // - bob proposes updating the GC to have required_capabilities with extensions 0xf001
+    //   - both alice and bob support this extension
+    // - we modify the proposal and add 0xf003 - this is only supported by bob (see setup function)
+    // - we craft a commit to the proposal, signed by bob
+    // - alice processes the commit expecting an error, and the error should be that the GCE is
+    //   invalid
     #[openmls_test]
     fn fail_unsupported_gces_add_valno1001() {
         let TestState { alice, mut bob }: TestState<Provider> = setup(ciphersuite);
