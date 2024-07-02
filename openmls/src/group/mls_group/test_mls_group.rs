@@ -1597,7 +1597,7 @@ mod group_context_extensions {
                         frankenstein::FrankenFramedContent {
                             group_id,
                             epoch,
-                            sender,
+                            sender: bob_sender,
                             authenticated_data,
                             body:
                                 frankenstein::FrankenFramedContentBody::Proposal(
@@ -1615,12 +1615,15 @@ mod group_context_extensions {
             unreachable!()
         };
 
+        assert_eq!(bob_sender, frankenstein::FrankenSender::Member(1));
+        let alice_sender = frankenstein::FrankenSender::Member(0);
+
         // Remove the extension type from the capabilities that is part of required capabilities
         assert_eq!(bob_franken_leaf_node.capabilities.extensions[1], 0xf002);
         bob_franken_leaf_node.capabilities.extensions.remove(1);
 
         // make it pass validation again
-        /*
+        /* I thought I need a distinct encryption_key, but that doesn't seem to be the case
                 bob_franken_leaf_node.encryption_key = {
                     let mut key = bob_franken_leaf_node.encryption_key.as_slice().to_vec();
 
@@ -1647,7 +1650,7 @@ mod group_context_extensions {
         let proposal_content = frankenstein::FrankenFramedContent {
             group_id: group_id.clone(),
             epoch,
-            sender: sender.clone(),
+            sender: bob_sender.clone(),
             authenticated_data: authenticated_data.clone(),
             body: frankenstein::FrankenFramedContentBody::Proposal(
                 frankenstein::FrankenProposal::Update(frankenstein::FrankenUpdateProposal {
@@ -1703,7 +1706,7 @@ mod group_context_extensions {
         let commit_content = frankenstein::FrankenFramedContent {
             group_id,
             epoch,
-            sender,
+            sender: alice_sender,
             authenticated_data,
             body: frankenstein::FrankenFramedContentBody::Commit(frankenstein::FrankenCommit {
                 proposals: vec![frankenstein::FrankenProposalOrRef::Reference(
@@ -1738,7 +1741,7 @@ mod group_context_extensions {
         )
         .unwrap();
 
-        let err = alice.fail_processing(fake_commit);
+        let err = bob.fail_processing(fake_commit);
 
         // Note: If this starts failing, the order in which validation is checked may have changed and we
         // fail on the fact that the confirmation tag is wrong. in that case, either the check has to be
@@ -1753,10 +1756,106 @@ mod group_context_extensions {
             "expected a different error, got: {err} ({err:#?})"
         );
     }
+
+    #[openmls_test]
+    fn fail_key_package_version_valno201() {
+        let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite);
+
+        let charlie = PartyState::<Provider>::generate("charlie", ciphersuite);
+        let charlie_key_package_bundle = charlie.key_package(ciphersuite, |b| b);
+        let charlie_key_package = charlie_key_package_bundle.key_package();
+
+        let (original_proposal, _) = alice.propose_add_member(charlie_key_package);
+
+        alice
+            .group
+            .clear_pending_proposals(alice.party.provider.storage())
+            .unwrap();
+
+        let Ok(frankenstein::FrankenMlsMessage {
+            version,
+            body:
+                frankenstein::FrankenMlsMessageBody::PublicMessage(frankenstein::FrankenPublicMessage {
+                    content:
+                        frankenstein::FrankenFramedContent {
+                            group_id,
+                            epoch,
+                            sender,
+                            authenticated_data,
+                            body:
+                                frankenstein::FrankenFramedContentBody::Proposal(
+                                    frankenstein::FrankenProposal::Add(
+                                        frankenstein::FrankenAddProposal { mut key_package },
+                                    ),
+                                ),
+                        },
+                    ..
+                }),
+        }) = frankenstein::FrankenMlsMessage::tls_deserialize(
+            &mut original_proposal
+                .tls_serialize_detached()
+                .unwrap()
+                .as_slice(),
+        )
+        else {
+            panic!("proposal message has unexpected format: {original_proposal:#?}")
+        };
+
+        key_package.protocol_version = 2;
+        key_package.resign(&charlie.signer);
+
+        let group_context = alice.group.export_group_context();
+        let membership_key = alice.group.group.message_secrets().membership_key();
+
+        let franken_commit_message = frankenstein::FrankenMlsMessage {
+            version,
+            body: frankenstein::FrankenMlsMessageBody::PublicMessage(
+                frankenstein::FrankenPublicMessage::auth(
+                    &alice.party.provider,
+                    ciphersuite,
+                    &alice.party.signer,
+                    frankenstein::FrankenFramedContent {
+                        group_id,
+                        epoch,
+                        sender,
+                        authenticated_data,
+                        body: frankenstein::FrankenFramedContentBody::Commit(
+                            frankenstein::FrankenCommit {
+                                proposals: vec![frankenstein::FrankenProposalOrRef::Proposal(
+                                    frankenstein::FrankenProposal::Add(
+                                        frankenstein::FrankenAddProposal { key_package },
+                                    ),
+                                )],
+                                path: None,
+                            },
+                        ),
+                    },
+                    Some(&group_context.clone().into()),
+                    Some(membership_key.as_slice()),
+                    // dummy value
+                    Some(vec![0; 32].into()),
+                ),
+            ),
+        };
+
+        let fake_commit_message = MlsMessageIn::tls_deserialize(
+            &mut franken_commit_message
+                .tls_serialize_detached()
+                .unwrap()
+                .as_slice(),
+        )
+        .unwrap();
+
+        let err = {
+            let validation_skip_handle = crate::skip_validation::checks::confirmation_tag::handle();
+            validation_skip_handle
+                .with_disabled(|| bob.fail_processing(fake_commit_message.clone()))
+        };
+
         assert!(matches!(
             err,
-            ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
-                ProposalValidationError::InsufficientCapabilities
+            ProcessMessageError::ValidationError(ValidationError::KeyPackageVerifyError(
+                KeyPackageVerifyError::InvalidProtocolVersion
             ))
         ));
     }
@@ -1888,7 +1987,7 @@ mod group_context_extensions {
                         frankenstein::FrankenFramedContent {
                             group_id,
                             epoch,
-                            sender,
+                            sender: bob_sender,
                             authenticated_data,
                             body:
                                 frankenstein::FrankenFramedContentBody::Proposal(
@@ -1933,7 +2032,7 @@ mod group_context_extensions {
                     frankenstein::FrankenFramedContent {
                         group_id,
                         epoch,
-                        sender,
+                        sender: bob_sender,
                         authenticated_data,
                         body: frankenstein::FrankenFramedContentBody::Proposal(
                             frankenstein::FrankenProposal::GroupContextExtensions(gces),
