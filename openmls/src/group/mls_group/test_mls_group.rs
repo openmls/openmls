@@ -1464,8 +1464,22 @@ mod group_context_extensions {
         bob.process_and_store_proposal(gce_req_cap_proposal.clone().into());
         bob.process_and_merge_commit(gce_req_cap_commit.clone().into());
 
-        let frankenstein::FrankenMlsMessageBody::PublicMessage(franken_commit) =
-            frankenstein::FrankenMlsMessage::from(gce_req_cap_commit).body
+        // extract values we need later
+        let frankenstein::FrankenMlsMessage {
+            version,
+            body:
+                frankenstein::FrankenMlsMessageBody::PublicMessage(frankenstein::FrankenPublicMessage {
+                    content:
+                        frankenstein::FrankenFramedContent {
+                            group_id,
+                            epoch: gce_commit_epoch,
+                            sender,
+                            authenticated_data,
+                            ..
+                        },
+                    ..
+                }),
+        } = frankenstein::FrankenMlsMessage::from(gce_req_cap_commit)
         else {
             unreachable!()
         };
@@ -1480,10 +1494,6 @@ mod group_context_extensions {
         });
 
         let commit_content = frankenstein::FrankenFramedContent {
-            group_id: alice.group.group_id().as_slice().into(),
-            epoch: alice.group.epoch().as_u64(),
-            sender: franken_commit.content.sender.clone(),
-            authenticated_data: franken_commit.content.authenticated_data.clone(),
             body: frankenstein::FrankenFramedContentBody::Commit(frankenstein::FrankenCommit {
                 proposals: vec![frankenstein::FrankenProposalOrRef::Proposal(
                     frankenstein::FrankenProposal::Add(frankenstein::FrankenAddProposal {
@@ -1492,6 +1502,10 @@ mod group_context_extensions {
                 )],
                 path: None,
             }),
+            group_id,
+            epoch: gce_commit_epoch + 1,
+            sender,
+            authenticated_data,
         };
 
         let group_context = alice.group.export_group_context().clone();
@@ -1505,20 +1519,20 @@ mod group_context_extensions {
         let secrets = alice.group.group.message_secrets();
         let membership_key = secrets.membership_key().as_slice();
 
-        let franken_commit = frankenstein::FrankenPublicMessage::auth(
-            &alice.party.provider,
-            ciphersuite,
-            &alice.party.signer,
-            commit_content,
-            Some(&group_context.into()),
-            Some(membership_key),
-            // this is a dummy confirmation_tag:
-            Some(vec![0u8; 32].into()),
-        );
-
         let franken_commit = frankenstein::FrankenMlsMessage {
-            version: 1,
-            body: frankenstein::FrankenMlsMessageBody::PublicMessage(franken_commit),
+            version,
+            body: frankenstein::FrankenMlsMessageBody::PublicMessage(
+                frankenstein::FrankenPublicMessage::auth(
+                    &alice.party.provider,
+                    ciphersuite,
+                    &alice.party.signer,
+                    commit_content,
+                    Some(&group_context.into()),
+                    Some(membership_key),
+                    // this is a dummy confirmation_tag:
+                    Some(vec![0u8; 32].into()),
+                ),
+            ),
         };
 
         let fake_commit = MlsMessageIn::tls_deserialize(
@@ -1530,12 +1544,15 @@ mod group_context_extensions {
         // fail on the fact that the confirmation tag is wrong. in that case, either the check has to be
         // disabled, or the frankenstein framework needs code to properly commpute it.
         let err = bob.fail_processing(fake_commit);
-        assert!(matches!(
-            err,
-            ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
-                ProposalValidationError::InsufficientCapabilities
-            ))
-        ));
+        assert!(
+            matches!(
+                err,
+                ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
+                    ProposalValidationError::InsufficientCapabilities
+                ))
+            ),
+            "got wrong error: {err:#?}"
+        );
     }
 
     // this currently doesn't work because of an issue with the conversion using the frankenstein
