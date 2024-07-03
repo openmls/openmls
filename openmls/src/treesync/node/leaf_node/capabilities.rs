@@ -93,7 +93,10 @@ impl Capabilities {
         }
     }
 
-    /// Creates a new [`CapabilitiesBuilder`] for constructing a [`Capabilities`]
+    // XXX: I don't know why rustdoc thinks the builder is private (it's pub), but let's just work
+    // around the problem here
+    #[allow(rustdoc::private_intra_doc_links)]
+    /// Creates a new [`CapabilitiesBuilder`] for constructing [`Capabilities`]
     pub fn builder() -> CapabilitiesBuilder {
         CapabilitiesBuilder(Self::default())
     }
@@ -180,6 +183,7 @@ impl Capabilities {
 }
 
 /// A helper for building [`Capabilities`]
+#[derive(Debug, Clone)]
 pub struct CapabilitiesBuilder(Capabilities);
 
 impl CapabilitiesBuilder {
