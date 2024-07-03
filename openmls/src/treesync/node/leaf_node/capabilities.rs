@@ -93,6 +93,7 @@ impl Capabilities {
         }
     }
 
+    /// Creates a new [`CapabilitiesBuilder`] for constructing a [`Capabilities`]
     pub fn builder() -> CapabilitiesBuilder {
         CapabilitiesBuilder(Self::default())
     }
@@ -178,13 +179,16 @@ impl Capabilities {
     }
 }
 
+/// A helper for building [`Capabilities`]
 pub struct CapabilitiesBuilder(Capabilities);
 
 impl CapabilitiesBuilder {
+    /// Sets the `versions` field on the [`Capabilities`].
     pub fn versions(self, versions: Vec<ProtocolVersion>) -> Self {
         Self(Capabilities { versions, ..self.0 })
     }
 
+    /// Sets the `ciphersuites` field on the [`Capabilities`].
     pub fn ciphersuites(self, ciphersuites: Vec<Ciphersuite>) -> Self {
         let ciphersuites = ciphersuites.into_iter().map(|cs| cs.into()).collect();
 
@@ -194,6 +198,7 @@ impl CapabilitiesBuilder {
         })
     }
 
+    /// Sets the `extensions` field on the [`Capabilities`].
     pub fn extensions(self, extensions: Vec<ExtensionType>) -> Self {
         Self(Capabilities {
             extensions,
@@ -201,6 +206,7 @@ impl CapabilitiesBuilder {
         })
     }
 
+    /// Sets the `proposals` field on the [`Capabilities`].
     pub fn proposals(self, proposals: Vec<ProposalType>) -> Self {
         Self(Capabilities {
             proposals,
@@ -208,6 +214,7 @@ impl CapabilitiesBuilder {
         })
     }
 
+    /// Sets the `credentials` field on the [`Capabilities`].
     pub fn credentials(self, credentials: Vec<CredentialType>) -> Self {
         Self(Capabilities {
             credentials,
@@ -215,6 +222,7 @@ impl CapabilitiesBuilder {
         })
     }
 
+    /// Builds the [`Capabilities`].
     pub fn build(self) -> Capabilities {
         self.0
     }
