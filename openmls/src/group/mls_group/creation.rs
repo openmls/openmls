@@ -90,10 +90,8 @@ impl MlsGroup {
         // Prepare the commit parameters
         let framing_parameters = FramingParameters::new(aad, WireFormat::PublicMessage);
 
-        let proposal_store = ProposalStore::new();
         let params = CreateCommitParams::builder()
             .framing_parameters(framing_parameters)
-            .proposal_store(&proposal_store)
             .credential_with_key(credential_with_key)
             .build();
         let (mut group, create_commit_result) = CoreGroup::join_by_external_commit(

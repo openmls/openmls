@@ -348,7 +348,6 @@ fn test_valsem201() {
 
         let params = CreateCommitParams::builder()
             .framing_parameters(alice_group.framing_parameters())
-            .proposal_store(alice_group.proposal_store())
             // has to be turned off otherwise commit path is always present
             .force_self_update(false)
             .build();

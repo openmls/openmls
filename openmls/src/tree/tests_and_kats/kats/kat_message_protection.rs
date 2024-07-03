@@ -268,18 +268,18 @@ pub fn run_test_vector(
             .create_add_proposal(framing_parameters, bob_key_package.clone(), &signer)
             .expect("Could not create proposal.");
 
-        let proposal_store = ProposalStore::from_queued_proposal(
+        group.proposal_store_mut().empty();
+        group.proposal_store_mut().add(
             QueuedProposal::from_authenticated_content_by_ref(
                 ciphersuite,
                 provider.crypto(),
                 bob_add_proposal,
             )
-            .expect("Could not create QueuedProposal."),
+            .unwrap(),
         );
 
         let params = CreateCommitParams::builder()
             .framing_parameters(framing_parameters)
-            .proposal_store(&proposal_store)
             .force_self_update(false)
             .build();
 

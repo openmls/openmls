@@ -374,7 +374,7 @@ impl CoreGroup {
                     .into());
                 }
 
-                // store the updated group state
+                // Store the updated group state
                 let storage = provider.storage();
                 let group_id = self.group_id();
 
@@ -400,6 +400,9 @@ impl CoreGroup {
                         .delete(storage)
                         .map_err(MergeCommitError::StorageError)?;
                 }
+
+                // Empty the proposal store
+                self.proposal_store_mut().empty();
 
                 Ok(Some(message_secrets))
             }

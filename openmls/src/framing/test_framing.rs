@@ -10,11 +10,7 @@ use crate::{
     ciphersuite::signable::{Signable, SignatureError},
     extensions::Extensions,
     framing::*,
-    group::{
-        core_group::proposals::{ProposalStore, QueuedProposal},
-        errors::*,
-        CreateCommitParams,
-    },
+    group::{core_group::proposals::QueuedProposal, errors::*, CreateCommitParams},
     key_packages::{test_key_packages::key_package, KeyPackageBundle},
     schedule::psk::{store::ResumptionPskStore, PskSecret},
     storage::OpenMlsProvider,
@@ -437,18 +433,18 @@ fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider:
         )
         .expect("Could not create proposal.");
 
-    *group_alice.proposal_store_mut() = ProposalStore::from_queued_proposal(
+    group_alice.proposal_store_mut().empty();
+    group_alice.proposal_store_mut().add(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
             alice_provider.crypto(),
             bob_add_proposal,
         )
-        .expect("Could not create QueuedProposal."),
+        .unwrap(),
     );
 
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .proposal_store(group_alice.proposal_store())
         .force_self_update(false)
         .build();
     let create_commit_result = group_alice
@@ -493,7 +489,6 @@ fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider:
 
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .proposal_store(group_alice.proposal_store())
         .force_self_update(false)
         .build();
     let create_commit_result = group_alice
@@ -542,7 +537,6 @@ fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider:
 
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .proposal_store(group_alice.proposal_store())
         .force_self_update(false)
         .build();
     let create_commit_result = group_alice
@@ -607,11 +601,8 @@ fn confirmation_tag_presence<Provider: OpenMlsProvider>() {
         setup_alice_bob_group(ciphersuite, provider);
 
     // Alice does an update
-    let proposal_store = ProposalStore::default();
-
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .proposal_store(&proposal_store)
         .force_self_update(true)
         .build();
     let mut create_commit_result = group_alice
@@ -674,18 +665,18 @@ pub(crate) fn setup_alice_bob_group<Provider: OpenMlsProvider>(
         )
         .expect("Could not create proposal.");
 
-    let proposal_store = ProposalStore::from_queued_proposal(
+    group_alice.proposal_store_mut().empty();
+    group_alice.proposal_store_mut().add(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
             provider.crypto(),
             bob_add_proposal,
         )
-        .expect("Could not create QueuedProposal."),
+        .unwrap(),
     );
 
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
 

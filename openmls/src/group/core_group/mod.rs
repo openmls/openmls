@@ -860,7 +860,7 @@ impl CoreGroup {
             ciphersuite,
             provider.crypto(),
             sender.clone(),
-            params.proposal_store(),
+            self.proposal_store(),
             params.inline_proposals(),
             self.own_leaf_index(),
         )

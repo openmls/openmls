@@ -13,7 +13,7 @@ use crate::{
 };
 use openmls_traits::prelude::*;
 
-use super::{proposals::ProposalStore, CoreGroup};
+use super::CoreGroup;
 
 #[openmls_test::openmls_test]
 fn test_external_init() {
@@ -36,10 +36,8 @@ fn test_external_init() {
         .unwrap()
         .into_verifiable_group_info();
 
-    let proposal_store = ProposalStore::new();
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .proposal_store(&proposal_store)
         .credential_with_key(charlie_credential)
         .build();
     let (mut group_charly, create_commit_result) = CoreGroup::join_by_external_commit(
@@ -84,7 +82,6 @@ fn test_external_init() {
     // Check if charly can create valid commits
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .proposal_store(&proposal_store)
         .build();
     let create_commit_result = group_charly
         .create_commit(params, provider, &charlie_signer)
@@ -111,10 +108,8 @@ fn test_external_init() {
         .into_verifiable_group_info();
     let ratchet_tree = group_alice.public_group().export_ratchet_tree();
 
-    let proposal_store = ProposalStore::new();
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .proposal_store(&proposal_store)
         .credential_with_key(bob_credential_with_key)
         .build();
     let (mut new_group_bob, create_commit_result) = CoreGroup::join_by_external_commit(
@@ -194,10 +189,8 @@ fn test_external_init_single_member_group() {
         .into_verifiable_group_info();
     let ratchet_tree = group_alice.public_group().export_ratchet_tree();
 
-    let proposal_store = ProposalStore::new();
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .proposal_store(&proposal_store)
         .credential_with_key(charly_credential)
         .build();
     let (mut group_charly, create_commit_result) = CoreGroup::join_by_external_commit(
@@ -256,10 +249,8 @@ fn test_external_init_broken_signature() {
         verifiable_group_info
     };
 
-    let proposal_store = ProposalStore::new();
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .proposal_store(&proposal_store)
         .build();
 
     let result = CoreGroup::join_by_external_commit(

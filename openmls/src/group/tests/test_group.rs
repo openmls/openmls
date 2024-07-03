@@ -53,18 +53,18 @@ fn create_commit_optional_path(
         )
         .expect("Could not create proposal.");
 
-    let mut proposal_store = ProposalStore::from_queued_proposal(
+    group_alice.proposal_store_mut().empty();
+    group_alice.proposal_store_mut().add(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
             provider.crypto(),
             bob_add_proposal,
         )
-        .expect("Could not create QueuedProposal."),
+        .unwrap(),
     );
 
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .proposal_store(&proposal_store)
         .build();
     let create_commit_result = match group_alice.create_commit(
         params, /* No PSK fetcher */
@@ -92,19 +92,18 @@ fn create_commit_optional_path(
         )
         .expect("Could not create proposal.");
 
-    proposal_store.empty();
-    proposal_store.add(
+    group_alice.proposal_store_mut().empty();
+    group_alice.proposal_store_mut().add(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
             provider.crypto(),
             bob_add_proposal,
         )
-        .expect("Could not create QueuedProposal."),
+        .unwrap(),
     );
 
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
     let create_commit_result =
@@ -161,20 +160,19 @@ fn create_commit_optional_path(
         )
         .expect("Could not create proposal.");
 
-    proposal_store.empty();
-    proposal_store.add(
+    group_alice.proposal_store_mut().empty();
+    group_alice.proposal_store_mut().add(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
             provider.crypto(),
             alice_update_proposal,
         )
-        .expect("Could not create QueuedProposal."),
+        .unwrap(),
     );
 
     // Only UpdateProposal
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
     let create_commit_result =
@@ -218,7 +216,7 @@ fn basic_group_setup() {
     );
 
     // Alice creates a group
-    let group_alice = CoreGroup::builder(
+    let mut group_alice = CoreGroup::builder(
         GroupId::random(provider.rand()),
         ciphersuite,
         alice_credential_with_keys.credential_with_key,
@@ -235,18 +233,18 @@ fn basic_group_setup() {
         )
         .expect("Could not create proposal.");
 
-    let proposal_store = ProposalStore::from_queued_proposal(
+    group_alice.proposal_store_mut().empty();
+    group_alice.proposal_store_mut().add(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
             provider.crypto(),
             bob_add_proposal,
         )
-        .expect("Could not create QueuedProposal."),
+        .unwrap(),
     );
 
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .proposal_store(&proposal_store)
         .build();
     let _commit = match group_alice.create_commit(
         params, /* PSK fetcher */
@@ -313,18 +311,18 @@ fn group_operations() {
         )
         .expect("Could not create proposal.");
 
-    let mut proposal_store = ProposalStore::from_queued_proposal(
+    group_alice.proposal_store_mut().empty();
+    group_alice.proposal_store_mut().add(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
             provider.crypto(),
             bob_add_proposal,
         )
-        .expect("Could not create QueuedProposal."),
+        .unwrap(),
     );
 
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
     let create_commit_result = group_alice
@@ -427,19 +425,18 @@ fn group_operations() {
         )
         .expect("Could not create proposal.");
 
-    proposal_store.empty();
-    proposal_store.add(
+    group_bob.proposal_store_mut().empty();
+    group_bob.proposal_store_mut().add(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
             provider.crypto(),
             update_proposal_bob,
         )
-        .expect("Could not create QueuedProposal."),
+        .unwrap(),
     );
 
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
     let create_commit_result =
@@ -494,19 +491,18 @@ fn group_operations() {
         )
         .expect("Could not create proposal.");
 
-    proposal_store.empty();
-    proposal_store.add(
+    group_alice.proposal_store_mut().empty();
+    group_alice.proposal_store_mut().add(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
             provider.crypto(),
             update_proposal_alice,
         )
-        .expect("Could not create QueuedProposal."),
+        .unwrap(),
     );
 
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
     let create_commit_result = match group_alice.create_commit(
@@ -557,19 +553,18 @@ fn group_operations() {
         )
         .expect("Could not create proposal.");
 
-    proposal_store.empty();
-    proposal_store.add(
+    group_alice.proposal_store_mut().empty();
+    group_alice.proposal_store_mut().add(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
             provider.crypto(),
             update_proposal_bob.clone(),
         )
-        .expect("Could not create QueuedProposal."),
+        .unwrap(),
     );
 
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
     let create_commit_result =
@@ -651,7 +646,6 @@ fn group_operations() {
 
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .proposal_store(group_bob.proposal_store())
         .force_self_update(false)
         .build();
     let create_commit_result =
@@ -791,19 +785,18 @@ fn group_operations() {
         )
         .expect("Could not create proposal.");
 
-    proposal_store.empty();
-    proposal_store.add(
+    group_charlie.proposal_store_mut().empty();
+    group_charlie.proposal_store_mut().add(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
             provider.crypto(),
             update_proposal_charlie,
         )
-        .expect("Could not create QueuedProposal."),
+        .unwrap(),
     );
 
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
     let create_commit_result =
@@ -873,7 +866,6 @@ fn group_operations() {
 
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .proposal_store(group_alice.proposal_store())
         .force_self_update(false)
         .build();
     let create_commit_result = match group_charlie.create_commit(

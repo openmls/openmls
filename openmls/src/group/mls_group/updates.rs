@@ -35,7 +35,6 @@ impl MlsGroup {
 
         let params = CreateCommitParams::builder()
             .framing_parameters(self.framing_parameters())
-            .proposal_store(self.proposal_store())
             .build();
         // Create Commit over all proposals.
         // TODO #751

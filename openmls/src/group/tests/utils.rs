@@ -186,9 +186,8 @@ pub(crate) fn setup(
             }
             // Create the commit based on the previously compiled list of
             // proposals.
-            let mut proposal_store = ProposalStore::new();
             for proposal in proposal_list {
-                proposal_store.add(
+                core_group.proposal_store_mut().add(
                     QueuedProposal::from_authenticated_content_by_ref(
                         group_config.ciphersuite,
                         provider.crypto(),
@@ -199,7 +198,6 @@ pub(crate) fn setup(
             }
             let params = CreateCommitParams::builder()
                 .framing_parameters(framing_parameters)
-                .proposal_store(&proposal_store)
                 .build();
             let create_commit_result = core_group
                 .create_commit(params, provider, &credential_with_key_and_signer.signer)

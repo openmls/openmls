@@ -121,7 +121,6 @@ impl CoreGroup {
 
         let params = CreateCommitParams::builder()
             .framing_parameters(*params.framing_parameters())
-            .proposal_store(params.proposal_store())
             .inline_proposals(inline_proposals)
             .commit_type(CommitType::External)
             .credential_with_key(params_credential_with_key)
