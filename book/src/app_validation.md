@@ -36,6 +36,18 @@
 >
 > -- [RFC9420, Section 5.3.3](https://www.rfc-editor.org/rfc/rfc9420.html#section-5.3.3-6)
 
+## LeafNode Validation
+
+### Specifying the Maximum Total Acceptable Lifetime
+
+> Applications MUST define a maximum total lifetime that is acceptable for a
+> LeafNode, and reject any LeafNode where the total lifetime is longer than this
+> duration. In order to avoid disagreements about whether a LeafNode has a valid
+> lifetime, the clients in a group SHOULD maintain time synchronization (e.g.,
+> using the Network Time Protocol [RFC5905]).
+>
+> -- [RFC9420, Section 7.2](https://www.rfc-editor.org/rfc/rfc9420.html#section-7.2-10)
+
 ## PrivateMessage Validation
 
 ### Structure of AAD is Application-Defined
