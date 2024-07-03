@@ -1978,7 +1978,7 @@ mod group_context_extensions {
     //   invalid
     #[openmls_test]
     fn fail_unsupported_gces_add_valno1001() {
-        let TestState { alice, mut bob }: TestState<Provider> = setup(ciphersuite);
+        let TestState { mut alice, mut bob }: TestState<Provider> = setup(ciphersuite);
 
         // No required capabilities, so no specifically required extensions.
         assert!(alice
@@ -2055,8 +2055,13 @@ mod group_context_extensions {
                         epoch,
                         sender: bob_sender,
                         authenticated_data,
-                        body: frankenstein::FrankenFramedContentBody::Proposal(
-                            frankenstein::FrankenProposal::GroupContextExtensions(gces),
+                        body: frankenstein::FrankenFramedContentBody::Commit(
+                            frankenstein::FrankenCommit {
+                                proposals: vec![frankenstein::FrankenProposalOrRef::Proposal(
+                                    frankenstein::FrankenProposal::GroupContextExtensions(gces),
+                                )],
+                                path: None,
+                            },
                         ),
                     },
                     Some(&group_context.into()),
@@ -2077,7 +2082,7 @@ mod group_context_extensions {
 
         let err = {
             let validation_skip_handle = crate::skip_validation::checks::confirmation_tag::handle();
-            validation_skip_handle.with_disabled(|| bob.fail_processing(fake_commit.clone()))
+            validation_skip_handle.with_disabled(|| alice.fail_processing(fake_commit.clone()))
         };
 
         assert!(
