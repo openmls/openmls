@@ -1563,6 +1563,117 @@ mod group_context_extensions {
         );
     }
 
+    #[openmls_test]
+    fn self_update_happy_case() {
+        let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite);
+
+        let (update_prop, _) = bob
+            .group
+            .propose_self_update(
+                &bob.party.provider,
+                &bob.party.signer,
+                bob.group.own_leaf_node().cloned(),
+            )
+            .unwrap();
+        alice.process_and_store_proposal(update_prop.into());
+        let (commit, _, _) = alice.commit_and_merge_pending();
+        bob.process_and_merge_commit(commit.into())
+    }
+
+    // This test does the same as self_update_happy_case, but does not use MemberState, so we can
+    // can exactly see which calls to OpenMLS are done
+    #[openmls_test]
+    fn self_update_happy_case_simple() {
+        let alice_party = PartyState::<Provider>::generate("alice", ciphersuite);
+        let bob_party = PartyState::<Provider>::generate("bob", ciphersuite);
+
+        // === Alice creates a group ===
+        let mut alice_group = MlsGroup::builder()
+            .ciphersuite(ciphersuite)
+            .with_wire_format_policy(WireFormatPolicy::new(
+                OutgoingWireFormatPolicy::AlwaysPlaintext,
+                IncomingWireFormatPolicy::Mixed,
+            ))
+            .build(
+                &alice_party.provider,
+                &alice_party.signer,
+                alice_party.credential_with_key.clone(),
+            )
+            .expect("error creating group using builder");
+
+        // === Alice adds Bob ===
+        let bob_key_package = bob_party.key_package(ciphersuite, |builder| builder);
+
+        alice_group
+            .propose_add_member(
+                &alice_party.provider,
+                &alice_party.signer,
+                bob_key_package.key_package(),
+            )
+            .unwrap();
+
+        let (_, Some(welcome), _) = alice_group
+            .commit_to_pending_proposals(&alice_party.provider, &alice_party.signer)
+            .unwrap()
+        else {
+            panic!("expected receiving a welcome")
+        };
+
+        alice_group
+            .merge_pending_commit(&alice_party.provider)
+            .unwrap();
+
+        let welcome: MlsMessageIn = welcome.into();
+        let welcome = welcome
+            .into_welcome()
+            .expect("expected message to be a welcome");
+
+        let mut bob_group = StagedWelcome::new_from_welcome(
+            &bob_party.provider,
+            alice_group.configuration(),
+            welcome,
+            Some(alice_group.export_ratchet_tree().into()),
+        )
+        .expect("Error creating staged join from Welcome")
+        .into_group(&bob_party.provider)
+        .expect("Error creating group from staged join");
+
+        let (update_proposal_msg, _) = bob_group
+            .propose_self_update(
+                &bob_party.provider,
+                &bob_party.signer,
+                bob_group.own_leaf_node().cloned(),
+            )
+            .unwrap();
+
+        let ProcessedMessageContent::ProposalMessage(update_proposal) = alice_group
+            .process_message(
+                &alice_party.provider,
+                update_proposal_msg.clone().into_protocol_message().unwrap(),
+            )
+            .unwrap()
+            .into_content()
+        else {
+            panic!("expected a proposal, got {update_proposal_msg:?}");
+        };
+        alice_group
+            .store_pending_proposal(alice_party.provider.storage(), *update_proposal)
+            .unwrap();
+
+        let (commit_msg, _, _) = alice_group
+            .commit_to_pending_proposals(&alice_party.provider, &alice_party.signer)
+            .unwrap();
+
+        bob_group
+            .process_message(
+                &bob_party.provider,
+                commit_msg.into_protocol_message().unwrap(),
+            )
+            .unwrap();
+
+        bob_group.merge_pending_commit(&bob_party.provider).unwrap()
+    }
+
     // this currently doesn't work because of an issue with the conversion using the frankenstein
     // framework. I don't have time do debug this now.
     //
