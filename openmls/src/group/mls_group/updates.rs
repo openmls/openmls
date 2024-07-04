@@ -1,7 +1,10 @@
 use core_group::create_commit_params::CreateCommitParams;
 use openmls_traits::{signatures::Signer, storage::StorageProvider as _};
 
-use crate::{messages::group_info::GroupInfo, storage::OpenMlsProvider, treesync::LeafNode};
+use crate::{
+    credentials::CredentialWithKey, messages::group_info::GroupInfo, storage::OpenMlsProvider,
+    treesync::LeafNode,
+};
 
 use super::*;
 
@@ -89,27 +92,30 @@ impl MlsGroup {
             .leaf(self.own_leaf_index())
             .ok_or_else(|| LibraryError::custom("The tree is broken. Couldn't find own leaf."))?
             .clone();
-        if let Some(leaf) = leaf_node {
-            own_leaf.update_and_re_sign(
-                None,
-                leaf,
-                self.group_id().clone(),
-                self.own_leaf_index(),
-                signer,
-            )?
+        let (credential_with_key, capabilities, extensions) = if let Some(leaf) = leaf_node {
+            let credential_with_key = CredentialWithKey {
+                credential: leaf.credential().clone(),
+                signature_key: leaf.signature_key().clone(),
+            };
+            (
+                Some(credential_with_key),
+                Some(leaf.capabilities().clone()),
+                Some(leaf.extensions().clone()),
+            )
         } else {
-            let keypair = own_leaf.rekey(
-                self.group_id(),
-                self.own_leaf_index(),
-                self.ciphersuite(),
-                provider,
-                signer,
-            )?;
-            // TODO #1207: Move to the top of the function.
-            keypair
-                .write(provider.storage())
-                .map_err(ProposeSelfUpdateError::StorageError)?;
+            (None, None, None)
         };
+
+        own_leaf.update(
+            self.ciphersuite(),
+            provider,
+            signer,
+            self.group_id().clone(),
+            self.own_leaf_index(),
+            credential_with_key,
+            capabilities,
+            extensions,
+        )?;
 
         let update_proposal = self.group.create_update_proposal(
             self.framing_parameters(),

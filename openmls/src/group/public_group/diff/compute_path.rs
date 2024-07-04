@@ -76,8 +76,16 @@ impl<'a> PublicGroupDiff<'a> {
                 .diff
                 .leaf_mut(leaf_index)
                 .ok_or_else(|| LibraryError::custom("Unable to get own leaf from diff"))?;
-            let encryption_keypair =
-                own_diff_leaf.rekey(&group_id, leaf_index, ciphersuite, provider, signer)?;
+            let encryption_keypair = own_diff_leaf.update(
+                ciphersuite,
+                provider,
+                signer,
+                group_id.clone(),
+                leaf_index,
+                None,
+                None,
+                None,
+            )?;
             vec![encryption_keypair]
         };
 

@@ -4,7 +4,7 @@ use tests::utils::{generate_credential_with_key, generate_key_package};
 use crate::{
     ciphersuite::signable::Verifiable, framing::*, group::*, key_packages::*,
     schedule::psk::store::ResumptionPskStore, test_utils::*,
-    tree::sender_ratchet::SenderRatchetConfiguration, treesync::node::leaf_node::TreeInfoTbs, *,
+    tree::sender_ratchet::SenderRatchetConfiguration, *,
 };
 
 #[openmls_test::openmls_test]
@@ -143,14 +143,17 @@ fn create_commit_optional_path(
     );
 
     // Alice updates
-    let alice_new_leaf_node = group_alice
-        .own_leaf_node()
-        .unwrap()
-        .updated(
+    let mut alice_new_leaf_node = group_alice.own_leaf_node().unwrap().clone();
+    alice_new_leaf_node
+        .update(
             ciphersuite,
-            TreeInfoTbs::Update(group_alice.own_tree_position()),
             provider,
             &alice_credential_with_keys.signer,
+            group_alice.group_id().clone(),
+            group_alice.own_leaf_index(),
+            None,
+            None,
+            None,
         )
         .unwrap();
     let alice_update_proposal = group_alice
@@ -408,14 +411,17 @@ fn group_operations() {
             FramedContentBodyIn::Application(message) if message.as_slice() == &message_alice[..]));
 
     // === Bob updates and commits ===
-    let bob_new_leaf_node = group_bob
-        .own_leaf_node()
-        .unwrap()
-        .updated(
+    let mut bob_new_leaf_node = group_bob.own_leaf_node().unwrap().clone();
+    bob_new_leaf_node
+        .update(
             ciphersuite,
-            TreeInfoTbs::Update(group_bob.own_tree_position()),
             provider,
-            &alice_credential_with_keys.signer,
+            &bob_credential_with_keys.signer,
+            group_bob.group_id().clone(),
+            group_bob.own_leaf_index(),
+            None,
+            None,
+            None,
         )
         .unwrap();
 
@@ -475,14 +481,17 @@ fn group_operations() {
     );
 
     // === Alice updates and commits ===
-    let alice_new_leaf_node = group_alice
-        .own_leaf_node()
-        .unwrap()
-        .updated(
+    let mut alice_new_leaf_node = group_alice.own_leaf_node().unwrap().clone();
+    alice_new_leaf_node
+        .update(
             ciphersuite,
-            TreeInfoTbs::Update(group_alice.own_tree_position()),
             provider,
             &alice_credential_with_keys.signer,
+            group_alice.group_id().clone(),
+            group_alice.own_leaf_index(),
+            None,
+            None,
+            None,
         )
         .unwrap();
 
@@ -538,14 +547,17 @@ fn group_operations() {
     );
 
     // === Bob updates and Alice commits ===
-    let bob_new_leaf_node = group_bob
-        .own_leaf_node()
-        .unwrap()
-        .updated(
+    let mut bob_new_leaf_node = group_bob.own_leaf_node().unwrap().clone();
+    bob_new_leaf_node
+        .update(
             ciphersuite,
-            TreeInfoTbs::Update(group_bob.own_tree_position()),
             provider,
             &bob_credential_with_keys.signer,
+            group_bob.group_id().clone(),
+            group_bob.own_leaf_index(),
+            None,
+            None,
+            None,
         )
         .unwrap();
 
@@ -768,14 +780,17 @@ fn group_operations() {
         FramedContentBodyIn::Application(message) if message.as_slice() == &message_charlie[..]));
 
     // === Charlie updates and commits ===
-    let charlie_new_leaf_node = group_charlie
-        .own_leaf_node()
-        .unwrap()
-        .updated(
+    let mut charlie_new_leaf_node = group_bob.own_leaf_node().unwrap().clone();
+    charlie_new_leaf_node
+        .update(
             ciphersuite,
-            TreeInfoTbs::Update(group_charlie.own_tree_position()),
             provider,
             &charlie_credential_with_keys.signer,
+            group_charlie.group_id().clone(),
+            group_charlie.own_leaf_index(),
+            None,
+            None,
+            None,
         )
         .unwrap();
 

@@ -12,7 +12,7 @@ use crate::{
     messages::{group_info::GroupInfoTBS, *},
     schedule::psk::{store::ResumptionPskStore, ExternalPsk, PreSharedKeyId, Psk},
     test_utils::*,
-    treesync::{errors::ApplyUpdatePathError, node::leaf_node::TreeInfoTbs},
+    treesync::errors::ApplyUpdatePathError,
 };
 
 pub(crate) fn setup_alice_group(
@@ -184,22 +184,22 @@ fn test_update_path() {
     ) = test_framing::setup_alice_bob_group(ciphersuite, provider);
 
     // === Bob updates and commits ===
-    let bob_old_leaf = group_bob.own_leaf_node().unwrap();
-    let bob_update_leaf_node = bob_old_leaf
-        .updated(
+    let mut bob_new_leaf_node = group_bob.own_leaf_node().unwrap().clone();
+    bob_new_leaf_node
+        .update(
             ciphersuite,
-            TreeInfoTbs::Update(group_bob.own_tree_position()),
             provider,
             &bob_signature_keys,
+            group_bob.group_id().clone(),
+            group_bob.own_leaf_index(),
+            None,
+            None,
+            None,
         )
         .unwrap();
 
     let update_proposal_bob = group_bob
-        .create_update_proposal(
-            framing_parameters,
-            bob_update_leaf_node,
-            &bob_signature_keys,
-        )
+        .create_update_proposal(framing_parameters, bob_new_leaf_node, &bob_signature_keys)
         .expect("Could not create proposal.");
     let proposal_store = ProposalStore::from_queued_proposal(
         QueuedProposal::from_authenticated_content_by_ref(
@@ -390,22 +390,22 @@ fn test_psks() {
     .expect("Could not create new group from Welcome");
 
     // === Bob updates and commits ===
-    let bob_old_leaf = group_bob.own_leaf_node().unwrap();
-    let bob_update_leaf_node = bob_old_leaf
-        .updated(
+    let mut bob_new_leaf_node = group_bob.own_leaf_node().unwrap().clone();
+    bob_new_leaf_node
+        .update(
             ciphersuite,
-            TreeInfoTbs::Update(group_bob.own_tree_position()),
             provider,
             &bob_signature_keys,
+            group_bob.group_id().clone(),
+            group_bob.own_leaf_index(),
+            None,
+            None,
+            None,
         )
         .unwrap();
 
     let update_proposal_bob = group_bob
-        .create_update_proposal(
-            framing_parameters,
-            bob_update_leaf_node,
-            &bob_signature_keys,
-        )
+        .create_update_proposal(framing_parameters, bob_new_leaf_node, &bob_signature_keys)
         .expect("Could not create proposal.");
     let proposal_store = ProposalStore::from_queued_proposal(
         QueuedProposal::from_authenticated_content_by_ref(

@@ -11,11 +11,12 @@ use crate::{
     error::LibraryError,
     extensions::errors::{ExtensionError, InvalidExtensionError},
     framing::errors::MessageDecryptionError,
-    key_packages::errors::KeyPackageVerifyError,
-    key_packages::errors::{KeyPackageExtensionSupportError, KeyPackageNewError},
+    key_packages::errors::{
+        KeyPackageExtensionSupportError, KeyPackageNewError, KeyPackageVerifyError,
+    },
     messages::{group_info::GroupInfoError, GroupSecretsError},
     schedule::errors::PskError,
-    treesync::errors::*,
+    treesync::{errors::*, node::leaf_node::LeafNodeUpdateError},
 };
 
 /// Welcome error
@@ -249,6 +250,9 @@ pub enum CreateCommitError<StorageError> {
     GroupContextExtensionsProposalValidationError(
         #[from] GroupContextExtensionsProposalValidationError,
     ),
+    /// See [`LeafNodeUpdateError`] for more details.
+    #[error(transparent)]
+    LeafNodeUpdateError(#[from] LeafNodeUpdateError<StorageError>),
 }
 
 /// Validation error

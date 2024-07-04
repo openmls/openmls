@@ -1,13 +1,11 @@
 //! This module contains the [`LeafNode`] struct and its implementation.
 use openmls_traits::{signatures::Signer, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 use tls_codec::{
     Serialize as TlsSerializeTrait, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
     VLBytes,
 };
-
-#[cfg(test)]
-use thiserror::Error;
 
 use super::encryption_keys::{EncryptionKey, EncryptionKeyPair};
 use crate::{
@@ -23,7 +21,6 @@ use crate::{
     key_packages::{KeyPackage, Lifetime},
     prelude::KeyPackageBundle,
     storage::OpenMlsProvider,
-    treesync::errors::PublicTreeError,
 };
 
 use crate::treesync::errors::LeafNodeValidationError;
@@ -166,35 +163,6 @@ impl LeafNode {
         Ok(())
     }
 
-    /// Generate a fresh leaf node with a fresh encryption key but otherwise
-    /// the same properties as the current leaf node.
-    ///
-    /// The newly generated encryption key pair is stored in the key store.
-    ///
-    /// This function can be used when generating an update. In most other cases
-    /// a leaf node should be generated as part of a new [`KeyPackage`].
-    #[cfg(test)]
-    pub(crate) fn updated<Provider: OpenMlsProvider>(
-        &self,
-        ciphersuite: Ciphersuite,
-        tree_info_tbs: TreeInfoTbs,
-        provider: &Provider,
-        signer: &impl Signer,
-    ) -> Result<Self, LeafNodeGenerationError<Provider::StorageError>> {
-        Self::generate_update(
-            ciphersuite,
-            CredentialWithKey {
-                credential: self.payload.credential.clone(),
-                signature_key: self.payload.signature_key.clone(),
-            },
-            self.payload.capabilities.clone(),
-            self.payload.extensions.clone(),
-            tree_info_tbs,
-            provider,
-            signer,
-        )
-    }
-
     /// Generate a fresh leaf node.
     ///
     /// This includes generating a new encryption key pair that is stored in the
@@ -234,86 +202,62 @@ impl LeafNode {
         Ok(leaf_node)
     }
 
-    /// Update the `encryption_key` in this leaf node and re-signs it.
+    /// Update a leaf node.
     ///
-    /// Optionally, a new leaf node can be provided to update more values such as
-    /// the credential.
-    pub(crate) fn update_and_re_sign(
+    /// This function generates a new encryption key pair that is stored in the
+    /// key store and also returned.
+    ///
+    /// This function can be used when generating an update. In most other cases
+    /// a leaf node should be generated as part of a new [`KeyPackage`].
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn update<Provider: OpenMlsProvider>(
         &mut self,
-        new_encryption_key: impl Into<Option<EncryptionKey>>,
-        leaf_node: impl Into<Option<LeafNode>>,
+        ciphersuite: Ciphersuite,
+        provider: &Provider,
+        signer: &impl Signer,
         group_id: GroupId,
         leaf_index: LeafNodeIndex,
-        signer: &impl Signer,
-    ) -> Result<(), PublicTreeError> {
+        credential_with_key: Option<CredentialWithKey>,
+        capabilities: Option<Capabilities>,
+        ln_extensions: Option<Extensions>,
+    ) -> Result<EncryptionKeyPair, LeafNodeUpdateError<Provider::StorageError>> {
         let tree_info = TreeInfoTbs::Update(TreePosition::new(group_id, leaf_index));
-        // TODO: If we could take out the leaf_node without cloning, this would all be nicer.
         let mut leaf_node_tbs = LeafNodeTbs::from(self.clone(), tree_info);
 
         // Update credential
-        if let Some(leaf_node) = leaf_node.into() {
-            leaf_node_tbs.payload.credential = leaf_node.credential().clone();
-            leaf_node_tbs.payload.encryption_key = leaf_node.encryption_key().clone();
-            leaf_node_tbs.payload.leaf_node_source = LeafNodeSource::Update;
-        } else if let Some(new_encryption_key) = new_encryption_key.into() {
-            leaf_node_tbs.payload.leaf_node_source = LeafNodeSource::Update;
-
-            // If there's no new leaf, the encryption key must be provided
-            // explicitly.
-            leaf_node_tbs.payload.encryption_key = new_encryption_key;
-        } else {
-            debug_assert!(false, "update_and_re_sign needs to be called with a new leaf node or a new encryption key. Neither was the case.");
-            return Err(LibraryError::custom(
-                "update_and_re_sign needs to be called with a new leaf node or a new encryption key. Neither was the case.").into());
+        if let Some(credential_with_key) = credential_with_key {
+            leaf_node_tbs.payload.credential = credential_with_key.credential;
+            leaf_node_tbs.payload.signature_key = credential_with_key.signature_key;
         }
 
-        // Set the new signed leaf node with the new encryption key
+        // Update extensions
+        if let Some(extensions) = ln_extensions {
+            leaf_node_tbs.payload.extensions = extensions;
+        }
+
+        // Update capabilities
+        if let Some(capabilities) = capabilities {
+            leaf_node_tbs.payload.capabilities = capabilities;
+        }
+
+        // Create a new encryption key pair
+        let encryption_key_pair = EncryptionKeyPair::random(provider, ciphersuite)?;
+        leaf_node_tbs.payload.encryption_key = encryption_key_pair.public_key().clone();
+
+        // Store the encryption key pair in the key store.
+        encryption_key_pair
+            .write(provider.storage())
+            .map_err(LeafNodeUpdateError::Storage)?;
+
+        // Set the leaf node source to update
+        leaf_node_tbs.payload.leaf_node_source = LeafNodeSource::Update;
+
+        // Sign the leaf node
         let leaf_node = leaf_node_tbs.sign(signer)?;
         self.payload = leaf_node.payload;
         self.signature = leaf_node.signature;
 
-        Ok(())
-    }
-
-    /// Replace the encryption key in this leaf with a random one.
-    ///
-    /// This signs the new leaf node as well.
-    pub(crate) fn rekey(
-        &mut self,
-        group_id: &GroupId,
-        leaf_index: LeafNodeIndex,
-        ciphersuite: Ciphersuite,
-        provider: &impl OpenMlsProvider,
-        signer: &impl Signer,
-    ) -> Result<EncryptionKeyPair, PublicTreeError> {
-        if !self
-            .payload
-            .capabilities
-            .ciphersuites
-            .contains(&ciphersuite.into())
-        {
-            debug_assert!(
-                false,
-                "Ciphersuite or protocol version is not supported by this leaf node.\
-                 \ncapabilities: {:?}\nciphersuite: {:?}",
-                self.payload.capabilities, ciphersuite
-            );
-            return Err(LibraryError::custom(
-                "Ciphersuite or protocol version is not supported by this leaf node.",
-            )
-            .into());
-        }
-        let key_pair = EncryptionKeyPair::random(provider, ciphersuite)?;
-
-        self.update_and_re_sign(
-            key_pair.public_key().clone(),
-            None,
-            group_id.clone(),
-            leaf_index,
-            signer,
-        )?;
-
-        Ok(key_pair)
+        Ok(encryption_key_pair)
     }
 
     /// Returns the `encryption_key`.
@@ -565,6 +509,11 @@ impl TreePosition {
             group_id,
             leaf_index,
         }
+    }
+
+    #[cfg(feature = "test-utils")]
+    pub(crate) fn into_parts(self) -> (GroupId, LeafNodeIndex) {
+        (self.group_id, self.leaf_index)
     }
 }
 
@@ -855,4 +804,20 @@ pub enum LeafNodeGenerationError<StorageError> {
     /// Error storing leaf private key in storage.
     #[error("Error storing leaf private key.")]
     StorageError(StorageError),
+}
+
+/// Leaf Node Update Error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum LeafNodeUpdateError<StorageError> {
+    /// See [`LibraryError`] for more details.
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+
+    /// Error storing leaf private key in storage.
+    #[error("Error storing leaf private key.")]
+    Storage(StorageError),
+
+    /// Signature error.
+    #[error(transparent)]
+    Signature(#[from] crate::ciphersuite::signable::SignatureError),
 }
