@@ -1,5 +1,6 @@
 use framing::mls_content_in::FramedContentBodyIn;
 use tests::utils::{generate_credential_with_key, generate_key_package};
+use treesync::LeafNodeParameters;
 
 use crate::{
     ciphersuite::signable::Verifiable, framing::*, group::*, key_packages::*,
@@ -151,9 +152,7 @@ fn create_commit_optional_path(
             &alice_credential_with_keys.signer,
             group_alice.group_id().clone(),
             group_alice.own_leaf_index(),
-            None,
-            None,
-            None,
+            LeafNodeParameters::default(),
         )
         .unwrap();
     let alice_update_proposal = group_alice
@@ -419,9 +418,7 @@ fn group_operations() {
             &bob_credential_with_keys.signer,
             group_bob.group_id().clone(),
             group_bob.own_leaf_index(),
-            None,
-            None,
-            None,
+            LeafNodeParameters::default(),
         )
         .unwrap();
 
@@ -489,9 +486,7 @@ fn group_operations() {
             &alice_credential_with_keys.signer,
             group_alice.group_id().clone(),
             group_alice.own_leaf_index(),
-            None,
-            None,
-            None,
+            LeafNodeParameters::default(),
         )
         .unwrap();
 
@@ -555,9 +550,7 @@ fn group_operations() {
             &bob_credential_with_keys.signer,
             group_bob.group_id().clone(),
             group_bob.own_leaf_index(),
-            None,
-            None,
-            None,
+            LeafNodeParameters::default(),
         )
         .unwrap();
 
@@ -788,9 +781,7 @@ fn group_operations() {
             &charlie_credential_with_keys.signer,
             group_charlie.group_id().clone(),
             group_charlie.own_leaf_index(),
-            None,
-            None,
-            None,
+            LeafNodeParameters::default(),
         )
         .unwrap();
 

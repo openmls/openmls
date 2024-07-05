@@ -84,7 +84,7 @@ pub use node::encryption_keys::EncryptionKey;
 
 // Public re-exports
 pub use node::{
-    leaf_node::{LeafNode, LeafNodeUpdateError},
+    leaf_node::{LeafNode, LeafNodeParameters, LeafNodeParametersBuilder, LeafNodeUpdateError},
     parent_node::ParentNode,
     Node,
 };

@@ -9,12 +9,12 @@ use crate::{
     error::LibraryError,
     extensions::Extensions,
     group::{core_group::create_commit_params::CommitType, errors::CreateCommitError},
-    key_packages::{KeyPackage, KeyPackageCreationResult},
     schedule::CommitSecret,
     storage::OpenMlsProvider,
     treesync::{
         node::{
-            encryption_keys::EncryptionKeyPair, leaf_node::LeafNode,
+            encryption_keys::EncryptionKeyPair,
+            leaf_node::{Capabilities, LeafNode, LeafNodeParameters, SimpleLeafNodeParams},
             parent_node::PlainUpdatePathNode,
         },
         treekem::UpdatePath,
@@ -40,67 +40,89 @@ impl<'a> PublicGroupDiff<'a> {
         provider: &Provider,
         leaf_index: LeafNodeIndex,
         exclusion_list: HashSet<&LeafNodeIndex>,
-        commit_type: CommitType,
+        commit_type: &CommitType,
+        leaf_node_params: &LeafNodeParameters,
         signer: &impl Signer,
-        credential_with_key: Option<CredentialWithKey>,
-        extensions: Option<Extensions>,
+        gc_extensions: Option<Extensions>,
     ) -> Result<PathComputationResult, CreateCommitError<Provider::StorageError>> {
         let ciphersuite = self.group_context().ciphersuite();
-        let group_id = self.group_context().group_id().clone();
 
-        let mut new_keypairs = if commit_type == CommitType::External {
-            // If this is an external commit we add a fresh leaf to the diff.
-            // Generate a KeyPackageBundle to generate a payload from for later
-            // path generation.
-            let KeyPackageCreationResult {
-                key_package,
-                encryption_keypair,
-                // The KeyPackage is immediately put into the group. No need for
-                // the init key.
-                init_private_key: _,
-            } = KeyPackage::builder().build_without_storage(
-                ciphersuite,
-                provider,
-                signer,
-                credential_with_key.ok_or(CreateCommitError::MissingCredential)?,
-            )?;
+        let leaf_node_params = if let CommitType::External(credential_with_key) = commit_type {
+            // If this is an external commit we add a fresh leaf to the diff. We
+            // don't need to sign the leaf, as the signature is provided in the
+            // next step, when the update path is calculated.
+            let leaf_node = LeafNode::new_placeholder(credential_with_key.clone());
 
-            let leaf_node: LeafNode = key_package.into();
             self.diff
                 .add_leaf(leaf_node)
                 .map_err(|_| LibraryError::custom("Tree full: cannot add more members"))?;
-            vec![encryption_keypair]
+
+            let credential_with_key = match leaf_node_params.credential_with_key() {
+                Some(cwk) => cwk.to_owned(),
+                None => credential_with_key.clone(),
+            };
+
+            let capabilities = match leaf_node_params.capabilities() {
+                Some(c) => c.to_owned(),
+                None => Capabilities::default(),
+            };
+
+            let extensions = match leaf_node_params.extensions() {
+                Some(e) => e.to_owned(),
+                None => Extensions::default(),
+            };
+
+            SimpleLeafNodeParams {
+                credential_with_key,
+                capabilities,
+                extensions,
+            }
         } else {
-            // If we're already in the tree, we rekey our existing leaf.
-            let own_diff_leaf = self
+            let leaf = self
                 .diff
-                .leaf_mut(leaf_index)
-                .ok_or_else(|| LibraryError::custom("Unable to get own leaf from diff"))?;
-            let encryption_keypair = own_diff_leaf.update(
-                ciphersuite,
-                provider,
-                signer,
-                group_id.clone(),
-                leaf_index,
-                None,
-                None,
-                None,
-            )?;
-            vec![encryption_keypair]
+                .leaf(leaf_index)
+                .ok_or_else(|| LibraryError::custom("Couldn't find own leaf"))?;
+
+            let credential_with_key = match leaf_node_params.credential_with_key() {
+                Some(cwk) => cwk.to_owned(),
+                None => CredentialWithKey {
+                    credential: leaf.credential().clone(),
+                    signature_key: leaf.signature_key().clone(),
+                },
+            };
+
+            let capabilities = match leaf_node_params.capabilities() {
+                Some(c) => c.to_owned(),
+                None => leaf.capabilities().clone(),
+            };
+
+            let extensions = match leaf_node_params.extensions() {
+                Some(e) => e.to_owned(),
+                None => leaf.extensions().clone(),
+            };
+
+            SimpleLeafNodeParams {
+                credential_with_key,
+                capabilities,
+                extensions,
+            }
         };
 
         // Derive and apply an update path based on the previously
         // generated new leaf.
-        let (plain_path, mut new_parent_keypairs, commit_secret) = self
-            .diff
-            .apply_own_update_path(provider, signer, ciphersuite, group_id, leaf_index)?;
-
-        new_keypairs.append(&mut new_parent_keypairs);
+        let (plain_path, new_keypairs, commit_secret) = self.diff.apply_own_update_path(
+            provider,
+            signer,
+            ciphersuite,
+            self.group_context().group_id().clone(),
+            leaf_index,
+            leaf_node_params,
+        )?;
 
         // After we've processed the path, we can update the group context s.t.
         // the updated group context is used for path secret encryption. Note
         // that we have not yet updated the confirmed transcript hash.
-        self.update_group_context(provider.crypto(), extensions)?;
+        self.update_group_context(provider.crypto(), gc_extensions)?;
 
         let serialized_group_context = self
             .group_context()

@@ -4,6 +4,7 @@ use super::utils::{generate_credential_with_key, generate_key_package};
 use crate::{
     framing::{MessageDecryptionError, MlsMessageIn, ProcessedMessageContent},
     group::*,
+    treesync::LeafNodeParameters,
 };
 
 #[openmls_test::openmls_test]
@@ -93,7 +94,11 @@ fn test_past_secrets_in_group(
             application_messages.push(application_message.into_protocol_message().unwrap());
 
             let (message, _welcome, _group_info) = alice_group
-                .self_update(provider, &alice_credential_with_keys.signer)
+                .self_update(
+                    provider,
+                    &alice_credential_with_keys.signer,
+                    LeafNodeParameters::default(),
+                )
                 .expect("An unexpected error occurred.");
 
             update_commits.push(message.clone());

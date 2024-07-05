@@ -1,3 +1,4 @@
+use core_group::LeafNodeParameters;
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::types::HpkeCiphertext;
 use tls_codec::Serialize;
@@ -192,9 +193,7 @@ fn test_update_path() {
             &bob_signature_keys,
             group_bob.group_id().clone(),
             group_bob.own_leaf_index(),
-            None,
-            None,
-            None,
+            LeafNodeParameters::default(),
         )
         .unwrap();
 
@@ -398,9 +397,7 @@ fn test_psks() {
             &bob_signature_keys,
             group_bob.group_id().clone(),
             group_bob.own_leaf_index(),
-            None,
-            None,
-            None,
+            LeafNodeParameters::default(),
         )
         .unwrap();
 

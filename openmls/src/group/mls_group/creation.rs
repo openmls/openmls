@@ -4,7 +4,7 @@ use super::{builder::MlsGroupBuilder, *};
 use crate::{
     credentials::CredentialWithKey,
     group::{
-        core_group::create_commit_params::CreateCommitParams,
+        core_group::create_commit_params::{CommitType, CreateCommitParams},
         errors::{ExternalCommitError, WelcomeError},
     },
     messages::{
@@ -13,7 +13,10 @@ use crate::{
     },
     schedule::psk::{store::ResumptionPskStore, PreSharedKeyId},
     storage::OpenMlsProvider,
-    treesync::RatchetTreeIn,
+    treesync::{
+        node::leaf_node::{Capabilities, LeafNodeParameters},
+        RatchetTreeIn,
+    },
 };
 
 impl MlsGroup {
@@ -77,12 +80,15 @@ impl MlsGroup {
     ///
     /// Note: If there is a group member in the group with the same identity as
     /// us, this will create a remove proposal.
+    #[allow(clippy::too_many_arguments)]
     pub fn join_by_external_commit<Provider: OpenMlsProvider>(
         provider: &Provider,
         signer: &impl Signer,
         ratchet_tree: Option<RatchetTreeIn>,
         verifiable_group_info: VerifiableGroupInfo,
         mls_group_config: &MlsGroupJoinConfig,
+        capabilities: Option<Capabilities>,
+        extensions: Option<Extensions>,
         aad: &[u8],
         credential_with_key: CredentialWithKey,
     ) -> Result<(Self, MlsMessageOut, Option<GroupInfo>), ExternalCommitError<Provider::StorageError>>
@@ -91,10 +97,15 @@ impl MlsGroup {
         let framing_parameters = FramingParameters::new(aad, WireFormat::PublicMessage);
 
         let proposal_store = ProposalStore::new();
+        let leaf_node_parameters = LeafNodeParameters::new()
+            .with_capabilities(capabilities.unwrap_or_default())
+            .with_extensions(extensions.unwrap_or_default())
+            .build();
         let params = CreateCommitParams::builder()
             .framing_parameters(framing_parameters)
             .proposal_store(&proposal_store)
-            .credential_with_key(credential_with_key)
+            .commit_type(CommitType::External(credential_with_key))
+            .leaf_node_parameters(leaf_node_parameters)
             .build();
         let (mut group, create_commit_result) = CoreGroup::join_by_external_commit(
             provider,

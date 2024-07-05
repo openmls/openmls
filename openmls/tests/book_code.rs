@@ -6,6 +6,7 @@ use openmls::{
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_test::openmls_test;
 use openmls_traits::{signatures::Signer, types::SignatureScheme};
+use treesync::LeafNodeParameters;
 
 #[test]
 fn create_provider_rust_crypto() {
@@ -292,9 +293,11 @@ fn book_operations() {
     let (mut dave_group, _out, _group_info) = MlsGroup::join_by_external_commit(
         provider,
         &dave_signature_keys,
-        None,
+        None, // No ratchtet tree extension
         verifiable_group_info,
         &mls_group_config,
+        None, // No special capabilities
+        None, // No special extensions
         &[],
         dave_credential,
     )
@@ -357,7 +360,7 @@ fn book_operations() {
     // === Bob updates and commits ===
     // ANCHOR: self_update
     let (mls_message_out, welcome_option, _group_info) = bob_group
-        .self_update(provider, &bob_signature_keys)
+        .self_update(provider, &bob_signature_keys, LeafNodeParameters::default())
         .expect("Could not update own key package.");
     // ANCHOR_END: self_update
 
@@ -407,7 +410,7 @@ fn book_operations() {
         .propose_self_update(
             provider,
             &alice_signature_keys,
-            None, // We don't provide a leaf node, it will be created on the fly instead
+            LeafNodeParameters::default(),
         )
         .expect("Could not create update proposal.");
     // ANCHOR_END: propose_self_update
@@ -602,7 +605,11 @@ fn book_operations() {
 
     // === Charlie updates and commits ===
     let (queued_message, welcome_option, _group_info) = charlie_group
-        .self_update(provider, &charlie_signature_keys)
+        .self_update(
+            provider,
+            &charlie_signature_keys,
+            LeafNodeParameters::default(),
+        )
         .unwrap();
 
     let alice_processed_message = alice_group

@@ -6,7 +6,7 @@ use crate::{
         errors::ExternalCommitError,
         public_group::errors::CreationFromExternalError,
         test_core_group::{setup_alice_group, setup_client},
-        CreateCommitParams,
+        CommitType, CreateCommitParams,
     },
     messages::proposals::{ProposalOrRef, ProposalType},
     storage::OpenMlsProvider,
@@ -40,7 +40,7 @@ fn test_external_init() {
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
         .proposal_store(&proposal_store)
-        .credential_with_key(charlie_credential)
+        .commit_type(CommitType::External(charlie_credential))
         .build();
     let (mut group_charly, create_commit_result) = CoreGroup::join_by_external_commit(
         provider,
@@ -118,7 +118,7 @@ fn test_external_init() {
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
         .proposal_store(&proposal_store)
-        .credential_with_key(bob_credential_with_key)
+        .commit_type(CommitType::External(bob_credential_with_key))
         .build();
     let (mut new_group_bob, create_commit_result) = CoreGroup::join_by_external_commit(
         provider,
@@ -202,7 +202,7 @@ fn test_external_init_single_member_group() {
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
         .proposal_store(&proposal_store)
-        .credential_with_key(charly_credential)
+        .commit_type(CommitType::External(charly_credential))
         .build();
     let (mut group_charly, create_commit_result) = CoreGroup::join_by_external_commit(
         provider,

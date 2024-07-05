@@ -82,6 +82,8 @@ fn test_valsem240() {
         .process_message(provider, ProtocolMessage::from(public_message_commit_bad))
         .expect_err("Could process message despite missing external init proposal.");
 
+    println!("Got the error: {:?}", err);
+
     assert!(matches!(
         err,
         ProcessMessageError::InvalidCommit(StageCommitError::ExternalCommitValidation(
@@ -201,6 +203,8 @@ fn test_valsem242() {
         None,
         verifiable_group_info,
         alice_group.configuration(),
+        None,
+        None,
         &[],
         bob_credential.credential_with_key.clone(),
     )
@@ -582,6 +586,8 @@ fn test_pure_ciphertest() {
         None,
         verifiable_group_info,
         alice_group.configuration(),
+        None,
+        None,
         &[],
         bob_credential.credential_with_key.clone(),
     )
@@ -667,6 +673,8 @@ mod utils {
             Some(tree_option.into()),
             verifiable_group_info,
             alice_group.configuration(),
+            None,
+            None,
             &[],
             bob_credential.credential_with_key.clone(),
         )

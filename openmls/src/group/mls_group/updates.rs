@@ -2,26 +2,23 @@ use core_group::create_commit_params::CreateCommitParams;
 use openmls_traits::{signatures::Signer, storage::StorageProvider as _};
 
 use crate::{
-    credentials::CredentialWithKey, messages::group_info::GroupInfo, storage::OpenMlsProvider,
-    treesync::LeafNode,
+    messages::group_info::GroupInfo, storage::OpenMlsProvider, treesync::LeafNodeParameters,
 };
 
 use super::*;
 
 impl MlsGroup {
-    /// Updates the own leaf node.
+    /// Updates the own leaf node. The application can choose to update the
+    /// credential, the capabilities, and the extensions by buliding the
+    /// [`LeafNodeParameters`].
     ///
     /// If successful, it returns a tuple of [`MlsMessageOut`] (containing the
-    /// commit), an optional [`MlsMessageOut`] (containing the [`Welcome`]) and the [GroupInfo].
-    /// The [`Welcome`] is [Some] when the queue of pending proposals contained
-    /// add proposals
-    /// The [GroupInfo] is [Some] if the group has the `use_ratchet_tree_extension` flag set.
+    /// commit), an optional [`MlsMessageOut`] (containing the [`Welcome`]) and
+    /// the [GroupInfo]. The [`Welcome`] is [Some] when the queue of pending
+    /// proposals contained add proposals The [GroupInfo] is [Some] if the group
+    /// has the `use_ratchet_tree_extension` flag set.
     ///
     /// Returns an error if there is a pending commit.
-    ///
-    /// TODO #1208 : The caller should be able to optionally provide a
-    /// [`LeafNode`] here, so that things like extensions can be changed via
-    /// commit.
     ///
     /// [`Welcome`]: crate::messages::Welcome
     // FIXME: #1217
@@ -30,6 +27,7 @@ impl MlsGroup {
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
+        leaf_node_parameters: LeafNodeParameters,
     ) -> Result<
         (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
         SelfUpdateError<Provider::StorageError>,
@@ -39,6 +37,7 @@ impl MlsGroup {
         let params = CreateCommitParams::builder()
             .framing_parameters(self.framing_parameters())
             .proposal_store(&self.proposal_store)
+            .leaf_node_parameters(leaf_node_parameters)
             .build();
         // Create Commit over all proposals.
         // TODO #751
@@ -78,7 +77,7 @@ impl MlsGroup {
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
-        leaf_node: Option<LeafNode>,
+        leaf_node_parmeters: LeafNodeParameters,
     ) -> Result<AuthenticatedContent, ProposeSelfUpdateError<Provider::StorageError>> {
         self.is_operational()?;
 
@@ -92,19 +91,6 @@ impl MlsGroup {
             .leaf(self.own_leaf_index())
             .ok_or_else(|| LibraryError::custom("The tree is broken. Couldn't find own leaf."))?
             .clone();
-        let (credential_with_key, capabilities, extensions) = if let Some(leaf) = leaf_node {
-            let credential_with_key = CredentialWithKey {
-                credential: leaf.credential().clone(),
-                signature_key: leaf.signature_key().clone(),
-            };
-            (
-                Some(credential_with_key),
-                Some(leaf.capabilities().clone()),
-                Some(leaf.extensions().clone()),
-            )
-        } else {
-            (None, None, None)
-        };
 
         own_leaf.update(
             self.ciphersuite(),
@@ -112,9 +98,7 @@ impl MlsGroup {
             signer,
             self.group_id().clone(),
             self.own_leaf_index(),
-            credential_with_key,
-            capabilities,
-            extensions,
+            leaf_node_parmeters,
         )?;
 
         let update_proposal = self.group.create_update_proposal(
@@ -132,40 +116,17 @@ impl MlsGroup {
         Ok(update_proposal)
     }
 
-    /// Creates a proposal to update the own leaf node.
+    /// Creates a proposal to update the own leaf node. The application can
+    /// choose to update the credential, the capabilities, and the extensions by
+    /// buliding the [`LeafNodeParameters`].
     pub fn propose_self_update<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
-        leaf_node: Option<LeafNode>,
+        leaf_node_parameters: LeafNodeParameters,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<Provider::StorageError>> {
-        let update_proposal = self._propose_self_update(provider, signer, leaf_node)?;
+        let update_proposal = self._propose_self_update(provider, signer, leaf_node_parameters)?;
         let proposal = QueuedProposal::from_authenticated_content_by_ref(
-            self.ciphersuite(),
-            provider.crypto(),
-            update_proposal.clone(),
-        )?;
-        let proposal_ref = proposal.proposal_reference();
-        provider
-            .storage()
-            .queue_proposal(self.group_id(), &proposal_ref, &proposal)
-            .map_err(ProposeSelfUpdateError::StorageError)?;
-        self.proposal_store.add(proposal);
-
-        let mls_message = self.content_to_mls_message(update_proposal, provider)?;
-
-        Ok((mls_message, proposal_ref))
-    }
-
-    /// Creates a proposal to update the own leaf node.
-    pub fn propose_self_update_by_value<Provider: OpenMlsProvider>(
-        &mut self,
-        provider: &Provider,
-        signer: &impl Signer,
-        leaf_node: Option<LeafNode>,
-    ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<Provider::StorageError>> {
-        let update_proposal = self._propose_self_update(provider, signer, leaf_node)?;
-        let proposal = QueuedProposal::from_authenticated_content_by_value(
             self.ciphersuite(),
             provider.crypto(),
             update_proposal.clone(),

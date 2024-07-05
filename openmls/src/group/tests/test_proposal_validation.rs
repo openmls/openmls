@@ -1,7 +1,7 @@
 //! This module tests the validation of proposals as defined in
 //! https://openmls.tech/book/message_validation.html#semantic-validation-of-proposals-covered-by-a-commit
 
-use crate::{storage::OpenMlsProvider, test_utils::frankenstein::*};
+use crate::{storage::OpenMlsProvider, test_utils::frankenstein::*, treesync::LeafNodeParameters};
 use openmls_traits::{
     prelude::{openmls_types::*, *},
     signatures::Signer,
@@ -914,7 +914,11 @@ fn test_valsem103_valsem104(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
 
     // Create the Commit.
     let serialized_update = alice_group
-        .self_update(provider, &alice_credential_with_key_and_signer.signer)
+        .self_update(
+            provider,
+            &alice_credential_with_key_and_signer.signer,
+            LeafNodeParameters::default(),
+        )
         .expect("Error creating self-update")
         .tls_serialize_detached()
         .expect("Could not serialize message.");
@@ -1186,7 +1190,11 @@ fn test_valsem105() {
 
         // Create the Commit.
         let serialized_update = alice_group
-            .self_update(provider, &alice_credential_with_key_and_signer.signer)
+            .self_update(
+                provider,
+                &alice_credential_with_key_and_signer.signer,
+                LeafNodeParameters::default(),
+            )
             .unwrap()
             .tls_serialize_detached()
             .unwrap();
@@ -1591,7 +1599,11 @@ fn test_valsem108() {
 
     // Create the Commit.
     let serialized_update = alice_group
-        .self_update(provider, &alice_credential_with_key_and_signer.signer)
+        .self_update(
+            provider,
+            &alice_credential_with_key_and_signer.signer,
+            LeafNodeParameters::default(),
+        )
         .expect("Error creating self-update")
         .tls_serialize_detached()
         .expect("Could not serialize message.");
@@ -1701,7 +1713,7 @@ fn test_valsem110() {
         .propose_self_update(
             provider,
             &bob_credential_with_key_and_signer.signer,
-            None, //Some(update_leaf_node.clone()),
+            LeafNodeParameters::default(),
         )
         .map(|(out, _)| MlsMessageIn::from(out))
         .expect("error while creating remove proposal");
@@ -1802,7 +1814,11 @@ fn test_valsem110() {
 
     // Create the Commit.
     let serialized_update = alice_group
-        .self_update(provider, &alice_credential_with_key_and_signer.signer)
+        .self_update(
+            provider,
+            &alice_credential_with_key_and_signer.signer,
+            LeafNodeParameters::default(),
+        )
         .expect("Error creating self-update")
         .tls_serialize_detached()
         .expect("Could not serialize message.");
@@ -1889,7 +1905,11 @@ fn test_valsem111() {
     // We now have Alice create a commit. That commit should not contain any
     // proposals, just a path.
     let commit = alice_group
-        .self_update(provider, &alice_credential_with_key_and_signer.signer)
+        .self_update(
+            provider,
+            &alice_credential_with_key_and_signer.signer,
+            LeafNodeParameters::default(),
+        )
         .expect("Error creating self-update");
 
     // Check that there's no proposal in it.
@@ -1970,7 +1990,11 @@ fn test_valsem111() {
         .unwrap();
 
     let commit = alice_group
-        .self_update(provider, &alice_credential_with_key_and_signer.signer)
+        .self_update(
+            provider,
+            &alice_credential_with_key_and_signer.signer,
+            LeafNodeParameters::default(),
+        )
         .expect("Error creating self-update");
 
     let serialized_update = commit
@@ -2050,7 +2074,11 @@ fn test_valsem112() {
     // However, we can test the receiving side by crafting such a proposal
     // manually.
     let commit = alice_group
-        .propose_self_update(provider, &alice_credential_with_key_and_signer.signer, None)
+        .propose_self_update(
+            provider,
+            &alice_credential_with_key_and_signer.signer,
+            LeafNodeParameters::default(),
+        )
         .expect("Error creating self-update");
 
     // Check that the sender type is indeed `member`.

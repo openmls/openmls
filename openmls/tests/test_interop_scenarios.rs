@@ -3,6 +3,7 @@ use openmls::{
     test_utils::test_framework::{
         noop_authentication_service, ActionType, CodecUse, MlsGroupTestSetup,
     },
+    treesync::LeafNodeParameters,
 };
 use openmls_test::openmls_test;
 
@@ -218,7 +219,7 @@ fn update() {
             ActionType::Commit,
             group,
             &alice_id,
-            None,
+            LeafNodeParameters::default(),
             &noop_authentication_service,
         )
         .expect("Error self-updating.");
@@ -323,7 +324,7 @@ fn large_group_lifecycle() {
                 ActionType::Commit,
                 group,
                 member_id,
-                None,
+                LeafNodeParameters::default(),
                 &noop_authentication_service,
             )
             .expect("Error while updating group.")

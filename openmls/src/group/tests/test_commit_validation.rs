@@ -16,6 +16,7 @@ use crate::{
     schedule::{ExternalPsk, PreSharedKeyId, Psk},
     treesync::{
         errors::ApplyUpdatePathError, node::parent_node::PlainUpdatePathNode, treekem::UpdatePath,
+        LeafNodeParameters,
     },
 };
 
@@ -168,7 +169,11 @@ fn test_valsem200() {
 
     // Now let's stick it in the commit.
     let serialized_message = alice_group
-        .self_update(provider, &alice_credential.signer)
+        .self_update(
+            provider,
+            &alice_credential.signer,
+            LeafNodeParameters::default(),
+        )
         .expect("Error creating self-update")
         .tls_serialize_detached()
         .expect("Could not serialize message.");
@@ -453,7 +458,11 @@ fn test_valsem202() {
 
     // Create the self-update
     let serialized_update = alice_group
-        .self_update(provider, &alice_credential.signer)
+        .self_update(
+            provider,
+            &alice_credential.signer,
+            LeafNodeParameters::default(),
+        )
         .expect("Error creating self-update")
         .tls_serialize_detached()
         .expect("Could not serialize message.");
@@ -530,7 +539,11 @@ fn test_valsem203() {
 
     // Create the self-update
     let serialized_update = alice_group
-        .self_update(provider, &alice_credential.signer)
+        .self_update(
+            provider,
+            &alice_credential.signer,
+            LeafNodeParameters::default(),
+        )
         .expect("Error creating self-update")
         .tls_serialize_detached()
         .expect("Could not serialize message.");
@@ -609,7 +622,11 @@ fn test_valsem204() {
 
     // Create the self-update
     let serialized_update = alice_group
-        .self_update(provider, &alice_credential.signer)
+        .self_update(
+            provider,
+            &alice_credential.signer,
+            LeafNodeParameters::default(),
+        )
         .expect("Error creating self-update")
         .tls_serialize_detached()
         .expect("Could not serialize message.");
@@ -732,7 +749,11 @@ fn test_valsem205() {
 
     // Create the self-update
     let serialized_update = alice_group
-        .self_update(provider, &alice_credential.signer)
+        .self_update(
+            provider,
+            &alice_credential.signer,
+            LeafNodeParameters::default(),
+        )
         .expect("Error creating self-update")
         .tls_serialize_detached()
         .expect("Could not serialize message.");
@@ -820,7 +841,11 @@ fn test_partial_proposal_commit(
 
     // Create second proposal in Alice's group
     let proposal_2 = alice_group
-        .propose_self_update(provider, &alice_credential.signer, None)
+        .propose_self_update(
+            provider,
+            &alice_credential.signer,
+            LeafNodeParameters::default(),
+        )
         .map(|(out, _)| MlsMessageIn::from(out))
         .unwrap();
     let proposal_2 = bob_group

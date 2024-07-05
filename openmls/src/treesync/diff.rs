@@ -24,6 +24,7 @@ use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsProvider};
 use serde::{Deserialize, Serialize};
 
+use super::node::leaf_node::SimpleLeafNodeParams;
 use super::{
     errors::*,
     node::{
@@ -35,6 +36,7 @@ use super::{
     treesync_node::{TreeSyncLeafNode, TreeSyncParentNode},
     LeafNode, TreeSync, TreeSyncParentHashError,
 };
+use crate::group::GroupId;
 use crate::{
     binary_tree::{
         array_representation::{
@@ -44,7 +46,6 @@ use crate::{
     },
     ciphersuite::Secret,
     error::LibraryError,
-    group::GroupId,
     messages::PathSecret,
     schedule::CommitSecret,
     treesync::RatchetTree,
@@ -295,21 +296,35 @@ impl<'a> TreeSyncDiff<'a> {
         ciphersuite: Ciphersuite,
         group_id: GroupId,
         leaf_index: LeafNodeIndex,
+        leaf_node_params: SimpleLeafNodeParams,
     ) -> Result<UpdatePathResult, LibraryError> {
         debug_assert!(
             self.leaf(leaf_index).is_some(),
             "Tree diff is missing own leaf"
         );
 
-        let (path, update_path_nodes, keypairs, commit_secret) =
+        let (path, update_path_nodes, parent_keypairs, commit_secret) =
             self.derive_path(provider, ciphersuite, leaf_index)?;
 
         let parent_hash =
             self.process_update_path(provider.crypto(), ciphersuite, leaf_index, path)?;
 
-        self.leaf_mut(leaf_index)
+        let node_keypair = self
+            .leaf_mut(leaf_index)
             .ok_or_else(|| LibraryError::custom("Didn't find own leaf in diff."))?
-            .update_parent_hash(&parent_hash, group_id, leaf_index, signer)?;
+            .update_parent_hash(
+                provider,
+                ciphersuite,
+                &parent_hash,
+                leaf_node_params,
+                group_id,
+                leaf_index,
+                signer,
+            )?;
+
+        // Prepend parent keypairs with node keypair
+        let mut keypairs = vec![node_keypair];
+        keypairs.extend(parent_keypairs);
 
         Ok((update_path_nodes, keypairs, commit_secret))
     }

@@ -1,6 +1,7 @@
 use openmls::{
     prelude::{test_utils::new_credential, *},
     storage::OpenMlsProvider,
+    treesync::LeafNodeParameters,
 };
 use openmls_traits::OpenMlsProvider as _;
 
@@ -175,8 +176,9 @@ fn mls_group_operations() {
         }
 
         // === Bob updates and commits ===
-        let (queued_message, welcome_option, _group_info) =
-            bob_group.self_update(provider, &bob_signer).unwrap();
+        let (queued_message, welcome_option, _group_info) = bob_group
+            .self_update(provider, &bob_signer, LeafNodeParameters::default())
+            .unwrap();
 
         let alice_processed_message = alice_group
             .process_message(
@@ -221,7 +223,7 @@ fn mls_group_operations() {
 
         // === Alice updates and commits ===
         let (queued_message, _) = alice_group
-            .propose_self_update(provider, &alice_signer, None)
+            .propose_self_update(provider, &alice_signer, LeafNodeParameters::default())
             .unwrap();
 
         let bob_processed_message = bob_group
@@ -404,7 +406,7 @@ fn mls_group_operations() {
 
         // === Charlie updates and commits ===
         let (queued_message, welcome_option, _group_info) = charlie_group
-            .self_update(provider, &charlie_signer)
+            .self_update(provider, &charlie_signer, LeafNodeParameters::default())
             .unwrap();
 
         let alice_processed_message = alice_group

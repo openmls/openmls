@@ -4,7 +4,7 @@ extern crate openmls;
 extern crate rand;
 
 use criterion::Criterion;
-use openmls::prelude::*;
+use openmls::{prelude::*, treesync::LeafNodeParameters};
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsProvider};
@@ -255,8 +255,9 @@ fn create_commit(c: &mut Criterion, provider: &impl OpenMlsProvider) {
                         (bob_group, bob_signer)
                     },
                     |(mut bob_group, bob_signer)| {
-                        let (queued_message, welcome_option, _group_info) =
-                            bob_group.self_update(provider, &bob_signer).unwrap();
+                        let (_queued_message, _welcome_option, _group_info) = bob_group
+                            .self_update(provider, &bob_signer, LeafNodeParameters::default())
+                            .unwrap();
 
                         bob_group
                             .merge_pending_commit(provider)
