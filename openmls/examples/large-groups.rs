@@ -379,24 +379,38 @@ macro_rules! bench {
     }};
 }
 
+/// The different group setups for the benchmarks.
 #[derive(clap::ValueEnum, Clone, Copy, Debug)]
 enum SetupVariants {
+    /// No messages are sent after the setup.
     Bare,
+
+    /// Every member sends a commit directly after joining the group.
     CommitAfterJoin,
+
+    /// Every member sends a commit after everyone was added to the group.
     CommitToFullGroup,
 }
 
+/// A tool to benchmark openmls (large) groups.
+///
+/// The benchmarks need to write a setup first that is then read to run the benchmarks.
 #[derive(Parser)]
 struct Args {
+    /// Write out the setup (groups and states)
     #[clap(short, long, action)]
     write: bool,
 
+    /// The file to read or write.
     #[clap(short, long)]
     data: Option<String>,
 
+    /// The group sizes to run or generate.
+    /// This has to be a list of values, separated by spaces, e.g. 2 3 5 10
     #[clap(short, long, value_delimiter = ' ', num_args = 1..)]
     groups: Option<Vec<usize>>,
 
+    /// The group setup to use.
     #[clap(short, long)]
     setup: Option<SetupVariants>,
 }
