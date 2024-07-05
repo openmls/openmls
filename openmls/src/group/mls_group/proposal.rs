@@ -164,7 +164,7 @@ impl MlsGroup {
                     .propose_self_update(provider, signer, leaf_node_parameters)
                     .map_err(|e| e.into()),
                 ProposalOrRefType::Reference => self
-                    .propose_self_update(provider, signer, LeafNodeParameters::default())
+                    .propose_self_update(provider, signer, leaf_node_parameters)
                     .map_err(|e| e.into()),
             },
 

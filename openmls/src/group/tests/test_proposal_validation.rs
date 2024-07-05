@@ -1697,17 +1697,6 @@ fn test_valsem110() {
         .encryption_key()
         .clone();
 
-    /* let mut update_leaf_node = bob_leaf_node.clone();
-    update_leaf_node
-        .update_and_re_sign1(
-            alice_encryption_key.clone(),
-            None,
-            bob_group.group_id().clone(),
-            LeafNodeIndex::new(1),
-            &bob_credential_with_key_and_signer.signer,
-        )
-        .unwrap(); */
-
     // We first go the manual route
     let update_proposal: MlsMessageIn = bob_group
         .propose_self_update(
