@@ -298,11 +298,6 @@ impl<'a> TreeSyncDiff<'a> {
         leaf_index: LeafNodeIndex,
         leaf_node_params: SimpleLeafNodeParams,
     ) -> Result<UpdatePathResult, TreeSyncAddLeaf> {
-        debug_assert!(
-            self.leaf(leaf_index).is_some(),
-            "Tree diff is missing own leaf"
-        );
-
         // We temporarily add a placeholder leaf node to the tree, because it
         // might be required to make the tree grow to the right size. If we
         // don't do that, calculating the direct path might fail. It's important
