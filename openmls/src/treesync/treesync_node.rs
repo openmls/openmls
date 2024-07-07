@@ -76,11 +76,6 @@ impl TreeSyncLeafNode {
         &self.node
     }
 
-    /// Return a mutable reference to the contained `Option<Node>`.
-    pub(in crate::treesync) fn node_mut(&mut self) -> &mut Option<LeafNode> {
-        &mut self.node
-    }
-
     /// Compute the tree hash for this node, thus populating the `tree_hash`
     /// field.
     pub(in crate::treesync) fn compute_tree_hash(

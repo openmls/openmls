@@ -14,7 +14,7 @@ use crate::{
         signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
         Signature, SignaturePublicKey,
     },
-    credentials::{Credential, CredentialWithKey},
+    credentials::{Credential, CredentialType, CredentialWithKey},
     error::LibraryError,
     extensions::{ExtensionType, Extensions},
     group::GroupId,
@@ -71,7 +71,7 @@ pub struct LeafNodeParameters {
 impl LeafNodeParameters {
     /// Create a new [`LeafNodeParametersBuilder`].
     #[allow(clippy::new_ret_no_self)]
-    pub fn new() -> LeafNodeParametersBuilder {
+    pub fn builder() -> LeafNodeParametersBuilder {
         LeafNodeParametersBuilder::default()
     }
 
@@ -206,15 +206,16 @@ impl LeafNode {
         Ok((leaf_node, encryption_key_pair))
     }
 
-    /// Create a new placeholder [`LeafNode`].
+    /// Creates a new placeholder [`LeafNode`] that is used to build external
+    /// commits.
     ///
     /// Note: This is not a valid leaf node and it must be rekeyed and signed
     /// before it can be used.
-    pub(crate) fn new_placeholder(credential_with_key: CredentialWithKey) -> Self {
+    pub(crate) fn new_placeholder() -> Self {
         let payload = LeafNodePayload {
-            encryption_key: EncryptionKey::from(vec![]),
-            signature_key: credential_with_key.signature_key,
-            credential: credential_with_key.credential,
+            encryption_key: EncryptionKey::from(Vec::new()),
+            signature_key: Vec::new().into(),
+            credential: Credential::new(CredentialType::Basic, Vec::new()),
             capabilities: Capabilities::default(),
             leaf_node_source: LeafNodeSource::Update,
             extensions: Extensions::default(),
@@ -222,7 +223,7 @@ impl LeafNode {
 
         Self {
             payload,
-            signature: vec![].into(),
+            signature: Vec::new().into(),
         }
     }
 
@@ -251,12 +252,9 @@ impl LeafNode {
             .map_err(|_| LibraryError::custom("Signing failed"))
     }
 
-    /// Update the parent hash of this [`LeafNode`].
-    ///
-    /// This re-signs the leaf node.
+    /// New [`LeafNode`] with a parent hash.
     #[allow(clippy::too_many_arguments)]
-    pub(in crate::treesync) fn update_parent_hash(
-        &mut self,
+    pub(in crate::treesync) fn new_with_parent_hash(
         provider: &impl OpenMlsProvider,
         ciphersuite: Ciphersuite,
         parent_hash: &[u8],
@@ -264,33 +262,27 @@ impl LeafNode {
         group_id: GroupId,
         leaf_index: LeafNodeIndex,
         signer: &impl Signer,
-    ) -> Result<EncryptionKeyPair, LibraryError> {
-        // Update the leaf node parameters
-        self.payload.capabilities = leaf_node_params.capabilities;
-        self.payload.extensions = leaf_node_params.extensions;
-        self.payload.credential = leaf_node_params.credential_with_key.credential;
-        self.payload.leaf_node_source = LeafNodeSource::Commit(parent_hash.into());
+    ) -> Result<(Self, EncryptionKeyPair), LibraryError> {
+        let encryption_key_pair = EncryptionKeyPair::random(provider, ciphersuite)?;
 
-        let mut leaf_node_tbs = LeafNodeTbs::from(
-            self.clone(), // TODO: With a better setup we wouldn't have to clone here.
+        let leaf_node_tbs = LeafNodeTbs::new(
+            encryption_key_pair.public_key().clone(),
+            leaf_node_params.credential_with_key,
+            leaf_node_params.capabilities,
+            LeafNodeSource::Commit(parent_hash.into()),
+            leaf_node_params.extensions,
             TreeInfoTbs::Commit(TreePosition {
                 group_id,
                 leaf_index,
             }),
         );
 
-        // Create a new encryption key pair
-        let encryption_key_pair = EncryptionKeyPair::random(provider, ciphersuite)?;
-        leaf_node_tbs.payload.encryption_key = encryption_key_pair.public_key().clone();
-
         // Sign the leaf node
         let leaf_node = leaf_node_tbs
             .sign(signer)
             .map_err(|_| LibraryError::custom("Signing failed"))?;
-        self.payload = leaf_node.payload;
-        self.signature = leaf_node.signature;
 
-        Ok(encryption_key_pair)
+        Ok((leaf_node, encryption_key_pair))
     }
 
     /// Generate a fresh leaf node.

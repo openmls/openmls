@@ -297,30 +297,47 @@ impl<'a> TreeSyncDiff<'a> {
         group_id: GroupId,
         leaf_index: LeafNodeIndex,
         leaf_node_params: SimpleLeafNodeParams,
-    ) -> Result<UpdatePathResult, LibraryError> {
+    ) -> Result<UpdatePathResult, TreeSyncAddLeaf> {
         debug_assert!(
             self.leaf(leaf_index).is_some(),
             "Tree diff is missing own leaf"
         );
 
+        // We temporarily add a placeholder leaf node to the tree, because it
+        // might be required to make the tree grow to the right size. If we
+        // don't do that, calculating the direct path might fail. It's important
+        // to not do anything with the value of that leaf until it has been
+        // replaced.
+        let leaf_node = LeafNode::new_placeholder();
+
+        // In case of an External Commit, where the leaf is not replaced and the
+        // tree is full, we have to grow the tree first. In all other cases we
+        // just replace an existing leaf.
+        if leaf_index.u32() >= self.leaf_count() {
+            self.add_leaf(leaf_node)?;
+        } else {
+            self.diff.replace_leaf(leaf_index, leaf_node.into());
+        }
+
+        // We calculate the parent hash so that we can use it for a fresh leaf
         let (path, update_path_nodes, parent_keypairs, commit_secret) =
             self.derive_path(provider, ciphersuite, leaf_index)?;
-
         let parent_hash =
             self.process_update_path(provider.crypto(), ciphersuite, leaf_index, path)?;
 
-        let node_keypair = self
-            .leaf_mut(leaf_index)
-            .ok_or_else(|| LibraryError::custom("Didn't find own leaf in diff."))?
-            .update_parent_hash(
-                provider,
-                ciphersuite,
-                &parent_hash,
-                leaf_node_params,
-                group_id,
-                leaf_index,
-                signer,
-            )?;
+        // We generate the new leaf with all parameters
+        let (leaf_node, node_keypair) = LeafNode::new_with_parent_hash(
+            provider,
+            ciphersuite,
+            &parent_hash,
+            leaf_node_params,
+            group_id,
+            leaf_index,
+            signer,
+        )?;
+
+        // We replace the temporary leaf with the frash one we just generated.
+        self.diff.replace_leaf(leaf_index, leaf_node.into());
 
         // Prepend parent keypairs with node keypair
         let mut keypairs = vec![node_keypair];
@@ -733,11 +750,6 @@ impl<'a> TreeSyncDiff<'a> {
     /// Return a reference to the leaf with the given index.
     pub(crate) fn leaf(&self, index: LeafNodeIndex) -> Option<&LeafNode> {
         self.diff.leaf(index).node().as_ref()
-    }
-
-    /// Return a mutable reference to the leaf with the given index.
-    pub(crate) fn leaf_mut(&mut self, index: LeafNodeIndex) -> Option<&mut LeafNode> {
-        self.diff.leaf_mut(index).node_mut().as_mut()
     }
 
     /// Compute and set the tree hash of all nodes in the tree.

@@ -97,7 +97,7 @@ impl MlsGroup {
         let framing_parameters = FramingParameters::new(aad, WireFormat::PublicMessage);
 
         let proposal_store = ProposalStore::new();
-        let leaf_node_parameters = LeafNodeParameters::new()
+        let leaf_node_parameters = LeafNodeParameters::builder()
             .with_capabilities(capabilities.unwrap_or_default())
             .with_extensions(extensions.unwrap_or_default())
             .build();

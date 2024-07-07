@@ -11,9 +11,7 @@ use crate::{
     error::LibraryError,
     extensions::errors::{ExtensionError, InvalidExtensionError},
     framing::errors::MessageDecryptionError,
-    key_packages::errors::{
-        KeyPackageExtensionSupportError, KeyPackageNewError, KeyPackageVerifyError,
-    },
+    key_packages::errors::{KeyPackageExtensionSupportError, KeyPackageVerifyError},
     messages::{group_info::GroupInfoError, GroupSecretsError},
     schedule::errors::PskError,
     treesync::{errors::*, node::leaf_node::LeafNodeUpdateError},
@@ -230,9 +228,6 @@ pub enum CreateCommitError<StorageError> {
     /// Error interacting with storage.
     #[error("Error interacting with storage.")]
     KeyStoreError(StorageError),
-    /// See [`KeyPackageNewError`] for more details.
-    #[error(transparent)]
-    KeyPackageGenerationError(#[from] KeyPackageNewError),
     /// See [`SignatureError`] for more details.
     #[error(transparent)]
     SignatureError(#[from] SignatureError),
@@ -253,6 +248,9 @@ pub enum CreateCommitError<StorageError> {
     /// See [`LeafNodeUpdateError`] for more details.
     #[error(transparent)]
     LeafNodeUpdateError(#[from] LeafNodeUpdateError<StorageError>),
+    /// See [`TreeSyncAddLeaf`] for more details.
+    #[error(transparent)]
+    TreeSyncAddLeaf(#[from] TreeSyncAddLeaf),
 }
 
 /// Validation error

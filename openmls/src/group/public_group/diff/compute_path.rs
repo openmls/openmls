@@ -14,7 +14,7 @@ use crate::{
     treesync::{
         node::{
             encryption_keys::EncryptionKeyPair,
-            leaf_node::{Capabilities, LeafNode, LeafNodeParameters, SimpleLeafNodeParams},
+            leaf_node::{Capabilities, LeafNodeParameters, SimpleLeafNodeParams},
             parent_node::PlainUpdatePathNode,
         },
         treekem::UpdatePath,
@@ -48,20 +48,6 @@ impl<'a> PublicGroupDiff<'a> {
         let ciphersuite = self.group_context().ciphersuite();
 
         let leaf_node_params = if let CommitType::External(credential_with_key) = commit_type {
-            // If this is an external commit we add a fresh leaf to the diff. We
-            // don't need to sign the leaf, as the signature is provided in the
-            // next step, when the update path is calculated.
-            let leaf_node = LeafNode::new_placeholder(credential_with_key.clone());
-
-            self.diff
-                .add_leaf(leaf_node)
-                .map_err(|_| LibraryError::custom("Tree full: cannot add more members"))?;
-
-            let credential_with_key = match leaf_node_params.credential_with_key() {
-                Some(cwk) => cwk.to_owned(),
-                None => credential_with_key.clone(),
-            };
-
             let capabilities = match leaf_node_params.capabilities() {
                 Some(c) => c.to_owned(),
                 None => Capabilities::default(),
@@ -73,7 +59,7 @@ impl<'a> PublicGroupDiff<'a> {
             };
 
             SimpleLeafNodeParams {
-                credential_with_key,
+                credential_with_key: credential_with_key.clone(),
                 capabilities,
                 extensions,
             }
