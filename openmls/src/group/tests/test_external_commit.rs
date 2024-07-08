@@ -1,7 +1,4 @@
-//! This module contains all tests regarding the validation of incoming external
-//! commit messages as defined in
-//! https://github.com/openmls/openmls/wiki/Message-validation
-
+//! This module contains tests for external commit messages
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
