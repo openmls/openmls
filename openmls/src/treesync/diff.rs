@@ -60,6 +60,7 @@ pub(crate) type UpdatePathResult = (
 /// The [`StagedTreeSyncDiff`] can be created from a [`TreeSyncDiff`], examined
 /// and later merged into a [`TreeSync`] instance.
 #[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Clone))]
 pub(crate) struct StagedTreeSyncDiff {
     diff: StagedMlsBinaryTreeDiff<TreeSyncLeafNode, TreeSyncParentNode>,
     new_tree_hash: Vec<u8>,

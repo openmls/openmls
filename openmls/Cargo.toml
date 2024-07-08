@@ -43,7 +43,7 @@ crypto-subtle = [] # Enable subtle crypto APIs that have to be used with care.
 test-utils = [
   "dep:serde_json",
   "dep:itertools",
-  "dep:openmls_rust_crypto",
+  "openmls_rust_crypto/test-utils",
   "dep:rand",
   "dep:wasm-bindgen-test",
   "dep:openmls_basic_credential",
@@ -76,6 +76,10 @@ pretty_env_logger = "0.5"
 tempfile = "3"
 wasm-bindgen = "0.2.90"
 wasm-bindgen-test = "0.3.40"
+clap = { version = "4", features = ["derive"] }
+base64 = "0.22.1"
+flate2 = "1.0"
+indicatif = "0.17.8"
 
 # Disable for wasm32 and Win32
 [target.'cfg(not(any(target_arch = "wasm32", all(target_arch = "x86", target_os = "windows"))))'.dev-dependencies]

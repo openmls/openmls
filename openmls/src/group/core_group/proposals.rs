@@ -20,7 +20,7 @@ use crate::{
 /// A [ProposalStore] can store the standalone proposals that are received from
 /// the DS in between two commit messages.
 #[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
-#[cfg_attr(test, derive(Clone))]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Clone))]
 pub struct ProposalStore {
     queued_proposals: Vec<QueuedProposal>,
 }
@@ -190,6 +190,7 @@ impl OrderedProposalRefs {
 /// accessed efficiently. To enable iteration over the queue in order, the
 /// `ProposalQueue` also contains a vector of `ProposalRef`s.
 #[derive(Default, Debug, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Clone))]
 pub(crate) struct ProposalQueue {
     /// `proposal_references` holds references to the proposals in the queue and
     /// determines the order of the queue.
