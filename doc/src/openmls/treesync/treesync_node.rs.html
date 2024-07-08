@@ -248,7 +248,7 @@
 }
 
 <span class="attr">#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(PartialEq))]
 </span><span class="doccomment">/// This intermediate struct on top of `Option&lt;Node&gt;` allows us to cache tree
 /// hash values. Blank nodes are represented by [`TreeSyncNode`] instances where
 /// `node = None`.
@@ -300,7 +300,7 @@
 }
 
 <span class="attr">#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(PartialEq))]
 </span><span class="doccomment">/// This intermediate struct on top of `Option&lt;Node&gt;` allows us to cache tree
 /// hash values. Blank nodes are represented by [`TreeSyncNode`] instances where
 /// `node = None`.

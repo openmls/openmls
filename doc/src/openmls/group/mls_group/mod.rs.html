@@ -514,6 +514,9 @@
 <a href="#514" id="514">514</a>
 <a href="#515" id="515">515</a>
 <a href="#516" id="516">516</a>
+<a href="#517" id="517">517</a>
+<a href="#518" id="518">518</a>
+<a href="#519" id="519">519</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! MLS Group
 //!
 //! This module contains [`MlsGroup`] and its submodules.
@@ -558,6 +561,7 @@
 <span class="doccomment">/// Pending Commit state. Differentiates between Commits issued by group members
 /// and External Commits.
 </span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(Clone))]
 </span><span class="kw">pub enum </span>PendingCommitState {
     <span class="doccomment">/// Commit from a group member
     </span>Member(StagedCommit),
@@ -630,6 +634,7 @@
 ///   external commit process, see [`MlsGroup::join_by_external_commit()`] or
 ///   Section 11.2.1 of the MLS specification.
 </span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(Clone))]
 </span><span class="kw">pub enum </span>MlsGroupState {
     <span class="doccomment">/// There is currently a pending Commit that hasn't been merged yet.
     </span>PendingCommit(Box&lt;PendingCommitState&gt;),
@@ -664,6 +669,7 @@
 /// inactive, as well as if it has a pending commit. See [`MlsGroupState`] for
 /// more information.
 </span><span class="attr">#[derive(Debug)]
+#[cfg_attr(feature = <span class="string">"test-utils"</span>, derive(Clone))]
 </span><span class="kw">pub struct </span>MlsGroup {
     <span class="comment">// The group configuration. See [`MlsGroupJoinConfig`] for more information.
     </span>mls_group_config: MlsGroupJoinConfig,

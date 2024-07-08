@@ -251,6 +251,7 @@
 <a href="#251" id="251">251</a>
 <a href="#252" id="252">252</a>
 <a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Public group diffs
 //!
 //! This module contains the [`PublicGroupDiff`] struct, as well as the
@@ -491,6 +492,7 @@
 <span class="doccomment">/// The staged version of a [`PublicGroupDiff`], which means it can no longer be
 /// modified. Its only use is to merge it into the original [`PublicGroup`].
 </span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(Clone))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>StagedPublicGroupDiff {
     <span class="kw">pub</span>(<span class="kw">super</span>) staged_diff: StagedTreeSyncDiff,
     <span class="kw">pub</span>(<span class="kw">super</span>) group_context: GroupContext,

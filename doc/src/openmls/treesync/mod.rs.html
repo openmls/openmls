@@ -1129,7 +1129,7 @@
 /// creating a new instance from an imported set of nodes, as well as when
 /// merging a diff.
 </span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq, Clone))]
+#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(PartialEq, Clone))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>TreeSync {
     tree: MlsBinaryTree&lt;TreeSyncLeafNode, TreeSyncParentNode&gt;,
     tree_hash: Vec&lt;u8&gt;,

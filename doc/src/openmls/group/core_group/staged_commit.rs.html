@@ -601,6 +601,9 @@
 <a href="#601" id="601">601</a>
 <a href="#602" id="602">602</a>
 <a href="#603" id="603">603</a>
+<a href="#604" id="604">604</a>
+<a href="#605" id="605">605</a>
+<a href="#606" id="606">606</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>core::fmt::Debug;
 <span class="kw">use </span>std::mem;
 
@@ -1032,6 +1035,7 @@
 }
 
 <span class="attr">#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(Clone))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>StagedCommitState {
     PublicState(Box&lt;PublicStagedCommitState&gt;),
     GroupMember(Box&lt;MemberStagedCommitState&gt;),
@@ -1039,6 +1043,7 @@
 
 <span class="doccomment">/// Contains the changes from a commit to the group state.
 </span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(Clone))]
 </span><span class="kw">pub struct </span>StagedCommit {
     staged_proposal_queue: ProposalQueue,
     state: StagedCommitState,
@@ -1171,6 +1176,7 @@
 
 <span class="doccomment">/// This struct is used internally by [StagedCommit] to encapsulate all the modified group state.
 </span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(Clone))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MemberStagedCommitState {
     group_epoch_secrets: GroupEpochSecrets,
     message_secrets: MessageSecrets,

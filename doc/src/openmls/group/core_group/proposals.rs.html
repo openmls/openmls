@@ -653,6 +653,7 @@
 <a href="#653" id="653">653</a>
 <a href="#654" id="654">654</a>
 <a href="#655" id="655">655</a>
+<a href="#656" id="656">656</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::{hash_map::Entry, HashMap, HashSet};
 
 <span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
@@ -675,7 +676,7 @@
 <span class="doccomment">/// A [ProposalStore] can store the standalone proposals that are received from
 /// the DS in between two commit messages.
 </span><span class="attr">#[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
-#[cfg_attr(test, derive(Clone))]
+#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(Clone))]
 </span><span class="kw">pub struct </span>ProposalStore {
     queued_proposals: Vec&lt;QueuedProposal&gt;,
 }
@@ -859,6 +860,7 @@
 /// accessed efficiently. To enable iteration over the queue in order, the
 /// `ProposalQueue` also contains a vector of `ProposalRef`s.
 </span><span class="attr">#[derive(Default, Debug, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(Clone))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ProposalQueue {
     <span class="doccomment">/// `proposal_references` holds references to the proposals in the queue and
     /// determines the order of the queue.
