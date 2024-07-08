@@ -13,6 +13,8 @@ mod test_commit_validation;
 #[cfg(test)]
 mod test_encoding;
 #[cfg(test)]
+mod test_external_commit;
+#[cfg(test)]
 mod test_external_commit_validation;
 #[cfg(test)]
 mod test_framing;
