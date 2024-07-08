@@ -14,7 +14,7 @@ use crate::{
     treesync::{
         node::{
             encryption_keys::EncryptionKeyPair,
-            leaf_node::{Capabilities, LeafNodeParameters, SimpleLeafNodeParams},
+            leaf_node::{Capabilities, LeafNodeParameters, UpdateLeafNodeParams},
             parent_node::PlainUpdatePathNode,
         },
         treekem::UpdatePath,
@@ -58,7 +58,7 @@ impl<'a> PublicGroupDiff<'a> {
                 None => Extensions::default(),
             };
 
-            SimpleLeafNodeParams {
+            UpdateLeafNodeParams {
                 credential_with_key: credential_with_key.clone(),
                 capabilities,
                 extensions,
@@ -87,7 +87,7 @@ impl<'a> PublicGroupDiff<'a> {
                 None => leaf.extensions().clone(),
             };
 
-            SimpleLeafNodeParams {
+            UpdateLeafNodeParams {
                 credential_with_key,
                 capabilities,
                 extensions,
@@ -100,6 +100,7 @@ impl<'a> PublicGroupDiff<'a> {
             provider,
             signer,
             ciphersuite,
+            commit_type,
             self.group_context().group_id().clone(),
             leaf_index,
             leaf_node_params,

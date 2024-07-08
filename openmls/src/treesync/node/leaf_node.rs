@@ -39,14 +39,16 @@ pub(crate) struct NewLeafNodeParams {
     pub(crate) tree_info_tbs: TreeInfoTbs,
 }
 
+/// Set of LeafNode parameters that are used when regenerating a LeafNodes
+/// during an update operation.
 #[derive(Debug, PartialEq, Clone)]
-pub(crate) struct SimpleLeafNodeParams {
+pub(crate) struct UpdateLeafNodeParams {
     pub(crate) credential_with_key: CredentialWithKey,
     pub(crate) capabilities: Capabilities,
     pub(crate) extensions: Extensions,
 }
 
-impl SimpleLeafNodeParams {
+impl UpdateLeafNodeParams {
     #[cfg(test)]
     pub(crate) fn derive(leaf_node: &LeafNode) -> Self {
         Self {
@@ -257,7 +259,7 @@ impl LeafNode {
         provider: &impl OpenMlsProvider,
         ciphersuite: Ciphersuite,
         parent_hash: &[u8],
-        leaf_node_params: SimpleLeafNodeParams,
+        leaf_node_params: UpdateLeafNodeParams,
         group_id: GroupId,
         leaf_index: LeafNodeIndex,
         signer: &impl Signer,
@@ -330,7 +332,6 @@ impl LeafNode {
     ///
     /// This function can be used when generating an update. In most other cases
     /// a leaf node should be generated as part of a new [`KeyPackage`].
-    #[allow(clippy::too_many_arguments)]
     pub(crate) fn update<Provider: OpenMlsProvider>(
         &mut self,
         ciphersuite: Ciphersuite,

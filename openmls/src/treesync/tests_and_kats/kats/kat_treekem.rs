@@ -9,13 +9,13 @@ use tls_codec::{Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTra
 use crate::{
     binary_tree::{array_representation::ParentNodeIndex, LeafNodeIndex},
     extensions::{Extensions, RatchetTreeExtension},
-    group::{GroupContext, GroupEpoch, GroupId},
+    group::{CommitType, GroupContext, GroupEpoch, GroupId},
     messages::PathSecret,
     prelude_test::Secret,
     schedule::CommitSecret,
     test_utils::{hex_to_bytes, OpenMlsRustCrypto},
     treesync::{
-        node::{encryption_keys::EncryptionKeyPair, leaf_node::SimpleLeafNodeParams},
+        node::{encryption_keys::EncryptionKeyPair, leaf_node::UpdateLeafNodeParams},
         treekem::{DecryptPathParams, UpdatePath, UpdatePathIn},
         TreeSync,
     },
@@ -245,7 +245,7 @@ pub fn run_test_vector(test: TreeKemTest, provider: &impl OpenMlsProvider) {
 
             let leaf_index = LeafNodeIndex::new(path_test.sender);
             let leaf_node = diff_after_kat.leaf(leaf_index).unwrap();
-            let leaf_node_params = SimpleLeafNodeParams::derive(leaf_node);
+            let leaf_node_params = UpdateLeafNodeParams::derive(leaf_node);
 
             // TODO(#1279): Update own leaf.
             let (vec_plain_update_path_nodes, _, commit_secret) = diff_after_kat
@@ -253,6 +253,7 @@ pub fn run_test_vector(test: TreeKemTest, provider: &impl OpenMlsProvider) {
                     provider,
                     &signer,
                     ciphersuite,
+                    &CommitType::Member,
                     group_context.group_id().clone(),
                     LeafNodeIndex::new(path_test.sender),
                     leaf_node_params,

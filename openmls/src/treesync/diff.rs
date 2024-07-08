@@ -24,7 +24,7 @@ use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsProvider};
 use serde::{Deserialize, Serialize};
 
-use super::node::leaf_node::SimpleLeafNodeParams;
+use super::node::leaf_node::UpdateLeafNodeParams;
 use super::{
     errors::*,
     node::{
@@ -36,7 +36,7 @@ use super::{
     treesync_node::{TreeSyncLeafNode, TreeSyncParentNode},
     LeafNode, TreeSync, TreeSyncParentHashError,
 };
-use crate::group::GroupId;
+use crate::group::{create_commit_params::CommitType, GroupId};
 use crate::{
     binary_tree::{
         array_representation::{
@@ -290,29 +290,25 @@ impl<'a> TreeSyncDiff<'a> {
     /// derivation, as well as the newly derived [`EncryptionKeyPair`]s.
     ///
     /// Returns an error if the target leaf is not in the tree.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn apply_own_update_path(
         &mut self,
         provider: &impl OpenMlsProvider,
         signer: &impl Signer,
         ciphersuite: Ciphersuite,
+        commit_type: &CommitType,
         group_id: GroupId,
         leaf_index: LeafNodeIndex,
-        leaf_node_params: SimpleLeafNodeParams,
+        leaf_node_params: UpdateLeafNodeParams,
     ) -> Result<UpdatePathResult, TreeSyncAddLeaf> {
-        // We temporarily add a placeholder leaf node to the tree, because it
+        // For External Commits, we temporarily add a placeholder leaf node to the tree, because it
         // might be required to make the tree grow to the right size. If we
         // don't do that, calculating the direct path might fail. It's important
         // to not do anything with the value of that leaf until it has been
         // replaced.
-        let leaf_node = LeafNode::new_placeholder();
-
-        // In case of an External Commit, where the leaf is not replaced and the
-        // tree is full, we have to grow the tree first. In all other cases we
-        // just replace an existing leaf.
-        if leaf_index.u32() >= self.leaf_count() {
+        if let CommitType::External(_) = commit_type {
+            let leaf_node = LeafNode::new_placeholder();
             self.add_leaf(leaf_node)?;
-        } else {
-            self.diff.replace_leaf(leaf_index, leaf_node.into());
         }
 
         // We calculate the parent hash so that we can use it for a fresh leaf
@@ -332,7 +328,7 @@ impl<'a> TreeSyncDiff<'a> {
             signer,
         )?;
 
-        // We replace the temporary leaf with the frash one we just generated.
+        // We insert the fresh leaf into the tree.
         self.diff.replace_leaf(leaf_index, leaf_node.into());
 
         // Prepend parent keypairs with node keypair
