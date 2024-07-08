@@ -139,9 +139,9 @@ Some OpenMLS APIs require only one of the sub-traits, though.
 ## Implementation Notes
 
 It is not necessary to implement all sub-traits if one functionality is missing.
-Suppose you want to use a persisting key store. In that case, it is sufficient
-to do a new implementation of the key store trait and combine it with one of the
-provided crypto and randomness trait implementations.
+Suppose you want to use a persisting storage provider. In that case, it is
+sufficient to do a new implementation of the `StorageProvider` trait and
+combine it with one of the provided crypto and randomness trait implementations.
 
 [rust crypto]: https://crates.io/crates/openmls_rust_crypto
 [libcrux crypto]: https://crates.io/crates/openmls_libcrux_crypto
