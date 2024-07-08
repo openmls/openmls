@@ -9,7 +9,7 @@ must have been written to the provider previously.
 ## Forward-Secrecy Considerations
 
 The persisted `MlsGroup` state contains private key material. As a consequence,
-delete old group states need to be deleted in order to achieve Forward-Secrecy
+old group states need to be deleted in order to achieve Forward-Secrecy
 w.r.t. that key material. Since, as detailed above, an old group state is stale
 immediately after most group operations, we recommend that the `StorageProvider`
 deletes old group state when values are overwritten.
