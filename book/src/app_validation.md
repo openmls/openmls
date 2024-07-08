@@ -59,7 +59,7 @@
 >
 > -- [RFC9420, Section 6.3.1](https://www.rfc-editor.org/rfc/rfc9420.html#section-6.3.1-11)
 
-Therefore, the application must also validate whether the AAD adheres to then
+Therefore, the application must also validate whether the AAD adheres to the
 prescribed format.
 
 ## Proposal Validation

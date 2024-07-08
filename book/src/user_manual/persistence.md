@@ -8,7 +8,7 @@ must be stored in the provider.
 
 ## Forward-Secrecy Considerations
 
-The persisted `MlsGroup` state  contains
+The persisted `MlsGroup` state contains
 private key material. As a consequence, the application needs to delete old group
 states to achieve Forward-Secrecy w.r.t. that key material. Since, as detailed
 above, an old group state is stale immediately after most group operations,
