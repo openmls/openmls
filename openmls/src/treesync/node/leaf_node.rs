@@ -70,7 +70,6 @@ pub struct LeafNodeParameters {
 
 impl LeafNodeParameters {
     /// Create a new [`LeafNodeParametersBuilder`].
-    #[allow(clippy::new_ret_no_self)]
     pub fn builder() -> LeafNodeParametersBuilder {
         LeafNodeParametersBuilder::default()
     }
