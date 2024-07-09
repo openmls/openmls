@@ -91,7 +91,6 @@ fn ratchet_tree_extension() {
 
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        //.proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
     let create_commit_result = alice_group

@@ -137,11 +137,9 @@ impl CoreGroup {
 
         let ciphersuite = self.ciphersuite();
 
-        let (commit, proposal_queue, sender_index) = self.public_group.validate_commit(
-            mls_content,
-            self.proposal_store(),
-            provider.crypto(),
-        )?;
+        let (commit, proposal_queue, sender_index) = self
+            .public_group
+            .validate_commit(mls_content, provider.crypto())?;
 
         // Create the provisional public group state (including the tree and
         // group context) and apply proposals.
