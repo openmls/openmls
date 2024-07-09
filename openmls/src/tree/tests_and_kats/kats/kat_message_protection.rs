@@ -268,18 +268,18 @@ pub fn run_test_vector(
             .create_add_proposal(framing_parameters, bob_key_package.clone(), &signer)
             .expect("Could not create proposal.");
 
-        let proposal_store = ProposalStore::from_queued_proposal(
+        group.proposal_store_mut().empty();
+        group.proposal_store_mut().add(
             QueuedProposal::from_authenticated_content_by_ref(
                 ciphersuite,
                 provider.crypto(),
                 bob_add_proposal,
             )
-            .expect("Could not create QueuedProposal."),
+            .unwrap(),
         );
 
         let params = CreateCommitParams::builder()
             .framing_parameters(framing_parameters)
-            .proposal_store(&proposal_store)
             .force_self_update(false)
             .build();
 
@@ -379,7 +379,6 @@ pub fn run_test_vector(
         ) {
             // Group stuff we need for openmls
             let sender_ratchet_config = SenderRatchetConfiguration::new(0, 0);
-            let proposal_store = ProposalStore::default();
 
             // decrypt private message
             let processed_message = group
@@ -387,7 +386,6 @@ pub fn run_test_vector(
                     provider,
                     proposal_priv.into_protocol_message().unwrap(),
                     &sender_ratchet_config,
-                    &proposal_store,
                     &[],
                 )
                 .unwrap();
@@ -629,7 +627,6 @@ pub fn run_test_vector(
         ) {
             // Group stuff we need for openmls
             let sender_ratchet_config = SenderRatchetConfiguration::new(0, 0);
-            let proposal_store = ProposalStore::default();
 
             // check that the proposal in proposal_pub == proposal
             let processed_message = group
@@ -637,7 +634,6 @@ pub fn run_test_vector(
                     provider,
                     application_priv.into_ciphertext().unwrap(),
                     &sender_ratchet_config,
-                    &proposal_store,
                     &[],
                 )
                 .unwrap();
