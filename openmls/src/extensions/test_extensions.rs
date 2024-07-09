@@ -80,18 +80,17 @@ fn ratchet_tree_extension() {
         )
         .expect("Could not create proposal.");
 
-    let proposal_store = ProposalStore::from_queued_proposal(
+    alice_group.proposal_store_mut().add(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
             provider.crypto(),
             bob_add_proposal,
         )
-        .expect("Could not create QueuedProposal."),
+        .unwrap(),
     );
 
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
     let create_commit_result = alice_group
@@ -158,18 +157,18 @@ fn ratchet_tree_extension() {
         )
         .expect("Could not create proposal.");
 
-    let proposal_store = ProposalStore::from_queued_proposal(
+    alice_group.proposal_store_mut().empty();
+    alice_group.proposal_store_mut().add(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
             provider.crypto(),
             bob_add_proposal,
         )
-        .expect("Could not create staged proposal."),
+        .unwrap(),
     );
 
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
     let create_commit_result = alice_group

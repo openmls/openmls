@@ -96,14 +96,12 @@ impl MlsGroup {
         // Prepare the commit parameters
         let framing_parameters = FramingParameters::new(aad, WireFormat::PublicMessage);
 
-        let proposal_store = ProposalStore::new();
         let leaf_node_parameters = LeafNodeParameters::builder()
             .with_capabilities(capabilities.unwrap_or_default())
             .with_extensions(extensions.unwrap_or_default())
             .build();
         let params = CreateCommitParams::builder()
             .framing_parameters(framing_parameters)
-            .proposal_store(&proposal_store)
             .commit_type(CommitType::External(credential_with_key))
             .leaf_node_parameters(leaf_node_parameters)
             .build();
@@ -119,7 +117,6 @@ impl MlsGroup {
         let mls_group = MlsGroup {
             mls_group_config: mls_group_config.clone(),
             group,
-            proposal_store: ProposalStore::new(),
             own_leaf_nodes: vec![],
             aad: vec![],
             group_state: MlsGroupState::PendingCommit(Box::new(PendingCommitState::External(
@@ -291,7 +288,6 @@ impl StagedWelcome {
         let mls_group = MlsGroup {
             mls_group_config: self.mls_group_config,
             group,
-            proposal_store: ProposalStore::new(),
             own_leaf_nodes: vec![],
             aad: vec![],
             group_state: MlsGroupState::Operational,

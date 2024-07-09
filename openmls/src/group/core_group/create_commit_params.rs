@@ -3,8 +3,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    credentials::CredentialWithKey, framing::FramingParameters, group::ProposalStore,
-    messages::proposals::Proposal,
+    credentials::CredentialWithKey, framing::FramingParameters, messages::proposals::Proposal,
 };
 
 #[cfg(doc)]
@@ -20,7 +19,6 @@ pub(crate) enum CommitType {
 
 pub(crate) struct CreateCommitParams<'a> {
     framing_parameters: FramingParameters<'a>, // Mandatory
-    proposal_store: &'a ProposalStore,         // Mandatory
     inline_proposals: Vec<Proposal>,           // Optional
     force_self_update: bool,                   // Optional
     commit_type: CommitType,                   // Optional (default is `Member`)
@@ -29,10 +27,6 @@ pub(crate) struct CreateCommitParams<'a> {
 
 pub(crate) struct TempBuilderCCPM0 {}
 
-pub(crate) struct TempBuilderCCPM1<'a> {
-    framing_parameters: FramingParameters<'a>,
-}
-
 pub(crate) struct CreateCommitParamsBuilder<'a> {
     ccp: CreateCommitParams<'a>,
 }
@@ -40,21 +34,11 @@ pub(crate) struct CreateCommitParamsBuilder<'a> {
 impl TempBuilderCCPM0 {
     pub(crate) fn framing_parameters(
         self,
-        framing_parameters: FramingParameters<'_>,
-    ) -> TempBuilderCCPM1<'_> {
-        TempBuilderCCPM1 { framing_parameters }
-    }
-}
-
-impl<'a> TempBuilderCCPM1<'a> {
-    pub(crate) fn proposal_store(
-        self,
-        proposal_store: &'a ProposalStore,
-    ) -> CreateCommitParamsBuilder<'a> {
+        framing_parameters: FramingParameters,
+    ) -> CreateCommitParamsBuilder {
         CreateCommitParamsBuilder {
             ccp: CreateCommitParams {
-                framing_parameters: self.framing_parameters,
-                proposal_store,
+                framing_parameters,
                 inline_proposals: vec![],
                 force_self_update: true,
                 commit_type: CommitType::Member,
@@ -93,9 +77,6 @@ impl<'a> CreateCommitParams<'a> {
     }
     pub(crate) fn framing_parameters(&self) -> &FramingParameters {
         &self.framing_parameters
-    }
-    pub(crate) fn proposal_store(&self) -> &ProposalStore {
-        self.proposal_store
     }
     pub(crate) fn inline_proposals(&self) -> &[Proposal] {
         &self.inline_proposals

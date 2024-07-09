@@ -89,7 +89,7 @@ macro_rules! impl_propose_fun {
                 .storage()
                 .queue_proposal(self.group.group_id(), &proposal_ref, &queued_proposal)
                 .map_err(ProposalError::StorageError)?;
-            self.proposal_store.add(queued_proposal);
+            self.proposal_store_mut().add(queued_proposal);
 
             let mls_message = self.content_to_mls_message(proposal, provider)?;
 
@@ -256,7 +256,7 @@ impl MlsGroup {
             .storage()
             .queue_proposal(self.group_id(), &proposal_ref, &proposal)
             .map_err(ProposeAddMemberError::StorageError)?;
-        self.proposal_store.add(proposal);
+        self.proposal_store_mut().add(proposal);
 
         let mls_message = self.content_to_mls_message(add_proposal, provider)?;
 
@@ -291,7 +291,7 @@ impl MlsGroup {
             .storage()
             .queue_proposal(self.group_id(), &proposal_ref, &proposal)
             .map_err(ProposeRemoveMemberError::StorageError)?;
-        self.proposal_store.add(proposal);
+        self.proposal_store_mut().add(proposal);
 
         let mls_message = self.content_to_mls_message(remove_proposal, provider)?;
 
@@ -380,7 +380,7 @@ impl MlsGroup {
             .storage()
             .queue_proposal(self.group_id(), &proposal_ref, &queued_proposal)
             .map_err(ProposalError::StorageError)?;
-        self.proposal_store.add(queued_proposal);
+        self.proposal_store_mut().add(queued_proposal);
 
         let mls_message = self.content_to_mls_message(proposal, provider)?;
 
@@ -414,7 +414,6 @@ impl MlsGroup {
         // Create Commit over all proposals
         let params = CreateCommitParams::builder()
             .framing_parameters(self.framing_parameters())
-            .proposal_store(&self.proposal_store)
             .inline_proposals(inline_proposals)
             .build();
         let create_commit_result = self.group.create_commit(params, provider, signer)?;

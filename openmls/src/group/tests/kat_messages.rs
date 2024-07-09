@@ -251,7 +251,8 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         )
         .unwrap();
 
-    let mut proposal_store = ProposalStore::from_queued_proposal(
+    alice_group.proposal_store_mut().empty();
+    alice_group.proposal_store_mut().add(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
             provider.crypto(),
@@ -261,7 +262,6 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     );
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .proposal_store(&proposal_store)
         .build();
     let create_commit_result = alice_group
         .create_commit(
@@ -271,11 +271,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         )
         .unwrap();
     alice_group
-        .merge_staged_commit(
-            &provider,
-            create_commit_result.staged_commit,
-            &mut proposal_store,
-        )
+        .merge_staged_commit(&provider, create_commit_result.staged_commit)
         .unwrap();
 
     let commit = if let FramedContentBody::Commit(commit) = create_commit_result.commit.content() {
