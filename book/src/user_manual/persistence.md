@@ -8,8 +8,4 @@ must have been written to the provider previously.
 
 ## Forward-Secrecy Considerations
 
-The persisted `MlsGroup` state contains private key material. As a consequence,
-old group states need to be deleted in order to achieve Forward-Secrecy
-w.r.t. that key material. Since, as detailed above, an old group state is stale
-immediately after most group operations, we recommend that the `StorageProvider`
-deletes old group state when values are overwritten.
+OpenMLS uses the `StorageProvider` to store sensitive key material. To achieve forward-secrecy (i.e. to prevent an adversary from decrypting messages sent in the past if a client is compromised), OpenMLS frequently deletes previously used key material through calls to the `StorageProvider`. `StorageProvider` implementations must thus take care to ensure that values deleted through any of the `delete_` functions of the trait are irrevocably deleted and that no copies are kept.
