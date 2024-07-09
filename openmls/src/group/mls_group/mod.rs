@@ -353,6 +353,10 @@ impl MlsGroup {
             proposal_store.add(proposal);
         }
 
+        println!("ld group_config: {}", group_config.is_some());
+        println!("ld core_group: {}", core_group.is_some());
+        println!("ld group_state: {}", group_state.is_some());
+
         let build = || -> Option<Self> {
             Some(Self {
                 mls_group_config: group_config?,

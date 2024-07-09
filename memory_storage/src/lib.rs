@@ -36,7 +36,6 @@ impl MemoryStorage {
         w.write_all(&count)?;
 
         for (k, v) in values.iter() {
-            println!("kv {k:?} = {v:?}");
             let rec_len = 8 + 8 + k.len() + v.len();
             let k_len = k.len().to_be_bytes();
             let v_len = v.len().to_be_bytes();

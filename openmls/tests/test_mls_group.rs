@@ -1465,7 +1465,31 @@ fn group_generate_storage_kat(ciphersuite: Ciphersuite, provider: &Provider) {
     alice_provider2.storage =
         openmls_memory_storage::MemoryStorage::deserialize(&mut buf.as_slice()).unwrap();
 
-    let alice_group2 = MlsGroup::load(alice_provider2.storage(), alice_group.group_id())
+    //// first make sure that the provider is recovered properly
+    let mut entries = alice_provider
+        .storage
+        .values
+        .read()
+        .unwrap()
+        .iter()
+        .map(|(k, v)| (k.to_owned(), v.to_owned()))
+        .collect::<Vec<_>>();
+    let mut entries2 = alice_provider2
+        .storage
+        .values
+        .read()
+        .unwrap()
+        .iter()
+        .map(|(k, v)| (k.to_owned(), v.to_owned()))
+        .collect::<Vec<_>>();
+
+    entries.sort();
+    entries2.sort();
+
+    assert_eq!(entries, entries2);
+
+    //// Then load the group
+    let alice_group2 = MlsGroup::load(alice_provider.storage(), alice_group.group_id())
         .unwrap()
         .unwrap();
 
