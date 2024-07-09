@@ -74,7 +74,7 @@
                 MlsGroupStateError::UseAfterEviction,
             ));
         }
-        <span class="kw">if </span>!<span class="self">self</span>.proposal_store.is_empty() {
+        <span class="kw">if </span>!<span class="self">self</span>.proposal_store().is_empty() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(CreateMessageError::GroupStateError(
                 MlsGroupStateError::PendingProposal,
             ));

@@ -62,9 +62,6 @@
 <a href="#62" id="62">62</a>
 <a href="#63" id="63">63</a>
 <a href="#64" id="64">64</a>
-<a href="#65" id="65">65</a>
-<a href="#66" id="66">66</a>
-<a href="#67" id="67">67</a>
 </pre></div><pre class="rust"><code><span class="comment">// TODO #245: Remove this once we have a proper serialization format
 </span><span class="attr">#![allow(deprecated)]
 
@@ -85,7 +82,6 @@
 </span><span class="kw">pub struct </span>SerializedMlsGroup {
     mls_group_config: MlsGroupJoinConfig,
     group: CoreGroup,
-    proposal_store: ProposalStore,
     own_leaf_nodes: Vec&lt;LeafNode&gt;,
     aad: Vec&lt;u8&gt;,
     resumption_psk_store: ResumptionPskStore,
@@ -98,7 +94,6 @@
         MlsGroup {
             mls_group_config: <span class="self">self</span>.mls_group_config,
             group: <span class="self">self</span>.group,
-            proposal_store: <span class="self">self</span>.proposal_store,
             own_leaf_nodes: <span class="self">self</span>.own_leaf_nodes,
             aad: <span class="self">self</span>.aad,
             group_state: <span class="self">self</span>.group_state,
@@ -114,7 +109,6 @@
         <span class="kw">let </span><span class="kw-2">mut </span>state = serializer.serialize_struct(<span class="string">"SerializedMlsGroup"</span>, <span class="number">6</span>)<span class="question-mark">?</span>;
         state.serialize_field(<span class="string">"mls_group_config"</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.mls_group_config)<span class="question-mark">?</span>;
         state.serialize_field(<span class="string">"group"</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.group)<span class="question-mark">?</span>;
-        state.serialize_field(<span class="string">"proposal_store"</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.proposal_store)<span class="question-mark">?</span>;
         state.serialize_field(<span class="string">"own_leaf_nodes"</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.own_leaf_nodes)<span class="question-mark">?</span>;
         state.serialize_field(<span class="string">"aad"</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.aad)<span class="question-mark">?</span>;
         state.serialize_field(<span class="string">"resumption_psk_store"</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.group.resumption_psk_store)<span class="question-mark">?</span>;

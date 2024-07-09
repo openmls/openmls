@@ -306,11 +306,6 @@
 <a href="#306" id="306">306</a>
 <a href="#307" id="307">307</a>
 <a href="#308" id="308">308</a>
-<a href="#309" id="309">309</a>
-<a href="#310" id="310">310</a>
-<a href="#311" id="311">311</a>
-<a href="#312" id="312">312</a>
-<a href="#313" id="313">313</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>core_group::proposals::QueuedProposal;
 
 <span class="kw">use crate</span>::{
@@ -321,7 +316,7 @@
     },
 };
 
-<span class="kw">use super</span>::{proposals::ProposalStore, <span class="kw-2">*</span>};
+<span class="kw">use super</span>::<span class="kw-2">*</span>;
 
 <span class="kw">impl </span>CoreGroup {
     <span class="doccomment">/// This processing function does most of the semantic verifications.
@@ -356,7 +351,6 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         provider: <span class="kw-2">&amp;</span>Provider,
         unverified_message: UnverifiedMessage,
-        proposal_store: <span class="kw-2">&amp;</span>ProposalStore,
         old_epoch_keypairs: Vec&lt;EncryptionKeyPair&gt;,
         leaf_node_keypairs: Vec&lt;EncryptionKeyPair&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ProcessedMessage, ProcessMessageError&lt;Provider::StorageError&gt;&gt; {
@@ -393,7 +387,6 @@
                     FramedContentBody::Commit(<span class="kw">_</span>) =&gt; {
                         <span class="kw">let </span>staged_commit = <span class="self">self</span>.stage_commit(
                             <span class="kw-2">&amp;</span>content,
-                            proposal_store,
                             old_epoch_keypairs,
                             leaf_node_keypairs,
                             provider,
@@ -487,7 +480,6 @@
         provider: <span class="kw-2">&amp;</span>Provider,
         message: <span class="kw">impl </span>Into&lt;ProtocolMessage&gt;,
         sender_ratchet_configuration: <span class="kw-2">&amp;</span>SenderRatchetConfiguration,
-        proposal_store: <span class="kw-2">&amp;</span>ProposalStore,
         own_leaf_nodes: <span class="kw-2">&amp;</span>[LeafNode],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ProcessedMessage, ProcessMessageError&lt;Provider::StorageError&gt;&gt; {
         <span class="kw">let </span>message: ProtocolMessage = message.into();
@@ -516,7 +508,6 @@
         <span class="self">self</span>.process_unverified_message(
             provider,
             unverified_message,
-            proposal_store,
             old_epoch_keypairs,
             leaf_node_keypairs,
         )
@@ -607,7 +598,6 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         provider: <span class="kw-2">&amp;</span>Provider,
         staged_commit: StagedCommit,
-        proposal_store: <span class="kw-2">&amp;mut </span>ProposalStore,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), MergeCommitError&lt;Provider::StorageError&gt;&gt; {
         <span class="comment">// Save the past epoch
         </span><span class="kw">let </span>past_epoch = <span class="self">self</span>.context().epoch();
@@ -620,7 +610,7 @@
                 .add(past_epoch, message_secrets, leaves);
         }
         <span class="comment">// Empty the proposal store
-        </span>proposal_store.empty();
+        </span><span class="self">self</span>.proposal_store_mut().empty();
         <span class="prelude-val">Ok</span>(())
     }
 }

@@ -175,7 +175,6 @@
 <a href="#175" id="175">175</a>
 <a href="#176" id="176">176</a>
 <a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>core_group::create_commit_params::CreateCommitParams;
 <span class="kw">use </span>openmls_traits::{signatures::Signer, storage::StorageProvider <span class="kw">as _</span>};
 
@@ -213,7 +212,6 @@
 
         <span class="kw">let </span>params = CreateCommitParams::builder()
             .framing_parameters(<span class="self">self</span>.framing_parameters())
-            .proposal_store(<span class="kw-2">&amp;</span><span class="self">self</span>.proposal_store)
             .build();
         <span class="comment">// Create Commit over all proposals.
         // TODO #751
@@ -322,7 +320,7 @@
             .storage()
             .queue_proposal(<span class="self">self</span>.group_id(), <span class="kw-2">&amp;</span>proposal_ref, <span class="kw-2">&amp;</span>proposal)
             .map_err(ProposeSelfUpdateError::StorageError)<span class="question-mark">?</span>;
-        <span class="self">self</span>.proposal_store.add(proposal);
+        <span class="self">self</span>.proposal_store_mut().add(proposal);
 
         <span class="kw">let </span>mls_message = <span class="self">self</span>.content_to_mls_message(update_proposal, provider)<span class="question-mark">?</span>;
 
@@ -347,7 +345,7 @@
             .storage()
             .queue_proposal(<span class="self">self</span>.group_id(), <span class="kw-2">&amp;</span>proposal_ref, <span class="kw-2">&amp;</span>proposal)
             .map_err(ProposeSelfUpdateError::StorageError)<span class="question-mark">?</span>;
-        <span class="self">self</span>.proposal_store.add(proposal);
+        <span class="self">self</span>.proposal_store_mut().add(proposal);
 
         <span class="kw">let </span>mls_message = <span class="self">self</span>.content_to_mls_message(update_proposal, provider)<span class="question-mark">?</span>;
 

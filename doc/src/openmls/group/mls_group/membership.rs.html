@@ -340,7 +340,6 @@
         // TODO #751
         </span><span class="kw">let </span>params = CreateCommitParams::builder()
             .framing_parameters(<span class="self">self</span>.framing_parameters())
-            .proposal_store(<span class="kw-2">&amp;</span><span class="self">self</span>.proposal_store)
             .inline_proposals(inline_proposals)
             .build();
         <span class="kw">let </span>create_commit_result = <span class="self">self</span>.group.create_commit(params, provider, signer)<span class="question-mark">?</span>;
@@ -422,7 +421,6 @@
         // TODO #751
         </span><span class="kw">let </span>params = CreateCommitParams::builder()
             .framing_parameters(<span class="self">self</span>.framing_parameters())
-            .proposal_store(<span class="kw-2">&amp;</span><span class="self">self</span>.proposal_store)
             .inline_proposals(inline_proposals)
             .build();
         <span class="kw">let </span>create_commit_result = <span class="self">self</span>.group.create_commit(params, provider, signer)<span class="question-mark">?</span>;
@@ -470,9 +468,11 @@
             .create_remove_proposal(<span class="self">self</span>.framing_parameters(), removed, signer)
             .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"Creating a self removal should not fail"</span>))<span class="question-mark">?</span>;
 
-        <span class="self">self</span>.proposal_store
+        <span class="kw">let </span>ciphersuite = <span class="self">self</span>.ciphersuite();
+
+        <span class="self">self</span>.proposal_store_mut()
             .add(QueuedProposal::from_authenticated_content_by_ref(
-                <span class="self">self</span>.ciphersuite(),
+                ciphersuite,
                 provider.crypto(),
                 remove_proposal.clone(),
             )<span class="question-mark">?</span>);

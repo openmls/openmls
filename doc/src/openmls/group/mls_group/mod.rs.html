@@ -676,9 +676,6 @@
     <span class="comment">// the internal `CoreGroup` used for lower level operations. See `CoreGroup` for more
     // information.
     </span>group: CoreGroup,
-    <span class="comment">// A [ProposalStore] that stores incoming proposals from the DS within one epoch.
-    // The store is emptied after every epoch change.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) proposal_store: ProposalStore,
     <span class="comment">// Own [`LeafNode`]s that were created for update proposals and that
     // are needed in case an update proposal is committed by another group
     // member. The vector is emptied after every epoch change.
@@ -774,7 +771,7 @@
 
     <span class="doccomment">/// Returns an `Iterator` over pending proposals.
     </span><span class="kw">pub fn </span>pending_proposals(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>QueuedProposal&gt; {
-        <span class="self">self</span>.proposal_store.proposals()
+        <span class="self">self</span>.proposal_store().proposals()
     }
 
     <span class="doccomment">/// Returns a reference to the [`StagedCommit`] of the most recently created
@@ -829,9 +826,9 @@
         storage: <span class="kw-2">&amp;</span>Storage,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Storage::Error&gt; {
         <span class="comment">// If the proposal store is not empty...
-        </span><span class="kw">if </span>!<span class="self">self</span>.proposal_store.is_empty() {
+        </span><span class="kw">if </span>!<span class="self">self</span>.proposal_store().is_empty() {
             <span class="comment">// Empty the proposal store
-            </span><span class="self">self</span>.proposal_store.empty();
+            </span><span class="self">self</span>.proposal_store_mut().empty();
 
             <span class="comment">// Clear proposals in storage
             </span>storage.clear_proposal_queue::&lt;GroupId, ProposalRef&gt;(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
@@ -862,21 +859,14 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;MlsGroup&gt;, Storage::Error&gt; {
         <span class="kw">let </span>group_config = storage.mls_group_join_config(group_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>core_group = CoreGroup::load(storage, group_id)<span class="question-mark">?</span>;
-        <span class="kw">let </span>proposals: Vec&lt;(ProposalRef, QueuedProposal)&gt; = storage.queued_proposals(group_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>own_leaf_nodes = storage.own_leaf_nodes(group_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>aad = storage.aad(group_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>group_state = storage.group_state(group_id)<span class="question-mark">?</span>;
-        <span class="kw">let </span><span class="kw-2">mut </span>proposal_store = ProposalStore::new();
-
-        <span class="kw">for </span>(_ref, proposal) <span class="kw">in </span>proposals {
-            proposal_store.add(proposal);
-        }
 
         <span class="kw">let </span>build = || -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
             <span class="prelude-val">Some</span>(<span class="self">Self </span>{
                 mls_group_config: group_config<span class="question-mark">?</span>,
                 group: core_group<span class="question-mark">?</span>,
-                proposal_store,
                 own_leaf_nodes,
                 aad,
                 group_state: group_state<span class="question-mark">?</span>,
@@ -966,6 +956,16 @@
             MlsGroupState::Operational =&gt; <span class="prelude-val">Ok</span>(()),
         }
     }
+
+    <span class="doccomment">/// Returns a reference to the proposal store.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>proposal_store(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ProposalStore {
+        <span class="self">self</span>.group.proposal_store()
+    }
+
+    <span class="doccomment">/// Returns a mutable reference to the proposal store.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>proposal_store_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>ProposalStore {
+        <span class="self">self</span>.group.proposal_store_mut()
+    }
 }
 
 <span class="comment">// Methods used in tests
@@ -1000,7 +1000,7 @@
         storage
             .remove_proposal(<span class="self">self</span>.group_id(), <span class="kw-2">&amp;</span>proposal_ref)
             .map_err(MlsGroupStateError::StorageError)<span class="question-mark">?</span>;
-        <span class="self">self</span>.proposal_store
+        <span class="self">self</span>.proposal_store_mut()
             .remove(proposal_ref)
             .ok_or(MlsGroupStateError::PendingProposalNotFound)
     }

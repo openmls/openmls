@@ -182,9 +182,6 @@
 <a href="#182" id="182">182</a>
 <a href="#183" id="183">183</a>
 <a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Processing functions of an [`MlsGroup`] for incoming messages.
 
 </span><span class="kw">use </span>std::mem;
@@ -243,7 +240,6 @@
             provider,
             message,
             <span class="kw-2">&amp;</span>sender_ratchet_configuration,
-            <span class="kw-2">&amp;</span><span class="self">self</span>.proposal_store,
             <span class="kw-2">&amp;</span><span class="self">self</span>.own_leaf_nodes,
         )
     }
@@ -256,7 +252,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Storage::Error&gt; {
         storage.queue_proposal(<span class="self">self</span>.group_id(), <span class="kw-2">&amp;</span>proposal.proposal_reference(), <span class="kw-2">&amp;</span>proposal)<span class="question-mark">?</span>;
         <span class="comment">// Store the proposal in in the internal ProposalStore
-        </span><span class="self">self</span>.proposal_store.add(proposal);
+        </span><span class="self">self</span>.proposal_store_mut().add(proposal);
 
         <span class="prelude-val">Ok</span>(())
     }
@@ -286,7 +282,6 @@
         // TODO #751
         </span><span class="kw">let </span>params = CreateCommitParams::builder()
             .framing_parameters(<span class="self">self</span>.framing_parameters())
-            .proposal_store(<span class="kw-2">&amp;</span><span class="self">self</span>.proposal_store)
             .build();
         <span class="kw">let </span>create_commit_result = <span class="self">self</span>.group.create_commit(params, provider, signer)<span class="question-mark">?</span>;
 
@@ -330,8 +325,7 @@
             .map_err(MergeCommitError::StorageError)<span class="question-mark">?</span>;
 
         <span class="comment">// Merge staged commit
-        </span><span class="self">self</span>.group
-            .merge_staged_commit(provider, staged_commit, <span class="kw-2">&amp;mut </span><span class="self">self</span>.proposal_store)<span class="question-mark">?</span>;
+        </span><span class="self">self</span>.group.merge_staged_commit(provider, staged_commit)<span class="question-mark">?</span>;
 
         <span class="comment">// Extract and store the resumption psk for the current epoch
         </span><span class="kw">let </span>resumption_psk = <span class="self">self</span>.group.group_epoch_secrets().resumption_psk();

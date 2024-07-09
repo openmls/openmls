@@ -90,32 +90,12 @@
 <a href="#90" id="90">90</a>
 <a href="#91" id="91">91</a>
 <a href="#92" id="92">92</a>
-<a href="#93" id="93">93</a>
-<a href="#94" id="94">94</a>
-<a href="#95" id="95">95</a>
-<a href="#96" id="96">96</a>
-<a href="#97" id="97">97</a>
-<a href="#98" id="98">98</a>
-<a href="#99" id="99">99</a>
-<a href="#100" id="100">100</a>
-<a href="#101" id="101">101</a>
-<a href="#102" id="102">102</a>
-<a href="#103" id="103">103</a>
-<a href="#104" id="104">104</a>
-<a href="#105" id="105">105</a>
-<a href="#106" id="106">106</a>
-<a href="#107" id="107">107</a>
-<a href="#108" id="108">108</a>
-<a href="#109" id="109">109</a>
-<a href="#110" id="110">110</a>
-<a href="#111" id="111">111</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Builder for [CreateCommitParams] that is used in [CoreGroup::create_commit()]
 
 </span><span class="kw">use </span>serde::{Deserialize, Serialize};
 
 <span class="kw">use crate</span>::{
-    credentials::CredentialWithKey, framing::FramingParameters, group::ProposalStore,
-    messages::proposals::Proposal,
+    credentials::CredentialWithKey, framing::FramingParameters, messages::proposals::Proposal,
 };
 
 <span class="attr">#[cfg(doc)]
@@ -130,7 +110,6 @@
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>CreateCommitParams&lt;<span class="lifetime">'a</span>&gt; {
     framing_parameters: FramingParameters&lt;<span class="lifetime">'a</span>&gt;,      <span class="comment">// Mandatory
-    </span>proposal_store: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>ProposalStore,              <span class="comment">// Mandatory
     </span>inline_proposals: Vec&lt;Proposal&gt;,                <span class="comment">// Optional
     </span>force_self_update: bool,                        <span class="comment">// Optional
     </span>commit_type: CommitType,                        <span class="comment">// Optional (default is `Member`)
@@ -139,10 +118,6 @@
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>TempBuilderCCPM0 {}
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>TempBuilderCCPM1&lt;<span class="lifetime">'a</span>&gt; {
-    framing_parameters: FramingParameters&lt;<span class="lifetime">'a</span>&gt;,
-}
-
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>CreateCommitParamsBuilder&lt;<span class="lifetime">'a</span>&gt; {
     ccp: CreateCommitParams&lt;<span class="lifetime">'a</span>&gt;,
 }
@@ -150,21 +125,11 @@
 <span class="kw">impl </span>TempBuilderCCPM0 {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>framing_parameters(
         <span class="self">self</span>,
-        framing_parameters: FramingParameters&lt;<span class="lifetime">'_</span>&gt;,
-    ) -&gt; TempBuilderCCPM1&lt;<span class="lifetime">'_</span>&gt; {
-        TempBuilderCCPM1 { framing_parameters }
-    }
-}
-
-<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; TempBuilderCCPM1&lt;<span class="lifetime">'a</span>&gt; {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>proposal_store(
-        <span class="self">self</span>,
-        proposal_store: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>ProposalStore,
-    ) -&gt; CreateCommitParamsBuilder&lt;<span class="lifetime">'a</span>&gt; {
+        framing_parameters: FramingParameters,
+    ) -&gt; CreateCommitParamsBuilder {
         CreateCommitParamsBuilder {
             ccp: CreateCommitParams {
-                framing_parameters: <span class="self">self</span>.framing_parameters,
-                proposal_store,
+                framing_parameters,
                 inline_proposals: <span class="macro">vec!</span>[],
                 force_self_update: <span class="bool-val">true</span>,
                 commit_type: CommitType::Member,
@@ -203,9 +168,6 @@
     }
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>framing_parameters(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>FramingParameters {
         <span class="kw-2">&amp;</span><span class="self">self</span>.framing_parameters
-    }
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>proposal_store(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ProposalStore {
-        <span class="self">self</span>.proposal_store
     }
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>inline_proposals(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[Proposal] {
         <span class="kw-2">&amp;</span><span class="self">self</span>.inline_proposals

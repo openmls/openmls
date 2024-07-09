@@ -611,7 +611,7 @@
 
 <span class="kw">use </span><span class="self">self</span>::public_group::staged_commit::PublicStagedCommitState;
 
-<span class="kw">use super</span>::{<span class="kw">super</span>::errors::<span class="kw-2">*</span>, proposals::ProposalStore, <span class="kw-2">*</span>};
+<span class="kw">use super</span>::{<span class="kw">super</span>::errors::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 <span class="kw">use crate</span>::{
     ciphersuite::Secret, framing::mls_auth_content::AuthenticatedContent,
     treesync::node::encryption_keys::EncryptionKeyPair,
@@ -730,7 +730,6 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>stage_commit(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         mls_content: <span class="kw-2">&amp;</span>AuthenticatedContent,
-        proposal_store: <span class="kw-2">&amp;</span>ProposalStore,
         old_epoch_keypairs: Vec&lt;EncryptionKeyPair&gt;,
         leaf_node_keypairs: Vec&lt;EncryptionKeyPair&gt;,
         provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
@@ -744,9 +743,9 @@
 
         <span class="kw">let </span>ciphersuite = <span class="self">self</span>.ciphersuite();
 
-        <span class="kw">let </span>(commit, proposal_queue, sender_index) =
-            <span class="self">self</span>.public_group
-                .validate_commit(mls_content, proposal_store, provider.crypto())<span class="question-mark">?</span>;
+        <span class="kw">let </span>(commit, proposal_queue, sender_index) = <span class="self">self
+            </span>.public_group
+            .validate_commit(mls_content, provider.crypto())<span class="question-mark">?</span>;
 
         <span class="comment">// Create the provisional public group state (including the tree and
         // group context) and apply proposals.
@@ -979,7 +978,7 @@
                     .into());
                 }
 
-                <span class="comment">// store the updated group state
+                <span class="comment">// Store the updated group state
                 </span><span class="kw">let </span>storage = provider.storage();
                 <span class="kw">let </span>group_id = <span class="self">self</span>.group_id();
 
@@ -1006,6 +1005,9 @@
                         .map_err(MergeCommitError::StorageError)<span class="question-mark">?</span>;
                 }
 
+                <span class="comment">// Empty the proposal store
+                </span><span class="self">self</span>.proposal_store_mut().empty();
+
                 <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(message_secrets))
             }
         }
@@ -1017,7 +1019,6 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>read_keys_and_stage_commit(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         mls_content: <span class="kw-2">&amp;</span>AuthenticatedContent,
-        proposal_store: <span class="kw-2">&amp;</span>ProposalStore,
         own_leaf_nodes: <span class="kw-2">&amp;</span>[LeafNode],
         provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;StagedCommit, StageCommitError&gt; {
@@ -1026,7 +1027,6 @@
 
         <span class="self">self</span>.stage_commit(
             mls_content,
-            proposal_store,
             old_epoch_keypairs,
             leaf_node_keypairs,
             provider,

@@ -289,20 +289,11 @@
 <a href="#289" id="289">289</a>
 <a href="#290" id="290">290</a>
 <a href="#291" id="291">291</a>
-<a href="#292" id="292">292</a>
-<a href="#293" id="293">293</a>
-<a href="#294" id="294">294</a>
-<a href="#295" id="295">295</a>
-<a href="#296" id="296">296</a>
-<a href="#297" id="297">297</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{<span class="kw">super</span>::errors::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 <span class="kw">use crate</span>::{
     framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, Sender},
     group::{
-        core_group::{
-            proposals::{ProposalQueue, ProposalStore},
-            staged_commit::StagedCommitState,
-        },
+        core_group::{proposals::ProposalQueue, staged_commit::StagedCommitState},
         StagedCommit,
     },
     messages::{proposals::ProposalOrRef, Commit},
@@ -344,7 +335,6 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_commit&lt;<span class="lifetime">'a</span>&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         mls_content: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>AuthenticatedContent,
-        proposal_store: <span class="kw-2">&amp;</span>ProposalStore,
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;</span><span class="lifetime">'a </span>Commit, ProposalQueue, LeafNodeIndex), StageCommitError&gt; {
         <span class="kw">let </span>ciphersuite = <span class="self">self</span>.ciphersuite();
@@ -385,7 +375,7 @@
             ciphersuite,
             crypto,
             commit.proposals.as_slice().to_vec(),
-            proposal_store,
+            <span class="self">self</span>.proposal_store(),
             sender,
         )
         .map_err(|e| {
@@ -508,11 +498,9 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>stage_commit(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         mls_content: <span class="kw-2">&amp;</span>AuthenticatedContent,
-        proposal_store: <span class="kw-2">&amp;</span>ProposalStore,
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;StagedCommit, StageCommitError&gt; {
-        <span class="kw">let </span>(commit, proposal_queue, sender_index) =
-            <span class="self">self</span>.validate_commit(mls_content, proposal_store, crypto)<span class="question-mark">?</span>;
+        <span class="kw">let </span>(commit, proposal_queue, sender_index) = <span class="self">self</span>.validate_commit(mls_content, crypto)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>staged_diff = <span class="self">self</span>.stage_diff(mls_content, <span class="kw-2">&amp;</span>proposal_queue, sender_index, crypto)<span class="question-mark">?</span>;
         <span class="kw">let </span>staged_state = PublicStagedCommitState {
