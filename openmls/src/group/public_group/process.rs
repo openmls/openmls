@@ -9,10 +9,8 @@ use crate::{
         ProcessedMessageContent, ProtocolMessage, Sender, SenderContext, UnverifiedMessage,
     },
     group::{
-        core_group::proposals::{ProposalStore, QueuedProposal},
-        errors::ValidationError,
-        mls_group::errors::ProcessMessageError,
-        past_secrets::MessageSecretsStore,
+        core_group::proposals::QueuedProposal, errors::ValidationError,
+        mls_group::errors::ProcessMessageError, past_secrets::MessageSecretsStore,
     },
     messages::proposals::Proposal,
     storage::OpenMlsProvider,
@@ -161,7 +159,7 @@ impl PublicGroup {
         let unverified_message = self
             .parse_message(decrypted_message, None)
             .map_err(ProcessMessageError::from)?;
-        self.process_unverified_message(provider, unverified_message, &self.proposal_store)
+        self.process_unverified_message(provider, unverified_message)
     }
 }
 
@@ -196,7 +194,6 @@ impl PublicGroup {
         &self,
         provider: &Provider,
         unverified_message: UnverifiedMessage,
-        proposal_store: &ProposalStore,
     ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
         let crypto = provider.crypto();
         // Checks the following semantic validation:
@@ -229,7 +226,7 @@ impl PublicGroup {
                         }
                     }
                     FramedContentBody::Commit(_) => {
-                        let staged_commit = self.stage_commit(&content, proposal_store, crypto)?;
+                        let staged_commit = self.stage_commit(&content, crypto)?;
                         ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))
                     }
                 };

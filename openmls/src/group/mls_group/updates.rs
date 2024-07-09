@@ -35,7 +35,6 @@ impl MlsGroup {
 
         let params = CreateCommitParams::builder()
             .framing_parameters(self.framing_parameters())
-            .proposal_store(&self.proposal_store)
             .build();
         // Create Commit over all proposals.
         // TODO #751
@@ -144,7 +143,7 @@ impl MlsGroup {
             .storage()
             .queue_proposal(self.group_id(), &proposal_ref, &proposal)
             .map_err(ProposeSelfUpdateError::StorageError)?;
-        self.proposal_store.add(proposal);
+        self.proposal_store_mut().add(proposal);
 
         let mls_message = self.content_to_mls_message(update_proposal, provider)?;
 
@@ -169,7 +168,7 @@ impl MlsGroup {
             .storage()
             .queue_proposal(self.group_id(), &proposal_ref, &proposal)
             .map_err(ProposeSelfUpdateError::StorageError)?;
-        self.proposal_store.add(proposal);
+        self.proposal_store_mut().add(proposal);
 
         let mls_message = self.content_to_mls_message(update_proposal, provider)?;
 
