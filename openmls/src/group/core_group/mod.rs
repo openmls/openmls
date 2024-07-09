@@ -755,22 +755,6 @@ impl CoreGroup {
         let message_secrets_store = storage.message_secrets(group_id)?;
         let resumption_psk_store = storage.resumption_psk_store(group_id)?;
 
-        println!("cld public_group: {}", public_group.is_some());
-        println!("cld group_epoch_secrets: {}", group_epoch_secrets.is_some());
-        println!("cld own_leaf_index: {}", own_leaf_index.is_some());
-        println!(
-            "cld use_ratchet_tree_extension: {}",
-            use_ratchet_tree_extension.is_some()
-        );
-        println!(
-            "cld message_secrets_store: {}",
-            message_secrets_store.is_some()
-        );
-        println!(
-            "cld resumption_psk_store: {}",
-            resumption_psk_store.is_some()
-        );
-
         let build = || -> Option<Self> {
             Some(Self {
                 public_group: public_group?,
