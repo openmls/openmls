@@ -1,6 +1,8 @@
+use std::{convert::Infallible, io::Write};
+
 use openmls::{
     prelude::{test_utils::new_credential, *},
-    storage::OpenMlsProvider,
+    storage::{self, OpenMlsProvider},
 };
 use openmls_traits::OpenMlsProvider as _;
 
@@ -1306,3 +1308,182 @@ fn group_context_extensions_proposal(
     //       proposal also fails. however, we can't generate this commit, because our functions for
     //       constructing commits does not permit it. See #1476
 }
+
+#[openmls_test]
+fn group_generate_storage_kat(ciphersuite: Ciphersuite, provider: &Provider) {
+    struct DeterministicRandProvider {
+        id: String,
+        ctr: std::sync::atomic::AtomicUsize,
+    }
+
+    impl DeterministicRandProvider {
+        fn new(id: &str) -> Self {
+            Self {
+                id: id.to_string(),
+                ctr: std::sync::atomic::AtomicUsize::new(0),
+            }
+        }
+
+        fn encode(ctr: usize, id: &str) -> Vec<u8> {
+            ctr.to_be_bytes().into_iter().chain(id.bytes()).collect()
+        }
+
+        fn block(&self, mut dst: &mut [u8]) -> usize {
+            let provider = Provider::default();
+            let ctr = self.ctr.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+
+            let block = provider
+                .crypto()
+                .hash(HashType::Sha2_256, &Self::encode(ctr, &self.id))
+                .unwrap();
+
+            let write = usize::min(dst.len(), block.len());
+            dst.write_all(&block[..write]).unwrap();
+            write
+        }
+
+        fn fill(&self, mut dst: &mut [u8]) {
+            while !dst.is_empty() {
+                let written = self.block(dst);
+                dst = &mut dst[written..];
+            }
+        }
+    }
+
+    impl openmls_traits::random::OpenMlsRand for DeterministicRandProvider {
+        type Error = Infallible;
+
+        fn random_array<const N: usize>(&self) -> Result<[u8; N], Self::Error> {
+            let mut arr = [0u8; N];
+            self.fill(&mut arr);
+            Ok(arr)
+        }
+
+        fn random_vec(&self, len: usize) -> Result<Vec<u8>, Self::Error> {
+            let mut arr = vec![0u8; len];
+            self.fill(&mut arr);
+            Ok(arr)
+        }
+    }
+
+    struct StorageTestProvider {
+        rand: DeterministicRandProvider,
+        storage: openmls_memory_storage::MemoryStorage,
+        other: Provider,
+    }
+
+    impl StorageTestProvider {
+        fn new(id: &str) -> Self {
+            Self {
+                rand: DeterministicRandProvider::new(id),
+                storage: Default::default(),
+                other: Default::default(),
+            }
+        }
+    }
+
+    impl openmls_traits::OpenMlsProvider for StorageTestProvider {
+        type CryptoProvider = <Provider as openmls_traits::OpenMlsProvider>::CryptoProvider;
+
+        type RandProvider = DeterministicRandProvider;
+
+        type StorageProvider = openmls_memory_storage::MemoryStorage;
+
+        fn storage(&self) -> &Self::StorageProvider {
+            &self.storage
+        }
+
+        fn crypto(&self) -> &Self::CryptoProvider {
+            self.other.crypto()
+        }
+
+        fn rand(&self) -> &Self::RandProvider {
+            &self.rand
+        }
+    }
+
+    let alice_provider = StorageTestProvider::new("alice");
+    let (alice_cwk, alice_signer) =
+        new_credential(&alice_provider, b"alice", ciphersuite.signature_algorithm());
+
+    let bob_provider = StorageTestProvider::new("bob");
+    let (bob_cwk, bob_signer) =
+        new_credential(&bob_provider, b"bob", ciphersuite.signature_algorithm());
+
+    // === Alice creates a group ===
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .with_capabilities(Capabilities::new(
+            None,
+            None,
+            Some(&[ExtensionType::Unknown(0xf042)]),
+            None,
+            None,
+        ))
+        .build(provider, &alice_signer, alice_cwk)
+        .expect("error creating group using builder");
+
+    let bob_kpb = KeyPackageBuilder::new()
+        .leaf_node_capabilities(Capabilities::new(
+            None,
+            None,
+            Some(&[ExtensionType::Unknown(0xf042)]),
+            None,
+            None,
+        ))
+        .build(ciphersuite, &bob_provider, &bob_signer, bob_cwk.clone())
+        .unwrap();
+
+    alice_group
+        .add_members(
+            &alice_provider,
+            &alice_signer,
+            &[bob_kpb.key_package().to_owned()],
+        )
+        .unwrap();
+
+    alice_group.merge_pending_commit(&alice_provider).unwrap();
+
+    alice_group
+        .update_group_context_extensions(
+            &alice_provider,
+            Extensions::single(Extension::RequiredCapabilities(
+                RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xf042)], &[], &[]),
+            )),
+            &alice_signer,
+        )
+        .unwrap();
+
+    alice_group.merge_pending_commit(&alice_provider).unwrap();
+
+    let mut buf = vec![];
+    alice_provider.storage.serialize(&mut buf).unwrap();
+
+    ///// serialized, now deserialize
+
+    let mut alice_provider2 = StorageTestProvider::new("alice");
+    alice_provider2.storage =
+        openmls_memory_storage::MemoryStorage::deserialize(&mut buf.as_slice()).unwrap();
+
+    let alice_group2 = MlsGroup::load(alice_provider2.storage(), alice_group.group_id())
+        .unwrap()
+        .unwrap();
+
+    //assert_eq!(alice_group, alice_group2);
+}
+
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//

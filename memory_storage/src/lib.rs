@@ -1,6 +1,6 @@
 use openmls_traits::storage::*;
 use serde::Serialize;
-use std::{collections::HashMap, sync::RwLock};
+use std::{collections::HashMap, io::Write as _, sync::RwLock};
 
 /// A storage for the V_TEST version.
 #[cfg(any(test, feature = "test-utils"))]
@@ -22,6 +22,63 @@ impl Clone for MemoryStorage {
         Self {
             values: RwLock::new(values.clone()),
         }
+    }
+}
+
+// For testing (KATs in particular) we want to serialize and deserialize the storage
+#[cfg(feature = "test-utils")]
+impl MemoryStorage {
+    pub fn serialize(&self, w: &mut Vec<u8>) -> std::io::Result<usize> {
+        let values = self.values.read().unwrap();
+
+        let mut written = 8;
+        let count = values.len().to_be_bytes();
+        w.write_all(&count)?;
+
+        for (k, v) in values.iter() {
+            println!("kv {k:?} = {v:?}");
+            let rec_len = 8 + 8 + k.len() + v.len();
+            let k_len = k.len().to_be_bytes();
+            let v_len = v.len().to_be_bytes();
+
+            w.write_all(&k_len)?;
+            w.write_all(&v_len)?;
+            w.write_all(k)?;
+            w.write_all(v)?;
+
+            written += rec_len;
+        }
+
+        Ok(written)
+    }
+
+    pub fn deserialize<R: std::io::Read>(r: &mut R) -> std::io::Result<Self> {
+        let read_u64 = |r: &mut R| {
+            let mut buf8 = [0u8; 8];
+            r.read_exact(&mut buf8).map(|_| u64::from_be_bytes(buf8))
+        };
+
+        let read_bytes = |r: &mut R, len: usize| {
+            let mut buf = vec![0u8; len];
+            r.read_exact(&mut buf).map(|_| buf)
+        };
+
+        let mut count = read_u64(r)? as usize;
+        let mut map = HashMap::new();
+
+        while count > 0 {
+            let k_len = read_u64(r)? as usize;
+            let v_len = read_u64(r)? as usize;
+            let k = read_bytes(r, k_len)?;
+            let v = read_bytes(r, v_len)?;
+
+            map.insert(k, v);
+            count -= 1;
+        }
+
+        Ok(Self {
+            values: RwLock::new(map),
+        })
     }
 }
 
