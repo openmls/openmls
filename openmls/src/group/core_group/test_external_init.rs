@@ -8,7 +8,7 @@ use crate::{
 };
 use openmls_traits::prelude::*;
 
-use super::{proposals::ProposalStore, CoreGroup};
+use super::CoreGroup;
 
 #[openmls_test::openmls_test]
 fn test_external_init_broken_signature() {
@@ -34,10 +34,8 @@ fn test_external_init_broken_signature() {
         verifiable_group_info
     };
 
-    let proposal_store = ProposalStore::new();
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .proposal_store(&proposal_store)
         .build();
 
     let result = CoreGroup::join_by_external_commit(
