@@ -10,6 +10,7 @@ mod provider;
 pub use provider::*;
 
 #[derive(Default, Debug)]
+#[cfg_attr(feature = "test-utils", derive(Clone))]
 pub struct OpenMlsRustCrypto {
     crypto: RustCrypto,
     key_store: MemoryStorage,
