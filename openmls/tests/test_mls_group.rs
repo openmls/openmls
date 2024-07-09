@@ -1410,7 +1410,14 @@ fn group_generate_storage_kat(ciphersuite: Ciphersuite, provider: &Provider) {
     let (bob_cwk, bob_signer) =
         new_credential(&bob_provider, b"bob", ciphersuite.signature_algorithm());
 
-    // === Alice creates a group ===
+    let charlie_provider = StorageTestProvider::new("charlie");
+    let (charlie_cwk, charlie_signer) = new_credential(
+        &charlie_provider,
+        b"charlie",
+        ciphersuite.signature_algorithm(),
+    );
+
+    /////// prepare a group that has some content
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
         .with_capabilities(Capabilities::new(
@@ -1420,7 +1427,7 @@ fn group_generate_storage_kat(ciphersuite: Ciphersuite, provider: &Provider) {
             None,
             None,
         ))
-        .build(provider, &alice_signer, alice_cwk)
+        .build(&alice_provider, &alice_signer, alice_cwk)
         .expect("error creating group using builder");
 
     let bob_kpb = KeyPackageBuilder::new()
@@ -1456,6 +1463,42 @@ fn group_generate_storage_kat(ciphersuite: Ciphersuite, provider: &Provider) {
 
     alice_group.merge_pending_commit(&alice_provider).unwrap();
 
+    //// also make sure there is at least one pending proposal and commit
+
+    let charlie_kpb = KeyPackageBuilder::new()
+        .leaf_node_capabilities(Capabilities::new(
+            None,
+            None,
+            Some(&[ExtensionType::Unknown(0xf042)]),
+            None,
+            None,
+        ))
+        .build(
+            ciphersuite,
+            &charlie_provider,
+            &charlie_signer,
+            charlie_cwk.clone(),
+        )
+        .unwrap();
+
+    alice_group
+        .add_members(
+            &alice_provider,
+            &alice_signer,
+            &[charlie_kpb.key_package().to_owned()],
+        )
+        .unwrap();
+
+    alice_group.propose_group_context_extensions(
+        &alice_provider,
+        Extensions::single(Extension::RequiredCapabilities(
+            RequiredCapabilitiesExtension::new(&[], &[], &[]),
+        )),
+        &alice_signer,
+    );
+
+    ///// do the serialization
+
     let mut buf = vec![];
     alice_provider.storage.serialize(&mut buf).unwrap();
 
@@ -1489,11 +1532,36 @@ fn group_generate_storage_kat(ciphersuite: Ciphersuite, provider: &Provider) {
     assert_eq!(entries, entries2);
 
     //// Then load the group
-    let alice_group2 = MlsGroup::load(alice_provider.storage(), alice_group.group_id())
+    let alice_group2 = MlsGroup::load(alice_provider2.storage(), alice_group.group_id())
         .unwrap()
         .unwrap();
 
-    //assert_eq!(alice_group, alice_group2);
+    assert_eq!(alice_group.group_id(), alice_group2.group_id());
+    assert_eq!(alice_group.tree_hash(), alice_group2.tree_hash());
+    assert_eq!(alice_group.configuration(), alice_group2.configuration());
+    assert_eq!(
+        alice_group.pending_proposals().collect::<Vec<_>>(),
+        alice_group2.pending_proposals().collect::<Vec<_>>()
+    );
+
+    let pending_commit1 = alice_group.pending_commit();
+    let pending_commit2 = alice_group2.pending_commit();
+
+    match (pending_commit1, pending_commit2) {
+        (Some(pc1), Some(pc2)) => {
+            assert_eq!(
+                pc1.queued_proposals().collect::<Vec<_>>(),
+                pc2.queued_proposals().collect::<Vec<_>>()
+            );
+            assert_eq!(pc1.update_path_leaf_node(), pc2.update_path_leaf_node());
+        }
+        (None, None) => {}
+
+        (pc1, pc2) => panic!(
+            "the pending commits should be the same, but only one is Some(.): {:?} != {:?}",
+            pc1, pc2
+        ),
+    };
 }
 
 //
