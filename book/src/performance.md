@@ -39,9 +39,9 @@ It is the same scenario as the somewhat stable group but with a very small Y and
 
 In addition to the three scenarios above extreme and corner cases are interesting.
 
-### Every second leave is blank
+### Every second leaf is blank
 
-Only every second leave in the tree is non-blank.
+Only every second leaf in the tree is non-blank.
 
 ## Use Case Scenarios
 
