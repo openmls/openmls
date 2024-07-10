@@ -8,20 +8,21 @@ use crate::{
 
 #[cfg(doc)]
 use super::CoreGroup;
+use super::LeafNodeParameters;
 
 /// Can be used to denote the type of a commit.
-#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub(crate) enum CommitType {
-    External,
+    External(CredentialWithKey),
     Member,
 }
 
 pub(crate) struct CreateCommitParams<'a> {
-    framing_parameters: FramingParameters<'a>,      // Mandatory
-    inline_proposals: Vec<Proposal>,                // Optional
-    force_self_update: bool,                        // Optional
-    commit_type: CommitType,                        // Optional (default is `Member`)
-    credential_with_key: Option<CredentialWithKey>, // Mandatory for external commits
+    framing_parameters: FramingParameters<'a>, // Mandatory
+    inline_proposals: Vec<Proposal>,           // Optional
+    force_self_update: bool,                   // Optional
+    commit_type: CommitType,                   // Optional (default is `Member`)
+    leaf_node_parameters: LeafNodeParameters,  // Optional
 }
 
 pub(crate) struct TempBuilderCCPM0 {}
@@ -41,7 +42,7 @@ impl TempBuilderCCPM0 {
                 inline_proposals: vec![],
                 force_self_update: true,
                 commit_type: CommitType::Member,
-                credential_with_key: None,
+                leaf_node_parameters: LeafNodeParameters::default(),
             },
         }
     }
@@ -61,8 +62,8 @@ impl<'a> CreateCommitParamsBuilder<'a> {
         self.ccp.commit_type = commit_type;
         self
     }
-    pub(crate) fn credential_with_key(mut self, credential_with_key: CredentialWithKey) -> Self {
-        self.ccp.credential_with_key = Some(credential_with_key);
+    pub(crate) fn leaf_node_parameters(mut self, leaf_node_parameters: LeafNodeParameters) -> Self {
+        self.ccp.leaf_node_parameters = leaf_node_parameters;
         self
     }
     pub(crate) fn build(self) -> CreateCommitParams<'a> {
@@ -80,13 +81,16 @@ impl<'a> CreateCommitParams<'a> {
     pub(crate) fn inline_proposals(&self) -> &[Proposal] {
         &self.inline_proposals
     }
+    pub(crate) fn set_inline_proposals(&mut self, inline_proposals: Vec<Proposal>) {
+        self.inline_proposals = inline_proposals;
+    }
     pub(crate) fn force_self_update(&self) -> bool {
         self.force_self_update
     }
-    pub(crate) fn commit_type(&self) -> CommitType {
-        self.commit_type
+    pub(crate) fn commit_type(&self) -> &CommitType {
+        &self.commit_type
     }
-    pub(crate) fn take_credential_with_key(&mut self) -> Option<CredentialWithKey> {
-        self.credential_with_key.take()
+    pub(crate) fn leaf_node_parameters(&self) -> &LeafNodeParameters {
+        &self.leaf_node_parameters
     }
 }

@@ -6,11 +6,12 @@ use tls_codec::*;
 
 use super::{extensions::FrankenExtension, key_package::FrankenLifetime, FrankenCredential};
 use crate::{
-    binary_tree::array_representation::tree,
+    binary_tree::{array_representation::tree, LeafNodeIndex},
     ciphersuite::{
         signable::{Signable, SignedStruct},
         signature::Signature,
     },
+    group::GroupId,
     treesync::{
         node::leaf_node::{LeafNodeIn, LeafNodeTbs, TreePosition},
         LeafNode,
@@ -113,6 +114,25 @@ pub struct FrankenLeafNodePayload {
 pub struct FrankenTreePosition {
     pub group_id: VLBytes,
     pub leaf_index: u32,
+}
+
+impl From<TreePosition> for FrankenTreePosition {
+    fn from(tp: TreePosition) -> Self {
+        let (group_id, leaf_index) = tp.into_parts();
+        Self {
+            group_id: group_id.as_slice().to_owned().into(),
+            leaf_index: leaf_index.u32(),
+        }
+    }
+}
+
+impl From<FrankenTreePosition> for TreePosition {
+    fn from(ftp: FrankenTreePosition) -> Self {
+        Self::new(
+            GroupId::from_slice(ftp.group_id.as_slice()),
+            LeafNodeIndex::new(ftp.leaf_index),
+        )
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, TlsSize)]

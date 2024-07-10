@@ -17,6 +17,7 @@ use openmls::{
     group::{MlsGroup, MlsGroupCreateConfig, StagedWelcome, PURE_PLAINTEXT_WIRE_FORMAT_POLICY},
     prelude::LeafNodeIndex,
     prelude_test::*,
+    treesync::LeafNodeParameters,
 };
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
@@ -102,7 +103,9 @@ fn self_update(
     provider: &OpenMlsRustCrypto,
     signer: &SignatureKeyPair,
 ) -> MlsMessageOut {
-    let (commit, _, _group_info) = group.self_update(provider, signer).unwrap();
+    let (commit, _, _group_info) = group
+        .self_update(provider, signer, LeafNodeParameters::default())
+        .unwrap();
 
     group.merge_pending_commit(provider).unwrap();
 

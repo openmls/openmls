@@ -19,6 +19,7 @@ use crate::{
         },
     },
     tree::sender_ratchet::SenderRatchetConfiguration,
+    treesync::LeafNodeParameters,
 };
 
 #[openmls_test]
@@ -353,7 +354,7 @@ fn test_invalid_plaintext() {
         .expect("An unexpected error occurred.");
 
     let (mls_message, _welcome_option, _group_info) = client
-        .self_update(Commit, &group_id, None)
+        .self_update(Commit, &group_id, LeafNodeParameters::default())
         .expect("error creating self update");
 
     // Store the context and membership key so that we can re-compute the membership tag later.
@@ -479,7 +480,7 @@ fn test_verify_staged_commit_credentials(
     }
 
     let (_msg, welcome_option, _group_info) = alice_group
-        .self_update(provider, &alice_signer)
+        .self_update(provider, &alice_signer, LeafNodeParameters::default())
         .expect("error creating self-update commit");
 
     // Merging the pending commit should clear the pending commit and we should
@@ -521,7 +522,7 @@ fn test_verify_staged_commit_credentials(
 
     // === Make a new, empty commit and check that the leaf node credentials match ===
     let (commit_msg, _welcome_option, _group_info) = alice_group
-        .self_update(provider, &alice_signer)
+        .self_update(provider, &alice_signer, LeafNodeParameters::default())
         .expect("error creating self-update commit");
 
     // empty commits should only produce a single message
@@ -659,7 +660,7 @@ fn test_commit_with_update_path_leaf_node(
 
     println!("\nCreating commit with add proposal.");
     let (_msg, welcome_option, _group_info) = alice_group
-        .self_update(provider, &alice_signer)
+        .self_update(provider, &alice_signer, LeafNodeParameters::default())
         .expect("error creating self-update commit");
     println!("Done creating commit.");
 
@@ -704,7 +705,7 @@ fn test_commit_with_update_path_leaf_node(
 
     println!("\nCreating self-update commit.");
     let (commit_msg, _welcome_option, _group_info) = alice_group
-        .self_update(provider, &alice_signer)
+        .self_update(provider, &alice_signer, LeafNodeParameters::default())
         .expect("error creating self-update commit");
     println!("Done creating commit.");
 
@@ -855,7 +856,7 @@ fn test_pending_commit_logic(
 
     println!("\nCreating commit with add proposal.");
     let (_msg, _welcome_option, _group_info) = alice_group
-        .self_update(provider, &alice_signer)
+        .self_update(provider, &alice_signer, LeafNodeParameters::default())
         .expect("error creating self-update commit");
     println!("Done creating commit.");
 
@@ -900,14 +901,14 @@ fn test_pending_commit_logic(
         CommitToPendingProposalsError::GroupStateError(MlsGroupStateError::PendingCommit)
     ));
     let error = alice_group
-        .self_update(provider, &alice_signer)
+        .self_update(provider, &alice_signer, LeafNodeParameters::default())
         .expect_err("no error committing while a commit is pending");
     assert!(matches!(
         error,
         SelfUpdateError::GroupStateError(MlsGroupStateError::PendingCommit)
     ));
     let error = alice_group
-        .propose_self_update(provider, &alice_signer, None)
+        .propose_self_update(provider, &alice_signer, LeafNodeParameters::default())
         .expect_err("no error creating a proposal while a commit is pending");
     assert!(matches!(
         error,
@@ -922,7 +923,7 @@ fn test_pending_commit_logic(
 
     // Creating a new commit should commit the same proposals.
     let (_msg, welcome_option, _group_info) = alice_group
-        .self_update(provider, &alice_signer)
+        .self_update(provider, &alice_signer, LeafNodeParameters::default())
         .expect("error creating self-update commit");
 
     // Merging the pending commit should clear the pending commit and we should
@@ -962,11 +963,11 @@ fn test_pending_commit_logic(
 
     // While a commit is pending, merging Bob's commit should clear the pending commit.
     let (_msg, _welcome_option, _group_info) = alice_group
-        .self_update(provider, &alice_signer)
+        .self_update(provider, &alice_signer, LeafNodeParameters::default())
         .expect("error creating self-update commit");
 
     let (msg, _welcome_option, _group_info) = bob_group
-        .self_update(provider, &bob_signer)
+        .self_update(provider, &bob_signer, LeafNodeParameters::default())
         .expect("error creating self-update commit");
 
     let alice_processed_message = alice_group

@@ -18,7 +18,7 @@ use crate::{
     prelude::LibraryError,
     schedule::PreSharedKeyId,
     storage::OpenMlsProvider,
-    treesync::LeafNode,
+    treesync::LeafNodeParameters,
     versions::ProtocolVersion,
 };
 
@@ -29,7 +29,7 @@ pub enum Propose {
     Add(KeyPackage),
 
     /// An update proposal requires a new leaf node.
-    Update(Option<LeafNode>),
+    Update(LeafNodeParameters),
 
     /// A remove proposal consists of the leaf index of the leaf to be removed.
     Remove(u32),
@@ -159,12 +159,12 @@ impl MlsGroup {
                     .map_err(|e| e.into()),
             },
 
-            Propose::Update(leaf_node) => match ref_or_value {
+            Propose::Update(leaf_node_parameters) => match ref_or_value {
                 ProposalOrRefType::Proposal => self
-                    .propose_self_update_by_value(provider, signer, leaf_node)
+                    .propose_self_update(provider, signer, leaf_node_parameters)
                     .map_err(|e| e.into()),
                 ProposalOrRefType::Reference => self
-                    .propose_self_update(provider, signer, leaf_node)
+                    .propose_self_update(provider, signer, leaf_node_parameters)
                     .map_err(|e| e.into()),
             },
 

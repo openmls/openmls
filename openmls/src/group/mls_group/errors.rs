@@ -18,7 +18,10 @@ use crate::{
         CreateGroupContextExtProposalError,
     },
     schedule::errors::PskError,
-    treesync::errors::{LeafNodeValidationError, PublicTreeError},
+    treesync::{
+        errors::{LeafNodeValidationError, PublicTreeError},
+        node::leaf_node::LeafNodeUpdateError,
+    },
 };
 
 /// New group error
@@ -256,6 +259,9 @@ pub enum ProposeSelfUpdateError<StorageError> {
     /// See [`PublicTreeError`] for more details.
     #[error(transparent)]
     PublicTreeError(#[from] PublicTreeError),
+    /// See [`LeafNodeUpdateError`] for more details.
+    #[error(transparent)]
+    LeafNodeUpdateError(#[from] LeafNodeUpdateError<StorageError>),
 }
 
 /// Commit to pending proposals error

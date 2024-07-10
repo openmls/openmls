@@ -89,20 +89,6 @@ impl QueuedProposal {
     }
 
     /// Creates a new [QueuedProposal] from an [PublicMessage]
-    pub(crate) fn from_authenticated_content_by_value(
-        ciphersuite: Ciphersuite,
-        crypto: &impl OpenMlsCrypto,
-        public_message: AuthenticatedContent,
-    ) -> Result<Self, LibraryError> {
-        Self::from_authenticated_content(
-            ciphersuite,
-            crypto,
-            public_message,
-            ProposalOrRefType::Proposal,
-        )
-    }
-
-    /// Creates a new [QueuedProposal] from an [PublicMessage]
     pub(crate) fn from_authenticated_content(
         ciphersuite: Ciphersuite,
         crypto: &impl OpenMlsCrypto,

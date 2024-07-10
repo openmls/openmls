@@ -23,6 +23,7 @@
 
 use crate::storage::OpenMlsProvider;
 use crate::test_utils::OpenMlsRustCrypto;
+use crate::treesync::LeafNodeParameters;
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::{hash_ref::KeyPackageRef, *},
@@ -538,7 +539,7 @@ impl<Provider: OpenMlsProvider + Default> MlsGroupTestSetup<Provider> {
         action_type: ActionType,
         group: &mut Group,
         client_id: &[u8],
-        leaf_node: Option<LeafNode>,
+        leaf_node_parameters: LeafNodeParameters,
         authentication_service: &AS,
     ) -> Result<(), SetupError<Provider::StorageError>> {
         let clients = self.clients.read().expect("An unexpected error occurred.");
@@ -548,7 +549,7 @@ impl<Provider: OpenMlsProvider + Default> MlsGroupTestSetup<Provider> {
             .read()
             .expect("An unexpected error occurred.");
         let (messages, welcome_option, _) =
-            client.self_update(action_type, &group.group_id, leaf_node)?;
+            client.self_update(action_type, &group.group_id, leaf_node_parameters)?;
         self.distribute_to_members(
             &client.identity,
             group,
@@ -671,7 +672,7 @@ impl<Provider: OpenMlsProvider + Default> MlsGroupTestSetup<Provider> {
                     action_type,
                     group,
                     &member_id.1,
-                    None,
+                    LeafNodeParameters::default(),
                     authentication_service,
                 )?;
             }

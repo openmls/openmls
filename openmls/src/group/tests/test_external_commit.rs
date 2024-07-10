@@ -58,6 +58,8 @@ fn test_external_commit() {
         Some(tree_option.into()),
         verifiable_group_info,
         alice_group.configuration(),
+        None,
+        None,
         &[],
         bob_credential.credential_with_key.clone(),
     )
@@ -121,6 +123,8 @@ fn test_external_commit() {
         Some(tree_option.into()),
         verifiable_group_info,
         alice_group.configuration(),
+        None,
+        None,
         &[],
         charlie_credential.credential_with_key.clone(),
     )
@@ -193,6 +197,8 @@ fn test_external_commit() {
         Some(tree_option.into()),
         verifiable_group_info,
         bob_group.configuration(),
+        None,
+        None,
         &[],
         alice_credential.credential_with_key.clone(),
     )

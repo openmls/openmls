@@ -65,6 +65,12 @@ impl EncryptionKey {
     }
 }
 
+impl From<Vec<u8>> for EncryptionKey {
+    fn from(key: Vec<u8>) -> Self {
+        Self { key: key.into() }
+    }
+}
+
 #[derive(
     Clone, Serialize, Deserialize, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
 )]

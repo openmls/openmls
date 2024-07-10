@@ -2,6 +2,7 @@ use openmls::{
     credentials::test_utils::new_credential,
     messages::group_info::VerifiableGroupInfo,
     prelude::{tls_codec::*, *},
+    treesync::LeafNodeParameters,
 };
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_test::openmls_test;
@@ -83,6 +84,8 @@ fn test_external_commit() {
             None,
             verifiable_group_info,
             &MlsGroupJoinConfig::default(),
+            None,
+            None,
             b"",
             bob_credential,
         )
@@ -100,6 +103,8 @@ fn test_external_commit() {
             None,
             verifiable_group_info_broken,
             &MlsGroupJoinConfig::default(),
+            None,
+            None,
             b"",
             bob_credential,
         )
@@ -120,7 +125,9 @@ fn test_group_info() {
     let (mut alice_group, _, alice_signer) = create_alice_group(ciphersuite, provider, true);
 
     // Self update Alice's to get a group info from a commit
-    let (.., group_info) = alice_group.self_update(provider, &alice_signer).unwrap();
+    let (.., group_info) = alice_group
+        .self_update(provider, &alice_signer, LeafNodeParameters::default())
+        .unwrap();
     alice_group.merge_pending_commit(provider).unwrap();
 
     // Bob wants to join
@@ -138,6 +145,8 @@ fn test_group_info() {
         None,
         verifiable_group_info,
         &MlsGroupJoinConfig::default(),
+        None,
+        None,
         b"",
         bob_credential,
     )
@@ -187,6 +196,8 @@ fn test_group_info() {
         None,
         verifiable_group_info,
         &MlsGroupJoinConfig::default(),
+        None,
+        None,
         b"",
         bob_credential,
     )
@@ -203,7 +214,9 @@ fn test_not_present_group_info(
     let (mut alice_group, _, alice_signer) = create_alice_group(ciphersuite, provider, false);
 
     // Self update Alice's to get a group info from a commit
-    let (.., group_info) = alice_group.self_update(provider, &alice_signer).unwrap();
+    let (.., group_info) = alice_group
+        .self_update(provider, &alice_signer, LeafNodeParameters::default())
+        .unwrap();
     alice_group.merge_pending_commit(provider).unwrap();
 
     assert!(group_info.is_none());

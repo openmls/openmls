@@ -845,14 +845,14 @@ impl CoreGroup {
 
     pub(crate) fn create_commit<Provider: OpenMlsProvider>(
         &self,
-        mut params: CreateCommitParams,
+        params: CreateCommitParams,
         provider: &Provider,
         signer: &impl Signer,
     ) -> Result<CreateCommitResult, CreateCommitError<Provider::StorageError>> {
         let ciphersuite = self.ciphersuite();
 
         let sender = match params.commit_type() {
-            CommitType::External => Sender::NewMemberCommit,
+            CommitType::External(_) => Sender::NewMemberCommit,
             CommitType::Member => Sender::build_member(self.own_leaf_index()),
         };
 
@@ -925,7 +925,7 @@ impl CoreGroup {
         // Apply proposals to tree
         let apply_proposals_values =
             diff.apply_proposals(&proposal_queue, self.own_leaf_index())?;
-        if apply_proposals_values.self_removed && params.commit_type() != CommitType::External {
+        if apply_proposals_values.self_removed && params.commit_type() == &CommitType::Member {
             return Err(CreateCommitError::CannotRemoveSelf);
         }
 
@@ -934,6 +934,7 @@ impl CoreGroup {
             if apply_proposals_values.path_required
                 || contains_own_updates
                 || params.force_self_update()
+                || !params.leaf_node_parameters().is_empty()
             {
                 // Process the path. This includes updating the provisional
                 // group context by updating the epoch and computing the new
@@ -943,8 +944,8 @@ impl CoreGroup {
                     self.own_leaf_index(),
                     apply_proposals_values.exclusion_list(),
                     params.commit_type(),
+                    params.leaf_node_parameters(),
                     signer,
-                    params.take_credential_with_key(),
                     apply_proposals_values.extensions.clone()
                 )?
             } else {

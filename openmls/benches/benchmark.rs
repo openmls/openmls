@@ -255,8 +255,9 @@ fn create_commit(c: &mut Criterion, provider: &impl OpenMlsProvider) {
                         (bob_group, bob_signer)
                     },
                     |(mut bob_group, bob_signer)| {
-                        let (_queued_message, _welcome_option, _group_info) =
-                            bob_group.self_update(provider, &bob_signer).unwrap();
+                        let (_queued_message, _welcome_option, _group_info) = bob_group
+                            .self_update(provider, &bob_signer, LeafNodeParameters::default())
+                            .unwrap();
 
                         bob_group
                             .merge_pending_commit(provider)

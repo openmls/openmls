@@ -97,17 +97,22 @@ impl CoreGroup {
 
         // If there is a group member in the group with the same identity as us,
         // commit a remove proposal.
-        let params_credential_with_key = params
-            .take_credential_with_key()
-            .ok_or(ExternalCommitError::MissingCredential)?;
-        if let Some(us) = public_group.members().find(|member| {
-            member.signature_key == params_credential_with_key.signature_key.as_slice()
-        }) {
+        let signature_key = match params.commit_type() {
+            CommitType::External(credential_with_key) => {
+                credential_with_key.signature_key.as_slice()
+            }
+            _ => return Err(ExternalCommitError::MissingCredential),
+        };
+        if let Some(us) = public_group
+            .members()
+            .find(|member| member.signature_key == signature_key)
+        {
             let remove_proposal = Proposal::Remove(RemoveProposal { removed: us.index });
             inline_proposals.push(remove_proposal);
         };
 
         let own_leaf_index = public_group.leftmost_free_index(inline_proposals.iter().map(Some))?;
+        params.set_inline_proposals(inline_proposals);
 
         let group = CoreGroup {
             public_group,
@@ -118,13 +123,6 @@ impl CoreGroup {
             // TODO(#1357)
             resumption_psk_store: ResumptionPskStore::new(32),
         };
-
-        let params = CreateCommitParams::builder()
-            .framing_parameters(*params.framing_parameters())
-            .inline_proposals(inline_proposals)
-            .commit_type(CommitType::External)
-            .credential_with_key(params_credential_with_key)
-            .build();
 
         // Immediately create the commit to add ourselves to the group.
         let create_commit_result = group.create_commit(params, provider, signer);

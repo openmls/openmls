@@ -476,6 +476,7 @@ impl KeyPackageBuilder {
         }
     }
 
+    #[cfg(test)]
     pub(crate) fn build_without_storage(
         mut self,
         ciphersuite: Ciphersuite,
