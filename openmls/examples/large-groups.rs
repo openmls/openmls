@@ -198,11 +198,11 @@ mod generate {
         // If we have a previous group/member setup, let's use it.
         // The creator is always at 0.
         let mut members = if let Some(members) = members {
-            members.0.into_iter().zip(members.1.into_iter()).collect()
+            members.0.into_iter().zip(members.1).collect()
         } else {
             // Create a new setup.
             let creator_provider = OpenMlsRustCrypto::default();
-            let creator_credential = BasicCredential::new(format!("Creator").into());
+            let creator_credential = BasicCredential::new("Creator".to_string().into());
             let creator_signer = SignatureKeyPair::new(CIPHERSUITE.signature_algorithm()).unwrap();
             let creator_credential_with_key = CredentialWithKey {
                 credential: creator_credential.into(),
@@ -427,6 +427,8 @@ mod util {
     const GROUPS_PATH: &str = "large-balanced-group-groups.json.gzip";
     const MEMBERS_PATH: &str = "large-balanced-group-members.json.gzip";
 
+    type Members = Vec<Vec<(Vec<u8>, Vec<u8>, Vec<u8>)>>;
+
     /// Read benchmark setups from the fiels previously written.
     pub fn read(path: Option<String>) -> Vec<Vec<(MlsGroup, Member)>> {
         let file = File::open(groups_file(&path)).unwrap();
@@ -435,8 +437,7 @@ mod util {
 
         let file = File::open(members_file(&path)).unwrap();
         let mut reader = flate2::read::GzDecoder::new(file);
-        let members: Vec<Vec<(Vec<u8>, Vec<u8>, Vec<u8>)>> =
-            serde_json::from_reader(&mut reader).unwrap();
+        let members: Members = serde_json::from_reader(&mut reader).unwrap();
 
         let members: Vec<Vec<Member>> = members
             .into_iter()
@@ -522,9 +523,9 @@ fn print_time(label: &str, d: Duration) {
         )
     };
     let space = if label.len() < 6 {
-        format!("\t\t")
+        "\t\t".to_string()
     } else {
-        format!("\t")
+        "\t".to_string()
     };
 
     println!("{label}:{space}{time}");
@@ -555,7 +556,7 @@ fn main() {
             groups,
             |groups: &Vec<(MlsGroup, Member)>| {
                 let (_member_provider, _signer, _credential_with_key, key_package) =
-                    new_member(&format!("New Member"));
+                    new_member("New Member");
                 let key_package = key_package.key_package().clone();
 
                 (groups[1].clone(), key_package)
@@ -618,7 +619,5 @@ fn main() {
             }
         );
         print_time("Process update", time);
-
-        println!("");
     }
 }
