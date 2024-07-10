@@ -391,30 +391,6 @@
 <a href="#391" id="391">391</a>
 <a href="#392" id="392">392</a>
 <a href="#393" id="393">393</a>
-<a href="#394" id="394">394</a>
-<a href="#395" id="395">395</a>
-<a href="#396" id="396">396</a>
-<a href="#397" id="397">397</a>
-<a href="#398" id="398">398</a>
-<a href="#399" id="399">399</a>
-<a href="#400" id="400">400</a>
-<a href="#401" id="401">401</a>
-<a href="#402" id="402">402</a>
-<a href="#403" id="403">403</a>
-<a href="#404" id="404">404</a>
-<a href="#405" id="405">405</a>
-<a href="#406" id="406">406</a>
-<a href="#407" id="407">407</a>
-<a href="#408" id="408">408</a>
-<a href="#409" id="409">409</a>
-<a href="#410" id="410">410</a>
-<a href="#411" id="411">411</a>
-<a href="#412" id="412">412</a>
-<a href="#413" id="413">413</a>
-<a href="#414" id="414">414</a>
-<a href="#415" id="415">415</a>
-<a href="#416" id="416">416</a>
-<a href="#417" id="417">417</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! An implementation of a diff functionality for the [`ABinaryTree`] struct.
 //!
 //! # About
@@ -750,30 +726,6 @@
         }
         <span class="comment">// If it isn't in the diff, it must be in the tree.
         </span><span class="self">self</span>.original_tree.parent_by_index(parent_index)
-    }
-
-    <span class="doccomment">/// Returns a mutable reference to the leaf node in the diff at index
-    /// `leaf_index`. If the diff doesn't have a node at that index, it clones
-    /// the node to the diff and returns a mutable reference to that node.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, leaf_index: LeafNodeIndex) -&gt; <span class="kw-2">&amp;mut </span>L {
-        <span class="macro">debug_assert!</span>(leaf_index.u32() &lt; <span class="self">self</span>.leaf_count());
-        <span class="comment">// We then check if the node is already in the diff. (Not using `if let
-        // ...` here, because the borrow checker doesn't like that).
-        </span><span class="kw">if </span><span class="self">self</span>.leaf_diff.contains_key(<span class="kw-2">&amp;</span>leaf_index) {
-            <span class="kw">return </span><span class="self">self
-                </span>.leaf_diff
-                .get_mut(<span class="kw-2">&amp;</span>leaf_index)
-                <span class="comment">// We just checked that this index exists, so this must be Some.
-                </span>.unwrap_or(<span class="kw-2">&amp;mut </span><span class="self">self</span>.default_leaf);
-            <span class="comment">// If not, we take a copy from the original tree and put it in the
-            // diff before returning a mutable reference to it.
-        </span>}
-        <span class="kw">let </span>tree_node = <span class="self">self</span>.original_tree.leaf_by_index(leaf_index);
-        <span class="self">self</span>.replace_leaf(leaf_index, tree_node.clone());
-        <span class="self">self</span>.leaf_diff
-            .get_mut(<span class="kw-2">&amp;</span>leaf_index)
-            <span class="comment">// We just inserted this into the diff, so this should be Some.
-            </span>.unwrap_or(<span class="kw-2">&amp;mut </span><span class="self">self</span>.default_leaf)
     }
 
     <span class="doccomment">/// Returns a mutable reference to the parent node in the diff at index

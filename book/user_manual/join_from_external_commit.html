@@ -195,9 +195,11 @@ If the RatchetTree extension is not included in the <code>GroupInfo</code> as a 
 <pre><code class="language-rust no_run noplayground">    let (mut dave_group, _out, _group_info) = MlsGroup::join_by_external_commit(
         provider,
         &amp;dave_signature_keys,
-        None,
+        None, // No ratchtet tree extension
         verifiable_group_info,
         &amp;mls_group_config,
+        None, // No special capabilities
+        None, // No special extensions
         &amp;[],
         dave_credential,
     )

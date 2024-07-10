@@ -460,7 +460,7 @@
     prelude::LibraryError,
     schedule::PreSharedKeyId,
     storage::OpenMlsProvider,
-    treesync::LeafNode,
+    treesync::LeafNodeParameters,
     versions::ProtocolVersion,
 };
 
@@ -471,7 +471,7 @@
     </span>Add(KeyPackage),
 
     <span class="doccomment">/// An update proposal requires a new leaf node.
-    </span>Update(<span class="prelude-ty">Option</span>&lt;LeafNode&gt;),
+    </span>Update(LeafNodeParameters),
 
     <span class="doccomment">/// A remove proposal consists of the leaf index of the leaf to be removed.
     </span>Remove(u32),
@@ -601,12 +601,12 @@
                     .map_err(|e| e.into()),
             },
 
-            Propose::Update(leaf_node) =&gt; <span class="kw">match </span>ref_or_value {
+            Propose::Update(leaf_node_parameters) =&gt; <span class="kw">match </span>ref_or_value {
                 ProposalOrRefType::Proposal =&gt; <span class="self">self
-                    </span>.propose_self_update_by_value(provider, signer, leaf_node)
+                    </span>.propose_self_update(provider, signer, leaf_node_parameters)
                     .map_err(|e| e.into()),
                 ProposalOrRefType::Reference =&gt; <span class="self">self
-                    </span>.propose_self_update(provider, signer, leaf_node)
+                    </span>.propose_self_update(provider, signer, leaf_node_parameters)
                     .map_err(|e| e.into()),
             },
 

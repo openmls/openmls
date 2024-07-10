@@ -640,20 +640,6 @@
 <a href="#640" id="640">640</a>
 <a href="#641" id="641">641</a>
 <a href="#642" id="642">642</a>
-<a href="#643" id="643">643</a>
-<a href="#644" id="644">644</a>
-<a href="#645" id="645">645</a>
-<a href="#646" id="646">646</a>
-<a href="#647" id="647">647</a>
-<a href="#648" id="648">648</a>
-<a href="#649" id="649">649</a>
-<a href="#650" id="650">650</a>
-<a href="#651" id="651">651</a>
-<a href="#652" id="652">652</a>
-<a href="#653" id="653">653</a>
-<a href="#654" id="654">654</a>
-<a href="#655" id="655">655</a>
-<a href="#656" id="656">656</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::{hash_map::Entry, HashMap, HashSet};
 
 <span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
@@ -741,20 +727,6 @@
             crypto,
             public_message,
             ProposalOrRefType::Reference,
-        )
-    }
-
-    <span class="doccomment">/// Creates a new [QueuedProposal] from an [PublicMessage]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_authenticated_content_by_value(
-        ciphersuite: Ciphersuite,
-        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
-        public_message: AuthenticatedContent,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
-        <span class="self">Self</span>::from_authenticated_content(
-            ciphersuite,
-            crypto,
-            public_message,
-            ProposalOrRefType::Proposal,
         )
     }
 

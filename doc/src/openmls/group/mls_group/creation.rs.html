@@ -328,13 +328,24 @@
 <a href="#328" id="328">328</a>
 <a href="#329" id="329">329</a>
 <a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::{signatures::Signer, storage::StorageProvider <span class="kw">as </span>StorageProviderTrait};
 
 <span class="kw">use super</span>::{builder::MlsGroupBuilder, <span class="kw-2">*</span>};
 <span class="kw">use crate</span>::{
     credentials::CredentialWithKey,
     group::{
-        core_group::create_commit_params::CreateCommitParams,
+        core_group::create_commit_params::{CommitType, CreateCommitParams},
         errors::{ExternalCommitError, WelcomeError},
     },
     messages::{
@@ -343,7 +354,10 @@
     },
     schedule::psk::{store::ResumptionPskStore, PreSharedKeyId},
     storage::OpenMlsProvider,
-    treesync::RatchetTreeIn,
+    treesync::{
+        node::leaf_node::{Capabilities, LeafNodeParameters},
+        RatchetTreeIn,
+    },
 };
 
 <span class="kw">impl </span>MlsGroup {
@@ -407,12 +421,15 @@
     ///
     /// Note: If there is a group member in the group with the same identity as
     /// us, this will create a remove proposal.
+    </span><span class="attr">#[allow(clippy::too_many_arguments)]
     </span><span class="kw">pub fn </span>join_by_external_commit&lt;Provider: OpenMlsProvider&gt;(
         provider: <span class="kw-2">&amp;</span>Provider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         ratchet_tree: <span class="prelude-ty">Option</span>&lt;RatchetTreeIn&gt;,
         verifiable_group_info: VerifiableGroupInfo,
         mls_group_config: <span class="kw-2">&amp;</span>MlsGroupJoinConfig,
+        capabilities: <span class="prelude-ty">Option</span>&lt;Capabilities&gt;,
+        extensions: <span class="prelude-ty">Option</span>&lt;Extensions&gt;,
         aad: <span class="kw-2">&amp;</span>[u8],
         credential_with_key: CredentialWithKey,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, MlsMessageOut, <span class="prelude-ty">Option</span>&lt;GroupInfo&gt;), ExternalCommitError&lt;Provider::StorageError&gt;&gt;
@@ -420,9 +437,14 @@
         <span class="comment">// Prepare the commit parameters
         </span><span class="kw">let </span>framing_parameters = FramingParameters::new(aad, WireFormat::PublicMessage);
 
+        <span class="kw">let </span>leaf_node_parameters = LeafNodeParameters::builder()
+            .with_capabilities(capabilities.unwrap_or_default())
+            .with_extensions(extensions.unwrap_or_default())
+            .build();
         <span class="kw">let </span>params = CreateCommitParams::builder()
             .framing_parameters(framing_parameters)
-            .credential_with_key(credential_with_key)
+            .commit_type(CommitType::External(credential_with_key))
+            .leaf_node_parameters(leaf_node_parameters)
             .build();
         <span class="kw">let </span>(<span class="kw-2">mut </span>group, create_commit_result) = CoreGroup::join_by_external_commit(
             provider,

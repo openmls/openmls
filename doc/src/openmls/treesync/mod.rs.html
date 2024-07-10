@@ -773,6 +773,10 @@
 <a href="#773" id="773">773</a>
 <a href="#774" id="774">774</a>
 <a href="#775" id="775">775</a>
+<a href="#776" id="776">776</a>
+<a href="#777" id="777">777</a>
+<a href="#778" id="778">778</a>
+<a href="#779" id="779">779</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements the ratchet tree component of MLS.
 //!
 //! It exposes the [`Node`] enum that can contain either a [`LeafNode`] or a [`ParentNode`].
@@ -858,7 +862,11 @@
 <span class="kw">pub use </span>node::encryption_keys::EncryptionKey;
 
 <span class="comment">// Public re-exports
-</span><span class="kw">pub use </span>node::{leaf_node::LeafNode, parent_node::ParentNode, Node};
+</span><span class="kw">pub use </span>node::{
+    leaf_node::{LeafNode, LeafNodeParameters, LeafNodeParametersBuilder, LeafNodeUpdateError},
+    parent_node::ParentNode,
+    Node,
+};
 
 <span class="comment">// Tests
 </span><span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]

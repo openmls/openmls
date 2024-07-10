@@ -909,6 +909,24 @@
 <a href="#909" id="909">909</a>
 <a href="#910" id="910">910</a>
 <a href="#911" id="911">911</a>
+<a href="#912" id="912">912</a>
+<a href="#913" id="913">913</a>
+<a href="#914" id="914">914</a>
+<a href="#915" id="915">915</a>
+<a href="#916" id="916">916</a>
+<a href="#917" id="917">917</a>
+<a href="#918" id="918">918</a>
+<a href="#919" id="919">919</a>
+<a href="#920" id="920">920</a>
+<a href="#921" id="921">921</a>
+<a href="#922" id="922">922</a>
+<a href="#923" id="923">923</a>
+<a href="#924" id="924">924</a>
+<a href="#925" id="925">925</a>
+<a href="#926" id="926">926</a>
+<a href="#927" id="927">927</a>
+<a href="#928" id="928">928</a>
+<a href="#929" id="929">929</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module provides the diff functionality for [`TreeSync`].
 //!
 //! # About
@@ -935,6 +953,7 @@
 <span class="kw">use </span>openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsProvider};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 
+<span class="kw">use </span><span class="kw">super</span>::node::leaf_node::UpdateLeafNodeParams;
 <span class="kw">use super</span>::{
     errors::<span class="kw-2">*</span>,
     node::{
@@ -946,6 +965,7 @@
     treesync_node::{TreeSyncLeafNode, TreeSyncParentNode},
     LeafNode, TreeSync, TreeSyncParentHashError,
 };
+<span class="kw">use </span><span class="kw">crate</span>::group::{create_commit_params::CommitType, GroupId};
 <span class="kw">use crate</span>::{
     binary_tree::{
         array_representation::{
@@ -955,7 +975,6 @@
     },
     ciphersuite::Secret,
     error::LibraryError,
-    group::GroupId,
     messages::PathSecret,
     schedule::CommitSecret,
     treesync::RatchetTree,
@@ -1200,28 +1219,50 @@
     /// derivation, as well as the newly derived [`EncryptionKeyPair`]s.
     ///
     /// Returns an error if the target leaf is not in the tree.
+    </span><span class="attr">#[allow(clippy::too_many_arguments)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>apply_own_update_path(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         ciphersuite: Ciphersuite,
+        commit_type: <span class="kw-2">&amp;</span>CommitType,
         group_id: GroupId,
         leaf_index: LeafNodeIndex,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;UpdatePathResult, LibraryError&gt; {
-        <span class="macro">debug_assert!</span>(
-            <span class="self">self</span>.leaf(leaf_index).is_some(),
-            <span class="string">"Tree diff is missing own leaf"
-        </span>);
+        leaf_node_params: UpdateLeafNodeParams,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;UpdatePathResult, TreeSyncAddLeaf&gt; {
+        <span class="comment">// For External Commits, we temporarily add a placeholder leaf node to the tree, because it
+        // might be required to make the tree grow to the right size. If we
+        // don't do that, calculating the direct path might fail. It's important
+        // to not do anything with the value of that leaf until it has been
+        // replaced.
+        </span><span class="kw">if let </span>CommitType::External(<span class="kw">_</span>) = commit_type {
+            <span class="kw">let </span>leaf_node = LeafNode::new_placeholder();
+            <span class="self">self</span>.add_leaf(leaf_node)<span class="question-mark">?</span>;
+        }
 
-        <span class="kw">let </span>(path, update_path_nodes, keypairs, commit_secret) =
+        <span class="comment">// We calculate the parent hash so that we can use it for a fresh leaf
+        </span><span class="kw">let </span>(path, update_path_nodes, parent_keypairs, commit_secret) =
             <span class="self">self</span>.derive_path(provider, ciphersuite, leaf_index)<span class="question-mark">?</span>;
-
         <span class="kw">let </span>parent_hash =
             <span class="self">self</span>.process_update_path(provider.crypto(), ciphersuite, leaf_index, path)<span class="question-mark">?</span>;
 
-        <span class="self">self</span>.leaf_mut(leaf_index)
-            .ok_or_else(|| LibraryError::custom(<span class="string">"Didn't find own leaf in diff."</span>))<span class="question-mark">?
-            </span>.update_parent_hash(<span class="kw-2">&amp;</span>parent_hash, group_id, leaf_index, signer)<span class="question-mark">?</span>;
+        <span class="comment">// We generate the new leaf with all parameters
+        </span><span class="kw">let </span>(leaf_node, node_keypair) = LeafNode::new_with_parent_hash(
+            provider,
+            ciphersuite,
+            <span class="kw-2">&amp;</span>parent_hash,
+            leaf_node_params,
+            group_id,
+            leaf_index,
+            signer,
+        )<span class="question-mark">?</span>;
+
+        <span class="comment">// We insert the fresh leaf into the tree.
+        </span><span class="self">self</span>.diff.replace_leaf(leaf_index, leaf_node.into());
+
+        <span class="comment">// Prepend parent keypairs with node keypair
+        </span><span class="kw">let </span><span class="kw-2">mut </span>keypairs = <span class="macro">vec!</span>[node_keypair];
+        keypairs.extend(parent_keypairs);
 
         <span class="prelude-val">Ok</span>((update_path_nodes, keypairs, commit_secret))
     }
@@ -1630,11 +1671,6 @@
     <span class="doccomment">/// Return a reference to the leaf with the given index.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf(<span class="kw-2">&amp;</span><span class="self">self</span>, index: LeafNodeIndex) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>LeafNode&gt; {
         <span class="self">self</span>.diff.leaf(index).node().as_ref()
-    }
-
-    <span class="doccomment">/// Return a mutable reference to the leaf with the given index.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, index: LeafNodeIndex) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;mut </span>LeafNode&gt; {
-        <span class="self">self</span>.diff.leaf_mut(index).node_mut().as_mut()
     }
 
     <span class="doccomment">/// Compute and set the tree hash of all nodes in the tree.

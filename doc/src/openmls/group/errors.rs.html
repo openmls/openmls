@@ -568,6 +568,8 @@
 <a href="#568" id="568">568</a>
 <a href="#569" id="569">569</a>
 <a href="#570" id="570">570</a>
+<a href="#571" id="571">571</a>
+<a href="#572" id="572">572</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # MLS group errors
 //!
 //! This module contains errors that originate at lower levels and are partially re-exported in errors thrown by functions of the `MlsGroup` API.
@@ -581,11 +583,10 @@
     error::LibraryError,
     extensions::errors::{ExtensionError, InvalidExtensionError},
     framing::errors::MessageDecryptionError,
-    key_packages::errors::KeyPackageVerifyError,
-    key_packages::errors::{KeyPackageExtensionSupportError, KeyPackageNewError},
+    key_packages::errors::{KeyPackageExtensionSupportError, KeyPackageVerifyError},
     messages::{group_info::GroupInfoError, GroupSecretsError},
     schedule::errors::PskError,
-    treesync::errors::<span class="kw-2">*</span>,
+    treesync::{errors::<span class="kw-2">*</span>, node::leaf_node::LeafNodeUpdateError},
 };
 
 <span class="doccomment">/// Welcome error
@@ -799,9 +800,6 @@
     <span class="doccomment">/// Error interacting with storage.
     </span><span class="attr">#[error(<span class="string">"Error interacting with storage."</span>)]
     </span>KeyStoreError(StorageError),
-    <span class="doccomment">/// See [`KeyPackageNewError`] for more details.
-    </span><span class="attr">#[error(transparent)]
-    </span>KeyPackageGenerationError(<span class="attr">#[from] </span>KeyPackageNewError),
     <span class="doccomment">/// See [`SignatureError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>SignatureError(<span class="attr">#[from] </span>SignatureError),
@@ -819,6 +817,12 @@
     </span>GroupContextExtensionsProposalValidationError(
         <span class="attr">#[from] </span>GroupContextExtensionsProposalValidationError,
     ),
+    <span class="doccomment">/// See [`LeafNodeUpdateError`] for more details.
+    </span><span class="attr">#[error(transparent)]
+    </span>LeafNodeUpdateError(<span class="attr">#[from] </span>LeafNodeUpdateError&lt;StorageError&gt;),
+    <span class="doccomment">/// See [`TreeSyncAddLeaf`] for more details.
+    </span><span class="attr">#[error(transparent)]
+    </span>TreeSyncAddLeaf(<span class="attr">#[from] </span>TreeSyncAddLeaf),
 }
 
 <span class="doccomment">/// Validation error

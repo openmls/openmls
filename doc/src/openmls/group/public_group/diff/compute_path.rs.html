@@ -122,6 +122,23 @@
 <a href="#122" id="122">122</a>
 <a href="#123" id="123">123</a>
 <a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashSet;
 
 <span class="kw">use </span>openmls_traits::signatures::Signer;
@@ -133,12 +150,12 @@
     error::LibraryError,
     extensions::Extensions,
     group::{core_group::create_commit_params::CommitType, errors::CreateCommitError},
-    key_packages::{KeyPackage, KeyPackageCreationResult},
     schedule::CommitSecret,
     storage::OpenMlsProvider,
     treesync::{
         node::{
-            encryption_keys::EncryptionKeyPair, leaf_node::LeafNode,
+            encryption_keys::EncryptionKeyPair,
+            leaf_node::{Capabilities, LeafNodeParameters, UpdateLeafNodeParams},
             parent_node::PlainUpdatePathNode,
         },
         treekem::UpdatePath,
@@ -164,59 +181,76 @@
         provider: <span class="kw-2">&amp;</span>Provider,
         leaf_index: LeafNodeIndex,
         exclusion_list: HashSet&lt;<span class="kw-2">&amp;</span>LeafNodeIndex&gt;,
-        commit_type: CommitType,
+        commit_type: <span class="kw-2">&amp;</span>CommitType,
+        leaf_node_params: <span class="kw-2">&amp;</span>LeafNodeParameters,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
-        credential_with_key: <span class="prelude-ty">Option</span>&lt;CredentialWithKey&gt;,
-        extensions: <span class="prelude-ty">Option</span>&lt;Extensions&gt;,
+        gc_extensions: <span class="prelude-ty">Option</span>&lt;Extensions&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;PathComputationResult, CreateCommitError&lt;Provider::StorageError&gt;&gt; {
         <span class="kw">let </span>ciphersuite = <span class="self">self</span>.group_context().ciphersuite();
-        <span class="kw">let </span>group_id = <span class="self">self</span>.group_context().group_id().clone();
 
-        <span class="kw">let </span><span class="kw-2">mut </span>new_keypairs = <span class="kw">if </span>commit_type == CommitType::External {
-            <span class="comment">// If this is an external commit we add a fresh leaf to the diff.
-            // Generate a KeyPackageBundle to generate a payload from for later
-            // path generation.
-            </span><span class="kw">let </span>KeyPackageCreationResult {
-                key_package,
-                encryption_keypair,
-                <span class="comment">// The KeyPackage is immediately put into the group. No need for
-                // the init key.
-                </span>init_private_key: <span class="kw">_</span>,
-            } = KeyPackage::builder().build_without_storage(
-                ciphersuite,
-                provider,
-                signer,
-                credential_with_key.ok_or(CreateCommitError::MissingCredential)<span class="question-mark">?</span>,
-            )<span class="question-mark">?</span>;
+        <span class="kw">let </span>leaf_node_params = <span class="kw">if let </span>CommitType::External(credential_with_key) = commit_type {
+            <span class="kw">let </span>capabilities = <span class="kw">match </span>leaf_node_params.capabilities() {
+                <span class="prelude-val">Some</span>(c) =&gt; c.to_owned(),
+                <span class="prelude-val">None </span>=&gt; Capabilities::default(),
+            };
 
-            <span class="kw">let </span>leaf_node: LeafNode = key_package.into();
-            <span class="self">self</span>.diff
-                .add_leaf(leaf_node)
-                .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"Tree full: cannot add more members"</span>))<span class="question-mark">?</span>;
-            <span class="macro">vec!</span>[encryption_keypair]
+            <span class="kw">let </span>extensions = <span class="kw">match </span>leaf_node_params.extensions() {
+                <span class="prelude-val">Some</span>(e) =&gt; e.to_owned(),
+                <span class="prelude-val">None </span>=&gt; Extensions::default(),
+            };
+
+            UpdateLeafNodeParams {
+                credential_with_key: credential_with_key.clone(),
+                capabilities,
+                extensions,
+            }
         } <span class="kw">else </span>{
-            <span class="comment">// If we're already in the tree, we rekey our existing leaf.
-            </span><span class="kw">let </span>own_diff_leaf = <span class="self">self
+            <span class="kw">let </span>leaf = <span class="self">self
                 </span>.diff
-                .leaf_mut(leaf_index)
-                .ok_or_else(|| LibraryError::custom(<span class="string">"Unable to get own leaf from diff"</span>))<span class="question-mark">?</span>;
-            <span class="kw">let </span>encryption_keypair =
-                own_diff_leaf.rekey(<span class="kw-2">&amp;</span>group_id, leaf_index, ciphersuite, provider, signer)<span class="question-mark">?</span>;
-            <span class="macro">vec!</span>[encryption_keypair]
+                .leaf(leaf_index)
+                .ok_or_else(|| LibraryError::custom(<span class="string">"Couldn't find own leaf"</span>))<span class="question-mark">?</span>;
+
+            <span class="kw">let </span>credential_with_key = <span class="kw">match </span>leaf_node_params.credential_with_key() {
+                <span class="prelude-val">Some</span>(cwk) =&gt; cwk.to_owned(),
+                <span class="prelude-val">None </span>=&gt; CredentialWithKey {
+                    credential: leaf.credential().clone(),
+                    signature_key: leaf.signature_key().clone(),
+                },
+            };
+
+            <span class="kw">let </span>capabilities = <span class="kw">match </span>leaf_node_params.capabilities() {
+                <span class="prelude-val">Some</span>(c) =&gt; c.to_owned(),
+                <span class="prelude-val">None </span>=&gt; leaf.capabilities().clone(),
+            };
+
+            <span class="kw">let </span>extensions = <span class="kw">match </span>leaf_node_params.extensions() {
+                <span class="prelude-val">Some</span>(e) =&gt; e.to_owned(),
+                <span class="prelude-val">None </span>=&gt; leaf.extensions().clone(),
+            };
+
+            UpdateLeafNodeParams {
+                credential_with_key,
+                capabilities,
+                extensions,
+            }
         };
 
         <span class="comment">// Derive and apply an update path based on the previously
         // generated new leaf.
-        </span><span class="kw">let </span>(plain_path, <span class="kw-2">mut </span>new_parent_keypairs, commit_secret) = <span class="self">self
-            </span>.diff
-            .apply_own_update_path(provider, signer, ciphersuite, group_id, leaf_index)<span class="question-mark">?</span>;
-
-        new_keypairs.append(<span class="kw-2">&amp;mut </span>new_parent_keypairs);
+        </span><span class="kw">let </span>(plain_path, new_keypairs, commit_secret) = <span class="self">self</span>.diff.apply_own_update_path(
+            provider,
+            signer,
+            ciphersuite,
+            commit_type,
+            <span class="self">self</span>.group_context().group_id().clone(),
+            leaf_index,
+            leaf_node_params,
+        )<span class="question-mark">?</span>;
 
         <span class="comment">// After we've processed the path, we can update the group context s.t.
         // the updated group context is used for path secret encryption. Note
         // that we have not yet updated the confirmed transcript hash.
-        </span><span class="self">self</span>.update_group_context(provider.crypto(), extensions)<span class="question-mark">?</span>;
+        </span><span class="self">self</span>.update_group_context(provider.crypto(), gc_extensions)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>serialized_group_context = <span class="self">self
             </span>.group_context()

@@ -173,22 +173,22 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="updating-own-key-package"><a class="header" href="#updating-own-key-package">Updating own key package</a></h1>
+                        <h1 id="updating-own-leaf-node"><a class="header" href="#updating-own-leaf-node">Updating own leaf node</a></h1>
 <h2 id="immediate-operation"><a class="header" href="#immediate-operation">Immediate operation</a></h2>
-<p>Members can update their own leaf key package atomically with the <code>.self_update()</code> function.
-The application can optionally provide a <code>KeyPackage</code> manually. If not, a key package will be created on the fly with the same extensions as the current one but with a fresh HPKE init key.</p>
+<p>Members can update their own leaf node atomically with the <code>.self_update()</code> function.
+By default, only the HPKE encryption key is updated. The application can however also provide more parameters like a new credential, capabilities and extensions using the <code>LeafNodeParameters</code> struct.</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, welcome_option, _group_info) = bob_group
-        .self_update(provider, &amp;bob_signature_keys)
+        .self_update(provider, &amp;bob_signature_keys, LeafNodeParameters::default())
         .expect("Could not update own key package.");</code></pre>
 <p>The function returns the tuple <code>(MlsMessageOut, Option&lt;Welcome&gt;)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing group members.
-Even though the member updates its own key package only in this operation, the Commit message could potentially also cover Add Proposals that were previously received in the epoch. Therefore the function can also optionally return a <code>Welcome</code> message. The <code>Welcome</code> message must be sent to the newly added members.</p>
+Even though the member updates its own leaf node only in this operation, the Commit message could potentially also cover Add Proposals that were previously received in the epoch. Therefore the function can also optionally return a <code>Welcome</code> message. The <code>Welcome</code> message must be sent to the newly added members.</p>
 <h2 id="proposal"><a class="header" href="#proposal">Proposal</a></h2>
-<p>Members can also update their key package as a proposal (without the corresponding Commit message) by using the <code>.propose_self_update()</code> function. Just like with the <code>.self_update()</code> function, an optional key package can be provided:</p>
+<p>Members can also update their leaf node as a proposal (without the corresponding Commit message) by using the <code>.propose_self_update()</code> function. Just like with the <code>.self_update()</code> function, optional parameters can be set through <code>LeafNodeParameters</code>:</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, _proposal_ref) = alice_group
         .propose_self_update(
             provider,
             &amp;alice_signature_keys,
-            None, // We don't provide a leaf node, it will be created on the fly instead
+            LeafNodeParameters::default(),
         )
         .expect("Could not create update proposal.");</code></pre>
 <p>In this case, the function returns an <code>MlsMessageOut</code> that needs to be fanned out to existing group members.</p>

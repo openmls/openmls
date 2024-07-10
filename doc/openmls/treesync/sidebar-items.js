@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Node","RatchetTreeError"],"mod":["errors"],"struct":["EncryptionKey","LeafNode","ParentNode","RatchetTree","RatchetTreeIn"]};
+window.SIDEBAR_ITEMS = {"enum":["LeafNodeUpdateError","Node","RatchetTreeError"],"mod":["errors"],"struct":["EncryptionKey","LeafNode","LeafNodeParameters","LeafNodeParametersBuilder","ParentNode","RatchetTree","RatchetTreeIn"]};

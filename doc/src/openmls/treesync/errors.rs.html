@@ -392,7 +392,7 @@
 
 <span class="doccomment">/// TreeSync set path error
 </span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>TreeSyncAddLeaf {
+</span><span class="kw">pub enum </span>TreeSyncAddLeaf {
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),

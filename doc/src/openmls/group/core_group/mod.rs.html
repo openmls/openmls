@@ -1229,6 +1229,7 @@
 <a href="#1229" id="1229">1229</a>
 <a href="#1230" id="1230">1230</a>
 <a href="#1231" id="1231">1231</a>
+<a href="#1232" id="1232">1232</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! ### Don't Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -2076,14 +2077,14 @@
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>create_commit&lt;Provider: OpenMlsProvider&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="kw-2">mut </span>params: CreateCommitParams,
+        params: CreateCommitParams,
         provider: <span class="kw-2">&amp;</span>Provider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;CreateCommitResult, CreateCommitError&lt;Provider::StorageError&gt;&gt; {
         <span class="kw">let </span>ciphersuite = <span class="self">self</span>.ciphersuite();
 
         <span class="kw">let </span>sender = <span class="kw">match </span>params.commit_type() {
-            CommitType::External =&gt; Sender::NewMemberCommit,
+            CommitType::External(<span class="kw">_</span>) =&gt; Sender::NewMemberCommit,
             CommitType::Member =&gt; Sender::build_member(<span class="self">self</span>.own_leaf_index()),
         };
 
@@ -2156,7 +2157,7 @@
         <span class="comment">// Apply proposals to tree
         </span><span class="kw">let </span>apply_proposals_values =
             diff.apply_proposals(<span class="kw-2">&amp;</span>proposal_queue, <span class="self">self</span>.own_leaf_index())<span class="question-mark">?</span>;
-        <span class="kw">if </span>apply_proposals_values.self_removed &amp;&amp; params.commit_type() != CommitType::External {
+        <span class="kw">if </span>apply_proposals_values.self_removed &amp;&amp; params.commit_type() == <span class="kw-2">&amp;</span>CommitType::Member {
             <span class="kw">return </span><span class="prelude-val">Err</span>(CreateCommitError::CannotRemoveSelf);
         }
 
@@ -2165,6 +2166,7 @@
             </span><span class="kw">if </span>apply_proposals_values.path_required
                 || contains_own_updates
                 || params.force_self_update()
+                || !params.leaf_node_parameters().is_empty()
             {
                 <span class="comment">// Process the path. This includes updating the provisional
                 // group context by updating the epoch and computing the new
@@ -2174,8 +2176,8 @@
                     <span class="self">self</span>.own_leaf_index(),
                     apply_proposals_values.exclusion_list(),
                     params.commit_type(),
+                    params.leaf_node_parameters(),
                     signer,
-                    params.take_credential_with_key(),
                     apply_proposals_values.extensions.clone()
                 )<span class="question-mark">?
             </span>} <span class="kw">else </span>{
