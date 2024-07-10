@@ -8,7 +8,7 @@ use crate::{
     },
 };
 
-use super::{proposals::ProposalStore, *};
+use super::*;
 
 impl CoreGroup {
     /// This processing function does most of the semantic verifications.
@@ -43,7 +43,6 @@ impl CoreGroup {
         &self,
         provider: &Provider,
         unverified_message: UnverifiedMessage,
-        proposal_store: &ProposalStore,
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
     ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
@@ -80,7 +79,6 @@ impl CoreGroup {
                     FramedContentBody::Commit(_) => {
                         let staged_commit = self.stage_commit(
                             &content,
-                            proposal_store,
                             old_epoch_keypairs,
                             leaf_node_keypairs,
                             provider,
@@ -174,7 +172,6 @@ impl CoreGroup {
         provider: &Provider,
         message: impl Into<ProtocolMessage>,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
-        proposal_store: &ProposalStore,
         own_leaf_nodes: &[LeafNode],
     ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
         let message: ProtocolMessage = message.into();
@@ -205,7 +202,6 @@ impl CoreGroup {
         self.process_unverified_message(
             provider,
             unverified_message,
-            proposal_store,
             old_epoch_keypairs,
             leaf_node_keypairs,
         )
@@ -296,7 +292,6 @@ impl CoreGroup {
         &mut self,
         provider: &Provider,
         staged_commit: StagedCommit,
-        proposal_store: &mut ProposalStore,
     ) -> Result<(), MergeCommitError<Provider::StorageError>> {
         // Save the past epoch
         let past_epoch = self.context().epoch();
@@ -309,7 +304,7 @@ impl CoreGroup {
                 .add(past_epoch, message_secrets, leaves);
         }
         // Empty the proposal store
-        proposal_store.empty();
+        self.proposal_store_mut().empty();
         Ok(())
     }
 }

@@ -5,7 +5,7 @@ use public_group::diff::{apply_proposals::ApplyProposalsValues, StagedPublicGrou
 
 use self::public_group::staged_commit::PublicStagedCommitState;
 
-use super::{super::errors::*, proposals::ProposalStore, *};
+use super::{super::errors::*, *};
 use crate::{
     ciphersuite::Secret, framing::mls_auth_content::AuthenticatedContent,
     treesync::node::encryption_keys::EncryptionKeyPair,
@@ -124,7 +124,6 @@ impl CoreGroup {
     pub(crate) fn stage_commit(
         &self,
         mls_content: &AuthenticatedContent,
-        proposal_store: &ProposalStore,
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
         provider: &impl OpenMlsProvider,
@@ -138,9 +137,9 @@ impl CoreGroup {
 
         let ciphersuite = self.ciphersuite();
 
-        let (commit, proposal_queue, sender_index) =
-            self.public_group
-                .validate_commit(mls_content, proposal_store, provider.crypto())?;
+        let (commit, proposal_queue, sender_index) = self
+            .public_group
+            .validate_commit(mls_content, provider.crypto())?;
 
         // Create the provisional public group state (including the tree and
         // group context) and apply proposals.
@@ -373,7 +372,7 @@ impl CoreGroup {
                     .into());
                 }
 
-                // store the updated group state
+                // Store the updated group state
                 let storage = provider.storage();
                 let group_id = self.group_id();
 
@@ -400,6 +399,9 @@ impl CoreGroup {
                         .map_err(MergeCommitError::StorageError)?;
                 }
 
+                // Empty the proposal store
+                self.proposal_store_mut().empty();
+
                 Ok(Some(message_secrets))
             }
         }
@@ -411,7 +413,6 @@ impl CoreGroup {
     pub(crate) fn read_keys_and_stage_commit(
         &self,
         mls_content: &AuthenticatedContent,
-        proposal_store: &ProposalStore,
         own_leaf_nodes: &[LeafNode],
         provider: &impl OpenMlsProvider,
     ) -> Result<StagedCommit, StageCommitError> {
@@ -420,7 +421,6 @@ impl CoreGroup {
 
         self.stage_commit(
             mls_content,
-            proposal_store,
             old_epoch_keypairs,
             leaf_node_keypairs,
             provider,
@@ -429,6 +429,7 @@ impl CoreGroup {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Clone))]
 pub(crate) enum StagedCommitState {
     PublicState(Box<PublicStagedCommitState>),
     GroupMember(Box<MemberStagedCommitState>),
@@ -436,6 +437,7 @@ pub(crate) enum StagedCommitState {
 
 /// Contains the changes from a commit to the group state.
 #[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Clone))]
 pub struct StagedCommit {
     staged_proposal_queue: ProposalQueue,
     state: StagedCommitState,
@@ -568,6 +570,7 @@ impl StagedCommit {
 
 /// This struct is used internally by [StagedCommit] to encapsulate all the modified group state.
 #[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Clone))]
 pub(crate) struct MemberStagedCommitState {
     group_epoch_secrets: GroupEpochSecrets,
     message_secrets: MessageSecrets,

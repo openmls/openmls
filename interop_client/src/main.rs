@@ -6,6 +6,7 @@
 use std::{collections::HashMap, fmt::Display, fs::File, io::Write, sync::Mutex};
 
 use clap::Parser;
+#[allow(unused_imports)]
 use clap_derive::*;
 use mls_client::{
     mls_client_server::{MlsClient, MlsClientServer},
@@ -22,7 +23,7 @@ use openmls::{
     key_packages::{KeyPackage, KeyPackageBundle},
     prelude::{Capabilities, ExtensionType, SenderRatchetConfiguration},
     schedule::{psk::ResumptionPskUsage, ExternalPsk, PreSharedKeyId, Psk},
-    treesync::RatchetTreeIn,
+    treesync::{LeafNodeParameters, RatchetTreeIn},
     versions::ProtocolVersion,
 };
 use openmls_basic_credential::SignatureKeyPair;
@@ -494,6 +495,8 @@ impl MlsClient for MlsClientImpl {
                 ratchet_tree,
                 verifiable_group_info,
                 &mls_group_config,
+                None,
+                None,
                 b"",
                 credential_with_key,
             )
@@ -833,7 +836,7 @@ impl MlsClient for MlsClientImpl {
             .propose_self_update(
                 &interop_group.crypto_provider,
                 &interop_group.signature_keys,
-                None,
+                LeafNodeParameters::default(),
             )
             .map_err(into_status)?;
 

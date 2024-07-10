@@ -57,7 +57,7 @@ impl From<TreeSyncNode> for TreeNode<TreeSyncLeafNode, TreeSyncParentNode> {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(any(test, feature = "test-utils"), derive(PartialEq))]
 /// This intermediate struct on top of `Option<Node>` allows us to cache tree
 /// hash values. Blank nodes are represented by [`TreeSyncNode`] instances where
 /// `node = None`.
@@ -74,11 +74,6 @@ impl TreeSyncLeafNode {
     /// Return a reference to the contained `Option<Node>`.
     pub(in crate::treesync) fn node(&self) -> &Option<LeafNode> {
         &self.node
-    }
-
-    /// Return a mutable reference to the contained `Option<Node>`.
-    pub(in crate::treesync) fn node_mut(&mut self) -> &mut Option<LeafNode> {
-        &mut self.node
     }
 
     /// Compute the tree hash for this node, thus populating the `tree_hash`
@@ -109,7 +104,7 @@ impl From<TreeSyncLeafNode> for Option<Node> {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(any(test, feature = "test-utils"), derive(PartialEq))]
 /// This intermediate struct on top of `Option<Node>` allows us to cache tree
 /// hash values. Blank nodes are represented by [`TreeSyncNode`] instances where
 /// `node = None`.

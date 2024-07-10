@@ -42,6 +42,7 @@ mod test_mls_group;
 /// Pending Commit state. Differentiates between Commits issued by group members
 /// and External Commits.
 #[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Clone))]
 pub enum PendingCommitState {
     /// Commit from a group member
     Member(StagedCommit),
@@ -114,6 +115,7 @@ impl From<PendingCommitState> for StagedCommit {
 ///   external commit process, see [`MlsGroup::join_by_external_commit()`] or
 ///   Section 11.2.1 of the MLS specification.
 #[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Clone))]
 pub enum MlsGroupState {
     /// There is currently a pending Commit that hasn't been merged yet.
     PendingCommit(Box<PendingCommitState>),
@@ -148,15 +150,13 @@ pub enum MlsGroupState {
 /// inactive, as well as if it has a pending commit. See [`MlsGroupState`] for
 /// more information.
 #[derive(Debug)]
+#[cfg_attr(feature = "test-utils", derive(Clone))]
 pub struct MlsGroup {
     // The group configuration. See [`MlsGroupJoinConfig`] for more information.
     mls_group_config: MlsGroupJoinConfig,
     // the internal `CoreGroup` used for lower level operations. See `CoreGroup` for more
     // information.
     group: CoreGroup,
-    // A [ProposalStore] that stores incoming proposals from the DS within one epoch.
-    // The store is emptied after every epoch change.
-    pub(crate) proposal_store: ProposalStore,
     // Own [`LeafNode`]s that were created for update proposals and that
     // are needed in case an update proposal is committed by another group
     // member. The vector is emptied after every epoch change.
@@ -252,7 +252,7 @@ impl MlsGroup {
 
     /// Returns an `Iterator` over pending proposals.
     pub fn pending_proposals(&self) -> impl Iterator<Item = &QueuedProposal> {
-        self.proposal_store.proposals()
+        self.proposal_store().proposals()
     }
 
     /// Returns a reference to the [`StagedCommit`] of the most recently created
@@ -307,9 +307,9 @@ impl MlsGroup {
         storage: &Storage,
     ) -> Result<(), Storage::Error> {
         // If the proposal store is not empty...
-        if !self.proposal_store.is_empty() {
+        if !self.proposal_store().is_empty() {
             // Empty the proposal store
-            self.proposal_store.empty();
+            self.proposal_store_mut().empty();
 
             // Clear proposals in storage
             storage.clear_proposal_queue::<GroupId, ProposalRef>(self.group_id())?;
@@ -340,21 +340,14 @@ impl MlsGroup {
     ) -> Result<Option<MlsGroup>, Storage::Error> {
         let group_config = storage.mls_group_join_config(group_id)?;
         let core_group = CoreGroup::load(storage, group_id)?;
-        let proposals: Vec<(ProposalRef, QueuedProposal)> = storage.queued_proposals(group_id)?;
         let own_leaf_nodes = storage.own_leaf_nodes(group_id)?;
         let aad = storage.aad(group_id)?;
         let group_state = storage.group_state(group_id)?;
-        let mut proposal_store = ProposalStore::new();
-
-        for (_ref, proposal) in proposals {
-            proposal_store.add(proposal);
-        }
 
         let build = || -> Option<Self> {
             Some(Self {
                 mls_group_config: group_config?,
                 group: core_group?,
-                proposal_store,
                 own_leaf_nodes,
                 aad,
                 group_state: group_state?,
@@ -444,6 +437,16 @@ impl MlsGroup {
             MlsGroupState::Operational => Ok(()),
         }
     }
+
+    /// Returns a reference to the proposal store.
+    pub(crate) fn proposal_store(&self) -> &ProposalStore {
+        self.group.proposal_store()
+    }
+
+    /// Returns a mutable reference to the proposal store.
+    pub(crate) fn proposal_store_mut(&mut self) -> &mut ProposalStore {
+        self.group.proposal_store_mut()
+    }
 }
 
 // Methods used in tests
@@ -478,7 +481,7 @@ impl MlsGroup {
         storage
             .remove_proposal(self.group_id(), &proposal_ref)
             .map_err(MlsGroupStateError::StorageError)?;
-        self.proposal_store
+        self.proposal_store_mut()
             .remove(proposal_ref)
             .ok_or(MlsGroupStateError::PendingProposalNotFound)
     }

@@ -4,7 +4,9 @@
 use openmls_traits::prelude::{openmls_types::Ciphersuite, *};
 use tls_codec::{Deserialize, Serialize};
 
-use crate::{binary_tree::LeafNodeIndex, framing::*, group::*, key_packages::*};
+use crate::{
+    binary_tree::LeafNodeIndex, framing::*, group::*, key_packages::*, treesync::LeafNodeParameters,
+};
 
 use super::utils::{
     generate_credential_with_key, generate_key_package, CredentialWithKeyAndSigner,
@@ -117,7 +119,11 @@ fn test_valsem002() {
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, provider);
 
     let (message, _welcome, _group_info) = alice_group
-        .self_update(provider, &_alice_credential.signer)
+        .self_update(
+            provider,
+            &_alice_credential.signer,
+            LeafNodeParameters::default(),
+        )
         .expect("Could not self-update.");
 
     let serialized_message = message
@@ -164,7 +170,11 @@ fn test_valsem003() {
 
     // Alice needs to create a new message that Bob can process.
     let (message, _welcome, _group_info) = alice_group
-        .self_update(provider, &_alice_credential.signer)
+        .self_update(
+            provider,
+            &_alice_credential.signer,
+            LeafNodeParameters::default(),
+        )
         .expect("Could not self update.");
     alice_group.merge_pending_commit(provider).unwrap();
 
@@ -188,7 +198,11 @@ fn test_valsem003() {
 
     // Do a second Commit to increase the epoch number
     let (message, _welcome, _group_info) = alice_group
-        .self_update(provider, &_alice_credential.signer)
+        .self_update(
+            provider,
+            &_alice_credential.signer,
+            LeafNodeParameters::default(),
+        )
         .expect("Could not add member.");
 
     let current_epoch = alice_group.epoch();
@@ -257,7 +271,11 @@ fn test_valsem004() {
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, provider);
 
     let (message, _welcome, _group_info) = alice_group
-        .self_update(provider, &_alice_credential.signer)
+        .self_update(
+            provider,
+            &_alice_credential.signer,
+            LeafNodeParameters::default(),
+        )
         .expect("Could not self-update.");
 
     let serialized_message = message
@@ -314,7 +332,11 @@ fn test_valsem005() {
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, provider);
 
     let (message, _welcome, _group_info) = alice_group
-        .self_update(provider, &_alice_credential.signer)
+        .self_update(
+            provider,
+            &_alice_credential.signer,
+            LeafNodeParameters::default(),
+        )
         .expect("Could not self-update.");
 
     let serialized_message = message
@@ -418,7 +440,11 @@ fn test_valsem007() {
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, provider);
 
     let (message, _welcome, _group_info) = alice_group
-        .self_update(provider, &_alice_credential.signer)
+        .self_update(
+            provider,
+            &_alice_credential.signer,
+            LeafNodeParameters::default(),
+        )
         .expect("Could not self-update.");
 
     let serialized_message = message
@@ -465,7 +491,11 @@ fn test_valsem008() {
 
     // Alice needs to create a new message that Bob can process.
     let (message, _welcome, _group_info) = alice_group
-        .self_update(provider, &_alice_credential.signer)
+        .self_update(
+            provider,
+            &_alice_credential.signer,
+            LeafNodeParameters::default(),
+        )
         .expect("Could not self-update.");
 
     let serialized_message = message
@@ -519,7 +549,11 @@ fn test_valsem009() {
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, provider);
 
     let (message, _welcome, _group_info) = alice_group
-        .self_update(provider, &_alice_credential.signer)
+        .self_update(
+            provider,
+            &_alice_credential.signer,
+            LeafNodeParameters::default(),
+        )
         .expect("Could not self-update.");
 
     let serialized_message = message
@@ -576,7 +610,11 @@ fn test_valsem010() {
 
     // Alice needs to create a new message that Bob can process.
     let (message, _welcome, _group_info) = alice_group
-        .self_update(provider, &_alice_credential.signer)
+        .self_update(
+            provider,
+            &_alice_credential.signer,
+            LeafNodeParameters::default(),
+        )
         .expect("Could not self update.");
 
     let serialized_message = message

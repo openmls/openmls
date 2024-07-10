@@ -10,11 +10,7 @@ use crate::{
     ciphersuite::signable::{Signable, SignatureError},
     extensions::Extensions,
     framing::*,
-    group::{
-        core_group::proposals::{ProposalStore, QueuedProposal},
-        errors::*,
-        CreateCommitParams,
-    },
+    group::{core_group::proposals::QueuedProposal, errors::*, CreateCommitParams},
     key_packages::{test_key_packages::key_package, KeyPackageBundle},
     schedule::psk::{store::ResumptionPskStore, PskSecret},
     storage::OpenMlsProvider,
@@ -437,18 +433,18 @@ fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider:
         )
         .expect("Could not create proposal.");
 
-    let mut proposal_store = ProposalStore::from_queued_proposal(
+    group_alice.proposal_store_mut().empty();
+    group_alice.proposal_store_mut().add(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
             alice_provider.crypto(),
             bob_add_proposal,
         )
-        .expect("Could not create QueuedProposal."),
+        .unwrap(),
     );
 
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
     let create_commit_result = group_alice
@@ -481,8 +477,8 @@ fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider:
         )
         .expect("Could not create proposal.");
 
-    proposal_store.empty();
-    proposal_store.add(
+    group_alice.proposal_store_mut().empty();
+    group_alice.proposal_store_mut().add(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
             alice_provider.crypto(),
@@ -493,7 +489,6 @@ fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider:
 
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
     let create_commit_result = group_alice
@@ -525,19 +520,23 @@ fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider:
         )
         .expect("Could not create proposal.");
 
-    proposal_store.empty();
-    proposal_store.add(
-        QueuedProposal::from_authenticated_content_by_ref(
-            ciphersuite,
-            alice_provider.crypto(),
-            bob_remove_proposal,
-        )
-        .expect("Could not create staged proposal."),
-    );
+    let queued_proposal = QueuedProposal::from_authenticated_content_by_ref(
+        ciphersuite,
+        alice_provider.crypto(),
+        bob_remove_proposal,
+    )
+    .unwrap();
+
+    group_alice.proposal_store_mut().empty();
+    group_charlie.proposal_store_mut().empty();
+
+    group_alice
+        .proposal_store_mut()
+        .add(queued_proposal.clone());
+    group_charlie.proposal_store_mut().add(queued_proposal);
 
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
     let create_commit_result = group_alice
@@ -545,12 +544,7 @@ fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider:
         .expect("Error creating Commit");
 
     let staged_commit = group_charlie
-        .read_keys_and_stage_commit(
-            &create_commit_result.commit,
-            &proposal_store,
-            &[],
-            alice_provider,
-        )
+        .read_keys_and_stage_commit(&create_commit_result.commit, &[], alice_provider)
         .expect("Charlie: Could not stage Commit");
     group_charlie
         .merge_commit(charlie_provider, staged_commit)
@@ -607,11 +601,8 @@ fn confirmation_tag_presence<Provider: OpenMlsProvider>() {
         setup_alice_bob_group(ciphersuite, provider);
 
     // Alice does an update
-    let proposal_store = ProposalStore::default();
-
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .proposal_store(&proposal_store)
         .force_self_update(true)
         .build();
     let mut create_commit_result = group_alice
@@ -621,7 +612,7 @@ fn confirmation_tag_presence<Provider: OpenMlsProvider>() {
     create_commit_result.commit.unset_confirmation_tag();
 
     let err = group_bob
-        .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], provider)
+        .read_keys_and_stage_commit(&create_commit_result.commit, &[], provider)
         .expect_err("No error despite missing confirmation tag.");
 
     assert_eq!(err, StageCommitError::ConfirmationTagMissing);
@@ -674,18 +665,18 @@ pub(crate) fn setup_alice_bob_group<Provider: OpenMlsProvider>(
         )
         .expect("Could not create proposal.");
 
-    let proposal_store = ProposalStore::from_queued_proposal(
+    group_alice.proposal_store_mut().empty();
+    group_alice.proposal_store_mut().add(
         QueuedProposal::from_authenticated_content_by_ref(
             ciphersuite,
             provider.crypto(),
             bob_add_proposal,
         )
-        .expect("Could not create QueuedProposal."),
+        .unwrap(),
     );
 
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
 

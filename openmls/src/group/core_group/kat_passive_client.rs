@@ -1,3 +1,4 @@
+use core_group::LeafNodeParameters;
 use log::{debug, info, warn};
 use openmls_traits::{crypto::OpenMlsCrypto, storage::StorageProvider, OpenMlsProvider};
 use serde::{self, Deserialize, Serialize};
@@ -559,7 +560,11 @@ fn update_inline(
     group: &mut MlsGroup,
 ) -> TestEpoch {
     let (mls_message_out_commit, _, _) = group
-        .self_update(provider, &candidate.signature_keypair)
+        .self_update(
+            provider,
+            &candidate.signature_keypair,
+            LeafNodeParameters::default(),
+        )
         .unwrap();
     group.merge_pending_commit(provider).unwrap();
 

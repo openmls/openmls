@@ -83,7 +83,11 @@ pub use node::encryption_keys::test_utils;
 pub use node::encryption_keys::EncryptionKey;
 
 // Public re-exports
-pub use node::{leaf_node::LeafNode, parent_node::ParentNode, Node};
+pub use node::{
+    leaf_node::{LeafNode, LeafNodeParameters, LeafNodeParametersBuilder, LeafNodeUpdateError},
+    parent_node::ParentNode,
+    Node,
+};
 
 // Tests
 #[cfg(any(feature = "test-utils", test))]
@@ -354,7 +358,7 @@ impl fmt::Display for RatchetTree {
 /// creating a new instance from an imported set of nodes, as well as when
 /// merging a diff.
 #[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq, Clone))]
+#[cfg_attr(any(test, feature = "test-utils"), derive(PartialEq, Clone))]
 pub(crate) struct TreeSync {
     tree: MlsBinaryTree<TreeSyncLeafNode, TreeSyncParentNode>,
     tree_hash: Vec<u8>,

@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#1542](https://github.com/openmls/openmls/pull/1542): Add support for custom proposals. ProposalType::Unknown is now called ProposalType::Other. Proposal::Unknown is now called Proposal::Other.
 - [#1559](https://github.com/openmls/openmls/pull/1559): Remove the `PartialEq` type constraint on the error type of both the `OpenMlsRand` and `OpenMlsKeyStore` traits. Additionally, remove the `Clone` type constraint on the error type of the `OpenMlsRand` trait.
 - [#1565](https://github.com/openmls/openmls/pull/1565): Removed `OpenMlsKeyStore` and replace it with a new `StorageProvider` trait in the `openmls_traits` crate.
+- [#1606](https://github.com/openmls/openmls/pull/1606): Added additional `LeafNodeParameters` argument to `MlsGroup.self_update()` and `MlsGroup.propose_self_update()` to allow for updating the leaf node with custom parameters. `MlsGroup::join_by_external_commit()` now also takes optional parameters to set the capabilities and the extensions of the LeafNode.
 
 ### Fixed
 
