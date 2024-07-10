@@ -1508,12 +1508,17 @@ fn group_generate_storage_kat(ciphersuite: Ciphersuite, provider: &Provider) {
 
     let mut file = std::fs::File::create("test_vectors/storage-stability-new.dat").unwrap();
     file.write_all(&buf).unwrap();
+    /*
+    }
 
-    ///// serialized, now deserialize
+    #[openmls_test]
+    fn group_generate_storage_kat(ciphersuite: Ciphersuite, provider: &Provider) {
+    */
+    let mut file = std::fs::File::open("test_vectors/storage-stability-new.dat").unwrap();
 
     let mut alice_provider2 = StorageTestProvider::new("alice");
     alice_provider2.storage =
-        openmls_memory_storage::MemoryStorage::deserialize(&mut buf.as_slice()).unwrap();
+        openmls_memory_storage::MemoryStorage::deserialize(&mut file).unwrap();
 
     //// first make sure that the provider is recovered properly
     let mut entries = alice_provider
@@ -1543,56 +1548,18 @@ fn group_generate_storage_kat(ciphersuite: Ciphersuite, provider: &Provider) {
         .unwrap()
         .unwrap();
 
-    assert_eq!(alice_group.group_id(), alice_group2.group_id());
-    assert_eq!(alice_group.tree_hash(), alice_group2.tree_hash());
-    assert_eq!(alice_group.configuration(), alice_group2.configuration());
-    assert_eq!(
-        alice_group.pending_proposals().collect::<Vec<_>>(),
-        alice_group2.pending_proposals().collect::<Vec<_>>()
-    );
+    write!(
+        std::fs::File::create("/tmp/left").unwrap(),
+        "{alice_group:#?}"
+    )
+    .unwrap();
+    write!(
+        std::fs::File::create("/tmp/rght").unwrap(),
+        "{alice_group2:#?}"
+    )
+    .unwrap();
 
-    let pending_commit1 = alice_group.pending_commit().unwrap();
-    let pending_commit2 = alice_group2.pending_commit().unwrap();
-
-    assert_eq!(
-        pending_commit1.staged_proposal_queue(),
-        pending_commit2.staged_proposal_queue()
-    );
-
-    let openmls::group::StagedCommitState::GroupMember(member_commit_state1) =
-        pending_commit1.state()
-    else {
-        panic!("expected a group member state")
-    };
-    let openmls::group::StagedCommitState::GroupMember(member_commit_state2) =
-        pending_commit2.state()
-    else {
-        panic!("expected a group member state")
-    };
-    assert_eq!(
-        member_commit_state1.message_secrets(),
-        member_commit_state2.message_secrets()
-    );
-    assert_eq!(
-        member_commit_state1.staged_diff(),
-        member_commit_state2.staged_diff()
-    );
-    assert_eq!(
-        member_commit_state1.new_keypairs(),
-        member_commit_state2.new_keypairs()
-    );
-    assert_eq!(
-        member_commit_state1.new_leaf_keypair_option(),
-        member_commit_state2.new_leaf_keypair_option()
-    );
-    assert_eq!(
-        member_commit_state1.update_path_leaf_node(),
-        member_commit_state2.update_path_leaf_node()
-    );
-    assert_eq!(
-        member_commit_state1.group_epoch_secrets(),
-        member_commit_state2.group_epoch_secrets()
-    );
+    assert_eq!(alice_group, alice_group2);
 }
 
 //

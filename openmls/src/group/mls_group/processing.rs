@@ -151,6 +151,10 @@ impl MlsGroup {
         self.group
             .resumption_psk_store
             .add(self.group.context().epoch(), resumption_psk.clone());
+        provider
+            .storage()
+            .write_resumption_psk_store(self.group_id(), &self.group.resumption_psk_store)
+            .map_err(MergeCommitError::StorageError)?;
 
         // Delete own KeyPackageBundles
         self.own_leaf_nodes.clear();
