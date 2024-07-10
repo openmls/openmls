@@ -939,10 +939,9 @@ fn ciphertext_sample(ciphersuite: Ciphersuite, ciphertext: &[u8]) -> &[u8] {
 
 /// A key that can be used to derive an `AeadKey` and an `AeadNonce`.
 #[derive(Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
 #[cfg_attr(
     any(feature = "test-utils", feature = "crypto-debug", test),
-    derive(Debug, Clone)
+    derive(Debug, Clone, PartialEq)
 )]
 pub(crate) struct SenderDataSecret {
     secret: Secret,

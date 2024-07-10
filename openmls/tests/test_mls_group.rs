@@ -2,7 +2,7 @@ use std::{convert::Infallible, io::Write};
 
 use openmls::{
     prelude::{test_utils::new_credential, *},
-    storage::{self, OpenMlsProvider},
+    storage::OpenMlsProvider,
 };
 use openmls_traits::OpenMlsProvider as _;
 
@@ -1489,13 +1489,15 @@ fn group_generate_storage_kat(ciphersuite: Ciphersuite, provider: &Provider) {
         )
         .unwrap();
 
-    alice_group.propose_group_context_extensions(
-        &alice_provider,
-        Extensions::single(Extension::RequiredCapabilities(
-            RequiredCapabilitiesExtension::new(&[], &[], &[]),
-        )),
-        &alice_signer,
-    );
+    alice_group
+        .propose_group_context_extensions(
+            &alice_provider,
+            Extensions::single(Extension::RequiredCapabilities(
+                RequiredCapabilitiesExtension::new(&[], &[], &[]),
+            )),
+            &alice_signer,
+        )
+        .unwrap();
 
     ///// do the serialization
 
@@ -1547,21 +1549,7 @@ fn group_generate_storage_kat(ciphersuite: Ciphersuite, provider: &Provider) {
     let pending_commit1 = alice_group.pending_commit();
     let pending_commit2 = alice_group2.pending_commit();
 
-    match (pending_commit1, pending_commit2) {
-        (Some(pc1), Some(pc2)) => {
-            assert_eq!(
-                pc1.queued_proposals().collect::<Vec<_>>(),
-                pc2.queued_proposals().collect::<Vec<_>>()
-            );
-            assert_eq!(pc1.update_path_leaf_node(), pc2.update_path_leaf_node());
-        }
-        (None, None) => {}
-
-        (pc1, pc2) => panic!(
-            "the pending commits should be the same, but only one is Some(.): {:?} != {:?}",
-            pc1, pc2
-        ),
-    };
+    assert_eq!(pending_commit1, pending_commit2);
 }
 
 //
