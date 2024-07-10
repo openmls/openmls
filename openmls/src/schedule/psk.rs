@@ -491,7 +491,7 @@ pub mod store {
     /// This is where the resumption PSKs are kept in a rollover list.
     #[derive(Debug, Serialize, Deserialize)]
     #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
-    pub(crate) struct ResumptionPskStore {
+    pub struct ResumptionPskStore {
         max_number_of_secrets: usize,
         resumption_psk: Vec<(GroupEpoch, ResumptionPskSecret)>,
         cursor: usize,
@@ -530,6 +530,13 @@ pub mod store {
                 .iter()
                 .find(|&(e, _s)| e == &epoch)
                 .map(|(_e, s)| s)
+        }
+    }
+
+    #[cfg(any(feature = "test-utils", test))]
+    impl ResumptionPskStore {
+        pub fn cursor(&self) -> usize {
+            self.cursor
         }
     }
 }

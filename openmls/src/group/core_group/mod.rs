@@ -160,7 +160,7 @@ pub(crate) struct StagedCoreWelcome {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
-pub(crate) struct CoreGroup {
+pub struct CoreGroup {
     public_group: PublicGroup,
     group_epoch_secrets: GroupEpochSecrets,
     own_leaf_index: LeafNodeIndex,
@@ -1208,6 +1208,10 @@ impl CoreGroup {
 
     pub(crate) fn print_ratchet_tree(&self, message: &str) {
         println!("{}: {}", message, self.public_group().export_ratchet_tree());
+    }
+
+    pub fn resumption_psk_store(&self) -> &ResumptionPskStore {
+        &self.resumption_psk_store
     }
 }
 

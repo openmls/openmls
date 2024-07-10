@@ -467,8 +467,8 @@ impl MlsGroup {
     }
 
     /// Returns the underlying [CoreGroup].
-    #[cfg(test)]
-    pub(crate) fn group(&self) -> &CoreGroup {
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn group(&self) -> &CoreGroup {
         &self.group
     }
 
