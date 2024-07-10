@@ -430,7 +430,7 @@ impl CoreGroup {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
-pub(crate) enum StagedCommitState {
+pub enum StagedCommitState {
     PublicState(Box<PublicStagedCommitState>),
     GroupMember(Box<MemberStagedCommitState>),
 }
@@ -568,10 +568,21 @@ impl StagedCommit {
     }
 }
 
+#[cfg(any(test, feature = "test-utils"))]
+impl StagedCommit {
+    pub fn state(&self) -> &StagedCommitState {
+        &self.state
+    }
+
+    pub fn staged_proposal_queue(&self) -> &ProposalQueue {
+        &self.staged_proposal_queue
+    }
+}
+
 /// This struct is used internally by [StagedCommit] to encapsulate all the modified group state.
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
-pub(crate) struct MemberStagedCommitState {
+pub struct MemberStagedCommitState {
     group_epoch_secrets: GroupEpochSecrets,
     message_secrets: MessageSecrets,
     staged_diff: StagedPublicGroupDiff,
@@ -602,5 +613,32 @@ impl MemberStagedCommitState {
     /// Get the staged [`GroupContext`].
     pub(crate) fn group_context(&self) -> &GroupContext {
         self.staged_diff.group_context()
+    }
+}
+
+#[cfg(any(test, feature = "test-utils"))]
+impl MemberStagedCommitState {
+    pub fn group_epoch_secrets(&self) -> &GroupEpochSecrets {
+        &self.group_epoch_secrets
+    }
+
+    pub fn message_secrets(&self) -> &MessageSecrets {
+        &self.message_secrets
+    }
+
+    pub fn staged_diff(&self) -> &StagedPublicGroupDiff {
+        &self.staged_diff
+    }
+
+    pub fn new_keypairs(&self) -> &[EncryptionKeyPair] {
+        &self.new_keypairs
+    }
+
+    pub fn new_leaf_keypair_option(&self) -> Option<&EncryptionKeyPair> {
+        self.new_leaf_keypair_option.as_ref()
+    }
+
+    pub fn update_path_leaf_node(&self) -> Option<&LeafNode> {
+        self.update_path_leaf_node.as_ref()
     }
 }

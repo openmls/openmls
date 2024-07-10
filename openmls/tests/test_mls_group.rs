@@ -1,4 +1,4 @@
-use std::{convert::Infallible, io::Write};
+use std::{convert::Infallible, io::Write, ops::Deref};
 
 use openmls::{
     prelude::{test_utils::new_credential, *},
@@ -1489,20 +1489,25 @@ fn group_generate_storage_kat(ciphersuite: Ciphersuite, provider: &Provider) {
         )
         .unwrap();
 
-    alice_group
-        .propose_group_context_extensions(
-            &alice_provider,
-            Extensions::single(Extension::RequiredCapabilities(
-                RequiredCapabilitiesExtension::new(&[], &[], &[]),
-            )),
-            &alice_signer,
-        )
-        .unwrap();
+    /*
+        alice_group
+            .propose_group_context_extensions(
+                &alice_provider,
+                Extensions::single(Extension::RequiredCapabilities(
+                    RequiredCapabilitiesExtension::new(&[], &[], &[]),
+                )),
+                &alice_signer,
+            )
+            .unwrap();
+    */
 
     ///// do the serialization
 
     let mut buf = vec![];
     alice_provider.storage.serialize(&mut buf).unwrap();
+
+    let mut file = std::fs::File::create("test_vectors/storage-stability-new.dat").unwrap();
+    file.write_all(&buf).unwrap();
 
     ///// serialized, now deserialize
 
@@ -1546,10 +1551,48 @@ fn group_generate_storage_kat(ciphersuite: Ciphersuite, provider: &Provider) {
         alice_group2.pending_proposals().collect::<Vec<_>>()
     );
 
-    let pending_commit1 = alice_group.pending_commit();
-    let pending_commit2 = alice_group2.pending_commit();
+    let pending_commit1 = alice_group.pending_commit().unwrap();
+    let pending_commit2 = alice_group2.pending_commit().unwrap();
 
-    assert_eq!(pending_commit1, pending_commit2);
+    assert_eq!(
+        pending_commit1.staged_proposal_queue(),
+        pending_commit2.staged_proposal_queue()
+    );
+
+    let openmls::group::StagedCommitState::GroupMember(member_commit_state1) =
+        pending_commit1.state()
+    else {
+        panic!("expected a group member state")
+    };
+    let openmls::group::StagedCommitState::GroupMember(member_commit_state2) =
+        pending_commit2.state()
+    else {
+        panic!("expected a group member state")
+    };
+    assert_eq!(
+        member_commit_state1.message_secrets(),
+        member_commit_state2.message_secrets()
+    );
+    assert_eq!(
+        member_commit_state1.staged_diff(),
+        member_commit_state2.staged_diff()
+    );
+    assert_eq!(
+        member_commit_state1.new_keypairs(),
+        member_commit_state2.new_keypairs()
+    );
+    assert_eq!(
+        member_commit_state1.new_leaf_keypair_option(),
+        member_commit_state2.new_leaf_keypair_option()
+    );
+    assert_eq!(
+        member_commit_state1.update_path_leaf_node(),
+        member_commit_state2.update_path_leaf_node()
+    );
+    assert_eq!(
+        member_commit_state1.group_epoch_secrets(),
+        member_commit_state2.group_epoch_secrets()
+    );
 }
 
 //

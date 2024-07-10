@@ -6,7 +6,7 @@ use super::*;
 #[derive(Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone))]
 #[cfg_attr(feature = "crypto-debug", derive(Debug))]
-pub(crate) struct MessageSecrets {
+pub struct MessageSecrets {
     sender_data_secret: SenderDataSecret,
     membership_key: MembershipKey,
     confirmation_key: ConfirmationKey,

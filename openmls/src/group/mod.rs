@@ -37,6 +37,9 @@ pub use public_group::*;
 pub(crate) use core_group::create_commit_params::*;
 #[cfg(any(feature = "test-utils", test))]
 pub(crate) mod tests;
+#[cfg(any(feature = "test-utils", test))]
+pub use core_group::staged_commit::StagedCommitState;
+#[cfg(any(feature = "test-utils", test))]
 use openmls_traits::random::OpenMlsRand;
 
 /// A group ID. The group ID is chosen by the creator of the group and should be globally unique.
