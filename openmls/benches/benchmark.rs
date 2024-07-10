@@ -255,7 +255,7 @@ fn create_commit(c: &mut Criterion, provider: &impl OpenMlsProvider) {
                         (bob_group, bob_signer)
                     },
                     |(mut bob_group, bob_signer)| {
-                        let (queued_message, welcome_option, _group_info) =
+                        let (_queued_message, _welcome_option, _group_info) =
                             bob_group.self_update(provider, &bob_signer).unwrap();
 
                         bob_group

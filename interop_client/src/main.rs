@@ -6,6 +6,7 @@
 use std::{collections::HashMap, fmt::Display, fs::File, io::Write, sync::Mutex};
 
 use clap::Parser;
+#[allow(unused_imports)]
 use clap_derive::*;
 use mls_client::{
     mls_client_server::{MlsClient, MlsClientServer},

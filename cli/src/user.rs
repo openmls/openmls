@@ -243,7 +243,7 @@ impl User {
                     "Searching for contact {:?}",
                     str::from_utf8(credential.identity()).unwrap()
                 );
-                let contact = match self.contacts.get(&credential.identity().to_vec()) {
+                let contact = match self.contacts.get(credential.identity()) {
                     Some(c) => c.id.clone(),
                     None => panic!("There's a member in the group we don't know."),
                 };
