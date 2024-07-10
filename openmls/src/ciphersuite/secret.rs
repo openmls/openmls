@@ -11,12 +11,10 @@ use super::{kdf_label::KdfLabel, *};
 /// Note: This has a hand-written `Debug` implementation.
 ///       Please update as well when changing this struct.
 #[derive(Clone, Serialize, Deserialize, Eq)]
-#[cfg_attr(any(test, feature = "test-utils"), derive(Debug))]
 pub(crate) struct Secret {
     pub(in crate::ciphersuite) value: SecretVLBytes,
 }
 
-#[cfg(not(any(test, feature = "test-utils")))]
 impl Debug for Secret {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         let mut ds = f.debug_struct("Secret");
