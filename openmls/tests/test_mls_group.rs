@@ -1,4 +1,4 @@
-use std::{convert::Infallible, io::Write, ops::Deref};
+use std::{convert::Infallible, io::Write};
 
 use openmls::{
     prelude::{test_utils::new_credential, *},
@@ -1311,6 +1311,7 @@ fn group_context_extensions_proposal(
 }
 
 mod storage_kats {
+
     use super::*;
 
     struct DeterministicRandProvider {
@@ -1368,13 +1369,13 @@ mod storage_kats {
         }
     }
 
-    struct StorageTestProvider {
+    struct StorageTestProvider<Provider: OpenMlsProvider> {
         rand: DeterministicRandProvider,
         storage: openmls_memory_storage::MemoryStorage,
         other: Provider,
     }
 
-    impl StorageTestProvider {
+    impl<Provider: OpenMlsProvider + Default> StorageTestProvider<Provider> {
         fn new(id: &str) -> Self {
             Self {
                 rand: DeterministicRandProvider::new(id),
@@ -1384,7 +1385,9 @@ mod storage_kats {
         }
     }
 
-    impl openmls_traits::OpenMlsProvider for StorageTestProvider {
+    impl<Provider: OpenMlsProvider + Default> openmls_traits::OpenMlsProvider
+        for StorageTestProvider<Provider>
+    {
         type CryptoProvider = <Provider as openmls_traits::OpenMlsProvider>::CryptoProvider;
 
         type RandProvider = DeterministicRandProvider;
@@ -1426,17 +1429,37 @@ mod storage_kats {
         Ok(Some(buf))
     }
 
+    fn deserialize_provider<
+        R: std::io::Read,
+        Provider: openmls::storage::OpenMlsProvider + Default,
+    >(
+        r: &mut R,
+        name: &str,
+    ) -> std::io::Result<Option<StorageTestProvider<Provider>>> {
+        let Some(bs) = deserialize_bytes(r)? else {
+            return Ok(None);
+        };
+
+        let storage = openmls_memory_storage::MemoryStorage::deserialize(&mut bs.as_slice())?;
+
+        Ok(Some(StorageTestProvider::<Provider> {
+            storage,
+            rand: DeterministicRandProvider::new(name),
+            other: Default::default(),
+        }))
+    }
+
     #[openmls_test]
     fn group_generate_storage_kat(ciphersuite: Ciphersuite, provider: &Provider) {
-        let alice_provider = StorageTestProvider::new("alice");
+        let alice_provider = StorageTestProvider::<Provider>::new("alice");
         let (alice_cwk, alice_signer) =
             new_credential(&alice_provider, b"alice", ciphersuite.signature_algorithm());
 
-        let bob_provider = StorageTestProvider::new("bob");
+        let bob_provider = StorageTestProvider::<Provider>::new("bob");
         let (bob_cwk, bob_signer) =
             new_credential(&bob_provider, b"bob", ciphersuite.signature_algorithm());
 
-        let charlie_provider = StorageTestProvider::new("charlie");
+        let charlie_provider = StorageTestProvider::<Provider>::new("charlie");
         let (charlie_cwk, charlie_signer) = new_credential(
             &charlie_provider,
             b"charlie",
@@ -1569,16 +1592,9 @@ mod storage_kats {
 
         //// load group from state right after creation
 
-        let provider_new_group = {
-            let chunk = deserialize_bytes(&mut file).unwrap().unwrap();
-            let storage =
-                openmls_memory_storage::MemoryStorage::deserialize(&mut chunk.as_slice()).unwrap();
-
-            StorageTestProvider {
-                storage,
-                ..StorageTestProvider::new("alice")
-            }
-        };
+        let provider_new_group = deserialize_provider::<_, Provider>(&mut file, "alice")
+            .unwrap()
+            .unwrap();
 
         let alice_group_new_group =
             MlsGroup::load(provider_new_group.storage(), alice_group.group_id())
@@ -1614,16 +1630,9 @@ mod storage_kats {
 
         //// load group from state after bob was added, but commit not yet merged
 
-        let provider_pending_add_commit = {
-            let chunk = deserialize_bytes(&mut file).unwrap().unwrap();
-            let storage =
-                openmls_memory_storage::MemoryStorage::deserialize(&mut chunk.as_slice()).unwrap();
-
-            StorageTestProvider {
-                storage,
-                ..StorageTestProvider::new("alice")
-            }
-        };
+        let provider_pending_add_commit = deserialize_provider::<_, Provider>(&mut file, "alice")
+            .unwrap()
+            .unwrap();
 
         let alice_group_pending_add_commit = MlsGroup::load(
             provider_pending_add_commit.storage(),
@@ -1681,16 +1690,9 @@ mod storage_kats {
 
         //// load group from state after bob was added
 
-        let provider_bob_added = {
-            let chunk = deserialize_bytes(&mut file).unwrap().unwrap();
-            let storage =
-                openmls_memory_storage::MemoryStorage::deserialize(&mut chunk.as_slice()).unwrap();
-
-            StorageTestProvider {
-                storage,
-                ..StorageTestProvider::new("alice")
-            }
-        };
+        let provider_bob_added = deserialize_provider::<_, Provider>(&mut file, "alice")
+            .unwrap()
+            .unwrap();
 
         let alice_group_bob_added =
             MlsGroup::load(provider_bob_added.storage(), alice_group.group_id())
@@ -1731,16 +1733,9 @@ mod storage_kats {
 
         //// load group from state after alice updated GCE, but commit is not yet merged
 
-        let provider_pending_gce_commit = {
-            let chunk = deserialize_bytes(&mut file).unwrap().unwrap();
-            let storage =
-                openmls_memory_storage::MemoryStorage::deserialize(&mut chunk.as_slice()).unwrap();
-
-            StorageTestProvider {
-                storage,
-                ..StorageTestProvider::new("alice")
-            }
-        };
+        let provider_pending_gce_commit = deserialize_provider::<_, Provider>(&mut file, "alice")
+            .unwrap()
+            .unwrap();
 
         let alice_group_pending_gce_commit = MlsGroup::load(
             provider_pending_gce_commit.storage(),
@@ -1813,16 +1808,9 @@ mod storage_kats {
 
         //// load group from state after alice updated GCE
 
-        let provider_gce_updated = {
-            let chunk = deserialize_bytes(&mut file).unwrap().unwrap();
-            let storage =
-                openmls_memory_storage::MemoryStorage::deserialize(&mut chunk.as_slice()).unwrap();
-
-            StorageTestProvider {
-                storage,
-                ..StorageTestProvider::new("alice")
-            }
-        };
+        let provider_gce_updated = deserialize_provider::<_, Provider>(&mut file, "alice")
+            .unwrap()
+            .unwrap();
 
         let alice_group_gce_updated =
             MlsGroup::load(provider_gce_updated.storage(), alice_group.group_id())
@@ -1852,16 +1840,9 @@ mod storage_kats {
 
         //// load group from state after alice creates another proposal
 
-        let provider_pending_proposal = {
-            let chunk = deserialize_bytes(&mut file).unwrap().unwrap();
-            let storage =
-                openmls_memory_storage::MemoryStorage::deserialize(&mut chunk.as_slice()).unwrap();
-
-            StorageTestProvider {
-                storage,
-                ..StorageTestProvider::new("alice")
-            }
-        };
+        let provider_pending_proposal = deserialize_provider::<_, Provider>(&mut file, "alice")
+            .unwrap()
+            .unwrap();
 
         let alice_group_pending_proposal =
             MlsGroup::load(provider_pending_proposal.storage(), alice_group.group_id())
