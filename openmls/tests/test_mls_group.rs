@@ -1760,7 +1760,7 @@ fn group_generate_storage_kat(ciphersuite: Ciphersuite, provider: &Provider) {
         BasicCredential::new(b"bob".to_vec()).into()
     );
 
-    // there are no pending proposals or commits
+    // there are no pending proposals
     assert!(alice_group_pending_gce_commit
         .pending_proposals()
         .next()
@@ -1821,6 +1821,27 @@ fn group_generate_storage_kat(ciphersuite: Ciphersuite, provider: &Provider) {
             .unwrap()
             .unwrap();
 
+    // alice and bob are members
+    let members = alice_group_gce_updated.members().collect::<Vec<_>>();
+    assert_eq!(members.len(), 2);
+    assert_eq!(members[0].index, LeafNodeIndex::new(0));
+    assert_eq!(members[1].index, LeafNodeIndex::new(1));
+    assert_eq!(
+        members[0].credential,
+        BasicCredential::new(b"alice".to_vec()).into()
+    );
+    assert_eq!(
+        members[1].credential,
+        BasicCredential::new(b"bob".to_vec()).into()
+    );
+
+    // there are no pending proposals or commits
+    assert!(alice_group_gce_updated.pending_proposals().next().is_none());
+    assert!(alice_group_gce_updated.pending_commit().is_none());
+
+    drop(alice_group_gce_updated);
+    drop(provider_gce_updated);
+
     //// load group from state after alice creates another proposal
 
     let provider_pending_proposal = {
@@ -1838,40 +1859,36 @@ fn group_generate_storage_kat(ciphersuite: Ciphersuite, provider: &Provider) {
         MlsGroup::load(provider_pending_proposal.storage(), alice_group.group_id())
             .unwrap()
             .unwrap();
-    /*
-        //// first make sure that the provider is recovered properly
-        let mut entries = alice_provider
-            .storage
-            .values
-            .read()
-            .unwrap()
-            .iter()
-            .map(|(k, v)| (k.to_owned(), v.to_owned()))
-            .collect::<Vec<_>>();
-        let mut entries2 = alice_provider2
-            .storage
-            .values
-            .read()
-            .unwrap()
-            .iter()
-            .map(|(k, v)| (k.to_owned(), v.to_owned()))
-            .collect::<Vec<_>>();
 
-        entries.sort();
-        entries2.sort();
+    // alice and bob are members
+    let members = alice_group_pending_proposal.members().collect::<Vec<_>>();
+    assert_eq!(members.len(), 2);
+    assert_eq!(members[0].index, LeafNodeIndex::new(0));
+    assert_eq!(members[1].index, LeafNodeIndex::new(1));
+    assert_eq!(
+        members[0].credential,
+        BasicCredential::new(b"alice".to_vec()).into()
+    );
+    assert_eq!(
+        members[1].credential,
+        BasicCredential::new(b"bob".to_vec()).into()
+    );
 
+    // there is one pending add proposal
+    let proposals: Vec<_> = alice_group_pending_proposal.pending_proposals().collect();
+    assert_eq!(proposals.len(), 1);
+    match &proposals[0].proposal() {
+        Proposal::Add(add_proposal) => {
+            assert_eq!(
+                add_proposal.key_package().leaf_node().credential(),
+                &BasicCredential::new(b"charlie".to_vec()).into()
+            )
+        }
+        other => panic!("expected add proposal, got {:?}", other),
+    }
 
-        assert_eq!(entries, entries2);
-
-        //// Then load the group
-        let alice_group2 = MlsGroup::load(alice_provider2.storage(), alice_group.group_id())
-            .unwrap()
-            .unwrap();
-
-        println!("{alice_group:#?}");
-
-        assert_eq!(alice_group, alice_group2);
-    */
+    // there is no pending commit
+    assert!(alice_group_pending_proposal.pending_commit().is_none());
 }
 
 //
