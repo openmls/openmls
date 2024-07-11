@@ -1311,8 +1311,18 @@ fn group_context_extensions_proposal(
 }
 
 mod storage_kats {
+    use base64::Engine;
+    use serde::{Deserialize, Serialize};
+
+    use std::collections::HashMap;
 
     use super::*;
+
+    #[derive(Serialize, Deserialize)]
+    struct KatData {
+        group_id: GroupId,
+        storages: Vec<String>,
+    }
 
     struct DeterministicRandProvider {
         id: String,
@@ -1407,50 +1417,40 @@ mod storage_kats {
         }
     }
 
-    fn serialize_bytes<W: std::io::Write>(w: &mut W, bs: &[u8]) -> std::io::Result<()> {
-        let len = bs.len() as u64;
-
-        w.write_all(&len.to_be_bytes())?;
-        w.write_all(bs)
-    }
-
-    fn deserialize_bytes<R: std::io::Read>(r: &mut R) -> std::io::Result<Option<Vec<u8>>> {
-        let mut lenbuf = [0u8; 8];
-        match r.read_exact(&mut lenbuf) {
-            Ok(_) => {}
-            Err(err) if matches!(err.kind(), std::io::ErrorKind::UnexpectedEof) => return Ok(None),
-            other => other?,
-        }
-
-        let len = u64::from_be_bytes(lenbuf) as usize;
-        let mut buf = vec![0u8; len];
-        r.read_exact(&mut buf)?;
-
-        Ok(Some(buf))
-    }
-
     fn deserialize_provider<
         R: std::io::Read,
         Provider: openmls::storage::OpenMlsProvider + Default,
     >(
         r: &mut R,
         name: &str,
-    ) -> std::io::Result<Option<StorageTestProvider<Provider>>> {
-        let Some(bs) = deserialize_bytes(r)? else {
-            return Ok(None);
-        };
-
-        let storage = openmls_memory_storage::MemoryStorage::deserialize(&mut bs.as_slice())?;
-
-        Ok(Some(StorageTestProvider::<Provider> {
-            storage,
+    ) -> StorageTestProvider<Provider> {
+        StorageTestProvider::<Provider> {
+            storage: openmls_memory_storage::MemoryStorage::deserialize(r).unwrap(),
             rand: DeterministicRandProvider::new(name),
             other: Default::default(),
-        }))
+        }
     }
 
-    #[openmls_test]
-    fn group_generate_storage_kat(ciphersuite: Ciphersuite, provider: &Provider) {
+    fn check_serialized_group_equality<
+        R: std::io::Read,
+        Provider: openmls::storage::OpenMlsProvider + Default,
+    >(
+        r: &mut R,
+        name: &str,
+        group_id: &GroupId,
+        group: &MlsGroup,
+    ) {
+        let provider = deserialize_provider::<_, Provider>(r, name);
+        let loaded_group = MlsGroup::load(provider.storage(), group_id)
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(group, &loaded_group);
+    }
+
+    fn helper_generate_kat<Provider: openmls::storage::OpenMlsProvider + Default>(
+        ciphersuite: Ciphersuite,
+    ) -> (GroupId, Vec<Vec<u8>>) {
         let alice_provider = StorageTestProvider::<Provider>::new("alice");
         let (alice_cwk, alice_signer) =
             new_credential(&alice_provider, b"alice", ciphersuite.signature_algorithm());
@@ -1479,11 +1479,20 @@ mod storage_kats {
             .build(&alice_provider, &alice_signer, alice_cwk)
             .expect("error creating group using builder");
 
+        let group_id = alice_group.group_id().clone();
+
         let mut testdata_new_group = vec![];
         alice_provider
             .storage
             .serialize(&mut testdata_new_group)
             .unwrap();
+
+        check_serialized_group_equality::<_, Provider>(
+            &mut testdata_new_group.as_slice(),
+            "alice",
+            &group_id,
+            &alice_group,
+        );
 
         let bob_kpb = KeyPackageBuilder::new()
             .leaf_node_capabilities(Capabilities::new(
@@ -1510,6 +1519,13 @@ mod storage_kats {
             .serialize(&mut testdata_pending_add_commit)
             .unwrap();
 
+        check_serialized_group_equality::<_, Provider>(
+            &mut testdata_pending_add_commit.as_slice(),
+            "alice",
+            &group_id,
+            &alice_group,
+        );
+
         alice_group.merge_pending_commit(&alice_provider).unwrap();
 
         let mut testdata_bob_added = vec![];
@@ -1534,6 +1550,13 @@ mod storage_kats {
             .serialize(&mut testdata_pending_gce_commit)
             .unwrap();
 
+        check_serialized_group_equality::<_, Provider>(
+            &mut testdata_pending_gce_commit.as_slice(),
+            "alice",
+            &group_id,
+            &alice_group,
+        );
+
         alice_group.merge_pending_commit(&alice_provider).unwrap();
 
         let mut testdata_gce_updated = vec![];
@@ -1541,6 +1564,13 @@ mod storage_kats {
             .storage
             .serialize(&mut testdata_gce_updated)
             .unwrap();
+
+        check_serialized_group_equality::<_, Provider>(
+            &mut testdata_gce_updated.as_slice(),
+            "alice",
+            &group_id,
+            &alice_group,
+        );
 
         //// also serialize with a pending proposal
 
@@ -1570,36 +1600,104 @@ mod storage_kats {
             .serialize(&mut testdata_pending_proposal)
             .unwrap();
 
-        ///// write joint testdata file
+        check_serialized_group_equality::<_, Provider>(
+            &mut testdata_pending_proposal.as_slice(),
+            "alice",
+            &group_id,
+            &alice_group,
+        );
 
-        let mut buf = vec![];
-        serialize_bytes(&mut buf, &testdata_new_group).unwrap();
-        serialize_bytes(&mut buf, &testdata_pending_add_commit).unwrap();
-        serialize_bytes(&mut buf, &testdata_bob_added).unwrap();
-        serialize_bytes(&mut buf, &testdata_pending_gce_commit).unwrap();
-        serialize_bytes(&mut buf, &testdata_gce_updated).unwrap();
-        serialize_bytes(&mut buf, &testdata_pending_proposal).unwrap();
+        (
+            group_id,
+            vec![
+                testdata_new_group,
+                testdata_pending_add_commit,
+                testdata_bob_added,
+                testdata_pending_gce_commit,
+                testdata_gce_updated,
+                testdata_pending_proposal,
+            ],
+        )
+    }
 
-        let mut file = std::fs::File::create("test_vectors/storage-stability-new.dat").unwrap();
-        file.write_all(&buf).unwrap();
-        /*
+    #[openmls_test]
+    fn generate_kats(ciphersuite: Ciphersuite, provider: &Provider) {
+        helper_generate_kat::<Provider>(ciphersuite);
+    }
+
+    #[test]
+    fn write_kats() {
+        // setup
+        let libcrux_provider = openmls_libcrux_crypto::Provider::default();
+        let rustcrypto_provider = openmls_rust_crypto::OpenMlsRustCrypto::default();
+
+        let base64_engine = base64::engine::GeneralPurpose::new(
+            &base64::alphabet::URL_SAFE,
+            base64::engine::GeneralPurposeConfig::new(),
+        );
+
+        // make a list of all supported ciphersuites
+        let mut ciphersuites = libcrux_provider.crypto().supported_ciphersuites();
+        for ciphersuite in rustcrypto_provider.crypto().supported_ciphersuites() {
+            if !ciphersuites.contains(&ciphersuite) {
+                ciphersuites.push(ciphersuite);
+            }
         }
 
-        #[openmls_test]
-        fn group_generate_storage_kat(ciphersuite: Ciphersuite, provider: &Provider) {
-        */
-        let mut file = std::fs::File::open("test_vectors/storage-stability-new.dat").unwrap();
+        // test data, keyed by ciphersuite
+        let mut data = HashMap::new();
+
+        // generate data and fill the table
+        for ciphersuite in ciphersuites {
+            let (group_id, storages_bytes) =
+                if libcrux_provider.crypto().supports(ciphersuite).is_ok() {
+                    helper_generate_kat::<openmls_libcrux_crypto::Provider>(ciphersuite)
+                } else {
+                    helper_generate_kat::<openmls_rust_crypto::OpenMlsRustCrypto>(ciphersuite)
+                };
+
+            let storages: Vec<String> = storages_bytes
+                .iter()
+                .map(|test| base64_engine.encode(test))
+                .collect();
+
+            data.insert(ciphersuite, KatData { group_id, storages });
+        }
+
+        // write to file
+        let mut file = std::fs::File::create("test_vectors/storage-stability-new.dat").unwrap();
+        serde_json::to_writer(&mut file, &data).unwrap();
+    }
+
+    #[openmls_test]
+    fn test(ciphersuite: Ciphersuite, provider: &Provider) {
+        // setup
+        let base64_engine = base64::engine::GeneralPurpose::new(
+            &base64::alphabet::URL_SAFE,
+            base64::engine::GeneralPurposeConfig::new(),
+        );
+
+        // load data
+        let mut data: HashMap<Ciphersuite, KatData> = {
+            let file = std::fs::File::open("test_vectors/storage-stability.dat").unwrap();
+            serde_json::from_reader(file).unwrap()
+        };
+
+        let KatData { group_id, storages } = data.remove(&ciphersuite).unwrap();
+
+        // parse base64-encoded serialized storage
+        let mut storages = storages
+            .iter()
+            .map(|storage| base64_engine.decode(storage).unwrap());
 
         //// load group from state right after creation
 
-        let provider_new_group = deserialize_provider::<_, Provider>(&mut file, "alice")
+        let provider_new_group =
+            deserialize_provider::<_, Provider>(&mut storages.next().unwrap().as_slice(), "alice");
+
+        let alice_group_new_group = MlsGroup::load(provider_new_group.storage(), &group_id)
             .unwrap()
             .unwrap();
-
-        let alice_group_new_group =
-            MlsGroup::load(provider_new_group.storage(), alice_group.group_id())
-                .unwrap()
-                .unwrap();
 
         // alice is the sole member
         let members = alice_group_new_group.members().collect::<Vec<_>>();
@@ -1630,16 +1728,13 @@ mod storage_kats {
 
         //// load group from state after bob was added, but commit not yet merged
 
-        let provider_pending_add_commit = deserialize_provider::<_, Provider>(&mut file, "alice")
-            .unwrap()
-            .unwrap();
+        let provider_pending_add_commit =
+            deserialize_provider::<_, Provider>(&mut storages.next().unwrap().as_slice(), "alice");
 
-        let alice_group_pending_add_commit = MlsGroup::load(
-            provider_pending_add_commit.storage(),
-            alice_group.group_id(),
-        )
-        .unwrap()
-        .unwrap();
+        let alice_group_pending_add_commit =
+            MlsGroup::load(provider_pending_add_commit.storage(), &group_id)
+                .unwrap()
+                .unwrap();
 
         // alice is the sole member
         let members = alice_group_pending_add_commit.members().collect::<Vec<_>>();
@@ -1690,14 +1785,12 @@ mod storage_kats {
 
         //// load group from state after bob was added
 
-        let provider_bob_added = deserialize_provider::<_, Provider>(&mut file, "alice")
+        let provider_bob_added =
+            deserialize_provider::<_, Provider>(&mut storages.next().unwrap().as_slice(), "alice");
+
+        let alice_group_bob_added = MlsGroup::load(provider_bob_added.storage(), &group_id)
             .unwrap()
             .unwrap();
-
-        let alice_group_bob_added =
-            MlsGroup::load(provider_bob_added.storage(), alice_group.group_id())
-                .unwrap()
-                .unwrap();
 
         // alice and bob are members
         let members = alice_group_bob_added.members().collect::<Vec<_>>();
@@ -1733,16 +1826,13 @@ mod storage_kats {
 
         //// load group from state after alice updated GCE, but commit is not yet merged
 
-        let provider_pending_gce_commit = deserialize_provider::<_, Provider>(&mut file, "alice")
-            .unwrap()
-            .unwrap();
+        let provider_pending_gce_commit =
+            deserialize_provider::<_, Provider>(&mut storages.next().unwrap().as_slice(), "alice");
 
-        let alice_group_pending_gce_commit = MlsGroup::load(
-            provider_pending_gce_commit.storage(),
-            alice_group.group_id(),
-        )
-        .unwrap()
-        .unwrap();
+        let alice_group_pending_gce_commit =
+            MlsGroup::load(provider_pending_gce_commit.storage(), &group_id)
+                .unwrap()
+                .unwrap();
 
         // alice and bob are members
         let members = alice_group_pending_gce_commit.members().collect::<Vec<_>>();
@@ -1808,14 +1898,12 @@ mod storage_kats {
 
         //// load group from state after alice updated GCE
 
-        let provider_gce_updated = deserialize_provider::<_, Provider>(&mut file, "alice")
+        let provider_gce_updated =
+            deserialize_provider::<_, Provider>(&mut storages.next().unwrap().as_slice(), "alice");
+
+        let alice_group_gce_updated = MlsGroup::load(provider_gce_updated.storage(), &group_id)
             .unwrap()
             .unwrap();
-
-        let alice_group_gce_updated =
-            MlsGroup::load(provider_gce_updated.storage(), alice_group.group_id())
-                .unwrap()
-                .unwrap();
 
         // alice and bob are members
         let members = alice_group_gce_updated.members().collect::<Vec<_>>();
@@ -1840,12 +1928,11 @@ mod storage_kats {
 
         //// load group from state after alice creates another proposal
 
-        let provider_pending_proposal = deserialize_provider::<_, Provider>(&mut file, "alice")
-            .unwrap()
-            .unwrap();
+        let provider_pending_proposal =
+            deserialize_provider::<_, Provider>(&mut storages.next().unwrap().as_slice(), "alice");
 
         let alice_group_pending_proposal =
-            MlsGroup::load(provider_pending_proposal.storage(), alice_group.group_id())
+            MlsGroup::load(provider_pending_proposal.storage(), &group_id)
                 .unwrap()
                 .unwrap();
 
