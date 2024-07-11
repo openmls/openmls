@@ -189,8 +189,6 @@ impl CoreGroup {
             .parse_message(decrypted_message, &self.message_secrets_store)
             .map_err(ProcessMessageError::from)?;
 
-        println!("this is the unverified_message that is about to fail validation:\n  {unverified_message:#?}");
-
         // If this is a commit, we need to load the private key material we need for decryption.
         let (old_epoch_keypairs, leaf_node_keypairs) =
             if let ContentType::Commit = unverified_message.content_type() {

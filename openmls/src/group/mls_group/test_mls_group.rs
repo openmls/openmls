@@ -18,7 +18,7 @@ use crate::{
         },
     },
     tree::sender_ratchet::SenderRatchetConfiguration,
-    treesync::{node::leaf_node::Capabilities LeafNodeParameters},
+    treesync::{node::leaf_node::Capabilities, LeafNodeParameters},
 };
 
 #[openmls_test]
@@ -1301,6 +1301,19 @@ mod group_context_extensions {
                 .unwrap_or_else(|err| panic!("couldn't propose GCE at {}: {err}", self.party.name))
         }
 
+        fn update_group_context_extensions(
+            &mut self,
+            extensions: Extensions,
+        ) -> (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>) {
+            self.group
+                .update_group_context_extensions(
+                    &self.party.provider,
+                    extensions,
+                    &self.party.signer,
+                )
+                .unwrap_or_else(|err| panic!("couldn't propose GCE at {}: {err}", self.party.name))
+        }
+
         fn propose_add_member(&mut self, key_package: &KeyPackage) -> (MlsMessageOut, ProposalRef) {
             self.group
                 .propose_add_member(&self.party.provider, &self.party.signer, key_package)
@@ -1417,7 +1430,8 @@ mod group_context_extensions {
     fn happy_case() {
         let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite);
 
-        let (proposal, _) = alice.propose_group_context_extensions(Extensions::single(
+        // make extension with type 0xf001 a required capability
+        let (commit, _, _) = alice.update_group_context_extensions(Extensions::single(
             Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
                 &[ExtensionType::Unknown(0xf001)],
                 &[],
@@ -1425,11 +1439,11 @@ mod group_context_extensions {
             )),
         ));
 
-        let (commit, _, _) = alice.commit_and_merge_pending();
-
-        bob.process_and_store_proposal(proposal.into());
+        alice.merge_pending_commit();
         bob.process_and_merge_commit(commit.into());
 
+        // make extensions with type 0xf001 0xf002 a required capability, too;
+        // this time with a separate proposal
         let (proposal, _) = bob.propose_group_context_extensions(Extensions::single(
             Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
                 &[
@@ -1441,10 +1455,10 @@ mod group_context_extensions {
             )),
         ));
 
-        let (commit, _, _) = bob.commit_and_merge_pending();
-
         alice.process_and_store_proposal(proposal.into());
-        alice.process_and_merge_commit(commit.into());
+
+        let (commit, _, _) = alice.commit_and_merge_pending();
+        bob.process_and_merge_commit(commit.into());
     }
 
     /// This tests makes sure that validation check 103 is performed:
@@ -1459,7 +1473,7 @@ mod group_context_extensions {
     fn fail_insufficient_capabilities_add_valno103() {
         let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite);
 
-        let (gce_req_cap_proposal, _) = alice.propose_group_context_extensions(Extensions::single(
+        let (gce_req_cap_commit, _, _) = alice.update_group_context_extensions(Extensions::single(
             Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
                 &[ExtensionType::Unknown(0xf002)],
                 &[],
@@ -1467,9 +1481,7 @@ mod group_context_extensions {
             )),
         ));
 
-        let (gce_req_cap_commit, _, _) = alice.commit_and_merge_pending();
-
-        bob.process_and_store_proposal(gce_req_cap_proposal.clone().into());
+        alice.merge_pending_commit();
         bob.process_and_merge_commit(gce_req_cap_commit.clone().into());
 
         // extract values we need later
@@ -1572,7 +1584,7 @@ mod group_context_extensions {
             .propose_self_update(
                 &bob.party.provider,
                 &bob.party.signer,
-                bob.group.own_leaf_node().cloned(),
+                LeafNodeParameters::builder().build(),
             )
             .unwrap();
         alice.process_and_store_proposal(update_prop.into());
@@ -1642,7 +1654,7 @@ mod group_context_extensions {
             .propose_self_update(
                 &bob_party.provider,
                 &bob_party.signer,
-                bob_group.own_leaf_node().cloned(),
+                LeafNodeParameters::builder().build(),
             )
             .unwrap();
 
@@ -1693,7 +1705,8 @@ mod group_context_extensions {
     fn fail_insufficient_capabilities_update_valno103() {
         let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite);
 
-        let (gce_req_cap_proposal, _) = alice.propose_group_context_extensions(Extensions::single(
+        // requires that all members need support for extension type 0xf002
+        let (gce_req_cap_commit, _, _) = alice.update_group_context_extensions(Extensions::single(
             Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
                 &[ExtensionType::Unknown(0xf002)],
                 &[],
@@ -1701,39 +1714,30 @@ mod group_context_extensions {
             )),
         ));
 
-        let (gce_req_cap_commit, _, _) = alice.commit_and_merge_pending();
-
-        bob.process_and_store_proposal(gce_req_cap_proposal.clone().into());
+        alice.merge_pending_commit();
         bob.process_and_merge_commit(gce_req_cap_commit.clone().into());
 
+        // let bob propose an update to their leaf node.
+        // we immediately discard it, because we want to tamper with it.
         let (update_prop, _) = bob
             .group
             .propose_self_update(
                 &bob.party.provider,
                 &bob.party.signer,
-                bob.group.own_leaf_node().cloned(),
+                LeafNodeParameters::builder().build(),
             )
             .unwrap();
+        bob.group
+            .clear_pending_proposals(bob.party.provider.storage())
+            .unwrap();
 
+        // extract the FramedContent from the proposal MlsMessage, because that is
+        // what we'll have to pass into the `FrankenPublicMessage::auth` method later.
         let frankenstein::FrankenMlsMessage {
             version,
             body:
                 frankenstein::FrankenMlsMessageBody::PublicMessage(frankenstein::FrankenPublicMessage {
-                    content:
-                        frankenstein::FrankenFramedContent {
-                            group_id,
-                            epoch,
-                            sender: bob_sender,
-                            authenticated_data,
-                            body:
-                                frankenstein::FrankenFramedContentBody::Proposal(
-                                    frankenstein::FrankenProposal::Update(
-                                        frankenstein::FrankenUpdateProposal {
-                                            leaf_node: mut bob_franken_leaf_node,
-                                        },
-                                    ),
-                                ),
-                        },
+                    content: mut franken_proposal_content,
                     ..
                 }),
         } = frankenstein::FrankenMlsMessage::from(update_prop.clone())
@@ -1741,15 +1745,28 @@ mod group_context_extensions {
             unreachable!()
         };
 
-        assert_eq!(bob_sender, frankenstein::FrankenSender::Member(1));
-        let alice_sender = frankenstein::FrankenSender::Member(0);
+        // we want to change the leaf node in the update proposal, so let's get a mutable borrow on that
+        let frankenstein::FrankenFramedContent {
+            body:
+                frankenstein::FrankenFramedContentBody::Proposal(frankenstein::FrankenProposal::Update(
+                    frankenstein::FrankenUpdateProposal {
+                        leaf_node: bob_franken_leaf_node,
+                    },
+                )),
+            ..
+        } = &mut franken_proposal_content
+        else {
+            unreachable!();
+        };
 
         // Remove the extension type from the capabilities that is part of required capabilities
-        assert_eq!(bob_franken_leaf_node.capabilities.extensions[1], 0xf002);
-        bob_franken_leaf_node.capabilities.extensions.remove(1);
+        // Committing this would be illegal
+        assert_eq!(
+            bob_franken_leaf_node.capabilities.extensions.remove(1),
+            0xf002
+        );
 
-        // make it pass validation again
-        bob_franken_leaf_node.leaf_node_source = frankenstein::FrankenLeafNodeSource::Update;
+        // Re-sign the leaf node so the signature checks pass
         bob_franken_leaf_node.resign(
             Some(frankenstein::FrankenTreePosition {
                 group_id: bob.group.group_id().as_slice().to_vec().into(),
@@ -1758,51 +1775,27 @@ mod group_context_extensions {
             &bob.party.signer,
         );
 
-        // Note: the sender of an Update proposal may not be the same as the commiter to the
-        // proposal. That's why we only make sure that nobody accepts an invalid update proposal.
-
-        // build invalid proposal content
-        let proposal_content = frankenstein::FrankenFramedContent {
-            group_id: group_id.clone(),
-            epoch,
-            sender: bob_sender.clone(),
-            authenticated_data: authenticated_data.clone(),
-            body: frankenstein::FrankenFramedContentBody::Proposal(
-                frankenstein::FrankenProposal::Update(frankenstein::FrankenUpdateProposal {
-                    leaf_node: bob_franken_leaf_node,
-                }),
-            ),
-        };
-
         // prepare data needed for proposal
-        let group_context = alice.group.export_group_context().clone();
-
-        let bob_group_context = bob.group.export_group_context();
-        assert_eq!(
-            bob_group_context.confirmed_transcript_hash(),
-            group_context.confirmed_transcript_hash()
-        );
-
+        let group_context = bob.group.export_group_context().clone();
         let secrets = bob.group.group.message_secrets();
         let membership_key = secrets.membership_key().as_slice();
 
-        // build proposal
-        let franken_proposal = frankenstein::FrankenPublicMessage::auth(
-            &bob.party.provider,
-            ciphersuite,
-            &bob.party.signer,
-            proposal_content,
-            Some(&group_context.into()),
-            Some(membership_key),
-            // proposals don't have confirmation tags
-            None,
-        );
-
+        // build MlsMessage containing the proposal
         let franken_proposal = frankenstein::FrankenMlsMessage {
             version,
-            body: frankenstein::FrankenMlsMessageBody::PublicMessage(franken_proposal),
+            body: frankenstein::FrankenMlsMessageBody::PublicMessage(
+                frankenstein::FrankenPublicMessage::auth(
+                    &bob.party.provider,
+                    ciphersuite,
+                    &bob.party.signer,
+                    franken_proposal_content.clone(),
+                    Some(&group_context.into()),
+                    Some(membership_key),
+                    // proposals don't have confirmation tags
+                    None,
+                ),
+            ),
         };
-
         let fake_proposal = MlsMessageIn::tls_deserialize(
             &mut franken_proposal
                 .tls_serialize_detached()
@@ -1811,27 +1804,28 @@ mod group_context_extensions {
         )
         .unwrap();
 
+        // alice stores the proposal.
         alice.process_and_store_proposal(fake_proposal.clone());
 
-        bob.group
-            .clear_pending_proposals(bob.party.provider.storage())
-            .unwrap();
+        // Now we'll craft a commit to the proposal signed by alice.
+        // For that we need a few values, let's fetch and build them.
         let proposal_ref = bob.process_and_store_proposal(fake_proposal);
+        let alice_sender = frankenstein::FrankenSender::Member(0);
 
+        // This is a commit, claimed to be from alice, that commits to the proposal ref of the invalid proposal
         let commit_content = frankenstein::FrankenFramedContent {
-            group_id,
-            epoch,
             sender: alice_sender,
-            authenticated_data,
             body: frankenstein::FrankenFramedContentBody::Commit(frankenstein::FrankenCommit {
                 proposals: vec![frankenstein::FrankenProposalOrRef::Reference(
                     proposal_ref.as_slice().to_vec().into(),
                 )],
                 path: None,
             }),
+
+            ..franken_proposal_content
         };
 
-        // prepare data needed for proposal
+        // prepare data needed for making the message authentic
         let group_context = alice.group.export_group_context().clone();
         let secrets = alice.group.group.message_secrets();
         let membership_key = secrets.membership_key().as_slice();
@@ -1850,12 +1844,13 @@ mod group_context_extensions {
                 ),
             ),
         };
-
         let fake_commit = MlsMessageIn::tls_deserialize(
             &mut franken_commit.tls_serialize_detached().unwrap().as_slice(),
         )
         .unwrap();
 
+        // when bob processes the commit, it should fail because the leaf node's capabilties do not
+        // satisfy those required by the group.
         let err = bob.fail_processing(fake_commit);
 
         // Note: If this starts failing, the order in which validation is checked may have changed and we
