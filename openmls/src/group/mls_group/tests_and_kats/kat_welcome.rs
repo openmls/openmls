@@ -19,8 +19,7 @@
 //!     from the key schedule epoch and the `confirmed_transcript_hash` from the
 //!     decrypted GroupContext
 
-use crate::test_utils::OpenMlsRustCrypto;
-use kat_welcome::core_group::node::encryption_keys::EncryptionPrivateKey;
+use crate::{test_utils::OpenMlsRustCrypto, treesync::node::encryption_keys::EncryptionPrivateKey};
 use openmls_traits::{crypto::OpenMlsCrypto, storage::StorageProvider, OpenMlsProvider};
 use serde::{self, Deserialize, Serialize};
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize};
@@ -29,7 +28,7 @@ use crate::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
     ciphersuite::signable::Verifiable,
     framing::{MlsMessageBodyIn, MlsMessageIn},
-    group::*,
+    group::{GroupContext, HpkePrivateKey, OpenMlsSignaturePublicKey, SignaturePublicKey},
     key_packages::*,
     messages::*,
     prelude::group_info::{GroupInfo, VerifiableGroupInfo},
@@ -177,14 +176,14 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
     // Verification:
     // * Decrypt the Welcome message:
     //  * Identify the entry in `welcome.secrets` corresponding to `key_package`
-    let encrypted_group_secrets = CoreGroup::find_key_package_from_welcome_secrets(
-        key_package_bundle
-            .key_package()
-            .hash_ref(provider.crypto())
-            .unwrap(),
-        welcome.secrets(),
-    )
-    .unwrap();
+    let encrypted_group_secrets = welcome
+        .find_encrypted_group_secret(
+            key_package_bundle
+                .key_package()
+                .hash_ref(provider.crypto())
+                .unwrap(),
+        )
+        .unwrap();
     println!("{encrypted_group_secrets:?}");
 
     // // //  * Decrypt the encrypted group secrets using `init_priv`

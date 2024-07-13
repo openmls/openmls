@@ -3,6 +3,7 @@
 //! This module contains the types and implementations for Commit & Welcome messages,
 //! as well as Proposals & the group info used for External Commits.
 
+use hash_ref::HashReference;
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     types::{Ciphersuite, HpkeCiphertext, HpkeKeyPair},
@@ -79,6 +80,15 @@ impl Welcome {
             secrets,
             encrypted_group_info: encrypted_group_info.into(),
         }
+    }
+
+    pub(crate) fn find_encrypted_group_secret(
+        &self,
+        hash_ref: HashReference,
+    ) -> Option<&EncryptedGroupSecrets> {
+        self.secrets()
+            .iter()
+            .find(|egs| hash_ref == egs.new_member())
     }
 
     /// Returns a reference to the ciphersuite in this Welcome message.

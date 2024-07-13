@@ -1,4 +1,7 @@
-use super::*;
+use crate::group::{
+    mls_group::{FramingParameters, Proposal, WireFormat},
+    CreateCommitParams,
+};
 
 // Tests that the builder for CreateCommitParams works as expected
 #[openmls_test::openmls_test]

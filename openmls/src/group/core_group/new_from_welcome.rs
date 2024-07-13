@@ -1,7 +1,6 @@
 use log::debug;
 
 use crate::{
-    ciphersuite::hash_ref::HashReference,
     group::{core_group::*, errors::WelcomeError},
     schedule::psk::store::ResumptionPskStore,
     storage::OpenMlsProvider,
@@ -244,14 +243,11 @@ pub(in crate::group) fn process_welcome<Provider: OpenMlsProvider>(
     WelcomeError<Provider::StorageError>,
 > {
     let ciphersuite = welcome.ciphersuite();
-    let egs = if let Some(egs) = CoreGroup::find_key_package_from_welcome_secrets(
+    let Some(egs) = welcome.find_encrypted_group_secret(
         key_package_bundle
             .key_package()
             .hash_ref(provider.crypto())?,
-        welcome.secrets(),
-    ) {
-        egs
-    } else {
+    ) else {
         return Err(WelcomeError::JoinerSecretNotFound);
     };
     if ciphersuite != key_package_bundle.key_package().ciphersuite() {
@@ -309,20 +305,4 @@ pub(in crate::group) fn process_welcome<Provider: OpenMlsProvider>(
         key_schedule,
         verifiable_group_info,
     ))
-}
-
-impl CoreGroup {
-    // Helper functions
-
-    pub(crate) fn find_key_package_from_welcome_secrets(
-        hash_ref: HashReference,
-        welcome_secrets: &[EncryptedGroupSecrets],
-    ) -> Option<EncryptedGroupSecrets> {
-        for egs in welcome_secrets {
-            if hash_ref == egs.new_member() {
-                return Some(egs.clone());
-            }
-        }
-        None
-    }
 }

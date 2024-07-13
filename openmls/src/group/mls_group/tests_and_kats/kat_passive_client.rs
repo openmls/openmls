@@ -1,4 +1,3 @@
-use core_group::LeafNodeParameters;
 use log::{debug, info, warn};
 use openmls_traits::{crypto::OpenMlsCrypto, storage::StorageProvider, OpenMlsProvider};
 use serde::{self, Deserialize, Serialize};
@@ -6,8 +5,12 @@ use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize};
 
 use crate::{
     framing::{MlsMessageBodyIn, MlsMessageIn, MlsMessageOut, ProcessedMessageContent},
-    group::*,
+    group::{
+        HpkePrivateKey, IncomingWireFormatPolicy, Member, MlsGroup, MlsGroupCreateConfig,
+        MlsGroupJoinConfig, OutgoingWireFormatPolicy, StagedWelcome, WireFormatPolicy,
+    },
     key_packages::*,
+    prelude::LeafNodeParameters,
     schedule::psk::PreSharedKeyId,
     test_utils::*,
     treesync::{
