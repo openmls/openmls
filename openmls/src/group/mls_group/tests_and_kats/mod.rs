@@ -7,4 +7,5 @@ mod test_create_commit_params;
 mod test_external_init;
 mod test_mls_group;
 mod test_past_secrets;
+mod test_proposals;
 pub(crate) mod utils;

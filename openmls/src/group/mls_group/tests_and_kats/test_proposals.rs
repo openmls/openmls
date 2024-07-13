@@ -1,4 +1,3 @@
-use super::CoreGroup;
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::hash_ref::ProposalRef,
@@ -11,7 +10,7 @@ use crate::{
         errors::*,
         proposals::{ProposalQueue, ProposalStore, QueuedProposal},
         tests_and_kats::utils::setup_client,
-        CreateCommitParams, GroupContext, GroupId, StagedCoreWelcome,
+        CoreGroup, CreateCommitParams, GroupContext, GroupId, StagedCoreWelcome,
     },
     key_packages::{KeyPackageBundle, KeyPackageIn},
     messages::proposals::{AddProposal, Proposal, ProposalOrRef, ProposalType},
