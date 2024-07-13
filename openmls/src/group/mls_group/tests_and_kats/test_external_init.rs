@@ -2,7 +2,7 @@ use crate::{
     framing::test_framing::setup_alice_bob_group,
     group::{
         errors::ExternalCommitError, public_group::errors::CreationFromExternalError,
-        test_core_group::setup_client, MlsGroup, MlsGroupJoinConfig,
+        tests_and_kats::utils::setup_client, MlsGroup, MlsGroupJoinConfig,
     },
     storage::OpenMlsProvider,
 };

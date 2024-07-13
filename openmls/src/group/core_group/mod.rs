@@ -18,8 +18,6 @@ pub(crate) mod staged_commit;
 
 // Tests
 #[cfg(test)]
-pub(crate) mod test_core_group;
-#[cfg(test)]
 mod test_proposals;
 
 use log::{debug, trace};

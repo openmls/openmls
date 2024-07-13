@@ -9,8 +9,8 @@ use crate::{
     },
     extensions::Extensions,
     group::{
-        errors::WelcomeError, GroupContext, GroupId, MlsGroup, MlsGroupCreateConfig,
-        ProcessedWelcome, StagedWelcome,
+        errors::WelcomeError, tests_and_kats::utils::setup_client, GroupContext, GroupId, MlsGroup,
+        MlsGroupCreateConfig, ProcessedWelcome, StagedWelcome,
     },
     messages::{
         group_info::{GroupInfoTBS, VerifiableGroupInfo},
@@ -47,9 +47,9 @@ fn test_welcome_context_mismatch(
         .build();
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_signature_key) =
-        crate::group::test_core_group::setup_client("Alice", ciphersuite, provider);
+        setup_client("Alice", ciphersuite, provider);
     let (_bob_credential, bob_kpb, _bob_signer, _bob_signature_key) =
-        crate::group::test_core_group::setup_client("Bob", ciphersuite, provider);
+        setup_client("Bob", ciphersuite, provider);
 
     let bob_kp = bob_kpb.key_package();
     let bob_private_key = bob_kpb.init_private_key();
@@ -308,9 +308,9 @@ fn test_welcome_processing() {
         .build();
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_signature_key) =
-        crate::group::test_core_group::setup_client("Alice", ciphersuite, provider);
+        setup_client("Alice", ciphersuite, provider);
     let (_bob_credential, bob_kpb, _bob_signer, _bob_signature_key) =
-        crate::group::test_core_group::setup_client("Bob", ciphersuite, provider);
+        setup_client("Bob", ciphersuite, provider);
 
     let bob_kp = bob_kpb.key_package();
 

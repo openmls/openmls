@@ -123,7 +123,7 @@ impl traits::PskBundle<CURRENT_VERSION> for PskBundle {}
 
 #[cfg(test)]
 mod test {
-    use crate::{group::test_core_group::setup_client, prelude::KeyPackageBuilder};
+    use crate::{group::tests_and_kats::utils::setup_client, prelude::KeyPackageBuilder};
 
     use super::*;
 

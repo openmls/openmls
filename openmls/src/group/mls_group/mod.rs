@@ -37,7 +37,7 @@ pub(crate) mod ser;
 
 // Tests
 #[cfg(test)]
-mod tests_and_kats;
+pub(crate) mod tests_and_kats;
 
 /// Pending Commit state. Differentiates between Commits issued by group members
 /// and External Commits.

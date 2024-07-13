@@ -1,6 +1,6 @@
-use core_group::test_core_group::setup_client;
 use openmls_test::openmls_test;
 use openmls_traits::OpenMlsProvider as _;
+use tests_and_kats::utils::setup_client;
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{

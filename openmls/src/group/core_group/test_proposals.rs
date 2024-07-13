@@ -10,7 +10,7 @@ use crate::{
     group::{
         errors::*,
         proposals::{ProposalQueue, ProposalStore, QueuedProposal},
-        test_core_group::setup_client,
+        tests_and_kats::utils::setup_client,
         CreateCommitParams, GroupContext, GroupId, StagedCoreWelcome,
     },
     key_packages::{KeyPackageBundle, KeyPackageIn},

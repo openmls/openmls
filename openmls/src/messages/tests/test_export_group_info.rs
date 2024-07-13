@@ -2,7 +2,7 @@ use tls_codec::{Deserialize, Serialize};
 
 use crate::{
     ciphersuite::signable::Verifiable,
-    group::test_core_group::setup_alice_group,
+    group::tests_and_kats::utils::setup_alice_group,
     messages::group_info::{GroupInfo, VerifiableGroupInfo},
     test_utils::*,
 };
