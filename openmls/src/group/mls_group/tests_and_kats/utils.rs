@@ -98,3 +98,77 @@ pub(crate) fn setup_client(
     );
     (credential_with_key, key_package_bundle, signature_keys, pk)
 }
+
+pub(crate) fn setup_alice_bob_group<Provider: OpenMlsProvider>(
+    ciphersuite: Ciphersuite,
+    provider: &Provider,
+) -> (
+    MlsGroup,
+    SignatureKeyPair,
+    MlsGroup,
+    SignatureKeyPair,
+    CredentialWithKey,
+) {
+    let group_aad = b"Alice's test group";
+
+    // Create credentials and keys
+    let (alice_credential, alice_signature_keys) =
+        test_utils::new_credential(provider, b"Alice", ciphersuite.signature_algorithm());
+    let (bob_credential, bob_signature_keys) =
+        test_utils::new_credential(provider, b"Bob", ciphersuite.signature_algorithm());
+
+    // Generate KeyPackages
+    let bob_key_package_bundle = KeyPackageBundle::generate(
+        provider,
+        &bob_signature_keys,
+        ciphersuite,
+        bob_credential.clone(),
+    );
+    let bob_key_package = bob_key_package_bundle.key_package();
+
+    // Alice creates a group
+    let mut group_alice = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .build(provider, &alice_signature_keys, alice_credential.clone())
+        .expect("Error creating group.");
+    group_alice.set_aad(provider.storage(), group_aad).unwrap();
+
+    // Alice adds Bob
+    let (commit, welcome, _group_info_option) = group_alice
+        .add_members(provider, &alice_signature_keys, &[bob_key_package.clone()])
+        .expect("Could not create proposal.");
+
+    match commit.body() {
+        mls_group::MlsMessageBodyOut::PublicMessage(pm) => match pm.content() {
+            mls_group::FramedContentBody::Commit(commit) => {
+                assert!(!commit.has_path());
+            }
+            _ => panic!("Wrong content type"),
+        },
+        _ => panic!("Wrong message type"),
+    }
+
+    group_alice
+        .merge_pending_commit(provider)
+        .expect("error merging pending commit");
+
+    let group_bob = StagedWelcome::new_from_welcome(
+        provider,
+        &MlsGroupJoinConfig::builder()
+            .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+            .build(),
+        welcome.into_welcome().unwrap(),
+        Some(group_alice.export_ratchet_tree().into()),
+    )
+    .and_then(|staged_join| staged_join.into_group(provider))
+    .expect("error creating group from welcome");
+
+    (
+        group_alice,
+        alice_signature_keys,
+        group_bob,
+        bob_signature_keys,
+        bob_credential,
+    )
+}
