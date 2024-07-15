@@ -17,8 +17,9 @@ use openmls::{
     credentials::{BasicCredential, Credential, CredentialType, CredentialWithKey},
     framing::{MlsMessageBodyIn, MlsMessageIn, MlsMessageOut, ProcessedMessageContent},
     group::{
-        GroupEpoch, GroupId, MlsGroup, MlsGroupCreateConfig, MlsGroupJoinConfig, StagedWelcome,
-        WireFormatPolicy, PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        GroupEpoch, GroupId, MlsGroup, MlsGroupCreateConfig, MlsGroupExternalJoinConfig,
+        MlsGroupJoinConfig, StagedWelcome, WireFormatPolicy, PURE_CIPHERTEXT_WIRE_FORMAT_POLICY,
+        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     key_packages::{KeyPackage, KeyPackageBundle},
     prelude::{Capabilities, ExtensionType, SenderRatchetConfiguration},
@@ -480,7 +481,7 @@ impl MlsClient for MlsClientImpl {
             let mls_group_config = {
                 let wire_format_policy = wire_format_policy(request.encrypt_handshake);
 
-                MlsGroupJoinConfig::builder()
+                MlsGroupExternalJoinConfig::builder(b"")
                     .max_past_epochs(32)
                     .number_of_resumption_psks(32)
                     .sender_ratchet_configuration(SenderRatchetConfiguration::default())
@@ -495,9 +496,6 @@ impl MlsClient for MlsClientImpl {
                 ratchet_tree,
                 verifiable_group_info,
                 &mls_group_config,
-                None,
-                None,
-                b"",
                 credential_with_key,
             )
             .unwrap();

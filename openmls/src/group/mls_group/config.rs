@@ -78,6 +78,137 @@ impl MlsGroupJoinConfig {
     }
 }
 
+/// The [`MlsGroupJoinExternalConfig`] contains all configuration parameters that are
+/// relevant to group operation at runtime. It is used to configure the group's
+/// behaviour when joining an existing group. To configure a newly created
+/// group, use [`MlsGroupCreateConfig`].
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MlsGroupExternalJoinConfig<'a> {
+    /// Defines the wire format policy for outgoing and incoming handshake messages.
+    /// Application are always encrypted regardless.
+    pub(crate) wire_format_policy: WireFormatPolicy,
+    /// Size of padding in bytes
+    pub(crate) padding_size: usize,
+    /// Maximum number of past epochs for which application messages
+    /// can be decrypted. The default is 0.
+    pub(crate) max_past_epochs: usize,
+    /// Number of resumption secrets to keep
+    pub(crate) number_of_resumption_psks: usize,
+    /// Flag to indicate the Ratchet Tree Extension should be used
+    pub(crate) use_ratchet_tree_extension: bool,
+    /// Sender ratchet configuration
+    pub(crate) sender_ratchet_configuration: SenderRatchetConfiguration,
+    /// The capabilities of the own lead node
+    pub(crate) capabilities: Option<Capabilities>,
+    /// The extensions in the own leaf node,
+    pub(crate) extensions: Option<Extensions>,
+    /// The associated data used in the commit (but not for the group later)
+    pub(crate) aad: &'a [u8],
+}
+
+impl<'a> MlsGroupExternalJoinConfig<'a> {
+    /// Returns the wire format policy set in this  [`MlsGroupExternalJoinConfig`].
+    pub fn wire_format_policy(&self) -> WireFormatPolicy {
+        self.wire_format_policy
+    }
+
+    /// Returns the padding size set in this  [`MlsGroupExternalJoinConfig`].
+    pub fn padding_size(&self) -> usize {
+        self.padding_size
+    }
+
+    /// Returns the [`SenderRatchetConfiguration`] set in this  [`MlsGroupExternalJoinConfig`].
+    pub fn sender_ratchet_configuration(&self) -> &SenderRatchetConfiguration {
+        &self.sender_ratchet_configuration
+    }
+}
+
+impl<'a> MlsGroupExternalJoinConfig<'a> {
+    pub fn builder(aad: &'a [u8]) -> MlsGroupExternalJoinConfigBuilder<'a> {
+        MlsGroupExternalJoinConfigBuilder::new(aad)
+    }
+
+    pub fn into_mls_group_join_config(self) -> MlsGroupJoinConfig {
+        let Self {
+            wire_format_policy,
+            padding_size,
+            max_past_epochs,
+            number_of_resumption_psks,
+            use_ratchet_tree_extension,
+            sender_ratchet_configuration,
+            ..
+        } = self;
+
+        MlsGroupJoinConfig {
+            wire_format_policy,
+            padding_size,
+            max_past_epochs,
+            number_of_resumption_psks,
+            use_ratchet_tree_extension,
+            sender_ratchet_configuration,
+        }
+    }
+
+    pub fn from_parts(
+        mls_group_join_config: MlsGroupJoinConfig,
+        capabilities: Option<Capabilities>,
+        extensions: Option<Extensions>,
+        aad: &[u8],
+    ) -> MlsGroupExternalJoinConfig {
+        let MlsGroupJoinConfig {
+            wire_format_policy,
+            padding_size,
+            max_past_epochs,
+            number_of_resumption_psks,
+            use_ratchet_tree_extension,
+            sender_ratchet_configuration,
+        } = mls_group_join_config;
+
+        MlsGroupExternalJoinConfig {
+            wire_format_policy,
+            padding_size,
+            max_past_epochs,
+            number_of_resumption_psks,
+            use_ratchet_tree_extension,
+            sender_ratchet_configuration,
+            capabilities,
+            extensions,
+            aad,
+        }
+    }
+
+    pub fn into_parts(
+        self,
+    ) -> (
+        MlsGroupJoinConfig,
+        Option<Capabilities>,
+        Option<Extensions>,
+        &'a [u8],
+    ) {
+        let Self {
+            wire_format_policy,
+            padding_size,
+            max_past_epochs,
+            number_of_resumption_psks,
+            use_ratchet_tree_extension,
+            sender_ratchet_configuration,
+            capabilities,
+            extensions,
+            aad,
+        } = self;
+        let join_config = MlsGroupJoinConfig {
+            wire_format_policy,
+            padding_size,
+            max_past_epochs,
+            number_of_resumption_psks,
+            use_ratchet_tree_extension,
+            sender_ratchet_configuration,
+        };
+
+        (join_config, capabilities, extensions, aad)
+    }
+}
+
 /// Specifies configuration for the creation of an [`MlsGroup`]. Refer to the
 /// [User Manual](https://openmls.tech/book/user_manual/group_config.html) for
 /// more information about the different configuration values.
@@ -165,6 +296,82 @@ impl MlsGroupJoinConfigBuilder {
 
     /// Finalizes the builder and returns an [`MlsGroupJoinConfig`].
     pub fn build(self) -> MlsGroupJoinConfig {
+        self.join_config
+    }
+}
+
+pub struct MlsGroupExternalJoinConfigBuilder<'a> {
+    join_config: MlsGroupExternalJoinConfig<'a>,
+}
+
+impl<'a> MlsGroupExternalJoinConfigBuilder<'a> {
+    // Note: The reason we pass in the aad here is because we only keep a reference in the struct,
+    // and using the builder pattern for that is tricky due to lifetimes
+    /// Creates a new builder with default values and the provided aad.
+    pub fn new(aad: &'a [u8]) -> Self {
+        Self {
+            join_config: MlsGroupExternalJoinConfig::from_parts(
+                MlsGroupJoinConfig::default(),
+                None,
+                None,
+                aad,
+            ),
+        }
+    }
+
+    /// Sets the `wire_format` property of the [`MlsGroupExternalJoinConfig`].
+    pub fn wire_format_policy(mut self, wire_format_policy: WireFormatPolicy) -> Self {
+        self.join_config.wire_format_policy = wire_format_policy;
+        self
+    }
+
+    /// Sets the `padding_size` property of the [`MlsGroupExternalJoinConfig`].
+    pub fn padding_size(mut self, padding_size: usize) -> Self {
+        self.join_config.padding_size = padding_size;
+        self
+    }
+
+    /// Sets the `max_past_epochs` property of the [`MlsGroupExternalJoinConfig`].
+    pub fn max_past_epochs(mut self, max_past_epochs: usize) -> Self {
+        self.join_config.max_past_epochs = max_past_epochs;
+        self
+    }
+
+    /// Sets the `number_of_resumption_psks` property of the [`MlsGroupExternalJoinConfig`].
+    pub fn number_of_resumption_psks(mut self, number_of_resumption_psks: usize) -> Self {
+        self.join_config.number_of_resumption_psks = number_of_resumption_psks;
+        self
+    }
+
+    /// Sets the `use_ratchet_tree_extension` property of the [`MlsGroupExternalJoinConfig`].
+    pub fn use_ratchet_tree_extension(mut self, use_ratchet_tree_extension: bool) -> Self {
+        self.join_config.use_ratchet_tree_extension = use_ratchet_tree_extension;
+        self
+    }
+
+    /// Sets the `sender_ratchet_configuration` property of the [`MlsGroupExternalJoinConfig`].
+    pub fn sender_ratchet_configuration(
+        mut self,
+        sender_ratchet_configuration: SenderRatchetConfiguration,
+    ) -> Self {
+        self.join_config.sender_ratchet_configuration = sender_ratchet_configuration;
+        self
+    }
+
+    /// Sets the `extensions` property of the [`MlsGroupExternalJoinConfig`].
+    pub fn extensions(mut self, extensions: Option<Extensions>) -> Self {
+        self.join_config.extensions = extensions;
+        self
+    }
+
+    /// Sets the `capabilities` property of the [`MlsGroupExternalJoinConfig`].
+    pub fn capabilities(mut self, capabilities: Option<Capabilities>) -> Self {
+        self.join_config.capabilities = capabilities;
+        self
+    }
+
+    /// Finalizes the builder and returns an [`MlsGroupExternalJoinConfig`].
+    pub fn build(self) -> MlsGroupExternalJoinConfig<'a> {
         self.join_config
     }
 }

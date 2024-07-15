@@ -19,8 +19,8 @@ use crate::{
         tests::utils::{
             generate_credential_with_key, generate_key_package, resign_external_commit,
         },
-        Extensions, MlsGroup, OpenMlsSignaturePublicKey, PURE_CIPHERTEXT_WIRE_FORMAT_POLICY,
-        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        Extensions, MlsGroup, MlsGroupExternalJoinConfig, OpenMlsSignaturePublicKey,
+        PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     messages::proposals::{
         AddProposal, ExternalInitProposal, GroupContextExtensionProposal, Proposal, ProposalOrRef,
@@ -197,15 +197,19 @@ fn test_valsem242() {
         .into_verifiable_group_info()
         .unwrap();
 
+    let external_join_config = MlsGroupExternalJoinConfig::from_parts(
+        alice_group.configuration().clone(),
+        None,
+        None,
+        &[],
+    );
+
     let (_, public_message_commit, _) = MlsGroup::join_by_external_commit(
         provider,
         &bob_credential.signer,
         None,
         verifiable_group_info,
-        alice_group.configuration(),
-        None,
-        None,
-        &[],
+        &external_join_config,
         bob_credential.credential_with_key.clone(),
     )
     .unwrap();
@@ -580,15 +584,19 @@ fn test_pure_ciphertest() {
         .into_verifiable_group_info()
         .unwrap();
 
+    let external_join_config = MlsGroupExternalJoinConfig::from_parts(
+        alice_group.configuration().clone(),
+        None,
+        None,
+        &[],
+    );
+
     let (_bob_group, message, _) = MlsGroup::join_by_external_commit(
         provider,
         &bob_credential.signer,
         None,
         verifiable_group_info,
-        alice_group.configuration(),
-        None,
-        None,
-        &[],
+        &external_join_config,
         bob_credential.credential_with_key.clone(),
     )
     .expect("Error initializing group externally.");
@@ -613,7 +621,7 @@ mod utils {
         framing::{MlsMessageIn, PublicMessage, Sender},
         group::{
             tests::utils::{generate_credential_with_key, CredentialWithKeyAndSigner},
-            MlsGroup, MlsGroupCreateConfig, WireFormatPolicy,
+            MlsGroup, MlsGroupCreateConfig, MlsGroupExternalJoinConfig, WireFormatPolicy,
         },
     };
 
@@ -667,15 +675,19 @@ mod utils {
             .unwrap();
         let tree_option = alice_group.export_ratchet_tree();
 
+        let external_join_config = MlsGroupExternalJoinConfig::from_parts(
+            alice_group.configuration().clone(),
+            None,
+            None,
+            &[],
+        );
+
         let (_, public_message_commit, _) = MlsGroup::join_by_external_commit(
             provider,
             &bob_credential.signer,
             Some(tree_option.into()),
             verifiable_group_info,
-            alice_group.configuration(),
-            None,
-            None,
-            &[],
+            &external_join_config,
             bob_credential.credential_with_key.clone(),
         )
         .unwrap();
