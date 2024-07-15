@@ -316,6 +316,55 @@ fn generate_kats(ciphersuite: Ciphersuite, provider: &Provider) {
 
 #[test]
 #[ignore]
+#[cfg(not(all(
+    feature = "libcrux-provider",
+    not(any(
+        target_arch = "wasm32",
+        all(target_arch = "x86", target_os = "windows")
+    ))
+)))]
+fn write_kats() {
+    // setup
+    let rustcrypto_provider = openmls_rust_crypto::OpenMlsRustCrypto::default();
+
+    let base64_engine = base64::engine::GeneralPurpose::new(
+        &base64::alphabet::URL_SAFE,
+        base64::engine::GeneralPurposeConfig::new(),
+    );
+
+    // make a list of all supported ciphersuites
+    let ciphersuites = rustcrypto_provider.crypto().supported_ciphersuites();
+
+    // test data, keyed by ciphersuite
+    let mut data = HashMap::new();
+
+    // generate data and fill the table
+    for ciphersuite in ciphersuites {
+        let (group_id, storages_bytes) =
+            helper_generate_kat::<openmls_rust_crypto::OpenMlsRustCrypto>(ciphersuite);
+
+        let storages: Vec<String> = storages_bytes
+            .iter()
+            .map(|test| base64_engine.encode(test))
+            .collect();
+
+        data.insert(ciphersuite, KatData { group_id, storages });
+    }
+
+    // write to file
+    let mut file = std::fs::File::create("test_vectors/storage-stability-new.json").unwrap();
+    serde_json::to_writer(&mut file, &data).unwrap();
+}
+
+#[test]
+#[ignore]
+#[cfg(all(
+    feature = "libcrux-provider",
+    not(any(
+        target_arch = "wasm32",
+        all(target_arch = "x86", target_os = "windows")
+    ))
+))]
 fn write_kats() {
     // setup
     let libcrux_provider = openmls_libcrux_crypto::Provider::default();
