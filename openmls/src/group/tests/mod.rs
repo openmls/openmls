@@ -31,6 +31,8 @@ mod test_remove_operation;
 #[cfg(test)]
 mod test_wire_format_policy;
 #[cfg(test)]
+mod group_context_extensions;
+#[cfg(test)]
 pub(crate) mod utils;
 
 pub(crate) mod tree_printing;
