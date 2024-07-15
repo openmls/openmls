@@ -315,6 +315,7 @@ fn generate_kats(ciphersuite: Ciphersuite, provider: &Provider) {
 }
 
 #[test]
+#[ignore]
 fn write_kats() {
     // setup
     let libcrux_provider = openmls_libcrux_crypto::Provider::default();
@@ -354,7 +355,7 @@ fn write_kats() {
     }
 
     // write to file
-    let mut file = std::fs::File::create("test_vectors/storage-stability-new.dat").unwrap();
+    let mut file = std::fs::File::create("test_vectors/storage-stability-new.json").unwrap();
     serde_json::to_writer(&mut file, &data).unwrap();
 }
 
@@ -368,7 +369,7 @@ fn test(ciphersuite: Ciphersuite, provider: &Provider) {
 
     // load data
     let mut data: HashMap<Ciphersuite, KatData> = {
-        let file = std::fs::File::open("test_vectors/storage-stability.dat").unwrap();
+        let file = std::fs::File::open("test_vectors/storage-stability.json").unwrap();
         serde_json::from_reader(file).unwrap()
     };
 
