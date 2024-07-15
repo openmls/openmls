@@ -86,6 +86,7 @@ impl MlsGroup {
             .write_group_state(self.group_id(), &self.group_state)
             .map_err(AddMembersError::StorageError)?;
 
+        self.reset_aad();
         Ok((
             mls_messages,
             MlsMessageOut::from_welcome(welcome, self.group.version()),
@@ -160,6 +161,7 @@ impl MlsGroup {
             .write_group_state(self.group_id(), &self.group_state)
             .map_err(RemoveMembersError::StorageError)?;
 
+        self.reset_aad();
         Ok((
             mls_message,
             create_commit_result
@@ -197,6 +199,7 @@ impl MlsGroup {
                 remove_proposal.clone(),
             )?);
 
+        self.reset_aad();
         Ok(self.content_to_mls_message(remove_proposal, provider)?)
     }
 

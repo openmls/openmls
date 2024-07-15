@@ -60,6 +60,7 @@ impl MlsGroup {
             .store(provider.storage())
             .map_err(SelfUpdateError::StorageError)?;
 
+        self.reset_aad();
         Ok((
             mls_message,
             create_commit_result
@@ -139,6 +140,7 @@ impl MlsGroup {
 
         let mls_message = self.content_to_mls_message(update_proposal, provider)?;
 
+        self.reset_aad();
         Ok((mls_message, proposal_ref))
     }
 }

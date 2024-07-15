@@ -115,6 +115,7 @@ impl MlsGroup {
             .write_group_state(self.group_id(), &self.group_state)
             .map_err(CommitToPendingProposalsError::StorageError)?;
 
+        self.reset_aad();
         Ok((
             mls_message,
             create_commit_result
