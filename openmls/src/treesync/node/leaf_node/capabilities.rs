@@ -94,8 +94,6 @@ impl Capabilities {
     }
 
     /// Creates a new [`CapabilitiesBuilder`] for constructing [`Capabilities`]
-    ///
-    /// [`CapabilitiesBuilder`]: crate::treesync::node::leaf_node::CapabilitiesBuilder
     pub fn builder() -> CapabilitiesBuilder {
         CapabilitiesBuilder(Self::default())
     }
