@@ -2,18 +2,18 @@
 //!
 //! This module contains the API to interact with groups.
 
-mod group_context;
-
 use std::fmt::Display;
-
-#[cfg(test)]
-use crate::ciphersuite::*;
-use crate::extensions::*;
-#[cfg(test)]
-use crate::utils::*;
 
 use serde::{Deserialize, Serialize};
 use tls_codec::*;
+
+use crate::extensions::*;
+use openmls_traits::random::OpenMlsRand;
+
+#[cfg(test)]
+use crate::ciphersuite::*;
+#[cfg(test)]
+use crate::utils::*;
 
 // Crate
 pub(crate) mod core_group;
@@ -32,15 +32,14 @@ pub use mls_group::membership::*;
 pub use mls_group::*;
 pub use public_group::*;
 
+// Private
+mod group_context;
+
 // Tests
 #[cfg(test)]
 pub(crate) use core_group::create_commit_params::*;
 #[cfg(any(feature = "test-utils", test))]
 pub(crate) mod tests;
-#[cfg(any(feature = "test-utils", test))]
-pub use core_group::staged_commit::StagedCommitState;
-#[cfg(any(feature = "test-utils", test))]
-use openmls_traits::random::OpenMlsRand;
 
 /// A group ID. The group ID is chosen by the creator of the group and should be globally unique.
 #[derive(
