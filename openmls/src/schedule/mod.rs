@@ -1224,7 +1224,7 @@ impl EpochSecrets {
 }
 
 #[derive(Serialize, Deserialize)]
-#[cfg_attr(any(test, feature = "test-utils"), derive(Clone, Debug, PartialEq))]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 pub(crate) struct GroupEpochSecrets {
     init_secret: InitSecret,
     exporter_secret: ExporterSecret,
@@ -1233,7 +1233,6 @@ pub(crate) struct GroupEpochSecrets {
     resumption_psk: ResumptionPskSecret,
 }
 
-#[cfg(not(any(test, feature = "test-utils")))]
 impl std::fmt::Debug for GroupEpochSecrets {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("GroupEpochSecrets { *** }")
