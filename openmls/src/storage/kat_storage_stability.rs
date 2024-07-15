@@ -2,9 +2,9 @@ use base64::Engine;
 use serde::{Deserialize, Serialize};
 
 use std::collections::HashMap;
+use std::marker::PhantomData;
 use std::{convert::Infallible, io::Write};
 
-use openmls_libcrux_crypto::Provider;
 use openmls_test::openmls_test;
 use openmls_traits::OpenMlsProvider as _;
 
@@ -19,16 +19,18 @@ struct KatData {
     storages: Vec<String>,
 }
 
-struct DeterministicRandProvider {
+struct DeterministicRandProvider<Provider: OpenMlsProvider> {
     id: String,
     ctr: std::sync::atomic::AtomicUsize,
+    _phantom: PhantomData<Provider>,
 }
 
-impl DeterministicRandProvider {
+impl<Provider: OpenMlsProvider + Default> DeterministicRandProvider<Provider> {
     fn new(id: &str) -> Self {
         Self {
             id: id.to_string(),
             ctr: std::sync::atomic::AtomicUsize::new(0),
+            _phantom: PhantomData,
         }
     }
 
@@ -58,7 +60,9 @@ impl DeterministicRandProvider {
     }
 }
 
-impl openmls_traits::random::OpenMlsRand for DeterministicRandProvider {
+impl<Provider: OpenMlsProvider + Default> openmls_traits::random::OpenMlsRand
+    for DeterministicRandProvider<Provider>
+{
     type Error = Infallible;
 
     fn random_array<const N: usize>(&self) -> Result<[u8; N], Self::Error> {
@@ -75,7 +79,7 @@ impl openmls_traits::random::OpenMlsRand for DeterministicRandProvider {
 }
 
 struct StorageTestProvider<Provider: OpenMlsProvider> {
-    rand: DeterministicRandProvider,
+    rand: DeterministicRandProvider<Provider>,
     storage: openmls_memory_storage::MemoryStorage,
     other: Provider,
 }
@@ -95,7 +99,7 @@ impl<Provider: OpenMlsProvider + Default> openmls_traits::OpenMlsProvider
 {
     type CryptoProvider = <Provider as openmls_traits::OpenMlsProvider>::CryptoProvider;
 
-    type RandProvider = DeterministicRandProvider;
+    type RandProvider = DeterministicRandProvider<Provider>;
 
     type StorageProvider = openmls_memory_storage::MemoryStorage;
 
