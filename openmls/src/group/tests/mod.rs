@@ -5,6 +5,8 @@ mod external_add_proposal;
 #[cfg(test)]
 mod external_remove_proposal;
 #[cfg(test)]
+mod group_context_extensions;
+#[cfg(test)]
 pub mod kat_messages;
 #[cfg(test)]
 pub mod kat_transcript_hashes;
@@ -30,8 +32,6 @@ mod test_proposal_validation;
 mod test_remove_operation;
 #[cfg(test)]
 mod test_wire_format_policy;
-#[cfg(test)]
-mod group_context_extensions;
 #[cfg(test)]
 pub(crate) mod utils;
 
