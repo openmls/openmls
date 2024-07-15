@@ -1155,11 +1155,13 @@ mod group_context_extensions {
         messages::group_info::GroupInfo,
     };
 
+    /// The state of a group member: A PartyState and the corresponding MlsGroup.
     struct MemberState<Provider> {
         party: PartyState<Provider>,
         group: MlsGroup,
     }
 
+    /// The state of a party that is not part of any groups.
     #[allow(dead_code)]
     struct PartyState<Provider> {
         provider: Provider,
@@ -1171,6 +1173,7 @@ mod group_context_extensions {
     }
 
     impl<Provider: crate::storage::OpenMlsProvider + Default> PartyState<Provider> {
+        /// Generate the PartyState for a new identity.
         fn generate(name: &'static str, ciphersuite: Ciphersuite) -> Self {
             let provider = Provider::default();
             let (credential_with_key, key_package_bundle, signer, sig_pk) =
@@ -1186,6 +1189,7 @@ mod group_context_extensions {
             }
         }
 
+        /// Generate a new [`KeyPackage`] for the party.
         fn key_package<F: FnOnce(KeyPackageBuilder) -> KeyPackageBuilder>(
             &self,
             ciphersuite: Ciphersuite,
@@ -1207,11 +1211,9 @@ mod group_context_extensions {
         bob: MemberState<Provider>,
     }
 
-    /*
-     * sets up a group with two parties alice and bob, where alice has capabilities for unknown
-     * extensions 0xf001 and  0xf002, and bob has capabilities for extension 0xf001, 0xf002 and
-     * 0xf003.
-     */
+    /// Sets up a group with two parties Alice and Bob, where Alice has capabilities for unknown
+    /// extensions 0xf001 and  0xf002, and Bob has capabilities for extension 0xf001, 0xf002 and
+    /// 0xf003.
     fn setup<Provider: crate::storage::OpenMlsProvider + Default>(
         ciphersuite: Ciphersuite,
     ) -> TestState<Provider> {
@@ -1288,6 +1290,7 @@ mod group_context_extensions {
     }
 
     impl<Provider: crate::storage::OpenMlsProvider> MemberState<Provider> {
+        /// Thin wrapper around [`MlsGroup::propose_group_context_extensions`].
         fn propose_group_context_extensions(
             &mut self,
             extensions: Extensions,
@@ -1301,6 +1304,7 @@ mod group_context_extensions {
                 .unwrap_or_else(|err| panic!("couldn't propose GCE at {}: {err}", self.party.name))
         }
 
+        /// Thin wrapper around [`MlsGroup::update_group_context_extensions`].
         fn update_group_context_extensions(
             &mut self,
             extensions: Extensions,
@@ -1314,6 +1318,7 @@ mod group_context_extensions {
                 .unwrap_or_else(|err| panic!("couldn't propose GCE at {}: {err}", self.party.name))
         }
 
+        /// Thin wrapper around [`MlsGroup::propose_add_member`].
         fn propose_add_member(&mut self, key_package: &KeyPackage) -> (MlsMessageOut, ProposalRef) {
             self.group
                 .propose_add_member(&self.party.provider, &self.party.signer, key_package)
@@ -1322,6 +1327,7 @@ mod group_context_extensions {
                 })
         }
 
+        /// Wrapper around [`MlsGroup::process_message`], asserting it's a commit and [`MlsGroup::merge_staged_commit`].
         fn process_and_merge_commit(&mut self, msg: MlsMessageIn) {
             let msg = msg.into_protocol_message().unwrap();
 
@@ -1349,6 +1355,7 @@ mod group_context_extensions {
             }
         }
 
+        /// Wrapper around [`MlsGroup::process_message`], asserting it's a proposal and [`MlsGroup::store_pending_proposal`].
         fn process_and_store_proposal(&mut self, msg: MlsMessageIn) -> ProposalRef {
             let msg = msg.into_protocol_message().unwrap();
 
@@ -1380,6 +1387,7 @@ mod group_context_extensions {
             }
         }
 
+        /// This wrapper that expects [`MlsGroup::process_message`] to return an error.
         fn fail_processing(
             &mut self,
             msg: MlsMessageIn,
@@ -1395,6 +1403,7 @@ mod group_context_extensions {
                 .expect_err(&err_msg)
         }
 
+        /// This wrapper around [`MlsGroup::commit_to_pending_proposals`]
         fn commit_to_pending_proposals(
             &mut self,
         ) -> (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>) {
@@ -1408,12 +1417,14 @@ mod group_context_extensions {
                 })
         }
 
+        /// This wrapper around [`MlsGroup::merge_pending_commit`]
         fn merge_pending_commit(&mut self) {
             self.group
                 .merge_pending_commit(&self.party.provider)
                 .unwrap_or_else(|err| panic!("{} couldn't merge commit: {err}", self.party.name));
         }
 
+        /// Wrapper around [`MlsGroup::commit_to_pending_proposals`] and [`MlsGroup::merge_pending_commit`].
         fn commit_and_merge_pending(
             &mut self,
         ) -> (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>) {
@@ -1423,9 +1434,9 @@ mod group_context_extensions {
         }
     }
 
-    // Test that the happy case of group context extensions works
-    // 1. set up group
-    // 2. alice sets gce, commits
+    /// Test that the happy case of group context extensions works
+    /// 1. set up group
+    /// 2. alice sets gce, commits
     #[openmls_test]
     fn happy_case() {
         let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite);
@@ -1459,6 +1470,117 @@ mod group_context_extensions {
 
         let (commit, _, _) = alice.commit_and_merge_pending();
         bob.process_and_merge_commit(commit.into());
+    }
+
+    #[openmls_test]
+    fn self_update_happy_case() {
+        let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite);
+
+        let (update_prop, _) = bob
+            .group
+            .propose_self_update(
+                &bob.party.provider,
+                &bob.party.signer,
+                LeafNodeParameters::builder().build(),
+            )
+            .unwrap();
+        alice.process_and_store_proposal(update_prop.into());
+        let (commit, _, _) = alice.commit_and_merge_pending();
+        bob.process_and_merge_commit(commit.into())
+    }
+
+    /// This test does the same as self_update_happy_case, but does not use MemberState, so we can
+    /// can exactly see which calls to OpenMLS are done
+    #[openmls_test]
+    fn self_update_happy_case_simple() {
+        let alice_party = PartyState::<Provider>::generate("alice", ciphersuite);
+        let bob_party = PartyState::<Provider>::generate("bob", ciphersuite);
+
+        // === Alice creates a group ===
+        let mut alice_group = MlsGroup::builder()
+            .ciphersuite(ciphersuite)
+            .with_wire_format_policy(WireFormatPolicy::new(
+                OutgoingWireFormatPolicy::AlwaysPlaintext,
+                IncomingWireFormatPolicy::Mixed,
+            ))
+            .build(
+                &alice_party.provider,
+                &alice_party.signer,
+                alice_party.credential_with_key.clone(),
+            )
+            .expect("error creating group using builder");
+
+        // === Alice adds Bob ===
+        let bob_key_package = bob_party.key_package(ciphersuite, |builder| builder);
+
+        alice_group
+            .propose_add_member(
+                &alice_party.provider,
+                &alice_party.signer,
+                bob_key_package.key_package(),
+            )
+            .unwrap();
+
+        let (_, Some(welcome), _) = alice_group
+            .commit_to_pending_proposals(&alice_party.provider, &alice_party.signer)
+            .unwrap()
+        else {
+            panic!("expected receiving a welcome")
+        };
+
+        alice_group
+            .merge_pending_commit(&alice_party.provider)
+            .unwrap();
+
+        let welcome: MlsMessageIn = welcome.into();
+        let welcome = welcome
+            .into_welcome()
+            .expect("expected message to be a welcome");
+
+        let mut bob_group = StagedWelcome::new_from_welcome(
+            &bob_party.provider,
+            alice_group.configuration(),
+            welcome,
+            Some(alice_group.export_ratchet_tree().into()),
+        )
+        .expect("Error creating staged join from Welcome")
+        .into_group(&bob_party.provider)
+        .expect("Error creating group from staged join");
+
+        let (update_proposal_msg, _) = bob_group
+            .propose_self_update(
+                &bob_party.provider,
+                &bob_party.signer,
+                LeafNodeParameters::builder().build(),
+            )
+            .unwrap();
+
+        let ProcessedMessageContent::ProposalMessage(update_proposal) = alice_group
+            .process_message(
+                &alice_party.provider,
+                update_proposal_msg.clone().into_protocol_message().unwrap(),
+            )
+            .unwrap()
+            .into_content()
+        else {
+            panic!("expected a proposal, got {update_proposal_msg:?}");
+        };
+        alice_group
+            .store_pending_proposal(alice_party.provider.storage(), *update_proposal)
+            .unwrap();
+
+        let (commit_msg, _, _) = alice_group
+            .commit_to_pending_proposals(&alice_party.provider, &alice_party.signer)
+            .unwrap();
+
+        bob_group
+            .process_message(
+                &bob_party.provider,
+                commit_msg.into_protocol_message().unwrap(),
+            )
+            .unwrap();
+
+        bob_group.merge_pending_commit(&bob_party.provider).unwrap()
     }
 
     /// This tests makes sure that validation check 103 is performed:
@@ -1573,117 +1695,6 @@ mod group_context_extensions {
             ),
             "got wrong error: {err:#?}"
         );
-    }
-
-    #[openmls_test]
-    fn self_update_happy_case() {
-        let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite);
-
-        let (update_prop, _) = bob
-            .group
-            .propose_self_update(
-                &bob.party.provider,
-                &bob.party.signer,
-                LeafNodeParameters::builder().build(),
-            )
-            .unwrap();
-        alice.process_and_store_proposal(update_prop.into());
-        let (commit, _, _) = alice.commit_and_merge_pending();
-        bob.process_and_merge_commit(commit.into())
-    }
-
-    // This test does the same as self_update_happy_case, but does not use MemberState, so we can
-    // can exactly see which calls to OpenMLS are done
-    #[openmls_test]
-    fn self_update_happy_case_simple() {
-        let alice_party = PartyState::<Provider>::generate("alice", ciphersuite);
-        let bob_party = PartyState::<Provider>::generate("bob", ciphersuite);
-
-        // === Alice creates a group ===
-        let mut alice_group = MlsGroup::builder()
-            .ciphersuite(ciphersuite)
-            .with_wire_format_policy(WireFormatPolicy::new(
-                OutgoingWireFormatPolicy::AlwaysPlaintext,
-                IncomingWireFormatPolicy::Mixed,
-            ))
-            .build(
-                &alice_party.provider,
-                &alice_party.signer,
-                alice_party.credential_with_key.clone(),
-            )
-            .expect("error creating group using builder");
-
-        // === Alice adds Bob ===
-        let bob_key_package = bob_party.key_package(ciphersuite, |builder| builder);
-
-        alice_group
-            .propose_add_member(
-                &alice_party.provider,
-                &alice_party.signer,
-                bob_key_package.key_package(),
-            )
-            .unwrap();
-
-        let (_, Some(welcome), _) = alice_group
-            .commit_to_pending_proposals(&alice_party.provider, &alice_party.signer)
-            .unwrap()
-        else {
-            panic!("expected receiving a welcome")
-        };
-
-        alice_group
-            .merge_pending_commit(&alice_party.provider)
-            .unwrap();
-
-        let welcome: MlsMessageIn = welcome.into();
-        let welcome = welcome
-            .into_welcome()
-            .expect("expected message to be a welcome");
-
-        let mut bob_group = StagedWelcome::new_from_welcome(
-            &bob_party.provider,
-            alice_group.configuration(),
-            welcome,
-            Some(alice_group.export_ratchet_tree().into()),
-        )
-        .expect("Error creating staged join from Welcome")
-        .into_group(&bob_party.provider)
-        .expect("Error creating group from staged join");
-
-        let (update_proposal_msg, _) = bob_group
-            .propose_self_update(
-                &bob_party.provider,
-                &bob_party.signer,
-                LeafNodeParameters::builder().build(),
-            )
-            .unwrap();
-
-        let ProcessedMessageContent::ProposalMessage(update_proposal) = alice_group
-            .process_message(
-                &alice_party.provider,
-                update_proposal_msg.clone().into_protocol_message().unwrap(),
-            )
-            .unwrap()
-            .into_content()
-        else {
-            panic!("expected a proposal, got {update_proposal_msg:?}");
-        };
-        alice_group
-            .store_pending_proposal(alice_party.provider.storage(), *update_proposal)
-            .unwrap();
-
-        let (commit_msg, _, _) = alice_group
-            .commit_to_pending_proposals(&alice_party.provider, &alice_party.signer)
-            .unwrap();
-
-        bob_group
-            .process_message(
-                &bob_party.provider,
-                commit_msg.into_protocol_message().unwrap(),
-            )
-            .unwrap();
-
-        bob_group.merge_pending_commit(&bob_party.provider).unwrap()
     }
 
     // this currently doesn't work because of an issue with the conversion using the frankenstein

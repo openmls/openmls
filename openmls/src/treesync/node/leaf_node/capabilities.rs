@@ -93,10 +93,9 @@ impl Capabilities {
         }
     }
 
-    // XXX: I don't know why rustdoc thinks the builder is private (it's pub), but let's just work
-    // around the problem here
-    #[allow(rustdoc::private_intra_doc_links)]
     /// Creates a new [`CapabilitiesBuilder`] for constructing [`Capabilities`]
+    ///
+    /// [`CapabilitiesBuilder`]: crate::treesync::node::leaf_node::CapabilitiesBuilder
     pub fn builder() -> CapabilitiesBuilder {
         CapabilitiesBuilder(Self::default())
     }
@@ -170,10 +169,10 @@ impl Capabilities {
 
     /// Check if these [`Capabilities`] contain all the extensions.
     pub(crate) fn contain_extensions(&self, extension: &Extensions) -> bool {
-        extension.iter().map(Extension::extension_type).all(|e| {
-            println!("{e:?}");
-            self.extensions().contains(&e)
-        })
+        extension
+            .iter()
+            .map(Extension::extension_type)
+            .all(|e| self.extensions().contains(&e))
     }
 
     /// Check if these [`Capabilities`] contain all the credentials.
