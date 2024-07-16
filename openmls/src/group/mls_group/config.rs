@@ -124,32 +124,18 @@ impl<'a> MlsGroupExternalJoinConfig<'a> {
 }
 
 impl<'a> MlsGroupExternalJoinConfig<'a> {
+    /// Creates a [`MlsGroupExternalJoinConfigBuilder`] that can be used to create an [`MlsGroupExternalJoinConfig`].
     pub fn builder(aad: &'a [u8]) -> MlsGroupExternalJoinConfigBuilder<'a> {
         MlsGroupExternalJoinConfigBuilder::new(aad)
     }
 
-    pub fn into_mls_group_join_config(self) -> MlsGroupJoinConfig {
-        let Self {
-            wire_format_policy,
-            padding_size,
-            max_past_epochs,
-            number_of_resumption_psks,
-            use_ratchet_tree_extension,
-            sender_ratchet_configuration,
-            ..
-        } = self;
-
-        MlsGroupJoinConfig {
-            wire_format_policy,
-            padding_size,
-            max_past_epochs,
-            number_of_resumption_psks,
-            use_ratchet_tree_extension,
-            sender_ratchet_configuration,
-        }
-    }
-
-    pub fn from_parts(
+    /// Creates an [`MlsGroupExternalJoinConfig`] from a [`MlsGroupJoinConfig`] as well as the
+    /// fields of the external join config that are not part of the [`MlsGroupJoinConfig`]:
+    /// - capabilities: the capabilities that should be set on the leaf node (optional)
+    /// - extension: the extensions that should be set on the leaf node (optional)
+    /// - aad: the associated data that should be used for the external commit (not in the
+    ///   resulting [`MlsGroup`]!)
+    pub(crate) fn from_parts(
         mls_group_join_config: MlsGroupJoinConfig,
         capabilities: Option<Capabilities>,
         extensions: Option<Extensions>,
@@ -177,7 +163,12 @@ impl<'a> MlsGroupExternalJoinConfig<'a> {
         }
     }
 
-    pub fn into_parts(
+    /// Converts the [`MlsGroupExternalJoinConfig`] into an [`MlsGroupJoinConfig`] as well as the
+    /// fields of the external join config that are not part of the [`MlsGroupJoinConfig`]:
+    /// - the capabilities that should be set on the leaf node (optional)
+    /// - the extensions that should be set on the leaf node (optional)
+    /// - the associated data that should be used for the external commit
+    pub(crate) fn into_parts(
         self,
     ) -> (
         MlsGroupJoinConfig,
@@ -300,6 +291,8 @@ impl MlsGroupJoinConfigBuilder {
     }
 }
 
+/// Builder struct for an [`MlsGroupExternalJoinConfig`].
+#[derive(Default)]
 pub struct MlsGroupExternalJoinConfigBuilder<'a> {
     join_config: MlsGroupExternalJoinConfig<'a>,
 }
