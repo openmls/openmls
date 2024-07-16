@@ -117,7 +117,7 @@ impl MessageSecrets {
 }
 
 // In tests we allow comparing secrets.
-#[cfg(test)]
+#[cfg(any(test, feature = "test-utils"))]
 impl PartialEq for MessageSecrets {
     fn eq(&self, other: &Self) -> bool {
         self.sender_data_secret == other.sender_data_secret

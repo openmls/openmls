@@ -163,7 +163,7 @@ pub use psk::{ExternalPsk, PreSharedKeyId, Psk};
 /// A group secret that can be used among members to prove that a member was
 /// part of a group in a given epoch.
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(Eq, PartialEq))]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Eq, PartialEq))]
 pub struct ResumptionPskSecret {
     secret: Secret,
 }
@@ -939,10 +939,9 @@ fn ciphertext_sample(ciphersuite: Ciphersuite, ciphertext: &[u8]) -> &[u8] {
 
 /// A key that can be used to derive an `AeadKey` and an `AeadNonce`.
 #[derive(Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
 #[cfg_attr(
     any(feature = "test-utils", feature = "crypto-debug", test),
-    derive(Debug, Clone)
+    derive(Debug, Clone, PartialEq)
 )]
 pub(crate) struct SenderDataSecret {
     secret: Secret,
@@ -1225,7 +1224,7 @@ impl EpochSecrets {
 }
 
 #[derive(Serialize, Deserialize)]
-#[cfg_attr(any(test, feature = "test-utils"), derive(Clone))]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 pub(crate) struct GroupEpochSecrets {
     init_secret: InitSecret,
     exporter_secret: ExporterSecret,
@@ -1240,21 +1239,10 @@ impl std::fmt::Debug for GroupEpochSecrets {
     }
 }
 
-#[cfg(not(test))]
+#[cfg(not(any(test, feature = "test-utils")))]
 impl PartialEq for GroupEpochSecrets {
     fn eq(&self, _other: &Self) -> bool {
         false
-    }
-}
-
-// In tests we allow comparing secrets.
-#[cfg(test)]
-impl PartialEq for GroupEpochSecrets {
-    fn eq(&self, other: &Self) -> bool {
-        self.exporter_secret == other.exporter_secret
-            && self.epoch_authenticator == other.epoch_authenticator
-            && self.external_secret == other.external_secret
-            && self.resumption_psk == other.resumption_psk
     }
 }
 
