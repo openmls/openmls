@@ -78,7 +78,7 @@ impl MlsGroupJoinConfig {
     }
 }
 
-/// The [`MlsGroupJoinExternalConfig`] contains all configuration parameters that are
+/// The [`MlsGroupExternalJoinConfig`] contains all configuration parameters that are
 /// relevant to group operation at runtime. It is used to configure the group's
 /// behaviour when joining an existing group. To configure a newly created
 /// group, use [`MlsGroupCreateConfig`].
