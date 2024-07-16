@@ -135,19 +135,9 @@ pub(crate) fn setup_alice_bob_group<Provider: OpenMlsProvider>(
     group_alice.set_aad(provider.storage(), group_aad).unwrap();
 
     // Alice adds Bob
-    let (commit, welcome, _group_info_option) = group_alice
+    let (_commit, welcome, _group_info_option) = group_alice
         .add_members(provider, &alice_signature_keys, &[bob_key_package.clone()])
         .expect("Could not create proposal.");
-
-    match commit.body() {
-        mls_group::MlsMessageBodyOut::PublicMessage(pm) => match pm.content() {
-            mls_group::FramedContentBody::Commit(commit) => {
-                assert!(!commit.has_path());
-            }
-            _ => panic!("Wrong content type"),
-        },
-        _ => panic!("Wrong message type"),
-    }
 
     group_alice
         .merge_pending_commit(provider)

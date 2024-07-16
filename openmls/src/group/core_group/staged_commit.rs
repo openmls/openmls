@@ -148,19 +148,6 @@ impl CoreGroup {
         let apply_proposals_values =
             diff.apply_proposals(&proposal_queue, self.own_leaf_index())?;
 
-        // Check if we were removed from the group
-        if apply_proposals_values.self_removed {
-            let staged_diff = diff.into_staged_diff(provider.crypto(), ciphersuite)?;
-            let staged_state = PublicStagedCommitState::new(
-                staged_diff,
-                commit.path.as_ref().map(|path| path.leaf_node().clone()),
-            );
-            return Ok(StagedCommit::new(
-                proposal_queue,
-                StagedCommitState::PublicState(Box::new(staged_state)),
-            ));
-        }
-
         // Determine if Commit has a path
         let (commit_secret, new_keypairs, new_leaf_keypair_option, update_path_leaf_node) =
             if let Some(path) = commit.path.clone() {
@@ -178,6 +165,20 @@ impl CoreGroup {
                     provider.crypto(),
                     apply_proposals_values.extensions.clone(),
                 )?;
+
+                // Check if we were removed from the group
+                if apply_proposals_values.self_removed {
+                    // If so, we return here, because we can't decrypt the path
+                    let staged_diff = diff.into_staged_diff(provider.crypto(), ciphersuite)?;
+                    let staged_state = PublicStagedCommitState::new(
+                        staged_diff,
+                        commit.path.as_ref().map(|path| path.leaf_node().clone()),
+                    );
+                    return Ok(StagedCommit::new(
+                        proposal_queue,
+                        StagedCommitState::PublicState(Box::new(staged_state)),
+                    ));
+                }
 
                 let decryption_keypairs: Vec<&EncryptionKeyPair> = old_epoch_keypairs
                     .iter()

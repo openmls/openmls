@@ -13,7 +13,6 @@ use crate::{
     messages::proposals::ProposalType,
     prelude::{Capabilities, RatchetTreeIn},
     prelude_test::HpkePublicKey,
-    schedule::psk::store::ResumptionPskStore,
     versions::ProtocolVersion,
 };
 use openmls_traits::prelude::*;
@@ -39,8 +38,6 @@ fn application_id() {
 #[openmls_test::openmls_test]
 fn ratchet_tree_extension() {
     // Basic group setup.
-    let group_aad = b"Alice's test group";
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
     // Create credentials and keys
     let (alice_credential_with_key, alice_signature_keys) =
@@ -57,62 +54,37 @@ fn ratchet_tree_extension() {
     );
     let bob_key_package = bob_key_package_bundle.key_package();
 
-    let config = CoreGroupConfig {
-        add_ratchet_tree_extension: true,
-    };
-
     // === Alice creates a group with the ratchet tree extension ===
-    let mut alice_group = CoreGroup::builder(
-        GroupId::random(provider.rand()),
-        ciphersuite,
-        alice_credential_with_key.clone(),
-    )
-    .with_config(config)
-    .build(provider, &alice_signature_keys)
-    .expect("Error creating group.");
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .build(
+            provider,
+            &alice_signature_keys,
+            alice_credential_with_key.clone(),
+        )
+        .expect("Error creating group.");
 
     // === Alice adds Bob ===
-    let bob_add_proposal = alice_group
-        .create_add_proposal(
-            framing_parameters,
-            bob_key_package.clone(),
-            &alice_signature_keys,
-        )
-        .expect("Could not create proposal.");
+    let (_commit, welcome, _group_info_option) = alice_group
+        .add_members(provider, &alice_signature_keys, &[bob_key_package.clone()])
+        .expect("An unexpected error occurred.");
 
-    alice_group.proposal_store_mut().add(
-        QueuedProposal::from_authenticated_content_by_ref(
-            ciphersuite,
-            provider.crypto(),
-            bob_add_proposal,
-        )
-        .unwrap(),
-    );
+    alice_group.merge_pending_commit(provider).unwrap();
 
-    let params = CreateCommitParams::builder()
-        .framing_parameters(framing_parameters)
-        .force_self_update(false)
+    let config = MlsGroupJoinConfig::builder()
+        .use_ratchet_tree_extension(true)
         .build();
-    let create_commit_result = alice_group
-        .create_commit(params, provider, &alice_signature_keys)
-        .expect("Error creating commit");
 
-    alice_group
-        .merge_commit(provider, create_commit_result.staged_commit)
-        .expect("error merging commit");
-
-    let bob_group = StagedCoreWelcome::new_from_welcome(
-        create_commit_result
-            .welcome_option
-            .expect("An unexpected error occurred."),
-        None,
-        bob_key_package_bundle,
+    let bob_group = StagedWelcome::new_from_welcome(
         provider,
-        ResumptionPskStore::new(1024),
+        &config,
+        welcome.into_welcome().unwrap(),
+        Some(alice_group.export_ratchet_tree().into()),
     )
-    .expect("Could not stage group join with ratchet tree extension")
-    .into_core_group(provider)
-    .expect("Could not join group with ratchet tree extension");
+    .expect("Error staging welcome")
+    .into_group(provider)
+    .expect("Error creating group from welcome");
 
     // Make sure the group state is the same
     assert_eq!(
@@ -121,8 +93,8 @@ fn ratchet_tree_extension() {
     );
 
     // Make sure both groups have set the flag correctly
-    assert!(alice_group.use_ratchet_tree_extension());
-    assert!(bob_group.use_ratchet_tree_extension());
+    assert!(alice_group.configuration().use_ratchet_tree_extension);
+    assert!(bob_group.configuration().use_ratchet_tree_extension);
 
     // === Alice creates a group without the ratchet tree extension ===
 
@@ -135,61 +107,25 @@ fn ratchet_tree_extension() {
     );
     let bob_key_package = bob_key_package_bundle.key_package();
 
-    let config = CoreGroupConfig {
-        add_ratchet_tree_extension: false,
-    };
-
-    let mut alice_group = CoreGroup::builder(
-        GroupId::random(provider.rand()),
-        ciphersuite,
-        alice_credential_with_key,
-    )
-    .with_config(config)
-    .build(provider, &alice_signature_keys)
-    .expect("Error creating group.");
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(false)
+        .build(provider, &alice_signature_keys, alice_credential_with_key)
+        .expect("Error creating group.");
 
     // === Alice adds Bob ===
-    let bob_add_proposal = alice_group
-        .create_add_proposal(
-            framing_parameters,
-            bob_key_package.clone(),
-            &alice_signature_keys,
-        )
-        .expect("Could not create proposal.");
+    let (_commit, welcome, _group_info_option) = alice_group
+        .add_members(provider, &alice_signature_keys, &[bob_key_package.clone()])
+        .expect("An unexpected error occurred.");
 
-    alice_group.proposal_store_mut().empty();
-    alice_group.proposal_store_mut().add(
-        QueuedProposal::from_authenticated_content_by_ref(
-            ciphersuite,
-            provider.crypto(),
-            bob_add_proposal,
-        )
-        .unwrap(),
-    );
-
-    let params = CreateCommitParams::builder()
-        .framing_parameters(framing_parameters)
-        .force_self_update(false)
+    let config = MlsGroupJoinConfig::builder()
+        .use_ratchet_tree_extension(false)
         .build();
-    let create_commit_result = alice_group
-        .create_commit(params, provider, &alice_signature_keys)
-        .expect("Error creating commit");
 
-    alice_group
-        .merge_commit(provider, create_commit_result.staged_commit)
-        .expect("error merging commit");
-
-    let error = StagedCoreWelcome::new_from_welcome(
-        create_commit_result
-            .welcome_option
-            .expect("An unexpected error occurred."),
-        None,
-        bob_key_package_bundle,
-        provider,
-        ResumptionPskStore::new(1024),
-    )
-    .and_then(|staged_join| staged_join.into_core_group(provider))
-    .err();
+    let error =
+        StagedWelcome::new_from_welcome(provider, &config, welcome.into_welcome().unwrap(), None)
+            .and_then(|staged_join| staged_join.into_group(provider))
+            .err();
 
     // We expect an error because the ratchet tree is missing
     assert!(matches!(

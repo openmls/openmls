@@ -690,7 +690,7 @@ impl<'a> TreeSyncDiff<'a> {
     /// This turns the diff into a staged diff. In the process, the diff
     /// computes and sets the new tree hash.
     pub(crate) fn into_staged_diff(
-        mut self,
+        self,
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -> Result<StagedTreeSyncDiff, LibraryError> {
@@ -705,7 +705,7 @@ impl<'a> TreeSyncDiff<'a> {
     /// Helper function to compute and set the tree hash of the given node and
     /// all nodes below it in the tree. The leaf nodes in `exclusion_list` are
     /// not included in the tree hash.
-    pub(super) fn compute_tree_hash(
+    pub(crate) fn compute_tree_hash(
         &self,
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
@@ -746,7 +746,7 @@ impl<'a> TreeSyncDiff<'a> {
 
     /// Compute and set the tree hash of all nodes in the tree.
     pub(crate) fn compute_tree_hashes(
-        &mut self,
+        &self,
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -> Result<Vec<u8>, LibraryError> {

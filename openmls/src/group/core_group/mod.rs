@@ -194,13 +194,6 @@ impl CoreGroupBuilder {
         self
     }
 
-    /// Set the [`Vec<PreSharedKeyId>`] of the [`CoreGroup`].
-    #[cfg(test)]
-    pub(crate) fn with_psk(mut self, psk_ids: Vec<PreSharedKeyId>) -> Self {
-        self.psk_ids = psk_ids;
-        self
-    }
-
     /// Set the [`Capabilities`] of the group's creator.
     pub(crate) fn with_capabilities(mut self, capabilities: Capabilities) -> Self {
         self.public_group_builder = self.public_group_builder.with_capabilities(capabilities);
@@ -1170,10 +1163,6 @@ impl CoreGroup {
 // Test functions
 #[cfg(test)]
 impl CoreGroup {
-    pub(crate) fn use_ratchet_tree_extension(&self) -> bool {
-        self.use_ratchet_tree_extension
-    }
-
     pub(crate) fn set_own_leaf_index(&mut self, own_leaf_index: LeafNodeIndex) {
         self.own_leaf_index = own_leaf_index;
     }
