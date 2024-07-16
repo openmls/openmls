@@ -433,9 +433,9 @@ fn self_update_happy_case_simple() {
 ///   required extensions, proposals, and credential types MUST be listed
 ///   in the LeafNode's capabilities field.
 ///
-/// So far, we only test whether the check is done for extensions.
+/// So far, we only test whether the check is done for extension types.
 #[openmls_test]
-fn fail_insufficient_capabilities_add_valno103() {
+fn fail_insufficient_extensiontype_capabilities_add_valno103() {
     let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite);
 
     let (gce_req_cap_commit, _, _) =
@@ -524,7 +524,7 @@ fn fail_insufficient_capabilities_add_valno103() {
 
     // Note: If this starts failing, the order in which validation is checked may have changed and we
     // fail on the fact that the confirmation tag is wrong. in that case, either the check has to be
-    // disabled, or the frankenstein framework needs code to properly commpute it.
+    // disabled, or the frankenstein framework needs code to properly compute it.
     let err = bob.fail_processing(fake_commit);
     assert!(
         matches!(
@@ -537,9 +537,6 @@ fn fail_insufficient_capabilities_add_valno103() {
     );
 }
 
-// this currently doesn't work because of an issue with the conversion using the frankenstein
-// framework. I don't have time do debug this now.
-//
 // Test structure:
 // - (alice creates group, adds bob, bob accepts)
 //   - This is part of the setup function
@@ -553,7 +550,7 @@ fn fail_insufficient_capabilities_add_valno103() {
 //     leaf node
 // - bob processes the invalid commit, which should give an InsufficientCapabilities error
 #[openmls_test]
-fn fail_insufficient_capabilities_update_valno103() {
+fn fail_insufficient_extensiontype_capabilities_update_valno103() {
     let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite);
 
     // requires that all members need support for extension type 0xf002
@@ -719,6 +716,7 @@ fn fail_insufficient_capabilities_update_valno103() {
 // it relies on the testing functions.
 //
 // I suppose we need to talk about which test framework is the one we need.
+// See https://github.com/openmls/openmls/issues/1618.
 #[openmls_test]
 fn fail_key_package_version_valno201() {
     let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite);
