@@ -10,16 +10,12 @@ use crate::{
     group::{errors::*, *},
     key_packages::*,
     messages::proposals::*,
-    prelude::Capabilities,
-    test_utils::{
-        frankenstein::{self, FrankenMlsMessage},
-        test_framework::{
-            errors::ClientError, noop_authentication_service, ActionType::Commit, CodecUse,
-            MlsGroupTestSetup,
-        },
+    test_utils::test_framework::{
+        errors::ClientError, noop_authentication_service, ActionType::Commit, CodecUse,
+        MlsGroupTestSetup,
     },
     tree::sender_ratchet::SenderRatchetConfiguration,
-    treesync::LeafNodeParameters,
+    treesync::{node::leaf_node::Capabilities, LeafNodeParameters},
 };
 
 #[openmls_test]
@@ -1146,216 +1142,6 @@ fn remove_prosposal_by_ref(
 
 // Test that the builder pattern accurately configures the new group.
 #[openmls_test]
-fn group_context_extensions_proposal() {
-    let alice_provider = &mut Provider::default();
-    let bob_provider = &mut Provider::default();
-    let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
-        setup_client("Alice", ciphersuite, alice_provider);
-    let (bob_credential_with_key, _bob_kpb, bob_signer, _bob_pk) =
-        setup_client("bob", ciphersuite, bob_provider);
-
-    // === Alice creates a group ===
-    let mut alice_group = MlsGroup::builder()
-        .ciphersuite(ciphersuite)
-        .with_wire_format_policy(WireFormatPolicy::new(
-            OutgoingWireFormatPolicy::AlwaysPlaintext,
-            IncomingWireFormatPolicy::Mixed,
-        ))
-        .build(alice_provider, &alice_signer, alice_credential_with_key)
-        .expect("error creating group using builder");
-
-    // === Alice adds Bob ===
-    let bob_key_package = KeyPackage::builder()
-        .build(
-            ciphersuite,
-            bob_provider,
-            &bob_signer,
-            bob_credential_with_key,
-        )
-        .expect("error building key package");
-
-    let (_, welcome, _) = alice_group
-        .add_members(
-            alice_provider,
-            &alice_signer,
-            &[bob_key_package.key_package().clone()],
-        )
-        .unwrap();
-    alice_group.merge_pending_commit(alice_provider).unwrap();
-
-    let welcome: MlsMessageIn = welcome.into();
-    let welcome = welcome
-        .into_welcome()
-        .expect("expected message to be a welcome");
-
-    let mut bob_group = StagedWelcome::new_from_welcome(
-        bob_provider,
-        alice_group.configuration(),
-        welcome,
-        Some(alice_group.export_ratchet_tree().into()),
-    )
-    .expect("Error creating staged join from Welcome")
-    .into_group(bob_provider)
-    .expect("Error creating group from staged join");
-
-    // No required capabilities, so no specifically required extensions.
-    assert!(alice_group
-        .group()
-        .context()
-        .extensions()
-        .required_capabilities()
-        .is_none());
-
-    let new_extensions = Extensions::single(Extension::RequiredCapabilities(
-        RequiredCapabilitiesExtension::new(&[ExtensionType::RequiredCapabilities], &[], &[]),
-    ));
-
-    let new_extensions_2 = Extensions::single(Extension::RequiredCapabilities(
-        RequiredCapabilitiesExtension::new(&[ExtensionType::RatchetTree], &[], &[]),
-    ));
-
-    let (proposal, _) = alice_group
-        .propose_group_context_extensions(alice_provider, new_extensions.clone(), &alice_signer)
-        .expect("failed to build group context extensions proposal");
-
-    let proc_msg = bob_group
-        .process_message(bob_provider, proposal.into_protocol_message().unwrap())
-        .unwrap();
-    match proc_msg.into_content() {
-        ProcessedMessageContent::ProposalMessage(proposal) => bob_group
-            .store_pending_proposal(bob_provider.storage(), *proposal)
-            .unwrap(),
-        _ => unreachable!(),
-    };
-
-    assert_eq!(alice_group.pending_proposals().count(), 1);
-
-    let (commit, _, _) = alice_group
-        .commit_to_pending_proposals(alice_provider, &alice_signer)
-        .expect("failed to commit to pending proposals");
-
-    // we'll change the commit we feed to bob to include two GCE proposals
-    let mut franken_commit = FrankenMlsMessage::tls_deserialize(
-        &mut commit.tls_serialize_detached().unwrap().as_slice(),
-    )
-    .unwrap();
-
-    // Craft a commit that has two GroupContextExtension proposals. This is forbidden by the RFC.
-    // Change the commit before alice commits, so alice's state is still in the old epoch and we can
-    // use her state to forge the macs and signatures
-    match &mut franken_commit.body {
-        frankenstein::FrankenMlsMessageBody::PublicMessage(msg) => {
-            match &mut msg.content.body {
-                frankenstein::FrankenFramedContentBody::Commit(commit) => {
-                    let second_gces = frankenstein::FrankenProposalOrRef::Proposal(
-                        frankenstein::FrankenProposal::GroupContextExtensions(vec![
-                            frankenstein::FrankenExtension::LastResort,
-                        ]),
-                    );
-
-                    commit.proposals.push(second_gces);
-                }
-                _ => unreachable!(),
-            }
-
-            let group_context = alice_group.export_group_context().clone();
-
-            let bob_group_context = bob_group.export_group_context();
-            assert_eq!(
-                bob_group_context.confirmed_transcript_hash(),
-                group_context.confirmed_transcript_hash()
-            );
-
-            let secrets = alice_group.group.message_secrets();
-            let membership_key = secrets.membership_key().as_slice();
-
-            *msg = frankenstein::FrankenPublicMessage::auth(
-                alice_provider,
-                group_context.ciphersuite(),
-                &alice_signer,
-                msg.content.clone(),
-                Some(&group_context.into()),
-                Some(membership_key),
-                // this is a dummy confirmation_tag:
-                Some(vec![0u8; 32].into()),
-            );
-        }
-        _ => unreachable!(),
-    }
-
-    // alice merges the unmodified commit
-    alice_group
-        .merge_pending_commit(alice_provider)
-        .expect("error merging pending commit");
-
-    let fake_commit = MlsMessageIn::tls_deserialize(
-        &mut franken_commit.tls_serialize_detached().unwrap().as_slice(),
-    )
-    .unwrap();
-
-    let fake_commit_protocol_msg = fake_commit.into_protocol_message().unwrap();
-
-    let err = {
-        let validation_skip_handle = crate::skip_validation::checks::confirmation_tag::handle();
-        validation_skip_handle.with_disabled(|| {
-            bob_group.process_message(bob_provider, fake_commit_protocol_msg.clone())
-        })
-    }
-    .expect_err("expected an error");
-
-    assert!(matches!(
-        err,
-        ProcessMessageError::InvalidCommit(
-            StageCommitError::GroupContextExtensionsProposalValidationError(
-                GroupContextExtensionsProposalValidationError::TooManyGCEProposals
-            )
-        )
-    ));
-
-    let required_capabilities = alice_group
-        .group()
-        .context()
-        .extensions()
-        .required_capabilities()
-        .expect("couldn't get required_capabilities");
-
-    // has required_capabilities as required capability
-    assert!(required_capabilities.extension_types() == [ExtensionType::RequiredCapabilities]);
-
-    // === committing to two group context extensions should fail
-
-    alice_group
-        .propose_group_context_extensions(alice_provider, new_extensions, &alice_signer)
-        .expect("failed to build group context extensions proposal");
-
-    // the proposals need to be different or they will be deduplicated
-    alice_group
-        .propose_group_context_extensions(alice_provider, new_extensions_2, &alice_signer)
-        .expect("failed to build group context extensions proposal");
-
-    assert_eq!(alice_group.pending_proposals().count(), 2);
-
-    alice_group
-        .commit_to_pending_proposals(alice_provider, &alice_signer)
-        .expect_err(
-            "expected error when committing to multiple group context extensions proposals",
-        );
-
-    // === can't update required required_capabilities to extensions that existing group members
-    //       are not capable of
-
-    // contains unsupported extension
-    let new_extensions = Extensions::single(Extension::RequiredCapabilities(
-        RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xf042)], &[], &[]),
-    ));
-
-    alice_group
-        .propose_group_context_extensions(alice_provider, new_extensions, &alice_signer)
-        .expect_err("expected an error building GCE proposal with bad required_capabilities");
-}
-
-// Test that the builder pattern accurately configures the new group.
-#[openmls_test]
 fn builder_pattern() {
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
         setup_client("Alice", ciphersuite, provider);
@@ -1676,6 +1462,223 @@ fn update_group_context_with_unknown_extension<Provider: OpenMlsProvider + Defau
         extracted_data_2.unwrap(),
         vec![3, 4],
         "The data of Extension::Unknown(0xff11) does not match the expected data"
+    );
+}
+
+#[openmls_test]
+fn update_proposal_bob() {
+    let alice_provider = Provider::default();
+    let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
+        setup_client("Alice", ciphersuite, &alice_provider);
+
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .build();
+
+    // === Alice creates a group ===
+    let mut alice_group = MlsGroup::new(
+        &alice_provider,
+        &alice_signer,
+        &mls_group_create_config,
+        alice_credential_with_key,
+    )
+    .expect("error creating group");
+
+    // === Alice adds Bob ===
+    let bob_provider: Provider = Default::default();
+    let (bob_credential_with_key, _bob_kpb, bob_signer, _bob_pk) =
+        setup_client("Bob", ciphersuite, &bob_provider);
+
+    let bob_key_package = KeyPackage::builder()
+        .build(
+            ciphersuite,
+            &bob_provider,
+            &bob_signer,
+            bob_credential_with_key,
+        )
+        .expect("error building key package");
+
+    let (_, welcome, _) = alice_group
+        .add_members(
+            &alice_provider,
+            &alice_signer,
+            &[bob_key_package.key_package().clone()],
+        )
+        .unwrap();
+    alice_group.merge_pending_commit(&alice_provider).unwrap();
+
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome
+        .into_welcome()
+        .expect("expected message to be a welcome");
+
+    let mut bob_group = StagedWelcome::new_from_welcome(
+        &bob_provider,
+        &MlsGroupJoinConfig::default(),
+        welcome,
+        Some(alice_group.export_ratchet_tree().into()),
+    )
+    .expect("Error creating staged join from Welcome")
+    .into_group(&bob_provider)
+    .expect("Error creating group from staged join");
+
+    // === Bob proposes an update ===
+    let (update_proposal, _proposal_reference) = bob_group
+        .propose_self_update(
+            &bob_provider,
+            &bob_signer,
+            LeafNodeParameters::builder().build(),
+        )
+        .unwrap();
+
+    // === Alice processes the update proposal from Bob ===
+    let processed_message = alice_group
+        .process_message(
+            &alice_provider,
+            update_proposal.into_protocol_message().unwrap(),
+        )
+        .unwrap();
+
+    let ProcessedMessageContent::ProposalMessage(proposal_msg) = processed_message.into_content()
+    else {
+        panic!("expected proposal");
+    };
+    bob_group
+        .store_pending_proposal(bob_provider.storage(), *proposal_msg)
+        .unwrap();
+
+    // === Alice commits to the proposal ===
+    let (commit, _, _) = alice_group
+        .commit_to_pending_proposals(&alice_provider, &alice_signer)
+        .expect("failed to commit to pending group context extensions");
+
+    alice_group
+        .merge_pending_commit(&alice_provider)
+        .expect("error merging pending commit");
+
+    // === Bob processes the commit  ===
+    let processed_message = bob_group
+        .process_message(&bob_provider, commit.into_protocol_message().unwrap())
+        .expect("bob failed processing the update");
+
+    let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+        processed_message.into_content()
+    else {
+        panic!("Expected a commit");
+    };
+    bob_group
+        .merge_staged_commit(&bob_provider, *staged_commit)
+        .expect("error merging commit to own update proposal");
+}
+
+#[openmls_test]
+fn update_proposal_alice() {
+    let alice_provider = Provider::default();
+    let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
+        setup_client("Alice", ciphersuite, &alice_provider);
+
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .build();
+
+    // === Alice creates a group ===
+    let mut alice_group = MlsGroup::new(
+        &alice_provider,
+        &alice_signer,
+        &mls_group_create_config,
+        alice_credential_with_key,
+    )
+    .expect("error creating group");
+
+    // === Alice adds Bob ===
+    let bob_provider: Provider = Default::default();
+    let (bob_credential_with_key, _bob_kpb, bob_signer, _bob_pk) =
+        setup_client("Bob", ciphersuite, &bob_provider);
+
+    let bob_key_package = KeyPackage::builder()
+        .build(
+            ciphersuite,
+            &bob_provider,
+            &bob_signer,
+            bob_credential_with_key,
+        )
+        .expect("error building key package");
+
+    let (_, welcome, _) = alice_group
+        .add_members(
+            &alice_provider,
+            &alice_signer,
+            &[bob_key_package.key_package().clone()],
+        )
+        .unwrap();
+    alice_group.merge_pending_commit(&alice_provider).unwrap();
+
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome
+        .into_welcome()
+        .expect("expected message to be a welcome");
+
+    let mut bob_group = StagedWelcome::new_from_welcome(
+        &bob_provider,
+        &MlsGroupJoinConfig::default(),
+        welcome,
+        Some(alice_group.export_ratchet_tree().into()),
+    )
+    .expect("Error creating staged join from Welcome")
+    .into_group(&bob_provider)
+    .expect("Error creating group from staged join");
+
+    // === Alice proposes an update ===
+    let (update_proposal, _proposal_reference) = alice_group
+        .propose_self_update(
+            &alice_provider,
+            &alice_signer,
+            LeafNodeParameters::builder().build(),
+        )
+        .unwrap();
+
+    // === Bob processes the update proposal from Alice ===
+    let processed_message = bob_group
+        .process_message(
+            &bob_provider,
+            update_proposal.into_protocol_message().unwrap(),
+        )
+        .unwrap();
+
+    let ProcessedMessageContent::ProposalMessage(proposal_msg) = processed_message.into_content()
+    else {
+        panic!("expected proposal");
+    };
+    bob_group
+        .store_pending_proposal(bob_provider.storage(), *proposal_msg)
+        .unwrap();
+
+    // === Bob commits to the proposal ===
+    let (commit, _, _) = bob_group
+        .commit_to_pending_proposals(&bob_provider, &bob_signer)
+        .expect("failed to commit to pending group context extensions");
+
+    bob_group
+        .merge_pending_commit(&bob_provider)
+        .expect("error merging pending commit");
+
+    // === Alice processes the commit  ===
+    let processed_message = alice_group
+        .process_message(&alice_provider, commit.into_protocol_message().unwrap())
+        .expect("bob failed processing the update");
+
+    let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+        processed_message.into_content()
+    else {
+        panic!("Expected a commit");
+    };
+    alice_group
+        .merge_staged_commit(&alice_provider, *staged_commit)
+        .expect("error merging commit to own update proposal");
+
+    assert_eq!(
+        alice_group.epoch_authenticator(),
+        bob_group.epoch_authenticator()
     );
 }
 
