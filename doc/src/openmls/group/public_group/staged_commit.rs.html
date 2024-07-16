@@ -301,7 +301,7 @@
 };
 
 <span class="attr">#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(Clone))]
+#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(Clone, PartialEq))]
 </span><span class="kw">pub struct </span>PublicStagedCommitState {
     <span class="kw">pub</span>(<span class="kw">super</span>) staged_diff: StagedPublicGroupDiff,
     <span class="kw">pub</span>(<span class="kw">super</span>) update_path_leaf_node: <span class="prelude-ty">Option</span>&lt;LeafNode&gt;,

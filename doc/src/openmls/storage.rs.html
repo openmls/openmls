@@ -240,6 +240,9 @@
 <a href="#240" id="240">240</a>
 <a href="#241" id="241">241</a>
 <a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! OpenMLS Storage
 //!
 //! This module serves two purposes:
@@ -268,6 +271,9 @@
     },
     treesync::{node::encryption_keys::EncryptionKeyPair, EncryptionKey},
 };
+
+<span class="attr">#[cfg(test)]
+</span><span class="kw">pub mod </span>kat_storage_stability;
 
 <span class="doccomment">/// A convenience trait for the current version of the storage.
 /// Throughout the code, this one should be used instead of `openmls_traits::storage::StorageProvider`.

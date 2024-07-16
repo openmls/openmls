@@ -989,7 +989,7 @@
 <span class="doccomment">/// The [`StagedTreeSyncDiff`] can be created from a [`TreeSyncDiff`], examined
 /// and later merged into a [`TreeSync`] instance.
 </span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(Clone))]
+#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(Clone, PartialEq))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>StagedTreeSyncDiff {
     diff: StagedMlsBinaryTreeDiff&lt;TreeSyncLeafNode, TreeSyncParentNode&gt;,
     new_tree_hash: Vec&lt;u8&gt;,

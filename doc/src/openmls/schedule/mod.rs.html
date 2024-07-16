@@ -1272,18 +1272,6 @@
 <a href="#1272" id="1272">1272</a>
 <a href="#1273" id="1273">1273</a>
 <a href="#1274" id="1274">1274</a>
-<a href="#1275" id="1275">1275</a>
-<a href="#1276" id="1276">1276</a>
-<a href="#1277" id="1277">1277</a>
-<a href="#1278" id="1278">1278</a>
-<a href="#1279" id="1279">1279</a>
-<a href="#1280" id="1280">1280</a>
-<a href="#1281" id="1281">1281</a>
-<a href="#1282" id="1282">1282</a>
-<a href="#1283" id="1283">1283</a>
-<a href="#1284" id="1284">1284</a>
-<a href="#1285" id="1285">1285</a>
-<a href="#1286" id="1286">1286</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Key schedule
 //!
 //! This module contains the types and implementations for key schedule operations.
@@ -1449,7 +1437,7 @@
 <span class="doccomment">/// A group secret that can be used among members to prove that a member was
 /// part of a group in a given epoch.
 </span><span class="attr">#[derive(Clone, Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(Eq, PartialEq))]
+#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(Eq, PartialEq))]
 </span><span class="kw">pub struct </span>ResumptionPskSecret {
     secret: Secret,
 }
@@ -2225,10 +2213,9 @@
 
 <span class="doccomment">/// A key that can be used to derive an `AeadKey` and an `AeadNonce`.
 </span><span class="attr">#[derive(Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
 #[cfg_attr(
     any(feature = <span class="string">"test-utils"</span>, feature = <span class="string">"crypto-debug"</span>, test),
-    derive(Debug, Clone)
+    derive(Debug, Clone, PartialEq)
 )]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>SenderDataSecret {
     secret: Secret,
@@ -2511,7 +2498,7 @@
 }
 
 <span class="attr">#[derive(Serialize, Deserialize)]
-#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(Clone))]
+#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(Clone, PartialEq))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>GroupEpochSecrets {
     init_secret: InitSecret,
     exporter_secret: ExporterSecret,
@@ -2526,22 +2513,11 @@
     }
 }
 
-<span class="attr">#[cfg(not(test))]
+<span class="attr">#[cfg(not(any(test, feature = <span class="string">"test-utils"</span>)))]
 </span><span class="kw">impl </span>PartialEq <span class="kw">for </span>GroupEpochSecrets {
     <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, _other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; bool {
         <span class="bool-val">false
     </span>}
-}
-
-<span class="comment">// In tests we allow comparing secrets.
-</span><span class="attr">#[cfg(test)]
-</span><span class="kw">impl </span>PartialEq <span class="kw">for </span>GroupEpochSecrets {
-    <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; bool {
-        <span class="self">self</span>.exporter_secret == other.exporter_secret
-            &amp;&amp; <span class="self">self</span>.epoch_authenticator == other.epoch_authenticator
-            &amp;&amp; <span class="self">self</span>.external_secret == other.external_secret
-            &amp;&amp; <span class="self">self</span>.resumption_psk == other.resumption_psk
-    }
 }
 
 <span class="kw">impl </span>GroupEpochSecrets {

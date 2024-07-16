@@ -1230,6 +1230,10 @@
 <a href="#1230" id="1230">1230</a>
 <a href="#1231" id="1231">1231</a>
 <a href="#1232" id="1232">1232</a>
+<a href="#1233" id="1233">1233</a>
+<a href="#1234" id="1234">1234</a>
+<a href="#1235" id="1235">1235</a>
+<a href="#1236" id="1236">1236</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! ### Don't Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -1391,8 +1395,7 @@
 }
 
 <span class="attr">#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
-#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(Clone))]
+#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(Clone, PartialEq))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>CoreGroup {
     public_group: PublicGroup,
     group_epoch_secrets: GroupEpochSecrets,
@@ -2440,7 +2443,8 @@
 }
 
 <span class="comment">// Test and test-utils functions
-</span><span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
+</span><span class="attr">#[cfg_attr(all(not(test), feature = <span class="string">"test-utils"</span>), allow(dead_code))]
+#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
 </span><span class="kw">impl </span>CoreGroup {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>context_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>GroupContext {
         <span class="self">self</span>.public_group.context_mut()
@@ -2452,6 +2456,10 @@
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>print_ratchet_tree(<span class="kw-2">&amp;</span><span class="self">self</span>, message: <span class="kw-2">&amp;</span>str) {
         <span class="macro">println!</span>(<span class="string">"{}: {}"</span>, message, <span class="self">self</span>.public_group().export_ratchet_tree());
+    }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>resumption_psk_store(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ResumptionPskStore {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.resumption_psk_store
     }
 }
 

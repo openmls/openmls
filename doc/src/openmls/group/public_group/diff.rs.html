@@ -492,7 +492,7 @@
 <span class="doccomment">/// The staged version of a [`PublicGroupDiff`], which means it can no longer be
 /// modified. Its only use is to merge it into the original [`PublicGroup`].
 </span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(Clone))]
+#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(Clone, PartialEq))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>StagedPublicGroupDiff {
     <span class="kw">pub</span>(<span class="kw">super</span>) staged_diff: StagedTreeSyncDiff,
     <span class="kw">pub</span>(<span class="kw">super</span>) group_context: GroupContext,

@@ -534,6 +534,12 @@
 <a href="#534" id="534">534</a>
 <a href="#535" id="535">535</a>
 <a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
+<a href="#539" id="539">539</a>
+<a href="#540" id="540">540</a>
+<a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Preshared keys.
 
 </span><span class="kw">use </span>openmls_traits::{random::OpenMlsRand, storage::StorageProvider <span class="kw">as </span>StorageProviderTrait};
@@ -1026,8 +1032,7 @@
     ///
     /// This is where the resumption PSKs are kept in a rollover list.
     </span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
-    #[cfg_attr(test, derive(PartialEq))]
-    #[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(Clone))]
+    #[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(Clone, PartialEq))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ResumptionPskStore {
         max_number_of_secrets: usize,
         resumption_psk: Vec&lt;(GroupEpoch, ResumptionPskSecret)&gt;,
@@ -1067,6 +1072,13 @@
                 .iter()
                 .find(|<span class="kw-2">&amp;</span>(e, _s)| e == <span class="kw-2">&amp;</span>epoch)
                 .map(|(_e, s)| s)
+        }
+    }
+
+    <span class="attr">#[cfg(test)]
+    </span><span class="kw">impl </span>ResumptionPskStore {
+        <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>cursor(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+            <span class="self">self</span>.cursor
         }
     }
 }

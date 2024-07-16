@@ -435,7 +435,7 @@
 /// was created from. However, the lack of the internal reference means that its
 /// lifetime is not tied to that of the original tree.
 </span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(Clone))]
+#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(Clone, PartialEq))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>StagedAbDiff&lt;L: Clone + Debug + Default, P: Clone + Debug + Default&gt; {
     leaf_diff: BTreeMap&lt;LeafNodeIndex, L&gt;,
     parent_diff: BTreeMap&lt;ParentNodeIndex, P&gt;,

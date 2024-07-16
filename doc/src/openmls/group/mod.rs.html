@@ -132,22 +132,24 @@
 <a href="#132" id="132">132</a>
 <a href="#133" id="133">133</a>
 <a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Group API for MLS
 //!
 //! This module contains the API to interact with groups.
 
-</span><span class="kw">mod </span>group_context;
-
-<span class="kw">use </span>std::fmt::Display;
-
-<span class="attr">#[cfg(test)]
-</span><span class="kw">use </span><span class="kw">crate</span>::ciphersuite::<span class="kw-2">*</span>;
-<span class="kw">use </span><span class="kw">crate</span>::extensions::<span class="kw-2">*</span>;
-<span class="attr">#[cfg(test)]
-</span><span class="kw">use </span><span class="kw">crate</span>::utils::<span class="kw-2">*</span>;
+</span><span class="kw">use </span>std::fmt::Display;
 
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>tls_codec::<span class="kw-2">*</span>;
+
+<span class="kw">use </span><span class="kw">crate</span>::extensions::<span class="kw-2">*</span>;
+<span class="kw">use </span>openmls_traits::random::OpenMlsRand;
+
+<span class="attr">#[cfg(test)]
+</span><span class="kw">use </span><span class="kw">crate</span>::ciphersuite::<span class="kw-2">*</span>;
+<span class="attr">#[cfg(test)]
+</span><span class="kw">use </span><span class="kw">crate</span>::utils::<span class="kw-2">*</span>;
 
 <span class="comment">// Crate
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>core_group;
@@ -166,12 +168,14 @@
 <span class="kw">pub use </span>mls_group::<span class="kw-2">*</span>;
 <span class="kw">pub use </span>public_group::<span class="kw-2">*</span>;
 
+<span class="comment">// Private
+</span><span class="kw">mod </span>group_context;
+
 <span class="comment">// Tests
 </span><span class="attr">#[cfg(test)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>core_group::create_commit_params::<span class="kw-2">*</span>;
 <span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>tests;
-<span class="kw">use </span>openmls_traits::random::OpenMlsRand;
 
 <span class="doccomment">/// A group ID. The group ID is chosen by the creator of the group and should be globally unique.
 </span><span class="attr">#[derive(

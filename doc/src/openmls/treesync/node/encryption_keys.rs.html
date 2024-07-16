@@ -361,7 +361,7 @@
 <span class="attr">#[derive(
     Clone, Serialize, Deserialize, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
 )]
-#[cfg_attr(test, derive(PartialEq, Eq))]
+#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(PartialEq, Eq))]
 </span><span class="kw">pub struct </span>EncryptionPrivateKey {
     key: HpkePrivateKey,
 }
@@ -433,7 +433,7 @@
 <span class="attr">#[derive(
     Debug, Clone, Serialize, Deserialize, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
 )]
-#[cfg_attr(test, derive(PartialEq, Eq))]
+#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(PartialEq, Eq))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>EncryptionKeyPair {
     public_key: EncryptionKey,
     private_key: EncryptionPrivateKey,
