@@ -357,6 +357,36 @@ fn book_operations() {
         unreachable!("Expected an ApplicationMessage.");
     }
 
+    // ANCHOR: set_aad
+    alice_group.set_aad(b"Additional Authenticated Data".to_vec());
+
+    assert_eq!(alice_group.aad(), b"Additional Authenticated Data");
+    // ANCHOR_END: set_aad
+
+    let message_alice = b"Hi, I'm Alice!";
+    let mls_message_out = alice_group
+        .create_message(provider, &alice_signature_keys, message_alice)
+        .expect("Error creating application message.");
+
+    let bytes = mls_message_out
+        .to_bytes()
+        .expect("Could not serialize message.");
+
+    let mls_message =
+        MlsMessageIn::tls_deserialize_exact(bytes).expect("Could not deserialize message.");
+
+    let protocol_message: ProtocolMessage = mls_message
+        .try_into_protocol_message()
+        .expect("Expected a PublicMessage or a PrivateMessage");
+
+    // ANCHOR: inspect_aad
+    let processed_message = bob_group
+        .process_message(provider, protocol_message)
+        .expect("Could not process message.");
+
+    assert_eq!(processed_message.aad(), b"Additional Authenticated Data");
+    // ANCHOR_END: inspect_aad
+
     // === Bob updates and commits ===
     // ANCHOR: self_update
     let (mls_message_out, welcome_option, _group_info) = bob_group
