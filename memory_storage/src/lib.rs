@@ -32,13 +32,13 @@ impl MemoryStorage {
         let values = self.values.read().unwrap();
 
         let mut written = 8;
-        let count = values.len().to_be_bytes();
+        let count = (values.len() as u64).to_be_bytes();
         w.write_all(&count)?;
 
         for (k, v) in values.iter() {
             let rec_len = 8 + 8 + k.len() + v.len();
-            let k_len = k.len().to_be_bytes();
-            let v_len = v.len().to_be_bytes();
+            let k_len = (k.len() as u64).to_be_bytes();
+            let v_len = (v.len() as u64).to_be_bytes();
 
             w.write_all(&k_len)?;
             w.write_all(&v_len)?;
