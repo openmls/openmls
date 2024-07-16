@@ -656,7 +656,7 @@ impl MlsClient for MlsClientImpl {
         debug!("Processed.");
         trace!(?processed_message);
 
-        let authenticated_data = processed_message.authenticated_data().to_vec();
+        let authenticated_data = processed_message.aad().to_vec();
         let plaintext = match processed_message.into_content() {
             ProcessedMessageContent::ApplicationMessage(application_message) => {
                 application_message.into_bytes()

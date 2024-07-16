@@ -161,7 +161,7 @@ pub struct MlsGroup {
     // are needed in case an update proposal is committed by another group
     // member. The vector is emptied after every epoch change.
     own_leaf_nodes: Vec<LeafNode>,
-    // Additional Authenticated Data (AAD) for the next outgoing message. This
+    // Additional authenticated data (AAD) for the next outgoing message. This
     // is ephemeral and will be reset by every API call that successfully
     // returns an [`MlsMessageOut`].
     aad: Vec<u8>,
@@ -188,11 +188,17 @@ impl MlsGroup {
         storage.write_mls_join_config(self.group_id(), mls_group_config)
     }
 
-    /// Sets the Additional Authenticated Data (AAD) for the next outgoing
+    /// Sets the additional authenticated data (AAD) for the next outgoing
     /// message. This is ephemeral and will be reset by every API call that
     /// successfully returns an [`MlsMessageOut`].
     pub fn set_aad(&mut self, aad: Vec<u8>) {
         self.aad = aad;
+    }
+
+    /// Returns the additional authenticated data (AAD) for the next outgoing
+    /// message.
+    pub fn aad(&self) -> &[u8] {
+        &self.aad
     }
 
     // === Advanced functions ===
