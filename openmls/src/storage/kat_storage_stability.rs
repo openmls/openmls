@@ -1,3 +1,24 @@
+//! This modules contains KATs for testing the stability of storage.
+//!
+//! The KAT generation performs a few group operations (e.g. create, add, set required capabilties)
+//! and at each step saves a serialized copy of the provider, along with the group id of the
+//! created group.
+//!
+//! The KAT test reads the serialized providers, loads the [`MlsGroup`] for the given group id, and
+//! checks that the group contains the expected information.
+//!
+//! It contains
+//! - a helper function that does the generation of the KAT for a single pair of provider and
+//!   ciphersuite
+//! - a test that runs the KAT generation
+//! - a test that runs the KAT generation for all supported providers and ciphersuites and writes
+//!   the vectors to disk. This test is annotated with #[ignore] and not usually run.
+//! - a test that
+//!   - loads the test data for the given provider and ciphersuite,
+//!   - deserializes the provider and group id
+//!   - loads the [`MlsGroup`]
+//!   - checks that the group matches expectations
+
 use base64::Engine;
 use serde::{Deserialize, Serialize};
 
@@ -331,33 +352,19 @@ fn write_kats() {
     // setup
     let rustcrypto_provider = openmls_rust_crypto::OpenMlsRustCrypto::default();
 
-    let base64_engine = base64::engine::GeneralPurpose::new(
-        &base64::alphabet::URL_SAFE,
-        base64::engine::GeneralPurposeConfig::new(),
-    );
-
     // make a list of all supported ciphersuites
     let ciphersuites = rustcrypto_provider.crypto().supported_ciphersuites();
 
-    // test data, keyed by ciphersuite
-    let mut data = HashMap::new();
-
-    // generate data and fill the table
-    for ciphersuite in ciphersuites {
-        let (group_id, storages_bytes) =
+    // generate the kat data
+    let kat_data = ciphersuites.into_iter().map(|ciphersuite| {
+        let (group_id, storages) =
             helper_generate_kat::<openmls_rust_crypto::OpenMlsRustCrypto>(ciphersuite);
 
-        let storages: Vec<String> = storages_bytes
-            .iter()
-            .map(|test| base64_engine.encode(test))
-            .collect();
+        (ciphersuite, group_id, storages)
+    });
 
-        data.insert(ciphersuite, KatData { group_id, storages });
-    }
-
-    // write to file
-    let mut file = std::fs::File::create("test_vectors/storage-stability-new.json").unwrap();
-    serde_json::to_writer(&mut file, &data).unwrap();
+    // encode and write to disk
+    helper_write_kats(kat_data);
 }
 
 #[test]
@@ -374,11 +381,6 @@ fn write_kats() {
     let libcrux_provider = openmls_libcrux_crypto::Provider::default();
     let rustcrypto_provider = openmls_rust_crypto::OpenMlsRustCrypto::default();
 
-    let base64_engine = base64::engine::GeneralPurpose::new(
-        &base64::alphabet::URL_SAFE,
-        base64::engine::GeneralPurposeConfig::new(),
-    );
-
     // make a list of all supported ciphersuites
     let mut ciphersuites = libcrux_provider.crypto().supported_ciphersuites();
     for ciphersuite in rustcrypto_provider.crypto().supported_ciphersuites() {
@@ -387,18 +389,34 @@ fn write_kats() {
         }
     }
 
+    // generate the kat data
+    let kat_data = ciphersuites
+        .into_iter()
+        .map(|ciphersuite| {
+            let (group_id, storages) = if libcrux_provider.crypto().supports(ciphersuite).is_ok() {
+                helper_generate_kat::<openmls_libcrux_crypto::Provider>(ciphersuite)
+            } else {
+                helper_generate_kat::<openmls_rust_crypto::OpenMlsRustCrypto>(ciphersuite)
+            };
+
+            (ciphersuite, group_id, storages)
+        })
+        .collect();
+
+    // encode and write to disk
+    helper_write_kats(kat_data);
+}
+
+fn helper_write_kats(kat_data: Vec<(Ciphersuite, GroupId, Vec<Vec<u8>>)>) {
+    let base64_engine = base64::engine::GeneralPurpose::new(
+        &base64::alphabet::URL_SAFE,
+        base64::engine::GeneralPurposeConfig::new(),
+    );
+
     // test data, keyed by ciphersuite
     let mut data = HashMap::new();
 
-    // generate data and fill the table
-    for ciphersuite in ciphersuites {
-        let (group_id, storages_bytes) = if libcrux_provider.crypto().supports(ciphersuite).is_ok()
-        {
-            helper_generate_kat::<openmls_libcrux_crypto::Provider>(ciphersuite)
-        } else {
-            helper_generate_kat::<openmls_rust_crypto::OpenMlsRustCrypto>(ciphersuite)
-        };
-
+    for (ciphersuite, group_id, storages_bytes) in kat_data {
         let storages: Vec<String> = storages_bytes
             .iter()
             .map(|test| base64_engine.encode(test))
@@ -406,7 +424,6 @@ fn write_kats() {
 
         data.insert(ciphersuite, KatData { group_id, storages });
     }
-
     // write to file
     let mut file = std::fs::File::create("test_vectors/storage-stability-new.json").unwrap();
     serde_json::to_writer(&mut file, &data).unwrap();
@@ -704,19 +721,3 @@ fn test(ciphersuite: Ciphersuite, provider: &Provider) {
     // there is no pending commit
     assert!(alice_group_pending_proposal.pending_commit().is_none());
 }
-
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
