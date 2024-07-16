@@ -356,12 +356,15 @@ fn write_kats() {
     let ciphersuites = rustcrypto_provider.crypto().supported_ciphersuites();
 
     // generate the kat data
-    let kat_data = ciphersuites.into_iter().map(|ciphersuite| {
-        let (group_id, storages) =
-            helper_generate_kat::<openmls_rust_crypto::OpenMlsRustCrypto>(ciphersuite);
+    let kat_data = ciphersuites
+        .into_iter()
+        .map(|ciphersuite| {
+            let (group_id, storages) =
+                helper_generate_kat::<openmls_rust_crypto::OpenMlsRustCrypto>(ciphersuite);
 
-        (ciphersuite, group_id, storages)
-    });
+            (ciphersuite, group_id, storages)
+        })
+        .collect();
 
     // encode and write to disk
     helper_write_kats(kat_data);
