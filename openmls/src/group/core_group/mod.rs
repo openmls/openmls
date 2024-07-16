@@ -159,8 +159,7 @@ pub(crate) struct StagedCoreWelcome {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
-#[cfg_attr(any(test, feature = "test-utils"), derive(Clone))]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 pub(crate) struct CoreGroup {
     public_group: PublicGroup,
     group_epoch_secrets: GroupEpochSecrets,
@@ -1208,6 +1207,7 @@ impl CoreGroup {
 }
 
 // Test and test-utils functions
+#[cfg_attr(all(not(test), feature = "test-utils"), allow(dead_code))]
 #[cfg(any(feature = "test-utils", test))]
 impl CoreGroup {
     pub(crate) fn context_mut(&mut self) -> &mut GroupContext {
@@ -1220,6 +1220,10 @@ impl CoreGroup {
 
     pub(crate) fn print_ratchet_tree(&self, message: &str) {
         println!("{}: {}", message, self.public_group().export_ratchet_tree());
+    }
+
+    pub(crate) fn resumption_psk_store(&self) -> &ResumptionPskStore {
+        &self.resumption_psk_store
     }
 }
 
