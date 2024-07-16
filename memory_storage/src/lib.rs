@@ -1,6 +1,9 @@
 use openmls_traits::storage::*;
 use serde::Serialize;
-use std::{collections::HashMap, io::Write as _, sync::RwLock};
+use std::{collections::HashMap, sync::RwLock};
+
+#[cfg(feature = "test-utils")]
+use std::io::Write as _;
 
 /// A storage for the V_TEST version.
 #[cfg(any(test, feature = "test-utils"))]
