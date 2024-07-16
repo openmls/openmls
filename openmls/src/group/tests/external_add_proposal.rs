@@ -9,6 +9,7 @@ use crate::{
         external_proposals::*,
         proposals::{AddProposal, Proposal, ProposalType},
     },
+    treesync::LeafNodeParameters,
 };
 
 use openmls_traits::{types::Ciphersuite, OpenMlsProvider as _};
@@ -343,7 +344,7 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals<Provider: Op
 
     // Update proposal cannot have a 'new_member_proposal' sender
     let update_proposal = alice_group
-        .propose_self_update(provider, &alice_signer, None)
+        .propose_self_update(provider, &alice_signer, LeafNodeParameters::default())
         .map(|(out, _)| MlsMessageIn::from(out))
         .unwrap();
     if let MlsMessageBodyIn::PublicMessage(mut plaintext) = update_proposal.body {

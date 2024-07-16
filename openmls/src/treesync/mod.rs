@@ -83,7 +83,11 @@ pub use node::encryption_keys::test_utils;
 pub use node::encryption_keys::EncryptionKey;
 
 // Public re-exports
-pub use node::{leaf_node::LeafNode, parent_node::ParentNode, Node};
+pub use node::{
+    leaf_node::{LeafNode, LeafNodeParameters, LeafNodeParametersBuilder, LeafNodeUpdateError},
+    parent_node::ParentNode,
+    Node,
+};
 
 // Tests
 #[cfg(any(feature = "test-utils", test))]

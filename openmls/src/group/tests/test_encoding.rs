@@ -294,26 +294,24 @@ fn test_commit_encoding(provider: &impl crate::storage::OpenMlsProvider) {
             )
             .expect("Could not create proposal.");
 
-        let mut proposal_store = ProposalStore::from_queued_proposal(
-            QueuedProposal::from_authenticated_content_by_ref(
-                group_state.ciphersuite(),
-                provider.crypto(),
-                add,
-            )
-            .expect("Could not create QueuedProposal."),
+        let ciphersuite = group_state.ciphersuite();
+
+        group_state.proposal_store_mut().empty();
+        group_state.proposal_store_mut().add(
+            QueuedProposal::from_authenticated_content_by_ref(ciphersuite, provider.crypto(), add)
+                .unwrap(),
         );
-        proposal_store.add(
+        group_state.proposal_store_mut().add(
             QueuedProposal::from_authenticated_content_by_ref(
-                group_state.ciphersuite(),
+                ciphersuite,
                 provider.crypto(),
                 update,
             )
-            .expect("Could not create QueuedProposal."),
+            .unwrap(),
         );
 
         let params = CreateCommitParams::builder()
             .framing_parameters(framing_parameters)
-            .proposal_store(&proposal_store)
             .build();
         let create_commit_result = group_state
             .create_commit(
@@ -377,18 +375,16 @@ fn test_welcome_message_encoding(provider: &impl crate::storage::OpenMlsProvider
             )
             .expect("Could not create proposal.");
 
-        let proposal_store = ProposalStore::from_queued_proposal(
-            QueuedProposal::from_authenticated_content_by_ref(
-                group_state.ciphersuite(),
-                provider.crypto(),
-                add,
-            )
-            .expect("Could not create QueuedProposal."),
+        let ciphersuite = group_state.ciphersuite();
+
+        group_state.proposal_store_mut().empty();
+        group_state.proposal_store_mut().add(
+            QueuedProposal::from_authenticated_content_by_ref(ciphersuite, provider.crypto(), add)
+                .unwrap(),
         );
 
         let params = CreateCommitParams::builder()
             .framing_parameters(framing_parameters)
-            .proposal_store(&proposal_store)
             .build();
         let create_commit_result = group_state
             .create_commit(params, provider, &credential_with_key_and_signer.signer)

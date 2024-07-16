@@ -2,10 +2,7 @@ use super::{super::errors::*, *};
 use crate::{
     framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, Sender},
     group::{
-        core_group::{
-            proposals::{ProposalQueue, ProposalStore},
-            staged_commit::StagedCommitState,
-        },
+        core_group::{proposals::ProposalQueue, staged_commit::StagedCommitState},
         StagedCommit,
     },
     messages::{proposals::ProposalOrRef, Commit},
@@ -47,7 +44,6 @@ impl PublicGroup {
     pub(crate) fn validate_commit<'a>(
         &self,
         mls_content: &'a AuthenticatedContent,
-        proposal_store: &ProposalStore,
         crypto: &impl OpenMlsCrypto,
     ) -> Result<(&'a Commit, ProposalQueue, LeafNodeIndex), StageCommitError> {
         let ciphersuite = self.ciphersuite();
@@ -88,7 +84,7 @@ impl PublicGroup {
             ciphersuite,
             crypto,
             commit.proposals.as_slice().to_vec(),
-            proposal_store,
+            self.proposal_store(),
             sender,
         )
         .map_err(|e| {
@@ -211,11 +207,9 @@ impl PublicGroup {
     pub(crate) fn stage_commit(
         &self,
         mls_content: &AuthenticatedContent,
-        proposal_store: &ProposalStore,
         crypto: &impl OpenMlsCrypto,
     ) -> Result<StagedCommit, StageCommitError> {
-        let (commit, proposal_queue, sender_index) =
-            self.validate_commit(mls_content, proposal_store, crypto)?;
+        let (commit, proposal_queue, sender_index) = self.validate_commit(mls_content, crypto)?;
 
         let staged_diff = self.stage_diff(mls_content, &proposal_queue, sender_index, crypto)?;
         let staged_state = PublicStagedCommitState {

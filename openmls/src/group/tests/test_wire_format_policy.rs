@@ -2,7 +2,7 @@
 
 use openmls_traits::{signatures::Signer, types::Ciphersuite};
 
-use crate::{framing::*, group::*};
+use crate::{framing::*, group::*, treesync::LeafNodeParameters};
 
 use super::utils::{
     generate_credential_with_key, generate_key_package, CredentialWithKeyAndSigner,
@@ -86,7 +86,11 @@ fn receive_message(
         .expect("error creating bob's group from staged join");
 
     let (message, _welcome, _group_info) = bob_group
-        .self_update(provider, &bob_credential_with_key_and_signer.signer)
+        .self_update(
+            provider,
+            &bob_credential_with_key_and_signer.signer,
+            LeafNodeParameters::default(),
+        )
         .expect("An unexpected error occurred.");
     message.into()
 }

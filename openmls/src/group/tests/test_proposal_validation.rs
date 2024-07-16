@@ -1,7 +1,7 @@
 //! This module tests the validation of proposals as defined in
 //! https://openmls.tech/book/message_validation.html#semantic-validation-of-proposals-covered-by-a-commit
 
-use crate::storage::OpenMlsProvider;
+use crate::{storage::OpenMlsProvider, test_utils::frankenstein::*, treesync::LeafNodeParameters};
 use openmls_traits::{
     prelude::{openmls_types::*, *},
     signatures::Signer,
@@ -914,7 +914,11 @@ fn test_valsem103_valsem104(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
 
     // Create the Commit.
     let serialized_update = alice_group
-        .self_update(provider, &alice_credential_with_key_and_signer.signer)
+        .self_update(
+            provider,
+            &alice_credential_with_key_and_signer.signer,
+            LeafNodeParameters::default(),
+        )
         .expect("Error creating self-update")
         .tls_serialize_detached()
         .expect("Could not serialize message.");
@@ -1186,7 +1190,11 @@ fn test_valsem105() {
 
         // Create the Commit.
         let serialized_update = alice_group
-            .self_update(provider, &alice_credential_with_key_and_signer.signer)
+            .self_update(
+                provider,
+                &alice_credential_with_key_and_signer.signer,
+                LeafNodeParameters::default(),
+            )
             .unwrap()
             .tls_serialize_detached()
             .unwrap();
@@ -1591,7 +1599,11 @@ fn test_valsem108() {
 
     // Create the Commit.
     let serialized_update = alice_group
-        .self_update(provider, &alice_credential_with_key_and_signer.signer)
+        .self_update(
+            provider,
+            &alice_credential_with_key_and_signer.signer,
+            LeafNodeParameters::default(),
+        )
         .expect("Error creating self-update")
         .tls_serialize_detached()
         .expect("Could not serialize message.");
@@ -1685,33 +1697,74 @@ fn test_valsem110() {
         .encryption_key()
         .clone();
 
-    let mut update_leaf_node = bob_leaf_node;
-    update_leaf_node
-        .update_and_re_sign(
-            alice_encryption_key.clone(),
-            None,
-            bob_group.group_id().clone(),
-            LeafNodeIndex::new(1),
-            &bob_credential_with_key_and_signer.signer,
-        )
-        .unwrap();
-
     // We first go the manual route
     let update_proposal: MlsMessageIn = bob_group
         .propose_self_update(
             provider,
             &bob_credential_with_key_and_signer.signer,
-            Some(update_leaf_node.clone()),
+            LeafNodeParameters::default(),
         )
         .map(|(out, _)| MlsMessageIn::from(out))
         .expect("error while creating remove proposal");
 
+    // Prepare the modified update proposal:
+
+    let mut franken_leaf_node = FrankenLeafNode::from(bob_leaf_node.clone());
+    franken_leaf_node.encryption_key = alice_encryption_key.key().clone();
+    franken_leaf_node.leaf_node_source = FrankenLeafNodeSource::Update;
+    franken_leaf_node.resign(
+        Some(bob_group.group().own_tree_position().into()),
+        &bob_credential_with_key_and_signer.signer,
+    );
+
+    let franken_message_in = FrankenMlsMessage::from(MlsMessageOut::from(update_proposal.clone()));
+
+    // Access the content that's inside the message.
+    let mut content =
+        if let FrankenMlsMessageBody::PublicMessage(public_message) = franken_message_in.body {
+            public_message.content
+        } else {
+            panic!("Unexpected message type");
+        };
+
+    // Replace the proposal inside the public message
+    match content.body {
+        FrankenFramedContentBody::Proposal(FrankenProposal::Update(ref mut update)) => {
+            let update_proposal = FrankenUpdateProposal {
+                leaf_node: franken_leaf_node.clone(),
+            };
+            *update = update_proposal;
+        }
+        _ => {
+            panic!("Unexpected content type");
+        }
+    }
+
+    // Rebuild the PublicMessage with the new content
+    let group_context = bob_group.export_group_context().clone();
+    let membership_key = bob_group
+        .group()
+        .message_secrets()
+        .membership_key()
+        .as_slice();
+
+    let new_public_message = FrankenPublicMessage::auth(
+        provider,
+        ciphersuite,
+        &bob_credential_with_key_and_signer.signer,
+        content,
+        Some(&group_context.into()),
+        Some(membership_key),
+        None,
+    );
+
+    // And turn it into a protocol message
+    let protocol_message =
+        ProtocolMessage::PublicMessage(PublicMessage::from(new_public_message).into());
+
     // Have Alice process this proposal.
     if let ProcessedMessageContent::ProposalMessage(proposal) = alice_group
-        .process_message(
-            provider,
-            update_proposal.try_into_protocol_message().unwrap(),
-        )
+        .process_message(provider, protocol_message)
         .expect("error processing proposal")
         .into_content()
     {
@@ -1750,7 +1803,11 @@ fn test_valsem110() {
 
     // Create the Commit.
     let serialized_update = alice_group
-        .self_update(provider, &alice_credential_with_key_and_signer.signer)
+        .self_update(
+            provider,
+            &alice_credential_with_key_and_signer.signer,
+            LeafNodeParameters::default(),
+        )
         .expect("Error creating self-update")
         .tls_serialize_detached()
         .expect("Could not serialize message.");
@@ -1763,7 +1820,7 @@ fn test_valsem110() {
     let original_plaintext = plaintext.clone();
 
     let update_proposal = Proposal::Update(UpdateProposal {
-        leaf_node: update_leaf_node,
+        leaf_node: franken_leaf_node.into(),
     });
 
     // Artificially add the proposal.
@@ -1837,7 +1894,11 @@ fn test_valsem111() {
     // We now have Alice create a commit. That commit should not contain any
     // proposals, just a path.
     let commit = alice_group
-        .self_update(provider, &alice_credential_with_key_and_signer.signer)
+        .self_update(
+            provider,
+            &alice_credential_with_key_and_signer.signer,
+            LeafNodeParameters::default(),
+        )
         .expect("Error creating self-update");
 
     // Check that there's no proposal in it.
@@ -1918,7 +1979,11 @@ fn test_valsem111() {
         .unwrap();
 
     let commit = alice_group
-        .self_update(provider, &alice_credential_with_key_and_signer.signer)
+        .self_update(
+            provider,
+            &alice_credential_with_key_and_signer.signer,
+            LeafNodeParameters::default(),
+        )
         .expect("Error creating self-update");
 
     let serialized_update = commit
@@ -1998,7 +2063,11 @@ fn test_valsem112() {
     // However, we can test the receiving side by crafting such a proposal
     // manually.
     let commit = alice_group
-        .propose_self_update(provider, &alice_credential_with_key_and_signer.signer, None)
+        .propose_self_update(
+            provider,
+            &alice_credential_with_key_and_signer.signer,
+            LeafNodeParameters::default(),
+        )
         .expect("Error creating self-update");
 
     // Check that the sender type is indeed `member`.

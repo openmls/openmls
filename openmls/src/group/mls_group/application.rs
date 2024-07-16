@@ -24,7 +24,7 @@ impl MlsGroup {
                 MlsGroupStateError::UseAfterEviction,
             ));
         }
-        if !self.proposal_store.is_empty() {
+        if !self.proposal_store().is_empty() {
             return Err(CreateMessageError::GroupStateError(
                 MlsGroupStateError::PendingProposal,
             ));
