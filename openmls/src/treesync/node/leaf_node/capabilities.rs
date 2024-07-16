@@ -93,6 +93,11 @@ impl Capabilities {
         }
     }
 
+    /// Creates a new [`CapabilitiesBuilder`] for constructing [`Capabilities`]
+    pub fn builder() -> CapabilitiesBuilder {
+        CapabilitiesBuilder(Self::default())
+    }
+
     // ---------------------------------------------------------------------------------------------
 
     /// Get a reference to the list of versions in this extension.
@@ -171,6 +176,56 @@ impl Capabilities {
     /// Check if these [`Capabilities`] contain all the credentials.
     pub(crate) fn contains_credential(&self, credential_type: &CredentialType) -> bool {
         self.credentials().contains(credential_type)
+    }
+}
+
+/// A helper for building [`Capabilities`]
+#[derive(Debug, Clone)]
+pub struct CapabilitiesBuilder(Capabilities);
+
+impl CapabilitiesBuilder {
+    /// Sets the `versions` field on the [`Capabilities`].
+    pub fn versions(self, versions: Vec<ProtocolVersion>) -> Self {
+        Self(Capabilities { versions, ..self.0 })
+    }
+
+    /// Sets the `ciphersuites` field on the [`Capabilities`].
+    pub fn ciphersuites(self, ciphersuites: Vec<Ciphersuite>) -> Self {
+        let ciphersuites = ciphersuites.into_iter().map(|cs| cs.into()).collect();
+
+        Self(Capabilities {
+            ciphersuites,
+            ..self.0
+        })
+    }
+
+    /// Sets the `extensions` field on the [`Capabilities`].
+    pub fn extensions(self, extensions: Vec<ExtensionType>) -> Self {
+        Self(Capabilities {
+            extensions,
+            ..self.0
+        })
+    }
+
+    /// Sets the `proposals` field on the [`Capabilities`].
+    pub fn proposals(self, proposals: Vec<ProposalType>) -> Self {
+        Self(Capabilities {
+            proposals,
+            ..self.0
+        })
+    }
+
+    /// Sets the `credentials` field on the [`Capabilities`].
+    pub fn credentials(self, credentials: Vec<CredentialType>) -> Self {
+        Self(Capabilities {
+            credentials,
+            ..self.0
+        })
+    }
+
+    /// Builds the [`Capabilities`].
+    pub fn build(self) -> Capabilities {
+        self.0
     }
 }
 
