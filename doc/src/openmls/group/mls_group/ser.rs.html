@@ -60,8 +60,6 @@
 <a href="#60" id="60">60</a>
 <a href="#61" id="61">61</a>
 <a href="#62" id="62">62</a>
-<a href="#63" id="63">63</a>
-<a href="#64" id="64">64</a>
 </pre></div><pre class="rust"><code><span class="comment">// TODO #245: Remove this once we have a proper serialization format
 </span><span class="attr">#![allow(deprecated)]
 
@@ -83,7 +81,6 @@
     mls_group_config: MlsGroupJoinConfig,
     group: CoreGroup,
     own_leaf_nodes: Vec&lt;LeafNode&gt;,
-    aad: Vec&lt;u8&gt;,
     resumption_psk_store: ResumptionPskStore,
     group_state: MlsGroupState,
 }
@@ -95,7 +92,7 @@
             mls_group_config: <span class="self">self</span>.mls_group_config,
             group: <span class="self">self</span>.group,
             own_leaf_nodes: <span class="self">self</span>.own_leaf_nodes,
-            aad: <span class="self">self</span>.aad,
+            aad: Vec::new(),
             group_state: <span class="self">self</span>.group_state,
         }
     }
@@ -110,7 +107,6 @@
         state.serialize_field(<span class="string">"mls_group_config"</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.mls_group_config)<span class="question-mark">?</span>;
         state.serialize_field(<span class="string">"group"</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.group)<span class="question-mark">?</span>;
         state.serialize_field(<span class="string">"own_leaf_nodes"</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.own_leaf_nodes)<span class="question-mark">?</span>;
-        state.serialize_field(<span class="string">"aad"</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.aad)<span class="question-mark">?</span>;
         state.serialize_field(<span class="string">"resumption_psk_store"</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.group.resumption_psk_store)<span class="question-mark">?</span>;
         state.serialize_field(<span class="string">"group_state"</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.group_state)<span class="question-mark">?</span>;
         state.end()

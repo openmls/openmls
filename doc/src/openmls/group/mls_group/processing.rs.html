@@ -186,6 +186,7 @@
 <a href="#186" id="186">186</a>
 <a href="#187" id="187">187</a>
 <a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Processing functions of an [`MlsGroup`] for incoming messages.
 
 </span><span class="kw">use </span>std::mem;
@@ -303,6 +304,7 @@
             .write_group_state(<span class="self">self</span>.group_id(), <span class="kw-2">&amp;</span><span class="self">self</span>.group_state)
             .map_err(CommitToPendingProposalsError::StorageError)<span class="question-mark">?</span>;
 
+        <span class="self">self</span>.reset_aad();
         <span class="prelude-val">Ok</span>((
             mls_message,
             create_commit_result

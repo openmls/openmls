@@ -142,6 +142,8 @@
 <a href="#142" id="142">142</a>
 <a href="#143" id="143">143</a>
 <a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>core_group::create_commit_params::CreateCommitParams;
 <span class="kw">use </span>openmls_traits::{signatures::Signer, storage::StorageProvider <span class="kw">as _</span>};
 
@@ -204,6 +206,7 @@
             .store(provider.storage())
             .map_err(SelfUpdateError::StorageError)<span class="question-mark">?</span>;
 
+        <span class="self">self</span>.reset_aad();
         <span class="prelude-val">Ok</span>((
             mls_message,
             create_commit_result
@@ -283,6 +286,7 @@
 
         <span class="kw">let </span>mls_message = <span class="self">self</span>.content_to_mls_message(update_proposal, provider)<span class="question-mark">?</span>;
 
+        <span class="self">self</span>.reset_aad();
         <span class="prelude-val">Ok</span>((mls_message, proposal_ref))
     }
 }

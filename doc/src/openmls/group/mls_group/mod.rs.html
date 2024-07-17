@@ -507,16 +507,6 @@
 <a href="#507" id="507">507</a>
 <a href="#508" id="508">508</a>
 <a href="#509" id="509">509</a>
-<a href="#510" id="510">510</a>
-<a href="#511" id="511">511</a>
-<a href="#512" id="512">512</a>
-<a href="#513" id="513">513</a>
-<a href="#514" id="514">514</a>
-<a href="#515" id="515">515</a>
-<a href="#516" id="516">516</a>
-<a href="#517" id="517">517</a>
-<a href="#518" id="518">518</a>
-<a href="#519" id="519">519</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! MLS Group
 //!
 //! This module contains [`MlsGroup`] and its submodules.
@@ -680,8 +670,9 @@
     // are needed in case an update proposal is committed by another group
     // member. The vector is emptied after every epoch change.
     </span>own_leaf_nodes: Vec&lt;LeafNode&gt;,
-    <span class="comment">// The AAD that is used for all outgoing handshake messages. The AAD can be set through
-    // `set_aad()`.
+    <span class="comment">// Additional authenticated data (AAD) for the next outgoing message. This
+    // is ephemeral and will be reset by every API call that successfully
+    // returns an [`MlsMessageOut`].
     </span>aad: Vec&lt;u8&gt;,
     <span class="comment">// A variable that indicates the state of the group. See [`MlsGroupState`]
     // for more information.
@@ -706,19 +697,17 @@
         storage.write_mls_join_config(<span class="self">self</span>.group_id(), mls_group_config)
     }
 
-    <span class="doccomment">/// Returns the AAD used in the framing.
-    </span><span class="kw">pub fn </span>aad(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.aad
+    <span class="doccomment">/// Sets the additional authenticated data (AAD) for the next outgoing
+    /// message. This is ephemeral and will be reset by every API call that
+    /// successfully returns an [`MlsMessageOut`].
+    </span><span class="kw">pub fn </span>set_aad(<span class="kw-2">&amp;mut </span><span class="self">self</span>, aad: Vec&lt;u8&gt;) {
+        <span class="self">self</span>.aad = aad;
     }
 
-    <span class="doccomment">/// Sets the AAD used in the framing.
-    </span><span class="kw">pub fn </span>set_aad&lt;Storage: StorageProvider&gt;(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        storage: <span class="kw-2">&amp;</span>Storage,
-        aad: <span class="kw-2">&amp;</span>[u8],
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Storage::Error&gt; {
-        <span class="self">self</span>.aad = aad.to_vec();
-        storage.write_aad(<span class="self">self</span>.group_id(), aad)
+    <span class="doccomment">/// Returns the additional authenticated data (AAD) for the next outgoing
+    /// message.
+    </span><span class="kw">pub fn </span>aad(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.aad
     }
 
     <span class="comment">// === Advanced functions ===
@@ -860,7 +849,7 @@
         <span class="kw">let </span>group_config = storage.mls_group_join_config(group_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>core_group = CoreGroup::load(storage, group_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>own_leaf_nodes = storage.own_leaf_nodes(group_id)<span class="question-mark">?</span>;
-        <span class="kw">let </span>aad = storage.aad(group_id)<span class="question-mark">?</span>;
+        <span class="kw">let </span>aad = Vec::new();
         <span class="kw">let </span>group_state = storage.group_state(group_id)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>build = || -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
@@ -885,7 +874,6 @@
         storage.delete_group_config(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
         storage.clear_proposal_queue::&lt;GroupId, ProposalRef&gt;(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
         storage.delete_own_leaf_nodes(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
-        storage.delete_aad(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
         storage.delete_group_state(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(())
@@ -966,6 +954,12 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>proposal_store_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>ProposalStore {
         <span class="self">self</span>.group.proposal_store_mut()
     }
+
+    <span class="doccomment">/// Resets the AAD.
+    </span><span class="attr">#[inline]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>reset_aad(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.aad.clear();
+    }
 }
 
 <span class="comment">// Methods used in tests
@@ -989,20 +983,6 @@
     </span><span class="attr">#[cfg(test)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>group(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>CoreGroup {
         <span class="kw-2">&amp;</span><span class="self">self</span>.group
-    }
-
-    <span class="doccomment">/// Removes a specific proposal from the store.
-    </span><span class="kw">pub fn </span>remove_pending_proposal&lt;Storage: StorageProvider&gt;(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        storage: <span class="kw-2">&amp;</span>Storage,
-        proposal_ref: ProposalRef,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), MlsGroupStateError&lt;Storage::Error&gt;&gt; {
-        storage
-            .remove_proposal(<span class="self">self</span>.group_id(), <span class="kw-2">&amp;</span>proposal_ref)
-            .map_err(MlsGroupStateError::StorageError)<span class="question-mark">?</span>;
-        <span class="self">self</span>.proposal_store_mut()
-            .remove(proposal_ref)
-            .ok_or(MlsGroupStateError::PendingProposalNotFound)
     }
 }
 
