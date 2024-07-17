@@ -268,6 +268,17 @@ fn book_operations() {
         .build();
     // ANCHOR_END: mls_group_config_example
 
+    // ANCHOR: mls_group_external_join_config_example
+    let mls_group_external_join_config = MlsGroupExternalJoinConfig::builder(b"")
+        .padding_size(100)
+        .sender_ratchet_configuration(SenderRatchetConfiguration::new(
+            10,   // out_of_order_tolerance
+            2000, // maximum_forward_distance
+        ))
+        .use_ratchet_tree_extension(true)
+        .build();
+    // ANCHOR_END: mls_group_external_join_config_example
+
     let welcome: MlsMessageIn = welcome.into();
     let welcome = welcome
         .into_welcome()
@@ -295,10 +306,7 @@ fn book_operations() {
         &dave_signature_keys,
         None, // No ratchtet tree extension
         verifiable_group_info,
-        &mls_group_config,
-        None, // No special capabilities
-        None, // No special extensions
-        &[],
+        &mls_group_external_join_config,
         dave_credential,
     )
     .expect("Error joining from external commit");

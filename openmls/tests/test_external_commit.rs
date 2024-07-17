@@ -83,10 +83,7 @@ fn test_external_commit() {
             &bob_signature_keys,
             None,
             verifiable_group_info,
-            &MlsGroupJoinConfig::default(),
-            None,
-            None,
-            b"",
+            &MlsGroupExternalJoinConfig::default(),
             bob_credential,
         )
         .unwrap();
@@ -102,10 +99,7 @@ fn test_external_commit() {
             &bob_signature_keys,
             None,
             verifiable_group_info_broken,
-            &MlsGroupJoinConfig::default(),
-            None,
-            None,
-            b"",
+            &MlsGroupExternalJoinConfig::default(),
             bob_credential,
         )
         .unwrap_err();
@@ -144,10 +138,7 @@ fn test_group_info() {
         &bob_signature_keys,
         None,
         verifiable_group_info,
-        &MlsGroupJoinConfig::default(),
-        None,
-        None,
-        b"",
+        &MlsGroupExternalJoinConfig::default(),
         bob_credential,
     )
     .map(|(group, msg, group_info)| (group, MlsMessageIn::from(msg), group_info))
@@ -195,10 +186,7 @@ fn test_group_info() {
         &bob_signature_keys,
         None,
         verifiable_group_info,
-        &MlsGroupJoinConfig::default(),
-        None,
-        None,
-        b"",
+        &MlsGroupExternalJoinConfig::default(),
         bob_credential,
     )
     .unwrap();

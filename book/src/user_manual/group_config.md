@@ -1,8 +1,8 @@
 # Group configuration
 
-Two very similar structs can help configure groups upon their creation: `MlsGroupJoinConfig` and `MlsGroupCreateConfig`.
+Three very similar structs can help configure groups upon their creation: `MlsGroupJoinConfig`, `MlsGroupExternalJoinConfig` and `MlsGroupCreateConfig`.
 
-`MlsGroupJoinConfig` contains the following runtime-relevant configuration options for an `MlsGroup` and can be set on a per-client basis when a group is joined.
+`MlsGroupJoinConfig` contains the following runtime-relevant configuration options for an `MlsGroup` and can be set on a per-client basis when a group is joined using a welcome message.
 
 | Name                           | Type                            | Explanation                                                                                      |
 | ------------------------------ | ------------------------------- | ------------------------------------------------------------------------------------------------ |
@@ -13,6 +13,20 @@ Two very similar structs can help configure groups upon their creation: `MlsGrou
 | `use_ratchet_tree_extension`   | `bool`                          | Flag indicating the Ratchet Tree Extension should be used. The default is `false`.               |
 | `sender_ratchet_configuration` | `SenderRatchetConfiguration`    | Sender ratchet configuration.                                                                    |
 
+`MlsGroupJoinConfig` contains the following runtime-relevant configuration options for an `MlsGroup` and can be set on a per-client basis when a group is joined using an external commit.
+
+| Name                           | Type                            | Explanation                                                                                      |
+| ------------------------------ | ------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `wire_format_policy`           | `WireFormatPolicy`              | Defines the wire format policy for outgoing and incoming handshake messages.                     |
+| `padding_size`                 | `usize`                         | Size of padding in bytes. The default is 0.                                                      |
+| `max_past_epochs`              | `usize`                         | Maximum number of past epochs for which application messages can be decrypted. The default is 0. |
+| `number_of_resumption_psks`    | `usize`                         | Number of resumption psks to keep. The default is 0.                                             |
+| `use_ratchet_tree_extension`   | `bool`                          | Flag indicating the Ratchet Tree Extension should be used. The default is `false`.               |
+| `sender_ratchet_configuration` | `SenderRatchetConfiguration`    | Sender ratchet configuration.                                                                    |
+| `extensions`                   | `Option<Extensions>`            | Extensions set on the leaf node of the newly joined member.                                      |
+| `capabilities`                 | `Option<Capabilities>`          | Capabiltiies set in the leaf node of the newly joined member.                                    |
+| `aad`                          | `&[u8]`                         | The AAD used in the generation of the external commit message.                                   |
+
 `MlsGroupCreateConfig` contains an `MlsGroupJoinConfig`, as well as a few additional parameters that are part of the group state that is agreed-upon by all group members. It can be set at the time of a group's creation and contains the following additional configuration options.
 
 | Name                           | Type                            | Explanation                                                                                      |
@@ -21,12 +35,18 @@ Two very similar structs can help configure groups upon their creation: `MlsGrou
 | `capabilities` .               | `Capabilities`                  | Lists the capabilities of the group's creator.                                                   |
 | `leaf_extensions` .            | `Extensions`                    | Extensions to be included in the group creator's leaf                                            |
 
-Both ways of group configurations can be specified by using the struct's builder pattern, or choosing their default values. The default value contains safe values for all parameters and is suitable for scenarios without particular requirements.
+All three ways of group configurations can be specified by using the struct's builder pattern, or choosing their default values. The default value contains safe values for all parameters and is suitable for scenarios without particular requirements.
 
 Example join configuration:
 
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code.rs:mls_group_config_example}}
+```
+
+Example external join configuration:
+
+```rust,no_run,noplayground
+{{#include ../../../openmls/tests/book_code.rs:mls_group_external_join_config_example}}
 ```
 
 Example create configuration:

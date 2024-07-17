@@ -13,10 +13,7 @@ use crate::{
     },
     schedule::psk::{store::ResumptionPskStore, PreSharedKeyId},
     storage::OpenMlsProvider,
-    treesync::{
-        node::leaf_node::{Capabilities, LeafNodeParameters},
-        RatchetTreeIn,
-    },
+    treesync::{node::leaf_node::LeafNodeParameters, RatchetTreeIn},
 };
 
 impl MlsGroup {
@@ -86,13 +83,13 @@ impl MlsGroup {
         signer: &impl Signer,
         ratchet_tree: Option<RatchetTreeIn>,
         verifiable_group_info: VerifiableGroupInfo,
-        mls_group_config: &MlsGroupJoinConfig,
-        capabilities: Option<Capabilities>,
-        extensions: Option<Extensions>,
-        aad: &[u8],
+        mls_group_config: &MlsGroupExternalJoinConfig,
         credential_with_key: CredentialWithKey,
     ) -> Result<(Self, MlsMessageOut, Option<GroupInfo>), ExternalCommitError<Provider::StorageError>>
     {
+        let (mls_group_config, capabilities, extensions, aad) =
+            mls_group_config.clone().into_parts();
+
         // Prepare the commit parameters
         let framing_parameters = FramingParameters::new(aad, WireFormat::PublicMessage);
 
@@ -115,7 +112,7 @@ impl MlsGroup {
         group.set_max_past_epochs(mls_group_config.max_past_epochs);
 
         let mls_group = MlsGroup {
-            mls_group_config: mls_group_config.clone(),
+            mls_group_config,
             group,
             own_leaf_nodes: vec![],
             aad: vec![],

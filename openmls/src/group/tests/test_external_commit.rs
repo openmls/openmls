@@ -5,7 +5,7 @@ use crate::{
     framing::{MlsMessageIn, Sender},
     group::{
         tests::utils::generate_credential_with_key, MlsGroup, MlsGroupCreateConfig,
-        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        MlsGroupExternalJoinConfig, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     prelude::ProcessedMessageContent,
 };
@@ -45,6 +45,13 @@ fn test_external_commit() {
 
     // Bob wants to commit externally.
 
+    let external_join_config = MlsGroupExternalJoinConfig::from_parts(
+        alice_group.configuration().clone(),
+        None,
+        None,
+        &[],
+    );
+
     let verifiable_group_info = alice_group
         .export_group_info(provider, &alice_credential.signer, false)
         .unwrap()
@@ -57,10 +64,7 @@ fn test_external_commit() {
         &bob_credential.signer,
         Some(tree_option.into()),
         verifiable_group_info,
-        alice_group.configuration(),
-        None,
-        None,
-        &[],
+        &external_join_config,
         bob_credential.credential_with_key.clone(),
     )
     .unwrap();
@@ -110,6 +114,13 @@ fn test_external_commit() {
 
     // Charlie wants to commit externally.
 
+    let external_join_config = MlsGroupExternalJoinConfig::from_parts(
+        alice_group.configuration().clone(),
+        None,
+        None,
+        &[],
+    );
+
     let verifiable_group_info = alice_group
         .export_group_info(provider, &alice_credential.signer, false)
         .unwrap()
@@ -122,10 +133,7 @@ fn test_external_commit() {
         &charlie_credential.signer,
         Some(tree_option.into()),
         verifiable_group_info,
-        alice_group.configuration(),
-        None,
-        None,
-        &[],
+        &external_join_config,
         charlie_credential.credential_with_key.clone(),
     )
     .unwrap();
@@ -191,15 +199,15 @@ fn test_external_commit() {
         .unwrap();
     let tree_option = bob_group.export_ratchet_tree();
 
+    let external_join_config =
+        MlsGroupExternalJoinConfig::from_parts(bob_group.configuration().clone(), None, None, &[]);
+
     let (mut alice_group, public_message_commit, _) = MlsGroup::join_by_external_commit(
         provider,
         &alice_credential.signer,
         Some(tree_option.into()),
         verifiable_group_info,
-        bob_group.configuration(),
-        None,
-        None,
-        &[],
+        &external_join_config,
         alice_credential.credential_with_key.clone(),
     )
     .unwrap();
