@@ -42,21 +42,28 @@ fn mls_group_operations() {
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
         let group_id = GroupId::from_slice(b"Test Group");
 
+        let alice_provider = &Provider::default();
+        let bob_provider = &Provider::default();
+        let charlie_provider = &Provider::default();
+
         // Generate credentials with keys
         let (alice_credential, alice_signer) =
-            new_credential(provider, b"Alice", ciphersuite.signature_algorithm());
+            new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
 
         let (bob_credential, bob_signer) =
-            new_credential(provider, b"Bob", ciphersuite.signature_algorithm());
+            new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
 
-        let (charlie_credential, charlie_signer) =
-            new_credential(provider, b"Charlie", ciphersuite.signature_algorithm());
+        let (charlie_credential, charlie_signer) = new_credential(
+            charlie_provider,
+            b"Charlie",
+            ciphersuite.signature_algorithm(),
+        );
 
         // Generate KeyPackages
         let bob_key_package = generate_key_package(
             ciphersuite,
             Extensions::empty(),
-            provider,
+            bob_provider,
             bob_credential.clone(),
             &bob_signer,
         );
@@ -70,7 +77,7 @@ fn mls_group_operations() {
 
         // === Alice creates a group ===
         let mut alice_group = MlsGroup::new_with_group_id(
-            provider,
+            alice_provider,
             &alice_signer,
             &mls_group_create_config,
             group_id.clone(),
@@ -79,10 +86,11 @@ fn mls_group_operations() {
         .expect("An unexpected error occurred.");
 
         // === Alice adds Bob ===
-        let welcome = match alice_group.add_members(provider, &alice_signer, &[bob_key_package]) {
-            Ok((_, welcome, _)) => welcome,
-            Err(e) => panic!("Could not add member to group: {e:?}"),
-        };
+        let welcome =
+            match alice_group.add_members(alice_provider, &alice_signer, &[bob_key_package]) {
+                Ok((_, welcome, _)) => welcome,
+                Err(e) => panic!("Could not add member to group: {e:?}"),
+            };
 
         // Check that we received the correct proposals
         if let Some(staged_commit) = alice_group.pending_commit() {
@@ -104,7 +112,7 @@ fn mls_group_operations() {
         }
 
         alice_group
-            .merge_pending_commit(provider)
+            .merge_pending_commit(alice_provider)
             .expect("error merging pending commit");
 
         // Check that the group now has two members
@@ -123,13 +131,13 @@ fn mls_group_operations() {
             .expect("expected the message to be a welcome message");
 
         let mut bob_group = StagedWelcome::new_from_welcome(
-            provider,
+            bob_provider,
             mls_group_create_config.join_config(),
             welcome,
             Some(alice_group.export_ratchet_tree().into()),
         )
         .expect("Error creating StagedWelcome from Welcome")
-        .into_group(provider)
+        .into_group(bob_provider)
         .expect("Error creating group from StagedWelcome");
 
         // Make sure that both groups have the same members
@@ -144,12 +152,12 @@ fn mls_group_operations() {
         // === Alice sends a message to Bob ===
         let message_alice = b"Hi, I'm Alice!";
         let queued_message = alice_group
-            .create_message(provider, &alice_signer, message_alice)
+            .create_message(alice_provider, &alice_signer, message_alice)
             .expect("Error creating application message");
 
         let processed_message = bob_group
             .process_message(
-                provider,
+                bob_provider,
                 queued_message
                     .clone()
                     .into_protocol_message()
@@ -177,12 +185,12 @@ fn mls_group_operations() {
 
         // === Bob updates and commits ===
         let (queued_message, welcome_option, _group_info) = bob_group
-            .self_update(provider, &bob_signer, LeafNodeParameters::default())
+            .self_update(bob_provider, &bob_signer, LeafNodeParameters::default())
             .unwrap();
 
         let alice_processed_message = alice_group
             .process_message(
-                provider,
+                alice_provider,
                 queued_message
                     .clone()
                     .into_protocol_message()
@@ -196,14 +204,14 @@ fn mls_group_operations() {
         {
             // Merge staged Commit
             alice_group
-                .merge_staged_commit(provider, *staged_commit)
+                .merge_staged_commit(alice_provider, *staged_commit)
                 .unwrap();
         } else {
             unreachable!("Expected a StagedCommit.");
         }
 
         bob_group
-            .merge_pending_commit(provider)
+            .merge_pending_commit(bob_provider)
             .expect("error merging pending commit");
 
         // Check we didn't receive a Welcome message
@@ -211,8 +219,10 @@ fn mls_group_operations() {
 
         // Check that both groups have the same state
         assert_eq!(
-            alice_group.export_secret(provider, "", &[], 32).unwrap(),
-            bob_group.export_secret(provider, "", &[], 32).unwrap()
+            alice_group
+                .export_secret(alice_provider, "", &[], 32)
+                .unwrap(),
+            bob_group.export_secret(bob_provider, "", &[], 32).unwrap()
         );
 
         // Make sure that both groups have the same public tree
@@ -223,12 +233,12 @@ fn mls_group_operations() {
 
         // === Alice updates and commits ===
         let (queued_message, _) = alice_group
-            .propose_self_update(provider, &alice_signer, LeafNodeParameters::default())
+            .propose_self_update(alice_provider, &alice_signer, LeafNodeParameters::default())
             .unwrap();
 
         let bob_processed_message = bob_group
             .process_message(
-                provider,
+                bob_provider,
                 queued_message
                     .clone()
                     .into_protocol_message()
@@ -248,7 +258,7 @@ fn mls_group_operations() {
                 );
                 // Store proposal
                 alice_group
-                    .store_pending_proposal(provider.storage(), *staged_proposal.clone())
+                    .store_pending_proposal(alice_provider.storage(), *staged_proposal.clone())
                     .unwrap();
             } else {
                 unreachable!("Expected a Proposal.");
@@ -261,19 +271,19 @@ fn mls_group_operations() {
             ));
 
             bob_group
-                .store_pending_proposal(provider.storage(), *staged_proposal)
+                .store_pending_proposal(bob_provider.storage(), *staged_proposal)
                 .unwrap();
         } else {
             unreachable!("Expected a QueuedProposal.");
         }
 
         let (queued_message, _welcome_option, _group_info) = alice_group
-            .commit_to_pending_proposals(provider, &alice_signer)
+            .commit_to_pending_proposals(alice_provider, &alice_signer)
             .unwrap();
 
         let bob_processed_message = bob_group
             .process_message(
-                provider,
+                bob_provider,
                 queued_message
                     .clone()
                     .into_protocol_message()
@@ -286,20 +296,22 @@ fn mls_group_operations() {
             bob_processed_message.into_content()
         {
             bob_group
-                .merge_staged_commit(provider, *staged_commit)
+                .merge_staged_commit(bob_provider, *staged_commit)
                 .unwrap();
         } else {
             unreachable!("Expected a StagedCommit.");
         }
 
         alice_group
-            .merge_pending_commit(provider)
+            .merge_pending_commit(alice_provider)
             .expect("error merging pending commit");
 
         // Check that both groups have the same state
         assert_eq!(
-            alice_group.export_secret(provider, "", &[], 32).unwrap(),
-            bob_group.export_secret(provider, "", &[], 32).unwrap()
+            alice_group
+                .export_secret(alice_provider, "", &[], 32)
+                .unwrap(),
+            bob_group.export_secret(bob_provider, "", &[], 32).unwrap()
         );
 
         // Make sure that both groups have the same public tree
@@ -312,18 +324,18 @@ fn mls_group_operations() {
         let charlie_key_package = generate_key_package(
             ciphersuite,
             Extensions::empty(),
-            provider,
+            charlie_provider,
             charlie_credential,
             &charlie_signer,
         );
 
         let (queued_message, welcome, _group_info) = bob_group
-            .add_members(provider, &bob_signer, &[charlie_key_package])
+            .add_members(bob_provider, &bob_signer, &[charlie_key_package])
             .unwrap();
 
         let alice_processed_message = alice_group
             .process_message(
-                provider,
+                alice_provider,
                 queued_message
                     .clone()
                     .into_protocol_message()
@@ -331,7 +343,7 @@ fn mls_group_operations() {
             )
             .expect("Could not process message.");
         bob_group
-            .merge_pending_commit(provider)
+            .merge_pending_commit(bob_provider)
             .expect("error merging pending commit");
 
         // Merge Commit
@@ -339,7 +351,7 @@ fn mls_group_operations() {
             alice_processed_message.into_content()
         {
             alice_group
-                .merge_staged_commit(provider, *staged_commit)
+                .merge_staged_commit(alice_provider, *staged_commit)
                 .unwrap();
         } else {
             unreachable!("Expected a StagedCommit.");
@@ -351,13 +363,13 @@ fn mls_group_operations() {
             .expect("expected the message to be a welcome message");
 
         let mut charlie_group = StagedWelcome::new_from_welcome(
-            provider,
+            charlie_provider,
             mls_group_create_config.join_config(),
             welcome,
             Some(bob_group.export_ratchet_tree().into()),
         )
         .expect("Error creating staged join from Welcome")
-        .into_group(provider)
+        .into_group(charlie_provider)
         .expect("Error creating group from staged join");
 
         // Make sure that all groups have the same public tree
@@ -382,12 +394,12 @@ fn mls_group_operations() {
         // === Charlie sends a message to the group ===
         let message_charlie = b"Hi, I'm Charlie!";
         let queued_message = charlie_group
-            .create_message(provider, &charlie_signer, message_charlie)
+            .create_message(charlie_provider, &charlie_signer, message_charlie)
             .expect("Error creating application message");
 
         let _alice_processed_message = alice_group
             .process_message(
-                provider,
+                alice_provider,
                 queued_message
                     .clone()
                     .into_protocol_message()
@@ -396,7 +408,7 @@ fn mls_group_operations() {
             .expect("Could not process message.");
         let _bob_processed_message = bob_group
             .process_message(
-                provider,
+                bob_provider,
                 queued_message
                     .clone()
                     .into_protocol_message()
@@ -406,12 +418,16 @@ fn mls_group_operations() {
 
         // === Charlie updates and commits ===
         let (queued_message, welcome_option, _group_info) = charlie_group
-            .self_update(provider, &charlie_signer, LeafNodeParameters::default())
+            .self_update(
+                charlie_provider,
+                &charlie_signer,
+                LeafNodeParameters::default(),
+            )
             .unwrap();
 
         let alice_processed_message = alice_group
             .process_message(
-                provider,
+                alice_provider,
                 queued_message
                     .clone()
                     .into_protocol_message()
@@ -420,7 +436,7 @@ fn mls_group_operations() {
             .expect("Could not process message.");
         let bob_processed_message = bob_group
             .process_message(
-                provider,
+                bob_provider,
                 queued_message
                     .clone()
                     .into_protocol_message()
@@ -428,7 +444,7 @@ fn mls_group_operations() {
             )
             .expect("Could not process message.");
         charlie_group
-            .merge_pending_commit(provider)
+            .merge_pending_commit(charlie_provider)
             .expect("error merging pending commit");
 
         // Merge Commit
@@ -436,7 +452,7 @@ fn mls_group_operations() {
             alice_processed_message.into_content()
         {
             alice_group
-                .merge_staged_commit(provider, *staged_commit)
+                .merge_staged_commit(alice_provider, *staged_commit)
                 .unwrap();
         } else {
             unreachable!("Expected a StagedCommit.");
@@ -447,7 +463,7 @@ fn mls_group_operations() {
             bob_processed_message.into_content()
         {
             bob_group
-                .merge_staged_commit(provider, *staged_commit)
+                .merge_staged_commit(bob_provider, *staged_commit)
                 .unwrap();
         } else {
             unreachable!("Expected a StagedCommit.");
@@ -458,12 +474,18 @@ fn mls_group_operations() {
 
         // Check that all groups have the same state
         assert_eq!(
-            alice_group.export_secret(provider, "", &[], 32).unwrap(),
-            bob_group.export_secret(provider, "", &[], 32).unwrap()
+            alice_group
+                .export_secret(alice_provider, "", &[], 32)
+                .unwrap(),
+            bob_group.export_secret(bob_provider, "", &[], 32).unwrap()
         );
         assert_eq!(
-            alice_group.export_secret(provider, "", &[], 32).unwrap(),
-            charlie_group.export_secret(provider, "", &[], 32).unwrap()
+            alice_group
+                .export_secret(alice_provider, "", &[], 32)
+                .unwrap(),
+            charlie_group
+                .export_secret(charlie_provider, "", &[], 32)
+                .unwrap()
         );
 
         // Make sure that all groups have the same public tree
@@ -479,7 +501,11 @@ fn mls_group_operations() {
         // === Charlie removes Bob ===
         println!(" >>> Charlie is removing bob");
         let (queued_message, welcome_option, _group_info) = charlie_group
-            .remove_members(provider, &charlie_signer, &[bob_group.own_leaf_index()])
+            .remove_members(
+                charlie_provider,
+                &charlie_signer,
+                &[bob_group.own_leaf_index()],
+            )
             .expect("Could not remove member from group.");
 
         // Check that Bob's group is still active
@@ -487,7 +513,7 @@ fn mls_group_operations() {
 
         let alice_processed_message = alice_group
             .process_message(
-                provider,
+                alice_provider,
                 queued_message
                     .clone()
                     .into_protocol_message()
@@ -496,7 +522,7 @@ fn mls_group_operations() {
             .expect("Could not process message.");
         let bob_processed_message = bob_group
             .process_message(
-                provider,
+                bob_provider,
                 queued_message
                     .clone()
                     .into_protocol_message()
@@ -504,7 +530,7 @@ fn mls_group_operations() {
             )
             .expect("Could not process message.");
         charlie_group
-            .merge_pending_commit(provider)
+            .merge_pending_commit(charlie_provider)
             .expect("error merging pending commit");
 
         // Check that we receive the correct proposal for Alice
@@ -524,7 +550,7 @@ fn mls_group_operations() {
 
             // Merge staged Commit
             alice_group
-                .merge_staged_commit(provider, *staged_commit)
+                .merge_staged_commit(alice_provider, *staged_commit)
                 .unwrap();
         } else {
             unreachable!("Expected a StagedCommit.");
@@ -547,7 +573,7 @@ fn mls_group_operations() {
 
             // Merge staged Commit
             bob_group
-                .merge_staged_commit(provider, *staged_commit)
+                .merge_staged_commit(bob_provider, *staged_commit)
                 .unwrap();
         } else {
             unreachable!("Expected a StagedCommit.");
@@ -577,7 +603,7 @@ fn mls_group_operations() {
 
         // Check that Bob can no longer send messages
         assert!(bob_group
-            .create_message(provider, &bob_signer, b"Should not go through")
+            .create_message(bob_provider, &bob_signer, b"Should not go through")
             .is_err());
 
         // === Alice removes Charlie and re-adds Bob ===
@@ -586,19 +612,23 @@ fn mls_group_operations() {
         let bob_key_package = generate_key_package(
             ciphersuite,
             Extensions::empty(),
-            provider,
+            bob_provider,
             bob_credential.clone(),
             &bob_signer,
         );
 
         // Create RemoveProposal and process it
         let (queued_message, _) = alice_group
-            .propose_remove_member(provider, &alice_signer, charlie_group.own_leaf_index())
+            .propose_remove_member(
+                alice_provider,
+                &alice_signer,
+                charlie_group.own_leaf_index(),
+            )
             .expect("Could not create proposal to remove Charlie");
 
         let charlie_processed_message = charlie_group
             .process_message(
-                provider,
+                charlie_provider,
                 queued_message
                     .clone()
                     .into_protocol_message()
@@ -615,7 +645,7 @@ fn mls_group_operations() {
                 assert_eq!(remove_proposal.removed(), members[1].index);
                 // Store proposal
                 charlie_group
-                    .store_pending_proposal(provider.storage(), *staged_proposal.clone())
+                    .store_pending_proposal(charlie_provider.storage(), *staged_proposal.clone())
                     .unwrap();
             } else {
                 unreachable!("Expected a Proposal.");
@@ -632,12 +662,12 @@ fn mls_group_operations() {
 
         // Create AddProposal and process it
         let (queued_message, _) = alice_group
-            .propose_add_member(provider, &alice_signer, &bob_key_package)
+            .propose_add_member(alice_provider, &alice_signer, &bob_key_package)
             .expect("Could not create proposal to add Bob");
 
         let charlie_processed_message = charlie_group
             .process_message(
-                provider,
+                charlie_provider,
                 queued_message
                     .clone()
                     .into_protocol_message()
@@ -666,7 +696,7 @@ fn mls_group_operations() {
             ));
             // Store proposal
             charlie_group
-                .store_pending_proposal(provider.storage(), *staged_proposal)
+                .store_pending_proposal(charlie_provider.storage(), *staged_proposal)
                 .unwrap();
         } else {
             unreachable!("Expected a QueuedProposal.");
@@ -674,12 +704,12 @@ fn mls_group_operations() {
 
         // Commit to the proposals and process it
         let (queued_message, welcome_option, _group_info) = alice_group
-            .commit_to_pending_proposals(provider, &alice_signer)
+            .commit_to_pending_proposals(alice_provider, &alice_signer)
             .expect("Could not flush proposals");
 
         let charlie_processed_message = charlie_group
             .process_message(
-                provider,
+                charlie_provider,
                 queued_message
                     .clone()
                     .into_protocol_message()
@@ -689,7 +719,7 @@ fn mls_group_operations() {
 
         // Merge Commit
         alice_group
-            .merge_pending_commit(provider)
+            .merge_pending_commit(alice_provider)
             .expect("error merging pending commit");
 
         // Merge Commit
@@ -697,7 +727,7 @@ fn mls_group_operations() {
             charlie_processed_message.into_content()
         {
             charlie_group
-                .merge_staged_commit(provider, *staged_commit)
+                .merge_staged_commit(charlie_provider, *staged_commit)
                 .unwrap();
         } else {
             unreachable!("Expected a StagedCommit.");
@@ -720,13 +750,13 @@ fn mls_group_operations() {
 
         // Bob creates a new group
         let mut bob_group = StagedWelcome::new_from_welcome(
-            provider,
+            bob_provider,
             mls_group_create_config.join_config(),
             welcome,
             Some(alice_group.export_ratchet_tree().into()),
         )
         .expect("Error creating staged join from Welcome")
-        .into_group(provider)
+        .into_group(bob_provider)
         .expect("Error creating group from staged join");
 
         // Make sure the group contains two members
@@ -752,12 +782,12 @@ fn mls_group_operations() {
         // === Alice sends a message to the group ===
         let message_alice = b"Hi, I'm Alice!";
         let queued_message = alice_group
-            .create_message(provider, &alice_signer, message_alice)
+            .create_message(alice_provider, &alice_signer, message_alice)
             .expect("Error creating application message");
 
         let bob_processed_message = bob_group
             .process_message(
-                provider,
+                bob_provider,
                 queued_message
                     .clone()
                     .into_protocol_message()
@@ -786,12 +816,12 @@ fn mls_group_operations() {
         // === Bob leaves the group ===
 
         let queued_message = bob_group
-            .leave_group(provider, &bob_signer)
+            .leave_group(bob_provider, &bob_signer)
             .expect("Could not leave group");
 
         let alice_processed_message = alice_group
             .process_message(
-                provider,
+                alice_provider,
                 queued_message
                     .clone()
                     .into_protocol_message()
@@ -805,7 +835,7 @@ fn mls_group_operations() {
         {
             // Store proposal
             alice_group
-                .store_pending_proposal(provider.storage(), *staged_proposal)
+                .store_pending_proposal(alice_provider.storage(), *staged_proposal)
                 .unwrap();
         } else {
             unreachable!("Expected a QueuedProposal.");
@@ -813,14 +843,14 @@ fn mls_group_operations() {
 
         // Should fail because you cannot remove yourself from a group
         assert!(matches!(
-            bob_group.commit_to_pending_proposals(provider, &bob_signer),
+            bob_group.commit_to_pending_proposals(bob_provider, &bob_signer),
             Err(CommitToPendingProposalsError::CreateCommitError(
                 CreateCommitError::CannotRemoveSelf
             ))
         ));
 
         let (queued_message, _welcome_option, _group_info) = alice_group
-            .commit_to_pending_proposals(provider, &alice_signer)
+            .commit_to_pending_proposals(alice_provider, &alice_signer)
             .expect("Could not commit to proposals.");
 
         // Check that Bob's group is still active
@@ -844,12 +874,12 @@ fn mls_group_operations() {
         }
 
         alice_group
-            .merge_pending_commit(provider)
+            .merge_pending_commit(alice_provider)
             .expect("Could not merge Commit.");
 
         let bob_processed_message = bob_group
             .process_message(
-                provider,
+                bob_provider,
                 queued_message
                     .clone()
                     .into_protocol_message()
@@ -873,7 +903,7 @@ fn mls_group_operations() {
             assert!(staged_commit.self_removed());
             // Merge staged Commit
             bob_group
-                .merge_staged_commit(provider, *staged_commit)
+                .merge_staged_commit(bob_provider, *staged_commit)
                 .unwrap();
         } else {
             unreachable!("Expected a StagedCommit.");
@@ -896,23 +926,23 @@ fn mls_group_operations() {
         let bob_key_package = generate_key_package(
             ciphersuite,
             Extensions::empty(),
-            provider,
+            bob_provider,
             bob_credential,
             &bob_signer,
         );
 
         // Add Bob to the group
         let (_queued_message, welcome, _group_info) = alice_group
-            .add_members(provider, &alice_signer, &[bob_key_package])
+            .add_members(alice_provider, &alice_signer, &[bob_key_package])
             .expect("Could not add Bob");
 
-        let _test_group = MlsGroup::load(provider.storage(), &group_id)
+        let _test_group = MlsGroup::load(alice_provider.storage(), &group_id)
             .expect("Could not load the group state due to an error.")
             .expect("Could not load the group state because the group does not exist.");
 
         // Merge Commit
         alice_group
-            .merge_pending_commit(provider)
+            .merge_pending_commit(alice_provider)
             .expect("error merging pending commit");
 
         let welcome: MlsMessageIn = welcome.into();
@@ -921,35 +951,35 @@ fn mls_group_operations() {
             .expect("expected the message to be a welcome message");
 
         let mut bob_group = StagedWelcome::new_from_welcome(
-            provider,
+            bob_provider,
             mls_group_create_config.join_config(),
             welcome,
             Some(alice_group.export_ratchet_tree().into()),
         )
         .expect("Could not create staged join from Welcome")
-        .into_group(provider)
+        .into_group(bob_provider)
         .expect("Could not create group from staged join");
 
         assert_eq!(
             alice_group
-                .export_secret(provider, "before load", &[], 32)
+                .export_secret(alice_provider, "before load", &[], 32)
                 .unwrap(),
             bob_group
-                .export_secret(provider, "before load", &[], 32)
+                .export_secret(bob_provider, "before load", &[], 32)
                 .unwrap()
         );
 
-        bob_group = MlsGroup::load(provider.storage(), &group_id)
+        bob_group = MlsGroup::load(bob_provider.storage(), &group_id)
             .expect("Could not load group from file because of an error")
             .expect("Could not load group from file because there is no group with given id");
 
         // Make sure the state is still the same
         assert_eq!(
             alice_group
-                .export_secret(provider, "after load", &[], 32)
+                .export_secret(alice_provider, "after load", &[], 32)
                 .unwrap(),
             bob_group
-                .export_secret(provider, "after load", &[], 32)
+                .export_secret(bob_provider, "after load", &[], 32)
                 .unwrap()
         );
     }

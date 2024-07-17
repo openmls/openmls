@@ -117,7 +117,7 @@ impl MlsGroup {
 
     /// Creates a proposal to update the own leaf node. The application can
     /// choose to update the credential, the capabilities, and the extensions by
-    /// buliding the [`LeafNodeParameters`].
+    /// building the [`LeafNodeParameters`].
     pub fn propose_self_update<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,

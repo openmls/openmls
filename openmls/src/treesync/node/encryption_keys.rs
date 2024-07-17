@@ -74,7 +74,7 @@ impl From<Vec<u8>> for EncryptionKey {
 #[derive(
     Clone, Serialize, Deserialize, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
 )]
-#[cfg_attr(test, derive(PartialEq, Eq))]
+#[cfg_attr(any(test, feature = "test-utils"), derive(PartialEq, Eq))]
 pub struct EncryptionPrivateKey {
     key: HpkePrivateKey,
 }
@@ -146,7 +146,7 @@ impl From<HpkePublicKey> for EncryptionKey {
 #[derive(
     Debug, Clone, Serialize, Deserialize, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
 )]
-#[cfg_attr(test, derive(PartialEq, Eq))]
+#[cfg_attr(any(test, feature = "test-utils"), derive(PartialEq, Eq))]
 pub(crate) struct EncryptionKeyPair {
     public_key: EncryptionKey,
     private_key: EncryptionPrivateKey,
