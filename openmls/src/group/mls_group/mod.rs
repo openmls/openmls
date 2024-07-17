@@ -449,7 +449,7 @@ impl MlsGroup {
     /// Resets the AAD.
     #[inline]
     pub(crate) fn reset_aad(&mut self) {
-        self.aad = Vec::new();
+        self.aad.clear();
     }
 }
 
