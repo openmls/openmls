@@ -46,7 +46,7 @@ pub(crate) mod tests_and_kats;
 /// Pending Commit state. Differentiates between Commits issued by group members
 /// and External Commits.
 #[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(any(test, feature = "test-utils"), derive(Clone))]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 pub enum PendingCommitState {
     /// Commit from a group member
     Member(StagedCommit),
@@ -119,7 +119,7 @@ impl From<PendingCommitState> for StagedCommit {
 ///   external commit process, see [`MlsGroup::join_by_external_commit()`] or
 ///   Section 11.2.1 of the MLS specification.
 #[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(any(test, feature = "test-utils"), derive(Clone))]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 pub enum MlsGroupState {
     /// There is currently a pending Commit that hasn't been merged yet.
     PendingCommit(Box<PendingCommitState>),
@@ -154,7 +154,7 @@ pub enum MlsGroupState {
 /// inactive, as well as if it has a pending commit. See [`MlsGroupState`] for
 /// more information.
 #[derive(Debug)]
-#[cfg_attr(feature = "test-utils", derive(Clone))]
+#[cfg_attr(feature = "test-utils", derive(Clone, PartialEq))]
 pub struct MlsGroup {
     // The group configuration. See [`MlsGroupJoinConfig`] for more information.
     mls_group_config: MlsGroupJoinConfig,
