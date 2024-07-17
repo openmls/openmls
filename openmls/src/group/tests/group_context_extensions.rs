@@ -2,13 +2,14 @@ use openmls_basic_credential::SignatureKeyPair;
 use openmls_test::openmls_test;
 use openmls_traits::types::Ciphersuite;
 use openmls_traits::OpenMlsProvider as _;
+use tests_and_kats::utils::setup_client;
 use tls_codec::{Deserialize as _, Serialize as _};
 
 use crate::{
     ciphersuite::hash_ref::ProposalRef,
     credentials::CredentialWithKey,
     framing::*,
-    group::{core_group::test_core_group::setup_client, *},
+    group::*,
     key_packages::{errors::KeyPackageVerifyError, *},
     messages::group_info::GroupInfo,
     test_utils::frankenstein::{self, FrankenMlsMessage},
