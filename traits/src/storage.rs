@@ -49,13 +49,6 @@ pub trait StorageProvider<const VERSION: u16> {
         config: &MlsGroupJoinConfig,
     ) -> Result<(), Self::Error>;
 
-    /// Writes the AAD for the group with given id to storage
-    fn write_aad<GroupId: traits::GroupId<VERSION>>(
-        &self,
-        group_id: &GroupId,
-        aad: &[u8],
-    ) -> Result<(), Self::Error>;
-
     /// Adds an own leaf node for the group with given id to storage
     fn append_own_leaf_node<
         GroupId: traits::GroupId<VERSION>,
@@ -453,12 +446,6 @@ pub trait StorageProvider<const VERSION: u16> {
         &self,
         group_id: &GroupId,
         proposal_ref: &ProposalRef,
-    ) -> Result<(), Self::Error>;
-
-    /// Deletes the AAD for the given id from storage
-    fn delete_aad<GroupId: traits::GroupId<VERSION>>(
-        &self,
-        group_id: &GroupId,
     ) -> Result<(), Self::Error>;
 
     /// Deletes own leaf nodes for the given id from storage

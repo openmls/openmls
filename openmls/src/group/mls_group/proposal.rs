@@ -1,10 +1,10 @@
-use openmls_traits::{signatures::Signer, storage::StorageProvider, types::Ciphersuite};
+use openmls_traits::{signatures::Signer, storage::StorageProvider as _, types::Ciphersuite};
 
 use super::{
     core_group::create_commit_params::CreateCommitParams,
     errors::{ProposalError, ProposeAddMemberError, ProposeRemoveMemberError},
     CreateGroupContextExtProposalError, CustomProposal, GroupContextExtensionProposal, MlsGroup,
-    MlsGroupState, PendingCommitState, Proposal,
+    MlsGroupState, MlsGroupStateError, PendingCommitState, Proposal,
 };
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -17,7 +17,7 @@ use crate::{
     messages::{group_info::GroupInfo, proposals::ProposalOrRefType},
     prelude::LibraryError,
     schedule::PreSharedKeyId,
-    storage::OpenMlsProvider,
+    storage::{OpenMlsProvider, StorageProvider},
     treesync::LeafNodeParameters,
     versions::ProtocolVersion,
 };
@@ -93,6 +93,7 @@ macro_rules! impl_propose_fun {
 
             let mls_message = self.content_to_mls_message(proposal, provider)?;
 
+            self.reset_aad();
             Ok((mls_message, proposal_ref))
         }
     };
@@ -260,6 +261,7 @@ impl MlsGroup {
 
         let mls_message = self.content_to_mls_message(add_proposal, provider)?;
 
+        self.reset_aad();
         Ok((mls_message, proposal_ref))
     }
 
@@ -295,6 +297,7 @@ impl MlsGroup {
 
         let mls_message = self.content_to_mls_message(remove_proposal, provider)?;
 
+        self.reset_aad();
         Ok((mls_message, proposal_ref))
     }
 
@@ -384,6 +387,7 @@ impl MlsGroup {
 
         let mls_message = self.content_to_mls_message(proposal, provider)?;
 
+        self.reset_aad();
         Ok((mls_message, proposal_ref))
     }
 
@@ -431,6 +435,7 @@ impl MlsGroup {
             .write_group_state(self.group_id(), &self.group_state)
             .map_err(CreateGroupContextExtProposalError::StorageError)?;
 
+        self.reset_aad();
         Ok((
             mls_messages,
             create_commit_result
@@ -438,5 +443,19 @@ impl MlsGroup {
                 .map(|w| MlsMessageOut::from_welcome(w, self.group.version())),
             create_commit_result.group_info,
         ))
+    }
+
+    /// Removes a specific proposal from the store.
+    pub fn remove_pending_proposal<Storage: StorageProvider>(
+        &mut self,
+        storage: &Storage,
+        proposal_ref: ProposalRef,
+    ) -> Result<(), MlsGroupStateError<Storage::Error>> {
+        storage
+            .remove_proposal(self.group_id(), &proposal_ref)
+            .map_err(MlsGroupStateError::StorageError)?;
+        self.proposal_store_mut()
+            .remove(proposal_ref)
+            .ok_or(MlsGroupStateError::PendingProposalNotFound)
     }
 }
