@@ -45,7 +45,10 @@ use self::{
 #[cfg(test)]
 use crate::binary_tree::array_representation::ParentNodeIndex;
 #[cfg(any(feature = "test-utils", test))]
-use crate::{binary_tree::array_representation::level, test_utils::bytes_to_hex};
+use crate::{
+    binary_tree::array_representation::level, group::tests_and_kats::tree_printing::root,
+    test_utils::bytes_to_hex,
+};
 use crate::{
     binary_tree::{
         array_representation::{is_node_in_tree, tree::TreeNode, LeafNodeIndex, TreeSize},
@@ -55,7 +58,7 @@ use crate::{
     credentials::CredentialWithKey,
     error::LibraryError,
     extensions::Extensions,
-    group::{tests_and_kats::tree_printing::root, GroupId, Member},
+    group::{GroupId, Member},
     key_packages::Lifetime,
     messages::{PathSecret, PathSecretError},
     schedule::CommitSecret,
