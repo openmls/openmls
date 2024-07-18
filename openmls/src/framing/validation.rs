@@ -343,8 +343,8 @@ impl ProcessedMessage {
         &self.sender
     }
 
-    /// Returns the authenticated data of the message.
-    pub fn authenticated_data(&self) -> &[u8] {
+    /// Returns the additional authenticated data (AAD) of the message.
+    pub fn aad(&self) -> &[u8] {
         &self.authenticated_data
     }
 

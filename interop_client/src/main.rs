@@ -607,11 +607,7 @@ impl MlsClient for MlsClientImpl {
 
         interop_group
             .group
-            .set_aad(
-                interop_group.crypto_provider.storage(),
-                &request.authenticated_data,
-            )
-            .map_err(|err| tonic::Status::internal(format!("error setting aad: {err}")))?;
+            .set_aad(request.authenticated_data.clone());
 
         let ciphertext = interop_group
             .group
@@ -660,7 +656,7 @@ impl MlsClient for MlsClientImpl {
         debug!("Processed.");
         trace!(?processed_message);
 
-        let authenticated_data = processed_message.authenticated_data().to_vec();
+        let authenticated_data = processed_message.aad().to_vec();
         let plaintext = match processed_message.into_content() {
             ProcessedMessageContent::ApplicationMessage(application_message) => {
                 application_message.into_bytes()

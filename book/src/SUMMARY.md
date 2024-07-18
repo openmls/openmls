@@ -12,6 +12,7 @@
   - [Adding members to a group](user_manual/add_members.md)
   - [Removing members from a group](user_manual/remove_members.md)
   - [Updating own key package](user_manual/updates.md)
+  - [Using Additional Authenticated Data (AAD)](user_manual/aad.md)
   - [Leaving a group](user_manual/leaving.md)
   - [Custom proposals](user_manual/custom_proposals.md)
   - [Creating application messages](user_manual/application_messages.md)

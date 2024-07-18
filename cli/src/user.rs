@@ -548,8 +548,6 @@ impl User {
     pub fn create_group(&mut self, name: String) {
         log::debug!("{} creates group {}", self.username(), name);
         let group_id = name.as_bytes();
-        let mut group_aad = group_id.to_vec();
-        group_aad.extend(b" AAD");
 
         // NOTE: Since the DS currently doesn't distribute copies of the group's ratchet
         // tree, we need to include the ratchet_tree_extension.
@@ -557,7 +555,7 @@ impl User {
             .use_ratchet_tree_extension(true)
             .build();
 
-        let mut mls_group = MlsGroup::new_with_group_id(
+        let mls_group = MlsGroup::new_with_group_id(
             &self.provider,
             &self.identity.borrow().signer,
             &group_config,
@@ -565,9 +563,6 @@ impl User {
             self.identity.borrow().credential_with_key.clone(),
         )
         .expect("Failed to create MlsGroup");
-        mls_group
-            .set_aad(self.provider.storage(), group_aad.as_slice())
-            .expect("Failed to write the AAD for the new group to storage");
 
         let group = Group {
             group_name: name.clone(),
@@ -708,7 +703,7 @@ impl User {
         let group_config = MlsGroupJoinConfig::builder()
             .use_ratchet_tree_extension(true)
             .build();
-        let mut mls_group =
+        let mls_group =
             StagedWelcome::new_from_welcome(&self.provider, &group_config, welcome, None)
                 .expect("Failed to create staged join")
                 .into_group(&self.provider)
@@ -717,11 +712,6 @@ impl User {
         let group_id = mls_group.group_id().to_vec();
         // XXX: Use Welcome's encrypted_group_info field to store group_name.
         let group_name = String::from_utf8(group_id.clone()).unwrap();
-        let group_aad = group_name.clone() + " AAD";
-
-        mls_group
-            .set_aad(self.provider.storage(), group_aad.as_bytes())
-            .expect("Failed to update the AAD in the storage");
 
         let group = Group {
             group_name: group_name.clone(),

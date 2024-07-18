@@ -11,6 +11,8 @@ pub mod kat_messages;
 #[cfg(test)]
 pub mod kat_transcript_hashes;
 #[cfg(test)]
+pub(crate) mod test_aad;
+#[cfg(test)]
 mod test_commit_validation;
 #[cfg(test)]
 mod test_encoding;
