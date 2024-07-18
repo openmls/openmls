@@ -149,13 +149,9 @@ use message_secrets::MessageSecrets;
 use openmls_traits::random::OpenMlsRand;
 use psk::PskSecret;
 
-// Tests
+// Tests and kats
 #[cfg(any(feature = "test-utils", test))]
-pub mod kat_key_schedule;
-#[cfg(test)]
-pub mod kat_psk_secret;
-#[cfg(test)]
-mod unit_tests;
+pub mod tests_and_kats;
 
 // Public types
 pub use psk::{ExternalPsk, PreSharedKeyId, Psk};

@@ -54,7 +54,7 @@ use tls_codec::{
 };
 
 #[cfg(test)]
-mod test_extensions;
+mod tests;
 
 /// MLS Extension Types
 ///
