@@ -9,7 +9,7 @@ pub(crate) fn setup_alice_group(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,
 ) -> (
-    CoreGroup,
+    MlsGroup,
     CredentialWithKey,
     SignatureKeyPair,
     OpenMlsSignaturePublicKey,
@@ -24,13 +24,14 @@ pub(crate) fn setup_alice_group(
     .unwrap();
 
     // Alice creates a group
-    let group = CoreGroup::builder(
-        GroupId::random(provider.rand()),
-        ciphersuite,
-        alice_credential_with_key.clone(),
-    )
-    .build(provider, &alice_signature_keys)
-    .expect("Error creating group.");
+    let group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .build(
+            provider,
+            &alice_signature_keys,
+            alice_credential_with_key.clone(),
+        )
+        .expect("Error creating group.");
     (group, alice_credential_with_key, alice_signature_keys, pk)
 }
 

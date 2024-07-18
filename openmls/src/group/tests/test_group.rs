@@ -1,5 +1,6 @@
 use framing::mls_content_in::FramedContentBodyIn;
 use tests::utils::{generate_credential_with_key, generate_key_package};
+use tests_and_kats::utils::setup_alice_bob_group;
 use treesync::LeafNodeParameters;
 
 use crate::{
@@ -196,66 +197,13 @@ fn create_commit_optional_path(
 
 #[openmls_test::openmls_test]
 fn basic_group_setup() {
-    let group_aad = b"Alice's test group";
-    // Framing parameters
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
+    let (mut alice_group, alice_signer, _, _, _) = setup_alice_bob_group(ciphersuite, provider);
 
-    // Define credentials with keys
-    let alice_credential_with_keys = generate_credential_with_key(
-        b"Alice".to_vec(),
-        ciphersuite.signature_algorithm(),
-        provider,
-    );
-    let bob_credential_with_keys =
-        generate_credential_with_key(b"Bob".to_vec(), ciphersuite.signature_algorithm(), provider);
-
-    // Generate KeyPackages
-    let bob_key_package = generate_key_package(
-        ciphersuite,
-        Extensions::empty(),
-        provider,
-        bob_credential_with_keys,
-    );
-
-    // Alice creates a group
-    let mut group_alice = CoreGroup::builder(
-        GroupId::random(provider.rand()),
-        ciphersuite,
-        alice_credential_with_keys.credential_with_key,
-    )
-    .build(provider, &alice_credential_with_keys.signer)
-    .expect("Error creating CoreGroup.");
-
-    // Alice adds Bob
-    let bob_add_proposal = group_alice
-        .create_add_proposal(
-            framing_parameters,
-            bob_key_package.key_package().clone(),
-            &alice_credential_with_keys.signer,
-        )
-        .expect("Could not create proposal.");
-
-    group_alice.proposal_store_mut().empty();
-    group_alice.proposal_store_mut().add(
-        QueuedProposal::from_authenticated_content_by_ref(
-            ciphersuite,
-            provider.crypto(),
-            bob_add_proposal,
-        )
-        .unwrap(),
-    );
-
-    let params = CreateCommitParams::builder()
-        .framing_parameters(framing_parameters)
-        .build();
-    let _commit = match group_alice.create_commit(
-        params, /* PSK fetcher */
-        provider,
-        &alice_credential_with_keys.signer,
-    ) {
-        Ok(c) => c,
-        Err(e) => panic!("Error creating commit: {e:?}"),
-    };
+    let _result =
+        match alice_group.self_update(provider, &alice_signer, LeafNodeParameters::default()) {
+            Ok(c) => c,
+            Err(e) => panic!("Error creating commit: {e:?}"),
+        };
 }
 
 /// This test simulates various group operations like Add, Update, Remove in a
@@ -272,181 +220,45 @@ fn basic_group_setup() {
 ///  - Charlie removes Bob
 #[openmls_test::openmls_test]
 fn group_operations() {
-    let group_aad = b"Alice's test group";
-    // Framing parameters
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
-    let sender_ratchet_configuration = SenderRatchetConfiguration::default();
-
-    // Define credentials with keys
-    let alice_credential_with_keys = generate_credential_with_key(
-        b"Alice".to_vec(),
-        ciphersuite.signature_algorithm(),
-        provider,
-    );
-    let bob_credential_with_keys =
-        generate_credential_with_key(b"Bob".to_vec(), ciphersuite.signature_algorithm(), provider);
-
-    // Generate KeyPackages
-    let bob_key_package_bundle = KeyPackageBundle::generate(
-        provider,
-        &bob_credential_with_keys.signer,
-        ciphersuite,
-        bob_credential_with_keys.credential_with_key.clone(),
-    );
-    let bob_key_package = bob_key_package_bundle.key_package();
-
-    // === Alice creates a group ===
-    let mut group_alice = CoreGroup::builder(
-        GroupId::random(provider.rand()),
-        ciphersuite,
-        alice_credential_with_keys.credential_with_key.clone(),
-    )
-    .build(provider, &alice_credential_with_keys.signer)
-    .expect("Error creating CoreGroup.");
-
-    // === Alice adds Bob ===
-    let bob_add_proposal = group_alice
-        .create_add_proposal(
-            framing_parameters,
-            bob_key_package.clone(),
-            &alice_credential_with_keys.signer,
-        )
-        .expect("Could not create proposal.");
-
-    group_alice.proposal_store_mut().empty();
-    group_alice.proposal_store_mut().add(
-        QueuedProposal::from_authenticated_content_by_ref(
-            ciphersuite,
-            provider.crypto(),
-            bob_add_proposal,
-        )
-        .unwrap(),
-    );
-
-    let params = CreateCommitParams::builder()
-        .framing_parameters(framing_parameters)
-        .force_self_update(false)
-        .build();
-    let create_commit_result = group_alice
-        .create_commit(params, provider, &alice_credential_with_keys.signer)
-        .expect("Error creating commit");
-    let commit = match create_commit_result.commit.content() {
-        FramedContentBody::Commit(commit) => commit,
-        _ => panic!("Wrong content type"),
-    };
-    assert!(!commit.has_path());
-    // Check that the function returned a Welcome message
-    assert!(create_commit_result.welcome_option.is_some());
-
-    group_alice
-        .merge_commit(provider, create_commit_result.staged_commit)
-        .expect("error merging own commits");
-    let ratchet_tree = group_alice.public_group().export_ratchet_tree();
-
-    let mut group_bob = match StagedCoreWelcome::new_from_welcome(
-        create_commit_result
-            .welcome_option
-            .expect("An unexpected error occurred."),
-        Some(ratchet_tree.into()),
-        bob_key_package_bundle,
-        provider,
-        ResumptionPskStore::new(1024),
-    )
-    .and_then(|staged_join| staged_join.into_core_group(provider))
-    {
-        Ok(group) => group,
-        Err(e) => panic!("Error creating group from Welcome: {e:?}"),
-    };
+    // Create group with alice and bob
+    let (mut alice_group, alice_signer, mut bob_group, bob_signer, _) =
+        setup_alice_bob_group(ciphersuite, provider);
 
     // Make sure that both groups have the same public tree
     assert_eq!(
-        group_alice.public_group().export_ratchet_tree(),
-        group_bob.public_group().export_ratchet_tree()
+        alice_group.export_ratchet_tree(),
+        bob_group.export_ratchet_tree()
     );
 
     // Make sure that both groups have the same group context
-    if group_alice.context() != group_bob.context() {
+    if alice_group.export_group_context() != bob_group.export_group_context() {
         panic!("Different group contexts");
     }
 
     // === Alice sends a message to Bob ===
     let message_alice = [1, 2, 3];
-    let mls_ciphertext_alice: PrivateMessageIn = group_alice
-        .create_application_message(
-            &[],
-            &message_alice,
-            0,
-            provider,
-            &alice_credential_with_keys.signer,
-        )
-        .expect("An unexpected error occurred.")
-        .into();
-
-    let verifiable_plaintext = group_bob
-        .decrypt_message(
-            provider.crypto(),
-            mls_ciphertext_alice.into(),
-            &sender_ratchet_configuration,
-        )
-        .expect("An unexpected error occurred.")
-        .verifiable_content()
-        .to_owned();
-
-    let mls_plaintext_bob: AuthenticatedContentIn = verifiable_plaintext
-        .verify(
-            provider.crypto(),
-            &OpenMlsSignaturePublicKey::new(
-                alice_credential_with_keys.signer.to_public_vec().into(),
-                ciphersuite.signature_algorithm(),
-            )
-            .unwrap(),
-        )
+    let mls_cipertext_alice = alice_group
+        .create_message(provider, &alice_signer, &message_alice)
         .expect("An unexpected error occurred.");
 
-    assert!(matches!(
-        mls_plaintext_bob.content(),
-            FramedContentBodyIn::Application(message) if message.as_slice() == &message_alice[..]));
-
-    // === Bob updates and commits ===
-    let mut bob_new_leaf_node = group_bob.own_leaf_node().unwrap().clone();
-    bob_new_leaf_node
-        .update(
-            ciphersuite,
+    let processed_message = bob_group
+        .process_message(
             provider,
-            &bob_credential_with_keys.signer,
-            group_bob.group_id().clone(),
-            group_bob.own_leaf_index(),
-            LeafNodeParameters::default(),
+            mls_cipertext_alice.into_protocol_message().unwrap(),
         )
         .unwrap();
 
-    let update_proposal_bob = group_bob
-        .create_update_proposal(
-            framing_parameters,
-            bob_new_leaf_node,
-            &alice_credential_with_keys.signer,
-        )
-        .expect("Could not create proposal.");
+    match processed_message.content() {
+        ProcessedMessageContent::ApplicationMessage(message) => {
+            assert_eq!(message.as_slice(), &message_alice[..]);
+        }
+        _ => panic!("Wrong content type"),
+    }
 
-    group_bob.proposal_store_mut().empty();
-    group_bob.proposal_store_mut().add(
-        QueuedProposal::from_authenticated_content_by_ref(
-            ciphersuite,
-            provider.crypto(),
-            update_proposal_bob,
-        )
-        .unwrap(),
-    );
-
-    let params = CreateCommitParams::builder()
-        .framing_parameters(framing_parameters)
-        .force_self_update(false)
-        .build();
-    let create_commit_result =
-        match group_bob.create_commit(params, provider, &bob_credential_with_keys.signer) {
-            Ok(c) => c,
-            Err(e) => panic!("Error creating commit: {e:?}"),
-        };
+    // === Bob updates and commits ===
+    let (commit, _, _) = bob_group
+        .self_update(provider, &bob_signer, LeafNodeParameters::default())
+        .expect("Error updating group");
 
     // Check that there is a path
     let commit = match create_commit_result.commit.content() {
