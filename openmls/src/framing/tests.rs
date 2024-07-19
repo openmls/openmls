@@ -381,16 +381,13 @@ fn membership_tag() {
 fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider: &Provider) {
     let _ = pretty_env_logger::try_init();
 
-    let alice_provider = provider;
-    let charlie_provider = provider;
-
     // Define credentials with keys
     let (
         _charlie_credential,
         charlie_key_package_bundle,
         _charlie_signature_keys,
         _charlie_public_signature_key,
-    ) = setup_client("Charlie", ciphersuite, charlie_provider);
+    ) = setup_client("Charlie", ciphersuite, provider);
 
     let (mut alice_group, alice_signature_keys, _bob_group, _bob_signature_keys, _bob_credential) =
         setup_alice_bob_group(ciphersuite, provider);
@@ -458,7 +455,7 @@ fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider:
     let enc_message = PrivateMessage::encrypt_with_different_header(
         &bogus_sender_message,
         ciphersuite,
-        alice_provider,
+        provider,
         MlsMessageHeader {
             group_id: alice_group.group_id().clone(),
             epoch: alice_group.epoch(),
