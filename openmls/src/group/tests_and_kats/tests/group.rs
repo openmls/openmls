@@ -10,6 +10,7 @@ use crate::{
 };
 use framing::mls_content_in::FramedContentBodyIn;
 use group::tests_and_kats::utils::generate_credential_with_key;
+use mls_group::tests_and_kats::utils::setup_alice_bob;
 use treesync::LeafNodeParameters;
 
 #[openmls_test::openmls_test]
@@ -17,185 +18,90 @@ fn create_commit_optional_path(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,
 ) {
-    let group_aad = b"Alice's test group";
-    // Framing parameters
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
-
     // Define identities
-    let alice_credential_with_keys = generate_credential_with_key(
-        b"Alice".to_vec(),
-        ciphersuite.signature_algorithm(),
-        provider,
-    );
-    let bob_credential_with_keys =
-        generate_credential_with_key(b"Bob".to_vec(), ciphersuite.signature_algorithm(), provider);
-
-    // Generate Bob's KeyPackage
-    let bob_key_package = generate_key_package(
-        ciphersuite,
-        Extensions::empty(),
-        provider,
-        bob_credential_with_keys,
-    );
+    let (alice_credential_with_key, alice_signer, bob_kpb, _bob_signer) =
+        setup_alice_bob(ciphersuite, provider);
 
     // Alice creates a group
-    let mut group_alice = CoreGroup::builder(
-        GroupId::random(provider.rand()),
-        ciphersuite,
-        alice_credential_with_keys.credential_with_key,
-    )
-    .build(provider, &alice_credential_with_keys.signer)
-    .expect("Error creating CoreGroup.");
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .build(provider, &alice_signer, alice_credential_with_key)
+        .unwrap();
 
     // Alice proposes to add Bob with forced self-update
     // Even though there are only Add Proposals, this should generated a path field
     // on the Commit
-    let bob_add_proposal = group_alice
-        .create_add_proposal(
-            framing_parameters,
-            bob_key_package.key_package().clone(),
-            &alice_credential_with_keys.signer,
-        )
-        .expect("Could not create proposal.");
+    let (commit_message, _welcome, _) = alice_group
+        .add_members(provider, &alice_signer, &[bob_kpb.key_package().clone()])
+        .unwrap();
 
-    group_alice.proposal_store_mut().empty();
-    group_alice.proposal_store_mut().add(
-        QueuedProposal::from_authenticated_content_by_ref(
-            ciphersuite,
-            provider.crypto(),
-            bob_add_proposal,
-        )
-        .unwrap(),
-    );
-
-    let params = CreateCommitParams::builder()
-        .framing_parameters(framing_parameters)
-        .build();
-    let create_commit_result = match group_alice.create_commit(
-        params, /* No PSK fetcher */
-        provider,
-        &alice_credential_with_keys.signer,
-    ) {
-        Ok(c) => c,
-        Err(e) => panic!("Error creating commit: {e:?}"),
-    };
-    let commit = match create_commit_result.commit.content() {
-        FramedContentBody::Commit(commit) => commit,
+    let commit = match commit_message.body() {
+        MlsMessageBodyOut::PublicMessage(pm) => match pm.content() {
+            FramedContentBody::Commit(commit) => commit,
+            _ => panic!(),
+        },
         _ => panic!(),
     };
+
     assert!(commit.has_path());
 
+    alice_group
+        .clear_pending_commit(provider.storage())
+        .unwrap();
+
     // Alice adds Bob without forced self-update
-    // Since there are only Add Proposals, this does not generate a path field on
-    // the Commit Creating a second proposal to add the same member should
-    // not fail, only committing that proposal should fail
-    let bob_add_proposal = group_alice
-        .create_add_proposal(
-            framing_parameters,
-            bob_key_package.key_package().clone(),
-            &alice_credential_with_keys.signer,
-        )
-        .expect("Could not create proposal.");
+    let (commit_message, welcome, _) = alice_group
+        .add_members_without_update(provider, &alice_signer, &[bob_kpb.key_package().clone()])
+        .unwrap();
 
-    group_alice.proposal_store_mut().empty();
-    group_alice.proposal_store_mut().add(
-        QueuedProposal::from_authenticated_content_by_ref(
-            ciphersuite,
-            provider.crypto(),
-            bob_add_proposal,
-        )
-        .unwrap(),
-    );
-
-    let params = CreateCommitParams::builder()
-        .framing_parameters(framing_parameters)
-        .force_self_update(false)
-        .build();
-    let create_commit_result =
-        match group_alice.create_commit(params, provider, &alice_credential_with_keys.signer) {
-            Ok(c) => c,
-            Err(e) => panic!("Error creating commit: {e:?}"),
-        };
-    let commit = match create_commit_result.commit.content() {
-        FramedContentBody::Commit(commit) => commit,
+    let commit = match commit_message.body() {
+        MlsMessageBodyOut::PublicMessage(pm) => match pm.content() {
+            FramedContentBody::Commit(commit) => commit,
+            _ => panic!(),
+        },
         _ => panic!(),
     };
+
     assert!(!commit.has_path());
 
     // Alice applies the Commit without the forced self-update
-    group_alice
-        .merge_commit(provider, create_commit_result.staged_commit)
-        .expect("error merging pending commit");
-    let ratchet_tree = group_alice.public_group().export_ratchet_tree();
+    alice_group.merge_pending_commit(provider).unwrap();
+    let ratchet_tree = alice_group.export_ratchet_tree();
 
     // Bob creates group from Welcome
-    let group_bob = StagedCoreWelcome::new_from_welcome(
-        create_commit_result
-            .welcome_option
-            .expect("An unexpected error occurred."),
-        Some(ratchet_tree.into()),
-        bob_key_package,
+    let bob_group = StagedWelcome::new_from_welcome(
         provider,
-        ResumptionPskStore::new(1024),
+        &MlsGroupJoinConfig::default(),
+        welcome.into_welcome().unwrap(),
+        Some(ratchet_tree.into()),
     )
-    .and_then(|staged_join| staged_join.into_core_group(provider))
-    .unwrap_or_else(|e| panic!("Error creating group from Welcome: {e:?}"));
+    .unwrap()
+    .into_group(provider)
+    .unwrap();
 
     assert_eq!(
-        group_alice.public_group().export_ratchet_tree(),
-        group_bob.public_group().export_ratchet_tree()
+        alice_group.export_ratchet_tree(),
+        bob_group.export_ratchet_tree()
     );
 
     // Alice updates
-    let mut alice_new_leaf_node = group_alice.own_leaf_node().unwrap().clone();
-    alice_new_leaf_node
-        .update(
-            ciphersuite,
-            provider,
-            &alice_credential_with_keys.signer,
-            group_alice.group_id().clone(),
-            group_alice.own_leaf_index(),
-            LeafNodeParameters::default(),
-        )
+    let (commit_message, _, _) = alice_group
+        .self_update(provider, &alice_signer, LeafNodeParameters::default())
         .unwrap();
-    let alice_update_proposal = group_alice
-        .create_update_proposal(
-            framing_parameters,
-            alice_new_leaf_node,
-            &alice_credential_with_keys.signer,
-        )
-        .expect("Could not create proposal.");
 
-    group_alice.proposal_store_mut().empty();
-    group_alice.proposal_store_mut().add(
-        QueuedProposal::from_authenticated_content_by_ref(
-            ciphersuite,
-            provider.crypto(),
-            alice_update_proposal,
-        )
-        .unwrap(),
-    );
-
-    // Only UpdateProposal
-    let params = CreateCommitParams::builder()
-        .framing_parameters(framing_parameters)
-        .force_self_update(false)
-        .build();
-    let create_commit_result =
-        match group_alice.create_commit(params, provider, &alice_credential_with_keys.signer) {
-            Ok(c) => c,
-            Err(e) => panic!("Error creating commit: {e:?}"),
-        };
-    let commit = match create_commit_result.commit.content() {
-        FramedContentBody::Commit(commit) => commit,
+    let commit = match commit_message.body() {
+        MlsMessageBodyOut::PublicMessage(pm) => match pm.content() {
+            FramedContentBody::Commit(commit) => commit,
+            _ => panic!(),
+        },
         _ => panic!(),
     };
+
     assert!(commit.has_path());
 
     // Apply UpdateProposal
-    group_alice
-        .merge_commit(provider, create_commit_result.staged_commit)
-        .expect("error merging pending commit");
+    alice_group.merge_pending_commit(provider).unwrap();
 }
 
 #[openmls_test::openmls_test]
