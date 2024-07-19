@@ -14,7 +14,7 @@ pub(crate) mod array_representation;
 // Tests
 
 #[cfg(test)]
-mod test_binary_tree;
+mod tests;
 
 // Crate types
 

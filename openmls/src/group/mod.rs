@@ -39,7 +39,7 @@ mod group_context;
 #[cfg(test)]
 pub(crate) use core_group::create_commit_params::*;
 #[cfg(any(feature = "test-utils", test))]
-pub(crate) mod tests;
+pub(crate) mod tests_and_kats;
 
 /// A group ID. The group ID is chosen by the creator of the group and should be globally unique.
 #[derive(

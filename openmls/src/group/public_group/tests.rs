@@ -7,8 +7,8 @@ use crate::{
         ProcessedMessageContent, ProtocolMessage, Sender,
     },
     group::{
-        test_core_group::setup_client, GroupId, MlsGroup, MlsGroupCreateConfig, ProposalStore,
-        StagedCommit, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        mls_group::tests_and_kats::utils::setup_client, GroupId, MlsGroup, MlsGroupCreateConfig,
+        ProposalStore, StagedCommit, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     messages::proposals::Proposal,
 };

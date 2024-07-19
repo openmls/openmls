@@ -16,22 +16,6 @@ pub(crate) mod process;
 pub(crate) mod proposals;
 pub(crate) mod staged_commit;
 
-// Tests
-#[cfg(test)]
-pub(crate) mod kat_passive_client;
-#[cfg(test)]
-pub(crate) mod kat_welcome;
-#[cfg(test)]
-pub(crate) mod test_core_group;
-#[cfg(test)]
-mod test_create_commit_params;
-#[cfg(test)]
-mod test_external_init;
-#[cfg(test)]
-mod test_past_secrets;
-#[cfg(test)]
-mod test_proposals;
-
 use log::{debug, trace};
 use openmls_traits::{
     crypto::OpenMlsCrypto, signatures::Signer, storage::StorageProvider as _, types::Ciphersuite,
