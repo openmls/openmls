@@ -46,7 +46,7 @@ use self::{
 use crate::binary_tree::array_representation::ParentNodeIndex;
 #[cfg(any(feature = "test-utils", test))]
 use crate::{
-    binary_tree::array_representation::level, group::tests::tree_printing::root,
+    binary_tree::array_representation::level, group::tests_and_kats::tree_printing::root,
     test_utils::bytes_to_hex,
 };
 use crate::{
@@ -731,8 +731,7 @@ mod test {
         ciphersuite: Ciphersuite,
         provider: &impl OpenMlsProvider,
     ) {
-        let (key_package, _, _) =
-            crate::key_packages::test_key_packages::key_package(ciphersuite, provider);
+        let (key_package, _, _) = crate::key_packages::tests::key_package(ciphersuite, provider);
         let node_in = NodeIn::from(Node::LeafNode(LeafNode::from(key_package)));
         let tests = [
             (vec![], false),

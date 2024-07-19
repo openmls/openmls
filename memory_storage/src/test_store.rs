@@ -494,14 +494,6 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn write_aad<GroupId: traits::GroupId<V_TEST>>(
-        &self,
-        _group_id: &GroupId,
-        _aad: &[u8],
-    ) -> Result<(), Self::Error> {
-        todo!()
-    }
-
     fn queued_proposals<
         GroupId: traits::GroupId<V_TEST>,
         ProposalRef: traits::ProposalRef<V_TEST>,
@@ -520,13 +512,6 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         &self,
         _group_id: &GroupId,
         _proposal_ref: &ProposalRef,
-    ) -> Result<(), Self::Error> {
-        todo!()
-    }
-
-    fn delete_aad<GroupId: traits::GroupId<V_TEST>>(
-        &self,
-        _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }

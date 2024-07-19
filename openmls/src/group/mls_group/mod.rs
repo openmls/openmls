@@ -165,8 +165,9 @@ pub struct MlsGroup {
     // are needed in case an update proposal is committed by another group
     // member. The vector is emptied after every epoch change.
     own_leaf_nodes: Vec<LeafNode>,
-    // The AAD that is used for all outgoing handshake messages. The AAD can be set through
-    // `set_aad()`.
+    // Additional authenticated data (AAD) for the next outgoing message. This
+    // is ephemeral and will be reset by every API call that successfully
+    // returns an [`MlsMessageOut`].
     aad: Vec<u8>,
     // A variable that indicates the state of the group. See [`MlsGroupState`]
     // for more information.
@@ -191,19 +192,17 @@ impl MlsGroup {
         storage.write_mls_join_config(self.group_id(), mls_group_config)
     }
 
-    /// Returns the AAD used in the framing.
-    pub fn aad(&self) -> &[u8] {
-        &self.aad
+    /// Sets the additional authenticated data (AAD) for the next outgoing
+    /// message. This is ephemeral and will be reset by every API call that
+    /// successfully returns an [`MlsMessageOut`].
+    pub fn set_aad(&mut self, aad: Vec<u8>) {
+        self.aad = aad;
     }
 
-    /// Sets the AAD used in the framing.
-    pub fn set_aad<Storage: StorageProvider>(
-        &mut self,
-        storage: &Storage,
-        aad: &[u8],
-    ) -> Result<(), Storage::Error> {
-        self.aad = aad.to_vec();
-        storage.write_aad(self.group_id(), aad)
+    /// Returns the additional authenticated data (AAD) for the next outgoing
+    /// message.
+    pub fn aad(&self) -> &[u8] {
+        &self.aad
     }
 
     // === Advanced functions ===
@@ -345,7 +344,7 @@ impl MlsGroup {
         let group_config = storage.mls_group_join_config(group_id)?;
         let core_group = CoreGroup::load(storage, group_id)?;
         let own_leaf_nodes = storage.own_leaf_nodes(group_id)?;
-        let aad = storage.aad(group_id)?;
+        let aad = Vec::new();
         let group_state = storage.group_state(group_id)?;
 
         let build = || -> Option<Self> {
@@ -370,7 +369,6 @@ impl MlsGroup {
         storage.delete_group_config(self.group_id())?;
         storage.clear_proposal_queue::<GroupId, ProposalRef>(self.group_id())?;
         storage.delete_own_leaf_nodes(self.group_id())?;
-        storage.delete_aad(self.group_id())?;
         storage.delete_group_state(self.group_id())?;
 
         Ok(())
@@ -451,6 +449,12 @@ impl MlsGroup {
     pub(crate) fn proposal_store_mut(&mut self) -> &mut ProposalStore {
         self.group.proposal_store_mut()
     }
+
+    /// Resets the AAD.
+    #[inline]
+    pub(crate) fn reset_aad(&mut self) {
+        self.aad.clear();
+    }
 }
 
 // Methods used in tests
@@ -479,20 +483,6 @@ impl MlsGroup {
     #[cfg(test)]
     pub(crate) fn group(&self) -> &CoreGroup {
         &self.group
-    }
-
-    /// Removes a specific proposal from the store.
-    pub fn remove_pending_proposal<Storage: StorageProvider>(
-        &mut self,
-        storage: &Storage,
-        proposal_ref: ProposalRef,
-    ) -> Result<(), MlsGroupStateError<Storage::Error>> {
-        storage
-            .remove_proposal(self.group_id(), &proposal_ref)
-            .map_err(MlsGroupStateError::StorageError)?;
-        self.proposal_store_mut()
-            .remove(proposal_ref)
-            .ok_or(MlsGroupStateError::PendingProposalNotFound)
     }
 }
 

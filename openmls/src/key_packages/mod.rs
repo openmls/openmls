@@ -128,7 +128,7 @@ mod lifetime;
 
 // Tests
 #[cfg(test)]
-pub(crate) mod test_key_packages;
+pub(crate) mod tests;
 
 // Public types
 pub use key_package_in::KeyPackageIn;

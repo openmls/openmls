@@ -1,6 +1,6 @@
 use crate::{
     group::{
-        tests::utils::{generate_credential_with_key, CredentialWithKeyAndSigner},
+        tests_and_kats::utils::{generate_credential_with_key, CredentialWithKeyAndSigner},
         MlsGroup, MlsGroupCreateConfig,
     },
     key_packages::KeyPackage,

@@ -42,6 +42,7 @@ impl MlsGroup {
             // We know the application message is wellformed and we have the key material of the current epoch
             .map_err(|_| LibraryError::custom("Malformed plaintext"))?;
 
+        self.reset_aad();
         Ok(MlsMessageOut::from_private_message(
             ciphertext,
             self.group.version(),
