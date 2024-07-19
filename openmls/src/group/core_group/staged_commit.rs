@@ -407,26 +407,6 @@ impl CoreGroup {
             }
         }
     }
-
-    #[cfg(test)]
-    /// Helper function that reads the decryption keys from the key store
-    /// (unwrapping the result) and stages the given commit.
-    pub(crate) fn read_keys_and_stage_commit(
-        &self,
-        mls_content: &AuthenticatedContent,
-        own_leaf_nodes: &[LeafNode],
-        provider: &impl OpenMlsProvider,
-    ) -> Result<StagedCommit, StageCommitError> {
-        let (old_epoch_keypairs, leaf_node_keypairs) =
-            self.read_decryption_keypairs(provider, own_leaf_nodes)?;
-
-        self.stage_commit(
-            mls_content,
-            old_epoch_keypairs,
-            leaf_node_keypairs,
-            provider,
-        )
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
