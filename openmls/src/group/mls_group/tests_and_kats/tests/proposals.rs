@@ -8,16 +8,12 @@ use crate::{
     },
     group::{
         errors::*,
-<<<<<<<< HEAD:openmls/src/group/mls_group/tests_and_kats/test_proposals.rs
-        mls_group::ProcessedMessageContent,
+        mls_group::{
+            tests_and_kats::utils::{setup_alice_bob_group, setup_client},
+            ProcessedMessageContent,
+        },
         proposals::{ProposalQueue, ProposalStore, QueuedProposal},
-        tests_and_kats::utils::{setup_alice_bob_group, setup_client},
         GroupContext, GroupId, MlsGroup, MlsGroupJoinConfig, StagedWelcome,
-========
-        mls_group::tests_and_kats::utils::setup_client,
-        proposals::{ProposalQueue, ProposalStore, QueuedProposal},
-        CoreGroup, CreateCommitParams, GroupContext, GroupId, StagedCoreWelcome,
->>>>>>>> main:openmls/src/group/mls_group/tests_and_kats/tests/proposals.rs
     },
     key_packages::{KeyPackageBundle, KeyPackageIn},
     messages::proposals::{AddProposal, Proposal, ProposalOrRef, ProposalType},

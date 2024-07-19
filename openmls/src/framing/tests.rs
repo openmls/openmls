@@ -2,8 +2,8 @@ use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::prelude::*;
 use openmls_traits::types::Ciphersuite;
 
+use mls_group::tests_and_kats::utils::{setup_alice_bob_group, setup_client};
 use signable::Verifiable;
-use tests_and_kats::utils::{setup_alice_bob_group, setup_client};
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
@@ -11,9 +11,10 @@ use crate::{
     ciphersuite::signable::{Signable, SignatureError},
     extensions::Extensions,
     framing::*,
-    group::{core_group::proposals::QueuedProposal, errors::*, CreateCommitParams},
-    key_packages::{tests::key_package, KeyPackageBundle},
-    schedule::psk::{store::ResumptionPskStore, PskSecret},
+    group::errors::*,
+    key_packages::tests::key_package,
+    prelude::LeafNodeParameters,
+    schedule::psk::PskSecret,
     storage::OpenMlsProvider,
     test_utils::frankenstein::*,
     tree::{secret_tree::SecretTree, sender_ratchet::SenderRatchetConfiguration},

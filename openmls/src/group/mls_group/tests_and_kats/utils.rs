@@ -133,7 +133,7 @@ pub(crate) fn setup_alice_bob_group<Provider: OpenMlsProvider>(
         .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .build(provider, &alice_signature_keys, alice_credential.clone())
         .expect("Error creating group.");
-    group_alice.set_aad(provider.storage(), group_aad).unwrap();
+    group_alice.set_aad(group_aad.to_vec());
 
     // Alice adds Bob
     let (_commit, welcome, _group_info_option) = group_alice

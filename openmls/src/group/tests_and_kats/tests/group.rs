@@ -10,6 +10,7 @@ use crate::{
 };
 use framing::mls_content_in::FramedContentBodyIn;
 use group::tests_and_kats::utils::generate_credential_with_key;
+use mls_group::tests_and_kats::utils::setup_alice_bob_group;
 use treesync::LeafNodeParameters;
 
 #[openmls_test::openmls_test]
