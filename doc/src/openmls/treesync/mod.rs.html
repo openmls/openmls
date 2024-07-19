@@ -776,7 +776,6 @@
 <a href="#776" id="776">776</a>
 <a href="#777" id="777">777</a>
 <a href="#778" id="778">778</a>
-<a href="#779" id="779">779</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements the ratchet tree component of MLS.
 //!
 //! It exposes the [`Node`] enum that can contain either a [`LeafNode`] or a [`ParentNode`].
@@ -825,7 +824,7 @@
 </span><span class="kw">use </span><span class="kw">crate</span>::binary_tree::array_representation::ParentNodeIndex;
 <span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
 </span><span class="kw">use crate</span>::{
-    binary_tree::array_representation::level, group::tests::tree_printing::root,
+    binary_tree::array_representation::level, group::tests_and_kats::tree_printing::root,
     test_utils::bytes_to_hex,
 };
 <span class="kw">use crate</span>::{
@@ -1510,8 +1509,7 @@
         ciphersuite: Ciphersuite,
         provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
     ) {
-        <span class="kw">let </span>(key_package, <span class="kw">_</span>, <span class="kw">_</span>) =
-            <span class="kw">crate</span>::key_packages::test_key_packages::key_package(ciphersuite, provider);
+        <span class="kw">let </span>(key_package, <span class="kw">_</span>, <span class="kw">_</span>) = <span class="kw">crate</span>::key_packages::tests::key_package(ciphersuite, provider);
         <span class="kw">let </span>node_in = NodeIn::from(Node::LeafNode(LeafNode::from(key_package)));
         <span class="kw">let </span>tests = [
             (<span class="macro">vec!</span>[], <span class="bool-val">false</span>),

@@ -243,6 +243,8 @@
 <a href="#243" id="243">243</a>
 <a href="#244" id="244">244</a>
 <a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! OpenMLS Storage
 //!
 //! This module serves two purposes:
@@ -371,7 +373,9 @@
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test {
-    <span class="kw">use crate</span>::{group::test_core_group::setup_client, prelude::KeyPackageBuilder};
+    <span class="kw">use crate</span>::{
+        group::mls_group::tests_and_kats::utils::setup_client, prelude::KeyPackageBuilder,
+    };
 
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 

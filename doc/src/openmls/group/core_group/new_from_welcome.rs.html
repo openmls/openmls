@@ -306,30 +306,9 @@
 <a href="#306" id="306">306</a>
 <a href="#307" id="307">307</a>
 <a href="#308" id="308">308</a>
-<a href="#309" id="309">309</a>
-<a href="#310" id="310">310</a>
-<a href="#311" id="311">311</a>
-<a href="#312" id="312">312</a>
-<a href="#313" id="313">313</a>
-<a href="#314" id="314">314</a>
-<a href="#315" id="315">315</a>
-<a href="#316" id="316">316</a>
-<a href="#317" id="317">317</a>
-<a href="#318" id="318">318</a>
-<a href="#319" id="319">319</a>
-<a href="#320" id="320">320</a>
-<a href="#321" id="321">321</a>
-<a href="#322" id="322">322</a>
-<a href="#323" id="323">323</a>
-<a href="#324" id="324">324</a>
-<a href="#325" id="325">325</a>
-<a href="#326" id="326">326</a>
-<a href="#327" id="327">327</a>
-<a href="#328" id="328">328</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>log::debug;
 
 <span class="kw">use crate</span>::{
-    ciphersuite::hash_ref::HashReference,
     group::{core_group::<span class="kw-2">*</span>, errors::WelcomeError},
     schedule::psk::store::ResumptionPskStore,
     storage::OpenMlsProvider,
@@ -572,14 +551,11 @@
     WelcomeError&lt;Provider::StorageError&gt;,
 &gt; {
     <span class="kw">let </span>ciphersuite = welcome.ciphersuite();
-    <span class="kw">let </span>egs = <span class="kw">if let </span><span class="prelude-val">Some</span>(egs) = CoreGroup::find_key_package_from_welcome_secrets(
+    <span class="kw">let </span><span class="prelude-val">Some</span>(egs) = welcome.find_encrypted_group_secret(
         key_package_bundle
             .key_package()
             .hash_ref(provider.crypto())<span class="question-mark">?</span>,
-        welcome.secrets(),
-    ) {
-        egs
-    } <span class="kw">else </span>{
+    ) <span class="kw">else </span>{
         <span class="kw">return </span><span class="prelude-val">Err</span>(WelcomeError::JoinerSecretNotFound);
     };
     <span class="kw">if </span>ciphersuite != key_package_bundle.key_package().ciphersuite() {
@@ -637,21 +613,5 @@
         key_schedule,
         verifiable_group_info,
     ))
-}
-
-<span class="kw">impl </span>CoreGroup {
-    <span class="comment">// Helper functions
-
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>find_key_package_from_welcome_secrets(
-        hash_ref: HashReference,
-        welcome_secrets: <span class="kw-2">&amp;</span>[EncryptedGroupSecrets],
-    ) -&gt; <span class="prelude-ty">Option</span>&lt;EncryptedGroupSecrets&gt; {
-        <span class="kw">for </span>egs <span class="kw">in </span>welcome_secrets {
-            <span class="kw">if </span>hash_ref == egs.new_member() {
-                <span class="kw">return </span><span class="prelude-val">Some</span>(egs.clone());
-            }
-        }
-        <span class="prelude-val">None
-    </span>}
 }
 </code></pre></div></section></main></body></html>
