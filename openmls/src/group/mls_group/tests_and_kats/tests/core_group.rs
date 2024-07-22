@@ -506,7 +506,7 @@ fn proposal_application_after_self_was_removed(
     .into_group(provider)
     .expect("Error creating group from welcome.");
 
-    // We can now check that Bob correctly processed his and applied the changes
+    // We can now check that Bob correctly processed his commit and applied the changes
     // to his tree after he was removed by comparing membership lists. In
     // particular, Bob's list should show that he was removed and Charlie was
     // added.
@@ -652,7 +652,7 @@ fn proposal_application_after_self_was_removed_ref(
         .store_pending_proposal(provider.storage(), staged_proposal)
         .expect("Error storing proposal");
 
-    // Alice then commit to the proposal and at the same time adds Charlie
+    // Alice then commits to the proposal and at the same time adds Charlie
     alice_group.print_ratchet_tree("Alice's tree before commit\n");
     let alice_rt_before = alice_group.export_ratchet_tree();
     let (commit, welcome, _group_info_option) = alice_group
