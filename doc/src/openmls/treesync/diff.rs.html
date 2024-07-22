@@ -1619,7 +1619,7 @@
     <span class="doccomment">/// This turns the diff into a staged diff. In the process, the diff
     /// computes and sets the new tree hash.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>into_staged_diff(
-        <span class="kw-2">mut </span><span class="self">self</span>,
+        <span class="self">self</span>,
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;StagedTreeSyncDiff, LibraryError&gt; {
@@ -1634,7 +1634,7 @@
     <span class="doccomment">/// Helper function to compute and set the tree hash of the given node and
     /// all nodes below it in the tree. The leaf nodes in `exclusion_list` are
     /// not included in the tree hash.
-    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>compute_tree_hash(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>compute_tree_hash(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         ciphersuite: Ciphersuite,
@@ -1675,7 +1675,7 @@
 
     <span class="doccomment">/// Compute and set the tree hash of all nodes in the tree.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>compute_tree_hashes(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, LibraryError&gt; {

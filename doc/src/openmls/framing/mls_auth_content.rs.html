@@ -330,10 +330,6 @@
 <a href="#330" id="330">330</a>
 <a href="#331" id="331">331</a>
 <a href="#332" id="332">332</a>
-<a href="#333" id="333">333</a>
-<a href="#334" id="334">334</a>
-<a href="#335" id="335">335</a>
-<a href="#336" id="336">336</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # MLS content authentication
 //!
 //! This module contains structs and implementation that pertain to content
@@ -625,10 +621,6 @@
 
     <span class="kw">pub fn </span>test_signature(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Signature {
         <span class="kw-2">&amp;</span><span class="self">self</span>.auth.signature
-    }
-
-    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>unset_confirmation_tag(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="self">self</span>.auth.confirmation_tag = <span class="prelude-val">None</span>;
     }
 }
 

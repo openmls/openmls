@@ -585,25 +585,6 @@
 <a href="#585" id="585">585</a>
 <a href="#586" id="586">586</a>
 <a href="#587" id="587">587</a>
-<a href="#588" id="588">588</a>
-<a href="#589" id="589">589</a>
-<a href="#590" id="590">590</a>
-<a href="#591" id="591">591</a>
-<a href="#592" id="592">592</a>
-<a href="#593" id="593">593</a>
-<a href="#594" id="594">594</a>
-<a href="#595" id="595">595</a>
-<a href="#596" id="596">596</a>
-<a href="#597" id="597">597</a>
-<a href="#598" id="598">598</a>
-<a href="#599" id="599">599</a>
-<a href="#600" id="600">600</a>
-<a href="#601" id="601">601</a>
-<a href="#602" id="602">602</a>
-<a href="#603" id="603">603</a>
-<a href="#604" id="604">604</a>
-<a href="#605" id="605">605</a>
-<a href="#606" id="606">606</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>core::fmt::Debug;
 <span class="kw">use </span>std::mem;
 
@@ -754,19 +735,6 @@
         <span class="kw">let </span>apply_proposals_values =
             diff.apply_proposals(<span class="kw-2">&amp;</span>proposal_queue, <span class="self">self</span>.own_leaf_index())<span class="question-mark">?</span>;
 
-        <span class="comment">// Check if we were removed from the group
-        </span><span class="kw">if </span>apply_proposals_values.self_removed {
-            <span class="kw">let </span>staged_diff = diff.into_staged_diff(provider.crypto(), ciphersuite)<span class="question-mark">?</span>;
-            <span class="kw">let </span>staged_state = PublicStagedCommitState::new(
-                staged_diff,
-                commit.path.as_ref().map(|path| path.leaf_node().clone()),
-            );
-            <span class="kw">return </span><span class="prelude-val">Ok</span>(StagedCommit::new(
-                proposal_queue,
-                StagedCommitState::PublicState(Box::new(staged_state)),
-            ));
-        }
-
         <span class="comment">// Determine if Commit has a path
         </span><span class="kw">let </span>(commit_secret, new_keypairs, new_leaf_keypair_option, update_path_leaf_node) =
             <span class="kw">if let </span><span class="prelude-val">Some</span>(path) = commit.path.clone() {
@@ -784,6 +752,20 @@
                     provider.crypto(),
                     apply_proposals_values.extensions.clone(),
                 )<span class="question-mark">?</span>;
+
+                <span class="comment">// Check if we were removed from the group
+                </span><span class="kw">if </span>apply_proposals_values.self_removed {
+                    <span class="comment">// If so, we return here, because we can't decrypt the path
+                    </span><span class="kw">let </span>staged_diff = diff.into_staged_diff(provider.crypto(), ciphersuite)<span class="question-mark">?</span>;
+                    <span class="kw">let </span>staged_state = PublicStagedCommitState::new(
+                        staged_diff,
+                        commit.path.as_ref().map(|path| path.leaf_node().clone()),
+                    );
+                    <span class="kw">return </span><span class="prelude-val">Ok</span>(StagedCommit::new(
+                        proposal_queue,
+                        StagedCommitState::PublicState(Box::new(staged_state)),
+                    ));
+                }
 
                 <span class="kw">let </span>decryption_keypairs: Vec&lt;<span class="kw-2">&amp;</span>EncryptionKeyPair&gt; = old_epoch_keypairs
                     .iter()
@@ -1011,26 +993,6 @@
                 <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(message_secrets))
             }
         }
-    }
-
-    <span class="attr">#[cfg(test)]
-    </span><span class="doccomment">/// Helper function that reads the decryption keys from the key store
-    /// (unwrapping the result) and stages the given commit.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>read_keys_and_stage_commit(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        mls_content: <span class="kw-2">&amp;</span>AuthenticatedContent,
-        own_leaf_nodes: <span class="kw-2">&amp;</span>[LeafNode],
-        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;StagedCommit, StageCommitError&gt; {
-        <span class="kw">let </span>(old_epoch_keypairs, leaf_node_keypairs) =
-            <span class="self">self</span>.read_decryption_keypairs(provider, own_leaf_nodes)<span class="question-mark">?</span>;
-
-        <span class="self">self</span>.stage_commit(
-            mls_content,
-            old_epoch_keypairs,
-            leaf_node_keypairs,
-            provider,
-        )
     }
 }
 
