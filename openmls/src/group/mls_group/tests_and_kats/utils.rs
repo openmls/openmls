@@ -110,8 +110,6 @@ pub(crate) fn setup_alice_bob_group<Provider: OpenMlsProvider>(
     SignatureKeyPair,
     CredentialWithKey,
 ) {
-    let group_aad = b"Alice's test group";
-
     // Create credentials and keys
     let (alice_credential, alice_signature_keys) =
         test_utils::new_credential(provider, b"Alice", ciphersuite.signature_algorithm());
@@ -133,7 +131,6 @@ pub(crate) fn setup_alice_bob_group<Provider: OpenMlsProvider>(
         .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .build(provider, &alice_signature_keys, alice_credential.clone())
         .expect("Error creating group.");
-    group_alice.set_aad(group_aad.to_vec());
 
     // Alice adds Bob
     let (_commit, welcome, _group_info_option) = group_alice
