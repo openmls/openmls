@@ -13,6 +13,6 @@ readme = "../README.md"
 getrandom = "0.2.12"
 libcrux = { git = "https://github.com/cryspen/libcrux", features = ["rand"] }
 openmls_traits = { path = "../traits" }
-openmls_rust_crypto = { path = "../openmls_rust_crypto" }
+openmls_memory_storage = { path = "../memory_storage" }
 rand = "0.8.5"
 tls_codec.workspace = true
