@@ -11,7 +11,7 @@ readme = "../README.md"
 
 [dependencies]
 getrandom = "0.2.12"
-libcrux = { git = "https://github.com/cryspen/libcrux", features = ["rand"] }
+libcrux = { version = "0.0.2-alpha.3", features = ["rand"] }
 openmls_traits = { path = "../traits" }
 openmls_memory_storage = { path = "../memory_storage" }
 rand = "0.8.5"
