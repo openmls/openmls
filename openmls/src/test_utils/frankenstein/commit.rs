@@ -32,8 +32,8 @@ pub struct FrankenUpdatePathIn {
     Debug, Clone, PartialEq, Eq, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize,
 )]
 pub struct FrankenUpdatePathNode {
-    pub(super) public_key: VLBytes,
-    pub(super) encrypted_path_secrets: Vec<FrankenHpkeCiphertext>,
+    pub public_key: VLBytes,
+    pub encrypted_path_secrets: Vec<FrankenHpkeCiphertext>,
 }
 
 #[derive(

@@ -290,10 +290,6 @@ impl AuthenticatedContent {
     pub fn test_signature(&self) -> &Signature {
         &self.auth.signature
     }
-
-    pub(super) fn unset_confirmation_tag(&mut self) {
-        self.auth.confirmation_tag = None;
-    }
 }
 
 impl SignedStruct<FramedContentTbs> for AuthenticatedContent {
