@@ -69,7 +69,7 @@ criterion = { version = "^0.5", default-features = false } # need to disable def
 hex = { version = "0.4", features = ["serde"] }
 itertools = "0.10"
 lazy_static = "1.4"
-openmls_traits = { version = "0.2.0", path = "../traits", features = [
+openmls_traits = { version = "0.3.0", path = "../traits", features = [
   "test-utils",
 ] }
 pretty_env_logger = "0.5"
