@@ -63,18 +63,23 @@ fn padding(provider: &impl crate::storage::OpenMlsProvider) {
                 .credentials
                 .get(&group_state.ciphersuite())
                 .expect("An unexpected error occurred.");
+            // Set the padding size
+            let mut new_config = group_state.configuration().clone();
+            new_config.padding_size = padding_size;
+            group_state
+                .set_configuration(provider.storage(), &new_config)
+                .unwrap();
             for _ in 0..10 {
                 let message = randombytes(random_usize() % 1000);
                 let aad = randombytes(random_usize() % 1000);
-                let private_message = group_state
-                    .create_application_message(
-                        &aad,
-                        &message,
-                        padding_size,
-                        provider,
-                        &credential.signer,
-                    )
-                    .expect("An unexpected error occurred.");
+                group_state.set_aad(aad);
+                let application_message = group_state
+                    .create_message(provider, &credential.signer, &message)
+                    .unwrap();
+                let private_message = match application_message.body() {
+                    MlsMessageBodyOut::PrivateMessage(pm) => pm,
+                    _ => panic!("Unexpected match."),
+                };
                 let ciphertext = private_message.ciphertext();
                 let length = ciphertext.len();
                 let overflow = if padding_size > 0 {

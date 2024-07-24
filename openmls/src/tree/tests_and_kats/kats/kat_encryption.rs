@@ -161,20 +161,17 @@ fn generate_credential(
 fn group(
     ciphersuite: Ciphersuite,
     provider: &impl OpenMlsProvider,
-) -> (CoreGroup, CredentialWithKey, SignatureKeyPair) {
+) -> (MlsGroup, CredentialWithKey, SignatureKeyPair) {
     let (credential_with_key, signer) = generate_credential(
         "Kreator".into(),
         ciphersuite.signature_algorithm(),
         provider,
     );
 
-    let group = CoreGroup::builder(
-        GroupId::random(provider.rand()),
-        ciphersuite,
-        credential_with_key.clone(),
-    )
-    .build(provider, &signer)
-    .unwrap();
+    let group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .build(provider, &signer, credential_with_key.clone())
+        .unwrap();
 
     (group, credential_with_key, signer)
 }
@@ -184,15 +181,17 @@ fn receiver_group(
     ciphersuite: Ciphersuite,
     provider: &impl OpenMlsProvider,
     group_id: GroupId,
-) -> (CoreGroup, CredentialWithKey, SignatureKeyPair) {
+) -> (MlsGroup, CredentialWithKey, SignatureKeyPair) {
     let (credential_with_key, signer) = generate_credential(
         "Receiver".into(),
         ciphersuite.signature_algorithm(),
         provider,
     );
 
-    let group = CoreGroup::builder(group_id, ciphersuite, credential_with_key.clone())
-        .build(provider, &signer)
+    let group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .with_group_id(group_id)
+        .build(provider, &signer, credential_with_key.clone())
         .unwrap();
 
     (group, credential_with_key, signer)
@@ -202,7 +201,7 @@ fn receiver_group(
 #[cfg(any(feature = "test-utils", test))]
 fn build_handshake_messages(
     sender_index: LeafNodeIndex,
-    group: &mut CoreGroup,
+    group: &mut MlsGroup,
     signer: &impl Signer,
     provider: &impl OpenMlsProvider,
 ) -> (Vec<u8>, Vec<u8>) {
@@ -223,7 +222,7 @@ fn build_handshake_messages(
             Proposal::Remove(RemoveProposal {
                 removed: LeafNodeIndex::new(7),
             }), // XXX: use random removed
-            group.context(),
+            group.export_group_context(),
             signer,
         )
         .expect("An unexpected error occurred."),
@@ -235,7 +234,10 @@ fn build_handshake_messages(
             provider.crypto(),
             group.ciphersuite(),
             &membership_key,
-            &group.context().tls_serialize_detached().unwrap(),
+            &group
+                .export_group_context()
+                .tls_serialize_detached()
+                .unwrap(),
         )
         .expect("Error setting membership tag.");
     let ciphertext = PrivateMessage::encrypt_without_check(
@@ -259,7 +261,7 @@ fn build_handshake_messages(
 #[cfg(any(feature = "test-utils", test))]
 fn build_application_messages(
     sender_index: LeafNodeIndex,
-    group: &mut CoreGroup,
+    group: &mut MlsGroup,
     signer: &impl Signer,
     provider: &impl OpenMlsProvider,
 ) -> (Vec<u8>, Vec<u8>) {
@@ -276,7 +278,7 @@ fn build_application_messages(
         sender_index,
         &[1, 2, 3],
         &[4, 5, 6],
-        group.context(),
+        group.export_group_context(),
         signer,
     )
     .expect("An unexpected error occurred.");
@@ -286,7 +288,10 @@ fn build_application_messages(
             provider.crypto(),
             group.ciphersuite(),
             &membership_key,
-            &group.context().tls_serialize_detached().unwrap(),
+            &group
+                .export_group_context()
+                .tls_serialize_detached()
+                .unwrap(),
         )
         .expect("Error setting membership tag.");
     let ciphertext = match PrivateMessage::encrypt_without_check(
@@ -321,25 +326,25 @@ pub fn generate_test_vector(
     use crate::binary_tree::array_representation::TreeSize;
 
     let ciphersuite_name = ciphersuite;
-    let crypto = OpenMlsRustCrypto::default();
-    let encryption_secret_bytes = crypto
+    let provider = OpenMlsRustCrypto::default();
+    let encryption_secret_bytes = provider
         .rand()
         .random_vec(ciphersuite.hash_length())
         .expect("An unexpected error occurred.");
-    let sender_data_secret = SenderDataSecret::random(ciphersuite, crypto.rand());
+    let sender_data_secret = SenderDataSecret::random(ciphersuite, provider.rand());
     let sender_data_secret_bytes = sender_data_secret.as_slice();
 
     // Create sender_data_key/secret
-    let ciphertext = crypto
+    let ciphertext = provider
         .rand()
         .random_vec(77)
         .expect("An unexpected error occurred.");
     let sender_data_key = sender_data_secret
-        .derive_aead_key(crypto.crypto(), ciphersuite, &ciphertext)
+        .derive_aead_key(provider.crypto(), ciphersuite, &ciphertext)
         .expect("Could not derive AEAD key.");
     // Derive initial nonce from the key schedule using the ciphertext.
     let sender_data_nonce = sender_data_secret
-        .derive_aead_nonce(ciphersuite, crypto.crypto(), &ciphertext)
+        .derive_aead_nonce(ciphersuite, provider.crypto(), &ciphertext)
         .expect("Could not derive nonce.");
     let sender_data_info = SenderDataInfo {
         ciphertext: bytes_to_hex(&ciphertext),
@@ -347,7 +352,7 @@ pub fn generate_test_vector(
         nonce: bytes_to_hex(sender_data_nonce.as_slice()),
     };
 
-    let (mut group, _, signer) = group(ciphersuite, &crypto);
+    let (mut group, _, signer) = group(ciphersuite, &provider);
     *group.message_secrets_test_mut().sender_data_secret_mut() =
         SenderDataSecret::from_slice(sender_data_secret_bytes);
 
@@ -372,7 +377,7 @@ pub fn generate_test_vector(
             let (application_secret_key, application_secret_nonce) = decryption_secret_tree
                 .secret_for_decryption(
                     ciphersuite,
-                    crypto.crypto(),
+                    provider.crypto(),
                     sender_leaf,
                     SecretType::ApplicationSecret,
                     generation,
@@ -382,7 +387,7 @@ pub fn generate_test_vector(
             let application_key_string = bytes_to_hex(application_secret_key.as_slice());
             let application_nonce_string = bytes_to_hex(application_secret_nonce.as_slice());
             let (application_plaintext, application_ciphertext) =
-                build_application_messages(sender_leaf, &mut group, &signer, &crypto);
+                build_application_messages(sender_leaf, &mut group, &signer, &provider);
             println!("Sender Group: {group:?}");
             application.push(RatchetStep {
                 key: application_key_string,
@@ -395,7 +400,7 @@ pub fn generate_test_vector(
             let (handshake_secret_key, handshake_secret_nonce) = decryption_secret_tree
                 .secret_for_decryption(
                     ciphersuite,
-                    crypto.crypto(),
+                    provider.crypto(),
                     sender_leaf,
                     SecretType::HandshakeSecret,
                     generation,
@@ -406,7 +411,7 @@ pub fn generate_test_vector(
             let handshake_nonce_string = bytes_to_hex(handshake_secret_nonce.as_slice());
 
             let (handshake_plaintext, handshake_ciphertext) =
-                build_handshake_messages(sender_leaf, &mut group, &signer, &crypto);
+                build_handshake_messages(sender_leaf, &mut group, &signer, &provider);
 
             handshake.push(RatchetStep {
                 key: handshake_key_string,
@@ -599,7 +604,10 @@ pub fn run_test_vector(
                 sender_data_secret.clone(),
                 MembershipKey::random(ciphersuite, provider.rand()), // we don't care about this value
                 ConfirmationKey::random(ciphersuite, provider.rand()), // we don't care about this value
-                group.context().tls_serialize_detached().unwrap(),
+                group
+                    .export_group_context()
+                    .tls_serialize_detached()
+                    .unwrap(),
                 fresh_secret_tree.clone(),
             );
 

@@ -3,8 +3,14 @@
 //! This module contains [`MlsGroup`] and its submodules.
 //!
 
-#[cfg(test)]
+#[cfg(any(feature = "test-utils", test))]
 use crate::schedule::message_secrets::MessageSecrets;
+
+#[cfg(test)]
+use openmls_traits::crypto::OpenMlsCrypto;
+
+#[cfg(test)]
+use crate::prelude::SenderRatchetConfiguration;
 
 use super::proposals::{ProposalStore, QueuedProposal};
 use crate::{
@@ -469,7 +475,7 @@ impl MlsGroup {
         self.group.public_group().group_context().tree_hash()
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn message_secrets_test_mut(&mut self) -> &mut MessageSecrets {
         self.group.message_secrets_test_mut()
     }
@@ -477,6 +483,45 @@ impl MlsGroup {
     #[cfg(any(feature = "test-utils", test))]
     pub fn print_ratchet_tree(&self, message: &str) {
         self.group.print_ratchet_tree(message)
+    }
+
+    #[cfg(any(feature = "test-utils", test))]
+    pub(crate) fn context_mut(&mut self) -> &mut GroupContext {
+        self.group.context_mut()
+    }
+
+    // Encrypt an AuthenticatedContent into a PrivateMessage. Only needed for
+    // the message protection KAT.
+    #[cfg(test)]
+    pub(crate) fn encrypt<Provider: OpenMlsProvider>(
+        &mut self,
+        public_message: AuthenticatedContent,
+        padding_size: usize,
+        provider: &Provider,
+    ) -> Result<PrivateMessage, MessageEncryptionError<Provider::StorageError>> {
+        self.group.encrypt(public_message, padding_size, provider)
+    }
+
+    #[cfg(test)]
+    // Decrypt a ProtocolMessage. Only needed for the message protection KAT.
+    pub(crate) fn decrypt_message(
+        &mut self,
+        crypto: &impl OpenMlsCrypto,
+        message: ProtocolMessage,
+        sender_ratchet_configuration: &SenderRatchetConfiguration,
+    ) -> Result<DecryptedMessage, ValidationError> {
+        self.group
+            .decrypt_message(crypto, message, sender_ratchet_configuration)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn set_group_context(&mut self, group_context: GroupContext) {
+        self.group.set_group_context(group_context)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn set_own_leaf_index(&mut self, own_leaf_index: LeafNodeIndex) {
+        self.group.set_own_leaf_index(own_leaf_index)
     }
 
     /// Returns the underlying [CoreGroup].
