@@ -23,6 +23,6 @@ ansi_term = "0.12.1"
 quote = "1.0"
 rstest = { version = "0.17" }
 rstest_reuse = { version = "0.5" }
-openmls_rust_crypto = {  path = "../openmls_rust_crypto" }
-openmls_libcrux_crypto = {  path = "../libcrux_crypto", optional = true }
-openmls_traits = { path = "../traits" }
+openmls_rust_crypto = { version = "0.3.0-pre.1", path = "../openmls_rust_crypto" }
+openmls_libcrux_crypto = { version = "0.1.0-pre.2", path = "../libcrux_crypto", optional = true }
+openmls_traits = { version = "0.3.0-pre.2", path = "../traits" }
