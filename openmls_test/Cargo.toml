@@ -7,7 +7,7 @@ description = "Test utility used by OpenMLS"
 license = "MIT"
 documentation = "https://docs.rs/openmls_test"
 repository = "https://github.com/openmls/openmls/tree/main/openmls_test"
-readme = "README.md"
+readme = "Readme.md"
 
 [lib]
 proc-macro = true
