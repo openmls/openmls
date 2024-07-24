@@ -1,8 +1,13 @@
 [package]
 name = "openmls_test"
 version = "0.1.0-pre.1"
+authors = ["OpenMLS Authors"]
 edition = "2021"
-authors = ["Franziskus Kiefer <franziskuskiefer@gmail.com>"]
+description = "Test utility used by OpenMLS"
+license = "MIT"
+documentation = "https://docs.rs/openmls_test"
+repository = "https://github.com/openmls/openmls/tree/main/openmls_test"
+readme = "README.md"
 
 [lib]
 proc-macro = true
