@@ -53,7 +53,6 @@ impl<'a> CreateCommitParamsBuilder<'a> {
         self.ccp.inline_proposals = inline_proposals;
         self
     }
-    #[cfg(test)]
     pub(crate) fn force_self_update(mut self, force_self_update: bool) -> Self {
         self.ccp.force_self_update = force_self_update;
         self

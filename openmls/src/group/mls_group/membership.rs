@@ -20,7 +20,9 @@ impl MlsGroup {
     /// New members are added by providing a `KeyPackage` for each member.
     ///
     /// This operation results in a Commit with a `path`, i.e. it includes an
-    /// update of the committer's leaf [KeyPackage].
+    /// update of the committer's leaf [KeyPackage]. To add members without
+    /// forcing an update of the committer's leaf [KeyPackage], use
+    /// [`Self::add_members_without_update()`].
     ///
     /// If successful, it returns a triple of [`MlsMessageOut`]s, where the first
     /// contains the commit, the second one the [`Welcome`] and the third an optional [GroupInfo] that
@@ -36,6 +38,53 @@ impl MlsGroup {
         provider: &Provider,
         signer: &impl Signer,
         key_packages: &[KeyPackage],
+    ) -> Result<
+        (MlsMessageOut, MlsMessageOut, Option<GroupInfo>),
+        AddMembersError<Provider::StorageError>,
+    > {
+        self.add_members_internal(provider, signer, key_packages, true)
+    }
+
+    /// Adds members to the group.
+    ///
+    /// New members are added by providing a `KeyPackage` for each member.
+    ///
+    /// This operation results in a Commit that does not necessarily include a
+    /// `path`, i.e. an update of the committer's leaf [KeyPackage]. In
+    /// particular, it will only include a path if the group's proposal store
+    /// includes one or more proposals that require a path (see [Section 17.4 of
+    /// RFC 9420](https://www.rfc-editor.org/rfc/rfc9420.html#section-17.4) for
+    /// a list of proposals and whether they require a path).
+    ///
+    /// If successful, it returns a triple of [`MlsMessageOut`]s, where the
+    /// first contains the commit, the second one the [`Welcome`] and the third
+    /// an optional [GroupInfo] that will be [Some] if the group has the
+    /// `use_ratchet_tree_extension` flag set.
+    ///
+    /// Returns an error if there is a pending commit.
+    ///
+    /// [`Welcome`]: crate::messages::Welcome
+    // FIXME: #1217
+    #[allow(clippy::type_complexity)]
+    pub fn add_members_without_update<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        signer: &impl Signer,
+        key_packages: &[KeyPackage],
+    ) -> Result<
+        (MlsMessageOut, MlsMessageOut, Option<GroupInfo>),
+        AddMembersError<Provider::StorageError>,
+    > {
+        self.add_members_internal(provider, signer, key_packages, false)
+    }
+
+    #[allow(clippy::type_complexity)]
+    fn add_members_internal<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        signer: &impl Signer,
+        key_packages: &[KeyPackage],
+        with_path: bool,
     ) -> Result<
         (MlsMessageOut, MlsMessageOut, Option<GroupInfo>),
         AddMembersError<Provider::StorageError>,
@@ -61,6 +110,7 @@ impl MlsGroup {
         let params = CreateCommitParams::builder()
             .framing_parameters(self.framing_parameters())
             .inline_proposals(inline_proposals)
+            .force_self_update(with_path)
             .build();
         let create_commit_result = self.group.create_commit(params, provider, signer)?;
 
