@@ -156,7 +156,7 @@ fn test_add_proposal_encoding(provider: &impl crate::storage::OpenMlsProvider) {
             .propose_add_member(
                 provider,
                 &credential_with_key_and_signer.signer,
-                &key_package_bundle.key_package(),
+                key_package_bundle.key_package(),
             )
             .unwrap();
         let add = match add.body {
