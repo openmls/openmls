@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## X.X.X (XXX-XX-XX)
+
+### Added
+
+- [#1629](https://github.com/openmls/openmls/pull/1629): Add `add_members_without_update` function to `MlsGroup` to allow the creation of add-only commits
+
 ## 0.6.0-pre.1 (2024-07-22)
 
 ### Added
