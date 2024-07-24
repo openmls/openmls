@@ -8,13 +8,15 @@ use crate::{
     },
     group::{
         errors::*,
-        mls_group::tests_and_kats::utils::setup_client,
+        mls_group::{
+            tests_and_kats::utils::{setup_alice_bob_group, setup_client},
+            ProcessedMessageContent,
+        },
         proposals::{ProposalQueue, ProposalStore, QueuedProposal},
-        CoreGroup, CreateCommitParams, GroupContext, GroupId, StagedCoreWelcome,
+        GroupContext, GroupId, MlsGroup, MlsGroupJoinConfig, StagedWelcome,
     },
     key_packages::{KeyPackageBundle, KeyPackageIn},
     messages::proposals::{AddProposal, Proposal, ProposalOrRef, ProposalType},
-    schedule::psk::store::ResumptionPskStore,
     test_utils::*,
     versions::ProtocolVersion,
 };
@@ -278,14 +280,11 @@ fn proposal_queue_order() {
 }
 
 #[openmls_test::openmls_test]
-fn test_required_extension_key_package_mismatch(
+fn required_extension_key_package_mismatch(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,
 ) {
     // Basic group setup.
-    let group_aad = b"Alice's test group";
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
-
     let (alice_credential, _, alice_signer, _alice_pk) =
         setup_client("Alice", ciphersuite, provider);
     let (_bob_credential_with_key, bob_key_package_bundle, _, _) =
@@ -300,42 +299,32 @@ fn test_required_extension_key_package_mismatch(
     let required_capabilities =
         RequiredCapabilitiesExtension::new(extensions, proposals, credentials);
 
-    let alice_group = CoreGroup::builder(
-        GroupId::random(provider.rand()),
-        ciphersuite,
-        alice_credential,
-    )
-    .with_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
-        required_capabilities,
-    )))
-    .expect("error adding group context extensions")
-    .build(provider, &alice_signer)
-    .expect("Error creating CoreGroup.");
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .with_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
+            required_capabilities,
+        )))
+        .unwrap()
+        .build(provider, &alice_signer, alice_credential)
+        .expect("Error creating CoreGroup.");
 
-    let e = alice_group
-        .create_add_proposal(
-            framing_parameters,
-            bob_key_package.clone(),
-            &alice_signer,
-        )
+    let e = alice_group.propose_add_member(provider, &alice_signer, bob_key_package)
         .expect_err("Proposal was created even though the key package didn't support the required extensions.");
+
     assert_eq!(
         e,
-        CreateAddProposalError::LeafNodeValidation(
+        ProposeAddMemberError::LeafNodeValidation(
             crate::treesync::errors::LeafNodeValidationError::UnsupportedExtensions
         )
     );
 }
 
 #[openmls_test::openmls_test]
-fn test_group_context_extensions(
+fn group_context_extensions(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,
 ) {
     // Basic group setup.
-    let group_aad = b"Alice's test group";
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
-
     let (alice_credential, _, alice_signer, _alice_pk) =
         setup_client("Alice", ciphersuite, provider);
     let (_bob_credential_with_key, bob_key_package_bundle, _, _) =
@@ -355,75 +344,43 @@ fn test_group_context_extensions(
     let required_capabilities =
         RequiredCapabilitiesExtension::new(extensions, proposals, credentials);
 
-    let mut alice_group = CoreGroup::builder(
-        GroupId::random(provider.rand()),
-        ciphersuite,
-        alice_credential,
-    )
-    .with_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
-        required_capabilities,
-    )))
-    .unwrap()
-    .build(provider, &alice_signer)
-    .expect("Error creating CoreGroup.");
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .with_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
+            required_capabilities,
+        )))
+        .unwrap()
+        .build(provider, &alice_signer, alice_credential)
+        .expect("Error creating MlsGroup.");
 
-    let bob_add_proposal = alice_group
-        .create_add_proposal(framing_parameters, bob_key_package.clone(), &alice_signer)
-        .expect("Could not create proposal");
+    let (_commit, welcome, _group_info_option) = alice_group
+        .add_members(provider, &alice_signer, &[bob_key_package.clone()])
+        .expect("Error adding members.");
 
-    alice_group.proposal_store_mut().empty();
-    alice_group.proposal_store_mut().add(
-        QueuedProposal::from_authenticated_content_by_ref(
-            ciphersuite,
-            provider.crypto(),
-            bob_add_proposal,
-        )
-        .unwrap(),
-    );
+    alice_group.merge_pending_commit(provider).unwrap();
 
-    log::info!(" >>> Creating commit ...");
-    let params = CreateCommitParams::builder()
-        .framing_parameters(framing_parameters)
-        .force_self_update(false)
-        .build();
-    let create_commit_result = alice_group
-        .create_commit(params, provider, &alice_signer)
-        .expect("Error creating commit");
-
-    log::info!(" >>> Staging & merging commit ...");
-
-    alice_group
-        .merge_commit(provider, create_commit_result.staged_commit)
-        .expect("error merging own staged commit");
-    let ratchet_tree = alice_group.public_group().export_ratchet_tree();
+    let ratchet_tree = alice_group.export_ratchet_tree();
 
     // Make sure that Bob can join the group with the required extension in place
     // and Bob's key package supporting them.
-    let _bob_group = StagedCoreWelcome::new_from_welcome(
-        create_commit_result
-            .welcome_option
-            .expect("An unexpected error occurred."),
-        Some(ratchet_tree.into()),
-        bob_key_package_bundle,
+    let _bob_group = StagedWelcome::new_from_welcome(
         provider,
-        ResumptionPskStore::new(1024),
+        &MlsGroupJoinConfig::default(),
+        welcome.into_welcome().unwrap(),
+        Some(ratchet_tree.into()),
     )
-    .and_then(|staged_join| staged_join.into_core_group(provider))
     .expect("Error joining group.");
 }
 
 #[openmls_test::openmls_test]
-fn test_group_context_extension_proposal_fails(
+fn group_context_extension_proposal_fails(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,
 ) {
     // Basic group setup.
-    let group_aad = b"Alice's test group";
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
-
     let (alice_credential, _, alice_signer, _alice_pk) =
         setup_client("Alice", ciphersuite, provider);
-    let (_bob_credential_with_key, bob_key_package_bundle, _, _) =
+    let (_bob_credential_with_key, bob_key_package_bundle, _bob_signer, _) =
         setup_client("Bob", ciphersuite, provider);
 
     let bob_key_package = bob_key_package_bundle.key_package();
@@ -438,147 +395,62 @@ fn test_group_context_extension_proposal_fails(
     let credentials = &[CredentialType::Basic];
     let required_capabilities = RequiredCapabilitiesExtension::new(&[], proposals, credentials);
 
-    let mut alice_group = CoreGroup::builder(
-        GroupId::random(provider.rand()),
-        ciphersuite,
-        alice_credential,
-    )
-    .with_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
-        required_capabilities,
-    )))
-    .unwrap()
-    .build(provider, &alice_signer)
-    .expect("Error creating CoreGroup.");
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .with_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
+            required_capabilities,
+        )))
+        .unwrap()
+        .build(provider, &alice_signer, alice_credential)
+        .expect("Error creating CoreGroup.");
 
     // Adding Bob
-    let bob_add_proposal = alice_group
-        .create_add_proposal(framing_parameters, bob_key_package.clone(), &alice_signer)
-        .expect("Could not create proposal");
+    let (_commit, welcome, _group_info_option) = alice_group
+        .add_members(provider, &alice_signer, &[bob_key_package.clone()])
+        .expect("Error adding members.");
 
-    alice_group.proposal_store_mut().empty();
-    alice_group.proposal_store_mut().add(
-        QueuedProposal::from_authenticated_content_by_ref(
-            ciphersuite,
-            provider.crypto(),
-            bob_add_proposal,
-        )
-        .unwrap(),
-    );
+    alice_group.merge_pending_commit(provider).unwrap();
 
-    log::info!(" >>> Creating commit ...");
-    let params = CreateCommitParams::builder()
-        .framing_parameters(framing_parameters)
-        .force_self_update(false)
-        .build();
-    let create_commit_result = alice_group
-        .create_commit(params, provider, &alice_signer)
-        .expect("Error creating commit");
+    let ratchet_tree = alice_group.export_ratchet_tree();
 
-    log::info!(" >>> Staging & merging commit ...");
-
-    alice_group
-        .merge_commit(provider, create_commit_result.staged_commit)
-        .expect("error merging pending commit");
-    let ratchet_tree = alice_group.public_group().export_ratchet_tree();
-
-    let _bob_group = StagedCoreWelcome::new_from_welcome(
-        create_commit_result
-            .welcome_option
-            .expect("An unexpected error occurred."),
-        Some(ratchet_tree.into()),
-        bob_key_package_bundle,
+    let _bob_group = StagedWelcome::new_from_welcome(
         provider,
-        ResumptionPskStore::new(1024),
+        &MlsGroupJoinConfig::default(),
+        welcome.into_welcome().unwrap(),
+        Some(ratchet_tree.into()),
     )
-    .and_then(|staged_join| staged_join.into_core_group(provider))
+    .and_then(|staged_join| staged_join.into_group(provider))
     .expect("Error joining group.");
 
     // TODO: openmls/openmls#1130 re-enable
     // // Now Bob wants the ApplicationId extension to be required.
     // // This should fail because Alice doesn't support it.
-    // let e = bob_group
-    //     .create_group_context_ext_proposal(
-    //         framing_parameters,
-    //         &alice_credential_bundle,
-    //         &[required_application_id],
-    //         provider,
-    //     )
-    //     .expect_err("Bob was able to create a gce proposal for an extension not supported by all other parties.");
-    // assert_eq!(
-    //     e,
-    //     CreateGroupContextExtProposalError::TreeSyncError(
-    //         crate::treesync::errors::TreeSyncError::UnsupportedExtension
-    //     )
-    // );
+    //let unsupported_extensions = Extensions::single(Extension::Unknown(
+    //    0xff00,
+    //    UnknownExtension(vec![0, 1, 2, 3]),
+    //));
+    //let e = bob_group
+    //    .propose_group_context_extensions(provider, unsupported_extensions, &bob_signer)
+    //    .expect_err("Bob was able to propose an extension not supported by all other parties.");
+    //
+    //assert_eq!(
+    //    e,
+    //    ProposalError::CreateGroupContextExtProposalError(
+    //        CreateGroupContextExtProposalError::KeyPackageExtensionSupport(
+    //            KeyPackageExtensionSupportError::UnsupportedExtension
+    //        )
+    //    )
+    //);
 }
 
 #[openmls_test::openmls_test]
-fn test_group_context_extension_proposal(
+fn group_context_extension_proposal(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,
 ) {
     // Basic group setup.
-    let group_aad = b"Alice's test group";
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
-
-    let (alice_credential, _, alice_signer, _alice_pk) =
-        setup_client("Alice", ciphersuite, provider);
-    let (_bob_credential_with_key, bob_key_package_bundle, _, _) =
-        setup_client("Bob", ciphersuite, provider);
-
-    let bob_key_package = bob_key_package_bundle.key_package();
-
-    let mut alice_group = CoreGroup::builder(
-        GroupId::random(provider.rand()),
-        ciphersuite,
-        alice_credential,
-    )
-    .build(provider, &alice_signer)
-    .expect("Error creating CoreGroup.");
-
-    // Adding Bob
-    let bob_add_proposal = alice_group
-        .create_add_proposal(framing_parameters, bob_key_package.clone(), &alice_signer)
-        .expect("Could not create proposal");
-
-    alice_group.proposal_store_mut().empty();
-    alice_group.proposal_store_mut().add(
-        QueuedProposal::from_authenticated_content_by_ref(
-            ciphersuite,
-            provider.crypto(),
-            bob_add_proposal,
-        )
-        .unwrap(),
-    );
-
-    log::info!(" >>> Creating commit ...");
-    let params = CreateCommitParams::builder()
-        .framing_parameters(framing_parameters)
-        .force_self_update(false)
-        .build();
-    let create_commit_results = alice_group
-        .create_commit(params, provider, &alice_signer)
-        .expect("Error creating commit");
-
-    log::info!(" >>> Staging & merging commit ...");
-
-    alice_group
-        .merge_commit(provider, create_commit_results.staged_commit)
-        .expect("error merging pending commit");
-
-    let ratchet_tree = alice_group.public_group().export_ratchet_tree();
-
-    let mut bob_group = StagedCoreWelcome::new_from_welcome(
-        create_commit_results
-            .welcome_option
-            .expect("An unexpected error occurred."),
-        Some(ratchet_tree.into()),
-        bob_key_package_bundle,
-        provider,
-        ResumptionPskStore::new(1024),
-    )
-    .and_then(|staged_join| staged_join.into_core_group(provider))
-    .expect("Error joining group.");
+    let (mut alice_group, alice_signer, mut bob_group, bob_signer, _bob_credential) =
+        setup_alice_bob_group(ciphersuite, provider);
 
     // Alice adds a required capability.
     let required_application_id =
@@ -587,56 +459,47 @@ fn test_group_context_extension_proposal(
             &[],
             &[CredentialType::Basic],
         ));
-    let gce_proposal = alice_group
-        .create_group_context_ext_proposal::<Provider>(
-            framing_parameters,
+    let (gce_proposal, _) = alice_group
+        .propose_group_context_extensions(
+            provider,
             Extensions::single(required_application_id),
             &alice_signer,
         )
-        .expect("Error creating gce proposal.");
+        .expect("Error proposing gce.");
 
-    let queued_proposal = QueuedProposal::from_authenticated_content_by_ref(
-        ciphersuite,
-        provider.crypto(),
-        gce_proposal,
-    )
-    .unwrap();
+    let processed_message = bob_group
+        .process_message(provider, gce_proposal.into_protocol_message().unwrap())
+        .expect("Error processing gce proposal.");
 
-    alice_group.proposal_store_mut().empty();
-    bob_group.proposal_store_mut().empty();
-    alice_group
-        .proposal_store_mut()
-        .add(queued_proposal.clone());
-    bob_group.proposal_store_mut().add(queued_proposal);
+    match processed_message.into_content() {
+        ProcessedMessageContent::ProposalMessage(queued_proposal) => {
+            bob_group
+                .store_pending_proposal(provider.storage(), *queued_proposal)
+                .unwrap();
+        }
+        _ => panic!("Expected a StagedCommitMessage."),
+    };
 
-    log::info!(" >>> Creating commit ...");
-    let params = CreateCommitParams::builder()
-        .framing_parameters(framing_parameters)
-        .force_self_update(false)
-        .build();
-    let create_commit_result = alice_group
-        .create_commit(params, provider, &alice_signer)
-        .expect("Error creating commit");
+    // Bob commits the proposal.
+    let (commit, _, _) = bob_group
+        .commit_to_pending_proposals(provider, &bob_signer)
+        .unwrap();
 
-    log::info!(" >>> Staging & merging commit ...");
+    bob_group.merge_pending_commit(provider).unwrap();
 
-    let staged_commit = bob_group
-        .read_keys_and_stage_commit(&create_commit_result.commit, &[], provider)
-        .expect("error staging commit");
-    bob_group
-        .merge_commit(provider, staged_commit)
-        .expect("error merging commit");
+    let processed_message = alice_group
+        .process_message(provider, commit.into_protocol_message().unwrap())
+        .expect("Error processing commit.");
 
-    alice_group
-        .merge_commit(provider, create_commit_result.staged_commit)
-        .expect("error merging pending commit");
+    match processed_message.into_content() {
+        ProcessedMessageContent::StagedCommitMessage(commit) => {
+            alice_group.merge_staged_commit(provider, *commit).unwrap();
+        }
+        _ => panic!("Expected a StagedCommitMessage."),
+    };
 
     assert_eq!(
-        alice_group
-            .export_secret(provider.crypto(), "label", b"gce test", 32)
-            .expect("Error exporting secret."),
-        bob_group
-            .export_secret(provider.crypto(), "label", b"gce test", 32)
-            .expect("Error exporting secret.")
+        alice_group.epoch_authenticator(),
+        bob_group.epoch_authenticator()
     )
 }

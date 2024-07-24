@@ -1,6 +1,10 @@
 //! MLS Group
 //!
 //! This module contains [`MlsGroup`] and its submodules.
+//!
+
+#[cfg(test)]
+use crate::schedule::message_secrets::MessageSecrets;
 
 use super::proposals::{ProposalStore, QueuedProposal};
 use crate::{
@@ -463,6 +467,11 @@ impl MlsGroup {
     #[cfg(any(feature = "test-utils", test))]
     pub fn tree_hash(&self) -> &[u8] {
         self.group.public_group().group_context().tree_hash()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn message_secrets_test_mut(&mut self) -> &mut MessageSecrets {
+        self.group.message_secrets_test_mut()
     }
 
     #[cfg(any(feature = "test-utils", test))]

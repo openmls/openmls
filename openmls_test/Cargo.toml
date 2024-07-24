@@ -1,8 +1,13 @@
 [package]
 name = "openmls_test"
-version = "0.1.0"
+version = "0.1.0-pre.1"
+authors = ["OpenMLS Authors"]
 edition = "2021"
-authors = ["Franziskus Kiefer <franziskuskiefer@gmail.com>"]
+description = "Test utility used by OpenMLS"
+license = "MIT"
+documentation = "https://docs.rs/openmls_test"
+repository = "https://github.com/openmls/openmls/tree/main/openmls_test"
+readme = "Readme.md"
 
 [lib]
 proc-macro = true
@@ -18,6 +23,6 @@ ansi_term = "0.12.1"
 quote = "1.0"
 rstest = { version = "0.17" }
 rstest_reuse = { version = "0.5" }
-openmls_rust_crypto = { version = "=0.2.0", path = "../openmls_rust_crypto" }
-openmls_libcrux_crypto = { version = "=0.1.0", path = "../libcrux_crypto", optional = true }
+openmls_rust_crypto = {  path = "../openmls_rust_crypto" }
+openmls_libcrux_crypto = {  path = "../libcrux_crypto", optional = true }
 openmls_traits = { path = "../traits" }

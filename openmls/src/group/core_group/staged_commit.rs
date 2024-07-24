@@ -148,19 +148,6 @@ impl CoreGroup {
         let apply_proposals_values =
             diff.apply_proposals(&proposal_queue, self.own_leaf_index())?;
 
-        // Check if we were removed from the group
-        if apply_proposals_values.self_removed {
-            let staged_diff = diff.into_staged_diff(provider.crypto(), ciphersuite)?;
-            let staged_state = PublicStagedCommitState::new(
-                staged_diff,
-                commit.path.as_ref().map(|path| path.leaf_node().clone()),
-            );
-            return Ok(StagedCommit::new(
-                proposal_queue,
-                StagedCommitState::PublicState(Box::new(staged_state)),
-            ));
-        }
-
         // Determine if Commit has a path
         let (commit_secret, new_keypairs, new_leaf_keypair_option, update_path_leaf_node) =
             if let Some(path) = commit.path.clone() {
@@ -178,6 +165,20 @@ impl CoreGroup {
                     provider.crypto(),
                     apply_proposals_values.extensions.clone(),
                 )?;
+
+                // Check if we were removed from the group
+                if apply_proposals_values.self_removed {
+                    // If so, we return here, because we can't decrypt the path
+                    let staged_diff = diff.into_staged_diff(provider.crypto(), ciphersuite)?;
+                    let staged_state = PublicStagedCommitState::new(
+                        staged_diff,
+                        commit.path.as_ref().map(|path| path.leaf_node().clone()),
+                    );
+                    return Ok(StagedCommit::new(
+                        proposal_queue,
+                        StagedCommitState::PublicState(Box::new(staged_state)),
+                    ));
+                }
 
                 let decryption_keypairs: Vec<&EncryptionKeyPair> = old_epoch_keypairs
                     .iter()
@@ -405,26 +406,6 @@ impl CoreGroup {
                 Ok(Some(message_secrets))
             }
         }
-    }
-
-    #[cfg(test)]
-    /// Helper function that reads the decryption keys from the key store
-    /// (unwrapping the result) and stages the given commit.
-    pub(crate) fn read_keys_and_stage_commit(
-        &self,
-        mls_content: &AuthenticatedContent,
-        own_leaf_nodes: &[LeafNode],
-        provider: &impl OpenMlsProvider,
-    ) -> Result<StagedCommit, StageCommitError> {
-        let (old_epoch_keypairs, leaf_node_keypairs) =
-            self.read_decryption_keypairs(provider, own_leaf_nodes)?;
-
-        self.stage_commit(
-            mls_content,
-            old_epoch_keypairs,
-            leaf_node_keypairs,
-            provider,
-        )
     }
 }
 
