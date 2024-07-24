@@ -7,14 +7,13 @@
 use std::{cell::RefCell, collections::HashMap};
 
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::{signatures::Signer, types::SignatureScheme};
 use rand::{rngs::OsRng, RngCore};
 use tls_codec::Serialize;
 
 use crate::{
     ciphersuite::signable::Signable, credentials::*, framing::*, group::*, key_packages::*,
-    messages::ConfirmationTag, schedule::psk::store::ResumptionPskStore, test_utils::*, *,
+    messages::ConfirmationTag, test_utils::*, *,
 };
 
 use self::storage::OpenMlsProvider;
@@ -45,22 +44,7 @@ pub(crate) struct TestSetupConfig {
 /// A client in a test setup.
 pub(crate) struct TestClient {
     pub(crate) credentials: HashMap<Ciphersuite, CredentialWithKeyAndSigner>,
-    pub(crate) key_package_bundles: RefCell<Vec<KeyPackageBundle>>,
-    pub(crate) group_states: RefCell<HashMap<GroupId, CoreGroup>>,
-}
-
-impl TestClient {
-    pub(crate) fn find_key_package_bundle(
-        &self,
-        key_package: &KeyPackage,
-        crypto: &impl OpenMlsCrypto,
-    ) -> Option<KeyPackageBundle> {
-        let mut key_package_bundles = self.key_package_bundles.borrow_mut();
-        key_package_bundles
-            .iter()
-            .position(|x| x.key_package().hash_ref(crypto) == key_package.hash_ref(crypto))
-            .map(|index| key_package_bundles.remove(index))
-    }
+    pub(crate) group_states: RefCell<HashMap<GroupId, MlsGroup>>,
 }
 
 /// The state of a test setup, including the state of the clients and the
@@ -117,7 +101,6 @@ pub(crate) fn setup(
         // Create the client.
         let test_client = TestClient {
             credentials,
-            key_package_bundles: RefCell::new(key_package_bundles),
             group_states: RefCell::new(HashMap::new()),
         };
         test_clients.insert(client.name, RefCell::new(test_client));
@@ -139,30 +122,30 @@ pub(crate) fn setup(
             .get(&group_config.ciphersuite)
             .expect("An unexpected error occurred.");
         // Initialize the group state for the initial member.
-        let core_group = CoreGroup::builder(
-            GroupId::from_slice(&group_id.to_be_bytes()),
-            group_config.ciphersuite,
-            credential_with_key_and_signer.credential_with_key.clone(),
-        )
-        .with_config(group_config.config)
-        .build(provider, &credential_with_key_and_signer.signer)
-        .expect("Error creating new CoreGroup");
-        let mut proposal_list = Vec::new();
-        let group_aad = b"";
-        // Framing parameters
-        let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
+        let mls_group = MlsGroup::builder()
+            .with_group_id(GroupId::from_slice(&group_id.to_be_bytes()))
+            .ciphersuite(group_config.ciphersuite)
+            .use_ratchet_tree_extension(group_config.config.add_ratchet_tree_extension)
+            .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+            .build(
+                provider,
+                &credential_with_key_and_signer.signer,
+                credential_with_key_and_signer.credential_with_key.clone(),
+            )
+            .expect("Error creating group.");
         initial_group_member
             .group_states
             .borrow_mut()
-            .insert(core_group.context().group_id().clone(), core_group);
+            .insert(mls_group.group_id().clone(), mls_group);
         // If there is more than one member in the group, prepare proposals and
         // commit. Then distribute the Welcome message to the new
         // members.
         if group_config.members.len() > 1 {
             let mut group_states = initial_group_member.group_states.borrow_mut();
-            let core_group = group_states
+            let mls_group = group_states
                 .get_mut(&GroupId::from_slice(&group_id.to_be_bytes()))
                 .expect("An unexpected error occurred.");
+            let mut key_packages = vec![];
             for client_id in 1..group_config.members.len() {
                 // Pull a KeyPackage from the key_store for the new member.
                 let next_member_key_package = key_store
@@ -173,42 +156,26 @@ pub(crate) fn setup(
                     .expect("An unexpected error occurred.")
                     .pop()
                     .expect("An unexpected error occurred.");
-                // Have the initial member create an Add proposal using the new
-                // KeyPackage.
-                let add_proposal = core_group
-                    .create_add_proposal(
-                        framing_parameters,
-                        next_member_key_package,
-                        &credential_with_key_and_signer.signer,
-                    )
-                    .expect("An unexpected error occurred.");
-                proposal_list.push(add_proposal);
+                key_packages.push(next_member_key_package.clone());
             }
             // Create the commit based on the previously compiled list of
             // proposals.
-            for proposal in proposal_list {
-                core_group.proposal_store_mut().add(
-                    QueuedProposal::from_authenticated_content_by_ref(
-                        group_config.ciphersuite,
-                        provider.crypto(),
-                        proposal,
-                    )
-                    .expect("Could not create staged proposal."),
-                );
-            }
-            let params = CreateCommitParams::builder()
-                .framing_parameters(framing_parameters)
-                .build();
-            let create_commit_result = core_group
-                .create_commit(params, provider, &credential_with_key_and_signer.signer)
+            let (_commit, welcome, _) = mls_group
+                .add_members(
+                    provider,
+                    &credential_with_key_and_signer.signer,
+                    &key_packages,
+                )
                 .expect("An unexpected error occurred.");
-            let welcome = create_commit_result
-                .welcome_option
-                .expect("An unexpected error occurred.");
+            let welcome = welcome.into_welcome().unwrap();
 
-            core_group
-                .merge_staged_commit(provider, create_commit_result.staged_commit)
+            mls_group
+                .merge_pending_commit(provider)
                 .expect("Error merging commit.");
+
+            let join_config = MlsGroupJoinConfig::builder()
+                .wire_format_policy(PURE_CIPHERTEXT_WIRE_FORMAT_POLICY)
+                .build();
 
             // Distribute the Welcome message to the other members.
             for client_id in 1..group_config.members.len() {
@@ -216,53 +183,18 @@ pub(crate) fn setup(
                     .get(group_config.members[client_id].name)
                     .expect("An unexpected error occurred.")
                     .borrow_mut();
-                // Figure out which key package bundle we should use. This is
-                // a bit ugly and inefficient.
-                let member_secret = welcome
-                    .secrets()
-                    .iter()
-                    .find(|x| {
-                        new_group_member
-                            .key_package_bundles
-                            .borrow()
-                            .iter()
-                            .any(|y| {
-                                y.key_package()
-                                    .hash_ref(provider.crypto())
-                                    .expect("Could not hash KeyPackage.")
-                                    == x.new_member()
-                            })
-                    })
-                    .expect("An unexpected error occurred.");
-                let kpb_position = new_group_member
-                    .key_package_bundles
-                    .borrow()
-                    .iter()
-                    .position(|y| {
-                        y.key_package()
-                            .hash_ref(provider.crypto())
-                            .expect("Could not hash KeyPackage.")
-                            == member_secret.new_member()
-                    })
-                    .expect("An unexpected error occurred.");
-                let key_package_bundle = new_group_member
-                    .key_package_bundles
-                    .borrow_mut()
-                    .remove(kpb_position);
                 // Create the local group state of the new member based on the
                 // Welcome.
-                let new_group = match StagedCoreWelcome::new_from_welcome(
-                    welcome.clone(),
-                    Some(core_group.public_group().export_ratchet_tree().into()),
-                    key_package_bundle,
+                let ratchet_tree = Some(mls_group.export_ratchet_tree().into());
+                let new_group = StagedWelcome::new_from_welcome(
                     provider,
-                    ResumptionPskStore::new(1024),
+                    &join_config,
+                    welcome.clone(),
+                    ratchet_tree,
                 )
-                .and_then(|staged_join| staged_join.into_core_group(provider))
-                {
-                    Ok(group) => group,
-                    Err(err) => panic!("Error creating new group from Welcome: {err:?}"),
-                };
+                .unwrap()
+                .into_group(provider)
+                .unwrap();
 
                 new_group_member
                     .group_states
