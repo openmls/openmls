@@ -275,7 +275,6 @@ const USE_RATCHET_TREE_LABEL: &[u8] = b"UseRatchetTree";
 // related to MlsGroup
 const JOIN_CONFIG_LABEL: &[u8] = b"MlsGroupJoinConfig";
 const OWN_LEAF_NODES_LABEL: &[u8] = b"OwnLeafNodes";
-const AAD_LABEL: &[u8] = b"AAD";
 const GROUP_STATE_LABEL: &[u8] = b"GroupState";
 const QUEUED_PROPOSAL_LABEL: &[u8] = b"QueuedProposal";
 const PROPOSAL_QUEUE_REFS_LABEL: &[u8] = b"ProposalQueueRefs";
@@ -934,19 +933,6 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         let key = serde_json::to_vec(group_id)?;
         let value = serde_json::to_vec(leaf_node)?;
         self.append::<CURRENT_VERSION>(OWN_LEAF_NODES_LABEL, &key, value)
-    }
-
-    fn aad<GroupId: traits::GroupId<CURRENT_VERSION>>(
-        &self,
-        group_id: &GroupId,
-    ) -> Result<Vec<u8>, Self::Error> {
-        let key = serde_json::to_vec(group_id)?;
-        self.read::<CURRENT_VERSION, Vec<u8>>(AAD_LABEL, &key)
-            .map(|v| {
-                // When we didn't find the value, we return an empty vector as
-                // required by the trait.
-                v.unwrap_or_default()
-            })
     }
 
     fn delete_own_leaf_nodes<GroupId: traits::GroupId<CURRENT_VERSION>>(
