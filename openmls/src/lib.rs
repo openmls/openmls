@@ -142,11 +142,7 @@
 #![cfg_attr(not(feature = "test-utils"), deny(missing_docs))]
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(rustdoc::private_intra_doc_links)]
-#![cfg(any(
-    target_pointer_width = "32",
-    target_pointer_width = "64",
-    target_pointer_width = "128"
-))]
+#![cfg(any(target_pointer_width = "32", target_pointer_width = "64",))]
 
 #[cfg(all(target_arch = "wasm32", not(feature = "js")))]
 compile_error!("In order for OpenMLS to build for WebAssembly, JavaScript APIs must be available (for access to secure randomness and the current time). This can be signalled by setting the `js` feature on OpenMLS.");
