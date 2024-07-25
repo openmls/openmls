@@ -267,13 +267,6 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<Vec<LeafNode>, Self::Error>;
     ///ANCHOR_END: own_leaf_nodes
 
-    /// Returns the AAD for the group with given id
-    /// If the value has not been set, returns an empty vector.
-    fn aad<GroupId: traits::GroupId<VERSION>>(
-        &self,
-        group_id: &GroupId,
-    ) -> Result<Vec<u8>, Self::Error>;
-
     /// Returns references of all queued proposals for the group with group id `group_id`, or an empty vector of none are stored.
     fn queued_proposal_refs<
         GroupId: traits::GroupId<VERSION>,
