@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/mls_group/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../../openmls/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/mls_group/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-dd39b87e5fcfba68.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.80.0 (051478957 2024-07-21)" data-channel="1.80.0" data-search-js="search-d52510db62a78183.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -596,46 +596,46 @@
 /// states and their transitions are as follows:
 ///
 /// * [`MlsGroupState::Operational`]: This is the main state of the group, which
-/// allows access to all of its functionality, (except merging pending commits,
-/// see the [`MlsGroupState::PendingCommit`] for more information) and it's the
-/// state the group starts in (except when created via
-/// [`MlsGroup::join_by_external_commit()`], see the functions documentation for
-/// more information). From this `Operational`, the group state can either
-/// transition to [`MlsGroupState::Inactive`], when it processes a commit that
-/// removes this client from the group, or to [`MlsGroupState::PendingCommit`],
-/// when this client creates a commit.
+///   allows access to all of its functionality, (except merging pending commits,
+///   see the [`MlsGroupState::PendingCommit`] for more information) and it's the
+///   state the group starts in (except when created via
+///   [`MlsGroup::join_by_external_commit()`], see the functions documentation for
+///   more information). From this `Operational`, the group state can either
+///   transition to [`MlsGroupState::Inactive`], when it processes a commit that
+///   removes this client from the group, or to [`MlsGroupState::PendingCommit`],
+///   when this client creates a commit.
 ///
 /// * [`MlsGroupState::Inactive`]: A group can enter this state from any other
-/// state when it processes a commit that removes this client from the group.
-/// This is a terminal state that the group can not exit from. If the clients
-/// wants to re-join the group, it can either be added by a group member or it
-/// can join via external commit.
+///   state when it processes a commit that removes this client from the group.
+///   This is a terminal state that the group can not exit from. If the clients
+///   wants to re-join the group, it can either be added by a group member or it
+///   can join via external commit.
 ///
 /// * [`MlsGroupState::PendingCommit`]: This state is split into two possible
-/// sub-states, one for each Commit type:
-/// [`PendingCommitState::Member`] and [`PendingCommitState::External`]:
+///   sub-states, one for each Commit type:
+///   [`PendingCommitState::Member`] and [`PendingCommitState::External`]:
 ///
 ///   * If the client creates a commit for this group, the `PendingCommit` state
-///   is entered with [`PendingCommitState::Member`] and with the [`StagedCommit`] as
-///   additional state variable. In this state, it can perform the same
-///   operations as in the [`MlsGroupState::Operational`], except that it cannot
-///   create proposals or commits. However, it can merge or clear the stored
-///   [`StagedCommit`], where both actions result in a transition to the
-///   [`MlsGroupState::Operational`]. Additionally, if a commit from another
-///   group member is processed, the own pending commit is also cleared and
-///   either the `Inactive` state is entered (if this client was removed from
-///   the group as part of the processed commit), or the `Operational` state is
-///   entered.
+///     is entered with [`PendingCommitState::Member`] and with the [`StagedCommit`] as
+///     additional state variable. In this state, it can perform the same
+///     operations as in the [`MlsGroupState::Operational`], except that it cannot
+///     create proposals or commits. However, it can merge or clear the stored
+///     [`StagedCommit`], where both actions result in a transition to the
+///     [`MlsGroupState::Operational`]. Additionally, if a commit from another
+///     group member is processed, the own pending commit is also cleared and
+///     either the `Inactive` state is entered (if this client was removed from
+///     the group as part of the processed commit), or the `Operational` state is
+///     entered.
 ///
 ///   * A group can enter the [`PendingCommitState::External`] sub-state only as
-///   the initial state when the group is created via
-///   [`MlsGroup::join_by_external_commit()`]. In contrast to the
-///   [`PendingCommitState::Member`] `PendingCommit` state, the only possible
-///   functionality that can be used is the [`MlsGroup::merge_pending_commit()`]
-///   function, which merges the pending external commit and transitions the
-///   state to [`MlsGroupState::PendingCommit`]. For more information on the
-///   external commit process, see [`MlsGroup::join_by_external_commit()`] or
-///   Section 11.2.1 of the MLS specification.
+///     the initial state when the group is created via
+///     [`MlsGroup::join_by_external_commit()`]. In contrast to the
+///     [`PendingCommitState::Member`] `PendingCommit` state, the only possible
+///     functionality that can be used is the [`MlsGroup::merge_pending_commit()`]
+///     function, which merges the pending external commit and transitions the
+///     state to [`MlsGroupState::PendingCommit`]. For more information on the
+///     external commit process, see [`MlsGroup::join_by_external_commit()`] or
+///     Section 11.2.1 of the MLS specification.
 </span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(Clone, PartialEq))]
 </span><span class="kw">pub enum </span>MlsGroupState {
