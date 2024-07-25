@@ -38,12 +38,17 @@ impl MlsGroup {
 
     /// Returns the epoch authenticator of the current epoch.
     pub fn epoch_authenticator(&self) -> &EpochAuthenticator {
-        self.group.epoch_authenticator()
+        self.group_epoch_secrets().epoch_authenticator()
     }
 
     /// Returns the resumption PSK secret of the current epoch.
     pub fn resumption_psk_secret(&self) -> &ResumptionPskSecret {
-        self.group.resumption_psk_secret()
+        self.group_epoch_secrets().resumption_psk()
+    }
+
+    /// Returns a reference to the public group.
+    pub(crate) fn public_group(&self) -> &PublicGroup {
+        &self.public_group
     }
 
     /// Returns a resumption psk for a given epoch. If no resumption psk
