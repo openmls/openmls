@@ -5,6 +5,7 @@
 
 use std::fmt::Debug;
 
+// ANCHOR: openmls_rand
 pub trait OpenMlsRand {
     type Error: std::error::Error + Debug;
 
@@ -14,3 +15,4 @@ pub trait OpenMlsRand {
     /// Fill a vector of length `len` with bytes.
     fn random_vec(&self, len: usize) -> Result<Vec<u8>, Self::Error>;
 }
+// ANCHOR_END: openmls_rand
