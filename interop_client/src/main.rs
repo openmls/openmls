@@ -978,7 +978,7 @@ impl MlsClient for MlsClientImpl {
             let (proposal, _proposal_ref) = match proposal_type.as_ref() {
                 "add" => {
                     let key_package =
-                        MlsMessageIn::tls_deserialize_exact(&mut proposal.key_package.clone())
+                        MlsMessageIn::tls_deserialize_exact(proposal.key_package.clone())
                             .map_err(|_| Status::invalid_argument("Invalid key package"))?;
                     let key_package = key_package
                         .into_keypackage()
