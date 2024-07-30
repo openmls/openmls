@@ -23,6 +23,7 @@ pub mod prelude {
 ///
 /// An implementation of this trait must be passed in to the public OpenMLS API
 /// to perform randomness generation, cryptographic operations, and key storage.
+// ANCHOR: openmls_provider
 pub trait OpenMlsProvider {
     type CryptoProvider: crypto::OpenMlsCrypto;
     type RandProvider: random::OpenMlsRand;
@@ -37,3 +38,4 @@ pub trait OpenMlsProvider {
     /// Get the randomness provider.
     fn rand(&self) -> &Self::RandProvider;
 }
+// ANCHOR_END: openmls_provider

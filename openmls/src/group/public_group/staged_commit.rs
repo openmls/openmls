@@ -202,6 +202,7 @@ impl PublicGroup {
     ///  - ValSem241
     ///  - ValSem242
     ///  - ValSem244
+    ///
     /// Returns an error if the given commit was sent by the owner of this
     /// group.
     pub(crate) fn stage_commit(

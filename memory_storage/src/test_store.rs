@@ -487,13 +487,6 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn aad<GroupId: traits::GroupId<V_TEST>>(
-        &self,
-        _group_id: &GroupId,
-    ) -> Result<Vec<u8>, Self::Error> {
-        todo!()
-    }
-
     fn queued_proposals<
         GroupId: traits::GroupId<V_TEST>,
         ProposalRef: traits::ProposalRef<V_TEST>,

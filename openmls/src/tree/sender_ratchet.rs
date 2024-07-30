@@ -21,14 +21,14 @@ pub(crate) type Generation = u32;
 ///
 /// **Parameters**
 ///
-///  - out_of_order_tolerance:
-/// This parameter defines a window for which decryption secrets are kept.
-/// This is useful in case the DS cannot guarantee that all application messages have total order within an epoch.
-/// Use this carefully, since keeping decryption secrets affects forward secrecy within an epoch.
-/// The default value is 5.
-///  - maximum_forward_distance:
-/// This parameter defines how many incoming messages can be skipped. This is useful if the DS
-/// drops application messages. The default value is 1000.
+/// - out_of_order_tolerance:
+///   This parameter defines a window for which decryption secrets are kept.
+///   This is useful in case the DS cannot guarantee that all application messages have total order within an epoch.
+///   Use this carefully, since keeping decryption secrets affects forward secrecy within an epoch.
+///   The default value is 5.
+/// - maximum_forward_distance:
+///   This parameter defines how many incoming messages can be skipped. This is useful if the DS
+///   drops application messages. The default value is 1000.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SenderRatchetConfiguration {
     out_of_order_tolerance: Generation,
