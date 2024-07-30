@@ -35,7 +35,7 @@ It simply needs to implement two functions to generate cryptographically secure
 randomness and store it in an array or vector.
 
 ```rust,no_run,noplayground
-{{#include ../../../traits/src/random.rs:8:16}}
+{{#include ../../../traits/src/random.rs:openmls_rand}}
 ```
 
 ### OpenMlsCrypto
@@ -47,10 +47,6 @@ This trait defines all cryptographic functions required by OpenMLS. In particula
 - AEAD
 - Signatures
 - HPKE
-
-```rust,no_run,noplayground
-{{#include ../../../traits/src/crypto.rs:10}}
-```
 
 ### StorageProvider
 
@@ -126,14 +122,14 @@ fn write_key_package<
 This allows the application to iterate over the hash references and delete outdated
 key packages.
 
-### OpenMlsCryptoProvider
+### OpenMlsProvider
 
 Additionally, there's a wrapper trait defined that is expected to be passed into
 the public OpenMLS API.
 Some OpenMLS APIs require only one of the sub-traits, though.
 
 ```rust,no_run,noplayground
-{{#include ../../../traits/src/traits.rs:15:28}}
+{{#include ../../../traits/src/traits.rs:openmls_provider}}
 ```
 
 ## Implementation Notes

@@ -1,6 +1,6 @@
 [package]
 name = "openmls"
-version = "0.6.0-pre.1"
+version = "0.6.0-pre.2"
 authors = ["OpenMLS Authors"]
 edition = "2021"
 description = "A Rust implementation of the Messaging Layer Security (MLS) protocol, as defined in RFC 9420."
@@ -9,6 +9,7 @@ documentation = "https://openmls.github.io/openmls/"
 repository = "https://github.com/openmls/openmls/"
 readme = "../README.md"
 keywords = ["MLS", "IETF", "RFC9420", "Encryption", "E2EE"]
+exclude = ["/test_vectors"]
 
 [dependencies]
 openmls_traits = { version = "0.3.0-pre.2", path = "../traits" }

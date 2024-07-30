@@ -78,46 +78,46 @@ impl From<PendingCommitState> for StagedCommit {
 /// states and their transitions are as follows:
 ///
 /// * [`MlsGroupState::Operational`]: This is the main state of the group, which
-/// allows access to all of its functionality, (except merging pending commits,
-/// see the [`MlsGroupState::PendingCommit`] for more information) and it's the
-/// state the group starts in (except when created via
-/// [`MlsGroup::join_by_external_commit()`], see the functions documentation for
-/// more information). From this `Operational`, the group state can either
-/// transition to [`MlsGroupState::Inactive`], when it processes a commit that
-/// removes this client from the group, or to [`MlsGroupState::PendingCommit`],
-/// when this client creates a commit.
+///   allows access to all of its functionality, (except merging pending commits,
+///   see the [`MlsGroupState::PendingCommit`] for more information) and it's the
+///   state the group starts in (except when created via
+///   [`MlsGroup::join_by_external_commit()`], see the functions documentation for
+///   more information). From this `Operational`, the group state can either
+///   transition to [`MlsGroupState::Inactive`], when it processes a commit that
+///   removes this client from the group, or to [`MlsGroupState::PendingCommit`],
+///   when this client creates a commit.
 ///
 /// * [`MlsGroupState::Inactive`]: A group can enter this state from any other
-/// state when it processes a commit that removes this client from the group.
-/// This is a terminal state that the group can not exit from. If the clients
-/// wants to re-join the group, it can either be added by a group member or it
-/// can join via external commit.
+///   state when it processes a commit that removes this client from the group.
+///   This is a terminal state that the group can not exit from. If the clients
+///   wants to re-join the group, it can either be added by a group member or it
+///   can join via external commit.
 ///
 /// * [`MlsGroupState::PendingCommit`]: This state is split into two possible
-/// sub-states, one for each Commit type:
-/// [`PendingCommitState::Member`] and [`PendingCommitState::External`]:
+///   sub-states, one for each Commit type:
+///   [`PendingCommitState::Member`] and [`PendingCommitState::External`]:
 ///
 ///   * If the client creates a commit for this group, the `PendingCommit` state
-///   is entered with [`PendingCommitState::Member`] and with the [`StagedCommit`] as
-///   additional state variable. In this state, it can perform the same
-///   operations as in the [`MlsGroupState::Operational`], except that it cannot
-///   create proposals or commits. However, it can merge or clear the stored
-///   [`StagedCommit`], where both actions result in a transition to the
-///   [`MlsGroupState::Operational`]. Additionally, if a commit from another
-///   group member is processed, the own pending commit is also cleared and
-///   either the `Inactive` state is entered (if this client was removed from
-///   the group as part of the processed commit), or the `Operational` state is
-///   entered.
+///     is entered with [`PendingCommitState::Member`] and with the [`StagedCommit`] as
+///     additional state variable. In this state, it can perform the same
+///     operations as in the [`MlsGroupState::Operational`], except that it cannot
+///     create proposals or commits. However, it can merge or clear the stored
+///     [`StagedCommit`], where both actions result in a transition to the
+///     [`MlsGroupState::Operational`]. Additionally, if a commit from another
+///     group member is processed, the own pending commit is also cleared and
+///     either the `Inactive` state is entered (if this client was removed from
+///     the group as part of the processed commit), or the `Operational` state is
+///     entered.
 ///
 ///   * A group can enter the [`PendingCommitState::External`] sub-state only as
-///   the initial state when the group is created via
-///   [`MlsGroup::join_by_external_commit()`]. In contrast to the
-///   [`PendingCommitState::Member`] `PendingCommit` state, the only possible
-///   functionality that can be used is the [`MlsGroup::merge_pending_commit()`]
-///   function, which merges the pending external commit and transitions the
-///   state to [`MlsGroupState::PendingCommit`]. For more information on the
-///   external commit process, see [`MlsGroup::join_by_external_commit()`] or
-///   Section 11.2.1 of the MLS specification.
+///     the initial state when the group is created via
+///     [`MlsGroup::join_by_external_commit()`]. In contrast to the
+///     [`PendingCommitState::Member`] `PendingCommit` state, the only possible
+///     functionality that can be used is the [`MlsGroup::merge_pending_commit()`]
+///     function, which merges the pending external commit and transitions the
+///     state to [`MlsGroupState::PendingCommit`]. For more information on the
+///     external commit process, see [`MlsGroup::join_by_external_commit()`] or
+///     Section 11.2.1 of the MLS specification.
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 pub enum MlsGroupState {
