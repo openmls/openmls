@@ -84,7 +84,7 @@ impl MlsGroup {
         provider: &Provider,
         signer: &impl Signer,
         key_packages: &[KeyPackage],
-        with_path: bool,
+        force_self_update: bool,
     ) -> Result<
         (MlsMessageOut, MlsMessageOut, Option<GroupInfo>),
         AddMembersError<Provider::StorageError>,
@@ -110,7 +110,7 @@ impl MlsGroup {
         let params = CreateCommitParams::builder()
             .framing_parameters(self.framing_parameters())
             .inline_proposals(inline_proposals)
-            .force_self_update(with_path)
+            .force_self_update(force_self_update)
             .build();
         let create_commit_result = self.group.create_commit(params, provider, signer)?;
 
