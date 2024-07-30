@@ -1,9 +1,14 @@
 use openmls_traits::crypto::OpenMlsCrypto;
 use tls_codec::{Deserialize, Serialize};
 
-use crate::group::tests_and_kats::utils::*;
-use crate::prelude::LeafNodeParameters;
-use crate::{binary_tree::LeafNodeIndex, framing::*, group::*, key_packages::*, messages::*};
+use crate::{
+    binary_tree::LeafNodeIndex,
+    framing::*,
+    group::{tests_and_kats::utils::*, *},
+    key_packages::*,
+    messages::*,
+    treesync::node::leaf_node::LeafNodeParameters,
+};
 
 /// Creates a simple test setup for various encoding tests.
 fn create_encoding_test_setup(provider: &impl crate::storage::OpenMlsProvider) -> TestSetup {
