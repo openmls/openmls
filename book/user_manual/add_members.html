@@ -184,6 +184,9 @@
         )
         .expect("Could not add members.");</code></pre>
 <p>The function returns the tuple <code>(MlsMessageOut, Welcome)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing group members. The <code>Welcome</code> message must be sent to the newly added members.</p>
+<h3 id="adding-members-without-update"><a class="header" href="#adding-members-without-update">Adding members without update</a></h3>
+<p>The <code>.add_members_without_update()</code> function functions the same as the <code>.add_members()</code> function, except that it will only include an update to the sender's key material if the sender's proposal store includes a proposal that requires a path. For a list of proposals and an indication whether they require a <code>path</code> (i.e. a key material update) see <a href="https://www.rfc-editor.org/rfc/rfc9420.html#section-17.4">Section 17.4 of RFC 9420</a>.</p>
+<p>Not sending an update means that the sender will not achieve post-compromise security with this particular commit. However, not sending an update saves on performance both in terms of computation and bandwidth. Using <code>.add_members_without_update()</code> can thus be a useful option if the ciphersuite of the group features large public keys and/or expensive encryption operations.</p>
 <h2 id="proposal"><a class="header" href="#proposal">Proposal</a></h2>
 <p>Members can also be added as a proposal (without the corresponding Commit message) by using the <code>.propose_add_member()</code> function:</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, _proposal_ref) = alice_group
