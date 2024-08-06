@@ -1,10 +1,13 @@
 use openmls_traits::crypto::OpenMlsCrypto;
 use tls_codec::{Deserialize, Serialize};
 
-use crate::group::tests_and_kats::utils::*;
 use crate::{
-    binary_tree::LeafNodeIndex, framing::*, group::*, key_packages::*, messages::*,
-    schedule::psk::store::ResumptionPskStore, test_utils::*,
+    binary_tree::LeafNodeIndex,
+    framing::*,
+    group::{tests_and_kats::utils::*, *},
+    key_packages::*,
+    messages::*,
+    treesync::LeafNodeParameters,
 };
 
 /// Creates a simple test setup for various encoding tests.
@@ -69,15 +72,14 @@ fn test_application_message_encoding(provider: &impl crate::storage::OpenMlsProv
             // Test encoding/decoding of Application messages.
             let message = randombytes(random_usize() % 1000);
             let aad = randombytes(random_usize() % 1000);
+            group_state.set_aad(aad);
             let encrypted_message = group_state
-                .create_application_message(
-                    &aad,
-                    &message,
-                    0,
-                    provider,
-                    &credential_with_key_and_signer.signer,
-                )
-                .expect("An unexpected error occurred.");
+                .create_message(provider, &credential_with_key_and_signer.signer, &message)
+                .unwrap();
+            let encrypted_message = match encrypted_message.body {
+                MlsMessageBodyOut::PrivateMessage(pm) => pm,
+                _ => panic!("Expected a PrivateMessage"),
+            };
             let encrypted_message_bytes = encrypted_message
                 .tls_serialize_detached()
                 .expect("An unexpected error occurred.");
@@ -100,8 +102,6 @@ fn test_update_proposal_encoding(provider: &impl crate::storage::OpenMlsProvider
         .get("alice")
         .expect("An unexpected error occurred.")
         .borrow();
-    // Framing parameters
-    let framing_parameters = FramingParameters::new(&[], WireFormat::PublicMessage);
 
     for group_state in alice.group_states.borrow_mut().values_mut() {
         let credential_with_key_and_signer = alice
@@ -109,29 +109,17 @@ fn test_update_proposal_encoding(provider: &impl crate::storage::OpenMlsProvider
             .get(&group_state.ciphersuite())
             .expect("An unexpected error occurred.");
 
-        let key_package_bundle = KeyPackageBundle::generate(
-            provider,
-            &credential_with_key_and_signer.signer,
-            group_state.ciphersuite(),
-            credential_with_key_and_signer.credential_with_key.clone(),
-        );
-
-        let mut update: PublicMessage = group_state
-            .create_update_proposal(
-                framing_parameters,
-                key_package_bundle.key_package().leaf_node().clone(),
+        let (update, _) = group_state
+            .propose_self_update(
+                provider,
                 &credential_with_key_and_signer.signer,
+                LeafNodeParameters::default(),
             )
-            .expect("Could not create proposal.")
-            .into();
-        update
-            .set_membership_tag(
-                provider.crypto(),
-                group_state.ciphersuite(),
-                group_state.message_secrets().membership_key(),
-                group_state.message_secrets().serialized_context(),
-            )
-            .expect("error setting membership tag");
+            .unwrap();
+        let update = match update.body {
+            MlsMessageBodyOut::PublicMessage(pm) => pm,
+            _ => panic!("Expected a PublicMessage"),
+        };
         let update_encoded = update
             .tls_serialize_detached()
             .expect("Could not encode proposal.");
@@ -154,8 +142,6 @@ fn test_add_proposal_encoding(provider: &impl crate::storage::OpenMlsProvider) {
         .get("alice")
         .expect("An unexpected error occurred.")
         .borrow();
-    // Framing parameters
-    let framing_parameters = FramingParameters::new(&[], WireFormat::PublicMessage);
 
     for group_state in alice.group_states.borrow_mut().values_mut() {
         let credential_with_key_and_signer = alice
@@ -171,21 +157,17 @@ fn test_add_proposal_encoding(provider: &impl crate::storage::OpenMlsProvider) {
         );
 
         // Adds
-        let mut add: PublicMessage = group_state
-            .create_add_proposal(
-                framing_parameters,
-                key_package_bundle.key_package().clone(),
+        let (add, _) = group_state
+            .propose_add_member(
+                provider,
                 &credential_with_key_and_signer.signer,
+                key_package_bundle.key_package(),
             )
-            .expect("Could not create proposal.")
-            .into();
-        add.set_membership_tag(
-            provider.crypto(),
-            group_state.ciphersuite(),
-            group_state.message_secrets().membership_key(),
-            group_state.message_secrets().serialized_context(),
-        )
-        .expect("error setting membership tag");
+            .unwrap();
+        let add = match add.body {
+            MlsMessageBodyOut::PublicMessage(pm) => pm,
+            _ => panic!("Expected a PublicMessage"),
+        };
         let add_encoded = add
             .tls_serialize_detached()
             .expect("Could not encode proposal.");
@@ -205,8 +187,6 @@ fn test_remove_proposal_encoding(provider: &impl crate::storage::OpenMlsProvider
         .get("alice")
         .expect("An unexpected error occurred.")
         .borrow();
-    // Framing parameters
-    let framing_parameters = FramingParameters::new(&[], WireFormat::PublicMessage);
 
     for group_state in alice.group_states.borrow_mut().values_mut() {
         let credential_with_key_and_signer = alice
@@ -214,22 +194,18 @@ fn test_remove_proposal_encoding(provider: &impl crate::storage::OpenMlsProvider
             .get(&group_state.ciphersuite())
             .expect("An unexpected error occurred.");
 
-        let mut remove: PublicMessage = group_state
-            .create_remove_proposal(
-                framing_parameters,
-                LeafNodeIndex::new(1),
+        let (remove, _) = group_state
+            .propose_remove_member(
+                provider,
                 &credential_with_key_and_signer.signer,
+                LeafNodeIndex::new(1),
             )
-            .expect("Could not create proposal.")
-            .into();
-        remove
-            .set_membership_tag(
-                provider.crypto(),
-                group_state.ciphersuite(),
-                group_state.message_secrets().membership_key(),
-                group_state.message_secrets().serialized_context(),
-            )
-            .expect("error setting membership tag");
+            .unwrap();
+        let remove = match remove.body {
+            MlsMessageBodyOut::PublicMessage(pm) => pm,
+            _ => panic!("Expected a PublicMessage"),
+        };
+
         let remove_encoded = remove
             .tls_serialize_detached()
             .expect("Could not encode proposal.");
@@ -249,8 +225,6 @@ fn test_commit_encoding(provider: &impl crate::storage::OpenMlsProvider) {
         .get("alice")
         .expect("An unexpected error occurred.")
         .borrow();
-    // Framing parameters
-    let framing_parameters = FramingParameters::new(&[], WireFormat::PublicMessage);
 
     for group_state in alice.group_states.borrow_mut().values_mut() {
         let alice_credential_with_key_and_signer = alice
@@ -258,27 +232,7 @@ fn test_commit_encoding(provider: &impl crate::storage::OpenMlsProvider) {
             .get(&group_state.ciphersuite())
             .expect("An unexpected error occurred.");
 
-        let alice_key_package_bundle = KeyPackageBundle::generate(
-            provider,
-            &alice_credential_with_key_and_signer.signer,
-            group_state.ciphersuite(),
-            alice_credential_with_key_and_signer
-                .credential_with_key
-                .clone(),
-        );
-
-        // Create a few proposals to put into the commit
-
-        // Alice updates her own leaf
-        let update = group_state
-            .create_update_proposal(
-                framing_parameters,
-                alice_key_package_bundle.key_package().leaf_node().clone(),
-                &alice_credential_with_key_and_signer.signer,
-            )
-            .expect("Could not create proposal.");
-
-        // Alice adds Charlie to the group
+        // Alice updates her own leaf and adds Charlie to the group
         let charlie_key_package = test_setup
             ._key_store
             .borrow_mut()
@@ -286,49 +240,18 @@ fn test_commit_encoding(provider: &impl crate::storage::OpenMlsProvider) {
             .expect("An unexpected error occurred.")
             .pop()
             .expect("An unexpected error occurred.");
-        let add = group_state
-            .create_add_proposal(
-                framing_parameters,
-                charlie_key_package.clone(),
-                &alice_credential_with_key_and_signer.signer,
-            )
-            .expect("Could not create proposal.");
-
-        let ciphersuite = group_state.ciphersuite();
-
-        group_state.proposal_store_mut().empty();
-        group_state.proposal_store_mut().add(
-            QueuedProposal::from_authenticated_content_by_ref(ciphersuite, provider.crypto(), add)
-                .unwrap(),
-        );
-        group_state.proposal_store_mut().add(
-            QueuedProposal::from_authenticated_content_by_ref(
-                ciphersuite,
-                provider.crypto(),
-                update,
-            )
-            .unwrap(),
-        );
-
-        let params = CreateCommitParams::builder()
-            .framing_parameters(framing_parameters)
-            .build();
-        let create_commit_result = group_state
-            .create_commit(
-                params,
+        let (commit, _, _) = group_state
+            .add_members(
                 provider,
                 &alice_credential_with_key_and_signer.signer,
+                &[charlie_key_package.clone()],
             )
-            .expect("An unexpected error occurred.");
-        let mut commit: PublicMessage = create_commit_result.commit.into();
-        commit
-            .set_membership_tag(
-                provider.crypto(),
-                group_state.ciphersuite(),
-                group_state.message_secrets().membership_key(),
-                group_state.message_secrets().serialized_context(),
-            )
-            .expect("error setting membership tag");
+            .expect("Could not create commit.");
+
+        let commit = match commit.body {
+            MlsMessageBodyOut::PublicMessage(pm) => pm,
+            _ => panic!("Expected a PublicMessage"),
+        };
         let commit_encoded = commit
             .tls_serialize_detached()
             .expect("An unexpected error occurred.");
@@ -348,8 +271,6 @@ fn test_welcome_message_encoding(provider: &impl crate::storage::OpenMlsProvider
         .get("alice")
         .expect("An unexpected error occurred.")
         .borrow();
-    // Framing parameters
-    let framing_parameters = FramingParameters::new(&[], WireFormat::PublicMessage);
 
     for group_state in alice.group_states.borrow_mut().values_mut() {
         let credential_with_key_and_signer = alice
@@ -367,39 +288,17 @@ fn test_welcome_message_encoding(provider: &impl crate::storage::OpenMlsProvider
             .expect("An unexpected error occurred.")
             .pop()
             .expect("An unexpected error occurred.");
-        let add = group_state
-            .create_add_proposal(
-                framing_parameters,
-                charlie_key_package.clone(),
+        let (_commit, welcome, _) = group_state
+            .add_members(
+                provider,
                 &credential_with_key_and_signer.signer,
+                &[charlie_key_package.clone()],
             )
-            .expect("Could not create proposal.");
-
-        let ciphersuite = group_state.ciphersuite();
-
-        group_state.proposal_store_mut().empty();
-        group_state.proposal_store_mut().add(
-            QueuedProposal::from_authenticated_content_by_ref(ciphersuite, provider.crypto(), add)
-                .unwrap(),
-        );
-
-        let params = CreateCommitParams::builder()
-            .framing_parameters(framing_parameters)
-            .build();
-        let create_commit_result = group_state
-            .create_commit(params, provider, &credential_with_key_and_signer.signer)
-            .expect("An unexpected error occurred.");
-        // Alice applies the commit
-        group_state
-            .merge_commit(provider, create_commit_result.staged_commit)
-            .expect("error merging own commits");
+            .expect("Could not create commit.");
+        group_state.merge_pending_commit(provider).unwrap();
+        let welcome = welcome.into_welcome().unwrap();
 
         // Welcome messages
-
-        let welcome = create_commit_result
-            .welcome_option
-            .expect("An unexpected error occurred.");
-
         let welcome_encoded = welcome
             .tls_serialize_detached()
             .expect("An unexpected error occurred.");
@@ -410,25 +309,14 @@ fn test_welcome_message_encoding(provider: &impl crate::storage::OpenMlsProvider
 
         assert_eq!(welcome, welcome_decoded);
 
-        let charlie = test_clients
-            .get("charlie")
-            .expect("An unexpected error occurred.")
-            .borrow();
-
-        let charlie_key_package_bundle = charlie
-            .find_key_package_bundle(&charlie_key_package, provider.crypto())
-            .expect("An unexpected error occurred.");
-
         // This makes Charlie decode the internals of the Welcome message, for
         // example the RatchetTreeExtension.
-        assert!(StagedCoreWelcome::new_from_welcome(
-            welcome,
-            Some(group_state.public_group().export_ratchet_tree().into()),
-            charlie_key_package_bundle,
-            provider,
-            ResumptionPskStore::new(1024),
-        )
-        .and_then(|staged_join| staged_join.into_core_group(provider))
-        .is_ok());
+        let config = MlsGroupJoinConfig::default();
+        let ratchet_tree = Some(group_state.export_ratchet_tree().into());
+        let charlie_group =
+            StagedWelcome::new_from_welcome(provider, &config, welcome, ratchet_tree)
+                .unwrap()
+                .into_group(provider);
+        assert!(charlie_group.is_ok());
     }
 }
