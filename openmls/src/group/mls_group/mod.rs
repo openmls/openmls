@@ -43,7 +43,6 @@ pub(crate) mod errors;
 pub(crate) mod membership;
 pub(crate) mod processing;
 pub(crate) mod proposal;
-pub(crate) mod ser;
 
 // Tests
 #[cfg(test)]
