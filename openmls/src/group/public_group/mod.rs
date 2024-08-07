@@ -383,10 +383,8 @@ impl PublicGroup {
         Ok(())
     }
 
-    /// Loads the [`PublicGroup`] from storage. Called from [`CoreGroup::load`].
-    ///
-    /// [`CoreGroup::load`]: crate::group::core_group::CoreGroup::load
-    pub(crate) fn load<Storage: StorageProvider>(
+    /// Loads the [`PublicGroup`] corresponding to a [`GroupId`] from storage.
+    pub fn load<Storage: StorageProvider>(
         storage: &Storage,
         group_id: &GroupId,
     ) -> Result<Option<Self>, Storage::Error> {
