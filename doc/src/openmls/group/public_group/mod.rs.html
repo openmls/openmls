@@ -456,8 +456,6 @@
 <a href="#456" id="456">456</a>
 <a href="#457" id="457">457</a>
 <a href="#458" id="458">458</a>
-<a href="#459" id="459">459</a>
-<a href="#460" id="460">460</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Public Groups
 //!
 //! There are a few use-cases that require the tracking of an MLS group based on
@@ -520,7 +518,7 @@
 <span class="kw">mod </span>validation;
 
 <span class="doccomment">/// This struct holds all public values of an MLS group.
-</span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
+</span><span class="attr">#[derive(Debug)]
 #[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(PartialEq, Clone))]
 </span><span class="kw">pub struct </span>PublicGroup {
     treesync: TreeSync,
@@ -843,10 +841,8 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Loads the [`PublicGroup`] from storage. Called from [`CoreGroup::load`].
-    ///
-    /// [`CoreGroup::load`]: crate::group::core_group::CoreGroup::load
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>load&lt;Storage: StorageProvider&gt;(
+    <span class="doccomment">/// Loads the [`PublicGroup`] corresponding to a [`GroupId`] from storage.
+    </span><span class="kw">pub fn </span>load&lt;Storage: StorageProvider&gt;(
         storage: <span class="kw-2">&amp;</span>Storage,
         group_id: <span class="kw-2">&amp;</span>GroupId,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt;, Storage::Error&gt; {
