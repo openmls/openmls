@@ -60,7 +60,7 @@ mod tests;
 mod validation;
 
 /// This struct holds all public values of an MLS group.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(PartialEq, Clone))]
 pub struct PublicGroup {
     treesync: TreeSync,
