@@ -53,6 +53,18 @@ pub trait PublicStorageProvider<const VERSION: u16> {
         confirmation_tag: &ConfirmationTag,
     ) -> Result<(), Self::PublicError>;
 
+    /// Enqueue a proposal.
+    fn queue_proposal<
+        GroupId: crate::storage::traits::GroupId<VERSION>,
+        ProposalRef: crate::storage::traits::ProposalRef<VERSION>,
+        QueuedProposal: crate::storage::traits::QueuedProposal<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        proposal_ref: &ProposalRef,
+        proposal: &QueuedProposal,
+    ) -> Result<(), Self::PublicError>;
+
     /// Returns all queued proposals for the group with group id `group_id`, or an empty vector of none are stored.
     fn queued_proposals<
         GroupId: crate::storage::traits::GroupId<VERSION>,
@@ -122,6 +134,25 @@ pub trait PublicStorageProvider<const VERSION: u16> {
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::PublicError>;
+
+    /// Removes an individual proposal from the proposal queue of the group with the provided id
+    fn remove_proposal<
+        GroupId: crate::storage::traits::GroupId<VERSION>,
+        ProposalRef: crate::storage::traits::ProposalRef<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        proposal_ref: &ProposalRef,
+    ) -> Result<(), Self::PublicError>;
+
+    /// Clear the proposal queue for the group with the given id.
+    fn clear_proposal_queue<
+        GroupId: crate::storage::traits::GroupId<VERSION>,
+        ProposalRef: crate::storage::traits::ProposalRef<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::PublicError>;
 }
 
 impl<T, const VERSION: u16> PublicStorageProvider<VERSION> for T
@@ -176,6 +207,19 @@ where
         confirmation_tag: &ConfirmationTag,
     ) -> Result<(), Self::PublicError> {
         <Self as StorageProvider<VERSION>>::write_confirmation_tag(self, group_id, confirmation_tag)
+    }
+
+    fn queue_proposal<
+        GroupId: crate::storage::traits::GroupId<VERSION>,
+        ProposalRef: crate::storage::traits::ProposalRef<VERSION>,
+        QueuedProposal: crate::storage::traits::QueuedProposal<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        proposal_ref: &ProposalRef,
+        proposal: &QueuedProposal,
+    ) -> Result<(), Self::PublicError> {
+        <Self as StorageProvider<VERSION>>::queue_proposal(self, group_id, proposal_ref, proposal)
     }
 
     fn queued_proposals<
@@ -255,5 +299,28 @@ where
         group_id: &GroupId,
     ) -> Result<(), Self::PublicError> {
         <Self as StorageProvider<VERSION>>::delete_interim_transcript_hash(self, group_id)
+    }
+
+    fn remove_proposal<
+        GroupId: crate::storage::traits::GroupId<VERSION>,
+        ProposalRef: crate::storage::traits::ProposalRef<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        proposal_ref: &ProposalRef,
+    ) -> Result<(), Self::PublicError> {
+        <Self as StorageProvider<VERSION>>::remove_proposal(self, group_id, proposal_ref)
+    }
+
+    fn clear_proposal_queue<
+        GroupId: crate::storage::traits::GroupId<VERSION>,
+        ProposalRef: crate::storage::traits::ProposalRef<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::PublicError> {
+        <Self as StorageProvider<VERSION>>::clear_proposal_queue::<GroupId, ProposalRef>(
+            self, group_id,
+        )
     }
 }

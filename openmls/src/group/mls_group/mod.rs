@@ -376,6 +376,8 @@ impl MlsGroup {
         storage.delete_own_leaf_nodes(self.group_id())?;
         storage.delete_group_state(self.group_id())?;
 
+        self.proposal_store_mut().empty();
+
         Ok(())
     }
 

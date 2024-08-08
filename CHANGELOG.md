@@ -7,10 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.6.0-pre.2 (2024-08-XX)
 
+### Added
+
+- [#1639](https://github.com/openmls/openmls/pull/1639): Introduce `PublicStorageProvider` trait to independently allow for the storage of `PublicGroup` instances.
+- [#1641](https://github.com/openmls/openmls/pull/1641): Extend the `PublicGroup` API with `add_proposal()`, `remove_proposal()`, and `queued_proposals()`.
+
 ### Changed
 
 - [#1637](https://github.com/openmls/openmls/pull/1637): Remove `serde` from `MlsGroup`.
 - [#1638](https://github.com/openmls/openmls/pull/1638): Remove `serde` from `PublicGroup`. `PublicGroup::load()` becomes public to load a group from the storage provider.
+- [#1640](https://github.com/openmls/openmls/pull/1640): The storage provider function `treesync()` was renamed to `tree()` so that it is consistent with other treesync functions.
+
+### Fixed
+
+- [#1641](https://github.com/openmls/openmls/pull/1641): Fixed missing storage of queued proposals & clearing of the queued proposals.
 
 ## 0.6.0-pre.1 (2024-07-22)
 

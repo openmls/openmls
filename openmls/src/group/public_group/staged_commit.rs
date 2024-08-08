@@ -286,6 +286,9 @@ impl PublicGroup {
         }
 
         self.proposal_store.empty();
+        storage
+            .clear_proposal_queue::<GroupId, ProposalRef>(self.group_id())
+            .map_err(MergeCommitError::StorageError)?;
         self.store(storage).map_err(MergeCommitError::StorageError)
     }
 }

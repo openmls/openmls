@@ -1105,13 +1105,13 @@ fn remove_prosposal_by_ref(
     assert_eq!(alice_group.proposal_store().proposals().count(), 1);
     // clearing the proposal by reference
     alice_group
-        .remove_pending_proposal(provider.storage(), reference.clone())
+        .remove_pending_proposal(provider.storage(), &reference)
         .unwrap();
     assert!(alice_group.proposal_store().is_empty());
 
     // the proposal should not be stored anymore
     let err = alice_group
-        .remove_pending_proposal(provider.storage(), reference)
+        .remove_pending_proposal(provider.storage(), &reference)
         .unwrap_err();
     assert!(matches!(err, MlsGroupStateError::PendingProposalNotFound));
 

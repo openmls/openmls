@@ -190,7 +190,7 @@ fn public_group<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider: &
                 Proposal::Remove(r) => assert_eq!(r.removed(), LeafNodeIndex::new(1)),
                 _ => panic!("Unexpected proposal type"),
             }
-            public_group.add_proposal(*p);
+            public_group.add_proposal(provider.storage(), *p).unwrap();
         }
     }
 

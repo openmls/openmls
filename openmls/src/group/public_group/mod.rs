@@ -288,8 +288,33 @@ impl PublicGroup {
     }
 
     /// Add the [`QueuedProposal`] to the [`PublicGroup`]s internal [`ProposalStore`].
-    pub fn add_proposal(&mut self, proposal: QueuedProposal) {
-        self.proposal_store.add(proposal)
+    pub fn add_proposal<Storage: PublicStorageProvider>(
+        &mut self,
+        storage: &Storage,
+        proposal: QueuedProposal,
+    ) -> Result<(), Storage::PublicError> {
+        storage.queue_proposal(self.group_id(), &proposal.proposal_reference(), &proposal)?;
+        self.proposal_store.add(proposal);
+        Ok(())
+    }
+
+    /// Remove the Proposal with the given [`ProposalRef`] from the [`PublicGroup`]s internal [`ProposalStore`].
+    pub fn remove_proposal<Storage: PublicStorageProvider>(
+        &mut self,
+        storage: &Storage,
+        proposal_ref: &ProposalRef,
+    ) -> Result<(), Storage::PublicError> {
+        storage.remove_proposal(self.group_id(), proposal_ref)?;
+        self.proposal_store.remove(proposal_ref);
+        Ok(())
+    }
+
+    /// Return all queued proposals
+    pub fn queued_proposals<Storage: PublicStorageProvider>(
+        &self,
+        storage: &Storage,
+    ) -> Result<Vec<(ProposalRef, QueuedProposal)>, Storage::PublicError> {
+        storage.queued_proposals(self.group_id())
     }
 }
 
