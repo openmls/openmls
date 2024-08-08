@@ -175,7 +175,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn treesync<GroupId: traits::GroupId<V_TEST>, TreeSync: traits::TreeSync<V_TEST>>(
+    fn tree<GroupId: traits::GroupId<V_TEST>, TreeSync: traits::TreeSync<V_TEST>>(
         &self,
         _group_id: &GroupId,
     ) -> Result<Option<TreeSync>, Self::Error> {
