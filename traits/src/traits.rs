@@ -4,6 +4,7 @@
 //! API of OpenMLS.
 
 pub mod crypto;
+pub mod public_storage;
 pub mod random;
 pub mod signatures;
 pub mod storage;

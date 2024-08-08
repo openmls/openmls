@@ -36,7 +36,7 @@ use crate::{
         ConfirmationTag, PathSecret,
     },
     schedule::CommitSecret,
-    storage::{OpenMlsProvider, StorageProvider},
+    storage::{OpenMlsProvider, PublicStorageProvider},
     treesync::{
         errors::{DerivePathError, TreeSyncFromNodesError},
         node::{
@@ -355,10 +355,10 @@ impl PublicGroup {
     /// existing group, both inside [`PublicGroup`] and in [`CoreGroup`].
     ///
     /// [`CoreGroup`]: crate::group::core_group::CoreGroup
-    pub(crate) fn store<Storage: StorageProvider>(
+    pub(crate) fn store<Storage: PublicStorageProvider>(
         &self,
         storage: &Storage,
-    ) -> Result<(), Storage::Error> {
+    ) -> Result<(), Storage::PublicError> {
         let group_id = self.group_context.group_id();
         storage.write_tree(group_id, self.treesync())?;
         storage.write_confirmation_tag(group_id, self.confirmation_tag())?;
@@ -371,10 +371,10 @@ impl PublicGroup {
     }
 
     /// Deletes the [`PublicGroup`] from storage.
-    pub(crate) fn delete<Storage: StorageProvider>(
+    pub(crate) fn delete<Storage: PublicStorageProvider>(
         &self,
         storage: &Storage,
-    ) -> Result<(), Storage::Error> {
+    ) -> Result<(), Storage::PublicError> {
         storage.delete_tree(self.group_id())?;
         storage.delete_confirmation_tag(self.group_id())?;
         storage.delete_context(self.group_id())?;
@@ -384,10 +384,10 @@ impl PublicGroup {
     }
 
     /// Loads the [`PublicGroup`] corresponding to a [`GroupId`] from storage.
-    pub fn load<Storage: StorageProvider>(
+    pub fn load<Storage: PublicStorageProvider>(
         storage: &Storage,
         group_id: &GroupId,
-    ) -> Result<Option<Self>, Storage::Error> {
+    ) -> Result<Option<Self>, Storage::PublicError> {
         let treesync = storage.treesync(group_id)?;
         let proposals: Vec<(ProposalRef, QueuedProposal)> = storage.queued_proposals(group_id)?;
         let group_context = storage.group_context(group_id)?;

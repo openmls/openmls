@@ -1,6 +1,4 @@
-use openmls_traits::{
-    crypto::OpenMlsCrypto, signatures::Signer, types::Ciphersuite, OpenMlsProvider,
-};
+use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer, types::Ciphersuite};
 
 use super::{errors::PublicGroupBuildError, PublicGroup};
 use crate::{
@@ -11,6 +9,7 @@ use crate::{
     key_packages::Lifetime,
     messages::ConfirmationTag,
     schedule::CommitSecret,
+    storage::OpenMlsProvider,
     treesync::{
         node::{encryption_keys::EncryptionKeyPair, leaf_node::Capabilities},
         TreeSync,
