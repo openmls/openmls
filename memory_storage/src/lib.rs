@@ -417,7 +417,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
             .collect::<Result<Vec<_>, _>>()
     }
 
-    fn treesync<
+    fn tree<
         GroupId: traits::GroupId<CURRENT_VERSION>,
         TreeSync: traits::TreeSync<CURRENT_VERSION>,
     >(

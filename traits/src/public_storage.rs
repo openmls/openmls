@@ -240,7 +240,7 @@ where
         &self,
         group_id: &GroupId,
     ) -> Result<Option<TreeSync>, Self::PublicError> {
-        <Self as StorageProvider<VERSION>>::treesync(self, group_id)
+        <Self as StorageProvider<VERSION>>::tree(self, group_id)
     }
 
     fn group_context<

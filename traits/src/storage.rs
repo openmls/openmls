@@ -287,7 +287,7 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<Vec<(ProposalRef, QueuedProposal)>, Self::Error>;
 
     /// Returns the TreeSync tree for the group with group id `group_id`.
-    fn treesync<GroupId: traits::GroupId<VERSION>, TreeSync: traits::TreeSync<VERSION>>(
+    fn tree<GroupId: traits::GroupId<VERSION>, TreeSync: traits::TreeSync<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<Option<TreeSync>, Self::Error>;
