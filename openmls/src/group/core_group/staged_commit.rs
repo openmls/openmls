@@ -7,7 +7,8 @@ use self::public_group::staged_commit::PublicStagedCommitState;
 
 use super::{super::errors::*, *};
 use crate::{
-    ciphersuite::Secret, framing::mls_auth_content::AuthenticatedContent,
+    ciphersuite::{hash_ref::ProposalRef, Secret},
+    framing::mls_auth_content::AuthenticatedContent,
     treesync::node::encryption_keys::EncryptionKeyPair,
 };
 
@@ -401,6 +402,9 @@ impl CoreGroup {
                 }
 
                 // Empty the proposal store
+                storage
+                    .clear_proposal_queue::<GroupId, ProposalRef>(group_id)
+                    .map_err(MergeCommitError::StorageError)?;
                 self.proposal_store_mut().empty();
 
                 Ok(Some(message_secrets))

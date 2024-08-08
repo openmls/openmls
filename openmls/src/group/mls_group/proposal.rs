@@ -449,10 +449,10 @@ impl MlsGroup {
     pub fn remove_pending_proposal<Storage: StorageProvider>(
         &mut self,
         storage: &Storage,
-        proposal_ref: ProposalRef,
+        proposal_ref: &ProposalRef,
     ) -> Result<(), MlsGroupStateError<Storage::Error>> {
         storage
-            .remove_proposal(self.group_id(), &proposal_ref)
+            .remove_proposal(self.group_id(), proposal_ref)
             .map_err(MlsGroupStateError::StorageError)?;
         self.proposal_store_mut()
             .remove(proposal_ref)

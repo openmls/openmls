@@ -301,8 +301,6 @@ impl CoreGroup {
             self.message_secrets_store
                 .add(past_epoch, message_secrets, leaves);
         }
-        // Empty the proposal store
-        self.proposal_store_mut().empty();
         Ok(())
     }
 }

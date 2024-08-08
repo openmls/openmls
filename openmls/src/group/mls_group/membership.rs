@@ -241,13 +241,22 @@ impl MlsGroup {
             .map_err(|_| LibraryError::custom("Creating a self removal should not fail"))?;
 
         let ciphersuite = self.ciphersuite();
+        let queued_remove_proposal = QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            provider.crypto(),
+            remove_proposal.clone(),
+        )?;
 
-        self.proposal_store_mut()
-            .add(QueuedProposal::from_authenticated_content_by_ref(
-                ciphersuite,
-                provider.crypto(),
-                remove_proposal.clone(),
-            )?);
+        provider
+            .storage()
+            .queue_proposal(
+                self.group_id(),
+                &queued_remove_proposal.proposal_reference(),
+                &queued_remove_proposal,
+            )
+            .map_err(MlsGroupStateError::StorageError)?;
+
+        self.proposal_store_mut().add(queued_remove_proposal);
 
         self.reset_aad();
         Ok(self.content_to_mls_message(remove_proposal, provider)?)

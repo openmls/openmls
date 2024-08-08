@@ -943,7 +943,7 @@ fn book_operations() {
         )
         .expect("Could not create proposal to add Bob");
     alice_group
-        .remove_pending_proposal(provider.storage(), proposal_ref)
+        .remove_pending_proposal(provider.storage(), &proposal_ref)
         .expect("The proposal was not found");
     // ANCHOR_END: rollback_proposal_by_ref
 
