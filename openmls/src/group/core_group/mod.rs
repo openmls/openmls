@@ -142,7 +142,7 @@ pub(crate) struct StagedCoreWelcome {
     path_keypairs: Option<Vec<EncryptionKeyPair>>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 pub(crate) struct CoreGroup {
     public_group: PublicGroup,
