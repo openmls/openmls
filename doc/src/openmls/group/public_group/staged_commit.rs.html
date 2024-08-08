@@ -289,7 +289,6 @@
 <a href="#289" id="289">289</a>
 <a href="#290" id="290">290</a>
 <a href="#291" id="291">291</a>
-<a href="#292" id="292">292</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{<span class="kw">super</span>::errors::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 <span class="kw">use crate</span>::{
     framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, Sender},
@@ -298,7 +297,6 @@
         StagedCommit,
     },
     messages::{proposals::ProposalOrRef, Commit},
-    storage::StorageProvider,
 };
 
 <span class="attr">#[derive(Debug, Serialize, Deserialize)]
@@ -566,11 +564,11 @@
     }
 
     <span class="doccomment">/// Merges a [StagedCommit] into the public group state.
-    </span><span class="kw">pub fn </span>merge_commit&lt;Storage: StorageProvider&gt;(
+    </span><span class="kw">pub fn </span>merge_commit&lt;Storage: PublicStorageProvider&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         storage: <span class="kw-2">&amp;</span>Storage,
         staged_commit: StagedCommit,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), MergeCommitError&lt;Storage::Error&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), MergeCommitError&lt;Storage::PublicError&gt;&gt; {
         <span class="kw">match </span>staged_commit.into_state() {
             StagedCommitState::PublicState(staged_state) =&gt; {
                 <span class="self">self</span>.merge_diff(staged_state.staged_diff);

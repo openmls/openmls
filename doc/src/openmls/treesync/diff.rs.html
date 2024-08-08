@@ -927,6 +927,7 @@
 <a href="#927" id="927">927</a>
 <a href="#928" id="928">928</a>
 <a href="#929" id="929">929</a>
+<a href="#930" id="930">930</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module provides the diff functionality for [`TreeSync`].
 //!
 //! # About
@@ -950,7 +951,7 @@
 
 <span class="kw">use </span>log::debug;
 <span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
-<span class="kw">use </span>openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsProvider};
+<span class="kw">use </span>openmls_traits::{signatures::Signer, types::Ciphersuite};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 
 <span class="kw">use </span><span class="kw">super</span>::node::leaf_node::UpdateLeafNodeParams;
@@ -977,6 +978,7 @@
     error::LibraryError,
     messages::PathSecret,
     schedule::CommitSecret,
+    storage::OpenMlsProvider,
     treesync::RatchetTree,
 };
 

@@ -776,6 +776,8 @@
 <a href="#776" id="776">776</a>
 <a href="#777" id="777">777</a>
 <a href="#778" id="778">778</a>
+<a href="#779" id="779">779</a>
+<a href="#780" id="780">780</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements the ratchet tree component of MLS.
 //!
 //! It exposes the [`Node`] enum that can contain either a [`LeafNode`] or a [`ParentNode`].
@@ -803,7 +805,6 @@
     crypto::OpenMlsCrypto,
     signatures::Signer,
     types::{Ciphersuite, CryptoError},
-    OpenMlsProvider,
 };
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>thiserror::Error;
@@ -840,6 +841,7 @@
     key_packages::Lifetime,
     messages::{PathSecret, PathSecretError},
     schedule::CommitSecret,
+    storage::OpenMlsProvider,
 };
 
 <span class="comment">// Private
@@ -1509,6 +1511,8 @@
         ciphersuite: Ciphersuite,
         provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
     ) {
+        <span class="kw">use </span>openmls_traits::OpenMlsProvider;
+
         <span class="kw">let </span>(key_package, <span class="kw">_</span>, <span class="kw">_</span>) = <span class="kw">crate</span>::key_packages::tests::key_package(ciphersuite, provider);
         <span class="kw">let </span>node_in = NodeIn::from(Node::LeafNode(LeafNode::from(key_package)));
         <span class="kw">let </span>tests = [

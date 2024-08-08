@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"trait":["OpenMlsProvider","StorageProvider"]};
+window.SIDEBAR_ITEMS = {"trait":["OpenMlsProvider","PublicStorageProvider","StorageProvider"]};

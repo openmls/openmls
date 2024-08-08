@@ -245,6 +245,18 @@
 <a href="#245" id="245">245</a>
 <a href="#246" id="246">246</a>
 <a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! OpenMLS Storage
 //!
 //! This module serves two purposes:
@@ -281,7 +293,19 @@
 /// Throughout the code, this one should be used instead of `openmls_traits::storage::StorageProvider`.
 </span><span class="kw">pub trait </span>StorageProvider: openmls_traits::storage::StorageProvider&lt;CURRENT_VERSION&gt; {}
 
+<span class="doccomment">/// A convenience trait for the current version of the public storage.
+/// Throughout the code, this one should be used instead of `openmls_traits::public_storage::PublicStorageProvider`.
+</span><span class="kw">pub trait </span>PublicStorageProvider:
+    openmls_traits::public_storage::PublicStorageProvider&lt;CURRENT_VERSION&gt;
+{
+}
+
 <span class="kw">impl</span>&lt;P: openmls_traits::storage::StorageProvider&lt;CURRENT_VERSION&gt;&gt; StorageProvider <span class="kw">for </span>P {}
+
+<span class="kw">impl</span>&lt;P: openmls_traits::public_storage::PublicStorageProvider&lt;CURRENT_VERSION&gt;&gt;
+    PublicStorageProvider <span class="kw">for </span>P
+{
+}
 
 <span class="doccomment">/// A convenience trait for the OpenMLS provider that defines the storage provider
 /// for the current version of storage.
