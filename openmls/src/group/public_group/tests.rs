@@ -51,7 +51,8 @@ fn public_group<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider: &
         .unwrap();
     let ratchet_tree = alice_group.export_ratchet_tree();
     let (mut public_group, _extensions) = PublicGroup::from_external(
-        provider,
+        provider.crypto(),
+        provider.storage(),
         ratchet_tree.into(),
         verifiable_group_info,
         ProposalStore::new(),

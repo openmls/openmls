@@ -119,7 +119,8 @@ pub(in crate::group) fn build_staged_welcome<Provider: OpenMlsProvider>(
     // Since there is currently only the external pub extension, there is no
     // group info extension of interest here.
     let (public_group, _group_info_extensions) = PublicGroup::from_external(
-        provider,
+        provider.crypto(),
+        provider.storage(),
         ratchet_tree,
         verifiable_group_info.clone(),
         ProposalStore::new(),

@@ -48,7 +48,8 @@ impl CoreGroup {
             };
 
         let (public_group, group_info) = PublicGroup::from_external(
-            provider,
+            provider.crypto(),
+            provider.storage(),
             ratchet_tree,
             verifiable_group_info,
             // Existing proposals are discarded when joining by external commit.

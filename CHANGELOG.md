@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#1637](https://github.com/openmls/openmls/pull/1637): Remove `serde` from `MlsGroup`.
 - [#1638](https://github.com/openmls/openmls/pull/1638): Remove `serde` from `PublicGroup`. `PublicGroup::load()` becomes public to load a group from the storage provider.
 - [#1640](https://github.com/openmls/openmls/pull/1640): The storage provider function `treesync()` was renamed to `tree()` so that it is consistent with other treesync functions.
+- [#1642](https://github.com/openmls/openmls/pull/1642): `OpenMlsProvider` is no longer required for the `PublicGroup` API. The `PublicGroup` API now uses the `PublicStorageProvider` trait directly.
 
 ### Fixed
 
