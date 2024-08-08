@@ -25,7 +25,6 @@ use openmls_traits::{
     crypto::OpenMlsCrypto,
     signatures::Signer,
     types::{Ciphersuite, CryptoError},
-    OpenMlsProvider,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -62,6 +61,7 @@ use crate::{
     key_packages::Lifetime,
     messages::{PathSecret, PathSecretError},
     schedule::CommitSecret,
+    storage::OpenMlsProvider,
 };
 
 // Private
@@ -731,6 +731,8 @@ mod test {
         ciphersuite: Ciphersuite,
         provider: &impl OpenMlsProvider,
     ) {
+        use openmls_traits::OpenMlsProvider;
+
         let (key_package, _, _) = crate::key_packages::tests::key_package(ciphersuite, provider);
         let node_in = NodeIn::from(Node::LeafNode(LeafNode::from(key_package)));
         let tests = [
