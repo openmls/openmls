@@ -517,7 +517,7 @@ pub enum CreateGroupContextExtProposalError<StorageError> {
     LeafNodeValidation(#[from] LeafNodeValidationError),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
-    MlsGroupStateError(#[from] MlsGroupStateError<StorageError>),
+    MlsGroupStateError(#[from] MlsGroupStateError),
     /// See [`CreateCommitError`] for more details.
     #[error(transparent)]
     CreateCommitError(#[from] CreateCommitError<StorageError>),

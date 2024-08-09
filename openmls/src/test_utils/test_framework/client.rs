@@ -157,7 +157,9 @@ impl<Provider: OpenMlsProvider> Client<Provider> {
                 group_state.clear_pending_commit(self.provider.storage())?;
             }
             // Process the message.
-            let processed_message = group_state.process_message(&self.provider, message.clone())?;
+            let processed_message = group_state
+                .process_message(&self.provider, message.clone())
+                .map_err(ClientError::ProcessMessageError)?;
 
             match processed_message.into_content() {
                 ProcessedMessageContent::ApplicationMessage(_) => {}

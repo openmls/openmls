@@ -1117,9 +1117,7 @@ fn book_operations() {
         assert_eq!(sender_cred_from_msg, sender_cred_from_group);
         assert_eq!(
             &sender_cred_from_msg,
-            alice_group
-                .credential::<Provider>()
-                .expect("Expected a credential.")
+            alice_group.credential().expect("Expected a credential.")
         );
     } else {
         unreachable!("Expected an ApplicationMessage.");

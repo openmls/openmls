@@ -176,7 +176,7 @@ fn mls_group_operations() {
             assert_eq!(
                 &sender,
                 alice_group
-                    .credential::<Provider>()
+                    .credential()
                     .expect("An unexpected error occurred.")
             );
         } else {
@@ -805,9 +805,7 @@ fn mls_group_operations() {
             // Check that Alice sent the message
             assert_eq!(
                 &sender,
-                alice_group
-                    .credential::<Provider>()
-                    .expect("Expected a credential")
+                alice_group.credential().expect("Expected a credential")
             );
         } else {
             unreachable!("Expected an ApplicationMessage.");

@@ -1113,7 +1113,7 @@ fn remove_prosposal_by_ref(
     let err = alice_group
         .remove_pending_proposal(provider.storage(), &reference)
         .unwrap_err();
-    assert!(matches!(err, MlsGroupStateError::PendingProposalNotFound));
+    assert!(matches!(err, RemoveProposalError::ProposalNotFound));
 
     // the commit should have no proposal
     let (commit, _, _) = alice_group
