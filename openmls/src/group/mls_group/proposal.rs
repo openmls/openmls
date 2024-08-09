@@ -4,7 +4,7 @@ use super::{
     core_group::create_commit_params::CreateCommitParams,
     errors::{ProposalError, ProposeAddMemberError, ProposeRemoveMemberError},
     CreateGroupContextExtProposalError, CustomProposal, GroupContextExtensionProposal, MlsGroup,
-    MlsGroupState, MlsGroupStateError, PendingCommitState, Proposal,
+    MlsGroupState, PendingCommitState, Proposal, RemoveProposalError,
 };
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -450,12 +450,12 @@ impl MlsGroup {
         &mut self,
         storage: &Storage,
         proposal_ref: &ProposalRef,
-    ) -> Result<(), MlsGroupStateError<Storage::Error>> {
+    ) -> Result<(), RemoveProposalError<Storage::Error>> {
         storage
             .remove_proposal(self.group_id(), proposal_ref)
-            .map_err(MlsGroupStateError::StorageError)?;
+            .map_err(RemoveProposalError::Storage)?;
         self.proposal_store_mut()
             .remove(proposal_ref)
-            .ok_or(MlsGroupStateError::PendingProposalNotFound)
+            .ok_or(RemoveProposalError::ProposalNotFound)
     }
 }

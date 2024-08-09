@@ -1263,11 +1263,9 @@ fn test_valsem105() {
                 KeyPackageTestVersion::ValidTestCase => {
                     assert!(matches!(
                         err,
-                        ProcessMessageError::<<Provider as OpenMlsProvider>::StorageError>::InvalidCommit(
-                            StageCommitError::UpdatePathError(
-                                ApplyUpdatePathError::PathLengthMismatch,
-                            ),
-                        )
+                        ProcessMessageError::InvalidCommit(StageCommitError::UpdatePathError(
+                            ApplyUpdatePathError::PathLengthMismatch,
+                        ),)
                     ));
                 }
                 KeyPackageTestVersion::WrongCiphersuite => {
@@ -1279,21 +1277,21 @@ fn test_valsem105() {
                     assert!(
                         matches!(
                             err,
-                            ProcessMessageError::<<Provider as OpenMlsProvider>::StorageError>::InvalidCommit(
+                            ProcessMessageError::InvalidCommit(
                                 StageCommitError::ProposalValidationError(
                                     ProposalValidationError::InvalidAddProposalCiphersuiteOrVersion,
                                 ),
                             )
                         ) || matches!(
                             err,
-                            ProcessMessageError::<<Provider as OpenMlsProvider>::StorageError>::ValidationError(
+                            ProcessMessageError::ValidationError(
                                 ValidationError::KeyPackageVerifyError(
                                     KeyPackageVerifyError::InvalidLeafNodeSignature,
                                 ),
                             )
                         ) || matches!(
                             err,
-                            ProcessMessageError::<<Provider as OpenMlsProvider>::StorageError>::ValidationError(
+                            ProcessMessageError::ValidationError(
                                 ValidationError::InvalidAddProposalCiphersuite,
                             )
                         )
@@ -1306,14 +1304,14 @@ fn test_valsem105() {
                     assert!(
                         matches!(
                             err,
-                            ProcessMessageError::<<Provider as OpenMlsProvider>::StorageError>::InvalidCommit(
+                            ProcessMessageError::InvalidCommit(
                                 StageCommitError::ProposalValidationError(
                                     ProposalValidationError::InvalidAddProposalCiphersuiteOrVersion,
                                 ),
                             )
                         ) || matches!(
                             err,
-                            ProcessMessageError::<<Provider as OpenMlsProvider>::StorageError>::ValidationError(
+                            ProcessMessageError::ValidationError(
                                 ValidationError::KeyPackageVerifyError(
                                     KeyPackageVerifyError::InvalidProtocolVersion,
                                 ),
@@ -1325,14 +1323,14 @@ fn test_valsem105() {
                     assert!(
                         matches!(
                             err,
-                            ProcessMessageError::<<Provider as OpenMlsProvider>::StorageError>::ValidationError(
+                            ProcessMessageError::ValidationError(
                                 ValidationError::KeyPackageVerifyError(
                                     KeyPackageVerifyError::InvalidProtocolVersion,
                                 ),
                             )
                         ) || matches!(
                             err,
-                            ProcessMessageError::<<Provider as OpenMlsProvider>::StorageError>::InvalidCommit(
+                            ProcessMessageError::InvalidCommit(
                                 StageCommitError::ProposalValidationError(
                                     ProposalValidationError::InsufficientCapabilities,
                                 ),
@@ -1343,7 +1341,7 @@ fn test_valsem105() {
                 KeyPackageTestVersion::UnsupportedCiphersuite => {
                     assert!(matches!(
                         err,
-                        ProcessMessageError::<<Provider as OpenMlsProvider>::StorageError>::InvalidCommit(
+                        ProcessMessageError::InvalidCommit(
                             StageCommitError::ProposalValidationError(
                                 ProposalValidationError::InsufficientCapabilities,
                             ),
@@ -2275,10 +2273,7 @@ fn test_valsem401_valsem402() {
     let bob_provider = Provider::default();
 
     // TODO(#1354): This is currently not tested because we can't easily create invalid commits.
-    let bad_psks: [(
-        Vec<PreSharedKeyId>,
-        ProcessMessageError<<Provider as OpenMlsProvider>::StorageError>,
-    ); 0] = [
+    let bad_psks: [(Vec<PreSharedKeyId>, ProcessMessageError); 0] = [
         // // ValSem401
         // (
         //     vec![PreSharedKeyId::external(

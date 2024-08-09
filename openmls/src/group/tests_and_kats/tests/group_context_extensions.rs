@@ -235,10 +235,7 @@ impl<Provider: crate::storage::OpenMlsProvider> MemberState<Provider> {
     }
 
     /// This wrapper that expects [`MlsGroup::process_message`] to return an error.
-    fn fail_processing(
-        &mut self,
-        msg: MlsMessageIn,
-    ) -> ProcessMessageError<Provider::StorageError> {
+    fn fail_processing(&mut self, msg: MlsMessageIn) -> ProcessMessageError {
         let msg = msg.into_protocol_message().unwrap();
         let err_msg = format!(
             "expected an error when processing message at {}",
