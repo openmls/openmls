@@ -406,14 +406,6 @@
 <a href="#406" id="406">406</a>
 <a href="#407" id="407">407</a>
 <a href="#408" id="408">408</a>
-<a href="#409" id="409">409</a>
-<a href="#410" id="410">410</a>
-<a href="#411" id="411">411</a>
-<a href="#412" id="412">412</a>
-<a href="#413" id="413">413</a>
-<a href="#414" id="414">414</a>
-<a href="#415" id="415">415</a>
-<a href="#416" id="416">416</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Validation steps for incoming messages
 //!
 //! ```text
@@ -450,13 +442,10 @@
         core_group::{proposals::QueuedProposal, staged_commit::StagedCommit},
         errors::ValidationError,
     },
-    storage::OpenMlsProvider,
     tree::sender_ratchet::SenderRatchetConfiguration,
     treesync::TreeSync,
     versions::ProtocolVersion,
 };
-
-<span class="kw">use </span><span class="self">self</span>::mls_group::errors::ProcessMessageError;
 
 <span class="kw">use super</span>::{
     mls_auth_content::AuthenticatedContent,
@@ -687,23 +676,18 @@
 
     <span class="doccomment">/// Verify the [`UnverifiedMessage`]. Returns the [`AuthenticatedContent`]
     /// and the internal [`Credential`].
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>verify&lt;Provider: OpenMlsProvider&gt;(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>verify(
         <span class="self">self</span>,
         ciphersuite: Ciphersuite,
-        provider: <span class="kw-2">&amp;</span>Provider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         protocol_version: ProtocolVersion,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(AuthenticatedContent, Credential), ProcessMessageError&lt;Provider::StorageError&gt;&gt;
-    {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(AuthenticatedContent, Credential), ValidationError&gt; {
         <span class="kw">let </span>content: AuthenticatedContentIn = <span class="self">self
             </span>.verifiable_content
-            .verify(provider.crypto(), <span class="kw-2">&amp;</span><span class="self">self</span>.sender_pk)
-            .map_err(|<span class="kw">_</span>| ProcessMessageError::InvalidSignature)<span class="question-mark">?</span>;
-        <span class="kw">let </span>content = content.validate(
-            ciphersuite,
-            provider.crypto(),
-            <span class="self">self</span>.sender_context,
-            protocol_version,
-        )<span class="question-mark">?</span>;
+            .verify(crypto, <span class="kw-2">&amp;</span><span class="self">self</span>.sender_pk)
+            .map_err(|<span class="kw">_</span>| ValidationError::InvalidSignature)<span class="question-mark">?</span>;
+        <span class="kw">let </span>content =
+            content.validate(ciphersuite, crypto, <span class="self">self</span>.sender_context, protocol_version)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>((content, <span class="self">self</span>.credential))
     }
 

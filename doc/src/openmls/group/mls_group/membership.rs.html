@@ -596,7 +596,7 @@
                 <span class="kw-2">&amp;</span>queued_remove_proposal.proposal_reference(),
                 <span class="kw-2">&amp;</span>queued_remove_proposal,
             )
-            .map_err(MlsGroupStateError::StorageError)<span class="question-mark">?</span>;
+            .map_err(LeaveGroupError::StorageError)<span class="question-mark">?</span>;
 
         <span class="self">self</span>.proposal_store_mut().add(queued_remove_proposal);
 

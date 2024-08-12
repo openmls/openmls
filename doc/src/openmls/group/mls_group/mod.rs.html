@@ -560,8 +560,6 @@
 <a href="#560" id="560">560</a>
 <a href="#561" id="561">561</a>
 <a href="#562" id="562">562</a>
-<a href="#563" id="563">563</a>
-<a href="#564" id="564">564</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! MLS Group
 //!
 //! This module contains [`MlsGroup`] and its submodules.
@@ -789,9 +787,7 @@
 
     <span class="doccomment">/// Returns own credential. If the group is inactive, it returns a
     /// `UseAfterEviction` error.
-    </span><span class="kw">pub fn </span>credential&lt;Provider: OpenMlsProvider&gt;(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>Credential, MlsGroupStateError&lt;Provider::StorageError&gt;&gt; {
+    </span><span class="kw">pub fn </span>credential(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>Credential, MlsGroupStateError&gt; {
         <span class="kw">if </span>!<span class="self">self</span>.is_active() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(MlsGroupStateError::UseAfterEviction);
         }
@@ -1003,7 +999,7 @@
 
     <span class="doccomment">/// Check if the group is operational. Throws an error if the group is
     /// inactive or if there is a pending commit.
-    </span><span class="kw">fn </span>is_operational&lt;StorageError&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), MlsGroupStateError&lt;StorageError&gt;&gt; {
+    </span><span class="kw">fn </span>is_operational(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), MlsGroupStateError&gt; {
         <span class="kw">match </span><span class="self">self</span>.group_state {
             MlsGroupState::PendingCommit(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(MlsGroupStateError::PendingCommit),
             MlsGroupState::Inactive =&gt; <span class="prelude-val">Err</span>(MlsGroupStateError::UseAfterEviction),

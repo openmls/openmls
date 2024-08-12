@@ -351,12 +351,12 @@
         unverified_message: UnverifiedMessage,
         old_epoch_keypairs: Vec&lt;EncryptionKeyPair&gt;,
         leaf_node_keypairs: Vec&lt;EncryptionKeyPair&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;ProcessedMessage, ProcessMessageError&lt;Provider::StorageError&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ProcessedMessage, ProcessMessageError&gt; {
         <span class="comment">// Checks the following semantic validation:
         //  - ValSem010
         //  - ValSem246 (as part of ValSem010)
         </span><span class="kw">let </span>(content, credential) =
-            unverified_message.verify(<span class="self">self</span>.ciphersuite(), provider, <span class="self">self</span>.version())<span class="question-mark">?</span>;
+            unverified_message.verify(<span class="self">self</span>.ciphersuite(), provider.crypto(), <span class="self">self</span>.version())<span class="question-mark">?</span>;
 
         <span class="kw">match </span>content.sender() {
             Sender::Member(<span class="kw">_</span>) | Sender::NewMemberCommit | Sender::NewMemberProposal =&gt; {
@@ -479,7 +479,7 @@
         message: <span class="kw">impl </span>Into&lt;ProtocolMessage&gt;,
         sender_ratchet_configuration: <span class="kw-2">&amp;</span>SenderRatchetConfiguration,
         own_leaf_nodes: <span class="kw-2">&amp;</span>[LeafNode],
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;ProcessedMessage, ProcessMessageError&lt;Provider::StorageError&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ProcessedMessage, ProcessMessageError&gt; {
         <span class="kw">let </span>message: ProtocolMessage = message.into();
 
         <span class="comment">// Checks the following semantic validation:

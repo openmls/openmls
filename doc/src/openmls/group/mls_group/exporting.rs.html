@@ -85,7 +85,7 @@
         label: <span class="kw-2">&amp;</span>str,
         context: <span class="kw-2">&amp;</span>[u8],
         key_length: usize,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ExportSecretError&lt;Provider::StorageError&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ExportSecretError&gt; {
         <span class="kw">let </span>crypto = provider.crypto();
 
         <span class="kw">if </span><span class="self">self</span>.is_active() {
@@ -125,7 +125,7 @@
         provider: <span class="kw-2">&amp;</span>Provider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         with_ratchet_tree: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, ExportGroupInfoError&lt;Provider::StorageError&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, ExportGroupInfoError&gt; {
         <span class="prelude-val">Ok</span>(<span class="self">self
             </span>.group
             .export_group_info(provider.crypto(), signer, with_ratchet_tree)<span class="question-mark">?

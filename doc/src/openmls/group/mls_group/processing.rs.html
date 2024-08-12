@@ -217,7 +217,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         provider: <span class="kw-2">&amp;</span>Provider,
         message: <span class="kw">impl </span>Into&lt;ProtocolMessage&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;ProcessedMessage, ProcessMessageError&lt;Provider::StorageError&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ProcessedMessage, ProcessMessageError&gt; {
         <span class="comment">// Make sure we are still a member of the group
         </span><span class="kw">if </span>!<span class="self">self</span>.is_active() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ProcessMessageError::GroupStateError(

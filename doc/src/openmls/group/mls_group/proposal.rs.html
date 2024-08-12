@@ -465,7 +465,7 @@
     core_group::create_commit_params::CreateCommitParams,
     errors::{ProposalError, ProposeAddMemberError, ProposeRemoveMemberError},
     CreateGroupContextExtProposalError, CustomProposal, GroupContextExtensionProposal, MlsGroup,
-    MlsGroupState, MlsGroupStateError, PendingCommitState, Proposal,
+    MlsGroupState, PendingCommitState, Proposal, RemoveProposalError,
 };
 <span class="kw">use crate</span>::{
     binary_tree::LeafNodeIndex,
@@ -911,13 +911,13 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         storage: <span class="kw-2">&amp;</span>Storage,
         proposal_ref: <span class="kw-2">&amp;</span>ProposalRef,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), MlsGroupStateError&lt;Storage::Error&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), RemoveProposalError&lt;Storage::Error&gt;&gt; {
         storage
             .remove_proposal(<span class="self">self</span>.group_id(), proposal_ref)
-            .map_err(MlsGroupStateError::StorageError)<span class="question-mark">?</span>;
+            .map_err(RemoveProposalError::Storage)<span class="question-mark">?</span>;
         <span class="self">self</span>.proposal_store_mut()
             .remove(proposal_ref)
-            .ok_or(MlsGroupStateError::PendingProposalNotFound)
+            .ok_or(RemoveProposalError::ProposalNotFound)
     }
 }
 </code></pre></div></section></main></body></html>

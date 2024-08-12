@@ -519,7 +519,7 @@
         ConfirmationTag, PathSecret,
     },
     schedule::CommitSecret,
-    storage::{OpenMlsProvider, PublicStorageProvider},
+    storage::PublicStorageProvider,
     treesync::{
         errors::{DerivePathError, TreeSyncFromNodesError},
         node::{
@@ -591,14 +591,14 @@
     /// This function performs basic validation checks and returns an error if
     /// one of the checks fails. See [`CreationFromExternalError`] for more
     /// details.
-    </span><span class="kw">pub fn </span>from_external&lt;Provider: OpenMlsProvider&gt;(
-        provider: <span class="kw-2">&amp;</span>Provider,
+    </span><span class="kw">pub fn </span>from_external&lt;StorageProvider: PublicStorageProvider&gt;(
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+        storage: <span class="kw-2">&amp;</span>StorageProvider,
         ratchet_tree: RatchetTreeIn,
         verifiable_group_info: VerifiableGroupInfo,
         proposal_store: ProposalStore,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, GroupInfo), CreationFromExternalError&lt;Provider::StorageError&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, GroupInfo), CreationFromExternalError&lt;StorageProvider::PublicError&gt;&gt; {
         <span class="kw">let </span>ciphersuite = verifiable_group_info.ciphersuite();
-        <span class="kw">let </span>crypto = provider.crypto();
 
         <span class="kw">let </span>group_id = verifiable_group_info.group_id();
         <span class="kw">let </span>ratchet_tree = ratchet_tree
@@ -656,7 +656,7 @@
         };
 
         public_group
-            .store(provider.storage())
+            .store(storage)
             .map_err(CreationFromExternalError::WriteToStorageError)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>((public_group, group_info))
@@ -947,7 +947,7 @@
     <span class="attr">#[cfg(test)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encrypt_path(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span><span class="kw">crate</span>::storage::OpenMlsProvider,
         ciphersuite: Ciphersuite,
         path: <span class="kw-2">&amp;</span>[PlainUpdatePathNode],
         group_context: <span class="kw-2">&amp;</span>[u8],

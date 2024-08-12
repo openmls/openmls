@@ -141,6 +141,7 @@
 <a href="#141" id="141">141</a>
 <a href="#142" id="142">142</a>
 <a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     binary_tree::array_representation::LeafNodeIndex,
     group::{
@@ -191,7 +192,8 @@
             };
 
         <span class="kw">let </span>(public_group, group_info) = PublicGroup::from_external(
-            provider,
+            provider.crypto(),
+            provider.storage(),
             ratchet_tree,
             verifiable_group_info,
             <span class="comment">// Existing proposals are discarded when joining by external commit.

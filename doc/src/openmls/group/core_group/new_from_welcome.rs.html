@@ -306,6 +306,7 @@
 <a href="#306" id="306">306</a>
 <a href="#307" id="307">307</a>
 <a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>log::debug;
 
 <span class="kw">use crate</span>::{
@@ -427,7 +428,8 @@
     <span class="comment">// Since there is currently only the external pub extension, there is no
     // group info extension of interest here.
     </span><span class="kw">let </span>(public_group, _group_info_extensions) = PublicGroup::from_external(
-        provider,
+        provider.crypto(),
+        provider.storage(),
         ratchet_tree,
         verifiable_group_info.clone(),
         ProposalStore::new(),
