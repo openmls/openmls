@@ -107,9 +107,6 @@ pub enum ProcessMessageError {
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
-    /// The message's signature is invalid.
-    #[error("The message's signature is invalid.")]
-    InvalidSignature,
     /// See [`StageCommitError`] for more details.
     #[error(transparent)]
     InvalidCommit(#[from] StageCommitError),
