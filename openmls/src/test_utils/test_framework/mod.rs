@@ -354,7 +354,9 @@ impl<Provider: OpenMlsProvider + Default> MlsGroupTestSetup<Provider> {
             )
             .collect();
         group.public_tree = sender_group.export_ratchet_tree();
-        group.exporter_secret = sender_group.export_secret(&sender.provider, "test", &[], 32)?;
+        group.exporter_secret = sender_group
+            .export_secret(&sender.provider, "test", &[], 32)
+            .map_err(ClientError::ExportSecretError)?;
         Ok(())
     }
 

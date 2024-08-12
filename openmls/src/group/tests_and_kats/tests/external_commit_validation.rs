@@ -509,7 +509,10 @@ fn test_valsem246() {
 
     // This shows that signature verification fails if the signature is not done
     // using the credential in the path.
-    assert!(matches!(err, ProcessMessageError::InvalidSignature));
+    assert!(matches!(
+        err,
+        ProcessMessageError::ValidationError(ValidationError::InvalidSignature)
+    ));
 
     // This shows that the credential in the original path key package is actually bob's credential.
     let commit = if let FramedContentBody::Commit(commit) = public_message_commit.content() {

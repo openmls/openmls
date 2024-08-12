@@ -254,7 +254,7 @@ impl MlsGroup {
                 &queued_remove_proposal.proposal_reference(),
                 &queued_remove_proposal,
             )
-            .map_err(MlsGroupStateError::StorageError)?;
+            .map_err(LeaveGroupError::StorageError)?;
 
         self.proposal_store_mut().add(queued_remove_proposal);
 

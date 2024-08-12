@@ -34,13 +34,10 @@ use crate::{
         core_group::{proposals::QueuedProposal, staged_commit::StagedCommit},
         errors::ValidationError,
     },
-    storage::OpenMlsProvider,
     tree::sender_ratchet::SenderRatchetConfiguration,
     treesync::TreeSync,
     versions::ProtocolVersion,
 };
-
-use self::mls_group::errors::ProcessMessageError;
 
 use super::{
     mls_auth_content::AuthenticatedContent,
@@ -271,23 +268,18 @@ impl UnverifiedMessage {
 
     /// Verify the [`UnverifiedMessage`]. Returns the [`AuthenticatedContent`]
     /// and the internal [`Credential`].
-    pub(crate) fn verify<Provider: OpenMlsProvider>(
+    pub(crate) fn verify(
         self,
         ciphersuite: Ciphersuite,
-        provider: &Provider,
+        crypto: &impl OpenMlsCrypto,
         protocol_version: ProtocolVersion,
-    ) -> Result<(AuthenticatedContent, Credential), ProcessMessageError<Provider::StorageError>>
-    {
+    ) -> Result<(AuthenticatedContent, Credential), ValidationError> {
         let content: AuthenticatedContentIn = self
             .verifiable_content
-            .verify(provider.crypto(), &self.sender_pk)
-            .map_err(|_| ProcessMessageError::InvalidSignature)?;
-        let content = content.validate(
-            ciphersuite,
-            provider.crypto(),
-            self.sender_context,
-            protocol_version,
-        )?;
+            .verify(crypto, &self.sender_pk)
+            .map_err(|_| ValidationError::InvalidSignature)?;
+        let content =
+            content.validate(ciphersuite, crypto, self.sender_context, protocol_version)?;
         Ok((content, self.credential))
     }
 

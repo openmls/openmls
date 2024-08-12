@@ -225,9 +225,7 @@ impl MlsGroup {
 
     /// Returns own credential. If the group is inactive, it returns a
     /// `UseAfterEviction` error.
-    pub fn credential<Provider: OpenMlsProvider>(
-        &self,
-    ) -> Result<&Credential, MlsGroupStateError<Provider::StorageError>> {
+    pub fn credential(&self) -> Result<&Credential, MlsGroupStateError> {
         if !self.is_active() {
             return Err(MlsGroupStateError::UseAfterEviction);
         }
@@ -439,7 +437,7 @@ impl MlsGroup {
 
     /// Check if the group is operational. Throws an error if the group is
     /// inactive or if there is a pending commit.
-    fn is_operational<StorageError>(&self) -> Result<(), MlsGroupStateError<StorageError>> {
+    fn is_operational(&self) -> Result<(), MlsGroupStateError> {
         match self.group_state {
             MlsGroupState::PendingCommit(_) => Err(MlsGroupStateError::PendingCommit),
             MlsGroupState::Inactive => Err(MlsGroupStateError::UseAfterEviction),

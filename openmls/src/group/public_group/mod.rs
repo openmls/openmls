@@ -36,7 +36,7 @@ use crate::{
         ConfirmationTag, PathSecret,
     },
     schedule::CommitSecret,
-    storage::{OpenMlsProvider, PublicStorageProvider},
+    storage::PublicStorageProvider,
     treesync::{
         errors::{DerivePathError, TreeSyncFromNodesError},
         node::{
@@ -108,14 +108,14 @@ impl PublicGroup {
     /// This function performs basic validation checks and returns an error if
     /// one of the checks fails. See [`CreationFromExternalError`] for more
     /// details.
-    pub fn from_external<Provider: OpenMlsProvider>(
-        provider: &Provider,
+    pub fn from_external<StorageProvider: PublicStorageProvider>(
+        crypto: &impl OpenMlsCrypto,
+        storage: &StorageProvider,
         ratchet_tree: RatchetTreeIn,
         verifiable_group_info: VerifiableGroupInfo,
         proposal_store: ProposalStore,
-    ) -> Result<(Self, GroupInfo), CreationFromExternalError<Provider::StorageError>> {
+    ) -> Result<(Self, GroupInfo), CreationFromExternalError<StorageProvider::PublicError>> {
         let ciphersuite = verifiable_group_info.ciphersuite();
-        let crypto = provider.crypto();
 
         let group_id = verifiable_group_info.group_id();
         let ratchet_tree = ratchet_tree
@@ -173,7 +173,7 @@ impl PublicGroup {
         };
 
         public_group
-            .store(provider.storage())
+            .store(storage)
             .map_err(CreationFromExternalError::WriteToStorageError)?;
 
         Ok((public_group, group_info))
@@ -464,7 +464,7 @@ impl PublicGroup {
     #[cfg(test)]
     pub(crate) fn encrypt_path(
         &self,
-        provider: &impl OpenMlsProvider,
+        provider: &impl crate::storage::OpenMlsProvider,
         ciphersuite: Ciphersuite,
         path: &[PlainUpdatePathNode],
         group_context: &[u8],
