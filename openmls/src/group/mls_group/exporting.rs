@@ -18,7 +18,7 @@ impl MlsGroup {
         label: &str,
         context: &[u8],
         key_length: usize,
-    ) -> Result<Vec<u8>, ExportSecretError<Provider::StorageError>> {
+    ) -> Result<Vec<u8>, ExportSecretError> {
         let crypto = provider.crypto();
 
         if self.is_active() {
@@ -63,7 +63,7 @@ impl MlsGroup {
         provider: &Provider,
         signer: &impl Signer,
         with_ratchet_tree: bool,
-    ) -> Result<MlsMessageOut, ExportGroupInfoError<Provider::StorageError>> {
+    ) -> Result<MlsMessageOut, ExportGroupInfoError> {
         Ok(self
             .group
             .export_group_info(provider.crypto(), signer, with_ratchet_tree)?

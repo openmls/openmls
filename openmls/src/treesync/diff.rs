@@ -21,7 +21,7 @@ use std::collections::HashSet;
 
 use log::debug;
 use openmls_traits::crypto::OpenMlsCrypto;
-use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::{signatures::Signer, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
 
 use super::node::leaf_node::UpdateLeafNodeParams;
@@ -48,6 +48,7 @@ use crate::{
     error::LibraryError,
     messages::PathSecret,
     schedule::CommitSecret,
+    storage::OpenMlsProvider,
     treesync::RatchetTree,
 };
 

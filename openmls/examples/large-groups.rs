@@ -14,7 +14,9 @@ use clap::Parser;
 use openmls::{
     credentials::{BasicCredential, CredentialWithKey},
     framing::{MlsMessageIn, MlsMessageOut, ProcessedMessageContent},
-    group::{MlsGroup, MlsGroupCreateConfig, StagedWelcome, PURE_PLAINTEXT_WIRE_FORMAT_POLICY},
+    group::{
+        GroupId, MlsGroup, MlsGroupCreateConfig, StagedWelcome, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+    },
     prelude::LeafNodeIndex,
     prelude_test::*,
     treesync::LeafNodeParameters,
@@ -30,6 +32,7 @@ struct Member {
     provider: OpenMlsRustCrypto,
     credential_with_key: CredentialWithKey,
     signer: SignatureKeyPair,
+    group_id: GroupId,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -38,7 +41,7 @@ struct SerializableStore {
 }
 
 impl Member {
-    fn serialize(&self) -> (Vec<u8>, Vec<u8>, Vec<u8>) {
+    fn serialize(&self) -> (Vec<u8>, Vec<u8>, Vec<u8>, Vec<u8>) {
         let storage = self.provider.storage();
 
         let mut serializable_storage = SerializableStore::default();
@@ -52,13 +55,15 @@ impl Member {
             serde_json::to_vec(&serializable_storage).unwrap(),
             serde_json::to_vec(&self.credential_with_key).unwrap(),
             serde_json::to_vec(&self.signer).unwrap(),
+            serde_json::to_vec(&self.group_id).unwrap(),
         )
     }
 
-    fn load(storage: &[u8], ckey: &[u8], signer: &[u8]) -> Self {
+    fn load(storage: &[u8], ckey: &[u8], signer: &[u8], group_id: &[u8]) -> Self {
         let serializable_storage: SerializableStore = serde_json::from_slice(storage).unwrap();
         let credential_with_key: CredentialWithKey = serde_json::from_slice(ckey).unwrap();
         let signer: SignatureKeyPair = serde_json::from_slice(signer).unwrap();
+        let group_id: GroupId = serde_json::from_slice(group_id).unwrap();
 
         let provider = OpenMlsRustCrypto::default();
         let mut ks_map = provider.storage().values.write().unwrap();
@@ -74,7 +79,14 @@ impl Member {
             provider,
             credential_with_key,
             signer,
+            group_id,
         }
+    }
+
+    fn group(&self) -> Option<MlsGroup> {
+        MlsGroup::load(self.provider.storage(), &self.group_id)
+            .ok()
+            .flatten()
     }
 }
 
@@ -218,12 +230,15 @@ mod generate {
             )
             .expect("An unexpected error occurred.");
 
+            let group_id = creator_group.group_id().clone();
+
             vec![(
                 creator_group,
                 Member {
                     provider: creator_provider,
                     credential_with_key: creator_credential_with_key,
                     signer: creator_signer,
+                    group_id,
                 },
             )]
         };
@@ -281,6 +296,8 @@ mod generate {
                 SetupVariants::CommitToFullGroup => (), // Commit after everyone was added.
             }
 
+            let group_id = member_i_group.group_id().clone();
+
             // Add new member to list
             members.push((
                 member_i_group,
@@ -288,6 +305,7 @@ mod generate {
                     provider: member_provider,
                     credential_with_key,
                     signer,
+                    group_id,
                 },
             ));
             pb.inc(1);
@@ -424,43 +442,31 @@ mod util {
 
     use super::{generate, *};
 
-    const GROUPS_PATH: &str = "large-balanced-group-groups.json.gzip";
     const MEMBERS_PATH: &str = "large-balanced-group-members.json.gzip";
 
-    type Members = Vec<Vec<(Vec<u8>, Vec<u8>, Vec<u8>)>>;
+    type Members = Vec<(Vec<u8>, Vec<u8>, Vec<u8>, Vec<u8>)>;
 
     /// Read benchmark setups from the fiels previously written.
     pub fn read(path: Option<String>) -> Vec<Vec<(MlsGroup, Member)>> {
-        let file = File::open(groups_file(&path)).unwrap();
-        let mut reader = flate2::read::GzDecoder::new(file);
-        let groups: Vec<Vec<MlsGroup>> = serde_json::from_reader(&mut reader).unwrap();
-
         let file = File::open(members_file(&path)).unwrap();
         let mut reader = flate2::read::GzDecoder::new(file);
-        let members: Members = serde_json::from_reader(&mut reader).unwrap();
+        let members: Vec<Members> = serde_json::from_reader(&mut reader).unwrap();
 
-        let members: Vec<Vec<Member>> = members
+        let members: Vec<Vec<(MlsGroup, Member)>> = members
             .into_iter()
             .map(|members| {
                 members
                     .into_iter()
-                    .map(|m| Member::load(&m.0, &m.1, &m.2))
+                    .map(|m| {
+                        let m = Member::load(&m.0, &m.1, &m.2, &m.3);
+
+                        (m.group().unwrap(), m)
+                    })
                     .collect()
             })
             .collect();
 
-        let mut out = vec![];
-        for (g, m) in groups.into_iter().zip(members.into_iter()) {
-            out.push(g.into_iter().zip(m.into_iter()).collect())
-        }
-
-        out
-    }
-
-    fn groups_file(path: &Option<String>) -> std::path::PathBuf {
-        let path = path.clone().unwrap_or_default();
-        let path = Path::new(&path);
-        path.join(GROUPS_PATH)
+        members
     }
 
     fn members_file(path: &Option<String>) -> std::path::PathBuf {
@@ -475,7 +481,6 @@ mod util {
         group_sizes: Option<Vec<usize>>,
         variant: Option<SetupVariants>,
     ) {
-        let mut groups = vec![];
         let mut members = vec![];
 
         let group_sizes = group_sizes.unwrap_or(generate::GROUP_SIZES.to_vec());
@@ -488,16 +493,11 @@ mod util {
             let (new_groups, new_members): (Vec<MlsGroup>, Vec<Member>) =
                 new_groups.into_iter().unzip();
             smaller_groups = Some((new_groups.clone(), new_members.clone()));
-            let new_members: Vec<(Vec<u8>, Vec<u8>, Vec<u8>)> =
-                new_members.into_iter().map(|m| m.serialize()).collect();
-            groups.push(new_groups);
+            let new_members: Members = new_members.into_iter().map(|m| m.serialize()).collect();
             members.push(new_members);
         }
 
         println!("Writing out files.");
-        let file = File::create(groups_file(&path)).unwrap();
-        let mut writer = flate2::write::GzEncoder::new(file, flate2::Compression::default());
-        serde_json::to_writer(&mut writer, &groups).unwrap();
         let file = File::create(members_file(&path)).unwrap();
         let mut writer = flate2::write::GzEncoder::new(file, flate2::Compression::default());
         serde_json::to_writer(&mut writer, &members).unwrap();

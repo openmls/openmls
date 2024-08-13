@@ -51,7 +51,8 @@ fn public_group<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider: &
         .unwrap();
     let ratchet_tree = alice_group.export_ratchet_tree();
     let (mut public_group, _extensions) = PublicGroup::from_external(
-        provider,
+        provider.crypto(),
+        provider.storage(),
         ratchet_tree.into(),
         verifiable_group_info,
         ProposalStore::new(),
@@ -72,7 +73,7 @@ fn public_group<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider: &
         ProtocolMessage::PublicMessage(public_message) => public_message,
     };
     let processed_message = public_group
-        .process_message(provider, public_message)
+        .process_message(provider.crypto(), public_message)
         .unwrap();
 
     // Further inspection of the message can take place here ...
@@ -134,7 +135,7 @@ fn public_group<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider: &
 
     // The public group processes
     let ppm = public_group
-        .process_message(provider, into_public_message(queued_messages))
+        .process_message(provider.crypto(), into_public_message(queued_messages))
         .unwrap();
     public_group
         .merge_commit(provider.storage(), extract_staged_commit(ppm))
@@ -178,7 +179,7 @@ fn public_group<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider: &
 
     // The public group processes
     let ppm = public_group
-        .process_message(provider, into_public_message(queued_messages))
+        .process_message(provider.crypto(), into_public_message(queued_messages))
         .unwrap();
     // We have to add the proposal to the public group's proposal store.
     match ppm.into_content() {
@@ -190,7 +191,7 @@ fn public_group<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider: &
                 Proposal::Remove(r) => assert_eq!(r.removed(), LeafNodeIndex::new(1)),
                 _ => panic!("Unexpected proposal type"),
             }
-            public_group.add_proposal(*p);
+            public_group.add_proposal(provider.storage(), *p).unwrap();
         }
     }
 
@@ -225,7 +226,10 @@ fn public_group<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider: &
 
     // The public group processes
     let ppm = public_group
-        .process_message(provider, into_public_message(queued_messages.clone()))
+        .process_message(
+            provider.crypto(),
+            into_public_message(queued_messages.clone()),
+        )
         .unwrap();
     public_group
         .merge_commit(provider.storage(), extract_staged_commit(ppm))

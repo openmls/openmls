@@ -36,7 +36,7 @@ use crate::{
         ConfirmationTag, PathSecret,
     },
     schedule::CommitSecret,
-    storage::{OpenMlsProvider, StorageProvider},
+    storage::PublicStorageProvider,
     treesync::{
         errors::{DerivePathError, TreeSyncFromNodesError},
         node::{
@@ -60,7 +60,7 @@ mod tests;
 mod validation;
 
 /// This struct holds all public values of an MLS group.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(PartialEq, Clone))]
 pub struct PublicGroup {
     treesync: TreeSync,
@@ -108,14 +108,14 @@ impl PublicGroup {
     /// This function performs basic validation checks and returns an error if
     /// one of the checks fails. See [`CreationFromExternalError`] for more
     /// details.
-    pub fn from_external<Provider: OpenMlsProvider>(
-        provider: &Provider,
+    pub fn from_external<StorageProvider: PublicStorageProvider>(
+        crypto: &impl OpenMlsCrypto,
+        storage: &StorageProvider,
         ratchet_tree: RatchetTreeIn,
         verifiable_group_info: VerifiableGroupInfo,
         proposal_store: ProposalStore,
-    ) -> Result<(Self, GroupInfo), CreationFromExternalError<Provider::StorageError>> {
+    ) -> Result<(Self, GroupInfo), CreationFromExternalError<StorageProvider::PublicError>> {
         let ciphersuite = verifiable_group_info.ciphersuite();
-        let crypto = provider.crypto();
 
         let group_id = verifiable_group_info.group_id();
         let ratchet_tree = ratchet_tree
@@ -173,7 +173,7 @@ impl PublicGroup {
         };
 
         public_group
-            .store(provider.storage())
+            .store(storage)
             .map_err(CreationFromExternalError::WriteToStorageError)?;
 
         Ok((public_group, group_info))
@@ -288,8 +288,33 @@ impl PublicGroup {
     }
 
     /// Add the [`QueuedProposal`] to the [`PublicGroup`]s internal [`ProposalStore`].
-    pub fn add_proposal(&mut self, proposal: QueuedProposal) {
-        self.proposal_store.add(proposal)
+    pub fn add_proposal<Storage: PublicStorageProvider>(
+        &mut self,
+        storage: &Storage,
+        proposal: QueuedProposal,
+    ) -> Result<(), Storage::PublicError> {
+        storage.queue_proposal(self.group_id(), &proposal.proposal_reference(), &proposal)?;
+        self.proposal_store.add(proposal);
+        Ok(())
+    }
+
+    /// Remove the Proposal with the given [`ProposalRef`] from the [`PublicGroup`]s internal [`ProposalStore`].
+    pub fn remove_proposal<Storage: PublicStorageProvider>(
+        &mut self,
+        storage: &Storage,
+        proposal_ref: &ProposalRef,
+    ) -> Result<(), Storage::PublicError> {
+        storage.remove_proposal(self.group_id(), proposal_ref)?;
+        self.proposal_store.remove(proposal_ref);
+        Ok(())
+    }
+
+    /// Return all queued proposals
+    pub fn queued_proposals<Storage: PublicStorageProvider>(
+        &self,
+        storage: &Storage,
+    ) -> Result<Vec<(ProposalRef, QueuedProposal)>, Storage::PublicError> {
+        storage.queued_proposals(self.group_id())
     }
 }
 
@@ -355,10 +380,10 @@ impl PublicGroup {
     /// existing group, both inside [`PublicGroup`] and in [`CoreGroup`].
     ///
     /// [`CoreGroup`]: crate::group::core_group::CoreGroup
-    pub(crate) fn store<Storage: StorageProvider>(
+    pub(crate) fn store<Storage: PublicStorageProvider>(
         &self,
         storage: &Storage,
-    ) -> Result<(), Storage::Error> {
+    ) -> Result<(), Storage::PublicError> {
         let group_id = self.group_context.group_id();
         storage.write_tree(group_id, self.treesync())?;
         storage.write_confirmation_tag(group_id, self.confirmation_tag())?;
@@ -371,10 +396,10 @@ impl PublicGroup {
     }
 
     /// Deletes the [`PublicGroup`] from storage.
-    pub(crate) fn delete<Storage: StorageProvider>(
+    pub(crate) fn delete<Storage: PublicStorageProvider>(
         &self,
         storage: &Storage,
-    ) -> Result<(), Storage::Error> {
+    ) -> Result<(), Storage::PublicError> {
         storage.delete_tree(self.group_id())?;
         storage.delete_confirmation_tag(self.group_id())?;
         storage.delete_context(self.group_id())?;
@@ -383,13 +408,11 @@ impl PublicGroup {
         Ok(())
     }
 
-    /// Loads the [`PublicGroup`] from storage. Called from [`CoreGroup::load`].
-    ///
-    /// [`CoreGroup::load`]: crate::group::core_group::CoreGroup::load
-    pub(crate) fn load<Storage: StorageProvider>(
+    /// Loads the [`PublicGroup`] corresponding to a [`GroupId`] from storage.
+    pub fn load<Storage: PublicStorageProvider>(
         storage: &Storage,
         group_id: &GroupId,
-    ) -> Result<Option<Self>, Storage::Error> {
+    ) -> Result<Option<Self>, Storage::PublicError> {
         let treesync = storage.treesync(group_id)?;
         let proposals: Vec<(ProposalRef, QueuedProposal)> = storage.queued_proposals(group_id)?;
         let group_context = storage.group_context(group_id)?;
@@ -441,7 +464,7 @@ impl PublicGroup {
     #[cfg(test)]
     pub(crate) fn encrypt_path(
         &self,
-        provider: &impl OpenMlsProvider,
+        provider: &impl crate::storage::OpenMlsProvider,
         ciphersuite: Ciphersuite,
         path: &[PlainUpdatePathNode],
         group_context: &[u8],

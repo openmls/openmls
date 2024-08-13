@@ -7,7 +7,7 @@ use crate::{
     group::{tests_and_kats::utils::*, *},
     key_packages::*,
     messages::*,
-    treesync::node::leaf_node::LeafNodeParameters,
+    treesync::LeafNodeParameters,
 };
 
 /// Creates a simple test setup for various encoding tests.

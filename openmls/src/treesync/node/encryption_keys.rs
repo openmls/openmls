@@ -4,7 +4,6 @@ use openmls_traits::{
     crypto::OpenMlsCrypto,
     storage::{StorageProvider as StorageProviderTrait, CURRENT_VERSION},
     types::{Ciphersuite, HpkeCiphertext, HpkeKeyPair},
-    OpenMlsProvider,
 };
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes};
@@ -12,7 +11,7 @@ use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBy
 use crate::{
     ciphersuite::{hpke, HpkePrivateKey, HpkePublicKey, Secret},
     error::LibraryError,
-    storage::StorageProvider,
+    storage::{OpenMlsProvider, StorageProvider},
 };
 
 /// [`EncryptionKey`] contains an HPKE public key that allows the encryption of

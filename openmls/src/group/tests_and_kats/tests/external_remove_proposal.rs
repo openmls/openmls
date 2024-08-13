@@ -316,7 +316,10 @@ fn external_remove_proposal_should_fail_when_invalid_signature() {
                 .unwrap(),
         )
         .unwrap_err();
-    assert!(matches!(error, ProcessMessageError::InvalidSignature));
+    assert!(matches!(
+        error,
+        ProcessMessageError::ValidationError(ValidationError::InvalidSignature)
+    ));
 }
 
 #[openmls_test]

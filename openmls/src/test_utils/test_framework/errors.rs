@@ -23,7 +23,7 @@ pub enum SetupError<StorageError> {
     ClientError(#[from] ClientError<StorageError>),
     /// See [`ExportSecretError`] for more details.
     #[error(transparent)]
-    ExportSecretError(#[from] ExportSecretError<StorageError>),
+    ExportSecretError(#[from] ExportSecretError),
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -56,11 +56,8 @@ pub enum ClientError<StorageError> {
     #[error(transparent)]
     TlsCodecError(tls_codec::Error),
     /// See [`ProcessMessageError`] for more details.
-    #[error(transparent)]
-    ProcessMessageError(#[from] ProcessMessageError<StorageError>),
-    /// See [`MlsGroupStateError`] for more details.
-    #[error(transparent)]
-    MlsGroupStateError(#[from] MlsGroupStateError<StorageError>),
+    #[error("See ProcessMessageError for more details.")]
+    ProcessMessageError(ProcessMessageError),
     /// See [`AddMembersError`] for more details.
     #[error(transparent)]
     AddMembersError(#[from] AddMembersError<StorageError>),
@@ -74,8 +71,8 @@ pub enum ClientError<StorageError> {
     #[error(transparent)]
     ProposeRemoveMemberError(#[from] ProposeRemoveMemberError<StorageError>),
     /// See [`ExportSecretError`] for more details.
-    #[error(transparent)]
-    ExportSecretError(#[from] ExportSecretError<StorageError>),
+    #[error("Error exporting secret")]
+    ExportSecretError(ExportSecretError),
     /// See [`NewGroupError`] for more details.
     #[error(transparent)]
     NewGroupError(#[from] NewGroupError<StorageError>),

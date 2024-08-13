@@ -269,7 +269,7 @@ fn external_add_proposal_should_be_signed_by_key_package_it_references<
         alice_group
             .process_message(provider, invalid_proposal.into_protocol_message().unwrap())
             .unwrap_err(),
-        ProcessMessageError::InvalidSignature
+        ProcessMessageError::ValidationError(ValidationError::InvalidSignature)
     ));
 }
 

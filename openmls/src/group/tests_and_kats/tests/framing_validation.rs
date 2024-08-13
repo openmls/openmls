@@ -647,7 +647,10 @@ fn test_valsem010() {
         .process_message(provider, message_in)
         .expect_err("Could process message despite wrong signature.");
 
-    assert!(matches!(err, ProcessMessageError::InvalidSignature));
+    assert!(matches!(
+        err,
+        ProcessMessageError::ValidationError(ValidationError::InvalidSignature)
+    ));
 
     // Positive case
     bob_group

@@ -84,7 +84,7 @@ impl MlsGroup {
         provider: &Provider,
         signer: &impl Signer,
         key_packages: &[KeyPackage],
-        with_path: bool,
+        force_self_update: bool,
     ) -> Result<
         (MlsMessageOut, MlsMessageOut, Option<GroupInfo>),
         AddMembersError<Provider::StorageError>,
@@ -110,7 +110,7 @@ impl MlsGroup {
         let params = CreateCommitParams::builder()
             .framing_parameters(self.framing_parameters())
             .inline_proposals(inline_proposals)
-            .force_self_update(with_path)
+            .force_self_update(force_self_update)
             .build();
         let create_commit_result = self.group.create_commit(params, provider, signer)?;
 
@@ -241,13 +241,22 @@ impl MlsGroup {
             .map_err(|_| LibraryError::custom("Creating a self removal should not fail"))?;
 
         let ciphersuite = self.ciphersuite();
+        let queued_remove_proposal = QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            provider.crypto(),
+            remove_proposal.clone(),
+        )?;
 
-        self.proposal_store_mut()
-            .add(QueuedProposal::from_authenticated_content_by_ref(
-                ciphersuite,
-                provider.crypto(),
-                remove_proposal.clone(),
-            )?);
+        provider
+            .storage()
+            .queue_proposal(
+                self.group_id(),
+                &queued_remove_proposal.proposal_reference(),
+                &queued_remove_proposal,
+            )
+            .map_err(LeaveGroupError::StorageError)?;
+
+        self.proposal_store_mut().add(queued_remove_proposal);
 
         self.reset_aad();
         Ok(self.content_to_mls_message(remove_proposal, provider)?)

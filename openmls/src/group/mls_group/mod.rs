@@ -8,7 +8,6 @@ use crate::schedule::message_secrets::MessageSecrets;
 
 #[cfg(test)]
 use openmls_traits::crypto::OpenMlsCrypto;
-use past_secrets::MessageSecretsStore;
 
 #[cfg(test)]
 use crate::prelude::SenderRatchetConfiguration;
@@ -45,7 +44,6 @@ pub(crate) mod errors;
 pub(crate) mod membership;
 pub(crate) mod processing;
 pub(crate) mod proposal;
-pub(crate) mod ser;
 
 // Tests
 #[cfg(test)]
@@ -244,9 +242,7 @@ impl MlsGroup {
 
     /// Returns own credential. If the group is inactive, it returns a
     /// `UseAfterEviction` error.
-    pub fn credential<Provider: OpenMlsProvider>(
-        &self,
-    ) -> Result<&Credential, MlsGroupStateError<Provider::StorageError>> {
+    pub fn credential(&self) -> Result<&Credential, MlsGroupStateError> {
         if !self.is_active() {
             return Err(MlsGroupStateError::UseAfterEviction);
         }
@@ -914,6 +910,8 @@ impl MlsGroup {
         storage.delete_own_leaf_nodes(self.group_id())?;
         storage.delete_group_state(self.group_id())?;
 
+        self.proposal_store_mut().empty();
+
         Ok(())
     }
 
@@ -975,7 +973,7 @@ impl MlsGroup {
 
     /// Check if the group is operational. Throws an error if the group is
     /// inactive or if there is a pending commit.
-    fn is_operational<StorageError>(&self) -> Result<(), MlsGroupStateError<StorageError>> {
+    fn is_operational(&self) -> Result<(), MlsGroupStateError> {
         match self.group_state {
             MlsGroupState::PendingCommit(_) => Err(MlsGroupStateError::PendingCommit),
             MlsGroupState::Inactive => Err(MlsGroupStateError::UseAfterEviction),

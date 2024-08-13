@@ -29,7 +29,6 @@ impl Contact {
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Group {
     group_name: String,
     conversation: Conversation,

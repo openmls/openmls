@@ -18,7 +18,7 @@ impl MlsGroup {
         provider: &Provider,
         signer: &impl Signer,
         message: &[u8],
-    ) -> Result<MlsMessageOut, CreateMessageError<Provider::StorageError>> {
+    ) -> Result<MlsMessageOut, CreateMessageError> {
         if !self.is_active() {
             return Err(CreateMessageError::GroupStateError(
                 MlsGroupStateError::UseAfterEviction,
