@@ -1205,8 +1205,6 @@
 <a href="#1205" id="1205">1205</a>
 <a href="#1206" id="1206">1206</a>
 <a href="#1207" id="1207">1207</a>
-<a href="#1208" id="1208">1208</a>
-<a href="#1209" id="1209">1209</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! ### Don't Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -1931,7 +1929,6 @@
         <span class="self">self</span>.public_group.store(storage)<span class="question-mark">?</span>;
         storage.write_own_leaf_index(group_id, <span class="kw-2">&amp;</span><span class="self">self</span>.own_leaf_index())<span class="question-mark">?</span>;
         storage.write_group_epoch_secrets(group_id, <span class="kw-2">&amp;</span><span class="self">self</span>.group_epoch_secrets)<span class="question-mark">?</span>;
-        storage.set_use_ratchet_tree_extension(group_id, <span class="self">self</span>.use_ratchet_tree_extension)<span class="question-mark">?</span>;
         storage.write_message_secrets(group_id, <span class="kw-2">&amp;</span><span class="self">self</span>.message_secrets_store)<span class="question-mark">?</span>;
         storage.write_resumption_psk_store(group_id, <span class="kw-2">&amp;</span><span class="self">self</span>.resumption_psk_store)<span class="question-mark">?</span>;
 
@@ -1942,11 +1939,11 @@
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>load&lt;Storage: StorageProvider&gt;(
         storage: <span class="kw-2">&amp;</span>Storage,
         group_id: <span class="kw-2">&amp;</span>GroupId,
+        use_ratchet_tree_extension: <span class="prelude-ty">Option</span>&lt;bool&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt;, Storage::Error&gt; {
         <span class="kw">let </span>public_group = PublicGroup::load(storage, group_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>group_epoch_secrets = storage.group_epoch_secrets(group_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>own_leaf_index = storage.own_leaf_index(group_id)<span class="question-mark">?</span>;
-        <span class="kw">let </span>use_ratchet_tree_extension = storage.use_ratchet_tree_extension(group_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>message_secrets_store = storage.message_secrets(group_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>resumption_psk_store = storage.resumption_psk_store(group_id)<span class="question-mark">?</span>;
 
@@ -1971,7 +1968,6 @@
         <span class="self">self</span>.public_group.delete(storage)<span class="question-mark">?</span>;
         storage.delete_own_leaf_index(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
         storage.delete_group_epoch_secrets(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
-        storage.delete_use_ratchet_tree_extension(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
         storage.delete_message_secrets(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
         storage.delete_all_resumption_psk_secrets(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
 

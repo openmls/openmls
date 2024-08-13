@@ -560,6 +560,12 @@
 <a href="#560" id="560">560</a>
 <a href="#561" id="561">561</a>
 <a href="#562" id="562">562</a>
+<a href="#563" id="563">563</a>
+<a href="#564" id="564">564</a>
+<a href="#565" id="565">565</a>
+<a href="#566" id="566">566</a>
+<a href="#567" id="567">567</a>
+<a href="#568" id="568">568</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! MLS Group
 //!
 //! This module contains [`MlsGroup`] and its submodules.
@@ -907,7 +913,13 @@
         group_id: <span class="kw-2">&amp;</span>GroupId,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;MlsGroup&gt;, Storage::Error&gt; {
         <span class="kw">let </span>group_config = storage.mls_group_join_config(group_id)<span class="question-mark">?</span>;
-        <span class="kw">let </span>core_group = CoreGroup::load(storage, group_id)<span class="question-mark">?</span>;
+        <span class="kw">let </span>core_group = CoreGroup::load(
+            storage,
+            group_id,
+            group_config
+                .as_ref()
+                .map(|config: <span class="kw-2">&amp;</span>MlsGroupJoinConfig| config.use_ratchet_tree_extension),
+        )<span class="question-mark">?</span>;
         <span class="kw">let </span>own_leaf_nodes = storage.own_leaf_nodes(group_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>aad = Vec::new();
         <span class="kw">let </span>group_state = storage.group_state(group_id)<span class="question-mark">?</span>;
