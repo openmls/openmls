@@ -741,32 +741,6 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         self.delete::<CURRENT_VERSION>(OWN_LEAF_NODE_INDEX_LABEL, &serde_json::to_vec(group_id)?)
     }
 
-    fn use_ratchet_tree_extension<GroupId: traits::GroupId<CURRENT_VERSION>>(
-        &self,
-        group_id: &GroupId,
-    ) -> Result<Option<bool>, Self::Error> {
-        self.read(USE_RATCHET_TREE_LABEL, &serde_json::to_vec(group_id)?)
-    }
-
-    fn set_use_ratchet_tree_extension<GroupId: traits::GroupId<CURRENT_VERSION>>(
-        &self,
-        group_id: &GroupId,
-        value: bool,
-    ) -> Result<(), Self::Error> {
-        self.write::<CURRENT_VERSION>(
-            USE_RATCHET_TREE_LABEL,
-            &serde_json::to_vec(group_id)?,
-            serde_json::to_vec(&value)?,
-        )
-    }
-
-    fn delete_use_ratchet_tree_extension<GroupId: traits::GroupId<CURRENT_VERSION>>(
-        &self,
-        group_id: &GroupId,
-    ) -> Result<(), Self::Error> {
-        self.delete::<CURRENT_VERSION>(USE_RATCHET_TREE_LABEL, &serde_json::to_vec(group_id)?)
-    }
-
     fn group_epoch_secrets<
         GroupId: traits::GroupId<CURRENT_VERSION>,
         GroupEpochSecrets: traits::GroupEpochSecrets<CURRENT_VERSION>,
