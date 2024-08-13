@@ -270,7 +270,6 @@ const OWN_LEAF_NODE_INDEX_LABEL: &[u8] = b"OwnLeafNodeIndex";
 const EPOCH_SECRETS_LABEL: &[u8] = b"EpochSecrets";
 const RESUMPTION_PSK_STORE_LABEL: &[u8] = b"ResumptionPsk";
 const MESSAGE_SECRETS_LABEL: &[u8] = b"MessageSecrets";
-const USE_RATCHET_TREE_LABEL: &[u8] = b"UseRatchetTree";
 
 // related to MlsGroup
 const JOIN_CONFIG_LABEL: &[u8] = b"MlsGroupJoinConfig";
