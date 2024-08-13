@@ -203,10 +203,7 @@ impl MemoryStorage {
         log::trace!("{}", std::backtrace::Backtrace::capture());
 
         let value: Vec<Vec<u8>> = match values.get(&storage_key) {
-            Some(list_bytes) => {
-                println!("{}", String::from_utf8(list_bytes.to_vec()).unwrap());
-                serde_json::from_slice(list_bytes).unwrap()
-            }
+            Some(list_bytes) => serde_json::from_slice(list_bytes).unwrap(),
             None => vec![],
         };
 
@@ -427,7 +424,9 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         let values = self.values.read().unwrap();
         let key = build_key::<CURRENT_VERSION, &GroupId>(TREE_LABEL, group_id);
 
-        let value = values.get(&key).unwrap();
+        let Some(value) = values.get(&key) else {
+            return Ok(None);
+        };
         let value = serde_json::from_slice(value).unwrap();
 
         Ok(value)
@@ -443,7 +442,9 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         let values = self.values.read().unwrap();
         let key = build_key::<CURRENT_VERSION, &GroupId>(GROUP_CONTEXT_LABEL, group_id);
 
-        let value = values.get(&key).unwrap();
+        let Some(value) = values.get(&key) else {
+            return Ok(None);
+        };
         let value = serde_json::from_slice(value).unwrap();
 
         Ok(value)
@@ -459,7 +460,9 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         let values = self.values.read().unwrap();
         let key = build_key::<CURRENT_VERSION, &GroupId>(INTERIM_TRANSCRIPT_HASH_LABEL, group_id);
 
-        let value = values.get(&key).unwrap();
+        let Some(value) = values.get(&key) else {
+            return Ok(None);
+        };
         let value = serde_json::from_slice(value).unwrap();
 
         Ok(value)
@@ -475,7 +478,9 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         let values = self.values.read().unwrap();
         let key = build_key::<CURRENT_VERSION, &GroupId>(CONFIRMATION_TAG_LABEL, group_id);
 
-        let value = values.get(&key).unwrap();
+        let Some(value) = values.get(&key) else {
+            return Ok(None);
+        };
         let value = serde_json::from_slice(value).unwrap();
 
         Ok(value)
@@ -493,7 +498,9 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         let key =
             build_key::<CURRENT_VERSION, &SignaturePublicKey>(SIGNATURE_KEY_PAIR_LABEL, public_key);
 
-        let value = values.get(&key).unwrap();
+        let Some(value) = values.get(&key) else {
+            return Ok(None);
+        };
         let value = serde_json::from_slice(value).unwrap();
 
         Ok(value)
