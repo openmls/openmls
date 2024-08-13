@@ -145,7 +145,6 @@ pub(crate) struct StagedCoreWelcome {
 /// Builder for [`CoreGroup`].
 pub(crate) struct CoreGroupBuilder {
     public_group_builder: TempBuilderPG1,
-    config: Option<CoreGroupConfig>,
     psk_ids: Vec<PreSharedKeyId>,
     max_past_epochs: usize,
 }
@@ -159,61 +158,10 @@ impl CoreGroupBuilder {
     ) -> Self {
         let public_group_builder = PublicGroup::builder(group_id, ciphersuite, credential_with_key);
         Self {
-            config: None,
             psk_ids: vec![],
             max_past_epochs: 0,
             public_group_builder,
         }
-    }
-
-    /// Set the [`CoreGroupConfig`] of the [`CoreGroup`].
-    pub(crate) fn with_config(mut self, config: CoreGroupConfig) -> Self {
-        self.config = Some(config);
-        self
-    }
-
-    /// Set the [`Capabilities`] of the group's creator.
-    pub(crate) fn with_capabilities(mut self, capabilities: Capabilities) -> Self {
-        self.public_group_builder = self.public_group_builder.with_capabilities(capabilities);
-        self
-    }
-
-    /// Sets initial group context extensions. Note that RequiredCapabilities
-    /// extensions will be overwritten, and should be set using a call to
-    /// `required_capabilities`. If `ExternalSenders` extensions are provided
-    /// both in this call, and a call to `external_senders`, only the one from
-    /// the call to `external_senders` will be included.
-    pub(crate) fn with_group_context_extensions(
-        mut self,
-        extensions: Extensions,
-    ) -> Result<Self, InvalidExtensionError> {
-        self.public_group_builder = self
-            .public_group_builder
-            .with_group_context_extensions(extensions)?;
-        Ok(self)
-    }
-
-    /// Sets extensions of the group creator's [`LeafNode`].
-    pub(crate) fn with_leaf_node_extensions(
-        mut self,
-        extensions: Extensions,
-    ) -> Result<Self, InvalidExtensionError> {
-        self.public_group_builder = self
-            .public_group_builder
-            .with_leaf_node_extensions(extensions)?;
-        Ok(self)
-    }
-
-    /// Set the number of past epochs the group should keep secrets.
-    pub fn with_max_past_epoch_secrets(mut self, max_past_epochs: usize) -> Self {
-        self.max_past_epochs = max_past_epochs;
-        self
-    }
-
-    /// Set the [`Lifetime`] for the own leaf in the group.
-    pub fn with_lifetime(mut self, lifetime: Lifetime) -> Self {
-        self.public_group_builder = self.public_group_builder.with_lifetime(lifetime);
-        self
     }
 
     /// Build the [`CoreGroup`].
@@ -602,12 +550,4 @@ impl CoreGroup {
     pub(crate) fn resumption_psk_store(&self) -> &ResumptionPskStore {
         &self.resumption_psk_store
     }
-}
-
-/// Configuration for core group.
-#[derive(Clone, Copy, Default, Debug)]
-pub(crate) struct CoreGroupConfig {
-    /// Flag whether to send the ratchet tree along with the `GroupInfo` or not.
-    /// Defaults to false.
-    pub(crate) add_ratchet_tree_extension: bool,
 }

@@ -6,8 +6,12 @@
 #[cfg(any(feature = "test-utils", test))]
 use crate::schedule::message_secrets::MessageSecrets;
 
+use diff::compute_path::PathComputationResult;
 #[cfg(test)]
 use openmls_traits::crypto::OpenMlsCrypto;
+use past_secrets::MessageSecretsStore;
+use staged_commit::{MemberStagedCommitState, StagedCommitState};
+use tls_codec::Serialize;
 
 #[cfg(test)]
 use crate::prelude::SenderRatchetConfiguration;
@@ -15,19 +19,27 @@ use crate::prelude::SenderRatchetConfiguration;
 use super::proposals::{ProposalStore, QueuedProposal};
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
-    ciphersuite::hash_ref::ProposalRef,
+    ciphersuite::{hash_ref::ProposalRef, signable::Signable},
     credentials::Credential,
     error::LibraryError,
     framing::{mls_auth_content::AuthenticatedContent, *},
-    group::*,
+    group::{
+        core_group::create_commit_params::{CommitType, CreateCommitParams},
+        *,
+    },
     key_packages::{KeyPackage, KeyPackageBundle},
-    messages::{proposals::*, GroupSecrets},
-    prelude::ProtocolVersion,
-    schedule::{psk::store::ResumptionPskStore, GroupEpochSecrets, ResumptionPskSecret},
+    messages::{group_info::GroupInfoTBS, proposals::*, Commit, GroupSecrets, Welcome},
+    schedule::{
+        psk::{load_psks, store::ResumptionPskStore, PskSecret},
+        GroupEpochSecrets, JoinerSecret, KeySchedule, ResumptionPskSecret,
+    },
     storage::{OpenMlsProvider, StorageProvider},
-    treesync::{node::leaf_node::LeafNode, RatchetTree},
+    treesync::{
+        node::{encryption_keys::EncryptionKeyPair, leaf_node::LeafNode},
+        RatchetTree,
+    },
 };
-use openmls_traits::types::Ciphersuite;
+use openmls_traits::{signatures::Signer, types::Ciphersuite};
 
 // Private
 mod application;
@@ -170,10 +182,6 @@ pub struct MlsGroup {
     group_epoch_secrets: GroupEpochSecrets,
     /// The own leaf index in the ratchet tree.
     own_leaf_index: LeafNodeIndex,
-    /// Group config.
-    /// Set to true if the ratchet tree extension is added to the `GroupInfo`.
-    /// Defaults to `false`.
-    use_ratchet_tree_extension: bool,
     /// A [`MessageSecretsStore`] that stores message secrets.
     /// By default this store has the length of 1, i.e. only the [`MessageSecrets`]
     /// of the current epoch is kept.
@@ -342,65 +350,7 @@ impl MlsGroup {
 
     /// Returns the epoch.
     pub fn epoch(&self) -> GroupEpoch {
-        self.public_group.context().epoch()
-    }
-
-    /// Stores the [`CoreGroup`]. Called from methods creating a new group and mutating an
-    /// existing group, both inside [`CoreGroup`] and in [`MlsGroup`].
-    pub(super) fn store<Storage: StorageProvider>(
-        &self,
-        storage: &Storage,
-    ) -> Result<(), Storage::Error> {
-        let group_id = self.group_id();
-
-        self.public_group.store(storage)?;
-        storage.write_own_leaf_index(group_id, &self.own_leaf_index())?;
-        storage.write_group_epoch_secrets(group_id, &self.group_epoch_secrets)?;
-        storage.set_use_ratchet_tree_extension(group_id, self.use_ratchet_tree_extension)?;
-        storage.write_message_secrets(group_id, &self.message_secrets_store)?;
-        storage.write_resumption_psk_store(group_id, &self.resumption_psk_store)?;
-
-        Ok(())
-    }
-
-    /// Loads a [`CoreGroup`]. Called in [`MlsGroup::load`].
-    pub(super) fn load<Storage: StorageProvider>(
-        storage: &Storage,
-        group_id: &GroupId,
-    ) -> Result<Option<Self>, Storage::Error> {
-        let public_group = PublicGroup::load(storage, group_id)?;
-        let group_epoch_secrets = storage.group_epoch_secrets(group_id)?;
-        let own_leaf_index = storage.own_leaf_index(group_id)?;
-        let use_ratchet_tree_extension = storage.use_ratchet_tree_extension(group_id)?;
-        let message_secrets_store = storage.message_secrets(group_id)?;
-        let resumption_psk_store = storage.resumption_psk_store(group_id)?;
-
-        let build = || -> Option<Self> {
-            Some(Self {
-                public_group: public_group?,
-                group_epoch_secrets: group_epoch_secrets?,
-                own_leaf_index: own_leaf_index?,
-                use_ratchet_tree_extension: use_ratchet_tree_extension?,
-                message_secrets_store: message_secrets_store?,
-                resumption_psk_store: resumption_psk_store?,
-            })
-        };
-
-        Ok(build())
-    }
-
-    pub(super) fn delete<Storage: StorageProvider>(
-        &self,
-        storage: &Storage,
-    ) -> Result<(), Storage::Error> {
-        self.public_group.delete(storage)?;
-        storage.delete_own_leaf_index(self.group_id())?;
-        storage.delete_group_epoch_secrets(self.group_id())?;
-        storage.delete_use_ratchet_tree_extension(self.group_id())?;
-        storage.delete_message_secrets(self.group_id())?;
-        storage.delete_all_resumption_psk_secrets(self.group_id())?;
-
-        Ok(())
+        self.public_group.group_context().epoch()
     }
 
     /// Store the given [`EncryptionKeyPair`]s in the `provider`'s key store
@@ -653,7 +603,7 @@ impl MlsGroup {
 
         // only computes the group info if necessary
         let group_info = if !apply_proposals_values.invitation_list.is_empty()
-            || self.use_ratchet_tree_extension
+            || self.configuration().use_ratchet_tree_extension
         {
             // Create the ratchet tree extension if necessary
             let external_pub = provisional_epoch_secrets
@@ -663,7 +613,7 @@ impl MlsGroup {
                 .public;
             let external_pub_extension =
                 Extension::ExternalPub(ExternalPubExtension::new(external_pub.into()));
-            let other_extensions: Extensions = if self.use_ratchet_tree_extension {
+            let other_extensions: Extensions = if self.configuration().use_ratchet_tree_extension {
                 Extensions::from_vec(vec![
                     Extension::RatchetTree(RatchetTreeExtension::new(diff.export_ratchet_tree())),
                     external_pub_extension,
@@ -752,7 +702,7 @@ impl MlsGroup {
             commit: authenticated_content,
             welcome_option,
             staged_commit,
-            group_info: group_info.filter(|_| self.use_ratchet_tree_extension),
+            group_info: group_info.filter(|_| self.configuration().use_ratchet_tree_extension),
         })
     }
 
@@ -875,23 +825,50 @@ impl MlsGroup {
 
     // === Storage Methods ===
 
+    /// Remove the persisted state from storage
+    pub fn delete<Storage: crate::storage::StorageProvider>(
+        &mut self,
+        storage: &Storage,
+    ) -> Result<(), Storage::Error> {
+        self.public_group.delete(storage)?;
+        storage.delete_own_leaf_index(self.group_id())?;
+        storage.delete_group_epoch_secrets(self.group_id())?;
+        storage.delete_message_secrets(self.group_id())?;
+        storage.delete_all_resumption_psk_secrets(self.group_id())?;
+        storage.delete_group_config(self.group_id())?;
+        storage.delete_own_leaf_nodes(self.group_id())?;
+        storage.delete_group_state(self.group_id())?;
+        storage.clear_proposal_queue::<GroupId, ProposalRef>(self.group_id())?;
+
+        self.proposal_store_mut().empty();
+
+        Ok(())
+    }
+
     /// Loads the state of the group with given id from persisted state.
     pub fn load<Storage: crate::storage::StorageProvider>(
         storage: &Storage,
         group_id: &GroupId,
     ) -> Result<Option<MlsGroup>, Storage::Error> {
-        let group_config = storage.mls_group_join_config(group_id)?;
-        let core_group = CoreGroup::load(storage, group_id)?;
+        let public_group = PublicGroup::load(storage, group_id)?;
+        let group_epoch_secrets = storage.group_epoch_secrets(group_id)?;
+        let own_leaf_index = storage.own_leaf_index(group_id)?;
+        let message_secrets_store = storage.message_secrets(group_id)?;
+        let resumption_psk_store = storage.resumption_psk_store(group_id)?;
+        let mls_group_config = storage.mls_group_join_config(group_id)?;
         let own_leaf_nodes = storage.own_leaf_nodes(group_id)?;
-        let aad = Vec::new();
         let group_state = storage.group_state(group_id)?;
 
         let build = || -> Option<Self> {
             Some(Self {
-                mls_group_config: group_config?,
-                group: core_group?,
+                public_group: public_group?,
+                group_epoch_secrets: group_epoch_secrets?,
+                own_leaf_index: own_leaf_index?,
+                message_secrets_store: message_secrets_store?,
+                resumption_psk_store: resumption_psk_store?,
+                mls_group_config: mls_group_config?,
                 own_leaf_nodes,
-                aad,
+                aad: vec![],
                 group_state: group_state?,
             })
         };
@@ -899,18 +876,19 @@ impl MlsGroup {
         Ok(build())
     }
 
-    /// Remove the persisted state from storage
-    pub fn delete<StorageProvider: crate::storage::StorageProvider>(
-        &mut self,
-        storage: &StorageProvider,
-    ) -> Result<(), StorageProvider::Error> {
-        self.group.delete(storage)?;
-        storage.delete_group_config(self.group_id())?;
-        storage.clear_proposal_queue::<GroupId, ProposalRef>(self.group_id())?;
-        storage.delete_own_leaf_nodes(self.group_id())?;
-        storage.delete_group_state(self.group_id())?;
-
-        self.proposal_store_mut().empty();
+    /// Stores the state of this group. Only to be called from constructors to
+    /// store the initial state of the group.
+    pub(super) fn store<Storage: crate::storage::StorageProvider>(
+        &self,
+        storage: &Storage,
+    ) -> Result<(), Storage::Error> {
+        self.public_group.store(storage)?;
+        storage.write_group_epoch_secrets(self.group_id(), &self.group_epoch_secrets)?;
+        storage.write_own_leaf_index(self.group_id(), &self.own_leaf_index)?;
+        storage.write_message_secrets(self.group_id(), &self.message_secrets_store)?;
+        storage.write_resumption_psk_store(self.group_id(), &self.resumption_psk_store)?;
+        storage.write_mls_join_config(self.group_id(), &self.mls_group_config)?;
+        storage.write_group_state(self.group_id(), &self.group_state)?;
 
         Ok(())
     }

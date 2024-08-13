@@ -11,8 +11,11 @@ use crate::{
         group_info::{GroupInfo, VerifiableGroupInfo},
         Welcome,
     },
-    schedule::psk::{store::ResumptionPskStore, PreSharedKeyId},
-    storage::OpenMlsProvider,
+    schedule::{
+        psk::{store::ResumptionPskStore, PreSharedKeyId},
+        EpochSecrets, InitSecret,
+    },
+    storage::{self, OpenMlsProvider},
     treesync::{
         node::leaf_node::{Capabilities, LeafNodeParameters},
         RatchetTreeIn,
@@ -100,40 +103,117 @@ impl MlsGroup {
             .with_capabilities(capabilities.unwrap_or_default())
             .with_extensions(extensions.unwrap_or_default())
             .build();
-        let params = CreateCommitParams::builder()
+        let mut params = CreateCommitParams::builder()
             .framing_parameters(framing_parameters)
             .commit_type(CommitType::External(credential_with_key))
             .leaf_node_parameters(leaf_node_parameters)
             .build();
-        let (mut group, create_commit_result) = CoreGroup::join_by_external_commit(
-            provider,
-            signer,
-            params,
+
+        // Build the ratchet tree
+
+        // Set nodes either from the extension or from the `nodes_option`.
+        // If we got a ratchet tree extension in the welcome, we enable it for
+        // this group. Note that this is not strictly necessary. But there's
+        // currently no other mechanism to enable the extension.
+        let (ratchet_tree, enable_ratchet_tree_extension) =
+            match verifiable_group_info.extensions().ratchet_tree() {
+                Some(extension) => (extension.ratchet_tree().clone(), true),
+                None => match ratchet_tree {
+                    Some(ratchet_tree) => (ratchet_tree, false),
+                    None => return Err(ExternalCommitError::MissingRatchetTree),
+                },
+            };
+
+        let (public_group, group_info) = PublicGroup::from_external(
+            provider.crypto(),
+            provider.storage(),
             ratchet_tree,
             verifiable_group_info,
+            // Existing proposals are discarded when joining by external commit.
+            ProposalStore::new(),
         )?;
-        group.set_max_past_epochs(mls_group_config.max_past_epochs);
+        let group_context = public_group.group_context();
 
-        let mls_group = MlsGroup {
-            mls_group_config: mls_group_config.clone(),
-            group,
-            own_leaf_nodes: vec![],
-            aad: vec![],
-            group_state: MlsGroupState::PendingCommit(Box::new(PendingCommitState::External(
-                create_commit_result.staged_commit,
-            ))),
+        // Obtain external_pub from GroupInfo extensions.
+        let external_pub = group_info
+            .extensions()
+            .external_pub()
+            .ok_or(ExternalCommitError::MissingExternalPub)?
+            .external_pub();
+
+        let (init_secret, kem_output) = InitSecret::from_group_context(
+            provider.crypto(),
+            group_context,
+            external_pub.as_slice(),
+        )
+        .map_err(|_| ExternalCommitError::UnsupportedCiphersuite)?;
+
+        // The `EpochSecrets` we create here are essentially zero, with the
+        // exception of the `InitSecret`, which is all we need here for the
+        // external commit.
+        let epoch_secrets = EpochSecrets::with_init_secret(
+            provider.crypto(),
+            group_info.group_context().ciphersuite(),
+            init_secret,
+        )
+        .map_err(LibraryError::unexpected_crypto_error)?;
+        let (group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
+            group_context
+                .tls_serialize_detached()
+                .map_err(LibraryError::missing_bound_check)?,
+            public_group.tree_size(),
+            // We use a fake own index of 0 here, as we're not going to use the
+            // tree for encryption until after the first commit. This issue is
+            // tracked in #767.
+            LeafNodeIndex::new(0u32),
+        );
+        let message_secrets_store = MessageSecretsStore::new_with_secret(0, message_secrets);
+
+        let external_init_proposal = Proposal::ExternalInit(ExternalInitProposal::from(kem_output));
+
+        let mut inline_proposals = vec![external_init_proposal];
+
+        // If there is a group member in the group with the same identity as us,
+        // commit a remove proposal.
+        let signature_key = match params.commit_type() {
+            CommitType::External(credential_with_key) => {
+                credential_with_key.signature_key.as_slice()
+            }
+            _ => return Err(ExternalCommitError::MissingCredential),
+        };
+        if let Some(us) = public_group
+            .members()
+            .find(|member| member.signature_key == signature_key)
+        {
+            let remove_proposal = Proposal::Remove(RemoveProposal { removed: us.index });
+            inline_proposals.push(remove_proposal);
         };
 
-        provider
-            .storage()
-            .write_mls_join_config(mls_group.group_id(), &mls_group.mls_group_config)
-            .map_err(ExternalCommitError::StorageError)?;
-        provider
-            .storage()
-            .write_group_state(mls_group.group_id(), &mls_group.group_state)
-            .map_err(ExternalCommitError::StorageError)?;
+        let own_leaf_index = public_group.leftmost_free_index(inline_proposals.iter().map(Some))?;
+        params.set_inline_proposals(inline_proposals);
+
+        let mut mls_group = MlsGroup {
+            mls_group_config: mls_group_config.clone(),
+            own_leaf_nodes: vec![],
+            aad: vec![],
+            group_state: MlsGroupState::Operational,
+            public_group,
+            group_epoch_secrets,
+            own_leaf_index,
+            message_secrets_store,
+            resumption_psk_store: ResumptionPskStore::new(32),
+        };
+
+        mls_group.set_max_past_epochs(mls_group_config.max_past_epochs);
+
+        // Immediately create the commit to add ourselves to the group.
+        let create_commit_result = mls_group.create_commit(params, provider, signer)?;
+
+        mls_group.group_state = MlsGroupState::PendingCommit(Box::new(
+            PendingCommitState::External(create_commit_result.staged_commit),
+        ));
+
         mls_group
-            .group
             .store(provider.storage())
             .map_err(ExternalCommitError::StorageError)?;
 

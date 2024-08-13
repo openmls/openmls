@@ -151,14 +151,6 @@ pub trait StorageProvider<const VERSION: u16> {
         own_leaf_index: &LeafNodeIndex,
     ) -> Result<(), Self::Error>;
 
-    /// Returns the MlsGroupState for group with given id.
-    /// Sets whether to use the RatchetTreeExtension for the group with the given id.
-    fn set_use_ratchet_tree_extension<GroupId: traits::GroupId<VERSION>>(
-        &self,
-        group_id: &GroupId,
-        value: bool,
-    ) -> Result<(), Self::Error>;
-
     /// Writes the GroupEpochSecrets for the group with the given id.
     fn write_group_epoch_secrets<
         GroupId: traits::GroupId<VERSION>,
@@ -355,12 +347,6 @@ pub trait StorageProvider<const VERSION: u16> {
         group_id: &GroupId,
     ) -> Result<Option<LeafNodeIndex>, Self::Error>;
 
-    /// Returns whether to use the RatchetTreeExtension for the group with the given id.
-    fn use_ratchet_tree_extension<GroupId: traits::GroupId<VERSION>>(
-        &self,
-        group_id: &GroupId,
-    ) -> Result<Option<bool>, Self::Error>;
-
     /// Returns the GroupEpochSecrets for the group with the given id.
     fn group_epoch_secrets<
         GroupId: traits::GroupId<VERSION>,
@@ -501,12 +487,6 @@ pub trait StorageProvider<const VERSION: u16> {
         group_id: &GroupId,
     ) -> Result<(), Self::Error>;
 
-    /// Deletes any preference about whether to use the RatchetTreeExtension for the group with the given id.
-    fn delete_use_ratchet_tree_extension<GroupId: traits::GroupId<VERSION>>(
-        &self,
-        group_id: &GroupId,
-    ) -> Result<(), Self::Error>;
-
     /// Deletes the GroupEpochSecrets for the group with the given id.
     fn delete_group_epoch_secrets<GroupId: traits::GroupId<VERSION>>(
         &self,
@@ -620,7 +600,6 @@ pub mod traits {
     pub trait GroupState<const VERSION: u16>: Entity<VERSION> {}
     pub trait GroupEpochSecrets<const VERSION: u16>: Entity<VERSION> {}
     pub trait LeafNodeIndex<const VERSION: u16>: Entity<VERSION> {}
-    pub trait GroupUseRatchetTreeExtension<const VERSION: u16>: Entity<VERSION> {}
     pub trait MessageSecrets<const VERSION: u16>: Entity<VERSION> {}
     pub trait ResumptionPskStore<const VERSION: u16>: Entity<VERSION> {}
     pub trait KeyPackage<const VERSION: u16>: Entity<VERSION> {}

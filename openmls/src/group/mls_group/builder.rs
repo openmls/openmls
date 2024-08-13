@@ -1,15 +1,20 @@
 use openmls_traits::{signatures::Signer, types::Ciphersuite};
 
 use crate::{
+    binary_tree::array_representation::TreeSize,
     credentials::CredentialWithKey,
     error::LibraryError,
     extensions::{errors::InvalidExtensionError, Extensions},
     group::{
-        public_group::errors::PublicGroupBuildError, CoreGroup, CoreGroupBuildError,
-        CoreGroupConfig, GroupId, MlsGroupCreateConfig, MlsGroupCreateConfigBuilder, NewGroupError,
-        WireFormatPolicy,
+        past_secrets::MessageSecretsStore, GroupId, MlsGroupCreateConfig,
+        MlsGroupCreateConfigBuilder, NewGroupError, PublicGroup, WireFormatPolicy,
     },
     key_packages::Lifetime,
+    prelude::LeafNodeIndex,
+    schedule::{
+        psk::{load_psks, store::ResumptionPskStore, PskSecret},
+        InitSecret, JoinerSecret, KeySchedule,
+    },
     storage::OpenMlsProvider,
     tree::sender_ratchet::SenderRatchetConfiguration,
     treesync::node::leaf_node::Capabilities,
@@ -21,6 +26,7 @@ use super::{MlsGroup, MlsGroupState};
 pub struct MlsGroupBuilder {
     group_id: Option<GroupId>,
     mls_group_create_config_builder: MlsGroupCreateConfigBuilder,
+    max_past_epochs: Option<usize>,
 }
 
 impl MlsGroupBuilder {
@@ -61,51 +67,102 @@ impl MlsGroupBuilder {
         let group_id = self
             .group_id
             .unwrap_or_else(|| GroupId::random(provider.rand()));
-        // TODO #751
-        let group_config = CoreGroupConfig {
-            add_ratchet_tree_extension: mls_group_create_config
-                .join_config
-                .use_ratchet_tree_extension,
+        let ciphersuite = mls_group_create_config.ciphersuite;
+
+        let (public_group_builder, commit_secret, leaf_keypair) =
+            PublicGroup::builder(group_id, ciphersuite, credential_with_key)
+                .with_group_context_extensions(
+                    mls_group_create_config.group_context_extensions.clone(),
+                )?
+                .with_leaf_node_extensions(mls_group_create_config.leaf_node_extensions.clone())?
+                .with_lifetime(mls_group_create_config.lifetime())
+                .with_capabilities(mls_group_create_config.capabilities.clone())
+                .get_secrets(provider, signer)?;
+
+        let serialized_group_context = public_group_builder
+            .group_context()
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)?;
+
+        // Derive an initial joiner secret based on the commit secret.
+        // Derive an epoch secret from the joiner secret.
+        // We use a random `InitSecret` for initialization.
+        let joiner_secret = JoinerSecret::new(
+            provider.crypto(),
+            ciphersuite,
+            commit_secret,
+            &InitSecret::random(ciphersuite, provider.rand())
+                .map_err(LibraryError::unexpected_crypto_error)?,
+            &serialized_group_context,
+        )
+        .map_err(LibraryError::unexpected_crypto_error)?;
+
+        // TODO(#1357)
+        let resumption_psk_store = ResumptionPskStore::new(32);
+
+        // Prepare the PskSecret
+        let psk_secret = {
+            let psks = load_psks(provider.storage(), &resumption_psk_store, &self.psk_ids)?;
+
+            PskSecret::new(provider.crypto(), ciphersuite, psks)?
         };
 
-        let mut group = CoreGroup::builder(
-            group_id,
-            mls_group_create_config.ciphersuite,
-            credential_with_key,
-        )
-        .with_config(group_config)
-        .with_group_context_extensions(mls_group_create_config.group_context_extensions.clone())?
-        .with_leaf_node_extensions(mls_group_create_config.leaf_node_extensions.clone())?
-        .with_capabilities(mls_group_create_config.capabilities.clone())
-        .with_max_past_epoch_secrets(mls_group_create_config.join_config.max_past_epochs)
-        .with_lifetime(*mls_group_create_config.lifetime())
-        .build(provider, signer)
-        .map_err(|e| match e {
-            CoreGroupBuildError::LibraryError(e) => e.into(),
-            // We don't support PSKs yet
-            CoreGroupBuildError::Psk(e) => {
-                log::debug!("Unexpected PSK error: {:?}", e);
-                LibraryError::custom("Unexpected PSK error").into()
-            }
-            CoreGroupBuildError::StorageError(e) => NewGroupError::StorageError(e),
-            CoreGroupBuildError::PublicGroupBuildError(e) => match e {
-                PublicGroupBuildError::LibraryError(e) => e.into(),
-                PublicGroupBuildError::InvalidExtensions(e) => NewGroupError::InvalidExtensions(e),
-            },
-        })?;
+        let mut key_schedule =
+            KeySchedule::init(ciphersuite, provider.crypto(), &joiner_secret, psk_secret)?;
+        key_schedule
+            .add_context(provider.crypto(), &serialized_group_context)
+            .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
+
+        let epoch_secrets = key_schedule
+            .epoch_secrets(provider.crypto(), ciphersuite)
+            .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
+
+        let (group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
+            serialized_group_context,
+            TreeSize::new(1),
+            LeafNodeIndex::new(0u32),
+        );
+
+        let initial_confirmation_tag = message_secrets
+            .confirmation_key()
+            .tag(provider.crypto(), ciphersuite, &[])
+            .map_err(LibraryError::unexpected_crypto_error)?;
+
+        let message_secrets_store =
+            MessageSecretsStore::new_with_secret(self.max_past_epochs, message_secrets);
+
+        let public_group = public_group_builder
+            .with_confirmation_tag(initial_confirmation_tag)
+            .build(provider.crypto())?;
+
+        //.map_err(|e| match e {
+        //    CoreGroupBuildError::LibraryError(e) => e.into(),
+        //    // We don't support PSKs yet
+        //    CoreGroupBuildError::Psk(e) => {
+        //        log::debug!("Unexpected PSK error: {:?}", e);
+        //        LibraryError::custom("Unexpected PSK error").into()
+        //    }
+        //    CoreGroupBuildError::StorageError(e) => NewGroupError::StorageError(e),
+        //    CoreGroupBuildError::PublicGroupBuildError(e) => match e {
+        //        PublicGroupBuildError::LibraryError(e) => e.into(),
+        //        PublicGroupBuildError::InvalidExtensions(e) => NewGroupError::InvalidExtensions(e),
+        //    },
+        //})?;
 
         // We already add a resumption PSK for epoch 0 to make things more unified.
-        let resumption_psk = group.group_epoch_secrets().resumption_psk();
-        group
-            .resumption_psk_store
-            .add(group.context().epoch(), resumption_psk.clone());
+        let resumption_psk = group_epoch_secrets.resumption_psk();
+        resumption_psk_store.add(public_group.group_context().epoch(), resumption_psk.clone());
 
         let mls_group = MlsGroup {
             mls_group_config: mls_group_create_config.join_config.clone(),
-            group,
             own_leaf_nodes: vec![],
             aad: vec![],
             group_state: MlsGroupState::Operational,
+            public_group,
+            group_epoch_secrets,
+            own_leaf_index: LeafNodeIndex::new(0),
+            message_secrets_store,
+            resumption_psk_store,
         };
 
         use openmls_traits::storage::StorageProvider as _;
@@ -121,6 +178,9 @@ impl MlsGroupBuilder {
         mls_group
             .group
             .store(provider.storage())
+            .map_err(NewGroupError::StorageError)?;
+        group
+            .store_epoch_keypairs(provider.storage(), &[leaf_keypair])
             .map_err(NewGroupError::StorageError)?;
 
         Ok(mls_group)

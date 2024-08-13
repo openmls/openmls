@@ -8,7 +8,6 @@ use crate::{
     storage::OpenMlsProvider,
 };
 
-use super::CoreGroup;
 use crate::group::core_group::*;
 
 pub(crate) type ExternalCommitResult = (CoreGroup, CreateCommitResult);
