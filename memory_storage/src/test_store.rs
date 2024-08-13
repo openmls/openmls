@@ -388,28 +388,6 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn use_ratchet_tree_extension<GroupId: traits::GroupId<V_TEST>>(
-        &self,
-        _group_id: &GroupId,
-    ) -> Result<Option<bool>, Self::Error> {
-        todo!()
-    }
-
-    fn set_use_ratchet_tree_extension<GroupId: traits::GroupId<V_TEST>>(
-        &self,
-        _group_id: &GroupId,
-        _value: bool,
-    ) -> Result<(), Self::Error> {
-        todo!()
-    }
-
-    fn delete_use_ratchet_tree_extension<GroupId: traits::GroupId<V_TEST>>(
-        &self,
-        _group_id: &GroupId,
-    ) -> Result<(), Self::Error> {
-        todo!()
-    }
-
     fn group_epoch_secrets<
         GroupId: traits::GroupId<V_TEST>,
         GroupEpochSecrets: traits::GroupEpochSecrets<V_TEST>,
