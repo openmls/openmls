@@ -345,7 +345,13 @@ impl MlsGroup {
         group_id: &GroupId,
     ) -> Result<Option<MlsGroup>, Storage::Error> {
         let group_config = storage.mls_group_join_config(group_id)?;
-        let core_group = CoreGroup::load(storage, group_id)?;
+        let core_group = CoreGroup::load(
+            storage,
+            group_id,
+            group_config
+                .as_ref()
+                .map(|config: &MlsGroupJoinConfig| config.use_ratchet_tree_extension),
+        )?;
         let own_leaf_nodes = storage.own_leaf_nodes(group_id)?;
         let aad = Vec::new();
         let group_state = storage.group_state(group_id)?;

@@ -722,7 +722,6 @@ impl CoreGroup {
         self.public_group.store(storage)?;
         storage.write_own_leaf_index(group_id, &self.own_leaf_index())?;
         storage.write_group_epoch_secrets(group_id, &self.group_epoch_secrets)?;
-        storage.set_use_ratchet_tree_extension(group_id, self.use_ratchet_tree_extension)?;
         storage.write_message_secrets(group_id, &self.message_secrets_store)?;
         storage.write_resumption_psk_store(group_id, &self.resumption_psk_store)?;
 
@@ -733,11 +732,11 @@ impl CoreGroup {
     pub(super) fn load<Storage: StorageProvider>(
         storage: &Storage,
         group_id: &GroupId,
+        use_ratchet_tree_extension: Option<bool>,
     ) -> Result<Option<Self>, Storage::Error> {
         let public_group = PublicGroup::load(storage, group_id)?;
         let group_epoch_secrets = storage.group_epoch_secrets(group_id)?;
         let own_leaf_index = storage.own_leaf_index(group_id)?;
-        let use_ratchet_tree_extension = storage.use_ratchet_tree_extension(group_id)?;
         let message_secrets_store = storage.message_secrets(group_id)?;
         let resumption_psk_store = storage.resumption_psk_store(group_id)?;
 
@@ -762,7 +761,6 @@ impl CoreGroup {
         self.public_group.delete(storage)?;
         storage.delete_own_leaf_index(self.group_id())?;
         storage.delete_group_epoch_secrets(self.group_id())?;
-        storage.delete_use_ratchet_tree_extension(self.group_id())?;
         storage.delete_message_secrets(self.group_id())?;
         storage.delete_all_resumption_psk_secrets(self.group_id())?;
 

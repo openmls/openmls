@@ -267,7 +267,6 @@ const OWN_LEAF_NODE_INDEX_LABEL: &[u8] = b"OwnLeafNodeIndex";
 const EPOCH_SECRETS_LABEL: &[u8] = b"EpochSecrets";
 const RESUMPTION_PSK_STORE_LABEL: &[u8] = b"ResumptionPsk";
 const MESSAGE_SECRETS_LABEL: &[u8] = b"MessageSecrets";
-const USE_RATCHET_TREE_LABEL: &[u8] = b"UseRatchetTree";
 
 // related to MlsGroup
 const JOIN_CONFIG_LABEL: &[u8] = b"MlsGroupJoinConfig";
@@ -746,32 +745,6 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         self.delete::<CURRENT_VERSION>(OWN_LEAF_NODE_INDEX_LABEL, &serde_json::to_vec(group_id)?)
-    }
-
-    fn use_ratchet_tree_extension<GroupId: traits::GroupId<CURRENT_VERSION>>(
-        &self,
-        group_id: &GroupId,
-    ) -> Result<Option<bool>, Self::Error> {
-        self.read(USE_RATCHET_TREE_LABEL, &serde_json::to_vec(group_id)?)
-    }
-
-    fn set_use_ratchet_tree_extension<GroupId: traits::GroupId<CURRENT_VERSION>>(
-        &self,
-        group_id: &GroupId,
-        value: bool,
-    ) -> Result<(), Self::Error> {
-        self.write::<CURRENT_VERSION>(
-            USE_RATCHET_TREE_LABEL,
-            &serde_json::to_vec(group_id)?,
-            serde_json::to_vec(&value)?,
-        )
-    }
-
-    fn delete_use_ratchet_tree_extension<GroupId: traits::GroupId<CURRENT_VERSION>>(
-        &self,
-        group_id: &GroupId,
-    ) -> Result<(), Self::Error> {
-        self.delete::<CURRENT_VERSION>(USE_RATCHET_TREE_LABEL, &serde_json::to_vec(group_id)?)
     }
 
     fn group_epoch_secrets<
