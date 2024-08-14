@@ -137,6 +137,18 @@ impl SignatureKeyPair {
             .flatten()
     }
 
+    /// Delete a signature key pair from the key store.
+    pub fn delete<T: StorageProvider<CURRENT_VERSION>>(
+        store: &T,
+        public_key: &[u8],
+        signature_scheme: SignatureScheme,
+    ) -> Result<(), T::Error> {
+        let id = StorageId {
+            value: id(public_key, signature_scheme),
+        };
+        store.delete_signature_key_pair(&id)
+    }
+
     /// Get the public key as byte slice.
     pub fn public(&self) -> &[u8] {
         self.public.as_ref()
