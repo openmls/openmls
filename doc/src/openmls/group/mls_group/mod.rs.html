@@ -566,6 +566,13 @@
 <a href="#566" id="566">566</a>
 <a href="#567" id="567">567</a>
 <a href="#568" id="568">568</a>
+<a href="#569" id="569">569</a>
+<a href="#570" id="570">570</a>
+<a href="#571" id="571">571</a>
+<a href="#572" id="572">572</a>
+<a href="#573" id="573">573</a>
+<a href="#574" id="574">574</a>
+<a href="#575" id="575">575</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! MLS Group
 //!
 //! This module contains [`MlsGroup`] and its submodules.
@@ -937,16 +944,23 @@
         <span class="prelude-val">Ok</span>(build())
     }
 
-    <span class="doccomment">/// Remove the persisted state from storage
-    </span><span class="kw">pub fn </span>delete&lt;StorageProvider: <span class="kw">crate</span>::storage::StorageProvider&gt;(
+    <span class="doccomment">/// Remove the persisted state of this group from storage. Note that
+    /// signature key material is not managed by OpenMLS and has to be removed
+    /// from the storage provider separately (if desired).
+    </span><span class="kw">pub fn </span>delete&lt;Storage: <span class="kw">crate</span>::storage::StorageProvider&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        storage: <span class="kw-2">&amp;</span>StorageProvider,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), StorageProvider::Error&gt; {
+        storage: <span class="kw-2">&amp;</span>Storage,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Storage::Error&gt; {
         <span class="self">self</span>.group.delete(storage)<span class="question-mark">?</span>;
         storage.delete_group_config(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
         storage.clear_proposal_queue::&lt;GroupId, ProposalRef&gt;(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
         storage.delete_own_leaf_nodes(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
         storage.delete_group_state(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
+        storage.delete_encryption_epoch_key_pairs(
+            <span class="self">self</span>.group_id(),
+            <span class="kw-2">&amp;</span><span class="self">self</span>.epoch(),
+            <span class="self">self</span>.own_leaf_index().u32(),
+        )<span class="question-mark">?</span>;
 
         <span class="self">self</span>.proposal_store_mut().empty();
 
