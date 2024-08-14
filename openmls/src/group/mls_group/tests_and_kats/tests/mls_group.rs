@@ -1,6 +1,8 @@
 use mls_group::tests_and_kats::utils::setup_client;
+use openmls_basic_credential::SignatureKeyPair;
+use openmls_rust_crypto::MemoryStorage;
 use openmls_test::openmls_test;
-use openmls_traits::OpenMlsProvider as _;
+use openmls_traits::{storage::CURRENT_VERSION, OpenMlsProvider as _};
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
@@ -1260,7 +1262,7 @@ fn builder_pattern() {
 fn update_group_context_with_unknown_extension<Provider: OpenMlsProvider + Default>() {
     let alice_provider = Provider::default();
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
-        setup_client("Alice", ciphersuite, &alice_provider);
+        setup_client("Alice", ciphersuite, provider);
 
     // === Define the unknown group context extension and initial data ===
     const UNKNOWN_EXTENSION_TYPE: u16 = 0xff11;
@@ -1288,7 +1290,7 @@ fn update_group_context_with_unknown_extension<Provider: OpenMlsProvider + Defau
 
     // === Alice creates a group ===
     let mut alice_group = MlsGroup::new(
-        &alice_provider,
+        provider,
         &alice_signer,
         &mls_group_create_config,
         alice_credential_with_key,
@@ -1988,4 +1990,37 @@ fn join_multiple_groups_last_resort_extension(
         .into_group(provider)
         .expect("error creating group from staged join");
     // done :-)
+}
+
+#[openmls_test]
+fn deletion() {
+    let alice_provider = provider;
+    let (alice_credential_with_key, alice_kpb, alice_signer, alice_pk) =
+        setup_client("alice", ciphersuite, provider);
+
+    // delete the kpb from the provider, as we don't need it
+    <MemoryStorage as openmls_traits::storage::StorageProvider<CURRENT_VERSION>>::
+        delete_key_package(alice_provider.storage(),&alice_kpb.key_package().hash_ref(provider.crypto()).unwrap())
+        .unwrap();
+    <MemoryStorage as openmls_traits::storage::StorageProvider<CURRENT_VERSION>>::
+        delete_encryption_key_pair(alice_provider.storage(),alice_kpb.key_package().leaf_node().encryption_key()).unwrap();
+
+    // alice creates MlsGroup
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .build(provider, &alice_signer, alice_credential_with_key)
+        .expect("error creating group for alice using builder");
+
+    SignatureKeyPair::delete(
+        alice_provider.storage(),
+        alice_pk.as_slice(),
+        ciphersuite.signature_algorithm(),
+    )
+    .unwrap();
+
+    // alice deletes the group
+    alice_group.delete(alice_provider.storage()).unwrap();
+
+    assert!(alice_provider.storage().values.read().unwrap().is_empty());
 }

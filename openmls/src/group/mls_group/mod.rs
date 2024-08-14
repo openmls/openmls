@@ -825,26 +825,6 @@ impl MlsGroup {
 
     // === Storage Methods ===
 
-    /// Remove the persisted state from storage
-    pub fn delete<Storage: crate::storage::StorageProvider>(
-        &mut self,
-        storage: &Storage,
-    ) -> Result<(), Storage::Error> {
-        self.public_group.delete(storage)?;
-        storage.delete_own_leaf_index(self.group_id())?;
-        storage.delete_group_epoch_secrets(self.group_id())?;
-        storage.delete_message_secrets(self.group_id())?;
-        storage.delete_all_resumption_psk_secrets(self.group_id())?;
-        storage.delete_group_config(self.group_id())?;
-        storage.delete_own_leaf_nodes(self.group_id())?;
-        storage.delete_group_state(self.group_id())?;
-        storage.clear_proposal_queue::<GroupId, ProposalRef>(self.group_id())?;
-
-        self.proposal_store_mut().empty();
-
-        Ok(())
-    }
-
     /// Loads the state of the group with given id from persisted state.
     pub fn load<Storage: crate::storage::StorageProvider>(
         storage: &Storage,
@@ -889,6 +869,35 @@ impl MlsGroup {
         storage.write_resumption_psk_store(self.group_id(), &self.resumption_psk_store)?;
         storage.write_mls_join_config(self.group_id(), &self.mls_group_config)?;
         storage.write_group_state(self.group_id(), &self.group_state)?;
+
+        Ok(())
+    }
+
+    /// Remove the persisted state of this group from storage. Note that
+    /// signature key material is not managed by OpenMLS and has to be removed
+    /// from the storage provider separately (if desired).
+    pub fn delete<Storage: crate::storage::StorageProvider>(
+        &mut self,
+        storage: &Storage,
+    ) -> Result<(), Storage::Error> {
+        self.public_group.delete(storage)?;
+        storage.delete_own_leaf_index(self.group_id())?;
+        storage.delete_group_epoch_secrets(self.group_id())?;
+        storage.delete_message_secrets(self.group_id())?;
+        storage.delete_all_resumption_psk_secrets(self.group_id())?;
+        storage.delete_group_config(self.group_id())?;
+        storage.delete_own_leaf_nodes(self.group_id())?;
+        storage.delete_group_state(self.group_id())?;
+        storage.clear_proposal_queue::<GroupId, ProposalRef>(self.group_id())?;
+
+        self.proposal_store_mut().empty();
+        storage.delete_encryption_epoch_key_pairs(
+            self.group_id(),
+            &self.epoch(),
+            self.own_leaf_index().u32(),
+        )?;
+
+        self.proposal_store_mut().empty();
 
         Ok(())
     }
