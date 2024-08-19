@@ -220,7 +220,7 @@ pub enum UpdateGroupMembershipError<StorageError> {
     CreateCommitError(#[from] CreateCommitError<StorageError>),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
-    GroupStateError(#[from] MlsGroupStateError<StorageError>),
+    GroupStateError(#[from] MlsGroupStateError),
     /// The member that should be removed can not be found.
     #[error("The member that should be removed can not be found.")]
     UnknownMember,

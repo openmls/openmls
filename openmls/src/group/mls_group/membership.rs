@@ -57,7 +57,6 @@ impl MlsGroup {
 
         let params = CreateCommitParams::builder()
             .framing_parameters(self.framing_parameters())
-            .proposal_store(&self.proposal_store)
             .inline_proposals(proposals)
             .build();
         let create_commit_result = self.group.create_commit(params, provider, signer)?;
@@ -76,6 +75,8 @@ impl MlsGroup {
             .storage()
             .write_group_state(self.group_id(), &self.group_state)
             .map_err(UpdateGroupMembershipError::StorageError)?;
+
+        self.reset_aad();
 
         Ok((
             mls_messages,
