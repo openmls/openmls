@@ -301,6 +301,10 @@ impl CoreGroup {
             self.message_secrets_store
                 .add(past_epoch, message_secrets, leaves);
         }
+        provider
+            .storage()
+            .write_message_secrets(self.group_id(), &self.message_secrets_store)
+            .map_err(MergeCommitError::StorageError)?;
         Ok(())
     }
 }
