@@ -49,13 +49,6 @@ pub trait StorageProvider<const VERSION: u16> {
         config: &MlsGroupJoinConfig,
     ) -> Result<(), Self::Error>;
 
-    /// Writes the AAD for the group with given id to storage
-    fn write_aad<GroupId: traits::GroupId<VERSION>>(
-        &self,
-        group_id: &GroupId,
-        aad: &[u8],
-    ) -> Result<(), Self::Error>;
-
     /// Adds an own leaf node for the group with given id to storage
     fn append_own_leaf_node<
         GroupId: traits::GroupId<VERSION>,
@@ -158,14 +151,6 @@ pub trait StorageProvider<const VERSION: u16> {
         own_leaf_index: &LeafNodeIndex,
     ) -> Result<(), Self::Error>;
 
-    /// Returns the MlsGroupState for group with given id.
-    /// Sets whether to use the RatchetTreeExtension for the group with the given id.
-    fn set_use_ratchet_tree_extension<GroupId: traits::GroupId<VERSION>>(
-        &self,
-        group_id: &GroupId,
-        value: bool,
-    ) -> Result<(), Self::Error>;
-
     /// Writes the GroupEpochSecrets for the group with the given id.
     fn write_group_epoch_secrets<
         GroupId: traits::GroupId<VERSION>,
@@ -266,18 +251,13 @@ pub trait StorageProvider<const VERSION: u16> {
         group_id: &GroupId,
     ) -> Result<Option<MlsGroupJoinConfig>, Self::Error>;
 
+    ///ANCHOR: own_leaf_nodes
     /// Returns the own leaf nodes for the group with given id
     fn own_leaf_nodes<GroupId: traits::GroupId<VERSION>, LeafNode: traits::LeafNode<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<Vec<LeafNode>, Self::Error>;
-
-    /// Returns the AAD for the group with given id
-    /// If the value has not been set, returns an empty vector.
-    fn aad<GroupId: traits::GroupId<VERSION>>(
-        &self,
-        group_id: &GroupId,
-    ) -> Result<Vec<u8>, Self::Error>;
+    ///ANCHOR_END: own_leaf_nodes
 
     /// Returns references of all queued proposals for the group with group id `group_id`, or an empty vector of none are stored.
     fn queued_proposal_refs<
@@ -299,7 +279,7 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<Vec<(ProposalRef, QueuedProposal)>, Self::Error>;
 
     /// Returns the TreeSync tree for the group with group id `group_id`.
-    fn treesync<GroupId: traits::GroupId<VERSION>, TreeSync: traits::TreeSync<VERSION>>(
+    fn tree<GroupId: traits::GroupId<VERSION>, TreeSync: traits::TreeSync<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<Option<TreeSync>, Self::Error>;
@@ -366,12 +346,6 @@ pub trait StorageProvider<const VERSION: u16> {
         &self,
         group_id: &GroupId,
     ) -> Result<Option<LeafNodeIndex>, Self::Error>;
-
-    /// Returns whether to use the RatchetTreeExtension for the group with the given id.
-    fn use_ratchet_tree_extension<GroupId: traits::GroupId<VERSION>>(
-        &self,
-        group_id: &GroupId,
-    ) -> Result<Option<bool>, Self::Error>;
 
     /// Returns the GroupEpochSecrets for the group with the given id.
     fn group_epoch_secrets<
@@ -453,12 +427,6 @@ pub trait StorageProvider<const VERSION: u16> {
         proposal_ref: &ProposalRef,
     ) -> Result<(), Self::Error>;
 
-    /// Deletes the AAD for the given id from storage
-    fn delete_aad<GroupId: traits::GroupId<VERSION>>(
-        &self,
-        group_id: &GroupId,
-    ) -> Result<(), Self::Error>;
-
     /// Deletes own leaf nodes for the given id from storage
     fn delete_own_leaf_nodes<GroupId: traits::GroupId<VERSION>>(
         &self,
@@ -519,19 +487,13 @@ pub trait StorageProvider<const VERSION: u16> {
         group_id: &GroupId,
     ) -> Result<(), Self::Error>;
 
-    /// Deletes any preference about whether to use the RatchetTreeExtension for the group with the given id.
-    fn delete_use_ratchet_tree_extension<GroupId: traits::GroupId<VERSION>>(
-        &self,
-        group_id: &GroupId,
-    ) -> Result<(), Self::Error>;
-
     /// Deletes the GroupEpochSecrets for the group with the given id.
     fn delete_group_epoch_secrets<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error>;
 
-    /// Clear the proposal queue for the grou pwith the given id.
+    /// Clear the proposal queue for the group with the given id.
     fn clear_proposal_queue<
         GroupId: traits::GroupId<VERSION>,
         ProposalRef: traits::ProposalRef<VERSION>,

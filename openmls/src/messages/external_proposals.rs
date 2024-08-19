@@ -69,7 +69,7 @@ impl ExternalProposal {
     /// * `epoch` - group's epoch
     /// * `signer` - of the sender to sign the message
     /// * `sender` - index of the sender of the proposal (in the [crate::extensions::ExternalSendersExtension] array
-    /// from the Group Context)
+    ///   from the Group Context)
     pub fn new_remove<Provider: OpenMlsProvider>(
         removed: LeafNodeIndex,
         group_id: GroupId,

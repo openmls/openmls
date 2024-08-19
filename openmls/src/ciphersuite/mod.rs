@@ -36,7 +36,7 @@ pub(crate) use signature::*;
 pub(crate) use serde::{Deserialize, Serialize};
 
 #[cfg(test)]
-mod tests;
+mod tests_and_kats;
 
 const LABEL_PREFIX: &str = "MLS 1.0 ";
 

@@ -35,7 +35,7 @@ It simply needs to implement two functions to generate cryptographically secure
 randomness and store it in an array or vector.
 
 ```rust,no_run,noplayground
-{{#include ../../../traits/src/random.rs:8:16}}
+{{#include ../../../traits/src/random.rs:openmls_rand}}
 ```
 
 ### OpenMlsCrypto
@@ -48,27 +48,29 @@ This trait defines all cryptographic functions required by OpenMLS. In particula
 - Signatures
 - HPKE
 
-```rust,no_run,noplayground
-{{#include ../../../traits/src/crypto.rs:10}}
-```
-
 ### StorageProvider
 
 This trait defines an API for a storage backend that is used for all OpenMLS
 persistence.
 
-The store provides functions to `store`, `read`, and `delete` values.
-Note that it does not allow updating values.
-Instead, entries must be deleted and newly stored.
+The store provides functions for reading and updating stored values.
+Each sort of value has separate methods for accessing or mutating the state.
+In order to decouple the provider from the OpenMLS implementation, while still
+having legible types at the provider, there are traits that mirror all the types
+stored by OpenMLS. The provider methods use values constrained by these traits as
+as arguments.
 
 ```rust,no_run,noplayground
-{{#include ../../../traits/src/storage.rs:16:25}}
+{{#include ../../../traits/src/storage.rs:traits}}
 ```
 
-The trait is generic over a `VERSION`, which is used to ensure that the values
+The traits are generic over a `VERSION`, which is used to ensure that the values
 that are persisted can be upgraded when OpenMLS changes the stored structs.
 
-Every function takes `Key` and `Value` arguments.
+The traits used as arguments to the storage methods are constrained to implement
+the `Key` or `Entity` traits as well, depending on whether they are only used for
+addressing (in which case they are a `Key`) or whether they represent a stored
+value (in which case they are an `Entity`).
 
 ```rust,no_run,noplayground
 {{#include ../../../traits/src/storage.rs:key_trait}}
@@ -76,13 +78,6 @@ Every function takes `Key` and `Value` arguments.
 
 ```rust,no_run,noplayground
 {{#include ../../../traits/src/storage.rs:entity_trait}}
-```
-
-To ensure that each function takes the correct input, they use trait bounds.
-These are the available traits.
-
-```rust,no_run,noplayground
-{{#include ../../../traits/src/storage.rs:traits}}
 ```
 
 An implementation of the storage trait should ensure that it can address and
@@ -127,20 +122,22 @@ fn write_key_package<
 This allows the application to iterate over the hash references and delete outdated
 key packages.
 
-### OpenMlsCryptoProvider
+### OpenMlsProvider
 
 Additionally, there's a wrapper trait defined that is expected to be passed into
 the public OpenMLS API.
 Some OpenMLS APIs require only one of the sub-traits, though.
 
 ```rust,no_run,noplayground
-{{#include ../../../traits/src/traits.rs:15:28}}
+{{#include ../../../traits/src/traits.rs:openmls_provider}}
 ```
 
 ## Implementation Notes
 
 It is not necessary to implement all sub-traits if one functionality is missing.
-Suppose you want to use a persisting key store. In that case, it is sufficient to do a new implementation of the key store trait and combine it with one of the provided crypto and randomness trait implementations.
+Suppose you want to use a persisting storage provider. In that case, it is
+sufficient to do a new implementation of the `StorageProvider` trait and
+combine it with one of the provided crypto and randomness trait implementations.
 
 [rust crypto]: https://crates.io/crates/openmls_rust_crypto
 [libcrux crypto]: https://crates.io/crates/openmls_libcrux_crypto

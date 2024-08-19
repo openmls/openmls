@@ -90,7 +90,9 @@ impl MlsGroup {
     /// New members are added by providing a `KeyPackage` for each member.
     ///
     /// This operation results in a Commit with a `path`, i.e. it includes an
-    /// update of the committer's leaf [KeyPackage].
+    /// update of the committer's leaf [KeyPackage]. To add members without
+    /// forcing an update of the committer's leaf [KeyPackage], use
+    /// [`Self::add_members_without_update()`].
     ///
     /// If successful, it returns a triple of [`MlsMessageOut`]s, where the first
     /// contains the commit, the second one the [`Welcome`] and the third an optional [GroupInfo] that
@@ -106,6 +108,53 @@ impl MlsGroup {
         provider: &Provider,
         signer: &impl Signer,
         key_packages: &[KeyPackage],
+    ) -> Result<
+        (MlsMessageOut, MlsMessageOut, Option<GroupInfo>),
+        AddMembersError<Provider::StorageError>,
+    > {
+        self.add_members_internal(provider, signer, key_packages, true)
+    }
+
+    /// Adds members to the group.
+    ///
+    /// New members are added by providing a `KeyPackage` for each member.
+    ///
+    /// This operation results in a Commit that does not necessarily include a
+    /// `path`, i.e. an update of the committer's leaf [KeyPackage]. In
+    /// particular, it will only include a path if the group's proposal store
+    /// includes one or more proposals that require a path (see [Section 17.4 of
+    /// RFC 9420](https://www.rfc-editor.org/rfc/rfc9420.html#section-17.4) for
+    /// a list of proposals and whether they require a path).
+    ///
+    /// If successful, it returns a triple of [`MlsMessageOut`]s, where the
+    /// first contains the commit, the second one the [`Welcome`] and the third
+    /// an optional [GroupInfo] that will be [Some] if the group has the
+    /// `use_ratchet_tree_extension` flag set.
+    ///
+    /// Returns an error if there is a pending commit.
+    ///
+    /// [`Welcome`]: crate::messages::Welcome
+    // FIXME: #1217
+    #[allow(clippy::type_complexity)]
+    pub fn add_members_without_update<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        signer: &impl Signer,
+        key_packages: &[KeyPackage],
+    ) -> Result<
+        (MlsMessageOut, MlsMessageOut, Option<GroupInfo>),
+        AddMembersError<Provider::StorageError>,
+    > {
+        self.add_members_internal(provider, signer, key_packages, false)
+    }
+
+    #[allow(clippy::type_complexity)]
+    fn add_members_internal<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        signer: &impl Signer,
+        key_packages: &[KeyPackage],
+        force_self_update: bool,
     ) -> Result<
         (MlsMessageOut, MlsMessageOut, Option<GroupInfo>),
         AddMembersError<Provider::StorageError>,
@@ -130,8 +179,8 @@ impl MlsGroup {
         // TODO #751
         let params = CreateCommitParams::builder()
             .framing_parameters(self.framing_parameters())
-            .proposal_store(&self.proposal_store)
             .inline_proposals(inline_proposals)
+            .force_self_update(force_self_update)
             .build();
         let create_commit_result = self.group.create_commit(params, provider, signer)?;
 
@@ -157,6 +206,7 @@ impl MlsGroup {
             .write_group_state(self.group_id(), &self.group_state)
             .map_err(AddMembersError::StorageError)?;
 
+        self.reset_aad();
         Ok((
             mls_messages,
             MlsMessageOut::from_welcome(welcome, self.group.version()),
@@ -212,7 +262,6 @@ impl MlsGroup {
         // TODO #751
         let params = CreateCommitParams::builder()
             .framing_parameters(self.framing_parameters())
-            .proposal_store(&self.proposal_store)
             .inline_proposals(inline_proposals)
             .build();
         let create_commit_result = self.group.create_commit(params, provider, signer)?;
@@ -232,6 +281,7 @@ impl MlsGroup {
             .write_group_state(self.group_id(), &self.group_state)
             .map_err(RemoveMembersError::StorageError)?;
 
+        self.reset_aad();
         Ok((
             mls_message,
             create_commit_result
@@ -260,13 +310,25 @@ impl MlsGroup {
             .create_remove_proposal(self.framing_parameters(), removed, signer)
             .map_err(|_| LibraryError::custom("Creating a self removal should not fail"))?;
 
-        self.proposal_store
-            .add(QueuedProposal::from_authenticated_content_by_ref(
-                self.ciphersuite(),
-                provider.crypto(),
-                remove_proposal.clone(),
-            )?);
+        let ciphersuite = self.ciphersuite();
+        let queued_remove_proposal = QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            provider.crypto(),
+            remove_proposal.clone(),
+        )?;
 
+        provider
+            .storage()
+            .queue_proposal(
+                self.group_id(),
+                &queued_remove_proposal.proposal_reference(),
+                &queued_remove_proposal,
+            )
+            .map_err(LeaveGroupError::StorageError)?;
+
+        self.proposal_store_mut().add(queued_remove_proposal);
+
+        self.reset_aad();
         Ok(self.content_to_mls_message(remove_proposal, provider)?)
     }
 

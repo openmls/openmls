@@ -1,10 +1,10 @@
-use openmls_traits::{signatures::Signer, storage::StorageProvider, types::Ciphersuite};
+use openmls_traits::{signatures::Signer, storage::StorageProvider as _, types::Ciphersuite};
 
 use super::{
     core_group::create_commit_params::CreateCommitParams,
     errors::{ProposalError, ProposeAddMemberError, ProposeRemoveMemberError},
     CreateGroupContextExtProposalError, CustomProposal, GroupContextExtensionProposal, MlsGroup,
-    MlsGroupState, PendingCommitState, Proposal,
+    MlsGroupState, PendingCommitState, Proposal, RemoveProposalError,
 };
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -17,8 +17,8 @@ use crate::{
     messages::{group_info::GroupInfo, proposals::ProposalOrRefType},
     prelude::LibraryError,
     schedule::PreSharedKeyId,
-    storage::OpenMlsProvider,
-    treesync::LeafNode,
+    storage::{OpenMlsProvider, StorageProvider},
+    treesync::LeafNodeParameters,
     versions::ProtocolVersion,
 };
 
@@ -29,7 +29,7 @@ pub enum Propose {
     Add(KeyPackage),
 
     /// An update proposal requires a new leaf node.
-    Update(Option<LeafNode>),
+    Update(LeafNodeParameters),
 
     /// A remove proposal consists of the leaf index of the leaf to be removed.
     Remove(u32),
@@ -89,10 +89,11 @@ macro_rules! impl_propose_fun {
                 .storage()
                 .queue_proposal(self.group.group_id(), &proposal_ref, &queued_proposal)
                 .map_err(ProposalError::StorageError)?;
-            self.proposal_store.add(queued_proposal);
+            self.proposal_store_mut().add(queued_proposal);
 
             let mls_message = self.content_to_mls_message(proposal, provider)?;
 
+            self.reset_aad();
             Ok((mls_message, proposal_ref))
         }
     };
@@ -159,12 +160,12 @@ impl MlsGroup {
                     .map_err(|e| e.into()),
             },
 
-            Propose::Update(leaf_node) => match ref_or_value {
+            Propose::Update(leaf_node_parameters) => match ref_or_value {
                 ProposalOrRefType::Proposal => self
-                    .propose_self_update_by_value(provider, signer, leaf_node)
+                    .propose_self_update(provider, signer, leaf_node_parameters)
                     .map_err(|e| e.into()),
                 ProposalOrRefType::Reference => self
-                    .propose_self_update(provider, signer, leaf_node)
+                    .propose_self_update(provider, signer, leaf_node_parameters)
                     .map_err(|e| e.into()),
             },
 
@@ -256,10 +257,11 @@ impl MlsGroup {
             .storage()
             .queue_proposal(self.group_id(), &proposal_ref, &proposal)
             .map_err(ProposeAddMemberError::StorageError)?;
-        self.proposal_store.add(proposal);
+        self.proposal_store_mut().add(proposal);
 
         let mls_message = self.content_to_mls_message(add_proposal, provider)?;
 
+        self.reset_aad();
         Ok((mls_message, proposal_ref))
     }
 
@@ -291,10 +293,11 @@ impl MlsGroup {
             .storage()
             .queue_proposal(self.group_id(), &proposal_ref, &proposal)
             .map_err(ProposeRemoveMemberError::StorageError)?;
-        self.proposal_store.add(proposal);
+        self.proposal_store_mut().add(proposal);
 
         let mls_message = self.content_to_mls_message(remove_proposal, provider)?;
 
+        self.reset_aad();
         Ok((mls_message, proposal_ref))
     }
 
@@ -380,10 +383,11 @@ impl MlsGroup {
             .storage()
             .queue_proposal(self.group_id(), &proposal_ref, &queued_proposal)
             .map_err(ProposalError::StorageError)?;
-        self.proposal_store.add(queued_proposal);
+        self.proposal_store_mut().add(queued_proposal);
 
         let mls_message = self.content_to_mls_message(proposal, provider)?;
 
+        self.reset_aad();
         Ok((mls_message, proposal_ref))
     }
 
@@ -414,7 +418,6 @@ impl MlsGroup {
         // Create Commit over all proposals
         let params = CreateCommitParams::builder()
             .framing_parameters(self.framing_parameters())
-            .proposal_store(&self.proposal_store)
             .inline_proposals(inline_proposals)
             .build();
         let create_commit_result = self.group.create_commit(params, provider, signer)?;
@@ -432,6 +435,7 @@ impl MlsGroup {
             .write_group_state(self.group_id(), &self.group_state)
             .map_err(CreateGroupContextExtProposalError::StorageError)?;
 
+        self.reset_aad();
         Ok((
             mls_messages,
             create_commit_result
@@ -439,5 +443,19 @@ impl MlsGroup {
                 .map(|w| MlsMessageOut::from_welcome(w, self.group.version())),
             create_commit_result.group_info,
         ))
+    }
+
+    /// Removes a specific proposal from the store.
+    pub fn remove_pending_proposal<Storage: StorageProvider>(
+        &mut self,
+        storage: &Storage,
+        proposal_ref: &ProposalRef,
+    ) -> Result<(), RemoveProposalError<Storage::Error>> {
+        storage
+            .remove_proposal(self.group_id(), proposal_ref)
+            .map_err(RemoveProposalError::Storage)?;
+        self.proposal_store_mut()
+            .remove(proposal_ref)
+            .ok_or(RemoveProposalError::ProposalNotFound)
     }
 }

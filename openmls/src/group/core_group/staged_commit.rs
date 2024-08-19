@@ -5,9 +5,10 @@ use public_group::diff::{apply_proposals::ApplyProposalsValues, StagedPublicGrou
 
 use self::public_group::staged_commit::PublicStagedCommitState;
 
-use super::{super::errors::*, proposals::ProposalStore, *};
+use super::{super::errors::*, *};
 use crate::{
-    ciphersuite::Secret, framing::mls_auth_content::AuthenticatedContent,
+    ciphersuite::{hash_ref::ProposalRef, Secret},
+    framing::mls_auth_content::AuthenticatedContent,
     treesync::node::encryption_keys::EncryptionKeyPair,
 };
 
@@ -120,11 +121,10 @@ impl CoreGroup {
     ///  - ValSem241
     ///  - ValSem242
     ///  - ValSem244 Returns an error if the given commit was sent by the owner
-    /// of this group.
+    ///              of this group.
     pub(crate) fn stage_commit(
         &self,
         mls_content: &AuthenticatedContent,
-        proposal_store: &ProposalStore,
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
         provider: &impl OpenMlsProvider,
@@ -138,9 +138,9 @@ impl CoreGroup {
 
         let ciphersuite = self.ciphersuite();
 
-        let (commit, proposal_queue, sender_index) =
-            self.public_group
-                .validate_commit(mls_content, proposal_store, provider.crypto())?;
+        let (commit, proposal_queue, sender_index) = self
+            .public_group
+            .validate_commit(mls_content, provider.crypto())?;
 
         // Create the provisional public group state (including the tree and
         // group context) and apply proposals.
@@ -148,19 +148,6 @@ impl CoreGroup {
 
         let apply_proposals_values =
             diff.apply_proposals(&proposal_queue, self.own_leaf_index())?;
-
-        // Check if we were removed from the group
-        if apply_proposals_values.self_removed {
-            let staged_diff = diff.into_staged_diff(provider.crypto(), ciphersuite)?;
-            let staged_state = PublicStagedCommitState::new(
-                staged_diff,
-                commit.path.as_ref().map(|path| path.leaf_node().clone()),
-            );
-            return Ok(StagedCommit::new(
-                proposal_queue,
-                StagedCommitState::PublicState(Box::new(staged_state)),
-            ));
-        }
 
         // Determine if Commit has a path
         let (commit_secret, new_keypairs, new_leaf_keypair_option, update_path_leaf_node) =
@@ -179,6 +166,20 @@ impl CoreGroup {
                     provider.crypto(),
                     apply_proposals_values.extensions.clone(),
                 )?;
+
+                // Check if we were removed from the group
+                if apply_proposals_values.self_removed {
+                    // If so, we return here, because we can't decrypt the path
+                    let staged_diff = diff.into_staged_diff(provider.crypto(), ciphersuite)?;
+                    let staged_state = PublicStagedCommitState::new(
+                        staged_diff,
+                        commit.path.as_ref().map(|path| path.leaf_node().clone()),
+                    );
+                    return Ok(StagedCommit::new(
+                        proposal_queue,
+                        StagedCommitState::PublicState(Box::new(staged_state)),
+                    ));
+                }
 
                 let decryption_keypairs: Vec<&EncryptionKeyPair> = old_epoch_keypairs
                     .iter()
@@ -373,7 +374,7 @@ impl CoreGroup {
                     .into());
                 }
 
-                // store the updated group state
+                // Store the updated group state
                 let storage = provider.storage();
                 let group_id = self.group_id();
 
@@ -400,35 +401,20 @@ impl CoreGroup {
                         .map_err(MergeCommitError::StorageError)?;
                 }
 
+                // Empty the proposal store
+                storage
+                    .clear_proposal_queue::<GroupId, ProposalRef>(group_id)
+                    .map_err(MergeCommitError::StorageError)?;
+                self.proposal_store_mut().empty();
+
                 Ok(Some(message_secrets))
             }
         }
     }
-
-    #[cfg(test)]
-    /// Helper function that reads the decryption keys from the key store
-    /// (unwrapping the result) and stages the given commit.
-    pub(crate) fn read_keys_and_stage_commit(
-        &self,
-        mls_content: &AuthenticatedContent,
-        proposal_store: &ProposalStore,
-        own_leaf_nodes: &[LeafNode],
-        provider: &impl OpenMlsProvider,
-    ) -> Result<StagedCommit, StageCommitError> {
-        let (old_epoch_keypairs, leaf_node_keypairs) =
-            self.read_decryption_keypairs(provider, own_leaf_nodes)?;
-
-        self.stage_commit(
-            mls_content,
-            proposal_store,
-            old_epoch_keypairs,
-            leaf_node_keypairs,
-            provider,
-        )
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 pub(crate) enum StagedCommitState {
     PublicState(Box<PublicStagedCommitState>),
     GroupMember(Box<MemberStagedCommitState>),
@@ -436,6 +422,7 @@ pub(crate) enum StagedCommitState {
 
 /// Contains the changes from a commit to the group state.
 #[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 pub struct StagedCommit {
     staged_proposal_queue: ProposalQueue,
     state: StagedCommitState,
@@ -568,6 +555,7 @@ impl StagedCommit {
 
 /// This struct is used internally by [StagedCommit] to encapsulate all the modified group state.
 #[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 pub(crate) struct MemberStagedCommitState {
     group_epoch_secrets: GroupEpochSecrets,
     message_secrets: MessageSecrets,

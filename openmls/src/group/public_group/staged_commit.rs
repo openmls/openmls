@@ -2,17 +2,14 @@ use super::{super::errors::*, *};
 use crate::{
     framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, Sender},
     group::{
-        core_group::{
-            proposals::{ProposalQueue, ProposalStore},
-            staged_commit::StagedCommitState,
-        },
+        core_group::{proposals::ProposalQueue, staged_commit::StagedCommitState},
         StagedCommit,
     },
     messages::{proposals::ProposalOrRef, Commit},
-    storage::StorageProvider,
 };
 
 #[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 pub struct PublicStagedCommitState {
     pub(super) staged_diff: StagedPublicGroupDiff,
     pub(super) update_path_leaf_node: Option<LeafNode>,
@@ -46,7 +43,6 @@ impl PublicGroup {
     pub(crate) fn validate_commit<'a>(
         &self,
         mls_content: &'a AuthenticatedContent,
-        proposal_store: &ProposalStore,
         crypto: &impl OpenMlsCrypto,
     ) -> Result<(&'a Commit, ProposalQueue, LeafNodeIndex), StageCommitError> {
         let ciphersuite = self.ciphersuite();
@@ -87,7 +83,7 @@ impl PublicGroup {
             ciphersuite,
             crypto,
             commit.proposals.as_slice().to_vec(),
-            proposal_store,
+            self.proposal_store(),
             sender,
         )
         .map_err(|e| {
@@ -205,16 +201,15 @@ impl PublicGroup {
     ///  - ValSem241
     ///  - ValSem242
     ///  - ValSem244
+    ///
     /// Returns an error if the given commit was sent by the owner of this
     /// group.
     pub(crate) fn stage_commit(
         &self,
         mls_content: &AuthenticatedContent,
-        proposal_store: &ProposalStore,
         crypto: &impl OpenMlsCrypto,
     ) -> Result<StagedCommit, StageCommitError> {
-        let (commit, proposal_queue, sender_index) =
-            self.validate_commit(mls_content, proposal_store, crypto)?;
+        let (commit, proposal_queue, sender_index) = self.validate_commit(mls_content, crypto)?;
 
         let staged_diff = self.stage_diff(mls_content, &proposal_queue, sender_index, crypto)?;
         let staged_state = PublicStagedCommitState {
@@ -278,11 +273,11 @@ impl PublicGroup {
     }
 
     /// Merges a [StagedCommit] into the public group state.
-    pub fn merge_commit<Storage: StorageProvider>(
+    pub fn merge_commit<Storage: PublicStorageProvider>(
         &mut self,
         storage: &Storage,
         staged_commit: StagedCommit,
-    ) -> Result<(), MergeCommitError<Storage::Error>> {
+    ) -> Result<(), MergeCommitError<Storage::PublicError>> {
         match staged_commit.into_state() {
             StagedCommitState::PublicState(staged_state) => {
                 self.merge_diff(staged_state.staged_diff);
@@ -291,6 +286,9 @@ impl PublicGroup {
         }
 
         self.proposal_store.empty();
+        storage
+            .clear_proposal_queue::<GroupId, ProposalRef>(self.group_id())
+            .map_err(MergeCommitError::StorageError)?;
         self.store(storage).map_err(MergeCommitError::StorageError)
     }
 }

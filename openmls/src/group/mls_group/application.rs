@@ -18,13 +18,13 @@ impl MlsGroup {
         provider: &Provider,
         signer: &impl Signer,
         message: &[u8],
-    ) -> Result<MlsMessageOut, CreateMessageError<Provider::StorageError>> {
+    ) -> Result<MlsMessageOut, CreateMessageError> {
         if !self.is_active() {
             return Err(CreateMessageError::GroupStateError(
                 MlsGroupStateError::UseAfterEviction,
             ));
         }
-        if !self.proposal_store.is_empty() {
+        if !self.proposal_store().is_empty() {
             return Err(CreateMessageError::GroupStateError(
                 MlsGroupStateError::PendingProposal,
             ));
@@ -42,6 +42,7 @@ impl MlsGroup {
             // We know the application message is wellformed and we have the key material of the current epoch
             .map_err(|_| LibraryError::custom("Malformed plaintext"))?;
 
+        self.reset_aad();
         Ok(MlsMessageOut::from_private_message(
             ciphertext,
             self.group.version(),

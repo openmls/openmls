@@ -175,7 +175,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn treesync<GroupId: traits::GroupId<V_TEST>, TreeSync: traits::TreeSync<V_TEST>>(
+    fn tree<GroupId: traits::GroupId<V_TEST>, TreeSync: traits::TreeSync<V_TEST>>(
         &self,
         _group_id: &GroupId,
     ) -> Result<Option<TreeSync>, Self::Error> {
@@ -388,28 +388,6 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn use_ratchet_tree_extension<GroupId: traits::GroupId<V_TEST>>(
-        &self,
-        _group_id: &GroupId,
-    ) -> Result<Option<bool>, Self::Error> {
-        todo!()
-    }
-
-    fn set_use_ratchet_tree_extension<GroupId: traits::GroupId<V_TEST>>(
-        &self,
-        _group_id: &GroupId,
-        _value: bool,
-    ) -> Result<(), Self::Error> {
-        todo!()
-    }
-
-    fn delete_use_ratchet_tree_extension<GroupId: traits::GroupId<V_TEST>>(
-        &self,
-        _group_id: &GroupId,
-    ) -> Result<(), Self::Error> {
-        todo!()
-    }
-
     fn group_epoch_secrets<
         GroupId: traits::GroupId<V_TEST>,
         GroupEpochSecrets: traits::GroupEpochSecrets<V_TEST>,
@@ -487,21 +465,6 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn aad<GroupId: traits::GroupId<V_TEST>>(
-        &self,
-        _group_id: &GroupId,
-    ) -> Result<Vec<u8>, Self::Error> {
-        todo!()
-    }
-
-    fn write_aad<GroupId: traits::GroupId<V_TEST>>(
-        &self,
-        _group_id: &GroupId,
-        _aad: &[u8],
-    ) -> Result<(), Self::Error> {
-        todo!()
-    }
-
     fn queued_proposals<
         GroupId: traits::GroupId<V_TEST>,
         ProposalRef: traits::ProposalRef<V_TEST>,
@@ -520,13 +483,6 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         &self,
         _group_id: &GroupId,
         _proposal_ref: &ProposalRef,
-    ) -> Result<(), Self::Error> {
-        todo!()
-    }
-
-    fn delete_aad<GroupId: traits::GroupId<V_TEST>>(
-        &self,
-        _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }

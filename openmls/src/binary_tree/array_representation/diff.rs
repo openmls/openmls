@@ -42,6 +42,7 @@ use super::{
 /// was created from. However, the lack of the internal reference means that its
 /// lifetime is not tied to that of the original tree.
 #[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 pub(crate) struct StagedAbDiff<L: Clone + Debug + Default, P: Clone + Debug + Default> {
     leaf_diff: BTreeMap<LeafNodeIndex, L>,
     parent_diff: BTreeMap<ParentNodeIndex, P>,
@@ -332,30 +333,6 @@ impl<'a, L: Clone + Debug + Default, P: Clone + Debug + Default> AbDiff<'a, L, P
         }
         // If it isn't in the diff, it must be in the tree.
         self.original_tree.parent_by_index(parent_index)
-    }
-
-    /// Returns a mutable reference to the leaf node in the diff at index
-    /// `leaf_index`. If the diff doesn't have a node at that index, it clones
-    /// the node to the diff and returns a mutable reference to that node.
-    pub(crate) fn leaf_mut(&mut self, leaf_index: LeafNodeIndex) -> &mut L {
-        debug_assert!(leaf_index.u32() < self.leaf_count());
-        // We then check if the node is already in the diff. (Not using `if let
-        // ...` here, because the borrow checker doesn't like that).
-        if self.leaf_diff.contains_key(&leaf_index) {
-            return self
-                .leaf_diff
-                .get_mut(&leaf_index)
-                // We just checked that this index exists, so this must be Some.
-                .unwrap_or(&mut self.default_leaf);
-            // If not, we take a copy from the original tree and put it in the
-            // diff before returning a mutable reference to it.
-        }
-        let tree_node = self.original_tree.leaf_by_index(leaf_index);
-        self.replace_leaf(leaf_index, tree_node.clone());
-        self.leaf_diff
-            .get_mut(&leaf_index)
-            // We just inserted this into the diff, so this should be Some.
-            .unwrap_or(&mut self.default_leaf)
     }
 
     /// Returns a mutable reference to the parent node in the diff at index

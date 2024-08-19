@@ -11,11 +11,10 @@ use crate::{
     error::LibraryError,
     extensions::errors::{ExtensionError, InvalidExtensionError},
     framing::errors::MessageDecryptionError,
-    key_packages::errors::KeyPackageVerifyError,
-    key_packages::errors::{KeyPackageExtensionSupportError, KeyPackageNewError},
+    key_packages::errors::{KeyPackageExtensionSupportError, KeyPackageVerifyError},
     messages::{group_info::GroupInfoError, GroupSecretsError},
     schedule::errors::PskError,
-    treesync::errors::*,
+    treesync::{errors::*, node::leaf_node::LeafNodeUpdateError},
 };
 
 /// Welcome error
@@ -229,9 +228,6 @@ pub enum CreateCommitError<StorageError> {
     /// Error interacting with storage.
     #[error("Error interacting with storage.")]
     KeyStoreError(StorageError),
-    /// See [`KeyPackageNewError`] for more details.
-    #[error(transparent)]
-    KeyPackageGenerationError(#[from] KeyPackageNewError),
     /// See [`SignatureError`] for more details.
     #[error(transparent)]
     SignatureError(#[from] SignatureError),
@@ -249,6 +245,12 @@ pub enum CreateCommitError<StorageError> {
     GroupContextExtensionsProposalValidationError(
         #[from] GroupContextExtensionsProposalValidationError,
     ),
+    /// See [`LeafNodeUpdateError`] for more details.
+    #[error(transparent)]
+    LeafNodeUpdateError(#[from] LeafNodeUpdateError<StorageError>),
+    /// See [`TreeSyncAddLeaf`] for more details.
+    #[error(transparent)]
+    TreeSyncAddLeaf(#[from] TreeSyncAddLeaf),
 }
 
 /// Validation error
@@ -515,7 +517,7 @@ pub enum CreateGroupContextExtProposalError<StorageError> {
     LeafNodeValidation(#[from] LeafNodeValidationError),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
-    MlsGroupStateError(#[from] MlsGroupStateError<StorageError>),
+    MlsGroupStateError(#[from] MlsGroupStateError),
     /// See [`CreateCommitError`] for more details.
     #[error(transparent)]
     CreateCommitError(#[from] CreateCommitError<StorageError>),

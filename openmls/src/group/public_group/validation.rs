@@ -431,6 +431,7 @@ impl PublicGroup {
     /// Validate Update proposals. This function implements the following checks:
     ///  - ValSem111: Update Proposal: The sender of a full Commit must not include own update proposals
     ///  - ValSem112: Update Proposal: The sender of a standalone update proposal must be of type member
+    ///
     /// TODO: #133 This validation must be updated according to Sec. 13.2
     pub(crate) fn validate_update_proposals(
         &self,

@@ -4,7 +4,6 @@ use openmls_traits::{
     crypto::OpenMlsCrypto,
     storage::{StorageProvider as StorageProviderTrait, CURRENT_VERSION},
     types::{Ciphersuite, HpkeCiphertext, HpkeKeyPair},
-    OpenMlsProvider,
 };
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes};
@@ -12,7 +11,7 @@ use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBy
 use crate::{
     ciphersuite::{hpke, HpkePrivateKey, HpkePublicKey, Secret},
     error::LibraryError,
-    storage::StorageProvider,
+    storage::{OpenMlsProvider, StorageProvider},
 };
 
 /// [`EncryptionKey`] contains an HPKE public key that allows the encryption of
@@ -65,10 +64,16 @@ impl EncryptionKey {
     }
 }
 
+impl From<Vec<u8>> for EncryptionKey {
+    fn from(key: Vec<u8>) -> Self {
+        Self { key: key.into() }
+    }
+}
+
 #[derive(
     Clone, Serialize, Deserialize, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
 )]
-#[cfg_attr(test, derive(PartialEq, Eq))]
+#[cfg_attr(any(test, feature = "test-utils"), derive(PartialEq, Eq))]
 pub struct EncryptionPrivateKey {
     key: HpkePrivateKey,
 }
@@ -140,7 +145,7 @@ impl From<HpkePublicKey> for EncryptionKey {
 #[derive(
     Debug, Clone, Serialize, Deserialize, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
 )]
-#[cfg_attr(test, derive(PartialEq, Eq))]
+#[cfg_attr(any(test, feature = "test-utils"), derive(PartialEq, Eq))]
 pub(crate) struct EncryptionKeyPair {
     public_key: EncryptionKey,
     private_key: EncryptionPrivateKey,

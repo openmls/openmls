@@ -17,7 +17,7 @@ pub use openmls_traits::{
 use serde::{self, de::DeserializeOwned, Serialize};
 
 #[cfg(test)]
-use crate::group::tests::utils::CredentialWithKeyAndSigner;
+use crate::group::tests_and_kats::utils::CredentialWithKeyAndSigner;
 pub use crate::utils::*;
 use crate::{
     ciphersuite::{HpkePrivateKey, OpenMlsSignaturePublicKey},

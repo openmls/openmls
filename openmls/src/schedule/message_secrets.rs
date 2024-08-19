@@ -4,7 +4,7 @@ use super::*;
 
 /// Combined message secrets that need to be stored for later decryption/verification
 #[derive(Serialize, Deserialize)]
-#[cfg_attr(test, derive(Clone))]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Clone))]
 #[cfg_attr(feature = "crypto-debug", derive(Debug))]
 pub(crate) struct MessageSecrets {
     sender_data_secret: SenderDataSecret,
@@ -117,7 +117,7 @@ impl MessageSecrets {
 }
 
 // In tests we allow comparing secrets.
-#[cfg(test)]
+#[cfg(any(test, feature = "test-utils"))]
 impl PartialEq for MessageSecrets {
     fn eq(&self, other: &Self) -> bool {
         self.sender_data_secret == other.sender_data_secret

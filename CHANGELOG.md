@@ -5,10 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## 0.6.0-pre.2 (2024-08-XX)
 
 ### Added
 
+- [#1639](https://github.com/openmls/openmls/pull/1639): Introduce `PublicStorageProvider` trait to independently allow for the storage of `PublicGroup` instances.
+- [#1641](https://github.com/openmls/openmls/pull/1641): Extend the `PublicGroup` API with `add_proposal()`, `remove_proposal()`, and `queued_proposals()`.
+
+### Changed
+
+- [#1637](https://github.com/openmls/openmls/pull/1637): Remove `serde` from `MlsGroup`.
+- [#1638](https://github.com/openmls/openmls/pull/1638): Remove `serde` from `PublicGroup`. `PublicGroup::load()` becomes public to load a group from the storage provider.
+- [#1642](https://github.com/openmls/openmls/pull/1642): `OpenMlsProvider` is no longer required for the `PublicGroup` API. The `PublicGroup` API now uses the `PublicStorageProvider` trait directly. `ProcessMessageError::InvalidSignature` was removed and replaced with `ValidationError::InvalidSignature`.
+
+### Removed
+
+
+### Fixed
+
+- [#1641](https://github.com/openmls/openmls/pull/1641): Fixed missing storage of queued proposals & clearing of the queued proposals.
+
+## 0.6.0-pre.1 (2024-07-22)
+
+### Added
+
+- [#1629](https://github.com/openmls/openmls/pull/1629): Add `add_members_without_update` function to `MlsGroup` to allow the creation of add-only commits
 - [#1506](https://github.com/openmls/openmls/pull/1506): Add `StagedWelcome` and `StagedCoreWelcome` to make joining a group staged in order to inspect the `Welcome` message. This was followed up with PR [#1533](https://github.com/openmls/openmls/pull/1533) to adjust the API.
 - [#1516](https://github.com/openmls/openmls/pull/1516): Add `MlsGroup::clear_pending_proposals` to the public API; this allows users to clear a group's internal `ProposalStore`
 - [#1565](https://github.com/openmls/openmls/pull/1565): Add new `StorageProvider` trait to the `openmls_traits` crate.
@@ -29,6 +50,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#1542](https://github.com/openmls/openmls/pull/1542): Add support for custom proposals. ProposalType::Unknown is now called ProposalType::Other. Proposal::Unknown is now called Proposal::Other.
 - [#1559](https://github.com/openmls/openmls/pull/1559): Remove the `PartialEq` type constraint on the error type of both the `OpenMlsRand` and `OpenMlsKeyStore` traits. Additionally, remove the `Clone` type constraint on the error type of the `OpenMlsRand` trait.
 - [#1565](https://github.com/openmls/openmls/pull/1565): Removed `OpenMlsKeyStore` and replace it with a new `StorageProvider` trait in the `openmls_traits` crate.
+- [#1606](https://github.com/openmls/openmls/pull/1606): Added additional `LeafNodeParameters` argument to `MlsGroup.self_update()` and `MlsGroup.propose_self_update()` to allow for updating the leaf node with custom parameters. `MlsGroup::join_by_external_commit()` now also takes optional parameters to set the capabilities and the extensions of the LeafNode.
+- [#1615](https://github.com/openmls/openmls/pull/1615): Changes the AAD handling. The AAD is no longer persisted and needs to be set before every API call that generates an `MlsMessageOut`. The functions `ProccessedMessage` to accees the AAD has been renamed to `aad()`.
 
 ### Fixed
 

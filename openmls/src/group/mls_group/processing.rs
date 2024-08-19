@@ -28,7 +28,7 @@ impl MlsGroup {
         &mut self,
         provider: &Provider,
         message: impl Into<ProtocolMessage>,
-    ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
+    ) -> Result<ProcessedMessage, ProcessMessageError> {
         // Make sure we are still a member of the group
         if !self.is_active() {
             return Err(ProcessMessageError::GroupStateError(
@@ -56,7 +56,6 @@ impl MlsGroup {
             provider,
             message,
             &sender_ratchet_configuration,
-            &self.proposal_store,
             &self.own_leaf_nodes,
         )
     }
@@ -69,7 +68,7 @@ impl MlsGroup {
     ) -> Result<(), Storage::Error> {
         storage.queue_proposal(self.group_id(), &proposal.proposal_reference(), &proposal)?;
         // Store the proposal in in the internal ProposalStore
-        self.proposal_store.add(proposal);
+        self.proposal_store_mut().add(proposal);
 
         Ok(())
     }
@@ -99,7 +98,6 @@ impl MlsGroup {
         // TODO #751
         let params = CreateCommitParams::builder()
             .framing_parameters(self.framing_parameters())
-            .proposal_store(&self.proposal_store)
             .build();
         let create_commit_result = self.group.create_commit(params, provider, signer)?;
 
@@ -117,6 +115,7 @@ impl MlsGroup {
             .write_group_state(self.group_id(), &self.group_state)
             .map_err(CommitToPendingProposalsError::StorageError)?;
 
+        self.reset_aad();
         Ok((
             mls_message,
             create_commit_result
@@ -143,14 +142,17 @@ impl MlsGroup {
             .map_err(MergeCommitError::StorageError)?;
 
         // Merge staged commit
-        self.group
-            .merge_staged_commit(provider, staged_commit, &mut self.proposal_store)?;
+        self.group.merge_staged_commit(provider, staged_commit)?;
 
         // Extract and store the resumption psk for the current epoch
         let resumption_psk = self.group.group_epoch_secrets().resumption_psk();
         self.group
             .resumption_psk_store
             .add(self.group.context().epoch(), resumption_psk.clone());
+        provider
+            .storage()
+            .write_resumption_psk_store(self.group_id(), &self.group.resumption_psk_store)
+            .map_err(MergeCommitError::StorageError)?;
 
         // Delete own KeyPackageBundles
         self.own_leaf_nodes.clear();

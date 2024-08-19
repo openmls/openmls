@@ -1,8 +1,8 @@
 name: Benchmarks
 
-concurrency: 
+concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true 
+  cancel-in-progress: true
 
 on:
   push:
@@ -32,3 +32,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Benchmarks
         run: cargo bench -p openmls --verbose
+
+      - name: Large groups
+        run: |
+          cargo run -p openmls --example large-groups --release -- --write -g 2 3
+          cargo run -p openmls --example large-groups --release -- -g 3
