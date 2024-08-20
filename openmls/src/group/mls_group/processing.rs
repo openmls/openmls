@@ -167,16 +167,8 @@ impl MlsGroup {
             .write_group_state(self.group_id(), &self.group_state)
             .map_err(MergeCommitError::StorageError)?;
 
-        // Save the past epoch
-        let past_epoch = self.context().epoch();
-        // Get all the full leaves
-        let leaves = self.public_group().members().collect();
-        // Merge the staged commit into the group state and store the secret tree from the
-        // previous epoch in the message secrets store.
-        if let Some(message_secrets) = self.merge_commit(provider, staged_commit)? {
-            self.message_secrets_store
-                .add(past_epoch, message_secrets, leaves);
-        }
+        // Merge staged commit
+        self.merge_commit(provider, staged_commit)?;
 
         // Extract and store the resumption psk for the current epoch
         let resumption_psk = self.group_epoch_secrets().resumption_psk();
