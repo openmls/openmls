@@ -3,7 +3,7 @@ use core_group::proposals::QueuedProposal;
 use crate::{
     framing::mls_content::FramedContentBody,
     group::{
-        errors::{MergeCommitError, StageCommitError, ValidationError},
+        errors::{StageCommitError, ValidationError},
         mls_group::errors::ProcessMessageError,
     },
 };
@@ -283,24 +283,5 @@ impl CoreGroup {
             .collect::<Result<Vec<EncryptionKeyPair>, StageCommitError>>()?;
 
         Ok((old_epoch_keypairs, leaf_node_keypairs))
-    }
-
-    /// Merge a [StagedCommit] into the group after inspection
-    pub(crate) fn merge_staged_commit<Provider: OpenMlsProvider>(
-        &mut self,
-        provider: &Provider,
-        staged_commit: StagedCommit,
-    ) -> Result<(), MergeCommitError<Provider::StorageError>> {
-        // Save the past epoch
-        let past_epoch = self.context().epoch();
-        // Get all the full leaves
-        let leaves = self.public_group().members().collect();
-        // Merge the staged commit into the group state and store the secret tree from the
-        // previous epoch in the message secrets store.
-        if let Some(message_secrets) = self.merge_commit(provider, staged_commit)? {
-            self.message_secrets_store
-                .add(past_epoch, message_secrets, leaves);
-        }
-        Ok(())
     }
 }

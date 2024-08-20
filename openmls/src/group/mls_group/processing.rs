@@ -142,7 +142,7 @@ impl MlsGroup {
             .map_err(MergeCommitError::StorageError)?;
 
         // Merge staged commit
-        self.group.merge_staged_commit(provider, staged_commit)?;
+        self.group.merge_commit(provider, staged_commit)?;
 
         // Extract and store the resumption psk for the current epoch
         let resumption_psk = self.group.group_epoch_secrets().resumption_psk();

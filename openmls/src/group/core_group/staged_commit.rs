@@ -319,7 +319,7 @@ impl CoreGroup {
         &mut self,
         provider: &Provider,
         staged_commit: StagedCommit,
-    ) -> Result<Option<MessageSecrets>, MergeCommitError<Provider::StorageError>> {
+    ) -> Result<(), MergeCommitError<Provider::StorageError>> {
         // Get all keypairs from the old epoch, so we can later store the ones
         // that are still relevant in the new epoch.
         let old_epoch_keypairs = self.read_epoch_keypairs(provider.storage());
@@ -329,9 +329,15 @@ impl CoreGroup {
                     .merge_diff(staged_state.into_staged_diff());
                 self.store(provider.storage())
                     .map_err(MergeCommitError::StorageError)?;
-                Ok(None)
+                Ok(())
             }
             StagedCommitState::GroupMember(state) => {
+                // Save the past epoch
+                let past_epoch = self.context().epoch();
+                // Get all the full leaves
+                let leaves = self.public_group().members().collect();
+                // Merge the staged commit into the group state and store the secret tree from the
+                // previous epoch in the message secrets store.
                 self.group_epoch_secrets = state.group_epoch_secrets;
 
                 // Replace the previous message secrets with the new ones and return the previous message secrets
@@ -340,6 +346,8 @@ impl CoreGroup {
                     &mut message_secrets,
                     self.message_secrets_store.message_secrets_mut(),
                 );
+                self.message_secrets_store
+                    .add(past_epoch, message_secrets, leaves);
 
                 self.public_group.merge_diff(state.staged_diff);
 
@@ -407,7 +415,7 @@ impl CoreGroup {
                     .map_err(MergeCommitError::StorageError)?;
                 self.proposal_store_mut().empty();
 
-                Ok(Some(message_secrets))
+                Ok(())
             }
         }
     }
