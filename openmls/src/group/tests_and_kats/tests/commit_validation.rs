@@ -1,7 +1,9 @@
 //! This module tests the validation of commits as defined in
 //! https://openmls.tech/book/message_validation.html#commit-message-validation
 
+use create_commit_params::CreateCommitParams;
 use openmls_traits::{prelude::*, signatures::Signer, types::Ciphersuite};
+use proposal_store::QueuedProposal;
 use tls_codec::{Deserialize, Serialize};
 
 use crate::group::tests_and_kats::utils::{
@@ -326,7 +328,7 @@ fn test_valsem201() {
     // TODO: #916 when/if AppAck proposal are implemented (path not required)
     // TODO: #751 when ReInit proposal validation are implemented (path not required). Currently one
     // cannot distinguish when the commit has a single ReInit proposal from the commit without proposals
-    // in [CoreGroup::apply_proposals()]
+    // in [MlsGroup::apply_proposals()]
     let cases = vec![
         (vec![add_proposal()], false),
         (vec![psk_proposal()], false),

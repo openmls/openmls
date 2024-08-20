@@ -7,9 +7,8 @@ use crate::{
     error::LibraryError,
     extensions::{errors::InvalidExtensionError, Extensions},
     group::{
-        past_secrets::MessageSecretsStore, public_group::errors::PublicGroupBuildError, GroupId,
-        MlsGroupCreateConfig, MlsGroupCreateConfigBuilder, NewGroupError, PublicGroup,
-        WireFormatPolicy,
+        public_group::errors::PublicGroupBuildError, GroupId, MlsGroupCreateConfig,
+        MlsGroupCreateConfigBuilder, NewGroupError, PublicGroup, WireFormatPolicy,
     },
     key_packages::Lifetime,
     prelude::LeafNodeIndex,
@@ -22,7 +21,7 @@ use crate::{
     treesync::node::leaf_node::Capabilities,
 };
 
-use super::{MlsGroup, MlsGroupState};
+use super::{past_secrets::MessageSecretsStore, MlsGroup, MlsGroupState};
 
 #[derive(Default, Debug)]
 pub struct MlsGroupBuilder {
@@ -143,20 +142,6 @@ impl MlsGroupBuilder {
         let public_group = public_group_builder
             .with_confirmation_tag(initial_confirmation_tag)
             .build(provider.crypto())?;
-
-        //.map_err(|e| match e {
-        //    CoreGroupBuildError::LibraryError(e) => e.into(),
-        //    // We don't support PSKs yet
-        //    CoreGroupBuildError::Psk(e) => {
-        //        log::debug!("Unexpected PSK error: {:?}", e);
-        //        LibraryError::custom("Unexpected PSK error").into()
-        //    }
-        //    CoreGroupBuildError::StorageError(e) => NewGroupError::StorageError(e),
-        //    CoreGroupBuildError::PublicGroupBuildError(e) => match e {
-        //        PublicGroupBuildError::LibraryError(e) => e.into(),
-        //        PublicGroupBuildError::InvalidExtensions(e) => NewGroupError::InvalidExtensions(e),
-        //    },
-        //})?;
 
         // We already add a resumption PSK for epoch 0 to make things more unified.
         let resumption_psk = group_epoch_secrets.resumption_psk();

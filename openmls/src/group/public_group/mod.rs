@@ -21,7 +21,10 @@ use self::{
     diff::{PublicGroupDiff, StagedPublicGroupDiff},
     errors::CreationFromExternalError,
 };
-use super::{GroupContext, GroupId, Member, ProposalStore, QueuedProposal, StagedCommit};
+use super::{
+    proposal_store::{ProposalStore, QueuedProposal},
+    GroupContext, GroupId, Member, StagedCommit,
+};
 #[cfg(test)]
 use crate::treesync::{node::parent_node::PlainUpdatePathNode, treekem::UpdatePathNode};
 use crate::{
@@ -379,7 +382,7 @@ impl PublicGroup {
     /// Stores the [`PublicGroup`] to storage. Called from methods creating a new group and mutating an
     /// existing group, both inside [`PublicGroup`] and in [`MlsGroup`].
     ///
-    /// [`MlsGroup`]: crate::group::core_group::MlsGroup
+    /// [`MlsGroup`]: crate::group::MlsGroup
     pub(crate) fn store<Storage: PublicStorageProvider>(
         &self,
         storage: &Storage,

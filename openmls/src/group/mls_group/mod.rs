@@ -6,8 +6,9 @@
 #[cfg(any(feature = "test-utils", test))]
 use crate::schedule::message_secrets::MessageSecrets;
 
-#[cfg(test)]
-use openmls_traits::crypto::OpenMlsCrypto;
+use create_commit_params::{CommitType, CreateCommitParams};
+use past_secrets::MessageSecretsStore;
+use proposal_store::ProposalQueue;
 use serde::{Deserialize, Serialize};
 use staged_commit::{MemberStagedCommitState, StagedCommitState};
 use tls_codec::Serialize as _;
@@ -17,8 +18,7 @@ use crate::treesync::node::leaf_node::TreePosition;
 
 use super::{
     diff::compute_path::PathComputationResult,
-    past_secrets::MessageSecretsStore,
-    proposals::{ProposalStore, QueuedProposal},
+    proposal_store::{ProposalStore, QueuedProposal},
 };
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
@@ -27,16 +27,14 @@ use crate::{
     error::LibraryError,
     framing::{mls_auth_content::AuthenticatedContent, *},
     group::{
-        core_group::create_commit_params::{CommitType, CreateCommitParams},
-        CreateCommitError, CreateCommitResult, CreateGroupContextExtProposalError, Extension,
-        ExtensionType, Extensions, ExternalPubExtension, GroupContext, GroupEpoch, GroupId, Member,
-        MlsGroupJoinConfig, MlsGroupStateError, OutgoingWireFormatPolicy, ProposalQueue,
-        ProposalQueueError, PublicGroup, RatchetTreeExtension, RequiredCapabilitiesExtension,
-        StagedCommit,
+        CreateCommitError, CreateGroupContextExtProposalError, Extension, ExtensionType,
+        Extensions, ExternalPubExtension, GroupContext, GroupEpoch, GroupId, MlsGroupJoinConfig,
+        MlsGroupStateError, OutgoingWireFormatPolicy, ProposalQueueError, PublicGroup,
+        RatchetTreeExtension, RequiredCapabilitiesExtension, StagedCommit,
     },
     key_packages::KeyPackageBundle,
     messages::{
-        group_info::{GroupInfoTBS, VerifiableGroupInfo},
+        group_info::{GroupInfo, GroupInfoTBS, VerifiableGroupInfo},
         proposals::*,
         Commit, GroupSecrets, Welcome,
     },
@@ -64,15 +62,56 @@ use config::*;
 
 // Crate
 pub(crate) mod config;
+pub(crate) mod create_commit_params;
 pub(crate) mod errors;
 pub(crate) mod membership;
+pub(crate) mod past_secrets;
 pub(crate) mod processing;
 pub(crate) mod proposal;
+pub(crate) mod proposal_store;
 pub(crate) mod staged_commit;
 
 // Tests
 #[cfg(test)]
 pub(crate) mod tests_and_kats;
+
+#[derive(Debug)]
+pub(crate) struct CreateCommitResult {
+    pub(crate) commit: AuthenticatedContent,
+    pub(crate) welcome_option: Option<Welcome>,
+    pub(crate) staged_commit: StagedCommit,
+    pub(crate) group_info: Option<GroupInfo>,
+}
+
+/// A member in the group is identified by this [`Member`] struct.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Member {
+    /// The member's leaf index in the ratchet tree.
+    pub index: LeafNodeIndex,
+    /// The member's credential.
+    pub credential: Credential,
+    /// The member's public HPHKE encryption key.
+    pub encryption_key: Vec<u8>,
+    /// The member's public signature key.
+    pub signature_key: Vec<u8>,
+}
+
+impl Member {
+    /// Create new member.
+    pub fn new(
+        index: LeafNodeIndex,
+        encryption_key: Vec<u8>,
+        signature_key: Vec<u8>,
+        credential: Credential,
+    ) -> Self {
+        Self {
+            index,
+            encryption_key,
+            signature_key,
+            credential,
+        }
+    }
+}
 
 /// Pending Commit state. Differentiates between Commits issued by group members
 /// and External Commits.

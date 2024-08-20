@@ -10,8 +10,8 @@ use crate::{
         ProcessedMessageContent, ProtocolMessage, Sender, SenderContext, UnverifiedMessage,
     },
     group::{
-        core_group::proposals::QueuedProposal, errors::ValidationError,
-        mls_group::errors::ProcessMessageError, past_secrets::MessageSecretsStore,
+        errors::ValidationError, mls_group::errors::ProcessMessageError,
+        past_secrets::MessageSecretsStore, proposal_store::QueuedProposal,
     },
     messages::proposals::Proposal,
 };

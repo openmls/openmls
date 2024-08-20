@@ -9,7 +9,7 @@ use tls_codec::{Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTra
 use crate::{
     binary_tree::{array_representation::ParentNodeIndex, LeafNodeIndex},
     extensions::{Extensions, RatchetTreeExtension},
-    group::{CommitType, GroupContext, GroupEpoch, GroupId},
+    group::{create_commit_params::CommitType, GroupContext, GroupEpoch, GroupId},
     messages::PathSecret,
     prelude_test::Secret,
     schedule::CommitSecret,

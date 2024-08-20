@@ -4,10 +4,7 @@ use openmls_traits::{signatures::Signer, storage::StorageProvider as StorageProv
 use super::{builder::MlsGroupBuilder, *};
 use crate::{
     credentials::CredentialWithKey,
-    group::{
-        core_group::create_commit_params::{CommitType, CreateCommitParams},
-        errors::{ExternalCommitError, WelcomeError},
-    },
+    group::errors::{ExternalCommitError, WelcomeError},
     messages::{
         group_info::{GroupInfo, VerifiableGroupInfo},
         Welcome,

@@ -1,6 +1,6 @@
 use crate::group::{
+    create_commit_params::CreateCommitParams,
     mls_group::{FramingParameters, Proposal, WireFormat},
-    CreateCommitParams,
 };
 
 // Tests that the builder for CreateCommitParams works as expected

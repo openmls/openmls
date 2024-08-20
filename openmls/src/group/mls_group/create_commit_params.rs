@@ -6,9 +6,9 @@ use crate::{
     credentials::CredentialWithKey, framing::FramingParameters, messages::proposals::Proposal,
 };
 
-use super::LeafNodeParameters;
 #[cfg(doc)]
 use super::MlsGroup;
+use crate::treesync::LeafNodeParameters;
 
 /// Can be used to denote the type of a commit.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

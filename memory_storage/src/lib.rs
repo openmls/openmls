@@ -262,18 +262,16 @@ const GROUP_CONTEXT_LABEL: &[u8] = b"GroupContext";
 const INTERIM_TRANSCRIPT_HASH_LABEL: &[u8] = b"InterimTranscriptHash";
 const CONFIRMATION_TAG_LABEL: &[u8] = b"ConfirmationTag";
 
-// related to CoreGroup
-const OWN_LEAF_NODE_INDEX_LABEL: &[u8] = b"OwnLeafNodeIndex";
-const EPOCH_SECRETS_LABEL: &[u8] = b"EpochSecrets";
-const RESUMPTION_PSK_STORE_LABEL: &[u8] = b"ResumptionPsk";
-const MESSAGE_SECRETS_LABEL: &[u8] = b"MessageSecrets";
-
 // related to MlsGroup
 const JOIN_CONFIG_LABEL: &[u8] = b"MlsGroupJoinConfig";
 const OWN_LEAF_NODES_LABEL: &[u8] = b"OwnLeafNodes";
 const GROUP_STATE_LABEL: &[u8] = b"GroupState";
 const QUEUED_PROPOSAL_LABEL: &[u8] = b"QueuedProposal";
 const PROPOSAL_QUEUE_REFS_LABEL: &[u8] = b"ProposalQueueRefs";
+const OWN_LEAF_NODE_INDEX_LABEL: &[u8] = b"OwnLeafNodeIndex";
+const EPOCH_SECRETS_LABEL: &[u8] = b"EpochSecrets";
+const RESUMPTION_PSK_STORE_LABEL: &[u8] = b"ResumptionPsk";
+const MESSAGE_SECRETS_LABEL: &[u8] = b"MessageSecrets";
 
 impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
     type Error = MemoryStorageError;

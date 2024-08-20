@@ -2,8 +2,7 @@ use errors::{ProposeSelfUpdateError, SelfUpdateError};
 use openmls_traits::{signatures::Signer, storage::StorageProvider as _};
 
 use crate::{
-    group::core_group::create_commit_params::CreateCommitParams, messages::group_info::GroupInfo,
-    storage::OpenMlsProvider, treesync::LeafNodeParameters,
+    messages::group_info::GroupInfo, storage::OpenMlsProvider, treesync::LeafNodeParameters,
 };
 
 use super::*;

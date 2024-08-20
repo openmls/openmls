@@ -4,15 +4,15 @@
 
 use errors::EmptyInputError;
 use openmls_traits::{signatures::Signer, storage::StorageProvider as _};
+use proposal_store::QueuedRemoveProposal;
 
 use super::{
     errors::{AddMembersError, LeaveGroupError, RemoveMembersError},
     *,
 };
 use crate::{
-    binary_tree::array_representation::LeafNodeIndex, group::QueuedRemoveProposal,
-    key_packages::KeyPackage, messages::group_info::GroupInfo, storage::OpenMlsProvider,
-    treesync::LeafNode,
+    binary_tree::array_representation::LeafNodeIndex, key_packages::KeyPackage,
+    messages::group_info::GroupInfo, storage::OpenMlsProvider, treesync::LeafNode,
 };
 
 impl MlsGroup {

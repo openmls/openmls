@@ -6,6 +6,7 @@ use openmls_traits::{
     prelude::{openmls_types::*, *},
     signatures::Signer,
 };
+use proposal_store::QueuedProposal;
 use tls_codec::{Deserialize, Serialize};
 
 use crate::group::tests_and_kats::utils::{

@@ -24,16 +24,14 @@
 // TODO #106/#151: Update the above diagram
 
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
+use proposal_store::QueuedProposal;
 
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::signable::Verifiable,
     error::LibraryError,
     extensions::ExternalSendersExtension,
-    group::{
-        core_group::proposals::QueuedProposal, errors::ValidationError,
-        mls_group::staged_commit::StagedCommit,
-    },
+    group::{errors::ValidationError, mls_group::staged_commit::StagedCommit},
     tree::sender_ratchet::SenderRatchetConfiguration,
     treesync::TreeSync,
     versions::ProtocolVersion,

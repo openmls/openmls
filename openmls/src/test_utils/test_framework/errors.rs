@@ -88,7 +88,7 @@ pub enum ClientError<StorageError> {
     /// See [`MergeCommitError`] for more details.
     #[error(transparent)]
     MergeCommitError(#[from] MergeCommitError<StorageError>),
-    /// See [`StorageError>`] for more details.
+    /// See [`<StorageError>`] for more details.
     #[error(transparent)]
     KeyStoreError(#[from] StorageError),
     /// See [`LibraryError`] for more details.

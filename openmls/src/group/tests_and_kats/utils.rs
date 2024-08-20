@@ -1,4 +1,4 @@
-//! A framework to create integration tests of the "raw" core_group API.
+//! A framework to create integration tests of the MlsGroup API.
 //! # Test utils
 //!
 //! Most tests require to set up groups, clients, credentials, and identities.

@@ -16,14 +16,11 @@ use crate::ciphersuite::*;
 use crate::utils::*;
 
 // Crate
-pub(crate) mod core_group;
-pub(crate) mod public_group;
-pub(crate) use core_group::*;
 pub(crate) mod errors;
 pub(crate) mod mls_group;
+pub(crate) mod public_group;
 
 // Public
-pub use core_group::proposals::*;
 pub use errors::*;
 pub use group_context::GroupContext;
 pub use mls_group::config::*;
@@ -36,8 +33,6 @@ pub use public_group::*;
 mod group_context;
 
 // Tests
-#[cfg(test)]
-pub(crate) use core_group::create_commit_params::*;
 #[cfg(any(feature = "test-utils", test))]
 pub(crate) mod tests_and_kats;
 

@@ -7,10 +7,7 @@ use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer, storage::Storage
 
 use crate::{
     framing::mls_content::FramedContentBody,
-    group::{
-        core_group::create_commit_params::CreateCommitParams, errors::MergeCommitError,
-        StageCommitError, ValidationError,
-    },
+    group::{errors::MergeCommitError, StageCommitError, ValidationError},
     messages::group_info::GroupInfo,
     storage::OpenMlsProvider,
     tree::sender_ratchet::SenderRatchetConfiguration,

@@ -30,7 +30,10 @@ use crate::{
     ciphersuite::{Mac, Secret},
     extensions::Extensions,
     framing::Sender,
-    group::{GroupContext, GroupEpoch, GroupId, ProposalQueue, PublicGroup, QueuedProposal},
+    group::{
+        proposal_store::{ProposalQueue, QueuedProposal},
+        GroupContext, GroupEpoch, GroupId, PublicGroup,
+    },
     messages::{proposals::Proposal, proposals_in::ProposalIn, ConfirmationTag},
     test_utils::*,
     treesync::{node::NodeIn, RatchetTree, RatchetTreeIn, TreeSync},

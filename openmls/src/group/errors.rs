@@ -5,7 +5,7 @@
 use thiserror::Error;
 
 pub use super::mls_group::errors::*;
-use super::public_group::errors::{CreationFromExternalError, PublicGroupBuildError};
+use super::public_group::errors::CreationFromExternalError;
 use crate::{
     ciphersuite::signable::SignatureError,
     error::LibraryError,
@@ -425,16 +425,6 @@ pub enum CreateAddProposalError {
 
 // === Crate errors ===
 
-/// Exporter error
-#[derive(Error, Debug, PartialEq, Clone)]
-pub(crate) enum ExporterError {
-    /// See [`LibraryError`] for more details.
-    #[error(transparent)]
-    LibraryError(#[from] LibraryError),
-    #[error("The requested key length is not supported (too large).")]
-    KeyLengthTooLong,
-}
-
 /// Proposal queue error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub(crate) enum ProposalQueueError {
@@ -462,36 +452,6 @@ pub(crate) enum FromCommittedProposalsError {
     /// The sender of a Commit tried to remove themselves.
     #[error("The sender of a Commit tried to remove themselves.")]
     SelfRemoval,
-}
-
-// Core group build error
-#[derive(Error, Debug, PartialEq, Clone)]
-pub(crate) enum CoreGroupBuildError<StorageError> {
-    /// See [`LibraryError`] for more details.
-    #[error(transparent)]
-    LibraryError(#[from] LibraryError),
-    /// See [`PublicGroupBuildError`] for more details.
-    #[error(transparent)]
-    PublicGroupBuildError(#[from] PublicGroupBuildError),
-    /// See [`PskError`] for more details.
-    #[error(transparent)]
-    Psk(#[from] PskError),
-    /// Error storing leaf private key in key store.
-    #[error("Error saving data to storage: {0}.")]
-    StorageError(StorageError),
-}
-
-// CoreGroup parse message error
-#[derive(Error, Debug, PartialEq, Clone)]
-pub(crate) enum CoreGroupParseMessageError {
-    /// See [`LibraryError`] for more details.
-    #[error(transparent)]
-    LibraryError(#[from] LibraryError),
-    //#[error(transparent)]
-    //FramingValidationError(#[from] FramingValidationError),
-    /// See [`ValidationError`] for more details.
-    #[error(transparent)]
-    ValidationError(#[from] ValidationError),
 }
 
 /// Create group context ext proposal error

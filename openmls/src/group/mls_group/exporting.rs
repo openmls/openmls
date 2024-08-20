@@ -1,5 +1,5 @@
 use errors::{ExportGroupInfoError, ExportSecretError};
-use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer};
+use openmls_traits::signatures::Signer;
 
 use crate::{
     ciphersuite::HpkePublicKey,

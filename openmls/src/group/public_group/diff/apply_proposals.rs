@@ -4,7 +4,7 @@ use crate::{
     binary_tree::LeafNodeIndex,
     error::LibraryError,
     framing::Sender,
-    group::ProposalQueue,
+    group::proposal_store::ProposalQueue,
     messages::proposals::{AddProposal, ExternalInitProposal, Proposal, ProposalType},
     schedule::psk::PreSharedKeyId,
 };

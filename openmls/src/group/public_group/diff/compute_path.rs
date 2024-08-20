@@ -8,7 +8,7 @@ use crate::{
     credentials::CredentialWithKey,
     error::LibraryError,
     extensions::Extensions,
-    group::{core_group::create_commit_params::CommitType, errors::CreateCommitError},
+    group::{create_commit_params::CommitType, errors::CreateCommitError},
     schedule::CommitSecret,
     storage::OpenMlsProvider,
     treesync::{
