@@ -589,6 +589,14 @@
 <a href="#589" id="589">589</a>
 <a href="#590" id="590">590</a>
 <a href="#591" id="591">591</a>
+<a href="#592" id="592">592</a>
+<a href="#593" id="593">593</a>
+<a href="#594" id="594">594</a>
+<a href="#595" id="595">595</a>
+<a href="#596" id="596">596</a>
+<a href="#597" id="597">597</a>
+<a href="#598" id="598">598</a>
+<a href="#599" id="599">599</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>core::fmt::Debug;
 <span class="kw">use </span>std::mem;
 
@@ -910,7 +918,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         provider: <span class="kw-2">&amp;</span>Provider,
         staged_commit: StagedCommit,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;MessageSecrets&gt;, MergeCommitError&lt;Provider::StorageError&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), MergeCommitError&lt;Provider::StorageError&gt;&gt; {
         <span class="comment">// Get all keypairs from the old epoch, so we can later store the ones
         // that are still relevant in the new epoch.
         </span><span class="kw">let </span>old_epoch_keypairs = <span class="self">self</span>.read_epoch_keypairs(provider.storage());
@@ -920,10 +928,16 @@
                     .merge_diff(staged_state.into_staged_diff());
                 <span class="self">self</span>.store(provider.storage())
                     .map_err(MergeCommitError::StorageError)<span class="question-mark">?</span>;
-                <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
+                <span class="prelude-val">Ok</span>(())
             }
             StagedCommitState::GroupMember(state) =&gt; {
-                <span class="self">self</span>.group_epoch_secrets = state.group_epoch_secrets;
+                <span class="comment">// Save the past epoch
+                </span><span class="kw">let </span>past_epoch = <span class="self">self</span>.context().epoch();
+                <span class="comment">// Get all the full leaves
+                </span><span class="kw">let </span>leaves = <span class="self">self</span>.public_group().members().collect();
+                <span class="comment">// Merge the staged commit into the group state and store the secret tree from the
+                // previous epoch in the message secrets store.
+                </span><span class="self">self</span>.group_epoch_secrets = state.group_epoch_secrets;
 
                 <span class="comment">// Replace the previous message secrets with the new ones and return the previous message secrets
                 </span><span class="kw">let </span><span class="kw-2">mut </span>message_secrets = state.message_secrets;
@@ -931,6 +945,8 @@
                     <span class="kw-2">&amp;mut </span>message_secrets,
                     <span class="self">self</span>.message_secrets_store.message_secrets_mut(),
                 );
+                <span class="self">self</span>.message_secrets_store
+                    .add(past_epoch, message_secrets, leaves);
 
                 <span class="self">self</span>.public_group.merge_diff(state.staged_diff);
 
@@ -998,7 +1014,7 @@
                     .map_err(MergeCommitError::StorageError)<span class="question-mark">?</span>;
                 <span class="self">self</span>.proposal_store_mut().empty();
 
-                <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(message_secrets))
+                <span class="prelude-val">Ok</span>(())
             }
         }
     }

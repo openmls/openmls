@@ -331,7 +331,7 @@
             .map_err(MergeCommitError::StorageError)<span class="question-mark">?</span>;
 
         <span class="comment">// Merge staged commit
-        </span><span class="self">self</span>.group.merge_staged_commit(provider, staged_commit)<span class="question-mark">?</span>;
+        </span><span class="self">self</span>.group.merge_commit(provider, staged_commit)<span class="question-mark">?</span>;
 
         <span class="comment">// Extract and store the resumption psk for the current epoch
         </span><span class="kw">let </span>resumption_psk = <span class="self">self</span>.group.group_epoch_secrets().resumption_psk();
