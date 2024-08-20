@@ -25,7 +25,6 @@ use openmls_traits::{
     crypto::OpenMlsCrypto,
     signatures::Signer,
     types::{Ciphersuite, CryptoError},
-    OpenMlsProvider,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -46,7 +45,7 @@ use self::{
 use crate::binary_tree::array_representation::ParentNodeIndex;
 #[cfg(any(feature = "test-utils", test))]
 use crate::{
-    binary_tree::array_representation::level, group::tests::tree_printing::root,
+    binary_tree::array_representation::level, group::tests_and_kats::tree_printing::root,
     test_utils::bytes_to_hex,
 };
 use crate::{
@@ -62,6 +61,7 @@ use crate::{
     key_packages::Lifetime,
     messages::{PathSecret, PathSecretError},
     schedule::CommitSecret,
+    storage::OpenMlsProvider,
 };
 
 // Private
@@ -83,7 +83,11 @@ pub use node::encryption_keys::test_utils;
 pub use node::encryption_keys::EncryptionKey;
 
 // Public re-exports
-pub use node::{leaf_node::LeafNode, parent_node::ParentNode, Node};
+pub use node::{
+    leaf_node::{LeafNode, LeafNodeParameters, LeafNodeParametersBuilder, LeafNodeUpdateError},
+    parent_node::ParentNode,
+    Node,
+};
 
 // Tests
 #[cfg(any(feature = "test-utils", test))]
@@ -354,7 +358,7 @@ impl fmt::Display for RatchetTree {
 /// creating a new instance from an imported set of nodes, as well as when
 /// merging a diff.
 #[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq, Clone))]
+#[cfg_attr(any(test, feature = "test-utils"), derive(PartialEq, Clone))]
 pub(crate) struct TreeSync {
     tree: MlsBinaryTree<TreeSyncLeafNode, TreeSyncParentNode>,
     tree_hash: Vec<u8>,
@@ -727,8 +731,9 @@ mod test {
         ciphersuite: Ciphersuite,
         provider: &impl OpenMlsProvider,
     ) {
-        let (key_package, _, _) =
-            crate::key_packages::test_key_packages::key_package(ciphersuite, provider);
+        use openmls_traits::OpenMlsProvider;
+
+        let (key_package, _, _) = crate::key_packages::tests::key_package(ciphersuite, provider);
         let node_in = NodeIn::from(Node::LeafNode(LeafNode::from(key_package)));
         let tests = [
             (vec![], false),

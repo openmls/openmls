@@ -1,6 +1,16 @@
 //! MLS Group
 //!
 //! This module contains [`MlsGroup`] and its submodules.
+//!
+
+#[cfg(any(feature = "test-utils", test))]
+use crate::schedule::message_secrets::MessageSecrets;
+
+#[cfg(test)]
+use openmls_traits::crypto::OpenMlsCrypto;
+
+#[cfg(test)]
+use crate::prelude::SenderRatchetConfiguration;
 
 use super::proposals::{ProposalStore, QueuedProposal};
 use crate::{
@@ -33,15 +43,15 @@ pub(crate) mod errors;
 pub(crate) mod membership;
 pub(crate) mod processing;
 pub(crate) mod proposal;
-pub(crate) mod ser;
 
 // Tests
 #[cfg(test)]
-mod test_mls_group;
+pub(crate) mod tests_and_kats;
 
 /// Pending Commit state. Differentiates between Commits issued by group members
 /// and External Commits.
 #[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 pub enum PendingCommitState {
     /// Commit from a group member
     Member(StagedCommit),
@@ -73,47 +83,48 @@ impl From<PendingCommitState> for StagedCommit {
 /// states and their transitions are as follows:
 ///
 /// * [`MlsGroupState::Operational`]: This is the main state of the group, which
-/// allows access to all of its functionality, (except merging pending commits,
-/// see the [`MlsGroupState::PendingCommit`] for more information) and it's the
-/// state the group starts in (except when created via
-/// [`MlsGroup::join_by_external_commit()`], see the functions documentation for
-/// more information). From this `Operational`, the group state can either
-/// transition to [`MlsGroupState::Inactive`], when it processes a commit that
-/// removes this client from the group, or to [`MlsGroupState::PendingCommit`],
-/// when this client creates a commit.
+///   allows access to all of its functionality, (except merging pending commits,
+///   see the [`MlsGroupState::PendingCommit`] for more information) and it's the
+///   state the group starts in (except when created via
+///   [`MlsGroup::join_by_external_commit()`], see the functions documentation for
+///   more information). From this `Operational`, the group state can either
+///   transition to [`MlsGroupState::Inactive`], when it processes a commit that
+///   removes this client from the group, or to [`MlsGroupState::PendingCommit`],
+///   when this client creates a commit.
 ///
 /// * [`MlsGroupState::Inactive`]: A group can enter this state from any other
-/// state when it processes a commit that removes this client from the group.
-/// This is a terminal state that the group can not exit from. If the clients
-/// wants to re-join the group, it can either be added by a group member or it
-/// can join via external commit.
+///   state when it processes a commit that removes this client from the group.
+///   This is a terminal state that the group can not exit from. If the clients
+///   wants to re-join the group, it can either be added by a group member or it
+///   can join via external commit.
 ///
 /// * [`MlsGroupState::PendingCommit`]: This state is split into two possible
-/// sub-states, one for each Commit type:
-/// [`PendingCommitState::Member`] and [`PendingCommitState::External`]:
+///   sub-states, one for each Commit type:
+///   [`PendingCommitState::Member`] and [`PendingCommitState::External`]:
 ///
 ///   * If the client creates a commit for this group, the `PendingCommit` state
-///   is entered with [`PendingCommitState::Member`] and with the [`StagedCommit`] as
-///   additional state variable. In this state, it can perform the same
-///   operations as in the [`MlsGroupState::Operational`], except that it cannot
-///   create proposals or commits. However, it can merge or clear the stored
-///   [`StagedCommit`], where both actions result in a transition to the
-///   [`MlsGroupState::Operational`]. Additionally, if a commit from another
-///   group member is processed, the own pending commit is also cleared and
-///   either the `Inactive` state is entered (if this client was removed from
-///   the group as part of the processed commit), or the `Operational` state is
-///   entered.
+///     is entered with [`PendingCommitState::Member`] and with the [`StagedCommit`] as
+///     additional state variable. In this state, it can perform the same
+///     operations as in the [`MlsGroupState::Operational`], except that it cannot
+///     create proposals or commits. However, it can merge or clear the stored
+///     [`StagedCommit`], where both actions result in a transition to the
+///     [`MlsGroupState::Operational`]. Additionally, if a commit from another
+///     group member is processed, the own pending commit is also cleared and
+///     either the `Inactive` state is entered (if this client was removed from
+///     the group as part of the processed commit), or the `Operational` state is
+///     entered.
 ///
 ///   * A group can enter the [`PendingCommitState::External`] sub-state only as
-///   the initial state when the group is created via
-///   [`MlsGroup::join_by_external_commit()`]. In contrast to the
-///   [`PendingCommitState::Member`] `PendingCommit` state, the only possible
-///   functionality that can be used is the [`MlsGroup::merge_pending_commit()`]
-///   function, which merges the pending external commit and transitions the
-///   state to [`MlsGroupState::PendingCommit`]. For more information on the
-///   external commit process, see [`MlsGroup::join_by_external_commit()`] or
-///   Section 11.2.1 of the MLS specification.
+///     the initial state when the group is created via
+///     [`MlsGroup::join_by_external_commit()`]. In contrast to the
+///     [`PendingCommitState::Member`] `PendingCommit` state, the only possible
+///     functionality that can be used is the [`MlsGroup::merge_pending_commit()`]
+///     function, which merges the pending external commit and transitions the
+///     state to [`MlsGroupState::PendingCommit`]. For more information on the
+///     external commit process, see [`MlsGroup::join_by_external_commit()`] or
+///     Section 11.2.1 of the MLS specification.
 #[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 pub enum MlsGroupState {
     /// There is currently a pending Commit that hasn't been merged yet.
     PendingCommit(Box<PendingCommitState>),
@@ -148,21 +159,20 @@ pub enum MlsGroupState {
 /// inactive, as well as if it has a pending commit. See [`MlsGroupState`] for
 /// more information.
 #[derive(Debug)]
+#[cfg_attr(feature = "test-utils", derive(Clone, PartialEq))]
 pub struct MlsGroup {
     // The group configuration. See [`MlsGroupJoinConfig`] for more information.
     mls_group_config: MlsGroupJoinConfig,
     // the internal `CoreGroup` used for lower level operations. See `CoreGroup` for more
     // information.
     group: CoreGroup,
-    // A [ProposalStore] that stores incoming proposals from the DS within one epoch.
-    // The store is emptied after every epoch change.
-    pub(crate) proposal_store: ProposalStore,
     // Own [`LeafNode`]s that were created for update proposals and that
     // are needed in case an update proposal is committed by another group
     // member. The vector is emptied after every epoch change.
     own_leaf_nodes: Vec<LeafNode>,
-    // The AAD that is used for all outgoing handshake messages. The AAD can be set through
-    // `set_aad()`.
+    // Additional authenticated data (AAD) for the next outgoing message. This
+    // is ephemeral and will be reset by every API call that successfully
+    // returns an [`MlsMessageOut`].
     aad: Vec<u8>,
     // A variable that indicates the state of the group. See [`MlsGroupState`]
     // for more information.
@@ -187,19 +197,17 @@ impl MlsGroup {
         storage.write_mls_join_config(self.group_id(), mls_group_config)
     }
 
-    /// Returns the AAD used in the framing.
-    pub fn aad(&self) -> &[u8] {
-        &self.aad
+    /// Sets the additional authenticated data (AAD) for the next outgoing
+    /// message. This is ephemeral and will be reset by every API call that
+    /// successfully returns an [`MlsMessageOut`].
+    pub fn set_aad(&mut self, aad: Vec<u8>) {
+        self.aad = aad;
     }
 
-    /// Sets the AAD used in the framing.
-    pub fn set_aad<Storage: StorageProvider>(
-        &mut self,
-        storage: &Storage,
-        aad: &[u8],
-    ) -> Result<(), Storage::Error> {
-        self.aad = aad.to_vec();
-        storage.write_aad(self.group_id(), aad)
+    /// Returns the additional authenticated data (AAD) for the next outgoing
+    /// message.
+    pub fn aad(&self) -> &[u8] {
+        &self.aad
     }
 
     // === Advanced functions ===
@@ -217,9 +225,7 @@ impl MlsGroup {
 
     /// Returns own credential. If the group is inactive, it returns a
     /// `UseAfterEviction` error.
-    pub fn credential<Provider: OpenMlsProvider>(
-        &self,
-    ) -> Result<&Credential, MlsGroupStateError<Provider::StorageError>> {
+    pub fn credential(&self) -> Result<&Credential, MlsGroupStateError> {
         if !self.is_active() {
             return Err(MlsGroupStateError::UseAfterEviction);
         }
@@ -252,7 +258,7 @@ impl MlsGroup {
 
     /// Returns an `Iterator` over pending proposals.
     pub fn pending_proposals(&self) -> impl Iterator<Item = &QueuedProposal> {
-        self.proposal_store.proposals()
+        self.proposal_store().proposals()
     }
 
     /// Returns a reference to the [`StagedCommit`] of the most recently created
@@ -307,9 +313,9 @@ impl MlsGroup {
         storage: &Storage,
     ) -> Result<(), Storage::Error> {
         // If the proposal store is not empty...
-        if !self.proposal_store.is_empty() {
+        if !self.proposal_store().is_empty() {
             // Empty the proposal store
-            self.proposal_store.empty();
+            self.proposal_store_mut().empty();
 
             // Clear proposals in storage
             storage.clear_proposal_queue::<GroupId, ProposalRef>(self.group_id())?;
@@ -339,22 +345,21 @@ impl MlsGroup {
         group_id: &GroupId,
     ) -> Result<Option<MlsGroup>, Storage::Error> {
         let group_config = storage.mls_group_join_config(group_id)?;
-        let core_group = CoreGroup::load(storage, group_id)?;
-        let proposals: Vec<(ProposalRef, QueuedProposal)> = storage.queued_proposals(group_id)?;
+        let core_group = CoreGroup::load(
+            storage,
+            group_id,
+            group_config
+                .as_ref()
+                .map(|config: &MlsGroupJoinConfig| config.use_ratchet_tree_extension),
+        )?;
         let own_leaf_nodes = storage.own_leaf_nodes(group_id)?;
-        let aad = storage.aad(group_id)?;
+        let aad = Vec::new();
         let group_state = storage.group_state(group_id)?;
-        let mut proposal_store = ProposalStore::new();
-
-        for (_ref, proposal) in proposals {
-            proposal_store.add(proposal);
-        }
 
         let build = || -> Option<Self> {
             Some(Self {
                 mls_group_config: group_config?,
                 group: core_group?,
-                proposal_store,
                 own_leaf_nodes,
                 aad,
                 group_state: group_state?,
@@ -364,17 +369,25 @@ impl MlsGroup {
         Ok(build())
     }
 
-    /// Remove the persisted state from storage
-    pub fn delete<StorageProvider: crate::storage::StorageProvider>(
+    /// Remove the persisted state of this group from storage. Note that
+    /// signature key material is not managed by OpenMLS and has to be removed
+    /// from the storage provider separately (if desired).
+    pub fn delete<Storage: crate::storage::StorageProvider>(
         &mut self,
-        storage: &StorageProvider,
-    ) -> Result<(), StorageProvider::Error> {
+        storage: &Storage,
+    ) -> Result<(), Storage::Error> {
         self.group.delete(storage)?;
         storage.delete_group_config(self.group_id())?;
         storage.clear_proposal_queue::<GroupId, ProposalRef>(self.group_id())?;
         storage.delete_own_leaf_nodes(self.group_id())?;
-        storage.delete_aad(self.group_id())?;
         storage.delete_group_state(self.group_id())?;
+        storage.delete_encryption_epoch_key_pairs(
+            self.group_id(),
+            &self.epoch(),
+            self.own_leaf_index().u32(),
+        )?;
+
+        self.proposal_store_mut().empty();
 
         Ok(())
     }
@@ -437,12 +450,28 @@ impl MlsGroup {
 
     /// Check if the group is operational. Throws an error if the group is
     /// inactive or if there is a pending commit.
-    fn is_operational<StorageError>(&self) -> Result<(), MlsGroupStateError<StorageError>> {
+    fn is_operational(&self) -> Result<(), MlsGroupStateError> {
         match self.group_state {
             MlsGroupState::PendingCommit(_) => Err(MlsGroupStateError::PendingCommit),
             MlsGroupState::Inactive => Err(MlsGroupStateError::UseAfterEviction),
             MlsGroupState::Operational => Ok(()),
         }
+    }
+
+    /// Returns a reference to the proposal store.
+    pub(crate) fn proposal_store(&self) -> &ProposalStore {
+        self.group.proposal_store()
+    }
+
+    /// Returns a mutable reference to the proposal store.
+    pub(crate) fn proposal_store_mut(&mut self) -> &mut ProposalStore {
+        self.group.proposal_store_mut()
+    }
+
+    /// Resets the AAD.
+    #[inline]
+    pub(crate) fn reset_aad(&mut self) {
+        self.aad.clear();
     }
 }
 
@@ -459,28 +488,58 @@ impl MlsGroup {
     }
 
     #[cfg(any(feature = "test-utils", test))]
+    pub(crate) fn message_secrets_test_mut(&mut self) -> &mut MessageSecrets {
+        self.group.message_secrets_test_mut()
+    }
+
+    #[cfg(any(feature = "test-utils", test))]
     pub fn print_ratchet_tree(&self, message: &str) {
         self.group.print_ratchet_tree(message)
+    }
+
+    #[cfg(any(feature = "test-utils", test))]
+    pub(crate) fn context_mut(&mut self) -> &mut GroupContext {
+        self.group.context_mut()
+    }
+
+    // Encrypt an AuthenticatedContent into a PrivateMessage. Only needed for
+    // the message protection KAT.
+    #[cfg(test)]
+    pub(crate) fn encrypt<Provider: OpenMlsProvider>(
+        &mut self,
+        public_message: AuthenticatedContent,
+        padding_size: usize,
+        provider: &Provider,
+    ) -> Result<PrivateMessage, MessageEncryptionError<Provider::StorageError>> {
+        self.group.encrypt(public_message, padding_size, provider)
+    }
+
+    #[cfg(test)]
+    // Decrypt a ProtocolMessage. Only needed for the message protection KAT.
+    pub(crate) fn decrypt_message(
+        &mut self,
+        crypto: &impl OpenMlsCrypto,
+        message: ProtocolMessage,
+        sender_ratchet_configuration: &SenderRatchetConfiguration,
+    ) -> Result<DecryptedMessage, ValidationError> {
+        self.group
+            .decrypt_message(crypto, message, sender_ratchet_configuration)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn set_group_context(&mut self, group_context: GroupContext) {
+        self.group.set_group_context(group_context)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn set_own_leaf_index(&mut self, own_leaf_index: LeafNodeIndex) {
+        self.group.set_own_leaf_index(own_leaf_index)
     }
 
     /// Returns the underlying [CoreGroup].
     #[cfg(test)]
     pub(crate) fn group(&self) -> &CoreGroup {
         &self.group
-    }
-
-    /// Removes a specific proposal from the store.
-    pub fn remove_pending_proposal<Storage: StorageProvider>(
-        &mut self,
-        storage: &Storage,
-        proposal_ref: ProposalRef,
-    ) -> Result<(), MlsGroupStateError<Storage::Error>> {
-        storage
-            .remove_proposal(self.group_id(), &proposal_ref)
-            .map_err(MlsGroupStateError::StorageError)?;
-        self.proposal_store
-            .remove(proposal_ref)
-            .ok_or(MlsGroupStateError::PendingProposalNotFound)
     }
 }
 

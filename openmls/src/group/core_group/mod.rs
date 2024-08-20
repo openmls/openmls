@@ -16,22 +16,6 @@ pub(crate) mod process;
 pub(crate) mod proposals;
 pub(crate) mod staged_commit;
 
-// Tests
-#[cfg(test)]
-pub(crate) mod kat_passive_client;
-#[cfg(test)]
-pub(crate) mod kat_welcome;
-#[cfg(test)]
-pub(crate) mod test_core_group;
-#[cfg(test)]
-mod test_create_commit_params;
-#[cfg(test)]
-mod test_external_init;
-#[cfg(test)]
-mod test_past_secrets;
-#[cfg(test)]
-mod test_proposals;
-
 use log::{debug, trace};
 use openmls_traits::{
     crypto::OpenMlsCrypto, signatures::Signer, storage::StorageProvider as _, types::Ciphersuite,
@@ -158,8 +142,8 @@ pub(crate) struct StagedCoreWelcome {
     path_keypairs: Option<Vec<EncryptionKeyPair>>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq, Clone))]
+#[derive(Debug)]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 pub(crate) struct CoreGroup {
     public_group: PublicGroup,
     group_epoch_secrets: GroupEpochSecrets,
@@ -206,13 +190,6 @@ impl CoreGroupBuilder {
     /// Set the [`CoreGroupConfig`] of the [`CoreGroup`].
     pub(crate) fn with_config(mut self, config: CoreGroupConfig) -> Self {
         self.config = Some(config);
-        self
-    }
-
-    /// Set the [`Vec<PreSharedKeyId>`] of the [`CoreGroup`].
-    #[cfg(test)]
-    pub(crate) fn with_psk(mut self, psk_ids: Vec<PreSharedKeyId>) -> Self {
-        self.psk_ids = psk_ids;
         self
     }
 
@@ -621,6 +598,16 @@ impl CoreGroup {
         &self.public_group
     }
 
+    /// Returns a reference to the proposal store.
+    pub(crate) fn proposal_store(&self) -> &ProposalStore {
+        self.public_group.proposal_store()
+    }
+
+    /// Returns a mutable reference to the proposal store.
+    pub(crate) fn proposal_store_mut(&mut self) -> &mut ProposalStore {
+        self.public_group.proposal_store_mut()
+    }
+
     /// Get the ciphersuite implementation used in this group.
     pub(crate) fn ciphersuite(&self) -> Ciphersuite {
         self.public_group.ciphersuite()
@@ -735,7 +722,6 @@ impl CoreGroup {
         self.public_group.store(storage)?;
         storage.write_own_leaf_index(group_id, &self.own_leaf_index())?;
         storage.write_group_epoch_secrets(group_id, &self.group_epoch_secrets)?;
-        storage.set_use_ratchet_tree_extension(group_id, self.use_ratchet_tree_extension)?;
         storage.write_message_secrets(group_id, &self.message_secrets_store)?;
         storage.write_resumption_psk_store(group_id, &self.resumption_psk_store)?;
 
@@ -746,11 +732,11 @@ impl CoreGroup {
     pub(super) fn load<Storage: StorageProvider>(
         storage: &Storage,
         group_id: &GroupId,
+        use_ratchet_tree_extension: Option<bool>,
     ) -> Result<Option<Self>, Storage::Error> {
         let public_group = PublicGroup::load(storage, group_id)?;
         let group_epoch_secrets = storage.group_epoch_secrets(group_id)?;
         let own_leaf_index = storage.own_leaf_index(group_id)?;
-        let use_ratchet_tree_extension = storage.use_ratchet_tree_extension(group_id)?;
         let message_secrets_store = storage.message_secrets(group_id)?;
         let resumption_psk_store = storage.resumption_psk_store(group_id)?;
 
@@ -775,7 +761,6 @@ impl CoreGroup {
         self.public_group.delete(storage)?;
         storage.delete_own_leaf_index(self.group_id())?;
         storage.delete_group_epoch_secrets(self.group_id())?;
-        storage.delete_use_ratchet_tree_extension(self.group_id())?;
         storage.delete_message_secrets(self.group_id())?;
         storage.delete_all_resumption_psk_secrets(self.group_id())?;
 
@@ -834,14 +819,14 @@ impl CoreGroup {
 
     pub(crate) fn create_commit<Provider: OpenMlsProvider>(
         &self,
-        mut params: CreateCommitParams,
+        params: CreateCommitParams,
         provider: &Provider,
         signer: &impl Signer,
     ) -> Result<CreateCommitResult, CreateCommitError<Provider::StorageError>> {
         let ciphersuite = self.ciphersuite();
 
         let sender = match params.commit_type() {
-            CommitType::External => Sender::NewMemberCommit,
+            CommitType::External(_) => Sender::NewMemberCommit,
             CommitType::Member => Sender::build_member(self.own_leaf_index()),
         };
 
@@ -850,7 +835,7 @@ impl CoreGroup {
             ciphersuite,
             provider.crypto(),
             sender.clone(),
-            params.proposal_store(),
+            self.proposal_store(),
             params.inline_proposals(),
             self.own_leaf_index(),
         )
@@ -914,7 +899,7 @@ impl CoreGroup {
         // Apply proposals to tree
         let apply_proposals_values =
             diff.apply_proposals(&proposal_queue, self.own_leaf_index())?;
-        if apply_proposals_values.self_removed && params.commit_type() != CommitType::External {
+        if apply_proposals_values.self_removed && params.commit_type() == &CommitType::Member {
             return Err(CreateCommitError::CannotRemoveSelf);
         }
 
@@ -923,6 +908,7 @@ impl CoreGroup {
             if apply_proposals_values.path_required
                 || contains_own_updates
                 || params.force_self_update()
+                || !params.leaf_node_parameters().is_empty()
             {
                 // Process the path. This includes updating the provisional
                 // group context by updating the epoch and computing the new
@@ -932,8 +918,8 @@ impl CoreGroup {
                     self.own_leaf_index(),
                     apply_proposals_values.exclusion_list(),
                     params.commit_type(),
+                    params.leaf_node_parameters(),
                     signer,
-                    params.take_credential_with_key(),
                     apply_proposals_values.extensions.clone()
                 )?
             } else {
@@ -1174,10 +1160,6 @@ impl CoreGroup {
 // Test functions
 #[cfg(test)]
 impl CoreGroup {
-    pub(crate) fn use_ratchet_tree_extension(&self) -> bool {
-        self.use_ratchet_tree_extension
-    }
-
     pub(crate) fn set_own_leaf_index(&mut self, own_leaf_index: LeafNodeIndex) {
         self.own_leaf_index = own_leaf_index;
     }
@@ -1196,6 +1178,7 @@ impl CoreGroup {
 }
 
 // Test and test-utils functions
+#[cfg_attr(all(not(test), feature = "test-utils"), allow(dead_code))]
 #[cfg(any(feature = "test-utils", test))]
 impl CoreGroup {
     pub(crate) fn context_mut(&mut self) -> &mut GroupContext {
@@ -1208,6 +1191,10 @@ impl CoreGroup {
 
     pub(crate) fn print_ratchet_tree(&self, message: &str) {
         println!("{}: {}", message, self.public_group().export_ratchet_tree());
+    }
+
+    pub(crate) fn resumption_psk_store(&self) -> &ResumptionPskStore {
+        &self.resumption_psk_store
     }
 }
 

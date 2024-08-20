@@ -27,11 +27,26 @@ use crate::{
     treesync::{node::encryption_keys::EncryptionKeyPair, EncryptionKey},
 };
 
+#[cfg(test)]
+pub mod kat_storage_stability;
+
 /// A convenience trait for the current version of the storage.
 /// Throughout the code, this one should be used instead of `openmls_traits::storage::StorageProvider`.
 pub trait StorageProvider: openmls_traits::storage::StorageProvider<CURRENT_VERSION> {}
 
+/// A convenience trait for the current version of the public storage.
+/// Throughout the code, this one should be used instead of `openmls_traits::public_storage::PublicStorageProvider`.
+pub trait PublicStorageProvider:
+    openmls_traits::public_storage::PublicStorageProvider<CURRENT_VERSION>
+{
+}
+
 impl<P: openmls_traits::storage::StorageProvider<CURRENT_VERSION>> StorageProvider for P {}
+
+impl<P: openmls_traits::public_storage::PublicStorageProvider<CURRENT_VERSION>>
+    PublicStorageProvider for P
+{
+}
 
 /// A convenience trait for the OpenMLS provider that defines the storage provider
 /// for the current version of storage.
@@ -123,7 +138,9 @@ impl traits::PskBundle<CURRENT_VERSION> for PskBundle {}
 
 #[cfg(test)]
 mod test {
-    use crate::{group::test_core_group::setup_client, prelude::KeyPackageBuilder};
+    use crate::{
+        group::mls_group::tests_and_kats::utils::setup_client, prelude::KeyPackageBuilder,
+    };
 
     use super::*;
 

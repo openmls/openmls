@@ -238,6 +238,7 @@ impl<'a> PublicGroupDiff<'a> {
 /// The staged version of a [`PublicGroupDiff`], which means it can no longer be
 /// modified. Its only use is to merge it into the original [`PublicGroup`].
 #[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 pub(crate) struct StagedPublicGroupDiff {
     pub(super) staged_diff: StagedTreeSyncDiff,
     pub(super) group_context: GroupContext,

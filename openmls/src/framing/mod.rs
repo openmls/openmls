@@ -94,7 +94,7 @@ pub use validation::*;
 
 // Tests
 #[cfg(test)]
-pub(crate) mod test_framing;
+pub(crate) mod tests;
 
 /// Wire format of MLS messages.
 ///

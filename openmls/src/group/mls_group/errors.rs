@@ -18,7 +18,10 @@ use crate::{
         CreateGroupContextExtProposalError,
     },
     schedule::errors::PskError,
-    treesync::errors::{LeafNodeValidationError, PublicTreeError},
+    treesync::{
+        errors::{LeafNodeValidationError, PublicTreeError},
+        node::leaf_node::LeafNodeUpdateError,
+    },
 };
 
 /// New group error
@@ -57,7 +60,7 @@ pub enum EmptyInputError {
 
 /// Group state error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum MlsGroupStateError<StorageError> {
+pub enum MlsGroupStateError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -76,9 +79,6 @@ pub enum MlsGroupStateError<StorageError> {
     /// Requested pending proposal hasn't been found in local pending proposals
     #[error("Requested pending proposal hasn't been found in local pending proposals.")]
     PendingProposalNotFound,
-    /// An error ocurred while writing to storage
-    #[error("An error ocurred while writing to storage")]
-    StorageError(StorageError),
 }
 
 /// Error merging pending commit
@@ -86,7 +86,7 @@ pub enum MlsGroupStateError<StorageError> {
 pub enum MergePendingCommitError<StorageError> {
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
-    MlsGroupStateError(#[from] MlsGroupStateError<StorageError>),
+    MlsGroupStateError(#[from] MlsGroupStateError),
     /// See [`MergeCommitError`] for more details.
     #[error(transparent)]
     MergeCommitError(#[from] MergeCommitError<StorageError>),
@@ -94,7 +94,7 @@ pub enum MergePendingCommitError<StorageError> {
 
 /// Process message error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum ProcessMessageError<StorageError> {
+pub enum ProcessMessageError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -106,10 +106,7 @@ pub enum ProcessMessageError<StorageError> {
     ValidationError(#[from] ValidationError),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
-    GroupStateError(#[from] MlsGroupStateError<StorageError>),
-    /// The message's signature is invalid.
-    #[error("The message's signature is invalid.")]
-    InvalidSignature,
+    GroupStateError(#[from] MlsGroupStateError),
     /// See [`StageCommitError`] for more details.
     #[error(transparent)]
     InvalidCommit(#[from] StageCommitError),
@@ -123,13 +120,13 @@ pub enum ProcessMessageError<StorageError> {
 
 /// Create message error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum CreateMessageError<StorageError> {
+pub enum CreateMessageError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
-    GroupStateError(#[from] MlsGroupStateError<StorageError>),
+    GroupStateError(#[from] MlsGroupStateError),
 }
 
 /// Add members error
@@ -146,7 +143,7 @@ pub enum AddMembersError<StorageError> {
     CreateCommitError(#[from] CreateCommitError<StorageError>),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
-    GroupStateError(#[from] MlsGroupStateError<StorageError>),
+    GroupStateError(#[from] MlsGroupStateError),
     /// Error writing to storage.
     #[error("Error writing to storage")]
     StorageError(StorageError),
@@ -163,7 +160,7 @@ pub enum ProposeAddMemberError<StorageError> {
     UnsupportedExtensions,
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
-    GroupStateError(#[from] MlsGroupStateError<StorageError>),
+    GroupStateError(#[from] MlsGroupStateError),
     /// See [`LeafNodeValidationError`] for more details.
     #[error(transparent)]
     LeafNodeValidation(#[from] LeafNodeValidationError),
@@ -180,7 +177,7 @@ pub enum ProposeRemoveMemberError<StorageError> {
     LibraryError(#[from] LibraryError),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
-    GroupStateError(#[from] MlsGroupStateError<StorageError>),
+    GroupStateError(#[from] MlsGroupStateError),
     /// The member that should be removed can not be found.
     #[error("The member that should be removed can not be found.")]
     UnknownMember,
@@ -203,7 +200,7 @@ pub enum RemoveMembersError<StorageError> {
     CreateCommitError(#[from] CreateCommitError<StorageError>),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
-    GroupStateError(#[from] MlsGroupStateError<StorageError>),
+    GroupStateError(#[from] MlsGroupStateError),
     /// The member that should be removed can not be found.
     #[error("The member that should be removed can not be found.")]
     UnknownMember,
@@ -223,7 +220,7 @@ pub enum UpdateGroupMembershipError<StorageError> {
     CreateCommitError(#[from] CreateCommitError<StorageError>),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
-    GroupStateError(#[from] MlsGroupStateError<StorageError>),
+    GroupStateError(#[from] MlsGroupStateError),
     /// The member that should be removed can not be found.
     #[error("The member that should be removed can not be found.")]
     UnknownMember,
@@ -240,7 +237,10 @@ pub enum LeaveGroupError<StorageError> {
     LibraryError(#[from] LibraryError),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
-    GroupStateError(#[from] MlsGroupStateError<StorageError>),
+    GroupStateError(#[from] MlsGroupStateError),
+    /// An error ocurred while writing to storage
+    #[error("An error ocurred while writing to storage")]
+    StorageError(StorageError),
 }
 
 /// Self update error
@@ -254,7 +254,7 @@ pub enum SelfUpdateError<StorageError> {
     CreateCommitError(#[from] CreateCommitError<StorageError>),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
-    GroupStateError(#[from] MlsGroupStateError<StorageError>),
+    GroupStateError(#[from] MlsGroupStateError),
     /// Error accessing the storage.
     #[error("Error accessing the storage.")]
     StorageError(StorageError),
@@ -269,13 +269,16 @@ pub enum ProposeSelfUpdateError<StorageError> {
 
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
-    GroupStateError(#[from] MlsGroupStateError<StorageError>),
+    GroupStateError(#[from] MlsGroupStateError),
     /// Error accessing storage.
     #[error("Error accessing storage.")]
     StorageError(StorageError),
     /// See [`PublicTreeError`] for more details.
     #[error(transparent)]
     PublicTreeError(#[from] PublicTreeError),
+    /// See [`LeafNodeUpdateError`] for more details.
+    #[error(transparent)]
+    LeafNodeUpdateError(#[from] LeafNodeUpdateError<StorageError>),
 }
 
 /// Commit to pending proposals error
@@ -289,7 +292,7 @@ pub enum CommitToPendingProposalsError<StorageError> {
     CreateCommitError(#[from] CreateCommitError<StorageError>),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
-    GroupStateError(#[from] MlsGroupStateError<StorageError>),
+    GroupStateError(#[from] MlsGroupStateError),
     /// Error writing to storage
     #[error("Error writing to storage: {0}")]
     StorageError(StorageError),
@@ -297,18 +300,18 @@ pub enum CommitToPendingProposalsError<StorageError> {
 
 /// Errors that can happen when exporting a group info object.
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum ExportGroupInfoError<StorageError> {
+pub enum ExportGroupInfoError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
-    GroupStateError(#[from] MlsGroupStateError<StorageError>),
+    GroupStateError(#[from] MlsGroupStateError),
 }
 
 /// Export secret error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum ExportSecretError<StorageError> {
+pub enum ExportSecretError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -317,24 +320,24 @@ pub enum ExportSecretError<StorageError> {
     KeyLengthTooLong,
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
-    GroupStateError(#[from] MlsGroupStateError<StorageError>),
+    GroupStateError(#[from] MlsGroupStateError),
 }
 
 /// Propose PSK error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum ProposePskError<StorageError> {
+pub enum ProposePskError {
     /// See [`PskError`] for more details.
     #[error(transparent)]
     Psk(#[from] PskError),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
-    GroupStateError(#[from] MlsGroupStateError<StorageError>),
+    GroupStateError(#[from] MlsGroupStateError),
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
 }
 
-/// Export secret error
+/// Proposal error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum ProposalError<StorageError> {
     /// See [`LibraryError`] for more details.
@@ -354,7 +357,7 @@ pub enum ProposalError<StorageError> {
     ProposeRemoveMemberError(#[from] ProposeRemoveMemberError<StorageError>),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
-    GroupStateError(#[from] MlsGroupStateError<StorageError>),
+    GroupStateError(#[from] MlsGroupStateError),
     /// See [`ValidationError`] for more details.
     #[error(transparent)]
     ValidationError(#[from] ValidationError),
@@ -364,4 +367,15 @@ pub enum ProposalError<StorageError> {
     /// Error writing proposal to storage.
     #[error("error writing proposal to storage")]
     StorageError(StorageError),
+}
+
+/// Remove proposal error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum RemoveProposalError<StorageError> {
+    /// Couldn't find the proposal for the given `ProposalRef`.
+    #[error("Couldn't find the proposal for the given `ProposalRef`")]
+    ProposalNotFound,
+    /// Error erasing proposal from storage.
+    #[error("error writing proposal to storage")]
+    Storage(StorageError),
 }

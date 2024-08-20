@@ -23,7 +23,7 @@ impl super::MemoryStorage {
         get_file_path(&("openmls_cli_".to_owned() + user_name + "_ks.json"))
     }
 
-    fn save_to_file(&self, output_file: &File) -> Result<(), String> {
+    pub fn save_to_file(&self, output_file: &File) -> Result<(), String> {
         let writer = BufWriter::new(output_file);
 
         let mut ser_ks = SerializableKeyStore::default();
@@ -48,7 +48,7 @@ impl super::MemoryStorage {
         }
     }
 
-    fn load_from_file(&mut self, input_file: &File) -> Result<(), String> {
+    pub fn load_from_file(&mut self, input_file: &File) -> Result<(), String> {
         // Prepare file reader.
         let reader = BufReader::new(input_file);
 

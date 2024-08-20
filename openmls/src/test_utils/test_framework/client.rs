@@ -24,7 +24,7 @@ use crate::{
     storage::OpenMlsProvider,
     treesync::{
         node::{leaf_node::Capabilities, Node},
-        LeafNode, RatchetTree, RatchetTreeIn,
+        LeafNode, LeafNodeParameters, RatchetTree, RatchetTreeIn,
     },
     versions::ProtocolVersion,
 };
@@ -157,7 +157,9 @@ impl<Provider: OpenMlsProvider> Client<Provider> {
                 group_state.clear_pending_commit(self.provider.storage())?;
             }
             // Process the message.
-            let processed_message = group_state.process_message(&self.provider, message.clone())?;
+            let processed_message = group_state
+                .process_message(&self.provider, message.clone())
+                .map_err(ClientError::ProcessMessageError)?;
 
             match processed_message.into_content() {
                 ProcessedMessageContent::ApplicationMessage(_) => {}
@@ -209,7 +211,7 @@ impl<Provider: OpenMlsProvider> Client<Provider> {
         &self,
         action_type: ActionType,
         group_id: &GroupId,
-        leaf_node: Option<LeafNode>,
+        leaf_node_parameters: LeafNodeParameters,
     ) -> Result<
         (MlsMessageOut, Option<Welcome>, Option<GroupInfo>),
         ClientError<Provider::StorageError>,
@@ -228,10 +230,12 @@ impl<Provider: OpenMlsProvider> Client<Provider> {
         )
         .unwrap();
         let (msg, welcome_option, group_info) = match action_type {
-            ActionType::Commit => group.self_update(&self.provider, &signer)?,
+            ActionType::Commit => {
+                group.self_update(&self.provider, &signer, LeafNodeParameters::default())?
+            }
             ActionType::Proposal => (
                 group
-                    .propose_self_update(&self.provider, &signer, leaf_node)
+                    .propose_self_update(&self.provider, &signer, leaf_node_parameters)
                     .map(|(out, _)| out)?,
                 None,
                 None,

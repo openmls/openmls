@@ -57,7 +57,7 @@ use tls_codec::{
 pub use metadata::Metadata;
 
 #[cfg(test)]
-mod test_extensions;
+mod tests;
 
 /// MLS Extension Types
 ///

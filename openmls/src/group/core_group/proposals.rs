@@ -20,7 +20,7 @@ use crate::{
 /// A [ProposalStore] can store the standalone proposals that are received from
 /// the DS in between two commit messages.
 #[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
-#[cfg_attr(test, derive(Clone))]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Clone))]
 pub struct ProposalStore {
     queued_proposals: Vec<QueuedProposal>,
 }
@@ -53,11 +53,11 @@ impl ProposalStore {
 
     /// Removes a proposal from the store using its reference. It will return
     /// None if it wasn't found in the store.
-    pub(crate) fn remove(&mut self, proposal_ref: ProposalRef) -> Option<()> {
+    pub(crate) fn remove(&mut self, proposal_ref: &ProposalRef) -> Option<()> {
         let index = self
             .queued_proposals
             .iter()
-            .position(|p| p.proposal_reference() == proposal_ref)?;
+            .position(|p| &p.proposal_reference() == proposal_ref)?;
         self.queued_proposals.remove(index);
         Some(())
     }
@@ -85,20 +85,6 @@ impl QueuedProposal {
             crypto,
             public_message,
             ProposalOrRefType::Reference,
-        )
-    }
-
-    /// Creates a new [QueuedProposal] from an [PublicMessage]
-    pub(crate) fn from_authenticated_content_by_value(
-        ciphersuite: Ciphersuite,
-        crypto: &impl OpenMlsCrypto,
-        public_message: AuthenticatedContent,
-    ) -> Result<Self, LibraryError> {
-        Self::from_authenticated_content(
-            ciphersuite,
-            crypto,
-            public_message,
-            ProposalOrRefType::Proposal,
         )
     }
 
@@ -204,6 +190,7 @@ impl OrderedProposalRefs {
 /// accessed efficiently. To enable iteration over the queue in order, the
 /// `ProposalQueue` also contains a vector of `ProposalRef`s.
 #[derive(Default, Debug, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 pub(crate) struct ProposalQueue {
     /// `proposal_references` holds references to the proposals in the queue and
     /// determines the order of the queue.

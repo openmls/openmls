@@ -21,9 +21,10 @@ use std::collections::HashSet;
 
 use log::debug;
 use openmls_traits::crypto::OpenMlsCrypto;
-use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::{signatures::Signer, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
 
+use super::node::leaf_node::UpdateLeafNodeParams;
 use super::{
     errors::*,
     node::{
@@ -35,6 +36,7 @@ use super::{
     treesync_node::{TreeSyncLeafNode, TreeSyncParentNode},
     LeafNode, TreeSync, TreeSyncParentHashError,
 };
+use crate::group::{create_commit_params::CommitType, GroupId};
 use crate::{
     binary_tree::{
         array_representation::{
@@ -44,9 +46,9 @@ use crate::{
     },
     ciphersuite::Secret,
     error::LibraryError,
-    group::GroupId,
     messages::PathSecret,
     schedule::CommitSecret,
+    storage::OpenMlsProvider,
     treesync::RatchetTree,
 };
 
@@ -59,6 +61,7 @@ pub(crate) type UpdatePathResult = (
 /// The [`StagedTreeSyncDiff`] can be created from a [`TreeSyncDiff`], examined
 /// and later merged into a [`TreeSync`] instance.
 #[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 pub(crate) struct StagedTreeSyncDiff {
     diff: StagedMlsBinaryTreeDiff<TreeSyncLeafNode, TreeSyncParentNode>,
     new_tree_hash: Vec<u8>,
@@ -288,28 +291,50 @@ impl<'a> TreeSyncDiff<'a> {
     /// derivation, as well as the newly derived [`EncryptionKeyPair`]s.
     ///
     /// Returns an error if the target leaf is not in the tree.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn apply_own_update_path(
         &mut self,
         provider: &impl OpenMlsProvider,
         signer: &impl Signer,
         ciphersuite: Ciphersuite,
+        commit_type: &CommitType,
         group_id: GroupId,
         leaf_index: LeafNodeIndex,
-    ) -> Result<UpdatePathResult, LibraryError> {
-        debug_assert!(
-            self.leaf(leaf_index).is_some(),
-            "Tree diff is missing own leaf"
-        );
+        leaf_node_params: UpdateLeafNodeParams,
+    ) -> Result<UpdatePathResult, TreeSyncAddLeaf> {
+        // For External Commits, we temporarily add a placeholder leaf node to the tree, because it
+        // might be required to make the tree grow to the right size. If we
+        // don't do that, calculating the direct path might fail. It's important
+        // to not do anything with the value of that leaf until it has been
+        // replaced.
+        if let CommitType::External(_) = commit_type {
+            let leaf_node = LeafNode::new_placeholder();
+            self.add_leaf(leaf_node)?;
+        }
 
-        let (path, update_path_nodes, keypairs, commit_secret) =
+        // We calculate the parent hash so that we can use it for a fresh leaf
+        let (path, update_path_nodes, parent_keypairs, commit_secret) =
             self.derive_path(provider, ciphersuite, leaf_index)?;
-
         let parent_hash =
             self.process_update_path(provider.crypto(), ciphersuite, leaf_index, path)?;
 
-        self.leaf_mut(leaf_index)
-            .ok_or_else(|| LibraryError::custom("Didn't find own leaf in diff."))?
-            .update_parent_hash(&parent_hash, group_id, leaf_index, signer)?;
+        // We generate the new leaf with all parameters
+        let (leaf_node, node_keypair) = LeafNode::new_with_parent_hash(
+            provider,
+            ciphersuite,
+            &parent_hash,
+            leaf_node_params,
+            group_id,
+            leaf_index,
+            signer,
+        )?;
+
+        // We insert the fresh leaf into the tree.
+        self.diff.replace_leaf(leaf_index, leaf_node.into());
+
+        // Prepend parent keypairs with node keypair
+        let mut keypairs = vec![node_keypair];
+        keypairs.extend(parent_keypairs);
 
         Ok((update_path_nodes, keypairs, commit_secret))
     }
@@ -666,7 +691,7 @@ impl<'a> TreeSyncDiff<'a> {
     /// This turns the diff into a staged diff. In the process, the diff
     /// computes and sets the new tree hash.
     pub(crate) fn into_staged_diff(
-        mut self,
+        self,
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -> Result<StagedTreeSyncDiff, LibraryError> {
@@ -681,7 +706,7 @@ impl<'a> TreeSyncDiff<'a> {
     /// Helper function to compute and set the tree hash of the given node and
     /// all nodes below it in the tree. The leaf nodes in `exclusion_list` are
     /// not included in the tree hash.
-    pub(super) fn compute_tree_hash(
+    pub(crate) fn compute_tree_hash(
         &self,
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
@@ -720,14 +745,9 @@ impl<'a> TreeSyncDiff<'a> {
         self.diff.leaf(index).node().as_ref()
     }
 
-    /// Return a mutable reference to the leaf with the given index.
-    pub(crate) fn leaf_mut(&mut self, index: LeafNodeIndex) -> Option<&mut LeafNode> {
-        self.diff.leaf_mut(index).node_mut().as_mut()
-    }
-
     /// Compute and set the tree hash of all nodes in the tree.
     pub(crate) fn compute_tree_hashes(
-        &mut self,
+        &self,
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -> Result<Vec<u8>, LibraryError> {

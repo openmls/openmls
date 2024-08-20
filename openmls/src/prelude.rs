@@ -2,7 +2,7 @@
 //! Include this to get access to all the public functions of OpenMLS.
 
 // MlsGroup
-pub use crate::group::{core_group::Member, ser::*, *};
+pub use crate::group::{core_group::Member, *};
 
 pub use crate::group::public_group::{errors::*, PublicGroup};
 
@@ -42,7 +42,7 @@ pub use crate::binary_tree::LeafNodeIndex;
 // TreeSync
 pub use crate::treesync::{
     errors::{ApplyUpdatePathError, PublicTreeError},
-    node::leaf_node::{Capabilities, LeafNode},
+    node::leaf_node::{Capabilities, CapabilitiesBuilder, LeafNode, LeafNodeParameters},
     node::parent_node::ParentNode,
     node::Node,
     RatchetTreeIn,

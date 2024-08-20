@@ -6,6 +6,7 @@
 use std::{collections::HashMap, fmt::Display, fs::File, io::Write, sync::Mutex};
 
 use clap::Parser;
+#[allow(unused_imports)]
 use clap_derive::*;
 use mls_client::{
     mls_client_server::{MlsClient, MlsClientServer},
@@ -22,7 +23,7 @@ use openmls::{
     key_packages::{KeyPackage, KeyPackageBundle},
     prelude::{Capabilities, ExtensionType, SenderRatchetConfiguration},
     schedule::{psk::ResumptionPskUsage, ExternalPsk, PreSharedKeyId, Psk},
-    treesync::RatchetTreeIn,
+    treesync::{LeafNodeParameters, RatchetTreeIn},
     versions::ProtocolVersion,
 };
 use openmls_basic_credential::SignatureKeyPair;
@@ -494,6 +495,8 @@ impl MlsClient for MlsClientImpl {
                 ratchet_tree,
                 verifiable_group_info,
                 &mls_group_config,
+                None,
+                None,
                 b"",
                 credential_with_key,
             )
@@ -604,11 +607,7 @@ impl MlsClient for MlsClientImpl {
 
         interop_group
             .group
-            .set_aad(
-                interop_group.crypto_provider.storage(),
-                &request.authenticated_data,
-            )
-            .map_err(|err| tonic::Status::internal(format!("error setting aad: {err}")))?;
+            .set_aad(request.authenticated_data.clone());
 
         let ciphertext = interop_group
             .group
@@ -657,7 +656,7 @@ impl MlsClient for MlsClientImpl {
         debug!("Processed.");
         trace!(?processed_message);
 
-        let authenticated_data = processed_message.authenticated_data().to_vec();
+        let authenticated_data = processed_message.aad().to_vec();
         let plaintext = match processed_message.into_content() {
             ProcessedMessageContent::ApplicationMessage(application_message) => {
                 application_message.into_bytes()
@@ -833,7 +832,7 @@ impl MlsClient for MlsClientImpl {
             .propose_self_update(
                 &interop_group.crypto_provider,
                 &interop_group.signature_keys,
-                None,
+                LeafNodeParameters::default(),
             )
             .map_err(into_status)?;
 
@@ -979,7 +978,7 @@ impl MlsClient for MlsClientImpl {
             let (proposal, _proposal_ref) = match proposal_type.as_ref() {
                 "add" => {
                     let key_package =
-                        MlsMessageIn::tls_deserialize_exact(&mut proposal.key_package.clone())
+                        MlsMessageIn::tls_deserialize_exact(proposal.key_package.clone())
                             .map_err(|_| Status::invalid_argument("Invalid key package"))?;
                     let key_package = key_package
                         .into_keypackage()

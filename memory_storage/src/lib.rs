@@ -1,7 +1,9 @@
 use openmls_traits::storage::*;
-
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::{collections::HashMap, sync::RwLock};
+
+#[cfg(feature = "test-utils")]
+use std::io::Write as _;
 
 /// A storage for the V_TEST version.
 #[cfg(any(test, feature = "test-utils"))]
@@ -10,9 +12,76 @@ mod test_store;
 #[cfg(feature = "persistence")]
 pub mod persistence;
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default)]
 pub struct MemoryStorage {
-    values: RwLock<HashMap<Vec<u8>, Vec<u8>>>,
+    pub values: RwLock<HashMap<Vec<u8>, Vec<u8>>>,
+}
+
+// For testing we want to clone.
+#[cfg(feature = "test-utils")]
+impl Clone for MemoryStorage {
+    fn clone(&self) -> Self {
+        let values = self.values.read().unwrap();
+        Self {
+            values: RwLock::new(values.clone()),
+        }
+    }
+}
+
+// For testing (KATs in particular) we want to serialize and deserialize the storage
+#[cfg(feature = "test-utils")]
+impl MemoryStorage {
+    pub fn serialize(&self, w: &mut Vec<u8>) -> std::io::Result<usize> {
+        let values = self.values.read().unwrap();
+
+        let mut written = 8;
+        let count = (values.len() as u64).to_be_bytes();
+        w.write_all(&count)?;
+
+        for (k, v) in values.iter() {
+            let rec_len = 8 + 8 + k.len() + v.len();
+            let k_len = (k.len() as u64).to_be_bytes();
+            let v_len = (v.len() as u64).to_be_bytes();
+
+            w.write_all(&k_len)?;
+            w.write_all(&v_len)?;
+            w.write_all(k)?;
+            w.write_all(v)?;
+
+            written += rec_len;
+        }
+
+        Ok(written)
+    }
+
+    pub fn deserialize<R: std::io::Read>(r: &mut R) -> std::io::Result<Self> {
+        let read_u64 = |r: &mut R| {
+            let mut buf8 = [0u8; 8];
+            r.read_exact(&mut buf8).map(|_| u64::from_be_bytes(buf8))
+        };
+
+        let read_bytes = |r: &mut R, len: usize| {
+            let mut buf = vec![0u8; len];
+            r.read_exact(&mut buf).map(|_| buf)
+        };
+
+        let mut count = read_u64(r)? as usize;
+        let mut map = HashMap::new();
+
+        while count > 0 {
+            let k_len = read_u64(r)? as usize;
+            let v_len = read_u64(r)? as usize;
+            let k = read_bytes(r, k_len)?;
+            let v = read_bytes(r, v_len)?;
+
+            map.insert(k, v);
+            count -= 1;
+        }
+
+        Ok(Self {
+            values: RwLock::new(map),
+        })
+    }
 }
 
 impl MemoryStorage {
@@ -134,10 +203,7 @@ impl MemoryStorage {
         log::trace!("{}", std::backtrace::Backtrace::capture());
 
         let value: Vec<Vec<u8>> = match values.get(&storage_key) {
-            Some(list_bytes) => {
-                println!("{}", String::from_utf8(list_bytes.to_vec()).unwrap());
-                serde_json::from_slice(list_bytes).unwrap()
-            }
+            Some(list_bytes) => serde_json::from_slice(list_bytes).unwrap(),
             None => vec![],
         };
 
@@ -201,12 +267,10 @@ const OWN_LEAF_NODE_INDEX_LABEL: &[u8] = b"OwnLeafNodeIndex";
 const EPOCH_SECRETS_LABEL: &[u8] = b"EpochSecrets";
 const RESUMPTION_PSK_STORE_LABEL: &[u8] = b"ResumptionPsk";
 const MESSAGE_SECRETS_LABEL: &[u8] = b"MessageSecrets";
-const USE_RATCHET_TREE_LABEL: &[u8] = b"UseRatchetTree";
 
 // related to MlsGroup
 const JOIN_CONFIG_LABEL: &[u8] = b"MlsGroupJoinConfig";
 const OWN_LEAF_NODES_LABEL: &[u8] = b"OwnLeafNodes";
-const AAD_LABEL: &[u8] = b"AAD";
 const GROUP_STATE_LABEL: &[u8] = b"GroupState";
 const QUEUED_PROPOSAL_LABEL: &[u8] = b"QueuedProposal";
 const PROPOSAL_QUEUE_REFS_LABEL: &[u8] = b"ProposalQueueRefs";
@@ -349,7 +413,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
             .collect::<Result<Vec<_>, _>>()
     }
 
-    fn treesync<
+    fn tree<
         GroupId: traits::GroupId<CURRENT_VERSION>,
         TreeSync: traits::TreeSync<CURRENT_VERSION>,
     >(
@@ -359,7 +423,9 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         let values = self.values.read().unwrap();
         let key = build_key::<CURRENT_VERSION, &GroupId>(TREE_LABEL, group_id);
 
-        let value = values.get(&key).unwrap();
+        let Some(value) = values.get(&key) else {
+            return Ok(None);
+        };
         let value = serde_json::from_slice(value).unwrap();
 
         Ok(value)
@@ -375,7 +441,9 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         let values = self.values.read().unwrap();
         let key = build_key::<CURRENT_VERSION, &GroupId>(GROUP_CONTEXT_LABEL, group_id);
 
-        let value = values.get(&key).unwrap();
+        let Some(value) = values.get(&key) else {
+            return Ok(None);
+        };
         let value = serde_json::from_slice(value).unwrap();
 
         Ok(value)
@@ -391,7 +459,9 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         let values = self.values.read().unwrap();
         let key = build_key::<CURRENT_VERSION, &GroupId>(INTERIM_TRANSCRIPT_HASH_LABEL, group_id);
 
-        let value = values.get(&key).unwrap();
+        let Some(value) = values.get(&key) else {
+            return Ok(None);
+        };
         let value = serde_json::from_slice(value).unwrap();
 
         Ok(value)
@@ -407,7 +477,9 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         let values = self.values.read().unwrap();
         let key = build_key::<CURRENT_VERSION, &GroupId>(CONFIRMATION_TAG_LABEL, group_id);
 
-        let value = values.get(&key).unwrap();
+        let Some(value) = values.get(&key) else {
+            return Ok(None);
+        };
         let value = serde_json::from_slice(value).unwrap();
 
         Ok(value)
@@ -425,7 +497,9 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         let key =
             build_key::<CURRENT_VERSION, &SignaturePublicKey>(SIGNATURE_KEY_PAIR_LABEL, public_key);
 
-        let value = values.get(&key).unwrap();
+        let Some(value) = values.get(&key) else {
+            return Ok(None);
+        };
         let value = serde_json::from_slice(value).unwrap();
 
         Ok(value)
@@ -673,32 +747,6 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         self.delete::<CURRENT_VERSION>(OWN_LEAF_NODE_INDEX_LABEL, &serde_json::to_vec(group_id)?)
     }
 
-    fn use_ratchet_tree_extension<GroupId: traits::GroupId<CURRENT_VERSION>>(
-        &self,
-        group_id: &GroupId,
-    ) -> Result<Option<bool>, Self::Error> {
-        self.read(USE_RATCHET_TREE_LABEL, &serde_json::to_vec(group_id)?)
-    }
-
-    fn set_use_ratchet_tree_extension<GroupId: traits::GroupId<CURRENT_VERSION>>(
-        &self,
-        group_id: &GroupId,
-        value: bool,
-    ) -> Result<(), Self::Error> {
-        self.write::<CURRENT_VERSION>(
-            USE_RATCHET_TREE_LABEL,
-            &serde_json::to_vec(group_id)?,
-            serde_json::to_vec(&value)?,
-        )
-    }
-
-    fn delete_use_ratchet_tree_extension<GroupId: traits::GroupId<CURRENT_VERSION>>(
-        &self,
-        group_id: &GroupId,
-    ) -> Result<(), Self::Error> {
-        self.delete::<CURRENT_VERSION>(USE_RATCHET_TREE_LABEL, &serde_json::to_vec(group_id)?)
-    }
-
     fn group_epoch_secrets<
         GroupId: traits::GroupId<CURRENT_VERSION>,
         GroupEpochSecrets: traits::GroupEpochSecrets<CURRENT_VERSION>,
@@ -865,35 +913,6 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         let key = serde_json::to_vec(group_id)?;
         let value = serde_json::to_vec(leaf_node)?;
         self.append::<CURRENT_VERSION>(OWN_LEAF_NODES_LABEL, &key, value)
-    }
-
-    fn aad<GroupId: traits::GroupId<CURRENT_VERSION>>(
-        &self,
-        group_id: &GroupId,
-    ) -> Result<Vec<u8>, Self::Error> {
-        let key = serde_json::to_vec(group_id)?;
-        self.read::<CURRENT_VERSION, Vec<u8>>(AAD_LABEL, &key)
-            .map(|v| {
-                // When we didn't find the value, we return an empty vector as
-                // required by the trait.
-                v.unwrap_or_default()
-            })
-    }
-
-    fn write_aad<GroupId: traits::GroupId<CURRENT_VERSION>>(
-        &self,
-        group_id: &GroupId,
-        aad: &[u8],
-    ) -> Result<(), Self::Error> {
-        let key = serde_json::to_vec(group_id)?;
-        self.write::<CURRENT_VERSION>(AAD_LABEL, &key, serde_json::to_vec(aad).unwrap())
-    }
-
-    fn delete_aad<GroupId: traits::GroupId<CURRENT_VERSION>>(
-        &self,
-        group_id: &GroupId,
-    ) -> Result<(), Self::Error> {
-        self.delete::<CURRENT_VERSION>(AAD_LABEL, &serde_json::to_vec(group_id).unwrap())
     }
 
     fn delete_own_leaf_nodes<GroupId: traits::GroupId<CURRENT_VERSION>>(

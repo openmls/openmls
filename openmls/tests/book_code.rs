@@ -6,6 +6,7 @@ use openmls::{
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_test::openmls_test;
 use openmls_traits::{signatures::Signer, types::SignatureScheme};
+use treesync::LeafNodeParameters;
 
 #[test]
 fn create_provider_rust_crypto() {
@@ -292,9 +293,11 @@ fn book_operations() {
     let (mut dave_group, _out, _group_info) = MlsGroup::join_by_external_commit(
         provider,
         &dave_signature_keys,
-        None,
+        None, // No ratchtet tree extension
         verifiable_group_info,
         &mls_group_config,
+        None, // No special capabilities
+        None, // No special extensions
         &[],
         dave_credential,
     )
@@ -354,10 +357,40 @@ fn book_operations() {
         unreachable!("Expected an ApplicationMessage.");
     }
 
+    // ANCHOR: set_aad
+    alice_group.set_aad(b"Additional Authenticated Data".to_vec());
+
+    assert_eq!(alice_group.aad(), b"Additional Authenticated Data");
+    // ANCHOR_END: set_aad
+
+    let message_alice = b"Hi, I'm Alice!";
+    let mls_message_out = alice_group
+        .create_message(provider, &alice_signature_keys, message_alice)
+        .expect("Error creating application message.");
+
+    let bytes = mls_message_out
+        .to_bytes()
+        .expect("Could not serialize message.");
+
+    let mls_message =
+        MlsMessageIn::tls_deserialize_exact(bytes).expect("Could not deserialize message.");
+
+    let protocol_message: ProtocolMessage = mls_message
+        .try_into_protocol_message()
+        .expect("Expected a PublicMessage or a PrivateMessage");
+
+    // ANCHOR: inspect_aad
+    let processed_message = bob_group
+        .process_message(provider, protocol_message)
+        .expect("Could not process message.");
+
+    assert_eq!(processed_message.aad(), b"Additional Authenticated Data");
+    // ANCHOR_END: inspect_aad
+
     // === Bob updates and commits ===
     // ANCHOR: self_update
     let (mls_message_out, welcome_option, _group_info) = bob_group
-        .self_update(provider, &bob_signature_keys)
+        .self_update(provider, &bob_signature_keys, LeafNodeParameters::default())
         .expect("Could not update own key package.");
     // ANCHOR_END: self_update
 
@@ -407,7 +440,7 @@ fn book_operations() {
         .propose_self_update(
             provider,
             &alice_signature_keys,
-            None, // We don't provide a leaf node, it will be created on the fly instead
+            LeafNodeParameters::default(),
         )
         .expect("Could not create update proposal.");
     // ANCHOR_END: propose_self_update
@@ -602,7 +635,11 @@ fn book_operations() {
 
     // === Charlie updates and commits ===
     let (queued_message, welcome_option, _group_info) = charlie_group
-        .self_update(provider, &charlie_signature_keys)
+        .self_update(
+            provider,
+            &charlie_signature_keys,
+            LeafNodeParameters::default(),
+        )
         .unwrap();
 
     let alice_processed_message = alice_group
@@ -906,7 +943,7 @@ fn book_operations() {
         )
         .expect("Could not create proposal to add Bob");
     alice_group
-        .remove_pending_proposal(provider.storage(), proposal_ref)
+        .remove_pending_proposal(provider.storage(), &proposal_ref)
         .expect("The proposal was not found");
     // ANCHOR_END: rollback_proposal_by_ref
 
@@ -1080,9 +1117,7 @@ fn book_operations() {
         assert_eq!(sender_cred_from_msg, sender_cred_from_group);
         assert_eq!(
             &sender_cred_from_msg,
-            alice_group
-                .credential::<Provider>()
-                .expect("Expected a credential.")
+            alice_group.credential().expect("Expected a credential.")
         );
     } else {
         unreachable!("Expected an ApplicationMessage.");

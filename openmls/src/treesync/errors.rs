@@ -128,7 +128,7 @@ pub(crate) enum DerivePathError {
 
 /// TreeSync set path error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub(crate) enum TreeSyncAddLeaf {
+pub enum TreeSyncAddLeaf {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
