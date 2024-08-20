@@ -144,7 +144,9 @@ fn test_group_info() {
         &bob_signature_keys,
         None,
         verifiable_group_info,
-        &MlsGroupJoinConfig::default(),
+        &MlsGroupJoinConfig::builder()
+            .use_ratchet_tree_extension(true)
+            .build(),
         None,
         None,
         b"",

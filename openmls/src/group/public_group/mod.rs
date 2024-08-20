@@ -8,7 +8,7 @@
 //! as associated helper structs the goal of which is to enable this
 //! functionality.
 //!
-//! To avoid duplication of code and functionality, [`CoreGroup`] internally
+//! To avoid duplication of code and functionality, [`MlsGroup`] internally
 //! relies on a [`PublicGroup`] as well.
 
 #[cfg(test)]
@@ -48,7 +48,7 @@ use crate::{
     versions::ProtocolVersion,
 };
 #[cfg(doc)]
-use crate::{framing::PublicMessage, group::CoreGroup};
+use crate::{framing::PublicMessage, group::MlsGroup};
 
 pub(crate) mod builder;
 pub(crate) mod diff;
@@ -377,9 +377,9 @@ impl PublicGroup {
     }
 
     /// Stores the [`PublicGroup`] to storage. Called from methods creating a new group and mutating an
-    /// existing group, both inside [`PublicGroup`] and in [`CoreGroup`].
+    /// existing group, both inside [`PublicGroup`] and in [`MlsGroup`].
     ///
-    /// [`CoreGroup`]: crate::group::core_group::CoreGroup
+    /// [`MlsGroup`]: crate::group::core_group::MlsGroup
     pub(crate) fn store<Storage: PublicStorageProvider>(
         &self,
         storage: &Storage,

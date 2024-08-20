@@ -1,4 +1,4 @@
-//! Builder for [CreateCommitParams] that is used in [CoreGroup::create_commit()]
+//! Builder for [CreateCommitParams] that is used in [MlsGroup::create_commit()]
 
 use serde::{Deserialize, Serialize};
 
@@ -6,9 +6,9 @@ use crate::{
     credentials::CredentialWithKey, framing::FramingParameters, messages::proposals::Proposal,
 };
 
-#[cfg(doc)]
-use super::CoreGroup;
 use super::LeafNodeParameters;
+#[cfg(doc)]
+use super::MlsGroup;
 
 /// Can be used to denote the type of a commit.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
