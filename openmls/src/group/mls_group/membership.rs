@@ -2,7 +2,7 @@
 //!
 //! This module contains membership-related operations and exposes [`RemoveOperation`].
 
-use core_group::create_commit_params::CreateCommitParams;
+use errors::EmptyInputError;
 use openmls_traits::{signatures::Signer, storage::StorageProvider as _};
 
 use super::{
@@ -10,8 +10,9 @@ use super::{
     *,
 };
 use crate::{
-    binary_tree::array_representation::LeafNodeIndex, messages::group_info::GroupInfo,
-    storage::OpenMlsProvider, treesync::LeafNode,
+    binary_tree::array_representation::LeafNodeIndex, group::QueuedRemoveProposal,
+    key_packages::KeyPackage, messages::group_info::GroupInfo, storage::OpenMlsProvider,
+    treesync::LeafNode,
 };
 
 impl MlsGroup {
@@ -112,7 +113,7 @@ impl MlsGroup {
             .inline_proposals(inline_proposals)
             .force_self_update(force_self_update)
             .build();
-        let create_commit_result = self.group.create_commit(params, provider, signer)?;
+        let create_commit_result = self.create_commit(params, provider, signer)?;
 
         let welcome = match create_commit_result.welcome_option {
             Some(welcome) => welcome,
@@ -139,14 +140,14 @@ impl MlsGroup {
         self.reset_aad();
         Ok((
             mls_messages,
-            MlsMessageOut::from_welcome(welcome, self.group.version()),
+            MlsMessageOut::from_welcome(welcome, self.version()),
             create_commit_result.group_info,
         ))
     }
 
     /// Returns a reference to the own [`LeafNode`].
     pub fn own_leaf(&self) -> Option<&LeafNode> {
-        self.group.public_group().leaf(self.group.own_leaf_index())
+        self.public_group().leaf(self.own_leaf_index())
     }
 
     /// Removes members from the group.
@@ -194,7 +195,7 @@ impl MlsGroup {
             .framing_parameters(self.framing_parameters())
             .inline_proposals(inline_proposals)
             .build();
-        let create_commit_result = self.group.create_commit(params, provider, signer)?;
+        let create_commit_result = self.create_commit(params, provider, signer)?;
 
         // Convert PublicMessage messages to MLSMessage and encrypt them if required by
         // the configuration
@@ -216,7 +217,7 @@ impl MlsGroup {
             mls_message,
             create_commit_result
                 .welcome_option
-                .map(|w| MlsMessageOut::from_welcome(w, self.group.version())),
+                .map(|w| MlsMessageOut::from_welcome(w, self.version())),
             create_commit_result.group_info,
         ))
     }
@@ -234,9 +235,8 @@ impl MlsGroup {
     ) -> Result<MlsMessageOut, LeaveGroupError<Provider::StorageError>> {
         self.is_operational()?;
 
-        let removed = self.group.own_leaf_index();
+        let removed = self.own_leaf_index();
         let remove_proposal = self
-            .group
             .create_remove_proposal(self.framing_parameters(), removed, signer)
             .map_err(|_| LibraryError::custom("Creating a self removal should not fail"))?;
 
@@ -264,14 +264,13 @@ impl MlsGroup {
 
     /// Returns a list of [`Member`]s in the group.
     pub fn members(&self) -> impl Iterator<Item = Member> + '_ {
-        self.group.public_group().members()
+        self.public_group().members()
     }
 
     /// Returns the [`Credential`] of a member corresponding to the given
     /// leaf index. Returns `None` if the member can not be found in this group.
     pub fn member(&self, leaf_index: LeafNodeIndex) -> Option<&Credential> {
-        self.group
-            .public_group()
+        self.public_group()
             // This will return an error if the member can't be found.
             .leaf(leaf_index)
             .map(|leaf| leaf.credential())

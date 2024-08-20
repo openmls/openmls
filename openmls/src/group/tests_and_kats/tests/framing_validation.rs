@@ -297,8 +297,8 @@ fn test_valsem004() {
         .set_membership_tag(
             provider.crypto(),
             ciphersuite,
-            alice_group.group().message_secrets().membership_key(),
-            alice_group.group().message_secrets().serialized_context(),
+            alice_group.message_secrets().membership_key(),
+            alice_group.message_secrets().serialized_context(),
         )
         .expect("Error setting membership tag.");
 
@@ -357,8 +357,8 @@ fn test_valsem005() {
         .set_membership_tag(
             provider.crypto(),
             ciphersuite,
-            alice_group.group().message_secrets().membership_key(),
-            alice_group.group().message_secrets().serialized_context(),
+            alice_group.message_secrets().membership_key(),
+            alice_group.message_secrets().serialized_context(),
         )
         .expect("Error setting membership tag.");
 
@@ -574,8 +574,8 @@ fn test_valsem009() {
         .set_membership_tag(
             provider.crypto(),
             ciphersuite,
-            alice_group.group().message_secrets().membership_key(),
-            alice_group.group().message_secrets().serialized_context(),
+            alice_group.message_secrets().membership_key(),
+            alice_group.message_secrets().serialized_context(),
         )
         .expect("Error setting membership tag.");
 
@@ -636,8 +636,8 @@ fn test_valsem010() {
         .set_membership_tag(
             provider.crypto(),
             ciphersuite,
-            alice_group.group().message_secrets().membership_key(),
-            alice_group.group().message_secrets().serialized_context(),
+            alice_group.message_secrets().membership_key(),
+            alice_group.message_secrets().serialized_context(),
         )
         .expect("Error setting membership tag.");
 

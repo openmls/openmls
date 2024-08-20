@@ -30,7 +30,7 @@ pub(crate) struct TestClientConfig {
 /// Configuration of a group meant to be used in a test setup.
 pub(crate) struct TestGroupConfig {
     pub(crate) ciphersuite: Ciphersuite,
-    pub(crate) config: CoreGroupConfig,
+    pub(crate) use_ratchet_tree_extension: bool,
     pub(crate) members: Vec<TestClientConfig>,
 }
 
@@ -125,7 +125,7 @@ pub(crate) fn setup(
         let mls_group = MlsGroup::builder()
             .with_group_id(GroupId::from_slice(&group_id.to_be_bytes()))
             .ciphersuite(group_config.ciphersuite)
-            .use_ratchet_tree_extension(group_config.config.add_ratchet_tree_extension)
+            .use_ratchet_tree_extension(group_config.use_ratchet_tree_extension)
             .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
             .build(
                 provider,
@@ -236,10 +236,10 @@ fn test_setup(provider: &impl crate::storage::OpenMlsProvider) {
         name: "TestClientConfigB",
         ciphersuites: vec![Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519],
     };
-    let group_config = CoreGroupConfig::default();
+    let use_ratchet_tree_extension = true;
     let test_group_config = TestGroupConfig {
         ciphersuite: Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-        config: group_config,
+        use_ratchet_tree_extension,
         members: vec![test_client_config_a.clone(), test_client_config_b.clone()],
     };
     let test_setup_config = TestSetupConfig {
@@ -329,14 +329,14 @@ pub(crate) fn resign_message(
 
     let mut signed_plaintext: PublicMessage = signed_plaintext.into();
 
-    let membership_key = alice_group.group().message_secrets().membership_key();
+    let membership_key = alice_group.message_secrets().membership_key();
 
     signed_plaintext
         .set_membership_tag(
             provider.crypto(),
             ciphersuite,
             membership_key,
-            alice_group.group().message_secrets().serialized_context(),
+            alice_group.message_secrets().serialized_context(),
         )
         .expect("error refreshing membership tag");
     signed_plaintext

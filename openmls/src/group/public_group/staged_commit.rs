@@ -2,7 +2,7 @@ use super::{super::errors::*, *};
 use crate::{
     framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, Sender},
     group::{
-        core_group::{proposals::ProposalQueue, staged_commit::StagedCommitState},
+        core_group::proposals::ProposalQueue, mls_group::staged_commit::StagedCommitState,
         StagedCommit,
     },
     messages::{proposals::ProposalOrRef, Commit},

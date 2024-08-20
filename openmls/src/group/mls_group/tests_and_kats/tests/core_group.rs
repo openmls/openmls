@@ -191,11 +191,7 @@ fn update_path() {
 
     // Rebuild the PublicMessage with the new content
     let group_context = group_bob.export_group_context().clone();
-    let membership_key = group_bob
-        .group()
-        .message_secrets()
-        .membership_key()
-        .as_slice();
+    let membership_key = group_bob.message_secrets().membership_key().as_slice();
 
     let broken_message = FrankenPublicMessage::auth(
         provider,

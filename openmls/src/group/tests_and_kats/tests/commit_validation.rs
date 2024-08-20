@@ -220,14 +220,14 @@ fn test_valsem200() {
 
     let mut signed_plaintext: PublicMessage = signed_plaintext.into();
 
-    let membership_key = alice_group.group().message_secrets().membership_key();
+    let membership_key = alice_group.message_secrets().membership_key();
 
     signed_plaintext
         .set_membership_tag(
             provider.crypto(),
             ciphersuite,
             membership_key,
-            alice_group.group().message_secrets().serialized_context(),
+            alice_group.message_secrets().serialized_context(),
         )
         .expect("error refreshing membership tag");
 
@@ -317,7 +317,7 @@ fn test_valsem201() {
 
     let gce_proposal = || {
         queued(Proposal::GroupContextExtensions(
-            GroupContextExtensionProposal::new(alice_group.group().context().extensions().clone()),
+            GroupContextExtensionProposal::new(alice_group.context().extensions().clone()),
         ))
     };
 
@@ -357,7 +357,6 @@ fn test_valsem201() {
             .force_self_update(false)
             .build();
         let commit = alice_group
-            .group()
             .create_commit(params, provider, &alice_credential.signer)
             .unwrap()
             .commit;
@@ -370,13 +369,13 @@ fn test_valsem201() {
         };
 
         let mut commit: PublicMessage = commit.into();
-        let membership_key = alice_group.group().message_secrets().membership_key();
+        let membership_key = alice_group.message_secrets().membership_key();
         commit
             .set_membership_tag(
                 provider.crypto(),
                 ciphersuite,
                 membership_key,
-                alice_group.group().message_secrets().serialized_context(),
+                alice_group.message_secrets().serialized_context(),
             )
             .unwrap();
         // verify that a path is indeed required when the commit is received
@@ -678,7 +677,6 @@ fn test_valsem204() {
             })
             .collect();
         let new_nodes = alice_group
-            .group()
             .public_group()
             .encrypt_path(
                 provider,
@@ -775,14 +773,14 @@ fn test_valsem205() {
     plaintext.set_confirmation_tag(Some(new_confirmation_tag));
 
     // Since the membership tag covers the confirmation tag, we have to refresh it.
-    let membership_key = alice_group.group().message_secrets().membership_key();
+    let membership_key = alice_group.message_secrets().membership_key();
 
     plaintext
         .set_membership_tag(
             provider.crypto(),
             ciphersuite,
             membership_key,
-            alice_group.group().message_secrets().serialized_context(),
+            alice_group.message_secrets().serialized_context(),
         )
         .expect("error refreshing membership tag");
 

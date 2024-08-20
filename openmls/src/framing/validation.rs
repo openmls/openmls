@@ -31,8 +31,8 @@ use crate::{
     error::LibraryError,
     extensions::ExternalSendersExtension,
     group::{
-        core_group::{proposals::QueuedProposal, staged_commit::StagedCommit},
-        errors::ValidationError,
+        core_group::proposals::QueuedProposal, errors::ValidationError,
+        mls_group::staged_commit::StagedCommit,
     },
     tree::sender_ratchet::SenderRatchetConfiguration,
     treesync::TreeSync,
@@ -96,7 +96,7 @@ impl DecryptedMessage {
     pub(crate) fn from_inbound_ciphertext(
         ciphertext: PrivateMessageIn,
         crypto: &impl OpenMlsCrypto,
-        group: &mut CoreGroup,
+        group: &mut MlsGroup,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
     ) -> Result<Self, ValidationError> {
         // This will be refactored with #265.

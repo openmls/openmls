@@ -1,20 +1,22 @@
 use core::fmt::Debug;
 use std::mem;
 
-use public_group::diff::{apply_proposals::ApplyProposalsValues, StagedPublicGroupDiff};
-
-use self::public_group::staged_commit::PublicStagedCommitState;
-
 use super::{super::errors::*, *};
 use crate::{
     ciphersuite::{hash_ref::ProposalRef, Secret},
     framing::mls_auth_content::AuthenticatedContent,
+    group::{
+        public_group::{
+            diff::{apply_proposals::ApplyProposalsValues, StagedPublicGroupDiff},
+            staged_commit::PublicStagedCommitState,
+        },
+        QueuedAddProposal, QueuedPskProposal, QueuedRemoveProposal, QueuedUpdateProposal,
+    },
+    schedule::{CommitSecret, EpochAuthenticator, EpochSecrets, InitSecret, PreSharedKeyId},
     treesync::node::encryption_keys::EncryptionKeyPair,
 };
 
-use openmls_traits::storage::StorageProvider as _;
-
-impl CoreGroup {
+impl MlsGroup {
     fn derive_epoch_secrets(
         &self,
         provider: &impl OpenMlsProvider,

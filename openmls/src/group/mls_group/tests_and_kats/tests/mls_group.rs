@@ -358,7 +358,7 @@ fn test_invalid_plaintext() {
     // Store the context and membership key so that we can re-compute the membership tag later.
     let client_groups = client.groups.read().unwrap();
     let client_group = client_groups.get(&group_id).unwrap();
-    let membership_key = client_group.group().message_secrets().membership_key();
+    let membership_key = client_group.message_secrets().membership_key();
 
     // Tamper with the message such that signature verification fails
     // Once #574 is addressed the new function from there should be used to manipulate the signature.
@@ -379,7 +379,7 @@ fn test_invalid_plaintext() {
                 client.provider.crypto(),
                 ciphersuite,
                 membership_key,
-                client_group.group().message_secrets().serialized_context(),
+                client_group.message_secrets().serialized_context(),
             )
             .unwrap()
         }
@@ -1298,7 +1298,7 @@ fn update_group_context_with_unknown_extension<Provider: OpenMlsProvider + Defau
     .expect("error creating group");
 
     // === Verify the initial group context extension data is correct ===
-    let group_context_extensions = alice_group.group().context().extensions();
+    let group_context_extensions = alice_group.context().extensions();
     let mut extracted_data = None;
     for extension in group_context_extensions.iter() {
         if let Extension::Unknown(UNKNOWN_EXTENSION_TYPE, UnknownExtension(data)) = extension {
@@ -1351,7 +1351,7 @@ fn update_group_context_with_unknown_extension<Provider: OpenMlsProvider + Defau
     .expect("Error creating group from staged join");
 
     // === Verify Bob's initial group context extension data is correct ===
-    let group_context_extensions = bob_group.group().context().extensions();
+    let group_context_extensions = bob_group.context().extensions();
     let mut extracted_data_2 = None;
     for extension in group_context_extensions.iter() {
         if let Extension::Unknown(UNKNOWN_EXTENSION_TYPE, UnknownExtension(data)) = extension {
@@ -1436,7 +1436,7 @@ fn update_group_context_with_unknown_extension<Provider: OpenMlsProvider + Defau
     };
 
     // === Verify the group context extension was updated ===
-    let group_context_extensions = alice_group.group().context().extensions();
+    let group_context_extensions = alice_group.context().extensions();
     let mut extracted_data_updated = None;
     for extension in group_context_extensions.iter() {
         if let Extension::Unknown(UNKNOWN_EXTENSION_TYPE, UnknownExtension(data)) = extension {
@@ -1450,7 +1450,7 @@ fn update_group_context_with_unknown_extension<Provider: OpenMlsProvider + Defau
     );
 
     // === Verify Bob sees the group context extension updated ===
-    let bob_group_loaded = MlsGroup::load(bob_provider.storage(), bob_group.group().group_id())
+    let bob_group_loaded = MlsGroup::load(bob_provider.storage(), bob_group.group_id())
         .expect("error loading group")
         .expect("no such group");
     let group_context_extensions_2 = bob_group_loaded.export_group_context().extensions();
@@ -1726,7 +1726,7 @@ fn test_update_group_context_with_unknown_extension_using_update_function<
     .expect("error creating group");
 
     // === Verify the initial group context extension data is correct ===
-    let group_context_extensions = alice_group.group().context().extensions();
+    let group_context_extensions = alice_group.context().extensions();
     let mut extracted_data = None;
     for extension in group_context_extensions.iter() {
         if let Extension::Unknown(UNKNOWN_EXTENSION_TYPE, UnknownExtension(data)) = extension {
@@ -1764,7 +1764,7 @@ fn test_update_group_context_with_unknown_extension_using_update_function<
     alice_group
         .clear_pending_commit(provider.storage())
         .unwrap();
-    let group_context_extensions = alice_group.group().context().extensions();
+    let group_context_extensions = alice_group.context().extensions();
     let mut extracted_data = None;
     for extension in group_context_extensions.iter() {
         if let Extension::Unknown(UNKNOWN_EXTENSION_TYPE, UnknownExtension(data)) = extension {
@@ -1801,7 +1801,7 @@ fn test_update_group_context_with_unknown_extension_using_update_function<
     alice_group.merge_pending_commit(&alice_provider).unwrap();
 
     // === Verify the group context extension was updated ===
-    let group_context_extensions = alice_group.group().context().extensions();
+    let group_context_extensions = alice_group.context().extensions();
     let mut extracted_data_updated = None;
     for extension in group_context_extensions.iter() {
         if let Extension::Unknown(UNKNOWN_EXTENSION_TYPE, UnknownExtension(data)) = extension {

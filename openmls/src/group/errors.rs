@@ -107,15 +107,9 @@ pub enum ExternalCommitError<StorageError> {
     /// We don't support the ciphersuite of the group we are trying to join.
     #[error("We don't support the ciphersuite of the group we are trying to join.")]
     UnsupportedCiphersuite,
-    /// Sender not found in tree.
-    #[error("Sender not found in tree.")]
-    UnknownSender,
-    /// The signature over the given group info is invalid.
-    #[error("The signature over the given group info is invalid.")]
-    InvalidGroupInfoSignature,
     /// Error creating external commit.
-    #[error("Error creating external commit.")]
-    CommitError,
+    #[error(transparent)]
+    CommitError(#[from] CreateCommitError<StorageError>),
     /// This error indicates the public tree is invalid. See
     /// [`CreationFromExternalError`] for more details.
     #[error(transparent)]

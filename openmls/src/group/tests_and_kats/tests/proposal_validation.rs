@@ -213,17 +213,14 @@ fn insert_proposal_and_resign(
         ciphersuite,
     );
 
-    let membership_key = committer_group.group().message_secrets().membership_key();
+    let membership_key = committer_group.message_secrets().membership_key();
 
     signed_plaintext
         .set_membership_tag(
             provider.crypto(),
             ciphersuite,
             membership_key,
-            committer_group
-                .group()
-                .message_secrets()
-                .serialized_context(),
+            committer_group.message_secrets().serialized_context(),
         )
         .expect("error refreshing membership tag");
 
@@ -933,7 +930,6 @@ fn test_valsem103_valsem104(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
 
     // We now pull bob's public key from his leaf.
     let bob_encryption_key = bob_group
-        .group()
         .own_leaf_node()
         .expect("No own leaf")
         .encryption_key()
@@ -1683,13 +1679,11 @@ fn test_valsem110() {
 
     // We begin by creating a leaf node with a colliding encryption key.
     let bob_leaf_node = bob_group
-        .group()
         .own_leaf_node()
         .expect("error getting own leaf node")
         .clone();
 
     let alice_encryption_key = alice_group
-        .group()
         .own_leaf_node()
         .unwrap()
         .encryption_key()
@@ -1711,7 +1705,7 @@ fn test_valsem110() {
     franken_leaf_node.encryption_key = alice_encryption_key.key().clone();
     franken_leaf_node.leaf_node_source = FrankenLeafNodeSource::Update;
     franken_leaf_node.resign(
-        Some(bob_group.group().own_tree_position().into()),
+        Some(bob_group.own_tree_position().into()),
         &bob_credential_with_key_and_signer.signer,
     );
 
@@ -1740,11 +1734,7 @@ fn test_valsem110() {
 
     // Rebuild the PublicMessage with the new content
     let group_context = bob_group.export_group_context().clone();
-    let membership_key = bob_group
-        .group()
-        .message_secrets()
-        .membership_key()
-        .as_slice();
+    let membership_key = bob_group.message_secrets().membership_key().as_slice();
 
     let new_public_message = FrankenPublicMessage::auth(
         provider,
@@ -1837,7 +1827,6 @@ fn test_valsem110() {
     // We have to store the keypair with the proper label s.t. Bob can actually
     // process the commit.
     let leaf_keypair = alice_group
-        .group()
         .read_epoch_keypairs(provider.storage())
         .into_iter()
         .find(|keypair| keypair.public_key() == &alice_encryption_key)

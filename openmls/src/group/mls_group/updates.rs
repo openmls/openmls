@@ -1,8 +1,9 @@
-use core_group::create_commit_params::CreateCommitParams;
+use errors::{ProposeSelfUpdateError, SelfUpdateError};
 use openmls_traits::{signatures::Signer, storage::StorageProvider as _};
 
 use crate::{
-    messages::group_info::GroupInfo, storage::OpenMlsProvider, treesync::LeafNodeParameters,
+    group::core_group::create_commit_params::CreateCommitParams, messages::group_info::GroupInfo,
+    storage::OpenMlsProvider, treesync::LeafNodeParameters,
 };
 
 use super::*;
@@ -40,7 +41,7 @@ impl MlsGroup {
             .build();
         // Create Commit over all proposals.
         // TODO #751
-        let create_commit_result = self.group.create_commit(params, provider, signer)?;
+        let create_commit_result = self.create_commit(params, provider, signer)?;
 
         // Convert PublicMessage messages to MLSMessage and encrypt them if required by
         // the configuration
@@ -56,8 +57,7 @@ impl MlsGroup {
             .storage()
             .write_group_state(self.group_id(), &self.group_state)
             .map_err(SelfUpdateError::StorageError)?;
-        self.group
-            .store(provider.storage())
+        self.store(provider.storage())
             .map_err(SelfUpdateError::StorageError)?;
 
         self.reset_aad();
@@ -65,7 +65,7 @@ impl MlsGroup {
             mls_message,
             create_commit_result
                 .welcome_option
-                .map(|w| MlsMessageOut::from_welcome(w, self.group.version())),
+                .map(|w| MlsMessageOut::from_welcome(w, self.version())),
             create_commit_result.group_info,
         ))
     }
@@ -86,7 +86,6 @@ impl MlsGroup {
         // The new leaf node will be applied later when the proposal is
         // committed.
         let mut own_leaf = self
-            .group
             .public_group()
             .leaf(self.own_leaf_index())
             .ok_or_else(|| LibraryError::custom("The tree is broken. Couldn't find own leaf."))?
@@ -101,11 +100,8 @@ impl MlsGroup {
             leaf_node_parmeters,
         )?;
 
-        let update_proposal = self.group.create_update_proposal(
-            self.framing_parameters(),
-            own_leaf.clone(),
-            signer,
-        )?;
+        let update_proposal =
+            self.create_update_proposal(self.framing_parameters(), own_leaf.clone(), signer)?;
 
         provider
             .storage()

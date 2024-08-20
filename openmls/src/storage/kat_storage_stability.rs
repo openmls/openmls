@@ -477,13 +477,7 @@ fn test(ciphersuite: Ciphersuite, provider: &Provider) {
 
     // we are in the right epoch
     assert_eq!(alice_group_new_group.epoch(), 0.into());
-    assert_eq!(
-        alice_group_new_group
-            .group()
-            .resumption_psk_store()
-            .cursor(),
-        1
-    );
+    assert_eq!(alice_group_new_group.resumption_psk_store().cursor(), 1);
 
     // dropping to prevent accidentally using the wrong provider or group later
     drop(alice_group_new_group);
@@ -536,7 +530,6 @@ fn test(ciphersuite: Ciphersuite, provider: &Provider) {
     assert_eq!(alice_group_pending_add_commit.epoch(), 0.into());
     assert_eq!(
         alice_group_pending_add_commit
-            .group()
             .resumption_psk_store()
             .cursor(),
         1
@@ -575,13 +568,7 @@ fn test(ciphersuite: Ciphersuite, provider: &Provider) {
 
     // we are in the right epoch
     assert_eq!(alice_group_bob_added.epoch(), 1.into());
-    assert_eq!(
-        alice_group_bob_added
-            .group()
-            .resumption_psk_store()
-            .cursor(),
-        2
-    );
+    assert_eq!(alice_group_bob_added.resumption_psk_store().cursor(), 2);
 
     // dropping to prevent accidentally using the wrong provider or group later
     drop(alice_group_bob_added);
@@ -644,7 +631,6 @@ fn test(ciphersuite: Ciphersuite, provider: &Provider) {
     assert_eq!(alice_group_pending_gce_commit.epoch(), 1.into());
     assert_eq!(
         alice_group_pending_gce_commit
-            .group()
             .resumption_psk_store()
             .cursor(),
         2
