@@ -21,6 +21,9 @@ use crate::{
     },
 };
 
+#[cfg(doc)]
+use crate::key_packages::KeyPackage;
+
 impl MlsGroup {
     // === Group creation ===
 
