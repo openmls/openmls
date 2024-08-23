@@ -3,9 +3,6 @@
 //! This module contains [`MlsGroup`] and its submodules.
 //!
 
-#[cfg(any(feature = "test-utils", test))]
-use crate::schedule::message_secrets::MessageSecrets;
-
 use create_commit_params::{CommitType, CreateCommitParams};
 use past_secrets::MessageSecretsStore;
 use proposal_store::ProposalQueue;
@@ -39,6 +36,7 @@ use crate::{
         Commit, GroupSecrets, Welcome,
     },
     schedule::{
+        message_secrets::MessageSecrets,
         psk::{load_psks, store::ResumptionPskStore, PskSecret},
         GroupEpochSecrets, JoinerSecret, KeySchedule,
     },
