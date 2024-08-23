@@ -1,3 +1,6 @@
+//! This module contains the implementation of the processing functions for
+//! public groups.
+
 use openmls_traits::crypto::OpenMlsCrypto;
 use tls_codec::Serialize;
 

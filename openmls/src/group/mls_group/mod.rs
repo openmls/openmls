@@ -386,11 +386,9 @@ impl MlsGroup {
             Ok((self.message_secrets_store.message_secrets_mut(), &[]))
         }
     }
-
-    pub fn own_leaf_node(&self) -> Result<&LeafNode, LibraryError> {
-        self.public_group()
-            .leaf(self.own_leaf_index())
-            .ok_or_else(|| LibraryError::custom("Tree has no own leaf."))
+    /// Returns the leaf node of the client in the tree owning this group.
+    pub fn own_leaf_node(&self) -> Option<&LeafNode> {
+        self.public_group().leaf(self.own_leaf_index())
     }
 
     /// Returns the group ID.
@@ -771,7 +769,8 @@ impl MlsGroup {
         if let Some(required_extension) = required_extension {
             let required_capabilities = required_extension.as_required_capabilities_extension()?;
             // Ensure we support all the capabilities.
-            self.own_leaf_node()?
+            self.own_leaf_node()
+                .ok_or_else(|| LibraryError::custom("Tree has no own leaf."))?
                 .capabilities()
                 .supports_required_capabilities(required_capabilities)?;
 
