@@ -200,17 +200,17 @@ impl PrivateMessageIn {
     }
 
     /// Get the `group_id` in the `PrivateMessage`.
-    pub(crate) fn group_id(&self) -> &GroupId {
+    pub fn group_id(&self) -> &GroupId {
         &self.group_id
     }
 
     /// Get the `epoch` in the `PrivateMessage`.
-    pub(crate) fn epoch(&self) -> GroupEpoch {
+    pub fn epoch(&self) -> GroupEpoch {
         self.epoch
     }
 
     /// Get the `content_type` in the `PrivateMessage`.
-    pub(crate) fn content_type(&self) -> ContentType {
+    pub fn content_type(&self) -> ContentType {
         self.content_type
     }
 
