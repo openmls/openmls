@@ -54,11 +54,6 @@ impl MlsGroup {
         self.group_epoch_secrets().resumption_psk()
     }
 
-    /// Returns a reference to the public group.
-    pub(crate) fn public_group(&self) -> &PublicGroup {
-        &self.public_group
-    }
-
     /// Returns a resumption psk for a given epoch. If no resumption psk
     /// is available for that epoch,  `None` is returned.
     pub fn get_past_resumption_psk(&self, epoch: GroupEpoch) -> Option<&ResumptionPskSecret> {

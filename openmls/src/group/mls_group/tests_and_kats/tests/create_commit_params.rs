@@ -1,5 +1,5 @@
 use crate::group::{
-    create_commit_params::CreateCommitParams,
+    create_commit::CreateCommitParams,
     mls_group::{FramingParameters, Proposal, WireFormat},
 };
 

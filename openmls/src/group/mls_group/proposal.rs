@@ -1,7 +1,7 @@
 use openmls_traits::{signatures::Signer, storage::StorageProvider as _, types::Ciphersuite};
 
 use super::{
-    create_commit_params::CreateCommitParams,
+    create_commit::CreateCommitParams,
     errors::{ProposalError, ProposeAddMemberError, ProposeRemoveMemberError, RemoveProposalError},
     AddProposal, CreateGroupContextExtProposalError, CustomProposal, FramingParameters,
     GroupContextExtensionProposal, MlsGroup, MlsGroupState, PendingCommitState,

@@ -30,7 +30,7 @@ impl MlsGroup {
             ));
         }
 
-        let public_message = AuthenticatedContent::new_application(
+        let authenticated_content = AuthenticatedContent::new_application(
             self.own_leaf_index(),
             &self.aad,
             message,
@@ -38,7 +38,7 @@ impl MlsGroup {
             signer,
         )?;
         let ciphertext = self
-            .encrypt(public_message, provider)
+            .encrypt(authenticated_content, provider)
             // We know the application message is wellformed and we have the key material of the current epoch
             .map_err(|_| LibraryError::custom("Malformed plaintext"))?;
 
