@@ -457,7 +457,7 @@ impl MlsGroup {
     // === Create handshake messages ===
     // TODO: share functionality between these.
 
-    // 11.1.1. Add
+    // 12.1.1. Add
     // struct {
     //     KeyPackage key_package;
     // } Add;
@@ -487,9 +487,9 @@ impl MlsGroup {
         .map_err(|e| e.into())
     }
 
-    // 11.1.2. Update
+    // 12.1.2. Update
     // struct {
-    //     KeyPackage key_package;
+    //     LeafNode leaf_node;
     // } Update;
     pub(crate) fn create_update_proposal(
         &self,
@@ -510,9 +510,9 @@ impl MlsGroup {
         )
     }
 
-    // 11.1.3. Remove
+    // 12.1.3. Remove
     // struct {
-    //     KeyPackageRef removed;
+    //     uint32 removed;
     // } Remove;
     pub(crate) fn create_remove_proposal(
         &self,
@@ -535,7 +535,7 @@ impl MlsGroup {
         .map_err(ValidationError::LibraryError)
     }
 
-    // 11.1.4. PreSharedKey
+    // 12.1.4. PreSharedKey
     // struct {
     //     PreSharedKeyID psk;
     // } PreSharedKey;
