@@ -3,9 +3,6 @@
 use super::*;
 use crate::{credentials::CredentialWithKey, treesync::LeafNodeParameters};
 
-#[cfg(doc)]
-use crate::treesync::LeafNodeParameters;
-
 /// Can be used to denote the type of a commit.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub(crate) enum CommitType {
