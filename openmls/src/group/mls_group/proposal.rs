@@ -455,7 +455,6 @@ impl MlsGroup {
     }
 
     // === Create handshake messages ===
-    // TODO: share functionality between these.
 
     // 12.1.1. Add
     // struct {
