@@ -96,7 +96,7 @@ pub struct Member {
 
 impl Member {
     /// Create new member.
-    pub(crate) fn new(
+    pub fn new(
         index: LeafNodeIndex,
         encryption_key: Vec<u8>,
         signature_key: Vec<u8>,
