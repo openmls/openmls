@@ -302,7 +302,7 @@ impl ProcessedWelcome {
             verifiable_group_info.extensions().required_capabilities()
         {
             // Also check that our key package actually supports the extensions.
-            // Per spec the sender must have checked this. But you never know.
+            // As per the spec, the sender must have checked this. But you never know.
             key_package_bundle
                 .key_package()
                 .leaf_node()
