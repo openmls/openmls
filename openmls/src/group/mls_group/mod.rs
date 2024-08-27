@@ -240,7 +240,7 @@ pub struct MlsGroup {
     /// the store must be increased through [`max_past_epochs()`].
     message_secrets_store: MessageSecretsStore,
     // Resumption psk store. This is where the resumption psks are kept in a rollover list.
-    pub(crate) resumption_psk_store: ResumptionPskStore,
+    resumption_psk_store: ResumptionPskStore,
     // Own [`LeafNode`]s that were created for update proposals and that
     // are needed in case an update proposal is committed by another group
     // member. The vector is emptied after every epoch change.
