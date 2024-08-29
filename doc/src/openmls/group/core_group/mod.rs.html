@@ -1965,7 +1965,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         storage: <span class="kw-2">&amp;</span>Storage,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Storage::Error&gt; {
-        <span class="self">self</span>.public_group.delete(storage)<span class="question-mark">?</span>;
+        PublicGroup::delete(<span class="self">self</span>.group_id(), storage)<span class="question-mark">?</span>;
         storage.delete_own_leaf_index(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
         storage.delete_group_epoch_secrets(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
         storage.delete_message_secrets(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;

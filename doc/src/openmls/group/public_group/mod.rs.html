@@ -879,14 +879,14 @@
     }
 
     <span class="doccomment">/// Deletes the [`PublicGroup`] from storage.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>delete&lt;Storage: PublicStorageProvider&gt;(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
+    </span><span class="kw">pub fn </span>delete&lt;Storage: PublicStorageProvider&gt;(
+        group_id: <span class="kw-2">&amp;</span>GroupId,
         storage: <span class="kw-2">&amp;</span>Storage,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Storage::PublicError&gt; {
-        storage.delete_tree(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
-        storage.delete_confirmation_tag(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
-        storage.delete_context(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
-        storage.delete_interim_transcript_hash(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
+        storage.delete_tree(group_id)<span class="question-mark">?</span>;
+        storage.delete_confirmation_tag(group_id)<span class="question-mark">?</span>;
+        storage.delete_context(group_id)<span class="question-mark">?</span>;
+        storage.delete_interim_transcript_hash(group_id)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(())
     }
@@ -896,7 +896,7 @@
         storage: <span class="kw-2">&amp;</span>Storage,
         group_id: <span class="kw-2">&amp;</span>GroupId,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt;, Storage::PublicError&gt; {
-        <span class="kw">let </span>treesync = storage.treesync(group_id)<span class="question-mark">?</span>;
+        <span class="kw">let </span>treesync = storage.tree(group_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>proposals: Vec&lt;(ProposalRef, QueuedProposal)&gt; = storage.queued_proposals(group_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>group_context = storage.group_context(group_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>interim_transcript_hash: <span class="prelude-ty">Option</span>&lt;InterimTranscriptHash&gt; =
