@@ -758,7 +758,7 @@ impl CoreGroup {
         &self,
         storage: &Storage,
     ) -> Result<(), Storage::Error> {
-        self.public_group.delete(storage)?;
+        PublicGroup::delete(self.group_id(), storage)?;
         storage.delete_own_leaf_index(self.group_id())?;
         storage.delete_group_epoch_secrets(self.group_id())?;
         storage.delete_message_secrets(self.group_id())?;

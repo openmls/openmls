@@ -396,14 +396,14 @@ impl PublicGroup {
     }
 
     /// Deletes the [`PublicGroup`] from storage.
-    pub(crate) fn delete<Storage: PublicStorageProvider>(
-        &self,
+    pub fn delete<Storage: PublicStorageProvider>(
+        group_id: &GroupId,
         storage: &Storage,
     ) -> Result<(), Storage::PublicError> {
-        storage.delete_tree(self.group_id())?;
-        storage.delete_confirmation_tag(self.group_id())?;
-        storage.delete_context(self.group_id())?;
-        storage.delete_interim_transcript_hash(self.group_id())?;
+        storage.delete_tree(group_id)?;
+        storage.delete_confirmation_tag(group_id)?;
+        storage.delete_context(group_id)?;
+        storage.delete_interim_transcript_hash(group_id)?;
 
         Ok(())
     }
