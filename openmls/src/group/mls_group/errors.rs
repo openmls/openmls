@@ -45,9 +45,6 @@ pub enum NewGroupError<StorageError> {
     /// Invalid extensions set in configuration
     #[error("Invalid extensions set in configuration")]
     InvalidExtensions(#[from] InvalidExtensionError),
-    /// See [`PskError`] for more details.
-    #[error(transparent)]
-    Psk(#[from] PskError),
 }
 
 /// EmptyInput error
