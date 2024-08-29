@@ -400,8 +400,8 @@ impl PublicGroup {
 
     /// Deletes the [`PublicGroup`] from storage.
     pub fn delete<Storage: PublicStorageProvider>(
-        group_id: &GroupId,
         storage: &Storage,
+        group_id: &GroupId,
     ) -> Result<(), Storage::PublicError> {
         storage.delete_tree(group_id)?;
         storage.delete_confirmation_tag(group_id)?;

@@ -451,7 +451,7 @@ impl MlsGroup {
         &mut self,
         storage: &Storage,
     ) -> Result<(), Storage::Error> {
-        self.public_group.delete(storage)?;
+        PublicGroup::delete(storage, self.group_id())?;
         storage.delete_own_leaf_index(self.group_id())?;
         storage.delete_group_epoch_secrets(self.group_id())?;
         storage.delete_message_secrets(self.group_id())?;
