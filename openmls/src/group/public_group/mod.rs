@@ -413,7 +413,7 @@ impl PublicGroup {
         storage: &Storage,
         group_id: &GroupId,
     ) -> Result<Option<Self>, Storage::PublicError> {
-        let treesync = storage.treesync(group_id)?;
+        let treesync = storage.tree(group_id)?;
         let proposals: Vec<(ProposalRef, QueuedProposal)> = storage.queued_proposals(group_id)?;
         let group_context = storage.group_context(group_id)?;
         let interim_transcript_hash: Option<InterimTranscriptHash> =
