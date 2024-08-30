@@ -840,13 +840,13 @@ pub struct StagedWelcome {
     message_secrets_store: MessageSecretsStore,
 
     /// Resumption psk store. This is where the resumption psks are kept in a rollover list.
-    pub(crate) resumption_psk_store: ResumptionPskStore,
+    resumption_psk_store: ResumptionPskStore,
 
     /// The [`VerifiableGroupInfo`] from the [`Welcome`] message.
     verifiable_group_info: VerifiableGroupInfo,
 
     /// The key package bundle used for this welcome.
-    pub(crate) key_package_bundle: KeyPackageBundle,
+    key_package_bundle: KeyPackageBundle,
 
     /// If we got a path secret, these are the derived path keys.
     path_keypairs: Option<Vec<EncryptionKeyPair>>,
