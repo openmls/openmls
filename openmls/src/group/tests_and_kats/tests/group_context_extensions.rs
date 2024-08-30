@@ -496,7 +496,7 @@ fn fail_insufficient_extensiontype_capabilities_add_valno103() {
         group_context.confirmed_transcript_hash()
     );
 
-    let secrets = alice.group.group().message_secrets();
+    let secrets = alice.group.message_secrets();
     let membership_key = secrets.membership_key().as_slice();
 
     let franken_commit = frankenstein::FrankenMlsMessage {
@@ -620,7 +620,7 @@ fn fail_insufficient_extensiontype_capabilities_update_valno103() {
 
     // prepare data needed for proposal
     let group_context = bob.group.export_group_context().clone();
-    let secrets = bob.group.group().message_secrets();
+    let secrets = bob.group.message_secrets();
     let membership_key = secrets.membership_key().as_slice();
 
     // build MlsMessage containing the proposal
@@ -670,7 +670,7 @@ fn fail_insufficient_extensiontype_capabilities_update_valno103() {
 
     // prepare data needed for making the message authentic
     let group_context = alice.group.export_group_context().clone();
-    let secrets = alice.group.group().message_secrets();
+    let secrets = alice.group.message_secrets();
     let membership_key = secrets.membership_key().as_slice();
 
     let franken_commit = frankenstein::FrankenMlsMessage {
@@ -763,7 +763,7 @@ fn fail_key_package_version_valno201() {
     key_package.resign(&charlie.signer);
 
     let group_context = alice.group.export_group_context();
-    let membership_key = alice.group.group().message_secrets().membership_key();
+    let membership_key = alice.group.message_secrets().membership_key();
 
     let franken_commit_message = frankenstein::FrankenMlsMessage {
         version,
@@ -825,7 +825,6 @@ fn fail_2_gce_proposals_1_commit_valno308() {
     // No required capabilities, so no specifically required extensions.
     assert!(alice
         .group
-        .group()
         .context()
         .extensions()
         .required_capabilities()
@@ -876,7 +875,7 @@ fn fail_2_gce_proposals_1_commit_valno308() {
                 group_context.confirmed_transcript_hash()
             );
 
-            let secrets = alice.group.group().message_secrets();
+            let secrets = alice.group.message_secrets();
             let membership_key = secrets.membership_key().as_slice();
 
             *msg = frankenstein::FrankenPublicMessage::auth(
@@ -932,7 +931,6 @@ fn fail_unsupported_gces_add_valno1001() {
     // No required capabilities, so no specifically required extensions.
     assert!(alice
         .group
-        .group()
         .context()
         .extensions()
         .required_capabilities()
@@ -989,7 +987,7 @@ fn fail_unsupported_gces_add_valno1001() {
     extension_types.push(0xf003);
 
     let group_context = bob.group.export_group_context().clone();
-    let secrets = bob.group.group().message_secrets();
+    let secrets = bob.group.message_secrets();
     let membership_key = secrets.membership_key().as_slice();
 
     let franken_commit_message = frankenstein::FrankenMlsMessage {
@@ -1055,7 +1053,6 @@ fn proposal() {
     // No required capabilities, so no specifically required extensions.
     assert!(alice
         .group
-        .group()
         .context()
         .extensions()
         .required_capabilities()
@@ -1076,7 +1073,6 @@ fn proposal() {
 
     let required_capabilities = alice
         .group
-        .group()
         .context()
         .extensions()
         .required_capabilities()

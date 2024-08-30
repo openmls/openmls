@@ -9,10 +9,10 @@ use crate::{
     group::{
         errors::*,
         mls_group::{
+            proposal_store::{ProposalQueue, ProposalStore, QueuedProposal},
             tests_and_kats::utils::{setup_alice_bob_group, setup_client},
             ProcessedMessageContent,
         },
-        proposals::{ProposalQueue, ProposalStore, QueuedProposal},
         GroupContext, GroupId, MlsGroup, MlsGroupJoinConfig, StagedWelcome,
     },
     key_packages::{KeyPackageBundle, KeyPackageIn},
@@ -306,7 +306,7 @@ fn required_extension_key_package_mismatch(
         )))
         .unwrap()
         .build(provider, &alice_signer, alice_credential)
-        .expect("Error creating CoreGroup.");
+        .expect("Error creating MlsGroup.");
 
     let e = alice_group.propose_add_member(provider, &alice_signer, bob_key_package)
         .expect_err("Proposal was created even though the key package didn't support the required extensions.");
@@ -402,7 +402,7 @@ fn group_context_extension_proposal_fails(
         )))
         .unwrap()
         .build(provider, &alice_signer, alice_credential)
-        .expect("Error creating CoreGroup.");
+        .expect("Error creating MlsGroup.");
 
     // Adding Bob
     let (_commit, welcome, _group_info_option) = alice_group

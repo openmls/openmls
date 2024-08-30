@@ -600,7 +600,6 @@ pub mod traits {
     pub trait GroupState<const VERSION: u16>: Entity<VERSION> {}
     pub trait GroupEpochSecrets<const VERSION: u16>: Entity<VERSION> {}
     pub trait LeafNodeIndex<const VERSION: u16>: Entity<VERSION> {}
-    pub trait GroupUseRatchetTreeExtension<const VERSION: u16>: Entity<VERSION> {}
     pub trait MessageSecrets<const VERSION: u16>: Entity<VERSION> {}
     pub trait ResumptionPskStore<const VERSION: u16>: Entity<VERSION> {}
     pub trait KeyPackage<const VERSION: u16>: Entity<VERSION> {}

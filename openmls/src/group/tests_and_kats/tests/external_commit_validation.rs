@@ -251,15 +251,13 @@ fn test_valsem242() {
                 group_id: alice_group.group_id().clone(),
                 version: Default::default(),
                 ciphersuite,
-                extensions: alice_group.group().context().extensions().clone(),
+                extensions: alice_group.context().extensions().clone(),
             }))
         };
 
         let gce_proposal = {
             ProposalOrRef::Proposal(Proposal::GroupContextExtensions(
-                GroupContextExtensionProposal::new(
-                    alice_group.group().context().extensions().clone(),
-                ),
+                GroupContextExtensionProposal::new(alice_group.context().extensions().clone()),
             ))
         };
 
@@ -535,12 +533,8 @@ fn test_valsem246() {
     // This shows that the message is actually signed using this credential.
     let decrypted_message = DecryptedMessage::from_inbound_public_message(
         public_message_commit.clone().into(),
-        alice_group.group().message_secrets(),
-        alice_group
-            .group()
-            .message_secrets()
-            .serialized_context()
-            .to_vec(),
+        alice_group.message_secrets(),
+        alice_group.message_secrets().serialized_context().to_vec(),
         provider.crypto(),
         ciphersuite,
     )

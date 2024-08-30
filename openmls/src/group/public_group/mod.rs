@@ -8,7 +8,7 @@
 //! as associated helper structs the goal of which is to enable this
 //! functionality.
 //!
-//! To avoid duplication of code and functionality, [`CoreGroup`] internally
+//! To avoid duplication of code and functionality, [`MlsGroup`] internally
 //! relies on a [`PublicGroup`] as well.
 
 #[cfg(test)]
@@ -21,7 +21,10 @@ use self::{
     diff::{PublicGroupDiff, StagedPublicGroupDiff},
     errors::CreationFromExternalError,
 };
-use super::{GroupContext, GroupId, Member, ProposalStore, QueuedProposal, StagedCommit};
+use super::{
+    proposal_store::{ProposalStore, QueuedProposal},
+    GroupContext, GroupId, Member, StagedCommit,
+};
 #[cfg(test)]
 use crate::treesync::{node::parent_node::PlainUpdatePathNode, treekem::UpdatePathNode};
 use crate::{
@@ -48,7 +51,7 @@ use crate::{
     versions::ProtocolVersion,
 };
 #[cfg(doc)]
-use crate::{framing::PublicMessage, group::CoreGroup};
+use crate::{framing::PublicMessage, group::MlsGroup};
 
 pub(crate) mod builder;
 pub(crate) mod diff;
@@ -377,9 +380,9 @@ impl PublicGroup {
     }
 
     /// Stores the [`PublicGroup`] to storage. Called from methods creating a new group and mutating an
-    /// existing group, both inside [`PublicGroup`] and in [`CoreGroup`].
+    /// existing group, both inside [`PublicGroup`] and in [`MlsGroup`].
     ///
-    /// [`CoreGroup`]: crate::group::core_group::CoreGroup
+    /// [`MlsGroup`]: crate::group::MlsGroup
     pub(crate) fn store<Storage: PublicStorageProvider>(
         &self,
         storage: &Storage,
@@ -397,8 +400,8 @@ impl PublicGroup {
 
     /// Deletes the [`PublicGroup`] from storage.
     pub fn delete<Storage: PublicStorageProvider>(
-        group_id: &GroupId,
         storage: &Storage,
+        group_id: &GroupId,
     ) -> Result<(), Storage::PublicError> {
         storage.delete_tree(group_id)?;
         storage.delete_confirmation_tag(group_id)?;

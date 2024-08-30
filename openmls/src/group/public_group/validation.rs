@@ -7,6 +7,7 @@ use openmls_traits::types::VerifiableCiphersuite;
 
 use super::PublicGroup;
 use crate::extensions::RequiredCapabilitiesExtension;
+use crate::group::proposal_store::ProposalQueue;
 use crate::group::GroupContextExtensionsProposalValidationError;
 use crate::prelude::LibraryError;
 use crate::treesync::errors::LeafNodeValidationError;
@@ -19,7 +20,7 @@ use crate::{
     group::{
         errors::{ExternalCommitValidationError, ProposalValidationError, ValidationError},
         past_secrets::MessageSecretsStore,
-        Member, ProposalQueue,
+        Member,
     },
     messages::{
         proposals::{Proposal, ProposalOrRefType, ProposalType},
@@ -87,8 +88,7 @@ impl PublicGroup {
         if let Sender::Member(leaf_index) = sender {
             // If the sender is a member, it has to be in the tree, except if
             // it's an application message. Then it might be okay if it's in an
-            // old secret tree instance, but we'll leave that to the CoreGroup
-            // to validate.
+            // old secret tree instance.
             let is_in_secrets_store = if let Some(mss) = message_secrets_store_option {
                 mss.epoch_has_leaf(verifiable_content.epoch(), *leaf_index)
             } else {

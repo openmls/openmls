@@ -16,28 +16,24 @@ use crate::ciphersuite::*;
 use crate::utils::*;
 
 // Crate
-pub(crate) mod core_group;
-pub(crate) mod public_group;
-pub(crate) use core_group::*;
 pub(crate) mod errors;
 pub(crate) mod mls_group;
+pub(crate) mod public_group;
 
 // Public
-pub use core_group::proposals::*;
-pub use core_group::staged_commit::StagedCommit;
 pub use errors::*;
 pub use group_context::GroupContext;
 pub use mls_group::config::*;
 pub use mls_group::membership::*;
-pub use mls_group::*;
+pub use mls_group::proposal_store::*;
+pub use mls_group::staged_commit::StagedCommit;
+pub use mls_group::{Member, *};
 pub use public_group::*;
 
 // Private
 mod group_context;
 
 // Tests
-#[cfg(test)]
-pub(crate) use core_group::create_commit_params::*;
 #[cfg(any(feature = "test-utils", test))]
 pub(crate) mod tests_and_kats;
 

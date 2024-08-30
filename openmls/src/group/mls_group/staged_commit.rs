@@ -1,20 +1,31 @@
 use core::fmt::Debug;
 use std::mem;
 
-use public_group::diff::{apply_proposals::ApplyProposalsValues, StagedPublicGroupDiff};
+use openmls_traits::storage::StorageProvider;
+use serde::{Deserialize, Serialize};
+use tls_codec::Serialize as _;
 
-use self::public_group::staged_commit::PublicStagedCommitState;
+use super::proposal_store::{
+    QueuedAddProposal, QueuedPskProposal, QueuedRemoveProposal, QueuedUpdateProposal,
+};
 
-use super::{super::errors::*, *};
+use super::{
+    super::errors::*, load_psks, Credential, Extension, GroupContext, GroupEpochSecrets, GroupId,
+    JoinerSecret, KeySchedule, LeafNode, LibraryError, MessageSecrets, MlsGroup, OpenMlsProvider,
+    Proposal, ProposalQueue, PskSecret, QueuedProposal, Sender,
+};
 use crate::{
     ciphersuite::{hash_ref::ProposalRef, Secret},
     framing::mls_auth_content::AuthenticatedContent,
+    group::public_group::{
+        diff::{apply_proposals::ApplyProposalsValues, StagedPublicGroupDiff},
+        staged_commit::PublicStagedCommitState,
+    },
+    schedule::{CommitSecret, EpochAuthenticator, EpochSecrets, InitSecret, PreSharedKeyId},
     treesync::node::encryption_keys::EncryptionKeyPair,
 };
 
-use openmls_traits::storage::StorageProvider as _;
-
-impl CoreGroup {
+impl MlsGroup {
     fn derive_epoch_secrets(
         &self,
         provider: &impl OpenMlsProvider,
@@ -96,7 +107,7 @@ impl CoreGroup {
     ///  - Verifies the confirmation tag
     ///
     /// Returns a [StagedCommit] that can be inspected and later merged into the
-    /// group state with [CoreGroup::merge_commit()] This function does the
+    /// group state with [MlsGroup::merge_commit()] This function does the
     /// following checks:
     ///  - ValSem101
     ///  - ValSem102
