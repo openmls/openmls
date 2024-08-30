@@ -404,8 +404,6 @@
 <a href="#404" id="404">404</a>
 <a href="#405" id="405">405</a>
 <a href="#406" id="406">406</a>
-<a href="#407" id="407">407</a>
-<a href="#408" id="408">408</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Validation steps for incoming messages
 //!
 //! ```text
@@ -432,16 +430,14 @@
 </span><span class="comment">// TODO #106/#151: Update the above diagram
 
 </span><span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
+<span class="kw">use </span>proposal_store::QueuedProposal;
 
 <span class="kw">use crate</span>::{
     binary_tree::LeafNodeIndex,
     ciphersuite::signable::Verifiable,
     error::LibraryError,
     extensions::ExternalSendersExtension,
-    group::{
-        core_group::{proposals::QueuedProposal, staged_commit::StagedCommit},
-        errors::ValidationError,
-    },
+    group::{errors::ValidationError, mls_group::staged_commit::StagedCommit},
     tree::sender_ratchet::SenderRatchetConfiguration,
     treesync::TreeSync,
     versions::ProtocolVersion,
@@ -504,7 +500,7 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_inbound_ciphertext(
         ciphertext: PrivateMessageIn,
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
-        group: <span class="kw-2">&amp;mut </span>CoreGroup,
+        group: <span class="kw-2">&amp;mut </span>MlsGroup,
         sender_ratchet_configuration: <span class="kw-2">&amp;</span>SenderRatchetConfiguration,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, ValidationError&gt; {
         <span class="comment">// This will be refactored with #265.

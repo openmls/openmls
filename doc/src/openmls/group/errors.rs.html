@@ -530,46 +530,6 @@
 <a href="#530" id="530">530</a>
 <a href="#531" id="531">531</a>
 <a href="#532" id="532">532</a>
-<a href="#533" id="533">533</a>
-<a href="#534" id="534">534</a>
-<a href="#535" id="535">535</a>
-<a href="#536" id="536">536</a>
-<a href="#537" id="537">537</a>
-<a href="#538" id="538">538</a>
-<a href="#539" id="539">539</a>
-<a href="#540" id="540">540</a>
-<a href="#541" id="541">541</a>
-<a href="#542" id="542">542</a>
-<a href="#543" id="543">543</a>
-<a href="#544" id="544">544</a>
-<a href="#545" id="545">545</a>
-<a href="#546" id="546">546</a>
-<a href="#547" id="547">547</a>
-<a href="#548" id="548">548</a>
-<a href="#549" id="549">549</a>
-<a href="#550" id="550">550</a>
-<a href="#551" id="551">551</a>
-<a href="#552" id="552">552</a>
-<a href="#553" id="553">553</a>
-<a href="#554" id="554">554</a>
-<a href="#555" id="555">555</a>
-<a href="#556" id="556">556</a>
-<a href="#557" id="557">557</a>
-<a href="#558" id="558">558</a>
-<a href="#559" id="559">559</a>
-<a href="#560" id="560">560</a>
-<a href="#561" id="561">561</a>
-<a href="#562" id="562">562</a>
-<a href="#563" id="563">563</a>
-<a href="#564" id="564">564</a>
-<a href="#565" id="565">565</a>
-<a href="#566" id="566">566</a>
-<a href="#567" id="567">567</a>
-<a href="#568" id="568">568</a>
-<a href="#569" id="569">569</a>
-<a href="#570" id="570">570</a>
-<a href="#571" id="571">571</a>
-<a href="#572" id="572">572</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # MLS group errors
 //!
 //! This module contains errors that originate at lower levels and are partially re-exported in errors thrown by functions of the `MlsGroup` API.
@@ -577,7 +537,7 @@
 </span><span class="kw">use </span>thiserror::Error;
 
 <span class="kw">pub use </span><span class="kw">super</span>::mls_group::errors::<span class="kw-2">*</span>;
-<span class="kw">use </span><span class="kw">super</span>::public_group::errors::{CreationFromExternalError, PublicGroupBuildError};
+<span class="kw">use </span><span class="kw">super</span>::public_group::errors::CreationFromExternalError;
 <span class="kw">use crate</span>::{
     ciphersuite::signable::SignatureError,
     error::LibraryError,
@@ -1003,17 +963,7 @@
 
 <span class="comment">// === Crate errors ===
 
-</span><span class="doccomment">/// Exporter error
-</span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>ExporterError {
-    <span class="doccomment">/// See [`LibraryError`] for more details.
-    </span><span class="attr">#[error(transparent)]
-    </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
-    <span class="attr">#[error(<span class="string">"The requested key length is not supported (too large)."</span>)]
-    </span>KeyLengthTooLong,
-}
-
-<span class="doccomment">/// Proposal queue error
+</span><span class="doccomment">/// Proposal queue error
 </span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>ProposalQueueError {
     <span class="doccomment">/// See [`LibraryError`] for more details.
@@ -1040,36 +990,6 @@
     <span class="doccomment">/// The sender of a Commit tried to remove themselves.
     </span><span class="attr">#[error(<span class="string">"The sender of a Commit tried to remove themselves."</span>)]
     </span>SelfRemoval,
-}
-
-<span class="comment">// Core group build error
-</span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>CoreGroupBuildError&lt;StorageError&gt; {
-    <span class="doccomment">/// See [`LibraryError`] for more details.
-    </span><span class="attr">#[error(transparent)]
-    </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
-    <span class="doccomment">/// See [`PublicGroupBuildError`] for more details.
-    </span><span class="attr">#[error(transparent)]
-    </span>PublicGroupBuildError(<span class="attr">#[from] </span>PublicGroupBuildError),
-    <span class="doccomment">/// See [`PskError`] for more details.
-    </span><span class="attr">#[error(transparent)]
-    </span>Psk(<span class="attr">#[from] </span>PskError),
-    <span class="doccomment">/// Error storing leaf private key in key store.
-    </span><span class="attr">#[error(<span class="string">"Error saving data to storage: {0}."</span>)]
-    </span>StorageError(StorageError),
-}
-
-<span class="comment">// CoreGroup parse message error
-</span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>CoreGroupParseMessageError {
-    <span class="doccomment">/// See [`LibraryError`] for more details.
-    </span><span class="attr">#[error(transparent)]
-    </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
-    <span class="comment">//#[error(transparent)]
-    //FramingValidationError(#[from] FramingValidationError),
-    </span><span class="doccomment">/// See [`ValidationError`] for more details.
-    </span><span class="attr">#[error(transparent)]
-    </span>ValidationError(<span class="attr">#[from] </span>ValidationError),
 }
 
 <span class="doccomment">/// Create group context ext proposal error

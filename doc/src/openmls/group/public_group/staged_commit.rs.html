@@ -288,16 +288,11 @@
 <a href="#288" id="288">288</a>
 <a href="#289" id="289">289</a>
 <a href="#290" id="290">290</a>
-<a href="#291" id="291">291</a>
-<a href="#292" id="292">292</a>
-<a href="#293" id="293">293</a>
-<a href="#294" id="294">294</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{<span class="kw">super</span>::errors::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 <span class="kw">use crate</span>::{
     framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, Sender},
     group::{
-        core_group::{proposals::ProposalQueue, staged_commit::StagedCommitState},
-        StagedCommit,
+        mls_group::staged_commit::StagedCommitState, proposal_store::ProposalQueue, StagedCommit,
     },
     messages::{proposals::ProposalOrRef, Commit},
 };
@@ -464,15 +459,12 @@
     ///  - Applies the proposals covered by the commit to the tree
     ///  - Applies the (optional) update path to the tree
     ///  - Updates the [`GroupContext`]
-    ///
-    /// A similar function to this exists in [`CoreGroup`], which in addition
-    /// does the following:
     ///  - Decrypts and derives the path secrets
     ///  - Initializes the key schedule for epoch rollover
     ///  - Verifies the confirmation tag
     ///
     /// Returns a [`StagedCommit`] that can be inspected and later merged into
-    /// the group state either with [`CoreGroup::merge_commit()`] or
+    /// the group state either with [`MlsGroup::merge_commit()`] or
     /// [`PublicGroup::merge_diff()`] This function does the following checks:
     ///  - ValSem101
     ///  - ValSem102

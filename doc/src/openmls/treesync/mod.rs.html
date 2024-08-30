@@ -778,6 +778,20 @@
 <a href="#778" id="778">778</a>
 <a href="#779" id="779">779</a>
 <a href="#780" id="780">780</a>
+<a href="#781" id="781">781</a>
+<a href="#782" id="782">782</a>
+<a href="#783" id="783">783</a>
+<a href="#784" id="784">784</a>
+<a href="#785" id="785">785</a>
+<a href="#786" id="786">786</a>
+<a href="#787" id="787">787</a>
+<a href="#788" id="788">788</a>
+<a href="#789" id="789">789</a>
+<a href="#790" id="790">790</a>
+<a href="#791" id="791">791</a>
+<a href="#792" id="792">792</a>
+<a href="#793" id="793">793</a>
+<a href="#794" id="794">794</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements the ratchet tree component of MLS.
 //!
 //! It exposes the [`Node`] enum that can contain either a [`LeafNode`] or a [`ParentNode`].
@@ -824,10 +838,7 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">use </span><span class="kw">crate</span>::binary_tree::array_representation::ParentNodeIndex;
 <span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
-</span><span class="kw">use crate</span>::{
-    binary_tree::array_representation::level, group::tests_and_kats::tree_printing::root,
-    test_utils::bytes_to_hex,
-};
+</span><span class="kw">use crate</span>::{binary_tree::array_representation::level, test_utils::bytes_to_hex};
 <span class="kw">use crate</span>::{
     binary_tree::{
         array_representation::{is_node_in_tree, tree::TreeNode, LeafNodeIndex, TreeSize},
@@ -1054,6 +1065,23 @@
         )
     }
 }
+
+<span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
+</span><span class="kw">fn </span>log2(x: u32) -&gt; usize {
+    <span class="kw">if </span>x == <span class="number">0 </span>{
+        <span class="kw">return </span><span class="number">0</span>;
+    }
+    <span class="kw">let </span><span class="kw-2">mut </span>k = <span class="number">0</span>;
+    <span class="kw">while </span>(x &gt;&gt; k) &gt; <span class="number">0 </span>{
+        k += <span class="number">1
+    </span>}
+    k - <span class="number">1
+</span>}
+
+<span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>root(size: u32) -&gt; u32 {
+    (<span class="number">1 </span>&lt;&lt; log2(size)) - <span class="number">1
+</span>}
 
 <span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
 </span><span class="kw">impl </span>fmt::Display <span class="kw">for </span>RatchetTree {

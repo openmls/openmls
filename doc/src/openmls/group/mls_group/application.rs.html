@@ -81,22 +81,22 @@
             ));
         }
 
+        <span class="kw">let </span>authenticated_content = AuthenticatedContent::new_application(
+            <span class="self">self</span>.own_leaf_index(),
+            <span class="kw-2">&amp;</span><span class="self">self</span>.aad,
+            message,
+            <span class="self">self</span>.context(),
+            signer,
+        )<span class="question-mark">?</span>;
         <span class="kw">let </span>ciphertext = <span class="self">self
-            </span>.group
-            .create_application_message(
-                <span class="kw-2">&amp;</span><span class="self">self</span>.aad,
-                message,
-                <span class="self">self</span>.configuration().padding_size(),
-                provider,
-                signer,
-            )
+            </span>.encrypt(authenticated_content, provider)
             <span class="comment">// We know the application message is wellformed and we have the key material of the current epoch
             </span>.map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"Malformed plaintext"</span>))<span class="question-mark">?</span>;
 
         <span class="self">self</span>.reset_aad();
         <span class="prelude-val">Ok</span>(MlsMessageOut::from_private_message(
             ciphertext,
-            <span class="self">self</span>.group.version(),
+            <span class="self">self</span>.version(),
         ))
     }
 }

@@ -2002,7 +2002,7 @@
 
     <span class="doccomment">/// Derive a `Secret` from the exporter secret. We return `Vec&lt;u8&gt;` here, so
     /// it can be used outside of OpenMLS. This function is made available for
-    /// use from the outside through [`crate::group::core_group::export_secret`].
+    /// use from the outside through [`MlsGroup::export_secret`].
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>derive_exported_secret(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         ciphersuite: Ciphersuite,

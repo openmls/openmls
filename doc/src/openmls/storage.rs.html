@@ -257,6 +257,7 @@
 <a href="#257" id="257">257</a>
 <a href="#258" id="258">258</a>
 <a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! OpenMLS Storage
 //!
 //! This module serves two purposes:
@@ -269,10 +270,11 @@
 </span><span class="kw">use </span>openmls_traits::storage::{traits, Entity, Key, CURRENT_VERSION};
 
 <span class="kw">use </span><span class="kw">crate</span>::binary_tree::LeafNodeIndex;
+<span class="kw">use </span><span class="kw">crate</span>::group::proposal_store::QueuedProposal;
 <span class="kw">use </span><span class="kw">crate</span>::group::{MlsGroupJoinConfig, MlsGroupState};
 <span class="kw">use crate</span>::{
     ciphersuite::hash_ref::ProposalRef,
-    group::{GroupContext, GroupId, InterimTranscriptHash, QueuedProposal},
+    group::{GroupContext, GroupId, InterimTranscriptHash},
     messages::ConfirmationTag,
     treesync::{LeafNode, TreeSync},
 };

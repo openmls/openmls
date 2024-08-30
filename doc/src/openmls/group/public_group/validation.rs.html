@@ -619,6 +619,7 @@
 
 <span class="kw">use </span><span class="kw">super</span>::PublicGroup;
 <span class="kw">use </span><span class="kw">crate</span>::extensions::RequiredCapabilitiesExtension;
+<span class="kw">use </span><span class="kw">crate</span>::group::proposal_store::ProposalQueue;
 <span class="kw">use </span><span class="kw">crate</span>::group::GroupContextExtensionsProposalValidationError;
 <span class="kw">use </span><span class="kw">crate</span>::prelude::LibraryError;
 <span class="kw">use </span><span class="kw">crate</span>::treesync::errors::LeafNodeValidationError;
@@ -631,7 +632,7 @@
     group::{
         errors::{ExternalCommitValidationError, ProposalValidationError, ValidationError},
         past_secrets::MessageSecretsStore,
-        Member, ProposalQueue,
+        Member,
     },
     messages::{
         proposals::{Proposal, ProposalOrRefType, ProposalType},
@@ -699,8 +700,7 @@
         <span class="kw">if let </span>Sender::Member(leaf_index) = sender {
             <span class="comment">// If the sender is a member, it has to be in the tree, except if
             // it's an application message. Then it might be okay if it's in an
-            // old secret tree instance, but we'll leave that to the CoreGroup
-            // to validate.
+            // old secret tree instance.
             </span><span class="kw">let </span>is_in_secrets_store = <span class="kw">if let </span><span class="prelude-val">Some</span>(mss) = message_secrets_store_option {
                 mss.epoch_has_leaf(verifiable_content.epoch(), <span class="kw-2">*</span>leaf_index)
             } <span class="kw">else </span>{

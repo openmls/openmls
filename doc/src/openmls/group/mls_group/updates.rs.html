@@ -139,12 +139,7 @@
 <a href="#139" id="139">139</a>
 <a href="#140" id="140">140</a>
 <a href="#141" id="141">141</a>
-<a href="#142" id="142">142</a>
-<a href="#143" id="143">143</a>
-<a href="#144" id="144">144</a>
-<a href="#145" id="145">145</a>
-<a href="#146" id="146">146</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>core_group::create_commit_params::CreateCommitParams;
+</pre></div><pre class="rust"><code><span class="kw">use </span>errors::{ProposeSelfUpdateError, SelfUpdateError};
 <span class="kw">use </span>openmls_traits::{signatures::Signer, storage::StorageProvider <span class="kw">as _</span>};
 
 <span class="kw">use crate</span>::{
@@ -186,7 +181,7 @@
             .build();
         <span class="comment">// Create Commit over all proposals.
         // TODO #751
-        </span><span class="kw">let </span>create_commit_result = <span class="self">self</span>.group.create_commit(params, provider, signer)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>create_commit_result = <span class="self">self</span>.create_commit(params, provider, signer)<span class="question-mark">?</span>;
 
         <span class="comment">// Convert PublicMessage messages to MLSMessage and encrypt them if required by
         // the configuration
@@ -202,8 +197,7 @@
             .storage()
             .write_group_state(<span class="self">self</span>.group_id(), <span class="kw-2">&amp;</span><span class="self">self</span>.group_state)
             .map_err(SelfUpdateError::StorageError)<span class="question-mark">?</span>;
-        <span class="self">self</span>.group
-            .store(provider.storage())
+        <span class="self">self</span>.store(provider.storage())
             .map_err(SelfUpdateError::StorageError)<span class="question-mark">?</span>;
 
         <span class="self">self</span>.reset_aad();
@@ -211,7 +205,7 @@
             mls_message,
             create_commit_result
                 .welcome_option
-                .map(|w| MlsMessageOut::from_welcome(w, <span class="self">self</span>.group.version())),
+                .map(|w| MlsMessageOut::from_welcome(w, <span class="self">self</span>.version())),
             create_commit_result.group_info,
         ))
     }
@@ -232,8 +226,7 @@
         // The new leaf node will be applied later when the proposal is
         // committed.
         </span><span class="kw">let </span><span class="kw-2">mut </span>own_leaf = <span class="self">self
-            </span>.group
-            .public_group()
+            </span>.public_group()
             .leaf(<span class="self">self</span>.own_leaf_index())
             .ok_or_else(|| LibraryError::custom(<span class="string">"The tree is broken. Couldn't find own leaf."</span>))<span class="question-mark">?
             </span>.clone();
@@ -247,11 +240,8 @@
             leaf_node_parmeters,
         )<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>update_proposal = <span class="self">self</span>.group.create_update_proposal(
-            <span class="self">self</span>.framing_parameters(),
-            own_leaf.clone(),
-            signer,
-        )<span class="question-mark">?</span>;
+        <span class="kw">let </span>update_proposal =
+            <span class="self">self</span>.create_update_proposal(<span class="self">self</span>.framing_parameters(), own_leaf.clone(), signer)<span class="question-mark">?</span>;
 
         provider
             .storage()

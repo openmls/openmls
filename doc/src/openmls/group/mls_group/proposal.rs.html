@@ -459,27 +459,141 @@
 <a href="#459" id="459">459</a>
 <a href="#460" id="460">460</a>
 <a href="#461" id="461">461</a>
+<a href="#462" id="462">462</a>
+<a href="#463" id="463">463</a>
+<a href="#464" id="464">464</a>
+<a href="#465" id="465">465</a>
+<a href="#466" id="466">466</a>
+<a href="#467" id="467">467</a>
+<a href="#468" id="468">468</a>
+<a href="#469" id="469">469</a>
+<a href="#470" id="470">470</a>
+<a href="#471" id="471">471</a>
+<a href="#472" id="472">472</a>
+<a href="#473" id="473">473</a>
+<a href="#474" id="474">474</a>
+<a href="#475" id="475">475</a>
+<a href="#476" id="476">476</a>
+<a href="#477" id="477">477</a>
+<a href="#478" id="478">478</a>
+<a href="#479" id="479">479</a>
+<a href="#480" id="480">480</a>
+<a href="#481" id="481">481</a>
+<a href="#482" id="482">482</a>
+<a href="#483" id="483">483</a>
+<a href="#484" id="484">484</a>
+<a href="#485" id="485">485</a>
+<a href="#486" id="486">486</a>
+<a href="#487" id="487">487</a>
+<a href="#488" id="488">488</a>
+<a href="#489" id="489">489</a>
+<a href="#490" id="490">490</a>
+<a href="#491" id="491">491</a>
+<a href="#492" id="492">492</a>
+<a href="#493" id="493">493</a>
+<a href="#494" id="494">494</a>
+<a href="#495" id="495">495</a>
+<a href="#496" id="496">496</a>
+<a href="#497" id="497">497</a>
+<a href="#498" id="498">498</a>
+<a href="#499" id="499">499</a>
+<a href="#500" id="500">500</a>
+<a href="#501" id="501">501</a>
+<a href="#502" id="502">502</a>
+<a href="#503" id="503">503</a>
+<a href="#504" id="504">504</a>
+<a href="#505" id="505">505</a>
+<a href="#506" id="506">506</a>
+<a href="#507" id="507">507</a>
+<a href="#508" id="508">508</a>
+<a href="#509" id="509">509</a>
+<a href="#510" id="510">510</a>
+<a href="#511" id="511">511</a>
+<a href="#512" id="512">512</a>
+<a href="#513" id="513">513</a>
+<a href="#514" id="514">514</a>
+<a href="#515" id="515">515</a>
+<a href="#516" id="516">516</a>
+<a href="#517" id="517">517</a>
+<a href="#518" id="518">518</a>
+<a href="#519" id="519">519</a>
+<a href="#520" id="520">520</a>
+<a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
+<a href="#524" id="524">524</a>
+<a href="#525" id="525">525</a>
+<a href="#526" id="526">526</a>
+<a href="#527" id="527">527</a>
+<a href="#528" id="528">528</a>
+<a href="#529" id="529">529</a>
+<a href="#530" id="530">530</a>
+<a href="#531" id="531">531</a>
+<a href="#532" id="532">532</a>
+<a href="#533" id="533">533</a>
+<a href="#534" id="534">534</a>
+<a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
+<a href="#539" id="539">539</a>
+<a href="#540" id="540">540</a>
+<a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
+<a href="#544" id="544">544</a>
+<a href="#545" id="545">545</a>
+<a href="#546" id="546">546</a>
+<a href="#547" id="547">547</a>
+<a href="#548" id="548">548</a>
+<a href="#549" id="549">549</a>
+<a href="#550" id="550">550</a>
+<a href="#551" id="551">551</a>
+<a href="#552" id="552">552</a>
+<a href="#553" id="553">553</a>
+<a href="#554" id="554">554</a>
+<a href="#555" id="555">555</a>
+<a href="#556" id="556">556</a>
+<a href="#557" id="557">557</a>
+<a href="#558" id="558">558</a>
+<a href="#559" id="559">559</a>
+<a href="#560" id="560">560</a>
+<a href="#561" id="561">561</a>
+<a href="#562" id="562">562</a>
+<a href="#563" id="563">563</a>
+<a href="#564" id="564">564</a>
+<a href="#565" id="565">565</a>
+<a href="#566" id="566">566</a>
+<a href="#567" id="567">567</a>
+<a href="#568" id="568">568</a>
+<a href="#569" id="569">569</a>
+<a href="#570" id="570">570</a>
+<a href="#571" id="571">571</a>
+<a href="#572" id="572">572</a>
+<a href="#573" id="573">573</a>
+<a href="#574" id="574">574</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::{signatures::Signer, storage::StorageProvider <span class="kw">as _</span>, types::Ciphersuite};
 
 <span class="kw">use super</span>::{
-    core_group::create_commit_params::CreateCommitParams,
-    errors::{ProposalError, ProposeAddMemberError, ProposeRemoveMemberError},
-    CreateGroupContextExtProposalError, CustomProposal, GroupContextExtensionProposal, MlsGroup,
-    MlsGroupState, PendingCommitState, Proposal, RemoveProposalError,
+    create_commit::CreateCommitParams,
+    errors::{ProposalError, ProposeAddMemberError, ProposeRemoveMemberError, RemoveProposalError},
+    AddProposal, CreateGroupContextExtProposalError, CustomProposal, FramingParameters,
+    GroupContextExtensionProposal, MlsGroup, MlsGroupState, PendingCommitState,
+    PreSharedKeyProposal, Proposal, QueuedProposal, RemoveProposal, UpdateProposal,
 };
 <span class="kw">use crate</span>::{
     binary_tree::LeafNodeIndex,
     ciphersuite::hash_ref::ProposalRef,
     credentials::Credential,
     extensions::Extensions,
-    framing::MlsMessageOut,
-    group::{errors::CreateAddProposalError, GroupId, QueuedProposal},
+    framing::{mls_auth_content::AuthenticatedContent, MlsMessageOut},
+    group::{errors::CreateAddProposalError, GroupId, ValidationError},
     key_packages::KeyPackage,
     messages::{group_info::GroupInfo, proposals::ProposalOrRefType},
     prelude::LibraryError,
     schedule::PreSharedKeyId,
     storage::{OpenMlsProvider, StorageProvider},
-    treesync::LeafNodeParameters,
+    treesync::{LeafNode, LeafNodeParameters},
     versions::ProtocolVersion,
 };
 
@@ -533,9 +647,7 @@
         ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposalError&lt;Provider::StorageError&gt;&gt; {
             <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
-            <span class="kw">let </span>proposal = <span class="self">self
-                </span>.group
-                .<span class="macro-nonterminal">$group_fun</span>(<span class="self">self</span>.framing_parameters(), value, signer)<span class="question-mark">?</span>;
+            <span class="kw">let </span>proposal = <span class="self">self</span>.<span class="macro-nonterminal">$group_fun</span>(<span class="self">self</span>.framing_parameters(), value, signer)<span class="question-mark">?</span>;
 
             <span class="kw">let </span>queued_proposal = QueuedProposal::from_authenticated_content(
                 <span class="self">self</span>.ciphersuite(),
@@ -548,7 +660,7 @@
             <span class="macro">log::trace!</span>(<span class="string">"Storing proposal in queue {:?}"</span>, queued_proposal);
             provider
                 .storage()
-                .queue_proposal(<span class="self">self</span>.group.group_id(), <span class="kw-2">&amp;</span>proposal_ref, <span class="kw-2">&amp;</span>queued_proposal)
+                .queue_proposal(<span class="self">self</span>.group_id(), <span class="kw-2">&amp;</span>proposal_ref, <span class="kw-2">&amp;</span>queued_proposal)
                 .map_err(ProposalError::StorageError)<span class="question-mark">?</span>;
             <span class="self">self</span>.proposal_store_mut().add(queued_proposal);
 
@@ -699,8 +811,7 @@
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
         <span class="kw">let </span>add_proposal = <span class="self">self
-            </span>.group
-            .create_add_proposal(<span class="self">self</span>.framing_parameters(), key_package.clone(), signer)
+            </span>.create_add_proposal(<span class="self">self</span>.framing_parameters(), key_package.clone(), signer)
             .map_err(|e| <span class="kw">match </span>e {
                 CreateAddProposalError::LibraryError(e) =&gt; e.into(),
                 CreateAddProposalError::LeafNodeValidation(error) =&gt; {
@@ -740,8 +851,7 @@
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
         <span class="kw">let </span>remove_proposal = <span class="self">self
-            </span>.group
-            .create_remove_proposal(<span class="self">self</span>.framing_parameters(), member, signer)
+            </span>.create_remove_proposal(<span class="self">self</span>.framing_parameters(), member, signer)
             .map_err(|<span class="kw">_</span>| ProposeRemoveMemberError::UnknownMember)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>proposal = QueuedProposal::from_authenticated_content_by_ref(
@@ -775,8 +885,7 @@
     {
         <span class="comment">// Find the user for the credential first.
         </span><span class="kw">let </span>member_index = <span class="self">self
-            </span>.group
-            .public_group()
+            </span>.public_group()
             .members()
             .find(|m| <span class="kw-2">&amp;</span>m.credential == member)
             .map(|m| m.index);
@@ -800,8 +909,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposalError&lt;Provider::StorageError&gt;&gt; {
         <span class="comment">// Find the user for the credential first.
         </span><span class="kw">let </span>member_index = <span class="self">self
-            </span>.group
-            .public_group()
+            </span>.public_group()
             .members()
             .find(|m| <span class="kw-2">&amp;</span>m.credential == member)
             .map(|m| m.index);
@@ -827,7 +935,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposalError&lt;Provider::StorageError&gt;&gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>proposal = <span class="self">self</span>.group.create_group_context_ext_proposal::&lt;Provider&gt;(
+        <span class="kw">let </span>proposal = <span class="self">self</span>.create_group_context_ext_proposal::&lt;Provider&gt;(
             <span class="self">self</span>.framing_parameters(),
             extensions,
             signer,
@@ -881,7 +989,7 @@
             .framing_parameters(<span class="self">self</span>.framing_parameters())
             .inline_proposals(inline_proposals)
             .build();
-        <span class="kw">let </span>create_commit_result = <span class="self">self</span>.group.create_commit(params, provider, signer)<span class="question-mark">?</span>;
+        <span class="kw">let </span>create_commit_result = <span class="self">self</span>.create_commit(params, provider, signer)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>mls_messages = <span class="self">self</span>.content_to_mls_message(create_commit_result.commit, provider)<span class="question-mark">?</span>;
 
@@ -901,7 +1009,7 @@
             mls_messages,
             create_commit_result
                 .welcome_option
-                .map(|w| MlsMessageOut::from_welcome(w, <span class="self">self</span>.group.version())),
+                .map(|w| MlsMessageOut::from_welcome(w, <span class="self">self</span>.version())),
             create_commit_result.group_info,
         ))
     }
@@ -918,6 +1026,124 @@
         <span class="self">self</span>.proposal_store_mut()
             .remove(proposal_ref)
             .ok_or(RemoveProposalError::ProposalNotFound)
+    }
+
+    <span class="comment">// === Create handshake messages ===
+
+    // 12.1.1. Add
+    // struct {
+    //     KeyPackage key_package;
+    // } Add;
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>create_add_proposal(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        framing_parameters: FramingParameters,
+        joiner_key_package: KeyPackage,
+        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;AuthenticatedContent, CreateAddProposalError&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(required_capabilities) = <span class="self">self</span>.required_capabilities() {
+            joiner_key_package
+                .leaf_node()
+                .capabilities()
+                .supports_required_capabilities(required_capabilities)<span class="question-mark">?</span>;
+        }
+        <span class="kw">let </span>add_proposal = AddProposal {
+            key_package: joiner_key_package,
+        };
+        <span class="kw">let </span>proposal = Proposal::Add(add_proposal);
+        AuthenticatedContent::member_proposal(
+            framing_parameters,
+            <span class="self">self</span>.own_leaf_index(),
+            proposal,
+            <span class="self">self</span>.context(),
+            signer,
+        )
+        .map_err(|e| e.into())
+    }
+
+    <span class="comment">// 12.1.2. Update
+    // struct {
+    //     LeafNode leaf_node;
+    // } Update;
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>create_update_proposal(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        framing_parameters: FramingParameters,
+        <span class="comment">// XXX: There's no need to own this. The [`UpdateProposal`] should
+        //      operate on a reference to make this more efficient.
+        </span>leaf_node: LeafNode,
+        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;AuthenticatedContent, LibraryError&gt; {
+        <span class="kw">let </span>update_proposal = UpdateProposal { leaf_node };
+        <span class="kw">let </span>proposal = Proposal::Update(update_proposal);
+        AuthenticatedContent::member_proposal(
+            framing_parameters,
+            <span class="self">self</span>.own_leaf_index(),
+            proposal,
+            <span class="self">self</span>.context(),
+            signer,
+        )
+    }
+
+    <span class="comment">// 12.1.3. Remove
+    // struct {
+    //     uint32 removed;
+    // } Remove;
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>create_remove_proposal(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        framing_parameters: FramingParameters,
+        removed: LeafNodeIndex,
+        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;AuthenticatedContent, ValidationError&gt; {
+        <span class="kw">if </span><span class="self">self</span>.public_group().leaf(removed).is_none() {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ValidationError::UnknownMember);
+        }
+        <span class="kw">let </span>remove_proposal = RemoveProposal { removed };
+        <span class="kw">let </span>proposal = Proposal::Remove(remove_proposal);
+        AuthenticatedContent::member_proposal(
+            framing_parameters,
+            <span class="self">self</span>.own_leaf_index(),
+            proposal,
+            <span class="self">self</span>.context(),
+            signer,
+        )
+        .map_err(ValidationError::LibraryError)
+    }
+
+    <span class="comment">// 12.1.4. PreSharedKey
+    // struct {
+    //     PreSharedKeyID psk;
+    // } PreSharedKey;
+    // TODO: #751
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>create_presharedkey_proposal(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        framing_parameters: FramingParameters,
+        psk: PreSharedKeyId,
+        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;AuthenticatedContent, LibraryError&gt; {
+        <span class="kw">let </span>presharedkey_proposal = PreSharedKeyProposal::new(psk);
+        <span class="kw">let </span>proposal = Proposal::PreSharedKey(presharedkey_proposal);
+        AuthenticatedContent::member_proposal(
+            framing_parameters,
+            <span class="self">self</span>.own_leaf_index(),
+            proposal,
+            <span class="self">self</span>.context(),
+            signer,
+        )
+    }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>create_custom_proposal(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        framing_parameters: FramingParameters,
+        custom_proposal: CustomProposal,
+        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;AuthenticatedContent, LibraryError&gt; {
+        <span class="kw">let </span>proposal = Proposal::Custom(custom_proposal);
+        AuthenticatedContent::member_proposal(
+            framing_parameters,
+            <span class="self">self</span>.own_leaf_index(),
+            proposal,
+            <span class="self">self</span>.context(),
+            signer,
+        )
     }
 }
 </code></pre></div></section></main></body></html>

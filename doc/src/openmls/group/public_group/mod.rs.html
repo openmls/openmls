@@ -481,6 +481,9 @@
 <a href="#481" id="481">481</a>
 <a href="#482" id="482">482</a>
 <a href="#483" id="483">483</a>
+<a href="#484" id="484">484</a>
+<a href="#485" id="485">485</a>
+<a href="#486" id="486">486</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Public Groups
 //!
 //! There are a few use-cases that require the tracking of an MLS group based on
@@ -491,7 +494,7 @@
 //! as associated helper structs the goal of which is to enable this
 //! functionality.
 //!
-//! To avoid duplication of code and functionality, [`CoreGroup`] internally
+//! To avoid duplication of code and functionality, [`MlsGroup`] internally
 //! relies on a [`PublicGroup`] as well.
 
 </span><span class="attr">#[cfg(test)]
@@ -504,7 +507,10 @@
     diff::{PublicGroupDiff, StagedPublicGroupDiff},
     errors::CreationFromExternalError,
 };
-<span class="kw">use super</span>::{GroupContext, GroupId, Member, ProposalStore, QueuedProposal, StagedCommit};
+<span class="kw">use super</span>::{
+    proposal_store::{ProposalStore, QueuedProposal},
+    GroupContext, GroupId, Member, StagedCommit,
+};
 <span class="attr">#[cfg(test)]
 </span><span class="kw">use </span><span class="kw">crate</span>::treesync::{node::parent_node::PlainUpdatePathNode, treekem::UpdatePathNode};
 <span class="kw">use crate</span>::{
@@ -531,7 +537,7 @@
     versions::ProtocolVersion,
 };
 <span class="attr">#[cfg(doc)]
-</span><span class="kw">use crate</span>::{framing::PublicMessage, group::CoreGroup};
+</span><span class="kw">use crate</span>::{framing::PublicMessage, group::MlsGroup};
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>builder;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>diff;
@@ -860,9 +866,9 @@
     }
 
     <span class="doccomment">/// Stores the [`PublicGroup`] to storage. Called from methods creating a new group and mutating an
-    /// existing group, both inside [`PublicGroup`] and in [`CoreGroup`].
+    /// existing group, both inside [`PublicGroup`] and in [`MlsGroup`].
     ///
-    /// [`CoreGroup`]: crate::group::core_group::CoreGroup
+    /// [`MlsGroup`]: crate::group::MlsGroup
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>store&lt;Storage: PublicStorageProvider&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         storage: <span class="kw-2">&amp;</span>Storage,
@@ -880,8 +886,8 @@
 
     <span class="doccomment">/// Deletes the [`PublicGroup`] from storage.
     </span><span class="kw">pub fn </span>delete&lt;Storage: PublicStorageProvider&gt;(
-        group_id: <span class="kw-2">&amp;</span>GroupId,
         storage: <span class="kw-2">&amp;</span>Storage,
+        group_id: <span class="kw-2">&amp;</span>GroupId,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Storage::PublicError&gt; {
         storage.delete_tree(group_id)<span class="question-mark">?</span>;
         storage.delete_confirmation_tag(group_id)<span class="question-mark">?</span>;
