@@ -1,5 +1,5 @@
 //! This module tests the validation of proposals as defined in
-//! https://openmls.tech/book/message_validation.html#semantic-validation-of-proposals-covered-by-a-commit
+//! https://book.openmls.tech/message_validation.html#semantic-validation-of-proposals-covered-by-a-commit
 
 use crate::{storage::OpenMlsProvider, test_utils::frankenstein::*, treesync::LeafNodeParameters};
 use openmls_traits::{

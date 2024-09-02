@@ -1,5 +1,5 @@
 //! This module tests the validation of message framing as defined in
-//! https://openmls.tech/book/message_validation.html#semantic-validation-of-message-framing
+//! https://book.openmls.tech/message_validation.html#semantic-validation-of-message-framing
 
 use openmls_traits::prelude::{openmls_types::Ciphersuite, *};
 use tls_codec::{Deserialize, Serialize};

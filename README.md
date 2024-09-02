@@ -4,7 +4,6 @@
 [![OpenMLS List][list-image]][list-link]
 
 [![Tests & Checks][gh-tests-image]](https://github.com/openmls/openmls/actions/workflows/tests.yml?branch=main)
-<!-- Disabled until the drone CI is fixed in #1094 [![ARM64 Build Status][drone-image]](https://cloud.drone.io/openmls/openmls) -->
 [![codecov][codecov-image]](https://codecov.io/gh/openmls/openmls)
 
 [![Docs][docs-release-badge]][docs-release-link]
@@ -12,7 +11,7 @@
 ![Rust Version][rustc-image]
 
 *OpenMLS* is a Rust implementation of the Messaging Layer Security (MLS) protocol, as specified in [RFC 9420](https://datatracker.ietf.org/doc/html/rfc9420).
-<!-- The introduction of the book imports the lines up until here (line 14), excluding the headline and separately the lines below (starting from line 20). If the line numbers change here, please modify the imported lines in the book.-->
+<!-- The introduction of the book imports the lines up until here (line 13), excluding the headline and separately the lines below (starting from line 19, "Supported ciphersuite"). If the line numbers change here, please modify the imported lines in the book.-->
 
 It is a software library that can serve as a building block in applications that require end-to-end encryption of messages.
 It has a safe and easy-to-use interface that hides the complexity of the underlying cryptographic operations.
@@ -32,9 +31,6 @@ OpenMLS is built and tested on the Github CI for the following rust targets.
 - x86_64-pc-windows-msvc
 - i686-pc-windows-msvc
 - x86_64-apple-darwin
-
-<!-- Disabled until #1094 is fixed. Additionally, we're building and testing aarch64-unknown-linux-gnu on
-[drone.io](https://cloud.drone.io/openmls/openmls). -->
 
 ### Unsupported, but built on CI
 
@@ -78,7 +74,7 @@ OpenMLS is maintained and developed by [Phoenix R&D] and [Cryspen].
 [docs-release-badge]: https://img.shields.io/badge/docs-release-blue.svg?style=for-the-badge
 [docs-release-link]: https://docs.rs/crate/openmls/latest
 [book-release-badge]: https://img.shields.io/badge/book-release-blue.svg?style=for-the-badge
-[book-release-link]: https://openmls.tech/book
+[book-release-link]: https://book.openmls.tech
 [drone-image]: https://img.shields.io/drone/build/openmls/openmls/main?label=ARM64%20Build%20Status&logo=drone&style=for-the-badge
 [codecov-image]: https://img.shields.io/codecov/c/github/openmls/openmls/main?logo=codecov&style=for-the-badge
 [gh-tests-image]: https://img.shields.io/github/actions/workflow/status/openmls/openmls/tests.yml?branch=main&style=for-the-badge&logo=github
