@@ -1,6 +1,6 @@
 [package]
 name = "openmls_test"
-version = "0.1.0-pre.2"
+version = "0.1.0"
 authors = ["OpenMLS Authors"]
 edition = "2021"
 description = "Test utility used by OpenMLS"
@@ -23,6 +23,6 @@ ansi_term = "0.12.1"
 quote = "1.0"
 rstest = { version = "0.17" }
 rstest_reuse = { version = "0.5" }
-openmls_rust_crypto = { version = "0.3.0-pre.2", path = "../openmls_rust_crypto" }
-openmls_libcrux_crypto = { version = "0.1.0-pre.3", path = "../libcrux_crypto", optional = true }
-openmls_traits = { version = "0.3.0-pre.3", path = "../traits" }
+openmls_rust_crypto = { version = "0.3.0", path = "../openmls_rust_crypto" }
+openmls_libcrux_crypto = { version = "0.1.0", path = "../libcrux_crypto", optional = true }
+openmls_traits = { version = "0.3.0", path = "../traits" }
