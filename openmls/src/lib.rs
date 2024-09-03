@@ -136,7 +136,7 @@
 //! ```
 //!
 //! [//]: # "links and badges"
-//! [user Manual]: https://openmls.tech/book
+//! [user Manual]: https://book.openmls.tech
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(not(test), forbid(unsafe_code))]
 #![cfg_attr(not(feature = "test-utils"), deny(missing_docs))]

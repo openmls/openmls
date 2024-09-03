@@ -79,7 +79,7 @@ impl MlsGroupJoinConfig {
 }
 
 /// Specifies configuration for the creation of an [`MlsGroup`]. Refer to the
-/// [User Manual](https://openmls.tech/book/user_manual/group_config.html) for
+/// [User Manual](https://book.openmls.tech/user_manual/group_config.html) for
 /// more information about the different configuration values.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MlsGroupCreateConfig {

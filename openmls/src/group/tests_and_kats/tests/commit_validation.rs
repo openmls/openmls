@@ -1,5 +1,5 @@
 //! This module tests the validation of commits as defined in
-//! https://openmls.tech/book/message_validation.html#commit-message-validation
+//! https://book.openmls.tech/message_validation.html#commit-message-validation
 
 use create_commit::CreateCommitParams;
 use openmls_traits::{prelude::*, signatures::Signer, types::Ciphersuite};
