@@ -90,33 +90,31 @@ impl AuthenticatedContent {
     /// Returns all PSKs that are proposed in the commit. If this [`AuthenticatedContent`] is
     /// not a commit, an empty vector is returned.
     pub fn committed_psk_proposals(&self, proposal_store: &ProposalStore) -> Vec<PreSharedKeyId> {
-        let mut psk_ids = vec![];
-        match self.content() {
-            FramedContentBody::Commit(commit) => {
-                for proposal_or_ref in &commit.proposals {
-                    match proposal_or_ref {
-                        ProposalOrRef::Proposal(proposal) => {
-                            if let Proposal::PreSharedKey(psk_proposal) = proposal {
-                                psk_ids.push(psk_proposal.psk().clone());
-                            }
-                        }
-                        ProposalOrRef::Reference(proposal_ref) => {
-                            for proposal in proposal_store.proposals() {
-                                if &proposal.proposal_reference() == proposal_ref {
-                                    if let Proposal::PreSharedKey(psk_proposal) =
-                                        proposal.proposal()
-                                    {
-                                        psk_ids.push(psk_proposal.psk().clone());
-                                    }
-                                }
-                            }
-                        }
-                    }
+        let FramedContentBody::Commit(commit) = self.content() else {
+            return vec![];
+        };
+        commit
+            .proposals
+            .iter()
+            .filter_map(|proposal_or_ref| match proposal_or_ref {
+                ProposalOrRef::Proposal(proposal) => {
+                    let Proposal::PreSharedKey(psk_proposal) = proposal else {
+                        return None;
+                    };
+                    Some(psk_proposal.psk().clone())
                 }
-            }
-            _ => {}
-        }
-        psk_ids
+                ProposalOrRef::Reference(proposal_ref) => {
+                    proposal_store.proposals().find_map(|proposal| {
+                        if &proposal.proposal_reference() == proposal_ref {
+                            if let Proposal::PreSharedKey(psk_proposal) = proposal.proposal() {
+                                return Some(psk_proposal.psk().clone());
+                            }
+                        }
+                        None
+                    })
+                }
+            })
+            .collect()
     }
 
     /// Convenience function for creating a [`VerifiableAuthenticatedContent`].
