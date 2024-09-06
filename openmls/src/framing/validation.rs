@@ -280,11 +280,6 @@ impl UnverifiedMessage {
             content.validate(ciphersuite, crypto, self.sender_context, protocol_version)?;
         Ok((content, self.credential))
     }
-
-    /// Get the content type of the message.
-    pub(crate) fn content_type(&self) -> ContentType {
-        self.verifiable_content.content_type()
-    }
 }
 
 /// A message that has passed all syntax and semantics checks.

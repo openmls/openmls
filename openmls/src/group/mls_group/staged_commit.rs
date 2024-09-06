@@ -1,6 +1,7 @@
 use core::fmt::Debug;
 use std::mem;
 
+use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::storage::StorageProvider;
 use serde::{Deserialize, Serialize};
 use tls_codec::Serialize as _;
@@ -10,7 +11,7 @@ use super::proposal_store::{
 };
 
 use super::{
-    super::errors::*, load_psks, Credential, Extension, GroupContext, GroupEpochSecrets, GroupId,
+    super::errors::*, Credential, Extension, GroupContext, GroupEpochSecrets, GroupId,
     JoinerSecret, KeySchedule, LeafNode, LibraryError, MessageSecrets, MlsGroup, OpenMlsProvider,
     Proposal, ProposalQueue, PskSecret, QueuedProposal, Sender,
 };
@@ -28,8 +29,9 @@ use crate::{
 impl MlsGroup {
     fn derive_epoch_secrets(
         &self,
-        provider: &impl OpenMlsProvider,
+        crypto: &impl OpenMlsCrypto,
         apply_proposals_values: ApplyProposalsValues,
+        psks: Vec<(&'_ PreSharedKeyId, Secret)>,
         epoch_secrets: &GroupEpochSecrets,
         commit_secret: CommitSecret,
         serialized_provisional_group_context: &[u8],
@@ -42,18 +44,18 @@ impl MlsGroup {
             // Decrypt the content and derive the external init secret.
             let external_priv = epoch_secrets
                 .external_secret()
-                .derive_external_keypair(provider.crypto(), self.ciphersuite())
+                .derive_external_keypair(crypto, self.ciphersuite())
                 .map_err(LibraryError::unexpected_crypto_error)?
                 .private;
             let init_secret = InitSecret::from_kem_output(
-                provider.crypto(),
+                crypto,
                 self.ciphersuite(),
                 self.version(),
                 &external_priv,
                 external_init_proposal.kem_output(),
             )?;
             JoinerSecret::new(
-                provider.crypto(),
+                crypto,
                 self.ciphersuite(),
                 commit_secret,
                 &init_secret,
@@ -62,7 +64,7 @@ impl MlsGroup {
             .map_err(LibraryError::unexpected_crypto_error)?
         } else {
             JoinerSecret::new(
-                provider.crypto(),
+                crypto,
                 self.ciphersuite(),
                 commit_secret,
                 epoch_secrets.init_secret(),
@@ -72,29 +74,17 @@ impl MlsGroup {
         };
 
         // Prepare the PskSecret
-        let psk_secret = {
-            let psks: Vec<(&PreSharedKeyId, Secret)> = load_psks(
-                provider.storage(),
-                &self.resumption_psk_store,
-                &apply_proposals_values.presharedkeys,
-            )?;
-
-            PskSecret::new(provider.crypto(), self.ciphersuite(), psks)?
-        };
+        let psk_secret = PskSecret::new(crypto, self.ciphersuite(), psks)?;
 
         // Create key schedule
-        let mut key_schedule = KeySchedule::init(
-            self.ciphersuite(),
-            provider.crypto(),
-            &joiner_secret,
-            psk_secret,
-        )?;
+        let mut key_schedule =
+            KeySchedule::init(self.ciphersuite(), crypto, &joiner_secret, psk_secret)?;
 
         key_schedule
-            .add_context(provider.crypto(), serialized_provisional_group_context)
+            .add_context(crypto, serialized_provisional_group_context)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
         Ok(key_schedule
-            .epoch_secrets(provider.crypto(), self.ciphersuite())
+            .epoch_secrets(crypto, self.ciphersuite())
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?)
     }
 
@@ -138,7 +128,8 @@ impl MlsGroup {
         mls_content: &AuthenticatedContent,
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
-        provider: &impl OpenMlsProvider,
+        psks: Vec<(&'_ PreSharedKeyId, Secret)>,
+        crypto: &impl OpenMlsCrypto,
     ) -> Result<StagedCommit, StageCommitError> {
         // Check that the sender is another member of the group
         if let Sender::Member(member) = mls_content.sender() {
@@ -149,9 +140,8 @@ impl MlsGroup {
 
         let ciphersuite = self.ciphersuite();
 
-        let (commit, proposal_queue, sender_index) = self
-            .public_group
-            .validate_commit(mls_content, provider.crypto())?;
+        let (commit, proposal_queue, sender_index) =
+            self.public_group.validate_commit(mls_content, crypto)?;
 
         // Create the provisional public group state (including the tree and
         // group context) and apply proposals.
@@ -165,23 +155,15 @@ impl MlsGroup {
             if let Some(path) = commit.path.clone() {
                 // Update the public group
                 // ValSem202: Path must be the right length
-                diff.apply_received_update_path(
-                    provider.crypto(),
-                    ciphersuite,
-                    sender_index,
-                    &path,
-                )?;
+                diff.apply_received_update_path(crypto, ciphersuite, sender_index, &path)?;
 
                 // Update group context
-                diff.update_group_context(
-                    provider.crypto(),
-                    apply_proposals_values.extensions.clone(),
-                )?;
+                diff.update_group_context(crypto, apply_proposals_values.extensions.clone())?;
 
                 // Check if we were removed from the group
                 if apply_proposals_values.self_removed {
                     // If so, we return here, because we can't decrypt the path
-                    let staged_diff = diff.into_staged_diff(provider.crypto(), ciphersuite)?;
+                    let staged_diff = diff.into_staged_diff(crypto, ciphersuite)?;
                     let staged_state = PublicStagedCommitState::new(
                         staged_diff,
                         commit.path.as_ref().map(|path| path.leaf_node().clone()),
@@ -200,7 +182,7 @@ impl MlsGroup {
                 // ValSem203: Path secrets must decrypt correctly
                 // ValSem204: Public keys from Path must be verified and match the private keys from the direct path
                 let (new_keypairs, commit_secret) = diff.decrypt_path(
-                    provider.crypto(),
+                    crypto,
                     &decryption_keypairs,
                     self.own_leaf_index(),
                     sender_index,
@@ -246,16 +228,13 @@ impl MlsGroup {
                 }
 
                 // Even if there is no path, we have to update the group context.
-                diff.update_group_context(
-                    provider.crypto(),
-                    apply_proposals_values.extensions.clone(),
-                )?;
+                diff.update_group_context(crypto, apply_proposals_values.extensions.clone())?;
 
                 (CommitSecret::zero_secret(ciphersuite), vec![], None, None)
             };
 
         // Update the confirmed transcript hash before we compute the confirmation tag.
-        diff.update_confirmed_transcript_hash(provider.crypto(), mls_content)?;
+        diff.update_confirmed_transcript_hash(crypto, mls_content)?;
 
         let received_confirmation_tag = mls_content
             .confirmation_tag()
@@ -268,8 +247,9 @@ impl MlsGroup {
 
         let (provisional_group_secrets, provisional_message_secrets) = self
             .derive_epoch_secrets(
-                provider,
+                crypto,
                 apply_proposals_values,
+                psks,
                 self.group_epoch_secrets(),
                 commit_secret,
                 &serialized_provisional_group_context,
@@ -285,7 +265,7 @@ impl MlsGroup {
         let own_confirmation_tag = provisional_message_secrets
             .confirmation_key()
             .tag(
-                provider.crypto(),
+                crypto,
                 self.ciphersuite(),
                 diff.group_context().confirmed_transcript_hash(),
             )
@@ -305,9 +285,9 @@ impl MlsGroup {
             }
         }
 
-        diff.update_interim_transcript_hash(ciphersuite, provider.crypto(), own_confirmation_tag)?;
+        diff.update_interim_transcript_hash(ciphersuite, crypto, own_confirmation_tag)?;
 
-        let staged_diff = diff.into_staged_diff(provider.crypto(), ciphersuite)?;
+        let staged_diff = diff.into_staged_diff(crypto, ciphersuite)?;
         let staged_commit_state =
             StagedCommitState::GroupMember(Box::new(MemberStagedCommitState::new(
                 provisional_group_secrets,

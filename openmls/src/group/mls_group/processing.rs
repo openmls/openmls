@@ -6,9 +6,11 @@ use errors::{CommitToPendingProposalsError, MergePendingCommitError};
 use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer, storage::StorageProvider as _};
 
 use crate::{
+    ciphersuite::Secret,
     framing::mls_content::FramedContentBody,
     group::{errors::MergeCommitError, StageCommitError, ValidationError},
     messages::group_info::GroupInfo,
+    schedule::PreSharedKeyId,
     storage::OpenMlsProvider,
     tree::sender_ratchet::SenderRatchetConfiguration,
 };
@@ -30,54 +32,25 @@ impl MlsGroup {
         provider: &Provider,
         message: impl Into<ProtocolMessage>,
     ) -> Result<ProcessedMessage, ProcessMessageError> {
-        // Make sure we are still a member of the group
-        if !self.is_active() {
-            return Err(ProcessMessageError::GroupStateError(
-                MlsGroupStateError::UseAfterEviction,
-            ));
-        }
-        let message = message.into();
+        let (content, credential) = self.decrypt_and_verify_message(provider.crypto(), message)?;
 
-        // Check that handshake messages are compatible with the incoming wire format policy
-        if !message.is_external()
-            && message.is_handshake_message()
-            && !self
-                .configuration()
-                .wire_format_policy()
-                .incoming()
-                .is_compatible_with(message.wire_format())
-        {
-            return Err(ProcessMessageError::IncompatibleWireFormat);
-        }
-
-        // Parse the message
-        let sender_ratchet_configuration =
-            self.configuration().sender_ratchet_configuration().clone();
-
-        // Checks the following semantic validation:
-        //  - ValSem002
-        //  - ValSem003
-        //  - ValSem006
-        //  - ValSem007 MembershipTag presence
-        let decrypted_message =
-            self.decrypt_message(provider.crypto(), message, &sender_ratchet_configuration)?;
-
-        let unverified_message = self
-            .public_group
-            .parse_message(decrypted_message, &self.message_secrets_store)
-            .map_err(ProcessMessageError::from)?;
-
-        // If this is a commit, we need to load the private key material we need for decryption.
+        // TODO: The psks, old_epoch_keypairs and leaf_node_keypairs are really
+        // only necessary for commits, so we might want to distinguish between
+        // commits and other messages here, especially if this is meant to be
+        // public at some point.
         let (old_epoch_keypairs, leaf_node_keypairs) =
-            if let ContentType::Commit = unverified_message.content_type() {
-                self.read_decryption_keypairs(provider, &self.own_leaf_nodes)?
-            } else {
-                (vec![], vec![])
-            };
+            self.read_decryption_keypairs(provider.storage())?;
 
-        self.process_unverified_message(
-            provider,
-            unverified_message,
+        let psk_ids = content.committed_psk_proposals(self.proposal_store());
+
+        let psks = load_psks(provider.storage(), &self.resumption_psk_store, &psk_ids)
+            .map_err(|e| ProcessMessageError::InvalidCommit(StageCommitError::PskError(e)))?;
+
+        self.process_authenticated_content(
+            provider.crypto(),
+            content,
+            credential,
+            psks,
             old_epoch_keypairs,
             leaf_node_keypairs,
         )
@@ -212,19 +185,19 @@ impl MlsGroup {
     /// Helper function to read decryption keypairs.
     pub(super) fn read_decryption_keypairs(
         &self,
-        provider: &impl OpenMlsProvider,
-        own_leaf_nodes: &[LeafNode],
+        storage: &impl StorageProvider,
     ) -> Result<(Vec<EncryptionKeyPair>, Vec<EncryptionKeyPair>), StageCommitError> {
         // All keys from the previous epoch are potential decryption keypairs.
-        let old_epoch_keypairs = self.read_epoch_keypairs(provider.storage());
+        let old_epoch_keypairs = self.read_epoch_keypairs(storage);
 
         // If we are processing an update proposal that originally came from
         // us, the keypair corresponding to the leaf in the update is also a
         // potential decryption keypair.
-        let leaf_node_keypairs = own_leaf_nodes
+        let leaf_node_keypairs = self
+            .own_leaf_nodes
             .iter()
             .map(|leaf_node| {
-                EncryptionKeyPair::read(provider, leaf_node.encryption_key())
+                EncryptionKeyPair::read(storage, leaf_node.encryption_key())
                     .ok_or(StageCommitError::MissingDecryptionKey)
             })
             .collect::<Result<Vec<EncryptionKeyPair>, StageCommitError>>()?;
@@ -232,11 +205,74 @@ impl MlsGroup {
         Ok((old_epoch_keypairs, leaf_node_keypairs))
     }
 
+    /// Decrypts the message and verifies its signature.
+    ///
+    /// Returns the [`AuthenticatedContent`] of the message, as well as the
+    /// [`Credential`] of the sender if successful, or a [`ProcessMessageError`]
+    /// if not.
+    ///
+    /// Checks the following semantic validation:
+    ///  - ValSem002
+    ///  - ValSem003
+    ///  - ValSem006
+    ///  - ValSem007 MembershipTag presence
+    ///  - ValSem010
+    ///  - ValSem246 (as part of ValSem010)
+    pub(crate) fn decrypt_and_verify_message<Crypto: OpenMlsCrypto>(
+        &mut self,
+        crypto: &Crypto,
+        message: impl Into<ProtocolMessage>,
+    ) -> Result<(AuthenticatedContent, Credential), ProcessMessageError> {
+        // Make sure we are still a member of the group
+        if !self.is_active() {
+            return Err(ProcessMessageError::GroupStateError(
+                MlsGroupStateError::UseAfterEviction,
+            ));
+        }
+        let message = message.into();
+
+        // Check that handshake messages are compatible with the incoming wire format policy
+        if !message.is_external()
+            && message.is_handshake_message()
+            && !self
+                .configuration()
+                .wire_format_policy()
+                .incoming()
+                .is_compatible_with(message.wire_format())
+        {
+            return Err(ProcessMessageError::IncompatibleWireFormat);
+        }
+
+        // Parse the message
+        let sender_ratchet_configuration =
+            self.configuration().sender_ratchet_configuration().clone();
+
+        // Checks the following semantic validation:
+        //  - ValSem002
+        //  - ValSem003
+        //  - ValSem006
+        //  - ValSem007 MembershipTag presence
+        let decrypted_message =
+            self.decrypt_message(crypto, message, &sender_ratchet_configuration)?;
+
+        let unverified_message = self
+            .public_group
+            .parse_message(decrypted_message, &self.message_secrets_store)
+            .map_err(ProcessMessageError::from)?;
+
+        // Checks the following semantic validation:
+        //  - ValSem010
+        //  - ValSem246 (as part of ValSem010)
+        let (content, credential) =
+            unverified_message.verify(self.ciphersuite(), crypto, self.version())?;
+
+        Ok((content, credential))
+    }
+
     /// This processing function does most of the semantic verifications.
     /// It returns a [ProcessedMessage] enum.
     /// Checks the following semantic validation:
     ///  - ValSem008
-    ///  - ValSem010
     ///  - ValSem101
     ///  - ValSem102
     ///  - ValSem104
@@ -259,20 +295,15 @@ impl MlsGroup {
     ///  - ValSem241
     ///  - ValSem242
     ///  - ValSem244
-    ///  - ValSem246 (as part of ValSem010)
-    pub(crate) fn process_unverified_message<Provider: OpenMlsProvider>(
+    pub(crate) fn process_authenticated_content<Crypto: OpenMlsCrypto>(
         &self,
-        provider: &Provider,
-        unverified_message: UnverifiedMessage,
+        crypto: &Crypto,
+        content: AuthenticatedContent,
+        credential: Credential,
+        psks: Vec<(&'_ PreSharedKeyId, Secret)>,
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
     ) -> Result<ProcessedMessage, ProcessMessageError> {
-        // Checks the following semantic validation:
-        //  - ValSem010
-        //  - ValSem246 (as part of ValSem010)
-        let (content, credential) =
-            unverified_message.verify(self.ciphersuite(), provider.crypto(), self.version())?;
-
         match content.sender() {
             Sender::Member(_) | Sender::NewMemberCommit | Sender::NewMemberProposal => {
                 let sender = content.sender().clone();
@@ -287,7 +318,7 @@ impl MlsGroup {
                     FramedContentBody::Proposal(_) => {
                         let proposal = Box::new(QueuedProposal::from_authenticated_content_by_ref(
                             self.ciphersuite(),
-                            provider.crypto(),
+                            crypto,
                             content,
                         )?);
 
@@ -302,7 +333,8 @@ impl MlsGroup {
                             &content,
                             old_epoch_keypairs,
                             leaf_node_keypairs,
-                            provider,
+                            psks,
+                            crypto,
                         )?;
                         ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))
                     }
@@ -328,7 +360,7 @@ impl MlsGroup {
                         let content = ProcessedMessageContent::ProposalMessage(Box::new(
                             QueuedProposal::from_authenticated_content_by_ref(
                                 self.ciphersuite(),
-                                provider.crypto(),
+                                crypto,
                                 content,
                             )?,
                         ));
