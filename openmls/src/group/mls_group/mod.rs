@@ -65,6 +65,7 @@ pub(crate) mod errors;
 pub(crate) mod membership;
 pub(crate) mod past_secrets;
 pub(crate) mod processing;
+mod processing_state_machine;
 pub(crate) mod proposal;
 pub(crate) mod proposal_store;
 pub(crate) mod staged_commit;

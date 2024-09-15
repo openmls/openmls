@@ -32,28 +32,19 @@ impl MlsGroup {
         provider: &Provider,
         message: impl Into<ProtocolMessage>,
     ) -> Result<ProcessedMessage, ProcessMessageError> {
-        let (content, credential) = self.decrypt_and_verify_message(provider.crypto(), message)?;
+        let processing_state = self.init_message_processing(provider.crypto(), message)?;
+        // If we keep the group reference in the processing state, we have to
+        // perform the IO operations on the struct itself. We need some
+        // information from the output of `init_message_processing` to perform
+        // the IO operations anyway, so maybe this is a good idea? It does break
+        // the pattern of just chain-calling the functions on the struct. But
+        // then again, we have to perform IO operations here anyway.
+        // Alternatively, we could have an extra state struct that holds both
+        // the initial processing state AND the IO state. Then we could call
+        // everything in a chain.
+        let loaded_state = processing_state.perform_io(provider.storage())?;
 
-        // TODO: The psks, old_epoch_keypairs and leaf_node_keypairs are really
-        // only necessary for commits, so we might want to distinguish between
-        // commits and other messages here, especially if this is meant to be
-        // public at some point.
-        let (old_epoch_keypairs, leaf_node_keypairs) =
-            self.read_decryption_keypairs(provider.storage())?;
-
-        let psk_ids = content.committed_psk_proposals(self.proposal_store());
-
-        let psks = load_psks(provider.storage(), &self.resumption_psk_store, &psk_ids)
-            .map_err(|e| ProcessMessageError::InvalidCommit(StageCommitError::PskError(e)))?;
-
-        self.process_authenticated_content(
-            provider.crypto(),
-            content,
-            credential,
-            psks,
-            old_epoch_keypairs,
-            leaf_node_keypairs,
-        )
+        processing_state.finalize(provider.crypto(), loaded_state)
     }
 
     /// Stores a standalone proposal in the internal [ProposalStore]
@@ -300,7 +291,7 @@ impl MlsGroup {
         crypto: &Crypto,
         content: AuthenticatedContent,
         credential: Credential,
-        psks: Vec<(&'_ PreSharedKeyId, Secret)>,
+        psks: Vec<(PreSharedKeyId, Secret)>,
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
     ) -> Result<ProcessedMessage, ProcessMessageError> {

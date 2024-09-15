@@ -31,7 +31,7 @@ impl MlsGroup {
         &self,
         crypto: &impl OpenMlsCrypto,
         apply_proposals_values: ApplyProposalsValues,
-        psks: Vec<(&'_ PreSharedKeyId, Secret)>,
+        psks: Vec<(PreSharedKeyId, Secret)>,
         epoch_secrets: &GroupEpochSecrets,
         commit_secret: CommitSecret,
         serialized_provisional_group_context: &[u8],
@@ -128,7 +128,7 @@ impl MlsGroup {
         mls_content: &AuthenticatedContent,
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
-        psks: Vec<(&'_ PreSharedKeyId, Secret)>,
+        psks: Vec<(PreSharedKeyId, Secret)>,
         crypto: &impl OpenMlsCrypto,
     ) -> Result<StagedCommit, StageCommitError> {
         // Check that the sender is another member of the group
