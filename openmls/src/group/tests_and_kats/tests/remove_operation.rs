@@ -4,6 +4,132 @@ use crate::group::tests_and_kats::utils::{generate_credential_with_key, generate
 use crate::{framing::*, group::*};
 use openmls_traits::prelude::*;
 
+#[openmls_test::openmls_test]
+fn remove_blank() {
+    let group_id = GroupId::from_slice(b"Test Group");
+
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let charlie_provider = &Provider::default();
+
+    // Generate credentials with keys
+    let alice_credential_with_key_and_signer = generate_credential_with_key(
+        "Alice".into(),
+        ciphersuite.signature_algorithm(),
+        alice_provider,
+    );
+
+    let bob_credential_with_key_and_signer = generate_credential_with_key(
+        "Bob".into(),
+        ciphersuite.signature_algorithm(),
+        bob_provider,
+    );
+
+    let charlie_credential_with_key_and_signer = generate_credential_with_key(
+        "Charlie".into(),
+        ciphersuite.signature_algorithm(),
+        charlie_provider,
+    );
+
+    // Generate KeyPackages
+    let bob_key_package = generate_key_package(
+        ciphersuite,
+        Extensions::empty(),
+        bob_provider,
+        bob_credential_with_key_and_signer.clone(),
+    );
+    let charlie_key_package = generate_key_package(
+        ciphersuite,
+        Extensions::empty(),
+        charlie_provider,
+        charlie_credential_with_key_and_signer,
+    );
+
+    // Define the MlsGroup configuration
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .build();
+
+    // === Alice creates a group ===
+    let mut alice_group = MlsGroup::new_with_group_id(
+        alice_provider,
+        &alice_credential_with_key_and_signer.signer,
+        &mls_group_create_config,
+        group_id,
+        alice_credential_with_key_and_signer
+            .credential_with_key
+            .clone(),
+    )
+    .expect("An unexpected error occurred.");
+
+    // === Alice adds Bob & Charlie ===
+
+    let (_message, welcome, _group_info) = alice_group
+        .add_members(
+            alice_provider,
+            &alice_credential_with_key_and_signer.signer,
+            &[
+                bob_key_package.key_package().clone(),
+                charlie_key_package.key_package().clone(),
+            ],
+        )
+        .expect("An unexpected error occurred.");
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .expect("error merging pending commit");
+
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome
+        .into_welcome()
+        .expect("expected message to be a welcome");
+
+    let mut bob_group = StagedWelcome::new_from_welcome(
+        bob_provider,
+        mls_group_create_config.join_config(),
+        welcome.clone(),
+        Some(alice_group.export_ratchet_tree().into()),
+    )
+    .expect("Error creating staged join from Welcome")
+    .into_group(bob_provider)
+    .expect("Error creating group from staged join");
+
+    let mut charlie_group = StagedWelcome::new_from_welcome(
+        charlie_provider,
+        mls_group_create_config.join_config(),
+        welcome,
+        Some(alice_group.export_ratchet_tree().into()),
+    )
+    .expect("Error creating staged join from Welcome")
+    .into_group(charlie_provider)
+    .expect("Error creating group from staged join");
+
+    // === Remove operation ===
+
+    let bob_index = bob_group.own_leaf_index();
+
+    alice_group
+        .remove_members(
+            alice_provider,
+            &alice_credential_with_key_and_signer.signer,
+            &[bob_index],
+        )
+        .expect("error removing member the first time");
+
+    alice_group.merge_pending_commit(alice_provider).unwrap();
+
+    // try removing bob a second time
+    alice_group
+        .remove_members(
+            alice_provider,
+            &alice_credential_with_key_and_signer.signer,
+            &[bob_index],
+        )
+        .expect_err("using API to re-remove someone should fail");
+
+    // TODO: craft another remove commit that removes bob's (blank) index and check that merging
+    //       that fails
+}
+
 // Tests the different variants of the RemoveOperation enum.
 #[openmls_test::openmls_test]
 fn test_remove_operation_variants() {
