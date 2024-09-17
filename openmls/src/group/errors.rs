@@ -199,6 +199,9 @@ pub enum StageCommitError {
     GroupContextExtensionsProposalValidationError(
         #[from] GroupContextExtensionsProposalValidationError,
     ),
+    /// See [`LeafNodeValidationError`] for more details.
+    #[error(transparent)]
+    LeafNodeValidation(#[from] LeafNodeValidationError),
 }
 
 /// Create commit error
@@ -382,6 +385,9 @@ pub enum ProposalValidationError {
     /// The proposal type is not supported by all group members.
     #[error("The proposal type is not supported by all group members.")]
     UnsupportedProposalType,
+    /// See [`LeafNodeValidationError`] for more details.
+    #[error(transparent)]
+    LeafNodeValidation(#[from] LeafNodeValidationError),
 }
 
 /// External Commit validaton error

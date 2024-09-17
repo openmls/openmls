@@ -10,7 +10,8 @@ use crate::extensions::RequiredCapabilitiesExtension;
 use crate::group::proposal_store::ProposalQueue;
 use crate::group::GroupContextExtensionsProposalValidationError;
 use crate::prelude::LibraryError;
-use crate::treesync::errors::LeafNodeValidationError;
+use crate::treesync::errors::LifetimeError;
+use crate::treesync::{errors::LeafNodeValidationError, LeafNode};
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     framing::{
@@ -318,68 +319,18 @@ impl PublicGroup {
         //   support for all the credential types currently in use by other
         //   members.
 
-        // Extract the leaf nodes from the add & update proposals
-        let leaf_nodes = proposal_queue
+        // Extract the leaf nodes from the add & update proposals and validate them
+        proposal_queue
             .queued_proposals()
             .filter_map(|p| match p.proposal() {
                 Proposal::Add(add_proposal) => Some(add_proposal.key_package().leaf_node()),
                 Proposal::Update(update_proposal) => Some(update_proposal.leaf_node()),
                 _ => None,
-            });
-
-        let mut group_leaf_nodes = self.treesync().full_leaves();
-
-        for leaf_node in leaf_nodes {
-            // Check if the ciphersuite and the version of the group are
-            // supported.
-            let capabilities = leaf_node.capabilities();
-            if !capabilities
-                .ciphersuites()
-                .contains(&VerifiableCiphersuite::from(self.ciphersuite()))
-                || !capabilities.versions().contains(&self.version())
-            {
-                return Err(ProposalValidationError::InsufficientCapabilities);
-            }
-
-            // If there is a required capabilities extension, check if that one
-            // is supported.
-            if let Some(required_capabilities) =
-                self.group_context().extensions().required_capabilities()
-            {
-                // Check if all required capabilities are supported.
-                capabilities
-                    .supports_required_capabilities(required_capabilities)
-                    .map_err(|_| ProposalValidationError::InsufficientCapabilities)?;
-            }
-
-            // Check that all extensions are contained in the capabilities.
-            if !capabilities.contain_extensions(leaf_node.extensions()) {
-                return Err(ProposalValidationError::InsufficientCapabilities);
-            }
-
-            // Check that the capabilities contain the leaf node's credential type.
-            if !capabilities.contains_credential(&leaf_node.credential().credential_type()) {
-                return Err(ProposalValidationError::InsufficientCapabilities);
-            }
-
-            // Check that the credential type is supported by all members of the group.
-            if !group_leaf_nodes.all(|node| {
-                node.capabilities()
-                    .contains_credential(&leaf_node.credential().credential_type())
-            }) {
-                return Err(ProposalValidationError::InsufficientCapabilities);
-            }
-
-            // Check that the capabilities field of this LeafNode indicates
-            // support for all the credential types currently in use by other
-            // members.
-            if !group_leaf_nodes
-                .all(|node| capabilities.contains_credential(&node.credential().credential_type()))
-            {
-                return Err(ProposalValidationError::InsufficientCapabilities);
-            }
-        }
-        Ok(())
+            })
+            .try_for_each(|leaf_node| {
+                self.validate_leaf_node_capabilities(leaf_node)
+                    .map_err(|_| ProposalValidationError::InsufficientCapabilities)
+            })
     }
 
     /// Validate Add proposals. This function implements the following checks:
@@ -397,6 +348,8 @@ impl PublicGroup {
             {
                 return Err(ProposalValidationError::InvalidAddProposalCiphersuiteOrVersion);
             }
+
+            self.validate_leaf_node(add_proposal.add_proposal().key_package().leaf_node())?;
         }
         Ok(())
     }
@@ -453,6 +406,8 @@ impl PublicGroup {
             } else {
                 return Err(ProposalValidationError::UpdateFromNonMember);
             }
+
+            self.validate_leaf_node(update_proposal.update_proposal().leaf_node())?;
         }
         Ok(())
     }
@@ -594,6 +549,86 @@ impl PublicGroup {
                 }
             }
         }
+
+        Ok(())
+    }
+
+    fn validate_leaf_node_capabilities(
+        &self,
+        leaf_node: &LeafNode,
+    ) -> Result<(), LeafNodeValidationError> {
+        // Check if the ciphersuite and the version of the group are
+        // supported.
+        let capabilities = leaf_node.capabilities();
+        if !capabilities
+            .ciphersuites()
+            .contains(&VerifiableCiphersuite::from(self.ciphersuite()))
+            || !capabilities.versions().contains(&self.version())
+        {
+            return Err(LeafNodeValidationError::CiphersuiteNotInCapabilities);
+        }
+
+        // If there is a required capabilities extension, check if that one
+        // is supported.
+        if let Some(required_capabilities) =
+            self.group_context().extensions().required_capabilities()
+        {
+            // Check if all required capabilities are supported.
+            capabilities.supports_required_capabilities(required_capabilities)?;
+        }
+
+        // Check that all extensions are contained in the capabilities.
+        if !capabilities.contain_extensions(leaf_node.extensions()) {
+            return Err(LeafNodeValidationError::UnsupportedExtensions);
+        }
+
+        // Check that the capabilities contain the leaf node's credential type.
+        if !capabilities.contains_credential(&leaf_node.credential().credential_type()) {
+            return Err(LeafNodeValidationError::UnsupportedCredentials);
+        }
+
+        // Check that the credential type is supported by all members of the group.
+        if !self.treesync().full_leaves().all(|node| {
+            node.capabilities()
+                .contains_credential(&leaf_node.credential().credential_type())
+        }) {
+            return Err(LeafNodeValidationError::UnsupportedCredentials);
+        }
+
+        // Check that the capabilities field of this LeafNode indicates
+        // support for all the credential types currently in use by other
+        // members.
+        if !self
+            .treesync()
+            .full_leaves()
+            .all(|node| capabilities.contains_credential(&node.credential().credential_type()))
+        {
+            return Err(LeafNodeValidationError::UnsupportedCredentials);
+        }
+
+        Ok(())
+    }
+
+    pub(crate) fn validate_leaf_node(
+        &self,
+        leaf_node: &crate::treesync::LeafNode,
+    ) -> Result<(), LeafNodeValidationError> {
+        // 103, 104, 107
+        self.validate_leaf_node_capabilities(leaf_node)?;
+
+        // 105 is done when sending
+
+        // 106
+        if let Some(lifetime) = leaf_node.life_time() {
+            if !lifetime.is_valid() {
+                return Err(LeafNodeValidationError::Lifetime(LifetimeError::NotCurrent));
+            }
+        }
+
+        // 108-110 are done at the caller, we can't do that here
+
+        // 111,112 are done in validate_key_uniqueness, which is called in teh context of changing
+        // this group
 
         Ok(())
     }
