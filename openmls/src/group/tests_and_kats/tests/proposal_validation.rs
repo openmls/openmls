@@ -1,7 +1,11 @@
 //! This module tests the validation of proposals as defined in
 //! https://book.openmls.tech/message_validation.html#semantic-validation-of-proposals-covered-by-a-commit
 
-use crate::{storage::OpenMlsProvider, test_utils::frankenstein::*, treesync::LeafNodeParameters};
+use crate::{
+    storage::OpenMlsProvider,
+    test_utils::frankenstein::*,
+    treesync::{errors::LeafNodeValidationError, LeafNodeParameters},
+};
 use openmls_traits::{
     prelude::{openmls_types::*, *},
     signatures::Signer,
@@ -1329,21 +1333,31 @@ fn test_valsem105() {
                             err,
                             ProcessMessageError::InvalidCommit(
                                 StageCommitError::ProposalValidationError(
-                                    ProposalValidationError::InsufficientCapabilities,
+                                    ProposalValidationError::LeafNodeValidation(
+                                        LeafNodeValidationError::CiphersuiteNotInCapabilities
+                                    ),
                                 ),
                             )
-                        )
+                        ),
+                        "unexpected error: {:?}",
+                        err
                     );
                 }
                 KeyPackageTestVersion::UnsupportedCiphersuite => {
-                    assert!(matches!(
-                        err,
-                        ProcessMessageError::InvalidCommit(
-                            StageCommitError::ProposalValidationError(
-                                ProposalValidationError::InsufficientCapabilities,
-                            ),
-                        )
-                    ));
+                    assert!(
+                        matches!(
+                            err,
+                            ProcessMessageError::InvalidCommit(
+                                StageCommitError::ProposalValidationError(
+                                    ProposalValidationError::LeafNodeValidation(
+                                        LeafNodeValidationError::CiphersuiteNotInCapabilities
+                                    ),
+                                ),
+                            )
+                        ),
+                        "unexpected error: {:?}",
+                        err
+                    );
                 }
             };
 
