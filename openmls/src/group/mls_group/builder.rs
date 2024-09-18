@@ -18,7 +18,7 @@ use crate::{
     },
     storage::OpenMlsProvider,
     tree::sender_ratchet::SenderRatchetConfiguration,
-    treesync::node::leaf_node::Capabilities,
+    treesync::{errors::LeafNodeValidationError, node::leaf_node::Capabilities},
 };
 
 use super::{past_secrets::MessageSecretsStore, MlsGroup, MlsGroupState};
@@ -263,7 +263,7 @@ impl MlsGroupBuilder {
     pub fn with_leaf_node_extensions(
         mut self,
         extensions: Extensions,
-    ) -> Result<Self, InvalidExtensionError> {
+    ) -> Result<Self, LeafNodeValidationError> {
         self.mls_group_create_config_builder = self
             .mls_group_create_config_builder
             .with_leaf_node_extensions(extensions)?;

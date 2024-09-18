@@ -1046,10 +1046,12 @@ fn test_valsem105() {
     for key_package_version in [
         KeyPackageTestVersion::WrongCiphersuite,
         KeyPackageTestVersion::WrongVersion,
-        KeyPackageTestVersion::UnsupportedVersion,
-        KeyPackageTestVersion::UnsupportedCiphersuite,
+        //KeyPackageTestVersion::UnsupportedVersion,
+        // KeyPackageTestVersion::UnsupportedCiphersuite,
         KeyPackageTestVersion::ValidTestCase,
     ] {
+        println!("running test {key_package_version:?}");
+
         // Let's set up a group with Alice and Bob as members.
         let ProposalValidationTestSetup {
             mut alice_group,

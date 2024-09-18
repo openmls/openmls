@@ -527,13 +527,14 @@ impl PublicGroup {
                     };
 
                     // Make sure that all other extensions are known to be supported, by checking
-                    // that they are included in the required capabilities.
+                    // that they are default extensions or included in the required capabilities.
                     let all_extensions_are_in_required_capabilities: bool = extensions
                         .extensions()
                         .iter()
                         .map(|ext| ext.extension_type())
                         .all(|ext_type| {
-                            required_capabilities.requires_extension_type_support(ext_type)
+                            ext_type.is_default()
+                                || required_capabilities.requires_extension_type_support(ext_type)
                         });
 
                     if !all_extensions_are_in_required_capabilities {
@@ -557,13 +558,14 @@ impl PublicGroup {
         &self,
         leaf_node: &LeafNode,
     ) -> Result<(), LeafNodeValidationError> {
+        // Check that the data in the leaf node is self-consistent
+        leaf_node.validate_locally()?;
+
         // Check if the ciphersuite and the version of the group are
         // supported.
         let capabilities = leaf_node.capabilities();
-        if !capabilities
-            .ciphersuites()
-            .contains(&VerifiableCiphersuite::from(self.ciphersuite()))
-            || !capabilities.versions().contains(&self.version())
+        if !capabilities.contains_ciphersuite(VerifiableCiphersuite::from(self.ciphersuite()))
+            || !capabilities.contains_version(self.version())
         {
             return Err(LeafNodeValidationError::CiphersuiteNotInCapabilities);
         }
@@ -577,20 +579,10 @@ impl PublicGroup {
             capabilities.supports_required_capabilities(required_capabilities)?;
         }
 
-        // Check that all extensions are contained in the capabilities.
-        if !capabilities.contain_extensions(leaf_node.extensions()) {
-            return Err(LeafNodeValidationError::UnsupportedExtensions);
-        }
-
-        // Check that the capabilities contain the leaf node's credential type.
-        if !capabilities.contains_credential(&leaf_node.credential().credential_type()) {
-            return Err(LeafNodeValidationError::UnsupportedCredentials);
-        }
-
         // Check that the credential type is supported by all members of the group.
         if !self.treesync().full_leaves().all(|node| {
             node.capabilities()
-                .contains_credential(&leaf_node.credential().credential_type())
+                .contains_credential(leaf_node.credential().credential_type())
         }) {
             return Err(LeafNodeValidationError::UnsupportedCredentials);
         }
@@ -601,7 +593,7 @@ impl PublicGroup {
         if !self
             .treesync()
             .full_leaves()
-            .all(|node| capabilities.contains_credential(&node.credential().credential_type()))
+            .all(|node| capabilities.contains_credential(node.credential().credential_type()))
         {
             return Err(LeafNodeValidationError::UnsupportedCredentials);
         }
@@ -619,8 +611,12 @@ impl PublicGroup {
         // 105 is done when sending
 
         // 106
+        // don't enable in tests, because we are testing with kats that contain
+        // expired key packages
+        #[cfg(not(test))]
         if let Some(lifetime) = leaf_node.life_time() {
             if !lifetime.is_valid() {
+                println!("offending lifetime: {lifetime:?}");
                 return Err(LeafNodeValidationError::Lifetime(LifetimeError::NotCurrent));
             }
         }

@@ -121,10 +121,10 @@ fn book_operations() {
         .expect("error adding external senders extension to group context extensions")
         .ciphersuite(ciphersuite)
         .capabilities(Capabilities::new(
-            None, // Defaults to the group's protocol version
-            None, // Defaults to the group's ciphersuite
-            None, // Defaults to all basic extension types
-            None, // Defaults to all basic proposal types
+            None,                                    // Defaults to the group's protocol version
+            None,                                    // Defaults to the group's ciphersuite
+            Some(&[ExtensionType::Unknown(0xff00)]), // Defaults to all basic extension types
+            None,                                    // Defaults to all basic extension types
             Some(&[CredentialType::Basic]),
         ))
         // Example leaf extension
@@ -136,6 +136,8 @@ fn book_operations() {
         .use_ratchet_tree_extension(true)
         .build();
     // ANCHOR_END: mls_group_create_config_example
+
+    println!("### {mls_group_create_config:?}");
 
     // ANCHOR: alice_create_group
     let mut alice_group = MlsGroup::new(

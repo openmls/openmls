@@ -1,9 +1,6 @@
 use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
-use crate::{
-    credentials::CredentialType, messages::proposals::ProposalType,
-    treesync::node::leaf_node::default_extensions,
-};
+use crate::{credentials::CredentialType, messages::proposals::ProposalType};
 
 use super::{Deserialize, ExtensionType, Serialize};
 
@@ -80,6 +77,6 @@ impl RequiredCapabilitiesExtension {
 
     /// Checks whether support for the provided extension type is required.
     pub(crate) fn requires_extension_type_support(&self, ext_type: ExtensionType) -> bool {
-        self.extension_types.contains(&ext_type) || default_extensions().contains(&ext_type)
+        self.extension_types.contains(&ext_type)
     }
 }

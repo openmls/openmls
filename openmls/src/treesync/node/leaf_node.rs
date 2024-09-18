@@ -435,13 +435,14 @@ impl LeafNode {
 
     /// Returns `true` if the [`ExtensionType`] is supported by this leaf node.
     pub(crate) fn supports_extension(&self, extension_type: &ExtensionType) -> bool {
-        self.payload
-            .capabilities
-            .extensions
-            .contains(extension_type)
-            || default_extensions().iter().any(|et| et == extension_type)
+        extension_type.is_default()
+            || self
+                .payload
+                .capabilities
+                .extensions
+                .contains(extension_type)
     }
-    ///
+
     /// Check whether the this leaf node supports all the required extensions
     /// in the provided list.
     pub(crate) fn check_extension_support(
@@ -453,6 +454,36 @@ impl LeafNode {
                 return Err(LeafNodeValidationError::UnsupportedExtensions);
             }
         }
+        Ok(())
+    }
+
+    /// Perform all checks that can be done without further context:
+    /// - the used extensions are not known to be invalid in leaf leaf nodes
+    /// - the types of the used extensions are covered by the capabilities
+    /// - the type of the credential is coveered by the capabilities
+    pub(crate) fn validate_locally(&self) -> Result<(), LeafNodeValidationError> {
+        // Check that no extension is invalid when used in leaf nodes.
+        if self
+            .extensions()
+            .iter()
+            .any(|ext| ext.extension_type().is_valid_in_leaf_node() == Some(false))
+        {
+            return Err(LeafNodeValidationError::UnsupportedExtensions);
+        }
+
+        // Check that all extensions are contained in the capabilities.
+        if !self.capabilities().contains_extensions(self.extensions()) {
+            return Err(LeafNodeValidationError::UnsupportedExtensions);
+        }
+
+        // Check that the capabilities contain the leaf node's credential type.
+        if !self
+            .capabilities()
+            .contains_credential(self.credential().credential_type())
+        {
+            return Err(LeafNodeValidationError::UnsupportedCredentials);
+        }
+
         Ok(())
     }
 }
