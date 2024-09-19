@@ -83,7 +83,7 @@ fn remove_blank() {
         .into_welcome()
         .expect("expected message to be a welcome");
 
-    let mut bob_group = StagedWelcome::new_from_welcome(
+    let bob_group = StagedWelcome::new_from_welcome(
         bob_provider,
         mls_group_create_config.join_config(),
         welcome.clone(),
@@ -91,16 +91,6 @@ fn remove_blank() {
     )
     .expect("Error creating staged join from Welcome")
     .into_group(bob_provider)
-    .expect("Error creating group from staged join");
-
-    let mut charlie_group = StagedWelcome::new_from_welcome(
-        charlie_provider,
-        mls_group_create_config.join_config(),
-        welcome,
-        Some(alice_group.export_ratchet_tree().into()),
-    )
-    .expect("Error creating staged join from Welcome")
-    .into_group(charlie_provider)
     .expect("Error creating group from staged join");
 
     // === Remove operation ===
