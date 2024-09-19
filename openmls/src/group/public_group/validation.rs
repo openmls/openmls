@@ -10,7 +10,6 @@ use crate::extensions::RequiredCapabilitiesExtension;
 use crate::group::proposal_store::ProposalQueue;
 use crate::group::GroupContextExtensionsProposalValidationError;
 use crate::prelude::LibraryError;
-use crate::treesync::errors::LifetimeError;
 use crate::treesync::{errors::LeafNodeValidationError, LeafNode};
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
@@ -29,6 +28,9 @@ use crate::{
     },
     schedule::errors::PskError,
 };
+
+#[cfg(not(test))]
+use crate::treesync::errors::LifetimeError;
 
 impl PublicGroup {
     // === Messages ===
