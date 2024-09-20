@@ -610,6 +610,11 @@
 <a href="#610" id="610">610</a>
 <a href="#611" id="611">611</a>
 <a href="#612" id="612">612</a>
+<a href="#613" id="613">613</a>
+<a href="#614" id="614">614</a>
+<a href="#615" id="615">615</a>
+<a href="#616" id="616">616</a>
+<a href="#617" id="617">617</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains validation functions for incoming messages
 //! as defined in &lt;https://github.com/openmls/openmls/wiki/Message-validation&gt;
 
@@ -1033,6 +1038,11 @@
 
             <span class="comment">// ValSem108
             </span><span class="kw">if </span>!<span class="self">self</span>.treesync().is_leaf_in_tree(removed) {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::UnknownMemberRemoval);
+            }
+
+            <span class="comment">// valn0701: removed node can not be blank
+            </span><span class="kw">if </span><span class="self">self</span>.treesync().leaf(removed).is_none() {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::UnknownMemberRemoval);
             }
         }
