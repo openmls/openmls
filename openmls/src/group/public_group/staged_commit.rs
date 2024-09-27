@@ -94,7 +94,7 @@ impl PublicGroup {
             }
         })?;
 
-        // 1207
+        // valn1207
         if let Some(update_path) = &commit.path {
             self.validate_leaf_node(update_path.leaf_node())?;
         }

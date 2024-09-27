@@ -169,6 +169,8 @@ impl PublicGroup {
     ///  - ValSem110: Update Proposal: Encryption key must be unique among proposals & members
     ///  - ValSem206: Commit: Path leaf node encryption key must be unique among proposals & members
     ///  - ValSem207: Commit: Path encryption keys must be unique among proposals & members
+    ///  - valn0111: Verify that the following fields are unique among the members of the group: `signature_key`
+    ///  - valn0112: Verify that the following fields are unique among the members of the group: `encryption_key`
     pub(crate) fn validate_key_uniqueness(
         &self,
         proposal_queue: &ProposalQueue,
@@ -264,6 +266,7 @@ impl PublicGroup {
 
         // Validate uniqueness of signature keys
         //  - ValSem101
+        //  - valn0111
         for signature_key in signature_keys {
             if !signature_key_set.insert(signature_key) {
                 return Err(ProposalValidationError::DuplicateSignatureKey);
@@ -276,6 +279,7 @@ impl PublicGroup {
         //  - ValSem110
         //  - ValSem206
         //  - ValSem207
+        //  - valn0112
         for encryption_key in encryption_keys {
             if init_key_set.contains(&encryption_key) {
                 return Err(ProposalValidationError::InitEncryptionKeyCollision);
@@ -573,7 +577,7 @@ impl PublicGroup {
         }
 
         // If there is a required capabilities extension, check if that one
-        // is supported.
+        // is supported (valn0103).
         if let Some(required_capabilities) =
             self.group_context().extensions().required_capabilities()
         {
@@ -581,7 +585,7 @@ impl PublicGroup {
             capabilities.supports_required_capabilities(required_capabilities)?;
         }
 
-        // Check that the credential type is supported by all members of the group.
+        // Check that the credential type is supported by all members of the group (valn0104).
         if !self.treesync().full_leaves().all(|node| {
             node.capabilities()
                 .contains_credential(leaf_node.credential().credential_type())
@@ -591,7 +595,7 @@ impl PublicGroup {
 
         // Check that the capabilities field of this LeafNode indicates
         // support for all the credential types currently in use by other
-        // members.
+        // members (valn0104).
         if !self
             .treesync()
             .full_leaves()
@@ -607,12 +611,12 @@ impl PublicGroup {
         &self,
         leaf_node: &crate::treesync::LeafNode,
     ) -> Result<(), LeafNodeValidationError> {
-        // 103, 104, 107
+        // valn0103, valn0104, valn0107
         self.validate_leaf_node_capabilities(leaf_node)?;
 
-        // 105 is done when sending
+        // valn0105 is done when sending
 
-        // 106
+        // valn0106
         // don't enable in tests, because we are testing with kats that contain
         // expired key packages
         #[cfg(not(test))]
@@ -623,9 +627,9 @@ impl PublicGroup {
             }
         }
 
-        // 108-110 are done at the caller, we can't do that here
+        // valn0108, valn0109, valn0110 are done at the caller, we can't do that here
 
-        // 111,112 are done in validate_key_uniqueness, which is called in teh context of changing
+        // valn0111, valn0112 are done in validate_key_uniqueness, which is called in teh context of changing
         // this group
 
         Ok(())

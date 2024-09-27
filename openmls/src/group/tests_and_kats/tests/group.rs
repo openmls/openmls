@@ -104,6 +104,9 @@ fn basic_group_setup() {
         };
 }
 
+/// This test checks that we can't create a group that is invalid.
+/// Specifically, we test that the extensions in the leaf node must be supported by the lead node's
+/// own capabilties (valn0107).
 #[openmls_test::openmls_test]
 fn wrong_group_create_config() {
     MlsGroupCreateConfig::builder()

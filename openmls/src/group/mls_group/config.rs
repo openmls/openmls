@@ -353,7 +353,7 @@ impl MlsGroupCreateConfigBuilder {
 
         // Make sure that the extension type is supported in this context.
         // This means that the leaf node needs to have support listed in the
-        // the capabilities.
+        // the capabilities (valn0107).
         if !self.config.capabilities.contains_extensions(&extensions) {
             return Err(LeafNodeValidationError::ExtensionsNotInCapabilities);
         }
