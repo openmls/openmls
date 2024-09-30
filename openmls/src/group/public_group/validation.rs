@@ -382,6 +382,11 @@ impl PublicGroup {
             if !self.treesync().is_leaf_in_tree(removed) {
                 return Err(ProposalValidationError::UnknownMemberRemoval);
             }
+
+            // valn0701: removed node can not be blank
+            if self.treesync().leaf(removed).is_none() {
+                return Err(ProposalValidationError::UnknownMemberRemoval);
+            }
         }
 
         Ok(())
