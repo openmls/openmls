@@ -339,6 +339,11 @@ impl PreSharedKeyProposal {
     pub(crate) fn into_psk_id(self) -> PreSharedKeyId {
         self.psk
     }
+
+    /// Returns a reference to the [`PreSharedKeyId`] in this proposal.
+    pub fn psk(&self) -> &PreSharedKeyId {
+        &self.psk
+    }
 }
 
 impl PreSharedKeyProposal {
