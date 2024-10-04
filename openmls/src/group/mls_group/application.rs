@@ -30,22 +30,22 @@ impl MlsGroup {
             ));
         }
 
+        let authenticated_content = AuthenticatedContent::new_application(
+            self.own_leaf_index(),
+            &self.aad,
+            message,
+            self.context(),
+            signer,
+        )?;
         let ciphertext = self
-            .group
-            .create_application_message(
-                &self.aad,
-                message,
-                self.configuration().padding_size(),
-                provider,
-                signer,
-            )
+            .encrypt(authenticated_content, provider)
             // We know the application message is wellformed and we have the key material of the current epoch
             .map_err(|_| LibraryError::custom("Malformed plaintext"))?;
 
         self.reset_aad();
         Ok(MlsMessageOut::from_private_message(
             ciphertext,
-            self.group.version(),
+            self.version(),
         ))
     }
 }

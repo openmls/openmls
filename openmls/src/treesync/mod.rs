@@ -44,10 +44,7 @@ use self::{
 #[cfg(test)]
 use crate::binary_tree::array_representation::ParentNodeIndex;
 #[cfg(any(feature = "test-utils", test))]
-use crate::{
-    binary_tree::array_representation::level, group::tests_and_kats::tree_printing::root,
-    test_utils::bytes_to_hex,
-};
+use crate::{binary_tree::array_representation::level, test_utils::bytes_to_hex};
 use crate::{
     binary_tree::{
         array_representation::{is_node_in_tree, tree::TreeNode, LeafNodeIndex, TreeSize},
@@ -273,6 +270,23 @@ impl From<RatchetTreeIn> for RatchetTree {
                 .collect(),
         )
     }
+}
+
+#[cfg(any(feature = "test-utils", test))]
+fn log2(x: u32) -> usize {
+    if x == 0 {
+        return 0;
+    }
+    let mut k = 0;
+    while (x >> k) > 0 {
+        k += 1
+    }
+    k - 1
+}
+
+#[cfg(any(feature = "test-utils", test))]
+pub(crate) fn root(size: u32) -> u32 {
+    (1 << log2(size)) - 1
 }
 
 #[cfg(any(feature = "test-utils", test))]

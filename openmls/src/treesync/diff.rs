@@ -36,7 +36,7 @@ use super::{
     treesync_node::{TreeSyncLeafNode, TreeSyncParentNode},
     LeafNode, TreeSync, TreeSyncParentHashError,
 };
-use crate::group::{create_commit_params::CommitType, GroupId};
+use crate::group::{create_commit::CommitType, GroupId};
 use crate::{
     binary_tree::{
         array_representation::{

@@ -2,8 +2,7 @@ use super::{super::errors::*, *};
 use crate::{
     framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, Sender},
     group::{
-        core_group::{proposals::ProposalQueue, staged_commit::StagedCommitState},
-        StagedCommit,
+        mls_group::staged_commit::StagedCommitState, proposal_store::ProposalQueue, StagedCommit,
     },
     messages::{proposals::ProposalOrRef, Commit},
 };
@@ -170,15 +169,12 @@ impl PublicGroup {
     ///  - Applies the proposals covered by the commit to the tree
     ///  - Applies the (optional) update path to the tree
     ///  - Updates the [`GroupContext`]
-    ///
-    /// A similar function to this exists in [`CoreGroup`], which in addition
-    /// does the following:
     ///  - Decrypts and derives the path secrets
     ///  - Initializes the key schedule for epoch rollover
     ///  - Verifies the confirmation tag
     ///
     /// Returns a [`StagedCommit`] that can be inspected and later merged into
-    /// the group state either with [`CoreGroup::merge_commit()`] or
+    /// the group state either with [`MlsGroup::merge_commit()`] or
     /// [`PublicGroup::merge_diff()`] This function does the following checks:
     ///  - ValSem101
     ///  - ValSem102

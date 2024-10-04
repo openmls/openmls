@@ -10,10 +10,11 @@
 use openmls_traits::storage::{traits, Entity, Key, CURRENT_VERSION};
 
 use crate::binary_tree::LeafNodeIndex;
+use crate::group::proposal_store::QueuedProposal;
 use crate::group::{MlsGroupJoinConfig, MlsGroupState};
 use crate::{
     ciphersuite::hash_ref::ProposalRef,
-    group::{GroupContext, GroupId, InterimTranscriptHash, QueuedProposal},
+    group::{GroupContext, GroupId, InterimTranscriptHash},
     messages::ConfirmationTag,
     treesync::{LeafNode, TreeSync},
 };

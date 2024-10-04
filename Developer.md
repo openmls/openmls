@@ -35,5 +35,5 @@ You can start by looking at the [open issues](https://github.com/openmls/openmls
 
 OpenMLS adheres to the [Contributor Covenant](https://www.contributor-covenant.org/) Code of Coduct. Please read the [Code of Conduct](https://github.com/openmls/openmls/tree/main/CODE_OF_CONDUCT.md) carefully.
 
-[book-main-link]: https://openmls.tech/openmls/book
-[docs-main-link]: https://openmls.tech/openmls/doc/openmls/index.html
+[book-main-link]: https://latest.openmls.tech/book
+[docs-main-link]: https://latest.openmls.tech/doc/openmls/index.html

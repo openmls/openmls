@@ -139,10 +139,6 @@ impl TempBuilderPG2 {
     pub(crate) fn group_context(&self) -> &GroupContext {
         &self.group_context
     }
-
-    pub(crate) fn group_id(&self) -> &GroupId {
-        self.group_context.group_id()
-    }
 }
 
 pub(crate) struct PublicGroupBuilder {

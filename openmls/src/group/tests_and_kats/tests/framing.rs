@@ -35,7 +35,7 @@ fn padding(provider: &impl crate::storage::OpenMlsProvider) {
     for &ciphersuite in provider.crypto().supported_ciphersuites().iter() {
         let test_group = TestGroupConfig {
             ciphersuite,
-            config: CoreGroupConfig::default(),
+            use_ratchet_tree_extension: true,
             members: vec![alice_config.clone()],
         };
         test_group_configs.push(test_group);

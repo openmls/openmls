@@ -34,9 +34,7 @@ fn create_encoding_test_setup(provider: &impl crate::storage::OpenMlsProvider) -
     for &ciphersuite in provider.crypto().supported_ciphersuites().iter() {
         let test_group = TestGroupConfig {
             ciphersuite,
-            config: CoreGroupConfig {
-                add_ratchet_tree_extension: true,
-            },
+            use_ratchet_tree_extension: true,
             members: vec![alice_config.clone(), bob_config.clone()],
         };
         test_group_configs.push(test_group);

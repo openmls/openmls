@@ -1,3 +1,6 @@
+//! This module contains the implementation of the processing functions for
+//! public groups.
+
 use openmls_traits::crypto::OpenMlsCrypto;
 use tls_codec::Serialize;
 
@@ -10,8 +13,8 @@ use crate::{
         ProcessedMessageContent, ProtocolMessage, Sender, SenderContext, UnverifiedMessage,
     },
     group::{
-        core_group::proposals::QueuedProposal, errors::ValidationError,
-        mls_group::errors::ProcessMessageError, past_secrets::MessageSecretsStore,
+        errors::ValidationError, mls_group::errors::ProcessMessageError,
+        past_secrets::MessageSecretsStore, proposal_store::QueuedProposal,
     },
     messages::proposals::Proposal,
 };

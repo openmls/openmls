@@ -76,7 +76,7 @@ pub trait PublicStorageProvider<const VERSION: u16> {
     ) -> Result<Vec<(ProposalRef, QueuedProposal)>, Self::PublicError>;
 
     /// Returns the TreeSync tree for the group with group id `group_id`.
-    fn treesync<
+    fn tree<
         GroupId: crate::storage::traits::GroupId<VERSION>,
         TreeSync: crate::storage::traits::TreeSync<VERSION>,
     >(
@@ -233,7 +233,7 @@ where
         <Self as StorageProvider<VERSION>>::queued_proposals(self, group_id)
     }
 
-    fn treesync<
+    fn tree<
         GroupId: crate::storage::traits::GroupId<VERSION>,
         TreeSync: crate::storage::traits::TreeSync<VERSION>,
     >(
