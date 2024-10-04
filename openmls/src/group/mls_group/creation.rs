@@ -1,23 +1,28 @@
+use errors::NewGroupError;
 use openmls_traits::{signatures::Signer, storage::StorageProvider as StorageProviderTrait};
 
 use super::{builder::MlsGroupBuilder, *};
 use crate::{
     credentials::CredentialWithKey,
-    group::{
-        core_group::create_commit_params::{CommitType, CreateCommitParams},
-        errors::{ExternalCommitError, WelcomeError},
-    },
+    group::errors::{ExternalCommitError, WelcomeError},
     messages::{
         group_info::{GroupInfo, VerifiableGroupInfo},
         Welcome,
     },
-    schedule::psk::{store::ResumptionPskStore, PreSharedKeyId},
+    schedule::{
+        psk::{store::ResumptionPskStore, PreSharedKeyId},
+        EpochSecrets, InitSecret,
+    },
     storage::OpenMlsProvider,
     treesync::{
+        errors::{DerivePathError, PublicTreeError},
         node::leaf_node::{Capabilities, LeafNodeParameters},
         RatchetTreeIn,
     },
 };
+
+#[cfg(doc)]
+use crate::key_packages::KeyPackage;
 
 impl MlsGroup {
     // === Group creation ===
@@ -100,40 +105,118 @@ impl MlsGroup {
             .with_capabilities(capabilities.unwrap_or_default())
             .with_extensions(extensions.unwrap_or_default())
             .build();
-        let params = CreateCommitParams::builder()
+        let mut params = CreateCommitParams::builder()
             .framing_parameters(framing_parameters)
             .commit_type(CommitType::External(credential_with_key))
             .leaf_node_parameters(leaf_node_parameters)
             .build();
-        let (mut group, create_commit_result) = CoreGroup::join_by_external_commit(
-            provider,
-            signer,
-            params,
-            ratchet_tree,
-            verifiable_group_info,
-        )?;
-        group.set_max_past_epochs(mls_group_config.max_past_epochs);
 
-        let mls_group = MlsGroup {
-            mls_group_config: mls_group_config.clone(),
-            group,
-            own_leaf_nodes: vec![],
-            aad: vec![],
-            group_state: MlsGroupState::PendingCommit(Box::new(PendingCommitState::External(
-                create_commit_result.staged_commit,
-            ))),
+        // Build the ratchet tree
+
+        // Set nodes either from the extension or from the `nodes_option`.
+        // If we got a ratchet tree extension in the welcome, we enable it for
+        // this group. Note that this is not strictly necessary. But there's
+        // currently no other mechanism to enable the extension.
+        let ratchet_tree = match verifiable_group_info.extensions().ratchet_tree() {
+            Some(extension) => extension.ratchet_tree().clone(),
+            None => match ratchet_tree {
+                Some(ratchet_tree) => ratchet_tree,
+                None => return Err(ExternalCommitError::MissingRatchetTree),
+            },
         };
 
-        provider
-            .storage()
-            .write_mls_join_config(mls_group.group_id(), &mls_group.mls_group_config)
-            .map_err(ExternalCommitError::StorageError)?;
-        provider
-            .storage()
-            .write_group_state(mls_group.group_id(), &mls_group.group_state)
-            .map_err(ExternalCommitError::StorageError)?;
+        let (public_group, group_info) = PublicGroup::from_external(
+            provider.crypto(),
+            provider.storage(),
+            ratchet_tree,
+            verifiable_group_info,
+            // Existing proposals are discarded when joining by external commit.
+            ProposalStore::new(),
+        )?;
+        let group_context = public_group.group_context();
+
+        // Obtain external_pub from GroupInfo extensions.
+        let external_pub = group_info
+            .extensions()
+            .external_pub()
+            .ok_or(ExternalCommitError::MissingExternalPub)?
+            .external_pub();
+
+        let (init_secret, kem_output) = InitSecret::from_group_context(
+            provider.crypto(),
+            group_context,
+            external_pub.as_slice(),
+        )
+        .map_err(|_| ExternalCommitError::UnsupportedCiphersuite)?;
+
+        // The `EpochSecrets` we create here are essentially zero, with the
+        // exception of the `InitSecret`, which is all we need here for the
+        // external commit.
+        let epoch_secrets = EpochSecrets::with_init_secret(
+            provider.crypto(),
+            group_info.group_context().ciphersuite(),
+            init_secret,
+        )
+        .map_err(LibraryError::unexpected_crypto_error)?;
+        let (group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
+            group_context
+                .tls_serialize_detached()
+                .map_err(LibraryError::missing_bound_check)?,
+            public_group.tree_size(),
+            // We use a fake own index of 0 here, as we're not going to use the
+            // tree for encryption until after the first commit. This issue is
+            // tracked in #767.
+            LeafNodeIndex::new(0u32),
+        );
+        let message_secrets_store = MessageSecretsStore::new_with_secret(0, message_secrets);
+
+        let external_init_proposal = Proposal::ExternalInit(ExternalInitProposal::from(kem_output));
+
+        let mut inline_proposals = vec![external_init_proposal];
+
+        // If there is a group member in the group with the same identity as us,
+        // commit a remove proposal.
+        let signature_key = match params.commit_type() {
+            CommitType::External(credential_with_key) => {
+                credential_with_key.signature_key.as_slice()
+            }
+            _ => return Err(ExternalCommitError::MissingCredential),
+        };
+        if let Some(us) = public_group
+            .members()
+            .find(|member| member.signature_key == signature_key)
+        {
+            let remove_proposal = Proposal::Remove(RemoveProposal { removed: us.index });
+            inline_proposals.push(remove_proposal);
+        };
+
+        let own_leaf_index = public_group.leftmost_free_index(inline_proposals.iter().map(Some))?;
+        params.set_inline_proposals(inline_proposals);
+
+        let mut mls_group = MlsGroup {
+            mls_group_config: mls_group_config.clone(),
+            own_leaf_nodes: vec![],
+            aad: vec![],
+            group_state: MlsGroupState::Operational,
+            public_group,
+            group_epoch_secrets,
+            own_leaf_index,
+            message_secrets_store,
+            resumption_psk_store: ResumptionPskStore::new(32),
+        };
+
+        mls_group.set_max_past_epochs(mls_group_config.max_past_epochs);
+
+        // Immediately create the commit to add ourselves to the group.
+        let create_commit_result = mls_group
+            .create_commit(params, provider, signer)
+            .map_err(|_| ExternalCommitError::CommitError)?;
+
+        mls_group.group_state = MlsGroupState::PendingCommit(Box::new(
+            PendingCommitState::External(create_commit_result.staged_commit),
+        ));
+
         mls_group
-            .group
             .store(provider.storage())
             .map_err(ExternalCommitError::StorageError)?;
 
@@ -170,13 +253,64 @@ impl ProcessedWelcome {
         let (resumption_psk_store, key_package_bundle) =
             keys_for_welcome(mls_group_config, &welcome, provider)?;
 
-        let (ciphersuite, group_secrets, key_schedule, verifiable_group_info) =
-            crate::group::core_group::new_from_welcome::process_welcome(
-                welcome,
-                &key_package_bundle,
-                provider,
+        let ciphersuite = welcome.ciphersuite();
+        let Some(egs) = welcome.find_encrypted_group_secret(
+            key_package_bundle
+                .key_package()
+                .hash_ref(provider.crypto())?,
+        ) else {
+            return Err(WelcomeError::JoinerSecretNotFound);
+        };
+        if ciphersuite != key_package_bundle.key_package().ciphersuite() {
+            let e = WelcomeError::CiphersuiteMismatch;
+            log::debug!("new_from_welcome {:?}", e);
+            return Err(e);
+        }
+        let group_secrets = GroupSecrets::try_from_ciphertext(
+            key_package_bundle.init_private_key(),
+            egs.encrypted_group_secrets(),
+            welcome.encrypted_group_info(),
+            ciphersuite,
+            provider.crypto(),
+        )?;
+        let psk_secret = {
+            let psks = load_psks(
+                provider.storage(),
                 &resumption_psk_store,
+                &group_secrets.psks,
             )?;
+
+            PskSecret::new(provider.crypto(), ciphersuite, psks)?
+        };
+        let key_schedule = KeySchedule::init(
+            ciphersuite,
+            provider.crypto(),
+            &group_secrets.joiner_secret,
+            psk_secret,
+        )?;
+        let (welcome_key, welcome_nonce) = key_schedule
+            .welcome(provider.crypto(), ciphersuite)
+            .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?
+            .derive_welcome_key_nonce(provider.crypto(), ciphersuite)
+            .map_err(LibraryError::unexpected_crypto_error)?;
+        let verifiable_group_info = VerifiableGroupInfo::try_from_ciphertext(
+            &welcome_key,
+            &welcome_nonce,
+            welcome.encrypted_group_info(),
+            &[],
+            provider.crypto(),
+        )?;
+        if let Some(required_capabilities) =
+            verifiable_group_info.extensions().required_capabilities()
+        {
+            // Also check that our key package actually supports the extensions.
+            // As per the spec, the sender must have checked this. But you never know.
+            key_package_bundle
+                .key_package()
+                .leaf_node()
+                .capabilities()
+                .supports_required_capabilities(required_capabilities)?;
+        }
 
         Ok(Self {
             mls_group_config: mls_group_config.clone(),
@@ -206,24 +340,139 @@ impl ProcessedWelcome {
     /// Consume the `ProcessedWelcome` and combine it witht he ratchet tree into
     /// a `StagedWelcome`.
     pub fn into_staged_welcome<Provider: OpenMlsProvider>(
-        self,
+        mut self,
         provider: &Provider,
         ratchet_tree: Option<RatchetTreeIn>,
     ) -> Result<StagedWelcome, WelcomeError<Provider::StorageError>> {
-        let group = crate::group::core_group::new_from_welcome::build_staged_welcome(
-            self.verifiable_group_info,
+        // Build the ratchet tree and group
+
+        // Set nodes either from the extension or from the `nodes_option`.
+        // If we got a ratchet tree extension in the welcome, we enable it for
+        // this group. Note that this is not strictly necessary. But there's
+        // currently no other mechanism to enable the extension.
+        let ratchet_tree = match self.verifiable_group_info.extensions().ratchet_tree() {
+            Some(extension) => extension.ratchet_tree().clone(),
+            None => match ratchet_tree {
+                Some(ratchet_tree) => ratchet_tree,
+                None => return Err(WelcomeError::MissingRatchetTree),
+            },
+        };
+
+        // Since there is currently only the external pub extension, there is no
+        // group info extension of interest here.
+        let (public_group, _group_info_extensions) = PublicGroup::from_external(
+            provider.crypto(),
+            provider.storage(),
             ratchet_tree,
-            provider,
-            self.key_package_bundle,
-            self.key_schedule,
-            self.ciphersuite,
-            self.resumption_psk_store,
-            self.group_secrets,
+            self.verifiable_group_info.clone(),
+            ProposalStore::new(),
         )?;
+
+        // Find our own leaf in the tree.
+        let own_leaf_index = public_group
+            .members()
+            .find_map(|m| {
+                if m.signature_key
+                    == self
+                        .key_package_bundle
+                        .key_package()
+                        .leaf_node()
+                        .signature_key()
+                        .as_slice()
+                {
+                    Some(m.index)
+                } else {
+                    None
+                }
+            })
+            .ok_or(WelcomeError::PublicTreeError(
+                PublicTreeError::MalformedTree,
+            ))?;
+
+        let (group_epoch_secrets, message_secrets) = {
+            let serialized_group_context = public_group
+                .group_context()
+                .tls_serialize_detached()
+                .map_err(LibraryError::missing_bound_check)?;
+
+            // TODO #751: Implement PSK
+            self.key_schedule
+                .add_context(provider.crypto(), &serialized_group_context)
+                .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
+
+            let epoch_secrets = self
+                .key_schedule
+                .epoch_secrets(provider.crypto(), self.ciphersuite)
+                .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
+
+            epoch_secrets.split_secrets(
+                serialized_group_context,
+                public_group.tree_size(),
+                own_leaf_index,
+            )
+        };
+
+        let confirmation_tag = message_secrets
+            .confirmation_key()
+            .tag(
+                provider.crypto(),
+                self.ciphersuite,
+                public_group.group_context().confirmed_transcript_hash(),
+            )
+            .map_err(LibraryError::unexpected_crypto_error)?;
+
+        // Verify confirmation tag
+        if &confirmation_tag != public_group.confirmation_tag() {
+            log::error!("Confirmation tag mismatch");
+            log_crypto!(trace, "  Got:      {:x?}", confirmation_tag);
+            log_crypto!(trace, "  Expected: {:x?}", public_group.confirmation_tag());
+            debug_assert!(false, "Confirmation tag mismatch");
+
+            // in some tests we need to be able to proceed despite the tag being wrong,
+            // e.g. to test whether a later validation check is performed correctly.
+            if !crate::skip_validation::is_disabled::confirmation_tag() {
+                return Err(WelcomeError::ConfirmationTagMismatch);
+            }
+        }
+
+        let message_secrets_store = MessageSecretsStore::new_with_secret(0, message_secrets);
+
+        // Extract and store the resumption PSK for the current epoch.
+        let resumption_psk = group_epoch_secrets.resumption_psk();
+        self.resumption_psk_store
+            .add(public_group.group_context().epoch(), resumption_psk.clone());
+
+        let welcome_sender_index = self.verifiable_group_info.signer();
+        let path_keypairs = if let Some(path_secret) = self.group_secrets.path_secret {
+            let (path_keypairs, _commit_secret) = public_group
+                .derive_path_secrets(
+                    provider.crypto(),
+                    self.ciphersuite,
+                    path_secret,
+                    welcome_sender_index,
+                    own_leaf_index,
+                )
+                .map_err(|e| match e {
+                    DerivePathError::LibraryError(e) => e.into(),
+                    DerivePathError::PublicKeyMismatch => {
+                        WelcomeError::PublicTreeError(PublicTreeError::PublicKeyMismatch)
+                    }
+                })?;
+            Some(path_keypairs)
+        } else {
+            None
+        };
 
         let staged_welcome = StagedWelcome {
             mls_group_config: self.mls_group_config,
-            group,
+            public_group,
+            group_epoch_secrets,
+            own_leaf_index,
+            message_secrets_store,
+            resumption_psk_store: self.resumption_psk_store,
+            verifiable_group_info: self.verifiable_group_info,
+            key_package_bundle: self.key_package_bundle,
+            path_keypairs,
         };
 
         Ok(staged_welcome)
@@ -244,37 +493,29 @@ impl StagedWelcome {
         welcome: Welcome,
         ratchet_tree: Option<RatchetTreeIn>,
     ) -> Result<Self, WelcomeError<Provider::StorageError>> {
-        let (resumption_psk_store, key_package_bundle) =
-            keys_for_welcome(mls_group_config, &welcome, provider)?;
+        let processed_welcome =
+            ProcessedWelcome::new_from_welcome(provider, mls_group_config, welcome)?;
 
-        let group = StagedCoreWelcome::new_from_welcome(
-            welcome,
-            ratchet_tree,
-            key_package_bundle,
-            provider,
-            resumption_psk_store,
-        )?;
-
-        let staged_welcome = StagedWelcome {
-            mls_group_config: mls_group_config.clone(),
-            group,
-        };
-
-        Ok(staged_welcome)
+        processed_welcome.into_staged_welcome(provider, ratchet_tree)
     }
 
     /// Returns the [`LeafNodeIndex`] of the group member that authored the [`Welcome`] message.
     ///
     /// [`Welcome`]: crate::messages::Welcome
     pub fn welcome_sender_index(&self) -> LeafNodeIndex {
-        self.group.welcome_sender_index()
+        self.verifiable_group_info.signer()
     }
 
     /// Returns the [`LeafNode`] of the group member that authored the [`Welcome`] message.
     ///
     /// [`Welcome`]: crate::messages::Welcome
     pub fn welcome_sender(&self) -> Result<&LeafNode, LibraryError> {
-        self.group.welcome_sender()
+        let sender_index = self.welcome_sender_index();
+        self.public_group
+            .leaf(sender_index)
+            .ok_or(LibraryError::custom(
+                "no leaf with given welcome sender index exists",
+            ))
     }
 
     /// Consumes the [`StagedWelcome`] and returns the respective [`MlsGroup`].
@@ -282,24 +523,35 @@ impl StagedWelcome {
         self,
         provider: &Provider,
     ) -> Result<MlsGroup, WelcomeError<Provider::StorageError>> {
-        let mut group = self.group.into_core_group(provider)?;
-        group.set_max_past_epochs(self.mls_group_config.max_past_epochs);
+        // If we got a path secret, derive the path (which also checks if the
+        // public keys match) and store the derived keys in the key store.
+        let group_keypairs = if let Some(path_keypairs) = self.path_keypairs {
+            let mut keypairs = vec![self.key_package_bundle.encryption_key_pair()];
+            keypairs.extend_from_slice(&path_keypairs);
+            keypairs
+        } else {
+            vec![self.key_package_bundle.encryption_key_pair()]
+        };
 
-        let mls_group = MlsGroup {
+        let mut mls_group = MlsGroup {
             mls_group_config: self.mls_group_config,
-            group,
             own_leaf_nodes: vec![],
             aad: vec![],
             group_state: MlsGroupState::Operational,
+            public_group: self.public_group,
+            group_epoch_secrets: self.group_epoch_secrets,
+            own_leaf_index: self.own_leaf_index,
+            message_secrets_store: self.message_secrets_store,
+            resumption_psk_store: self.resumption_psk_store,
         };
 
-        provider
-            .storage()
-            .write_mls_join_config(mls_group.group_id(), &mls_group.mls_group_config)
+        mls_group
+            .store_epoch_keypairs(provider.storage(), group_keypairs.as_slice())
             .map_err(WelcomeError::StorageError)?;
-        provider
-            .storage()
-            .write_group_state(mls_group.group_id(), &MlsGroupState::Operational)
+        mls_group.set_max_past_epochs(mls_group.mls_group_config.max_past_epochs);
+
+        mls_group
+            .store(provider.storage())
             .map_err(WelcomeError::StorageError)?;
 
         Ok(mls_group)

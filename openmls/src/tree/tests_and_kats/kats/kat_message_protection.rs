@@ -289,7 +289,7 @@ pub fn run_test_vector(
         )
         .unwrap();
         let my_proposal_priv = sender_group
-            .encrypt(proposal_authenticated_content, 0, provider)
+            .encrypt(proposal_authenticated_content, provider)
             .unwrap();
         let my_proposal_priv_out = MlsMessageOut::from_private_message(
             my_proposal_priv,
@@ -359,9 +359,8 @@ pub fn run_test_vector(
                 .unwrap();
 
             let processed_unverified_message = group
-                .group()
                 .public_group()
-                .parse_message(decrypted_message, group.group().message_secrets_store())
+                .parse_message(decrypted_message, group.message_secrets_store())
                 .unwrap();
             let processed_message: AuthenticatedContent = processed_unverified_message
                 .verify(ciphersuite, provider.crypto(), ProtocolVersion::Mls10)
@@ -406,7 +405,7 @@ pub fn run_test_vector(
             mac_value: vec![0; 32].into(), // Set a fake mac, we don't check it.
         }));
         let my_commit_pub = sender_group
-            .encrypt(commit_authenticated_content, 0, provider)
+            .encrypt(commit_authenticated_content, provider)
             .unwrap();
         let my_commit_priv_out = MlsMessageOut::from_private_message(
             my_commit_pub,

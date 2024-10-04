@@ -1,6 +1,6 @@
 [package]
 name = "openmls_libcrux_crypto"
-version = "0.1.0-pre.2"
+version = "0.1.0"
 edition = "2021"
 authors = ["OpenMLS Authors"]
 description = "A crypto backend for OpenMLS based on libcrux implementing openmls_traits."
@@ -12,7 +12,7 @@ readme = "../README.md"
 [dependencies]
 getrandom = "0.2.12"
 libcrux = { version = "=0.0.2-alpha.3", features = ["rand"] }
-openmls_traits =  { version = "0.3.0-pre.2", path = "../traits" }
-openmls_memory_storage = { version = "0.3.0-pre.2", path = "../memory_storage" }
+openmls_traits = { version = "0.3.0", path = "../traits" }
+openmls_memory_storage = { version = "0.3.0", path = "../memory_storage" }
 rand = "0.8.5"
 tls_codec.workspace = true

@@ -112,7 +112,6 @@ fn external_remove_proposal_should_remove_member() {
 
     // DS is an allowed external sender of the group
     assert!(alice_group
-         .group()
          .context()
          .extensions()
          .iter()

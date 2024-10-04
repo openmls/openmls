@@ -131,12 +131,12 @@ pub trait Verifiable: Sized {
         pk: &OpenMlsSignaturePublicKey,
     ) -> Result<Self::VerifiedStruct, SignatureError>;
 
-    /// Verifies the payload against the given `credential`.
+    /// Verifies the payload against the given public key.
     /// The signature is fetched via the [`Verifiable::signature()`] function and
     /// the payload via [`Verifiable::unsigned_payload()`].
     ///
     /// Returns `Ok(())` if the signature is valid and
-    /// `CredentialError::InvalidSignature` otherwise.
+    /// [`SignatureError::VerificationError`] otherwise.
     fn verify_no_out(
         &self,
         crypto: &impl OpenMlsCrypto,

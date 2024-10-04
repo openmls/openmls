@@ -1,6 +1,6 @@
 //! # OpenMLS Default Crypto Provider
 //!
-//! This is an implementation of the [`OpenMlsCryptoProvider`] trait to use with
+//! This is an implementation of the [`OpenMlsProvider`] trait to use with
 //! OpenMLS.
 
 use openmls_rust_crypto::{MemoryStorage, RustCrypto};

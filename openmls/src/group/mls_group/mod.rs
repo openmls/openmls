@@ -3,30 +3,51 @@
 //! This module contains [`MlsGroup`] and its submodules.
 //!
 
-#[cfg(any(feature = "test-utils", test))]
-use crate::schedule::message_secrets::MessageSecrets;
+use create_commit::{CommitType, CreateCommitParams};
+use past_secrets::MessageSecretsStore;
+use proposal_store::ProposalQueue;
+use serde::{Deserialize, Serialize};
+use staged_commit::{MemberStagedCommitState, StagedCommitState};
+use tls_codec::Serialize as _;
 
 #[cfg(test)]
-use openmls_traits::crypto::OpenMlsCrypto;
+use crate::treesync::node::leaf_node::TreePosition;
 
-#[cfg(test)]
-use crate::prelude::SenderRatchetConfiguration;
-
-use super::proposals::{ProposalStore, QueuedProposal};
+use super::{
+    diff::compute_path::PathComputationResult,
+    proposal_store::{ProposalStore, QueuedProposal},
+};
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
-    ciphersuite::hash_ref::ProposalRef,
+    ciphersuite::{hash_ref::ProposalRef, signable::Signable},
     credentials::Credential,
     error::LibraryError,
     framing::{mls_auth_content::AuthenticatedContent, *},
-    group::*,
-    key_packages::{KeyPackage, KeyPackageBundle},
-    messages::{proposals::*, GroupSecrets},
-    schedule::ResumptionPskSecret,
+    group::{
+        CreateCommitError, CreateGroupContextExtProposalError, Extension, ExtensionType,
+        Extensions, ExternalPubExtension, GroupContext, GroupEpoch, GroupId, MlsGroupJoinConfig,
+        MlsGroupStateError, OutgoingWireFormatPolicy, ProposalQueueError, PublicGroup,
+        RatchetTreeExtension, RequiredCapabilitiesExtension, StagedCommit,
+    },
+    key_packages::KeyPackageBundle,
+    messages::{
+        group_info::{GroupInfo, GroupInfoTBS, VerifiableGroupInfo},
+        proposals::*,
+        Commit, GroupSecrets, Welcome,
+    },
+    schedule::{
+        message_secrets::MessageSecrets,
+        psk::{load_psks, store::ResumptionPskStore, PskSecret},
+        GroupEpochSecrets, JoinerSecret, KeySchedule,
+    },
     storage::{OpenMlsProvider, StorageProvider},
-    treesync::{node::leaf_node::LeafNode, RatchetTree},
+    treesync::{
+        node::{encryption_keys::EncryptionKeyPair, leaf_node::LeafNode},
+        RatchetTree,
+    },
+    versions::ProtocolVersion,
 };
-use openmls_traits::types::Ciphersuite;
+use openmls_traits::{signatures::Signer, storage::StorageProvider as _, types::Ciphersuite};
 
 // Private
 mod application;
@@ -39,14 +60,56 @@ use config::*;
 
 // Crate
 pub(crate) mod config;
+pub(crate) mod create_commit;
 pub(crate) mod errors;
 pub(crate) mod membership;
+pub(crate) mod past_secrets;
 pub(crate) mod processing;
 pub(crate) mod proposal;
+pub(crate) mod proposal_store;
+pub(crate) mod staged_commit;
 
 // Tests
 #[cfg(test)]
 pub(crate) mod tests_and_kats;
+
+#[derive(Debug)]
+pub(crate) struct CreateCommitResult {
+    pub(crate) commit: AuthenticatedContent,
+    pub(crate) welcome_option: Option<Welcome>,
+    pub(crate) staged_commit: StagedCommit,
+    pub(crate) group_info: Option<GroupInfo>,
+}
+
+/// A member in the group is identified by this [`Member`] struct.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Member {
+    /// The member's leaf index in the ratchet tree.
+    pub index: LeafNodeIndex,
+    /// The member's credential.
+    pub credential: Credential,
+    /// The member's public HPHKE encryption key.
+    pub encryption_key: Vec<u8>,
+    /// The member's public signature key.
+    pub signature_key: Vec<u8>,
+}
+
+impl Member {
+    /// Create new member.
+    pub fn new(
+        index: LeafNodeIndex,
+        encryption_key: Vec<u8>,
+        signature_key: Vec<u8>,
+        credential: Credential,
+    ) -> Self {
+        Self {
+            index,
+            encryption_key,
+            signature_key,
+            credential,
+        }
+    }
+}
 
 /// Pending Commit state. Differentiates between Commits issued by group members
 /// and External Commits.
@@ -161,11 +224,23 @@ pub enum MlsGroupState {
 #[derive(Debug)]
 #[cfg_attr(feature = "test-utils", derive(Clone, PartialEq))]
 pub struct MlsGroup {
-    // The group configuration. See [`MlsGroupJoinConfig`] for more information.
+    /// The group configuration. See [`MlsGroupJoinConfig`] for more information.
     mls_group_config: MlsGroupJoinConfig,
-    // the internal `CoreGroup` used for lower level operations. See `CoreGroup` for more
-    // information.
-    group: CoreGroup,
+    /// The public state of the group.
+    public_group: PublicGroup,
+    /// Epoch-specific secrets of the group.
+    group_epoch_secrets: GroupEpochSecrets,
+    /// The own leaf index in the ratchet tree.
+    own_leaf_index: LeafNodeIndex,
+    /// A [`MessageSecretsStore`] that stores message secrets.
+    /// By default this store has the length of 1, i.e. only the [`MessageSecrets`]
+    /// of the current epoch is kept.
+    /// If more secrets from past epochs should be kept in order to be
+    /// able to decrypt application messages from previous epochs, the size of
+    /// the store must be increased through [`max_past_epochs()`].
+    message_secrets_store: MessageSecretsStore,
+    // Resumption psk store. This is where the resumption psks are kept in a rollover list.
+    resumption_psk_store: ResumptionPskStore,
     // Own [`LeafNode`]s that were created for update proposals and that
     // are needed in case an update proposal is committed by another group
     // member. The vector is emptied after every epoch change.
@@ -214,7 +289,7 @@ impl MlsGroup {
 
     /// Returns the group's ciphersuite.
     pub fn ciphersuite(&self) -> Ciphersuite {
-        self.group.ciphersuite()
+        self.public_group.ciphersuite()
     }
 
     /// Returns whether the own client is still a member of the group or if it
@@ -229,8 +304,7 @@ impl MlsGroup {
         if !self.is_active() {
             return Err(MlsGroupStateError::UseAfterEviction);
         }
-        self.group
-            .public_group()
+        self.public_group
             .leaf(self.own_leaf_index())
             .map(|node| node.credential())
             .ok_or_else(|| LibraryError::custom("Own leaf node missing").into())
@@ -238,22 +312,22 @@ impl MlsGroup {
 
     /// Returns the leaf index of the client in the tree owning this group.
     pub fn own_leaf_index(&self) -> LeafNodeIndex {
-        self.group.own_leaf_index()
+        self.own_leaf_index
     }
 
     /// Returns the leaf node of the client in the tree owning this group.
     pub fn own_leaf_node(&self) -> Option<&LeafNode> {
-        self.group.own_leaf_node().ok()
+        self.public_group().leaf(self.own_leaf_index())
     }
 
     /// Returns the group ID.
     pub fn group_id(&self) -> &GroupId {
-        self.group.group_id()
+        self.public_group.group_id()
     }
 
     /// Returns the epoch.
     pub fn epoch(&self) -> GroupEpoch {
-        self.group.context().epoch()
+        self.public_group.group_context().epoch()
     }
 
     /// Returns an `Iterator` over pending proposals.
@@ -326,7 +400,7 @@ impl MlsGroup {
 
     /// Get a reference to the group context [`Extensions`] of this [`MlsGroup`].
     pub fn extensions(&self) -> &Extensions {
-        self.group.public_group().group_context().extensions()
+        self.public_group().group_context().extensions()
     }
 
     /// Returns the index of the sender of a staged, external commit.
@@ -334,7 +408,7 @@ impl MlsGroup {
         &self,
         commit: &StagedCommit,
     ) -> Result<LeafNodeIndex, LibraryError> {
-        self.group.public_group().ext_commit_sender_index(commit)
+        self.public_group().ext_commit_sender_index(commit)
     }
 
     // === Storage Methods ===
@@ -344,24 +418,25 @@ impl MlsGroup {
         storage: &Storage,
         group_id: &GroupId,
     ) -> Result<Option<MlsGroup>, Storage::Error> {
-        let group_config = storage.mls_group_join_config(group_id)?;
-        let core_group = CoreGroup::load(
-            storage,
-            group_id,
-            group_config
-                .as_ref()
-                .map(|config: &MlsGroupJoinConfig| config.use_ratchet_tree_extension),
-        )?;
+        let public_group = PublicGroup::load(storage, group_id)?;
+        let group_epoch_secrets = storage.group_epoch_secrets(group_id)?;
+        let own_leaf_index = storage.own_leaf_index(group_id)?;
+        let message_secrets_store = storage.message_secrets(group_id)?;
+        let resumption_psk_store = storage.resumption_psk_store(group_id)?;
+        let mls_group_config = storage.mls_group_join_config(group_id)?;
         let own_leaf_nodes = storage.own_leaf_nodes(group_id)?;
-        let aad = Vec::new();
         let group_state = storage.group_state(group_id)?;
 
         let build = || -> Option<Self> {
             Some(Self {
-                mls_group_config: group_config?,
-                group: core_group?,
+                public_group: public_group?,
+                group_epoch_secrets: group_epoch_secrets?,
+                own_leaf_index: own_leaf_index?,
+                message_secrets_store: message_secrets_store?,
+                resumption_psk_store: resumption_psk_store?,
+                mls_group_config: mls_group_config?,
                 own_leaf_nodes,
-                aad,
+                aad: vec![],
                 group_state: group_state?,
             })
         };
@@ -376,11 +451,17 @@ impl MlsGroup {
         &mut self,
         storage: &Storage,
     ) -> Result<(), Storage::Error> {
-        self.group.delete(storage)?;
+        PublicGroup::delete(storage, self.group_id())?;
+        storage.delete_own_leaf_index(self.group_id())?;
+        storage.delete_group_epoch_secrets(self.group_id())?;
+        storage.delete_message_secrets(self.group_id())?;
+        storage.delete_all_resumption_psk_secrets(self.group_id())?;
         storage.delete_group_config(self.group_id())?;
-        storage.clear_proposal_queue::<GroupId, ProposalRef>(self.group_id())?;
         storage.delete_own_leaf_nodes(self.group_id())?;
         storage.delete_group_state(self.group_id())?;
+        storage.clear_proposal_queue::<GroupId, ProposalRef>(self.group_id())?;
+
+        self.proposal_store_mut().empty();
         storage.delete_encryption_epoch_key_pairs(
             self.group_id(),
             &self.epoch(),
@@ -396,12 +477,253 @@ impl MlsGroup {
 
     /// Exports the Ratchet Tree.
     pub fn export_ratchet_tree(&self) -> RatchetTree {
-        self.group.public_group().export_ratchet_tree()
+        self.public_group().export_ratchet_tree()
+    }
+}
+
+// Crate-public functions
+impl MlsGroup {
+    /// Get the required capabilities extension of this group.
+    pub(crate) fn required_capabilities(&self) -> Option<&RequiredCapabilitiesExtension> {
+        self.public_group.required_capabilities()
+    }
+
+    /// Get a reference to the group epoch secrets from the group
+    pub(crate) fn group_epoch_secrets(&self) -> &GroupEpochSecrets {
+        &self.group_epoch_secrets
+    }
+
+    /// Get a reference to the message secrets from a group
+    pub(crate) fn message_secrets(&self) -> &MessageSecrets {
+        self.message_secrets_store.message_secrets()
+    }
+
+    /// Sets the size of the [`MessageSecretsStore`], i.e. the number of past
+    /// epochs to keep.
+    /// This allows application messages from previous epochs to be decrypted.
+    pub(crate) fn set_max_past_epochs(&mut self, max_past_epochs: usize) {
+        self.message_secrets_store.resize(max_past_epochs);
+    }
+
+    /// Get the message secrets. Either from the secrets store or from the group.
+    pub(crate) fn message_secrets_mut(
+        &mut self,
+        epoch: GroupEpoch,
+    ) -> Result<&mut MessageSecrets, SecretTreeError> {
+        if epoch < self.context().epoch() {
+            self.message_secrets_store
+                .secrets_for_epoch_mut(epoch)
+                .ok_or(SecretTreeError::TooDistantInThePast)
+        } else {
+            Ok(self.message_secrets_store.message_secrets_mut())
+        }
+    }
+
+    /// Get the message secrets. Either from the secrets store or from the group.
+    pub(crate) fn message_secrets_for_epoch(
+        &self,
+        epoch: GroupEpoch,
+    ) -> Result<&MessageSecrets, SecretTreeError> {
+        if epoch < self.context().epoch() {
+            self.message_secrets_store
+                .secrets_for_epoch(epoch)
+                .ok_or(SecretTreeError::TooDistantInThePast)
+        } else {
+            Ok(self.message_secrets_store.message_secrets())
+        }
+    }
+
+    /// Get the message secrets and leaves for the given epoch. Either from the
+    /// secrets store or from the group.
+    ///
+    /// Note that the leaves vector is empty for message secrets of the current
+    /// epoch. The caller can use treesync in this case.
+    pub(crate) fn message_secrets_and_leaves_mut(
+        &mut self,
+        epoch: GroupEpoch,
+    ) -> Result<(&mut MessageSecrets, &[Member]), MessageDecryptionError> {
+        if epoch < self.context().epoch() {
+            self.message_secrets_store
+                .secrets_and_leaves_for_epoch_mut(epoch)
+                .ok_or({
+                    MessageDecryptionError::SecretTreeError(SecretTreeError::TooDistantInThePast)
+                })
+        } else {
+            // No need for leaves here. The tree of the current epoch is
+            // available to the caller.
+            Ok((self.message_secrets_store.message_secrets_mut(), &[]))
+        }
+    }
+
+    /// Create a new group context extension proposal
+    pub(crate) fn create_group_context_ext_proposal<Provider: OpenMlsProvider>(
+        &self,
+        framing_parameters: FramingParameters,
+        extensions: Extensions,
+        signer: &impl Signer,
+    ) -> Result<AuthenticatedContent, CreateGroupContextExtProposalError<Provider::StorageError>>
+    {
+        // Ensure that the group supports all the extensions that are wanted.
+        let required_extension = extensions
+            .iter()
+            .find(|extension| extension.extension_type() == ExtensionType::RequiredCapabilities);
+        if let Some(required_extension) = required_extension {
+            let required_capabilities = required_extension.as_required_capabilities_extension()?;
+            // Ensure we support all the capabilities.
+            self.own_leaf_node()
+                .ok_or_else(|| LibraryError::custom("Tree has no own leaf."))?
+                .capabilities()
+                .supports_required_capabilities(required_capabilities)?;
+
+            // Ensure that all other leaf nodes support all the required
+            // extensions as well.
+            self.public_group()
+                .check_extension_support(required_capabilities.extension_types())?;
+        }
+        let proposal = GroupContextExtensionProposal::new(extensions);
+        let proposal = Proposal::GroupContextExtensions(proposal);
+        AuthenticatedContent::member_proposal(
+            framing_parameters,
+            self.own_leaf_index(),
+            proposal,
+            self.context(),
+            signer,
+        )
+        .map_err(|e| e.into())
+    }
+
+    // Encrypt an AuthenticatedContent into an PrivateMessage
+    pub(crate) fn encrypt<Provider: OpenMlsProvider>(
+        &mut self,
+        public_message: AuthenticatedContent,
+        provider: &Provider,
+    ) -> Result<PrivateMessage, MessageEncryptionError<Provider::StorageError>> {
+        let padding_size = self.configuration().padding_size();
+        let msg = PrivateMessage::try_from_authenticated_content(
+            &public_message,
+            self.ciphersuite(),
+            provider,
+            self.message_secrets_store.message_secrets_mut(),
+            padding_size,
+        )?;
+
+        provider
+            .storage()
+            .write_message_secrets(self.group_id(), &self.message_secrets_store)
+            .map_err(MessageEncryptionError::StorageError)?;
+
+        Ok(msg)
+    }
+
+    /// Group framing parameters
+    pub(crate) fn framing_parameters(&self) -> FramingParameters {
+        FramingParameters::new(
+            &self.aad,
+            self.mls_group_config.wire_format_policy().outgoing(),
+        )
+    }
+
+    /// Returns a reference to the proposal store.
+    pub(crate) fn proposal_store(&self) -> &ProposalStore {
+        self.public_group.proposal_store()
+    }
+
+    /// Returns a mutable reference to the proposal store.
+    pub(crate) fn proposal_store_mut(&mut self) -> &mut ProposalStore {
+        self.public_group.proposal_store_mut()
+    }
+
+    /// Get the group context
+    pub(crate) fn context(&self) -> &GroupContext {
+        self.public_group.group_context()
+    }
+
+    /// Get the MLS version used in this group.
+    pub(crate) fn version(&self) -> ProtocolVersion {
+        self.public_group.version()
+    }
+
+    /// Resets the AAD.
+    #[inline]
+    pub(crate) fn reset_aad(&mut self) {
+        self.aad.clear();
+    }
+
+    /// Returns a reference to the public group.
+    pub(crate) fn public_group(&self) -> &PublicGroup {
+        &self.public_group
     }
 }
 
 // Private methods of MlsGroup
 impl MlsGroup {
+    /// Store the given [`EncryptionKeyPair`]s in the `provider`'s key store
+    /// indexed by this group's [`GroupId`] and [`GroupEpoch`].
+    ///
+    /// Returns an error if access to the key store fails.
+    pub(super) fn store_epoch_keypairs<Storage: StorageProvider>(
+        &self,
+        store: &Storage,
+        keypair_references: &[EncryptionKeyPair],
+    ) -> Result<(), Storage::Error> {
+        store.write_encryption_epoch_key_pairs(
+            self.group_id(),
+            &self.context().epoch(),
+            self.own_leaf_index().u32(),
+            keypair_references,
+        )
+    }
+
+    /// Read the [`EncryptionKeyPair`]s of this group and its current
+    /// [`GroupEpoch`] from the `provider`'s storage.
+    ///
+    /// Returns an empty vector if access to the store fails or it can't find
+    /// any keys.
+    pub(super) fn read_epoch_keypairs<Storage: StorageProvider>(
+        &self,
+        store: &Storage,
+    ) -> Vec<EncryptionKeyPair> {
+        store
+            .encryption_epoch_key_pairs(
+                self.group_id(),
+                &self.context().epoch(),
+                self.own_leaf_index().u32(),
+            )
+            .unwrap_or_default()
+    }
+
+    /// Delete the [`EncryptionKeyPair`]s from the previous [`GroupEpoch`] from
+    /// the `provider`'s key store.
+    ///
+    /// Returns an error if access to the key store fails.
+    pub(super) fn delete_previous_epoch_keypairs<Storage: StorageProvider>(
+        &self,
+        store: &Storage,
+    ) -> Result<(), Storage::Error> {
+        store.delete_encryption_epoch_key_pairs(
+            self.group_id(),
+            &GroupEpoch::from(self.context().epoch().as_u64() - 1),
+            self.own_leaf_index().u32(),
+        )
+    }
+
+    /// Stores the state of this group. Only to be called from constructors to
+    /// store the initial state of the group.
+    pub(super) fn store<Storage: crate::storage::StorageProvider>(
+        &self,
+        storage: &Storage,
+    ) -> Result<(), Storage::Error> {
+        self.public_group.store(storage)?;
+        storage.write_group_epoch_secrets(self.group_id(), &self.group_epoch_secrets)?;
+        storage.write_own_leaf_index(self.group_id(), &self.own_leaf_index)?;
+        storage.write_message_secrets(self.group_id(), &self.message_secrets_store)?;
+        storage.write_resumption_psk_store(self.group_id(), &self.resumption_psk_store)?;
+        storage.write_mls_join_config(self.group_id(), &self.mls_group_config)?;
+        storage.write_group_state(self.group_id(), &self.group_state)?;
+
+        Ok(())
+    }
+
     /// Converts PublicMessage to MlsMessage. Depending on whether handshake
     /// message should be encrypted, PublicMessage messages are encrypted to
     /// PrivateMessage first.
@@ -418,34 +740,21 @@ impl MlsGroup {
                     plaintext.set_membership_tag(
                         provider.crypto(),
                         self.ciphersuite(),
-                        self.group.message_secrets().membership_key(),
-                        self.group.message_secrets().serialized_context(),
+                        self.message_secrets().membership_key(),
+                        self.message_secrets().serialized_context(),
                     )?;
                 }
                 plaintext.into()
             }
             OutgoingWireFormatPolicy::AlwaysCiphertext => {
                 let ciphertext = self
-                    .group
-                    .encrypt(
-                        mls_auth_content,
-                        self.configuration().padding_size(),
-                        provider,
-                    )
+                    .encrypt(mls_auth_content, provider)
                     // We can be sure the encryption will work because the plaintext was created by us
                     .map_err(|_| LibraryError::custom("Malformed plaintext"))?;
-                MlsMessageOut::from_private_message(ciphertext, self.group.version())
+                MlsMessageOut::from_private_message(ciphertext, self.version())
             }
         };
         Ok(msg)
-    }
-
-    /// Group framing parameters
-    pub(crate) fn framing_parameters(&self) -> FramingParameters {
-        FramingParameters::new(
-            &self.aad,
-            self.mls_group_config.wire_format_policy().outgoing(),
-        )
     }
 
     /// Check if the group is operational. Throws an error if the group is
@@ -457,89 +766,58 @@ impl MlsGroup {
             MlsGroupState::Operational => Ok(()),
         }
     }
-
-    /// Returns a reference to the proposal store.
-    pub(crate) fn proposal_store(&self) -> &ProposalStore {
-        self.group.proposal_store()
-    }
-
-    /// Returns a mutable reference to the proposal store.
-    pub(crate) fn proposal_store_mut(&mut self) -> &mut ProposalStore {
-        self.group.proposal_store_mut()
-    }
-
-    /// Resets the AAD.
-    #[inline]
-    pub(crate) fn reset_aad(&mut self) {
-        self.aad.clear();
-    }
 }
 
 // Methods used in tests
 impl MlsGroup {
     #[cfg(any(feature = "test-utils", test))]
     pub fn export_group_context(&self) -> &GroupContext {
-        self.group.context()
+        self.context()
     }
 
     #[cfg(any(feature = "test-utils", test))]
     pub fn tree_hash(&self) -> &[u8] {
-        self.group.public_group().group_context().tree_hash()
+        self.public_group().group_context().tree_hash()
     }
 
     #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn message_secrets_test_mut(&mut self) -> &mut MessageSecrets {
-        self.group.message_secrets_test_mut()
+        self.message_secrets_store.message_secrets_mut()
     }
 
     #[cfg(any(feature = "test-utils", test))]
     pub fn print_ratchet_tree(&self, message: &str) {
-        self.group.print_ratchet_tree(message)
+        println!("{}: {}", message, self.public_group().export_ratchet_tree());
     }
 
     #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn context_mut(&mut self) -> &mut GroupContext {
-        self.group.context_mut()
-    }
-
-    // Encrypt an AuthenticatedContent into a PrivateMessage. Only needed for
-    // the message protection KAT.
-    #[cfg(test)]
-    pub(crate) fn encrypt<Provider: OpenMlsProvider>(
-        &mut self,
-        public_message: AuthenticatedContent,
-        padding_size: usize,
-        provider: &Provider,
-    ) -> Result<PrivateMessage, MessageEncryptionError<Provider::StorageError>> {
-        self.group.encrypt(public_message, padding_size, provider)
-    }
-
-    #[cfg(test)]
-    // Decrypt a ProtocolMessage. Only needed for the message protection KAT.
-    pub(crate) fn decrypt_message(
-        &mut self,
-        crypto: &impl OpenMlsCrypto,
-        message: ProtocolMessage,
-        sender_ratchet_configuration: &SenderRatchetConfiguration,
-    ) -> Result<DecryptedMessage, ValidationError> {
-        self.group
-            .decrypt_message(crypto, message, sender_ratchet_configuration)
-    }
-
-    #[cfg(test)]
-    pub(crate) fn set_group_context(&mut self, group_context: GroupContext) {
-        self.group.set_group_context(group_context)
+        self.public_group.context_mut()
     }
 
     #[cfg(test)]
     pub(crate) fn set_own_leaf_index(&mut self, own_leaf_index: LeafNodeIndex) {
-        self.group.set_own_leaf_index(own_leaf_index)
+        self.own_leaf_index = own_leaf_index;
     }
 
-    /// Returns the underlying [CoreGroup].
     #[cfg(test)]
-    pub(crate) fn group(&self) -> &CoreGroup {
-        &self.group
+    pub(crate) fn own_tree_position(&self) -> TreePosition {
+        TreePosition::new(self.group_id().clone(), self.own_leaf_index())
+    }
+
+    #[cfg(test)]
+    pub(crate) fn message_secrets_store(&self) -> &MessageSecretsStore {
+        &self.message_secrets_store
+    }
+
+    #[cfg(test)]
+    pub(crate) fn resumption_psk_store(&self) -> &ResumptionPskStore {
+        &self.resumption_psk_store
+    }
+
+    #[cfg(test)]
+    pub(crate) fn set_group_context(&mut self, group_context: GroupContext) {
+        self.public_group.set_group_context(group_context)
     }
 }
 
@@ -549,9 +827,29 @@ impl MlsGroup {
 pub struct StagedWelcome {
     // The group configuration. See [`MlsGroupJoinConfig`] for more information.
     mls_group_config: MlsGroupJoinConfig,
-    // The internal `CoreGroup` used for lower level operations. See `CoreGroup` for more
-    // information.
-    group: StagedCoreWelcome,
+    public_group: PublicGroup,
+    group_epoch_secrets: GroupEpochSecrets,
+    own_leaf_index: LeafNodeIndex,
+
+    /// A [`MessageSecretsStore`] that stores message secrets.
+    /// By default this store has the length of 1, i.e. only the [`MessageSecrets`]
+    /// of the current epoch is kept.
+    /// If more secrets from past epochs should be kept in order to be
+    /// able to decrypt application messages from previous epochs, the size of
+    /// the store must be increased through [`max_past_epochs()`].
+    message_secrets_store: MessageSecretsStore,
+
+    /// Resumption psk store. This is where the resumption psks are kept in a rollover list.
+    resumption_psk_store: ResumptionPskStore,
+
+    /// The [`VerifiableGroupInfo`] from the [`Welcome`] message.
+    verifiable_group_info: VerifiableGroupInfo,
+
+    /// The key package bundle used for this welcome.
+    key_package_bundle: KeyPackageBundle,
+
+    /// If we got a path secret, these are the derived path keys.
+    path_keypairs: Option<Vec<EncryptionKeyPair>>,
 }
 
 /// A `Welcome` message that has been processed but not staged yet.

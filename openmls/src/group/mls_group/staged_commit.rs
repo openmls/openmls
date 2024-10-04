@@ -1,20 +1,31 @@
 use core::fmt::Debug;
 use std::mem;
 
-use public_group::diff::{apply_proposals::ApplyProposalsValues, StagedPublicGroupDiff};
+use openmls_traits::storage::StorageProvider;
+use serde::{Deserialize, Serialize};
+use tls_codec::Serialize as _;
 
-use self::public_group::staged_commit::PublicStagedCommitState;
+use super::proposal_store::{
+    QueuedAddProposal, QueuedPskProposal, QueuedRemoveProposal, QueuedUpdateProposal,
+};
 
-use super::{super::errors::*, *};
+use super::{
+    super::errors::*, load_psks, Credential, Extension, GroupContext, GroupEpochSecrets, GroupId,
+    JoinerSecret, KeySchedule, LeafNode, LibraryError, MessageSecrets, MlsGroup, OpenMlsProvider,
+    Proposal, ProposalQueue, PskSecret, QueuedProposal, Sender,
+};
 use crate::{
     ciphersuite::{hash_ref::ProposalRef, Secret},
     framing::mls_auth_content::AuthenticatedContent,
+    group::public_group::{
+        diff::{apply_proposals::ApplyProposalsValues, StagedPublicGroupDiff},
+        staged_commit::PublicStagedCommitState,
+    },
+    schedule::{CommitSecret, EpochAuthenticator, EpochSecrets, InitSecret, PreSharedKeyId},
     treesync::node::encryption_keys::EncryptionKeyPair,
 };
 
-use openmls_traits::storage::StorageProvider as _;
-
-impl CoreGroup {
+impl MlsGroup {
     fn derive_epoch_secrets(
         &self,
         provider: &impl OpenMlsProvider,
@@ -96,7 +107,7 @@ impl CoreGroup {
     ///  - Verifies the confirmation tag
     ///
     /// Returns a [StagedCommit] that can be inspected and later merged into the
-    /// group state with [CoreGroup::merge_commit()] This function does the
+    /// group state with [MlsGroup::merge_commit()] This function does the
     /// following checks:
     ///  - ValSem101
     ///  - ValSem102
@@ -319,7 +330,7 @@ impl CoreGroup {
         &mut self,
         provider: &Provider,
         staged_commit: StagedCommit,
-    ) -> Result<Option<MessageSecrets>, MergeCommitError<Provider::StorageError>> {
+    ) -> Result<(), MergeCommitError<Provider::StorageError>> {
         // Get all keypairs from the old epoch, so we can later store the ones
         // that are still relevant in the new epoch.
         let old_epoch_keypairs = self.read_epoch_keypairs(provider.storage());
@@ -329,9 +340,15 @@ impl CoreGroup {
                     .merge_diff(staged_state.into_staged_diff());
                 self.store(provider.storage())
                     .map_err(MergeCommitError::StorageError)?;
-                Ok(None)
+                Ok(())
             }
             StagedCommitState::GroupMember(state) => {
+                // Save the past epoch
+                let past_epoch = self.context().epoch();
+                // Get all the full leaves
+                let leaves = self.public_group().members().collect();
+                // Merge the staged commit into the group state and store the secret tree from the
+                // previous epoch in the message secrets store.
                 self.group_epoch_secrets = state.group_epoch_secrets;
 
                 // Replace the previous message secrets with the new ones and return the previous message secrets
@@ -340,6 +357,8 @@ impl CoreGroup {
                     &mut message_secrets,
                     self.message_secrets_store.message_secrets_mut(),
                 );
+                self.message_secrets_store
+                    .add(past_epoch, message_secrets, leaves);
 
                 self.public_group.merge_diff(state.staged_diff);
 
@@ -407,7 +426,7 @@ impl CoreGroup {
                     .map_err(MergeCommitError::StorageError)?;
                 self.proposal_store_mut().empty();
 
-                Ok(Some(message_secrets))
+                Ok(())
             }
         }
     }
