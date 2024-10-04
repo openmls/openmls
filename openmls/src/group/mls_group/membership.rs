@@ -2,7 +2,7 @@
 //!
 //! This module contains membership-related operations and exposes [`RemoveOperation`].
 
-use errors::EmptyInputError;
+use errors::{EmptyInputError, UpdateGroupMembershipError};
 use openmls_traits::{signatures::Signer, storage::StorageProvider as _};
 use proposal_store::QueuedRemoveProposal;
 
@@ -59,8 +59,10 @@ impl MlsGroup {
         let params = CreateCommitParams::builder()
             .framing_parameters(self.framing_parameters())
             .inline_proposals(proposals)
+            .force_self_update(true)
             .build();
-        let create_commit_result = self.group.create_commit(params, provider, signer)?;
+
+        let create_commit_result = self.create_commit(params, provider, signer)?;
 
         // Convert PublicMessage messages to MLSMessage and encrypt them if required by
         // the configuration
@@ -83,7 +85,7 @@ impl MlsGroup {
             mls_messages,
             create_commit_result
                 .welcome_option
-                .map(|w| MlsMessageOut::from_welcome(w, self.group.version())),
+                .map(|w| MlsMessageOut::from_welcome(w, self.version())),
             create_commit_result.group_info,
         ))
     }
@@ -350,8 +352,7 @@ impl MlsGroup {
     /// Returns the [`Member`] corresponding to the given
     /// leaf index. Returns `None` if the member can not be found in this group.
     pub fn member_at(&self, leaf_index: LeafNodeIndex) -> Option<Member> {
-        self.group
-            .public_group()
+        self.public_group()
             // This will return an error if the member can't be found.
             .leaf(leaf_index)
             .map(|leaf_node| {
