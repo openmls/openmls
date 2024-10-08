@@ -62,18 +62,21 @@ jobs:
 
       - name: Tests
         if: matrix.os != 'windows-latest'
-        run: cargo test $TEST_MODE -p openmls --verbose
-        run: cargo test $TEST_MODE -p openmls --verbose -F test-skip-lifetime-validity-check passive_client
+        run: |
+          cargo test $TEST_MODE -p openmls --verbose
+          cargo test $TEST_MODE -p openmls --verbose -F test-skip-lifetime-validity-check passive_client
 
       # Test 32 bit builds on windows
       - name: Tests 32bit windows debug
         if: matrix.mode == 'debug' && matrix.os == 'windows-latest'
-        run: cargo test -p openmls --verbose --target i686-pc-windows-msvc
-        run: cargo test -p openmls --verbose --target i686-pc-windows-msvc -F test-skip-lifetime-validity-check passive_client
+        run: |
+          cargo test -p openmls --verbose --target i686-pc-windows-msvc
+          cargo test -p openmls --verbose --target i686-pc-windows-msvc -F test-skip-lifetime-validity-check passive_client
       - name: Tests 32bit windows release
         if: matrix.mode == 'release' && matrix.os == 'windows-latest'
-        run: cargo test --release -p openmls --verbose --target i686-pc-windows-msvc
-        run: cargo test --release -p openmls --verbose --target i686-pc-windows-msvc -F test-skip-lifetime-validity-check passive_client
+        run: |
+          cargo test --release -p openmls --verbose --target i686-pc-windows-msvc
+          cargo test --release -p openmls --verbose --target i686-pc-windows-msvc -F test-skip-lifetime-validity-check passive_client
 
         # Test 32 bit builds on linux
       - name: Tests 32bit linux
