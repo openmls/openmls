@@ -29,7 +29,6 @@ use crate::{
     schedule::errors::PskError,
 };
 
-#[cfg(not(feature = "test-skip-lifetime-validity-check"))]
 use crate::treesync::errors::LifetimeError;
 
 impl PublicGroup {
@@ -628,11 +627,13 @@ impl PublicGroup {
         //
         // Some KATs use key packages that are expired by now. In order to run these tests, we
         // provide a way to turn off this check.
-        #[cfg(not(feature = "test-skip-lifetime-validity-check"))]
-        if let Some(lifetime) = leaf_node.life_time() {
-            if !lifetime.is_valid() {
-                log::warn!("offending lifetime: {lifetime:?}");
-                return Err(LeafNodeValidationError::Lifetime(LifetimeError::NotCurrent));
+
+        if !crate::skip_validation::is_disabled::leaf_node_lifetime() {
+            if let Some(lifetime) = leaf_node.life_time() {
+                if !lifetime.is_valid() {
+                    log::warn!("offending lifetime: {lifetime:?}");
+                    return Err(LeafNodeValidationError::Lifetime(LifetimeError::NotCurrent));
+                }
             }
         }
 
