@@ -458,7 +458,7 @@ impl LeafNode {
     }
 
     /// Perform all checks that can be done without further context:
-    /// - the used extensions are not known to be invalid in leaf leaf nodes
+    /// - the used extensions are not known to be invalid in leaf nodes
     /// - the types of the used extensions are covered by the capabilities
     /// - the type of the credential is coveered by the capabilities
     pub(crate) fn validate_locally(&self) -> Result<(), LeafNodeValidationError> {

@@ -138,8 +138,6 @@ fn book_operations() {
         .build();
     // ANCHOR_END: mls_group_create_config_example
 
-    println!("### {mls_group_create_config:?}");
-
     // ANCHOR: alice_create_group
     let mut alice_group = MlsGroup::new(
         provider,

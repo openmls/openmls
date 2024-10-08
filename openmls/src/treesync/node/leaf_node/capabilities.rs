@@ -189,12 +189,12 @@ impl Capabilities {
         proposal_type.is_default() || self.proposals().contains(&proposal_type)
     }
 
-    /// Check if these [`Capabilities`] contain all the versions.
+    /// Check if these [`Capabilities`] contain the version.
     pub(crate) fn contains_version(&self, version: ProtocolVersion) -> bool {
         default_versions().contains(&version) || self.versions().contains(&version)
     }
 
-    /// Check if these [`Capabilities`] contain all the ciphersuites.
+    /// Check if these [`Capabilities`] contain the ciphersuite.
     pub(crate) fn contains_ciphersuite(&self, ciphersuite: VerifiableCiphersuite) -> bool {
         let is_default = default_ciphersuites()
             .into_iter()
