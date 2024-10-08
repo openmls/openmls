@@ -1,7 +1,11 @@
 //! This module tests the validation of proposals as defined in
 //! https://book.openmls.tech/message_validation.html#semantic-validation-of-proposals-covered-by-a-commit
 
-use crate::{storage::OpenMlsProvider, test_utils::frankenstein::*, treesync::LeafNodeParameters};
+use crate::{
+    storage::OpenMlsProvider,
+    test_utils::frankenstein::*,
+    treesync::{errors::LeafNodeValidationError, LeafNodeParameters},
+};
 use openmls_traits::{
     prelude::{openmls_types::*, *},
     signatures::Signer,
@@ -998,6 +1002,10 @@ enum KeyPackageTestVersion {
     WrongCiphersuite,
     // Wrong version in the KeyPackage
     WrongVersion,
+    // Unsupported ciphersuite in the KeyPackage's capabilities
+    UnsupportedVersion,
+    // Unsupported ciphersuite in the KeyPackage's capabilities
+    UnsupportedCiphersuite,
     // Positive case
     ValidTestCase,
 }
@@ -1038,6 +1046,8 @@ fn test_valsem105() {
     for key_package_version in [
         KeyPackageTestVersion::WrongCiphersuite,
         KeyPackageTestVersion::WrongVersion,
+        //KeyPackageTestVersion::UnsupportedVersion,
+        // KeyPackageTestVersion::UnsupportedCiphersuite,
         KeyPackageTestVersion::ValidTestCase,
     ] {
         println!("running test {key_package_version:?}");
@@ -1073,6 +1083,13 @@ fn test_valsem105() {
             KeyPackageTestVersion::WrongVersion => {
                 franken_key_package.protocol_version = 999;
             }
+            KeyPackageTestVersion::UnsupportedVersion => {
+                franken_key_package.leaf_node.capabilities.versions = vec![999];
+            }
+            KeyPackageTestVersion::UnsupportedCiphersuite => {
+                franken_key_package.leaf_node.capabilities.ciphersuites =
+                    vec![Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448.into()];
+            }
             KeyPackageTestVersion::ValidTestCase => (),
         };
 
@@ -1102,6 +1119,13 @@ fn test_valsem105() {
                 }
                 KeyPackageTestVersion::WrongVersion => {
                     franken_key_package.protocol_version = 999;
+                }
+                KeyPackageTestVersion::UnsupportedVersion => {
+                    franken_key_package.leaf_node.capabilities.versions = vec![999];
+                }
+                KeyPackageTestVersion::UnsupportedCiphersuite => {
+                    franken_key_package.leaf_node.capabilities.ciphersuites =
+                        vec![Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448.into()];
                 }
                 KeyPackageTestVersion::ValidTestCase => (),
             };
@@ -1296,6 +1320,45 @@ fn test_valsem105() {
                                 ),
                             )
                         )
+                    );
+                }
+                KeyPackageTestVersion::UnsupportedVersion => {
+                    assert!(
+                        matches!(
+                            err,
+                            ProcessMessageError::ValidationError(
+                                ValidationError::KeyPackageVerifyError(
+                                    KeyPackageVerifyError::InvalidProtocolVersion,
+                                ),
+                            )
+                        ) || matches!(
+                            err,
+                            ProcessMessageError::InvalidCommit(
+                                StageCommitError::ProposalValidationError(
+                                    ProposalValidationError::LeafNodeValidation(
+                                        LeafNodeValidationError::CiphersuiteNotInCapabilities
+                                    ),
+                                ),
+                            )
+                        ),
+                        "unexpected error: {:?}",
+                        err
+                    );
+                }
+                KeyPackageTestVersion::UnsupportedCiphersuite => {
+                    assert!(
+                        matches!(
+                            err,
+                            ProcessMessageError::InvalidCommit(
+                                StageCommitError::ProposalValidationError(
+                                    ProposalValidationError::LeafNodeValidation(
+                                        LeafNodeValidationError::CiphersuiteNotInCapabilities
+                                    ),
+                                ),
+                            )
+                        ),
+                        "unexpected error: {:?}",
+                        err
                     );
                 }
             };
