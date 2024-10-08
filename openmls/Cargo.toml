@@ -53,6 +53,8 @@ test-utils = [
   "dep:once_cell",
   "backtrace",
 ]
+test-skip-lifetime-validity-check = [
+] # Skip the check whether a lifetime is valid. Needed for KATs with since-expired key packages.
 backtrace = ["dep:backtrace"]
 libcrux-provider = [
   "dep:openmls_libcrux_crypto",

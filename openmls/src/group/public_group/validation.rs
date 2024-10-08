@@ -29,7 +29,7 @@ use crate::{
     schedule::errors::PskError,
 };
 
-#[cfg(not(test))]
+#[cfg(not(feature = "test-skip-lifetime-validity-check"))]
 use crate::treesync::errors::LifetimeError;
 
 impl PublicGroup {
@@ -622,12 +622,16 @@ impl PublicGroup {
         // valn0105 is done when sending
 
         // valn0106
-        // don't enable in tests, because we are testing with kats that contain
-        // expired key packages
-        #[cfg(not(test))]
+        //
+        // Only leaf nodes in key packages contain lifetimes, so this will return None for other
+        // cases. Therefore we only check the lifetimes for leaf nodes in key packages.
+        //
+        // Some KATs use key packages that are expired by now. In order to run these tests, we
+        // provide a way to turn off this check.
+        #[cfg(not(feature = "test-skip-lifetime-validity-check"))]
         if let Some(lifetime) = leaf_node.life_time() {
             if !lifetime.is_valid() {
-                println!("offending lifetime: {lifetime:?}");
+                log::warn!("offending lifetime: {lifetime:?}");
                 return Err(LeafNodeValidationError::Lifetime(LifetimeError::NotCurrent));
             }
         }

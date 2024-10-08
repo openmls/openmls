@@ -49,6 +49,7 @@ jobs:
         run: |
           cargo install wasm-bindgen-cli
           cargo test $TEST_MODE -p openmls -vv -F libcrux-provider
+          cargo test $TEST_MODE -p openmls -vv -F libcrux-provider -F test-skip-lifetime-validity-check passive_client
 
       - name: Tests Wasm32 on linux
         if: matrix.os == 'ubuntu-latest'
@@ -57,18 +58,22 @@ jobs:
           cargo install wasm-bindgen-cli
           export CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=$HOME/.cargo/bin/wasm-bindgen-test-runner
           cargo test $TEST_MODE -p openmls -vv --target wasm32-unknown-unknown -F js
+          cargo test $TEST_MODE -p openmls -vv --target wasm32-unknown-unknown -F js -F test-skip-lifetime-validity-check passive_client
 
       - name: Tests
         if: matrix.os != 'windows-latest'
         run: cargo test $TEST_MODE -p openmls --verbose
+        run: cargo test $TEST_MODE -p openmls --verbose -F test-skip-lifetime-validity-check passive_client
 
       # Test 32 bit builds on windows
       - name: Tests 32bit windows debug
         if: matrix.mode == 'debug' && matrix.os == 'windows-latest'
         run: cargo test -p openmls --verbose --target i686-pc-windows-msvc
+        run: cargo test -p openmls --verbose --target i686-pc-windows-msvc -F test-skip-lifetime-validity-check passive_client
       - name: Tests 32bit windows release
         if: matrix.mode == 'release' && matrix.os == 'windows-latest'
         run: cargo test --release -p openmls --verbose --target i686-pc-windows-msvc
+        run: cargo test --release -p openmls --verbose --target i686-pc-windows-msvc -F test-skip-lifetime-validity-check passive_client
 
         # Test 32 bit builds on linux
       - name: Tests 32bit linux
@@ -76,3 +81,4 @@ jobs:
         run: |
           sudo apt update && sudo apt install gcc-multilib
           cargo test $TEST_MODE -p openmls --verbose --target i686-unknown-linux-gnu
+          cargo test $TEST_MODE -p openmls --verbose --target i686-unknown-linux-gnu -F test-skip-lifetime-validity-check passive_client
