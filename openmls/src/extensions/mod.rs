@@ -116,6 +116,7 @@ impl ExtensionType {
 
     /// Returns whether an extension type is valid when used in leaf nodes.
     /// Returns None if validity can not be determined.
+    /// This is the case for unknown extensions.
     pub(crate) fn is_valid_in_leaf_node(self) -> Option<bool> {
         match self {
             ExtensionType::ApplicationId
