@@ -175,8 +175,7 @@ impl Capabilities {
 
     /// Check if these [`Capabilities`] contains the credential.
     pub(crate) fn contains_credential(&self, credential_type: CredentialType) -> bool {
-        default_credentials().contains(&credential_type)
-            || self.credentials().contains(&credential_type)
+        self.credentials().contains(&credential_type)
     }
 
     /// Check if these [`Capabilities`] contain the extension.
@@ -191,17 +190,12 @@ impl Capabilities {
 
     /// Check if these [`Capabilities`] contain the version.
     pub(crate) fn contains_version(&self, version: ProtocolVersion) -> bool {
-        default_versions().contains(&version) || self.versions().contains(&version)
+        self.versions().contains(&version)
     }
 
     /// Check if these [`Capabilities`] contain the ciphersuite.
     pub(crate) fn contains_ciphersuite(&self, ciphersuite: VerifiableCiphersuite) -> bool {
-        let is_default = default_ciphersuites()
-            .into_iter()
-            .map(|c| c.into())
-            .any(|c: VerifiableCiphersuite| ciphersuite == c);
-
-        is_default || self.ciphersuites().contains(&ciphersuite)
+        self.ciphersuites().contains(&ciphersuite)
     }
 }
 
