@@ -134,6 +134,13 @@ impl PublicGroup {
         // signature against.
         let treesync = TreeSync::from_ratchet_tree(crypto, ciphersuite, ratchet_tree)?;
 
+        // Perform basic checks that the leaf nodes in the ratchet tree are valid
+        // These checks only do those that don't need group context. We do the full
+        // checks later, but do these here to fail early in case of funny business
+        treesync
+            .full_leaves()
+            .try_for_each(|leaf_node| leaf_node.validate_locally())?;
+
         let group_info: GroupInfo = {
             let signer_signature_key = treesync
                 .leaf(verifiable_group_info.signer())
@@ -174,6 +181,12 @@ impl PublicGroup {
             confirmation_tag: group_info.confirmation_tag().clone(),
             proposal_store,
         };
+
+        // Fully check that the leaf nodes in the ratchet tree are valid
+        public_group
+            .treesync
+            .full_leaves()
+            .try_for_each(|leaf_node| public_group.validate_leaf_node(leaf_node))?;
 
         public_group
             .store(storage)

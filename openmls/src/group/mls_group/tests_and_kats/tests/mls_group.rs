@@ -11,7 +11,6 @@ use tls_codec::{Deserialize, Serialize};
 use crate::{
     binary_tree::LeafNodeIndex,
     credentials::test_utils::new_credential,
-    extensions::errors::InvalidExtensionError,
     framing::*,
     group::{errors::*, *},
     key_packages::*,
@@ -28,7 +27,11 @@ use crate::{
         },
     },
     tree::sender_ratchet::SenderRatchetConfiguration,
-    treesync::{errors::ApplyUpdatePathError, node::leaf_node::Capabilities, LeafNodeParameters},
+    treesync::{
+        errors::{ApplyUpdatePathError, LeafNodeValidationError},
+        node::leaf_node::Capabilities,
+        LeafNodeParameters,
+    },
 };
 
 #[openmls_test]
@@ -1206,9 +1209,9 @@ fn builder_pattern() {
         .use_ratchet_tree_extension(true)
         .max_past_epochs(test_max_past_epochs)
         .number_of_resumption_psks(test_number_of_resumption_psks)
+        .with_capabilities(test_capabilities.clone())
         .with_leaf_node_extensions(test_leaf_extensions.clone())
         .expect("error adding leaf node extension to builder")
-        .with_capabilities(test_capabilities.clone())
         .build(provider, &alice_signer, alice_credential_with_key)
         .expect("error creating group using builder");
 
@@ -1265,7 +1268,7 @@ fn builder_pattern() {
     let builder_err = MlsGroup::builder()
         .with_leaf_node_extensions(invalid_leaf_extensions)
         .expect_err("successfully built group with invalid leaf extensions");
-    assert_eq!(builder_err, InvalidExtensionError::IllegalInLeafNodes);
+    assert_eq!(builder_err, LeafNodeValidationError::UnsupportedExtensions);
 }
 
 // Test the successful update of Group Context Extension with type Extension::Unknown(0xff11)

@@ -5,7 +5,7 @@ These are mostly guidelines, not rules.
 Use your best judgement, and feel free to propose changes to this document in a pull request.
 The processes described here is not to pester you but to increase and maintain code quality.
 
-Before contributing, please read the [Code of Conduct](https://github.com/openmls/openmls/CODE_OF_CONDUCT.md) carefully.
+Before contributing, please read the [Code of Conduct](CODE_OF_CONDUCT.md) carefully.
 
 #### Table Of Contents
 

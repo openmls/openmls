@@ -224,6 +224,9 @@ pub enum LeafNodeValidationError {
         "The leaf node's extension types are not (all) listed in the leaf node's capabilities."
     )]
     ExtensionsNotInCapabilities,
+    /// The group's ciphersuite is not listed in the leaf node's capabilities.
+    #[error("The group's ciphersuite is not listed in the leaf node's capabilities.")]
+    CiphersuiteNotInCapabilities,
     /// The leaf node's signature key is already used in the group.
     #[error("The leaf node's signature key is already used in the group.")]
     SignatureKeyAlreadyInUse,
