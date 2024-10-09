@@ -168,8 +168,11 @@ impl PublicGroup {
     ///  - ValSem110: Update Proposal: Encryption key must be unique among proposals & members
     ///  - ValSem206: Commit: Path leaf node encryption key must be unique among proposals & members
     ///  - ValSem207: Commit: Path encryption keys must be unique among proposals & members
-    ///  - valn0111: Verify that the following fields are unique among the members of the group: `signature_key`
-    ///  - valn0112: Verify that the following fields are unique among the members of the group: `encryption_key`
+    ///  - [valn0111]: Verify that the following fields are unique among the members of the group: `signature_key`
+    ///  - [valn0112]: Verify that the following fields are unique among the members of the group: `encryption_key`
+    ///
+    /// [valn0111]: https://validation.openmls.tech/#valn0111
+    /// [valn0112]: https://validation.openmls.tech/#valn0112
     pub(crate) fn validate_key_uniqueness(
         &self,
         proposal_queue: &ProposalQueue,
@@ -265,7 +268,7 @@ impl PublicGroup {
 
         // Validate uniqueness of signature keys
         //  - ValSem101
-        //  - valn0111
+        //  - https://validation.openmls.tech/#valn0111
         for signature_key in signature_keys {
             if !signature_key_set.insert(signature_key) {
                 return Err(ProposalValidationError::DuplicateSignatureKey);
@@ -278,7 +281,7 @@ impl PublicGroup {
         //  - ValSem110
         //  - ValSem206
         //  - ValSem207
-        //  - valn0112
+        //  - https://validation.openmls.tech/#valn0112
         for encryption_key in encryption_keys {
             if init_key_set.contains(&encryption_key) {
                 return Err(ProposalValidationError::InitEncryptionKeyCollision);
@@ -382,7 +385,7 @@ impl PublicGroup {
                 return Err(ProposalValidationError::UnknownMemberRemoval);
             }
 
-            // valn0701: removed node can not be blank
+            // https://validation.openmls.tech/#valn0701: removed node can not be blank
             if self.treesync().leaf(removed).is_none() {
                 return Err(ProposalValidationError::UnknownMemberRemoval);
             }
@@ -581,7 +584,7 @@ impl PublicGroup {
         }
 
         // If there is a required capabilities extension, check if that one
-        // is supported (valn0103).
+        // is supported (https://validation.openmls.tech/#valn0103).
         if let Some(required_capabilities) =
             self.group_context().extensions().required_capabilities()
         {
@@ -589,7 +592,7 @@ impl PublicGroup {
             capabilities.supports_required_capabilities(required_capabilities)?;
         }
 
-        // Check that the credential type is supported by all members of the group (valn0104).
+        // Check that the credential type is supported by all members of the group (https://validation.openmls.tech/#valn0104).
         if !self.treesync().full_leaves().all(|node| {
             node.capabilities()
                 .contains_credential(leaf_node.credential().credential_type())
@@ -599,7 +602,7 @@ impl PublicGroup {
 
         // Check that the capabilities field of this LeafNode indicates
         // support for all the credential types currently in use by other
-        // members (valn0104).
+        // members (https://validation.openmls.tech/#valn0104).
         if !self
             .treesync()
             .full_leaves()
@@ -615,12 +618,12 @@ impl PublicGroup {
         &self,
         leaf_node: &crate::treesync::LeafNode,
     ) -> Result<(), LeafNodeValidationError> {
-        // valn0103, valn0104, valn0107
+        // https://validation.openmls.tech/#valn0103, valn0104, valn0107
         self.validate_leaf_node_capabilities(leaf_node)?;
 
-        // valn0105 is done when sending
+        // https://validation.openmls.tech/#valn0105 is done when sending
 
-        // valn0106
+        // https://validation.openmls.tech/#valn0106
         //
         // Only leaf nodes in key packages contain lifetimes, so this will return None for other
         // cases. Therefore we only check the lifetimes for leaf nodes in key packages.
@@ -637,9 +640,9 @@ impl PublicGroup {
             }
         }
 
-        // valn0108, valn0109, valn0110 are done at the caller, we can't do that here
+        // https://validation.openmls.tech/#valn0108, valn0109, valn0110 are done at the caller, we can't do that here
 
-        // valn0111, valn0112 are done in validate_key_uniqueness, which is called in teh context of changing
+        // https://validation.openmls.tech/#valn0111, valn0112 are done in validate_key_uniqueness, which is called in teh context of changing
         // this group
 
         Ok(())
