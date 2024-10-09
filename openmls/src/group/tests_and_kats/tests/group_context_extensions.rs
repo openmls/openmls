@@ -13,7 +13,9 @@ use crate::{
     key_packages::{errors::KeyPackageVerifyError, *},
     messages::group_info::GroupInfo,
     test_utils::frankenstein::{self, FrankenMlsMessage},
-    treesync::{node::leaf_node::Capabilities, LeafNodeParameters},
+    treesync::{
+        errors::LeafNodeValidationError, node::leaf_node::Capabilities, LeafNodeParameters,
+    },
 };
 
 /// The state of a group member: A PartyState and the corresponding MlsGroup.
@@ -528,7 +530,9 @@ fn fail_insufficient_extensiontype_capabilities_add_valno103() {
         matches!(
             err,
             ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
-                ProposalValidationError::InsufficientCapabilities
+                ProposalValidationError::LeafNodeValidation(
+                    LeafNodeValidationError::UnsupportedExtensions
+                )
             ))
         ),
         "got wrong error: {err:#?}"

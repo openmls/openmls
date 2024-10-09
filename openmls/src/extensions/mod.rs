@@ -101,6 +101,35 @@ pub enum ExtensionType {
     Unknown(u16),
 }
 
+impl ExtensionType {
+    /// Returns true for all extension types that are considered "default" by the spec.
+    pub(crate) fn is_default(self) -> bool {
+        match self {
+            ExtensionType::ApplicationId
+            | ExtensionType::RatchetTree
+            | ExtensionType::RequiredCapabilities
+            | ExtensionType::ExternalPub
+            | ExtensionType::ExternalSenders => true,
+            ExtensionType::LastResort | ExtensionType::Unknown(_) => false,
+        }
+    }
+
+    /// Returns whether an extension type is valid when used in leaf nodes.
+    /// Returns None if validity can not be determined.
+    /// This is the case for unknown extensions.
+    pub(crate) fn is_valid_in_leaf_node(self) -> Option<bool> {
+        match self {
+            ExtensionType::ApplicationId
+            | ExtensionType::RatchetTree
+            | ExtensionType::RequiredCapabilities
+            | ExtensionType::ExternalPub
+            | ExtensionType::ExternalSenders => Some(false),
+            ExtensionType::LastResort => Some(true),
+            ExtensionType::Unknown(_) => None,
+        }
+    }
+}
+
 impl Size for ExtensionType {
     fn tls_serialized_len(&self) -> usize {
         2

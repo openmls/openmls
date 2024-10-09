@@ -94,6 +94,11 @@ impl PublicGroup {
             }
         })?;
 
+        // https://validation.openmls.tech/#valn1207
+        if let Some(update_path) = &commit.path {
+            self.validate_leaf_node(update_path.leaf_node())?;
+        }
+
         // Validate the staged proposals by doing the following checks:
 
         // ValSem101

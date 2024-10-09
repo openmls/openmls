@@ -99,16 +99,18 @@ pub struct TestProposal(#[serde(with = "hex::serde")] Vec<u8>);
 
 #[test]
 fn test_read_vectors() {
-    for file in TEST_VECTORS_PATH_READ {
-        let scenario: Vec<PassiveClientWelcomeTestVector> = read(file);
+    crate::skip_validation::checks::leaf_node_lifetime::handle().with_disabled(|| {
+        for file in TEST_VECTORS_PATH_READ {
+            let scenario: Vec<PassiveClientWelcomeTestVector> = read(file);
 
-        info!("# {file}");
-        for (i, test_vector) in scenario.into_iter().enumerate() {
-            info!("## {i:04} START");
-            run_test_vector(test_vector);
-            info!("## {i:04} END");
+            info!("# {file}");
+            for (i, test_vector) in scenario.into_iter().enumerate() {
+                info!("## {i:04} START");
+                run_test_vector(test_vector);
+                info!("## {i:04} END");
+            }
         }
-    }
+    })
 }
 
 pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
@@ -181,21 +183,23 @@ pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
 
 #[test]
 fn test_write_vectors() {
-    let mut tests = Vec::new();
+    crate::skip_validation::checks::leaf_node_lifetime::handle().with_disabled(|| {
+        let mut tests = Vec::new();
 
-    for _ in 0..NUM_TESTS {
-        for &ciphersuite in OpenMlsRustCrypto::default()
-            .crypto()
-            .supported_ciphersuites()
-            .iter()
-        {
-            let test = generate_test_vector(ciphersuite);
-            tests.push(test);
+        for _ in 0..NUM_TESTS {
+            for &ciphersuite in OpenMlsRustCrypto::default()
+                .crypto()
+                .supported_ciphersuites()
+                .iter()
+            {
+                let test = generate_test_vector(ciphersuite);
+                tests.push(test);
+            }
         }
-    }
 
-    // TODO(#1279)
-    write(TEST_VECTOR_PATH_WRITE[0], &tests);
+        // TODO(#1279)
+        write(TEST_VECTOR_PATH_WRITE[0], &tests);
+    })
 }
 
 struct PassiveClient {

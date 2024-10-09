@@ -1,8 +1,9 @@
 use thiserror::Error;
 
 use crate::{
-    error::LibraryError, extensions::errors::InvalidExtensionError,
-    treesync::errors::TreeSyncFromNodesError,
+    error::LibraryError,
+    extensions::errors::InvalidExtensionError,
+    treesync::errors::{LeafNodeValidationError, TreeSyncFromNodesError},
 };
 
 /// Public group creation from external error.
@@ -26,6 +27,9 @@ pub enum CreationFromExternalError<StorageError> {
     /// We don't support the version of the group we are trying to join.
     #[error("We don't support the version of the group we are trying to join.")]
     UnsupportedMlsVersion,
+    /// See [`LeafNodeValidationError`]
+    #[error(transparent)]
+    LeafNodeValidation(#[from] LeafNodeValidationError),
     /// Error writing to storage
     #[error("Error writing to storage: {0}")]
     WriteToStorageError(StorageError),
