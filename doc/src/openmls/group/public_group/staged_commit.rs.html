@@ -288,6 +288,11 @@
 <a href="#288" id="288">288</a>
 <a href="#289" id="289">289</a>
 <a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{<span class="kw">super</span>::errors::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 <span class="kw">use crate</span>::{
     framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, Sender},
@@ -383,6 +388,11 @@
                 FromCommittedProposalsError::SelfRemoval =&gt; StageCommitError::AttemptedSelfRemoval,
             }
         })<span class="question-mark">?</span>;
+
+        <span class="comment">// https://validation.openmls.tech/#valn1207
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(update_path) = <span class="kw-2">&amp;</span>commit.path {
+            <span class="self">self</span>.validate_leaf_node(update_path.leaf_node())<span class="question-mark">?</span>;
+        }
 
         <span class="comment">// Validate the staged proposals by doing the following checks:
 

@@ -262,6 +262,9 @@
 <a href="#262" id="262">262</a>
 <a href="#263" id="263">263</a>
 <a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! TreeSync errors
 //!
 //! This module exposes [`ApplyUpdatePathError`] and [`PublicTreeError`].
@@ -488,6 +491,9 @@
         <span class="string">"The leaf node's extension types are not (all) listed in the leaf node's capabilities."
     </span>)]
     </span>ExtensionsNotInCapabilities,
+    <span class="doccomment">/// The group's ciphersuite is not listed in the leaf node's capabilities.
+    </span><span class="attr">#[error(<span class="string">"The group's ciphersuite is not listed in the leaf node's capabilities."</span>)]
+    </span>CiphersuiteNotInCapabilities,
     <span class="doccomment">/// The leaf node's signature key is already used in the group.
     </span><span class="attr">#[error(<span class="string">"The leaf node's signature key is already used in the group."</span>)]
     </span>SignatureKeyAlreadyInUse,

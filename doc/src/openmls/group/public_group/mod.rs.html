@@ -484,6 +484,19 @@
 <a href="#484" id="484">484</a>
 <a href="#485" id="485">485</a>
 <a href="#486" id="486">486</a>
+<a href="#487" id="487">487</a>
+<a href="#488" id="488">488</a>
+<a href="#489" id="489">489</a>
+<a href="#490" id="490">490</a>
+<a href="#491" id="491">491</a>
+<a href="#492" id="492">492</a>
+<a href="#493" id="493">493</a>
+<a href="#494" id="494">494</a>
+<a href="#495" id="495">495</a>
+<a href="#496" id="496">496</a>
+<a href="#497" id="497">497</a>
+<a href="#498" id="498">498</a>
+<a href="#499" id="499">499</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Public Groups
 //!
 //! There are a few use-cases that require the tracking of an MLS group based on
@@ -620,6 +633,13 @@
         // signature against.
         </span><span class="kw">let </span>treesync = TreeSync::from_ratchet_tree(crypto, ciphersuite, ratchet_tree)<span class="question-mark">?</span>;
 
+        <span class="comment">// Perform basic checks that the leaf nodes in the ratchet tree are valid
+        // These checks only do those that don't need group context. We do the full
+        // checks later, but do these here to fail early in case of funny business
+        </span>treesync
+            .full_leaves()
+            .try_for_each(|leaf_node| leaf_node.validate_locally())<span class="question-mark">?</span>;
+
         <span class="kw">let </span>group_info: GroupInfo = {
             <span class="kw">let </span>signer_signature_key = treesync
                 .leaf(verifiable_group_info.signer())
@@ -660,6 +680,12 @@
             confirmation_tag: group_info.confirmation_tag().clone(),
             proposal_store,
         };
+
+        <span class="comment">// Fully check that the leaf nodes in the ratchet tree are valid
+        </span>public_group
+            .treesync
+            .full_leaves()
+            .try_for_each(|leaf_node| public_group.validate_leaf_node(leaf_node))<span class="question-mark">?</span>;
 
         public_group
             .store(storage)

@@ -80,15 +80,9 @@
 <a href="#80" id="80">80</a>
 <a href="#81" id="81">81</a>
 <a href="#82" id="82">82</a>
-<a href="#83" id="83">83</a>
-<a href="#84" id="84">84</a>
-<a href="#85" id="85">85</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
-<span class="kw">use crate</span>::{
-    credentials::CredentialType, messages::proposals::ProposalType,
-    treesync::node::leaf_node::default_extensions,
-};
+<span class="kw">use crate</span>::{credentials::CredentialType, messages::proposals::ProposalType};
 
 <span class="kw">use super</span>::{Deserialize, ExtensionType, Serialize};
 
@@ -165,7 +159,7 @@
 
     <span class="doccomment">/// Checks whether support for the provided extension type is required.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>requires_extension_type_support(<span class="kw-2">&amp;</span><span class="self">self</span>, ext_type: ExtensionType) -&gt; bool {
-        <span class="self">self</span>.extension_types.contains(<span class="kw-2">&amp;</span>ext_type) || default_extensions().contains(<span class="kw-2">&amp;</span>ext_type)
+        <span class="self">self</span>.extension_types.contains(<span class="kw-2">&amp;</span>ext_type)
     }
 }
 </code></pre></div></section></main></body></html>

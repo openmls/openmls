@@ -41,11 +41,16 @@
 <a href="#41" id="41">41</a>
 <a href="#42" id="42">42</a>
 <a href="#43" id="43">43</a>
+<a href="#44" id="44">44</a>
+<a href="#45" id="45">45</a>
+<a href="#46" id="46">46</a>
+<a href="#47" id="47">47</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>thiserror::Error;
 
 <span class="kw">use crate</span>::{
-    error::LibraryError, extensions::errors::InvalidExtensionError,
-    treesync::errors::TreeSyncFromNodesError,
+    error::LibraryError,
+    extensions::errors::InvalidExtensionError,
+    treesync::errors::{LeafNodeValidationError, TreeSyncFromNodesError},
 };
 
 <span class="doccomment">/// Public group creation from external error.
@@ -69,6 +74,9 @@
     <span class="doccomment">/// We don't support the version of the group we are trying to join.
     </span><span class="attr">#[error(<span class="string">"We don't support the version of the group we are trying to join."</span>)]
     </span>UnsupportedMlsVersion,
+    <span class="doccomment">/// See [`LeafNodeValidationError`]
+    </span><span class="attr">#[error(transparent)]
+    </span>LeafNodeValidation(<span class="attr">#[from] </span>LeafNodeValidationError),
     <span class="doccomment">/// Error writing to storage
     </span><span class="attr">#[error(<span class="string">"Error writing to storage: {0}"</span>)]
     </span>WriteToStorageError(StorageError),

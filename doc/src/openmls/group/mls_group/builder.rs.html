@@ -298,7 +298,7 @@
     },
     storage::OpenMlsProvider,
     tree::sender_ratchet::SenderRatchetConfiguration,
-    treesync::node::leaf_node::Capabilities,
+    treesync::{errors::LeafNodeValidationError, node::leaf_node::Capabilities},
 };
 
 <span class="kw">use super</span>::{past_secrets::MessageSecretsStore, MlsGroup, MlsGroupState};
@@ -543,7 +543,7 @@
     </span><span class="kw">pub fn </span>with_leaf_node_extensions(
         <span class="kw-2">mut </span><span class="self">self</span>,
         extensions: Extensions,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, InvalidExtensionError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LeafNodeValidationError&gt; {
         <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
             </span>.mls_group_create_config_builder
             .with_leaf_node_extensions(extensions)<span class="question-mark">?</span>;

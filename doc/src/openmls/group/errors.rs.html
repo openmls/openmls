@@ -530,6 +530,12 @@
 <a href="#530" id="530">530</a>
 <a href="#531" id="531">531</a>
 <a href="#532" id="532">532</a>
+<a href="#533" id="533">533</a>
+<a href="#534" id="534">534</a>
+<a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # MLS group errors
 //!
 //! This module contains errors that originate at lower levels and are partially re-exported in errors thrown by functions of the `MlsGroup` API.
@@ -731,6 +737,9 @@
     </span>GroupContextExtensionsProposalValidationError(
         <span class="attr">#[from] </span>GroupContextExtensionsProposalValidationError,
     ),
+    <span class="doccomment">/// See [`LeafNodeValidationError`] for more details.
+    </span><span class="attr">#[error(transparent)]
+    </span>LeafNodeValidation(<span class="attr">#[from] </span>LeafNodeValidationError),
 }
 
 <span class="doccomment">/// Create commit error
@@ -914,6 +923,9 @@
     <span class="doccomment">/// The proposal type is not supported by all group members.
     </span><span class="attr">#[error(<span class="string">"The proposal type is not supported by all group members."</span>)]
     </span>UnsupportedProposalType,
+    <span class="doccomment">/// See [`LeafNodeValidationError`] for more details.
+    </span><span class="attr">#[error(transparent)]
+    </span>LeafNodeValidation(<span class="attr">#[from] </span>LeafNodeValidationError),
 }
 
 <span class="doccomment">/// External Commit validaton error

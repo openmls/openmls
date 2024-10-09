@@ -354,9 +354,6 @@
 <a href="#354" id="354">354</a>
 <a href="#355" id="355">355</a>
 <a href="#356" id="356">356</a>
-<a href="#357" id="357">357</a>
-<a href="#358" id="358">358</a>
-<a href="#359" id="359">359</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::types::{Ciphersuite, VerifiableCiphersuite};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
@@ -501,7 +498,7 @@
         </span><span class="kw">if </span>required_capabilities
             .extension_types()
             .iter()
-            .any(|e| !(<span class="self">self</span>.extensions().contains(e) || default_extensions().contains(e)))
+            .any(|e| !<span class="self">self</span>.contains_extension(<span class="kw-2">*</span>e))
         {
             <span class="kw">return </span><span class="prelude-val">Err</span>(LeafNodeValidationError::UnsupportedExtensions);
         }
@@ -509,7 +506,7 @@
         </span><span class="kw">if </span>required_capabilities
             .proposal_types()
             .iter()
-            .any(|p| !(<span class="self">self</span>.proposals().contains(p) || default_proposals().contains(p)))
+            .any(|p| !<span class="self">self</span>.contains_proposal(<span class="kw-2">*</span>p))
         {
             <span class="kw">return </span><span class="prelude-val">Err</span>(LeafNodeValidationError::UnsupportedProposals);
         }
@@ -517,7 +514,7 @@
         </span><span class="kw">if </span>required_capabilities
             .credential_types()
             .iter()
-            .any(|c| !(<span class="self">self</span>.credentials().contains(c) || default_credentials().contains(c)))
+            .any(|c| !<span class="self">self</span>.contains_credential(<span class="kw-2">*</span>c))
         {
             <span class="kw">return </span><span class="prelude-val">Err</span>(LeafNodeValidationError::UnsupportedCredentials);
         }
@@ -525,16 +522,36 @@
     }
 
     <span class="doccomment">/// Check if these [`Capabilities`] contain all the extensions.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>contain_extensions(<span class="kw-2">&amp;</span><span class="self">self</span>, extension: <span class="kw-2">&amp;</span>Extensions) -&gt; bool {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>contains_extensions(<span class="kw-2">&amp;</span><span class="self">self</span>, extension: <span class="kw-2">&amp;</span>Extensions) -&gt; bool {
         extension
             .iter()
             .map(Extension::extension_type)
-            .all(|e| <span class="self">self</span>.extensions().contains(<span class="kw-2">&amp;</span>e))
+            .all(|e| e.is_default() || <span class="self">self</span>.extensions().contains(<span class="kw-2">&amp;</span>e))
     }
 
-    <span class="doccomment">/// Check if these [`Capabilities`] contain all the credentials.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>contains_credential(<span class="kw-2">&amp;</span><span class="self">self</span>, credential_type: <span class="kw-2">&amp;</span>CredentialType) -&gt; bool {
-        <span class="self">self</span>.credentials().contains(credential_type)
+    <span class="doccomment">/// Check if these [`Capabilities`] contains the credential.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>contains_credential(<span class="kw-2">&amp;</span><span class="self">self</span>, credential_type: CredentialType) -&gt; bool {
+        <span class="self">self</span>.credentials().contains(<span class="kw-2">&amp;</span>credential_type)
+    }
+
+    <span class="doccomment">/// Check if these [`Capabilities`] contain the extension.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>contains_extension(<span class="kw-2">&amp;</span><span class="self">self</span>, extension_type: ExtensionType) -&gt; bool {
+        extension_type.is_default() || <span class="self">self</span>.extensions().contains(<span class="kw-2">&amp;</span>extension_type)
+    }
+
+    <span class="doccomment">/// Check if these [`Capabilities`] contain the proposal.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>contains_proposal(<span class="kw-2">&amp;</span><span class="self">self</span>, proposal_type: ProposalType) -&gt; bool {
+        proposal_type.is_default() || <span class="self">self</span>.proposals().contains(<span class="kw-2">&amp;</span>proposal_type)
+    }
+
+    <span class="doccomment">/// Check if these [`Capabilities`] contain the version.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>contains_version(<span class="kw-2">&amp;</span><span class="self">self</span>, version: ProtocolVersion) -&gt; bool {
+        <span class="self">self</span>.versions().contains(<span class="kw-2">&amp;</span>version)
+    }
+
+    <span class="doccomment">/// Check if these [`Capabilities`] contain the ciphersuite.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>contains_ciphersuite(<span class="kw-2">&amp;</span><span class="self">self</span>, ciphersuite: VerifiableCiphersuite) -&gt; bool {
+        <span class="self">self</span>.ciphersuites().contains(<span class="kw-2">&amp;</span>ciphersuite)
     }
 }
 
@@ -609,8 +626,8 @@
                 .into_iter()
                 .map(VerifiableCiphersuite::from)
                 .collect(),
-            extensions: default_extensions(),
-            proposals: default_proposals(),
+            extensions: <span class="macro">vec!</span>[],
+            proposals: <span class="macro">vec!</span>[],
             credentials: default_credentials(),
         }
     }
@@ -626,29 +643,6 @@
         Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
         Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
         Ciphersuite::MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519,
-    ]
-}
-
-<span class="doccomment">/// All extensions defined in the MLS spec are considered "default" by the spec.
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>default_extensions() -&gt; Vec&lt;ExtensionType&gt; {
-    <span class="macro">vec!</span>[
-        ExtensionType::ApplicationId,
-        ExtensionType::RatchetTree,
-        ExtensionType::RequiredCapabilities,
-        ExtensionType::ExternalPub,
-        ExtensionType::ExternalSenders,
-    ]
-}
-
-<span class="doccomment">/// All proposals defined in the MLS spec are considered "default" by the spec.
-</span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>default_proposals() -&gt; Vec&lt;ProposalType&gt; {
-    <span class="macro">vec!</span>[
-        ProposalType::Add,
-        ProposalType::Update,
-        ProposalType::Remove,
-        ProposalType::PreSharedKey,
-        ProposalType::Reinit,
-        ProposalType::GroupContextExtensions,
     ]
 }
 

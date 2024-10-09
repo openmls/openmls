@@ -615,6 +615,51 @@
 <a href="#615" id="615">615</a>
 <a href="#616" id="616">616</a>
 <a href="#617" id="617">617</a>
+<a href="#618" id="618">618</a>
+<a href="#619" id="619">619</a>
+<a href="#620" id="620">620</a>
+<a href="#621" id="621">621</a>
+<a href="#622" id="622">622</a>
+<a href="#623" id="623">623</a>
+<a href="#624" id="624">624</a>
+<a href="#625" id="625">625</a>
+<a href="#626" id="626">626</a>
+<a href="#627" id="627">627</a>
+<a href="#628" id="628">628</a>
+<a href="#629" id="629">629</a>
+<a href="#630" id="630">630</a>
+<a href="#631" id="631">631</a>
+<a href="#632" id="632">632</a>
+<a href="#633" id="633">633</a>
+<a href="#634" id="634">634</a>
+<a href="#635" id="635">635</a>
+<a href="#636" id="636">636</a>
+<a href="#637" id="637">637</a>
+<a href="#638" id="638">638</a>
+<a href="#639" id="639">639</a>
+<a href="#640" id="640">640</a>
+<a href="#641" id="641">641</a>
+<a href="#642" id="642">642</a>
+<a href="#643" id="643">643</a>
+<a href="#644" id="644">644</a>
+<a href="#645" id="645">645</a>
+<a href="#646" id="646">646</a>
+<a href="#647" id="647">647</a>
+<a href="#648" id="648">648</a>
+<a href="#649" id="649">649</a>
+<a href="#650" id="650">650</a>
+<a href="#651" id="651">651</a>
+<a href="#652" id="652">652</a>
+<a href="#653" id="653">653</a>
+<a href="#654" id="654">654</a>
+<a href="#655" id="655">655</a>
+<a href="#656" id="656">656</a>
+<a href="#657" id="657">657</a>
+<a href="#658" id="658">658</a>
+<a href="#659" id="659">659</a>
+<a href="#660" id="660">660</a>
+<a href="#661" id="661">661</a>
+<a href="#662" id="662">662</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains validation functions for incoming messages
 //! as defined in &lt;https://github.com/openmls/openmls/wiki/Message-validation&gt;
 
@@ -627,7 +672,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::group::proposal_store::ProposalQueue;
 <span class="kw">use </span><span class="kw">crate</span>::group::GroupContextExtensionsProposalValidationError;
 <span class="kw">use </span><span class="kw">crate</span>::prelude::LibraryError;
-<span class="kw">use </span><span class="kw">crate</span>::treesync::errors::LeafNodeValidationError;
+<span class="kw">use </span><span class="kw">crate</span>::treesync::{errors::LeafNodeValidationError, LeafNode};
 <span class="kw">use crate</span>::{
     binary_tree::array_representation::LeafNodeIndex,
     framing::{
@@ -645,6 +690,8 @@
     },
     schedule::errors::PskError,
 };
+
+<span class="kw">use </span><span class="kw">crate</span>::treesync::errors::LifetimeError;
 
 <span class="kw">impl </span>PublicGroup {
     <span class="comment">// === Messages ===
@@ -783,6 +830,11 @@
     ///  - ValSem110: Update Proposal: Encryption key must be unique among proposals &amp; members
     ///  - ValSem206: Commit: Path leaf node encryption key must be unique among proposals &amp; members
     ///  - ValSem207: Commit: Path encryption keys must be unique among proposals &amp; members
+    ///  - [valn0111]: Verify that the following fields are unique among the members of the group: `signature_key`
+    ///  - [valn0112]: Verify that the following fields are unique among the members of the group: `encryption_key`
+    ///
+    /// [valn0111]: https://validation.openmls.tech/#valn0111
+    /// [valn0112]: https://validation.openmls.tech/#valn0112
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_key_uniqueness(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         proposal_queue: <span class="kw-2">&amp;</span>ProposalQueue,
@@ -878,6 +930,7 @@
 
         <span class="comment">// Validate uniqueness of signature keys
         //  - ValSem101
+        //  - https://validation.openmls.tech/#valn0111
         </span><span class="kw">for </span>signature_key <span class="kw">in </span>signature_keys {
             <span class="kw">if </span>!signature_key_set.insert(signature_key) {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::DuplicateSignatureKey);
@@ -890,6 +943,7 @@
         //  - ValSem110
         //  - ValSem206
         //  - ValSem207
+        //  - https://validation.openmls.tech/#valn0112
         </span><span class="kw">for </span>encryption_key <span class="kw">in </span>encryption_keys {
             <span class="kw">if </span>init_key_set.contains(<span class="kw-2">&amp;</span>encryption_key) {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::InitEncryptionKeyCollision);
@@ -935,68 +989,18 @@
         //   support for all the credential types currently in use by other
         //   members.
 
-        // Extract the leaf nodes from the add &amp; update proposals
-        </span><span class="kw">let </span>leaf_nodes = proposal_queue
+        // Extract the leaf nodes from the add &amp; update proposals and validate them
+        </span>proposal_queue
             .queued_proposals()
             .filter_map(|p| <span class="kw">match </span>p.proposal() {
                 Proposal::Add(add_proposal) =&gt; <span class="prelude-val">Some</span>(add_proposal.key_package().leaf_node()),
                 Proposal::Update(update_proposal) =&gt; <span class="prelude-val">Some</span>(update_proposal.leaf_node()),
                 <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
-            });
-
-        <span class="kw">let </span><span class="kw-2">mut </span>group_leaf_nodes = <span class="self">self</span>.treesync().full_leaves();
-
-        <span class="kw">for </span>leaf_node <span class="kw">in </span>leaf_nodes {
-            <span class="comment">// Check if the ciphersuite and the version of the group are
-            // supported.
-            </span><span class="kw">let </span>capabilities = leaf_node.capabilities();
-            <span class="kw">if </span>!capabilities
-                .ciphersuites()
-                .contains(<span class="kw-2">&amp;</span>VerifiableCiphersuite::from(<span class="self">self</span>.ciphersuite()))
-                || !capabilities.versions().contains(<span class="kw-2">&amp;</span><span class="self">self</span>.version())
-            {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::InsufficientCapabilities);
-            }
-
-            <span class="comment">// If there is a required capabilities extension, check if that one
-            // is supported.
-            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(required_capabilities) =
-                <span class="self">self</span>.group_context().extensions().required_capabilities()
-            {
-                <span class="comment">// Check if all required capabilities are supported.
-                </span>capabilities
-                    .supports_required_capabilities(required_capabilities)
-                    .map_err(|<span class="kw">_</span>| ProposalValidationError::InsufficientCapabilities)<span class="question-mark">?</span>;
-            }
-
-            <span class="comment">// Check that all extensions are contained in the capabilities.
-            </span><span class="kw">if </span>!capabilities.contain_extensions(leaf_node.extensions()) {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::InsufficientCapabilities);
-            }
-
-            <span class="comment">// Check that the capabilities contain the leaf node's credential type.
-            </span><span class="kw">if </span>!capabilities.contains_credential(<span class="kw-2">&amp;</span>leaf_node.credential().credential_type()) {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::InsufficientCapabilities);
-            }
-
-            <span class="comment">// Check that the credential type is supported by all members of the group.
-            </span><span class="kw">if </span>!group_leaf_nodes.all(|node| {
-                node.capabilities()
-                    .contains_credential(<span class="kw-2">&amp;</span>leaf_node.credential().credential_type())
-            }) {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::InsufficientCapabilities);
-            }
-
-            <span class="comment">// Check that the capabilities field of this LeafNode indicates
-            // support for all the credential types currently in use by other
-            // members.
-            </span><span class="kw">if </span>!group_leaf_nodes
-                .all(|node| capabilities.contains_credential(<span class="kw-2">&amp;</span>node.credential().credential_type()))
-            {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::InsufficientCapabilities);
-            }
-        }
-        <span class="prelude-val">Ok</span>(())
+            })
+            .try_for_each(|leaf_node| {
+                <span class="self">self</span>.validate_leaf_node_capabilities(leaf_node)
+                    .map_err(|<span class="kw">_</span>| ProposalValidationError::InsufficientCapabilities)
+            })
     }
 
     <span class="doccomment">/// Validate Add proposals. This function implements the following checks:
@@ -1014,6 +1018,8 @@
             {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::InvalidAddProposalCiphersuiteOrVersion);
             }
+
+            <span class="self">self</span>.validate_leaf_node(add_proposal.add_proposal().key_package().leaf_node())<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
     }
@@ -1041,7 +1047,7 @@
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::UnknownMemberRemoval);
             }
 
-            <span class="comment">// valn0701: removed node can not be blank
+            <span class="comment">// https://validation.openmls.tech/#valn0701: removed node can not be blank
             </span><span class="kw">if </span><span class="self">self</span>.treesync().leaf(removed).is_none() {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::UnknownMemberRemoval);
             }
@@ -1075,6 +1081,8 @@
             } <span class="kw">else </span>{
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::UpdateFromNonMember);
             }
+
+            <span class="self">self</span>.validate_leaf_node(update_proposal.update_proposal().leaf_node())<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
     }
@@ -1194,13 +1202,14 @@
                     };
 
                     <span class="comment">// Make sure that all other extensions are known to be supported, by checking
-                    // that they are included in the required capabilities.
+                    // that they are default extensions or included in the required capabilities.
                     </span><span class="kw">let </span>all_extensions_are_in_required_capabilities: bool = extensions
                         .extensions()
                         .iter()
                         .map(|ext| ext.extension_type())
                         .all(|ext_type| {
-                            required_capabilities.requires_extension_type_support(ext_type)
+                            ext_type.is_default()
+                                || required_capabilities.requires_extension_type_support(ext_type)
                         });
 
                     <span class="kw">if </span>!all_extensions_are_in_required_capabilities {
@@ -1218,6 +1227,87 @@
         }
 
         <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="kw">fn </span>validate_leaf_node_capabilities(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        leaf_node: <span class="kw-2">&amp;</span>LeafNode,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), LeafNodeValidationError&gt; {
+        <span class="comment">// Check that the data in the leaf node is self-consistent
+        </span>leaf_node.validate_locally()<span class="question-mark">?</span>;
+
+        <span class="comment">// Check if the ciphersuite and the version of the group are
+        // supported.
+        </span><span class="kw">let </span>capabilities = leaf_node.capabilities();
+        <span class="kw">if </span>!capabilities.contains_ciphersuite(VerifiableCiphersuite::from(<span class="self">self</span>.ciphersuite()))
+            || !capabilities.contains_version(<span class="self">self</span>.version())
+        {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(LeafNodeValidationError::CiphersuiteNotInCapabilities);
+        }
+
+        <span class="comment">// If there is a required capabilities extension, check if that one
+        // is supported (https://validation.openmls.tech/#valn0103).
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(required_capabilities) =
+            <span class="self">self</span>.group_context().extensions().required_capabilities()
+        {
+            <span class="comment">// Check if all required capabilities are supported.
+            </span>capabilities.supports_required_capabilities(required_capabilities)<span class="question-mark">?</span>;
+        }
+
+        <span class="comment">// Check that the credential type is supported by all members of the group (https://validation.openmls.tech/#valn0104).
+        </span><span class="kw">if </span>!<span class="self">self</span>.treesync().full_leaves().all(|node| {
+            node.capabilities()
+                .contains_credential(leaf_node.credential().credential_type())
+        }) {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(LeafNodeValidationError::UnsupportedCredentials);
+        }
+
+        <span class="comment">// Check that the capabilities field of this LeafNode indicates
+        // support for all the credential types currently in use by other
+        // members (https://validation.openmls.tech/#valn0104).
+        </span><span class="kw">if </span>!<span class="self">self
+            </span>.treesync()
+            .full_leaves()
+            .all(|node| capabilities.contains_credential(node.credential().credential_type()))
+        {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(LeafNodeValidationError::UnsupportedCredentials);
+        }
+
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_leaf_node(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        leaf_node: <span class="kw-2">&amp;</span><span class="kw">crate</span>::treesync::LeafNode,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), LeafNodeValidationError&gt; {
+        <span class="comment">// https://validation.openmls.tech/#valn0103, valn0104, valn0107
+        </span><span class="self">self</span>.validate_leaf_node_capabilities(leaf_node)<span class="question-mark">?</span>;
+
+        <span class="comment">// https://validation.openmls.tech/#valn0105 is done when sending
+
+        // https://validation.openmls.tech/#valn0106
+        //
+        // Only leaf nodes in key packages contain lifetimes, so this will return None for other
+        // cases. Therefore we only check the lifetimes for leaf nodes in key packages.
+        //
+        // Some KATs use key packages that are expired by now. In order to run these tests, we
+        // provide a way to turn off this check.
+
+        </span><span class="kw">if </span>!<span class="kw">crate</span>::skip_validation::is_disabled::leaf_node_lifetime() {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(lifetime) = leaf_node.life_time() {
+                <span class="kw">if </span>!lifetime.is_valid() {
+                    <span class="macro">log::warn!</span>(<span class="string">"offending lifetime: {lifetime:?}"</span>);
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(LeafNodeValidationError::Lifetime(LifetimeError::NotCurrent));
+                }
+            }
+        }
+
+        <span class="comment">// https://validation.openmls.tech/#valn0108, valn0109, valn0110 are done at the caller, we can't do that here
+
+        // https://validation.openmls.tech/#valn0111, valn0112 are done in validate_key_uniqueness, which is called in teh context of changing
+        // this group
+
+        </span><span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Returns a [`LeafNodeValidationError`] if an [`ExtensionType`]

@@ -217,11 +217,12 @@
         ])))
         .expect("error adding external senders extension to group context extensions")
         .ciphersuite(ciphersuite)
+        // we need to specify the non-default extension here
         .capabilities(Capabilities::new(
             None, // Defaults to the group's protocol version
             None, // Defaults to the group's ciphersuite
+            Some(&amp;[ExtensionType::Unknown(0xff00)]),
             None, // Defaults to all basic extension types
-            None, // Defaults to all basic proposal types
             Some(&amp;[CredentialType::Basic]),
         ))
         // Example leaf extension
