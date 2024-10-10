@@ -74,7 +74,7 @@ impl Lifetime {
     }
 
     /// Returns true if this lifetime is valid.
-    pub(crate) fn is_valid(&self) -> bool {
+    pub fn is_valid(&self) -> bool {
         match SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map(|duration| duration.as_secs())
@@ -92,6 +92,16 @@ impl Lifetime {
     /// and reject any LeafNode where the total lifetime is longer than this duration.
     pub fn has_acceptable_range(&self) -> bool {
         self.not_after.saturating_sub(self.not_before) <= MAX_LEAF_NODE_LIFETIME_RANGE_SECONDS
+    }
+
+    /// Returns the "not before" timestamp of the KeyPackage.
+    pub fn not_before(&self) -> u64 {
+        self.not_before
+    }
+
+    /// Returns the "not after" timestamp of the KeyPackage.
+    pub fn not_after(&self) -> u64 {
+        self.not_after
     }
 }
 

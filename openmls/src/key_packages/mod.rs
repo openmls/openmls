@@ -401,6 +401,11 @@ impl KeyPackage {
     pub fn last_resort(&self) -> bool {
         self.payload.extensions.contains(ExtensionType::LastResort)
     }
+
+    /// Get the lifetime of the KeyPackage
+    pub fn life_time(&self) -> &Lifetime {
+        self.payload.leaf_node.life_time().unwrap()
+    }
 }
 
 /// Crate visible `KeyPackage` functions.
