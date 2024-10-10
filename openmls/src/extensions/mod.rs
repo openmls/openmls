@@ -601,7 +601,7 @@ mod test {
 
     #[test]
     fn that_unknown_extensions_are_de_serialized_correctly() {
-        let extension_types = [0x0000u16, 0x0A0A, 0x7A7A, 0xF000, 0xFFFF];
+        let extension_types = [0x0000u16, 0x0A0A, 0x7A7A, 0xF100, 0xFFFF];
         let extension_datas = [vec![], vec![0], vec![1, 2, 3]];
 
         for extension_type in extension_types.into_iter() {

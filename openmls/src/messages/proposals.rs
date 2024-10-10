@@ -494,7 +494,7 @@ impl GroupContextExtensionProposal {
     }
 
     /// Get the extensions of the proposal
-    pub(crate) fn extensions(&self) -> &Extensions {
+    pub fn extensions(&self) -> &Extensions {
         &self.extensions
     }
 }
