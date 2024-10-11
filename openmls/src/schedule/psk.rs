@@ -383,7 +383,7 @@ impl PskSecret {
     pub(crate) fn new(
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
-        psks: Vec<(&PreSharedKeyId, Secret)>,
+        psks: Vec<(PreSharedKeyId, Secret)>,
     ) -> Result<Self, PskError> {
         // Check that we don't have too many PSKs
         let num_psks = u16::try_from(psks.len()).map_err(|_| PskError::TooManyKeys)?;
@@ -404,7 +404,7 @@ impl PskSecret {
 
             // psk_input_[i] = ExpandWithLabel( psk_extracted_[i], "derived psk", PSKLabel, KDF.Nh)
             let psk_input = {
-                let psk_label = PskLabel::new(psk_id, index as u16, num_psks)
+                let psk_label = PskLabel::new(&psk_id, index as u16, num_psks)
                     .tls_serialize_detached()
                     .map_err(LibraryError::missing_bound_check)?;
 
@@ -450,7 +450,7 @@ pub(crate) fn load_psks<'p, Storage: StorageProvider>(
     storage: &Storage,
     resumption_psk_store: &ResumptionPskStore,
     psk_ids: &'p [PreSharedKeyId],
-) -> Result<Vec<(&'p PreSharedKeyId, Secret)>, PskError> {
+) -> Result<Vec<(PreSharedKeyId, Secret)>, PskError> {
     let mut psk_bundles = Vec::new();
 
     for psk_id in psk_ids.iter() {
@@ -459,7 +459,7 @@ pub(crate) fn load_psks<'p, Storage: StorageProvider>(
         match &psk_id.psk {
             Psk::Resumption(resumption) => {
                 if let Some(psk_bundle) = resumption_psk_store.get(resumption.psk_epoch()) {
-                    psk_bundles.push((psk_id, psk_bundle.secret.clone()));
+                    psk_bundles.push((psk_id.clone(), psk_bundle.secret.clone()));
                 } else {
                     return Err(PskError::KeyNotFound);
                 }
@@ -469,7 +469,7 @@ pub(crate) fn load_psks<'p, Storage: StorageProvider>(
                     .psk(psk_id.psk())
                     .map_err(|_| PskError::KeyNotFound)?;
                 if let Some(psk_bundle) = psk_bundle {
-                    psk_bundles.push((psk_id, psk_bundle.secret));
+                    psk_bundles.push((psk_id.clone(), psk_bundle.secret));
                 } else {
                     return Err(PskError::KeyNotFound);
                 }
