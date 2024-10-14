@@ -277,7 +277,6 @@
 <a href="#277" id="277">277</a>
 <a href="#278" id="278">278</a>
 <a href="#279" id="279">279</a>
-<a href="#280" id="280">280</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::{signatures::Signer, types::Ciphersuite};
 <span class="kw">use </span>tls_codec::Serialize;
 
@@ -307,7 +306,6 @@
 </span><span class="kw">pub struct </span>MlsGroupBuilder {
     group_id: <span class="prelude-ty">Option</span>&lt;GroupId&gt;,
     mls_group_create_config_builder: MlsGroupCreateConfigBuilder,
-    max_past_epochs: <span class="prelude-ty">Option</span>&lt;usize&gt;,
     psk_ids: Vec&lt;PreSharedKeyId&gt;,
 }
 
@@ -416,7 +414,7 @@
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>message_secrets_store = MessageSecretsStore::new_with_secret(
-            <span class="self">self</span>.max_past_epochs.unwrap_or_default(),
+            mls_group_create_config.max_past_epochs(),
             message_secrets,
         );
 

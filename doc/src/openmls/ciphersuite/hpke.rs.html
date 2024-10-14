@@ -156,6 +156,7 @@
 <a href="#156" id="156">156</a>
 <a href="#157" id="157">157</a>
 <a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! ### Public-Key Encryption
 //!
 //! As with signing, MLS includes a label and context in encryption operations to
@@ -226,7 +227,8 @@
     }
 }
 
-<span class="attr">#[derive(Debug, Clone, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize)]
+<span class="doccomment">/// Context for HPKE encryption
+</span><span class="attr">#[derive(Debug, Clone, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize)]
 </span><span class="kw">pub struct </span>EncryptContext {
     label: VLBytes,
     context: VLBytes,

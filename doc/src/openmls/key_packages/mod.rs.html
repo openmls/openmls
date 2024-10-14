@@ -604,6 +604,14 @@
 <a href="#604" id="604">604</a>
 <a href="#605" id="605">605</a>
 <a href="#606" id="606">606</a>
+<a href="#607" id="607">607</a>
+<a href="#608" id="608">608</a>
+<a href="#609" id="609">609</a>
+<a href="#610" id="610">610</a>
+<a href="#611" id="611">611</a>
+<a href="#612" id="612">612</a>
+<a href="#613" id="613">613</a>
+<a href="#614" id="614">614</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Key Packages
 //!
 //! Key packages are pre-published public keys that provide some information
@@ -1006,6 +1014,14 @@
     <span class="doccomment">/// Check if this KeyPackage is a last resort key package.
     </span><span class="kw">pub fn </span>last_resort(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="self">self</span>.payload.extensions.contains(ExtensionType::LastResort)
+    }
+
+    <span class="doccomment">/// Get the lifetime of the KeyPackage
+    </span><span class="kw">pub fn </span>life_time(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Lifetime {
+        <span class="comment">// Leaf nodes contain a lifetime if an only if they are inside a KeyPackage. Since we are
+        // in a KeyPackage, this can never be None and unwrap is safe.
+        // TODO: get rid of the unwrap, see https://github.com/openmls/openmls/issues/1663.
+        </span><span class="self">self</span>.payload.leaf_node.life_time().unwrap()
     }
 }
 

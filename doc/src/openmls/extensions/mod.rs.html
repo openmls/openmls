@@ -1238,7 +1238,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>that_unknown_extensions_are_de_serialized_correctly() {
-        <span class="kw">let </span>extension_types = [<span class="number">0x0000u16</span>, <span class="number">0x0A0A</span>, <span class="number">0x7A7A</span>, <span class="number">0xF000</span>, <span class="number">0xFFFF</span>];
+        <span class="kw">let </span>extension_types = [<span class="number">0x0000u16</span>, <span class="number">0x0A0A</span>, <span class="number">0x7A7A</span>, <span class="number">0xF100</span>, <span class="number">0xFFFF</span>];
         <span class="kw">let </span>extension_datas = [<span class="macro">vec!</span>[], <span class="macro">vec!</span>[<span class="number">0</span>], <span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]];
 
         <span class="kw">for </span>extension_type <span class="kw">in </span>extension_types.into_iter() {
