@@ -280,7 +280,7 @@ impl MlsGroup {
     /// leaf index. Returns `None` if the member can not be found in this group.
     pub fn member_at(&self, leaf_index: LeafNodeIndex) -> Option<Member> {
         self.public_group()
-            // This will return an error if the member can't be found.
+            // This will return None if the member can't be found.
             .leaf(leaf_index)
             .map(|leaf_node| {
                 Member::new(
