@@ -275,6 +275,22 @@ impl MlsGroup {
             .leaf(leaf_index)
             .map(|leaf| leaf.credential())
     }
+
+    /// Returns the [`Member`] corresponding to the given
+    /// leaf index. Returns `None` if the member can not be found in this group.
+    pub fn member_at(&self, leaf_index: LeafNodeIndex) -> Option<Member> {
+        self.public_group()
+            // This will return None if the member can't be found.
+            .leaf(leaf_index)
+            .map(|leaf_node| {
+                Member::new(
+                    leaf_index,
+                    leaf_node.encryption_key().as_slice().to_vec(),
+                    leaf_node.signature_key().as_slice().to_vec(),
+                    leaf_node.credential().clone(),
+                )
+            })
+    }
 }
 
 /// Helper `enum` that classifies the kind of remove operation. This can be used to
