@@ -136,8 +136,7 @@ impl MlsGroupBuilder {
             .map_err(LibraryError::unexpected_crypto_error)?;
 
         let message_secrets_store = MessageSecretsStore::new_with_secret(
-            self.max_past_epochs
-                .unwrap_or(mls_group_create_config.max_past_epochs()),
+            self.max_past_epochs.unwrap_or_default(),
             message_secrets,
         );
 
