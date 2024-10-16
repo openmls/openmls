@@ -520,7 +520,7 @@ impl StagedWelcome {
 
     /// Get the [`GroupContext`] of this welcome's [`PublicGroup`].
     pub fn group_context(&self) -> &GroupContext {
-        &self.public_group.group_context()
+        self.public_group.group_context()
     }
 
     /// Get an iterator over all [`Member`]s of this welcome's [`PublicGroup`].
