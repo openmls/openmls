@@ -372,11 +372,13 @@ impl<'a> TreeSyncDiff<'a> {
             }
         }
 
-        let filtered_direct_path = self.filtered_direct_path(sender_leaf_index);
         // ValSem202: Path must be the right length
+        // https://validation.openmls.tech/#valn1101
+        let filtered_direct_path = self.filtered_direct_path(sender_leaf_index);
         if filtered_direct_path.len() != path.len() {
             return Err(ApplyUpdatePathError::PathLengthMismatch);
         };
+
         let path = filtered_direct_path
             .into_iter()
             .zip(
@@ -384,9 +386,9 @@ impl<'a> TreeSyncDiff<'a> {
                     .map(|update_path_node| update_path_node.public_key.clone().into()),
             )
             .collect();
-        let parent_hash = self.process_update_path(crypto, ciphersuite, sender_leaf_index, path)?;
 
         // Verify the parent hash.
+        let parent_hash = self.process_update_path(crypto, ciphersuite, sender_leaf_index, path)?;
         let leaf_node_parent_hash = update_path
             .leaf_node()
             .parent_hash()

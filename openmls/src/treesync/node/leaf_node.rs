@@ -792,6 +792,7 @@ impl VerifiableKeyPackageLeafNode {
     }
 }
 
+// https://validation.openmls.tech/#valn0102
 impl Verifiable for VerifiableKeyPackageLeafNode {
     type VerifiedStruct = LeafNode;
 
