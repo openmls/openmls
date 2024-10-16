@@ -591,6 +591,16 @@
 <a href="#591" id="591">591</a>
 <a href="#592" id="592">592</a>
 <a href="#593" id="593">593</a>
+<a href="#594" id="594">594</a>
+<a href="#595" id="595">595</a>
+<a href="#596" id="596">596</a>
+<a href="#597" id="597">597</a>
+<a href="#598" id="598">598</a>
+<a href="#599" id="599">599</a>
+<a href="#600" id="600">600</a>
+<a href="#601" id="601">601</a>
+<a href="#602" id="602">602</a>
+<a href="#603" id="603">603</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>errors::NewGroupError;
 <span class="kw">use </span>openmls_traits::{signatures::Signer, storage::StorageProvider <span class="kw">as </span>StorageProviderTrait};
 
@@ -1109,6 +1119,16 @@
             .ok_or(LibraryError::custom(
                 <span class="string">"no leaf with given welcome sender index exists"</span>,
             ))
+    }
+
+    <span class="doccomment">/// Get the [`GroupContext`] of this welcome's [`PublicGroup`].
+    </span><span class="kw">pub fn </span>group_context(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupContext {
+        <span class="self">self</span>.public_group.group_context()
+    }
+
+    <span class="doccomment">/// Get an iterator over all [`Member`]s of this welcome's [`PublicGroup`].
+    </span><span class="kw">pub fn </span>members(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = Member&gt; + <span class="lifetime">'_ </span>{
+        <span class="self">self</span>.public_group.members()
     }
 
     <span class="doccomment">/// Consumes the [`StagedWelcome`] and returns the respective [`MlsGroup`].
