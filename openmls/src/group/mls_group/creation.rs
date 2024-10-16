@@ -525,7 +525,7 @@ impl StagedWelcome {
 
     /// Get an iterator over all [`Member`]s of this welcome's [`PublicGroup`].
     pub fn members(&self) -> impl Iterator<Item = Member> + '_ {
-        &self.public_group.members()
+        self.public_group.members()
     }
 
     /// Consumes the [`StagedWelcome`] and returns the respective [`MlsGroup`].
