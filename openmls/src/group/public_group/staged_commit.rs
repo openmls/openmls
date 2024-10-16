@@ -47,6 +47,7 @@ impl PublicGroup {
         let ciphersuite = self.ciphersuite();
 
         // Verify epoch
+        // https://validation.openmls.tech/#valn1201
         if mls_content.epoch() != self.group_context().epoch() {
             log::error!(
                 "Epoch mismatch. Got {:?}, expected {:?}",
@@ -99,7 +100,8 @@ impl PublicGroup {
             self.validate_leaf_node(update_path.leaf_node())?;
         }
 
-        // Validate the staged proposals by doing the following checks:
+        // Validate the staged proposals. This implements https://validation.openmls.tech/#valn1204.
+        // This is done by doing the following checks:
 
         // ValSem101
         // ValSem102
@@ -247,6 +249,7 @@ impl PublicGroup {
             diff.apply_received_update_path(crypto, ciphersuite, sender_index, update_path)?;
         } else if apply_proposals_values.path_required {
             // ValSem201
+            // https://validation.openmls.tech/#valn1206
             return Err(StageCommitError::RequiredPathNotFound);
         };
 
