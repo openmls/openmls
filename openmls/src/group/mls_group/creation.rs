@@ -518,6 +518,16 @@ impl StagedWelcome {
             ))
     }
 
+    /// Get the [`GroupContext`] of this welcome's [`PublicGroup`].
+    pub fn group_context(&self) -> &GroupContext {
+        &self.public_group.group_context()
+    }
+
+    /// Get an iterator over all [`Member`]s of this welcome's [`PublicGroup`].
+    pub fn members(&self) -> impl Iterator<Item = Member> + '_ {
+        &self.public_group.members()
+    }
+
     /// Consumes the [`StagedWelcome`] and returns the respective [`MlsGroup`].
     pub fn into_group<Provider: OpenMlsProvider>(
         self,
