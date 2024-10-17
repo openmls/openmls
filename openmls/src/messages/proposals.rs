@@ -284,7 +284,7 @@ pub struct UpdateProposal {
 }
 
 impl UpdateProposal {
-    /// Returns a reference to the key package in the proposal.
+    /// Returns a reference to the leaf node in the proposal.
     pub fn leaf_node(&self) -> &LeafNode {
         &self.leaf_node
     }

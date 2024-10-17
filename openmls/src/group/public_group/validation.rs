@@ -124,6 +124,7 @@ impl PublicGroup {
     // === Proposals ===
 
     /// Validate that all group members support the types of all proposals.
+    /// Implements check [valn0311](https://validation.openmls.tech/#valn0311)
     pub(crate) fn validate_proposal_type_support(
         &self,
         proposal_queue: &ProposalQueue,
@@ -269,6 +270,7 @@ impl PublicGroup {
         // Validate uniqueness of signature keys
         //  - ValSem101
         //  - https://validation.openmls.tech/#valn0111
+        //  - https://validation.openmls.tech/#valn0305
         for signature_key in signature_keys {
             if !signature_key_set.insert(signature_key) {
                 return Err(ProposalValidationError::DuplicateSignatureKey);
@@ -349,14 +351,18 @@ impl PublicGroup {
     ) -> Result<(), ProposalValidationError> {
         let add_proposals = proposal_queue.add_proposals();
 
+        // We do the key package validation checks here inline
+        // https://validation.openmls.tech/#valn0501
         for add_proposal in add_proposals {
             // ValSem105: Check if ciphersuite and version of the group are correct:
+            // https://validation.openmls.tech/#valn0201
             if add_proposal.add_proposal().key_package().ciphersuite() != self.ciphersuite()
                 || add_proposal.add_proposal().key_package().protocol_version() != self.version()
             {
                 return Err(ProposalValidationError::InvalidAddProposalCiphersuiteOrVersion);
             }
 
+            // https://validation.openmls.tech/#valn0202
             self.validate_leaf_node(add_proposal.add_proposal().key_package().leaf_node())?;
         }
         Ok(())
@@ -369,23 +375,40 @@ impl PublicGroup {
         &self,
         proposal_queue: &ProposalQueue,
     ) -> Result<(), ProposalValidationError> {
+        let updates_set: HashSet<_> = proposal_queue
+            .update_proposals()
+            .map(|proposal| {
+                if let Sender::Member(index) = proposal.sender() {
+                    Ok(*index)
+                } else {
+                    Err(ProposalValidationError::UpdateFromNonMember)
+                }
+            })
+            .collect::<Result<_, _>>()?;
+
         let remove_proposals = proposal_queue.remove_proposals();
 
         let mut removes_set = HashSet::new();
 
+        // https://validation.openmls.tech/#valn0701
         for remove_proposal in remove_proposals {
             let removed = remove_proposal.remove_proposal().removed();
-            // ValSem107
-            if !removes_set.insert(removed) {
-                return Err(ProposalValidationError::DuplicateMemberRemoval);
-            }
-
+            // The node has to be a leaf in the tree
             // ValSem108
             if !self.treesync().is_leaf_in_tree(removed) {
                 return Err(ProposalValidationError::UnknownMemberRemoval);
             }
 
-            // https://validation.openmls.tech/#valn0701: removed node can not be blank
+            // ValSem107
+            // https://validation.openmls.tech/#valn0304
+            if !removes_set.insert(removed) {
+                return Err(ProposalValidationError::DuplicateMemberRemoval);
+            }
+            if updates_set.contains(&removed) {
+                return Err(ProposalValidationError::DuplicateMemberRemoval);
+            }
+
+            // removed node can not be blank
             if self.treesync().leaf(removed).is_none() {
                 return Err(ProposalValidationError::UnknownMemberRemoval);
             }
@@ -420,6 +443,7 @@ impl PublicGroup {
                 return Err(ProposalValidationError::UpdateFromNonMember);
             }
 
+            // https://validation.openmls.tech/#valn0601
             self.validate_leaf_node(update_proposal.update_proposal().leaf_node())?;
         }
         Ok(())
@@ -505,6 +529,7 @@ impl PublicGroup {
 
     /// Returns a [`LeafNodeValidationError`] if an [`ExtensionType`]
     /// in `extensions` is not supported by a leaf in this tree.
+    /// Implements check [valn1001](https://validation.openmls.tech/#valn1001).
     pub(crate) fn validate_group_context_extensions_proposal(
         &self,
         proposal_queue: &ProposalQueue,
@@ -618,7 +643,9 @@ impl PublicGroup {
         &self,
         leaf_node: &crate::treesync::LeafNode,
     ) -> Result<(), LeafNodeValidationError> {
-        // https://validation.openmls.tech/#valn0103, valn0104, valn0107
+        // https://validation.openmls.tech/#valn0103
+        // https://validation.openmls.tech/#valn0104
+        // https://validation.openmls.tech/#valn0107
         self.validate_leaf_node_capabilities(leaf_node)?;
 
         // https://validation.openmls.tech/#valn0105 is done when sending
@@ -630,7 +657,6 @@ impl PublicGroup {
         //
         // Some KATs use key packages that are expired by now. In order to run these tests, we
         // provide a way to turn off this check.
-
         if !crate::skip_validation::is_disabled::leaf_node_lifetime() {
             if let Some(lifetime) = leaf_node.life_time() {
                 if !lifetime.is_valid() {
@@ -640,10 +666,17 @@ impl PublicGroup {
             }
         }
 
-        // https://validation.openmls.tech/#valn0108, valn0109, valn0110 are done at the caller, we can't do that here
+        // These are done at the caller and we can't do them here:
+        //
+        // https://validation.openmls.tech/#valn0108
+        // https://validation.openmls.tech/#valn0109
+        // https://validation.openmls.tech/#valn0110
 
-        // https://validation.openmls.tech/#valn0111, valn0112 are done in validate_key_uniqueness, which is called in teh context of changing
-        // this group
+        // These are done in validate_key_uniqueness, which is called in the context of changing
+        // this group:
+        //
+        // https://validation.openmls.tech/#valn0111
+        // https://validation.openmls.tech/#valn0112
 
         Ok(())
     }
