@@ -448,6 +448,7 @@
 <a href="#448" id="448">448</a>
 <a href="#449" id="449">449</a>
 <a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Module to encrypt and decrypt update paths for a [`TreeSyncDiff`] instance.
 //!
 //! # About
@@ -858,7 +859,8 @@
         <span class="kw">let </span>leaf_node_in = <span class="self">self</span>.leaf_node().clone();
         <span class="kw">let </span>verifiable_leaf_node = leaf_node_in.into_verifiable_leaf_node();
         <span class="kw">match </span>verifiable_leaf_node {
-            VerifiableLeafNode::Commit(<span class="kw-2">mut </span>commit_leaf_node) =&gt; {
+            <span class="comment">// https://validation.openmls.tech/#valn1208
+            </span>VerifiableLeafNode::Commit(<span class="kw-2">mut </span>commit_leaf_node) =&gt; {
                 <span class="kw">let </span>pk = <span class="kw-2">&amp;</span>commit_leaf_node
                     .signature_key()
                     .clone()

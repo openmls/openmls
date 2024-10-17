@@ -928,6 +928,8 @@
 <a href="#928" id="928">928</a>
 <a href="#929" id="929">929</a>
 <a href="#930" id="930">930</a>
+<a href="#931" id="931">931</a>
+<a href="#932" id="932">932</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module provides the diff functionality for [`TreeSync`].
 //!
 //! # About
@@ -1302,11 +1304,13 @@
             }
         }
 
-        <span class="kw">let </span>filtered_direct_path = <span class="self">self</span>.filtered_direct_path(sender_leaf_index);
         <span class="comment">// ValSem202: Path must be the right length
-        </span><span class="kw">if </span>filtered_direct_path.len() != path.len() {
+        // https://validation.openmls.tech/#valn1101
+        </span><span class="kw">let </span>filtered_direct_path = <span class="self">self</span>.filtered_direct_path(sender_leaf_index);
+        <span class="kw">if </span>filtered_direct_path.len() != path.len() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ApplyUpdatePathError::PathLengthMismatch);
         };
+
         <span class="kw">let </span>path = filtered_direct_path
             .into_iter()
             .zip(
@@ -1314,10 +1318,10 @@
                     .map(|update_path_node| update_path_node.public_key.clone().into()),
             )
             .collect();
-        <span class="kw">let </span>parent_hash = <span class="self">self</span>.process_update_path(crypto, ciphersuite, sender_leaf_index, path)<span class="question-mark">?</span>;
 
         <span class="comment">// Verify the parent hash.
-        </span><span class="kw">let </span>leaf_node_parent_hash = update_path
+        </span><span class="kw">let </span>parent_hash = <span class="self">self</span>.process_update_path(crypto, ciphersuite, sender_leaf_index, path)<span class="question-mark">?</span>;
+        <span class="kw">let </span>leaf_node_parent_hash = update_path
             .leaf_node()
             .parent_hash()
             .ok_or(ApplyUpdatePathError::MissingParentHash)<span class="question-mark">?</span>;

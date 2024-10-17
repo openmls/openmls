@@ -660,6 +660,39 @@
 <a href="#660" id="660">660</a>
 <a href="#661" id="661">661</a>
 <a href="#662" id="662">662</a>
+<a href="#663" id="663">663</a>
+<a href="#664" id="664">664</a>
+<a href="#665" id="665">665</a>
+<a href="#666" id="666">666</a>
+<a href="#667" id="667">667</a>
+<a href="#668" id="668">668</a>
+<a href="#669" id="669">669</a>
+<a href="#670" id="670">670</a>
+<a href="#671" id="671">671</a>
+<a href="#672" id="672">672</a>
+<a href="#673" id="673">673</a>
+<a href="#674" id="674">674</a>
+<a href="#675" id="675">675</a>
+<a href="#676" id="676">676</a>
+<a href="#677" id="677">677</a>
+<a href="#678" id="678">678</a>
+<a href="#679" id="679">679</a>
+<a href="#680" id="680">680</a>
+<a href="#681" id="681">681</a>
+<a href="#682" id="682">682</a>
+<a href="#683" id="683">683</a>
+<a href="#684" id="684">684</a>
+<a href="#685" id="685">685</a>
+<a href="#686" id="686">686</a>
+<a href="#687" id="687">687</a>
+<a href="#688" id="688">688</a>
+<a href="#689" id="689">689</a>
+<a href="#690" id="690">690</a>
+<a href="#691" id="691">691</a>
+<a href="#692" id="692">692</a>
+<a href="#693" id="693">693</a>
+<a href="#694" id="694">694</a>
+<a href="#695" id="695">695</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains validation functions for incoming messages
 //! as defined in &lt;https://github.com/openmls/openmls/wiki/Message-validation&gt;
 
@@ -786,6 +819,7 @@
     <span class="comment">// === Proposals ===
 
     </span><span class="doccomment">/// Validate that all group members support the types of all proposals.
+    /// Implements check [valn0311](https://validation.openmls.tech/#valn0311)
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_proposal_type_support(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         proposal_queue: <span class="kw-2">&amp;</span>ProposalQueue,
@@ -931,6 +965,7 @@
         <span class="comment">// Validate uniqueness of signature keys
         //  - ValSem101
         //  - https://validation.openmls.tech/#valn0111
+        //  - https://validation.openmls.tech/#valn0305
         </span><span class="kw">for </span>signature_key <span class="kw">in </span>signature_keys {
             <span class="kw">if </span>!signature_key_set.insert(signature_key) {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::DuplicateSignatureKey);
@@ -1011,15 +1046,19 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProposalValidationError&gt; {
         <span class="kw">let </span>add_proposals = proposal_queue.add_proposals();
 
-        <span class="kw">for </span>add_proposal <span class="kw">in </span>add_proposals {
+        <span class="comment">// We do the key package validation checks here inline
+        // https://validation.openmls.tech/#valn0501
+        </span><span class="kw">for </span>add_proposal <span class="kw">in </span>add_proposals {
             <span class="comment">// ValSem105: Check if ciphersuite and version of the group are correct:
+            // https://validation.openmls.tech/#valn0201
             </span><span class="kw">if </span>add_proposal.add_proposal().key_package().ciphersuite() != <span class="self">self</span>.ciphersuite()
                 || add_proposal.add_proposal().key_package().protocol_version() != <span class="self">self</span>.version()
             {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::InvalidAddProposalCiphersuiteOrVersion);
             }
 
-            <span class="self">self</span>.validate_leaf_node(add_proposal.add_proposal().key_package().leaf_node())<span class="question-mark">?</span>;
+            <span class="comment">// https://validation.openmls.tech/#valn0202
+            </span><span class="self">self</span>.validate_leaf_node(add_proposal.add_proposal().key_package().leaf_node())<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
     }
@@ -1031,23 +1070,40 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         proposal_queue: <span class="kw-2">&amp;</span>ProposalQueue,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProposalValidationError&gt; {
+        <span class="kw">let </span>updates_set: HashSet&lt;<span class="kw">_</span>&gt; = proposal_queue
+            .update_proposals()
+            .map(|proposal| {
+                <span class="kw">if let </span>Sender::Member(index) = proposal.sender() {
+                    <span class="prelude-val">Ok</span>(<span class="kw-2">*</span>index)
+                } <span class="kw">else </span>{
+                    <span class="prelude-val">Err</span>(ProposalValidationError::UpdateFromNonMember)
+                }
+            })
+            .collect::&lt;<span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>;
+
         <span class="kw">let </span>remove_proposals = proposal_queue.remove_proposals();
 
         <span class="kw">let </span><span class="kw-2">mut </span>removes_set = HashSet::new();
 
-        <span class="kw">for </span>remove_proposal <span class="kw">in </span>remove_proposals {
+        <span class="comment">// https://validation.openmls.tech/#valn0701
+        </span><span class="kw">for </span>remove_proposal <span class="kw">in </span>remove_proposals {
             <span class="kw">let </span>removed = remove_proposal.remove_proposal().removed();
-            <span class="comment">// ValSem107
-            </span><span class="kw">if </span>!removes_set.insert(removed) {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::DuplicateMemberRemoval);
-            }
-
-            <span class="comment">// ValSem108
+            <span class="comment">// The node has to be a leaf in the tree
+            // ValSem108
             </span><span class="kw">if </span>!<span class="self">self</span>.treesync().is_leaf_in_tree(removed) {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::UnknownMemberRemoval);
             }
 
-            <span class="comment">// https://validation.openmls.tech/#valn0701: removed node can not be blank
+            <span class="comment">// ValSem107
+            // https://validation.openmls.tech/#valn0304
+            </span><span class="kw">if </span>!removes_set.insert(removed) {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::DuplicateMemberRemoval);
+            }
+            <span class="kw">if </span>updates_set.contains(<span class="kw-2">&amp;</span>removed) {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::DuplicateMemberRemoval);
+            }
+
+            <span class="comment">// removed node can not be blank
             </span><span class="kw">if </span><span class="self">self</span>.treesync().leaf(removed).is_none() {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::UnknownMemberRemoval);
             }
@@ -1082,7 +1138,8 @@
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::UpdateFromNonMember);
             }
 
-            <span class="self">self</span>.validate_leaf_node(update_proposal.update_proposal().leaf_node())<span class="question-mark">?</span>;
+            <span class="comment">// https://validation.openmls.tech/#valn0601
+            </span><span class="self">self</span>.validate_leaf_node(update_proposal.update_proposal().leaf_node())<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
     }
@@ -1167,6 +1224,7 @@
 
     <span class="doccomment">/// Returns a [`LeafNodeValidationError`] if an [`ExtensionType`]
     /// in `extensions` is not supported by a leaf in this tree.
+    /// Implements check [valn1001](https://validation.openmls.tech/#valn1001).
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_group_context_extensions_proposal(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         proposal_queue: <span class="kw-2">&amp;</span>ProposalQueue,
@@ -1280,7 +1338,9 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         leaf_node: <span class="kw-2">&amp;</span><span class="kw">crate</span>::treesync::LeafNode,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), LeafNodeValidationError&gt; {
-        <span class="comment">// https://validation.openmls.tech/#valn0103, valn0104, valn0107
+        <span class="comment">// https://validation.openmls.tech/#valn0103
+        // https://validation.openmls.tech/#valn0104
+        // https://validation.openmls.tech/#valn0107
         </span><span class="self">self</span>.validate_leaf_node_capabilities(leaf_node)<span class="question-mark">?</span>;
 
         <span class="comment">// https://validation.openmls.tech/#valn0105 is done when sending
@@ -1292,7 +1352,6 @@
         //
         // Some KATs use key packages that are expired by now. In order to run these tests, we
         // provide a way to turn off this check.
-
         </span><span class="kw">if </span>!<span class="kw">crate</span>::skip_validation::is_disabled::leaf_node_lifetime() {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(lifetime) = leaf_node.life_time() {
                 <span class="kw">if </span>!lifetime.is_valid() {
@@ -1302,10 +1361,17 @@
             }
         }
 
-        <span class="comment">// https://validation.openmls.tech/#valn0108, valn0109, valn0110 are done at the caller, we can't do that here
+        <span class="comment">// These are done at the caller and we can't do them here:
+        //
+        // https://validation.openmls.tech/#valn0108
+        // https://validation.openmls.tech/#valn0109
+        // https://validation.openmls.tech/#valn0110
 
-        // https://validation.openmls.tech/#valn0111, valn0112 are done in validate_key_uniqueness, which is called in teh context of changing
-        // this group
+        // These are done in validate_key_uniqueness, which is called in the context of changing
+        // this group:
+        //
+        // https://validation.openmls.tech/#valn0111
+        // https://validation.openmls.tech/#valn0112
 
         </span><span class="prelude-val">Ok</span>(())
     }

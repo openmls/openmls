@@ -293,6 +293,9 @@
 <a href="#293" id="293">293</a>
 <a href="#294" id="294">294</a>
 <a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{<span class="kw">super</span>::errors::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 <span class="kw">use crate</span>::{
     framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, Sender},
@@ -342,6 +345,7 @@
         <span class="kw">let </span>ciphersuite = <span class="self">self</span>.ciphersuite();
 
         <span class="comment">// Verify epoch
+        // https://validation.openmls.tech/#valn1201
         </span><span class="kw">if </span>mls_content.epoch() != <span class="self">self</span>.group_context().epoch() {
             <span class="macro">log::error!</span>(
                 <span class="string">"Epoch mismatch. Got {:?}, expected {:?}"</span>,
@@ -394,7 +398,8 @@
             <span class="self">self</span>.validate_leaf_node(update_path.leaf_node())<span class="question-mark">?</span>;
         }
 
-        <span class="comment">// Validate the staged proposals by doing the following checks:
+        <span class="comment">// Validate the staged proposals. This implements https://validation.openmls.tech/#valn1204.
+        // This is done by doing the following checks:
 
         // ValSem101
         // ValSem102
@@ -542,6 +547,7 @@
             </span>diff.apply_received_update_path(crypto, ciphersuite, sender_index, update_path)<span class="question-mark">?</span>;
         } <span class="kw">else if </span>apply_proposals_values.path_required {
             <span class="comment">// ValSem201
+            // https://validation.openmls.tech/#valn1206
             </span><span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::RequiredPathNotFound);
         };
 

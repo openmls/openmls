@@ -261,6 +261,10 @@
 <a href="#261" id="261">261</a>
 <a href="#262" id="262">262</a>
 <a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Incoming KeyPackages. This modules contains deserialization and validation
 //! of KeyPackages.
 
@@ -408,7 +412,8 @@
             <span class="self">self</span>.payload.ciphersuite.signature_algorithm(),
         );
 
-        <span class="kw">let </span>leaf_node = <span class="kw">match </span>leaf_node {
+        <span class="comment">// https://validation.openmls.tech/#valn0108
+        </span><span class="kw">let </span>leaf_node = <span class="kw">match </span>leaf_node {
             VerifiableLeafNode::KeyPackage(leaf_node) =&gt; leaf_node
                 .verify(crypto, signature_key)
                 .map_err(|<span class="kw">_</span>| KeyPackageVerifyError::InvalidLeafNodeSignature)<span class="question-mark">?</span>,
@@ -416,11 +421,13 @@
         };
 
         <span class="comment">// Verify that the protocol version is valid
+        // https://validation.openmls.tech/#valn0201
         </span><span class="kw">if </span>!<span class="self">self</span>.version_is_supported(protocol_version) {
             <span class="kw">return </span><span class="prelude-val">Err</span>(KeyPackageVerifyError::InvalidProtocolVersion);
         }
 
         <span class="comment">// Verify that the encryption key and the init key are different
+        // https://validation.openmls.tech/#valn0204
         </span><span class="kw">if </span>leaf_node.encryption_key().key() == <span class="self">self</span>.payload.init_key.key() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(KeyPackageVerifyError::InitKeyEqualsEncryptionKey);
         }
@@ -434,6 +441,7 @@
         };
 
         <span class="comment">// Verify the KeyPackage signature
+        // https://validation.openmls.tech/#valn0203
         </span><span class="kw">let </span>key_package = VerifiableKeyPackage::new(key_package_tbs, <span class="self">self</span>.signature)
             .verify(crypto, signature_key)
             .map_err(|<span class="kw">_</span>| KeyPackageVerifyError::InvalidSignature)<span class="question-mark">?</span>;
