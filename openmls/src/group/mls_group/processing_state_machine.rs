@@ -13,8 +13,8 @@ use crate::{
 use super::{MlsGroup, ProcessedMessage, ProtocolMessage};
 
 impl MlsGroup {
-    pub(super) fn init_message_processing<'a>(
-        &'a mut self,
+    pub(super) fn init_message_processing(
+        &mut self,
         crypto: &impl OpenMlsCrypto,
         message: impl Into<ProtocolMessage>,
     ) -> Result<InitialProcessingState, ProcessMessageError> {

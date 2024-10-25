@@ -446,10 +446,10 @@ impl From<Secret> for PskSecret {
     }
 }
 
-pub(crate) fn load_psks<'p, Storage: StorageProvider>(
+pub(crate) fn load_psks<Storage: StorageProvider>(
     storage: &Storage,
     resumption_psk_store: &ResumptionPskStore,
-    psk_ids: &'p [PreSharedKeyId],
+    psk_ids: &[PreSharedKeyId],
 ) -> Result<Vec<(PreSharedKeyId, Secret)>, PskError> {
     let mut psk_bundles = Vec::new();
 
