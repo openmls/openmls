@@ -21,7 +21,7 @@ struct EpochTree {
 #[cfg_attr(feature = "crypto-debug", derive(Debug))]
 pub(crate) struct MessageSecretsStore {
     // Maximum size of the `past_epoch_trees` list.
-    max_epochs: usize,
+    pub(crate) max_epochs: usize,
     // Past message secrets.
     past_epoch_trees: VecDeque<EpochTree>,
     // The message secrets of the current epoch.

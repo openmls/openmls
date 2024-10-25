@@ -82,6 +82,22 @@ pub enum ProposalType {
     Custom(u16),
 }
 
+impl ProposalType {
+    /// Returns true for all proposal types that are considered "default" by the spec.
+    pub(crate) fn is_default(self) -> bool {
+        match self {
+            ProposalType::Add
+            | ProposalType::Update
+            | ProposalType::Remove
+            | ProposalType::PreSharedKey
+            | ProposalType::Reinit
+            | ProposalType::ExternalInit
+            | ProposalType::GroupContextExtensions => true,
+            ProposalType::AppAck | ProposalType::Custom(_) => false,
+        }
+    }
+}
+
 impl Size for ProposalType {
     fn tls_serialized_len(&self) -> usize {
         2
@@ -268,7 +284,7 @@ pub struct UpdateProposal {
 }
 
 impl UpdateProposal {
-    /// Returns a reference to the key package in the proposal.
+    /// Returns a reference to the leaf node in the proposal.
     pub fn leaf_node(&self) -> &LeafNode {
         &self.leaf_node
     }
@@ -483,7 +499,7 @@ impl GroupContextExtensionProposal {
     }
 
     /// Get the extensions of the proposal
-    pub(crate) fn extensions(&self) -> &Extensions {
+    pub fn extensions(&self) -> &Extensions {
         &self.extensions
     }
 }

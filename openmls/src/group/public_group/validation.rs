@@ -10,7 +10,7 @@ use crate::extensions::RequiredCapabilitiesExtension;
 use crate::group::proposal_store::ProposalQueue;
 use crate::group::GroupContextExtensionsProposalValidationError;
 use crate::prelude::LibraryError;
-use crate::treesync::errors::LeafNodeValidationError;
+use crate::treesync::{errors::LeafNodeValidationError, LeafNode};
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     framing::{
@@ -28,6 +28,8 @@ use crate::{
     },
     schedule::errors::PskError,
 };
+
+use crate::treesync::errors::LifetimeError;
 
 impl PublicGroup {
     // === Messages ===
@@ -122,6 +124,7 @@ impl PublicGroup {
     // === Proposals ===
 
     /// Validate that all group members support the types of all proposals.
+    /// Implements check [valn0311](https://validation.openmls.tech/#valn0311)
     pub(crate) fn validate_proposal_type_support(
         &self,
         proposal_queue: &ProposalQueue,
@@ -166,6 +169,11 @@ impl PublicGroup {
     ///  - ValSem110: Update Proposal: Encryption key must be unique among proposals & members
     ///  - ValSem206: Commit: Path leaf node encryption key must be unique among proposals & members
     ///  - ValSem207: Commit: Path encryption keys must be unique among proposals & members
+    ///  - [valn0111]: Verify that the following fields are unique among the members of the group: `signature_key`
+    ///  - [valn0112]: Verify that the following fields are unique among the members of the group: `encryption_key`
+    ///
+    /// [valn0111]: https://validation.openmls.tech/#valn0111
+    /// [valn0112]: https://validation.openmls.tech/#valn0112
     pub(crate) fn validate_key_uniqueness(
         &self,
         proposal_queue: &ProposalQueue,
@@ -261,6 +269,8 @@ impl PublicGroup {
 
         // Validate uniqueness of signature keys
         //  - ValSem101
+        //  - https://validation.openmls.tech/#valn0111
+        //  - https://validation.openmls.tech/#valn0305
         for signature_key in signature_keys {
             if !signature_key_set.insert(signature_key) {
                 return Err(ProposalValidationError::DuplicateSignatureKey);
@@ -273,6 +283,7 @@ impl PublicGroup {
         //  - ValSem110
         //  - ValSem206
         //  - ValSem207
+        //  - https://validation.openmls.tech/#valn0112
         for encryption_key in encryption_keys {
             if init_key_set.contains(&encryption_key) {
                 return Err(ProposalValidationError::InitEncryptionKeyCollision);
@@ -318,68 +329,18 @@ impl PublicGroup {
         //   support for all the credential types currently in use by other
         //   members.
 
-        // Extract the leaf nodes from the add & update proposals
-        let leaf_nodes = proposal_queue
+        // Extract the leaf nodes from the add & update proposals and validate them
+        proposal_queue
             .queued_proposals()
             .filter_map(|p| match p.proposal() {
                 Proposal::Add(add_proposal) => Some(add_proposal.key_package().leaf_node()),
                 Proposal::Update(update_proposal) => Some(update_proposal.leaf_node()),
                 _ => None,
-            });
-
-        let mut group_leaf_nodes = self.treesync().full_leaves();
-
-        for leaf_node in leaf_nodes {
-            // Check if the ciphersuite and the version of the group are
-            // supported.
-            let capabilities = leaf_node.capabilities();
-            if !capabilities
-                .ciphersuites()
-                .contains(&VerifiableCiphersuite::from(self.ciphersuite()))
-                || !capabilities.versions().contains(&self.version())
-            {
-                return Err(ProposalValidationError::InsufficientCapabilities);
-            }
-
-            // If there is a required capabilities extension, check if that one
-            // is supported.
-            if let Some(required_capabilities) =
-                self.group_context().extensions().required_capabilities()
-            {
-                // Check if all required capabilities are supported.
-                capabilities
-                    .supports_required_capabilities(required_capabilities)
-                    .map_err(|_| ProposalValidationError::InsufficientCapabilities)?;
-            }
-
-            // Check that all extensions are contained in the capabilities.
-            if !capabilities.contain_extensions(leaf_node.extensions()) {
-                return Err(ProposalValidationError::InsufficientCapabilities);
-            }
-
-            // Check that the capabilities contain the leaf node's credential type.
-            if !capabilities.contains_credential(&leaf_node.credential().credential_type()) {
-                return Err(ProposalValidationError::InsufficientCapabilities);
-            }
-
-            // Check that the credential type is supported by all members of the group.
-            if !group_leaf_nodes.all(|node| {
-                node.capabilities()
-                    .contains_credential(&leaf_node.credential().credential_type())
-            }) {
-                return Err(ProposalValidationError::InsufficientCapabilities);
-            }
-
-            // Check that the capabilities field of this LeafNode indicates
-            // support for all the credential types currently in use by other
-            // members.
-            if !group_leaf_nodes
-                .all(|node| capabilities.contains_credential(&node.credential().credential_type()))
-            {
-                return Err(ProposalValidationError::InsufficientCapabilities);
-            }
-        }
-        Ok(())
+            })
+            .try_for_each(|leaf_node| {
+                self.validate_leaf_node_capabilities(leaf_node)
+                    .map_err(|_| ProposalValidationError::InsufficientCapabilities)
+            })
     }
 
     /// Validate Add proposals. This function implements the following checks:
@@ -390,13 +351,19 @@ impl PublicGroup {
     ) -> Result<(), ProposalValidationError> {
         let add_proposals = proposal_queue.add_proposals();
 
+        // We do the key package validation checks here inline
+        // https://validation.openmls.tech/#valn0501
         for add_proposal in add_proposals {
             // ValSem105: Check if ciphersuite and version of the group are correct:
+            // https://validation.openmls.tech/#valn0201
             if add_proposal.add_proposal().key_package().ciphersuite() != self.ciphersuite()
                 || add_proposal.add_proposal().key_package().protocol_version() != self.version()
             {
                 return Err(ProposalValidationError::InvalidAddProposalCiphersuiteOrVersion);
             }
+
+            // https://validation.openmls.tech/#valn0202
+            self.validate_leaf_node(add_proposal.add_proposal().key_package().leaf_node())?;
         }
         Ok(())
     }
@@ -408,19 +375,41 @@ impl PublicGroup {
         &self,
         proposal_queue: &ProposalQueue,
     ) -> Result<(), ProposalValidationError> {
+        let updates_set: HashSet<_> = proposal_queue
+            .update_proposals()
+            .map(|proposal| {
+                if let Sender::Member(index) = proposal.sender() {
+                    Ok(*index)
+                } else {
+                    Err(ProposalValidationError::UpdateFromNonMember)
+                }
+            })
+            .collect::<Result<_, _>>()?;
+
         let remove_proposals = proposal_queue.remove_proposals();
 
         let mut removes_set = HashSet::new();
 
+        // https://validation.openmls.tech/#valn0701
         for remove_proposal in remove_proposals {
             let removed = remove_proposal.remove_proposal().removed();
+            // The node has to be a leaf in the tree
+            // ValSem108
+            if !self.treesync().is_leaf_in_tree(removed) {
+                return Err(ProposalValidationError::UnknownMemberRemoval);
+            }
+
             // ValSem107
+            // https://validation.openmls.tech/#valn0304
             if !removes_set.insert(removed) {
                 return Err(ProposalValidationError::DuplicateMemberRemoval);
             }
+            if updates_set.contains(&removed) {
+                return Err(ProposalValidationError::DuplicateMemberRemoval);
+            }
 
-            // ValSem108
-            if !self.treesync().is_leaf_in_tree(removed) {
+            // removed node can not be blank
+            if self.treesync().leaf(removed).is_none() {
                 return Err(ProposalValidationError::UnknownMemberRemoval);
             }
         }
@@ -453,6 +442,9 @@ impl PublicGroup {
             } else {
                 return Err(ProposalValidationError::UpdateFromNonMember);
             }
+
+            // https://validation.openmls.tech/#valn0601
+            self.validate_leaf_node(update_proposal.update_proposal().leaf_node())?;
         }
         Ok(())
     }
@@ -537,6 +529,7 @@ impl PublicGroup {
 
     /// Returns a [`LeafNodeValidationError`] if an [`ExtensionType`]
     /// in `extensions` is not supported by a leaf in this tree.
+    /// Implements check [valn1001](https://validation.openmls.tech/#valn1001).
     pub(crate) fn validate_group_context_extensions_proposal(
         &self,
         proposal_queue: &ProposalQueue,
@@ -572,13 +565,14 @@ impl PublicGroup {
                     };
 
                     // Make sure that all other extensions are known to be supported, by checking
-                    // that they are included in the required capabilities.
+                    // that they are default extensions or included in the required capabilities.
                     let all_extensions_are_in_required_capabilities: bool = extensions
                         .extensions()
                         .iter()
                         .map(|ext| ext.extension_type())
                         .all(|ext_type| {
-                            required_capabilities.requires_extension_type_support(ext_type)
+                            ext_type.is_default()
+                                || required_capabilities.requires_extension_type_support(ext_type)
                         });
 
                     if !all_extensions_are_in_required_capabilities {
@@ -594,6 +588,95 @@ impl PublicGroup {
                 }
             }
         }
+
+        Ok(())
+    }
+
+    fn validate_leaf_node_capabilities(
+        &self,
+        leaf_node: &LeafNode,
+    ) -> Result<(), LeafNodeValidationError> {
+        // Check that the data in the leaf node is self-consistent
+        leaf_node.validate_locally()?;
+
+        // Check if the ciphersuite and the version of the group are
+        // supported.
+        let capabilities = leaf_node.capabilities();
+        if !capabilities.contains_ciphersuite(VerifiableCiphersuite::from(self.ciphersuite()))
+            || !capabilities.contains_version(self.version())
+        {
+            return Err(LeafNodeValidationError::CiphersuiteNotInCapabilities);
+        }
+
+        // If there is a required capabilities extension, check if that one
+        // is supported (https://validation.openmls.tech/#valn0103).
+        if let Some(required_capabilities) =
+            self.group_context().extensions().required_capabilities()
+        {
+            // Check if all required capabilities are supported.
+            capabilities.supports_required_capabilities(required_capabilities)?;
+        }
+
+        // Check that the credential type is supported by all members of the group (https://validation.openmls.tech/#valn0104).
+        if !self.treesync().full_leaves().all(|node| {
+            node.capabilities()
+                .contains_credential(leaf_node.credential().credential_type())
+        }) {
+            return Err(LeafNodeValidationError::UnsupportedCredentials);
+        }
+
+        // Check that the capabilities field of this LeafNode indicates
+        // support for all the credential types currently in use by other
+        // members (https://validation.openmls.tech/#valn0104).
+        if !self
+            .treesync()
+            .full_leaves()
+            .all(|node| capabilities.contains_credential(node.credential().credential_type()))
+        {
+            return Err(LeafNodeValidationError::UnsupportedCredentials);
+        }
+
+        Ok(())
+    }
+
+    pub(crate) fn validate_leaf_node(
+        &self,
+        leaf_node: &crate::treesync::LeafNode,
+    ) -> Result<(), LeafNodeValidationError> {
+        // https://validation.openmls.tech/#valn0103
+        // https://validation.openmls.tech/#valn0104
+        // https://validation.openmls.tech/#valn0107
+        self.validate_leaf_node_capabilities(leaf_node)?;
+
+        // https://validation.openmls.tech/#valn0105 is done when sending
+
+        // https://validation.openmls.tech/#valn0106
+        //
+        // Only leaf nodes in key packages contain lifetimes, so this will return None for other
+        // cases. Therefore we only check the lifetimes for leaf nodes in key packages.
+        //
+        // Some KATs use key packages that are expired by now. In order to run these tests, we
+        // provide a way to turn off this check.
+        if !crate::skip_validation::is_disabled::leaf_node_lifetime() {
+            if let Some(lifetime) = leaf_node.life_time() {
+                if !lifetime.is_valid() {
+                    log::warn!("offending lifetime: {lifetime:?}");
+                    return Err(LeafNodeValidationError::Lifetime(LifetimeError::NotCurrent));
+                }
+            }
+        }
+
+        // These are done at the caller and we can't do them here:
+        //
+        // https://validation.openmls.tech/#valn0108
+        // https://validation.openmls.tech/#valn0109
+        // https://validation.openmls.tech/#valn0110
+
+        // These are done in validate_key_uniqueness, which is called in the context of changing
+        // this group:
+        //
+        // https://validation.openmls.tech/#valn0111
+        // https://validation.openmls.tech/#valn0112
 
         Ok(())
     }
