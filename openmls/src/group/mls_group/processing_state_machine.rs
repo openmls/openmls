@@ -42,9 +42,9 @@ pub(super) struct MessageProcessingIo {
 
 impl<'a> InitialProcessingState<'a> {
     pub(super) fn perform_io(
-        &self,
+        self,
         storage: &impl StorageProvider,
-    ) -> Result<MessageProcessingIo, ProcessMessageError> {
+    ) -> Result<PerformedIo<'a>, ProcessMessageError> {
         let (old_epoch_keypairs, leaf_node_keypairs) =
             self.group.read_decryption_keypairs(storage)?;
 
@@ -55,27 +55,48 @@ impl<'a> InitialProcessingState<'a> {
         let psks = load_psks(storage, &self.group.resumption_psk_store, &psk_ids)
             .map_err(|e| ProcessMessageError::InvalidCommit(StageCommitError::PskError(e)))?;
 
-        Ok(MessageProcessingIo {
+        let io_state = MessageProcessingIo {
             psks,
             old_epoch_keypairs,
             leaf_node_keypairs,
+        };
+
+        Ok(PerformedIo {
+            initial_state: self,
+            io_state,
         })
     }
+
+    #[cfg(test)]
+    #[allow(dead_code)]
+    pub(super) fn inject_io_state(self, io_state: MessageProcessingIo) -> PerformedIo<'a> {
+        PerformedIo {
+            initial_state: self,
+            io_state,
+        }
+    }
+}
+
+pub(super) struct PerformedIo<'a> {
+    initial_state: InitialProcessingState<'a>,
+    io_state: MessageProcessingIo,
+}
+
+impl<'a> PerformedIo<'a> {
     pub(super) fn finalize(
         self,
         crypto: &impl OpenMlsCrypto,
-        loaded_state: MessageProcessingIo,
     ) -> Result<ProcessedMessage, ProcessMessageError> {
         let InitialProcessingState {
             group,
             authenticated_content,
             credential,
-        } = self;
+        } = self.initial_state;
         let MessageProcessingIo {
             psks,
             old_epoch_keypairs,
             leaf_node_keypairs,
-        } = loaded_state;
+        } = self.io_state;
 
         group.process_authenticated_content(
             crypto,

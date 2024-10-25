@@ -32,19 +32,9 @@ impl MlsGroup {
         provider: &Provider,
         message: impl Into<ProtocolMessage>,
     ) -> Result<ProcessedMessage, ProcessMessageError> {
-        let processing_state = self.init_message_processing(provider.crypto(), message)?;
-        // If we keep the group reference in the processing state, we have to
-        // perform the IO operations on the struct itself. We need some
-        // information from the output of `init_message_processing` to perform
-        // the IO operations anyway, so maybe this is a good idea? It does break
-        // the pattern of just chain-calling the functions on the struct. But
-        // then again, we have to perform IO operations here anyway.
-        // Alternatively, we could have an extra state struct that holds both
-        // the initial processing state AND the IO state. Then we could call
-        // everything in a chain.
-        let loaded_state = processing_state.perform_io(provider.storage())?;
-
-        processing_state.finalize(provider.crypto(), loaded_state)
+        self.init_message_processing(provider.crypto(), message)?
+            .perform_io(provider.storage())?
+            .finalize(provider.crypto())
     }
 
     /// Stores a standalone proposal in the internal [ProposalStore]
