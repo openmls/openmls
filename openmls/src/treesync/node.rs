@@ -26,6 +26,7 @@ pub(crate) mod parent_node;
 /// } Node;
 /// ```
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSize, TlsSerialize)]
+// TODO: #1670 to remove this `allow`
 #[allow(clippy::large_enum_variant)]
 #[repr(u8)]
 pub enum Node {
@@ -49,6 +50,7 @@ pub enum Node {
     TlsDeserializeBytes,
     TlsSerialize,
 )]
+// TODO: #1670 to remove this `allow`
 #[allow(clippy::large_enum_variant)]
 #[repr(u8)]
 pub enum NodeIn {
