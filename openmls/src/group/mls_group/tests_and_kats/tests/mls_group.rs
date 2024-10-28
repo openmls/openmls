@@ -2250,8 +2250,7 @@ fn update_path() {
         Some(pm.confirmation_tag().unwrap().0.mac_value.clone()),
     );
 
-    let protocol_message =
-        ProtocolMessage::PublicMessage(PublicMessage::from(broken_message).into());
+    let protocol_message = ProtocolMessage::from(PublicMessage::from(broken_message));
 
     let result = group_alice.process_message(provider, protocol_message);
     assert_eq!(

@@ -1764,8 +1764,7 @@ fn test_valsem110() {
     );
 
     // And turn it into a protocol message
-    let protocol_message =
-        ProtocolMessage::PublicMessage(PublicMessage::from(new_public_message).into());
+    let protocol_message = ProtocolMessage::from(PublicMessage::from(new_public_message));
 
     // Have Alice process this proposal.
     if let ProcessedMessageContent::ProposalMessage(proposal) = alice_group
