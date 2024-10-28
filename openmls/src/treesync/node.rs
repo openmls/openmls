@@ -26,6 +26,7 @@ pub(crate) mod parent_node;
 /// } Node;
 /// ```
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSize, TlsSerialize)]
+#[allow(clippy::large_enum_variant)]
 #[repr(u8)]
 pub enum Node {
     /// A leaf node.
@@ -48,6 +49,7 @@ pub enum Node {
     TlsDeserializeBytes,
     TlsSerialize,
 )]
+#[allow(clippy::large_enum_variant)]
 #[repr(u8)]
 pub enum NodeIn {
     /// A leaf node.
