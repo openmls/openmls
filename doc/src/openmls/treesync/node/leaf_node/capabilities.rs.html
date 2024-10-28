@@ -354,6 +354,14 @@
 <a href="#354" id="354">354</a>
 <a href="#355" id="355">355</a>
 <a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
+<a href="#359" id="359">359</a>
+<a href="#360" id="360">360</a>
+<a href="#361" id="361">361</a>
+<a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::types::{Ciphersuite, VerifiableCiphersuite};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
@@ -495,11 +503,19 @@
         required_capabilities: <span class="kw-2">&amp;</span>RequiredCapabilitiesExtension,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), LeafNodeValidationError&gt; {
         <span class="comment">// Check if all required extensions are supported.
-        </span><span class="kw">if </span>required_capabilities
+        </span><span class="kw">let </span>unsupported_extension_types = required_capabilities
             .extension_types()
             .iter()
-            .any(|e| !<span class="self">self</span>.contains_extension(<span class="kw-2">*</span>e))
-        {
+            .filter(|<span class="kw-2">&amp;</span>e| !<span class="self">self</span>.contains_extension(<span class="kw-2">*</span>e))
+            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+        <span class="kw">if </span>!unsupported_extension_types.is_empty() {
+            <span class="macro">log::error!</span>(
+                <span class="string">"Leaf node does not support all required extension types\n
+                Supported extensions: {:?}\n
+                Required extensions: {:?}"</span>,
+                <span class="self">self</span>.extensions(),
+                required_capabilities.extension_types()
+            );
             <span class="kw">return </span><span class="prelude-val">Err</span>(LeafNodeValidationError::UnsupportedExtensions);
         }
         <span class="comment">// Check if all required proposals are supported.

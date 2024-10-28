@@ -978,6 +978,24 @@
 <a href="#978" id="978">978</a>
 <a href="#979" id="979">979</a>
 <a href="#980" id="980">980</a>
+<a href="#981" id="981">981</a>
+<a href="#982" id="982">982</a>
+<a href="#983" id="983">983</a>
+<a href="#984" id="984">984</a>
+<a href="#985" id="985">985</a>
+<a href="#986" id="986">986</a>
+<a href="#987" id="987">987</a>
+<a href="#988" id="988">988</a>
+<a href="#989" id="989">989</a>
+<a href="#990" id="990">990</a>
+<a href="#991" id="991">991</a>
+<a href="#992" id="992">992</a>
+<a href="#993" id="993">993</a>
+<a href="#994" id="994">994</a>
+<a href="#995" id="995">995</a>
+<a href="#996" id="996">996</a>
+<a href="#997" id="997">997</a>
+<a href="#998" id="998">998</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the [`LeafNode`] struct and its implementation.
 </span><span class="kw">use </span>openmls_traits::{signatures::Signer, types::Ciphersuite};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -1431,6 +1449,12 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), LeafNodeValidationError&gt; {
         <span class="kw">for </span>required <span class="kw">in </span>extensions.iter() {
             <span class="kw">if </span>!<span class="self">self</span>.supports_extension(required) {
+                <span class="macro">log::error!</span>(
+                    <span class="string">"Leaf node does not support required extension {:?}\n
+                    Supported extensions: {:?}"</span>,
+                    required,
+                    <span class="self">self</span>.payload.capabilities.extensions
+                );
                 <span class="kw">return </span><span class="prelude-val">Err</span>(LeafNodeValidationError::UnsupportedExtensions);
             }
         }
@@ -1443,16 +1467,28 @@
     /// - the type of the credential is coveered by the capabilities
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_locally(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), LeafNodeValidationError&gt; {
         <span class="comment">// Check that no extension is invalid when used in leaf nodes.
-        </span><span class="kw">if </span><span class="self">self
+        </span><span class="kw">let </span>invalid_extension_types = <span class="self">self
             </span>.extensions()
             .iter()
-            .any(|ext| ext.extension_type().is_valid_in_leaf_node() == <span class="prelude-val">Some</span>(<span class="bool-val">false</span>))
-        {
+            .filter(|ext| ext.extension_type().is_valid_in_leaf_node() == <span class="prelude-val">Some</span>(<span class="bool-val">false</span>))
+            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+        <span class="kw">if </span>!invalid_extension_types.is_empty() {
+            <span class="macro">log::error!</span>(
+                <span class="string">"Invalid extension used in leaf node: {:?}"</span>,
+                invalid_extension_types
+            );
             <span class="kw">return </span><span class="prelude-val">Err</span>(LeafNodeValidationError::UnsupportedExtensions);
         }
 
         <span class="comment">// Check that all extensions are contained in the capabilities.
         </span><span class="kw">if </span>!<span class="self">self</span>.capabilities().contains_extensions(<span class="self">self</span>.extensions()) {
+            <span class="macro">log::error!</span>(
+                <span class="string">"Leaf node does not support all extensions it uses\n
+                Supported extensions: {:?}\n
+                Used extensions: {:?}"</span>,
+                <span class="self">self</span>.payload.capabilities.extensions,
+                <span class="self">self</span>.extensions()
+            );
             <span class="kw">return </span><span class="prelude-val">Err</span>(LeafNodeValidationError::UnsupportedExtensions);
         }
 

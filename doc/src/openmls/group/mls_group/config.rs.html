@@ -485,6 +485,7 @@
 <a href="#485" id="485">485</a>
 <a href="#486" id="486">486</a>
 <a href="#487" id="487">487</a>
+<a href="#488" id="488">488</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Configuration module for [`MlsGroup`] configurations.
 //!
 //! ## Building an MlsGroupCreateConfig
@@ -835,6 +836,7 @@
             .iter()
             .all(|e| <span class="macro">matches!</span>(e.extension_type(), ExtensionType::Unknown(<span class="kw">_</span>)));
         <span class="kw">if </span>!is_valid_in_leaf_node {
+            <span class="macro">log::error!</span>(<span class="string">"Leaf node extensions must be unknown extensions."</span>);
             <span class="kw">return </span><span class="prelude-val">Err</span>(LeafNodeValidationError::UnsupportedExtensions);
         }
 
