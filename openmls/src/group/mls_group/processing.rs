@@ -391,7 +391,7 @@ impl MlsGroup {
                         .into(),
                     })?;
                 DecryptedMessage::from_inbound_public_message(
-                    public_message,
+                    *public_message,
                     message_secrets,
                     message_secrets.serialized_context().to_vec(),
                     crypto,
