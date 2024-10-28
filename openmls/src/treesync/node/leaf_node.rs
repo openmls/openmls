@@ -451,6 +451,12 @@ impl LeafNode {
     ) -> Result<(), LeafNodeValidationError> {
         for required in extensions.iter() {
             if !self.supports_extension(required) {
+                log::error!(
+                    "Leaf node does not support required extension {:?}\n
+                    Supported extensions: {:?}",
+                    required,
+                    self.payload.capabilities.extensions
+                );
                 return Err(LeafNodeValidationError::UnsupportedExtensions);
             }
         }
@@ -463,16 +469,28 @@ impl LeafNode {
     /// - the type of the credential is coveered by the capabilities
     pub(crate) fn validate_locally(&self) -> Result<(), LeafNodeValidationError> {
         // Check that no extension is invalid when used in leaf nodes.
-        if self
+        let invalid_extension_types = self
             .extensions()
             .iter()
-            .any(|ext| ext.extension_type().is_valid_in_leaf_node() == Some(false))
-        {
+            .filter(|ext| ext.extension_type().is_valid_in_leaf_node() == Some(false))
+            .collect::<Vec<_>>();
+        if !invalid_extension_types.is_empty() {
+            log::error!(
+                "Invalid extension used in leaf node: {:?}",
+                invalid_extension_types
+            );
             return Err(LeafNodeValidationError::UnsupportedExtensions);
         }
 
         // Check that all extensions are contained in the capabilities.
         if !self.capabilities().contains_extensions(self.extensions()) {
+            log::error!(
+                "Leaf node does not support all extensions it uses\n
+                Supported extensions: {:?}\n
+                Used extensions: {:?}",
+                self.payload.capabilities.extensions,
+                self.extensions()
+            );
             return Err(LeafNodeValidationError::UnsupportedExtensions);
         }
 

@@ -139,11 +139,19 @@ impl Capabilities {
         required_capabilities: &RequiredCapabilitiesExtension,
     ) -> Result<(), LeafNodeValidationError> {
         // Check if all required extensions are supported.
-        if required_capabilities
+        let unsupported_extension_types = required_capabilities
             .extension_types()
             .iter()
-            .any(|e| !self.contains_extension(*e))
-        {
+            .filter(|&e| !self.contains_extension(*e))
+            .collect::<Vec<_>>();
+        if !unsupported_extension_types.is_empty() {
+            log::error!(
+                "Leaf node does not support all required extension types\n
+                Supported extensions: {:?}\n
+                Required extensions: {:?}",
+                self.extensions(),
+                required_capabilities.extension_types()
+            );
             return Err(LeafNodeValidationError::UnsupportedExtensions);
         }
         // Check if all required proposals are supported.
