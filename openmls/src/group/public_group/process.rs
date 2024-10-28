@@ -147,7 +147,7 @@ impl PublicGroup {
             }
             ProtocolMessage::PublicMessage(public_message) => {
                 DecryptedMessage::from_inbound_public_message(
-                    public_message,
+                    *public_message,
                     None,
                     self.group_context()
                         .tls_serialize_detached()
