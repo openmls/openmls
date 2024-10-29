@@ -33,7 +33,7 @@ impl MlsGroup {
         message: impl Into<ProtocolMessage>,
     ) -> Result<ProcessedMessage, ProcessMessageError> {
         self.init_message_processing(provider.crypto(), message)?
-            .perform_io(provider.storage())?
+            .load_key_material(provider.storage())?
             .finalize(provider.crypto())
     }
 
