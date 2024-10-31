@@ -99,6 +99,7 @@ pub struct FrankenRatchetTreeExtension {
     Debug, Clone, PartialEq, Eq, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize,
 )]
 #[repr(u8)]
+#[allow(clippy::large_enum_variant)]
 pub enum FrankenNode {
     #[tls_codec(discriminant = 1)]
     LeafNode(FrankenLeafNode),

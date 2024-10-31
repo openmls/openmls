@@ -145,6 +145,7 @@ impl KeyPackageIn {
             self.payload.ciphersuite.signature_algorithm(),
         );
 
+        // https://validation.openmls.tech/#valn0108
         let leaf_node = match leaf_node {
             VerifiableLeafNode::KeyPackage(leaf_node) => leaf_node
                 .verify(crypto, signature_key)
@@ -153,11 +154,13 @@ impl KeyPackageIn {
         };
 
         // Verify that the protocol version is valid
+        // https://validation.openmls.tech/#valn0201
         if !self.version_is_supported(protocol_version) {
             return Err(KeyPackageVerifyError::InvalidProtocolVersion);
         }
 
         // Verify that the encryption key and the init key are different
+        // https://validation.openmls.tech/#valn0204
         if leaf_node.encryption_key().key() == self.payload.init_key.key() {
             return Err(KeyPackageVerifyError::InitKeyEqualsEncryptionKey);
         }
@@ -171,6 +174,7 @@ impl KeyPackageIn {
         };
 
         // Verify the KeyPackage signature
+        // https://validation.openmls.tech/#valn0203
         let key_package = VerifiableKeyPackage::new(key_package_tbs, self.signature)
             .verify(crypto, signature_key)
             .map_err(|_| KeyPackageVerifyError::InvalidSignature)?;

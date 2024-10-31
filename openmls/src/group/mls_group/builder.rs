@@ -27,7 +27,6 @@ use super::{past_secrets::MessageSecretsStore, MlsGroup, MlsGroupState};
 pub struct MlsGroupBuilder {
     group_id: Option<GroupId>,
     mls_group_create_config_builder: MlsGroupCreateConfigBuilder,
-    max_past_epochs: Option<usize>,
     psk_ids: Vec<PreSharedKeyId>,
 }
 
@@ -136,7 +135,7 @@ impl MlsGroupBuilder {
             .map_err(LibraryError::unexpected_crypto_error)?;
 
         let message_secrets_store = MessageSecretsStore::new_with_secret(
-            self.max_past_epochs.unwrap_or_default(),
+            mls_group_create_config.max_past_epochs(),
             message_secrets,
         );
 

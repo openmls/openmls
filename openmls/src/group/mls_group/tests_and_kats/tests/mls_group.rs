@@ -1156,6 +1156,34 @@ fn remove_prosposal_by_ref(
     }
 }
 
+#[openmls_test]
+fn max_past_epochs_join_config(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::OpenMlsProvider,
+) {
+    let max_past_epochs = 10;
+
+    let create_config = MlsGroupCreateConfig::builder()
+        .max_past_epochs(max_past_epochs)
+        .build();
+
+    let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
+        setup_client("Alice", ciphersuite, provider);
+
+    let alice_group = MlsGroup::new(
+        provider,
+        &alice_signer,
+        &create_config,
+        alice_credential_with_key,
+    )
+    .expect("failed to create group");
+
+    assert_eq!(
+        alice_group.message_secrets_store.max_epochs,
+        max_past_epochs
+    );
+}
+
 // Test that the builder pattern accurately configures the new group.
 #[openmls_test]
 fn builder_pattern() {
@@ -2222,8 +2250,7 @@ fn update_path() {
         Some(pm.confirmation_tag().unwrap().0.mac_value.clone()),
     );
 
-    let protocol_message =
-        ProtocolMessage::PublicMessage(PublicMessage::from(broken_message).into());
+    let protocol_message = ProtocolMessage::from(PublicMessage::from(broken_message));
 
     let result = group_alice.process_message(provider, protocol_message);
     assert_eq!(

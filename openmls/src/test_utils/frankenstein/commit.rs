@@ -14,6 +14,7 @@ pub struct FrankenCommit {
     Debug, Clone, PartialEq, Eq, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize,
 )]
 #[repr(u8)]
+#[allow(clippy::large_enum_variant)]
 pub enum FrankenProposalOrRef {
     #[tls_codec(discriminant = 1)]
     Proposal(FrankenProposal),

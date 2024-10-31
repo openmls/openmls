@@ -147,7 +147,7 @@ impl PublicGroup {
             }
             ProtocolMessage::PublicMessage(public_message) => {
                 DecryptedMessage::from_inbound_public_message(
-                    public_message,
+                    *public_message,
                     None,
                     self.group_context()
                         .tls_serialize_detached()
@@ -200,6 +200,7 @@ impl PublicGroup {
         // Checks the following semantic validation:
         //  - ValSem010
         //  - ValSem246 (as part of ValSem010)
+        //  - https://validation.openmls.tech/#valn1203
         let (content, credential) =
             unverified_message.verify(self.ciphersuite(), crypto, self.version())?;
 

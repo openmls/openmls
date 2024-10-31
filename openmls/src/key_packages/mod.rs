@@ -401,6 +401,14 @@ impl KeyPackage {
     pub fn last_resort(&self) -> bool {
         self.payload.extensions.contains(ExtensionType::LastResort)
     }
+
+    /// Get the lifetime of the KeyPackage
+    pub fn life_time(&self) -> &Lifetime {
+        // Leaf nodes contain a lifetime if an only if they are inside a KeyPackage. Since we are
+        // in a KeyPackage, this can never be None and unwrap is safe.
+        // TODO: get rid of the unwrap, see https://github.com/openmls/openmls/issues/1663.
+        self.payload.leaf_node.life_time().unwrap()
+    }
 }
 
 /// Crate visible `KeyPackage` functions.
