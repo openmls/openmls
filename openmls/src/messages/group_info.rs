@@ -15,7 +15,7 @@ use crate::{
         AeadKey, AeadNonce, Signature,
     },
     extensions::Extensions,
-    group::{GroupContext, GroupId},
+    group::{GroupContext, GroupEpoch, GroupId},
     messages::ConfirmationTag,
 };
 
@@ -113,6 +113,14 @@ impl VerifiableGroupInfo {
     /// info signature.
     pub fn group_id(&self) -> &GroupId {
         self.payload.group_context.group_id()
+    }
+
+    /// Get (unverified) epoch of the verifiable group info.
+    ///
+    /// Note: This method should only be used when necessary to verify the group
+    /// info signature.
+    pub fn epoch(&self) -> GroupEpoch {
+        self.payload.group_context.epoch()
     }
 }
 
