@@ -105,6 +105,10 @@ impl DecryptedMessage {
             .message_secrets_and_leaves_mut(ciphertext.epoch())
             .map_err(|_| MessageDecryptionError::AeadError)?;
         let sender_data = ciphertext.sender_data(message_secrets, crypto, ciphersuite)?;
+        // Check if we are the sender
+        if sender_data.leaf_index == group.own_leaf_index() {
+            return Err(ValidationError::CannotDecryptOwnMessage);
+        }
         let message_secrets = group
             .message_secrets_mut(ciphertext.epoch())
             .map_err(|_| MessageDecryptionError::AeadError)?;
