@@ -336,6 +336,9 @@ pub enum ValidationError {
         "The ciphersuite in the KeyPackage of the Add proposal does not match the group context."
     )]
     InvalidAddProposalCiphersuite,
+    /// Cannot decrypt own messages because the necessary key has been deleted according to the deletion schedule.
+    #[error("Cannot decrypt own messages.")]
+    CannotDecryptOwnMessage,
 }
 
 /// Proposal validation error
