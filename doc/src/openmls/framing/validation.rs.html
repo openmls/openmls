@@ -404,6 +404,10 @@
 <a href="#404" id="404">404</a>
 <a href="#405" id="405">405</a>
 <a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Validation steps for incoming messages
 //!
 //! ```text
@@ -511,6 +515,10 @@
             .message_secrets_and_leaves_mut(ciphertext.epoch())
             .map_err(|<span class="kw">_</span>| MessageDecryptionError::AeadError)<span class="question-mark">?</span>;
         <span class="kw">let </span>sender_data = ciphertext.sender_data(message_secrets, crypto, ciphersuite)<span class="question-mark">?</span>;
+        <span class="comment">// Check if we are the sender
+        </span><span class="kw">if </span>sender_data.leaf_index == group.own_leaf_index() {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ValidationError::CannotDecryptOwnMessage);
+        }
         <span class="kw">let </span>message_secrets = group
             .message_secrets_mut(ciphertext.epoch())
             .map_err(|<span class="kw">_</span>| MessageDecryptionError::AeadError)<span class="question-mark">?</span>;
