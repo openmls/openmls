@@ -59,6 +59,7 @@ mod updates;
 use config::*;
 
 // Crate
+pub(crate) mod commit_builder;
 pub(crate) mod config;
 pub(crate) mod create_commit;
 pub(crate) mod errors;
