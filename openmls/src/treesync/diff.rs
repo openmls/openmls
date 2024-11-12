@@ -49,7 +49,6 @@ use crate::{
     error::LibraryError,
     messages::PathSecret,
     schedule::CommitSecret,
-    storage::OpenMlsProvider,
     treesync::RatchetTree,
 };
 

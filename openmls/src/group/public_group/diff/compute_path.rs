@@ -1,4 +1,4 @@
-use std::{collections::HashSet, convert::Infallible};
+use std::collections::HashSet;
 
 use openmls_traits::{crypto::OpenMlsCrypto, random::OpenMlsRand, signatures::Signer};
 use tls_codec::Serialize;
@@ -10,7 +10,6 @@ use crate::{
     extensions::Extensions,
     group::{create_commit::CommitType, errors::CreateCommitError},
     schedule::CommitSecret,
-    storage::OpenMlsProvider,
     treesync::{
         node::{
             encryption_keys::EncryptionKeyPair,
