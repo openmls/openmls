@@ -1,5 +1,7 @@
 //! Defines the `CreateCommit` trait and its implementation for `MlsGroup`.
 
+use commit_builder::CommitBuilder;
+
 use super::*;
 use crate::{credentials::CredentialWithKey, treesync::LeafNodeParameters};
 
@@ -11,11 +13,13 @@ pub(crate) enum CommitType {
 }
 
 pub(crate) struct CreateCommitParams<'a> {
-    framing_parameters: FramingParameters<'a>, // Mandatory
-    inline_proposals: Vec<Proposal>,           // Optional
-    force_self_update: bool,                   // Optional
-    commit_type: CommitType,                   // Optional (default is `Member`)
-    leaf_node_parameters: LeafNodeParameters,  // Optional
+    // Only needed for External Commit, taken from group otherwise
+    framing_parameters: Option<FramingParameters<'a>>,
+
+    inline_proposals: Vec<Proposal>,          // Optional
+    force_self_update: bool,                  // Optional
+    commit_type: CommitType,                  // Optional (default is `Member`)
+    leaf_node_parameters: LeafNodeParameters, // Optional
 }
 
 pub(crate) struct TempBuilderCCPM0 {}
@@ -25,6 +29,7 @@ pub(crate) struct CreateCommitParamsBuilder<'a> {
 }
 
 impl TempBuilderCCPM0 {
+    /*
     pub(crate) fn framing_parameters(
         self,
         framing_parameters: FramingParameters,
@@ -35,6 +40,39 @@ impl TempBuilderCCPM0 {
                 inline_proposals: vec![],
                 force_self_update: true,
                 commit_type: CommitType::Member,
+                leaf_node_parameters: LeafNodeParameters::default(),
+            },
+        }
+    }
+    */
+
+    pub(crate) fn regular_commit<'a>(self) -> CreateCommitParamsBuilder<'a> {
+        CreateCommitParamsBuilder {
+            ccp: CreateCommitParams {
+                commit_type: CommitType::Member,
+
+                // defaults:
+                framing_parameters: None,
+                inline_proposals: vec![],
+                force_self_update: true,
+                leaf_node_parameters: LeafNodeParameters::default(),
+            },
+        }
+    }
+
+    pub(crate) fn external_commit(
+        self,
+        credential_with_key: CredentialWithKey,
+        framing_parameters: FramingParameters,
+    ) -> CreateCommitParamsBuilder {
+        CreateCommitParamsBuilder {
+            ccp: CreateCommitParams {
+                commit_type: CommitType::External(credential_with_key),
+                framing_parameters: Some(framing_parameters),
+
+                // defaults:
+                inline_proposals: vec![],
+                force_self_update: true,
                 leaf_node_parameters: LeafNodeParameters::default(),
             },
         }
@@ -50,10 +88,6 @@ impl<'a> CreateCommitParamsBuilder<'a> {
         self.ccp.force_self_update = force_self_update;
         self
     }
-    pub(crate) fn commit_type(mut self, commit_type: CommitType) -> Self {
-        self.ccp.commit_type = commit_type;
-        self
-    }
     pub(crate) fn leaf_node_parameters(mut self, leaf_node_parameters: LeafNodeParameters) -> Self {
         self.ccp.leaf_node_parameters = leaf_node_parameters;
         self
@@ -67,8 +101,9 @@ impl<'a> CreateCommitParams<'a> {
     pub(crate) fn builder() -> TempBuilderCCPM0 {
         TempBuilderCCPM0 {}
     }
-    pub(crate) fn framing_parameters(&self) -> &FramingParameters {
-        &self.framing_parameters
+    #[cfg(test)]
+    pub(crate) fn framing_parameters(&self) -> Option<&FramingParameters> {
+        self.framing_parameters.as_ref()
     }
     pub(crate) fn inline_proposals(&self) -> &[Proposal] {
         &self.inline_proposals
@@ -89,11 +124,36 @@ impl<'a> CreateCommitParams<'a> {
 
 impl MlsGroup {
     pub(crate) fn create_commit<Provider: OpenMlsProvider>(
-        &self,
+        &mut self,
         params: CreateCommitParams,
         provider: &Provider,
         signer: &impl Signer,
     ) -> Result<CreateCommitResult, CreateCommitError<Provider::StorageError>> {
+        if params.commit_type == CommitType::Member {
+            let CreateCommitParams {
+                inline_proposals,
+                force_self_update,
+                leaf_node_parameters,
+                ..
+            } = params;
+
+            return Ok(CommitBuilder::new(self)
+                .add_proposals(inline_proposals)
+                .force_self_update(force_self_update)
+                .consume_proposal_store(true)
+                .leaf_node_parameters(leaf_node_parameters)
+                .load_psks(provider.storage())?
+                .construct_proposals(provider.crypto())?
+                .build(provider.rand(), provider.crypto(), signer)?
+                .commit_result());
+        }
+
+        // we now know that we are building an external commit. This means we have to pull the
+        // framing parameters out of the create commit parameteres instead of the group. Since
+        // these are set together with the group mode, we can be sure that this is `Some(..)` (see
+        // [`TempBuilderCCPM0::external_commit`].
+        let framing_parameters = params.framing_parameters.unwrap();
+
         let ciphersuite = self.ciphersuite();
 
         let sender = match params.commit_type() {
@@ -185,7 +245,8 @@ impl MlsGroup {
                 // group context by updating the epoch and computing the new
                 // tree hash.
                 diff.compute_path(
-                    provider,
+                    provider.rand(),
+                    provider.crypto(),
                     self.own_leaf_index(),
                     apply_proposals_values.exclusion_list(),
                     params.commit_type(),
@@ -213,7 +274,7 @@ impl MlsGroup {
 
         // Build AuthenticatedContent
         let mut authenticated_content = AuthenticatedContent::commit(
-            *params.framing_parameters(),
+            framing_parameters,
             sender,
             commit,
             self.public_group.group_context(),

@@ -106,8 +106,7 @@ impl MlsGroup {
             .with_extensions(extensions.unwrap_or_default())
             .build();
         let mut params = CreateCommitParams::builder()
-            .framing_parameters(framing_parameters)
-            .commit_type(CommitType::External(credential_with_key))
+            .external_commit(credential_with_key, framing_parameters)
             .leaf_node_parameters(leaf_node_parameters)
             .build();
 

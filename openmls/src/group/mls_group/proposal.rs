@@ -412,7 +412,7 @@ impl MlsGroup {
 
         // Create Commit over all proposals
         let params = CreateCommitParams::builder()
-            .framing_parameters(self.framing_parameters())
+            .regular_commit()
             .inline_proposals(inline_proposals)
             .build();
         let create_commit_result = self.create_commit(params, provider, signer)?;

@@ -35,7 +35,7 @@ impl MlsGroup {
         self.is_operational()?;
 
         let params = CreateCommitParams::builder()
-            .framing_parameters(self.framing_parameters())
+            .regular_commit()
             .leaf_node_parameters(leaf_node_parameters)
             .build();
         // Create Commit over all proposals.

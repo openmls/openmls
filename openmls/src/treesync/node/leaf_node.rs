@@ -1,5 +1,7 @@
 //! This module contains the [`LeafNode`] struct and its implementation.
-use openmls_traits::{signatures::Signer, types::Ciphersuite};
+use openmls_traits::{
+    crypto::OpenMlsCrypto, random::OpenMlsRand, signatures::Signer, types::Ciphersuite,
+};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tls_codec::{
@@ -192,7 +194,8 @@ impl LeafNode {
         } = new_leaf_node_params;
 
         // Create a new encryption key pair.
-        let encryption_key_pair = EncryptionKeyPair::random(provider, ciphersuite)?;
+        let encryption_key_pair =
+            EncryptionKeyPair::random(provider.rand(), provider.crypto(), ciphersuite)?;
 
         let leaf_node = Self::new_with_key(
             encryption_key_pair.public_key().clone(),
@@ -256,7 +259,8 @@ impl LeafNode {
     /// New [`LeafNode`] with a parent hash.
     #[allow(clippy::too_many_arguments)]
     pub(in crate::treesync) fn new_with_parent_hash(
-        provider: &impl OpenMlsProvider,
+        rand: &impl OpenMlsRand,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         parent_hash: &[u8],
         leaf_node_params: UpdateLeafNodeParams,
@@ -264,7 +268,7 @@ impl LeafNode {
         leaf_index: LeafNodeIndex,
         signer: &impl Signer,
     ) -> Result<(Self, EncryptionKeyPair), LibraryError> {
-        let encryption_key_pair = EncryptionKeyPair::random(provider, ciphersuite)?;
+        let encryption_key_pair = EncryptionKeyPair::random(rand, crypto, ciphersuite)?;
 
         let leaf_node_tbs = LeafNodeTbs::new(
             encryption_key_pair.public_key().clone(),
@@ -361,7 +365,8 @@ impl LeafNode {
         }
 
         // Create a new encryption key pair
-        let encryption_key_pair = EncryptionKeyPair::random(provider, ciphersuite)?;
+        let encryption_key_pair =
+            EncryptionKeyPair::random(provider.rand(), provider.crypto(), ciphersuite)?;
         leaf_node_tbs.payload.encryption_key = encryption_key_pair.public_key().clone();
 
         // Store the encryption key pair in the key store.

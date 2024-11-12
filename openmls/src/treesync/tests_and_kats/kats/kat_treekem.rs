@@ -250,7 +250,8 @@ pub fn run_test_vector(test: TreeKemTest, provider: &impl OpenMlsProvider) {
             // TODO(#1279): Update own leaf.
             let (vec_plain_update_path_nodes, _, commit_secret) = diff_after_kat
                 .apply_own_update_path(
-                    provider,
+                    provider.rand(),
+                    provider.crypto(),
                     &signer,
                     ciphersuite,
                     &CommitType::Member,

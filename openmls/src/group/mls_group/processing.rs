@@ -119,9 +119,7 @@ impl MlsGroup {
 
         // Create Commit over all pending proposals
         // TODO #751
-        let params = CreateCommitParams::builder()
-            .framing_parameters(self.framing_parameters())
-            .build();
+        let params = CreateCommitParams::builder().regular_commit().build();
         let create_commit_result = self.create_commit(params, provider, signer)?;
 
         // Convert PublicMessage messages to MLSMessage and encrypt them if required by

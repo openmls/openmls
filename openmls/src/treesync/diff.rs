@@ -21,6 +21,7 @@ use std::collections::HashSet;
 
 use log::debug;
 use openmls_traits::crypto::OpenMlsCrypto;
+use openmls_traits::random::OpenMlsRand;
 use openmls_traits::{signatures::Signer, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
 
@@ -269,18 +270,18 @@ impl<'a> TreeSyncDiff<'a> {
     /// Returns an error if the leaf is not in the tree
     fn derive_path(
         &self,
-        provider: &impl OpenMlsProvider,
+        rand: &impl OpenMlsRand,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         leaf_index: LeafNodeIndex,
     ) -> Result<PathDerivationResult, LibraryError> {
         let path_secret = PathSecret::from(
-            Secret::random(ciphersuite, provider.rand())
-                .map_err(LibraryError::unexpected_crypto_error)?,
+            Secret::random(ciphersuite, rand).map_err(LibraryError::unexpected_crypto_error)?,
         );
 
         let path_indices = self.filtered_direct_path(leaf_index);
 
-        ParentNode::derive_path(provider.crypto(), ciphersuite, path_secret, path_indices)
+        ParentNode::derive_path(crypto, ciphersuite, path_secret, path_indices)
     }
 
     /// Given a new [`LeafNode`], use it to create a new path starting from
@@ -294,7 +295,8 @@ impl<'a> TreeSyncDiff<'a> {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn apply_own_update_path(
         &mut self,
-        provider: &impl OpenMlsProvider,
+        rand: &impl OpenMlsRand,
+        crypto: &impl OpenMlsCrypto,
         signer: &impl Signer,
         ciphersuite: Ciphersuite,
         commit_type: &CommitType,
@@ -314,13 +316,13 @@ impl<'a> TreeSyncDiff<'a> {
 
         // We calculate the parent hash so that we can use it for a fresh leaf
         let (path, update_path_nodes, parent_keypairs, commit_secret) =
-            self.derive_path(provider, ciphersuite, leaf_index)?;
-        let parent_hash =
-            self.process_update_path(provider.crypto(), ciphersuite, leaf_index, path)?;
+            self.derive_path(rand, crypto, ciphersuite, leaf_index)?;
+        let parent_hash = self.process_update_path(crypto, ciphersuite, leaf_index, path)?;
 
         // We generate the new leaf with all parameters
         let (leaf_node, node_keypair) = LeafNode::new_with_parent_hash(
-            provider,
+            rand,
+            crypto,
             ciphersuite,
             &parent_hash,
             leaf_node_params,
