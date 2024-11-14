@@ -32,7 +32,8 @@ use openmls_traits::{
 use tls_codec::Serialize as _;
 
 use crate::{
-    ciphersuite::{hash_ref::ProposalRef, signable::Signable as _, Secret},
+    binary_tree::LeafNodeIndex,
+    ciphersuite::{signable::Signable as _, Secret},
     group::{
         create_commit::CommitType, diff::compute_path::PathComputationResult, CreateCommitError,
         Extension, Extensions, ExternalPubExtension, ProposalQueue, ProposalQueueError,
@@ -56,7 +57,7 @@ use super::{
     mls_auth_content::AuthenticatedContent,
     staged_commit::{MemberStagedCommitState, StagedCommitState},
     AddProposal, CreateCommitResult, MlsGroup, MlsGroupState, MlsMessageOut, PendingCommitState,
-    Proposal, Sender,
+    Proposal, RemoveProposal, Sender,
 };
 
 /// This stage is about populating the builder.
@@ -192,6 +193,33 @@ impl<'a> CommitBuilder<'a, Initial> {
         self.stage
             .own_proposals
             .push(Proposal::Add(AddProposal { key_package }));
+        self
+    }
+
+    /// Adds an Add proposal to the provided [`KeyPackage`] to the list of proposals to be
+    /// committed.
+    pub fn propose_adds(mut self, key_packages: impl IntoIterator<Item = KeyPackage>) -> Self {
+        self.stage.own_proposals.extend(
+            key_packages
+                .into_iter()
+                .map(|key_package| Proposal::Add(AddProposal { key_package })),
+        );
+        self
+    }
+
+    pub fn propose_removal(mut self, removed: LeafNodeIndex) -> Self {
+        self.stage
+            .own_proposals
+            .push(Proposal::Remove(RemoveProposal { removed }));
+        self
+    }
+
+    pub fn propose_removals(mut self, removed: impl IntoIterator<Item = LeafNodeIndex>) -> Self {
+        self.stage.own_proposals.extend(
+            removed
+                .into_iter()
+                .map(|removed| Proposal::Remove(RemoveProposal { removed })),
+        );
         self
     }
 
