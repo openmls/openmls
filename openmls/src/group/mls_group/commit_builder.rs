@@ -243,7 +243,7 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
     /// Validates the inputs and builds the commit. The last argument `f` is a function that lets
     /// the caller filter the proposals that are considered for inclusion. This provides a way for
     /// the application to enforce custom policies in the creation of commits.
-    pub fn build<E, T>(
+    pub fn build<T>(
         self,
         rand: &impl OpenMlsRand,
         crypto: &impl OpenMlsCrypto,
