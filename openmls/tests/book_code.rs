@@ -392,7 +392,8 @@ fn book_operations() {
     // ANCHOR: self_update
     let (mls_message_out, welcome_option, _group_info) = bob_group
         .self_update(provider, &bob_signature_keys, LeafNodeParameters::default())
-        .expect("Could not update own key package.");
+        .expect("Could not update own key package.")
+        .into_contents();
     // ANCHOR_END: self_update
 
     let alice_processed_message = alice_group
@@ -641,7 +642,8 @@ fn book_operations() {
             &charlie_signature_keys,
             LeafNodeParameters::default(),
         )
-        .unwrap();
+        .unwrap()
+        .into_contents();
 
     let alice_processed_message = alice_group
         .process_message(

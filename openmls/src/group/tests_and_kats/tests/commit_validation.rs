@@ -177,6 +177,7 @@ fn test_valsem200() {
             LeafNodeParameters::default(),
         )
         .expect("Error creating self-update")
+        .into_messages()
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
@@ -464,6 +465,7 @@ fn test_valsem202() {
             LeafNodeParameters::default(),
         )
         .expect("Error creating self-update")
+        .into_messages()
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
@@ -545,6 +547,7 @@ fn test_valsem203() {
             LeafNodeParameters::default(),
         )
         .expect("Error creating self-update")
+        .into_messages()
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
@@ -628,6 +631,7 @@ fn test_valsem204() {
             LeafNodeParameters::default(),
         )
         .expect("Error creating self-update")
+        .into_messages()
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
@@ -754,6 +758,7 @@ fn test_valsem205() {
             LeafNodeParameters::default(),
         )
         .expect("Error creating self-update")
+        .into_messages()
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 

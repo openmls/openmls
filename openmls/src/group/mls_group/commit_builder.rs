@@ -26,7 +26,9 @@
 //!    - add select proposals by ref (that are in group's quuee)
 //!    - add all proposals from the group's quuee
 
-use openmls_traits::{crypto::OpenMlsCrypto, random::OpenMlsRand, signatures::Signer};
+use openmls_traits::{
+    crypto::OpenMlsCrypto, random::OpenMlsRand, signatures::Signer, storage::StorageProvider as _,
+};
 use tls_codec::Serialize as _;
 
 use crate::{
@@ -37,20 +39,24 @@ use crate::{
         QueuedProposal, RatchetTreeExtension, StagedCommit,
     },
     key_packages::KeyPackage,
-    messages::{group_info::GroupInfoTBS, Commit, Welcome},
+    messages::{
+        group_info::{GroupInfo, GroupInfoTBS},
+        Commit, Welcome,
+    },
     prelude::{LeafNodeParameters, LibraryError},
     schedule::{
-        errors::PskError,
         psk::{load_psks, PskSecret},
         JoinerSecret, KeySchedule, PreSharedKeyId,
     },
-    storage::StorageProvider,
+    storage::{OpenMlsProvider, StorageProvider},
+    versions::ProtocolVersion,
 };
 
 use super::{
     mls_auth_content::AuthenticatedContent,
     staged_commit::{MemberStagedCommitState, StagedCommitState},
-    AddProposal, CreateCommitResult, MlsGroup, Proposal, Sender,
+    AddProposal, CreateCommitResult, MlsGroup, MlsGroupState, MlsMessageOut, PendingCommitState,
+    Proposal, Sender,
 };
 
 /// This step is about populating the builder
@@ -61,13 +67,6 @@ pub struct Initial {
 /// This step is after the PSKs were loaded
 pub struct LoadedPsks {
     own_proposals: Vec<Proposal>,
-    psks: Vec<(PreSharedKeyId, Secret)>,
-}
-
-/// This step is after we constructed and signed the proposals
-pub struct ValidatedProposals {
-    proposal_queue: ProposalQueue,
-    contains_own_updates: bool,
     psks: Vec<(PreSharedKeyId, Secret)>,
 }
 
@@ -198,7 +197,7 @@ impl<'a> CommitBuilder<'a, Initial> {
     pub fn load_psks<Storage: StorageProvider>(
         self,
         storage: &'a Storage,
-    ) -> Result<CommitBuilder<LoadedPsks>, PskError> {
+    ) -> Result<CommitBuilder<LoadedPsks>, CreateCommitError<Storage::Error>> {
         let psk_ids: Vec<_> = self
             .stage
             .own_proposals
@@ -236,17 +235,20 @@ impl<'a> CommitBuilder<'a, Initial> {
 }
 
 impl<'a> CommitBuilder<'a, LoadedPsks> {
-    pub fn construct_proposals<T>(
+    pub fn build<T>(
         self,
+        rand: &impl OpenMlsRand,
         crypto: &impl OpenMlsCrypto,
-    ) -> Result<CommitBuilder<'a, ValidatedProposals>, CreateCommitError<T>> {
+        signer: &impl Signer,
+        f: impl FnMut(&QueuedProposal) -> bool,
+    ) -> Result<CommitBuilder<'a, Complete>, CreateCommitError<T>> {
         let ciphersuite = self.group.ciphersuite();
         let sender = Sender::build_member(self.group.own_leaf_index());
         let (cur_stage, builder) = self.take_stage();
         let psks = cur_stage.psks;
 
-        // put the pending and uniform proposals into a uniform shape, i.e. produce queued
-        // proposals from the own proposals by signing them.
+        // put the pending and uniform proposals into a uniform shape,
+        // i.e. produce queued proposals from the own proposals
         let own_proposals: Vec<_> = cur_stage
             .own_proposals
             .into_iter()
@@ -266,7 +268,7 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
         // prepare the iterator for the proposal validation and seletion function. That function
         // assumes that "earlier in the list" means "older", so since our own proposals are
         // newest, we have to put them last.
-        let proposal_queue = group_proposal_store_queue.chain(own_proposals);
+        let proposal_queue = group_proposal_store_queue.chain(own_proposals).filter(f);
 
         let (proposal_queue, contains_own_updates) =
             ProposalQueue::filter_proposals_without_inline(
@@ -280,13 +282,6 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
                     CreateCommitError::WrongProposalSenderType
                 }
             })?;
-
-        // TODO: validate proposal list
-        //          this is a bit annoying; the easiest way would be to turn all own_proposals into
-        //          full QueuedProposals and process them using the existing validation logic.
-        //          However. that would require us to pointlessly sign them here, just so they are
-        //          in the right format. I think that might even be what we are already doing,
-        //          but.. well, it's not great.
 
         // Validate the proposals by doing the following checks:
 
@@ -326,15 +321,13 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
             .public_group
             .validate_pre_shared_key_proposals(&proposal_queue)?;
         // Validate update proposals for member commits
-        if let Sender::Member(sender_index) = &sender {
-            // ValSem110
-            // ValSem111
-            // ValSem112
-            builder
-                .group
-                .public_group
-                .validate_update_proposals(&proposal_queue, *sender_index)?;
-        }
+        // ValSem110
+        // ValSem111
+        // ValSem112
+        builder
+            .group
+            .public_group
+            .validate_update_proposals(&proposal_queue, builder.group.own_leaf_index())?;
 
         // ValSem208
         // ValSem209
@@ -342,29 +335,6 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
             .group
             .public_group
             .validate_group_context_extensions_proposal(&proposal_queue)?;
-
-        Ok(builder.into_stage(ValidatedProposals {
-            proposal_queue,
-            contains_own_updates,
-            psks,
-        }))
-    }
-}
-
-impl<'a> CommitBuilder<'a, ValidatedProposals> {
-    pub fn build<T>(
-        self,
-        rand: &impl OpenMlsRand,
-        crypto: &impl OpenMlsCrypto,
-        signer: &impl Signer,
-    ) -> Result<CommitBuilder<'a, Complete>, CreateCommitError<T>> {
-        let (stage, builder) = self.take_stage();
-
-        let ValidatedProposals {
-            proposal_queue,
-            contains_own_updates,
-            psks,
-        } = stage;
 
         let ciphersuite = builder.group.ciphersuite();
         let sender = Sender::build_member(builder.group.own_leaf_index());
@@ -596,5 +566,183 @@ impl<'a> CommitBuilder<'a, ValidatedProposals> {
 impl<'a> CommitBuilder<'a, Complete> {
     pub(crate) fn commit_result(self) -> CreateCommitResult {
         self.stage.result
+    }
+
+    pub fn stage_commit<Provider: OpenMlsProvider>(
+        self,
+        provider: &Provider,
+    ) -> Result<CommitMessageBundle, CreateCommitError<Provider::StorageError>> {
+        let Self {
+            group,
+            stage: Complete {
+                result: create_commit_result,
+            },
+            ..
+        } = self;
+
+        // Set the current group state to [`MlsGroupState::PendingCommit`],
+        // storing the current [`StagedCommit`] from the commit results
+        group.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
+            create_commit_result.staged_commit,
+        )));
+
+        provider
+            .storage()
+            .write_group_state(group.group_id(), &group.group_state)
+            .map_err(CreateCommitError::KeyStoreError)?;
+
+        group.reset_aad();
+
+        // Convert PublicMessage messages to MLSMessage and encrypt them if required by the
+        // configuration.
+        //
+        // Note that this performs writes to the storage, so we should do that here, rather than
+        // when working with the result.
+        let mls_message = group.content_to_mls_message(create_commit_result.commit, provider)?;
+
+        Ok(CommitMessageBundle {
+            version: group.version(),
+            commit: mls_message,
+            welcome: create_commit_result.welcome_option,
+            group_info: create_commit_result.group_info,
+        })
+    }
+}
+
+/// Contains the messages that are produced by committing. The messages can be accessed individually
+/// using getters or through the [`IntoIterator`] interface.
+#[derive(Debug, Clone)]
+pub struct CommitMessageBundle {
+    version: ProtocolVersion,
+    commit: MlsMessageOut,
+    welcome: Option<Welcome>,
+    group_info: Option<GroupInfo>,
+}
+
+#[cfg(test)]
+impl CommitMessageBundle {
+    pub fn new(
+        version: ProtocolVersion,
+        commit: MlsMessageOut,
+        welcome: Option<Welcome>,
+        group_info: Option<GroupInfo>,
+    ) -> Self {
+        Self {
+            version,
+            commit,
+            welcome,
+            group_info,
+        }
+    }
+}
+
+impl CommitMessageBundle {
+    // borrowed getters
+
+    /// Gets a the Commit messsage. For owned version, see [`Self::into_commit`].
+    pub fn commit(&self) -> &MlsMessageOut {
+        &self.commit
+    }
+
+    /// Gets a the Welcome messsage. Only [`Some`] if new clients have been added in the commit.
+    /// For owned version, see [`Self::into_welcome`].
+    pub fn welcome(&self) -> Option<&Welcome> {
+        self.welcome.as_ref()
+    }
+
+    /// Gets a the Welcome messsage. Only [`Some`] if new clients have been added in the commit.
+    /// Performs a copy of the Welcome. For owned version, see [`Self::into_welcome_msg`].
+    pub fn to_welcome_msg(&self) -> Option<MlsMessageOut> {
+        self.welcome
+            .as_ref()
+            .map(|welcome| MlsMessageOut::from_welcome(welcome.clone(), self.version))
+    }
+
+    /// Gets a the GroupInfo message. Onlt [`Some`] if... when? TODO: finish writing this comment
+    /// For owned version, see [`Self::into_group_info`].
+    pub fn group_info(&self) -> Option<&GroupInfo> {
+        self.group_info.as_ref()
+    }
+
+    /// Gets all three messages, some of which optional. For owned version, see
+    /// [`Self::into_contents`].
+    pub fn contents(&self) -> (&MlsMessageOut, Option<&Welcome>, Option<&GroupInfo>) {
+        (
+            &self.commit,
+            self.welcome.as_ref(),
+            self.group_info.as_ref(),
+        )
+    }
+
+    // owned getters
+    /// Gets a the Commit messsage. This method consumes the [`CommitMessageBundle`]. For a borrowed
+    /// version see [`Self::commit`].
+    pub fn into_commit(self) -> MlsMessageOut {
+        self.commit
+    }
+
+    /// Gets a the Welcome messsage. Only [`Some`] if new clients have been added in the commit.
+    /// This method consumes the [`CommitMessageBundle`]. For a borrowed version see
+    /// [`Self::welcome`].
+    pub fn into_welcome(self) -> Option<Welcome> {
+        self.welcome
+    }
+
+    /// Gets a the Welcome messsage. Only [`Some`] if new clients have been added in the commit.
+    /// For a borrowed version, see [`Self::to_welcome_msg`].
+    pub fn into_welcome_msg(self) -> Option<MlsMessageOut> {
+        self.welcome
+            .map(|welcome| MlsMessageOut::from_welcome(welcome, self.version))
+    }
+
+    /// Gets a the GroupInfo messsage. Only [`Some`] if TODO: when???.
+    /// This method consumes the [`CommitMessageBundle`]. For a borrowed version see
+    /// [`Self::group_info`].
+    pub fn into_group_info(self) -> Option<GroupInfo> {
+        self.group_info
+    }
+
+    /// Gets a the GroupInfo messsage. Only [`Some`] if new clients have been added in the commit.
+    pub fn into_group_info_msg(self) -> Option<MlsMessageOut> {
+        self.group_info.map(|group_info| group_info.into())
+    }
+
+    /// Gets all three messages, some of which optional. This method consumes the
+    /// [`CommitMessageBundle`]. For a borrowed version see [`Self::contents`].
+    pub fn into_contents(self) -> (MlsMessageOut, Option<Welcome>, Option<GroupInfo>) {
+        (self.commit, self.welcome, self.group_info)
+    }
+
+    /// Gets all three messages, some of which optional, as [`MlsMessageOut`].
+    /// This method consumes the [`CommitMessageBundle`].
+    pub fn into_messages(self) -> (MlsMessageOut, Option<MlsMessageOut>, Option<MlsMessageOut>) {
+        (
+            self.commit,
+            self.welcome
+                .map(|welcome| MlsMessageOut::from_welcome(welcome, self.version)),
+            self.group_info.map(|group_info| group_info.into()),
+        )
+    }
+}
+
+impl IntoIterator for CommitMessageBundle {
+    type Item = MlsMessageOut;
+
+    type IntoIter = core::iter::Chain<
+        core::iter::Chain<
+            core::option::IntoIter<MlsMessageOut>,
+            core::option::IntoIter<MlsMessageOut>,
+        >,
+        core::option::IntoIter<MlsMessageOut>,
+    >;
+
+    fn into_iter(self) -> Self::IntoIter {
+        let welcome = self.to_welcome_msg();
+        let group_info = self.group_info.map(|group_info| group_info.into());
+
+        Some(self.commit)
+            .into_iter()
+            .chain(welcome)
+            .chain(group_info)
     }
 }

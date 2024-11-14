@@ -368,8 +368,6 @@ fn last_resort_extension() {
     .into_group(provider)
     .expect("An unexpected error occurred.");
 
-    use openmls_traits::storage::StorageProvider;
-
     let _: KeyPackageBundle = provider
         .storage()
         .key_package(

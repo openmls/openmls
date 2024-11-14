@@ -186,7 +186,8 @@ fn mls_group_operations() {
         // === Bob updates and commits ===
         let (queued_message, welcome_option, _group_info) = bob_group
             .self_update(bob_provider, &bob_signer, LeafNodeParameters::default())
-            .unwrap();
+            .unwrap()
+            .into_contents();
 
         let alice_processed_message = alice_group
             .process_message(
@@ -423,7 +424,8 @@ fn mls_group_operations() {
                 &charlie_signer,
                 LeafNodeParameters::default(),
             )
-            .unwrap();
+            .unwrap()
+            .into_contents();
 
         let alice_processed_message = alice_group
             .process_message(

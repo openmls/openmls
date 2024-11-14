@@ -91,7 +91,8 @@ fn receive_message(
             &bob_credential_with_key_and_signer.signer,
             LeafNodeParameters::default(),
         )
-        .expect("An unexpected error occurred.");
+        .expect("An unexpected error occurred.")
+        .into_contents();
     message.into()
 }
 

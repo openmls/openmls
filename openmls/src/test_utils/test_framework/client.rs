@@ -3,6 +3,7 @@
 //! that client perform certain MLS operations.
 use std::{collections::HashMap, sync::RwLock};
 
+use commit_builder::CommitMessageBundle;
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::{
     types::{Ciphersuite, HpkeKeyPair, SignatureScheme},
@@ -231,15 +232,20 @@ impl<Provider: OpenMlsProvider> Client<Provider> {
         .unwrap();
         let (msg, welcome_option, group_info) = match action_type {
             ActionType::Commit => {
-                group.self_update(&self.provider, &signer, LeafNodeParameters::default())?
+                let bundle =
+                    group.self_update(&self.provider, &signer, LeafNodeParameters::default())?;
+
+                let welcome = bundle.to_welcome_msg();
+                let (msg, _, group_info) = bundle.into_contents();
+
+                (msg, welcome, group_info)
             }
-            ActionType::Proposal => (
-                group
-                    .propose_self_update(&self.provider, &signer, leaf_node_parameters)
-                    .map(|(out, _)| out)?,
-                None,
-                None,
-            ),
+            ActionType::Proposal => {
+                let (msg, _) =
+                    group.propose_self_update(&self.provider, &signer, leaf_node_parameters)?;
+
+                (msg, None, None)
+            }
         };
         Ok((
             msg,

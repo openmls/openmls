@@ -601,9 +601,10 @@ impl MlsGroup {
     ) -> Result<PrivateMessage, MessageEncryptionError<Provider::StorageError>> {
         let padding_size = self.configuration().padding_size();
         let msg = PrivateMessage::try_from_authenticated_content(
+            provider.crypto(),
+            provider.rand(),
             &public_message,
             self.ciphersuite(),
-            provider,
             self.message_secrets_store.message_secrets_mut(),
             padding_size,
         )?;

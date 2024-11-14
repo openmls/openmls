@@ -143,8 +143,7 @@ impl MlsGroup {
                 .consume_proposal_store(true)
                 .leaf_node_parameters(leaf_node_parameters)
                 .load_psks(provider.storage())?
-                .construct_proposals(provider.crypto())?
-                .build(provider.rand(), provider.crypto(), signer)?
+                .build(provider.rand(), provider.crypto(), signer, |_| true)?
                 .commit_result());
         }
 
