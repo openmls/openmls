@@ -59,34 +59,52 @@ use super::{
     Proposal, Sender,
 };
 
-/// This step is about populating the builder
+/// This stage is about populating the builder.
 pub struct Initial {
     own_proposals: Vec<Proposal>,
-}
-
-/// This step is after the PSKs were loaded
-pub struct LoadedPsks {
-    own_proposals: Vec<Proposal>,
-    psks: Vec<(PreSharedKeyId, Secret)>,
-}
-
-/// This step is after we validated the data, but before staged it
-pub struct Complete {
-    result: CreateCommitResult,
-}
-
-#[derive(Debug)]
-pub struct CommitBuilder<'a, T> {
-    group: &'a mut MlsGroup,
-    self_update_key_package: Option<KeyPackage>,
-    included_proposal_refs: Vec<ProposalRef>,
     force_self_update: bool,
     leaf_node_parameters: LeafNodeParameters,
 
     /// Whether or not to clear the proposal queue of the group when staging the commit. Needs to
     /// be done when we include the commits that have already been queued.
     consume_proposal_store: bool,
+}
 
+/// This stage is after the PSKs were loaded, ready for validation
+pub struct LoadedPsks {
+    own_proposals: Vec<Proposal>,
+    force_self_update: bool,
+    leaf_node_parameters: LeafNodeParameters,
+
+    /// Whether or not to clear the proposal queue of the group when staging the commit. Needs to
+    /// be done when we include the commits that have already been queued.
+    consume_proposal_store: bool,
+    psks: Vec<(PreSharedKeyId, Secret)>,
+}
+
+/// This stage is after we validated the data, ready for staging and exporting the messages
+pub struct Complete {
+    result: CreateCommitResult,
+}
+
+/// The [`CommitBuilder`] is used to easily and dynamically build commit messages.
+/// It operates in a series of stages:
+///
+/// The [`Initial`] stage is used to populate the builder with proposals and other data using
+/// method calls on the builder that let the builder stay in the same stage.
+///
+/// The next stage is [`LoadedPsks`], and it signifies the stage after the builder loaded the the
+/// pre-shared keys for the PreSharedKey proposals in this commit.
+///
+/// Then comes the [`Complete`] stage, which denotes that all data has been validated. From this
+/// stage, the commit can be staged in the group, and the outgoing messages returned.
+#[derive(Debug)]
+pub struct CommitBuilder<'a, T> {
+    /// A mutable reference to the MlsGroup. This means that we hold an exclusive lock on the group
+    /// for the lifetime of this builder.
+    group: &'a mut MlsGroup,
+
+    /// The current stage
     stage: T,
 }
 
@@ -107,30 +125,11 @@ impl<'a, T> CommitBuilder<'a, T> {
         self,
         f: F,
     ) -> (Aux, CommitBuilder<'a, NextStage>) {
-        let Self {
-            group,
-            self_update_key_package,
-            included_proposal_refs,
-            force_self_update,
-            leaf_node_parameters,
-            consume_proposal_store,
-            stage,
-        } = self;
+        let Self { group, stage } = self;
 
         let (aux, stage) = f(stage);
 
-        (
-            aux,
-            CommitBuilder {
-                group,
-                self_update_key_package,
-                included_proposal_refs,
-                force_self_update,
-                leaf_node_parameters,
-                consume_proposal_store,
-                stage,
-            },
-        )
+        (aux, CommitBuilder { group, stage })
     }
 }
 
@@ -142,51 +141,53 @@ impl MlsGroup {
 }
 
 impl<'a> CommitBuilder<'a, Initial> {
+    /// returns a new [`CommitBuilder`] for the given [`MlsGroup`].
     pub fn new(group: &'a mut MlsGroup) -> Self {
         Self {
             group,
-            self_update_key_package: None,
-            consume_proposal_store: false,
-            included_proposal_refs: vec![],
-            force_self_update: false,
-            leaf_node_parameters: LeafNodeParameters::default(),
             stage: Initial {
+                consume_proposal_store: true,
+                force_self_update: false,
+                leaf_node_parameters: LeafNodeParameters::default(),
                 own_proposals: vec![],
             },
         }
     }
 
-    pub fn consume_proposal_store(self, consume_proposal_store: bool) -> Self {
-        Self {
-            consume_proposal_store,
-            ..self
-        }
+    /// Sets whether or not the proposals in the proposal store of the group should be included in
+    /// the commit. Defaults to `true`.
+    pub fn consume_proposal_store(mut self, consume_proposal_store: bool) -> Self {
+        self.stage.consume_proposal_store = consume_proposal_store;
+        self
     }
 
-    pub fn force_self_update(self, force_self_update: bool) -> Self {
-        Self {
-            force_self_update,
-            ..self
-        }
+    /// Sets whether or not the commit should force a self-update. Defaults to `false`.
+    pub fn force_self_update(mut self, force_self_update: bool) -> Self {
+        self.stage.force_self_update = force_self_update;
+        self
     }
 
+    /// Adds a proposal to the proposals to be committed.
     pub fn add_proposal(mut self, proposal: Proposal) -> Self {
         self.stage.own_proposals.push(proposal);
         self
     }
 
+    /// Adds the proposals in the iterator to the proposals to be committed.
     pub fn add_proposals(mut self, proposals: impl IntoIterator<Item = Proposal>) -> Self {
         self.stage.own_proposals.extend(proposals);
         self
     }
 
-    pub fn leaf_node_parameters(self, leaf_node_parameters: LeafNodeParameters) -> Self {
-        Self {
-            leaf_node_parameters,
-            ..self
-        }
+    /// Sets the leaf node parameters for the new leaf node in a self-update. Implies that a
+    /// self-update takes place.
+    pub fn leaf_node_parameters(mut self, leaf_node_parameters: LeafNodeParameters) -> Self {
+        self.stage.leaf_node_parameters = leaf_node_parameters;
+        self
     }
 
+    /// Adds an Add proposal to the provided [`KeyPackage`] to the list of proposals to be
+    /// committed.
     pub fn propose_add(mut self, key_package: KeyPackage) -> Self {
         self.stage
             .own_proposals
@@ -194,6 +195,7 @@ impl<'a> CommitBuilder<'a, Initial> {
         self
     }
 
+    /// Loads the PSKs for the PskProposals marked for inclusion and moves on to the next phase.
     pub fn load_psks<Storage: StorageProvider>(
         self,
         storage: &'a Storage,
@@ -227,6 +229,9 @@ impl<'a> CommitBuilder<'a, Initial> {
                     LoadedPsks {
                         own_proposals: stage.own_proposals,
                         psks,
+                        force_self_update: stage.force_self_update,
+                        leaf_node_parameters: stage.leaf_node_parameters,
+                        consume_proposal_store: stage.consume_proposal_store,
                     },
                 )
             })
@@ -235,7 +240,10 @@ impl<'a> CommitBuilder<'a, Initial> {
 }
 
 impl<'a> CommitBuilder<'a, LoadedPsks> {
-    pub fn build<T>(
+    /// Validates the inputs and builds the commit. The last argument `f` is a function that lets
+    /// the caller filter the proposals that are considered for inclusion. This provides a way for
+    /// the application to enforce custom policies in the creation of commits.
+    pub fn build<E, T>(
         self,
         rand: &impl OpenMlsRand,
         crypto: &impl OpenMlsCrypto,
@@ -262,7 +270,7 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
         let group_proposal_store_queue = builder
             .group
             .pending_proposals()
-            .filter(|_| builder.consume_proposal_store)
+            .filter(|_| cur_stage.consume_proposal_store)
             .cloned();
 
         // prepare the iterator for the proposal validation and seletion function. That function
@@ -354,8 +362,8 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
             // If path is needed, compute path values
             if apply_proposals_values.path_required
                 || contains_own_updates
-                || builder.force_self_update
-                || !builder.leaf_node_parameters.is_empty()
+                || cur_stage.force_self_update
+                || !cur_stage.leaf_node_parameters.is_empty()
             {
                 // Process the path. This includes updating the provisional
                 // group context by updating the epoch and computing the new
@@ -366,7 +374,7 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
                     builder.group.own_leaf_index(),
                     apply_proposals_values.exclusion_list(),
                     &CommitType::Member,
-                    &builder.leaf_node_parameters,
+                    &cur_stage.leaf_node_parameters,
                     signer,
                     apply_proposals_values.extensions.clone()
                 )?
@@ -568,6 +576,7 @@ impl<'a> CommitBuilder<'a, Complete> {
         self.stage.result
     }
 
+    /// Stages the commit and returns the protocol messages.
     pub fn stage_commit<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
