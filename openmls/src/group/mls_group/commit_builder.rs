@@ -56,8 +56,8 @@ use crate::{
 use super::{
     mls_auth_content::AuthenticatedContent,
     staged_commit::{MemberStagedCommitState, StagedCommitState},
-    AddProposal, CreateCommitResult, MlsGroup, MlsGroupState, MlsMessageOut, PendingCommitState,
-    Proposal, RemoveProposal, Sender,
+    AddProposal, CreateCommitResult, GroupContextExtensionProposal, MlsGroup, MlsGroupState,
+    MlsMessageOut, PendingCommitState, Proposal, RemoveProposal, Sender,
 };
 
 /// This stage is about populating the builder.
@@ -220,6 +220,15 @@ impl<'a> CommitBuilder<'a, Initial> {
                 .into_iter()
                 .map(|removed| Proposal::Remove(RemoveProposal { removed })),
         );
+        self
+    }
+
+    pub fn propose_group_context_externsios(mut self, extensions: Extensions) -> Self {
+        self.stage
+            .own_proposals
+            .push(Proposal::GroupContextExtensions(
+                GroupContextExtensionProposal::new(extensions),
+            ));
         self
     }
 

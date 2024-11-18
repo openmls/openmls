@@ -29,37 +29,6 @@ pub(crate) struct CreateCommitParamsBuilder<'a> {
 }
 
 impl TempBuilderCCPM0 {
-    /*
-    pub(crate) fn framing_parameters(
-        self,
-        framing_parameters: FramingParameters,
-    ) -> CreateCommitParamsBuilder {
-        CreateCommitParamsBuilder {
-            ccp: CreateCommitParams {
-                framing_parameters,
-                inline_proposals: vec![],
-                force_self_update: true,
-                commit_type: CommitType::Member,
-                leaf_node_parameters: LeafNodeParameters::default(),
-            },
-        }
-    }
-    */
-
-    pub(crate) fn regular_commit<'a>(self) -> CreateCommitParamsBuilder<'a> {
-        CreateCommitParamsBuilder {
-            ccp: CreateCommitParams {
-                commit_type: CommitType::Member,
-
-                // defaults:
-                framing_parameters: None,
-                inline_proposals: vec![],
-                force_self_update: true,
-                leaf_node_parameters: LeafNodeParameters::default(),
-            },
-        }
-    }
-
     pub(crate) fn external_commit(
         self,
         credential_with_key: CredentialWithKey,
@@ -80,15 +49,6 @@ impl TempBuilderCCPM0 {
 }
 
 impl<'a> CreateCommitParamsBuilder<'a> {
-    pub(crate) fn inline_proposals(mut self, inline_proposals: Vec<Proposal>) -> Self {
-        self.ccp.inline_proposals = inline_proposals;
-        self
-    }
-    #[cfg(test)]
-    pub(crate) fn force_self_update(mut self, force_self_update: bool) -> Self {
-        self.ccp.force_self_update = force_self_update;
-        self
-    }
     pub(crate) fn leaf_node_parameters(mut self, leaf_node_parameters: LeafNodeParameters) -> Self {
         self.ccp.leaf_node_parameters = leaf_node_parameters;
         self
@@ -101,10 +61,6 @@ impl<'a> CreateCommitParamsBuilder<'a> {
 impl<'a> CreateCommitParams<'a> {
     pub(crate) fn builder() -> TempBuilderCCPM0 {
         TempBuilderCCPM0 {}
-    }
-    #[cfg(test)]
-    pub(crate) fn framing_parameters(&self) -> Option<&FramingParameters> {
-        self.framing_parameters.as_ref()
     }
     pub(crate) fn inline_proposals(&self) -> &[Proposal] {
         &self.inline_proposals
@@ -124,7 +80,7 @@ impl<'a> CreateCommitParams<'a> {
 }
 
 impl MlsGroup {
-    pub(crate) fn create_commit<Provider: OpenMlsProvider>(
+    pub(crate) fn create_external_commit<Provider: OpenMlsProvider>(
         &mut self,
         params: CreateCommitParams,
         provider: &Provider,

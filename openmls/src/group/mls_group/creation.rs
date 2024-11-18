@@ -208,7 +208,7 @@ impl MlsGroup {
 
         // Immediately create the commit to add ourselves to the group.
         let create_commit_result = mls_group
-            .create_commit(params, provider, signer)
+            .create_external_commit(params, provider, signer)
             .map_err(|_| ExternalCommitError::CommitError)?;
 
         mls_group.group_state = MlsGroupState::PendingCommit(Box::new(
