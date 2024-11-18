@@ -1,7 +1,5 @@
 //! Defines the `CreateCommit` trait and its implementation for `MlsGroup`.
 
-use commit_builder::CommitBuilder;
-
 use super::*;
 use crate::{credentials::CredentialWithKey, treesync::LeafNodeParameters};
 
@@ -13,12 +11,11 @@ pub(crate) enum CommitType {
 }
 
 pub(crate) struct CreateCommitParams<'a> {
-    // Only needed for External Commit, taken from group otherwise
     framing_parameters: Option<FramingParameters<'a>>,
+    credential_with_key: CredentialWithKey,
 
     inline_proposals: Vec<Proposal>,          // Optional
     force_self_update: bool,                  // Optional
-    commit_type: CommitType,                  // Optional (default is `Member`)
     leaf_node_parameters: LeafNodeParameters, // Optional
 }
 
@@ -36,8 +33,8 @@ impl TempBuilderCCPM0 {
     ) -> CreateCommitParamsBuilder {
         CreateCommitParamsBuilder {
             ccp: CreateCommitParams {
-                commit_type: CommitType::External(credential_with_key),
                 framing_parameters: Some(framing_parameters),
+                credential_with_key,
 
                 // defaults:
                 inline_proposals: vec![],
@@ -71,8 +68,8 @@ impl<'a> CreateCommitParams<'a> {
     pub(crate) fn force_self_update(&self) -> bool {
         self.force_self_update
     }
-    pub(crate) fn commit_type(&self) -> &CommitType {
-        &self.commit_type
+    pub(crate) fn credential_with_key(&self) -> &CredentialWithKey {
+        &self.credential_with_key
     }
     pub(crate) fn leaf_node_parameters(&self) -> &LeafNodeParameters {
         &self.leaf_node_parameters
@@ -86,33 +83,16 @@ impl MlsGroup {
         provider: &Provider,
         signer: &impl Signer,
     ) -> Result<CreateCommitResult, CreateCommitError<Provider::StorageError>> {
-        if params.commit_type == CommitType::Member {
-            let CreateCommitParams {
-                inline_proposals,
-                force_self_update,
-                leaf_node_parameters,
-                ..
-            } = params;
-
-            return Ok(CommitBuilder::new(self)
-                .add_proposals(inline_proposals)
-                .force_self_update(force_self_update)
-                .consume_proposal_store(true)
-                .leaf_node_parameters(leaf_node_parameters)
-                .load_psks(provider.storage())?
-                .build(provider.rand(), provider.crypto(), signer, |_| true)?
-                .commit_result());
-        }
-
-        // we now know that we are building an external commit. This means we have to pull the
+        // We  are building an external commit. This means we have to pull the
         // framing parameters out of the create commit parameteres instead of the group. Since
         // these are set together with the group mode, we can be sure that this is `Some(..)` (see
         // [`TempBuilderCCPM0::external_commit`].
         let framing_parameters = params.framing_parameters.unwrap();
+        let commit_type = CommitType::External(params.credential_with_key().clone());
 
         let ciphersuite = self.ciphersuite();
 
-        let sender = match params.commit_type() {
+        let sender = match commit_type {
             CommitType::External(_) => Sender::NewMemberCommit,
             CommitType::Member => Sender::build_member(self.own_leaf_index()),
         };
@@ -186,9 +166,6 @@ impl MlsGroup {
         // Apply proposals to tree
         let apply_proposals_values =
             diff.apply_proposals(&proposal_queue, self.own_leaf_index())?;
-        if apply_proposals_values.self_removed && params.commit_type() == &CommitType::Member {
-            return Err(CreateCommitError::CannotRemoveSelf);
-        }
 
         let path_computation_result =
             // If path is needed, compute path values
@@ -205,7 +182,7 @@ impl MlsGroup {
                     provider.crypto(),
                     self.own_leaf_index(),
                     apply_proposals_values.exclusion_list(),
-                    params.commit_type(),
+                    &commit_type,
                     params.leaf_node_parameters(),
                     signer,
                     apply_proposals_values.extensions.clone()

@@ -3,7 +3,7 @@
 //! This module contains [`MlsGroup`] and its submodules.
 //!
 
-use create_commit::{CommitType, CreateCommitParams};
+use create_commit::CreateCommitParams;
 use past_secrets::MessageSecretsStore;
 use proposal_store::ProposalQueue;
 use serde::{Deserialize, Serialize};

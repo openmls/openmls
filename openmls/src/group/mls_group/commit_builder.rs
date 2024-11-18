@@ -1,6 +1,6 @@
 //! This module contains the types for building commits.
 //!
-//! A living design doc can be found here: https://md.cryspen.com/s/TqZXcU-gA
+//! A living design doc can be found here: <https://md.cryspen.com/s/TqZXcU-gA>
 //!
 //! we might need multiple builder types to restrict the operations (methods that can be called),
 //! but that's not clear yet.
@@ -609,6 +609,7 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
 }
 
 impl<'a> CommitBuilder<'a, Complete> {
+    #[cfg(test)]
     pub(crate) fn commit_result(self) -> CreateCommitResult {
         self.stage.result
     }

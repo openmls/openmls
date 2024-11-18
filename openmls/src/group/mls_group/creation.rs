@@ -175,12 +175,7 @@ impl MlsGroup {
 
         // If there is a group member in the group with the same identity as us,
         // commit a remove proposal.
-        let signature_key = match params.commit_type() {
-            CommitType::External(credential_with_key) => {
-                credential_with_key.signature_key.as_slice()
-            }
-            _ => return Err(ExternalCommitError::MissingCredential),
-        };
+        let signature_key = params.credential_with_key().signature_key.as_slice();
         if let Some(us) = public_group
             .members()
             .find(|member| member.signature_key == signature_key)
@@ -226,14 +221,6 @@ impl MlsGroup {
             public_message.into(),
             create_commit_result.group_info,
         ))
-    }
-}
-
-fn transpose_err_opt<T, E>(v: Result<Option<T>, E>) -> Option<Result<T, E>> {
-    match v {
-        Ok(Some(v)) => Some(Ok(v)),
-        Ok(None) => None,
-        Err(err) => Some(Err(err)),
     }
 }
 
@@ -582,12 +569,11 @@ fn keys_for_welcome<Provider: OpenMlsProvider>(
         .find_map(|egs| {
             let hash_ref = egs.new_member();
 
-            transpose_err_opt(
-                provider
-                    .storage()
-                    .key_package(&hash_ref)
-                    .map_err(WelcomeError::StorageError),
-            )
+            provider
+                .storage()
+                .key_package(&hash_ref)
+                .map_err(WelcomeError::StorageError)
+                .transpose()
         })
         .ok_or(WelcomeError::NoMatchingKeyPackage)??;
     if !key_package_bundle.key_package().last_resort() {
