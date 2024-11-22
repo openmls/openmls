@@ -1,6 +1,16 @@
-// SPDX-FileCopyrightText: 2023 Phoenix R&D GmbH <hello@phnx.im>
-//
-// SPDX-License-Identifier: AGPL-3.0-or-later
+//! # SQLite Storage
+//!
+//! This crate provides the [`SqliteStorageProvider`] which implements the
+//! OpenMLS trait [`StorageProvider`] using the `rusqlite` crate.
+//!
+//! ## Usage
+//!
+//! TODO: Show how to combine with an rng and crypto provider in the context of
+//! OpenMLS. Also show how data (e.g. KeyPackages) can be retrieved by the
+//! application outside of OpenMLS.
+
+#[cfg(doc)]
+use openmls_traits::storage::StorageProvider;
 
 mod codec;
 mod encryption_key_pairs;
