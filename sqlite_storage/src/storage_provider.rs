@@ -21,12 +21,16 @@ use crate::{
     Storable,
 };
 
+/// Storage provider for OpenMLS using Sqlite through the `rusqlite` crate.
+/// Implements the [`StorageProvider`] trait. The codec used by the storage
+/// provider is set by the generic parameter `C`.
 pub struct SqliteStorageProvider<'a, C: Codec> {
     connection: &'a Connection,
     _codec: PhantomData<C>,
 }
 
 impl<'a, C: Codec> SqliteStorageProvider<'a, C> {
+    /// Create a new instance of the [`SqliteStorageProvider`].
     pub fn new(connection: &'a Connection) -> Self {
         Self {
             connection,
