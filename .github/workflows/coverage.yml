@@ -22,7 +22,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Run profiling tests
         run: |
-          make -p target/debug/coverage
+          mkdir -p target/debug/coverage
           cargo test --no-fail-fast -p openmls
         env:
           CARGO_INCREMENTAL: '0'
