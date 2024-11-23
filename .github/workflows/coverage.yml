@@ -21,10 +21,12 @@ jobs:
           crate: grcov
       - uses: Swatinem/rust-cache@v2
       - name: Run profiling tests
-        run: cargo test --no-fail-fast -p openmls
+        run: |
+          make -p target/debug/coverage
+          cargo test --no-fail-fast -p openmls
         env:
           CARGO_INCREMENTAL: '0'
-          LLVM_PROFILE_FILE: 'target/coverage/openmls-%p-%m.profraw'
+          LLVM_PROFILE_FILE: 'target/debug/coverage/openmls-%p-%m.profraw'
           RUSTFLAGS: '-Cinstrument-coverage -Cpanic=abort -Zpanic_abort_tests'
           RUSTDOCFLAGS: '-Cinstrument-coverage -Cpanic=abort -Zpanic_abort_tests -Z unstable-options --persist-doctests target/debug/'
           LIBCRUX_DISABLE_SIMD256: '1'
