@@ -21,6 +21,7 @@ jobs:
         run: cargo test --no-fail-fast -p openmls
         env:
           CARGO_INCREMENTAL: '0'
+          LLVM_PROFILE_FILE: 'openmls-%p-%m.profraw'
           RUSTFLAGS: '-Cinstrument-coverage -Cpanic=abort -Zpanic_abort_tests'
           RUSTDOCFLAGS: '-Cinstrument-coverage -Cpanic=abort -Zpanic_abort_tests -Z unstable-options --persist-doctests target/debug/'
           LIBCRUX_DISABLE_SIMD256: '1'
