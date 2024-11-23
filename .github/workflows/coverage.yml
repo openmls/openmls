@@ -39,5 +39,5 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ${{ steps.coverage.outputs.report }}
+          files: target/debug/coverage/lcov 
           
