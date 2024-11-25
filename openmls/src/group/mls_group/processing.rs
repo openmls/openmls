@@ -117,12 +117,8 @@ impl MlsGroup {
     > {
         self.is_operational()?;
 
-        // Create Commit over all pending proposals
-        // TODO #751
-        //let params = CreateCommitParams::builder().regular_commit().build();
-        //let create_commit_result = self.create_commit(params, provider, signer)?;
-
         // Build and stage the commit using the commit builder
+        // TODO #751
         let (commit, welcome, group_info) = self
             .commit_builder()
             // This forces committing to the proposals in the proposal store:

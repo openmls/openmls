@@ -1,30 +1,5 @@
-//! This module contains the types for building commits.
-//!
-//! A living design doc can be found here: <https://md.cryspen.com/s/TqZXcU-gA>
-//!
-//! we might need multiple builder types to restrict the operations (methods that can be called),
-//! but that's not clear yet.
-//!
-//!   Can also add a (const) generic param and only impl functions for some cases
-//!
-//!
-//! What are the general phases?
-//!
-//!  - build all the proposals
-//!    - do some of the proposals also need a builder or can we just add them?
-//!    - does this already need to lock the group?
-//!      - maybe; otherwise we can build two confilicting commits in parallel
-//!        - we still should validate the commit when staging it, but ideally all possible issues
-//!          should have been caught before
-//!          - if we can make sure that all problems have been caught, the staging can just not
-//!            return an error
-//!  - do the signing (io!) - consume the group
-//!  - stage the commit - release the group
-//!
-//!  - operations for step 0:
-//!    - add new proposals
-//!    - add select proposals by ref (that are in group's quuee)
-//!    - add all proposals from the group's quuee
+//! This module contains the commit builder types, which can be used to build regular (i.e.
+//! non-external) commits. See the documentation of [`CommitBuilder`] for more information.
 
 use openmls_traits::{
     crypto::OpenMlsCrypto, random::OpenMlsRand, signatures::Signer, storage::StorageProvider as _,
@@ -60,7 +35,7 @@ use super::{
     MlsMessageOut, PendingCommitState, Proposal, RemoveProposal, Sender,
 };
 
-/// This stage is about populating the builder.
+/// This stage is for populating the builder.
 pub struct Initial {
     own_proposals: Vec<Proposal>,
     force_self_update: bool,
@@ -189,28 +164,12 @@ impl<'a> CommitBuilder<'a, Initial> {
 
     /// Adds an Add proposal to the provided [`KeyPackage`] to the list of proposals to be
     /// committed.
-    pub fn propose_add(mut self, key_package: KeyPackage) -> Self {
-        self.stage
-            .own_proposals
-            .push(Proposal::Add(AddProposal { key_package }));
-        self
-    }
-
-    /// Adds an Add proposal to the provided [`KeyPackage`] to the list of proposals to be
-    /// committed.
     pub fn propose_adds(mut self, key_packages: impl IntoIterator<Item = KeyPackage>) -> Self {
         self.stage.own_proposals.extend(
             key_packages
                 .into_iter()
                 .map(|key_package| Proposal::Add(AddProposal { key_package })),
         );
-        self
-    }
-
-    pub fn propose_removal(mut self, removed: LeafNodeIndex) -> Self {
-        self.stage
-            .own_proposals
-            .push(Proposal::Remove(RemoveProposal { removed }));
         self
     }
 
@@ -223,7 +182,7 @@ impl<'a> CommitBuilder<'a, Initial> {
         self
     }
 
-    pub fn propose_group_context_externsios(mut self, extensions: Extensions) -> Self {
+    pub fn propose_group_context_externsions(mut self, extensions: Extensions) -> Self {
         self.stage
             .own_proposals
             .push(Proposal::GroupContextExtensions(
@@ -495,11 +454,18 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
 
         diff.update_interim_transcript_hash(ciphersuite, crypto, confirmation_tag.clone())?;
 
-        // only computes the group info if necessary
-        let group_info = if !apply_proposals_values.invitation_list.is_empty()
-            || builder.group.configuration().use_ratchet_tree_extension
-        {
-            // Create the ratchet tree extension if necessary
+        // If there are invitations, we need to build a welcome
+        let needs_welcome = !apply_proposals_values.invitation_list.is_empty();
+
+        // We need a GroupInfo if we need to build a Welcome. If the ratchet tree extension
+        // should be used, always build a GroupInfo.
+        let needs_group_info =
+            needs_welcome || builder.group.configuration().use_ratchet_tree_extension;
+
+        let group_info = if !needs_group_info {
+            None
+        } else {
+            // Build ExternalPub extension
             let external_pub = provisional_epoch_secrets
                 .external_secret()
                 .derive_external_keypair(crypto, ciphersuite)
@@ -507,35 +473,34 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
                 .public;
             let external_pub_extension =
                 Extension::ExternalPub(ExternalPubExtension::new(external_pub.into()));
-            let other_extensions: Extensions =
-                if builder.group.configuration().use_ratchet_tree_extension {
-                    Extensions::from_vec(vec![
-                        Extension::RatchetTree(RatchetTreeExtension::new(
-                            diff.export_ratchet_tree(),
-                        )),
-                        external_pub_extension,
-                    ])?
-                } else {
-                    Extensions::single(external_pub_extension)
-                };
+
+            // Create the ratchet tree extension if necessary
+            let extensions: Extensions = if builder.group.configuration().use_ratchet_tree_extension
+            {
+                Extensions::from_vec(vec![
+                    Extension::RatchetTree(RatchetTreeExtension::new(diff.export_ratchet_tree())),
+                    external_pub_extension,
+                ])?
+            } else {
+                Extensions::single(external_pub_extension)
+            };
 
             // Create to-be-signed group info.
             let group_info_tbs = {
                 GroupInfoTBS::new(
                     diff.group_context().clone(),
-                    other_extensions,
+                    extensions,
                     confirmation_tag,
                     builder.group.own_leaf_index(),
                 )
             };
             // Sign to-be-signed group info.
             Some(group_info_tbs.sign(signer)?)
-        } else {
-            None
         };
 
-        // Check if new members were added and, if so, create welcome messages
-        let welcome_option = if !apply_proposals_values.invitation_list.is_empty() {
+        let welcome_option = if !needs_welcome {
+            None
+        } else {
             // Encrypt GroupInfo object
             let (welcome_key, welcome_nonce) = welcome_secret
                 .derive_welcome_key_nonce(crypto, builder.group.ciphersuite())
@@ -569,8 +534,6 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
             // Create welcome message
             let welcome = Welcome::new(ciphersuite, encrypted_secrets, encrypted_group_info);
             Some(welcome)
-        } else {
-            None
         };
 
         let (provisional_group_epoch_secrets, provisional_message_secrets) =
@@ -705,7 +668,8 @@ impl CommitMessageBundle {
             .map(|welcome| MlsMessageOut::from_welcome(welcome.clone(), self.version))
     }
 
-    /// Gets a the GroupInfo message. Onlt [`Some`] if... when? TODO: finish writing this comment
+    /// Gets a the GroupInfo message. Only [`Some`] if new clients have been added or the group
+    /// configuration has `use_ratchet_tree_extension` set.
     /// For owned version, see [`Self::into_group_info`].
     pub fn group_info(&self) -> Option<&GroupInfo> {
         self.group_info.as_ref()
@@ -742,7 +706,8 @@ impl CommitMessageBundle {
             .map(|welcome| MlsMessageOut::from_welcome(welcome, self.version))
     }
 
-    /// Gets a the GroupInfo messsage. Only [`Some`] if TODO: when???.
+    /// Gets a the GroupInfo message. Only [`Some`] if new clients have been added or the group
+    /// configuration has `use_ratchet_tree_extension` set.
     /// This method consumes the [`CommitMessageBundle`]. For a borrowed version see
     /// [`Self::group_info`].
     pub fn into_group_info(self) -> Option<GroupInfo> {
