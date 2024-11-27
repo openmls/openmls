@@ -6,19 +6,33 @@ use rusqlite::{params, OptionalExtension};
 use crate::{
     codec::Codec,
     wrappers::{EntityRefWrapper, EntityWrapper, KeyRefWrapper},
+    STORAGE_PROVIDER_VERSION,
 };
 
-pub(crate) struct StorableSignatureKeyPairs<SignatureKeyPairs: Entity<1>>(pub SignatureKeyPairs);
+pub(crate) struct StorableSignatureKeyPairs<SignatureKeyPairs: Entity<STORAGE_PROVIDER_VERSION>>(
+    pub SignatureKeyPairs,
+);
 
-impl<SignatureKeyPairs: Entity<1>> StorableSignatureKeyPairs<SignatureKeyPairs> {
-    pub(super) fn load<C: Codec, SignaturePublicKey: SignaturePublicKeyTrait<1>>(
+impl<SignatureKeyPairs: Entity<STORAGE_PROVIDER_VERSION>>
+    StorableSignatureKeyPairs<SignatureKeyPairs>
+{
+    pub(super) fn load<
+        C: Codec,
+        SignaturePublicKey: SignaturePublicKeyTrait<STORAGE_PROVIDER_VERSION>,
+    >(
         connection: &rusqlite::Connection,
         public_key: &SignaturePublicKey,
     ) -> Result<Option<SignatureKeyPairs>, rusqlite::Error> {
         let signature_key = connection
             .query_row(
-                "SELECT signature_key FROM openmls_signature_keys WHERE public_key = ?1",
-                params![KeyRefWrapper::<C, _>(public_key, PhantomData)],
+                "SELECT signature_key 
+                FROM openmls_signature_keys 
+                WHERE public_key = ?1
+                    AND provider_version = ?2",
+                params![
+                    KeyRefWrapper::<C, _>(public_key, PhantomData),
+                    STORAGE_PROVIDER_VERSION
+                ],
                 |row| {
                     let EntityWrapper::<C, _>(signature_key, ..) = row.get(0)?;
                     Ok(signature_key)
@@ -29,39 +43,52 @@ impl<SignatureKeyPairs: Entity<1>> StorableSignatureKeyPairs<SignatureKeyPairs> 
     }
 }
 
-pub(crate) struct StorableSignatureKeyPairsRef<'a, SignatureKeyPairs: Entity<1>>(
-    pub &'a SignatureKeyPairs,
-);
+pub(crate) struct StorableSignatureKeyPairsRef<
+    'a,
+    SignatureKeyPairs: Entity<STORAGE_PROVIDER_VERSION>,
+>(pub &'a SignatureKeyPairs);
 
-impl<'a, SignatureKeyPairs: Entity<1>> StorableSignatureKeyPairsRef<'a, SignatureKeyPairs> {
-    pub(super) fn store<C: Codec, SignaturePublicKey: Key<1>>(
+impl<'a, SignatureKeyPairs: Entity<STORAGE_PROVIDER_VERSION>>
+    StorableSignatureKeyPairsRef<'a, SignatureKeyPairs>
+{
+    pub(super) fn store<C: Codec, SignaturePublicKey: Key<STORAGE_PROVIDER_VERSION>>(
         &self,
         connection: &rusqlite::Connection,
         public_key: &SignaturePublicKey,
     ) -> Result<(), rusqlite::Error> {
         connection.execute(
-            "INSERT INTO openmls_signature_keys (public_key, signature_key) VALUES (?1, ?2)",
+            "INSERT INTO openmls_signature_keys (public_key, signature_key, provider_version) 
+            VALUES (?1, ?2, ?3)",
             params![
                 KeyRefWrapper::<C, _>(public_key, PhantomData),
-                EntityRefWrapper::<C, _>(self.0, PhantomData)
+                EntityRefWrapper::<C, _>(self.0, PhantomData),
+                STORAGE_PROVIDER_VERSION
             ],
         )?;
         Ok(())
     }
 }
 
-pub(super) struct StorableSignaturePublicKeyRef<'a, SignaturePublicKey: Key<1>>(
-    pub &'a SignaturePublicKey,
-);
+pub(super) struct StorableSignaturePublicKeyRef<
+    'a,
+    SignaturePublicKey: Key<STORAGE_PROVIDER_VERSION>,
+>(pub &'a SignaturePublicKey);
 
-impl<'a, SignaturePublicKey: Key<1>> StorableSignaturePublicKeyRef<'a, SignaturePublicKey> {
+impl<'a, SignaturePublicKey: Key<STORAGE_PROVIDER_VERSION>>
+    StorableSignaturePublicKeyRef<'a, SignaturePublicKey>
+{
     pub(super) fn delete<C: Codec>(
         &self,
         connection: &rusqlite::Connection,
     ) -> Result<(), rusqlite::Error> {
         connection.execute(
-            "DELETE FROM openmls_signature_keys WHERE public_key = ?1",
-            params![KeyRefWrapper::<C, _>(self.0, PhantomData)],
+            "DELETE FROM openmls_signature_keys 
+            WHERE public_key = ?1 
+                AND provider_version = ?2",
+            params![
+                KeyRefWrapper::<C, _>(self.0, PhantomData),
+                STORAGE_PROVIDER_VERSION
+            ],
         )?;
         Ok(())
     }

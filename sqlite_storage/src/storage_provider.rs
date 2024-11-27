@@ -18,6 +18,7 @@ use crate::{
     signature_key_pairs::{
         StorableSignatureKeyPairs, StorableSignatureKeyPairsRef, StorableSignaturePublicKeyRef,
     },
+    STORAGE_PROVIDER_VERSION,
 };
 
 refinery::embed_migrations!("migrations");
@@ -46,14 +47,14 @@ impl<'a, C: Codec> SqliteStorageProvider<'a, C> {
     }
 }
 
-pub(super) struct StorableGroupIdRef<'a, GroupId: Key<1>>(pub &'a GroupId);
+pub(super) struct StorableGroupIdRef<'a, GroupId: Key<STORAGE_PROVIDER_VERSION>>(pub &'a GroupId);
 
-impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
+impl<'a, C: Codec> StorageProvider<STORAGE_PROVIDER_VERSION> for SqliteStorageProvider<'a, C> {
     type Error = rusqlite::Error;
 
     fn write_mls_join_config<
-        GroupId: openmls_traits::storage::traits::GroupId<1>,
-        MlsGroupJoinConfig: openmls_traits::storage::traits::MlsGroupJoinConfig<1>,
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        MlsGroupJoinConfig: openmls_traits::storage::traits::MlsGroupJoinConfig<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -67,8 +68,8 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn append_own_leaf_node<
-        GroupId: openmls_traits::storage::traits::GroupId<1>,
-        LeafNode: openmls_traits::storage::traits::LeafNode<1>,
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        LeafNode: openmls_traits::storage::traits::LeafNode<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -78,9 +79,9 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn queue_proposal<
-        GroupId: openmls_traits::storage::traits::GroupId<1>,
-        ProposalRef: openmls_traits::storage::traits::ProposalRef<1>,
-        QueuedProposal: openmls_traits::storage::traits::QueuedProposal<1>,
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        ProposalRef: openmls_traits::storage::traits::ProposalRef<STORAGE_PROVIDER_VERSION>,
+        QueuedProposal: openmls_traits::storage::traits::QueuedProposal<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -91,8 +92,8 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn write_tree<
-        GroupId: openmls_traits::storage::traits::GroupId<1>,
-        TreeSync: openmls_traits::storage::traits::TreeSync<1>,
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        TreeSync: openmls_traits::storage::traits::TreeSync<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -102,8 +103,8 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn write_interim_transcript_hash<
-        GroupId: openmls_traits::storage::traits::GroupId<1>,
-        InterimTranscriptHash: openmls_traits::storage::traits::InterimTranscriptHash<1>,
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        InterimTranscriptHash: openmls_traits::storage::traits::InterimTranscriptHash<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -117,8 +118,8 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn write_context<
-        GroupId: openmls_traits::storage::traits::GroupId<1>,
-        GroupContext: openmls_traits::storage::traits::GroupContext<1>,
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        GroupContext: openmls_traits::storage::traits::GroupContext<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -132,8 +133,8 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn write_confirmation_tag<
-        GroupId: openmls_traits::storage::traits::GroupId<1>,
-        ConfirmationTag: openmls_traits::storage::traits::ConfirmationTag<1>,
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        ConfirmationTag: openmls_traits::storage::traits::ConfirmationTag<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -147,8 +148,8 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn write_group_state<
-        GroupState: openmls_traits::storage::traits::GroupState<1>,
-        GroupId: openmls_traits::storage::traits::GroupId<1>,
+        GroupState: openmls_traits::storage::traits::GroupState<STORAGE_PROVIDER_VERSION>,
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -162,8 +163,8 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn write_message_secrets<
-        GroupId: openmls_traits::storage::traits::GroupId<1>,
-        MessageSecrets: openmls_traits::storage::traits::MessageSecrets<1>,
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        MessageSecrets: openmls_traits::storage::traits::MessageSecrets<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -178,8 +179,8 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn write_resumption_psk_store<
-        GroupId: openmls_traits::storage::traits::GroupId<1>,
-        ResumptionPskStore: openmls_traits::storage::traits::ResumptionPskStore<1>,
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        ResumptionPskStore: openmls_traits::storage::traits::ResumptionPskStore<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -193,8 +194,8 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn write_own_leaf_index<
-        GroupId: openmls_traits::storage::traits::GroupId<1>,
-        LeafNodeIndex: openmls_traits::storage::traits::LeafNodeIndex<1>,
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        LeafNodeIndex: openmls_traits::storage::traits::LeafNodeIndex<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -209,8 +210,8 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn write_group_epoch_secrets<
-        GroupId: openmls_traits::storage::traits::GroupId<1>,
-        GroupEpochSecrets: openmls_traits::storage::traits::GroupEpochSecrets<1>,
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        GroupEpochSecrets: openmls_traits::storage::traits::GroupEpochSecrets<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -225,8 +226,8 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn write_signature_key_pair<
-        SignaturePublicKey: openmls_traits::storage::traits::SignaturePublicKey<1>,
-        SignatureKeyPair: openmls_traits::storage::traits::SignatureKeyPair<1>,
+        SignaturePublicKey: openmls_traits::storage::traits::SignaturePublicKey<STORAGE_PROVIDER_VERSION>,
+        SignatureKeyPair: openmls_traits::storage::traits::SignatureKeyPair<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         public_key: &SignaturePublicKey,
@@ -236,8 +237,8 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn write_encryption_key_pair<
-        EncryptionKey: openmls_traits::storage::traits::EncryptionKey<1>,
-        HpkeKeyPair: openmls_traits::storage::traits::HpkeKeyPair<1>,
+        EncryptionKey: openmls_traits::storage::traits::EncryptionKey<STORAGE_PROVIDER_VERSION>,
+        HpkeKeyPair: openmls_traits::storage::traits::HpkeKeyPair<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         public_key: &EncryptionKey,
@@ -247,9 +248,9 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn write_encryption_epoch_key_pairs<
-        GroupId: openmls_traits::storage::traits::GroupId<1>,
-        EpochKey: openmls_traits::storage::traits::EpochKey<1>,
-        HpkeKeyPair: openmls_traits::storage::traits::HpkeKeyPair<1>,
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        EpochKey: openmls_traits::storage::traits::EpochKey<STORAGE_PROVIDER_VERSION>,
+        HpkeKeyPair: openmls_traits::storage::traits::HpkeKeyPair<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -266,8 +267,8 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn write_key_package<
-        HashReference: openmls_traits::storage::traits::HashReference<1>,
-        KeyPackage: openmls_traits::storage::traits::KeyPackage<1>,
+        HashReference: openmls_traits::storage::traits::HashReference<STORAGE_PROVIDER_VERSION>,
+        KeyPackage: openmls_traits::storage::traits::KeyPackage<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         hash_ref: &HashReference,
@@ -277,8 +278,8 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn write_psk<
-        PskId: openmls_traits::storage::traits::PskId<1>,
-        PskBundle: openmls_traits::storage::traits::PskBundle<1>,
+        PskId: openmls_traits::storage::traits::PskId<STORAGE_PROVIDER_VERSION>,
+        PskBundle: openmls_traits::storage::traits::PskBundle<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         psk_id: &PskId,
@@ -288,8 +289,8 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn mls_group_join_config<
-        GroupId: openmls_traits::storage::traits::GroupId<1>,
-        MlsGroupJoinConfig: openmls_traits::storage::traits::MlsGroupJoinConfig<1>,
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        MlsGroupJoinConfig: openmls_traits::storage::traits::MlsGroupJoinConfig<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -298,8 +299,8 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn own_leaf_nodes<
-        GroupId: openmls_traits::storage::traits::GroupId<1>,
-        LeafNode: openmls_traits::storage::traits::LeafNode<1>,
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        LeafNode: openmls_traits::storage::traits::LeafNode<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -308,8 +309,8 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn queued_proposal_refs<
-        GroupId: openmls_traits::storage::traits::GroupId<1>,
-        ProposalRef: openmls_traits::storage::traits::ProposalRef<1>,
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        ProposalRef: openmls_traits::storage::traits::ProposalRef<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -318,9 +319,9 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn queued_proposals<
-        GroupId: openmls_traits::storage::traits::GroupId<1>,
-        ProposalRef: openmls_traits::storage::traits::ProposalRef<1>,
-        QueuedProposal: openmls_traits::storage::traits::QueuedProposal<1>,
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        ProposalRef: openmls_traits::storage::traits::ProposalRef<STORAGE_PROVIDER_VERSION>,
+        QueuedProposal: openmls_traits::storage::traits::QueuedProposal<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -329,8 +330,8 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn tree<
-        GroupId: openmls_traits::storage::traits::GroupId<1>,
-        TreeSync: openmls_traits::storage::traits::TreeSync<1>,
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        TreeSync: openmls_traits::storage::traits::TreeSync<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -339,8 +340,8 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn group_context<
-        GroupId: openmls_traits::storage::traits::GroupId<1>,
-        GroupContext: openmls_traits::storage::traits::GroupContext<1>,
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        GroupContext: openmls_traits::storage::traits::GroupContext<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -349,8 +350,8 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn interim_transcript_hash<
-        GroupId: openmls_traits::storage::traits::GroupId<1>,
-        InterimTranscriptHash: openmls_traits::storage::traits::InterimTranscriptHash<1>,
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        InterimTranscriptHash: openmls_traits::storage::traits::InterimTranscriptHash<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -363,8 +364,8 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn confirmation_tag<
-        GroupId: openmls_traits::storage::traits::GroupId<1>,
-        ConfirmationTag: openmls_traits::storage::traits::ConfirmationTag<1>,
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        ConfirmationTag: openmls_traits::storage::traits::ConfirmationTag<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -373,8 +374,8 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn group_state<
-        GroupState: openmls_traits::storage::traits::GroupState<1>,
-        GroupId: openmls_traits::storage::traits::GroupId<1>,
+        GroupState: openmls_traits::storage::traits::GroupState<STORAGE_PROVIDER_VERSION>,
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -383,8 +384,8 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn message_secrets<
-        GroupId: openmls_traits::storage::traits::GroupId<1>,
-        MessageSecrets: openmls_traits::storage::traits::MessageSecrets<1>,
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        MessageSecrets: openmls_traits::storage::traits::MessageSecrets<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -393,8 +394,8 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn resumption_psk_store<
-        GroupId: openmls_traits::storage::traits::GroupId<1>,
-        ResumptionPskStore: openmls_traits::storage::traits::ResumptionPskStore<1>,
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        ResumptionPskStore: openmls_traits::storage::traits::ResumptionPskStore<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -407,8 +408,8 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn own_leaf_index<
-        GroupId: openmls_traits::storage::traits::GroupId<1>,
-        LeafNodeIndex: openmls_traits::storage::traits::LeafNodeIndex<1>,
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        LeafNodeIndex: openmls_traits::storage::traits::LeafNodeIndex<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -417,8 +418,8 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn group_epoch_secrets<
-        GroupId: openmls_traits::storage::traits::GroupId<1>,
-        GroupEpochSecrets: openmls_traits::storage::traits::GroupEpochSecrets<1>,
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        GroupEpochSecrets: openmls_traits::storage::traits::GroupEpochSecrets<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -427,8 +428,8 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn signature_key_pair<
-        SignaturePublicKey: openmls_traits::storage::traits::SignaturePublicKey<1>,
-        SignatureKeyPair: openmls_traits::storage::traits::SignatureKeyPair<1>,
+        SignaturePublicKey: openmls_traits::storage::traits::SignaturePublicKey<STORAGE_PROVIDER_VERSION>,
+        SignatureKeyPair: openmls_traits::storage::traits::SignatureKeyPair<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         public_key: &SignaturePublicKey,
@@ -437,8 +438,8 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn encryption_key_pair<
-        HpkeKeyPair: openmls_traits::storage::traits::HpkeKeyPair<1>,
-        EncryptionKey: openmls_traits::storage::traits::EncryptionKey<1>,
+        HpkeKeyPair: openmls_traits::storage::traits::HpkeKeyPair<STORAGE_PROVIDER_VERSION>,
+        EncryptionKey: openmls_traits::storage::traits::EncryptionKey<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         public_key: &EncryptionKey,
@@ -447,9 +448,9 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn encryption_epoch_key_pairs<
-        GroupId: openmls_traits::storage::traits::GroupId<1>,
-        EpochKey: openmls_traits::storage::traits::EpochKey<1>,
-        HpkeKeyPair: openmls_traits::storage::traits::HpkeKeyPair<1>,
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        EpochKey: openmls_traits::storage::traits::EpochKey<STORAGE_PROVIDER_VERSION>,
+        HpkeKeyPair: openmls_traits::storage::traits::HpkeKeyPair<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -460,8 +461,8 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn key_package<
-        KeyPackageRef: openmls_traits::storage::traits::HashReference<1>,
-        KeyPackage: openmls_traits::storage::traits::KeyPackage<1>,
+        KeyPackageRef: openmls_traits::storage::traits::HashReference<STORAGE_PROVIDER_VERSION>,
+        KeyPackage: openmls_traits::storage::traits::KeyPackage<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         hash_ref: &KeyPackageRef,
@@ -470,8 +471,8 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn psk<
-        PskBundle: openmls_traits::storage::traits::PskBundle<1>,
-        PskId: openmls_traits::storage::traits::PskId<1>,
+        PskBundle: openmls_traits::storage::traits::PskBundle<STORAGE_PROVIDER_VERSION>,
+        PskId: openmls_traits::storage::traits::PskId<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         psk_id: &PskId,
@@ -480,8 +481,8 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn remove_proposal<
-        GroupId: openmls_traits::storage::traits::GroupId<1>,
-        ProposalRef: openmls_traits::storage::traits::ProposalRef<1>,
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        ProposalRef: openmls_traits::storage::traits::ProposalRef<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -490,14 +491,18 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
         StorableGroupIdRef(group_id).delete_proposal::<C, _>(self.connection, proposal_ref)
     }
 
-    fn delete_own_leaf_nodes<GroupId: openmls_traits::storage::traits::GroupId<1>>(
+    fn delete_own_leaf_nodes<
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+    >(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         StorableGroupIdRef(group_id).delete_leaf_nodes::<C>(self.connection)
     }
 
-    fn delete_group_config<GroupId: openmls_traits::storage::traits::GroupId<1>>(
+    fn delete_group_config<
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+    >(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
@@ -505,14 +510,16 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
             .delete_group_data::<C>(self.connection, GroupDataType::JoinGroupConfig)
     }
 
-    fn delete_tree<GroupId: openmls_traits::storage::traits::GroupId<1>>(
+    fn delete_tree<GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         StorableGroupIdRef(group_id).delete_group_data::<C>(self.connection, GroupDataType::Tree)
     }
 
-    fn delete_confirmation_tag<GroupId: openmls_traits::storage::traits::GroupId<1>>(
+    fn delete_confirmation_tag<
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+    >(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
@@ -520,7 +527,9 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
             .delete_group_data::<C>(self.connection, GroupDataType::ConfirmationTag)
     }
 
-    fn delete_group_state<GroupId: openmls_traits::storage::traits::GroupId<1>>(
+    fn delete_group_state<
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+    >(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
@@ -528,14 +537,18 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
             .delete_group_data::<C>(self.connection, GroupDataType::GroupState)
     }
 
-    fn delete_context<GroupId: openmls_traits::storage::traits::GroupId<1>>(
+    fn delete_context<
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+    >(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         StorableGroupIdRef(group_id).delete_group_data::<C>(self.connection, GroupDataType::Context)
     }
 
-    fn delete_interim_transcript_hash<GroupId: openmls_traits::storage::traits::GroupId<1>>(
+    fn delete_interim_transcript_hash<
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+    >(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
@@ -543,7 +556,9 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
             .delete_group_data::<C>(self.connection, GroupDataType::InterimTranscriptHash)
     }
 
-    fn delete_message_secrets<GroupId: openmls_traits::storage::traits::GroupId<1>>(
+    fn delete_message_secrets<
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+    >(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
@@ -551,7 +566,9 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
             .delete_group_data::<C>(self.connection, GroupDataType::MessageSecrets)
     }
 
-    fn delete_all_resumption_psk_secrets<GroupId: openmls_traits::storage::traits::GroupId<1>>(
+    fn delete_all_resumption_psk_secrets<
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+    >(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
@@ -559,7 +576,9 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
             .delete_group_data::<C>(self.connection, GroupDataType::ResumptionPskStore)
     }
 
-    fn delete_own_leaf_index<GroupId: openmls_traits::storage::traits::GroupId<1>>(
+    fn delete_own_leaf_index<
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+    >(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
@@ -567,7 +586,9 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
             .delete_group_data::<C>(self.connection, GroupDataType::OwnLeafIndex)
     }
 
-    fn delete_group_epoch_secrets<GroupId: openmls_traits::storage::traits::GroupId<1>>(
+    fn delete_group_epoch_secrets<
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+    >(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
@@ -576,8 +597,8 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn clear_proposal_queue<
-        GroupId: openmls_traits::storage::traits::GroupId<1>,
-        ProposalRef: openmls_traits::storage::traits::ProposalRef<1>,
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        ProposalRef: openmls_traits::storage::traits::ProposalRef<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -587,7 +608,7 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn delete_signature_key_pair<
-        SignaturePublicKey: openmls_traits::storage::traits::SignaturePublicKey<1>,
+        SignaturePublicKey: openmls_traits::storage::traits::SignaturePublicKey<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         public_key: &SignaturePublicKey,
@@ -596,7 +617,7 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn delete_encryption_key_pair<
-        EncryptionKey: openmls_traits::storage::traits::EncryptionKey<1>,
+        EncryptionKey: openmls_traits::storage::traits::EncryptionKey<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         public_key: &EncryptionKey,
@@ -605,8 +626,8 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
     }
 
     fn delete_encryption_epoch_key_pairs<
-        GroupId: openmls_traits::storage::traits::GroupId<1>,
-        EpochKey: openmls_traits::storage::traits::EpochKey<1>,
+        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        EpochKey: openmls_traits::storage::traits::EpochKey<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -620,14 +641,16 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
         )
     }
 
-    fn delete_key_package<KeyPackageRef: openmls_traits::storage::traits::HashReference<1>>(
+    fn delete_key_package<
+        KeyPackageRef: openmls_traits::storage::traits::HashReference<STORAGE_PROVIDER_VERSION>,
+    >(
         &self,
         hash_ref: &KeyPackageRef,
     ) -> Result<(), Self::Error> {
         StorableHashRef(hash_ref).delete_key_package::<C>(self.connection)
     }
 
-    fn delete_psk<PskKey: openmls_traits::storage::traits::PskId<1>>(
+    fn delete_psk<PskKey: openmls_traits::storage::traits::PskId<STORAGE_PROVIDER_VERSION>>(
         &self,
         psk_id: &PskKey,
     ) -> Result<(), Self::Error> {
@@ -638,4 +661,4 @@ impl<'a, C: Codec> StorageProvider<1> for SqliteStorageProvider<'a, C> {
 #[derive(Serialize, Deserialize)]
 struct Aad(Vec<u8>);
 
-impl Entity<1> for Aad {}
+impl Entity<STORAGE_PROVIDER_VERSION> for Aad {}

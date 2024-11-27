@@ -1,11 +1,11 @@
 CREATE TABLE IF NOT EXISTS openmls_encryption_keys (
-    provider_version INTEGER DEFAULT 1 NOT NULL,
+    provider_version INTEGER NOT NULL,
     public_key BLOB PRIMARY KEY,
     key_pair BLOB NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS openmls_epoch_keys_pairs (
-    provider_version INTEGER DEFAULT 1 NOT NULL,
+    provider_version INTEGER NOT NULL,
     group_id BLOB NOT NULL,
     epoch_id BLOB NOT NULL,
     leaf_index INTEGER NOT NULL,
@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS openmls_epoch_keys_pairs (
 );      
 
 CREATE TABLE IF NOT EXISTS openmls_group_data (
-    provider_version INTEGER DEFAULT 1 NOT NULL,
+    provider_version INTEGER NOT NULL,
     group_id BLOB NOT NULL,
     data_type TEXT NOT NULL CHECK (data_type IN (
         'join_group_config', 
@@ -34,19 +34,19 @@ CREATE TABLE IF NOT EXISTS openmls_group_data (
 );
         
 CREATE TABLE IF NOT EXISTS openmls_key_packages (
-    provider_version INTEGER DEFAULT 1 NOT NULL,
+    provider_version INTEGER NOT NULL,
     key_package_ref BLOB PRIMARY KEY,
     key_package BLOB NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS openmls_own_leaf_nodes (
-    provider_version INTEGER DEFAULT 1 NOT NULL,
+    provider_version INTEGER NOT NULL,
     group_id BLOB PRIMARY KEY,
     leaf_node BLOB NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS openmls_proposals (
-    provider_version INTEGER DEFAULT 1 NOT NULL,
+    provider_version INTEGER NOT NULL,
     group_id BLOB NOT NULL,
     proposal_ref BLOB NOT NULL,
     proposal BLOB NOT NULL,
@@ -54,13 +54,13 @@ CREATE TABLE IF NOT EXISTS openmls_proposals (
 );
 
 CREATE TABLE IF NOT EXISTS openmls_psks (
-    provider_version INTEGER DEFAULT 1 NOT NULL,
+    provider_version INTEGER NOT NULL,
     psk_id BLOB PRIMARY KEY,
     psk_bundle BLOB NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS openmls_signature_keys (
-    provider_version INTEGER DEFAULT 1 NOT NULL,
+    provider_version INTEGER NOT NULL,
     public_key BLOB PRIMARY KEY,
     signature_key BLOB NOT NULL
 );

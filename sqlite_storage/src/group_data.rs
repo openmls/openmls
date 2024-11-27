@@ -7,6 +7,7 @@ use crate::{
     codec::Codec,
     storage_provider::StorableGroupIdRef,
     wrappers::{EntityRefWrapper, EntityWrapper, KeyRefWrapper},
+    STORAGE_PROVIDER_VERSION,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -62,24 +63,32 @@ impl FromSql for GroupDataType {
     }
 }
 
-pub(crate) struct StorableGroupData<GroupData: Entity<1>>(pub GroupData);
+pub(crate) struct StorableGroupData<GroupData: Entity<STORAGE_PROVIDER_VERSION>>(pub GroupData);
 
-impl<GroupData: Entity<1>> StorableGroupData<GroupData> {
+impl<GroupData: Entity<STORAGE_PROVIDER_VERSION>> StorableGroupData<GroupData> {
     fn from_row<C: Codec>(row: &rusqlite::Row) -> Result<Self, rusqlite::Error> {
         let EntityWrapper::<C, _>(payload, ..) = row.get(0)?;
         Ok(Self(payload))
     }
 
-    pub(super) fn load<C: Codec, GroupId: Key<1>>(
+    pub(super) fn load<C: Codec, GroupId: Key<STORAGE_PROVIDER_VERSION>>(
         connection: &Connection,
         group_id: &GroupId,
         data_type: GroupDataType,
     ) -> Result<Option<GroupData>, rusqlite::Error> {
         let mut stmt = connection.prepare(
-            "SELECT group_data FROM openmls_group_data WHERE group_id = ? AND data_type = ?",
+            "SELECT group_data 
+            FROM openmls_group_data 
+            WHERE group_id = ? 
+                AND data_type = ?
+                AND provider_version = ?",
         )?;
         stmt.query_row(
-            params![KeyRefWrapper::<C, _>(group_id, PhantomData), data_type],
+            params![
+                KeyRefWrapper::<C, _>(group_id, PhantomData),
+                data_type,
+                STORAGE_PROVIDER_VERSION
+            ],
             Self::from_row::<C>,
         )
         .map(|x| x.0)
@@ -87,36 +96,47 @@ impl<GroupData: Entity<1>> StorableGroupData<GroupData> {
     }
 }
 
-pub(super) struct StorableGroupDataRef<'a, GroupData: Entity<1>>(pub &'a GroupData);
+pub(super) struct StorableGroupDataRef<'a, GroupData: Entity<STORAGE_PROVIDER_VERSION>>(
+    pub &'a GroupData,
+);
 
-impl<'a, GroupData: Entity<1>> StorableGroupDataRef<'a, GroupData> {
-    pub(super) fn store<C: Codec, GroupId: Key<1>>(
+impl<'a, GroupData: Entity<STORAGE_PROVIDER_VERSION>> StorableGroupDataRef<'a, GroupData> {
+    pub(super) fn store<C: Codec, GroupId: Key<STORAGE_PROVIDER_VERSION>>(
         &self,
         connection: &Connection,
         group_id: &GroupId,
         data_type: GroupDataType,
     ) -> Result<(), rusqlite::Error> {
         connection.execute(
-            "INSERT OR REPLACE INTO openmls_group_data (group_id, data_type, group_data) VALUES (?, ?, ?)",
+            "INSERT OR REPLACE INTO openmls_group_data (group_id, data_type, group_data, provider_version) 
+            VALUES (?, ?, ?, ?)",
             params![
                 KeyRefWrapper::<C, _>(group_id, PhantomData),
                 data_type,
-                EntityRefWrapper::<C, _>(self.0, PhantomData)
+                EntityRefWrapper::<C, _>(self.0, PhantomData),
+                STORAGE_PROVIDER_VERSION
             ],
         )?;
         Ok(())
     }
 }
 
-impl<'a, GroupId: Key<1>> StorableGroupIdRef<'a, GroupId> {
+impl<'a, GroupId: Key<STORAGE_PROVIDER_VERSION>> StorableGroupIdRef<'a, GroupId> {
     pub(super) fn delete_group_data<C: Codec>(
         &self,
         connection: &Connection,
         data_type: GroupDataType,
     ) -> Result<(), rusqlite::Error> {
         connection.execute(
-            "DELETE FROM openmls_group_data WHERE group_id = ? AND data_type = ?",
-            params![KeyRefWrapper::<C, _>(self.0, PhantomData), data_type],
+            "DELETE FROM openmls_group_data 
+            WHERE group_id = ? 
+                AND data_type = ?
+                AND provider_version = ?",
+            params![
+                KeyRefWrapper::<C, _>(self.0, PhantomData),
+                data_type,
+                STORAGE_PROVIDER_VERSION
+            ],
         )?;
         Ok(())
     }
