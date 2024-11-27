@@ -75,28 +75,9 @@ pub struct Complete {
 /// Then comes the [`Complete`] stage, which denotes that all data has been validated. From this
 /// stage, the commit can be staged in the group, and the outgoing messages returned.
 ///
-/// For example, to create a commit to a new Add proposal with a KeyPackage `key_package_to_add`
-/// that does not commit to the proposals in the proposal store, one could build the commit as
-/// follows:
+/// See the [book] for an example on to create a commit to a new Add proposal.
 ///
-/// ```rust
-/// let message_bundle: CommitBuilder = mls_group
-///   .commit_builder()
-///   .consume_proposal_store(false)
-///   .add_proposal(key_package_to_add)
-///   .load_psks(provider.storage())?
-///   .build(provider.rand(), provider.crypto(), signer, app_policy_proposals)?
-///   .stage_commit(provider)?;
-///
-/// let commit = message_bundle.commit();
-/// let welcome = message_bundle.welcome().expect("expected a welcome since there was an add");
-/// let group_info = message_bundle.welcome().expect("expected a group info since there was an add");
-/// ```
-///
-/// In this example `signer` is a reference to a [`Signer`] and `app_policy_proposals` is the
-/// application-defined policy for which proposals to accept, implemented by an
-/// `FnMut(&QueuedProposal) -> bool`.
-///
+/// [book]: https://book.openmls.tech/user_manual/add_members.html
 #[derive(Debug)]
 pub struct CommitBuilder<'a, T> {
     /// A mutable reference to the MlsGroup. This means that we hold an exclusive lock on the group

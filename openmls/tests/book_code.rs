@@ -1653,7 +1653,7 @@ fn commit_builder() {
             provider.rand(),
             provider.crypto(),
             &alice_signature_keys,
-            |_| true,
+            |_proposal| true,
         )
         .expect("error validating data and building commit")
         .stage_commit(provider)

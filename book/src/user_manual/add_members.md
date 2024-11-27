@@ -16,7 +16,10 @@ Users could also use the new `CommitBuilder` API, which would look like this:
 {{#include ../../../openmls/tests/book_code.rs:alice_adds_bob_with_commit_builder}}
 ```
 
-Note that the reason that the `KeyPackage` is wrapped in a `Some` is that `Option<KeyPackage>` implements `IntoIterator<Item = KeyPackage>`, which is the type bounds of that function. This means that the function also works with any iterator over `KeyPackage` items or a `Vec<KeyPackage>`.
+Some notes on the arguments to the builder stages:
+
+- The reason that the `KeyPackage` is wrapped in a `Some` is that `Option<KeyPackage>` implements `IntoIterator<Item = KeyPackage>`, which is the type bounds of that function. This means that the function also works with any iterator over `KeyPackage` items or a `Vec<KeyPackage>`.
+- The closure is a predicate over `&QueuedProposal` and represents the policy of which proposals are deemed acceptable in the application.
 
 This function returns a `CommitMessageBundle`, from which the `MlsMessageOut`, `Welcome` and `GroupInfo` can be extracted.
 
