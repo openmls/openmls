@@ -34,7 +34,7 @@ pub(crate) struct PathComputationResult {
 
 impl<'a> PublicGroupDiff<'a> {
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn compute_path<T>(
+    pub(crate) fn compute_path(
         &mut self,
         rand: &impl OpenMlsRand,
         crypto: &impl OpenMlsCrypto,
@@ -44,7 +44,7 @@ impl<'a> PublicGroupDiff<'a> {
         leaf_node_params: &LeafNodeParameters,
         signer: &impl Signer,
         gc_extensions: Option<Extensions>,
-    ) -> Result<PathComputationResult, CreateCommitError<T>> {
+    ) -> Result<PathComputationResult, CreateCommitError> {
         let ciphersuite = self.group_context().ciphersuite();
 
         let leaf_node_params = if let CommitType::External(credential_with_key) = commit_type {

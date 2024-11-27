@@ -82,7 +82,7 @@ impl MlsGroup {
         params: CreateCommitParams,
         provider: &Provider,
         signer: &impl Signer,
-    ) -> Result<CreateCommitResult, CreateCommitError<Provider::StorageError>> {
+    ) -> Result<CreateCommitResult, CreateCommitError> {
         // We  are building an external commit. This means we have to pull the
         // framing parameters out of the create commit parameteres instead of the group. Since
         // these are set together with the group mode, we can be sure that this is `Some(..)` (see

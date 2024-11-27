@@ -15,7 +15,7 @@ use crate::{
             CreateAddProposalError, CreateCommitError, MergeCommitError, StageCommitError,
             ValidationError,
         },
-        CreateGroupContextExtProposalError,
+        CommitBuilderStageError, CreateGroupContextExtProposalError,
     },
     schedule::errors::PskError,
     treesync::{
@@ -140,7 +140,10 @@ pub enum AddMembersError<StorageError> {
     EmptyInput(#[from] EmptyInputError),
     /// See [`CreateCommitError`] for more details.
     #[error(transparent)]
-    CreateCommitError(#[from] CreateCommitError<StorageError>),
+    CreateCommitError(#[from] CreateCommitError),
+    /// See [`CommitBuilderStageError`] for more details.
+    #[error(transparent)]
+    CommitBuilderStageError(#[from] CommitBuilderStageError<StorageError>),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
@@ -197,7 +200,10 @@ pub enum RemoveMembersError<StorageError> {
     EmptyInput(#[from] EmptyInputError),
     /// See [`CreateCommitError`] for more details.
     #[error(transparent)]
-    CreateCommitError(#[from] CreateCommitError<StorageError>),
+    CreateCommitError(#[from] CreateCommitError),
+    /// See [`CommitBuilderStageError`] for more details.
+    #[error(transparent)]
+    CommitBuilderStageError(#[from] CommitBuilderStageError<StorageError>),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
@@ -231,7 +237,10 @@ pub enum SelfUpdateError<StorageError> {
     LibraryError(#[from] LibraryError),
     /// See [`CreateCommitError`] for more details.
     #[error(transparent)]
-    CreateCommitError(#[from] CreateCommitError<StorageError>),
+    CreateCommitError(#[from] CreateCommitError),
+    /// See [`CommitBuilderStageError`] for more details.
+    #[error(transparent)]
+    CommitBuilderStageError(#[from] CommitBuilderStageError<StorageError>),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
@@ -269,7 +278,10 @@ pub enum CommitToPendingProposalsError<StorageError> {
     LibraryError(#[from] LibraryError),
     /// See [`CreateCommitError`] for more details.
     #[error(transparent)]
-    CreateCommitError(#[from] CreateCommitError<StorageError>),
+    CreateCommitError(#[from] CreateCommitError),
+    /// See [`CommitBuilderStageError`] for more details.
+    #[error(transparent)]
+    CommitBuilderStageError(#[from] CommitBuilderStageError<StorageError>),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),

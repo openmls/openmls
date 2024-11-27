@@ -1,8 +1,6 @@
 //! This module tests the validation of commits as defined in
 //! https://book.openmls.tech/message_validation.html#commit-message-validation
 
-use std::convert::Infallible;
-
 use openmls_traits::{prelude::*, signatures::Signer, types::Ciphersuite};
 use proposal_store::QueuedProposal;
 use tls_codec::{Deserialize, Serialize};
@@ -360,7 +358,7 @@ fn test_valsem201() {
             .force_self_update(false)
             .load_psks(provider.storage())
             .unwrap()
-            .build::<Infallible>(
+            .build(
                 provider.rand(),
                 provider.crypto(),
                 &alice_credential.signer,

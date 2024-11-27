@@ -10,9 +10,9 @@ use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::{signable::Signable as _, Secret},
     group::{
-        create_commit::CommitType, diff::compute_path::PathComputationResult, CreateCommitError,
-        Extension, Extensions, ExternalPubExtension, ProposalQueue, ProposalQueueError,
-        QueuedProposal, RatchetTreeExtension, StagedCommit,
+        create_commit::CommitType, diff::compute_path::PathComputationResult,
+        CommitBuilderStageError, CreateCommitError, Extension, Extensions, ExternalPubExtension,
+        ProposalQueue, ProposalQueueError, QueuedProposal, RatchetTreeExtension, StagedCommit,
     },
     key_packages::KeyPackage,
     messages::{
@@ -74,6 +74,29 @@ pub struct Complete {
 ///
 /// Then comes the [`Complete`] stage, which denotes that all data has been validated. From this
 /// stage, the commit can be staged in the group, and the outgoing messages returned.
+///
+/// For example, to create a commit to a new Add proposal with a KeyPackage `key_package_to_add`
+/// that does not commit to the proposals in the proposal store, one could build the commit as
+/// follows:
+///
+/// ```rust
+/// let message_bundle: CommitBuilder = mls_group
+///   .commit_builder()
+///   .consume_proposal_store(false)
+///   .add_proposal(key_package_to_add)
+///   .load_psks(provider.storage())?
+///   .build(provider.rand(), provider.crypto(), signer, app_policy_proposals)?
+///   .stage_commit(provider)?;
+///
+/// let commit = message_bundle.commit();
+/// let welcome = message_bundle.welcome().expect("expected a welcome since there was an add");
+/// let group_info = message_bundle.welcome().expect("expected a group info since there was an add");
+/// ```
+///
+/// In this example `signer` is a reference to a [`Signer`] and `app_policy_proposals` is the
+/// application-defined policy for which proposals to accept, implemented by an
+/// `FnMut(&QueuedProposal) -> bool`.
+///
 #[derive(Debug)]
 pub struct CommitBuilder<'a, T> {
     /// A mutable reference to the MlsGroup. This means that we hold an exclusive lock on the group
@@ -195,7 +218,7 @@ impl<'a> CommitBuilder<'a, Initial> {
     pub fn load_psks<Storage: StorageProvider>(
         self,
         storage: &'a Storage,
-    ) -> Result<CommitBuilder<LoadedPsks>, CreateCommitError<Storage::Error>> {
+    ) -> Result<CommitBuilder<LoadedPsks>, CreateCommitError> {
         let psk_ids: Vec<_> = self
             .stage
             .own_proposals
@@ -239,13 +262,13 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
     /// Validates the inputs and builds the commit. The last argument `f` is a function that lets
     /// the caller filter the proposals that are considered for inclusion. This provides a way for
     /// the application to enforce custom policies in the creation of commits.
-    pub fn build<T>(
+    pub fn build(
         self,
         rand: &impl OpenMlsRand,
         crypto: &impl OpenMlsCrypto,
         signer: &impl Signer,
         f: impl FnMut(&QueuedProposal) -> bool,
-    ) -> Result<CommitBuilder<'a, Complete>, CreateCommitError<T>> {
+    ) -> Result<CommitBuilder<'a, Complete>, CreateCommitError> {
         let ciphersuite = self.group.ciphersuite();
         let sender = Sender::build_member(self.group.own_leaf_index());
         let (cur_stage, builder) = self.take_stage();
@@ -366,7 +389,7 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
                 // tree hash.
                 diff.compute_path(
                     rand,
-                crypto,
+                    crypto,
                     builder.group.own_leaf_index(),
                     apply_proposals_values.exclusion_list(),
                     &CommitType::Member,
@@ -581,7 +604,7 @@ impl<'a> CommitBuilder<'a, Complete> {
     pub fn stage_commit<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
-    ) -> Result<CommitMessageBundle, CreateCommitError<Provider::StorageError>> {
+    ) -> Result<CommitMessageBundle, CommitBuilderStageError<Provider::StorageError>> {
         let Self {
             group,
             stage: Complete {
@@ -599,7 +622,7 @@ impl<'a> CommitBuilder<'a, Complete> {
         provider
             .storage()
             .write_group_state(group.group_id(), &group.group_state)
-            .map_err(CreateCommitError::KeyStoreError)?;
+            .map_err(CommitBuilderStageError::KeyStoreError)?;
 
         group.reset_aad();
 
