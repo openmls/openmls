@@ -174,6 +174,7 @@ impl PublicGroup {
     ///
     /// [valn0111]: https://validation.openmls.tech/#valn0111
     /// [valn0112]: https://validation.openmls.tech/#valn0112
+    /// [valn1208]: https://validation.openmls.tech/#valn1208
     pub(crate) fn validate_key_uniqueness(
         &self,
         proposal_queue: &ProposalQueue,
@@ -491,6 +492,7 @@ impl PublicGroup {
         &self,
         proposal_queue: &ProposalQueue,
     ) -> Result<(), ExternalCommitValidationError> {
+        // [valno0401](https://validation.openmls.tech/#valno0401)
         let count_external_init_proposals = proposal_queue
             .filtered_by_type(ProposalType::ExternalInit)
             .count();
@@ -503,6 +505,7 @@ impl PublicGroup {
         }
 
         // ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
+        // [valno0404](https://validation.openmls.tech/#valno0404)
         let contains_denied_proposal = proposal_queue.queued_proposals().any(|p| {
             let is_inline = p.proposal_or_ref_type() == ProposalOrRefType::Proposal;
             let is_allowed_type = matches!(
