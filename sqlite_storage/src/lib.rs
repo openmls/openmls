@@ -37,11 +37,3 @@ mod wrappers;
 
 pub use codec::Codec;
 pub use storage_provider::SqliteStorageProvider;
-
-trait Storable {
-    const CREATE_TABLE_STATEMENT: &'static str;
-
-    fn from_row<C: Codec>(row: &rusqlite::Row) -> Result<Self, rusqlite::Error>
-    where
-        Self: Sized;
-}

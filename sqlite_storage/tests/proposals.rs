@@ -1,7 +1,7 @@
-use openmls_sqlite_storage::Codec;
+use openmls_sqlite_storage::{Codec, SqliteStorageProvider};
 use openmls_traits::storage::{
     traits::{self},
-    Entity, Key, StorageProvider, CURRENT_VERSION,
+    Entity, Key, StorageProvider,
 };
 use serde::{Deserialize, Serialize};
 
@@ -23,19 +23,19 @@ impl Codec for JsonCodec {
 // Test types
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 struct TestGroupId(Vec<u8>);
-impl traits::GroupId<CURRENT_VERSION> for TestGroupId {}
-impl Key<CURRENT_VERSION> for TestGroupId {}
+impl traits::GroupId<1> for TestGroupId {}
+impl Key<1> for TestGroupId {}
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Copy)]
 struct ProposalRef(usize);
-impl traits::ProposalRef<CURRENT_VERSION> for ProposalRef {}
-impl Key<CURRENT_VERSION> for ProposalRef {}
-impl Entity<CURRENT_VERSION> for ProposalRef {}
+impl traits::ProposalRef<1> for ProposalRef {}
+impl Key<1> for ProposalRef {}
+impl Entity<1> for ProposalRef {}
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 struct Proposal(Vec<u8>);
-impl traits::QueuedProposal<CURRENT_VERSION> for Proposal {}
-impl Entity<CURRENT_VERSION> for Proposal {}
+impl traits::QueuedProposal<1> for Proposal {}
+impl Entity<1> for Proposal {}
 
 /// Write and read some proposals
 #[test]
@@ -44,9 +44,9 @@ fn read_write_delete() {
     let proposals = (0..10)
         .map(|i| Proposal(format!("TestProposal{i}").as_bytes().to_vec()))
         .collect::<Vec<_>>();
-    let connection = rusqlite::Connection::open_in_memory().unwrap();
+    let mut connection = rusqlite::Connection::open_in_memory().unwrap();
+    SqliteStorageProvider::<JsonCodec>::initialize(&mut connection).unwrap();
     let storage = openmls_sqlite_storage::SqliteStorageProvider::<JsonCodec>::new(&connection);
-    storage.create_tables().unwrap();
 
     // Store proposals
     for (i, proposal) in proposals.iter().enumerate() {

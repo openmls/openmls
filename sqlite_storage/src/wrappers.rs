@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use openmls_traits::storage::{Entity, Key, CURRENT_VERSION};
+use openmls_traits::storage::{Entity, Key};
 use rusqlite::{
     types::{FromSql, ToSqlOutput},
     ToSql,
@@ -10,12 +10,9 @@ use serde::Serialize;
 use crate::codec::Codec;
 
 #[derive(Debug, Serialize)]
-pub(super) struct KeyRefWrapper<'a, C: Codec, T: Key<CURRENT_VERSION>>(
-    pub &'a T,
-    pub PhantomData<C>,
-);
+pub(super) struct KeyRefWrapper<'a, C: Codec, T: Key<1>>(pub &'a T, pub PhantomData<C>);
 
-impl<C: Codec, T: Key<CURRENT_VERSION>> ToSql for KeyRefWrapper<'_, C, T> {
+impl<C: Codec, T: Key<1>> ToSql for KeyRefWrapper<'_, C, T> {
     fn to_sql(&self) -> rusqlite::Result<rusqlite::types::ToSqlOutput<'_>> {
         let key_bytes =
             C::to_vec(&self.0).map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
@@ -23,9 +20,9 @@ impl<C: Codec, T: Key<CURRENT_VERSION>> ToSql for KeyRefWrapper<'_, C, T> {
     }
 }
 
-pub(super) struct EntityWrapper<C: Codec, T: Entity<CURRENT_VERSION>>(pub T, pub PhantomData<C>);
+pub(super) struct EntityWrapper<C: Codec, T: Entity<1>>(pub T, pub PhantomData<C>);
 
-impl<C: Codec, T: Entity<CURRENT_VERSION>> FromSql for EntityWrapper<C, T> {
+impl<C: Codec, T: Entity<1>> FromSql for EntityWrapper<C, T> {
     fn column_result(value: rusqlite::types::ValueRef<'_>) -> rusqlite::types::FromSqlResult<Self> {
         let entity = C::from_slice(value.as_blob()?)
             .map_err(|e| rusqlite::types::FromSqlError::Other(Box::new(e)))?;
@@ -33,12 +30,9 @@ impl<C: Codec, T: Entity<CURRENT_VERSION>> FromSql for EntityWrapper<C, T> {
     }
 }
 
-pub(super) struct EntityRefWrapper<'a, C: Codec, T: Entity<CURRENT_VERSION>>(
-    pub &'a T,
-    pub PhantomData<C>,
-);
+pub(super) struct EntityRefWrapper<'a, C: Codec, T: Entity<1>>(pub &'a T, pub PhantomData<C>);
 
-impl<'a, C: Codec, T: Entity<CURRENT_VERSION>> ToSql for EntityRefWrapper<'a, C, T> {
+impl<'a, C: Codec, T: Entity<1>> ToSql for EntityRefWrapper<'a, C, T> {
     fn to_sql(&self) -> rusqlite::Result<rusqlite::types::ToSqlOutput<'_>> {
         let entity_bytes =
             C::to_vec(&self.0).map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
@@ -48,12 +42,9 @@ impl<'a, C: Codec, T: Entity<CURRENT_VERSION>> ToSql for EntityRefWrapper<'a, C,
     }
 }
 
-pub(super) struct EntitySliceWrapper<'a, C: Codec, T: Entity<CURRENT_VERSION>>(
-    pub &'a [T],
-    pub PhantomData<C>,
-);
+pub(super) struct EntitySliceWrapper<'a, C: Codec, T: Entity<1>>(pub &'a [T], pub PhantomData<C>);
 
-impl<'a, C: Codec, T: Entity<CURRENT_VERSION>> ToSql for EntitySliceWrapper<'a, C, T> {
+impl<'a, C: Codec, T: Entity<1>> ToSql for EntitySliceWrapper<'a, C, T> {
     fn to_sql(&self) -> rusqlite::Result<rusqlite::types::ToSqlOutput<'_>> {
         let entity_bytes =
             C::to_vec(&self.0).map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
@@ -63,12 +54,9 @@ impl<'a, C: Codec, T: Entity<CURRENT_VERSION>> ToSql for EntitySliceWrapper<'a, 
     }
 }
 
-pub(super) struct EntityVecWrapper<C: Codec, T: Entity<CURRENT_VERSION>>(
-    pub Vec<T>,
-    pub PhantomData<C>,
-);
+pub(super) struct EntityVecWrapper<C: Codec, T: Entity<1>>(pub Vec<T>, pub PhantomData<C>);
 
-impl<C: Codec, T: Entity<CURRENT_VERSION>> FromSql for EntityVecWrapper<C, T> {
+impl<C: Codec, T: Entity<1>> FromSql for EntityVecWrapper<C, T> {
     fn column_result(value: rusqlite::types::ValueRef<'_>) -> rusqlite::types::FromSqlResult<Self> {
         let entities = C::from_slice(value.as_blob()?)
             .map_err(|e| rusqlite::types::FromSqlError::Other(Box::new(e)))?;
