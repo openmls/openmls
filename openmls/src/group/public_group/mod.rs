@@ -162,7 +162,7 @@ impl PublicGroup {
             return Err(CreationFromExternalError::UnsupportedMlsVersion);
         }
 
-        let group_context = GroupContext::from(group_info.clone());
+        let group_context = group_info.group_context().clone();
 
         let interim_transcript_hash = {
             let input = InterimTranscriptHashInput::from(group_info.confirmation_tag());

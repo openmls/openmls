@@ -493,7 +493,8 @@ fn test_verify_staged_commit_credentials(
 
     let (_msg, welcome_option, _group_info) = alice_group
         .self_update(provider, &alice_signer, LeafNodeParameters::default())
-        .expect("error creating self-update commit");
+        .expect("error creating self-update commit")
+        .into_messages();
 
     // Merging the pending commit should clear the pending commit and we should
     // end up in the same state as bob.
@@ -535,7 +536,8 @@ fn test_verify_staged_commit_credentials(
     // === Make a new, empty commit and check that the leaf node credentials match ===
     let (commit_msg, _welcome_option, _group_info) = alice_group
         .self_update(provider, &alice_signer, LeafNodeParameters::default())
-        .expect("error creating self-update commit");
+        .expect("error creating self-update commit")
+        .into_contents();
 
     // empty commits should only produce a single message
     assert!(_welcome_option.is_none());
@@ -673,7 +675,8 @@ fn test_commit_with_update_path_leaf_node(
     println!("\nCreating commit with add proposal.");
     let (_msg, welcome_option, _group_info) = alice_group
         .self_update(provider, &alice_signer, LeafNodeParameters::default())
-        .expect("error creating self-update commit");
+        .expect("error creating self-update commit")
+        .into_messages();
     println!("Done creating commit.");
 
     // Merging the pending commit should clear the pending commit and we should
@@ -718,7 +721,8 @@ fn test_commit_with_update_path_leaf_node(
     println!("\nCreating self-update commit.");
     let (commit_msg, _welcome_option, _group_info) = alice_group
         .self_update(provider, &alice_signer, LeafNodeParameters::default())
-        .expect("error creating self-update commit");
+        .expect("error creating self-update commit")
+        .into_messages();
     println!("Done creating commit.");
 
     // empty commits should only produce a single message
@@ -869,7 +873,8 @@ fn test_pending_commit_logic(
     println!("\nCreating commit with add proposal.");
     let (_msg, _welcome_option, _group_info) = alice_group
         .self_update(provider, &alice_signer, LeafNodeParameters::default())
-        .expect("error creating self-update commit");
+        .expect("error creating self-update commit")
+        .into_messages();
     println!("Done creating commit.");
 
     // There should be a pending commit after issueing a proposal.
@@ -936,7 +941,8 @@ fn test_pending_commit_logic(
     // Creating a new commit should commit the same proposals.
     let (_msg, welcome_option, _group_info) = alice_group
         .self_update(provider, &alice_signer, LeafNodeParameters::default())
-        .expect("error creating self-update commit");
+        .expect("error creating self-update commit")
+        .into_messages();
 
     // Merging the pending commit should clear the pending commit and we should
     // end up in the same state as bob.
@@ -976,11 +982,13 @@ fn test_pending_commit_logic(
     // While a commit is pending, merging Bob's commit should clear the pending commit.
     let (_msg, _welcome_option, _group_info) = alice_group
         .self_update(provider, &alice_signer, LeafNodeParameters::default())
-        .expect("error creating self-update commit");
+        .expect("error creating self-update commit")
+        .into_messages();
 
     let (msg, _welcome_option, _group_info) = bob_group
         .self_update(provider, &bob_signer, LeafNodeParameters::default())
-        .expect("error creating self-update commit");
+        .expect("error creating self-update commit")
+        .into_messages();
 
     let alice_processed_message = alice_group
         .process_message(provider, msg.into_protocol_message().unwrap())
@@ -1048,8 +1056,6 @@ fn key_package_deletion() {
     .expect("Error creating staged join from Welcome")
     .into_group(provider)
     .expect("Error creating group from staged join");
-
-    use openmls_traits::storage::StorageProvider;
 
     // TEST: The key package must be gone from the key store.
     let result: Option<KeyPackageBundle> = provider
@@ -2209,7 +2215,8 @@ fn update_path() {
 
     let (update_bob, _welcome_option, _group_info_option) = group_bob
         .self_update(provider, &bob_signature_keys, LeafNodeParameters::default())
-        .expect("Could not create proposal.");
+        .expect("Could not create proposal.")
+        .into_contents();
 
     // Now we break Alice's HPKE ciphertext in Bob's commit by breaking
     // apart the commit, manipulating the ciphertexts and the piecing it
@@ -2323,7 +2330,8 @@ fn psks() {
     // === Bob updates and commits ===
     let (_commit, _welcome_option, _group_info_option) = bob_group
         .self_update(provider, &bob_signature_keys, LeafNodeParameters::default())
-        .expect("An unexpected error occurred.");
+        .expect("An unexpected error occurred.")
+        .into_contents();
 }
 
 // Test several scenarios when PSKs are used in a group
@@ -2403,7 +2411,8 @@ fn own_commit_processing(
             &alice_signature_keys,
             LeafNodeParameters::default(),
         )
-        .expect("Could not create commit");
+        .expect("Could not create commit")
+        .into_contents();
 
     let commit_in = MlsMessageIn::from(commit_out);
 

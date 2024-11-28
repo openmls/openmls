@@ -124,7 +124,8 @@ fn test_valsem002() {
             &_alice_credential.signer,
             LeafNodeParameters::default(),
         )
-        .expect("Could not self-update.");
+        .expect("Could not self-update.")
+        .into_contents();
 
     let serialized_message = message
         .tls_serialize_detached()
@@ -175,7 +176,8 @@ fn test_valsem003() {
             &_alice_credential.signer,
             LeafNodeParameters::default(),
         )
-        .expect("Could not self update.");
+        .expect("Could not self update.")
+        .into_contents();
     alice_group.merge_pending_commit(provider).unwrap();
 
     alice_group
@@ -203,7 +205,8 @@ fn test_valsem003() {
             &_alice_credential.signer,
             LeafNodeParameters::default(),
         )
-        .expect("Could not add member.");
+        .expect("Could not add member.")
+        .into_contents();
 
     let current_epoch = alice_group.epoch();
 
@@ -276,7 +279,8 @@ fn test_valsem004() {
             &_alice_credential.signer,
             LeafNodeParameters::default(),
         )
-        .expect("Could not self-update.");
+        .expect("Could not self-update.")
+        .into_contents();
 
     let serialized_message = message
         .tls_serialize_detached()
@@ -337,7 +341,8 @@ fn test_valsem005() {
             &_alice_credential.signer,
             LeafNodeParameters::default(),
         )
-        .expect("Could not self-update.");
+        .expect("Could not self-update.")
+        .into_contents();
 
     let serialized_message = message
         .tls_serialize_detached()
@@ -445,7 +450,8 @@ fn test_valsem007() {
             &_alice_credential.signer,
             LeafNodeParameters::default(),
         )
-        .expect("Could not self-update.");
+        .expect("Could not self-update.")
+        .into_contents();
 
     let serialized_message = message
         .tls_serialize_detached()
@@ -496,7 +502,8 @@ fn test_valsem008() {
             &_alice_credential.signer,
             LeafNodeParameters::default(),
         )
-        .expect("Could not self-update.");
+        .expect("Could not self-update.")
+        .into_contents();
 
     let serialized_message = message
         .tls_serialize_detached()
@@ -554,7 +561,8 @@ fn test_valsem009() {
             &_alice_credential.signer,
             LeafNodeParameters::default(),
         )
-        .expect("Could not self-update.");
+        .expect("Could not self-update.")
+        .into_contents();
 
     let serialized_message = message
         .tls_serialize_detached()
@@ -615,7 +623,8 @@ fn test_valsem010() {
             &_alice_credential.signer,
             LeafNodeParameters::default(),
         )
-        .expect("Could not self update.");
+        .expect("Could not self update.")
+        .into_contents();
 
     let serialized_message = message
         .tls_serialize_detached()

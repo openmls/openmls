@@ -77,7 +77,8 @@ fn create_commit_optional_path(
     // Alice updates
     let (commit_message, _, _) = alice_group
         .self_update(provider, &alice_signer, LeafNodeParameters::default())
-        .unwrap();
+        .unwrap()
+        .into_contents();
 
     let commit = match commit_message.body() {
         MlsMessageBodyOut::PublicMessage(pm) => match pm.content() {
@@ -196,7 +197,8 @@ fn group_operations() {
     // === Bob updates and commits ===
     let (commit_message, welcome_option, _) = bob_group
         .self_update(provider, &bob_signer, LeafNodeParameters::default())
-        .expect("Error updating group");
+        .expect("Error updating group")
+        .into_contents();
 
     // Check that there is a path
     let commit = match &commit_message.body {
@@ -235,7 +237,8 @@ fn group_operations() {
     // === Alice updates and commits ===
     let (commit_message, _, _) = alice_group
         .self_update(provider, &alice_signer, LeafNodeParameters::default())
-        .expect("Error updating group");
+        .expect("Error updating group")
+        .into_contents();
 
     let commit = match &commit_message.body {
         MlsMessageBodyOut::PublicMessage(pm) => match pm.content() {
@@ -408,7 +411,8 @@ fn group_operations() {
     // === Charlie updates and commits ===
     let (commit_message, _, _) = charlie_group
         .self_update(provider, &charlie_signer, LeafNodeParameters::default())
-        .expect("Error updating group");
+        .expect("Error updating group")
+        .into_contents();
 
     let commit = match &commit_message.body {
         MlsMessageBodyOut::PublicMessage(pm) => match pm.content() {

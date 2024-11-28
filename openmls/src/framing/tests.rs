@@ -22,7 +22,7 @@ use crate::{
 
 /// This tests serializing/deserializing PublicMessage
 #[openmls_test::openmls_test]
-fn codec_plaintext<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider: &Provider) {
+fn codec_plaintext() {
     let (_credential, signature_keys) =
         test_utils::new_credential(provider, b"Creator", ciphersuite.signature_algorithm());
     let sender = Sender::build_member(LeafNodeIndex::new(987543210));
@@ -122,10 +122,11 @@ fn codec_ciphertext() {
     let mut message_secrets =
         MessageSecrets::random(ciphersuite, provider.rand(), LeafNodeIndex::new(0));
 
-    let orig = PrivateMessage::encrypt_with_different_header(
+    let orig = PrivateMessage::encrypt_with_different_header::<StorageError>(
+        provider.crypto(),
+        provider.rand(),
         &plaintext,
         ciphersuite,
-        provider,
         MlsMessageHeader {
             group_id: group_context.group_id().clone(),
             epoch: group_context.epoch(),
@@ -175,20 +176,22 @@ fn wire_format_checks() {
     message_secrets.replace_secret_tree(sender_secret_tree);
 
     let sender_index = LeafNodeIndex::new(0);
-    let ciphertext: PrivateMessageIn = PrivateMessage::encrypt_with_different_header(
-        &plaintext,
-        ciphersuite,
-        provider,
-        MlsMessageHeader {
-            group_id: plaintext.group_id().clone(),
-            epoch: plaintext.epoch(),
-            sender: sender_index,
-        },
-        &mut message_secrets,
-        0,
-    )
-    .expect("Could not encrypt PublicMessage.")
-    .into();
+    let ciphertext: PrivateMessageIn =
+        PrivateMessage::encrypt_with_different_header::<StorageError>(
+            provider.crypto(),
+            provider.rand(),
+            &plaintext,
+            ciphersuite,
+            MlsMessageHeader {
+                group_id: plaintext.group_id().clone(),
+                epoch: plaintext.epoch(),
+                sender: sender_index,
+            },
+            &mut message_secrets,
+            0,
+        )
+        .expect("Could not encrypt PublicMessage.")
+        .into();
 
     // Decrypt the ciphertext and expect the correct wire format
 
@@ -224,10 +227,11 @@ fn wire_format_checks() {
 
     let receiver_secret_tree = message_secrets.replace_secret_tree(sender_secret_tree);
     // Bypass wire format check during encryption
-    let ciphertext: PrivateMessageIn = PrivateMessage::encrypt_without_check(
+    let ciphertext: PrivateMessageIn = PrivateMessage::encrypt_without_check::<StorageError>(
+        provider.crypto(),
+        provider.rand(),
         &plaintext,
         ciphersuite,
-        provider,
         &mut message_secrets,
         0,
     )
@@ -264,10 +268,11 @@ fn wire_format_checks() {
 
     // Try to encrypt an PublicMessage with the wrong wire format
     assert!(matches!(
-        PrivateMessage::try_from_authenticated_content(
+        PrivateMessage::try_from_authenticated_content::<StorageError>(
+            provider.crypto(),
+            provider.rand(),
             &plaintext,
             ciphersuite,
-            provider,
             &mut message_secrets,
             0,
         )
@@ -452,10 +457,11 @@ fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider:
     )
     .expect("Could not create new ApplicationMessage.");
 
-    let enc_message = PrivateMessage::encrypt_with_different_header(
+    let enc_message = PrivateMessage::encrypt_with_different_header::<StorageError>(
+        provider.crypto(),
+        provider.rand(),
         &bogus_sender_message,
         ciphersuite,
-        provider,
         MlsMessageHeader {
             group_id: alice_group.group_id().clone(),
             epoch: alice_group.epoch(),
@@ -496,7 +502,8 @@ fn confirmation_tag_presence<Provider: OpenMlsProvider>() {
             &alice_signature_keys,
             LeafNodeParameters::default(),
         )
-        .expect("Could not update group.");
+        .expect("Could not update group.")
+        .into_contents();
 
     let commit = match commit.body {
         MlsMessageBodyOut::PublicMessage(pm) => pm,

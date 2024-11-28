@@ -96,53 +96,22 @@ impl MlsGroup {
             return Err(AddMembersError::EmptyInput(EmptyInputError::AddMembers));
         }
 
-        // Create inline add proposals from key packages
-        let inline_proposals = key_packages
-            .iter()
-            .map(|key_package| {
-                Proposal::Add(AddProposal {
-                    key_package: key_package.clone(),
-                })
-            })
-            .collect::<Vec<Proposal>>();
-
-        // Create Commit over all proposals
-        // TODO #751
-        let params = CreateCommitParams::builder()
-            .framing_parameters(self.framing_parameters())
-            .inline_proposals(inline_proposals)
+        let bundle = self
+            .commit_builder()
+            .propose_adds(key_packages.iter().cloned())
             .force_self_update(force_self_update)
-            .build();
-        let create_commit_result = self.create_commit(params, provider, signer)?;
+            .load_psks(provider.storage())?
+            .build(provider.rand(), provider.crypto(), signer, |_| true)?
+            .stage_commit(provider)?;
 
-        let welcome = match create_commit_result.welcome_option {
-            Some(welcome) => welcome,
-            None => {
-                return Err(LibraryError::custom("No secrets to generate commit message.").into())
-            }
-        };
-
-        // Convert PublicMessage messages to MLSMessage and encrypt them if required by
-        // the configuration
-        let mls_messages = self.content_to_mls_message(create_commit_result.commit, provider)?;
-
-        // Set the current group state to [`MlsGroupState::PendingCommit`],
-        // storing the current [`StagedCommit`] from the commit results
-        self.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
-            create_commit_result.staged_commit,
-        )));
-
-        provider
-            .storage()
-            .write_group_state(self.group_id(), &self.group_state)
-            .map_err(AddMembersError::StorageError)?;
+        let welcome: MlsMessageOut = bundle.to_welcome_msg().ok_or(LibraryError::custom(
+            "No secrets to generate commit message.",
+        ))?;
+        let (commit, _, group_info) = bundle.into_contents();
 
         self.reset_aad();
-        Ok((
-            mls_messages,
-            MlsMessageOut::from_welcome(welcome, self.version()),
-            create_commit_result.group_info,
-        ))
+
+        Ok((commit, welcome, group_info))
     }
 
     /// Returns a reference to the own [`LeafNode`].
@@ -183,29 +152,15 @@ impl MlsGroup {
             ));
         }
 
-        // Create inline remove proposals
-        let mut inline_proposals = Vec::new();
-        for member in members.iter() {
-            inline_proposals.push(Proposal::Remove(RemoveProposal { removed: *member }))
-        }
+        let bundle = self
+            .commit_builder()
+            .propose_removals(members.iter().cloned())
+            .load_psks(provider.storage())?
+            .build(provider.rand(), provider.crypto(), signer, |_| true)?
+            .stage_commit(provider)?;
 
-        // Create Commit over all proposals
-        // TODO #751
-        let params = CreateCommitParams::builder()
-            .framing_parameters(self.framing_parameters())
-            .inline_proposals(inline_proposals)
-            .build();
-        let create_commit_result = self.create_commit(params, provider, signer)?;
-
-        // Convert PublicMessage messages to MLSMessage and encrypt them if required by
-        // the configuration
-        let mls_message = self.content_to_mls_message(create_commit_result.commit, provider)?;
-
-        // Set the current group state to [`MlsGroupState::PendingCommit`],
-        // storing the current [`StagedCommit`] from the commit results
-        self.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
-            create_commit_result.staged_commit,
-        )));
+        let welcome = bundle.to_welcome_msg();
+        let (commit, _, group_info) = bundle.into_contents();
 
         provider
             .storage()
@@ -213,13 +168,7 @@ impl MlsGroup {
             .map_err(RemoveMembersError::StorageError)?;
 
         self.reset_aad();
-        Ok((
-            mls_message,
-            create_commit_result
-                .welcome_option
-                .map(|w| MlsMessageOut::from_welcome(w, self.version())),
-            create_commit_result.group_info,
-        ))
+        Ok((commit, welcome, group_info))
     }
 
     /// Leave the group.

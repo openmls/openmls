@@ -106,8 +106,7 @@ impl MlsGroup {
             .with_extensions(extensions.unwrap_or_default())
             .build();
         let mut params = CreateCommitParams::builder()
-            .framing_parameters(framing_parameters)
-            .commit_type(CommitType::External(credential_with_key))
+            .external_commit(credential_with_key, framing_parameters)
             .leaf_node_parameters(leaf_node_parameters)
             .build();
 
@@ -176,12 +175,7 @@ impl MlsGroup {
 
         // If there is a group member in the group with the same identity as us,
         // commit a remove proposal.
-        let signature_key = match params.commit_type() {
-            CommitType::External(credential_with_key) => {
-                credential_with_key.signature_key.as_slice()
-            }
-            _ => return Err(ExternalCommitError::MissingCredential),
-        };
+        let signature_key = params.credential_with_key().signature_key.as_slice();
         if let Some(us) = public_group
             .members()
             .find(|member| member.signature_key == signature_key)
@@ -209,7 +203,7 @@ impl MlsGroup {
 
         // Immediately create the commit to add ourselves to the group.
         let create_commit_result = mls_group
-            .create_commit(params, provider, signer)
+            .create_external_commit(params, provider, signer)
             .map_err(|_| ExternalCommitError::CommitError)?;
 
         mls_group.group_state = MlsGroupState::PendingCommit(Box::new(
@@ -227,14 +221,6 @@ impl MlsGroup {
             public_message.into(),
             create_commit_result.group_info,
         ))
-    }
-}
-
-fn transpose_err_opt<T, E>(v: Result<Option<T>, E>) -> Option<Result<T, E>> {
-    match v {
-        Ok(Some(v)) => Some(Ok(v)),
-        Ok(None) => None,
-        Err(err) => Some(Err(err)),
     }
 }
 
@@ -583,12 +569,11 @@ fn keys_for_welcome<Provider: OpenMlsProvider>(
         .find_map(|egs| {
             let hash_ref = egs.new_member();
 
-            transpose_err_opt(
-                provider
-                    .storage()
-                    .key_package(&hash_ref)
-                    .map_err(WelcomeError::StorageError),
-            )
+            provider
+                .storage()
+                .key_package(&hash_ref)
+                .map_err(WelcomeError::StorageError)
+                .transpose()
         })
         .ok_or(WelcomeError::NoMatchingKeyPackage)??;
     if !key_package_bundle.key_package().last_resort() {

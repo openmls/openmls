@@ -1,4 +1,4 @@
-use openmls_traits::types::Ciphersuite;
+use openmls_traits::{crypto::OpenMlsCrypto, random::OpenMlsRand, types::Ciphersuite};
 use std::io::Write;
 use tls_codec::{Serialize, Size, TlsSerialize, TlsSize};
 
@@ -6,7 +6,7 @@ use super::mls_auth_content::AuthenticatedContent;
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex, error::LibraryError,
-    storage::OpenMlsProvider, tree::secret_tree::SecretType,
+    tree::secret_tree::SecretType,
 };
 
 use super::*;
@@ -66,13 +66,14 @@ impl PrivateMessage {
     ///
     /// TODO #1148: Refactor theses constructors to avoid test code in main and
     /// to avoid validation using a special feature flag.
-    pub(crate) fn try_from_authenticated_content<Provider: OpenMlsProvider>(
+    pub(crate) fn try_from_authenticated_content<T>(
+        crypto: &impl OpenMlsCrypto,
+        rand: &impl OpenMlsRand,
         public_message: &AuthenticatedContent,
         ciphersuite: Ciphersuite,
-        provider: &Provider,
         message_secrets: &mut MessageSecrets,
         padding_size: usize,
-    ) -> Result<PrivateMessage, MessageEncryptionError<Provider::StorageError>> {
+    ) -> Result<PrivateMessage, MessageEncryptionError<T>> {
         log::debug!("PrivateMessage::try_from_authenticated_content");
         log::trace!("  ciphersuite: {}", ciphersuite);
         // Check the message has the correct wire format
@@ -80,47 +81,52 @@ impl PrivateMessage {
             return Err(MessageEncryptionError::WrongWireFormat);
         }
         Self::encrypt_content(
+            crypto,
+            rand,
             None,
             public_message,
             ciphersuite,
-            provider,
             message_secrets,
             padding_size,
         )
     }
 
     #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn encrypt_without_check<Provider: OpenMlsProvider>(
+    pub(crate) fn encrypt_without_check<T>(
+        crypto: &impl OpenMlsCrypto,
+        rand: &impl OpenMlsRand,
         public_message: &AuthenticatedContent,
         ciphersuite: Ciphersuite,
-        provider: &Provider,
         message_secrets: &mut MessageSecrets,
         padding_size: usize,
-    ) -> Result<PrivateMessage, MessageEncryptionError<Provider::StorageError>> {
+    ) -> Result<PrivateMessage, MessageEncryptionError<T>> {
         Self::encrypt_content(
+            crypto,
+            rand,
             None,
             public_message,
             ciphersuite,
-            provider,
             message_secrets,
             padding_size,
         )
     }
 
     #[cfg(test)]
-    pub(crate) fn encrypt_with_different_header<Provider: OpenMlsProvider>(
+    pub(crate) fn encrypt_with_different_header<T>(
+        crypto: &impl OpenMlsCrypto,
+        rand: &impl OpenMlsRand,
         public_message: &AuthenticatedContent,
         ciphersuite: Ciphersuite,
-        provider: &Provider,
         header: MlsMessageHeader,
         message_secrets: &mut MessageSecrets,
         padding_size: usize,
-    ) -> Result<PrivateMessage, MessageEncryptionError<Provider::StorageError>> {
+    ) -> Result<PrivateMessage, MessageEncryptionError<T>> {
         Self::encrypt_content(
+            crypto,
+            rand,
             Some(header),
             public_message,
             ciphersuite,
-            provider,
             message_secrets,
             padding_size,
         )
@@ -128,14 +134,15 @@ impl PrivateMessage {
 
     /// Internal function to encrypt content. The extra message header is only used
     /// for tests. Otherwise, the data from the given `AuthenticatedContent` is used.
-    fn encrypt_content<Provider: OpenMlsProvider>(
+    fn encrypt_content<T>(
+        crypto: &impl OpenMlsCrypto,
+        rand: &impl OpenMlsRand,
         test_header: Option<MlsMessageHeader>,
         public_message: &AuthenticatedContent,
         ciphersuite: Ciphersuite,
-        provider: &Provider,
         message_secrets: &mut MessageSecrets,
         padding_size: usize,
-    ) -> Result<PrivateMessage, MessageEncryptionError<Provider::StorageError>> {
+    ) -> Result<PrivateMessage, MessageEncryptionError<T>> {
         let sender_index = if let Some(index) = public_message.sender().as_member() {
             index
         } else {
@@ -165,10 +172,10 @@ impl PrivateMessage {
         let (generation, (ratchet_key, ratchet_nonce)) = message_secrets
             .secret_tree_mut()
             // Even in tests we want to use the real sender index, so we have a key to encrypt.
-            .secret_for_encryption(ciphersuite, provider.crypto(), sender_index, secret_type)?;
+            .secret_for_encryption(ciphersuite, crypto, sender_index, secret_type)?;
         // Sample reuse guard uniformly at random.
-        let reuse_guard: ReuseGuard = ReuseGuard::try_from_random(provider.rand())
-            .map_err(LibraryError::unexpected_crypto_error)?;
+        let reuse_guard: ReuseGuard =
+            ReuseGuard::try_from_random(rand).map_err(LibraryError::unexpected_crypto_error)?;
         // Prepare the nonce by xoring with the reuse guard.
         let prepared_nonce = ratchet_nonce.xor_with_reuse_guard(&reuse_guard);
         // Encrypt the payload
@@ -179,7 +186,7 @@ impl PrivateMessage {
         log_crypto!(trace, "Encryption of private message private_message_content_aad_bytes: {private_message_content_aad_bytes:x?} - ratchet_nonce: {prepared_nonce:x?}");
         let ciphertext = ratchet_key
             .aead_seal(
-                provider.crypto(),
+                crypto,
                 &Self::encode_padded_ciphertext_content_detached(
                     public_message,
                     padding_size,
@@ -194,12 +201,12 @@ impl PrivateMessage {
         // Derive the sender data key from the key schedule using the ciphertext.
         let sender_data_key = message_secrets
             .sender_data_secret()
-            .derive_aead_key(provider.crypto(), ciphersuite, &ciphertext)
+            .derive_aead_key(crypto, ciphersuite, &ciphertext)
             .map_err(LibraryError::unexpected_crypto_error)?;
         // Derive initial nonce from the key schedule using the ciphertext.
         let sender_data_nonce = message_secrets
             .sender_data_secret()
-            .derive_aead_nonce(ciphersuite, provider.crypto(), &ciphertext)
+            .derive_aead_nonce(ciphersuite, crypto, &ciphertext)
             .map_err(LibraryError::unexpected_crypto_error)?;
         // Compute sender data nonce by xoring reuse guard and key schedule
         // nonce as per spec.
@@ -226,7 +233,7 @@ impl PrivateMessage {
         log_crypto!(trace, "Encryption of sender data mls_sender_data_aad_bytes: {mls_sender_data_aad_bytes:x?} - sender_data_nonce: {sender_data_nonce:x?}");
         let encrypted_sender_data = sender_data_key
             .aead_seal(
-                provider.crypto(),
+                crypto,
                 &sender_data
                     .tls_serialize_detached()
                     .map_err(LibraryError::missing_bound_check)?,
