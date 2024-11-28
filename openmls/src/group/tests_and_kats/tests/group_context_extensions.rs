@@ -435,7 +435,7 @@ fn self_update_happy_case_simple() {
 ///
 /// So far, we only test whether the check is done for extension types.
 #[openmls_test]
-fn fail_insufficient_extensiontype_capabilities_add_valno103() {
+fn fail_insufficient_extensiontype_capabilities_add_valn103() {
     let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite);
 
     let (gce_req_cap_commit, _, _) =
@@ -552,7 +552,7 @@ fn fail_insufficient_extensiontype_capabilities_add_valno103() {
 //     leaf node
 // - bob processes the invalid commit, which should give an InsufficientCapabilities error
 #[openmls_test]
-fn fail_insufficient_extensiontype_capabilities_update_valno103() {
+fn fail_insufficient_extensiontype_capabilities_update_valn103() {
     let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite);
 
     // requires that all members need support for extension type 0xf002
@@ -720,7 +720,7 @@ fn fail_insufficient_extensiontype_capabilities_update_valno103() {
 // I suppose we need to talk about which test framework is the one we need.
 // See https://github.com/openmls/openmls/issues/1618.
 #[openmls_test]
-fn fail_key_package_version_valno201() {
+fn fail_key_package_version_valn201() {
     let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite);
 
     let charlie = PartyState::<Provider>::generate("charlie", ciphersuite);
@@ -823,7 +823,7 @@ fn fail_key_package_version_valno201() {
 
 // This tests that a commit containing more than one GCE Proposals does not pass validation.
 #[openmls_test]
-fn fail_2_gce_proposals_1_commit_valno308() {
+fn fail_2_gce_proposals_1_commit_valn308() {
     let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite);
 
     // No required capabilities, so no specifically required extensions.
@@ -929,7 +929,7 @@ fn fail_2_gce_proposals_1_commit_valno308() {
 // - alice processes the commit expecting an error, and the error should be that the GCE is
 //   invalid
 #[openmls_test]
-fn fail_unsupported_gces_add_valno1001() {
+fn fail_unsupported_gces_add_valn1001() {
     let TestState { mut alice, mut bob }: TestState<Provider> = setup(ciphersuite);
 
     // No required capabilities, so no specifically required extensions.

@@ -408,7 +408,7 @@ impl UpdatePathIn {
         let leaf_node_in = self.leaf_node().clone();
         let verifiable_leaf_node = leaf_node_in.into_verifiable_leaf_node();
 
-        // [valno1207](https://validation.openmls.tech/#valn1207)
+        // [valn1207](https://validation.openmls.tech/#valn1207)
         match verifiable_leaf_node {
             // https://validation.openmls.tech/#valn1208
             VerifiableLeafNode::Commit(mut commit_leaf_node) => {

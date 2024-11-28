@@ -174,7 +174,7 @@ impl PublicGroup {
     }
 
     // Check that no external init proposal occurs. Needed only for regular commits.
-    // [valno0310](https://validation.openmls.tech/#valn0310)
+    // [valn0310](https://validation.openmls.tech/#valn0310)
     fn validate_no_external_init_proposals(
         &self,
         proposal_queue: &ProposalQueue,
