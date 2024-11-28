@@ -2,7 +2,6 @@
 use openmls::prelude::*;
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_test::openmls_test;
-use openmls_traits::storage::StorageProvider as _;
 
 #[openmls_test]
 fn test_store_key_package() {

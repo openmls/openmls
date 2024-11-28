@@ -3,7 +3,7 @@
 //! This module contains [`MlsGroup`] and its submodules.
 //!
 
-use create_commit::{CommitType, CreateCommitParams};
+use create_commit::CreateCommitParams;
 use past_secrets::MessageSecretsStore;
 use proposal_store::ProposalQueue;
 use serde::{Deserialize, Serialize};
@@ -59,6 +59,7 @@ mod updates;
 use config::*;
 
 // Crate
+pub(crate) mod commit_builder;
 pub(crate) mod config;
 pub(crate) mod create_commit;
 pub(crate) mod errors;
@@ -600,9 +601,10 @@ impl MlsGroup {
     ) -> Result<PrivateMessage, MessageEncryptionError<Provider::StorageError>> {
         let padding_size = self.configuration().padding_size();
         let msg = PrivateMessage::try_from_authenticated_content(
+            provider.crypto(),
+            provider.rand(),
             &public_message,
             self.ciphersuite(),
-            provider,
             self.message_secrets_store.message_secrets_mut(),
             padding_size,
         )?;

@@ -1,10 +1,8 @@
 use openmls_traits::{signatures::Signer, storage::StorageProvider as _, types::Ciphersuite};
 
 use super::{
-    create_commit::CreateCommitParams,
     errors::{ProposalError, ProposeAddMemberError, ProposeRemoveMemberError, RemoveProposalError},
-    AddProposal, CreateGroupContextExtProposalError, CustomProposal, FramingParameters,
-    GroupContextExtensionProposal, MlsGroup, MlsGroupState, PendingCommitState,
+    AddProposal, CreateGroupContextExtProposalError, CustomProposal, FramingParameters, MlsGroup,
     PreSharedKeyProposal, Proposal, QueuedProposal, RemoveProposal, UpdateProposal,
 };
 use crate::{
@@ -405,39 +403,19 @@ impl MlsGroup {
     > {
         self.is_operational()?;
 
-        // Create inline group context extension proposals
-        let inline_proposals = vec![Proposal::GroupContextExtensions(
-            GroupContextExtensionProposal::new(extensions),
-        )];
+        // Build and stage Commit containing GroupContextExtensions proposal
+        let bundle = self
+            .commit_builder()
+            .propose_group_context_externsions(extensions)
+            .load_psks(provider.storage())?
+            .build(provider.rand(), provider.crypto(), signer, |_| true)?
+            .stage_commit(provider)?;
 
-        // Create Commit over all proposals
-        let params = CreateCommitParams::builder()
-            .framing_parameters(self.framing_parameters())
-            .inline_proposals(inline_proposals)
-            .build();
-        let create_commit_result = self.create_commit(params, provider, signer)?;
+        // Extract messages and convert Welcome to MlsMessageOut
+        let (commit, welcome, group_info) = bundle.into_contents();
+        let welcome = welcome.map(|welcome| MlsMessageOut::from_welcome(welcome, self.version()));
 
-        let mls_messages = self.content_to_mls_message(create_commit_result.commit, provider)?;
-
-        // Set the current group state to [`MlsGroupState::PendingCommit`],
-        // storing the current [`StagedCommit`] from the commit results
-        self.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
-            create_commit_result.staged_commit,
-        )));
-
-        provider
-            .storage()
-            .write_group_state(self.group_id(), &self.group_state)
-            .map_err(CreateGroupContextExtProposalError::StorageError)?;
-
-        self.reset_aad();
-        Ok((
-            mls_messages,
-            create_commit_result
-                .welcome_option
-                .map(|w| MlsMessageOut::from_welcome(w, self.version())),
-            create_commit_result.group_info,
-        ))
+        Ok((commit, welcome, group_info))
     }
 
     /// Removes a specific proposal from the store.

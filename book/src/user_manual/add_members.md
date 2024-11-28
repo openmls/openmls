@@ -8,7 +8,20 @@ Members can be added to the group atomically with the `.add_members()` function.
 {{#include ../../../openmls/tests/book_code.rs:alice_adds_bob}}
 ```
 
-The function returns the tuple `(MlsMessageOut, Welcome)`. The `MlsMessageOut` contains a Commit message that needs to be fanned out to existing group members. The `Welcome` message must be sent to the newly added members.
+The function returns the tuple `(MlsMessageOut, Welcome, Option<GroupInfo>)`. The `MlsMessageOut` contains a Commit message that needs to be fanned out to existing group members. The `Welcome` message must be sent to the newly added members, along the optional `GroupInfo` if it is available.
+
+Users could also use the new `CommitBuilder` API, which would look like this:
+
+```rust,no_run,noplayground
+{{#include ../../../openmls/tests/book_code.rs:alice_adds_bob_with_commit_builder}}
+```
+
+Some notes on the arguments to the builder stages:
+
+- The reason that the `KeyPackage` is wrapped in a `Some` is that `Option<KeyPackage>` implements `IntoIterator<Item = KeyPackage>`, which is the type bounds of that function. This means that the function also works with any iterator over `KeyPackage` items or a `Vec<KeyPackage>`.
+- The closure is a predicate over `&QueuedProposal` and represents the policy of which proposals are deemed acceptable in the application.
+
+This function returns a `CommitMessageBundle`, from which the `MlsMessageOut`, `Welcome` and `GroupInfo` can be extracted.
 
 ### Adding members without update
 

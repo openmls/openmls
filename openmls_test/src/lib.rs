@@ -29,9 +29,12 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
             #[test]
             fn #name() {
                 use openmls_rust_crypto::OpenMlsRustCrypto;
-                use openmls_traits::{types::Ciphersuite, crypto::OpenMlsCrypto};
+                use openmls_traits::{types::Ciphersuite, crypto::OpenMlsCrypto, storage::StorageProvider as StorageProviderTrait};
 
                 type Provider = OpenMlsRustCrypto;
+                type StorageProvider = <Provider as openmls_traits::OpenMlsProvider>::StorageProvider;
+                type StorageError = <StorageProvider as StorageProviderTrait<{openmls_traits::storage::CURRENT_VERSION}>>::Error;
+
                 let _ = pretty_env_logger::try_init();
 
                 let ciphersuite = Ciphersuite::try_from(#val).unwrap();
@@ -68,6 +71,9 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
                     use openmls_traits::{types::Ciphersuite, prelude::*};
 
                     type Provider = OpenMlsLibcrux;
+                    type StorageProvider = <Provider as openmls_traits::OpenMlsProvider>::StorageProvider;
+                    type StorageError = <StorageProvider as openmls_traits::storage::StorageProvider<{openmls_traits::storage::CURRENT_VERSION}>>::Error;
+
                     let _ = pretty_env_logger::try_init();
 
                     let ciphersuite = Ciphersuite::try_from(#val).unwrap();

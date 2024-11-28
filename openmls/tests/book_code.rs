@@ -392,7 +392,8 @@ fn book_operations() {
     // ANCHOR: self_update
     let (mls_message_out, welcome_option, _group_info) = bob_group
         .self_update(provider, &bob_signature_keys, LeafNodeParameters::default())
-        .expect("Could not update own key package.");
+        .expect("Could not update own key package.")
+        .into_contents();
     // ANCHOR_END: self_update
 
     let alice_processed_message = alice_group
@@ -641,7 +642,8 @@ fn book_operations() {
             &charlie_signature_keys,
             LeafNodeParameters::default(),
         )
-        .unwrap();
+        .unwrap()
+        .into_contents();
 
     let alice_processed_message = alice_group
         .process_message(
@@ -1573,4 +1575,91 @@ fn custom_proposal_usage(
     }));
 
     // ANCHOR_END: custom_proposal_usage
+}
+
+#[openmls_test]
+fn commit_builder() {
+    // Generate credentials with keys
+    let (alice_credential, alice_signature_keys) =
+        generate_credential("Alice".into(), ciphersuite.signature_algorithm(), provider);
+
+    let (bob_credential, bob_signature_keys) =
+        generate_credential("Bob".into(), ciphersuite.signature_algorithm(), provider);
+
+    // Generate KeyPackages
+    let bob_key_package = generate_key_package(
+        ciphersuite,
+        bob_credential.clone(),
+        Extensions::default(),
+        provider,
+        &bob_signature_keys,
+    );
+
+    // Define the MlsGroup configuration
+    // delivery service credentials
+    let (ds_credential_with_key, _) = generate_credential(
+        "delivery-service".into(),
+        ciphersuite.signature_algorithm(),
+        provider,
+    );
+
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .padding_size(100)
+        .sender_ratchet_configuration(SenderRatchetConfiguration::new(
+            10,   // out_of_order_tolerance
+            2000, // maximum_forward_distance
+        ))
+        .with_group_context_extensions(Extensions::single(Extension::ExternalSenders(vec![
+            ExternalSender::new(
+                ds_credential_with_key.signature_key.clone(),
+                ds_credential_with_key.credential.clone(),
+            ),
+        ])))
+        .expect("error adding external senders extension to group context extensions")
+        .ciphersuite(ciphersuite)
+        // we need to specify the non-default extension here
+        .capabilities(Capabilities::new(
+            None, // Defaults to the group's protocol version
+            None, // Defaults to the group's ciphersuite
+            Some(&[ExtensionType::Unknown(0xff00)]),
+            None, // Defaults to all basic extension types
+            Some(&[CredentialType::Basic]),
+        ))
+        // Example leaf extension
+        .with_leaf_node_extensions(Extensions::single(Extension::Unknown(
+            0xff00,
+            UnknownExtension(vec![0, 1, 2, 3]),
+        )))
+        .expect("failed to configure leaf extensions")
+        .use_ratchet_tree_extension(true)
+        .build();
+
+    let mut alice_group = MlsGroup::new(
+        provider,
+        &alice_signature_keys,
+        &mls_group_create_config,
+        alice_credential.clone(),
+    )
+    .expect("An unexpected error occurred.");
+
+    // === Alice adds Bob ===
+    // ANCHOR: alice_adds_bob_with_commit_builder
+    let message_bundle = alice_group
+        .commit_builder()
+        .propose_adds(Some(bob_key_package.key_package().clone()))
+        .load_psks(provider.storage())
+        .expect("error loading psks")
+        .build(
+            provider.rand(),
+            provider.crypto(),
+            &alice_signature_keys,
+            |_proposal| true,
+        )
+        .expect("error validating data and building commit")
+        .stage_commit(provider)
+        .expect("error staging commit");
+
+    let (mls_message_out, welcome, group_info) = message_bundle.into_contents();
+    // ANCHOR_END: alice_adds_bob_with_commit_builder
+    _ = (mls_message_out, welcome, group_info)
 }

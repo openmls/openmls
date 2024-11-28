@@ -204,12 +204,6 @@ impl GroupInfo {
     }
 }
 
-impl From<GroupInfo> for GroupContext {
-    fn from(value: GroupInfo) -> Self {
-        value.payload.group_context
-    }
-}
-
 /// GroupInfo (To Be Signed)
 ///
 /// ```c

@@ -205,6 +205,8 @@ fn build_handshake_messages(
     signer: &impl Signer,
     provider: &impl OpenMlsProvider,
 ) -> (Vec<u8>, Vec<u8>) {
+    use std::convert::Infallible;
+
     use tls_codec::Serialize;
 
     use crate::{prelude_test::Secret, schedule::MembershipKey};
@@ -240,10 +242,11 @@ fn build_handshake_messages(
                 .unwrap(),
         )
         .expect("Error setting membership tag.");
-    let ciphertext = PrivateMessage::encrypt_without_check(
+    let ciphertext = PrivateMessage::encrypt_without_check::<Infallible>(
+        provider.crypto(),
+        provider.rand(),
         &content,
         group.ciphersuite(),
-        provider,
         group.message_secrets_test_mut(),
         0,
     )
@@ -265,6 +268,8 @@ fn build_application_messages(
     signer: &impl Signer,
     provider: &impl OpenMlsProvider,
 ) -> (Vec<u8>, Vec<u8>) {
+    use std::convert::Infallible;
+
     use tls_codec::Serialize;
 
     use crate::{prelude_test::Secret, schedule::MembershipKey};
@@ -294,10 +299,11 @@ fn build_application_messages(
                 .unwrap(),
         )
         .expect("Error setting membership tag.");
-    let ciphertext = match PrivateMessage::encrypt_without_check(
+    let ciphertext = match PrivateMessage::encrypt_without_check::<Infallible>(
+        provider.crypto(),
+        provider.rand(),
         &content,
         group.ciphersuite(),
-        provider,
         group.message_secrets_test_mut(),
         0,
     ) {

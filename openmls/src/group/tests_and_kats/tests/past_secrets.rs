@@ -108,7 +108,8 @@ fn test_past_secrets_in_group<Provider: crate::storage::OpenMlsProvider>(
                     &alice_credential_with_keys.signer,
                     LeafNodeParameters::default(),
                 )
-                .expect("An unexpected error occurred.");
+                .expect("An unexpected error occurred.")
+                .into_contents();
 
             update_commits.push(message.clone());
 

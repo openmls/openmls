@@ -572,7 +572,8 @@ fn update_inline(
             &candidate.signature_keypair,
             LeafNodeParameters::default(),
         )
-        .unwrap();
+        .unwrap()
+        .into_contents();
     group.merge_pending_commit(provider).unwrap();
 
     let proposals = vec![];
