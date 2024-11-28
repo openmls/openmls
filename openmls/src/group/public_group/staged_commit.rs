@@ -133,6 +133,8 @@ impl PublicGroup {
                 // ValSem111
                 // ValSem112
                 self.validate_update_proposals(&proposal_queue, *leaf_index)?;
+
+                self.validate_no_external_init_proposals(&proposal_queue)?;
             }
             Sender::External(_) => {
                 // A commit cannot be issued by a pre-configured sender.
@@ -169,6 +171,24 @@ impl PublicGroup {
         };
 
         Ok((commit, proposal_queue, sender_index))
+    }
+
+    // Check that no external init proposal occurs. Needed only for regular commits.
+    // [valn0310](https://validation.openmls.tech/#valn0310)
+    fn validate_no_external_init_proposals(
+        &self,
+        proposal_queue: &ProposalQueue,
+    ) -> Result<(), ProposalValidationError> {
+        for proposal in proposal_queue.queued_proposals() {
+            if matches!(
+                proposal.proposal().proposal_type(),
+                ProposalType::ExternalInit
+            ) {
+                return Err(ProposalValidationError::ExternalInitProposalInRegularCommit);
+            }
+        }
+
+        Ok(())
     }
 
     /// Stages a commit message that was sent by another group member.
