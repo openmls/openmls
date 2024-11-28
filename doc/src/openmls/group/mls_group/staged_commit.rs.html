@@ -608,6 +608,7 @@
 <a href="#608" id="608">608</a>
 <a href="#609" id="609">609</a>
 <a href="#610" id="610">610</a>
+<a href="#611" id="611">611</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>core::fmt::Debug;
 <span class="kw">use </span>std::mem;
 
@@ -682,6 +683,7 @@
         </span>};
 
         <span class="comment">// Prepare the PskSecret
+        // Fails if PSKs are missing ([valn1205](https://validation.openmls.tech/#valn1205))
         </span><span class="kw">let </span>psk_secret = {
             <span class="kw">let </span>psks: Vec&lt;(<span class="kw-2">&amp;</span>PreSharedKeyId, Secret)&gt; = load_psks(
                 provider.storage(),

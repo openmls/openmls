@@ -693,6 +693,9 @@
 <a href="#693" id="693">693</a>
 <a href="#694" id="694">694</a>
 <a href="#695" id="695">695</a>
+<a href="#696" id="696">696</a>
+<a href="#697" id="697">697</a>
+<a href="#698" id="698">698</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains validation functions for incoming messages
 //! as defined in &lt;https://github.com/openmls/openmls/wiki/Message-validation&gt;
 
@@ -869,6 +872,7 @@
     ///
     /// [valn0111]: https://validation.openmls.tech/#valn0111
     /// [valn0112]: https://validation.openmls.tech/#valn0112
+    /// [valn1208]: https://validation.openmls.tech/#valn1208
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_key_uniqueness(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         proposal_queue: <span class="kw-2">&amp;</span>ProposalQueue,
@@ -1186,7 +1190,8 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         proposal_queue: <span class="kw-2">&amp;</span>ProposalQueue,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExternalCommitValidationError&gt; {
-        <span class="kw">let </span>count_external_init_proposals = proposal_queue
+        <span class="comment">// [valn0401](https://validation.openmls.tech/#valn0401)
+        </span><span class="kw">let </span>count_external_init_proposals = proposal_queue
             .filtered_by_type(ProposalType::ExternalInit)
             .count();
         <span class="kw">if </span>count_external_init_proposals == <span class="number">0 </span>{
@@ -1198,6 +1203,7 @@
         }
 
         <span class="comment">// ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
+        // [valn0404](https://validation.openmls.tech/#valn0404)
         </span><span class="kw">let </span>contains_denied_proposal = proposal_queue.queued_proposals().any(|p| {
             <span class="kw">let </span>is_inline = p.proposal_or_ref_type() == ProposalOrRefType::Proposal;
             <span class="kw">let </span>is_allowed_type = <span class="macro">matches!</span>(

@@ -547,6 +547,9 @@
 <a href="#547" id="547">547</a>
 <a href="#548" id="548">548</a>
 <a href="#549" id="549">549</a>
+<a href="#550" id="550">550</a>
+<a href="#551" id="551">551</a>
+<a href="#552" id="552">552</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # MLS group errors
 //!
 //! This module contains errors that originate at lower levels and are partially re-exported in errors thrown by functions of the `MlsGroup` API.
@@ -945,6 +948,9 @@
     <span class="doccomment">/// See [`LeafNodeValidationError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>LeafNodeValidation(<span class="attr">#[from] </span>LeafNodeValidationError),
+    <span class="doccomment">/// Regular Commits may not contain ExternalInit proposals, but one was found
+    </span><span class="attr">#[error(<span class="string">"Found ExternalInit proposal in regular commit"</span>)]
+    </span>ExternalInitProposalInRegularCommit,
 }
 
 <span class="doccomment">/// External Commit validaton error
