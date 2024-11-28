@@ -540,9 +540,13 @@
 <a href="#540" id="540">540</a>
 <a href="#541" id="541">541</a>
 <a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
+<a href="#544" id="544">544</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Preshared keys.
 
-</span><span class="kw">use </span>openmls_traits::{random::OpenMlsRand, storage::StorageProvider <span class="kw">as </span>StorageProviderTrait};
+</span><span class="kw">use </span>std::borrow::Borrow;
+
+<span class="kw">use </span>openmls_traits::{random::OpenMlsRand, storage::StorageProvider <span class="kw">as </span>StorageProviderTrait};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>tls_codec::{Serialize <span class="kw">as </span>TlsSerializeTrait, VLBytes};
 
@@ -925,7 +929,7 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         ciphersuite: Ciphersuite,
-        psks: Vec&lt;(<span class="kw-2">&amp;</span>PreSharedKeyId, Secret)&gt;,
+        psks: Vec&lt;(<span class="kw">impl </span>Borrow&lt;PreSharedKeyId&gt;, Secret)&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, PskError&gt; {
         <span class="comment">// Check that we don't have too many PSKs
         </span><span class="kw">let </span>num_psks = u16::try_from(psks.len()).map_err(|<span class="kw">_</span>| PskError::TooManyKeys)<span class="question-mark">?</span>;
@@ -946,7 +950,7 @@
 
             <span class="comment">// psk_input_[i] = ExpandWithLabel( psk_extracted_[i], "derived psk", PSKLabel, KDF.Nh)
             </span><span class="kw">let </span>psk_input = {
-                <span class="kw">let </span>psk_label = PskLabel::new(psk_id, index <span class="kw">as </span>u16, num_psks)
+                <span class="kw">let </span>psk_label = PskLabel::new(psk_id.borrow(), index <span class="kw">as </span>u16, num_psks)
                     .tls_serialize_detached()
                     .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
 

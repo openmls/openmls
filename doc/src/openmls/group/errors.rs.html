@@ -539,6 +539,14 @@
 <a href="#539" id="539">539</a>
 <a href="#540" id="540">540</a>
 <a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
+<a href="#544" id="544">544</a>
+<a href="#545" id="545">545</a>
+<a href="#546" id="546">546</a>
+<a href="#547" id="547">547</a>
+<a href="#548" id="548">548</a>
+<a href="#549" id="549">549</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # MLS group errors
 //!
 //! This module contains errors that originate at lower levels and are partially re-exported in errors thrown by functions of the `MlsGroup` API.
@@ -555,7 +563,7 @@
     key_packages::errors::{KeyPackageExtensionSupportError, KeyPackageVerifyError},
     messages::{group_info::GroupInfoError, GroupSecretsError},
     schedule::errors::PskError,
-    treesync::{errors::<span class="kw-2">*</span>, node::leaf_node::LeafNodeUpdateError},
+    treesync::errors::<span class="kw-2">*</span>,
 };
 
 <span class="doccomment">/// Welcome error
@@ -747,7 +755,7 @@
 
 <span class="doccomment">/// Create commit error
 </span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub enum </span>CreateCommitError&lt;StorageError&gt; {
+</span><span class="kw">pub enum </span>CreateCommitError {
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
@@ -769,9 +777,6 @@
     <span class="doccomment">/// See [`ProposalValidationError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>ProposalValidationError(<span class="attr">#[from] </span>ProposalValidationError),
-    <span class="doccomment">/// Error interacting with storage.
-    </span><span class="attr">#[error(<span class="string">"Error interacting with storage."</span>)]
-    </span>KeyStoreError(StorageError),
     <span class="doccomment">/// See [`SignatureError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>SignatureError(<span class="attr">#[from] </span>SignatureError),
@@ -789,12 +794,20 @@
     </span>GroupContextExtensionsProposalValidationError(
         <span class="attr">#[from] </span>GroupContextExtensionsProposalValidationError,
     ),
-    <span class="doccomment">/// See [`LeafNodeUpdateError`] for more details.
-    </span><span class="attr">#[error(transparent)]
-    </span>LeafNodeUpdateError(<span class="attr">#[from] </span>LeafNodeUpdateError&lt;StorageError&gt;),
     <span class="doccomment">/// See [`TreeSyncAddLeaf`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>TreeSyncAddLeaf(<span class="attr">#[from] </span>TreeSyncAddLeaf),
+}
+
+<span class="doccomment">/// Stage commit error
+</span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub enum </span>CommitBuilderStageError&lt;StorageError&gt; {
+    <span class="doccomment">/// See [`LibraryError`] for more details.
+    </span><span class="attr">#[error(transparent)]
+    </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
+    <span class="doccomment">/// Error interacting with storage.
+    </span><span class="attr">#[error(<span class="string">"Error interacting with storage."</span>)]
+    </span>KeyStoreError(StorageError),
 }
 
 <span class="doccomment">/// Validation error
@@ -1030,7 +1043,10 @@
     </span>MlsGroupStateError(<span class="attr">#[from] </span>MlsGroupStateError),
     <span class="doccomment">/// See [`CreateCommitError`] for more details.
     </span><span class="attr">#[error(transparent)]
-    </span>CreateCommitError(<span class="attr">#[from] </span>CreateCommitError&lt;StorageError&gt;),
+    </span>CreateCommitError(<span class="attr">#[from] </span>CreateCommitError),
+    <span class="doccomment">/// See [`CommitBuilderStageError`] for more details.
+    </span><span class="attr">#[error(transparent)]
+    </span>CommitBuilderStageError(<span class="attr">#[from] </span>CommitBuilderStageError&lt;StorageError&gt;),
     <span class="doccomment">/// Error writing updated group to storage.
     </span><span class="attr">#[error(<span class="string">"Error writing updated group data to storage."</span>)]
     </span>StorageError(StorageError),

@@ -930,6 +930,7 @@
 <a href="#930" id="930">930</a>
 <a href="#931" id="931">931</a>
 <a href="#932" id="932">932</a>
+<a href="#933" id="933">933</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module provides the diff functionality for [`TreeSync`].
 //!
 //! # About
@@ -953,6 +954,7 @@
 
 <span class="kw">use </span>log::debug;
 <span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
+<span class="kw">use </span>openmls_traits::random::OpenMlsRand;
 <span class="kw">use </span>openmls_traits::{signatures::Signer, types::Ciphersuite};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 
@@ -980,7 +982,6 @@
     error::LibraryError,
     messages::PathSecret,
     schedule::CommitSecret,
-    storage::OpenMlsProvider,
     treesync::RatchetTree,
 };
 
@@ -1201,18 +1202,18 @@
     /// Returns an error if the leaf is not in the tree
     </span><span class="kw">fn </span>derive_path(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
+        rand: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsRand,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         leaf_index: LeafNodeIndex,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;PathDerivationResult, LibraryError&gt; {
         <span class="kw">let </span>path_secret = PathSecret::from(
-            Secret::random(ciphersuite, provider.rand())
-                .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>,
+            Secret::random(ciphersuite, rand).map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>,
         );
 
         <span class="kw">let </span>path_indices = <span class="self">self</span>.filtered_direct_path(leaf_index);
 
-        ParentNode::derive_path(provider.crypto(), ciphersuite, path_secret, path_indices)
+        ParentNode::derive_path(crypto, ciphersuite, path_secret, path_indices)
     }
 
     <span class="doccomment">/// Given a new [`LeafNode`], use it to create a new path starting from
@@ -1226,7 +1227,8 @@
     </span><span class="attr">#[allow(clippy::too_many_arguments)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>apply_own_update_path(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
+        rand: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsRand,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         ciphersuite: Ciphersuite,
         commit_type: <span class="kw-2">&amp;</span>CommitType,
@@ -1246,13 +1248,13 @@
 
         <span class="comment">// We calculate the parent hash so that we can use it for a fresh leaf
         </span><span class="kw">let </span>(path, update_path_nodes, parent_keypairs, commit_secret) =
-            <span class="self">self</span>.derive_path(provider, ciphersuite, leaf_index)<span class="question-mark">?</span>;
-        <span class="kw">let </span>parent_hash =
-            <span class="self">self</span>.process_update_path(provider.crypto(), ciphersuite, leaf_index, path)<span class="question-mark">?</span>;
+            <span class="self">self</span>.derive_path(rand, crypto, ciphersuite, leaf_index)<span class="question-mark">?</span>;
+        <span class="kw">let </span>parent_hash = <span class="self">self</span>.process_update_path(crypto, ciphersuite, leaf_index, path)<span class="question-mark">?</span>;
 
         <span class="comment">// We generate the new leaf with all parameters
         </span><span class="kw">let </span>(leaf_node, node_keypair) = LeafNode::new_with_parent_hash(
-            provider,
+            rand,
+            crypto,
             ciphersuite,
             <span class="kw-2">&amp;</span>parent_hash,
             leaf_node_params,

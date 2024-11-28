@@ -996,8 +996,15 @@
 <a href="#996" id="996">996</a>
 <a href="#997" id="997">997</a>
 <a href="#998" id="998">998</a>
+<a href="#999" id="999">999</a>
+<a href="#1000" id="1000">1000</a>
+<a href="#1001" id="1001">1001</a>
+<a href="#1002" id="1002">1002</a>
+<a href="#1003" id="1003">1003</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the [`LeafNode`] struct and its implementation.
-</span><span class="kw">use </span>openmls_traits::{signatures::Signer, types::Ciphersuite};
+</span><span class="kw">use </span>openmls_traits::{
+    crypto::OpenMlsCrypto, random::OpenMlsRand, signatures::Signer, types::Ciphersuite,
+};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>thiserror::Error;
 <span class="kw">use </span>tls_codec::{
@@ -1190,7 +1197,8 @@
         } = new_leaf_node_params;
 
         <span class="comment">// Create a new encryption key pair.
-        </span><span class="kw">let </span>encryption_key_pair = EncryptionKeyPair::random(provider, ciphersuite)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>encryption_key_pair =
+            EncryptionKeyPair::random(provider.rand(), provider.crypto(), ciphersuite)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>leaf_node = <span class="self">Self</span>::new_with_key(
             encryption_key_pair.public_key().clone(),
@@ -1254,7 +1262,8 @@
     <span class="doccomment">/// New [`LeafNode`] with a parent hash.
     </span><span class="attr">#[allow(clippy::too_many_arguments)]
     </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>new_with_parent_hash(
-        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
+        rand: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsRand,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         parent_hash: <span class="kw-2">&amp;</span>[u8],
         leaf_node_params: UpdateLeafNodeParams,
@@ -1262,7 +1271,7 @@
         leaf_index: LeafNodeIndex,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, EncryptionKeyPair), LibraryError&gt; {
-        <span class="kw">let </span>encryption_key_pair = EncryptionKeyPair::random(provider, ciphersuite)<span class="question-mark">?</span>;
+        <span class="kw">let </span>encryption_key_pair = EncryptionKeyPair::random(rand, crypto, ciphersuite)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>leaf_node_tbs = LeafNodeTbs::new(
             encryption_key_pair.public_key().clone(),
@@ -1359,7 +1368,8 @@
         }
 
         <span class="comment">// Create a new encryption key pair
-        </span><span class="kw">let </span>encryption_key_pair = EncryptionKeyPair::random(provider, ciphersuite)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>encryption_key_pair =
+            EncryptionKeyPair::random(provider.rand(), provider.crypto(), ciphersuite)<span class="question-mark">?</span>;
         leaf_node_tbs.payload.encryption_key = encryption_key_pair.public_key().clone();
 
         <span class="comment">// Store the encryption key pair in the key store.

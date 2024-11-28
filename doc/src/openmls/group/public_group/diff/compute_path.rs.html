@@ -139,9 +139,10 @@
 <a href="#139" id="139">139</a>
 <a href="#140" id="140">140</a>
 <a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashSet;
 
-<span class="kw">use </span>openmls_traits::signatures::Signer;
+<span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, random::OpenMlsRand, signatures::Signer};
 <span class="kw">use </span>tls_codec::Serialize;
 
 <span class="kw">use crate</span>::{
@@ -151,7 +152,6 @@
     extensions::Extensions,
     group::{create_commit::CommitType, errors::CreateCommitError},
     schedule::CommitSecret,
-    storage::OpenMlsProvider,
     treesync::{
         node::{
             encryption_keys::EncryptionKeyPair,
@@ -176,16 +176,17 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; PublicGroupDiff&lt;<span class="lifetime">'a</span>&gt; {
     <span class="attr">#[allow(clippy::too_many_arguments)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>compute_path&lt;Provider: OpenMlsProvider&gt;(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>compute_path(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        provider: <span class="kw-2">&amp;</span>Provider,
+        rand: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsRand,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         leaf_index: LeafNodeIndex,
         exclusion_list: HashSet&lt;<span class="kw-2">&amp;</span>LeafNodeIndex&gt;,
         commit_type: <span class="kw-2">&amp;</span>CommitType,
         leaf_node_params: <span class="kw-2">&amp;</span>LeafNodeParameters,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         gc_extensions: <span class="prelude-ty">Option</span>&lt;Extensions&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;PathComputationResult, CreateCommitError&lt;Provider::StorageError&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;PathComputationResult, CreateCommitError&gt; {
         <span class="kw">let </span>ciphersuite = <span class="self">self</span>.group_context().ciphersuite();
 
         <span class="kw">let </span>leaf_node_params = <span class="kw">if let </span>CommitType::External(credential_with_key) = commit_type {
@@ -238,7 +239,8 @@
         <span class="comment">// Derive and apply an update path based on the previously
         // generated new leaf.
         </span><span class="kw">let </span>(plain_path, new_keypairs, commit_secret) = <span class="self">self</span>.diff.apply_own_update_path(
-            provider,
+            rand,
+            crypto,
             signer,
             ciphersuite,
             commit_type,
@@ -250,7 +252,7 @@
         <span class="comment">// After we've processed the path, we can update the group context s.t.
         // the updated group context is used for path secret encryption. Note
         // that we have not yet updated the confirmed transcript hash.
-        </span><span class="self">self</span>.update_group_context(provider.crypto(), gc_extensions)<span class="question-mark">?</span>;
+        </span><span class="self">self</span>.update_group_context(crypto, gc_extensions)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>serialized_group_context = <span class="self">self
             </span>.group_context()
@@ -259,7 +261,7 @@
 
         <span class="comment">// Encrypt the path to the correct recipient nodes.
         </span><span class="kw">let </span>encrypted_path = <span class="self">self</span>.diff.encrypt_path(
-            provider.crypto(),
+            crypto,
             ciphersuite,
             <span class="kw-2">&amp;</span>plain_path,
             <span class="kw-2">&amp;</span>serialized_group_context,

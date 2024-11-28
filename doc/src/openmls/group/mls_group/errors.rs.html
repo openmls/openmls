@@ -359,6 +359,18 @@
 <a href="#359" id="359">359</a>
 <a href="#360" id="360">360</a>
 <a href="#361" id="361">361</a>
+<a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # MlsGroup errors
 //!
 //! This module defines the public errors that can be returned from all calls
@@ -376,7 +388,7 @@
             CreateAddProposalError, CreateCommitError, MergeCommitError, StageCommitError,
             ValidationError,
         },
-        CreateGroupContextExtProposalError,
+        CommitBuilderStageError, CreateGroupContextExtProposalError,
     },
     schedule::errors::PskError,
     treesync::{
@@ -501,7 +513,10 @@
     </span>EmptyInput(<span class="attr">#[from] </span>EmptyInputError),
     <span class="doccomment">/// See [`CreateCommitError`] for more details.
     </span><span class="attr">#[error(transparent)]
-    </span>CreateCommitError(<span class="attr">#[from] </span>CreateCommitError&lt;StorageError&gt;),
+    </span>CreateCommitError(<span class="attr">#[from] </span>CreateCommitError),
+    <span class="doccomment">/// See [`CommitBuilderStageError`] for more details.
+    </span><span class="attr">#[error(transparent)]
+    </span>CommitBuilderStageError(<span class="attr">#[from] </span>CommitBuilderStageError&lt;StorageError&gt;),
     <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError),
@@ -558,7 +573,10 @@
     </span>EmptyInput(<span class="attr">#[from] </span>EmptyInputError),
     <span class="doccomment">/// See [`CreateCommitError`] for more details.
     </span><span class="attr">#[error(transparent)]
-    </span>CreateCommitError(<span class="attr">#[from] </span>CreateCommitError&lt;StorageError&gt;),
+    </span>CreateCommitError(<span class="attr">#[from] </span>CreateCommitError),
+    <span class="doccomment">/// See [`CommitBuilderStageError`] for more details.
+    </span><span class="attr">#[error(transparent)]
+    </span>CommitBuilderStageError(<span class="attr">#[from] </span>CommitBuilderStageError&lt;StorageError&gt;),
     <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError),
@@ -592,7 +610,10 @@
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
     <span class="doccomment">/// See [`CreateCommitError`] for more details.
     </span><span class="attr">#[error(transparent)]
-    </span>CreateCommitError(<span class="attr">#[from] </span>CreateCommitError&lt;StorageError&gt;),
+    </span>CreateCommitError(<span class="attr">#[from] </span>CreateCommitError),
+    <span class="doccomment">/// See [`CommitBuilderStageError`] for more details.
+    </span><span class="attr">#[error(transparent)]
+    </span>CommitBuilderStageError(<span class="attr">#[from] </span>CommitBuilderStageError&lt;StorageError&gt;),
     <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError),
@@ -630,7 +651,10 @@
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
     <span class="doccomment">/// See [`CreateCommitError`] for more details.
     </span><span class="attr">#[error(transparent)]
-    </span>CreateCommitError(<span class="attr">#[from] </span>CreateCommitError&lt;StorageError&gt;),
+    </span>CreateCommitError(<span class="attr">#[from] </span>CreateCommitError),
+    <span class="doccomment">/// See [`CommitBuilderStageError`] for more details.
+    </span><span class="attr">#[error(transparent)]
+    </span>CommitBuilderStageError(<span class="attr">#[from] </span>CommitBuilderStageError&lt;StorageError&gt;),
     <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError),

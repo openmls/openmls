@@ -550,35 +550,11 @@
 <a href="#550" id="550">550</a>
 <a href="#551" id="551">551</a>
 <a href="#552" id="552">552</a>
-<a href="#553" id="553">553</a>
-<a href="#554" id="554">554</a>
-<a href="#555" id="555">555</a>
-<a href="#556" id="556">556</a>
-<a href="#557" id="557">557</a>
-<a href="#558" id="558">558</a>
-<a href="#559" id="559">559</a>
-<a href="#560" id="560">560</a>
-<a href="#561" id="561">561</a>
-<a href="#562" id="562">562</a>
-<a href="#563" id="563">563</a>
-<a href="#564" id="564">564</a>
-<a href="#565" id="565">565</a>
-<a href="#566" id="566">566</a>
-<a href="#567" id="567">567</a>
-<a href="#568" id="568">568</a>
-<a href="#569" id="569">569</a>
-<a href="#570" id="570">570</a>
-<a href="#571" id="571">571</a>
-<a href="#572" id="572">572</a>
-<a href="#573" id="573">573</a>
-<a href="#574" id="574">574</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::{signatures::Signer, storage::StorageProvider <span class="kw">as _</span>, types::Ciphersuite};
 
 <span class="kw">use super</span>::{
-    create_commit::CreateCommitParams,
     errors::{ProposalError, ProposeAddMemberError, ProposeRemoveMemberError, RemoveProposalError},
-    AddProposal, CreateGroupContextExtProposalError, CustomProposal, FramingParameters,
-    GroupContextExtensionProposal, MlsGroup, MlsGroupState, PendingCommitState,
+    AddProposal, CreateGroupContextExtProposalError, CustomProposal, FramingParameters, MlsGroup,
     PreSharedKeyProposal, Proposal, QueuedProposal, RemoveProposal, UpdateProposal,
 };
 <span class="kw">use crate</span>::{
@@ -979,39 +955,19 @@
     &gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
-        <span class="comment">// Create inline group context extension proposals
-        </span><span class="kw">let </span>inline_proposals = <span class="macro">vec!</span>[Proposal::GroupContextExtensions(
-            GroupContextExtensionProposal::new(extensions),
-        )];
+        <span class="comment">// Build and stage Commit containing GroupContextExtensions proposal
+        </span><span class="kw">let </span>bundle = <span class="self">self
+            </span>.commit_builder()
+            .propose_group_context_externsions(extensions)
+            .load_psks(provider.storage())<span class="question-mark">?
+            </span>.build(provider.rand(), provider.crypto(), signer, |<span class="kw">_</span>| <span class="bool-val">true</span>)<span class="question-mark">?
+            </span>.stage_commit(provider)<span class="question-mark">?</span>;
 
-        <span class="comment">// Create Commit over all proposals
-        </span><span class="kw">let </span>params = CreateCommitParams::builder()
-            .framing_parameters(<span class="self">self</span>.framing_parameters())
-            .inline_proposals(inline_proposals)
-            .build();
-        <span class="kw">let </span>create_commit_result = <span class="self">self</span>.create_commit(params, provider, signer)<span class="question-mark">?</span>;
+        <span class="comment">// Extract messages and convert Welcome to MlsMessageOut
+        </span><span class="kw">let </span>(commit, welcome, group_info) = bundle.into_contents();
+        <span class="kw">let </span>welcome = welcome.map(|welcome| MlsMessageOut::from_welcome(welcome, <span class="self">self</span>.version()));
 
-        <span class="kw">let </span>mls_messages = <span class="self">self</span>.content_to_mls_message(create_commit_result.commit, provider)<span class="question-mark">?</span>;
-
-        <span class="comment">// Set the current group state to [`MlsGroupState::PendingCommit`],
-        // storing the current [`StagedCommit`] from the commit results
-        </span><span class="self">self</span>.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
-            create_commit_result.staged_commit,
-        )));
-
-        provider
-            .storage()
-            .write_group_state(<span class="self">self</span>.group_id(), <span class="kw-2">&amp;</span><span class="self">self</span>.group_state)
-            .map_err(CreateGroupContextExtProposalError::StorageError)<span class="question-mark">?</span>;
-
-        <span class="self">self</span>.reset_aad();
-        <span class="prelude-val">Ok</span>((
-            mls_messages,
-            create_commit_result
-                .welcome_option
-                .map(|w| MlsMessageOut::from_welcome(w, <span class="self">self</span>.version())),
-            create_commit_result.group_info,
-        ))
+        <span class="prelude-val">Ok</span>((commit, welcome, group_info))
     }
 
     <span class="doccomment">/// Removes a specific proposal from the store.

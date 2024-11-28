@@ -398,18 +398,6 @@
 <a href="#398" id="398">398</a>
 <a href="#399" id="399">399</a>
 <a href="#400" id="400">400</a>
-<a href="#401" id="401">401</a>
-<a href="#402" id="402">402</a>
-<a href="#403" id="403">403</a>
-<a href="#404" id="404">404</a>
-<a href="#405" id="405">405</a>
-<a href="#406" id="406">406</a>
-<a href="#407" id="407">407</a>
-<a href="#408" id="408">408</a>
-<a href="#409" id="409">409</a>
-<a href="#410" id="410">410</a>
-<a href="#411" id="411">411</a>
-<a href="#412" id="412">412</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Processing functions of an [`MlsGroup`] for incoming messages.
 
 </span><span class="kw">use </span>std::mem;
@@ -529,34 +517,22 @@
     &gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
-        <span class="comment">// Create Commit over all pending proposals
+        <span class="comment">// Build and stage the commit using the commit builder
         // TODO #751
-        </span><span class="kw">let </span>params = CreateCommitParams::builder()
-            .framing_parameters(<span class="self">self</span>.framing_parameters())
-            .build();
-        <span class="kw">let </span>create_commit_result = <span class="self">self</span>.create_commit(params, provider, signer)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>(commit, welcome, group_info) = <span class="self">self
+            </span>.commit_builder()
+            <span class="comment">// This forces committing to the proposals in the proposal store:
+            </span>.consume_proposal_store(<span class="bool-val">true</span>)
+            .load_psks(provider.storage())<span class="question-mark">?
+            </span>.build(provider.rand(), provider.crypto(), signer, |<span class="kw">_</span>| <span class="bool-val">true</span>)<span class="question-mark">?
+            </span>.stage_commit(provider)<span class="question-mark">?
+            </span>.into_contents();
 
-        <span class="comment">// Convert PublicMessage messages to MLSMessage and encrypt them if required by
-        // the configuration
-        </span><span class="kw">let </span>mls_message = <span class="self">self</span>.content_to_mls_message(create_commit_result.commit, provider)<span class="question-mark">?</span>;
-
-        <span class="comment">// Set the current group state to [`MlsGroupState::PendingCommit`],
-        // storing the current [`StagedCommit`] from the commit results
-        </span><span class="self">self</span>.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
-            create_commit_result.staged_commit,
-        )));
-        provider
-            .storage()
-            .write_group_state(<span class="self">self</span>.group_id(), <span class="kw-2">&amp;</span><span class="self">self</span>.group_state)
-            .map_err(CommitToPendingProposalsError::StorageError)<span class="question-mark">?</span>;
-
-        <span class="self">self</span>.reset_aad();
         <span class="prelude-val">Ok</span>((
-            mls_message,
-            create_commit_result
-                .welcome_option
-                .map(|w| MlsMessageOut::from_welcome(w, <span class="self">self</span>.version())),
-            create_commit_result.group_info,
+            commit,
+            <span class="comment">// Turn the [`Welcome`] to an [`MlsMessageOut`], if there is one
+            </span>welcome.map(|welcome| MlsMessageOut::from_welcome(welcome, <span class="self">self</span>.version())),
+            group_info,
         ))
     }
 

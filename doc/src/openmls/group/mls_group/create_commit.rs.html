@@ -385,12 +385,6 @@
 <a href="#385" id="385">385</a>
 <a href="#386" id="386">386</a>
 <a href="#387" id="387">387</a>
-<a href="#388" id="388">388</a>
-<a href="#389" id="389">389</a>
-<a href="#390" id="390">390</a>
-<a href="#391" id="391">391</a>
-<a href="#392" id="392">392</a>
-<a href="#393" id="393">393</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Defines the `CreateCommit` trait and its implementation for `MlsGroup`.
 
 </span><span class="kw">use super</span>::<span class="kw-2">*</span>;
@@ -404,11 +398,12 @@
 }
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>CreateCommitParams&lt;<span class="lifetime">'a</span>&gt; {
-    framing_parameters: FramingParameters&lt;<span class="lifetime">'a</span>&gt;, <span class="comment">// Mandatory
-    </span>inline_proposals: Vec&lt;Proposal&gt;,           <span class="comment">// Optional
-    </span>force_self_update: bool,                   <span class="comment">// Optional
-    </span>commit_type: CommitType,                   <span class="comment">// Optional (default is `Member`)
-    </span>leaf_node_parameters: LeafNodeParameters,  <span class="comment">// Optional
+    framing_parameters: <span class="prelude-ty">Option</span>&lt;FramingParameters&lt;<span class="lifetime">'a</span>&gt;&gt;,
+    credential_with_key: CredentialWithKey,
+
+    inline_proposals: Vec&lt;Proposal&gt;,          <span class="comment">// Optional
+    </span>force_self_update: bool,                  <span class="comment">// Optional
+    </span>leaf_node_parameters: LeafNodeParameters, <span class="comment">// Optional
 </span>}
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>TempBuilderCCPM0 {}
@@ -418,16 +413,19 @@
 }
 
 <span class="kw">impl </span>TempBuilderCCPM0 {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>framing_parameters(
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>external_commit(
         <span class="self">self</span>,
+        credential_with_key: CredentialWithKey,
         framing_parameters: FramingParameters,
     ) -&gt; CreateCommitParamsBuilder {
         CreateCommitParamsBuilder {
             ccp: CreateCommitParams {
-                framing_parameters,
-                inline_proposals: <span class="macro">vec!</span>[],
+                framing_parameters: <span class="prelude-val">Some</span>(framing_parameters),
+                credential_with_key,
+
+                <span class="comment">// defaults:
+                </span>inline_proposals: <span class="macro">vec!</span>[],
                 force_self_update: <span class="bool-val">true</span>,
-                commit_type: CommitType::Member,
                 leaf_node_parameters: LeafNodeParameters::default(),
             },
         }
@@ -435,18 +433,6 @@
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; CreateCommitParamsBuilder&lt;<span class="lifetime">'a</span>&gt; {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>inline_proposals(<span class="kw-2">mut </span><span class="self">self</span>, inline_proposals: Vec&lt;Proposal&gt;) -&gt; <span class="self">Self </span>{
-        <span class="self">self</span>.ccp.inline_proposals = inline_proposals;
-        <span class="self">self
-    </span>}
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>force_self_update(<span class="kw-2">mut </span><span class="self">self</span>, force_self_update: bool) -&gt; <span class="self">Self </span>{
-        <span class="self">self</span>.ccp.force_self_update = force_self_update;
-        <span class="self">self
-    </span>}
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>commit_type(<span class="kw-2">mut </span><span class="self">self</span>, commit_type: CommitType) -&gt; <span class="self">Self </span>{
-        <span class="self">self</span>.ccp.commit_type = commit_type;
-        <span class="self">self
-    </span>}
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf_node_parameters(<span class="kw-2">mut </span><span class="self">self</span>, leaf_node_parameters: LeafNodeParameters) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.ccp.leaf_node_parameters = leaf_node_parameters;
         <span class="self">self
@@ -460,9 +446,6 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>builder() -&gt; TempBuilderCCPM0 {
         TempBuilderCCPM0 {}
     }
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>framing_parameters(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>FramingParameters {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.framing_parameters
-    }
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>inline_proposals(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[Proposal] {
         <span class="kw-2">&amp;</span><span class="self">self</span>.inline_proposals
     }
@@ -472,8 +455,8 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>force_self_update(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="self">self</span>.force_self_update
     }
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>commit_type(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>CommitType {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.commit_type
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>credential_with_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>CredentialWithKey {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.credential_with_key
     }
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf_node_parameters(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>LeafNodeParameters {
         <span class="kw-2">&amp;</span><span class="self">self</span>.leaf_node_parameters
@@ -481,15 +464,22 @@
 }
 
 <span class="kw">impl </span>MlsGroup {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>create_commit&lt;Provider: OpenMlsProvider&gt;(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>create_external_commit&lt;Provider: OpenMlsProvider&gt;(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         params: CreateCommitParams,
         provider: <span class="kw-2">&amp;</span>Provider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;CreateCommitResult, CreateCommitError&lt;Provider::StorageError&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;CreateCommitResult, CreateCommitError&gt; {
+        <span class="comment">// We  are building an external commit. This means we have to pull the
+        // framing parameters out of the create commit parameteres instead of the group. Since
+        // these are set together with the group mode, we can be sure that this is `Some(..)` (see
+        // [`TempBuilderCCPM0::external_commit`].
+        </span><span class="kw">let </span>framing_parameters = params.framing_parameters.unwrap();
+        <span class="kw">let </span>commit_type = CommitType::External(params.credential_with_key().clone());
+
         <span class="kw">let </span>ciphersuite = <span class="self">self</span>.ciphersuite();
 
-        <span class="kw">let </span>sender = <span class="kw">match </span>params.commit_type() {
+        <span class="kw">let </span>sender = <span class="kw">match </span>commit_type {
             CommitType::External(<span class="kw">_</span>) =&gt; Sender::NewMemberCommit,
             CommitType::Member =&gt; Sender::build_member(<span class="self">self</span>.own_leaf_index()),
         };
@@ -563,9 +553,6 @@
         <span class="comment">// Apply proposals to tree
         </span><span class="kw">let </span>apply_proposals_values =
             diff.apply_proposals(<span class="kw-2">&amp;</span>proposal_queue, <span class="self">self</span>.own_leaf_index())<span class="question-mark">?</span>;
-        <span class="kw">if </span>apply_proposals_values.self_removed &amp;&amp; params.commit_type() == <span class="kw-2">&amp;</span>CommitType::Member {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(CreateCommitError::CannotRemoveSelf);
-        }
 
         <span class="kw">let </span>path_computation_result =
             <span class="comment">// If path is needed, compute path values
@@ -578,10 +565,11 @@
                 // group context by updating the epoch and computing the new
                 // tree hash.
                 </span>diff.compute_path(
-                    provider,
+                    provider.rand(),
+                    provider.crypto(),
                     <span class="self">self</span>.own_leaf_index(),
                     apply_proposals_values.exclusion_list(),
-                    params.commit_type(),
+                    <span class="kw-2">&amp;</span>commit_type,
                     params.leaf_node_parameters(),
                     signer,
                     apply_proposals_values.extensions.clone()
@@ -606,7 +594,7 @@
 
         <span class="comment">// Build AuthenticatedContent
         </span><span class="kw">let </span><span class="kw-2">mut </span>authenticated_content = AuthenticatedContent::commit(
-            <span class="kw-2">*</span>params.framing_parameters(),
+            framing_parameters,
             sender,
             commit,
             <span class="self">self</span>.public_group.group_context(),

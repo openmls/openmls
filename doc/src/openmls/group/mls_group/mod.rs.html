@@ -871,12 +871,14 @@
 <a href="#871" id="871">871</a>
 <a href="#872" id="872">872</a>
 <a href="#873" id="873">873</a>
+<a href="#874" id="874">874</a>
+<a href="#875" id="875">875</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! MLS Group
 //!
 //! This module contains [`MlsGroup`] and its submodules.
 //!
 
-</span><span class="kw">use </span>create_commit::{CommitType, CreateCommitParams};
+</span><span class="kw">use </span>create_commit::CreateCommitParams;
 <span class="kw">use </span>past_secrets::MessageSecretsStore;
 <span class="kw">use </span>proposal_store::ProposalQueue;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -932,7 +934,8 @@
 <span class="kw">use </span>config::<span class="kw-2">*</span>;
 
 <span class="comment">// Crate
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>config;
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>commit_builder;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>config;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>create_commit;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>errors;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>membership;
@@ -1473,9 +1476,10 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;PrivateMessage, MessageEncryptionError&lt;Provider::StorageError&gt;&gt; {
         <span class="kw">let </span>padding_size = <span class="self">self</span>.configuration().padding_size();
         <span class="kw">let </span>msg = PrivateMessage::try_from_authenticated_content(
+            provider.crypto(),
+            provider.rand(),
             <span class="kw-2">&amp;</span>public_message,
             <span class="self">self</span>.ciphersuite(),
-            provider,
             <span class="self">self</span>.message_secrets_store.message_secrets_mut(),
             padding_size,
         )<span class="question-mark">?</span>;

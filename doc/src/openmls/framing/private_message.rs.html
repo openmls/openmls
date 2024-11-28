@@ -303,7 +303,14 @@
 <a href="#303" id="303">303</a>
 <a href="#304" id="304">304</a>
 <a href="#305" id="305">305</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::types::Ciphersuite;
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, random::OpenMlsRand, types::Ciphersuite};
 <span class="kw">use </span>std::io::Write;
 <span class="kw">use </span>tls_codec::{Serialize, Size, TlsSerialize, TlsSize};
 
@@ -311,7 +318,7 @@
 
 <span class="kw">use crate</span>::{
     binary_tree::array_representation::LeafNodeIndex, error::LibraryError,
-    storage::OpenMlsProvider, tree::secret_tree::SecretType,
+    tree::secret_tree::SecretType,
 };
 
 <span class="kw">use super</span>::<span class="kw-2">*</span>;
@@ -371,13 +378,14 @@
     ///
     /// TODO #1148: Refactor theses constructors to avoid test code in main and
     /// to avoid validation using a special feature flag.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>try_from_authenticated_content&lt;Provider: OpenMlsProvider&gt;(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>try_from_authenticated_content&lt;T&gt;(
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+        rand: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsRand,
         public_message: <span class="kw-2">&amp;</span>AuthenticatedContent,
         ciphersuite: Ciphersuite,
-        provider: <span class="kw-2">&amp;</span>Provider,
         message_secrets: <span class="kw-2">&amp;mut </span>MessageSecrets,
         padding_size: usize,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;PrivateMessage, MessageEncryptionError&lt;Provider::StorageError&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;PrivateMessage, MessageEncryptionError&lt;T&gt;&gt; {
         <span class="macro">log::debug!</span>(<span class="string">"PrivateMessage::try_from_authenticated_content"</span>);
         <span class="macro">log::trace!</span>(<span class="string">"  ciphersuite: {}"</span>, ciphersuite);
         <span class="comment">// Check the message has the correct wire format
@@ -385,47 +393,52 @@
             <span class="kw">return </span><span class="prelude-val">Err</span>(MessageEncryptionError::WrongWireFormat);
         }
         <span class="self">Self</span>::encrypt_content(
+            crypto,
+            rand,
             <span class="prelude-val">None</span>,
             public_message,
             ciphersuite,
-            provider,
             message_secrets,
             padding_size,
         )
     }
 
     <span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encrypt_without_check&lt;Provider: OpenMlsProvider&gt;(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encrypt_without_check&lt;T&gt;(
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+        rand: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsRand,
         public_message: <span class="kw-2">&amp;</span>AuthenticatedContent,
         ciphersuite: Ciphersuite,
-        provider: <span class="kw-2">&amp;</span>Provider,
         message_secrets: <span class="kw-2">&amp;mut </span>MessageSecrets,
         padding_size: usize,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;PrivateMessage, MessageEncryptionError&lt;Provider::StorageError&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;PrivateMessage, MessageEncryptionError&lt;T&gt;&gt; {
         <span class="self">Self</span>::encrypt_content(
+            crypto,
+            rand,
             <span class="prelude-val">None</span>,
             public_message,
             ciphersuite,
-            provider,
             message_secrets,
             padding_size,
         )
     }
 
     <span class="attr">#[cfg(test)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encrypt_with_different_header&lt;Provider: OpenMlsProvider&gt;(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encrypt_with_different_header&lt;T&gt;(
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+        rand: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsRand,
         public_message: <span class="kw-2">&amp;</span>AuthenticatedContent,
         ciphersuite: Ciphersuite,
-        provider: <span class="kw-2">&amp;</span>Provider,
         header: MlsMessageHeader,
         message_secrets: <span class="kw-2">&amp;mut </span>MessageSecrets,
         padding_size: usize,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;PrivateMessage, MessageEncryptionError&lt;Provider::StorageError&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;PrivateMessage, MessageEncryptionError&lt;T&gt;&gt; {
         <span class="self">Self</span>::encrypt_content(
+            crypto,
+            rand,
             <span class="prelude-val">Some</span>(header),
             public_message,
             ciphersuite,
-            provider,
             message_secrets,
             padding_size,
         )
@@ -433,14 +446,15 @@
 
     <span class="doccomment">/// Internal function to encrypt content. The extra message header is only used
     /// for tests. Otherwise, the data from the given `AuthenticatedContent` is used.
-    </span><span class="kw">fn </span>encrypt_content&lt;Provider: OpenMlsProvider&gt;(
+    </span><span class="kw">fn </span>encrypt_content&lt;T&gt;(
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+        rand: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsRand,
         test_header: <span class="prelude-ty">Option</span>&lt;MlsMessageHeader&gt;,
         public_message: <span class="kw-2">&amp;</span>AuthenticatedContent,
         ciphersuite: Ciphersuite,
-        provider: <span class="kw-2">&amp;</span>Provider,
         message_secrets: <span class="kw-2">&amp;mut </span>MessageSecrets,
         padding_size: usize,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;PrivateMessage, MessageEncryptionError&lt;Provider::StorageError&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;PrivateMessage, MessageEncryptionError&lt;T&gt;&gt; {
         <span class="kw">let </span>sender_index = <span class="kw">if let </span><span class="prelude-val">Some</span>(index) = public_message.sender().as_member() {
             index
         } <span class="kw">else </span>{
@@ -470,10 +484,10 @@
         <span class="kw">let </span>(generation, (ratchet_key, ratchet_nonce)) = message_secrets
             .secret_tree_mut()
             <span class="comment">// Even in tests we want to use the real sender index, so we have a key to encrypt.
-            </span>.secret_for_encryption(ciphersuite, provider.crypto(), sender_index, secret_type)<span class="question-mark">?</span>;
+            </span>.secret_for_encryption(ciphersuite, crypto, sender_index, secret_type)<span class="question-mark">?</span>;
         <span class="comment">// Sample reuse guard uniformly at random.
-        </span><span class="kw">let </span>reuse_guard: ReuseGuard = ReuseGuard::try_from_random(provider.rand())
-            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>reuse_guard: ReuseGuard =
+            ReuseGuard::try_from_random(rand).map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
         <span class="comment">// Prepare the nonce by xoring with the reuse guard.
         </span><span class="kw">let </span>prepared_nonce = ratchet_nonce.xor_with_reuse_guard(<span class="kw-2">&amp;</span>reuse_guard);
         <span class="comment">// Encrypt the payload
@@ -484,7 +498,7 @@
         <span class="macro">log_crypto!</span>(trace, <span class="string">"Encryption of private message private_message_content_aad_bytes: {private_message_content_aad_bytes:x?} - ratchet_nonce: {prepared_nonce:x?}"</span>);
         <span class="kw">let </span>ciphertext = ratchet_key
             .aead_seal(
-                provider.crypto(),
+                crypto,
                 <span class="kw-2">&amp;</span><span class="self">Self</span>::encode_padded_ciphertext_content_detached(
                     public_message,
                     padding_size,
@@ -499,12 +513,12 @@
         <span class="comment">// Derive the sender data key from the key schedule using the ciphertext.
         </span><span class="kw">let </span>sender_data_key = message_secrets
             .sender_data_secret()
-            .derive_aead_key(provider.crypto(), ciphersuite, <span class="kw-2">&amp;</span>ciphertext)
+            .derive_aead_key(crypto, ciphersuite, <span class="kw-2">&amp;</span>ciphertext)
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
         <span class="comment">// Derive initial nonce from the key schedule using the ciphertext.
         </span><span class="kw">let </span>sender_data_nonce = message_secrets
             .sender_data_secret()
-            .derive_aead_nonce(ciphersuite, provider.crypto(), <span class="kw-2">&amp;</span>ciphertext)
+            .derive_aead_nonce(ciphersuite, crypto, <span class="kw-2">&amp;</span>ciphertext)
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
         <span class="comment">// Compute sender data nonce by xoring reuse guard and key schedule
         // nonce as per spec.
@@ -531,7 +545,7 @@
         <span class="macro">log_crypto!</span>(trace, <span class="string">"Encryption of sender data mls_sender_data_aad_bytes: {mls_sender_data_aad_bytes:x?} - sender_data_nonce: {sender_data_nonce:x?}"</span>);
         <span class="kw">let </span>encrypted_sender_data = sender_data_key
             .aead_seal(
-                provider.crypto(),
+                crypto,
                 <span class="kw-2">&amp;</span>sender_data
                     .tls_serialize_detached()
                     .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>,

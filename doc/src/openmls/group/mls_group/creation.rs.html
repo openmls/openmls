@@ -586,21 +586,6 @@
 <a href="#586" id="586">586</a>
 <a href="#587" id="587">587</a>
 <a href="#588" id="588">588</a>
-<a href="#589" id="589">589</a>
-<a href="#590" id="590">590</a>
-<a href="#591" id="591">591</a>
-<a href="#592" id="592">592</a>
-<a href="#593" id="593">593</a>
-<a href="#594" id="594">594</a>
-<a href="#595" id="595">595</a>
-<a href="#596" id="596">596</a>
-<a href="#597" id="597">597</a>
-<a href="#598" id="598">598</a>
-<a href="#599" id="599">599</a>
-<a href="#600" id="600">600</a>
-<a href="#601" id="601">601</a>
-<a href="#602" id="602">602</a>
-<a href="#603" id="603">603</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>errors::NewGroupError;
 <span class="kw">use </span>openmls_traits::{signatures::Signer, storage::StorageProvider <span class="kw">as </span>StorageProviderTrait};
 
@@ -709,8 +694,7 @@
             .with_extensions(extensions.unwrap_or_default())
             .build();
         <span class="kw">let </span><span class="kw-2">mut </span>params = CreateCommitParams::builder()
-            .framing_parameters(framing_parameters)
-            .commit_type(CommitType::External(credential_with_key))
+            .external_commit(credential_with_key, framing_parameters)
             .leaf_node_parameters(leaf_node_parameters)
             .build();
 
@@ -779,12 +763,7 @@
 
         <span class="comment">// If there is a group member in the group with the same identity as us,
         // commit a remove proposal.
-        </span><span class="kw">let </span>signature_key = <span class="kw">match </span>params.commit_type() {
-            CommitType::External(credential_with_key) =&gt; {
-                credential_with_key.signature_key.as_slice()
-            }
-            <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitError::MissingCredential),
-        };
+        </span><span class="kw">let </span>signature_key = params.credential_with_key().signature_key.as_slice();
         <span class="kw">if let </span><span class="prelude-val">Some</span>(us) = public_group
             .members()
             .find(|member| member.signature_key == signature_key)
@@ -812,7 +791,7 @@
 
         <span class="comment">// Immediately create the commit to add ourselves to the group.
         </span><span class="kw">let </span>create_commit_result = mls_group
-            .create_commit(params, provider, signer)
+            .create_external_commit(params, provider, signer)
             .map_err(|<span class="kw">_</span>| ExternalCommitError::CommitError)<span class="question-mark">?</span>;
 
         mls_group.group_state = MlsGroupState::PendingCommit(Box::new(
@@ -830,14 +809,6 @@
             public_message.into(),
             create_commit_result.group_info,
         ))
-    }
-}
-
-<span class="kw">fn </span>transpose_err_opt&lt;T, E&gt;(v: <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;T&gt;, E&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="prelude-ty">Result</span>&lt;T, E&gt;&gt; {
-    <span class="kw">match </span>v {
-        <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(v)) =&gt; <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(v)),
-        <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) =&gt; <span class="prelude-val">None</span>,
-        <span class="prelude-val">Err</span>(err) =&gt; <span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(err)),
     }
 }
 
@@ -1186,12 +1157,11 @@
         .find_map(|egs| {
             <span class="kw">let </span>hash_ref = egs.new_member();
 
-            transpose_err_opt(
-                provider
-                    .storage()
-                    .key_package(<span class="kw-2">&amp;</span>hash_ref)
-                    .map_err(WelcomeError::StorageError),
-            )
+            provider
+                .storage()
+                .key_package(<span class="kw-2">&amp;</span>hash_ref)
+                .map_err(WelcomeError::StorageError)
+                .transpose()
         })
         .ok_or(WelcomeError::NoMatchingKeyPackage)<span class="question-mark">??</span>;
     <span class="kw">if </span>!key_package_bundle.key_package().last_resort() {

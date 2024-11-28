@@ -661,7 +661,7 @@
             <span class="kw">return </span><span class="prelude-val">Err</span>(CreationFromExternalError::UnsupportedMlsVersion);
         }
 
-        <span class="kw">let </span>group_context = GroupContext::from(group_info.clone());
+        <span class="kw">let </span>group_context = group_info.group_context().clone();
 
         <span class="kw">let </span>interim_transcript_hash = {
             <span class="kw">let </span>input = InterimTranscriptHashInput::from(group_info.confirmation_tag());

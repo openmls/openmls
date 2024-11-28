@@ -307,12 +307,6 @@
 <a href="#307" id="307">307</a>
 <a href="#308" id="308">308</a>
 <a href="#309" id="309">309</a>
-<a href="#310" id="310">310</a>
-<a href="#311" id="311">311</a>
-<a href="#312" id="312">312</a>
-<a href="#313" id="313">313</a>
-<a href="#314" id="314">314</a>
-<a href="#315" id="315">315</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains all types related to group info handling.
 
 </span><span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
@@ -516,12 +510,6 @@
             },
             signature: <span class="self">self</span>.signature,
         }
-    }
-}
-
-<span class="kw">impl </span>From&lt;GroupInfo&gt; <span class="kw">for </span>GroupContext {
-    <span class="kw">fn </span>from(value: GroupInfo) -&gt; <span class="self">Self </span>{
-        value.payload.group_context
     }
 }
 

@@ -162,7 +162,30 @@
             &amp;[bob_key_package.key_package().clone()],
         )
         .expect("Could not add members.");</code></pre>
-<p>The function returns the tuple <code>(MlsMessageOut, Welcome)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing group members. The <code>Welcome</code> message must be sent to the newly added members.</p>
+<p>The function returns the tuple <code>(MlsMessageOut, Welcome, Option&lt;GroupInfo&gt;)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing group members. The <code>Welcome</code> message must be sent to the newly added members, along the optional <code>GroupInfo</code> if it is available.</p>
+<p>Users could also use the new <code>CommitBuilder</code> API, which would look like this:</p>
+<pre><code class="language-rust no_run noplayground">    let message_bundle = alice_group
+        .commit_builder()
+        .propose_adds(Some(bob_key_package.key_package().clone()))
+        .load_psks(provider.storage())
+        .expect("error loading psks")
+        .build(
+            provider.rand(),
+            provider.crypto(),
+            &amp;alice_signature_keys,
+            |_proposal| true,
+        )
+        .expect("error validating data and building commit")
+        .stage_commit(provider)
+        .expect("error staging commit");
+
+    let (mls_message_out, welcome, group_info) = message_bundle.into_contents();</code></pre>
+<p>Some notes on the arguments to the builder stages:</p>
+<ul>
+<li>The reason that the <code>KeyPackage</code> is wrapped in a <code>Some</code> is that <code>Option&lt;KeyPackage&gt;</code> implements <code>IntoIterator&lt;Item = KeyPackage&gt;</code>, which is the type bounds of that function. This means that the function also works with any iterator over <code>KeyPackage</code> items or a <code>Vec&lt;KeyPackage&gt;</code>.</li>
+<li>The closure is a predicate over <code>&amp;QueuedProposal</code> and represents the policy of which proposals are deemed acceptable in the application.</li>
+</ul>
+<p>This function returns a <code>CommitMessageBundle</code>, from which the <code>MlsMessageOut</code>, <code>Welcome</code> and <code>GroupInfo</code> can be extracted.</p>
 <h3 id="adding-members-without-update"><a class="header" href="#adding-members-without-update">Adding members without update</a></h3>
 <p>The <code>.add_members_without_update()</code> function functions the same as the <code>.add_members()</code> function, except that it will only include an update to the sender's key material if the sender's proposal store includes a proposal that requires a path. For a list of proposals and an indication whether they require a <code>path</code> (i.e. a key material update) see <a href="https://www.rfc-editor.org/rfc/rfc9420.html#section-17.4">Section 17.4 of RFC 9420</a>.</p>
 <p>Not sending an update means that the sender will not achieve post-compromise security with this particular commit. However, not sending an update saves on performance both in terms of computation and bandwidth. Using <code>.add_members_without_update()</code> can thus be a useful option if the ciphersuite of the group features large public keys and/or expensive encryption operations.</p>

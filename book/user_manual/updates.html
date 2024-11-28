@@ -158,7 +158,8 @@
 By default, only the HPKE encryption key is updated. The application can however also provide more parameters like a new credential, capabilities and extensions using the <code>LeafNodeParameters</code> struct.</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, welcome_option, _group_info) = bob_group
         .self_update(provider, &amp;bob_signature_keys, LeafNodeParameters::default())
-        .expect("Could not update own key package.");</code></pre>
+        .expect("Could not update own key package.")
+        .into_contents();</code></pre>
 <p>The function returns the tuple <code>(MlsMessageOut, Option&lt;Welcome&gt;)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing group members.
 Even though the member updates its own leaf node only in this operation, the Commit message could potentially also cover Add Proposals that were previously received in the epoch. Therefore the function can also optionally return a <code>Welcome</code> message. The <code>Welcome</code> message must be sent to the newly added members.</p>
 <h2 id="proposal"><a class="header" href="#proposal">Proposal</a></h2>

@@ -113,38 +113,11 @@
 <a href="#113" id="113">113</a>
 <a href="#114" id="114">114</a>
 <a href="#115" id="115">115</a>
-<a href="#116" id="116">116</a>
-<a href="#117" id="117">117</a>
-<a href="#118" id="118">118</a>
-<a href="#119" id="119">119</a>
-<a href="#120" id="120">120</a>
-<a href="#121" id="121">121</a>
-<a href="#122" id="122">122</a>
-<a href="#123" id="123">123</a>
-<a href="#124" id="124">124</a>
-<a href="#125" id="125">125</a>
-<a href="#126" id="126">126</a>
-<a href="#127" id="127">127</a>
-<a href="#128" id="128">128</a>
-<a href="#129" id="129">129</a>
-<a href="#130" id="130">130</a>
-<a href="#131" id="131">131</a>
-<a href="#132" id="132">132</a>
-<a href="#133" id="133">133</a>
-<a href="#134" id="134">134</a>
-<a href="#135" id="135">135</a>
-<a href="#136" id="136">136</a>
-<a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a>
-<a href="#139" id="139">139</a>
-<a href="#140" id="140">140</a>
-<a href="#141" id="141">141</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>errors::{ProposeSelfUpdateError, SelfUpdateError};
+</pre></div><pre class="rust"><code><span class="kw">use </span>commit_builder::CommitMessageBundle;
+<span class="kw">use </span>errors::{ProposeSelfUpdateError, SelfUpdateError};
 <span class="kw">use </span>openmls_traits::{signatures::Signer, storage::StorageProvider <span class="kw">as _</span>};
 
-<span class="kw">use crate</span>::{
-    messages::group_info::GroupInfo, storage::OpenMlsProvider, treesync::LeafNodeParameters,
-};
+<span class="kw">use crate</span>::{storage::OpenMlsProvider, treesync::LeafNodeParameters};
 
 <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
@@ -169,45 +142,20 @@
         provider: <span class="kw-2">&amp;</span>Provider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         leaf_node_parameters: LeafNodeParameters,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;
-        (MlsMessageOut, <span class="prelude-ty">Option</span>&lt;MlsMessageOut&gt;, <span class="prelude-ty">Option</span>&lt;GroupInfo&gt;),
-        SelfUpdateError&lt;Provider::StorageError&gt;,
-    &gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;CommitMessageBundle, SelfUpdateError&lt;Provider::StorageError&gt;&gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>params = CreateCommitParams::builder()
-            .framing_parameters(<span class="self">self</span>.framing_parameters())
+        <span class="kw">let </span>bundle = <span class="self">self
+            </span>.commit_builder()
             .leaf_node_parameters(leaf_node_parameters)
-            .build();
-        <span class="comment">// Create Commit over all proposals.
-        // TODO #751
-        </span><span class="kw">let </span>create_commit_result = <span class="self">self</span>.create_commit(params, provider, signer)<span class="question-mark">?</span>;
-
-        <span class="comment">// Convert PublicMessage messages to MLSMessage and encrypt them if required by
-        // the configuration
-        </span><span class="kw">let </span>mls_message = <span class="self">self</span>.content_to_mls_message(create_commit_result.commit, provider)<span class="question-mark">?</span>;
-
-        <span class="comment">// Set the current group state to [`MlsGroupState::PendingCommit`],
-        // storing the current [`StagedCommit`] from the commit results
-        </span><span class="self">self</span>.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
-            create_commit_result.staged_commit,
-        )));
-
-        provider
-            .storage()
-            .write_group_state(<span class="self">self</span>.group_id(), <span class="kw-2">&amp;</span><span class="self">self</span>.group_state)
-            .map_err(SelfUpdateError::StorageError)<span class="question-mark">?</span>;
-        <span class="self">self</span>.store(provider.storage())
-            .map_err(SelfUpdateError::StorageError)<span class="question-mark">?</span>;
+            .consume_proposal_store(<span class="bool-val">true</span>)
+            .load_psks(provider.storage())<span class="question-mark">?
+            </span>.build(provider.rand(), provider.crypto(), signer, |<span class="kw">_</span>| <span class="bool-val">true</span>)<span class="question-mark">?
+            </span>.stage_commit(provider)<span class="question-mark">?</span>;
 
         <span class="self">self</span>.reset_aad();
-        <span class="prelude-val">Ok</span>((
-            mls_message,
-            create_commit_result
-                .welcome_option
-                .map(|w| MlsMessageOut::from_welcome(w, <span class="self">self</span>.version())),
-            create_commit_result.group_info,
-        ))
+
+        <span class="prelude-val">Ok</span>(bundle)
     }
 
     <span class="doccomment">/// Creates a proposal to update the own leaf node. Optionally, a
