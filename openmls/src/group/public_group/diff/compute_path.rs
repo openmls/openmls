@@ -32,7 +32,7 @@ pub(crate) struct PathComputationResult {
     pub(crate) new_keypairs: Vec<EncryptionKeyPair>,
 }
 
-impl<'a> PublicGroupDiff<'a> {
+impl PublicGroupDiff<'_> {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn compute_path(
         &mut self,

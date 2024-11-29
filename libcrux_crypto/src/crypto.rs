@@ -571,7 +571,7 @@ fn der_decode(mut signature_bytes: &[u8]) -> Result<Vec<u8>, CryptoError> {
 
 struct GuardedRng<'a, Rng: RngCore>(MutexGuard<'a, Rng>);
 
-impl<'a, Rng: RngCore> RngCore for GuardedRng<'a, Rng> {
+impl<Rng: RngCore> RngCore for GuardedRng<'_, Rng> {
     fn next_u32(&mut self) -> u32 {
         self.0.next_u32()
     }
@@ -589,4 +589,4 @@ impl<'a, Rng: RngCore> RngCore for GuardedRng<'a, Rng> {
     }
 }
 
-impl<'a, Rng: RngCore + CryptoRng> CryptoRng for GuardedRng<'a, Rng> {}
+impl<Rng: RngCore + CryptoRng> CryptoRng for GuardedRng<'_, Rng> {}

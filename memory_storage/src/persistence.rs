@@ -19,7 +19,7 @@ pub fn get_file_path(file_name: &String) -> PathBuf {
 }
 
 impl super::MemoryStorage {
-    fn get_file_path(user_name: &String) -> PathBuf {
+    fn get_file_path(user_name: &str) -> PathBuf {
         get_file_path(&("openmls_cli_".to_owned() + user_name + "_ks.json"))
     }
 
