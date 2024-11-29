@@ -72,6 +72,7 @@ impl MlsGroup {
         };
 
         // Prepare the PskSecret
+        // Fails if PSKs are missing ([valn1205](https://validation.openmls.tech/#valn1205))
         let psk_secret = {
             let psks: Vec<(&PreSharedKeyId, Secret)> = load_psks(
                 provider.storage(),

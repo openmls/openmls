@@ -396,6 +396,9 @@ pub enum ProposalValidationError {
     /// See [`LeafNodeValidationError`] for more details.
     #[error(transparent)]
     LeafNodeValidation(#[from] LeafNodeValidationError),
+    /// Regular Commits may not contain ExternalInit proposals, but one was found
+    #[error("Found ExternalInit proposal in regular commit")]
+    ExternalInitProposalInRegularCommit,
 }
 
 /// External Commit validaton error
