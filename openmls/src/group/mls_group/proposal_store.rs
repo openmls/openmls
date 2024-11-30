@@ -742,7 +742,7 @@ pub struct QueuedAddProposal<'a> {
     sender: &'a Sender,
 }
 
-impl<'a> QueuedAddProposal<'a> {
+impl QueuedAddProposal<'_> {
     /// Returns a reference to the proposal
     pub fn add_proposal(&self) -> &AddProposal {
         self.add_proposal
@@ -761,7 +761,7 @@ pub struct QueuedRemoveProposal<'a> {
     sender: &'a Sender,
 }
 
-impl<'a> QueuedRemoveProposal<'a> {
+impl QueuedRemoveProposal<'_> {
     /// Returns a reference to the proposal
     pub fn remove_proposal(&self) -> &RemoveProposal {
         self.remove_proposal
@@ -780,7 +780,7 @@ pub struct QueuedUpdateProposal<'a> {
     sender: &'a Sender,
 }
 
-impl<'a> QueuedUpdateProposal<'a> {
+impl QueuedUpdateProposal<'_> {
     /// Returns a reference to the proposal
     pub fn update_proposal(&self) -> &UpdateProposal {
         self.update_proposal
@@ -799,7 +799,7 @@ pub struct QueuedPskProposal<'a> {
     sender: &'a Sender,
 }
 
-impl<'a> QueuedPskProposal<'a> {
+impl QueuedPskProposal<'_> {
     /// Returns a reference to the proposal
     pub fn psk_proposal(&self) -> &PreSharedKeyProposal {
         self.psk_proposal

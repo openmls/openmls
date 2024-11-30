@@ -77,7 +77,7 @@ impl User {
         out
     }
 
-    fn get_file_path(user_name: &String) -> PathBuf {
+    fn get_file_path(user_name: &str) -> PathBuf {
         openmls_memory_storage::persistence::get_file_path(
             &("openmls_cli_".to_owned() + user_name + ".json"),
         )

@@ -221,7 +221,7 @@ impl<'a> CommitBuilder<'a, Initial> {
     pub fn load_psks<Storage: StorageProvider>(
         self,
         storage: &'a Storage,
-    ) -> Result<CommitBuilder<LoadedPsks>, CreateCommitError> {
+    ) -> Result<CommitBuilder<'a, LoadedPsks>, CreateCommitError> {
         let psk_ids: Vec<_> = self
             .stage
             .own_proposals
@@ -597,7 +597,7 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
     }
 }
 
-impl<'a> CommitBuilder<'a, Complete> {
+impl CommitBuilder<'_, Complete> {
     #[cfg(test)]
     pub(crate) fn commit_result(self) -> CreateCommitResult {
         self.stage.result

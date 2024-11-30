@@ -49,7 +49,7 @@ impl ApplyProposalsValues {
 /// Remove proposal.
 ///
 /// Returns an error if the proposals have not been validated before.
-impl<'a> PublicGroupDiff<'a> {
+impl PublicGroupDiff<'_> {
     pub(crate) fn apply_proposals(
         &mut self,
         proposal_queue: &ProposalQueue,
