@@ -96,7 +96,7 @@ impl<'a> From<&'a TreeSync> for TreeSyncDiff<'a> {
     }
 }
 
-impl<'a> TreeSyncDiff<'a> {
+impl TreeSyncDiff<'_> {
     /// Filtered direct path, skips the nodes whose copath resolution is empty.
     pub(crate) fn filtered_direct_path(&self, leaf_index: LeafNodeIndex) -> Vec<ParentNodeIndex> {
         // Full direct path

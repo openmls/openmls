@@ -34,7 +34,7 @@ use crate::{
     treesync::node::NodeReference,
 };
 
-impl<'a> TreeSyncDiff<'a> {
+impl TreeSyncDiff<'_> {
     /// Encrypt the given `path` to the nodes in the copath resolution of the
     /// owner of this [`TreeSyncDiff`]. The `group_context` is used in the
     /// encryption of the nodes, while the `exclusion_list` is used to filter

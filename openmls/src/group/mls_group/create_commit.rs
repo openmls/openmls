@@ -55,7 +55,7 @@ impl<'a> CreateCommitParamsBuilder<'a> {
     }
 }
 
-impl<'a> CreateCommitParams<'a> {
+impl CreateCommitParams<'_> {
     pub(crate) fn builder() -> TempBuilderCCPM0 {
         TempBuilderCCPM0 {}
     }
