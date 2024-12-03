@@ -208,7 +208,7 @@ impl<'a> CommitBuilder<'a, Initial> {
         self
     }
 
-    pub fn propose_group_context_externsions(mut self, extensions: Extensions) -> Self {
+    pub fn propose_group_context_extensions(mut self, extensions: Extensions) -> Self {
         self.stage
             .own_proposals
             .push(Proposal::GroupContextExtensions(
