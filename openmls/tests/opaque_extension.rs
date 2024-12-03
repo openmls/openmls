@@ -6,10 +6,10 @@ use openmls_traits::{signatures::Signer, types::SignatureScheme};
 const CUSTOM_EXTENSION_TYPE_ID: u16 = 0xff00;
 const CUSTOM_EXTENSION_TYPE: ExtensionType = ExtensionType::Unknown(CUSTOM_EXTENSION_TYPE_ID);
 
-#[openmls_test]
 /// An example where we add an unknown extension to every commit in the group
 /// In this example, the extension we commit is the list of "user names" of the clients in the
 /// group.
+#[openmls_test]
 fn opaque_extension() {
     // ## First we need to set up the clients.
     // Generate credentials with keys
@@ -25,8 +25,8 @@ fn opaque_extension() {
         provider,
     );
 
-    // Generate Bob's key package so he can be added later.
-    // Note that this function also sets the capability for our custom extension type
+    // Generate key packages for Bob and Charlie so they can be added later.
+    // Note that `generate_key_package` also sets the capability for our custom extension type.
     let bob_key_package = generate_key_package(
         ciphersuite,
         bob_credential.clone(),
@@ -44,7 +44,6 @@ fn opaque_extension() {
     );
 
     // ## Next, start setting up the group
-    // ANCHOR: mls_group_create_config_example
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .padding_size(100)
         .sender_ratchet_configuration(SenderRatchetConfiguration::new(
@@ -61,7 +60,7 @@ fn opaque_extension() {
                 Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
                     &[CUSTOM_EXTENSION_TYPE],
                     &[],
-                    &[],
+                    &[CredentialType::Basic],
                 )),
                 Extension::Unknown(
                     CUSTOM_EXTENSION_TYPE_ID,
@@ -80,9 +79,7 @@ fn opaque_extension() {
             Some(&[CredentialType::Basic]),
         ))
         .build();
-    // ANCHOR_END: mls_group_create_config_example
 
-    // ANCHOR: alice_create_group
     let mut alice_group = MlsGroup::new(
         provider,
         &alice_signature_keys,
@@ -90,7 +87,6 @@ fn opaque_extension() {
         alice_credential.clone(),
     )
     .expect("An unexpected error occurred.");
-    // ANCHOR_END: alice_create_group
 
     // ## Build the commit where we add bob:
     // 1. add the client to the group
@@ -103,7 +99,7 @@ fn opaque_extension() {
                 Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
                     &[CUSTOM_EXTENSION_TYPE],
                     &[],
-                    &[],
+                    &[CredentialType::Basic],
                 )),
                 Extension::Unknown(
                     CUSTOM_EXTENSION_TYPE_ID,
@@ -165,7 +161,7 @@ fn opaque_extension() {
                 Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
                     &[CUSTOM_EXTENSION_TYPE],
                     &[],
-                    &[],
+                    &[CredentialType::Basic],
                 )),
                 Extension::Unknown(
                     CUSTOM_EXTENSION_TYPE_ID,
@@ -229,18 +225,17 @@ fn generate_key_package(
     provider: &impl crate::storage::OpenMlsProvider,
     signer: &impl Signer,
 ) -> KeyPackageBundle {
-    // ANCHOR: create_key_package
     // Create the key package
     KeyPackage::builder()
         .leaf_node_capabilities(
             Capabilities::builder()
                 .extensions(vec![CUSTOM_EXTENSION_TYPE])
+                .credentials(vec![CredentialType::Basic])
                 .build(),
         )
         .key_package_extensions(extensions)
         .build(ciphersuite, provider, signer, credential_with_key)
         .unwrap()
-    // ANCHOR_END: create_key_package
 }
 
 fn generate_credential(
@@ -248,13 +243,9 @@ fn generate_credential(
     signature_algorithm: SignatureScheme,
     provider: &impl crate::storage::OpenMlsProvider,
 ) -> (CredentialWithKey, SignatureKeyPair) {
-    // ANCHOR: create_basic_credential
     let credential = BasicCredential::new(identity);
-    // ANCHOR_END: create_basic_credential
-    // ANCHOR: create_credential_keys
     let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
     signature_keys.store(provider.storage()).unwrap();
-    // ANCHOR_END: create_credential_keys
 
     (
         CredentialWithKey {
