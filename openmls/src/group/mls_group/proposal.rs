@@ -406,7 +406,7 @@ impl MlsGroup {
         // Build and stage Commit containing GroupContextExtensions proposal
         let bundle = self
             .commit_builder()
-            .propose_group_context_externsions(extensions)
+            .propose_group_context_extensions(extensions)
             .load_psks(provider.storage())?
             .build(provider.rand(), provider.crypto(), signer, |_| true)?
             .stage_commit(provider)?;
