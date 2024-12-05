@@ -958,7 +958,7 @@
         <span class="comment">// Build and stage Commit containing GroupContextExtensions proposal
         </span><span class="kw">let </span>bundle = <span class="self">self
             </span>.commit_builder()
-            .propose_group_context_externsions(extensions)
+            .propose_group_context_extensions(extensions)
             .load_psks(provider.storage())<span class="question-mark">?
             </span>.build(provider.rand(), provider.crypto(), signer, |<span class="kw">_</span>| <span class="bool-val">true</span>)<span class="question-mark">?
             </span>.stage_commit(provider)<span class="question-mark">?</span>;

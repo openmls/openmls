@@ -635,7 +635,20 @@
 <a href="#634" id="634">634</a>
 <a href="#635" id="635">635</a>
 <a href="#636" id="636">636</a>
-<a href="#637" id="637">637</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Extensions
+<a href="#637" id="637">637</a>
+<a href="#638" id="638">638</a>
+<a href="#639" id="639">639</a>
+<a href="#640" id="640">640</a>
+<a href="#641" id="641">641</a>
+<a href="#642" id="642">642</a>
+<a href="#643" id="643">643</a>
+<a href="#644" id="644">644</a>
+<a href="#645" id="645">645</a>
+<a href="#646" id="646">646</a>
+<a href="#647" id="647">647</a>
+<a href="#648" id="648">648</a>
+<a href="#649" id="649">649</a>
+<a href="#650" id="650">650</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Extensions
 //!
 //! In MLS, extensions appear in the following places:
 //! - In [`KeyPackages`](`crate::key_packages`), to describe client capabilities
@@ -1056,6 +1069,19 @@
                 Extension::ExternalSenders(e) =&gt; <span class="prelude-val">Some</span>(e),
                 <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
             })
+    }
+
+    <span class="doccomment">/// Get a reference to the [`UnknownExtension`] with the given type id, if there is any.
+    </span><span class="kw">pub fn </span>unknown(<span class="kw-2">&amp;</span><span class="self">self</span>, extension_type_id: u16) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>UnknownExtension&gt; {
+        <span class="kw">let </span>extension_type: ExtensionType = extension_type_id.into();
+
+        <span class="kw">match </span>extension_type {
+            ExtensionType::Unknown(<span class="kw">_</span>) =&gt; <span class="self">self</span>.find_by_type(extension_type).and_then(|e| <span class="kw">match </span>e {
+                Extension::Unknown(<span class="kw">_</span>, e) =&gt; <span class="prelude-val">Some</span>(e),
+                <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+            }),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+        }
     }
 }
 
