@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- [#1688](https://github.com/openmls/openmls/pull/1688): Add `unknown()` getter method to `Extensions`.
 - [#1666](https://github.com/openmls/openmls/pull/1666): Add `members()` and `group_context()` getter methods to `StagedWelcome`.
 - [#1672](https://github.com/openmls/openmls/pull/1672): Add `epoch()` getter method to `VerifiableGroupInfo`.
 - [#1673](https://github.com/openmls/openmls/pull/1673): Return more specific error when attemtping to decrypt own messages: `ProcessMessageError::ValidationError(ValidationError::CannotDecryptOwnMessage)`.
