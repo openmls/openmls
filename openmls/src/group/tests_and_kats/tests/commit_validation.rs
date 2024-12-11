@@ -8,6 +8,7 @@ use tls_codec::{Deserialize, Serialize};
 use crate::group::tests_and_kats::utils::{
     generate_credential_with_key, generate_key_package, resign_message, CredentialWithKeyAndSigner,
 };
+use crate::prelude::ProtocolVersion;
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::signable::Signable,
@@ -890,4 +891,103 @@ fn test_partial_proposal_commit(
     bob_group
         .merge_pending_commit(provider)
         .expect("Commits with partial proposals are not supported");
+}
+
+// this ensures that a member can process commits not containing all the stored proposals
+#[openmls_test::openmls_test]
+fn test_reinit(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
+    // Test with PublicMessage
+    let CommitValidationTestSetup {
+        mut alice_group,
+        alice_credential,
+        mut bob_group,
+        ..
+    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, provider);
+
+    let extensions = alice_group.context().extensions().clone();
+
+    let reinit_bundle = alice_group
+        .commit_builder()
+        .add_proposal(Proposal::ReInit(ReInitProposal {
+            group_id: GroupId::from_slice(b"new group id"),
+            version: ProtocolVersion::Mls10,
+            ciphersuite,
+            extensions,
+        }))
+        .load_psks(provider.storage())
+        .unwrap()
+        .build(
+            provider.rand(),
+            provider.crypto(),
+            &alice_credential.signer,
+            |_| true,
+        )
+        .unwrap()
+        .stage_commit(provider)
+        .unwrap();
+
+    let commit = reinit_bundle.commit().clone();
+
+    // TODO: Figure out when to build the Welcome
+    //
+    // In the API we don't provide a PSK ID yet. However, we need the welcome to proceed, so we
+    // should do that somewhere.
+    //
+    // It would be nice if the builder would branch on reinit proposals and _require_ providing an
+    // epoch to use so we can build the welcome.
+    //
+    //   Actually we only want that to happen after we got the green light from the DS, and we need
+    //   to gracefully handle the case where our commit gets dropped
+    //
+    //      So we could just store it as a staged commit and only send the welcome after we receive
+    //      the commit back from the DS.
+    //
+    //          Actually, who should send the Welcome? If we let it do some other member, then the
+    //          other members need to agree who that other member should be.
+    //
+    //      Hm, on second read, the RFC sounds like we could just send everything in one go and
+    //      hope for the best. We could even ask the DS to deliver both messages together.
+
+    //
+    // let welcome = reinit_bundle
+    //     .welcome()
+    //     .expect("reinit didn't give a welcome");
+
+    let processed_message = bob_group
+        .process_message(provider, commit.into_protocol_message().unwrap())
+        .unwrap();
+
+    match processed_message.into_content() {
+        ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
+            let proposals: Vec<_> = staged_commit.queued_proposals().collect();
+            assert_eq!(proposals.len(), 1);
+            assert_eq!(
+                proposals[0].proposal().proposal_type(),
+                ProposalType::Reinit
+            );
+
+            // TODO: What Should I Do With This Value?
+            //
+            // The RFC says that the group may not be used to send messagse anymore, and we need to
+            // wait for a new welcome that contains the correct psk. Options I see here:
+            //
+            // - Call merge_pending_commit and extend the group state struct with a "reiniting"
+            //   variant and say the group is not operational
+            // - Add a separate method that consumes the group and returns a "ReinitingGroup" struct
+            //   that, given a welcome, can produce a new MlsGroup
+            //
+            // Things to consider:
+            //
+            // - From a type-safety perspective, consuming the group would be nicer, because we
+            //   can't even try to call methods that assume a working group.
+            //   - OTOH, the same could be said about other cases that make the group unusable
+            // - What should happen to the stored group?
+            //    - This sounds like this would map best to the GroupState approach, because we
+            //      wouldn't need to move it out of the place where active groups are stored
+            // - We could consider to add another enum variant to ProcessedMessageContent for
+            //   reinit commits, because it doesn't really make sense to stage them in the first
+            //   place - we are just dropping the group. This is optional, though
+        }
+        _ => unreachable!(),
+    }
 }
