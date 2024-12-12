@@ -258,7 +258,8 @@ impl MlsGroup {
         // Checks the following semantic validation:
         //  - ValSem010
         //  - ValSem246 (as part of ValSem010)
-        //  - https://validation.openmls.tech/#valn1203
+        //  - https://validation.openmls.tech/#valn1302
+        //  - https://validation.openmls.tech/#valn1304
         let (content, credential) =
             unverified_message.verify(self.ciphersuite(), provider.crypto(), self.version())?;
 

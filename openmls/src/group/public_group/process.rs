@@ -70,6 +70,15 @@ impl PublicGroup {
             }
         };
 
+        // If we have a message secret store, and it contains secrets and the leaf nodes for the
+        // epoch this message belongs to, then we extract it and pass it into the function that
+        // extracts the correct credential. Otherwise it is lost if the message is from an old
+        // epoch.
+        let message_epoch = decrypted_message.verifiable_content().epoch();
+        let old_leaves = message_secrets_store_option
+            .map(|store| store.leaves_for_epoch(message_epoch))
+            .unwrap_or_default();
+
         // Extract the credential if the sender is a member or a new member.
         // Checks the following semantic validation:
         //  - ValSem112

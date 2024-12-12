@@ -283,6 +283,8 @@ impl MlsGroup {
 
         // Verify confirmation tag
         // ValSem205
+        // https://validation.openmls.tech/#valn1302
+        // https://validation.openmls.tech/#valn1304
         let own_confirmation_tag = provisional_message_secrets
             .confirmation_key()
             .tag(

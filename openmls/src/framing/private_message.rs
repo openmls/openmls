@@ -143,6 +143,7 @@ impl PrivateMessage {
         message_secrets: &mut MessageSecrets,
         padding_size: usize,
     ) -> Result<PrivateMessage, MessageEncryptionError<T>> {
+        // https://validation.openmls.tech/#valn1305
         let sender_index = if let Some(index) = public_message.sender().as_member() {
             index
         } else {
@@ -221,7 +222,7 @@ impl PrivateMessage {
             .map_err(LibraryError::missing_bound_check)?;
         let sender_data = MlsSenderData::from_sender(
             // XXX: #106 This will fail for messages with a non-member sender.
-            header.sender,
+            sender_index,
             generation,
             reuse_guard,
         );
