@@ -41,7 +41,8 @@ CREATE TABLE IF NOT EXISTS openmls_key_packages (
 
 CREATE TABLE IF NOT EXISTS openmls_own_leaf_nodes (
     provider_version INTEGER NOT NULL,
-    group_id BLOB PRIMARY KEY,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    group_id BLOB NOT NULL,
     leaf_node BLOB NOT NULL
 );
 
