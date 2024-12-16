@@ -538,11 +538,11 @@ fn group_operations() {
 }
 
 #[openmls_test::openmls_test]
-fn sender_after_epoch_change() {
-    let mut alice_provider = Provider::default();
-    let mut bob_provider = Provider::default();
-    let mut charlie_provider = Provider::default();
-    let mut dora_provider = Provider::default();
+fn decrypt_after_leaf_index_reuse() {
+    let alice_provider = Provider::default();
+    let bob_provider = Provider::default();
+    let charlie_provider = Provider::default();
+    let dora_provider = Provider::default();
     // Create credentials and keys
     let (alice_credential, alice_signature_keys) = crate::credentials::test_utils::new_credential(
         &alice_provider,
@@ -627,7 +627,7 @@ fn sender_after_epoch_change() {
         welcome.clone(),
         Some(group_alice.export_ratchet_tree().into()),
     )
-    .and_then(|staged_join| staged_join.into_group(provider))
+    .and_then(|staged_join| staged_join.into_group(&bob_provider))
     .expect("error creating bob's group from welcome");
 
     let mut group_charlie = StagedWelcome::new_from_welcome(
@@ -638,7 +638,7 @@ fn sender_after_epoch_change() {
         welcome,
         Some(group_alice.export_ratchet_tree().into()),
     )
-    .and_then(|staged_join| staged_join.into_group(provider))
+    .and_then(|staged_join| staged_join.into_group(&charlie_provider))
     .expect("error creating charlie's group from welcome");
 
     let charlie_msg = group_charlie
