@@ -569,6 +569,7 @@ fn decrypt_after_leaf_index_reuse() {
     // Alice creates a group
     let mut group_alice = MlsGroup::builder()
         .ciphersuite(ciphersuite)
+        .max_past_epochs(5)
         .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .build(
             &alice_provider,
@@ -623,6 +624,7 @@ fn decrypt_after_leaf_index_reuse() {
         &bob_provider,
         &MlsGroupJoinConfig::builder()
             .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+            .max_past_epochs(5)
             .build(),
         welcome.clone(),
         Some(group_alice.export_ratchet_tree().into()),
@@ -634,6 +636,7 @@ fn decrypt_after_leaf_index_reuse() {
         &charlie_provider,
         &MlsGroupJoinConfig::builder()
             .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+            .max_past_epochs(5)
             .build(),
         welcome,
         Some(group_alice.export_ratchet_tree().into()),
@@ -666,6 +669,8 @@ fn decrypt_after_leaf_index_reuse() {
         .stage_commit(&alice_provider)
         .unwrap();
 
+    group_alice.merge_pending_commit(&alice_provider).unwrap();
+
     let bob_incoming_commit = group_bob
         .process_message(
             &bob_provider,
@@ -684,7 +689,11 @@ fn decrypt_after_leaf_index_reuse() {
         _ => unreachable!(),
     };
 
+    println!("{}", group_bob.epoch());
+
+    let charlie_protocol_message = charlie_msg.into_protocol_message().unwrap();
+
     let _bob_incoming_appmsg = group_bob
-        .process_message(&bob_provider, charlie_msg.into_protocol_message().unwrap())
+        .process_message(&bob_provider, charlie_protocol_message)
         .unwrap();
 }

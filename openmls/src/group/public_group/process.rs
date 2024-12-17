@@ -17,6 +17,7 @@ use crate::{
         past_secrets::MessageSecretsStore, proposal_store::QueuedProposal,
     },
     messages::proposals::Proposal,
+    prelude::SignaturePublicKey,
 };
 
 use super::PublicGroup;
@@ -43,14 +44,38 @@ impl PublicGroup {
         message_secrets_store_option: impl Into<Option<&'a MessageSecretsStore>>,
     ) -> Result<UnverifiedMessage, ValidationError> {
         let message_secrets_store_option = message_secrets_store_option.into();
+        let verifiable_content = decrypted_message.verifiable_content();
+
         // Checks the following semantic validation:
         //  - ValSem004
         //  - ValSem005
         //  - ValSem009
-        self.validate_verifiable_content(
-            decrypted_message.verifiable_content(),
-            message_secrets_store_option,
-        )?;
+        self.validate_verifiable_content(verifiable_content, message_secrets_store_option)?;
+
+        let message_epoch = verifiable_content.epoch();
+
+        // Depending on the epoch of the message, use the correct set of leaf nodes for getting the
+        // credential and signature key for the member with given index.
+        let look_up_credential_with_key = |leaf_node_index| {
+            if message_epoch == self.group_context().epoch() {
+                self.treesync()
+                    .leaf(leaf_node_index)
+                    .map(|leaf| CredentialWithKey {
+                        credential: leaf.credential().clone(),
+                        signature_key: leaf.signature_key().clone(),
+                    })
+            } else if let Some(store) = message_secrets_store_option {
+                store
+                    .leaves_for_epoch(message_epoch)
+                    .get(leaf_node_index.u32() as usize)
+                    .map(|member| CredentialWithKey {
+                        credential: member.credential.clone(),
+                        signature_key: SignaturePublicKey::from(member.signature_key.clone()),
+                    })
+            } else {
+                None
+            }
+        };
 
         // Extract the credential if the sender is a member or a new member.
         // Checks the following semantic validation:
@@ -63,10 +88,7 @@ impl PublicGroup {
             credential,
             signature_key,
         } = decrypted_message.credential(
-            self.treesync(),
-            message_secrets_store_option
-                .map(|store| store.leaves_for_epoch(decrypted_message.verifiable_content().epoch()))
-                .unwrap_or_default(),
+            look_up_credential_with_key,
             self.group_context().extensions().external_senders(),
         )?;
         let signature_public_key = OpenMlsSignaturePublicKey::from_signature_key(
