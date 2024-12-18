@@ -17,7 +17,6 @@ use crate::{
         past_secrets::MessageSecretsStore, proposal_store::QueuedProposal,
     },
     messages::proposals::Proposal,
-    prelude::SignaturePublicKey,
 };
 
 use super::PublicGroup;
@@ -60,18 +59,12 @@ impl PublicGroup {
             if message_epoch == self.group_context().epoch() {
                 self.treesync()
                     .leaf(leaf_node_index)
-                    .map(|leaf| CredentialWithKey {
-                        credential: leaf.credential().clone(),
-                        signature_key: leaf.signature_key().clone(),
-                    })
+                    .map(CredentialWithKey::from)
             } else if let Some(store) = message_secrets_store_option {
                 store
                     .leaves_for_epoch(message_epoch)
                     .get(leaf_node_index.u32() as usize)
-                    .map(|member| CredentialWithKey {
-                        credential: member.credential.clone(),
-                        signature_key: SignaturePublicKey::from(member.signature_key.clone()),
-                    })
+                    .map(CredentialWithKey::from)
             } else {
                 None
             }

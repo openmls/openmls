@@ -689,8 +689,6 @@ fn decrypt_after_leaf_index_reuse() {
         _ => unreachable!(),
     };
 
-    println!("{}", group_bob.epoch());
-
     let charlie_protocol_message = charlie_msg.into_protocol_message().unwrap();
 
     let _bob_incoming_appmsg = group_bob
