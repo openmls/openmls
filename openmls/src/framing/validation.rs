@@ -33,7 +33,6 @@ use crate::{
     extensions::ExternalSendersExtension,
     group::{errors::ValidationError, mls_group::staged_commit::StagedCommit},
     tree::sender_ratchet::SenderRatchetConfiguration,
-    treesync::TreeSync,
     versions::ProtocolVersion,
 };
 
@@ -149,6 +148,11 @@ impl DecryptedMessage {
     }
 
     /// Gets the correct credential from the message depending on the sender type.
+    ///
+    /// The closure argument is used to look up the credential and signature key. If the epoch of
+    /// the message is the same as that of the group, look it up in the tree; else, look in up in
+    /// the past trees of the message secret store.
+    ///
     /// Checks the following semantic validation:
     ///  - ValSem112
     ///  - ValSem245
@@ -158,50 +162,13 @@ impl DecryptedMessage {
     /// Returns the [`Credential`] and the leaf's [`SignaturePublicKey`].
     pub(crate) fn credential(
         &self,
-        treesync: &TreeSync,
-        old_leaves: &[Member],
+        look_up_credential_with_key: impl Fn(LeafNodeIndex) -> Option<CredentialWithKey>,
         external_senders: Option<&ExternalSendersExtension>,
     ) -> Result<CredentialWithKey, ValidationError> {
         let sender = self.sender();
         match sender {
             Sender::Member(leaf_index) => {
-                match treesync.leaf(*leaf_index) {
-                    Some(sender_leaf) => {
-                        let credential = sender_leaf.credential().clone();
-                        let pk = sender_leaf.signature_key().clone();
-                        Ok(CredentialWithKey {
-                            credential,
-                            signature_key: pk,
-                        })
-                    }
-                    None => {
-                        // This might not actually be an error but the sender's
-                        // key package changed. Let's check old leaves we still
-                        // have around.
-                        // TODO: As part of #819 looking up old leaves changes.
-                        //       Just checking the index is probably not enough.
-                        //       Revisit when the transition is further along
-                        //       and we have better test cases.
-                        if let Some(Member { index, .. }) = old_leaves
-                            .iter()
-                            .find(|&old_member| *leaf_index == old_member.index)
-                        {
-                            match treesync.leaf(*index) {
-                                Some(node) => {
-                                    let credential = node.credential().clone();
-                                    let signature_key = node.signature_key().clone();
-                                    Ok(CredentialWithKey {
-                                        credential,
-                                        signature_key,
-                                    })
-                                }
-                                None => Err(ValidationError::UnknownMember),
-                            }
-                        } else {
-                            Err(ValidationError::UnknownMember)
-                        }
-                    }
-                }
+                look_up_credential_with_key(*leaf_index).ok_or(ValidationError::UnknownMember)
             }
             Sender::External(index) => {
                 let sender = external_senders
