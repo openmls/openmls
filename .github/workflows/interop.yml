@@ -36,7 +36,6 @@ jobs:
         uses: lukka/run-vcpkg@v11
         with:
           vcpkgDirectory: "${{ github.workspace }}/vcpkg"
-          vcpkgGitCommitId: "70992f64912b9ab0e60e915ab7421faa197524b7"
           vcpkgJsonGlob: "mlspp/vcpkg.json"
           runVcpkgInstall: true
 
@@ -44,7 +43,6 @@ jobs:
         uses: lukka/run-vcpkg@v11
         with:
           vcpkgDirectory: "${{ github.workspace }}/vcpkg"
-          vcpkgGitCommitId: "70992f64912b9ab0e60e915ab7421faa197524b7"
           vcpkgJsonGlob: "mlspp/cmd/interop/vcpkg.json"
           runVcpkgInstall: true
 
