@@ -222,7 +222,7 @@ impl PrivateMessage {
             .map_err(LibraryError::missing_bound_check)?;
         let sender_data = MlsSenderData::from_sender(
             // XXX: #106 This will fail for messages with a non-member sender.
-            sender_index,
+            header.sender,
             generation,
             reuse_guard,
         );

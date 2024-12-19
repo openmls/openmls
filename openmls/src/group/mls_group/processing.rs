@@ -267,6 +267,7 @@ impl MlsGroup {
             Sender::Member(_) | Sender::NewMemberCommit | Sender::NewMemberProposal => {
                 let sender = content.sender().clone();
                 let authenticated_data = content.authenticated_data().to_owned();
+                let epoch = content.epoch();
 
                 let content = match content.content() {
                     FramedContentBody::Application(application_message) => {
@@ -300,7 +301,7 @@ impl MlsGroup {
 
                 Ok(ProcessedMessage::new(
                     self.group_id().clone(),
-                    self.context().epoch(),
+                    epoch,
                     sender,
                     authenticated_data,
                     content,
