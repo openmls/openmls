@@ -167,7 +167,6 @@ impl DecryptedMessage {
         look_up_credential_with_key: impl Fn(LeafNodeIndex) -> Option<CredentialWithKey>,
         external_senders: Option<&ExternalSendersExtension>,
     ) -> Result<CredentialWithKey, ValidationError> {
-        // TODO: What if the tree contains is for a different epoch?
         let sender = self.sender();
         match sender {
             Sender::Member(leaf_index) => {
