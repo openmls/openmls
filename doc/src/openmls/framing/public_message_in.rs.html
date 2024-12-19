@@ -298,7 +298,8 @@
 <a href="#297" id="297">297</a>
 <a href="#298" id="298">298</a>
 <a href="#299" id="299">299</a>
-<a href="#300" id="300">300</a></pre></div><pre class="rust"><code><span class="doccomment">//! # PublicMessageIn
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a></pre></div><pre class="rust"><code><span class="doccomment">//! # PublicMessageIn
 //!
 //! A PublicMessageIn is a framing structure for MLS messages. It can contain
 //! Proposals, Commits and application messages.
@@ -454,6 +455,7 @@
             <span class="kw-2">&amp;</span>membership_key.tag_message(crypto, ciphersuite, tbm_payload)<span class="question-mark">?</span>;
 
         <span class="comment">// Verify the membership tag
+        // https://validation.openmls.tech/#valn1302
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(membership_tag) = <span class="kw-2">&amp;</span><span class="self">self</span>.membership_tag {
             <span class="comment">// TODO #133: make this a constant-time comparison
             </span><span class="kw">if </span>membership_tag != expected_membership_tag {

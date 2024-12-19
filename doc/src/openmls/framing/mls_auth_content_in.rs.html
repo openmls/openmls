@@ -255,7 +255,9 @@
 <a href="#254" id="254">254</a>
 <a href="#255" id="255">255</a>
 <a href="#256" id="256">256</a>
-<a href="#257" id="257">257</a></pre></div><pre class="rust"><code><span class="doccomment">//! # MLS content authentication
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a></pre></div><pre class="rust"><code><span class="doccomment">//! # MLS content authentication
 //!
 //! This module contains structs and implementation that pertain to content
 //! authentication in MLS. Besides structs that directly represent structs in
@@ -464,7 +466,9 @@
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         pk: <span class="kw-2">&amp;</span>OpenMlsSignaturePublicKey,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>::VerifiedStruct, signable::SignatureError&gt; {
-        <span class="self">self</span>.verify_no_out(crypto, pk)<span class="question-mark">?</span>;
+        <span class="comment">// https://validation.openmls.tech/#valn1302
+        // https://validation.openmls.tech/#valn1304
+        </span><span class="self">self</span>.verify_no_out(crypto, pk)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(AuthenticatedContentIn {
             wire_format: <span class="self">self</span>.tbs.wire_format,
             content: <span class="self">self</span>.tbs.content,

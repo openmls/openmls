@@ -375,7 +375,12 @@
 <a href="#374" id="374">374</a>
 <a href="#375" id="375">375</a>
 <a href="#376" id="376">376</a>
-<a href="#377" id="377">377</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Validation steps for incoming messages
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Validation steps for incoming messages
 //!
 //! ```text
 //!
@@ -451,6 +456,7 @@
                 <span class="comment">// Verify the membership tag. This needs to be done explicitly for PublicMessage messages,
                 // it is implicit for PrivateMessage messages (because the encryption can only be known by members).
                 // ValSem008
+                // https://validation.openmls.tech/#valn1302
                 </span>public_message.verify_membership(
                     crypto,
                     ciphersuite,
@@ -535,6 +541,7 @@
     ///  - ValSem245
     ///  - Prepares ValSem246 by setting the right credential. The remainder
     ///    of ValSem246 is validated as part of ValSem010.
+    ///  - [valn1301](https://validation.openmls.tech/#valn1301)
     ///
     /// Returns the [`Credential`] and the leaf's [`SignaturePublicKey`].
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>credential(
@@ -545,7 +552,8 @@
         <span class="kw">let </span>sender = <span class="self">self</span>.sender();
         <span class="kw">match </span>sender {
             Sender::Member(leaf_index) =&gt; {
-                look_up_credential_with_key(<span class="kw-2">*</span>leaf_index).ok_or(ValidationError::UnknownMember)
+                <span class="comment">// https://validation.openmls.tech/#valn1306
+                </span>look_up_credential_with_key(<span class="kw-2">*</span>leaf_index).ok_or(ValidationError::UnknownMember)
             }
             Sender::External(index) =&gt; {
                 <span class="kw">let </span>sender = external_senders
@@ -624,7 +632,9 @@
             </span>.verifiable_content
             .verify(crypto, <span class="kw-2">&amp;</span><span class="self">self</span>.sender_pk)
             .map_err(|<span class="kw">_</span>| ValidationError::InvalidSignature)<span class="question-mark">?</span>;
-        <span class="kw">let </span>content =
+        <span class="comment">// https://validation.openmls.tech/#valn1302
+        // https://validation.openmls.tech/#valn1304
+        </span><span class="kw">let </span>content =
             content.validate(ciphersuite, crypto, <span class="self">self</span>.sender_context, protocol_version)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>((content, <span class="self">self</span>.credential))
     }

@@ -60,7 +60,8 @@
 <a href="#59" id="59">59</a>
 <a href="#60" id="60">60</a>
 <a href="#61" id="61">61</a>
-<a href="#62" id="62">62</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::io::Read;
+<a href="#62" id="62">62</a>
+<a href="#63" id="63">63</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::io::Read;
 <span class="kw">use </span>tls_codec::{Deserialize, Size};
 
 <span class="kw">use </span><span class="kw">crate</span>::versions::ProtocolVersion;
@@ -87,6 +88,7 @@
     };
 
     <span class="comment">// ValSem011: PrivateMessageContentIn padding must be all-zero.
+    // https://validation.openmls.tech/#valn1303
     </span><span class="kw">if </span>!padding.into_iter().all(|byte| byte == <span class="number">0x00</span>) {
         <span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidInput);
     }

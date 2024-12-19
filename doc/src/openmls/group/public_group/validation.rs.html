@@ -696,7 +696,9 @@
 <a href="#695" id="695">695</a>
 <a href="#696" id="696">696</a>
 <a href="#697" id="697">697</a>
-<a href="#698" id="698">698</a></pre></div><pre class="rust"><code><span class="doccomment">//! This module contains validation functions for incoming messages
+<a href="#698" id="698">698</a>
+<a href="#699" id="699">699</a>
+<a href="#700" id="700">700</a></pre></div><pre class="rust"><code><span class="doccomment">//! This module contains validation functions for incoming messages
 //! as defined in &lt;https://github.com/openmls/openmls/wiki/Message-validation&gt;
 
 </span><span class="kw">use </span>std::collections::{BTreeSet, HashSet};
@@ -735,6 +737,7 @@
     </span><span class="doccomment">/// Checks the following semantic validation:
     ///  - ValSem002
     ///  - ValSem003
+    ///  - [valn1307](https://validation.openmls.tech/#valn1307)
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_framing(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         message: <span class="kw-2">&amp;</span>ProtocolMessage,
@@ -760,7 +763,8 @@
             }
             <span class="comment">// For all other messages we only only accept the current epoch
             </span><span class="kw">_ </span>=&gt; {
-                <span class="kw">if </span>message.epoch() != <span class="self">self</span>.group_context().epoch() {
+                <span class="comment">// https://validation.openmls.tech/#valn1307
+                </span><span class="kw">if </span>message.epoch() != <span class="self">self</span>.group_context().epoch() {
                     <span class="macro">log::error!</span>(
                         <span class="string">"Wrong Epoch: message.epoch() {} != {} self.group_context().epoch()"</span>,
                         message.epoch(),

@@ -398,7 +398,9 @@
 <a href="#397" id="397">397</a>
 <a href="#398" id="398">398</a>
 <a href="#399" id="399">399</a>
-<a href="#400" id="400">400</a></pre></div><pre class="rust"><code><span class="doccomment">//! Processing functions of an [`MlsGroup`] for incoming messages.
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a></pre></div><pre class="rust"><code><span class="doccomment">//! Processing functions of an [`MlsGroup`] for incoming messages.
 
 </span><span class="kw">use </span>std::mem;
 
@@ -658,7 +660,8 @@
         <span class="comment">// Checks the following semantic validation:
         //  - ValSem010
         //  - ValSem246 (as part of ValSem010)
-        //  - https://validation.openmls.tech/#valn1203
+        //  - https://validation.openmls.tech/#valn1302
+        //  - https://validation.openmls.tech/#valn1304
         </span><span class="kw">let </span>(content, credential) =
             unverified_message.verify(<span class="self">self</span>.ciphersuite(), provider.crypto(), <span class="self">self</span>.version())<span class="question-mark">?</span>;
 
@@ -666,6 +669,7 @@
             Sender::Member(<span class="kw">_</span>) | Sender::NewMemberCommit | Sender::NewMemberProposal =&gt; {
                 <span class="kw">let </span>sender = content.sender().clone();
                 <span class="kw">let </span>authenticated_data = content.authenticated_data().to_owned();
+                <span class="kw">let </span>epoch = content.epoch();
 
                 <span class="kw">let </span>content = <span class="kw">match </span>content.content() {
                     FramedContentBody::Application(application_message) =&gt; {
@@ -699,7 +703,7 @@
 
                 <span class="prelude-val">Ok</span>(ProcessedMessage::new(
                     <span class="self">self</span>.group_id().clone(),
-                    <span class="self">self</span>.context().epoch(),
+                    epoch,
                     sender,
                     authenticated_data,
                     content,
