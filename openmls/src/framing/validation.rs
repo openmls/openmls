@@ -74,7 +74,7 @@ impl DecryptedMessage {
                 // Verify the membership tag. This needs to be done explicitly for PublicMessage messages,
                 // it is implicit for PrivateMessage messages (because the encryption can only be known by members).
                 // ValSem008
-                // https://validation.openmls.tech/#valn1301
+                // https://validation.openmls.tech/#valn1302
                 public_message.verify_membership(
                     crypto,
                     ciphersuite,
