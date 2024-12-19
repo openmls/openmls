@@ -6,6 +6,7 @@ use std::{
     path::PathBuf,
 };
 
+use base64::Engine;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -28,9 +29,10 @@ impl super::MemoryStorage {
 
         let mut ser_ks = SerializableKeyStore::default();
         for (key, value) in &*self.values.read().unwrap() {
-            ser_ks
-                .values
-                .insert(base64::encode(key), base64::encode(value));
+            ser_ks.values.insert(
+                base64::prelude::BASE64_STANDARD.encode(key),
+                base64::prelude::BASE64_STANDARD.encode(value),
+            );
         }
 
         match serde_json::to_writer_pretty(writer, &ser_ks) {
@@ -57,7 +59,10 @@ impl super::MemoryStorage {
             Ok(ser_ks) => {
                 let mut ks_map = self.values.write().unwrap();
                 for (key, value) in ser_ks.values {
-                    ks_map.insert(base64::decode(key).unwrap(), base64::decode(value).unwrap());
+                    ks_map.insert(
+                        base64::prelude::BASE64_STANDARD.decode(key).unwrap(),
+                        base64::prelude::BASE64_STANDARD.decode(value).unwrap(),
+                    );
                 }
                 Ok(())
             }

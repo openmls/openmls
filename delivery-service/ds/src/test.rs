@@ -133,8 +133,8 @@ async fn test_list_clients() {
     );
 
     // Get Client1 key packages.
-    let path =
-        "/clients/key_packages/".to_owned() + &base64::encode_config(client_id, base64::URL_SAFE);
+    let path = "/clients/key_packages/".to_owned()
+        + &base64::engine::general_purpose::URL_SAFE.encode(client_id);
     let req = test::TestRequest::with_uri(&path).to_request();
 
     let response = test::call_service(&app, req).await;
@@ -267,7 +267,7 @@ async fn test_group() {
 
     // Publish key package to the DS for Client2
     let path = "/clients/key_packages/".to_string()
-        + &base64::encode_config(&client_ids[1], base64::URL_SAFE);
+        + &base64::engine::general_purpose::URL_SAFE.encode(&client_ids[1]);
     let body = PublishKeyPackagesRequest {
         key_packages: ckp,
         auth_token: client_data_vec[1].auth_token.clone(),
@@ -300,7 +300,7 @@ async fn test_group() {
     // === Client1 invites Client2 ===
     // First we need to reserve the key package for Client2 from the DS.
     let path = "/clients/key_package/".to_owned()
-        + &base64::encode_config(&client_ids[1], base64::URL_SAFE);
+        + &base64::engine::general_purpose::URL_SAFE.encode(&client_ids[1]);
 
     let req = test::TestRequest::with_uri(&path).to_request();
 
@@ -334,7 +334,7 @@ async fn test_group() {
     let body = RecvMessageRequest {
         auth_token: client_data_vec[1].auth_token.clone(),
     };
-    let path = "/recv/".to_owned() + &base64::encode_config(clients[1], base64::URL_SAFE);
+    let path = "/recv/".to_owned() + &base64::engine::general_purpose::URL_SAFE.encode(clients[1]);
     let req = test::TestRequest::with_uri(&path)
         .set_payload(Bytes::copy_from_slice(
             &body.tls_serialize_detached().unwrap(),
@@ -398,7 +398,7 @@ async fn test_group() {
     let body = RecvMessageRequest {
         auth_token: client_data_vec[0].auth_token.clone(),
     };
-    let path = "/recv/".to_owned() + &base64::encode_config(clients[0], base64::URL_SAFE);
+    let path = "/recv/".to_owned() + &base64::engine::general_purpose::URL_SAFE.encode(clients[0]);
     let req = test::TestRequest::with_uri(&path)
         .set_payload(Bytes::copy_from_slice(
             &body.tls_serialize_detached().unwrap(),

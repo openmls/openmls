@@ -1,3 +1,4 @@
+use base64::Engine;
 use tls_codec::{Deserialize, TlsVecU16, TlsVecU32};
 use url::Url;
 
@@ -63,7 +64,7 @@ impl Backend {
     pub fn consume_key_package(&self, client_id: &[u8]) -> Result<KeyPackageIn, String> {
         let mut url = self.ds_url.clone();
         let path = "/clients/key_package/".to_string()
-            + &base64::encode_config(client_id, base64::URL_SAFE);
+            + &base64::engine::general_purpose::URL_SAFE.encode(client_id);
         url.set_path(&path);
 
         let response = get(&url)?;
@@ -80,7 +81,7 @@ impl Backend {
         };
         let mut url = self.ds_url.clone();
         let path = "/clients/key_packages/".to_string()
-            + &base64::encode_config(user.identity.borrow().identity(), base64::URL_SAFE);
+            + &base64::engine::general_purpose::URL_SAFE.encode(user.identity.borrow().identity());
         url.set_path(&path);
 
         let request = PublishKeyPackagesRequest {
@@ -120,7 +121,7 @@ impl Backend {
         };
         let mut url = self.ds_url.clone();
         let path = "/recv/".to_string()
-            + &base64::encode_config(user.identity.borrow().identity(), base64::URL_SAFE);
+            + &base64::engine::general_purpose::URL_SAFE.encode(user.identity.borrow().identity());
         url.set_path(&path);
 
         let request = RecvMessageRequest {
