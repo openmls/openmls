@@ -37,6 +37,7 @@ impl PublicGroup {
     /// Checks the following semantic validation:
     ///  - ValSem002
     ///  - ValSem003
+    ///  - [valn1307](https://validation.openmls.tech/#valn1307)
     pub(crate) fn validate_framing(
         &self,
         message: &ProtocolMessage,
@@ -62,6 +63,7 @@ impl PublicGroup {
             }
             // For all other messages we only only accept the current epoch
             _ => {
+                // https://validation.openmls.tech/#valn1307
                 if message.epoch() != self.group_context().epoch() {
                     log::error!(
                         "Wrong Epoch: message.epoch() {} != {} self.group_context().epoch()",

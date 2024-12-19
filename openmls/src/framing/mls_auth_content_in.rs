@@ -207,6 +207,8 @@ impl Verifiable for VerifiableAuthenticatedContentIn {
         crypto: &impl OpenMlsCrypto,
         pk: &OpenMlsSignaturePublicKey,
     ) -> Result<Self::VerifiedStruct, signable::SignatureError> {
+        // https://validation.openmls.tech/#valn1302
+        // https://validation.openmls.tech/#valn1304
         self.verify_no_out(crypto, pk)?;
         Ok(AuthenticatedContentIn {
             wire_format: self.tbs.wire_format,

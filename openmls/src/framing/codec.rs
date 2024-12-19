@@ -25,6 +25,7 @@ pub(super) fn deserialize_ciphertext_content<R: Read>(
     };
 
     // ValSem011: PrivateMessageContentIn padding must be all-zero.
+    // https://validation.openmls.tech/#valn1303
     if !padding.into_iter().all(|byte| byte == 0x00) {
         return Err(Error::InvalidInput);
     }
