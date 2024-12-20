@@ -143,6 +143,7 @@ impl PrivateMessage {
         message_secrets: &mut MessageSecrets,
         padding_size: usize,
     ) -> Result<PrivateMessage, MessageEncryptionError<T>> {
+        // https://validation.openmls.tech/#valn1305
         let sender_index = if let Some(index) = public_message.sender().as_member() {
             index
         } else {

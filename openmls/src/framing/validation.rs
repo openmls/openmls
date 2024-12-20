@@ -74,6 +74,7 @@ impl DecryptedMessage {
                 // Verify the membership tag. This needs to be done explicitly for PublicMessage messages,
                 // it is implicit for PrivateMessage messages (because the encryption can only be known by members).
                 // ValSem008
+                // https://validation.openmls.tech/#valn1302
                 public_message.verify_membership(
                     crypto,
                     ciphersuite,
@@ -158,6 +159,7 @@ impl DecryptedMessage {
     ///  - ValSem245
     ///  - Prepares ValSem246 by setting the right credential. The remainder
     ///    of ValSem246 is validated as part of ValSem010.
+    ///  - [valn1301](https://validation.openmls.tech/#valn1301)
     ///
     /// Returns the [`Credential`] and the leaf's [`SignaturePublicKey`].
     pub(crate) fn credential(
@@ -168,6 +170,7 @@ impl DecryptedMessage {
         let sender = self.sender();
         match sender {
             Sender::Member(leaf_index) => {
+                // https://validation.openmls.tech/#valn1306
                 look_up_credential_with_key(*leaf_index).ok_or(ValidationError::UnknownMember)
             }
             Sender::External(index) => {
@@ -247,6 +250,8 @@ impl UnverifiedMessage {
             .verifiable_content
             .verify(crypto, &self.sender_pk)
             .map_err(|_| ValidationError::InvalidSignature)?;
+        // https://validation.openmls.tech/#valn1302
+        // https://validation.openmls.tech/#valn1304
         let content =
             content.validate(ciphersuite, crypto, self.sender_context, protocol_version)?;
         Ok((content, self.credential))
