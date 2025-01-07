@@ -39,6 +39,7 @@ impl Deserialize for MlsMessageIn {
         let body = MlsMessageBodyIn::tls_deserialize(bytes)?;
 
         // KeyPackage version must match MlsMessage version.
+        // https://validation.openmls.tech/#valn0205
         if let MlsMessageBodyIn::KeyPackage(key_package) = &body {
             if !key_package.version_is_supported(version) {
                 return Err(tls_codec::Error::DecodingError(
