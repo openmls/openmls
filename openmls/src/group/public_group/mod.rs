@@ -141,6 +141,7 @@ impl PublicGroup {
             .full_leaves()
             .try_for_each(|leaf_node| leaf_node.validate_locally())?;
 
+        // https://validation.openmls.tech/#valn1402
         let group_info: GroupInfo = {
             let signer_signature_key = treesync
                 .leaf(verifiable_group_info.signer())
