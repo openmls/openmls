@@ -64,16 +64,25 @@ impl PublicGroup {
         };
 
         let sender = mls_content.sender();
-        // ValSem244: External Commit, There MUST NOT be any referenced proposals.
-        if sender == &Sender::NewMemberCommit
-            && commit
+
+        if sender == &Sender::NewMemberCommit {
+            // External commit, there MUST be a path
+            // https://validation.openmls.tech/#valn0405
+            if commit.path.is_none() {
+                return Err(ExternalCommitValidationError::NoPath.into());
+            }
+
+            // ValSem244: External Commit, There MUST NOT be any referenced proposals.
+            // https://validation.openmls.tech/#valn0406
+            if commit
                 .proposals
                 .iter()
                 .any(|proposal| matches!(proposal, ProposalOrRef::Reference(_)))
-        {
-            return Err(StageCommitError::ExternalCommitValidation(
-                ExternalCommitValidationError::ReferencedProposal,
-            ));
+            {
+                return Err(StageCommitError::ExternalCommitValidation(
+                    ExternalCommitValidationError::ReferencedProposal,
+                ));
+            }
         }
 
         // Build a queue with all proposals from the Commit and check that we have all

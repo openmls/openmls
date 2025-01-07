@@ -344,6 +344,9 @@ pub enum ValidationError {
     /// Cannot decrypt own messages because the necessary key has been deleted according to the deletion schedule.
     #[error("Cannot decrypt own messages.")]
     CannotDecryptOwnMessage,
+    /// See [`ExternalCommitValidationError`] for more details.
+    #[error(transparent)]
+    ExternalCommitValidation(#[from] ExternalCommitValidationError),
 }
 
 /// Proposal validation error
