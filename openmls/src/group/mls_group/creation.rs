@@ -247,6 +247,9 @@ impl ProcessedWelcome {
         ) else {
             return Err(WelcomeError::JoinerSecretNotFound);
         };
+        // TODO: fix validation:
+        // sort of https://validation.openmls.tech/#valn1404 but not really: need to compare the
+        // ciphersuite of the key package with that of the group context in the group info
         if ciphersuite != key_package_bundle.key_package().ciphersuite() {
             let e = WelcomeError::CiphersuiteMismatch;
             log::debug!("new_from_welcome {:?}", e);

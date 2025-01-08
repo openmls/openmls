@@ -155,6 +155,7 @@ impl RatchetTree {
                 // The ratchet tree is not empty, i.e., has a last node, and the last node is not blank.
 
                 // Verify the nodes.
+                // https://validation.openmls.tech/#valn1407
                 let mut verified_nodes = Vec::new();
                 for (index, node) in nodes.into_iter().enumerate() {
                     let verified_node = match (index % 2, node) {
