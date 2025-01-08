@@ -31,6 +31,7 @@
 //! are part of.
 
 use actix_web::{get, post, web, web::Payload, App, HttpRequest, HttpServer, Responder};
+use base64::Engine;
 use clap::Command;
 use futures_util::StreamExt;
 use std::collections::HashMap;
@@ -170,7 +171,7 @@ async fn reset(req: HttpRequest, data: web::Data<DsData>) -> impl Responder {
 async fn get_key_packages(path: web::Path<String>, data: web::Data<DsData>) -> impl Responder {
     let clients = unwrap_data!(data.clients.lock());
 
-    let id = match base64::decode_config(path.into_inner(), base64::URL_SAFE) {
+    let id = match base64::engine::general_purpose::URL_SAFE.decode(path.into_inner()) {
         Ok(v) => v,
         Err(_) => return actix_web::HttpResponse::BadRequest().finish(),
     };
@@ -198,7 +199,7 @@ async fn publish_key_packages(
 
     let mut clients = unwrap_data!(data.clients.lock());
 
-    let id = match base64::decode_config(path.into_inner(), base64::URL_SAFE) {
+    let id = match base64::engine::general_purpose::URL_SAFE.decode(path.into_inner()) {
         Ok(v) => v,
         Err(_) => return actix_web::HttpResponse::BadRequest().finish(),
     };
@@ -249,7 +250,7 @@ async fn publish_key_packages(
 async fn consume_key_package(path: web::Path<String>, data: web::Data<DsData>) -> impl Responder {
     let mut clients = unwrap_data!(data.clients.lock());
 
-    let id = match base64::decode_config(path.into_inner(), base64::URL_SAFE) {
+    let id = match base64::engine::general_purpose::URL_SAFE.decode(path.into_inner()) {
         Ok(v) => v,
         Err(_) => return actix_web::HttpResponse::BadRequest().finish(),
     };
@@ -374,7 +375,7 @@ async fn msg_recv(
 
     let mut clients = unwrap_data!(data.clients.lock());
 
-    let id = match base64::decode_config(path.into_inner(), base64::URL_SAFE) {
+    let id = match base64::engine::general_purpose::URL_SAFE.decode(path.into_inner()) {
         Ok(v) => v,
         Err(_) => return actix_web::HttpResponse::BadRequest().finish(),
     };

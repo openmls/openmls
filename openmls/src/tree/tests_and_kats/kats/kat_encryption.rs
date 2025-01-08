@@ -551,7 +551,7 @@ pub fn run_test_vector(
         let fresh_secret_tree = secret_tree.clone();
 
         for (generation, application, handshake) in
-            izip!((0..leaf.generations), &leaf.application, &leaf.handshake,)
+            izip!(0..leaf.generations, &leaf.application, &leaf.handshake,)
         {
             // Check application keys
             let (application_secret_key, application_secret_nonce) = secret_tree
