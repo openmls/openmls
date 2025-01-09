@@ -153,7 +153,7 @@ up to parties and have them create a group.</p>
    .merge_pending_commit(provider)
    .expect(<span class="string">"error merging pending commit"</span>);
 
-<span class="comment">// Sascha serializes the [`MlsMessageOut`] containing the [`Welcome`].
+<span class="comment">// Sasha serializes the [`MlsMessageOut`] containing the [`Welcome`].
 </span><span class="kw">let </span>serialized_welcome = welcome_out
    .tls_serialize_detached()
    .expect(<span class="string">"Error serializing welcome"</span>);
@@ -174,7 +174,7 @@ up to parties and have them create a group.</p>
     provider,
     <span class="kw-2">&amp;</span>MlsGroupJoinConfig::default(),
     welcome,
-    <span class="comment">// The public tree is need and transferred out of band.
+    <span class="comment">// The public tree is needed and transferred out of band.
     // It is also possible to use the [`RatchetTreeExtension`]
     </span><span class="prelude-val">Some</span>(sasha_group.export_ratchet_tree().into()),
 )

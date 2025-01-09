@@ -300,7 +300,7 @@
 //!    .merge_pending_commit(provider)
 //!    .expect("error merging pending commit");
 //!
-//! // Sascha serializes the [`MlsMessageOut`] containing the [`Welcome`].
+//! // Sasha serializes the [`MlsMessageOut`] containing the [`Welcome`].
 //! let serialized_welcome = welcome_out
 //!    .tls_serialize_detached()
 //!    .expect("Error serializing welcome");
@@ -321,7 +321,7 @@
 //!     provider,
 //!     &amp;MlsGroupJoinConfig::default(),
 //!     welcome,
-//!     // The public tree is need and transferred out of band.
+//!     // The public tree is needed and transferred out of band.
 //!     // It is also possible to use the [`RatchetTreeExtension`]
 //!     Some(sasha_group.export_ratchet_tree().into()),
 //! )
