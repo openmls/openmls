@@ -1,0 +1,21 @@
+[package]
+name = "openmls_sqlite_storage"
+authors = ["OpenMLS Authors"]
+version = "0.1.0"
+edition = "2021"
+description = "A storage provider for OpenMLS based on SQlite based on the rusqlite crate."
+license = "MIT"
+documentation = "https://docs.rs/openmls_sqlite_storage"
+repository = "https://github.com/openmls/openmls/tree/main/sqlite_storage"
+readme = "README.md"
+
+[dependencies]
+openmls_traits = { version = "0.3.0", path = "../traits" }
+thiserror = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+log = { version = "0.4" }
+rusqlite = { version = "0.31", features = ["bundled"] }
+refinery = { version = "0.8", features = ["rusqlite"] }
+
+[dev-dependencies]
+serde_json = { version = "1.0" }
