@@ -153,6 +153,7 @@ pub trait Verifiable: Sized {
                 return Err(SignatureError::VerificationError);
             }
         };
+        // https://validation.openmls.tech/#valn1301
         crypto
             .verify_signature(
                 pk.signature_scheme(),
