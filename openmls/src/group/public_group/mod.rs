@@ -11,7 +11,6 @@
 //! To avoid duplication of code and functionality, [`MlsGroup`] internally
 //! relies on a [`PublicGroup`] as well.
 
-#[cfg(test)]
 use std::collections::HashSet;
 
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
@@ -141,6 +140,20 @@ impl PublicGroup {
             .full_leaves()
             .try_for_each(|leaf_node| leaf_node.validate_locally())?;
 
+        // Check that no two leaf nodes share an encryption key.
+        // TODO: Actually these should be the parents
+        //
+        // https://validation.openmls.tech/#valn1402
+        treesync
+            .full_leaves()
+            .try_fold(HashSet::new(), |mut leaves, leaf_node| {
+                if leaves.insert(leaf_node.encryption_key()) {
+                    return Err(CreationFromExternalError::DuplicateEncryptionKey);
+                }
+
+                Ok(leaves)
+            })?;
+
         // https://validation.openmls.tech/#valn1402
         let group_info: GroupInfo = {
             let signer_signature_key = treesync
@@ -155,6 +168,7 @@ impl PublicGroup {
                 .map_err(|_| CreationFromExternalError::InvalidGroupInfoSignature)?
         };
 
+        // https://validation.openmls.tech/#valn1405
         if treesync.tree_hash() != group_info.group_context().tree_hash() {
             return Err(CreationFromExternalError::TreeHashMismatch);
         }
@@ -184,6 +198,7 @@ impl PublicGroup {
         };
 
         // Fully check that the leaf nodes in the ratchet tree are valid
+        // https://validation.openmls.tech/#valn1407
         public_group
             .treesync
             .full_leaves()
