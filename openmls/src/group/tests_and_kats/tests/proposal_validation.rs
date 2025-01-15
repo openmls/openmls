@@ -69,7 +69,7 @@ fn create_group_with_members<Provider: OpenMlsProvider>(
         &MlsGroupCreateConfig::builder()
             .ciphersuite(ciphersuite)
             .build(),
-        GroupId::from_slice(b"Alice's Friends"),
+        GroupId::random(provider.rand()),
         alice_credential_with_key_and_signer
             .credential_with_key
             .clone(),
@@ -104,7 +104,7 @@ fn new_test_group(
     ciphersuite: Ciphersuite,
     provider: &impl OpenMlsProvider,
 ) -> (MlsGroup, CredentialWithKeyAndSigner) {
-    let group_id = GroupId::from_slice(b"Test Group");
+    let group_id = GroupId::random(provider.rand());
 
     // Generate credentials with keys
     let credential_with_key_and_signer =
@@ -646,7 +646,7 @@ fn test_valsem101b() {
             &MlsGroupCreateConfig::builder()
                 .ciphersuite(ciphersuite)
                 .build(),
-            GroupId::from_slice(b"Alice's Friends"),
+            GroupId::random(provider.rand()),
             alice_credential_with_key.credential_with_key.clone(),
         )
         .unwrap();
