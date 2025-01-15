@@ -43,6 +43,8 @@ pub trait PublicStorageProvider:
     PublicError = <Self as PublicStorageProvider>::Error,
 >
 {
+    /// An opaque error returned by all methods on this trait.
+    /// Matches `PublicError` from `openmls_traits::storage::PublicStorageProvider`.
     type Error: core::fmt::Debug + std::error::Error;
 }
 
