@@ -334,7 +334,9 @@ impl MlsGroup {
     ) -> Result<(), MergeCommitError<Provider::StorageError>> {
         // Get all keypairs from the old epoch, so we can later store the ones
         // that are still relevant in the new epoch.
-        let old_epoch_keypairs = self.read_epoch_keypairs(provider.storage());
+        let old_epoch_keypairs = self
+            .read_epoch_keypairs(provider.storage())
+            .map_err(MergeCommitError::StorageError)?;
         match staged_commit.state {
             StagedCommitState::PublicState(staged_state) => {
                 self.public_group
