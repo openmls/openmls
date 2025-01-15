@@ -48,8 +48,8 @@ pub(crate) struct StorableSignatureKeyPairsRef<
     SignatureKeyPairs: Entity<STORAGE_PROVIDER_VERSION>,
 >(pub &'a SignatureKeyPairs);
 
-impl<'a, SignatureKeyPairs: Entity<STORAGE_PROVIDER_VERSION>>
-    StorableSignatureKeyPairsRef<'a, SignatureKeyPairs>
+impl<SignatureKeyPairs: Entity<STORAGE_PROVIDER_VERSION>>
+    StorableSignatureKeyPairsRef<'_, SignatureKeyPairs>
 {
     pub(super) fn store<C: Codec, SignaturePublicKey: Key<STORAGE_PROVIDER_VERSION>>(
         &self,
@@ -74,8 +74,8 @@ pub(super) struct StorableSignaturePublicKeyRef<
     SignaturePublicKey: Key<STORAGE_PROVIDER_VERSION>,
 >(pub &'a SignaturePublicKey);
 
-impl<'a, SignaturePublicKey: Key<STORAGE_PROVIDER_VERSION>>
-    StorableSignaturePublicKeyRef<'a, SignaturePublicKey>
+impl<SignaturePublicKey: Key<STORAGE_PROVIDER_VERSION>>
+    StorableSignaturePublicKeyRef<'_, SignaturePublicKey>
 {
     pub(super) fn delete<C: Codec>(
         &self,

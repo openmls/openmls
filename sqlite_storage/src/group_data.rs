@@ -100,7 +100,7 @@ pub(super) struct StorableGroupDataRef<'a, GroupData: Entity<STORAGE_PROVIDER_VE
     pub &'a GroupData,
 );
 
-impl<'a, GroupData: Entity<STORAGE_PROVIDER_VERSION>> StorableGroupDataRef<'a, GroupData> {
+impl<GroupData: Entity<STORAGE_PROVIDER_VERSION>> StorableGroupDataRef<'_, GroupData> {
     pub(super) fn store<C: Codec, GroupId: Key<STORAGE_PROVIDER_VERSION>>(
         &self,
         connection: &Connection,
@@ -121,7 +121,7 @@ impl<'a, GroupData: Entity<STORAGE_PROVIDER_VERSION>> StorableGroupDataRef<'a, G
     }
 }
 
-impl<'a, GroupId: Key<STORAGE_PROVIDER_VERSION>> StorableGroupIdRef<'a, GroupId> {
+impl<GroupId: Key<STORAGE_PROVIDER_VERSION>> StorableGroupIdRef<'_, GroupId> {
     pub(super) fn delete_group_data<C: Codec>(
         &self,
         connection: &Connection,

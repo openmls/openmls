@@ -64,7 +64,7 @@ impl<PskBundle: Entity<STORAGE_PROVIDER_VERSION>> StorablePskBundleRef<'_, PskBu
 
 pub(super) struct StorablePskIdRef<'a, PskId: Key<STORAGE_PROVIDER_VERSION>>(pub &'a PskId);
 
-impl<'a, PskId: Key<STORAGE_PROVIDER_VERSION>> StorablePskIdRef<'a, PskId> {
+impl<PskId: Key<STORAGE_PROVIDER_VERSION>> StorablePskIdRef<'_, PskId> {
     pub(super) fn delete<C: Codec>(
         &self,
         connection: &rusqlite::Connection,

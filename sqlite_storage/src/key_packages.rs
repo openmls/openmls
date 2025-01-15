@@ -41,7 +41,7 @@ pub(super) struct StorableKeyPackageRef<'a, KeyPackage: Entity<STORAGE_PROVIDER_
     pub &'a KeyPackage,
 );
 
-impl<'a, KeyPackage: Entity<STORAGE_PROVIDER_VERSION>> StorableKeyPackageRef<'a, KeyPackage> {
+impl<KeyPackage: Entity<STORAGE_PROVIDER_VERSION>> StorableKeyPackageRef<'_, KeyPackage> {
     pub(super) fn store<C: Codec, KeyPackageRef: Key<STORAGE_PROVIDER_VERSION>>(
         &self,
         connection: &rusqlite::Connection,
@@ -64,7 +64,7 @@ pub(super) struct StorableHashRef<'a, KeyPackageRef: Key<STORAGE_PROVIDER_VERSIO
     pub &'a KeyPackageRef,
 );
 
-impl<'a, KeyPackageRef: Key<STORAGE_PROVIDER_VERSION>> StorableHashRef<'a, KeyPackageRef> {
+impl<KeyPackageRef: Key<STORAGE_PROVIDER_VERSION>> StorableHashRef<'_, KeyPackageRef> {
     pub(super) fn delete_key_package<C: Codec>(
         &self,
         connection: &rusqlite::Connection,

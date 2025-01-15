@@ -45,7 +45,7 @@ pub(crate) struct StorableLeafNodeRef<'a, LeafNode: Entity<STORAGE_PROVIDER_VERS
     pub &'a LeafNode,
 );
 
-impl<'a, LeafNode: Entity<STORAGE_PROVIDER_VERSION>> StorableLeafNodeRef<'a, LeafNode> {
+impl<LeafNode: Entity<STORAGE_PROVIDER_VERSION>> StorableLeafNodeRef<'_, LeafNode> {
     pub(super) fn store<C: Codec, GroupId: Key<STORAGE_PROVIDER_VERSION>>(
         &self,
         connection: &rusqlite::Connection,
@@ -64,7 +64,7 @@ impl<'a, LeafNode: Entity<STORAGE_PROVIDER_VERSION>> StorableLeafNodeRef<'a, Lea
     }
 }
 
-impl<'a, GroupId: Key<STORAGE_PROVIDER_VERSION>> StorableGroupIdRef<'a, GroupId> {
+impl<GroupId: Key<STORAGE_PROVIDER_VERSION>> StorableGroupIdRef<'_, GroupId> {
     pub(super) fn delete_leaf_nodes<C: Codec>(
         &self,
         connection: &rusqlite::Connection,

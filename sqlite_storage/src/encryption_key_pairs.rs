@@ -41,8 +41,8 @@ pub(crate) struct StorableEncryptionKeyPairRef<
     EncryptionKeyPair: Entity<STORAGE_PROVIDER_VERSION>,
 >(pub &'a EncryptionKeyPair);
 
-impl<'a, EncryptionKeyPair: Entity<STORAGE_PROVIDER_VERSION>>
-    StorableEncryptionKeyPairRef<'a, EncryptionKeyPair>
+impl<EncryptionKeyPair: Entity<STORAGE_PROVIDER_VERSION>>
+    StorableEncryptionKeyPairRef<'_, EncryptionKeyPair>
 {
     pub(super) fn store<C: Codec, EncryptionKey: Key<STORAGE_PROVIDER_VERSION>>(
         &self,
@@ -67,8 +67,8 @@ pub(crate) struct StorableEncryptionPublicKeyRef<
     EncryptionPublicKey: Key<STORAGE_PROVIDER_VERSION>,
 >(pub &'a EncryptionPublicKey);
 
-impl<'a, EncryptionPublicKey: Key<STORAGE_PROVIDER_VERSION>>
-    StorableEncryptionPublicKeyRef<'a, EncryptionPublicKey>
+impl<EncryptionPublicKey: Key<STORAGE_PROVIDER_VERSION>>
+    StorableEncryptionPublicKeyRef<'_, EncryptionPublicKey>
 {
     pub(super) fn delete<C: Codec>(
         &self,

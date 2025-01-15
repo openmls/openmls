@@ -58,8 +58,8 @@ pub(super) struct StorableEpochKeyPairsRef<'a, EpochKeyPairs: Entity<STORAGE_PRO
     pub &'a [EpochKeyPairs],
 );
 
-impl<'a, EpochKeyPairs: Entity<STORAGE_PROVIDER_VERSION>>
-    StorableEpochKeyPairsRef<'a, EpochKeyPairs>
+impl<EpochKeyPairs: Entity<STORAGE_PROVIDER_VERSION>>
+    StorableEpochKeyPairsRef<'_, EpochKeyPairs>
 {
     pub(super) fn store<
         C: Codec,
@@ -87,7 +87,7 @@ impl<'a, EpochKeyPairs: Entity<STORAGE_PROVIDER_VERSION>>
     }
 }
 
-impl<'a, GroupId: Key<STORAGE_PROVIDER_VERSION>> StorableGroupIdRef<'a, GroupId> {
+impl<GroupId: Key<STORAGE_PROVIDER_VERSION>> StorableGroupIdRef<'_, GroupId> {
     pub(super) fn delete_epoch_key_pair<C: Codec, EpochKey: Key<STORAGE_PROVIDER_VERSION>>(
         &self,
         connection: &rusqlite::Connection,

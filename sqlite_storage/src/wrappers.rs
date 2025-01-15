@@ -41,7 +41,7 @@ pub(super) struct EntityRefWrapper<'a, C: Codec, T: Entity<STORAGE_PROVIDER_VERS
     pub PhantomData<C>,
 );
 
-impl<'a, C: Codec, T: Entity<STORAGE_PROVIDER_VERSION>> ToSql for EntityRefWrapper<'a, C, T> {
+impl<C: Codec, T: Entity<STORAGE_PROVIDER_VERSION>> ToSql for EntityRefWrapper<'_, C, T> {
     fn to_sql(&self) -> rusqlite::Result<rusqlite::types::ToSqlOutput<'_>> {
         let entity_bytes =
             C::to_vec(&self.0).map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
@@ -56,7 +56,7 @@ pub(super) struct EntitySliceWrapper<'a, C: Codec, T: Entity<STORAGE_PROVIDER_VE
     pub PhantomData<C>,
 );
 
-impl<'a, C: Codec, T: Entity<STORAGE_PROVIDER_VERSION>> ToSql for EntitySliceWrapper<'a, C, T> {
+impl<C: Codec, T: Entity<STORAGE_PROVIDER_VERSION>> ToSql for EntitySliceWrapper<'_, C, T> {
     fn to_sql(&self) -> rusqlite::Result<rusqlite::types::ToSqlOutput<'_>> {
         let entity_bytes =
             C::to_vec(&self.0).map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
