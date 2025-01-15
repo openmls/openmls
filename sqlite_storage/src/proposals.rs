@@ -78,18 +78,18 @@ pub(super) struct StorableProposalRef<
     ProposalRef: Entity<STORAGE_PROVIDER_VERSION>,
 >(pub &'a ProposalRef, pub &'a Proposal);
 
-impl<
-        Proposal: Entity<STORAGE_PROVIDER_VERSION>,
-        ProposalRef: Entity<STORAGE_PROVIDER_VERSION>,
-    > StorableProposalRef<'_, Proposal, ProposalRef>
+impl<Proposal: Entity<STORAGE_PROVIDER_VERSION>, ProposalRef: Entity<STORAGE_PROVIDER_VERSION>>
+    StorableProposalRef<'_, Proposal, ProposalRef>
 {
     pub(super) fn store<C: Codec, GroupId: Key<STORAGE_PROVIDER_VERSION>>(
         &self,
         connection: &rusqlite::Connection,
         group_id: &GroupId,
     ) -> Result<(), rusqlite::Error> {
+        // We insert or ignore here, because if the proposal ref matches, the
+        // content will match as well.
         connection.execute(
-            "INSERT INTO openmls_proposals (group_id, proposal_ref, proposal, provider_version) 
+            "INSERT OR IGNORE INTO openmls_proposals (group_id, proposal_ref, proposal, provider_version) 
             VALUES (?1, ?2, ?3, ?4)",
             params![
                 KeyRefWrapper::<C, _>(group_id, PhantomData),
