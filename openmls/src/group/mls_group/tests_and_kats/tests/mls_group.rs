@@ -4,7 +4,7 @@ use mls_group::{
 };
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_test::openmls_test;
-use openmls_traits::{storage::CURRENT_VERSION, OpenMlsProvider as _};
+use openmls_traits::storage::CURRENT_VERSION;
 use signable::Signable;
 use tls_codec::{Deserialize, Serialize};
 

@@ -12,7 +12,7 @@ use crate::{
     treesync::LeafNodeParameters,
 };
 
-use openmls_traits::{types::Ciphersuite, OpenMlsProvider as _};
+use openmls_traits::types::Ciphersuite;
 
 use crate::group::tests_and_kats::utils::*;
 

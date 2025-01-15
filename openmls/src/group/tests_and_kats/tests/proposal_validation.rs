@@ -6,10 +6,7 @@ use crate::{
     test_utils::frankenstein::*,
     treesync::{errors::LeafNodeValidationError, LeafNodeParameters},
 };
-use openmls_traits::{
-    prelude::{openmls_types::*, *},
-    signatures::Signer,
-};
+use openmls_traits::{prelude::openmls_types::*, signatures::Signer};
 use proposal_store::QueuedProposal;
 use tls_codec::{Deserialize, Serialize};
 

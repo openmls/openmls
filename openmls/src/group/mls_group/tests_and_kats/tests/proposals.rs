@@ -17,7 +17,6 @@ use crate::{
     },
     key_packages::{KeyPackageBundle, KeyPackageIn},
     messages::proposals::{AddProposal, Proposal, ProposalOrRef, ProposalType},
-    test_utils::*,
     versions::ProtocolVersion,
 };
 

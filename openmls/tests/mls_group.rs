@@ -3,7 +3,6 @@ use openmls::{
     storage::OpenMlsProvider,
     treesync::LeafNodeParameters,
 };
-use openmls_traits::OpenMlsProvider as _;
 
 use openmls_test::openmls_test;
 use openmls_traits::signatures::Signer;
