@@ -310,7 +310,7 @@ impl PublicGroup {
         &mut self,
         storage: &Storage,
         staged_commit: StagedCommit,
-    ) -> Result<(), MergeCommitError<Storage::PublicError>> {
+    ) -> Result<(), MergeCommitError<Storage::Error>> {
         match staged_commit.into_state() {
             StagedCommitState::PublicState(staged_state) => {
                 self.merge_diff(staged_state.staged_diff);

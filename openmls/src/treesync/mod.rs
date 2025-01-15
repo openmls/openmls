@@ -506,7 +506,7 @@ impl TreeSync {
                     .flat_map(|(_, node)| node.node().as_ref().map(ParentNode::encryption_key)),
             )
             .try_fold(HashSet::new(), |mut leaves, key| {
-                if leaves.insert(key) {
+                if !leaves.insert(key) {
                     return Err(RatchetTreeError::DuplicateEncryptionKey);
                 }
 
@@ -742,18 +742,19 @@ impl TreeSync {
         }
         Ok((keypairs, path_secret.into()))
     }
-}
-
-impl TreeSync {
-    pub(crate) fn leaf_count(&self) -> u32 {
-        self.tree.leaf_count()
-    }
 
     /// Return a reference to the parent node at the given `ParentNodeIndex` or
     /// `None` if the node is blank.
     pub(crate) fn parent(&self, node_index: ParentNodeIndex) -> Option<&ParentNode> {
         let tsn = self.tree.parent(node_index);
         tsn.node().as_ref()
+    }
+}
+
+#[cfg(test)]
+impl TreeSync {
+    pub(crate) fn leaf_count(&self) -> u32 {
+        self.tree.leaf_count()
     }
 }
 

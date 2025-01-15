@@ -215,7 +215,6 @@ impl<L: Clone + Debug + Default, P: Clone + Debug + Default> ABinaryTree<L, P> {
     }
 }
 
-#[cfg(test)]
 impl<L: Clone + Debug + Default, P: Clone + Debug + Default> ABinaryTree<L, P> {
     pub(crate) fn parent(&self, parent_index: ParentNodeIndex) -> &P {
         self.parent_nodes

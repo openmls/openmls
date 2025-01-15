@@ -11,6 +11,7 @@
 //! To avoid duplication of code and functionality, [`MlsGroup`] internally
 //! relies on a [`PublicGroup`] as well.
 
+#[cfg(test)]
 use std::collections::HashSet;
 
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
@@ -113,13 +114,16 @@ impl PublicGroup {
     /// This function performs basic validation checks and returns an error if
     /// one of the checks fails. See [`CreationFromExternalError`] for more
     /// details.
-    pub fn from_external<StorageProvider: PublicStorageProvider>(
+    pub fn from_external<StorageProvider, StorageError>(
         crypto: &impl OpenMlsCrypto,
         storage: &StorageProvider,
         ratchet_tree: RatchetTreeIn,
         verifiable_group_info: VerifiableGroupInfo,
         proposal_store: ProposalStore,
-    ) -> Result<(Self, GroupInfo), CreationFromExternalError<StorageProvider::PublicError>> {
+    ) -> Result<(Self, GroupInfo), CreationFromExternalError<StorageError>>
+    where
+        StorageProvider: PublicStorageProvider<Error = StorageError>,
+    {
         let ciphersuite = verifiable_group_info.ciphersuite();
 
         let group_id = verifiable_group_info.group_id();
@@ -159,43 +163,30 @@ impl PublicGroup {
                         let this_parent_offset = path
                             .iter()
                             .position(|x| x == &parent_index)
-                            .ok_or(CreationFromExternalError::UnmergedLeafNotADescendant)?;
+                            .ok_or(
+                            CreationFromExternalError::<StorageError>::UnmergedLeafNotADescendant,
+                        )?;
                         let path_leaf_to_this = &path[..this_parent_offset];
 
                         // https://validation.openmls.tech/#valn1409
                         // Verify that every non-blank intermediate node between the leaf node and the parent
                         // node also has an entry for the leaf node in its unmerged_leaves.
-                        path_leaf_to_this.iter().try_for_each(|intermediate_index| {
-                            let intermediate_node = treesync.parent(*intermediate_index).ok_or(
-                                LibraryError::custom(
-                                    "there should be a parent node with that index",
-                                ),
-                            )?;
+                        path_leaf_to_this
+                            .iter()
+                            .try_for_each(|intermediate_index| {
+                                let intermediate_node = treesync
+                                    .parent(*intermediate_index)
+                                    .ok_or(LibraryError::custom(
+                                        "there should be a parent node with that index",
+                                    ))?;
 
-                            if !intermediate_node.unmerged_leaves().contains(leaf_index) {
-                                return Err(
-                                    CreationFromExternalError::IntermediateNodeMissingUnmergedLeaf,
-                                );
-                            }
+                                if !intermediate_node.unmerged_leaves().contains(leaf_index) {
+                                    return Err(CreationFromExternalError::<StorageError>::IntermediateNodeMissingUnmergedLeaf);
+                                }
 
-                            Ok(())
-                        });
-
-                        Ok(())
+                                Ok(())
+                            })
                     })
-            })?;
-
-        // https://validation.openmls.tech/#valn1409
-        // For each non-empty parent node and each entry in the node's unmerged_leaves field:
-        // Verify that every non-blank intermediate node between the leaf node and the parent
-        // node also has an entry for the leaf node in its unmerged_leaves.
-        treesync
-            .full_parents()
-            .try_for_each(|(parent_index, parent_node)| {
-                parent_node
-                    .unmerged_leaves()
-                    .iter()
-                    .try_for_each(|leaf_index| {})
             })?;
 
         // https://validation.openmls.tech/#valn1402
@@ -368,7 +359,7 @@ impl PublicGroup {
         &mut self,
         storage: &Storage,
         proposal: QueuedProposal,
-    ) -> Result<(), Storage::PublicError> {
+    ) -> Result<(), Storage::Error> {
         storage.queue_proposal(self.group_id(), &proposal.proposal_reference(), &proposal)?;
         self.proposal_store.add(proposal);
         Ok(())
@@ -379,7 +370,7 @@ impl PublicGroup {
         &mut self,
         storage: &Storage,
         proposal_ref: &ProposalRef,
-    ) -> Result<(), Storage::PublicError> {
+    ) -> Result<(), Storage::Error> {
         storage.remove_proposal(self.group_id(), proposal_ref)?;
         self.proposal_store.remove(proposal_ref);
         Ok(())
@@ -389,7 +380,7 @@ impl PublicGroup {
     pub fn queued_proposals<Storage: PublicStorageProvider>(
         &self,
         storage: &Storage,
-    ) -> Result<Vec<(ProposalRef, QueuedProposal)>, Storage::PublicError> {
+    ) -> Result<Vec<(ProposalRef, QueuedProposal)>, Storage::Error> {
         storage.queued_proposals(self.group_id())
     }
 }
@@ -459,7 +450,7 @@ impl PublicGroup {
     pub(crate) fn store<Storage: PublicStorageProvider>(
         &self,
         storage: &Storage,
-    ) -> Result<(), Storage::PublicError> {
+    ) -> Result<(), Storage::Error> {
         let group_id = self.group_context.group_id();
         storage.write_tree(group_id, self.treesync())?;
         storage.write_confirmation_tag(group_id, self.confirmation_tag())?;
@@ -475,7 +466,7 @@ impl PublicGroup {
     pub fn delete<Storage: PublicStorageProvider>(
         storage: &Storage,
         group_id: &GroupId,
-    ) -> Result<(), Storage::PublicError> {
+    ) -> Result<(), Storage::Error> {
         storage.delete_tree(group_id)?;
         storage.delete_confirmation_tag(group_id)?;
         storage.delete_context(group_id)?;
@@ -488,7 +479,7 @@ impl PublicGroup {
     pub fn load<Storage: PublicStorageProvider>(
         storage: &Storage,
         group_id: &GroupId,
-    ) -> Result<Option<Self>, Storage::PublicError> {
+    ) -> Result<Option<Self>, Storage::Error> {
         let treesync = storage.tree(group_id)?;
         let proposals: Vec<(ProposalRef, QueuedProposal)> = storage.queued_proposals(group_id)?;
         let group_context = storage.group_context(group_id)?;
