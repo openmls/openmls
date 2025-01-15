@@ -42,7 +42,6 @@ use self::{
     },
     treesync_node::{TreeSyncLeafNode, TreeSyncNode, TreeSyncParentNode},
 };
-#[cfg(test)]
 use crate::binary_tree::array_representation::ParentNodeIndex;
 #[cfg(any(feature = "test-utils", test))]
 use crate::{binary_tree::array_representation::level, test_utils::bytes_to_hex};
@@ -575,11 +574,18 @@ impl TreeSync {
         self.tree.tree_size()
     }
 
-    /// Returns a list of [`LeafNodeIndex`]es containing only full nodes.
+    /// Returns an iterator over the (non-blank) [`LeafNode`]s in the tree.
     pub(crate) fn full_leaves(&self) -> impl Iterator<Item = &LeafNode> {
         self.tree
             .leaves()
             .filter_map(|(_, tsn)| tsn.node().as_ref())
+    }
+
+    /// Returns an iterator over the (non-blank) [`ParentNode`]s in the tree.
+    pub(crate) fn full_parents(&self) -> impl Iterator<Item = (ParentNodeIndex, &ParentNode)> {
+        self.tree
+            .parents()
+            .filter_map(|(index, tsn)| tsn.node().as_ref().map(|pn| (index, pn)))
     }
 
     /// Returns the index of the last full leaf in the tree.
@@ -738,7 +744,6 @@ impl TreeSync {
     }
 }
 
-#[cfg(test)]
 impl TreeSync {
     pub(crate) fn leaf_count(&self) -> u32 {
         self.tree.leaf_count()

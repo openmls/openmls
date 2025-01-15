@@ -30,9 +30,15 @@ pub enum CreationFromExternalError<StorageError> {
     /// See [`LeafNodeValidationError`]
     #[error(transparent)]
     LeafNodeValidation(#[from] LeafNodeValidationError),
-    /// Error writing to storage
+    /// Error writing to storage.
     #[error("Error writing to storage: {0}")]
     WriteToStorageError(StorageError),
+    /// A parent node has an unmerged leaf that is not a descendant of the node.
+    #[error("A parent node has an unmerged leaf that is not a descendant of the node")]
+    UnmergedLeafNotADescendant,
+    /// Found a path from a parent with an unmerged leaf to the leaf with nodes that do not have that as a leaf  
+    #[error("Found a path from a parent with an unmerged leaf to the leaf with nodes that do not have that as a leaf")]
+    IntermediateNodeMissingUnmergedLeaf,
 }
 
 /// Public group builder error.

@@ -27,7 +27,10 @@ use super::{
 #[cfg(test)]
 use crate::treesync::{node::parent_node::PlainUpdatePathNode, treekem::UpdatePathNode};
 use crate::{
-    binary_tree::{array_representation::TreeSize, LeafNodeIndex},
+    binary_tree::{
+        array_representation::{direct_path, TreeSize},
+        LeafNodeIndex,
+    },
     ciphersuite::{hash_ref::ProposalRef, signable::Verifiable},
     error::LibraryError,
     extensions::RequiredCapabilitiesExtension,
@@ -140,18 +143,59 @@ impl PublicGroup {
             .full_leaves()
             .try_for_each(|leaf_node| leaf_node.validate_locally())?;
 
-        // Check that no two leaf nodes share an encryption key.
-        // TODO: Actually these should be the parents
-        //
-        // https://validation.openmls.tech/#valn1402
+        // For each non-empty parent node and each entry in the node's unmerged_leaves field:
         treesync
-            .full_leaves()
-            .try_fold(HashSet::new(), |mut leaves, leaf_node| {
-                if leaves.insert(leaf_node.encryption_key()) {
-                    return Err(CreationFromExternalError::DuplicateEncryptionKey);
-                }
+            .full_parents()
+            .try_for_each(|(parent_index, parent_node)| {
+                parent_node
+                    .unmerged_leaves()
+                    .iter()
+                    .try_for_each(|leaf_index| {
+                        let path = direct_path(*leaf_index, treesync.tree_size());
 
-                Ok(leaves)
+                        // https://validation.openmls.tech/#valn1408
+                        // Verify that the entry represents a non-blank leaf node that is a descendant of the
+                        // parent node.
+                        let this_parent_offset = path
+                            .iter()
+                            .position(|x| x == &parent_index)
+                            .ok_or(CreationFromExternalError::UnmergedLeafNotADescendant)?;
+                        let path_leaf_to_this = &path[..this_parent_offset];
+
+                        // https://validation.openmls.tech/#valn1409
+                        // Verify that every non-blank intermediate node between the leaf node and the parent
+                        // node also has an entry for the leaf node in its unmerged_leaves.
+                        path_leaf_to_this.iter().try_for_each(|intermediate_index| {
+                            let intermediate_node = treesync.parent(*intermediate_index).ok_or(
+                                LibraryError::custom(
+                                    "there should be a parent node with that index",
+                                ),
+                            )?;
+
+                            if !intermediate_node.unmerged_leaves().contains(leaf_index) {
+                                return Err(
+                                    CreationFromExternalError::IntermediateNodeMissingUnmergedLeaf,
+                                );
+                            }
+
+                            Ok(())
+                        });
+
+                        Ok(())
+                    })
+            })?;
+
+        // https://validation.openmls.tech/#valn1409
+        // For each non-empty parent node and each entry in the node's unmerged_leaves field:
+        // Verify that every non-blank intermediate node between the leaf node and the parent
+        // node also has an entry for the leaf node in its unmerged_leaves.
+        treesync
+            .full_parents()
+            .try_for_each(|(parent_index, parent_node)| {
+                parent_node
+                    .unmerged_leaves()
+                    .iter()
+                    .try_for_each(|leaf_index| {})
             })?;
 
         // https://validation.openmls.tech/#valn1402
