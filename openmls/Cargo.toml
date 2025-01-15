@@ -21,6 +21,7 @@ openmls_basic_credential = { version = "0.3.0", path = "../basic_credential", op
 openmls_memory_storage = { version = "0.3.0", path = "../memory_storage", features = [
   "test-utils",
 ], optional = true }
+openmls_sqlite_storage = { version = "0.1.0", path = "../sqlite_storage", optional = true }
 openmls_test = { version = "0.1.0", path = "../openmls_test", optional = true }
 openmls_libcrux_crypto = { version = "0.1.0", path = "../libcrux_crypto", optional = true }
 serde = { version = "^1.0", features = ["derive"] }
@@ -58,6 +59,10 @@ libcrux-provider = [
   "dep:openmls_libcrux_crypto",
   "openmls_test?/libcrux-provider",
 ]
+sqlite-provider = [
+  "dep:openmls_sqlite_storage",
+  "openmls_test?/sqlite-provider",
+]
 crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
 content-debug = [] # ☣️ Enable logging of sensitive message content
 js = [
@@ -83,9 +88,13 @@ indicatif = "0.17.8"
 
 # Disable for wasm32 and Win32
 [target.'cfg(not(any(target_arch = "wasm32", all(target_arch = "x86", target_os = "windows"))))'.dev-dependencies]
-openmls = { path = ".", features = ["test-utils", "libcrux-provider"] }
+openmls = { path = ".", features = [
+  "test-utils",
+  "sqlite-provider",
+  "libcrux-provider",
+] }
 [target.'cfg(any(target_arch = "wasm32", all(target_arch = "x86", target_os = "windows")))'.dev-dependencies]
-openmls = { path = ".", features = ["test-utils"] }
+openmls = { path = ".", features = ["test-utils", "sqlite-provider"] }
 
 [[bench]]
 name = "benchmark"

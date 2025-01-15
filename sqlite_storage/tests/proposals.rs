@@ -1,8 +1,13 @@
+use openmls_rust_crypto::RustCrypto;
 use openmls_sqlite_storage::{Codec, SqliteStorageProvider};
-use openmls_traits::storage::{
-    traits::{self},
-    Entity, Key, StorageProvider,
+use openmls_traits::{
+    storage::{
+        traits::{self},
+        Entity, Key, StorageProvider,
+    },
+    OpenMlsProvider,
 };
+use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 
 #[derive(Default)]
@@ -44,9 +49,11 @@ fn read_write_delete() {
     let proposals = (0..10)
         .map(|i| Proposal(format!("TestProposal{i}").as_bytes().to_vec()))
         .collect::<Vec<_>>();
-    let mut connection = rusqlite::Connection::open_in_memory().unwrap();
-    SqliteStorageProvider::<JsonCodec>::initialize(&mut connection).unwrap();
-    let storage = openmls_sqlite_storage::SqliteStorageProvider::<JsonCodec>::new(&connection);
+    let connection = rusqlite::Connection::open_in_memory().unwrap();
+    let mut storage =
+        openmls_sqlite_storage::SqliteStorageProvider::<JsonCodec, Connection>::new(connection);
+
+    storage.initialize().unwrap();
 
     // Store proposals
     for (i, proposal) in proposals.iter().enumerate() {
@@ -91,4 +98,33 @@ fn read_write_delete() {
 
     let proposals_read: Vec<(ProposalRef, Proposal)> = storage.queued_proposals(&group_id).unwrap();
     assert!(proposals_read.is_empty());
+}
+
+#[test]
+fn openmls_provider() {
+    struct OpenMlsSqliteTestProvider<'a> {
+        crypto: RustCrypto,
+        storage: SqliteStorageProvider<JsonCodec, &'a rusqlite::Connection>,
+    }
+
+    impl<'a> OpenMlsProvider for OpenMlsSqliteTestProvider<'a> {
+        type CryptoProvider = RustCrypto;
+        type RandProvider = RustCrypto;
+        type StorageProvider = SqliteStorageProvider<JsonCodec, &'a rusqlite::Connection>;
+
+        fn storage(&self) -> &Self::StorageProvider {
+            &self.storage
+        }
+
+        fn crypto(&self) -> &Self::CryptoProvider {
+            &self.crypto
+        }
+
+        fn rand(&self) -> &Self::RandProvider {
+            &self.crypto
+        }
+    }
+
+    let connection = openmls_sqlite_storage::Connection::open_in_memory().unwrap();
+    let storage = SqliteStorageProvider::<JsonCodec, &rusqlite::Connection>::new(&connection);
 }

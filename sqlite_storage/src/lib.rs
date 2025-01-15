@@ -36,6 +36,7 @@ mod storage_provider;
 mod wrappers;
 
 pub use codec::Codec;
+pub use rusqlite::Connection;
 pub use storage_provider::SqliteStorageProvider;
 
 /// The version of the storage provider. If the `CURRENT_VERSION` of the OpenMLS
