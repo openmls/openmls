@@ -246,8 +246,6 @@ pub enum MemoryStorageError {
     UnsupportedMethod,
     #[error("Error serializing value.")]
     SerializationError,
-    #[error("Value does not exist.")]
-    None,
 }
 
 const KEY_PACKAGE_LABEL: &[u8] = b"KeyPackage";
@@ -826,7 +824,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
             return Ok(serde_json::from_slice(value).unwrap());
         }
 
-        Err(MemoryStorageError::None)
+        Ok(vec![])
     }
 
     fn delete_encryption_epoch_key_pairs<
