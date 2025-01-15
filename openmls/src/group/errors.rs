@@ -430,9 +430,6 @@ pub enum ExternalCommitValidationError {
     /// External Commit has to contain a path.
     #[error("External Commit has to contain a path.")]
     NoPath,
-    /// The remove proposal referenced a non-existing member.
-    #[error("The remove proposal referenced a non-existing member.")]
-    UnknownMemberRemoval,
     /// External commit contains referenced proposal
     #[error("Found a referenced proposal in an External Commit.")]
     ReferencedProposal,

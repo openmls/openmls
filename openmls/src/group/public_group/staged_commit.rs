@@ -79,9 +79,18 @@ impl PublicGroup {
                 .iter()
                 .any(|proposal| matches!(proposal, ProposalOrRef::Reference(_)))
             {
-                return Err(StageCommitError::ExternalCommitValidation(
-                    ExternalCommitValidationError::ReferencedProposal,
-                ));
+                return Err(ExternalCommitValidationError::ReferencedProposal.into());
+            }
+
+            let number_of_remove_proposals = commit
+                .proposals
+                .iter()
+                .filter(|prop| matches!(prop, ProposalOrRef::Proposal(Proposal::Remove(_))))
+                .count();
+
+            // https://validation.openmls.tech/#valn0402
+            if number_of_remove_proposals > 1 {
+                return Err(ExternalCommitValidationError::MultipleExternalInitProposals.into());
             }
         }
 
