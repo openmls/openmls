@@ -17,6 +17,7 @@ use crate::{
     },
     key_packages::{KeyPackageBundle, KeyPackageIn},
     messages::proposals::{AddProposal, Proposal, ProposalOrRef, ProposalType},
+    prelude::LeafNodeParameters,
     test_utils::*,
     versions::ProtocolVersion,
 };
@@ -502,4 +503,113 @@ fn group_context_extension_proposal(
         alice_group.epoch_authenticator(),
         bob_group.epoch_authenticator()
     )
+}
+
+// Test if update proposals are properly discarded if a remove proposal is
+// present for a given leaf.
+#[openmls_test::openmls_test]
+fn remove_and_update_processing(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::OpenMlsProvider,
+) {
+    // Create a group with alice and bob.
+    let (alice_credential, _, alice_signer, _alice_pk) =
+        setup_client("Alice", ciphersuite, provider);
+    let (_bob_credential_with_key, bob_key_package_bundle, bob_signer, _) =
+        setup_client("Bob", ciphersuite, provider);
+
+    let bob_key_package = bob_key_package_bundle.key_package();
+
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .build(provider, &alice_signer, alice_credential)
+        .expect("Error creating MlsGroup.");
+
+    let (_commit, welcome, _group_info_option) = alice_group
+        .add_members(provider, &alice_signer, &[bob_key_package.clone()])
+        .expect("Error adding members.");
+
+    alice_group.merge_pending_commit(provider).unwrap();
+
+    let ratchet_tree = alice_group.export_ratchet_tree();
+
+    let mut bob_group = StagedWelcome::new_from_welcome(
+        provider,
+        &MlsGroupJoinConfig::default(),
+        welcome.into_welcome().unwrap(),
+        Some(ratchet_tree.into()),
+    )
+    .expect("Error joining group.")
+    .into_group(provider)
+    .unwrap();
+
+    // Alice proposes that Bob be removed.
+    let (remove_proposal, _proposal_ref) = alice_group
+        .propose_remove_member(provider, &alice_signer, LeafNodeIndex::new(1))
+        .expect("Error proposing remove.");
+
+    let processed_message = bob_group
+        .process_message(provider, remove_proposal.into_protocol_message().unwrap())
+        .unwrap();
+
+    match processed_message.into_content() {
+        ProcessedMessageContent::ProposalMessage(queued_proposal) => {
+            bob_group
+                .store_pending_proposal(provider.storage(), *queued_proposal)
+                .unwrap();
+        }
+        _ => panic!("Expected a ProposalMessage."),
+    };
+
+    // At the same time, bob proposes an update.
+    let (update_proposal, _proposal_ref) = bob_group
+        .propose_self_update(provider, &bob_signer, LeafNodeParameters::default())
+        .expect("Error proposing update.");
+
+    let processed_message = alice_group
+        .process_message(provider, update_proposal.into_protocol_message().unwrap())
+        .unwrap();
+
+    match processed_message.into_content() {
+        ProcessedMessageContent::ProposalMessage(queued_proposal) => {
+            alice_group
+                .store_pending_proposal(provider.storage(), *queued_proposal)
+                .unwrap();
+        }
+        _ => panic!("Expected a ProposalMessage."),
+    };
+
+    let pending_proposals: Vec<_> = alice_group.pending_proposals().collect();
+    println!("Pending proposals: {:?}", pending_proposals);
+
+    // Alice commits both proposals.
+    let (commit, _, _) = alice_group
+        .commit_to_pending_proposals(provider, &alice_signer)
+        .unwrap();
+
+    let staged_proposals: Vec<_> = alice_group
+        .pending_commit()
+        .unwrap()
+        .queued_proposals()
+        .collect();
+
+    println!("Staged proposals {:?}", staged_proposals);
+
+    alice_group.merge_pending_commit(provider).unwrap();
+
+    // Bob processes the commit.
+    let processed_message = bob_group
+        .process_message(provider, commit.into_protocol_message().unwrap())
+        .unwrap();
+
+    match processed_message.into_content() {
+        ProcessedMessageContent::StagedCommitMessage(commit) => {
+            bob_group.merge_staged_commit(provider, *commit).unwrap();
+        }
+        _ => panic!("Expected a StagedCommitMessage."),
+    };
+
+    // Bob should be removed now.
+    assert_eq!(alice_group.members().count(), 1);
+    assert!(!bob_group.is_active());
 }
