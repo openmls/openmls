@@ -34,7 +34,7 @@ pub struct SqliteStorageProvider<C: Codec, ConnectionRef: Borrow<Connection>> {
     _codec: PhantomData<C>,
 }
 
-impl<'a, C: Codec, ConnectionRef: Borrow<Connection>> SqliteStorageProvider<C, ConnectionRef> {
+impl<C: Codec, ConnectionRef: Borrow<Connection>> SqliteStorageProvider<C, ConnectionRef> {
     /// Create a new instance of the [`SqliteStorageProvider`].
     pub fn new(connection: ConnectionRef) -> Self {
         Self {
