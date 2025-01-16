@@ -79,6 +79,7 @@ pub enum ProposalType {
     ExternalInit,
     GroupContextExtensions,
     AppAck,
+    SelfRemove,
     Custom(u16),
 }
 
@@ -93,7 +94,7 @@ impl ProposalType {
             | ProposalType::Reinit
             | ProposalType::ExternalInit
             | ProposalType::GroupContextExtensions => true,
-            ProposalType::AppAck | ProposalType::Custom(_) => false,
+            ProposalType::SelfRemove | ProposalType::AppAck | ProposalType::Custom(_) => false,
         }
     }
 }
@@ -157,6 +158,7 @@ impl From<u16> for ProposalType {
             6 => ProposalType::ExternalInit,
             7 => ProposalType::GroupContextExtensions,
             8 => ProposalType::AppAck,
+            0x000c => ProposalType::SelfRemove,
             other => ProposalType::Custom(other),
         }
     }
@@ -173,6 +175,7 @@ impl From<ProposalType> for u16 {
             ProposalType::ExternalInit => 6,
             ProposalType::GroupContextExtensions => 7,
             ProposalType::AppAck => 8,
+            ProposalType::SelfRemove => 0x000c,
             ProposalType::Custom(id) => id,
         }
     }
@@ -213,6 +216,8 @@ pub enum Proposal {
     // TODO(#916): `AppAck` is not in draft-ietf-mls-protocol-17 but
     //             was moved to `draft-ietf-mls-extensions-00`.
     AppAck(AppAckProposal),
+    // A SelfRemove proposal is an empty struct.
+    SelfRemove,
     Custom(CustomProposal),
 }
 
@@ -228,6 +233,7 @@ impl Proposal {
             Proposal::ExternalInit(_) => ProposalType::ExternalInit,
             Proposal::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,
             Proposal::AppAck(_) => ProposalType::AppAck,
+            Proposal::SelfRemove => ProposalType::SelfRemove,
             Proposal::Custom(CustomProposal {
                 proposal_type,
                 payload: _,

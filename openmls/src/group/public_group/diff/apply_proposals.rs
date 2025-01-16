@@ -106,6 +106,24 @@ impl PublicGroupDiff<'_> {
             }
         }
 
+        // Process self removes
+        let own_leaf_index = own_leaf_index.into();
+        for queued_proposal in proposal_queue.filtered_by_type(ProposalType::SelfRemove) {
+            if let Proposal::SelfRemove = queued_proposal.proposal() {
+                // Check if we got removed from the group
+                let Sender::Member(removed) = queued_proposal.sender() else {
+                    // This should not happen with validated proposals
+                    return Err(LibraryError::custom("SelfRemove proposal from non-member"));
+                };
+                if Some(*removed) == own_leaf_index {
+                    self_removed = true;
+                }
+                // Blank the direct path of the removed member
+                println!("Blanking leaf {:?}", removed);
+                self.diff.blank_leaf(*removed);
+            }
+        }
+
         // Process adds
         let add_proposals = proposal_queue
             .filtered_by_type(ProposalType::Add)
