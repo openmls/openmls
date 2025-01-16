@@ -380,7 +380,8 @@
 <a href="#379" id="379">379</a>
 <a href="#380" id="380">380</a>
 <a href="#381" id="381">381</a>
-<a href="#382" id="382">382</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Validation steps for incoming messages
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Validation steps for incoming messages
 //!
 //! ```text
 //!
@@ -567,6 +568,7 @@
             }
             Sender::NewMemberCommit | Sender::NewMemberProposal =&gt; {
                 <span class="comment">// Fetch the credential from the message itself.
+                // https://validation.openmls.tech/#valn0407
                 </span><span class="self">self</span>.verifiable_content.new_member_credential()
             }
         }

@@ -788,7 +788,17 @@
 <a href="#787" id="787">787</a>
 <a href="#788" id="788">788</a>
 <a href="#789" id="789">789</a>
-<a href="#790" id="790">790</a></pre></div><pre class="rust"><code><span class="doccomment">//! This module implements the ratchet tree component of MLS.
+<a href="#790" id="790">790</a>
+<a href="#791" id="791">791</a>
+<a href="#792" id="792">792</a>
+<a href="#793" id="793">793</a>
+<a href="#794" id="794">794</a>
+<a href="#795" id="795">795</a>
+<a href="#796" id="796">796</a>
+<a href="#797" id="797">797</a>
+<a href="#798" id="798">798</a>
+<a href="#799" id="799">799</a>
+<a href="#800" id="800">800</a></pre></div><pre class="rust"><code><span class="doccomment">//! This module implements the ratchet tree component of MLS.
 //!
 //! It exposes the [`Node`] enum that can contain either a [`LeafNode`] or a [`ParentNode`].
 
@@ -831,8 +841,7 @@
     },
     treesync_node::{TreeSyncLeafNode, TreeSyncNode, TreeSyncParentNode},
 };
-<span class="attr">#[cfg(test)]
-</span><span class="kw">use </span><span class="kw">crate</span>::binary_tree::array_representation::ParentNodeIndex;
+<span class="kw">use </span><span class="kw">crate</span>::binary_tree::array_representation::ParentNodeIndex;
 <span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
 </span><span class="kw">use crate</span>::{binary_tree::array_representation::level, test_utils::bytes_to_hex};
 <span class="kw">use crate</span>::{
@@ -945,6 +954,7 @@
                 <span class="comment">// The ratchet tree is not empty, i.e., has a last node, and the last node is not blank.
 
                 // Verify the nodes.
+                // https://validation.openmls.tech/#valn1407
                 </span><span class="kw">let </span><span class="kw-2">mut </span>verified_nodes = Vec::new();
                 <span class="kw">for </span>(index, node) <span class="kw">in </span>nodes.into_iter().enumerate() {
                     <span class="kw">let </span>verified_node = <span class="kw">match </span>(index % <span class="number">2</span>, node) {
@@ -1254,11 +1264,13 @@
             };
             ts_nodes.push(ts_node_option);
         }
+
         <span class="kw">let </span>tree = MlsBinaryTree::new(ts_nodes).map_err(|<span class="kw">_</span>| PublicTreeError::MalformedTree)<span class="question-mark">?</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>tree_sync = <span class="self">Self </span>{
             tree,
             tree_hash: <span class="macro">vec!</span>[],
         };
+
         <span class="comment">// Verify all parent hashes.
         </span>tree_sync
             .verify_parent_hashes(crypto, ciphersuite)
@@ -1268,6 +1280,7 @@
                     TreeSyncFromNodesError::from(PublicTreeError::InvalidParentHash)
                 }
             })<span class="question-mark">?</span>;
+
         <span class="comment">// Populate tree hash caches.
         </span>tree_sync.populate_parent_hashes(crypto, ciphersuite)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(tree_sync)
@@ -1329,11 +1342,18 @@
         <span class="self">self</span>.tree.tree_size()
     }
 
-    <span class="doccomment">/// Returns a list of [`LeafNodeIndex`]es containing only full nodes.
+    <span class="doccomment">/// Returns an iterator over the (non-blank) [`LeafNode`]s in the tree.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>full_leaves(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>LeafNode&gt; {
         <span class="self">self</span>.tree
             .leaves()
             .filter_map(|(<span class="kw">_</span>, tsn)| tsn.node().as_ref())
+    }
+
+    <span class="doccomment">/// Returns an iterator over the (non-blank) [`ParentNode`]s in the tree.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>full_parents(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = (ParentNodeIndex, <span class="kw-2">&amp;</span>ParentNode)&gt; {
+        <span class="self">self</span>.tree
+            .parents()
+            .filter_map(|(index, tsn)| tsn.node().as_ref().map(|pn| (index, pn)))
     }
 
     <span class="doccomment">/// Returns the index of the last full leaf in the tree.
@@ -1490,19 +1510,19 @@
         }
         <span class="prelude-val">Ok</span>((keypairs, path_secret.into()))
     }
-}
-
-<span class="attr">#[cfg(test)]
-</span><span class="kw">impl </span>TreeSync {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
-        <span class="self">self</span>.tree.leaf_count()
-    }
 
     <span class="doccomment">/// Return a reference to the parent node at the given `ParentNodeIndex` or
     /// `None` if the node is blank.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>parent(<span class="kw-2">&amp;</span><span class="self">self</span>, node_index: ParentNodeIndex) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>ParentNode&gt; {
         <span class="kw">let </span>tsn = <span class="self">self</span>.tree.parent(node_index);
         tsn.node().as_ref()
+    }
+}
+
+<span class="attr">#[cfg(test)]
+</span><span class="kw">impl </span>TreeSync {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
+        <span class="self">self</span>.tree.leaf_count()
     }
 }
 

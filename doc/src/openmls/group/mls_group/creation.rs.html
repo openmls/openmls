@@ -586,7 +586,21 @@
 <a href="#585" id="585">585</a>
 <a href="#586" id="586">586</a>
 <a href="#587" id="587">587</a>
-<a href="#588" id="588">588</a></pre></div><pre class="rust"><code><span class="kw">use </span>errors::NewGroupError;
+<a href="#588" id="588">588</a>
+<a href="#589" id="589">589</a>
+<a href="#590" id="590">590</a>
+<a href="#591" id="591">591</a>
+<a href="#592" id="592">592</a>
+<a href="#593" id="593">593</a>
+<a href="#594" id="594">594</a>
+<a href="#595" id="595">595</a>
+<a href="#596" id="596">596</a>
+<a href="#597" id="597">597</a>
+<a href="#598" id="598">598</a>
+<a href="#599" id="599">599</a>
+<a href="#600" id="600">600</a>
+<a href="#601" id="601">601</a>
+<a href="#602" id="602">602</a></pre></div><pre class="rust"><code><span class="kw">use </span>errors::NewGroupError;
 <span class="kw">use </span>openmls_traits::{signatures::Signer, storage::StorageProvider <span class="kw">as </span>StorageProviderTrait};
 
 <span class="kw">use super</span>::{builder::MlsGroupBuilder, <span class="kw-2">*</span>};
@@ -835,11 +849,15 @@
         ) <span class="kw">else </span>{
             <span class="kw">return </span><span class="prelude-val">Err</span>(WelcomeError::JoinerSecretNotFound);
         };
-        <span class="kw">if </span>ciphersuite != key_package_bundle.key_package().ciphersuite() {
+
+        <span class="comment">// This check seems to be superfluous from the perspective of the RFC, but still doesn't
+        // seem like a bad idea.
+        </span><span class="kw">if </span>welcome.ciphersuite() != key_package_bundle.key_package().ciphersuite() {
             <span class="kw">let </span>e = WelcomeError::CiphersuiteMismatch;
             <span class="macro">log::debug!</span>(<span class="string">"new_from_welcome {:?}"</span>, e);
             <span class="kw">return </span><span class="prelude-val">Err</span>(e);
         }
+
         <span class="kw">let </span>group_secrets = GroupSecrets::try_from_ciphertext(
             key_package_bundle.init_private_key(),
             egs.encrypted_group_secrets(),
@@ -884,6 +902,15 @@
                 .leaf_node()
                 .capabilities()
                 .supports_required_capabilities(required_capabilities)<span class="question-mark">?</span>;
+        }
+
+        <span class="comment">// https://validation.openmls.tech/#valn1404
+        // Verify that the cipher_suite in the GroupInfo matches the cipher_suite in the
+        // KeyPackage.
+        </span><span class="kw">if </span>verifiable_group_info.ciphersuite() != key_package_bundle.key_package().ciphersuite() {
+            <span class="kw">let </span>e = WelcomeError::CiphersuiteMismatch;
+            <span class="macro">log::debug!</span>(<span class="string">"new_from_welcome {:?}"</span>, e);
+            <span class="kw">return </span><span class="prelude-val">Err</span>(e);
         }
 
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
@@ -996,6 +1023,7 @@
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
 
         <span class="comment">// Verify confirmation tag
+        // https://validation.openmls.tech/#valn1410
         </span><span class="kw">if </span><span class="kw-2">&amp;</span>confirmation_tag != public_group.confirmation_tag() {
             <span class="macro">log::error!</span>(<span class="string">"Confirmation tag mismatch"</span>);
             <span class="macro">log_crypto!</span>(trace, <span class="string">"  Got:      {:x?}"</span>, confirmation_tag);

@@ -316,7 +316,25 @@
 <a href="#315" id="315">315</a>
 <a href="#316" id="316">316</a>
 <a href="#317" id="317">317</a>
-<a href="#318" id="318">318</a></pre></div><pre class="rust"><code><span class="kw">use super</span>::{<span class="kw">super</span>::errors::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a></pre></div><pre class="rust"><code><span class="kw">use super</span>::{<span class="kw">super</span>::errors::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 <span class="kw">use crate</span>::{
     framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, Sender},
     group::{
@@ -382,16 +400,34 @@
         };
 
         <span class="kw">let </span>sender = mls_content.sender();
-        <span class="comment">// ValSem244: External Commit, There MUST NOT be any referenced proposals.
-        </span><span class="kw">if </span>sender == <span class="kw-2">&amp;</span>Sender::NewMemberCommit
-            &amp;&amp; commit
+
+        <span class="kw">if </span>sender == <span class="kw-2">&amp;</span>Sender::NewMemberCommit {
+            <span class="comment">// External commit, there MUST be a path
+            // https://validation.openmls.tech/#valn0405
+            </span><span class="kw">if </span>commit.path.is_none() {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitValidationError::NoPath.into());
+            }
+
+            <span class="comment">// ValSem244: External Commit, There MUST NOT be any referenced proposals.
+            // https://validation.openmls.tech/#valn0406
+            </span><span class="kw">if </span>commit
                 .proposals
                 .iter()
                 .any(|proposal| <span class="macro">matches!</span>(proposal, ProposalOrRef::Reference(<span class="kw">_</span>)))
-        {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::ExternalCommitValidation(
-                ExternalCommitValidationError::ReferencedProposal,
-            ));
+            {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitValidationError::ReferencedProposal.into());
+            }
+
+            <span class="kw">let </span>number_of_remove_proposals = commit
+                .proposals
+                .iter()
+                .filter(|prop| <span class="macro">matches!</span>(prop, ProposalOrRef::Proposal(Proposal::Remove(<span class="kw">_</span>))))
+                .count();
+
+            <span class="comment">// https://validation.openmls.tech/#valn0402
+            </span><span class="kw">if </span>number_of_remove_proposals &gt; <span class="number">1 </span>{
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitValidationError::MultipleExternalInitProposals.into());
+            }
         }
 
         <span class="comment">// Build a queue with all proposals from the Commit and check that we have all
@@ -619,7 +655,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         storage: <span class="kw-2">&amp;</span>Storage,
         staged_commit: StagedCommit,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), MergeCommitError&lt;Storage::PublicError&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), MergeCommitError&lt;Storage::Error&gt;&gt; {
         <span class="kw">match </span>staged_commit.into_state() {
             StagedCommitState::PublicState(staged_state) =&gt; {
                 <span class="self">self</span>.merge_diff(staged_state.staged_diff);

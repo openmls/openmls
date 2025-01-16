@@ -896,6 +896,9 @@
     <span class="doccomment">/// Cannot decrypt own messages because the necessary key has been deleted according to the deletion schedule.
     </span><span class="attr">#[error(<span class="string">"Cannot decrypt own messages."</span>)]
     </span>CannotDecryptOwnMessage,
+    <span class="doccomment">/// See [`ExternalCommitValidationError`] for more details.
+    </span><span class="attr">#[error(transparent)]
+    </span>ExternalCommitValidation(<span class="attr">#[from] </span>ExternalCommitValidationError),
 }
 
 <span class="doccomment">/// Proposal validation error
@@ -979,9 +982,6 @@
     </span><span class="doccomment">/// External Commit has to contain a path.
     </span><span class="attr">#[error(<span class="string">"External Commit has to contain a path."</span>)]
     </span>NoPath,
-    <span class="doccomment">/// The remove proposal referenced a non-existing member.
-    </span><span class="attr">#[error(<span class="string">"The remove proposal referenced a non-existing member."</span>)]
-    </span>UnknownMemberRemoval,
     <span class="doccomment">/// External commit contains referenced proposal
     </span><span class="attr">#[error(<span class="string">"Found a referenced proposal in an External Commit."</span>)]
     </span>ReferencedProposal,
