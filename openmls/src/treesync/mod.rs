@@ -277,11 +277,7 @@ fn log2(x: u32) -> usize {
     if x == 0 {
         return 0;
     }
-    let mut k = 0;
-    while (x >> k) > 0 {
-        k += 1
-    }
-    k - 1
+    (31 - x.leading_zeros()) as usize
 }
 
 #[cfg(any(feature = "test-utils", test))]
