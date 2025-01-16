@@ -247,11 +247,15 @@ impl ProcessedWelcome {
         ) else {
             return Err(WelcomeError::JoinerSecretNotFound);
         };
-        if ciphersuite != key_package_bundle.key_package().ciphersuite() {
+
+        // This check seems to be superfluous from the perspective of the RFC, but still doesn't
+        // seem like a bad idea.
+        if welcome.ciphersuite() != key_package_bundle.key_package().ciphersuite() {
             let e = WelcomeError::CiphersuiteMismatch;
             log::debug!("new_from_welcome {:?}", e);
             return Err(e);
         }
+
         let group_secrets = GroupSecrets::try_from_ciphertext(
             key_package_bundle.init_private_key(),
             egs.encrypted_group_secrets(),
@@ -296,6 +300,15 @@ impl ProcessedWelcome {
                 .leaf_node()
                 .capabilities()
                 .supports_required_capabilities(required_capabilities)?;
+        }
+
+        // https://validation.openmls.tech/#valn1404
+        // Verify that the cipher_suite in the GroupInfo matches the cipher_suite in the
+        // KeyPackage.
+        if verifiable_group_info.ciphersuite() != key_package_bundle.key_package().ciphersuite() {
+            let e = WelcomeError::CiphersuiteMismatch;
+            log::debug!("new_from_welcome {:?}", e);
+            return Err(e);
         }
 
         Ok(Self {
@@ -408,6 +421,7 @@ impl ProcessedWelcome {
             .map_err(LibraryError::unexpected_crypto_error)?;
 
         // Verify confirmation tag
+        // https://validation.openmls.tech/#valn1410
         if &confirmation_tag != public_group.confirmation_tag() {
             log::error!("Confirmation tag mismatch");
             log_crypto!(trace, "  Got:      {:x?}", confirmation_tag);
