@@ -698,7 +698,9 @@
 <a href="#697" id="697">697</a>
 <a href="#698" id="698">698</a>
 <a href="#699" id="699">699</a>
-<a href="#700" id="700">700</a></pre></div><pre class="rust"><code><span class="doccomment">//! This module contains validation functions for incoming messages
+<a href="#700" id="700">700</a>
+<a href="#701" id="701">701</a>
+<a href="#702" id="702">702</a></pre></div><pre class="rust"><code><span class="doccomment">//! This module contains validation functions for incoming messages
 //! as defined in &lt;https://github.com/openmls/openmls/wiki/Message-validation&gt;
 
 </span><span class="kw">use </span>std::collections::{BTreeSet, HashSet};
@@ -886,7 +888,8 @@
         <span class="kw">let </span><span class="kw-2">mut </span>init_key_set = HashSet::new();
         <span class="kw">let </span><span class="kw-2">mut </span>encryption_key_set = HashSet::new();
 
-        <span class="kw">let </span>remove_proposals = HashSet::&lt;LeafNodeIndex&gt;::from_iter(
+        <span class="comment">// Handle the exceptions needed for https://validation.openmls.tech/#valn0306
+        </span><span class="kw">let </span>remove_proposals = HashSet::&lt;LeafNodeIndex&gt;::from_iter(
             proposal_queue
                 .remove_proposals()
                 .map(|remove_proposal| remove_proposal.remove_proposal().removed),
@@ -974,6 +977,7 @@
         //  - ValSem101
         //  - https://validation.openmls.tech/#valn0111
         //  - https://validation.openmls.tech/#valn0305
+        //  - https://validation.openmls.tech/#valn0306
         </span><span class="kw">for </span>signature_key <span class="kw">in </span>signature_keys {
             <span class="kw">if </span>!signature_key_set.insert(signature_key) {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::DuplicateSignatureKey);
