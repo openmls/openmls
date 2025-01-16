@@ -788,11 +788,7 @@
 <a href="#787" id="787">787</a>
 <a href="#788" id="788">788</a>
 <a href="#789" id="789">789</a>
-<a href="#790" id="790">790</a>
-<a href="#791" id="791">791</a>
-<a href="#792" id="792">792</a>
-<a href="#793" id="793">793</a>
-<a href="#794" id="794">794</a></pre></div><pre class="rust"><code><span class="doccomment">//! This module implements the ratchet tree component of MLS.
+<a href="#790" id="790">790</a></pre></div><pre class="rust"><code><span class="doccomment">//! This module implements the ratchet tree component of MLS.
 //!
 //! It exposes the [`Node`] enum that can contain either a [`LeafNode`] or a [`ParentNode`].
 
@@ -1071,12 +1067,8 @@
     <span class="kw">if </span>x == <span class="number">0 </span>{
         <span class="kw">return </span><span class="number">0</span>;
     }
-    <span class="kw">let </span><span class="kw-2">mut </span>k = <span class="number">0</span>;
-    <span class="kw">while </span>(x &gt;&gt; k) &gt; <span class="number">0 </span>{
-        k += <span class="number">1
-    </span>}
-    k - <span class="number">1
-</span>}
+    (<span class="number">31 </span>- x.leading_zeros()) <span class="kw">as </span>usize
+}
 
 <span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>root(size: u32) -&gt; u32 {
