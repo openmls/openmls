@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#1672](https://github.com/openmls/openmls/pull/1672): Add `epoch()` getter method to `VerifiableGroupInfo`.
 - [#1673](https://github.com/openmls/openmls/pull/1673): Return more specific error when attemtping to decrypt own messages: `ProcessMessageError::ValidationError(ValidationError::CannotDecryptOwnMessage)`.
 
+### Fixed
+
+- [#1703](https://github.com/openmls/openmls/pull/1703): Fix a bug where updates proposals were not properly cleared if a remove proposal is present for the same group member.
+
 ## 0.6.0 (2024-09-04)
 
 ### Added
