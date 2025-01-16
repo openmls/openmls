@@ -119,7 +119,6 @@ impl PublicGroupDiff<'_> {
                     self_removed = true;
                 }
                 // Blank the direct path of the removed member
-                println!("Blanking leaf {:?}", removed);
                 self.diff.blank_leaf(*removed);
             }
         }

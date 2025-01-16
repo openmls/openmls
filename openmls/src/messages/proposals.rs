@@ -142,7 +142,11 @@ impl ProposalType {
     pub fn is_path_required(&self) -> bool {
         matches!(
             self,
-            Self::Update | Self::Remove | Self::ExternalInit | Self::GroupContextExtensions
+            Self::Update
+                | Self::Remove
+                | Self::ExternalInit
+                | Self::GroupContextExtensions
+                | Self::SelfRemove
         )
     }
 }
