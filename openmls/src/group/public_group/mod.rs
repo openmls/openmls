@@ -174,14 +174,12 @@ impl PublicGroup {
                         path_leaf_to_this
                             .iter()
                             .try_for_each(|intermediate_index| {
-                                let intermediate_node = treesync
-                                    .parent(*intermediate_index)
-                                    .ok_or(LibraryError::custom(
-                                        "there should be a parent node with that index",
-                                    ))?;
-
-                                if !intermediate_node.unmerged_leaves().contains(leaf_index) {
-                                    return Err(CreationFromExternalError::<StorageError>::IntermediateNodeMissingUnmergedLeaf);
+                                // None would be blank, and we don't care about those
+                                if let Some(intermediate_node) = treesync
+                                    .parent(*intermediate_index) {
+                                    if !intermediate_node.unmerged_leaves().contains(leaf_index) {
+                                        return Err(CreationFromExternalError::<StorageError>::IntermediateNodeMissingUnmergedLeaf);
+                                    }
                                 }
 
                                 Ok(())
